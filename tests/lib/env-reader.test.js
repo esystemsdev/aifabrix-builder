@@ -22,13 +22,13 @@ describe('Environment Reader Module', () => {
     process.chdir(tempDir);
   });
 
-  afterEach(async () => {
+  afterEach(async() => {
     process.chdir(originalCwd);
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 
   describe('readExistingEnv', () => {
-    it('should read existing .env file', async () => {
+    it('should read existing .env file', async() => {
       const envContent = `
 # Test environment
 NODE_ENV=development
@@ -39,7 +39,7 @@ API_KEY=abc123def456
       await fs.writeFile('.env', envContent);
 
       const result = await envReader.readExistingEnv(process.cwd());
-      
+
       expect(result).toBeDefined();
       expect(result.NODE_ENV).toBe('development');
       expect(result.PORT).toBe('3000');
@@ -47,18 +47,18 @@ API_KEY=abc123def456
       expect(result.API_KEY).toBe('abc123def456');
     });
 
-    it('should return null when .env file does not exist', async () => {
+    it('should return null when .env file does not exist', async() => {
       const result = await envReader.readExistingEnv(process.cwd());
       expect(result).toBeNull();
     });
 
-    it('should handle empty .env file', async () => {
+    it('should handle empty .env file', async() => {
       await fs.writeFile('.env', '');
       const result = await envReader.readExistingEnv(process.cwd());
       expect(result).toEqual({});
     });
 
-    it('should skip comments and empty lines', async () => {
+    it('should skip comments and empty lines', async() => {
       const envContent = `
 # This is a comment
 NODE_ENV=development
@@ -71,14 +71,14 @@ DATABASE_URL=postgres://localhost:5432/test
       await fs.writeFile('.env', envContent);
 
       const result = await envReader.readExistingEnv(process.cwd());
-      
+
       expect(result.NODE_ENV).toBe('development');
       expect(result.PORT).toBe('3000');
       expect(result.DATABASE_URL).toBe('postgres://localhost:5432/test');
       expect(result['# This is a comment']).toBeUndefined();
     });
 
-    it('should handle quoted values', async () => {
+    it('should handle quoted values', async() => {
       const envContent = `
 NODE_ENV="development"
 PORT='3000'
@@ -87,7 +87,7 @@ DATABASE_URL="postgres://localhost:5432/test"
       await fs.writeFile('.env', envContent);
 
       const result = await envReader.readExistingEnv(process.cwd());
-      
+
       expect(result.NODE_ENV).toBe('development');
       expect(result.PORT).toBe('3000');
       expect(result.DATABASE_URL).toBe('postgres://localhost:5432/test');
@@ -161,7 +161,7 @@ DATABASE_URL="postgres://localhost:5432/test"
       };
 
       const result = envReader.convertToEnvTemplate(existingEnv, requiredVars);
-      
+
       expect(result.NODE_ENV).toBe('development');
       expect(result.PORT).toBe('3000');
       expect(result.DATABASE_PASSWORD).toBe('kv://database-password');
@@ -188,7 +188,7 @@ DATABASE_URL="postgres://localhost:5432/test"
       };
 
       const result = envReader.generateSecretsFromEnv(envVars);
-      
+
       expect(result['database-password']).toBe('secret123');
       expect(result['api-key']).toBe('abc123def456');
       expect(result['jwt-secret']).toBe('jwt-secret-value');
@@ -253,7 +253,7 @@ DATABASE_URL="postgres://localhost:5432/test"
   });
 
   describe('generateEnvTemplate', () => {
-    it('should generate template with existing environment conversion', async () => {
+    it('should generate template with existing environment conversion', async() => {
       const config = {
         port: 3000,
         appName: 'test-app',
@@ -269,19 +269,19 @@ DATABASE_URL="postgres://localhost:5432/test"
       };
 
       const result = await envReader.generateEnvTemplate(config, existingEnv);
-      
+
       expect(result.template).toContain('NODE_ENV=development');
       expect(result.template).toContain('DB_PASSWORD=kv://database-password');
       expect(result.template).toContain('API_KEY=kv://api-key');
       expect(result.template).toContain('PUBLIC_URL=https://example.com');
       expect(result.template).toContain('PORT=3000');
       expect(result.template).toContain('APP_NAME=test-app');
-      
+
       expect(result.secrets['database-password']).toBe('secret123');
       expect(result.secrets['api-key']).toBe('abc123def456');
     });
 
-    it('should handle validation warnings', async () => {
+    it('should handle validation warnings', async() => {
       const config = {
         port: 3000,
         appName: 'test-app',
@@ -294,7 +294,7 @@ DATABASE_URL="postgres://localhost:5432/test"
       };
 
       const result = await envReader.generateEnvTemplate(config, existingEnv);
-      
+
       expect(result.warnings).toHaveLength(2);
       expect(result.warnings[0]).toContain('Invalid environment variable name: invalid-key');
       expect(result.warnings[1]).toContain('Sanitized value for PORT');

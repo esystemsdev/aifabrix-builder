@@ -23,11 +23,11 @@ describe('Templates Module', () => {
       };
 
       const result = templates.generateVariablesYaml(appName, config);
-      
+
       // Verify it's valid YAML
       const parsed = yaml.load(result);
       expect(parsed).toBeDefined();
-      
+
       // Verify structure
       expect(parsed.app.key).toBe('test-app');
       expect(parsed.app.name).toBe('Test App');
@@ -53,7 +53,7 @@ describe('Templates Module', () => {
 
       const result = templates.generateVariablesYaml(appName, config);
       const parsed = yaml.load(result);
-      
+
       expect(parsed.app.key).toBe('python-app');
       expect(parsed.build.language).toBe('python');
       expect(parsed.build.port).toBe(8000);
@@ -70,7 +70,7 @@ describe('Templates Module', () => {
 
       const result = templates.generateVariablesYaml(appName, config);
       const parsed = yaml.load(result);
-      
+
       expect(parsed.app.key).toBe('minimal-app');
       expect(parsed.build.language).toBe('typescript');
       expect(parsed.build.port).toBe(3000);
@@ -93,7 +93,7 @@ describe('Templates Module', () => {
       };
 
       const result = templates.generateEnvTemplate(config);
-      
+
       expect(result).toContain('NODE_ENV=development');
       expect(result).toContain('PORT=3000');
       expect(result).toContain('APP_NAME=test-app');
@@ -114,7 +114,7 @@ describe('Templates Module', () => {
       };
 
       const result = templates.generateEnvTemplate(config);
-      
+
       expect(result).toContain('NODE_ENV=development');
       expect(result).toContain('PORT=3000');
       expect(result).toContain('APP_NAME=minimal-app');
@@ -135,7 +135,7 @@ describe('Templates Module', () => {
       };
 
       const result = templates.generateEnvTemplate(config);
-      
+
       expect(result).toContain('# AI Fabrix Environment Template');
       expect(result).toContain('# Core Application Settings');
       expect(result).toContain('# Database Configuration');
@@ -153,10 +153,10 @@ describe('Templates Module', () => {
       };
 
       const result = templates.generateRbacYaml(appName, config);
-      
+
       expect(result).toBeDefined();
       const parsed = yaml.load(result);
-      
+
       expect(parsed.apiVersion).toBe('v1');
       expect(parsed.kind).toBe('RBACConfig');
       expect(parsed.metadata.name).toBe('auth-app-rbac');
@@ -172,7 +172,7 @@ describe('Templates Module', () => {
       };
 
       const result = templates.generateRbacYaml(appName, config);
-      
+
       expect(result).toBeNull();
     });
 
@@ -184,7 +184,7 @@ describe('Templates Module', () => {
 
       const result = templates.generateRbacYaml(appName, config);
       const parsed = yaml.load(result);
-      
+
       const roles = parsed.spec.roles;
       expect(roles).toContainEqual(
         expect.objectContaining({
@@ -226,12 +226,12 @@ describe('Templates Module', () => {
 
       const result = templates.generateSecretsYaml(config, existingSecrets);
       const parsed = yaml.load(result);
-      
+
       expect(parsed.apiVersion).toBe('v1');
       expect(parsed.kind).toBe('Secret');
       expect(parsed.metadata.name).toBe('app-secrets');
       expect(parsed.type).toBe('Opaque');
-      
+
       // Check service-specific secrets
       expect(parsed.data['database-password']).toBeDefined();
       expect(parsed.data['redis-password']).toBeDefined();
@@ -239,7 +239,7 @@ describe('Templates Module', () => {
       expect(parsed.data['storage-secret']).toBeDefined();
       expect(parsed.data['jwt-secret']).toBeDefined();
       expect(parsed.data['session-secret']).toBeDefined();
-      
+
       // Check existing secrets
       expect(parsed.data['custom-secret']).toBeDefined();
       expect(parsed.data['api-key']).toBeDefined();
@@ -255,7 +255,7 @@ describe('Templates Module', () => {
 
       const result = templates.generateSecretsYaml(config, {});
       const parsed = yaml.load(result);
-      
+
       expect(parsed.data).toBeDefined();
       expect(Object.keys(parsed.data)).toHaveLength(0);
     });

@@ -22,7 +22,7 @@ describe('GitHub Generator Module', () => {
     process.chdir(tempDir);
   });
 
-  afterEach(async () => {
+  afterEach(async() => {
     process.chdir(originalCwd);
     await fs.rm(tempDir, { recursive: true, force: true });
   });
@@ -46,7 +46,7 @@ describe('GitHub Generator Module', () => {
       };
 
       const context = githubGenerator.getTemplateContext(config, options);
-      
+
       expect(context.appName).toBe('test-app');
       expect(context.mainBranch).toBe('main');
       expect(context.language).toBe('typescript');
@@ -80,7 +80,7 @@ describe('GitHub Generator Module', () => {
       };
 
       const context = githubGenerator.getTemplateContext(config, options);
-      
+
       expect(context.appName).toBe('python-app');
       expect(context.mainBranch).toBe('develop');
       expect(context.language).toBe('python');
@@ -100,7 +100,7 @@ describe('GitHub Generator Module', () => {
       };
 
       const context = githubGenerator.getTemplateContext(config);
-      
+
       expect(context.mainBranch).toBe('main');
       expect(context.buildCommand).toBe('npm run build');
       expect(context.uploadCoverage).toBe(true);
@@ -121,7 +121,7 @@ describe('GitHub Generator Module', () => {
       };
 
       const result = githubGenerator.validateWorkflowConfig(config, options);
-      
+
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
       expect(result.warnings).toHaveLength(0);
@@ -134,7 +134,7 @@ describe('GitHub Generator Module', () => {
       };
 
       const result = githubGenerator.validateWorkflowConfig(config);
-      
+
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Application name is required');
     });
@@ -146,7 +146,7 @@ describe('GitHub Generator Module', () => {
       };
 
       const result = githubGenerator.validateWorkflowConfig(config);
-      
+
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Language must be either typescript or python');
     });
@@ -159,7 +159,7 @@ describe('GitHub Generator Module', () => {
       };
 
       const result = githubGenerator.validateWorkflowConfig(config);
-      
+
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Port must be between 1 and 65535');
     });
@@ -175,7 +175,7 @@ describe('GitHub Generator Module', () => {
       };
 
       const result = githubGenerator.validateWorkflowConfig(config, options);
-      
+
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Main branch name contains invalid characters');
     });
@@ -189,7 +189,7 @@ describe('GitHub Generator Module', () => {
       };
 
       const result = githubGenerator.validateWorkflowConfig(config);
-      
+
       expect(result.valid).toBe(true);
       expect(result.warnings).toContain('Python applications typically require a database');
       expect(result.warnings).toContain('Authentication typically requires a database for user storage');
@@ -197,7 +197,7 @@ describe('GitHub Generator Module', () => {
   });
 
   describe('generateWorkflowsWithValidation', () => {
-    it('should generate workflows with valid configuration', async () => {
+    it('should generate workflows with valid configuration', async() => {
       const config = {
         appName: 'test-app',
         language: 'typescript',
@@ -217,7 +217,7 @@ describe('GitHub Generator Module', () => {
       // Mock the template files
       const templatesDir = path.join(__dirname, '..', '..', 'templates', 'github');
       await fs.mkdir(templatesDir, { recursive: true });
-      
+
       const ciTemplate = `name: CI/CD Pipeline
 on:
   push:
@@ -237,28 +237,28 @@ jobs:
       await fs.writeFile(path.join(templatesDir, 'ci.yaml.hbs'), ciTemplate);
 
       const result = await githubGenerator.generateWorkflowsWithValidation(tempDir, config, options);
-      
+
       expect(result.success).toBe(true);
       expect(result.validation.valid).toBe(true);
       expect(result.files).toHaveLength(5);
       expect(result.files[0]).toContain('ci.yaml');
     });
 
-    it('should fail with invalid configuration', async () => {
+    it('should fail with invalid configuration', async() => {
       const config = {
         // missing appName
         language: 'typescript'
       };
 
       const result = await githubGenerator.generateWorkflowsWithValidation(tempDir, config);
-      
+
       expect(result.success).toBe(false);
       expect(result.validation.valid).toBe(false);
       expect(result.validation.errors).toContain('Application name is required');
       expect(result.files).toHaveLength(0);
     });
 
-    it.skip('should handle template generation errors', async () => {
+    it.skip('should handle template generation errors', async() => {
       const config = {
         appName: 'test-app',
         language: 'typescript'
@@ -266,7 +266,7 @@ jobs:
 
       // Test with invalid path to cause error
       const invalidPath = '/invalid/path/that/does/not/exist';
-      
+
       await expect(
         githubGenerator.generateWorkflowsWithValidation(invalidPath, config)
       ).rejects.toThrow('Failed to generate GitHub workflows');
@@ -274,7 +274,7 @@ jobs:
   });
 
   describe('generateWorkflowFile', () => {
-    it('should generate a specific workflow file', async () => {
+    it('should generate a specific workflow file', async() => {
       const config = {
         appName: 'test-app',
         language: 'typescript',
@@ -288,7 +288,7 @@ jobs:
       // Create template file in the real templates directory
       const templatesDir = path.join(__dirname, '..', '..', 'templates', 'github');
       await fs.mkdir(templatesDir, { recursive: true });
-      
+
       const template = `name: Test Workflow
 on:
   push:
@@ -304,9 +304,9 @@ jobs:
       await fs.writeFile(path.join(templatesDir, 'test.hbs'), template);
 
       const result = await githubGenerator.generateWorkflowFile(tempDir, 'test', config, options);
-      
+
       expect(result).toContain('test');
-      
+
       // Verify generated content
       const content = await fs.readFile(result, 'utf8');
       expect(content).toContain('name: Test Workflow');
@@ -314,7 +314,7 @@ jobs:
       expect(content).toContain('Testing test-app');
     });
 
-    it('should handle template file not found', async () => {
+    it('should handle template file not found', async() => {
       const config = {
         appName: 'test-app',
         language: 'typescript'
