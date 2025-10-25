@@ -1,0 +1,99 @@
+/**
+ * Tests for AI Fabrix Builder CLI Error Handling
+ *
+ * @fileoverview Unit tests for CLI error handling functionality
+ * @author AI Fabrix Team
+ * @version 2.0.0
+ */
+
+// Mock modules
+jest.mock('fs');
+jest.mock('os');
+jest.mock('child_process');
+jest.mock('net');
+
+// Mock the lib modules
+jest.mock('../../lib/secrets');
+jest.mock('../../lib/generator');
+jest.mock('../../lib/key-generator');
+jest.mock('../../lib/validator');
+jest.mock('../../lib/infra');
+
+describe('CLI Error Handling', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Mock console methods to capture output
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(process, 'exit').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  describe('Error handling', () => {
+    it('should handle command errors with helpful messages', () => {
+      const cli = require('../../lib/cli');
+
+      // Test the handleCommandError function
+      const error = new Error('Docker is not running');
+      const command = 'build';
+
+      cli.handleCommandError(error, command);
+
+      expect(console.error).toHaveBeenCalledWith('\n❌ Error in build command:');
+      expect(console.error).toHaveBeenCalledWith('   Docker is not running or not installed.');
+      expect(console.error).toHaveBeenCalledWith('   Please start Docker Desktop and try again.');
+      expect(console.error).toHaveBeenCalledWith('\n💡 Run "aifabrix doctor" for environment diagnostics.\n');
+    });
+
+    it('should handle port conflict errors', () => {
+      const cli = require('../../lib/cli');
+
+      const error = new Error('port 5432 is already in use');
+      const command = 'up';
+
+      cli.handleCommandError(error, command);
+
+      expect(console.error).toHaveBeenCalledWith('\n❌ Error in up command:');
+      expect(console.error).toHaveBeenCalledWith('   Port conflict detected.');
+      expect(console.error).toHaveBeenCalledWith('   Run "aifabrix doctor" to check which ports are in use.');
+    });
+
+    it('should handle permission errors', () => {
+      const cli = require('../../lib/cli');
+
+      const error = new Error('permission denied');
+      const command = 'build';
+
+      cli.handleCommandError(error, command);
+
+      expect(console.error).toHaveBeenCalledWith('\n❌ Error in build command:');
+      expect(console.error).toHaveBeenCalledWith('   Permission denied.');
+      expect(console.error).toHaveBeenCalledWith('   Make sure you have the necessary permissions to run Docker commands.');
+    });
+
+    it('should handle generic errors', () => {
+      const cli = require('../../lib/cli');
+
+      const error = new Error('Something went wrong');
+      const command = 'deploy';
+
+      cli.handleCommandError(error, command);
+
+      expect(console.error).toHaveBeenCalledWith('\n❌ Error in deploy command:');
+      expect(console.error).toHaveBeenCalledWith('   Something went wrong');
+    });
+  });
+
+  describe('Command validation', () => {
+    it('should validate command arguments', () => {
+      const cli = require('../../lib/cli');
+
+      const result = cli.validateCommand('build', {});
+      expect(result).toBe(true);
+    });
+  });
+});

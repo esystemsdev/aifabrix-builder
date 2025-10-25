@@ -1,0 +1,58 @@
+{
+  "name": "@aifabrix/builder",
+  "version": "2.0.0",
+  "description": "AI Fabrix Local Fabric & Deployment SDK",
+  "main": "lib/index.js",
+  "bin": {
+    "aifabrix": "bin/aifabrix.js"
+  },
+  "scripts": {
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
+    "lint:ci": "eslint . --ext .js --format json --output-file eslint-report.json",
+    "dev": "node bin/aifabrix.js",
+    "build": "npm run lint && npm run test:ci",
+    "validate": "npm run build",
+    "prepublishOnly": "npm run validate",
+    "precommit": "npm run lint:fix && npm run test",
+    "posttest": "npm run lint"
+  },
+  "keywords": [
+    "aifabrix",
+    "docker",
+    "deployment",
+    "cli",
+    "azure",
+    "container"
+  ],
+  "author": "eSystems Nordic Ltd",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "commander": "^11.1.0",
+    "js-yaml": "^4.1.0",
+    "ajv": "^8.12.0",
+    "handlebars": "^4.7.8",
+    "axios": "^1.6.0",
+    "chalk": "^4.1.2",
+    "ora": "^5.4.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "eslint": "^8.55.0",
+    "@types/node": "^20.10.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/esystemsdev/aifabrix-builder.git"
+  },
+  "bugs": {
+    "url": "https://github.com/esystemsdev/aifabrix-builder/issues"
+  },
+  "homepage": "https://github.com/esystemsdev/aifabrix-builder#readme"
+}

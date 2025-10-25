@@ -1,0 +1,376 @@
+{
+  "image": "aifabrix/miso-controller:latest",
+  "configuration": [
+    {
+      "name": "NODE_ENV",
+      "required": true,
+      "location": "variable",
+      "value": "development"
+    },
+    {
+      "name": "PORT",
+      "required": true,
+      "location": "variable",
+      "value": "3000"
+    },
+    {
+      "name": "AUTO_CREATE_TABLES",
+      "required": true,
+      "location": "variable",
+      "value": "true"
+    },
+    {
+      "name": "DATABASE_URL",
+      "required": true,
+      "location": "keyvault",
+      "value": "databases-miso-urlKeyVault"
+    },
+    {
+      "name": "DATABASELOG_URL",
+      "required": true,
+      "location": "keyvault",
+      "value": "databases-miso-logs-urlKeyVault"
+    },
+    {
+      "name": "REDIS_URL",
+      "required": true,
+      "location": "keyvault",
+      "value": "redis-urlKeyVault"
+    },
+    {
+      "name": "REDIS_PASSWORD",
+      "required": true,
+      "location": "keyvault",
+      "value": "redis-passwordKeyVault"
+    },
+    {
+      "name": "REDIS_DB",
+      "required": true,
+      "location": "variable",
+      "value": "0"
+    },
+    {
+      "name": "KEYCLOAK_REALM",
+      "required": true,
+      "location": "variable",
+      "value": "aifabrix"
+    },
+    {
+      "name": "KEYCLOAK_AUTH_SERVER_URL",
+      "required": true,
+      "location": "keyvault",
+      "value": "keycloak-auth-server-urlKeyVault"
+    },
+    {
+      "name": "KEYCLOAK_CLIENT_ID",
+      "required": true,
+      "location": "variable",
+      "value": "miso-controller"
+    },
+    {
+      "name": "KEYCLOAK_CLIENT_SECRET",
+      "required": true,
+      "location": "keyvault",
+      "value": "keycloak-client-secretKeyVault"
+    },
+    {
+      "name": "KEYCLOAK_ADMIN_USERNAME",
+      "required": true,
+      "location": "variable",
+      "value": "admin"
+    },
+    {
+      "name": "KEYCLOAK_ADMIN_PASSWORD",
+      "required": true,
+      "location": "keyvault",
+      "value": "keycloak-admin-passwordKeyVault"
+    },
+    {
+      "name": "KEYCLOAK_EVENTS_ENABLED",
+      "required": true,
+      "location": "variable",
+      "value": "true"
+    },
+    {
+      "name": "KEYCLOAK_EVENTS_VERIFY_SIGNATURE",
+      "required": true,
+      "location": "variable",
+      "value": "true"
+    },
+    {
+      "name": "KEYCLOAK_EVENTS_SECRET",
+      "required": true,
+      "location": "keyvault",
+      "value": "keycloak-events-secretKeyVault"
+    },
+    {
+      "name": "AZURE_SUBSCRIPTION_ID",
+      "required": true,
+      "location": "keyvault",
+      "value": "azure-subscription-idKeyVault"
+    },
+    {
+      "name": "AZURE_TENANT_ID",
+      "required": true,
+      "location": "keyvault",
+      "value": "azure-tenant-idKeyVault"
+    },
+    {
+      "name": "AZURE_SERVICE_NAME",
+      "required": true,
+      "location": "keyvault",
+      "value": "azure-service-nameKeyVault"
+    },
+    {
+      "name": "MOCK",
+      "required": true,
+      "location": "variable",
+      "value": "true"
+    },
+    {
+      "name": "AZURE_CLIENT_ID",
+      "required": true,
+      "location": "keyvault",
+      "value": "azure-client-idKeyVault"
+    },
+    {
+      "name": "AZURE_CLIENT_SECRET",
+      "required": true,
+      "location": "keyvault",
+      "value": "azure-client-secretKeyVault"
+    },
+    {
+      "name": "ENCRYPTION_KEY",
+      "required": true,
+      "location": "keyvault",
+      "value": "secrets-encryptionKeyVault"
+    },
+    {
+      "name": "MISO_CONTROLLER_URL",
+      "required": true,
+      "location": "keyvault",
+      "value": "miso-controller-url"
+    },
+    {
+      "name": "MORI_BASE_URL",
+      "required": true,
+      "location": "keyvault",
+      "value": "mori-base-urlKeyVault"
+    },
+    {
+      "name": "LOG_TO_FILE",
+      "required": true,
+      "location": "variable",
+      "value": "true"
+    },
+    {
+      "name": "LOG_FILE_PATH",
+      "required": true,
+      "location": "variable",
+      "value": "/mnt/data/logs"
+    },
+    {
+      "name": "MOUNT_VOLUME",
+      "required": true,
+      "location": "variable",
+      "value": "C:/git/esystemsdev/aifabrix-miso/mount"
+    },
+    {
+      "name": "PGHOST",
+      "required": true,
+      "location": "variable",
+      "value": "${DB_HOST}"
+    },
+    {
+      "name": "PGUSER",
+      "required": true,
+      "location": "variable",
+      "value": "pgadmin"
+    },
+    {
+      "name": "PGPASSWORD",
+      "required": true,
+      "location": "keyvault",
+      "value": "postgres-passwordKeyVault"
+    },
+    {
+      "name": "POSTGRES_USER",
+      "required": true,
+      "location": "variable",
+      "value": "pgadmin"
+    },
+    {
+      "name": "POSTGRES_PASSWORD",
+      "required": true,
+      "location": "keyvault",
+      "value": "postgres-passwordKeyVault"
+    },
+    {
+      "name": "POSTGRES_DB",
+      "required": true,
+      "location": "variable",
+      "value": "postgres"
+    }
+  ],
+  "permissions": [
+    {
+      "name": "service-user:create",
+      "description": "Create service users and API clients",
+      "roles": [
+        "aifabrix-platform-admin",
+        "aifabrix-security-admin"
+      ]
+    },
+    {
+      "name": "service-user:read",
+      "description": "View service users and their configurations",
+      "roles": [
+        "aifabrix-platform-admin",
+        "aifabrix-security-admin",
+        "aifabrix-observer"
+      ]
+    },
+    {
+      "name": "service-user:update",
+      "description": "Update service user configurations and regenerate secrets",
+      "roles": [
+        "aifabrix-platform-admin",
+        "aifabrix-security-admin"
+      ]
+    },
+    {
+      "name": "service-user:delete",
+      "description": "Deactivate service users",
+      "roles": [
+        "aifabrix-platform-admin",
+        "aifabrix-security-admin"
+      ]
+    },
+    {
+      "name": "controller:admin",
+      "description": "Full administrative access to controller operations",
+      "roles": [
+        "aifabrix-platform-admin"
+      ]
+    },
+    {
+      "name": "controller:deploy",
+      "description": "Deploy applications and manage environments",
+      "roles": [
+        "aifabrix-platform-admin",
+        "aifabrix-infrastructure-admin",
+        "aifabrix-deployment-admin"
+      ]
+    },
+    {
+      "name": "controller:monitor",
+      "description": "Monitor system health and view logs",
+      "roles": [
+        "aifabrix-platform-admin",
+        "aifabrix-security-admin",
+        "aifabrix-observer"
+      ]
+    },
+    {
+      "name": "controller:compliance",
+      "description": "Access compliance reports and audit logs",
+      "roles": [
+        "aifabrix-platform-admin",
+        "aifabrix-compliance-admin"
+      ]
+    }
+  ],
+  "roles": [
+    {
+      "name": "AI Fabrix Platform Admin",
+      "Groups": [
+        "AI-Fabrix-Platform-Admins"
+      ],
+      "description": "Full platform infrastructure management and enterprise controller access",
+      "value": "aifabrix-platform-admin"
+    },
+    {
+      "name": "AI Fabrix Security Admin",
+      "Groups": [
+        "AI-Fabrix-Security-Admins"
+      ],
+      "description": "Security and compliance management for enterprise controller",
+      "value": "aifabrix-security-admin"
+    },
+    {
+      "name": "AI Fabrix Infrastructure Admin",
+      "Groups": [
+        "AI-Fabrix-Infrastructure-Admins"
+      ],
+      "description": "Infrastructure deployment and management across environments",
+      "value": "aifabrix-infrastructure-admin"
+    },
+    {
+      "name": "AI Fabrix Deployment Admin",
+      "Groups": [
+        "AI-Fabrix-Deployment-Admins"
+      ],
+      "description": "Application deployment orchestration and environment management",
+      "value": "aifabrix-deployment-admin"
+    },
+    {
+      "name": "AI Fabrix Compliance Admin",
+      "Groups": [
+        "AI-Fabrix-Compliance-Admins"
+      ],
+      "description": "ISO 27001 compliance monitoring and audit management",
+      "value": "aifabrix-compliance-admin"
+    },
+    {
+      "name": "AI Fabrix Developer",
+      "Groups": [
+        "AI-Fabrix-Developers"
+      ],
+      "description": "Developer access to deploy applications via GitHub Actions",
+      "value": "aifabrix-developer"
+    },
+    {
+      "name": "AI Fabrix Observer",
+      "Groups": [
+        "AI-Fabrix-Observers"
+      ],
+      "description": "Read-only access to monitoring, logs, and compliance reports",
+      "value": "aifabrix-observer"
+    }
+  ],
+  "requiresDatabase": true,
+  "requiresRedis": true,
+  "displayName": "Miso Controller",
+  "registryMode": "acr",
+  "key": "miso-controller",
+  "description": "AI Fabrix Miso Controller - Backend API and orchestration service",
+  "port": 3000,
+  "type": "webapp",
+  "requiresStorage": false,
+  "databases": [
+    {
+      "name": "miso"
+    },
+    {
+      "name": "miso-logs"
+    }
+  ],
+  "authentication": {
+    "enableSSO": true,
+    "endpoints": {
+      "local": "http://localhost:3000/auth/callback"
+    },
+    "type": "keycloak",
+    "requiredRoles": [
+      "aifabrix-user"
+    ]
+  },
+  "healthCheck": {
+    "probeProtocol": "Https",
+    "probePath": "/health",
+    "probeRequestType": "GET",
+    "probeIntervalInSeconds": 120,
+    "interval": 30,
+    "path": "/health"
+  }
+}

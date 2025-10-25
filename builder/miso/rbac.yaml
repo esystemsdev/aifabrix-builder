@@ -1,0 +1,69 @@
+roles:
+  - name: "AI Fabrix Platform Admin"
+    value: "aifabrix-platform-admin"
+    description: "Full platform infrastructure management and enterprise controller access"
+    Groups: ["AI-Fabrix-Platform-Admins"]
+  
+  - name: "AI Fabrix Security Admin"
+    value: "aifabrix-security-admin"
+    description: "Security and compliance management for enterprise controller"
+    Groups: ["AI-Fabrix-Security-Admins"]
+  
+  - name: "AI Fabrix Infrastructure Admin"
+    value: "aifabrix-infrastructure-admin"
+    description: "Infrastructure deployment and management across environments"
+    Groups: ["AI-Fabrix-Infrastructure-Admins"]
+  
+  - name: "AI Fabrix Deployment Admin"
+    value: "aifabrix-deployment-admin"
+    description: "Application deployment orchestration and environment management"
+    Groups: ["AI-Fabrix-Deployment-Admins"]
+  
+  - name: "AI Fabrix Compliance Admin"
+    value: "aifabrix-compliance-admin"
+    description: "ISO 27001 compliance monitoring and audit management"
+    Groups: ["AI-Fabrix-Compliance-Admins"]
+  
+  - name: "AI Fabrix Developer"
+    value: "aifabrix-developer"
+    description: "Developer access to deploy applications via GitHub Actions"
+    Groups: ["AI-Fabrix-Developers"]
+  
+  - name: "AI Fabrix Observer"
+    value: "aifabrix-observer"
+    description: "Read-only access to monitoring, logs, and compliance reports"
+    Groups: ["AI-Fabrix-Observers"]
+
+permissions:
+  - name: "service-user:create"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin"]
+    description: "Create service users and API clients"
+  
+  - name: "service-user:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-observer"]
+    description: "View service users and their configurations"
+  
+  - name: "service-user:update"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin"]
+    description: "Update service user configurations and regenerate secrets"
+  
+  - name: "service-user:delete"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin"]
+    description: "Deactivate service users"
+  
+  - name: "controller:admin"
+    roles: ["aifabrix-platform-admin"]
+    description: "Full administrative access to controller operations"
+  
+  - name: "controller:deploy"
+    roles: ["aifabrix-platform-admin", "aifabrix-infrastructure-admin", "aifabrix-deployment-admin"]
+    description: "Deploy applications and manage environments"
+  
+  - name: "controller:monitor"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-observer"]
+    description: "Monitor system health and view logs"
+  
+  - name: "controller:compliance"
+    roles: ["aifabrix-platform-admin", "aifabrix-compliance-admin"]
+    description: "Access compliance reports and audit logs"
+

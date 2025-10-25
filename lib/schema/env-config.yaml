@@ -1,0 +1,15 @@
+# Environment Configuration
+# Defines host values for different deployment contexts
+
+environments:
+  docker:
+    DB_HOST: postgres
+    REDIS_HOST: redis
+    MISO_HOST: miso-controller
+    KEYCLOAK_HOST: keycloak
+    
+  local:
+    DB_HOST: localhost
+    REDIS_HOST: localhost
+    MISO_HOST: localhost
+    KEYCLOAK_HOST: localhost
