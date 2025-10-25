@@ -1,0 +1,26 @@
+{
+  "apiVersion": "v1",
+  "kind": "ApplicationDeployment",
+  "metadata": {
+    "name": "test-app",
+    "namespace": "default"
+  },
+  "spec": {
+    "application": {
+      "name": "test-app",
+      "version": "1.0.0",
+      "language": "typescript",
+      "port": 3000
+    },
+    "services": {
+      "database": true,
+      "redis": false,
+      "storage": false,
+      "authentication": false
+    },
+    "deployment": {
+      "replicas": 1,
+      "strategy": "RollingUpdate"
+    }
+  }
+}

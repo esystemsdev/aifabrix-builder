@@ -46,6 +46,11 @@ aifabrix create myapp
 aifabrix create myapp --port 3000 --database --language typescript
 ```
 
+**Want GitHub Actions workflows?** Add `--github`:
+```bash
+aifabrix create myapp --github --main-branch main
+```
+
 ## Step 4: Review Configuration
 
 ### builder/variables.yaml
@@ -86,6 +91,24 @@ DATABASE_PORT=5432
 **Have existing .env?** Copy variables here. The SDK converts them to templates.
 
 → [Configuration Reference](CONFIGURATION.md)
+
+### GitHub Actions Workflows (Optional)
+
+If you used `--github`, you'll also have:
+- `.github/workflows/ci.yaml` - CI/CD pipeline
+- `.github/workflows/release.yaml` - Release automation  
+- `.github/workflows/pr-checks.yaml` - Pull request validation
+
+**What they do:**
+- **CI Pipeline** - Runs tests, linting, and security checks on every push/PR
+- **Release Pipeline** - Publishes to NPM and creates GitHub releases on version tags
+- **PR Checks** - Validates code quality and commit conventions
+
+**Required secrets** (add in GitHub repository settings):
+- `NPM_TOKEN` - For publishing packages
+- `CODECOV_TOKEN` - For coverage reporting (optional)
+
+→ [GitHub Workflows Guide](GITHUB-WORKFLOWS.md)
 
 ## Step 5: Build
 
@@ -156,6 +179,7 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 - [Configuration](CONFIGURATION.md) - Detailed config file docs
 - [Building](BUILDING.md) - Custom Dockerfiles and templates
 - [Running](RUNNING.md) - Local development workflow
+- [GitHub Workflows](GITHUB-WORKFLOWS.md) - CI/CD automation setup
 
 ### Install Platform Apps
 - [Keycloak](INFRASTRUCTURE.md#install-keycloak) - Authentication and user management
@@ -189,6 +213,12 @@ aifabrix run myapp
 aifabrix doctor
 ```
 
+**Set up GitHub Actions (if you used --github):**
+1. Push your code to GitHub
+2. Add `NPM_TOKEN` secret in repository settings
+3. Create a version tag: `git tag v1.0.0 && git push origin v1.0.0`
+4. Watch workflows run automatically!
+
 ---
 
 ## Troubleshooting
@@ -209,5 +239,10 @@ aifabrix doctor
 **"Can't connect to database"**  
 → Check `DATABASE_URL` in `.env`  
 → Verify database exists: `docker exec aifabrix-postgres psql -U pgadmin -l`
+
+**"GitHub Actions failing"**  
+→ Check repository secrets are configured  
+→ Verify NPM token has publish permissions  
+→ Review workflow logs in GitHub Actions tab
 
 → [More Help](CLI-REFERENCE.md)

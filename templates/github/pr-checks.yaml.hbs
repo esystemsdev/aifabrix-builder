@@ -1,0 +1,35 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  pr-validation:
+    name: PR Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Check file sizes
+        run: |
+          find {{sourceDir}} -name "*.{{fileExtension}}" -exec sh -c 'lines=$(wc -l < "$1"); if [ $lines -gt 500 ]; then echo "File $1 exceeds 500 lines ($lines)"; exit 1; fi' _ {} \;
+      
+      - name: Check for TODOs in modified files
+        run: |
+          git diff origin/${{ github.base_ref }} --name-only | grep "\.{{fileExtension}}$" | xargs grep -n "TODO" || true
+      
+      - name: Validate commit messages
+        run: |
+          git log origin/${{ github.base_ref }}..HEAD --format=%s | grep -E "^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+\))?: .+" || echo "Warning: Some commits don't follow conventional commits"

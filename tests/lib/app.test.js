@@ -6,38 +6,181 @@
  * @version 2.0.0
  */
 
+const fs = require('fs').promises;
+const fsSync = require('fs');
+const path = require('path');
+const os = require('os');
 const app = require('../../lib/app');
+const templates = require('../../lib/templates');
+const envReader = require('../../lib/env-reader');
+const githubGenerator = require('../../lib/github-generator');
+
+// Mock inquirer to avoid interactive prompts
+jest.mock('inquirer', () => ({
+  prompt: jest.fn()
+}));
 
 describe('Application Module', () => {
+  let tempDir;
+  let originalCwd;
+
+  beforeEach(() => {
+    // Create temporary directory for tests
+    tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));
+    originalCwd = process.cwd();
+    process.chdir(tempDir);
+    
+    // Mock inquirer prompts to return default values
+    const inquirer = require('inquirer');
+    inquirer.prompt.mockResolvedValue({
+      port: '3000',
+      language: 'typescript',
+      database: false,
+      redis: false,
+      storage: false,
+      authentication: false
+    });
+  });
+
+  afterEach(async () => {
+    // Clean up temporary directory
+    process.chdir(originalCwd);
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
   describe('createApp', () => {
     it('should create application with scaffolded configuration files', async() => {
-      // TODO: Implement test for app creation
-      // Test should verify:
-      // - Builder folder structure creation
-      // - Configuration file generation
-      // - Template application
-      // - Success response
-      expect(true).toBe(true); // Placeholder
+      const appName = 'test-app';
+      const options = {
+        port: 3000,
+        language: 'typescript',
+        database: true,
+        redis: false,
+        storage: false,
+        authentication: true
+      };
+
+      await app.createApp(appName, options);
+
+      // Verify directory structure
+      const appPath = path.join('builder', appName);
+      expect(await fs.access(appPath).then(() => true).catch(() => false)).toBe(true);
+
+      // Verify files were created
+      const variablesPath = path.join(appPath, 'variables.yaml');
+      const envTemplatePath = path.join(appPath, 'env.template');
+      const rbacPath = path.join(appPath, 'rbac.yaml');
+      const deployPath = path.join(appPath, 'aifabrix-deploy.json');
+
+      expect(await fs.access(variablesPath).then(() => true).catch(() => false)).toBe(true);
+      expect(await fs.access(envTemplatePath).then(() => true).catch(() => false)).toBe(true);
+      expect(await fs.access(rbacPath).then(() => true).catch(() => false)).toBe(true);
+      expect(await fs.access(deployPath).then(() => true).catch(() => false)).toBe(true);
+
+      // Verify variables.yaml content
+      const variablesContent = await fs.readFile(variablesPath, 'utf8');
+      expect(variablesContent).toContain('key: test-app');
+      expect(variablesContent).toContain('language: typescript');
+      expect(variablesContent).toContain('port: 3000');
+      expect(variablesContent).toContain('database: true');
+      expect(variablesContent).toContain('authentication: true');
+
+      // Verify env.template content
+      const envContent = await fs.readFile(envTemplatePath, 'utf8');
+      expect(envContent).toContain('PORT=3000');
+      expect(envContent).toContain('DATABASE_URL=kv://database-url');
+      expect(envContent).toContain('JWT_SECRET=kv://jwt-secret');
     });
 
-    it('should prompt for missing options interactively', async() => {
-      // TODO: Implement test for interactive prompts
-      // Test should verify:
-      // - Missing option detection
-      // - Interactive prompt handling
-      // - Input validation
-      // - Option completion
-      expect(true).toBe(true); // Placeholder
+    it('should validate app name format', async() => {
+      const invalidNames = [
+        'Test-App', // uppercase
+        'test_app', // underscore
+        'test.app', // dot
+        'te', // too short
+        'a'.repeat(41), // too long
+        '-test', // starts with dash
+        'test-', // ends with dash
+        'test--app' // consecutive dashes
+      ];
+
+      for (const invalidName of invalidNames) {
+        await expect(app.createApp(invalidName, {})).rejects.toThrow();
+      }
     });
 
     it('should handle existing application conflicts', async() => {
-      // TODO: Implement test for conflict handling
-      // Test should verify:
-      // - Existing app detection
-      // - Conflict resolution
-      // - User confirmation handling
-      // - Safe overwrite protection
-      expect(true).toBe(true); // Placeholder
+      const appName = 'existing-app';
+      const options = { port: 3000, language: 'typescript' };
+
+      // Create first app
+      await app.createApp(appName, options);
+
+      // Try to create same app again
+      await expect(app.createApp(appName, options)).rejects.toThrow('already exists');
+    });
+
+    it('should generate GitHub workflows when requested', async() => {
+      const appName = 'github-app';
+      const options = {
+        port: 3000,
+        language: 'typescript',
+        github: true,
+        mainBranch: 'main'
+      };
+
+      // Mock the github generator
+      const mockGenerateWorkflows = jest.fn().mockResolvedValue([
+        '.github/workflows/ci.yaml',
+        '.github/workflows/release.yaml',
+        '.github/workflows/pr-checks.yaml'
+      ]);
+      
+      jest.doMock('../../lib/github-generator', () => ({
+        generateGithubWorkflows: mockGenerateWorkflows
+      }));
+
+      await app.createApp(appName, options);
+
+      expect(mockGenerateWorkflows).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          appName: 'github-app',
+          port: 3000,
+          language: 'typescript'
+        }),
+        expect.objectContaining({
+          mainBranch: 'main',
+          uploadCoverage: true,
+          publishToNpm: false
+        })
+      );
+    });
+
+    it('should handle existing .env file conversion', async() => {
+      const appName = 'env-conversion-app';
+      const options = { port: 3000, language: 'typescript', database: true };
+
+      // Create existing .env file
+      const envContent = `
+# Test environment
+NODE_ENV=development
+DATABASE_PASSWORD=secret123
+API_KEY=abc123def456
+PUBLIC_URL=https://example.com
+`;
+      await fs.writeFile('.env', envContent);
+
+      await app.createApp(appName, options);
+
+      // Verify env.template was created with converted values
+      const envTemplatePath = path.join('builder', appName, 'env.template');
+      const envTemplateContent = await fs.readFile(envTemplatePath, 'utf8');
+      
+      expect(envTemplateContent).toContain('NODE_ENV=development');
+      expect(envTemplateContent).toContain('DB_PASSWORD=kv://database-password');
+      expect(envTemplateContent).toContain('API_KEY=kv://api-key');
+      expect(envTemplateContent).toContain('PUBLIC_URL=https://example.com');
     });
   });
 

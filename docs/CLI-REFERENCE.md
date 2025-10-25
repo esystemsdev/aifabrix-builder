@@ -61,7 +61,7 @@ aifabrix down --volumes
 
 Create new application with configuration files.
 
-**What:** Generates `builder/` folder with `variables.yaml`, `env.template`, `rbac.yaml`.
+**What:** Generates `builder/` folder with `variables.yaml`, `env.template`, `rbac.yaml`, and optional GitHub Actions workflows.
 
 **When:** Starting a new application.
 
@@ -76,23 +76,46 @@ Prompts for: port, database, redis, storage, authentication, language.
 aifabrix create myapp --port 3000 --database --language typescript
 ```
 
+**Example (with GitHub workflows):**
+```bash
+aifabrix create myapp --port 3000 --database --github --main-branch main
+```
+
 **Flags:**
-- `-p, --port <port>` - Application port
+- `-p, --port <port>` - Application port (default: 3000)
 - `-d, --database` - Requires database
 - `-r, --redis` - Requires Redis
 - `-s, --storage` - Requires file storage
 - `-a, --authentication` - Requires authentication/RBAC
 - `-l, --language <lang>` - typescript or python
-- `-t, --template <name>` - Template (platform for Keycloak/Miso)
+- `-t, --template <name>` - Template to use
+- `-g, --github` - Generate GitHub Actions workflows
+- `--main-branch <branch>` - Main branch name for workflows (default: main)
 
 **Creates:**
-- `builder/variables.yaml`
-- `builder/env.template`
-- `builder/rbac.yaml` (if authentication=true)
+- `builder/<app>/variables.yaml` - Application configuration
+- `builder/<app>/env.template` - Environment template with kv:// references
+- `builder/<app>/rbac.yaml` - RBAC configuration (if authentication enabled)
+- `builder/<app>/aifabrix-deploy.json` - Deployment manifest
+- `.github/workflows/` - GitHub Actions workflows (if --github specified)
+
+**Environment File Conversion:**
+- Automatically detects existing `.env` file in current directory
+- Converts sensitive values (passwords, keys, tokens) to `kv://` references
+- Preserves non-sensitive values as-is
+- Generates warnings for invalid environment variable names
+
+**App Name Validation:**
+- Must be 3-40 characters
+- Lowercase letters, numbers, and dashes only
+- Cannot start or end with dash
+- Cannot have consecutive dashes
 
 **Issues:**
-- **"Folder already exists"** → Choose different name or delete existing
-- **"Invalid app name"** → Use lowercase, dashes only
+- **"Application 'name' already exists"** → Choose different name or delete existing folder
+- **"Application name must be 3-40 characters"** → Use valid format (lowercase, dashes only)
+- **"Port must be between 1 and 65535"** → Use valid port number
+- **"Language must be either typescript or python"** → Use supported language
 
 ---
 
