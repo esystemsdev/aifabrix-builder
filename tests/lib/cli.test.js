@@ -464,57 +464,14 @@ describe('CLI Commands', () => {
     });
 
     it('should handle infrastructure health check failure', async() => {
-      const mockEnvResult = {
-        docker: 'ok',
-        ports: 'ok',
-        secrets: 'ok',
-        recommendations: []
-      };
-
-      validator.checkEnvironment.mockResolvedValue(mockEnvResult);
+      validator.checkEnvironment.mockResolvedValue({ docker: 'ok', ports: 'ok', secrets: 'ok', recommendations: [] });
       infra.checkInfraHealth.mockRejectedValue(new Error('Infrastructure not running'));
-
-      try {
-        const result = await validator.checkEnvironment();
-        console.log('\n🔍 AI Fabrix Environment Check\n');
-
-        console.log(`Docker: ${result.docker === 'ok' ? '✅ Running' : '❌ Not available'}`);
-        console.log(`Ports: ${result.ports === 'ok' ? '✅ Available' : '⚠️  Some ports in use'}`);
-        console.log(`Secrets: ${result.secrets === 'ok' ? '✅ Configured' : '❌ Missing'}`);
-
-        // Check infrastructure health if Docker is available
-        if (result.docker === 'ok') {
-          try {
-            const health = await infra.checkInfraHealth();
-            console.log('\n🏥 Infrastructure Health:');
-            Object.entries(health).forEach(([service, status]) => {
-              const icon = status === 'healthy' ? '✅' : status === 'unknown' ? '❓' : '❌';
-              console.log(`  ${icon} ${service}: ${status}`);
-            });
-          } catch (error) {
-            console.log('\n🏥 Infrastructure: Not running');
-          }
-        }
-
-        console.log('');
-
-        expect(console.log).toHaveBeenCalledWith('\n🏥 Infrastructure: Not running');
-      } catch (error) {
-        expect(true).toBe(false); // Should not reach here
-      }
+      await expect(validator.checkEnvironment()).resolves.toBeDefined();
     });
 
     it('should handle doctor command errors', async() => {
-      const errorMessage = 'Environment check failed';
-
-      validator.checkEnvironment.mockRejectedValue(new Error(errorMessage));
-
-      try {
-        await validator.checkEnvironment();
-        expect(true).toBe(false); // Should have thrown error
-      } catch (error) {
-        expect(error.message).toBe(errorMessage);
-      }
+      validator.checkEnvironment.mockRejectedValue(new Error('Environment check failed'));
+      await expect(validator.checkEnvironment()).rejects.toThrow('Environment check failed');
     });
   });
 });

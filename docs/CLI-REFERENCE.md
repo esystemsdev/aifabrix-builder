@@ -215,28 +215,85 @@ aifabrix run myapp --port 3001
 
 Push image to Azure Container Registry.
 
-**What:** Authenticates with ACR, tags image, pushes to registry.
+**What:** Authenticates with ACR using Azure CLI, tags image, pushes to registry. Supports multiple tags with a single command.
 
-**When:** Before Azure deployment.
+**When:** Before Azure deployment, after building application.
 
-**Example:**
+**Prerequisites:**
+- Azure CLI installed and logged in (`az login`)
+- Docker image built locally (`aifabrix build <app>`)
+- ACR registry accessible
+
+**Example (single tag):**
 ```bash
 aifabrix push myapp --registry myacr.azurecr.io --tag v1.0.0
 ```
 
-**Multiple tags:**
+**Example (multiple tags):**
 ```bash
-aifabrix push myapp --registry myacr.azurecr.io --tag "v1.0.0,latest"
+aifabrix push myapp --registry myacr.azurecr.io --tag "v1.0.0,latest,stable"
 ```
 
+**Example (using registry from variables.yaml):**
+```bash
+aifabrix push myapp --tag v1.0.0
+```
+Automatically uses registry configured in `builder/<app>/variables.yaml`:
+```yaml
+image:
+  registry: myacr.azurecr.io
+```
+
+**Example (default latest tag):**
+```bash
+aifabrix push myapp --registry myacr.azurecr.io
+```
+Pushes with `latest` tag.
+
 **Flags:**
-- `-r, --registry <url>` - ACR registry URL (required)
-- `-t, --tag <tag>` - Image tag (default: latest)
+- `-r, --registry <url>` - ACR registry URL (overrides variables.yaml)
+- `-t, --tag <tag>` - Image tag(s) - comma-separated for multiple (default: latest)
+
+**Registry Resolution:**
+1. `--registry` flag (highest priority)
+2. `image.registry` in `variables.yaml`
+3. Error if neither provided
+
+**What Happens:**
+1. Validates app name and configuration
+2. Checks if Docker image exists locally
+3. Verifies Azure CLI is installed
+4. Authenticates with ACR (`az acr login`)
+5. Tags image for each tag specified
+6. Pushes all tags to registry
+7. Displays success summary
+
+**Output:**
+```
+Authenticating with myacr.azurecr.io...
+✓ Authenticated with myacr.azurecr.io
+Tagging myapp:latest as myacr.azurecr.io/myapp:v1.0.0...
+✓ Tagged: myacr.azurecr.io/myapp:v1.0.0
+Tagging myapp:latest as myacr.azurecr.io/myapp:latest...
+✓ Tagged: myacr.azurecr.io/myapp:latest
+Pushing myacr.azurecr.io/myapp:v1.0.0...
+✓ Pushed: myacr.azurecr.io/myapp:v1.0.0
+Pushing myacr.azurecr.io/myapp:latest...
+✓ Pushed: myacr.azurecr.io/myapp:latest
+
+✓ Successfully pushed 2 tag(s) to myacr.azurecr.io
+Image: myacr.azurecr.io/myapp:*
+Tags: v1.0.0, latest
+```
 
 **Issues:**
-- **"Authentication failed"** → Run: `az acr login --name myacr`
-- **"Image not found"** → Build first: `aifabrix build myapp`
-- **"Permission denied"** → Check ACR permissions
+- **"Azure CLI is not installed"** → Install from: https://docs.microsoft.com/cli/azure/install-azure-cli
+- **"Authentication failed"** → Run: `az login` then `az acr login --name myacr`
+- **"Docker image not found locally"** → Build first: `aifabrix build myapp`
+- **"Invalid registry URL format"** → Use format: `*.azurecr.io` (e.g., `myacr.azurecr.io`)
+- **"Registry URL is required"** → Provide via `--registry` flag or configure in `variables.yaml`
+- **"Permission denied"** → Check ACR permissions and Azure role assignments
+- **"Failed to push image"** → Check network connectivity, registry accessibility, and image size limits
 
 ---
 
