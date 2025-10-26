@@ -301,13 +301,34 @@ Tags: v1.0.0, latest
 
 Deploy to Azure via Miso Controller.
 
-**What:** Generates deployment manifest with deployment key, sends to controller for Azure deployment.
+**What:** Generates deployment manifest from variables.yaml, env.template, and rbac.yaml. Creates deployment key for authentication, validates configuration, and sends to Miso Controller API for Azure deployment. Polls deployment status by default to track progress.
 
-**When:** Deploying to Azure.
+**When:** Deploying to Azure after pushing images to ACR.
 
 **Example:**
 ```bash
+# Basic deployment
 aifabrix deploy myapp --controller https://controller.aifabrix.ai
+```
+
+**Output:**
+```
+📋 Generating deployment manifest for myapp...
+✓ Manifest generated: builder/myapp/aifabrix-deploy.json
+   Key: myapp
+   Display Name: My Application
+   Image: myacr.azurecr.io/myapp:latest
+   Port: 3000
+
+🚀 Deploying to https://controller.aifabrix.ai...
+📤 Sending deployment request to https://controller.aifabrix.ai...
+✓ Already authenticated with myacr.azurecr.io
+⏳ Polling deployment status (5000ms intervals)...
+
+✅ Deployment initiated successfully
+   URL: https://myapp.aifabrix.ai
+   Deployment ID: deploy-abc123
+   Status: ✅ completed
 ```
 
 **Specific environment:**
@@ -315,14 +336,69 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 aifabrix deploy myapp --controller https://controller.aifabrix.ai --environment dev
 ```
 
+**Advanced options:**
+```bash
+# Without status polling
+aifabrix deploy myapp --controller https://controller.aifabrix.ai --no-poll
+
+# Custom polling interval
+aifabrix deploy myapp --controller https://controller.aifabrix.ai --poll-interval 10000
+
+# Maximum polling attempts
+aifabrix deploy myapp --controller https://controller.aifabrix.ai --poll-max-attempts 30
+```
+
 **Flags:**
-- `-c, --controller <url>` - Controller URL (required)
-- `-e, --environment <env>` - Target environment
+- `-c, --controller <url>` - Controller URL (required, HTTPS only)
+- `-e, --environment <env>` - Target environment (dev/tst/pro)
+- `--no-poll` - Disable status polling
+- `--poll-interval <ms>` - Polling interval in milliseconds (default: 5000)
+- `--poll-max-attempts <count>` - Maximum polling attempts (default: 60)
+
+**Process:**
+1. Validates app name format
+2. Loads variables.yaml from `builder/<app>/`
+3. Loads env.template and parses environment variables
+4. Loads rbac.yaml for roles and permissions
+5. Generates SHA256 deployment key from variables.yaml content
+6. Merges configurations into deployment manifest
+7. Validates manifest (checks required fields, format)
+8. Sends deployment request to controller API
+9. Polls deployment status (if enabled)
+10. Displays deployment results
+
+**Generated Manifest Format:**
+```json
+{
+  "key": "myapp",
+  "displayName": "My Application",
+  "description": "Application description",
+  "type": "webapp",
+  "port": 3000,
+  "image": "myacr.azurecr.io/myapp:latest",
+  "deploymentKey": "sha256hash...",
+  "configuration": [
+    {"name": "PORT", "value": "3000", "location": "variable", "required": true},
+    {"name": "DATABASE_URL", "value": "key-name", "location": "keyvault", "required": true}
+  ],
+  "roles": [...],
+  "permissions": [...],
+  "healthCheck": {"path": "/health", "interval": 30}
+}
+```
 
 **Issues:**
-- **"Validation failed"** → Check `aifabrix-deploy.json`
-- **"Deployment key mismatch"** → Regenerate: `aifabrix genkey myapp`
-- **"Can't reach controller"** → Check URL, network connection
+- **"App name is required"** → Provide app name as argument
+- **"Application not found in builder/"** → Run `aifabrix create <app>` first
+- **"Controller URL is required"** → Provide `--controller` flag with HTTPS URL
+- **"Controller URL must use HTTPS"** → Use `https://` protocol
+- **"Validation failed"** → Check `aifabrix-deploy.json` for missing required fields
+- **"Deployment key mismatch"** → Regenerate: `aifabrix genkey <app>`
+- **"Authentication failed"** → Check deployment key is valid
+- **"Invalid deployment manifest"** → Check configuration in variables.yaml
+- **"Can't reach controller"** → Check URL, network connection, firewall
+- **"Request timed out"** → Controller may be overloaded, try again later
+- **"Deployment timeout"** → Check controller logs, deployment may be in progress
 
 ---
 

@@ -641,3 +641,140 @@ my-api-keyKeyVault: "local-dev-key"
 **Production:**
 Controller fetches from Azure Key Vault.
 
+---
+
+## Implementation Details
+
+### Manifest Generation Process
+
+The `aifabrix deploy` command performs the following steps:
+
+1. **Load Configuration Files**
+   - Reads `builder/<app>/variables.yaml` for application metadata
+   - Reads `builder/<app>/env.template` for environment variables
+   - Reads `builder/<app>/rbac.yaml` for roles and permissions (optional)
+
+2. **Generate Deployment Key**
+   - Creates SHA256 hash from variables.yaml content
+   - Used for authentication and integrity verification
+   - Key format: 64-character hexadecimal string
+
+3. **Parse Environment Variables**
+   - Converts env.template entries to configuration array
+   - Handles `kv://` references for Key Vault secrets
+   - Maps variables to `location` (variable/keyvault)
+
+4. **Build Deployment Manifest**
+   - Merges all configuration into single JSON object
+   - Includes: app metadata, image reference, port, configuration, roles, permissions
+   - Validates required fields and format
+
+5. **Validate Manifest**
+   - Checks required fields: key, displayName, image, port, deploymentKey
+   - Validates configuration array structure
+   - Validates RBAC arrays (roles, permissions)
+   - Returns validation errors and warnings
+
+6. **Send to Controller**
+   - POST request to `<controller>/api/pipeline/deploy`
+   - HTTPS-only communication for security
+   - Retries with exponential backoff on transient failures
+   - Includes structured error handling
+
+7. **Poll Status (Optional)**
+   - Polls `/<deploymentId>/status` endpoint
+   - Configurable interval (default: 5 seconds)
+   - Maximum attempts (default: 60)
+   - Terminal states: completed, failed, cancelled
+
+### Security Features
+
+- **HTTPS Enforcement**: All controller URLs must use HTTPS protocol
+- **Deployment Key Authentication**: SHA256 hash validates configuration integrity
+- **Sensitive Data Masking**: Passwords, secrets, tokens masked in logs
+- **Input Validation**: App names, URLs, and configurations validated
+- **Audit Logging**: All deployment attempts logged for ISO 27001 compliance
+- **Error Sanitization**: No internal paths or secrets exposed in error messages
+
+### API Endpoints
+
+**Deploy Endpoint:**
+```
+POST https://controller.aifabrix.ai/api/pipeline/deploy
+Content-Type: application/json
+
+{
+  "key": "myapp",
+  "displayName": "My Application",
+  "image": "myacr.azurecr.io/myapp:latest",
+  "port": 3000,
+  "deploymentKey": "sha256hash...",
+  ...
+}
+```
+
+**Status Endpoint:**
+```
+GET https://controller.aifabrix.ai/api/pipeline/status/{deploymentId}
+
+Response: {
+  "deploymentId": "deploy-123",
+  "status": "completed",
+  "progress": 100,
+  "deploymentUrl": "https://myapp.aifabrix.ai"
+}
+```
+
+### Error Handling
+
+Common HTTP status codes and their meanings:
+
+- **200**: Deployment initiated successfully
+- **400**: Invalid deployment manifest (validation errors)
+- **401**: Authentication failed (invalid deployment key)
+- **403**: Authorization failed (insufficient permissions)
+- **404**: Controller endpoint not found
+- **500**: Internal server error (retry with exponential backoff)
+- **Timeout**: Request exceeded maximum duration
+
+### Deployment Key Details
+
+The deployment key is a SHA256 hash of the entire variables.yaml file contents. This ensures:
+
+- **Configuration Integrity**: Any change to variables.yaml results in a different key
+- **Authentication**: Controller can verify the configuration is from the authorized source
+- **Traceability**: Each deployment key uniquely identifies a configuration version
+- **Security**: Prevents tampering with deployment configurations
+
+Key changes when you modify:
+- Application name or display name
+- Image references or tags
+- Port configurations
+- Service requirements (database, Redis, storage)
+- Health check settings
+- Authentication settings
+
+### Audit Trail
+
+All deployment operations are logged with ISO 27001 compliant audit entries:
+
+```json
+{
+  "timestamp": "2024-01-01T12:00:00.000Z",
+  "level": "AUDIT",
+  "message": "Deployment initiated",
+  "metadata": {
+    "action": "deploy",
+    "appName": "myapp",
+    "controllerUrl": "https://controller.aifabrix.ai",
+    "environment": "dev"
+  }
+}
+```
+
+Audit logs capture:
+- Deployment attempts (success/failure)
+- Error conditions with sanitized messages
+- Security events (authentication failures, invalid keys)
+- Controller communication (requests, responses, retries)
+
