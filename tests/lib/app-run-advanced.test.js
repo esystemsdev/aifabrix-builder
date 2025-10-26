@@ -33,7 +33,7 @@ describe('Application Run Advanced Tests', () => {
       };
 
       const composePath = await appRun.generateDockerCompose('test-app', config, {});
-      
+
       expect(composePath).toBeDefined();
     });
 
@@ -45,7 +45,7 @@ describe('Application Run Advanced Tests', () => {
       const services = { database: true };
 
       const composePath = await appRun.generateDockerCompose('test-app', config, services);
-      
+
       expect(composePath).toBeDefined();
     });
 
@@ -57,7 +57,7 @@ describe('Application Run Advanced Tests', () => {
       const services = { redis: true };
 
       const composePath = await appRun.generateDockerCompose('test-app', config, services);
-      
+
       expect(composePath).toBeDefined();
     });
 
@@ -69,7 +69,7 @@ describe('Application Run Advanced Tests', () => {
       const services = { storage: true };
 
       const composePath = await appRun.generateDockerCompose('test-app', config, services);
-      
+
       expect(composePath).toBeDefined();
     });
 
@@ -81,7 +81,7 @@ describe('Application Run Advanced Tests', () => {
       const services = { authentication: true };
 
       const composePath = await appRun.generateDockerCompose('test-app', config, services);
-      
+
       expect(composePath).toBeDefined();
     });
   });

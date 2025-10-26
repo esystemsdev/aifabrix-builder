@@ -53,7 +53,7 @@ describe('File System Operations', () => {
       const appPath = path.join('builder', 'test-app');
 
       await fs.mkdir(appPath, { recursive: true });
-      
+
       // Should not throw when directory already exists
       await expect(fs.mkdir(appPath, { recursive: true })).resolves.not.toThrow();
     });
@@ -196,7 +196,7 @@ NODE_ENV=production`;
       await fs.mkdir(appPath, { recursive: true });
 
       const files = ['variables.yaml', 'rbac.yaml', 'env.template'];
-      
+
       for (const filename of files) {
         await fs.writeFile(path.join(appPath, filename), 'test');
       }
@@ -234,7 +234,7 @@ NODE_ENV=production`;
       await fs.writeFile(filePath, invalidYaml);
 
       const content = await fs.readFile(filePath, 'utf8');
-      
+
       expect(() => yaml.load(content)).toThrow();
     });
 
@@ -249,7 +249,7 @@ NODE_ENV=production`;
       await fs.writeFile(filePath, yaml.dump(config));
 
       const content = await fs.readFile(filePath, 'utf8');
-      
+
       expect(content).toContain('app:');
       expect(content).toContain('key:');
       expect(content).toContain('test-app');
@@ -300,7 +300,7 @@ NODE_ENV=production`;
       const filePath = 'variables.yaml';
 
       const fullPath = path.join(basePath, appPath, filePath);
-      
+
       expect(fullPath).toContain('builder');
       expect(fullPath).toContain('test-app');
       expect(fullPath).toContain('variables.yaml');

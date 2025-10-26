@@ -67,7 +67,7 @@ describe('CLI Setup Tests', () => {
       app.buildApp.mockResolvedValue('test-app:latest');
 
       const result = await app.buildApp('test-app', {});
-      
+
       expect(result).toBe('test-app:latest');
     });
 
@@ -87,7 +87,7 @@ describe('CLI Setup Tests', () => {
       app.deployApp.mockResolvedValue({ deploymentId: '123' });
 
       const result = await app.deployApp('test-app', { controller: 'https://controller.example.com' });
-      
+
       expect(result).toHaveProperty('deploymentId');
     });
 

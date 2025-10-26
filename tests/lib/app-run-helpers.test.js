@@ -247,4 +247,55 @@ describe('Application Run Helper Functions', () => {
       expect(result).toBe(false);
     });
   });
+
+  describe('runApp', () => {
+    beforeEach(() => {
+      // Create builder directory structure
+      const builderPath = path.join(tempDir, 'builder', 'test-app');
+      fsSync.mkdirSync(builderPath, { recursive: true });
+
+      // Create variables.yaml
+      const variables = {
+        app: { key: 'test-app', displayName: 'Test App', port: 3000 },
+        build: { language: 'typescript' },
+        services: { database: true }
+      };
+      fsSync.writeFileSync(
+        path.join(builderPath, 'variables.yaml'),
+        require('js-yaml').dump(variables)
+      );
+
+      // Create env.template to avoid missing file errors
+      fsSync.writeFileSync(
+        path.join(builderPath, 'env.template'),
+        'PORT=3000\nDATABASE_URL=kv://database-url'
+      );
+    });
+
+    it('should throw error if app name is empty', async() => {
+      await expect(appRun.runApp('')).rejects.toThrow('Application name is required');
+    });
+
+    it('should throw error if app name is not a string', async() => {
+      await expect(appRun.runApp(null)).rejects.toThrow('Application name is required');
+    });
+
+    it('should throw error if configuration file not found', async() => {
+      // Remove the variables.yaml file
+      fsSync.unlinkSync(path.join(tempDir, 'builder', 'test-app', 'variables.yaml'));
+
+      await expect(appRun.runApp('test-app'))
+        .rejects.toThrow('Application configuration not found');
+    });
+
+    it('should throw error if Docker image does not exist', async() => {
+      const validator = require('../../lib/validator');
+      jest.spyOn(appRun, 'checkImageExists').mockResolvedValue(false);
+      jest.spyOn(validator, 'validateApplication').mockResolvedValue({ valid: true, variables: { errors: [] } });
+
+      await expect(appRun.runApp('test-app'))
+        .rejects.toThrow('Docker image test-app:latest not found');
+    });
+
+  });
 });

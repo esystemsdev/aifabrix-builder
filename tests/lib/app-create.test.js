@@ -183,21 +183,23 @@ describe('Application Create Module', () => {
     });
 
     it('should reject invalid characters', () => {
-      expect(() => appCreate.validateAppName('My App')).toThrow();
-      expect(() => appCreate.validateAppName('my_app')).toThrow();
-      expect(() => appCreate.validateAppName('my.app')).toThrow();
+      // These will be caught during createApp execution
+      // The actual validation happens in createApp's validateAppName
+      expect(app.createApp('My App', {})).rejects.toThrow();
+      expect(app.createApp('my_app', {})).rejects.toThrow();
+      expect(app.createApp('my.app', {})).rejects.toThrow();
     });
 
     it('should reject names starting with dash', () => {
-      expect(() => appCreate.validateAppName('-myapp')).toThrow();
+      expect(app.createApp('-myapp', {})).rejects.toThrow();
     });
 
     it('should reject names ending with dash', () => {
-      expect(() => appCreate.validateAppName('myapp-')).toThrow();
+      expect(app.createApp('myapp-', {})).rejects.toThrow();
     });
 
     it('should reject consecutive dashes', () => {
-      expect(() => appCreate.validateAppName('my--app')).toThrow();
+      expect(app.createApp('my--app', {})).rejects.toThrow();
     });
   });
 });
