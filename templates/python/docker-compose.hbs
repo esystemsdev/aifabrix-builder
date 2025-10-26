@@ -6,11 +6,11 @@ version: "3.9"
 
 services:
   {{app.key}}:
-    image: {{image.name}}:{{image.tag | default "latest"}}
+    image: {{image.name}}:{{image.tag}}
     container_name: aifabrix-{{app.key}}
     env_file: .env
     ports:
-      - "{{build.localPort | default port}}:{{port}}"
+      - "{{build.localPort}}:{{port}}"
     networks:
       - aifabrix-network
     {{#if requiresStorage}}

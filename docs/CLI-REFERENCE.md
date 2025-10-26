@@ -160,11 +160,16 @@ aifabrix build myapp --force-template
 
 ## aifabrix run <app>
 
-Run application locally.
+Run application locally in Docker container with automatic infrastructure connectivity.
 
-**What:** Starts container, connects to infrastructure, maps ports.
+**What:** Starts container, connects to infrastructure, maps ports, waits for health check.
 
-**When:** Testing, development, debugging.
+**When:** Testing, development, debugging, local demonstrations.
+
+**Prerequisites:**
+- Application must be built: `aifabrix build <app>`
+- Infrastructure must be running: `aifabrix up`
+- `.env` file must exist in `builder/<app>/`
 
 **Example:**
 ```bash
@@ -177,14 +182,32 @@ aifabrix run myapp --port 3001
 ```
 
 **Flags:**
-- `-p, --port <port>` - Override local port
+- `-p, --port <port>` - Override local port (default: from variables.yaml)
+
+**Process:**
+1. Validates app configuration
+2. Checks if Docker image exists
+3. Verifies infrastructure health
+4. Stops existing container if running
+5. Checks port availability
+6. Generates Docker Compose configuration
+7. Starts container with proper networking
+8. Waits for health check to pass
+9. Displays access URL
 
 **Access:** http://localhost:<port>
 
+**Container:** `aifabrix-<app>`
+
+**Health Check:** `/health` endpoint
+
 **Issues:**
-- **"Infrastructure not running"** → `aifabrix up`
-- **"Port already in use"** → Use different port
-- **"Container won't start"** → Check logs: `docker logs aifabrix-myapp`
+- **"Docker image not found"** → Run `aifabrix build <app>` first
+- **"Infrastructure not running"** → Run `aifabrix up` first
+- **"Port already in use"** → Use `--port <alternative>` flag
+- **"Container won't start"** → Check logs: `docker logs aifabrix-<app>`
+- **"Health check timeout"** → Check application logs and health endpoint
+- **"Configuration validation failed"** → Fix issues in `builder/<app>/variables.yaml`
 
 ---
 
