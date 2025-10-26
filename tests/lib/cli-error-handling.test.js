@@ -123,6 +123,66 @@ describe('CLI Error Handling', () => {
       expect(console.error).toHaveBeenCalledWith('   Make sure you have the necessary permissions to run Docker commands.');
     });
 
+    it('should handle Azure CLI errors', () => {
+      const cli = require('../../lib/cli');
+
+      const error = new Error('Azure CLI is not installed');
+      const command = 'push';
+
+      cli.handleCommandError(error, command);
+
+      expect(console.error).toHaveBeenCalledWith('\n❌ Error in push command:');
+      expect(console.error).toHaveBeenCalledWith('   Azure CLI is not installed.');
+    });
+
+    it('should handle ACR authentication errors', () => {
+      const cli = require('../../lib/cli');
+
+      const error = new Error('ACR authentication failed');
+      const command = 'push';
+
+      cli.handleCommandError(error, command);
+
+      expect(console.error).toHaveBeenCalledWith('   Azure Container Registry authentication failed.');
+      expect(console.error).toHaveBeenCalledWith('   Run: az acr login --name <registry-name>');
+    });
+
+    it('should handle image not found errors', () => {
+      const cli = require('../../lib/cli');
+
+      const error = new Error('image not found locally');
+      const command = 'run';
+
+      cli.handleCommandError(error, command);
+
+      expect(console.error).toHaveBeenCalledWith('   Docker image not found.');
+      expect(console.error).toHaveBeenCalledWith('   Run: aifabrix build <app> first');
+    });
+
+    it('should handle invalid registry URL errors', () => {
+      const cli = require('../../lib/cli');
+
+      const error = new Error('Expected format: *.azurecr.io');
+      const command = 'push';
+
+      cli.handleCommandError(error, command);
+
+      expect(console.error).toHaveBeenCalledWith('   Invalid registry URL format.');
+      expect(console.error).toHaveBeenCalledWith('   Use format: *.azurecr.io (e.g., myacr.azurecr.io)');
+    });
+
+    it('should handle registry URL required errors', () => {
+      const cli = require('../../lib/cli');
+
+      const error = new Error('Registry URL is required');
+      const command = 'push';
+
+      cli.handleCommandError(error, command);
+
+      expect(console.error).toHaveBeenCalledWith('   Registry URL is required.');
+      expect(console.error).toHaveBeenCalledWith('   Provide via --registry flag or configure in variables.yaml under image.registry');
+    });
+
     it('should handle generic errors', () => {
       const cli = require('../../lib/cli');
 

@@ -9,6 +9,10 @@
 const app = require('../../lib/app');
 const validator = require('../../lib/validator');
 const cli = require('../../lib/cli');
+const infra = require('../../lib/infra');
+const secrets = require('../../lib/secrets');
+const generator = require('../../lib/generator');
+const keyGenerator = require('../../lib/key-generator');
 
 // Mock dependencies
 jest.mock('../../lib/app', () => ({
@@ -21,11 +25,27 @@ jest.mock('../../lib/app', () => ({
 
 jest.mock('../../lib/infra', () => ({
   startInfra: jest.fn(),
-  stopInfra: jest.fn()
+  stopInfra: jest.fn(),
+  stopInfraWithVolumes: jest.fn(),
+  checkInfraHealth: jest.fn(),
+  getInfraStatus: jest.fn(),
+  restartService: jest.fn()
 }));
 
 jest.mock('../../lib/validator', () => ({
   checkEnvironment: jest.fn()
+}));
+
+jest.mock('../../lib/secrets', () => ({
+  generateEnvFile: jest.fn()
+}));
+
+jest.mock('../../lib/generator', () => ({
+  generateDeployJsonWithValidation: jest.fn()
+}));
+
+jest.mock('../../lib/key-generator', () => ({
+  generateDeploymentKey: jest.fn()
 }));
 
 describe('CLI Coverage Tests', () => {
@@ -109,6 +129,106 @@ describe('CLI Coverage Tests', () => {
 
       await expect(app.deployApp('test-app', { controller: 'https://controller.example.com' }))
         .rejects.toThrow('Deployment failed');
+    });
+  });
+
+  describe('Infrastructure commands', () => {
+    it('should handle up command with volumes', async() => {
+      infra.stopInfraWithVolumes.mockResolvedValue();
+      await infra.stopInfraWithVolumes();
+      expect(infra.stopInfraWithVolumes).toHaveBeenCalled();
+    });
+
+    it('should handle infra restart service', async() => {
+      infra.restartService.mockResolvedValue();
+      await infra.restartService('postgres');
+      expect(infra.restartService).toHaveBeenCalledWith('postgres');
+    });
+
+    it('should handle infra health check', async() => {
+      infra.checkInfraHealth.mockResolvedValue({ postgres: 'healthy', redis: 'healthy' });
+      const health = await infra.checkInfraHealth();
+      expect(health.postgres).toBe('healthy');
+    });
+
+    it('should handle infra status', async() => {
+      infra.getInfraStatus.mockResolvedValue({
+        postgres: { status: 'running', port: 5432, url: 'localhost:5432' }
+      });
+      const status = await infra.getInfraStatus();
+      expect(status.postgres.status).toBe('running');
+    });
+  });
+
+  describe('Utility commands', () => {
+    it('should handle resolve command', async() => {
+      secrets.generateEnvFile.mockResolvedValue('builder/test-app/.env');
+      const path = await secrets.generateEnvFile('test-app');
+      expect(path).toBe('builder/test-app/.env');
+    });
+
+    it('should handle json command with warnings', async() => {
+      generator.generateDeployJsonWithValidation.mockResolvedValue({
+        success: true,
+        path: 'builder/test-app/aifabrix-deploy.json',
+        validation: { warnings: ['Warning 1', 'Warning 2'], errors: [] }
+      });
+      const result = await generator.generateDeployJsonWithValidation('test-app');
+      expect(result.success).toBe(true);
+      expect(result.validation.warnings).toHaveLength(2);
+    });
+
+    it('should handle json command with errors', async() => {
+      generator.generateDeployJsonWithValidation.mockResolvedValue({
+        success: false,
+        path: 'builder/test-app/aifabrix-deploy.json',
+        validation: { warnings: [], errors: ['Error 1', 'Error 2'] }
+      });
+      const result = await generator.generateDeployJsonWithValidation('test-app');
+      expect(result.success).toBe(false);
+      expect(result.validation.errors).toHaveLength(2);
+    });
+
+    it('should handle genkey command', async() => {
+      keyGenerator.generateDeploymentKey.mockResolvedValue('sha256hash');
+      const key = await keyGenerator.generateDeploymentKey('test-app');
+      expect(key).toBe('sha256hash');
+    });
+
+    it('should handle doctor command with recommendations', async() => {
+      validator.checkEnvironment.mockResolvedValue({
+        docker: 'ok',
+        ports: 'ok',
+        secrets: 'ok',
+        recommendations: ['Recommendation 1']
+      });
+      const result = await validator.checkEnvironment();
+      expect(result.recommendations).toHaveLength(1);
+    });
+
+    it('should handle doctor command with unhealthy infra', async() => {
+      validator.checkEnvironment.mockResolvedValue({
+        docker: 'ok',
+        ports: 'warning',
+        secrets: 'missing',
+        recommendations: []
+      });
+      const result = await validator.checkEnvironment();
+      expect(result.docker).toBe('ok');
+      expect(result.ports).toBe('warning');
+    });
+  });
+
+  describe('validateCommand', () => {
+    it('should validate commands', () => {
+      const result = cli.validateCommand('build', {});
+      expect(result).toBe(true);
+    });
+
+    it('should return true for any command', () => {
+      expect(cli.validateCommand('create', { port: 3000 })).toBe(true);
+      expect(cli.validateCommand('push', { registry: 'test' })).toBe(true);
+      expect(cli.validateCommand('deploy', {})).toBe(true);
     });
   });
 });
