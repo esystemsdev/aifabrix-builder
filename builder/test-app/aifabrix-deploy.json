@@ -14,9 +14,9 @@
     },
     "services": {
       "database": true,
-      "redis": false,
-      "storage": false,
-      "authentication": false
+      "redis": true,
+      "storage": true,
+      "authentication": true
     },
     "deployment": {
       "replicas": 1,

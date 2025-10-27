@@ -127,7 +127,7 @@ describe('Application Run Helper Functions', () => {
       expect(result).toContain('test-app');
       expect(result).toContain('3001:3000');
       expect(result).toContain('aifabrix-test-app');
-      expect(result).toContain('aifabrix-network');
+      expect(result).toContain('infra_aifabrix-network');
     });
 
     it('should generate compose content for Python app', async() => {

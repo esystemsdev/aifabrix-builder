@@ -12,7 +12,7 @@ services:
     ports:
       - "{{build.localPort}}:{{port}}"
     networks:
-      - aifabrix-network
+      - infra_aifabrix-network
     {{#if requiresStorage}}
     volumes:
       - "{{mountVolume}}:/mnt/data"
@@ -40,7 +40,7 @@ services:
     environment:
       POSTGRES_DB: postgres
     networks:
-      - aifabrix-network
+      - infra_aifabrix-network
     command: >
       sh -c "
         echo 'Creating {{app.key}} database and user...' &&
@@ -65,5 +65,5 @@ services:
   {{/if}}
 
 networks:
-  aifabrix-network:
+  infra_aifabrix-network:
     external: true

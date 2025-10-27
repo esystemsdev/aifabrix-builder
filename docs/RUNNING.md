@@ -226,7 +226,7 @@ docker exec aifabrix-myapp sh -c 'echo $DATABASE_URL'
 
 ## Networking
 
-All containers are on `aifabrix-network`.
+All containers are on `infra_aifabrix-network`.
 
 **Containers can reach each other by name:**
 - `postgres` - Database
@@ -255,7 +255,7 @@ aifabrix run myapp
 ```bash
 docker run -d \
   --name aifabrix-myapp-test \
-  --network aifabrix-network \
+  --network infra_aifabrix-network \
   -p 3001:3000 \
   myapp:v1.0.0
 ```
@@ -345,7 +345,7 @@ docker logs aifabrix-myapp
 ```bash
 # Run interactively to see what happens
 docker run -it --rm \
-  --network aifabrix-network \
+  --network infra_aifabrix-network \
   myapp:latest sh
 ```
 
@@ -353,7 +353,7 @@ docker run -it --rm \
 
 **Check network:**
 ```bash
-docker network inspect aifabrix-network
+docker network inspect infra_aifabrix-network
 ```
 
 **Verify name resolution:**
@@ -386,7 +386,7 @@ Mount your code as volume for hot reload:
 ```bash
 docker run -d \
   --name aifabrix-myapp \
-  --network aifabrix-network \
+  --network infra_aifabrix-network \
   -p 3000:3000 \
   -v $(pwd):/app \
   myapp:latest npm run dev
@@ -397,7 +397,7 @@ docker run -d \
 ```bash
 docker run -d \
   --name aifabrix-myapp \
-  --network aifabrix-network \
+  --network infra_aifabrix-network \
   -p 3000:3000 \
   -p 9229:9229 \
   -e NODE_ENV=development \

@@ -9,12 +9,12 @@ build:
   environment: development
 services:
   database: true
-  redis: false
-  storage: false
-  authentication: false
+  redis: true
+  storage: true
+  authentication: true
 security:
-  enableRBAC: false
-  requireAuth: false
+  enableRBAC: true
+  requireAuth: true
   auditLogging: true
 monitoring:
   healthCheck: true

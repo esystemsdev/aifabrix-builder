@@ -20,7 +20,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
-      - aifabrix-network
+      - infra_aifabrix-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pgadmin -d postgres"]
       interval: 10s
@@ -38,7 +38,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - aifabrix-network
+      - infra_aifabrix-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -61,7 +61,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - aifabrix-network
+      - infra_aifabrix-network
 
   # Optional: Redis Commander for Redis management
   redis-commander:
@@ -79,7 +79,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - aifabrix-network
+      - infra_aifabrix-network
 
 volumes:
   postgres_data:
@@ -88,6 +88,6 @@ volumes:
     driver: local
 
 networks:
-  aifabrix-network:
+  infra_aifabrix-network:
     driver: bridge
-    name: aifabrix-network
+    name: infra_aifabrix-network
