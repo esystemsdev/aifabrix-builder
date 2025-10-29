@@ -1,6 +1,6 @@
 {
   "name": "@aifabrix/builder",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "AI Fabrix Local Fabric & Deployment SDK",
   "main": "lib/index.js",
   "bin": {

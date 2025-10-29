@@ -506,7 +506,7 @@
         },
         "repositoryUrl": {
           "type": "string",
-          "description": "Full repository URL for deployment validation (same as OAuth callback)",
+          "description": "Full repository URL for pipeline validation (same as OAuth callback)",
           "pattern": "^(https://github.com/[^/]+/[^/]+|https://gitlab.com/[^/]+/[^/]+|https://dev.azure.com/[^/]+/[^/]+/[^/]+)$"
         }
       },
@@ -600,6 +600,28 @@
           "type": "string",
           "description": "Dockerfile name (empty or missing = use auto-generated template)",
           "pattern": "^[^/].*"
+        }
+      },
+      "additionalProperties": false
+    },
+    "deployment": {
+      "type": "object",
+      "description": "Deployment configuration for pipeline API",
+      "properties": {
+        "controllerUrl": {
+          "type": "string",
+          "description": "Controller API URL for deployment",
+          "pattern": "^https://.*$"
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Pipeline ClientId for automated deployment",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "clientSecret": {
+          "type": "string",
+          "description": "Pipeline ClientSecret (use kv:// reference)",
+          "pattern": "^(kv://.*|.+)$"
         }
       },
       "additionalProperties": false

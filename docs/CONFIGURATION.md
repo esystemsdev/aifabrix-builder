@@ -1,5 +1,7 @@
 # Configuration Reference
 
+→ [Back to Quick Start](QUICK-START.md)
+
 Simple reference for all configuration files.
 
 ## variables.yaml
@@ -88,6 +90,21 @@ Generates Redis config in env.template
 **requires.storage**  
 Set `true` if you need file storage  
 Mounts `/mnt/data` in container
+
+**deployment.controllerUrl**  
+Controller API URL for pipeline deployments  
+Example: `https://controller.aifabrix.ai`  
+*Optional - enables automated deployment*
+
+**deployment.clientId**  
+Pipeline ClientId for automated deployment  
+Example: `ctrl-dev-myapp`  
+*Required if using pipeline API*
+
+**deployment.clientSecret**  
+Pipeline ClientSecret (use kv:// reference)  
+Example: `kv://aifabrix-client-secretKeyVault`  
+*Required if using pipeline API - should reference Key Vault secret*
 
 ### Full Example
 
@@ -291,7 +308,7 @@ import { MisoClient } from '@aifabrix/miso-client';
 const client = new MisoClient({
   controllerUrl: process.env.MISO_CONTROLLER_URL,
   environment: process.env.MISO_ENVIRONMENT, // dev or 'tst', 'pro'
-  applicationKey: process.APPLICATION_KEY
+  applicationKey: process.env.APPLICATION_KEY
 });
 
 await client.initialize();
@@ -300,6 +317,9 @@ await client.initialize();
 if (await client.hasRole(userToken, 'admin')) {
   // Admin-only functionality
 }
+
+// Note: For detailed MisoClient configuration, see:
+// https://github.com/esystemsdev/aifabrix-miso-client
 
 // Check specific permissions
 if (await client.hasRole(userToken,'documents:write')) {
@@ -419,7 +439,14 @@ REDIS_PASSWORD=
 
 # Optional: Logging level
 MISO_LOG_LEVEL=info
+
+# Pipeline API Deployment (optional - for automated deployments)
+AIFABRIX_API_URL=https://controller.aifabrix.ai
+AIFABRIX_CLIENT_ID=ctrl-dev-myapp
+AIFABRIX_CLIENT_SECRET=kv://aifabrix-client-secretKeyVault
 ```
+
+**Note:** Pipeline environment variables are only needed if you're using automated CI/CD deployments. Get ClientId and ClientSecret via `aifabrix app register`.
 
 ### Benefits
 

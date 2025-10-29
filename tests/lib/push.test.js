@@ -69,18 +69,21 @@ describe('Push Utilities', () => {
       expect(pushUtils.validateRegistryURL('a.azurecr.io')).toBe(true);
     });
 
-    it('should reject invalid URLs', () => {
-      expect(pushUtils.validateRegistryURL('invalid.com')).toBe(false);
-      expect(pushUtils.validateRegistryURL('myacr.com')).toBe(false);
-      expect(pushUtils.validateRegistryURL('azurecr.io')).toBe(false);
-      expect(pushUtils.validateRegistryURL('myacr.azurecr.com')).toBe(false);
-      expect(pushUtils.validateRegistryURL('')).toBe(false);
+    it('should accept external registries', () => {
+      expect(pushUtils.validateRegistryURL('invalid.com')).toBe(true); // Generic hostname
+      expect(pushUtils.validateRegistryURL('myacr.com')).toBe(true); // Generic hostname
+      expect(pushUtils.validateRegistryURL('myacr.com:5000')).toBe(true); // With port
+      expect(pushUtils.validateRegistryURL('ghcr.io')).toBe(true); // GitHub Container Registry
+      expect(pushUtils.validateRegistryURL('docker.io')).toBe(true); // Docker Hub
+      expect(pushUtils.validateRegistryURL('index.docker.io')).toBe(true); // Docker Hub alt
     });
 
-    it('should handle edge cases', () => {
-      expect(pushUtils.validateRegistryURL('myacr')).toBe(false);
-      // validateRegistryURL only checks the domain format, not protocol
-      expect(pushUtils.validateRegistryURL('not-a-url')).toBe(false);
+    it('should reject invalid formats', () => {
+      expect(pushUtils.validateRegistryURL('azurecr.io')).toBe(false); // Missing subdomain
+      expect(pushUtils.validateRegistryURL('myacr.azurecr.com')).toBe(false); // Wrong TLD
+      expect(pushUtils.validateRegistryURL('myacr')).toBe(false); // No domain
+      expect(pushUtils.validateRegistryURL('')).toBe(false);
+      expect(pushUtils.validateRegistryURL('http://example.com')).toBe(false); // Protocol not allowed
     });
   });
 
@@ -171,7 +174,7 @@ describe('Push Utilities', () => {
 
       expect(result).toBe(true);
       expect(execAsync).toHaveBeenCalledWith(
-        'docker images --format "{{.Repository}}:{{.Tag}}" | grep "^myapp:latest$"'
+        'docker images --format "{{.Repository}}:{{.Tag}}" --filter "reference=myapp:latest"'
       );
     });
 

@@ -30,7 +30,22 @@ describe('Application Deploy Module', () => {
 
   afterEach(async() => {
     process.chdir(originalCwd);
-    await fs.rm(tempDir, { recursive: true, force: true });
+    // Retry cleanup on Windows (handles EBUSY errors)
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        await fs.rm(tempDir, { recursive: true, force: true });
+        break;
+      } catch (error) {
+        if (error.code === 'EBUSY' && retries > 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          retries--;
+        } else {
+          // Ignore cleanup errors in test environment
+          break;
+        }
+      }
+    }
   });
 
   describe('pushApp error scenarios', () => {
@@ -77,7 +92,7 @@ app:
 
     it('should error when registry URL is invalid', async() => {
       await expect(appDeploy.pushApp('test-app', { registry: 'invalid.com' }))
-        .rejects.toThrow('Invalid registry URL format');
+        .rejects.toThrow('Invalid ACR URL format');
     });
 
     it('should error when image does not exist locally', async() => {
@@ -120,8 +135,177 @@ app:
     });
 
     it('should error when controller URL is missing', async() => {
+      // Create variables.yaml without deployment config
+      const config = { app: { key: 'test-app', name: 'Test App' }, port: 3000 };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        yaml.dump(config)
+      );
+
       await expect(appDeploy.deployApp('test-app', {}))
         .rejects.toThrow('Controller URL is required');
+    });
+
+    it('should error when client credentials are missing', async() => {
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://controller.example.com'
+          // Missing clientId and clientSecret
+        }
+      };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        yaml.dump(config)
+      );
+
+      await expect(appDeploy.deployApp('test-app', {}))
+        .rejects.toThrow('Client ID and Client Secret are required');
+    });
+
+    it('should load deployment configuration from variables.yaml', async() => {
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://controller.example.com',
+          environment: 'tst',
+          clientId: 'yaml-client-id',
+          clientSecret: 'yaml-client-secret'
+        }
+      };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        yaml.dump(config)
+      );
+
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      await fs.writeFile(manifestPath, JSON.stringify({
+        key: 'test-app',
+        displayName: 'Test App',
+        image: 'test:latest',
+        port: 3000
+      }));
+
+      const generator = require('../../lib/generator');
+      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
+      jest.spyOn(generator, 'validateDeploymentJson').mockReturnValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      const deployer = require('../../lib/deployer');
+      deployer.deployToController.mockResolvedValue({ deploymentId: 'deploy-123' });
+
+      await appDeploy.deployApp('test-app', {});
+
+      expect(deployer.deployToController).toHaveBeenCalledWith(
+        expect.any(Object),
+        'https://controller.example.com',
+        'tst',
+        'yaml-client-id',
+        'yaml-client-secret',
+        expect.any(Object)
+      );
+    });
+
+    it('should use default environment when not specified', async() => {
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://controller.example.com',
+          clientId: 'client-id',
+          clientSecret: 'client-secret'
+          // No environment specified
+        }
+      };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        yaml.dump(config)
+      );
+
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      await fs.writeFile(manifestPath, JSON.stringify({
+        key: 'test-app',
+        image: 'test:latest',
+        port: 3000
+      }));
+
+      const generator = require('../../lib/generator');
+      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
+      jest.spyOn(generator, 'validateDeploymentJson').mockReturnValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      const deployer = require('../../lib/deployer');
+      deployer.deployToController.mockResolvedValue({ deploymentId: 'deploy-123' });
+
+      await appDeploy.deployApp('test-app', {});
+
+      expect(deployer.deployToController).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(String),
+        'dev', // Default environment
+        'client-id',
+        'client-secret',
+        expect.any(Object)
+      );
+    });
+
+    it('should allow options to override variables.yaml configuration', async() => {
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://yaml-controller.example.com',
+          environment: 'tst',
+          clientId: 'yaml-client-id',
+          clientSecret: 'yaml-client-secret'
+        }
+      };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        yaml.dump(config)
+      );
+
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      await fs.writeFile(manifestPath, JSON.stringify({
+        key: 'test-app',
+        image: 'test:latest',
+        port: 3000
+      }));
+
+      const generator = require('../../lib/generator');
+      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
+      jest.spyOn(generator, 'validateDeploymentJson').mockReturnValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      const deployer = require('../../lib/deployer');
+      deployer.deployToController.mockResolvedValue({ deploymentId: 'deploy-123' });
+
+      await appDeploy.deployApp('test-app', {
+        controller: 'https://option-controller.example.com',
+        environment: 'pro',
+        clientId: 'option-client-id',
+        clientSecret: 'option-client-secret'
+      });
+
+      expect(deployer.deployToController).toHaveBeenCalledWith(
+        expect.any(Object),
+        'https://option-controller.example.com',
+        'pro',
+        'option-client-id',
+        'option-client-secret',
+        expect.any(Object)
+      );
     });
 
     it('should error when app not found in builder', async() => {
@@ -131,89 +315,113 @@ app:
     });
 
     it('should error on validation failures', async() => {
-      // Setup app directory
-      const config = { app: { key: 'test-app', name: 'Test App' }, port: 3000 };
+      // Setup app directory with deployment config
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://controller.example.com',
+          environment: 'dev',
+          clientId: 'test-client-id',
+          clientSecret: 'test-client-secret'
+        }
+      };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
         yaml.dump(config)
       );
 
       // Mock generator to return invalid manifest
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      await fs.writeFile(manifestPath, JSON.stringify({ key: 'test-app' }));
+
       const generator = require('../../lib/generator');
-      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue('/path/to/manifest.json');
+      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
       jest.spyOn(generator, 'validateDeploymentJson').mockReturnValue({
         valid: false,
         errors: ['Missing required field: image'],
         warnings: []
       });
 
-      jest.spyOn(fs, 'readFile').mockResolvedValue(JSON.stringify({ key: 'test-app' }));
-
-      await expect(appDeploy.deployApp('test-app', {
-        controller: 'https://controller.example.com'
-      })).rejects.toThrow('Deployment manifest validation failed');
+      await expect(appDeploy.deployApp('test-app', {})).rejects.toThrow('Deployment manifest validation failed');
     });
 
     it('should handle controller deployment failures', async() => {
-      // Setup app directory
-      const config = { app: { key: 'test-app', name: 'Test App' }, port: 3000 };
+      // Setup app directory with deployment config
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://controller.example.com',
+          environment: 'dev',
+          clientId: 'test-client-id',
+          clientSecret: 'test-client-secret'
+        }
+      };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
         yaml.dump(config)
       );
 
-      // Mock generator to return valid manifest
+      // Create manifest file
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      await fs.writeFile(manifestPath, JSON.stringify({
+        key: 'test-app',
+        displayName: 'Test App',
+        image: 'test:latest',
+        port: 3000
+      }));
+
+      // Mock generator
       const generator = require('../../lib/generator');
-      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue('/path/to/manifest.json');
+      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
       jest.spyOn(generator, 'validateDeploymentJson').mockReturnValue({
         valid: true,
         errors: [],
         warnings: []
       });
 
-      jest.spyOn(fs, 'readFile').mockResolvedValue(
-        JSON.stringify({
-          key: 'test-app',
-          displayName: 'Test App',
-          image: 'test:latest',
-          port: 3000
-        })
-      );
-
       // Mock deployer to fail
       const deployer = require('../../lib/deployer');
       deployer.deployToController.mockRejectedValue(new Error('Controller error'));
 
-      await expect(appDeploy.deployApp('test-app', {
-        controller: 'https://controller.example.com'
-      })).rejects.toThrow('Failed to deploy application');
+      await expect(appDeploy.deployApp('test-app', {})).rejects.toThrow('Failed to deploy application');
     });
 
     it('should display warnings correctly', async() => {
-      // Setup app directory
-      const config = { app: { key: 'test-app', name: 'Test App' }, port: 3000 };
+      // Setup app directory with deployment config
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://controller.example.com',
+          environment: 'dev',
+          clientId: 'test-client-id',
+          clientSecret: 'test-client-secret'
+        }
+      };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
         yaml.dump(config)
       );
 
+      // Create manifest file
+      const manifestPath2 = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      await fs.writeFile(manifestPath2, JSON.stringify({
+        key: 'test-app',
+        displayName: 'Test App',
+        image: 'test:latest',
+        port: 3000
+      }));
+
       // Mock generator to return warnings
       const generator = require('../../lib/generator');
-      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue('/path/to/manifest.json');
+      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath2);
       jest.spyOn(generator, 'validateDeploymentJson').mockReturnValue({
         valid: true,
         errors: [],
         warnings: ['Health check path should start with /']
       });
-
-      jest.spyOn(fs, 'readFile').mockResolvedValue(
-        JSON.stringify({
-          key: 'test-app',
-          displayName: 'Test App',
-          image: 'test:latest',
-          port: 3000
-        })
-      );
 
       const deployer = require('../../lib/deployer');
       deployer.deployToController.mockResolvedValue({
@@ -222,9 +430,7 @@ app:
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
-      await appDeploy.deployApp('test-app', {
-        controller: 'https://controller.example.com'
-      });
+      await appDeploy.deployApp('test-app', {});
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Warnings'));
       consoleSpy.mockRestore();

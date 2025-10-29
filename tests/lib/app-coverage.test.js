@@ -54,7 +54,22 @@ describe('Application Module Coverage', () => {
 
   afterEach(async() => {
     process.chdir(originalCwd);
-    await fs.rm(tempDir, { recursive: true, force: true });
+    // Retry cleanup on Windows (handles EBUSY errors)
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        await fs.rm(tempDir, { recursive: true, force: true });
+        break;
+      } catch (error) {
+        if (error.code === 'EBUSY' && retries > 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          retries--;
+        } else {
+          // Ignore cleanup errors in test environment
+          break;
+        }
+      }
+    }
   });
 
   describe('validateAppName', () => {
@@ -127,8 +142,9 @@ describe('Application Module Coverage', () => {
       await fs.mkdir(appPath, { recursive: true });
       await fs.writeFile(path.join(appPath, 'variables.yaml'), 'app:\n  key: test-app');
 
+      // The validation checks ACR URL format before checking the image
       await expect(app.pushApp('test-app', { registry: 'invalid.com' }))
-        .rejects.toThrow('Invalid registry URL format');
+        .rejects.toThrow('Invalid ACR URL format');
     });
 
     it('should handle missing local image', async() => {

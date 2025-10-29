@@ -1,5 +1,7 @@
 # Infrastructure Guide
 
+→ [Back to Quick Start](QUICK-START.md)
+
 ## What is Infrastructure?
 
 When you run `aifabrix up`, you get **shared baseline services** that all your applications use:

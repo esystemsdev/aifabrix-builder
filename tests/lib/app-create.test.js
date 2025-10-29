@@ -89,7 +89,7 @@ describe('Application Create Module', () => {
       expect(variablesContent).toContain('language: typescript');
       expect(variablesContent).toContain('port: 3000');
       expect(variablesContent).toContain('database: true');
-      expect(variablesContent).toContain('authentication: true');
+      expect(variablesContent).toContain('requireAuth: true');
 
       // Verify env.template content
       const envContent = await fs.readFile(envTemplatePath, 'utf8');
@@ -144,7 +144,7 @@ describe('Application Create Module', () => {
         expect.objectContaining({
           mainBranch: 'main',
           uploadCoverage: true,
-          publishToNpm: false
+          githubSteps: []
         })
       );
 

@@ -21,6 +21,59 @@ describe('deployer', () => {
     jest.clearAllMocks();
   });
 
+  describe('createClientCredentialsHeaders', () => {
+    it('should create headers with client ID and secret', () => {
+      const headers = deployer.createClientCredentialsHeaders('test-client-id', 'test-secret');
+      expect(headers['x-client-id']).toBe('test-client-id');
+      expect(headers['x-client-secret']).toBe('test-secret');
+    });
+
+    it('should throw error when client ID is missing', () => {
+      expect(() => {
+        deployer.createClientCredentialsHeaders('', 'secret');
+      }).toThrow('Client ID and Client Secret are required');
+    });
+
+    it('should throw error when client secret is missing', () => {
+      expect(() => {
+        deployer.createClientCredentialsHeaders('client-id', '');
+      }).toThrow('Client ID and Client Secret are required');
+    });
+
+    it('should throw error when both credentials are missing', () => {
+      expect(() => {
+        deployer.createClientCredentialsHeaders(null, null);
+      }).toThrow('Client ID and Client Secret are required');
+    });
+  });
+
+  describe('validateEnvironmentKey', () => {
+    it('should accept valid environment keys', () => {
+      const validKeys = ['dev', 'tst', 'pro', 'miso', 'DEV', 'TST', 'PRO'];
+      validKeys.forEach(key => {
+        expect(() => deployer.validateEnvironmentKey(key)).not.toThrow();
+      });
+    });
+
+    it('should normalize environment keys to lowercase', () => {
+      expect(deployer.validateEnvironmentKey('DEV')).toBe('dev');
+      expect(deployer.validateEnvironmentKey('TST')).toBe('tst');
+      expect(deployer.validateEnvironmentKey('PRO')).toBe('pro');
+    });
+
+    it('should reject invalid environment keys', () => {
+      const invalidKeys = ['prod', 'development', 'test', 'invalid', ''];
+      invalidKeys.forEach(key => {
+        expect(() => deployer.validateEnvironmentKey(key)).toThrow();
+      });
+    });
+
+    it('should reject null or undefined environment keys', () => {
+      expect(() => deployer.validateEnvironmentKey(null)).toThrow();
+      expect(() => deployer.validateEnvironmentKey(undefined)).toThrow();
+    });
+  });
+
   describe('validateControllerUrl', () => {
     it('should accept valid HTTPS URLs', () => {
       const validUrls = [
@@ -81,13 +134,82 @@ describe('deployer', () => {
 
       const result = await deployer.sendDeploymentRequest(
         'https://controller.example.com',
+        'dev',
         manifest,
+        'test-client-id',
+        'test-client-secret',
         { timeout: 5000 }
       );
 
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
       expect(mockedAxios.post).toHaveBeenCalled();
+    });
+
+    it('should use environment-aware endpoint', async() => {
+      const manifest = { key: 'test-app', image: 'test-app:latest' };
+
+      mockedAxios.post.mockResolvedValue({
+        status: 200,
+        data: { success: true, deploymentId: 'deploy-123' }
+      });
+
+      await deployer.sendDeploymentRequest(
+        'https://controller.example.com',
+        'tst',
+        manifest,
+        'client-id',
+        'secret'
+      );
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        'https://controller.example.com/api/pipeline/tst/deploy',
+        manifest,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'x-client-id': 'client-id',
+            'x-client-secret': 'secret'
+          })
+        })
+      );
+    });
+
+    it('should include authentication headers in request', async() => {
+      const manifest = { key: 'test-app', image: 'test-app:latest' };
+
+      mockedAxios.post.mockResolvedValue({
+        status: 200,
+        data: { success: true, deploymentId: 'deploy-123' }
+      });
+
+      await deployer.sendDeploymentRequest(
+        'https://controller.example.com',
+        'dev',
+        manifest,
+        'my-client-id',
+        'my-client-secret'
+      );
+
+      const callArgs = mockedAxios.post.mock.calls[0];
+      const requestConfig = callArgs[2];
+      expect(requestConfig.headers['x-client-id']).toBe('my-client-id');
+      expect(requestConfig.headers['x-client-secret']).toBe('my-client-secret');
+      expect(requestConfig.headers['Content-Type']).toBe('application/json');
+      expect(requestConfig.headers['User-Agent']).toBe('aifabrix-builder/2.0.0');
+    });
+
+    it('should validate environment key before sending request', async() => {
+      const manifest = { key: 'test-app', image: 'test-app:latest' };
+
+      await expect(
+        deployer.sendDeploymentRequest(
+          'https://controller.example.com',
+          'invalid-env',
+          manifest,
+          'client-id',
+          'secret'
+        )
+      ).rejects.toThrow('Invalid environment key');
     });
 
     it('should retry on transient failures', async() => {
@@ -103,7 +225,10 @@ describe('deployer', () => {
 
       const result = await deployer.sendDeploymentRequest(
         'https://controller.example.com',
+        'dev',
         manifest,
+        'test-client-id',
+        'test-client-secret',
         { timeout: 10000, maxRetries: 5 }
       );
 
@@ -117,7 +242,7 @@ describe('deployer', () => {
       const manifest = { key: 'test-app', image: 'test-app:latest' };
 
       await expect(
-        deployer.sendDeploymentRequest('https://controller.example.com', manifest, {
+        deployer.sendDeploymentRequest('https://controller.example.com', 'dev', manifest, 'client-id', 'secret', {
           timeout: 1000,
           maxRetries: 2
         })
@@ -134,7 +259,7 @@ describe('deployer', () => {
       const manifest = { key: 'test-app' };
 
       await expect(
-        deployer.sendDeploymentRequest('https://controller.example.com', manifest)
+        deployer.sendDeploymentRequest('https://controller.example.com', 'dev', manifest, 'client-id', 'secret')
       ).rejects.toThrow();
     });
   });
@@ -153,12 +278,61 @@ describe('deployer', () => {
       const result = await deployer.pollDeploymentStatus(
         'test-deploy-123',
         'https://controller.example.com',
+        'dev',
+        'test-client-id',
+        'test-client-secret',
         { interval: 100, maxAttempts: 10 }
       );
 
       expect(result).toBeDefined();
       expect(result.deploymentId).toBe('test-deploy-123');
       expect(result.status).toBe('completed');
+    });
+
+    it('should use environment-aware status endpoint', async() => {
+      mockedAxios.get.mockResolvedValue({
+        status: 200,
+        data: { deploymentId: 'test-123', status: 'completed' }
+      });
+
+      await deployer.pollDeploymentStatus(
+        'test-123',
+        'https://controller.example.com',
+        'pro',
+        'client-id',
+        'secret'
+      );
+
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        'https://controller.example.com/api/environments/pro/deployments/test-123',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'x-client-id': 'client-id',
+            'x-client-secret': 'secret'
+          })
+        })
+      );
+    });
+
+    it('should include authentication headers in status polling', async() => {
+      mockedAxios.get.mockResolvedValue({
+        status: 200,
+        data: { deploymentId: 'test-123', status: 'completed' }
+      });
+
+      await deployer.pollDeploymentStatus(
+        'test-123',
+        'https://controller.example.com',
+        'dev',
+        'poll-client-id',
+        'poll-secret',
+        { interval: 10, maxAttempts: 1 }
+      );
+
+      const callArgs = mockedAxios.get.mock.calls[0];
+      const requestConfig = callArgs[1];
+      expect(requestConfig.headers['x-client-id']).toBe('poll-client-id');
+      expect(requestConfig.headers['x-client-secret']).toBe('poll-secret');
     });
 
     it('should handle completed deployments', async() => {
@@ -174,6 +348,9 @@ describe('deployer', () => {
       const result = await deployer.pollDeploymentStatus(
         'test-deploy-456',
         'https://controller.example.com',
+        'dev',
+        'test-client-id',
+        'test-client-secret',
         { interval: 100, maxAttempts: 5 }
       );
 
@@ -191,7 +368,7 @@ describe('deployer', () => {
       });
 
       await expect(
-        deployer.pollDeploymentStatus('never-complete', 'https://controller.example.com', {
+        deployer.pollDeploymentStatus('never-complete', 'https://controller.example.com', 'dev', 'client-id', 'secret', {
           interval: 50,
           maxAttempts: 3
         })
@@ -205,7 +382,7 @@ describe('deployer', () => {
       });
 
       await expect(
-        deployer.pollDeploymentStatus('non-existent', 'https://controller.example.com')
+        deployer.pollDeploymentStatus('non-existent', 'https://controller.example.com', 'dev', 'client-id', 'secret')
       ).rejects.toThrow();
     });
   });
@@ -259,6 +436,9 @@ describe('deployer', () => {
       const result = await deployer.deployToController(
         manifest,
         'https://controller.example.com',
+        'dev',
+        'test-client-id',
+        'test-client-secret',
         { poll: false }
       );
 
@@ -266,11 +446,83 @@ describe('deployer', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should reject HTTP URLs', async() => {
+    it('should use environment key in deployment endpoint', async() => {
+      const manifest = {
+        key: 'test-app',
+        image: 'test-app:latest',
+        port: 3000
+      };
+
+      mockedAxios.post.mockResolvedValue({
+        status: 200,
+        data: { success: true, deploymentId: 'deploy-123' }
+      });
+
+      await deployer.deployToController(
+        manifest,
+        'https://controller.example.com',
+        'tst',
+        'client-id',
+        'secret',
+        { poll: false }
+      );
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        'https://controller.example.com/api/pipeline/tst/deploy',
+        manifest,
+        expect.any(Object)
+      );
+    });
+
+    it('should validate and normalize environment key', async() => {
+      const manifest = {
+        key: 'test-app',
+        image: 'test-app:latest'
+      };
+
+      mockedAxios.post.mockResolvedValue({
+        status: 200,
+        data: { success: true, deploymentId: 'deploy-123' }
+      });
+
+      await deployer.deployToController(
+        manifest,
+        'https://controller.example.com',
+        'DEV',
+        'client-id',
+        'secret',
+        { poll: false }
+      );
+
+      // Should normalize to lowercase
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        'https://controller.example.com/api/pipeline/dev/deploy',
+        manifest,
+        expect.any(Object)
+      );
+    });
+
+    it('should require environment key', async() => {
       const manifest = { key: 'test-app', image: 'test-app:latest' };
 
       await expect(
-        deployer.deployToController(manifest, 'http://controller.example.com')
+        deployer.deployToController(manifest, 'https://controller.example.com', '', 'client-id', 'secret')
+      ).rejects.toThrow('Environment key is required');
+    });
+
+    it('should require client credentials', async() => {
+      const manifest = { key: 'test-app', image: 'test-app:latest' };
+
+      await expect(
+        deployer.deployToController(manifest, 'https://controller.example.com', 'dev', '', '')
+      ).rejects.toThrow('Client ID and Client Secret are required');
+    });
+
+    it('should reject HTTP URLs (except localhost)', async() => {
+      const manifest = { key: 'test-app', image: 'test-app:latest' };
+
+      await expect(
+        deployer.deployToController(manifest, 'http://controller.example.com', 'dev', 'client-id', 'secret')
       ).rejects.toThrow('Controller URL must use HTTPS');
     });
 
@@ -278,7 +530,7 @@ describe('deployer', () => {
       const manifest = { key: 'test-app', image: 'test-app:latest' };
 
       await expect(
-        deployer.deployToController(manifest, 'not-a-url')
+        deployer.deployToController(manifest, 'not-a-url', 'dev', 'client-id', 'secret')
       ).rejects.toThrow();
     });
 
@@ -299,7 +551,7 @@ describe('deployer', () => {
       };
 
       await expect(
-        deployer.deployToController(manifest, 'https://controller.example.com', { maxRetries: 1 })
+        deployer.deployToController(manifest, 'https://controller.example.com', 'dev', 'client-id', 'secret', { maxRetries: 1 })
       ).rejects.toThrow();
 
       expect(auditLogger.logDeploymentFailure).toHaveBeenCalled();
@@ -319,7 +571,7 @@ describe('deployer', () => {
       };
 
       await expect(
-        deployer.deployToController(manifest, 'https://controller.example.com', { maxRetries: 1 })
+        deployer.deployToController(manifest, 'https://controller.example.com', 'dev', 'client-id', 'secret', { maxRetries: 1 })
       ).rejects.toThrow();
     });
 
@@ -339,7 +591,7 @@ describe('deployer', () => {
       };
 
       await expect(
-        deployer.deployToController(manifest, 'https://controller.example.com', { maxRetries: 1 })
+        deployer.deployToController(manifest, 'https://controller.example.com', 'dev', 'client-id', 'secret', { maxRetries: 1 })
       ).rejects.toThrow();
 
       expect(auditLogger.logDeploymentFailure).toHaveBeenCalled();

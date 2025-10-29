@@ -30,13 +30,13 @@ describe('Templates Module', () => {
 
       // Verify structure
       expect(parsed.app.key).toBe('test-app');
-      expect(parsed.app.name).toBe('Test App');
+      expect(parsed.app.displayName).toBe('Test App');
       expect(parsed.build.language).toBe('typescript');
-      expect(parsed.build.port).toBe(3000);
-      expect(parsed.services.database).toBe(true);
-      expect(parsed.services.redis).toBe(false);
-      expect(parsed.services.storage).toBe(false);
-      expect(parsed.services.authentication).toBe(true);
+      expect(parsed.port).toBe(3000);
+      expect(parsed.requires.database).toBe(true);
+      expect(parsed.requires.redis).toBe(false);
+      expect(parsed.requires.storage).toBe(false);
+      expect(parsed.security.requireAuth).toBe(true);
       expect(parsed.security.enableRBAC).toBe(true);
     });
 
@@ -56,12 +56,11 @@ describe('Templates Module', () => {
 
       expect(parsed.app.key).toBe('python-app');
       expect(parsed.build.language).toBe('python');
-      expect(parsed.build.port).toBe(8000);
-      expect(parsed.services.database).toBe(true);
-      expect(parsed.services.redis).toBe(true);
-      expect(parsed.services.storage).toBe(true);
-      expect(parsed.services.authentication).toBe(false);
-      expect(parsed.security.enableRBAC).toBe(false);
+      expect(parsed.port).toBe(8000);
+      expect(parsed.requires.database).toBe(true);
+      expect(parsed.requires.redis).toBe(true);
+      expect(parsed.requires.storage).toBe(true);
+      expect(parsed.security).toBeUndefined();
     });
 
     it('should handle missing configuration values', () => {
@@ -73,11 +72,41 @@ describe('Templates Module', () => {
 
       expect(parsed.app.key).toBe('minimal-app');
       expect(parsed.build.language).toBe('typescript');
-      expect(parsed.build.port).toBe(3000);
-      expect(parsed.services.database).toBe(false);
-      expect(parsed.services.redis).toBe(false);
-      expect(parsed.services.storage).toBe(false);
-      expect(parsed.services.authentication).toBe(false);
+      expect(parsed.port).toBe(3000);
+      expect(parsed.requires.database).toBe(false);
+      expect(parsed.requires.redis).toBe(false);
+      expect(parsed.requires.storage).toBe(false);
+      expect(parsed.security).toBeUndefined();
+    });
+
+    it('should include deployment section with default values', () => {
+      const appName = 'test-app';
+      const config = {};
+
+      const result = templates.generateVariablesYaml(appName, config);
+      const parsed = yaml.load(result);
+
+      expect(parsed.deployment).toBeDefined();
+      expect(parsed.deployment.controllerUrl).toBe('');
+      expect(parsed.deployment.environment).toBe('dev');
+      expect(parsed.deployment.clientId).toBe('');
+      expect(parsed.deployment.clientSecret).toBe('');
+    });
+
+    it('should include deployment section in all generated YAMLs', () => {
+      const appName = 'deployment-test';
+      const configs = [
+        { language: 'typescript', port: 3000 },
+        { language: 'python', port: 8000, database: true },
+        { language: 'typescript', authentication: true }
+      ];
+
+      configs.forEach(config => {
+        const result = templates.generateVariablesYaml(appName, config);
+        const parsed = yaml.load(result);
+        expect(parsed.deployment).toBeDefined();
+        expect(parsed.deployment.environment).toBe('dev');
+      });
     });
   });
 
@@ -142,6 +171,73 @@ describe('Templates Module', () => {
       expect(result).toContain('# Redis Configuration');
       expect(result).toContain('# Storage Configuration');
       expect(result).toContain('# Authentication Configuration');
+    });
+
+    it('should include MISO Controller variables when controller is enabled', () => {
+      const config = {
+        port: 3000,
+        appName: 'test-app',
+        controller: true
+      };
+
+      const result = templates.generateEnvTemplate(config);
+
+      expect(result).toContain('# MISO Controller Configuration');
+      expect(result).toContain('MISO_CONTROLLER_URL=https://controller.aifabrix.ai');
+      expect(result).toContain('MISO_ENVIRONMENT=dev');
+      expect(result).toContain('MISO_CLIENTID=kv://miso-clientid');
+      expect(result).toContain('MISO_CLIENTSECRET=kv://miso-clientsecret');
+    });
+
+    it('should use custom controllerUrl when provided', () => {
+      const config = {
+        port: 3000,
+        appName: 'test-app',
+        controller: true,
+        controllerUrl: 'https://custom.controller.com'
+      };
+
+      const result = templates.generateEnvTemplate(config);
+
+      expect(result).toContain('MISO_CONTROLLER_URL=https://custom.controller.com');
+    });
+
+    it('should not include MISO Controller variables when controller is disabled', () => {
+      const config = {
+        port: 3000,
+        appName: 'test-app',
+        controller: false
+      };
+
+      const result = templates.generateEnvTemplate(config);
+
+      expect(result).not.toContain('# MISO Controller Configuration');
+      expect(result).not.toContain('MISO_CONTROLLER_URL');
+      expect(result).not.toContain('MISO_ENVIRONMENT');
+      expect(result).not.toContain('MISO_CLIENTID');
+      expect(result).not.toContain('MISO_CLIENTSECRET');
+    });
+
+    it('should include MISO Controller section with all other services', () => {
+      const config = {
+        port: 3000,
+        appName: 'test-app',
+        database: true,
+        redis: true,
+        storage: true,
+        authentication: true,
+        controller: true,
+        controllerUrl: 'https://controller.example.com'
+      };
+
+      const result = templates.generateEnvTemplate(config);
+
+      expect(result).toContain('# Database Configuration');
+      expect(result).toContain('# Redis Configuration');
+      expect(result).toContain('# Storage Configuration');
+      expect(result).toContain('# Authentication Configuration');
+      expect(result).toContain('# MISO Controller Configuration');
+      expect(result).toContain('MISO_CONTROLLER_URL=https://controller.example.com');
     });
   });
 

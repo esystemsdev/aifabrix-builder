@@ -1,5 +1,7 @@
 # GitHub Workflows Documentation
 
+→ [Back to Quick Start](QUICK-START.md)
+
 Complete guide to GitHub Actions workflow generation and customization.
 
 ---
@@ -39,6 +41,53 @@ aifabrix create myapp --github --main-branch develop
 **Options:**
 - `--github` - Enable workflow generation
 - `--main-branch <branch>` - Set main branch name (default: main)
+- `--github-steps <steps>` - Extra GitHub workflow steps (comma-separated, e.g., `npm`). Step templates must exist in `templates/github/steps/{step}.hbs`
+
+### Adding Custom Workflow Steps
+
+You can include custom step templates in your workflows using `--github-steps`:
+
+```bash
+aifabrix create myapp --github --github-steps npm
+```
+
+**What happens:**
+1. Loads step template from `templates/github/steps/npm.hbs`
+2. Renders the template with application context
+3. Injects the rendered content into workflow files (e.g., `release.yaml`)
+
+**Available step templates:**
+- `npm` - Adds NPM publishing job to release workflow
+
+**Creating custom step templates:**
+1. Create a file: `templates/github/steps/{your-step}.hbs`
+2. Write Handlebars template with workflow YAML content
+3. Use available template variables: `{{appName}}`, `{{language}}`, `{{port}}`, etc.
+4. Include it: `aifabrix create myapp --github --github-steps your-step`
+
+**Step template example (`templates/github/steps/npm.hbs`):**
+```yaml
+  publish-npm:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build package
+        run: npm run build
+      - name: Publish to NPM
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
 
 ---
 
@@ -69,14 +118,15 @@ aifabrix create myapp --github --main-branch develop
 
 **Jobs:**
 1. **Validate** - Pre-release validation
-2. **Publish NPM** - Package publishing (if enabled)
+2. **Publish NPM** - Package publishing (if `npm` step is included via `--github-steps`)
 3. **Create Release** - GitHub release creation
 
 **Features:**
 - Version tag validation
-- NPM publishing with authentication
+- NPM publishing with authentication (conditional, based on included steps)
 - GitHub release with changelog
-- Conditional NPM publishing
+- Conditional NPM publishing (if `npm` step template is included)
+- Custom workflow steps (injected from step templates specified via `--github-steps`)
 
 ### Pull Request Checks (`pr-checks.yaml`)
 
@@ -87,6 +137,106 @@ aifabrix create myapp --github --main-branch develop
 - File size validation (≤500 lines)
 - TODO detection in modified files
 - Conventional commit message validation
+
+---
+
+## Pipeline Deployment Setup
+
+Before using automated pipeline deployment in GitHub Actions, you must register your application.
+
+### Prerequisites
+
+1. AI Fabrix CLI installed and authenticated
+2. Application variables.yaml configured
+3. Access to controller environment (dev/tst/pro)
+
+### Step 1: Login to Controller
+
+```bash
+aifabrix login --url https://controller.aifabrix.ai
+```
+
+This authenticates you via Keycloak OIDC flow.
+
+### Step 2: Register Application
+
+```bash
+aifabrix app register myapp --environment dev
+```
+
+**What happens:**
+1. Reads configuration from `builder/myapp/variables.yaml` automatically
+2. Creates minimal configuration if file doesn't exist
+3. Registers with controller
+4. Saves credentials to `~/.aifabrix/secrets-dev.yaml`
+5. Displays setup instructions
+
+**Output:**
+```
+✓ Application registered successfully!
+
+📋 Application Details:
+   Key:          myapp
+   Display Name: My Application
+   Environment:  dev
+
+🔑 Credentials saved to: ~/.aifabrix/secrets-dev.yaml
+
+📝 Add to GitHub Secrets:
+   Repository level:
+     AIFABRIX_API_URL = https://controller.aifabrix.ai
+   
+   Environment level (dev):
+     DEV_AIFABRIX_CLIENT_ID = ctrl-dev-myapp
+     DEV_AIFABRIX_CLIENT_SECRET = xyz-abc-123...
+```
+
+**Important:** Credentials are automatically saved locally. Copy them to GitHub Secrets.
+
+### Step 3: Add to GitHub Secrets
+
+1. Go to repository → Settings → Secrets and variables → Actions
+2. Click "New repository secret"
+3. Add repository-level secret:
+   - **Name:** `AIFABRIX_API_URL` **Value:** `https://controller.aifabrix.ai`
+4. Add environment-level secrets (for dev environment):
+   - **Name:** `DEV_AIFABRIX_CLIENT_ID` **Value:** `ctrl-dev-myapp`
+   - **Name:** `DEV_AIFABRIX_CLIENT_SECRET` **Value:** (from registration output)
+   
+**Note:** For other environments (staging/production), use `TST_` or `PRO_` prefixes.
+
+### Step 4: Set Up Workflow
+
+Create `.github/workflows/deploy.yaml` with pipeline API calls (see [Integration with AI Fabrix](#integration-with-ai-fabrix)).
+
+### Secret Rotation
+
+To rotate your ClientSecret (expires after 90 days):
+
+```bash
+aifabrix app rotate-secret --app myapp --environment dev
+```
+
+**Output:**
+```
+⚠️  This will invalidate the old ClientSecret!
+
+✓ Secret rotated successfully!
+
+📋 Application Details:
+   Key:         myapp
+   Environment: dev
+
+🔑 NEW CREDENTIALS:
+   Client ID:     ctrl-dev-myapp
+   Client Secret: xyz-new-secret-789
+
+⚠️  Old secret is now invalid. Update GitHub Secrets!
+```
+
+This updates credentials in `~/.aifabrix/secrets-dev.yaml`. Then update `DEV_AIFABRIX_CLIENT_SECRET` in GitHub Secrets.
+
+→ [See CLI Reference for `app register` command](CLI-REFERENCE.md#app-register)
 
 ---
 
@@ -112,6 +262,14 @@ Workflows use Handlebars templating with these variables:
 - `{{buildCommand}}` - Build command
 - `{{uploadCoverage}}` - Enable coverage upload
 - `{{publishToNpm}}` - Enable NPM publishing
+
+### Step Template Variables
+When creating custom step templates (`templates/github/steps/*.hbs`), you have access to:
+- All application variables above
+- `{{githubSteps}}` - Array of step names specified via `--github-steps`
+- `{{stepContent}}` - Object mapping step names to their rendered content (access via `{{lookup ../stepContent "step-name"}}`)
+- `{{hasSteps}}` - Boolean indicating if any steps were provided
+- `{{hasNpmStep}}` - Boolean indicating if `npm` step was included
 
 ---
 
@@ -208,6 +366,31 @@ For coverage reporting:
 
 1. **CODECOV_TOKEN** - Codecov upload token (optional)
    - Generate at: https://codecov.io/settings/tokens
+
+### AI Fabrix Pipeline Deployment
+
+For automated deployment via pipeline API:
+
+**Repository level:**
+1. **AIFABRIX_API_URL** - Controller API endpoint (e.g., `https://controller.aifabrix.ai`)
+
+**Environment level (dev/staging/production):**
+2. **DEV_AIFABRIX_CLIENT_ID** - Pipeline ClientId from application registration
+3. **DEV_AIFABRIX_CLIENT_SECRET** - Pipeline ClientSecret from application registration
+
+**Getting Pipeline Credentials:**
+```bash
+# Login to controller
+aifabrix login --url https://controller.aifabrix.ai
+
+# Register application
+aifabrix app register myapp --environment dev
+
+# Credentials saved to ~/.aifabrix/secrets-dev.yaml
+# Copy them to GitHub Secrets!
+```
+
+See [Application Registration](#pipeline-deployment-setup) for details.
 
 ### Custom Secrets
 
@@ -402,9 +585,27 @@ EOF
 
 ## Integration with AI Fabrix
 
-### Deployment Integration
+### Pipeline Deployment Integration
 
-Workflows can integrate with AI Fabrix deployment:
+Use the Pipeline API for automated deployments with proper authentication.
+
+**Note:** The `/api/pipeline/validate` endpoint returns a **one-time use token** (`validateToken`) that expires after deployment. This is designed for CI/CD pipeline flows only - there's no standalone `aifabrix validate` CLI command because the token is only valid during a single deployment sequence.
+
+**Response from validate endpoint:**
+```json
+{
+  "valid": true,
+  "validateToken": "eyJhbGciOiJSUzI1NiIs...",               // One-time use token for this deployment
+  "imageServer": "myacr.azurecr.io",                        // Registry server (ACR, Docker Hub, GitHub, etc.)
+  "imageUsername": "00000000-0000-0000-0000-000000000000",  // Registry username
+  "imagePassword": "password123...",                        // Registry password
+  "expiresAt": "2024-01-01T12:00:00Z",
+  "draftDeploymentId": "draft-123",
+  "errors": []
+}
+```
+
+Use the Pipeline API for automated deployments:
 
 ```yaml
 # .github/workflows/deploy.yaml
@@ -412,21 +613,48 @@ name: Deploy to AI Fabrix
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy to AI Fabrix
+      
+      - name: Build Image
         run: |
-          aifabrix build {{appName}}
-          aifabrix push {{appName}} --registry ${{ secrets.ACR_REGISTRY }}
-          aifabrix deploy {{appName}} --controller ${{ secrets.CONTROLLER_URL }}
-        env:
-          AIFABRIX_SECRETS: ${{ secrets.AIFABRIX_SECRETS }}
+          docker build -t myapp:${{ github.sha }} .
+      
+      - name: Validate and Get Registry Credentials
+        id: validate
+        run: |
+          RESPONSE=$(curl -X POST "${{ secrets.AIFABRIX_API_URL }}/api/pipeline/validate" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "clientId": "${{ secrets.DEV_AIFABRIX_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.DEV_AIFABRIX_CLIENT_SECRET }}",
+              "repositoryUrl": "${{ github.server_url }}/${{ github.repository }}",
+              "applicationConfig": $(cat application.json)
+            }')
+          echo "validateToken=$(echo $RESPONSE | jq -r '.validateToken')" >> $GITHUB_OUTPUT
+          echo "imageServer=$(echo $RESPONSE | jq -r '.imageServer')" >> $GITHUB_OUTPUT
+          echo "imageUsername=$(echo $RESPONSE | jq -r '.imageUsername')" >> $GITHUB_OUTPUT
+          echo "imagePassword=$(echo $RESPONSE | jq -r '.imagePassword')" >> $GITHUB_OUTPUT
+      
+      - name: Push to Registry
+        run: |
+          echo ${{ steps.validate.outputs.imagePassword }} | docker login ${{ steps.validate.outputs.imageServer }} -u ${{ steps.validate.outputs.imageUsername }} --password-stdin
+          docker tag myapp:${{ github.sha }} ${{ steps.validate.outputs.imageServer }}/myapp:${{ github.sha }}
+          docker push ${{ steps.validate.outputs.imageServer }}/myapp:${{ github.sha }}
+      
+      - name: Deploy Application
+        run: |
+          curl -X POST "${{ secrets.AIFABRIX_API_URL }}/api/pipeline/deploy" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "validateToken": "${{ steps.validate.outputs.validateToken }}",
+              "imageTag": "${{ github.sha }}"
+            }'
 ```
 
 ### Environment-Specific Deployments
@@ -442,20 +670,38 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        environment: [staging, production]
+    environment: 
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy to ${{ matrix.environment }}
+      
+      - name: Build and Deploy
         run: |
-          aifabrix deploy {{appName}} \
-            --controller ${{ secrets.CONTROLLER_URL }} \
-            --environment ${{ matrix.environment }}
-        if: |
-          (matrix.environment == 'staging' && github.ref == 'refs/heads/develop') ||
-          (matrix.environment == 'production' && github.ref == 'refs/heads/main')
+          docker build -t myapp:${{ github.sha }} .
+          
+          # Get environment-specific credentials
+          RESPONSE=$(curl -X POST "${{ secrets.AIFABRIX_API_URL }}/api/pipeline/validate" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "clientId": "${{ secrets.DEV_AIFABRIX_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.DEV_AIFABRIX_CLIENT_SECRET }}",
+              "repositoryUrl": "${{ github.server_url }}/${{ github.repository }}",
+              "applicationConfig": $(cat application.json)
+            }')
+          
+          # Push and deploy...
+          # (same as above)
 ```
+
+**Important notes about the validate endpoint:**
+
+1. **One-time use token**: The `validateToken` expires after a single deployment is completed. It cannot be reused.
+
+2. **Generic registry support**: The `imageServer`, `imageUsername`, and `imagePassword` fields work with any container registry (Azure Container Registry, Docker Hub, GitHub Container Registry, etc.).
+
+3. **CI/CD only**: The validate endpoint is designed for automated pipeline use. For local CLI deployments, use `aifabrix deploy` which handles everything automatically.
+
+4. **No standalone CLI**: There's no `aifabrix validate` command because the validate token is consumed during the deployment workflow.
 
 ---
 

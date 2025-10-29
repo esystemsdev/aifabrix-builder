@@ -11,7 +11,6 @@ const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
-const app = require('../../lib/app');
 const templates = require('../../lib/templates');
 const envReader = require('../../lib/env-reader');
 const githubGenerator = require('../../lib/github-generator');
@@ -22,6 +21,16 @@ const secrets = require('../../lib/secrets');
 jest.mock('inquirer', () => ({
   prompt: jest.fn()
 }));
+
+// Mock template validator
+jest.mock('../../lib/template-validator', () => ({
+  validateTemplate: jest.fn().mockResolvedValue(true),
+  copyTemplateFiles: jest.fn().mockResolvedValue([]),
+  listAvailableTemplates: jest.fn().mockResolvedValue([])
+}));
+
+const app = require('../../lib/app');
+const templateValidator = require('../../lib/template-validator');
 
 // Mock execAsync to avoid actual Docker builds
 jest.mock('util', () => ({
@@ -51,6 +60,11 @@ describe('Application Module', () => {
       storage: false,
       authentication: false
     });
+
+    // Reset template validator mocks
+    templateValidator.validateTemplate.mockReset();
+    templateValidator.copyTemplateFiles.mockReset();
+    templateValidator.validateTemplate.mockResolvedValue(true);
   });
 
   afterEach(async() => {
@@ -94,7 +108,7 @@ describe('Application Module', () => {
       expect(variablesContent).toContain('language: typescript');
       expect(variablesContent).toContain('port: 3000');
       expect(variablesContent).toContain('database: true');
-      expect(variablesContent).toContain('authentication: true');
+      expect(variablesContent).toContain('requireAuth: true');
 
       // Verify env.template content
       const envContent = await fs.readFile(envTemplatePath, 'utf8');
@@ -145,6 +159,36 @@ describe('Application Module', () => {
       expect(await fs.access(ciPath).then(() => true).catch(() => false)).toBe(true);
       expect(await fs.access(releasePath).then(() => true).catch(() => false)).toBe(true);
       expect(await fs.access(prChecksPath).then(() => true).catch(() => false)).toBe(true);
+    });
+
+    it('should validate and copy template files when template is specified', async() => {
+      // This test requires actual template folders, so we'll mock it
+      const appName = 'template-app';
+      const options = {
+        port: 3000,
+        language: 'typescript',
+        template: 'controller'
+      };
+
+      // Setup mocks
+      templateValidator.validateTemplate.mockResolvedValue(true);
+      templateValidator.copyTemplateFiles.mockResolvedValue([
+        'builder/template-app/variables.yaml',
+        'builder/template-app/env.template'
+      ]);
+
+      await app.createApp(appName, options);
+
+      // Verify template validation and copying were called
+      expect(templateValidator.validateTemplate).toHaveBeenCalledWith('controller');
+      expect(templateValidator.copyTemplateFiles).toHaveBeenCalledWith(
+        'controller',
+        expect.stringMatching(/builder[\\/]template-app$/)
+      );
+
+      // Reset mocks
+      templateValidator.validateTemplate.mockReset();
+      templateValidator.copyTemplateFiles.mockReset();
     });
 
     it('should handle existing .env file conversion', async() => {

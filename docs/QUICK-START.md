@@ -2,6 +2,8 @@
 
 Get your AI Fabrix application running in 5 minutes.
 
+← [Back to README](../README.md)
+
 ## Step 1: Install
 
 ```bash
@@ -30,16 +32,20 @@ aifabrix create myapp
 
 **You'll be asked:**
 - Port? *(default: 3000)*
+- Language? *TypeScript/Node.js or Python* (list selector)
 - Need database? *y/n*
 - Need Redis? *y/n*
 - Need storage? *y/n*
 - Need authentication? *y/n*
-- Language? *typescript/python*
+- Need GitHub Actions workflows? *y/n*
+- Need Controller deployment workflow? *y/n* (if GitHub=yes)
+- Controller URL? *(if Controller=yes)*
 
 **What gets created:**
-- `builder/variables.yaml` - App configuration
-- `builder/env.template` - Environment variables  
-- `builder/rbac.yaml` - Roles & permissions (if authentication=yes)
+- `builder/<app>/variables.yaml` - App configuration
+- `builder/<app>/env.template` - Environment variables  
+- `builder/<app>/rbac.yaml` - Roles & permissions (if authentication=yes)
+- `builder/<app>/aifabrix-deploy.json` - Deployment manifest
 
 **Pro tip:** Use flags to skip prompts:
 ```bash
@@ -51,9 +57,20 @@ aifabrix create myapp --port 3000 --database --language typescript
 aifabrix create myapp --github --main-branch main
 ```
 
+**Want to use a template?** Add `--template`:
+```bash
+aifabrix create myapp --template controller --port 3000
+```
+
+**Want extra GitHub workflow steps?** Add `--github-steps`:
+```bash
+aifabrix create myapp --github --github-steps npm
+```
+**Note:** Step templates must exist in `templates/github/steps/{step}.hbs`. The `npm` step adds NPM publishing to the release workflow.
+
 ## Step 4: Review Configuration
 
-### builder/variables.yaml
+### builder/myapp/variables.yaml
 ```yaml
 app:
   key: myapp
@@ -74,7 +91,7 @@ build:
 - Need more databases? Add them to the list
 - Want different local port? Set `build.localPort`
 
-### builder/env.template
+### builder/myapp/env.template
 ```bash
 NODE_ENV=development
 PORT=3000
@@ -105,8 +122,17 @@ If you used `--github`, you'll also have:
 - **PR Checks** - Validates code quality and commit conventions
 
 **Required secrets** (add in GitHub repository settings):
+
+**For deployment (repository level):**
+- `AIFABRIX_API_URL` - Controller URL (e.g., `https://controller.aifabrix.ai`)
+
+**For deployment (environment level, e.g., dev):**
+- `DEV_AIFABRIX_CLIENT_ID` - Pipeline ClientId from registration
+- `DEV_AIFABRIX_CLIENT_SECRET` - Pipeline ClientSecret from registration
+
+**Optional:**
 - `NPM_TOKEN` - For publishing packages
-- `CODECOV_TOKEN` - For coverage reporting (optional)
+- `CODECOV_TOKEN` - For coverage reporting
 
 → [GitHub Workflows Guide](GITHUB-WORKFLOWS.md)
 
@@ -158,7 +184,23 @@ docker stop aifabrix-myapp
 
 → [Running Details](RUNNING.md)
 
-## Step 7: Deploy to Azure
+## Step 7: Register Application
+
+Before deploying, register your application to get pipeline credentials:
+
+```bash
+# Login to controller
+aifabrix login --url https://controller.aifabrix.ai
+
+# Register application
+aifabrix app register myapp --environment dev
+
+# Credentials are automatically saved locally
+```
+
+## Step 8: Deploy to Azure
+
+### Manual Deployment
 
 ```bash
 # Push to Azure Container Registry
@@ -167,6 +209,15 @@ aifabrix push myapp --registry myacr.azurecr.io --tag v1.0.0
 # Deploy via Miso Controller
 aifabrix deploy myapp --controller https://controller.aifabrix.ai
 ```
+
+### Automated CI/CD Deployment
+
+1. **Add secrets in GitHub repository settings:**
+   - `AIFABRIX_CLIENT_ID` - From registration
+   - `AIFABRIX_CLIENT_SECRET` - From registration
+   - `AIFABRIX_API_URL` - Controller URL
+
+2. **Set up GitHub Actions workflow** (see [GitHub Workflows Guide](GITHUB-WORKFLOWS.md))
 
 → [Deployment Guide](DEPLOYING.md)
 
@@ -189,7 +240,7 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 
 **Add another database:**
 ```yaml
-# builder/variables.yaml
+# builder/myapp/variables.yaml
 requires:
   databases:
     - name: myapp
@@ -198,7 +249,7 @@ requires:
 
 **Add environment variable:**
 ```bash
-# builder/env.template
+# builder/myapp/env.template
 MY_API_KEY=kv://my-api-keyKeyVault
 ```
 
@@ -214,10 +265,12 @@ aifabrix doctor
 ```
 
 **Set up GitHub Actions (if you used --github):**
-1. Push your code to GitHub
-2. Add `NPM_TOKEN` secret in repository settings
-3. Create a version tag: `git tag v1.0.0 && git push origin v1.0.0`
-4. Watch workflows run automatically!
+1. Register application: `aifabrix app register myapp --environment dev`
+2. Add secrets in repository settings:
+   - Repository level: `AIFABRIX_API_URL` - Your controller URL
+   - Environment level (dev): `DEV_AIFABRIX_CLIENT_ID` and `DEV_AIFABRIX_CLIENT_SECRET` - From registration output
+3. Push your code to GitHub
+4. Watch automatic deployment!
 
 ---
 

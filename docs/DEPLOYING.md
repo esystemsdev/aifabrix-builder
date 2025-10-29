@@ -1,6 +1,8 @@
 # Deploying Applications
 
-Deploy your application via Miso Controller. Enterprise versions deploy to Azure Container Apps, while open source versions deploy to local Docker instances.
+→ [Back to Quick Start](QUICK-START.md)
+
+Deploy your application via [Azure Marketplace](https://azuremarketplace.microsoft.com/) or Miso Controller. Enterprise versions deploy to Azure Container Apps, while open source versions deploy to local Docker instances.
 
 ## Prerequisites
 
@@ -15,17 +17,9 @@ Before deploying:
    aifabrix build myapp
    ```
 
-3. **Environment Variables** (for pipeline deployment)
-   Add to your `env.template`:
-   ```bash
-   # Pipeline deployment parameters
-   ENVIRONMENT_ID=dev  # or 'tst', 'pro'
-   TENANT_ID=your-azure-tenant-id
-   CLIENT_ID=your-azure-client-id
-   REPOSITORY_URL=https://github.com/your-org/your-repo
-   CONTROLLER_API_URL=https://controller.aifabrix.ai
-   CONTROLLER_API_KEY=kv://controller-api-keyKeyVault
-   ```
+3. **Registered Application**
+   - Run `aifabrix app register myapp --environment dev` to get pipeline credentials
+   - Credentials are automatically saved to `~/.aifabrix/secrets-dev.yaml`
 
 ---
 
@@ -41,76 +35,11 @@ aifabrix push myapp --registry myacr.azurecr.io --tag v1.0.0
 aifabrix deploy myapp --controller https://controller.aifabrix.ai
 ```
 
-### Method 2: Direct API Calls (CI/CD)
+### Method 2: Automated CI/CD Deployment
 
-Use the Pipeline API for automated deployments:
+For automated deployments using the Pipeline API, see [GitHub Workflows Guide](GITHUB-WORKFLOWS.md#pipeline-deployment-integration) for detailed workflow examples.
 
-#### Step 1: Validate and Get ACR Token
-
-```bash
-curl -X POST "https://controller.aifabrix.ai/api/pipeline/validate" \
-  -H "Authorization: Bearer $CONTROLLER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "environmentId": "dev",
-    "tenantId": "your-tenant-id",
-    "clientId": "your-client-id", 
-    "repositoryUrl": "https://github.com/your-org/your-repo",
-    "applicationConfig": {
-      "key": "myapp",
-      "type": "webapp",
-      "image": "myacr.azurecr.io/myapp:latest",
-      "port": 3000,
-      "configuration": [
-        {"name": "NODE_ENV", "value": "production", "location": "variable", "required": true}
-      ]
-    }
-  }'
-```
-
-**Response:**
-```json
-{
-  "valid": true,
-  "acrToken": "eyJhbGciOiJSUzI1NiIs...",
-  "deploymentServer": "myacr.azurecr.io",
-  "username": "00000000-0000-0000-0000-000000000000",
-  "expiresAt": "2024-01-01T12:00:00Z",
-  "draftDeploymentId": "draft-123"
-}
-```
-
-#### Step 2: Push Image to ACR
-
-```bash
-# Login to ACR using the token
-echo "$ACR_TOKEN" | docker login $DEPLOYMENT_SERVER -u $USERNAME --password-stdin
-
-# Push your image
-docker push $DEPLOYMENT_SERVER/myapp:v1.0.0
-```
-
-#### Step 3: Deploy Application
-
-```bash
-curl -X POST "https://controller.aifabrix.ai/api/pipeline/deploy" \
-  -H "Authorization: Bearer $CONTROLLER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "acrToken": "eyJhbGciOiJSUzI1NiIs...",
-    "imageTag": "v1.0.0"
-  }'
-```
-
-**Response:**
-```json
-{
-  "deploymentId": "deploy-456",
-  "status": "deploying",
-  "deploymentUrl": "https://myapp-dev.aifabrix.ai",
-  "healthCheckUrl": "https://myapp-dev.aifabrix.ai/health"
-}
-```
+The pipeline API uses ClientId/ClientSecret authentication (from `aifabrix app register`), while regular controller APIs use bearer tokens (from `aifabrix login`).
 
 ---
 
@@ -284,95 +213,93 @@ Creates `builder/myapp/aifabrix-deploy.json`:
 
 ---
 
+## Application Registration
+
+Before deploying via pipeline API, you must register your application to get ClientId and ClientSecret credentials.
+
+### Step 1: Login to Controller
+
+```bash
+aifabrix login --url https://controller.aifabrix.ai
+```
+
+This authenticates you via Keycloak OIDC flow.
+
+### Step 2: Register Application
+
+```bash
+aifabrix app register myapp --environment dev
+```
+
+**Output:**
+```
+✓ Application registered successfully!
+
+📋 Application Details:
+   Key:          myapp
+   Display Name: My Application
+   Environment:  dev
+
+🔑 Credentials saved to: ~/.aifabrix/secrets-dev.yaml
+
+📝 Add to GitHub Secrets (if using GitHub Actions):
+   Repository level:
+     AIFABRIX_API_URL = https://controller.aifabrix.ai
+   
+   Environment level (dev):
+     DEV_AIFABRIX_CLIENT_ID = ctrl-dev-myapp
+     DEV_AIFABRIX_CLIENT_SECRET = xyz-abc-123...
+```
+
+### Step 3: Add to GitHub Secrets (CI/CD Only)
+
+1. Go to repository Settings → Secrets and variables → Actions
+2. Add repository-level secret:
+   - `AIFABRIX_API_URL` - Controller URL (e.g., `https://controller.aifabrix.ai`)
+3. Add environment-level secrets (for dev):
+   - `DEV_AIFABRIX_CLIENT_ID` - From registration output
+   - `DEV_AIFABRIX_CLIENT_SECRET` - From registration output
+   
+**Note:** For staging/production, use `TST_` or `PRO_` prefixes.
+
+### Secret Rotation
+
+To rotate your ClientSecret (use when credentials are compromised or need rotation):
+
+```bash
+aifabrix app rotate-secret --app myapp --environment dev
+```
+
+**Output:**
+```
+⚠️  This will invalidate the old ClientSecret!
+
+✓ Secret rotated successfully!
+
+📋 Application Details:
+   Key:         myapp
+   Environment: dev
+
+🔑 NEW CREDENTIALS:
+   Client ID:     ctrl-dev-myapp
+   Client Secret: xyz-new-secret-789
+
+⚠️  Old secret is now invalid. Update GitHub Secrets!
+```
+
+Updates credentials in `~/.aifabrix/secrets-dev.yaml`. Also update `DEV_AIFABRIX_CLIENT_SECRET` in GitHub Secrets if using CI/CD.
+
 ## CI/CD Integration
 
-### GitHub Actions (Recommended)
+### GitHub Actions Workflow
 
-Use the AI Fabrix GitHub Action for simplified deployment:
+For automated CI/CD deployments, see [GitHub Workflows Guide](GITHUB-WORKFLOWS.md#integration-with-ai-fabrix) for detailed workflow examples.
 
-```yaml
-name: Deploy Application
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Deploy to AI Fabrix
-        uses: aifabrix/deploy-action@v1
-        with:
-          environment-id: 'dev'  # or 'tst', 'pro'
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          repository-url: ${{ github.server_url }}/${{ github.repository }}
-          controller-url: ${{ secrets.CONTROLLER_URL }}
-          controller-token: ${{ secrets.CONTROLLER_TOKEN }}
-          image-tag: ${{ github.sha }}
-```
-
-### Custom GitHub Actions
-
-For more control, use the Pipeline API directly:
-
-```yaml
-name: Deploy Application
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Build Image
-        run: |
-          docker build -t myapp:${{ github.sha }} .
-      
-      - name: Validate and Get ACR Token
-        id: validate
-        run: |
-          RESPONSE=$(curl -X POST "${{ env.CONTROLLER_API_URL }}/api/pipeline/validate" \
-            -H "Authorization: Bearer ${{ secrets.CONTROLLER_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "environmentId": "dev",
-              "tenantId": "${{ secrets.AZURE_TENANT_ID }}",
-              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
-              "repositoryUrl": "${{ github.server_url }}/${{ github.repository }}",
-              "applicationConfig": $(cat application.json)
-            }')
-          echo "acrToken=$(echo $RESPONSE | jq -r '.acrToken')" >> $GITHUB_OUTPUT
-          echo "deploymentServer=$(echo $RESPONSE | jq -r '.deploymentServer')" >> $GITHUB_OUTPUT
-          echo "username=$(echo $RESPONSE | jq -r '.username')" >> $GITHUB_OUTPUT
-        env:
-          CONTROLLER_API_URL: ${{ secrets.CONTROLLER_URL }}
-      
-      - name: Push to ACR
-        run: |
-          echo ${{ steps.validate.outputs.acrToken }} | docker login ${{ steps.validate.outputs.deploymentServer }} -u ${{ steps.validate.outputs.username }} --password-stdin
-          docker tag myapp:${{ github.sha }} ${{ steps.validate.outputs.deploymentServer }}/myapp:${{ github.sha }}
-          docker push ${{ steps.validate.outputs.deploymentServer }}/myapp:${{ github.sha }}
-      
-      - name: Deploy Application
-        run: |
-          curl -X POST "${{ env.CONTROLLER_API_URL }}/api/pipeline/deploy" \
-            -H "Authorization: Bearer ${{ secrets.CONTROLLER_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "acrToken": "${{ steps.validate.outputs.acrToken }}",
-              "imageTag": "${{ github.sha }}"
-            }'
-        env:
-          CONTROLLER_API_URL: ${{ secrets.CONTROLLER_URL }}
-```
+**Basic workflow setup:**
+1. Register application: `aifabrix app register myapp --environment dev`
+2. Add secrets in GitHub repository settings (see [Application Registration](#application-registration))
+3. Create workflow file in `.github/workflows/deploy.yaml`
+4. Push code to trigger deployment
 
 ### GitLab CI
 
@@ -471,27 +398,45 @@ image:
 
 ## Monitoring Deployments
 
-### Check Status
+### Check Deployments Using CLI
 
-Controller provides status endpoint:
-```bash
-curl -H "Authorization: Bearer $CONTROLLER_API_KEY" \
-  https://controller.aifabrix.ai/api/deployments/myapp
-```
-
-### View Logs
+Use the AI Fabrix Builder CLI to manage deployments:
 
 ```bash
-curl -H "Authorization: Bearer $CONTROLLER_API_KEY" \
-  https://controller.aifabrix.ai/api/deployments/myapp/logs
+# List all deployments for an environment
+aifabrix deployments --environment dev
 ```
 
-### List All Deployments
+**Output:**
+```
+📦 Deployments (dev):
+
+✓ myapp-v1.2.3
+   Status: running
+   URL: https://myapp-dev.aifabrix.ai
+   Deployed: 2024-01-15 10:30:00
+
+⏳ myapp-v1.2.4
+   Status: deploying
+   Progress: 75%
+```
+
+### View Status and Logs
 
 ```bash
-curl -H "Authorization: Bearer $CONTROLLER_API_KEY" \
-  https://controller.aifabrix.ai/api/deployments
+# Check deployment status
+aifabrix deployments --environment dev --deployment-id deploy-456
+
+# View deployment logs
+aifabrix deployments --environment dev --deployment-id deploy-456 --logs
 ```
+
+Deployment logs show:
+- Container startup progress
+- Health check results  
+- Configuration validation
+- Service connection status
+- Error messages
 
 ---
 
@@ -552,11 +497,12 @@ aifabrix genkey myapp
 
 ### "Can't reach controller"
 
-**Check URL:**
+**Check authentication:**
 ```bash
-curl -H "Authorization: Bearer $CONTROLLER_API_KEY" \
-  https://controller.aifabrix.ai/health
+aifabrix login --url https://controller.aifabrix.ai
 ```
+
+This opens browser for Keycloak authentication. Token is stored in `~/.aifabrix/config` and auto-refreshes on subsequent commands.
 
 **Check network:**
 ```bash
@@ -565,16 +511,20 @@ ping controller.aifabrix.ai
 
 ### "Authentication failed"
 
-**Check API key:**
+**Verify registration:**
 ```bash
-curl -H "Authorization: Bearer $CONTROLLER_API_KEY" \
-  https://controller.aifabrix.ai/api/controller
+aifabrix app register myapp --environment dev
 ```
 
+**Check credentials in GitHub Secrets:**
+- `DEV_AIFABRIX_CLIENT_ID` exists and is correct (for dev environment)
+- `DEV_AIFABRIX_CLIENT_SECRET` exists and is correct
+- `AIFABRIX_API_URL` points to correct controller (repository level)
+
 **Common issues:**
-- Invalid or expired API key
-- Missing Authorization header
-- Wrong controller URL
+- ClientSecret expired (rotate with `aifabrix app rotate-secret --app myapp --environment dev`)
+- Wrong environment (dev/tst/pro)
+- Invalid application configuration
 
 ---
 
@@ -682,7 +632,7 @@ The `aifabrix deploy` command performs the following steps:
    - Includes structured error handling
 
 7. **Poll Status (Optional)**
-   - Polls `/<deploymentId>/status` endpoint
+   - Polls `/api/deployments/{deploymentId}` endpoint
    - Configurable interval (default: 5 seconds)
    - Maximum attempts (default: 60)
    - Terminal states: completed, failed, cancelled
@@ -690,6 +640,11 @@ The `aifabrix deploy` command performs the following steps:
 ### Security Features
 
 - **HTTPS Enforcement**: All controller URLs must use HTTPS protocol
+- **Dual Authentication Model**: 
+  - Pipeline API uses ClientId/ClientSecret (from `aifabrix app register`)
+  - Controller APIs use bearer tokens (from `aifabrix login`, stored in `~/.aifabrix/config`)
+- **Credential Storage**: Client credentials saved to `~/.aifabrix/secrets-<env>.yaml` with secure permissions
+- **Token Management**: Bearer tokens auto-refresh with expiry tracking
 - **Deployment Key Authentication**: SHA256 hash validates configuration integrity
 - **Sensitive Data Masking**: Passwords, secrets, tokens masked in logs
 - **Input Validation**: App names, URLs, and configurations validated

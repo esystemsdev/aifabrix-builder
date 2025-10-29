@@ -28,7 +28,7 @@ describe('GitHub Generator Module', () => {
   });
 
   describe('getTemplateContext', () => {
-    it('should generate correct context for TypeScript application', () => {
+    it('should generate correct context for TypeScript application', async() => {
       const config = {
         appName: 'test-app',
         language: 'typescript',
@@ -42,10 +42,10 @@ describe('GitHub Generator Module', () => {
       const options = {
         mainBranch: 'main',
         uploadCoverage: true,
-        publishToNpm: false
+        githubSteps: []
       };
 
-      const context = githubGenerator.getTemplateContext(config, options);
+      const context = await githubGenerator.getTemplateContext(config, options);
 
       expect(context.appName).toBe('test-app');
       expect(context.mainBranch).toBe('main');
@@ -54,7 +54,9 @@ describe('GitHub Generator Module', () => {
       expect(context.sourceDir).toBe('lib');
       expect(context.buildCommand).toBe('npm run build');
       expect(context.uploadCoverage).toBe(true);
-      expect(context.publishToNpm).toBe(false);
+      expect(context.githubSteps).toEqual([]);
+      expect(context.hasSteps).toBe(false);
+      expect(context.hasNpmStep).toBe(false);
       expect(context.port).toBe(3000);
       expect(context.database).toBe(true);
       expect(context.redis).toBe(false);
@@ -62,7 +64,7 @@ describe('GitHub Generator Module', () => {
       expect(context.authentication).toBe(true);
     });
 
-    it('should generate correct context for Python application', () => {
+    it('should generate correct context for Python application', async() => {
       const config = {
         appName: 'python-app',
         language: 'python',
@@ -76,10 +78,10 @@ describe('GitHub Generator Module', () => {
       const options = {
         mainBranch: 'develop',
         uploadCoverage: false,
-        publishToNpm: false
+        githubSteps: []
       };
 
-      const context = githubGenerator.getTemplateContext(config, options);
+      const context = await githubGenerator.getTemplateContext(config, options);
 
       expect(context.appName).toBe('python-app');
       expect(context.mainBranch).toBe('develop');
@@ -93,18 +95,19 @@ describe('GitHub Generator Module', () => {
       expect(context.authentication).toBe(false);
     });
 
-    it('should use default values when options are missing', () => {
+    it('should use default values when options are missing', async() => {
       const config = {
         appName: 'minimal-app',
         language: 'typescript'
       };
 
-      const context = githubGenerator.getTemplateContext(config);
+      const context = await githubGenerator.getTemplateContext(config);
 
       expect(context.mainBranch).toBe('main');
       expect(context.buildCommand).toBe('npm run build');
       expect(context.uploadCoverage).toBe(true);
-      expect(context.publishToNpm).toBe(false);
+      expect(context.githubSteps).toEqual([]);
+      expect(context.hasSteps).toBe(false);
     });
   });
 
@@ -211,7 +214,7 @@ describe('GitHub Generator Module', () => {
       const options = {
         mainBranch: 'main',
         uploadCoverage: true,
-        publishToNpm: false
+        githubSteps: []
       };
 
       // Mock the template files

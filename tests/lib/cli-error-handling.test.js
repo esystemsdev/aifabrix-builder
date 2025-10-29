@@ -8,7 +8,13 @@
 
 // Mock modules
 jest.mock('fs');
-jest.mock('os');
+jest.mock('os', () => ({
+  homedir: jest.fn(() => '/home/test'),
+  tmpdir: jest.fn(() => '/tmp'),
+  platform: jest.fn(() => 'linux'),
+  arch: jest.fn(() => 'x64'),
+  EOL: '\n'
+}));
 jest.mock('child_process');
 jest.mock('net');
 

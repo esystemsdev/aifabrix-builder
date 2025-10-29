@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] - 2025-10-27
+
+### Changed
+- Updated documentation to reflect pipeline API authentication model (ClientId/ClientSecret + JWT)
+- Updated GitHub Actions workflow examples to use correct pipeline API endpoints
+- Clarified deployment authentication: pipeline uses ClientId/Secret, regular APIs use Keycloak tokens
+- Fixed MisoClient configuration example typo in CONFIGURATION.md (process.APPLICATION_KEY → process.env.APPLICATION_KEY)
+
+### Added
+- Azure Marketplace deployment documentation
+- External registry support in push command with --registry-type flag
+- Deployment configuration section in application-schema.json
+- Application registration documentation (aifabrix app register)
+- Deployment logs documentation
+- Pipeline environment variables documentation
+- Support for Docker Hub, GitHub Container Registry, and other external registries
+- authenticateExternalRegistry function for external registry authentication
+
+### Fixed
+- Incorrect pipeline API examples showing bearer tokens (now uses ClientId/Secret)
+- Incorrect response field names (acrToken → validateToken, deploymentServer → acrServer)
+- Missing tenantId parameter documentation (handled internally by controller)
+- Incorrect environment variables for pipeline deployment (removed CONTROLLER_API_KEY, TENANT_ID, CLIENT_ID as env ID)
+
 ## [2.0.0] - 2025-01-25
 
 ### Added

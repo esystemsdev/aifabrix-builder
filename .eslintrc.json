@@ -97,6 +97,9 @@
         "valid-jsdoc": "off",
         "no-console": "off",
         "max-lines-per-function": "off",
+        "max-lines": "off",
+        "complexity": "off",
+        "max-statements": "off",
         "no-unused-vars": "off"
       }
     },

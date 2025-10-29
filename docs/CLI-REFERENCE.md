@@ -4,6 +4,95 @@ Complete command reference with examples and troubleshooting.
 
 ---
 
+## Table of Contents
+
+### Authentication & Setup
+- [aifabrix login](#aifabrix-login) - Authenticate with Miso Controller
+- [aifabrix up](#aifabrix-up) - Start infrastructure (Postgres + Redis)
+- [aifabrix down](#aifabrix-down) - Stop infrastructure
+- [aifabrix doctor](#aifabrix-doctor) - Check environment and configuration
+
+### Application Management
+- [aifabrix app](#aifabrix-app) - Application management commands
+  - [aifabrix app register](#aifabrix-app-register-appkey) - Register application and get pipeline credentials
+  - [aifabrix app list](#aifabrix-app-list) - List applications in an environment
+  - [aifabrix app rotate-secret](#aifabrix-app-rotate-secret) - Rotate pipeline ClientSecret
+
+### Application Development
+- [aifabrix create](#aifabrix-create-app) - Create new application with configuration files
+- [aifabrix build](#aifabrix-build-app) - Build Docker image
+- [aifabrix run](#aifabrix-run-app) - Run application locally in Docker container
+- [aifabrix dockerfile](#aifabrix-dockerfile-app) - Generate Dockerfile for an application
+
+### Deployment
+- [aifabrix push](#aifabrix-push-app) - Push image to Azure Container Registry
+- [aifabrix deploy](#aifabrix-deploy-app) - Deploy to Azure via Miso Controller
+- [aifabrix deployments](#aifabrix-deployments) - List deployments for an environment
+
+### Utilities
+- [aifabrix resolve](#aifabrix-resolve-app) - Generate `.env` file from template
+- [aifabrix json](#aifabrix-json-app) - Generate deployment JSON
+- [aifabrix genkey](#aifabrix-genkey-app) - Generate deployment key
+
+### Additional Resources
+- [Common Workflows](#common-workflows) - Typical usage patterns
+- [Global Options](#global-options) - Command-line options available to all commands
+- [Environment Variables](#environment-variables) - Configuration via environment
+- [Exit Codes](#exit-codes) - Command exit code reference
+- [Getting Help](#getting-help) - Where to find more information
+
+---
+
+## aifabrix login
+
+Authenticate with Miso Controller.
+
+**What:** Logs in to the controller and stores authentication token for subsequent operations.
+
+**When:** First time using the CLI, when token expires, or when switching controllers.
+
+**Usage:**
+```bash
+# Login with default localhost:3000
+aifabrix login
+
+# Login with custom controller URL
+aifabrix login --url https://controller.aifabrix.ai
+```
+
+**Options:**
+- `-u, --url <url>` - Controller URL (default: http://localhost:3000)
+
+**Authentication Methods:**
+
+1. **Browser-based OAuth (recommended)**
+   - Opens browser for authentication
+   - Authenticates via Keycloak → Entra ID
+   - Paste token from browser when complete
+
+2. **ClientId + ClientSecret**
+   - Prompts for credentials
+   - Useful for CI/CD or non-interactive environments
+
+**Output:**
+```
+✓ Successfully logged in!
+Controller: http://localhost:3000
+Token stored securely in ~/.aifabrix/config.yaml
+```
+
+**Issues:**
+- **"Login failed"** → Check controller URL and credentials
+- **"Token expired"** → Run login again
+- **"Not logged in"** → Run `aifabrix login` before other commands
+
+**Next Steps:**
+After logging in, you can:
+- Register applications: `aifabrix app register`
+- Deploy applications: `aifabrix deploy`
+
+---
+
 ## aifabrix up
 
 Start infrastructure (Postgres + Redis).
@@ -57,6 +146,138 @@ aifabrix down --volumes
 
 ---
 
+## aifabrix app
+
+Application management commands for registering and managing applications with the Miso Controller.
+
+### aifabrix app register <appKey>
+
+Register application and get pipeline credentials.
+
+**What:** Registers an application with the controller and retrieves ClientId and ClientSecret for CI/CD deployments.
+
+**When:** First time setting up automated deployments, before adding GitHub Actions workflows.
+
+**Usage:**
+```bash
+# Register application in development environment
+aifabrix app register myapp --environment dev
+
+# Register with overrides
+aifabrix app register myapp --environment dev --port 8080 --name "My Application"
+```
+
+**Arguments:**
+- `<appKey>` - Application key (identifier)
+
+**Options:**
+- `-e, --environment <env>` - Environment ID or key (required)
+- `-p, --port <port>` - Override application port
+- `-n, --name <name>` - Override display name
+- `-d, --description <desc>` - Override description
+
+**Process:**
+1. Reads `builder/{appKey}/variables.yaml`
+2. If missing, creates minimal configuration automatically
+3. Validates required fields
+4. Registers with Miso Controller
+5. Returns ClientId and ClientSecret
+
+**Output:**
+```
+✓ Application registered successfully!
+
+📋 Application Details:
+   ID:           app-123
+   Key:          myapp
+   Display Name: My App
+
+🔑 CREDENTIALS (save these immediately):
+   Client ID:     ctrl-dev-myapp
+   Client Secret: x7K9mP2nQ4vL8wR5tY1uE3oA6sD9fG2hJ4kM7pN0qT5
+
+⚠️  IMPORTANT: Client Secret will not be shown again!
+
+📝 Add to GitHub Secrets:
+   AIFABRIX_CLIENT_ID = ctrl-dev-myapp
+   AIFABRIX_CLIENT_SECRET = x7K9mP2nQ4vL8wR5tY1uE3oA6sD9fG2hJ4kM7pN0qT5
+   AIFABRIX_API_URL = http://localhost:3000
+```
+
+**Issues:**
+- **"Not logged in"** → Run `aifabrix login` first
+- **"Missing required fields"** → Update variables.yaml with app.key, app.name
+- **"Registration failed"** → Check environment ID and controller URL
+
+---
+
+### aifabrix app list
+
+List applications in an environment.
+
+**What:** Displays all registered applications for a specific environment.
+
+**Usage:**
+```bash
+aifabrix app list --environment dev
+```
+
+**Options:**
+- `-e, --environment <env>` - Environment ID or key (required)
+
+**Output:**
+```
+📱 Applications:
+
+✓ ctrl-dev-myapp    - My App (active)
+✗ ctrl-dev-otherapp - Other App (inactive)
+```
+
+**Issues:**
+- **"Not logged in"** → Run `aifabrix login` first
+- **"Failed to fetch"** → Check environment ID and network connection
+
+---
+
+### aifabrix app rotate-secret
+
+Rotate pipeline ClientSecret for an application.
+
+**What:** Generates a new ClientSecret, invalidating the old one. Use when credentials are compromised or need rotation.
+
+**Usage:**
+```bash
+aifabrix app rotate-secret --app myapp --environment dev
+```
+
+**Options:**
+- `-a, --app <appKey>` - Application key (required)
+- `-e, --environment <env>` - Environment ID or key (required)
+
+**Output:**
+```
+⚠️  This will invalidate the old ClientSecret!
+
+✓ Secret rotated successfully!
+
+📋 Application Details:
+   Key:         myapp
+   Environment: dev
+
+🔑 NEW CREDENTIALS:
+   Client ID:     ctrl-dev-myapp
+   Client Secret: new-secret-789
+
+⚠️  Old secret is now invalid. Update GitHub Secrets!
+```
+
+**Issues:**
+- **"Not logged in"** → Run `aifabrix login` first
+- **"Environment is required"** → Provide `--environment` flag (dev/tst/pro)
+- **"Rotation failed"** → Check application key and permissions
+
+---
+
 ## aifabrix create <app>
 
 Create new application with configuration files.
@@ -81,6 +302,17 @@ aifabrix create myapp --port 3000 --database --language typescript
 aifabrix create myapp --port 3000 --database --github --main-branch main
 ```
 
+**Example (with template):**
+```bash
+aifabrix create myapp --template controller --port 3000
+```
+
+**Example (with GitHub steps):**
+```bash
+aifabrix create myapp --github --github-steps npm
+```
+**Note:** Step templates must exist in `templates/github/steps/{step}.hbs`. Currently available: `npm.hbs`
+
 **Flags:**
 - `-p, --port <port>` - Application port (default: 3000)
 - `-d, --database` - Requires database
@@ -88,8 +320,9 @@ aifabrix create myapp --port 3000 --database --github --main-branch main
 - `-s, --storage` - Requires file storage
 - `-a, --authentication` - Requires authentication/RBAC
 - `-l, --language <lang>` - typescript or python
-- `-t, --template <name>` - Template to use
+- `-t, --template <name>` - Template to use (e.g., controller, keycloak). Template folder must exist in `templates/{template}/`
 - `-g, --github` - Generate GitHub Actions workflows
+- `--github-steps <steps>` - Extra GitHub workflow steps (comma-separated, e.g., `npm`). Step templates must exist in `templates/github/steps/{step}.hbs`. When included, these steps are rendered and injected into workflow files (e.g., `release.yaml`). Available step templates: `npm.hbs` (adds NPM publishing job)
 - `--main-branch <branch>` - Main branch name for workflows (default: main)
 
 **Creates:**
@@ -331,41 +564,55 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
    Status: ✅ completed
 ```
 
-**Specific environment:**
+**With environment and credentials:**
 ```bash
-aifabrix deploy myapp --controller https://controller.aifabrix.ai --environment dev
+aifabrix deploy myapp --controller https://controller.aifabrix.ai --environment dev --client-id my-client-id --client-secret my-secret
+```
+
+**Configuration in variables.yaml (recommended):**
+```yaml
+deployment:
+  controllerUrl: 'https://controller.aifabrix.ai'
+  environment: 'dev'
+  clientId: 'your-client-id'
+  clientSecret: 'your-client-secret'
+```
+
+Then simply run:
+```bash
+aifabrix deploy myapp
 ```
 
 **Advanced options:**
 ```bash
 # Without status polling
-aifabrix deploy myapp --controller https://controller.aifabrix.ai --no-poll
+aifabrix deploy myapp --no-poll
 
-# Custom polling interval
-aifabrix deploy myapp --controller https://controller.aifabrix.ai --poll-interval 10000
-
-# Maximum polling attempts
-aifabrix deploy myapp --controller https://controller.aifabrix.ai --poll-max-attempts 30
+# Override credentials from command line
+aifabrix deploy myapp --client-id override-id --client-secret override-secret
 ```
 
 **Flags:**
-- `-c, --controller <url>` - Controller URL (required, HTTPS only)
-- `-e, --environment <env>` - Target environment (dev/tst/pro)
-- `--no-poll` - Disable status polling
-- `--poll-interval <ms>` - Polling interval in milliseconds (default: 5000)
-- `--poll-max-attempts <count>` - Maximum polling attempts (default: 60)
+- `-c, --controller <url>` - Controller URL (overrides variables.yaml)
+- `-e, --environment <env>` - Environment (dev, tst, pro) (default: dev)
+- `--client-id <id>` - Client ID for authentication (overrides variables.yaml)
+- `--client-secret <secret>` - Client Secret for authentication (overrides variables.yaml)
+- `--poll` - Poll for deployment status (default: true)
+- `--no-poll` - Do not poll for status
 
 **Process:**
 1. Validates app name format
 2. Loads variables.yaml from `builder/<app>/`
 3. Loads env.template and parses environment variables
 4. Loads rbac.yaml for roles and permissions
-5. Generates SHA256 deployment key from variables.yaml content
-6. Merges configurations into deployment manifest
-7. Validates manifest (checks required fields, format)
-8. Sends deployment request to controller API
-9. Polls deployment status (if enabled)
-10. Displays deployment results
+5. Extracts controller URL, environment, clientId, and clientSecret from variables.yaml
+6. Overrides with command-line options if provided
+7. Validates all required configuration (URL, environment, credentials)
+8. Generates deployment manifest
+9. Validates manifest (checks required fields, format)
+10. Sends deployment request to controller API with Client Credentials authentication
+11. Polls deployment status (if enabled)
+12. Displays deployment results
 
 **Generated Manifest Format:**
 ```json
@@ -399,6 +646,40 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai --poll-max-att
 - **"Can't reach controller"** → Check URL, network connection, firewall
 - **"Request timed out"** → Controller may be overloaded, try again later
 - **"Deployment timeout"** → Check controller logs, deployment may be in progress
+
+---
+
+## aifabrix deployments
+
+List deployments for an environment.
+
+**Example:**
+```bash
+aifabrix deployments --environment dev
+```
+
+**Flags:**
+- `-e, --environment <env>` - Environment to list (required)
+- `-d, --deployment-id <id>` - Show specific deployment details
+- `-l, --logs` - Show deployment logs
+
+**Output:**
+```
+📦 Deployments (dev):
+
+✓ myapp-v1.2.3
+   Status: running
+   URL: https://myapp-dev.aifabrix.ai
+   Deployed: 2024-01-15 10:30:00
+
+⏳ myapp-v1.2.4
+   Status: deploying
+   Progress: 75%
+```
+
+**Issues:**
+- **"Not logged in"** → Run: `aifabrix login --url https://controller.aifabrix.ai`
+- **"No deployments found"** → Deploy application first: `aifabrix deploy`
 
 ---
 
@@ -442,6 +723,50 @@ aifabrix json myapp
 **Issues:**
 - **"Validation failed"** → Check configuration files for errors
 - **"Missing required fields"** → Complete variables.yaml
+
+---
+
+## aifabrix dockerfile <app>
+
+Generate Dockerfile for an application.
+
+**What:** Creates a Dockerfile from templates based on the application's language and configuration.
+
+**When:** Before building an image, to review or customize the Dockerfile.
+
+**Usage:**
+```bash
+# Generate Dockerfile (will fail if exists)
+aifabrix dockerfile myapp
+
+# Force overwrite existing Dockerfile
+aifabrix dockerfile myapp --force
+
+# Override language detection
+aifabrix dockerfile myapp --language python
+```
+
+**Options:**
+- `-l, --language <lang>` - Override language detection (typescript/python)
+- `-f, --force` - Overwrite existing Dockerfile
+
+**Process:**
+1. Reads `builder/{app}/variables.yaml`
+2. Detects language (TypeScript/Python)
+3. Loads template from `templates/{language}/Dockerfile.hbs`
+4. Generates Dockerfile with application-specific configuration
+5. Saves to `builder/{app}/Dockerfile`
+
+**Output:**
+```
+✓ Generated Dockerfile from template
+Location: builder/myapp/Dockerfile
+```
+
+**Issues:**
+- **"Dockerfile already exists"** → Use `--force` flag to overwrite
+- **"Failed to load configuration"** → Run `aifabrix create myapp` first
+- **"Language not supported"** → Update variables.yaml with supported language
 
 ---
 

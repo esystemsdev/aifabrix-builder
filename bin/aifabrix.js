@@ -15,6 +15,7 @@
 
 const { Command } = require('commander');
 const cli = require('../lib/cli');
+const { setupAppCommands } = require('../lib/commands/app');
 
 /**
  * Initialize and configure the CLI
@@ -29,6 +30,9 @@ function initializeCLI() {
 
   // Delegate command setup to lib/cli.js
   cli.setupCommands(program);
+
+  // Add application management commands
+  setupAppCommands(program);
 
   // Parse command line arguments
   program.parse();
