@@ -221,7 +221,7 @@ describe('Application Module - Additional Coverage', () => {
 
       await app.generateDockerfileForApp(appName);
 
-      const dockerfilePath = path.join(appPath, '.aifabrix', 'Dockerfile.typescript');
+      const dockerfilePath = path.join(appPath, 'Dockerfile');
       expect(fsSync.existsSync(dockerfilePath)).toBe(true);
     });
 

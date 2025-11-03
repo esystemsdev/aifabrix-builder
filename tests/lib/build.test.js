@@ -173,7 +173,7 @@ describe('Build Module', () => {
 
       const dockerfilePath = await build.generateDockerfile(appPath, 'typescript', config);
 
-      expect(dockerfilePath).toMatch(/\.aifabrix[/\\]Dockerfile\.typescript$/);
+      expect(dockerfilePath).toMatch(/[\\/]\.aifabrix[\\/]test-app[\\/]Dockerfile\.typescript$/);
 
       const dockerfileContent = await fs.readFile(dockerfilePath, 'utf8');
       expect(dockerfileContent).toContain('FROM node:20-alpine');
@@ -197,7 +197,7 @@ describe('Build Module', () => {
 
       const dockerfilePath = await build.generateDockerfile(appPath, 'python', config);
 
-      expect(dockerfilePath).toMatch(/\.aifabrix[/\\]Dockerfile\.python$/);
+      expect(dockerfilePath).toMatch(/[\\/]\.aifabrix[\\/]test-app[\\/]Dockerfile\.python$/);
 
       const dockerfileContent = await fs.readFile(dockerfilePath, 'utf8');
       expect(dockerfileContent).toContain('FROM python:3.11-alpine');
