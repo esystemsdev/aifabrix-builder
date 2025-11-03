@@ -31,13 +31,23 @@ describe('Templates Module', () => {
       // Verify structure
       expect(parsed.app.key).toBe('test-app');
       expect(parsed.app.displayName).toBe('Test App');
+      expect(parsed.app.version).toBeUndefined(); // version removed
+      expect(parsed.image.name).toBe('test-app');
+      expect(parsed.image.tag).toBe('latest');
       expect(parsed.build.language).toBe('typescript');
+      expect(parsed.build.secrets).toBeNull();
       expect(parsed.port).toBe(3000);
       expect(parsed.requires.database).toBe(true);
       expect(parsed.requires.redis).toBe(false);
       expect(parsed.requires.storage).toBe(false);
-      expect(parsed.security.requireAuth).toBe(true);
-      expect(parsed.security.enableRBAC).toBe(true);
+      expect(parsed.requires.databases).toEqual([{ name: 'test-app' }]);
+      expect(parsed.authentication).toBeDefined();
+      expect(parsed.authentication.type).toBe('azure');
+      expect(parsed.authentication.enableSSO).toBe(true);
+      expect(parsed.security).toBeUndefined(); // security section removed
+      expect(parsed.monitoring).toBeUndefined(); // monitoring section removed
+      expect(parsed.healthCheck).toBeDefined();
+      expect(parsed.healthCheck.path).toBe('/health');
     });
 
     it('should generate valid YAML for Python application', () => {
@@ -55,12 +65,20 @@ describe('Templates Module', () => {
       const parsed = yaml.load(result);
 
       expect(parsed.app.key).toBe('python-app');
+      expect(parsed.app.version).toBeUndefined(); // version removed
+      expect(parsed.image.name).toBe('python-app');
+      expect(parsed.image.tag).toBe('latest');
       expect(parsed.build.language).toBe('python');
+      expect(parsed.build.secrets).toBeNull();
       expect(parsed.port).toBe(8000);
       expect(parsed.requires.database).toBe(true);
       expect(parsed.requires.redis).toBe(true);
       expect(parsed.requires.storage).toBe(true);
-      expect(parsed.security).toBeUndefined();
+      expect(parsed.requires.databases).toEqual([{ name: 'python-app' }]);
+      expect(parsed.authentication).toBeUndefined();
+      expect(parsed.security).toBeUndefined(); // security section removed
+      expect(parsed.monitoring).toBeUndefined(); // monitoring section removed
+      expect(parsed.healthCheck).toBeDefined();
     });
 
     it('should handle missing configuration values', () => {
@@ -71,12 +89,19 @@ describe('Templates Module', () => {
       const parsed = yaml.load(result);
 
       expect(parsed.app.key).toBe('minimal-app');
+      expect(parsed.app.version).toBeUndefined(); // version removed
+      expect(parsed.image.name).toBe('minimal-app');
+      expect(parsed.image.tag).toBe('latest');
       expect(parsed.build.language).toBe('typescript');
+      expect(parsed.build.secrets).toBeNull();
       expect(parsed.port).toBe(3000);
       expect(parsed.requires.database).toBe(false);
       expect(parsed.requires.redis).toBe(false);
       expect(parsed.requires.storage).toBe(false);
-      expect(parsed.security).toBeUndefined();
+      expect(parsed.authentication).toBeUndefined();
+      expect(parsed.security).toBeUndefined(); // security section removed
+      expect(parsed.monitoring).toBeUndefined(); // monitoring section removed
+      expect(parsed.healthCheck).toBeDefined();
     });
 
     it('should include deployment section with default values', () => {
@@ -167,12 +192,13 @@ describe('Templates Module', () => {
 
       const result = templates.generateEnvTemplate(config);
 
-      expect(result).toContain('# AI Fabrix Environment Template');
-      expect(result).toContain('# Core Application Settings');
-      expect(result).toContain('# Database Configuration');
-      expect(result).toContain('# Redis Configuration');
-      expect(result).toContain('# Storage Configuration');
-      expect(result).toContain('# Authentication Configuration');
+      expect(result).toContain('# Environment Variables Template');
+      expect(result).toContain('# APPLICATION ENVIRONMENT');
+      expect(result).toContain('# DATABASE CONFIGURATION');
+      expect(result).toContain('# REDIS CONFIGURATION');
+      expect(result).toContain('# STORAGE CONFIGURATION');
+      expect(result).toContain('# AUTHENTICATION CONFIGURATION');
+      expect(result).toContain('# =============================================================================');
     });
 
     it('should include MISO Controller variables when controller is enabled', () => {
@@ -234,10 +260,10 @@ describe('Templates Module', () => {
 
       const result = templates.generateEnvTemplate(config);
 
-      expect(result).toContain('# Database Configuration');
-      expect(result).toContain('# Redis Configuration');
-      expect(result).toContain('# Storage Configuration');
-      expect(result).toContain('# Authentication Configuration');
+      expect(result).toContain('# DATABASE CONFIGURATION');
+      expect(result).toContain('# REDIS CONFIGURATION');
+      expect(result).toContain('# STORAGE CONFIGURATION');
+      expect(result).toContain('# AUTHENTICATION CONFIGURATION');
       expect(result).toContain('# MISO Controller Configuration');
       expect(result).toContain('MISO_CONTROLLER_URL=https://controller.example.com');
     });
@@ -255,12 +281,12 @@ describe('Templates Module', () => {
       expect(result).toBeDefined();
       const parsed = yaml.load(result);
 
-      expect(parsed.apiVersion).toBe('v1');
-      expect(parsed.kind).toBe('RBACConfig');
-      expect(parsed.metadata.name).toBe('auth-app-rbac');
-      expect(parsed.spec.roles).toHaveLength(3);
-      expect(parsed.spec.policies).toHaveLength(3);
-      expect(parsed.spec.bindings).toHaveLength(1);
+      expect(parsed.roles).toBeDefined();
+      expect(parsed.permissions).toBeDefined();
+      expect(parsed.roles).toHaveLength(3);
+      expect(parsed.permissions).toHaveLength(4);
+      expect(parsed.roles[0].name).toBe('AI Fabrix Admin');
+      expect(parsed.roles[0].value).toBe('aifabrix-admin');
     });
 
     it('should return null when authentication is disabled', () => {
@@ -283,26 +309,41 @@ describe('Templates Module', () => {
       const result = templates.generateRbacYaml(appName, config);
       const parsed = yaml.load(result);
 
-      const roles = parsed.spec.roles;
+      const roles = parsed.roles;
       expect(roles).toContainEqual(
         expect.objectContaining({
-          name: 'admin',
-          description: 'Full administrative access',
-          permissions: ['*']
+          name: 'AI Fabrix Admin',
+          value: 'aifabrix-admin',
+          description: 'Full access to all application features and configurations'
         })
       );
       expect(roles).toContainEqual(
         expect.objectContaining({
-          name: 'user',
-          description: 'Standard user access',
-          permissions: ['read', 'write']
+          name: 'AI Fabrix User',
+          value: 'aifabrix-user',
+          description: 'Basic user access to the application'
         })
       );
       expect(roles).toContainEqual(
         expect.objectContaining({
-          name: 'viewer',
-          description: 'Read-only access',
-          permissions: ['read']
+          name: 'AI Fabrix Developer',
+          value: 'aifabrix-developer',
+          description: 'Developer access for testing and debugging'
+        })
+      );
+
+      // Check permissions include app name
+      const permissions = parsed.permissions;
+      expect(permissions).toContainEqual(
+        expect.objectContaining({
+          name: 'rbac-test:read',
+          roles: expect.arrayContaining(['aifabrix-user', 'aifabrix-admin', 'aifabrix-developer'])
+        })
+      );
+      expect(permissions).toContainEqual(
+        expect.objectContaining({
+          name: 'rbac-test:admin',
+          roles: ['aifabrix-admin']
         })
       );
     });

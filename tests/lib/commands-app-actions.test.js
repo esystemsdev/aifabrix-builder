@@ -166,7 +166,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
         expect(fs.readFile).toHaveBeenCalled();
         expect(authenticatedApiCall).toHaveBeenCalledWith(
-          'http://localhost:3000/api/v1/applications/register',
+          'http://localhost:3000/api/v1/environments/dev/applications/register',
           expect.objectContaining({ method: 'POST' }),
           'test-token'
         );

@@ -119,7 +119,7 @@ describe('Application Registration Commands - Direct Logic Tests', () => {
       };
 
       const response = await authenticatedApiCall(
-        `${config.apiUrl}/api/v1/applications/register`,
+        `${config.apiUrl}/api/v1/environments/dev/applications/register`,
         {
           method: 'POST',
           body: JSON.stringify(registrationData)
@@ -150,7 +150,7 @@ describe('Application Registration Commands - Direct Logic Tests', () => {
 
       const config = await getConfig();
       const response = await authenticatedApiCall(
-        `${config.apiUrl}/api/v1/applications/register`,
+        `${config.apiUrl}/api/v1/environments/dev/applications/register`,
         { method: 'POST', body: '{}' },
         config.token
       );

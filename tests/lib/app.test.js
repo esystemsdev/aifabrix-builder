@@ -108,11 +108,12 @@ describe('Application Module', () => {
       expect(variablesContent).toContain('language: typescript');
       expect(variablesContent).toContain('port: 3000');
       expect(variablesContent).toContain('database: true');
-      expect(variablesContent).toContain('requireAuth: true');
+      expect(variablesContent).toContain('authentication:');
+      expect(variablesContent).toContain('type: azure');
 
       // Verify env.template content
       const envContent = await fs.readFile(envTemplatePath, 'utf8');
-      expect(envContent).toContain('# Database Configuration');
+      expect(envContent).toContain('# DATABASE CONFIGURATION');
       expect(envContent).toContain('DATABASE_URL=kv://databases-test-app-0-urlKeyVault');
       expect(envContent).toContain('DB_USER=test-app_user');
       expect(envContent).toContain('DB_PASSWORD=kv://databases-test-app-0-passwordKeyVault');
@@ -120,7 +121,9 @@ describe('Application Module', () => {
       // Verify rbac.yaml content
       const rbacContent = await fs.readFile(rbacPath, 'utf8');
       expect(rbacContent).toContain('roles:');
-      expect(rbacContent).toContain('- name: admin');
+      expect(rbacContent).toContain('permissions:');
+      expect(rbacContent).toContain('- name: AI Fabrix Admin');
+      expect(rbacContent).toContain('value: aifabrix-admin');
     });
 
     it('should validate app name format', async() => {
@@ -501,6 +504,316 @@ app:
       jest.spyOn(app, 'deployApp').mockResolvedValue();
 
       await expect(app.deployApp(appName, options)).resolves.not.toThrow();
+    });
+  });
+
+  describe('loadTemplateVariables', () => {
+    it('should load template variables.yaml successfully', async() => {
+      const templateName = 'test-template';
+      // loadTemplateVariables uses __dirname/../templates/applications/
+      // __dirname in lib/app.js is lib/, so it goes to templates/applications/
+      // We need to use the actual project root, not tempDir
+      const projectRoot = path.resolve(__dirname, '..', '..');
+      const templateDir = path.join(projectRoot, 'templates', 'applications', templateName);
+      const templateFile = path.join(templateDir, 'variables.yaml');
+      const templateContent = 'app:\n  key: test\nport: 3000';
+
+      // Create template directory and file in actual project location
+      fsSync.mkdirSync(templateDir, { recursive: true });
+      fsSync.writeFileSync(templateFile, templateContent);
+
+      try {
+        const result = await app.loadTemplateVariables(templateName);
+        expect(result).toBeDefined();
+        expect(result).not.toBeNull();
+        if (result && result.app) {
+          expect(result.app.key).toBe('test');
+        }
+        if (result && result.port) {
+          expect(result.port).toBe(3000);
+        }
+      } finally {
+        // Clean up
+        if (fsSync.existsSync(templateFile)) {
+          fsSync.unlinkSync(templateFile);
+        }
+        if (fsSync.existsSync(templateDir)) {
+          try {
+            fsSync.rmdirSync(templateDir);
+          } catch (err) {
+            // Ignore errors if directory is not empty
+          }
+        }
+      }
+    });
+
+    it('should return null when template not found', async() => {
+      const result = await app.loadTemplateVariables('nonexistent-template');
+      expect(result).toBeNull();
+    });
+
+    it('should return null when template name is empty', async() => {
+      const result = await app.loadTemplateVariables(null);
+      expect(result).toBeNull();
+    });
+
+    it('should warn and return null on non-ENOENT error', async() => {
+      const templateName = 'test-template';
+      const templateDir = path.join(process.cwd(), 'templates', 'applications', templateName);
+      const templateFile = path.join(templateDir, 'variables.yaml');
+      // Create a file that can be read but has invalid YAML syntax
+      const invalidYaml = 'invalid: yaml: content: [';
+
+      // Create template directory and invalid file
+      fsSync.mkdirSync(templateDir, { recursive: true });
+      fsSync.writeFileSync(templateFile, invalidYaml);
+
+      const loggerModule = require('../../lib/utils/logger');
+      const warnSpy = jest.spyOn(loggerModule, 'warn');
+
+      try {
+        const result = await app.loadTemplateVariables(templateName);
+        // YAML parsing errors should return null
+        expect(result).toBeNull();
+      } finally {
+        warnSpy.mockRestore();
+        if (fsSync.existsSync(templateFile)) {
+          fsSync.unlinkSync(templateFile);
+        }
+        if (fsSync.existsSync(templateDir)) {
+          fsSync.rmdirSync(templateDir);
+        }
+      }
+    });
+  });
+
+  describe('updateTemplateVariables', () => {
+    it('should update variables.yaml with app name and port', async() => {
+      const appName = 'new-app';
+      const appPath = path.join(tempDir, 'builder', appName);
+      const variablesPath = path.join(appPath, 'variables.yaml');
+      const originalContent = `app:
+  key: template-app
+  displayName: Miso Controller Application
+port: 8080
+`;
+
+      fsSync.mkdirSync(appPath, { recursive: true });
+      fsSync.writeFileSync(variablesPath, originalContent);
+
+      const options = { port: 3000 };
+      const config = { port: 3000 };
+
+      await app.updateTemplateVariables(appPath, appName, options, config);
+
+      const updatedContent = await fs.readFile(variablesPath, 'utf8');
+      const updated = yaml.load(updatedContent);
+
+      expect(updated.app.key).toBe('new-app');
+      expect(updated.app.displayName).toBe('New App');
+      expect(updated.port).toBe(3000);
+    });
+
+    it('should update app.key when app section exists', async() => {
+      const appName = 'test-app';
+      const appPath = path.join(tempDir, 'builder', appName);
+      const variablesPath = path.join(appPath, 'variables.yaml');
+      const originalContent = `app:
+  key: old-key
+  displayName: Old App
+`;
+
+      fsSync.mkdirSync(appPath, { recursive: true });
+      fsSync.writeFileSync(variablesPath, originalContent);
+
+      await app.updateTemplateVariables(appPath, appName, {}, {});
+
+      const updatedContent = await fs.readFile(variablesPath, 'utf8');
+      const updated = yaml.load(updatedContent);
+
+      expect(updated.app.key).toBe('test-app');
+    });
+
+    it('should update displayName when it contains miso', async() => {
+      const appName = 'my-new-app';
+      const appPath = path.join(tempDir, 'builder', appName);
+      const variablesPath = path.join(appPath, 'variables.yaml');
+      const originalContent = `app:
+  key: ${appName}
+  displayName: Miso Application
+`;
+
+      fsSync.mkdirSync(appPath, { recursive: true });
+      fsSync.writeFileSync(variablesPath, originalContent);
+
+      await app.updateTemplateVariables(appPath, appName, {}, {});
+
+      const updatedContent = await fs.readFile(variablesPath, 'utf8');
+      const updated = yaml.load(updatedContent);
+
+      expect(updated.app.displayName).toBe('My New App');
+    });
+
+    it('should update port when provided in options', async() => {
+      const appName = 'test-app';
+      const appPath = path.join(tempDir, 'builder', appName);
+      const variablesPath = path.join(appPath, 'variables.yaml');
+      const originalContent = `port: 8080
+`;
+
+      fsSync.mkdirSync(appPath, { recursive: true });
+      fsSync.writeFileSync(variablesPath, originalContent);
+
+      const options = { port: 3000 };
+      const config = { port: 3000 };
+
+      await app.updateTemplateVariables(appPath, appName, options, config);
+
+      const updatedContent = await fs.readFile(variablesPath, 'utf8');
+      const updated = yaml.load(updatedContent);
+
+      expect(updated.port).toBe(3000);
+    });
+
+    it('should handle file not found error silently', async() => {
+      const appName = 'nonexistent-app';
+      const appPath = path.join(tempDir, 'builder', appName);
+
+      await expect(app.updateTemplateVariables(appPath, appName, {}, {}))
+        .resolves.not.toThrow();
+    });
+
+    it('should warn on non-ENOENT error', async() => {
+      const appName = 'test-app';
+      const appPath = path.join(tempDir, 'builder', appName);
+      const variablesPath = path.join(appPath, 'variables.yaml');
+      // Create invalid YAML that will cause parsing error
+      const invalidYaml = 'invalid: yaml: [';
+
+      fsSync.mkdirSync(appPath, { recursive: true });
+      fsSync.writeFileSync(variablesPath, invalidYaml);
+
+      const loggerModule = require('../../lib/utils/logger');
+      const warnSpy = jest.spyOn(loggerModule, 'warn');
+
+      try {
+        await app.updateTemplateVariables(appPath, appName, {}, {});
+        // YAML parsing errors should trigger a warning
+        expect(warnSpy).toHaveBeenCalled();
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('mergeTemplateVariables', () => {
+    it('should merge port from template variables', () => {
+      const options = {};
+      const templateVariables = { port: 3000 };
+
+      const result = app.mergeTemplateVariables(options, templateVariables);
+
+      expect(result.port).toBe(3000);
+    });
+
+    it('should merge language from template variables', () => {
+      const options = {};
+      const templateVariables = { build: { language: 'python' } };
+
+      const result = app.mergeTemplateVariables(options, templateVariables);
+
+      expect(result.language).toBe('python');
+    });
+
+    it('should merge database requirement from template variables', () => {
+      const options = {};
+      const templateVariables = { requires: { database: true } };
+
+      const result = app.mergeTemplateVariables(options, templateVariables);
+
+      expect(result.database).toBe(true);
+    });
+
+    it('should merge redis requirement from template variables', () => {
+      const options = {};
+      const templateVariables = { requires: { redis: true } };
+
+      const result = app.mergeTemplateVariables(options, templateVariables);
+
+      expect(result.redis).toBe(true);
+    });
+
+    it('should merge storage requirement from template variables', () => {
+      const options = {};
+      const templateVariables = { requires: { storage: true } };
+
+      const result = app.mergeTemplateVariables(options, templateVariables);
+
+      expect(result.storage).toBe(true);
+    });
+
+    it('should merge authentication from template variables', () => {
+      const options = {};
+      const templateVariables = { authentication: true };
+
+      const result = app.mergeTemplateVariables(options, templateVariables);
+
+      expect(result.authentication).toBe(true);
+    });
+
+    it('should not override existing options with template variables', () => {
+      const options = { port: 8080, language: 'typescript' };
+      const templateVariables = { port: 3000, build: { language: 'python' } };
+
+      const result = app.mergeTemplateVariables(options, templateVariables);
+
+      expect(result.port).toBe(8080);
+      expect(result.language).toBe('typescript');
+    });
+
+    it('should merge all template variables together', () => {
+      const options = {};
+      const templateVariables = {
+        port: 3000,
+        build: { language: 'python' },
+        requires: { database: true, redis: true, storage: false },
+        authentication: true
+      };
+
+      const result = app.mergeTemplateVariables(options, templateVariables);
+
+      expect(result.port).toBe(3000);
+      expect(result.language).toBe('python');
+      expect(result.database).toBe(true);
+      expect(result.redis).toBe(true);
+      expect(result.storage).toBe(false);
+      expect(result.authentication).toBe(true);
+    });
+
+    it('should return options unchanged when templateVariables is null', () => {
+      const options = { port: 3000 };
+
+      const result = app.mergeTemplateVariables(options, null);
+
+      expect(result).toEqual(options);
+    });
+
+    it('should handle undefined template variables', () => {
+      const options = { port: 3000 };
+
+      const result = app.mergeTemplateVariables(options, undefined);
+
+      expect(result).toEqual(options);
+    });
+
+    it('should handle template variables with undefined requires', () => {
+      const options = {};
+      const templateVariables = { port: 3000 };
+
+      const result = app.mergeTemplateVariables(options, templateVariables);
+
+      expect(result.port).toBe(3000);
+      expect(result.database).toBeUndefined();
     });
   });
 });

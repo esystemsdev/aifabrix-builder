@@ -87,21 +87,34 @@ describe('CLI Comprehensive Tests', () => {
       setupCommands(mockProgram);
     });
 
-    it('should handle browser OAuth login with trailing slash', async() => {
-      inquirer.prompt
-        .mockResolvedValueOnce({ method: 'browser' })
-        .mockResolvedValueOnce({ token: 'test-token-123' });
+    it('should handle credentials login with flags (CI/CD)', async() => {
+      makeApiCall.mockResolvedValue({
+        success: true,
+        data: { accessToken: 'test-token-123' }
+      });
 
       saveConfig.mockResolvedValue();
 
       const action = commandActions.login;
-      await action({ url: 'http://localhost:3000/' });
+      await action({
+        url: 'http://localhost:3000',
+        method: 'credentials',
+        clientId: 'test-client-id',
+        clientSecret: 'test-secret'
+      });
 
-      expect(inquirer.prompt).toHaveBeenCalled();
+      expect(makeApiCall).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/auth/login',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: expect.stringContaining('test-client-id')
+        })
+      );
       expect(saveConfig).toHaveBeenCalled();
     });
 
-    it('should handle credentials login with accessToken', async() => {
+    it('should handle credentials login with prompts', async() => {
       inquirer.prompt
         .mockResolvedValueOnce({ method: 'credentials' })
         .mockResolvedValueOnce({
@@ -119,6 +132,7 @@ describe('CLI Comprehensive Tests', () => {
       const action = commandActions.login;
       await action({ url: 'http://localhost:3000' });
 
+      expect(inquirer.prompt).toHaveBeenCalled();
       expect(makeApiCall).toHaveBeenCalled();
       expect(saveConfig).toHaveBeenCalled();
     });

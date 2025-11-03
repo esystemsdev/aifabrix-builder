@@ -41,7 +41,20 @@
     "space-infix-ops": "error",
     "space-before-blocks": "error",
     "brace-style": ["error", "1tbs"],
-    "camelcase": "error",
+    "camelcase": ["error", {
+      "allow": [
+        "^device_code$",
+        "^user_code$",
+        "^verification_uri$",
+        "^expires_in$",
+        "^access_token$",
+        "^refresh_token$",
+        "^error$",
+        "^error_description$",
+        "^error_uri$"
+      ],
+      "properties": "never"
+    }],
     "new-cap": "error",
     "no-multiple-empty-lines": ["error", { "max": 1 }],
     "no-mixed-spaces-and-tabs": "error",

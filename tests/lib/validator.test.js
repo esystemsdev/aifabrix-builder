@@ -474,4 +474,111 @@ permissions:
       await expect(validator.validateApplication()).rejects.toThrow('App name is required and must be a string');
     });
   });
+
+  describe('validateDeploymentJson', () => {
+    it('should validate correct deployment JSON', () => {
+      const deployment = {
+        key: 'testapp',
+        displayName: 'Test App',
+        description: 'A test application',
+        type: 'webapp',
+        image: 'myacr.azurecr.io/testapp:v1.0.0',
+        registryMode: 'acr',
+        port: 3000,
+        requiresDatabase: true,
+        requiresRedis: false,
+        requiresStorage: false,
+        databases: [{ name: 'testapp' }],
+        configuration: [
+          {
+            name: 'NODE_ENV',
+            value: 'production',
+            location: 'variable',
+            required: false
+          }
+        ]
+      };
+
+      const result = validator.validateDeploymentJson(deployment);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('should fail validation for missing required fields', () => {
+      const deployment = {
+        key: 'testapp'
+        // Missing required fields: displayName, description, type, image, registryMode, port
+      };
+
+      const result = validator.validateDeploymentJson(deployment);
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors.some(err => err.includes('displayName'))).toBe(true);
+    });
+
+    it('should fail validation for invalid field types', () => {
+      const deployment = {
+        key: 'testapp',
+        displayName: 'Test App',
+        description: 'A test application',
+        type: 'webapp',
+        image: 'myacr.azurecr.io/testapp:v1.0.0',
+        registryMode: 'acr',
+        port: 'invalid', // Should be number
+        requiresDatabase: true,
+        databases: [{ name: 'testapp' }],
+        configuration: []
+      };
+
+      const result = validator.validateDeploymentJson(deployment);
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    it('should return error if deployment is not an object', () => {
+      const result = validator.validateDeploymentJson(null);
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toEqual(['Deployment must be an object']);
+    });
+
+    it('should validate deployment with all optional fields', () => {
+      const deployment = {
+        key: 'testapp',
+        displayName: 'Test App',
+        description: 'A test application',
+        type: 'webapp',
+        image: 'myacr.azurecr.io/testapp:v1.0.0',
+        registryMode: 'acr',
+        port: 3000,
+        requiresDatabase: true,
+        databases: [{ name: 'testapp' }],
+        configuration: [],
+        healthCheck: {
+          path: '/health',
+          interval: 30
+        },
+        authentication: {
+          type: 'azure',
+          enableSSO: true,
+          requiredRoles: ['user']
+        },
+        repository: {
+          enabled: true,
+          repositoryUrl: 'https://github.com/test/repo'
+        },
+        build: {
+          language: 'typescript'
+        }
+      };
+
+      const result = validator.validateDeploymentJson(deployment);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+  });
 });

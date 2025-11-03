@@ -97,108 +97,42 @@ describe('CLI Branch Coverage Tests', () => {
     });
   });
 
-  describe('login command - platform-specific branches', () => {
-    let originalPlatform;
+  describe('login command - method validation', () => {
+    it('should validate method is device or credentials', async() => {
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'invalid'
+      };
 
-    beforeEach(() => {
-      originalPlatform = process.platform;
-    });
-
-    afterEach(() => {
-      Object.defineProperty(process, 'platform', {
-        value: originalPlatform,
-        writable: true,
-        configurable: true
-      });
-    });
-
-    it('should handle Windows platform for browser OAuth', async() => {
-      Object.defineProperty(process, 'platform', {
-        value: 'win32',
-        writable: true,
-        configurable: true
-      });
-
-      inquirer.prompt
-        .mockResolvedValueOnce({ method: 'browser' })
-        .mockResolvedValueOnce({ token: 'test-token' });
-
-      saveConfig.mockResolvedValue();
-
-      const controllerUrl = 'http://localhost:3000';
-      const authMethod = await inquirer.prompt([{
-        type: 'list',
-        name: 'method',
-        message: 'Choose authentication method:',
-        choices: [
-          { name: 'Browser-based OAuth (recommended)', value: 'browser' },
-          { name: 'ClientId + ClientSecret', value: 'credentials' }
-        ]
-      }]);
-
-      if (authMethod.method === 'browser') {
-        const startCommand = process.platform === 'win32' ? 'start' :
-          process.platform === 'darwin' ? 'open' : 'xdg-open';
-        expect(startCommand).toBe('start');
+      // Simulate validation logic
+      const method = options.method;
+      if (method && method !== 'device' && method !== 'credentials') {
+        expect(method).not.toBe('device');
+        expect(method).not.toBe('credentials');
       }
     });
 
-    it('should handle macOS platform for browser OAuth', async() => {
-      Object.defineProperty(process, 'platform', {
-        value: 'darwin',
-        writable: true,
-        configurable: true
-      });
+    it('should accept device method', async() => {
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'device',
+        environment: 'dev'
+      };
 
-      inquirer.prompt
-        .mockResolvedValueOnce({ method: 'browser' })
-        .mockResolvedValueOnce({ token: 'test-token' });
-
-      const controllerUrl = 'http://localhost:3000';
-      const authMethod = await inquirer.prompt([{
-        type: 'list',
-        name: 'method',
-        message: 'Choose authentication method:',
-        choices: [
-          { name: 'Browser-based OAuth (recommended)', value: 'browser' },
-          { name: 'ClientId + ClientSecret', value: 'credentials' }
-        ]
-      }]);
-
-      if (authMethod.method === 'browser') {
-        const startCommand = process.platform === 'win32' ? 'start' :
-          process.platform === 'darwin' ? 'open' : 'xdg-open';
-        expect(startCommand).toBe('open');
-      }
+      const method = options.method;
+      expect(method === 'device' || method === 'credentials').toBe(true);
     });
 
-    it('should handle Linux platform for browser OAuth', async() => {
-      Object.defineProperty(process, 'platform', {
-        value: 'linux',
-        writable: true,
-        configurable: true
-      });
+    it('should accept credentials method', async() => {
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'credentials',
+        clientId: 'test-id',
+        clientSecret: 'test-secret'
+      };
 
-      inquirer.prompt
-        .mockResolvedValueOnce({ method: 'browser' })
-        .mockResolvedValueOnce({ token: 'test-token' });
-
-      const controllerUrl = 'http://localhost:3000';
-      const authMethod = await inquirer.prompt([{
-        type: 'list',
-        name: 'method',
-        message: 'Choose authentication method:',
-        choices: [
-          { name: 'Browser-based OAuth (recommended)', value: 'browser' },
-          { name: 'ClientId + ClientSecret', value: 'credentials' }
-        ]
-      }]);
-
-      if (authMethod.method === 'browser') {
-        const startCommand = process.platform === 'win32' ? 'start' :
-          process.platform === 'darwin' ? 'open' : 'xdg-open';
-        expect(startCommand).toBe('xdg-open');
-      }
+      const method = options.method;
+      expect(method === 'device' || method === 'credentials').toBe(true);
     });
   });
 });

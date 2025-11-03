@@ -190,11 +190,6 @@ app:
 
       const generator = require('../../lib/generator');
       jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
-      jest.spyOn(generator, 'validateDeploymentJson').mockReturnValue({
-        valid: true,
-        errors: [],
-        warnings: []
-      });
 
       const deployer = require('../../lib/deployer');
       deployer.deployToController.mockResolvedValue({ deploymentId: 'deploy-123' });
@@ -236,11 +231,6 @@ app:
 
       const generator = require('../../lib/generator');
       jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
-      jest.spyOn(generator, 'validateDeploymentJson').mockReturnValue({
-        valid: true,
-        errors: [],
-        warnings: []
-      });
 
       const deployer = require('../../lib/deployer');
       deployer.deployToController.mockResolvedValue({ deploymentId: 'deploy-123' });
@@ -282,11 +272,6 @@ app:
 
       const generator = require('../../lib/generator');
       jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
-      jest.spyOn(generator, 'validateDeploymentJson').mockReturnValue({
-        valid: true,
-        errors: [],
-        warnings: []
-      });
 
       const deployer = require('../../lib/deployer');
       deployer.deployToController.mockResolvedValue({ deploymentId: 'deploy-123' });
@@ -331,19 +316,13 @@ app:
         yaml.dump(config)
       );
 
-      // Mock generator to return invalid manifest
-      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
-      await fs.writeFile(manifestPath, JSON.stringify({ key: 'test-app' }));
-
+      // Mock generator to throw validation error (schema validation now happens in generateDeployJson)
       const generator = require('../../lib/generator');
-      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
-      jest.spyOn(generator, 'validateDeploymentJson').mockReturnValue({
-        valid: false,
-        errors: ['Missing required field: image'],
-        warnings: []
-      });
+      jest.spyOn(generator, 'generateDeployJson').mockRejectedValue(
+        new Error('Generated deployment JSON does not match schema:\nField "image": Missing required property')
+      );
 
-      await expect(appDeploy.deployApp('test-app', {})).rejects.toThrow('Deployment manifest validation failed');
+      await expect(appDeploy.deployApp('test-app', {})).rejects.toThrow('Generated deployment JSON does not match schema');
     });
 
     it('should handle controller deployment failures', async() => {
@@ -375,11 +354,6 @@ app:
       // Mock generator
       const generator = require('../../lib/generator');
       jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
-      jest.spyOn(generator, 'validateDeploymentJson').mockReturnValue({
-        valid: true,
-        errors: [],
-        warnings: []
-      });
 
       // Mock deployer to fail
       const deployer = require('../../lib/deployer');
@@ -414,26 +388,18 @@ app:
         port: 3000
       }));
 
-      // Mock generator to return warnings
+      // Mock generator - validation warnings no longer exposed separately
       const generator = require('../../lib/generator');
       jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath2);
-      jest.spyOn(generator, 'validateDeploymentJson').mockReturnValue({
-        valid: true,
-        errors: [],
-        warnings: ['Health check path should start with /']
-      });
 
       const deployer = require('../../lib/deployer');
       deployer.deployToController.mockResolvedValue({
         deploymentId: 'deploy-123'
       });
 
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-
       await appDeploy.deployApp('test-app', {});
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Warnings'));
-      consoleSpy.mockRestore();
+      expect(deployer.deployToController).toHaveBeenCalled();
     });
   });
 

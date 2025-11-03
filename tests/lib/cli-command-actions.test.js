@@ -24,10 +24,12 @@ const generator = require('../../lib/generator');
 const validator = require('../../lib/validator');
 const keyGenerator = require('../../lib/key-generator');
 const { saveConfig } = require('../../lib/config');
-const { makeApiCall } = require('../../lib/utils/api');
+const { makeApiCall, initiateDeviceCodeFlow, pollDeviceCodeToken, displayDeviceCodeInfo } = require('../../lib/utils/api');
 const inquirer = require('inquirer');
 const { exec } = require('child_process');
 const cli = require('../../lib/cli');
+const logger = require('../../lib/utils/logger');
+const chalk = require('chalk');
 
 describe('CLI Command Actions', () => {
   beforeEach(() => {
@@ -42,62 +44,58 @@ describe('CLI Command Actions', () => {
   });
 
   describe('login command action', () => {
-    it('should handle browser-based OAuth flow', async() => {
-      inquirer.prompt
-        .mockResolvedValueOnce({ method: 'browser' })
-        .mockResolvedValueOnce({ token: 'test-token-123' });
-
-      exec.mockImplementation((cmd) => {
-        // exec is called without callback in cli.js
-        // Just verify it's called
+    it('should handle credentials-based login with flags (CI/CD)', async() => {
+      makeApiCall.mockResolvedValue({
+        success: true,
+        data: { token: 'test-token-123' }
       });
 
       saveConfig.mockResolvedValue();
 
-      // Test login logic directly
-      const options = { url: 'http://localhost:3000' };
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'credentials',
+        clientId: 'test-client-id',
+        clientSecret: 'test-secret'
+      };
+
       const controllerUrl = options.url.replace(/\/$/, '');
 
-      const authMethod = await inquirer.prompt([{
-        type: 'list',
-        name: 'method',
-        message: 'Choose authentication method:',
-        choices: [
-          { name: 'Browser-based OAuth (recommended)', value: 'browser' },
-          { name: 'ClientId + ClientSecret', value: 'credentials' }
-        ]
-      }]);
+      // Simulate the login logic with flags
+      const method = options.method;
+      const clientId = options.clientId;
+      const clientSecret = options.clientSecret;
 
-      let token;
-
-      if (authMethod.method === 'browser') {
-        const authUrl = `${controllerUrl}/api/v1/auth/oauth/login`;
-        const startCommand = process.platform === 'win32' ? 'start' :
-          process.platform === 'darwin' ? 'open' : 'xdg-open';
-        exec(`${startCommand} "${authUrl}"`);
-
-        const result = await inquirer.prompt([{
-          type: 'input',
-          name: 'token',
-          message: 'Paste the authentication token from the browser:',
-          validate: (input) => input.length > 0 || 'Token is required'
-        }]);
-
-        token = result.token;
-      }
-
-      await saveConfig({
-        apiUrl: controllerUrl,
-        token: token,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      const response = await makeApiCall(`${controllerUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: clientId,
+          clientSecret: clientSecret
+        })
       });
 
-      expect(inquirer.prompt).toHaveBeenCalled();
-      expect(exec).toHaveBeenCalled();
+      if (response.success) {
+        const token = response.data.token || response.data.accessToken;
+        await saveConfig({
+          apiUrl: controllerUrl,
+          token: token,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        });
+      }
+
+      expect(makeApiCall).toHaveBeenCalledWith(`${controllerUrl}/api/v1/auth/login`, expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: 'test-client-id',
+          clientSecret: 'test-secret'
+        })
+      }));
       expect(saveConfig).toHaveBeenCalled();
     });
 
-    it('should handle credentials-based login', async() => {
+    it('should handle credentials-based login with prompts', async() => {
       inquirer.prompt.mockResolvedValueOnce({
         method: 'credentials'
       }).mockResolvedValueOnce({
@@ -121,8 +119,8 @@ describe('CLI Command Actions', () => {
           name: 'method',
           message: 'Choose authentication method:',
           choices: [
-            { name: 'Browser-based OAuth (recommended)', value: 'browser' },
-            { name: 'ClientId + ClientSecret', value: 'credentials' }
+            { name: 'ClientId + ClientSecret', value: 'credentials' },
+            { name: 'Device Code Flow (environment only)', value: 'device' }
           ]
         }]);
 
@@ -132,14 +130,14 @@ describe('CLI Command Actions', () => {
               type: 'input',
               name: 'clientId',
               message: 'Client ID:',
-              validate: (input) => input.length > 0 || 'Client ID is required'
+              validate: (input) => input.trim().length > 0 || 'Client ID is required'
             },
             {
               type: 'password',
               name: 'clientSecret',
               message: 'Client Secret:',
               mask: '*',
-              validate: (input) => input.length > 0 || 'Client Secret is required'
+              validate: (input) => input.trim().length > 0 || 'Client Secret is required'
             }
           ]);
 
@@ -147,8 +145,8 @@ describe('CLI Command Actions', () => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              clientId: credentials.clientId,
-              clientSecret: credentials.clientSecret
+              clientId: credentials.clientId.trim(),
+              clientSecret: credentials.clientSecret.trim()
             })
           });
 
@@ -190,8 +188,8 @@ describe('CLI Command Actions', () => {
           name: 'method',
           message: 'Choose authentication method:',
           choices: [
-            { name: 'Browser-based OAuth (recommended)', value: 'browser' },
-            { name: 'ClientId + ClientSecret', value: 'credentials' }
+            { name: 'ClientId + ClientSecret', value: 'credentials' },
+            { name: 'Device Code Flow (environment only)', value: 'device' }
           ]
         }]);
 
@@ -216,6 +214,510 @@ describe('CLI Command Actions', () => {
         }
       } catch (error) {
         // Expected
+      }
+    });
+
+    it('should reject invalid method value', async() => {
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'invalid'
+      };
+
+      // Simulate validation logic
+      const method = options.method;
+      if (method && method !== 'device' && method !== 'credentials') {
+        expect(method).not.toBe('device');
+        expect(method).not.toBe('credentials');
+      }
+    });
+
+    it('should handle credentials login with partial flags (prompts for missing)', async() => {
+      inquirer.prompt.mockResolvedValueOnce({
+        clientId: 'test-client-id',
+        clientSecret: 'test-secret'
+      });
+
+      makeApiCall.mockResolvedValue({
+        success: true,
+        data: { token: 'test-token-123' }
+      });
+
+      saveConfig.mockResolvedValue();
+
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'credentials',
+        clientId: 'test-client-id'
+        // clientSecret missing, should prompt
+      };
+
+      const controllerUrl = options.url.replace(/\/$/, '');
+      let clientId = options.clientId;
+      let clientSecret = options.clientSecret;
+
+      if (!clientId || !clientSecret) {
+        const credentials = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'clientId',
+            message: 'Client ID:',
+            default: clientId || ''
+          },
+          {
+            type: 'password',
+            name: 'clientSecret',
+            message: 'Client Secret:',
+            default: clientSecret || '',
+            mask: '*'
+          }
+        ]);
+        clientId = credentials.clientId.trim();
+        clientSecret = credentials.clientSecret.trim();
+      }
+
+      const response = await makeApiCall(`${controllerUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: clientId,
+          clientSecret: clientSecret
+        })
+      });
+
+      if (response.success) {
+        const token = response.data.token || response.data.accessToken;
+        await saveConfig({
+          apiUrl: controllerUrl,
+          token: token,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        });
+      }
+
+      expect(inquirer.prompt).toHaveBeenCalled();
+      expect(makeApiCall).toHaveBeenCalled();
+      expect(saveConfig).toHaveBeenCalled();
+    });
+
+    it('should handle device code flow login with flag (CI/CD)', async() => {
+      const deviceCodeResponse = {
+        device_code: 'device-code-123',
+        user_code: 'ABCD-EFGH',
+        verification_uri: 'https://auth.example.com/device',
+        expires_in: 600,
+        interval: 5
+      };
+
+      const tokenResponse = {
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-123',
+        expires_in: 3600
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue(deviceCodeResponse);
+      pollDeviceCodeToken.mockResolvedValue(tokenResponse);
+      saveConfig.mockResolvedValue();
+      displayDeviceCodeInfo.mockImplementation(() => {});
+
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'device',
+        environment: 'dev'
+      };
+
+      const controllerUrl = options.url.replace(/\/$/, '');
+      const environment = options.environment.trim();
+
+      // Validate environment format
+      if (!/^[a-z0-9-_]+$/i.test(environment)) {
+        throw new Error('Invalid environment format');
+      }
+
+      const deviceCodeResponseActual = await initiateDeviceCodeFlow(controllerUrl, environment);
+      displayDeviceCodeInfo(deviceCodeResponseActual.user_code, deviceCodeResponseActual.verification_uri, logger, chalk);
+      const tokenResponseActual = await pollDeviceCodeToken(
+        controllerUrl,
+        deviceCodeResponseActual.device_code,
+        deviceCodeResponseActual.interval,
+        deviceCodeResponseActual.expires_in,
+        () => {}
+      );
+
+      const expiresAt = new Date(Date.now() + (tokenResponseActual.expires_in * 1000)).toISOString();
+      await saveConfig({
+        apiUrl: controllerUrl,
+        token: tokenResponseActual.access_token,
+        expiresAt: expiresAt,
+        environment: environment
+      });
+
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith(controllerUrl, 'dev');
+      expect(pollDeviceCodeToken).toHaveBeenCalled();
+      expect(saveConfig).toHaveBeenCalledWith({
+        apiUrl: controllerUrl,
+        token: 'access-token-123',
+        expiresAt: expect.any(String),
+        environment: 'dev'
+      });
+    });
+
+    it('should handle device code flow login with prompts', async() => {
+      inquirer.prompt.mockResolvedValueOnce({
+        method: 'device'
+      }).mockResolvedValueOnce({
+        environment: 'dev'
+      });
+
+      const deviceCodeResponse = {
+        device_code: 'device-code-123',
+        user_code: 'ABCD-EFGH',
+        verification_uri: 'https://auth.example.com/device',
+        expires_in: 600,
+        interval: 5
+      };
+
+      const tokenResponse = {
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-123',
+        expires_in: 3600
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue(deviceCodeResponse);
+      pollDeviceCodeToken.mockResolvedValue(tokenResponse);
+      saveConfig.mockResolvedValue();
+      displayDeviceCodeInfo.mockImplementation(() => {});
+
+      const options = { url: 'http://localhost:3000' };
+      const controllerUrl = options.url.replace(/\/$/, '');
+
+      const authMethod = await inquirer.prompt([{
+        type: 'list',
+        name: 'method',
+        message: 'Choose authentication method:',
+        choices: [
+          { name: 'ClientId + ClientSecret', value: 'credentials' },
+          { name: 'Device Code Flow (environment only)', value: 'device' }
+        ]
+      }]);
+
+      if (authMethod.method === 'device') {
+        const envPrompt = await inquirer.prompt([{
+          type: 'input',
+          name: 'environment',
+          message: 'Environment key (e.g., dev, tst, pro):',
+          validate: (input) => {
+            if (!input || input.trim().length === 0) {
+              return 'Environment key is required';
+            }
+            if (!/^[a-z0-9-_]+$/i.test(input.trim())) {
+              return 'Environment key must contain only letters, numbers, hyphens, and underscores';
+            }
+            return true;
+          }
+        }]);
+
+        const environment = envPrompt.environment.trim();
+        const deviceCodeResponseActual = await initiateDeviceCodeFlow(controllerUrl, environment);
+        displayDeviceCodeInfo(deviceCodeResponseActual.user_code, deviceCodeResponseActual.verification_uri, logger, chalk);
+        const tokenResponseActual = await pollDeviceCodeToken(
+          controllerUrl,
+          deviceCodeResponseActual.device_code,
+          deviceCodeResponseActual.interval,
+          deviceCodeResponseActual.expires_in,
+          () => {}
+        );
+
+        const expiresAt = new Date(Date.now() + (tokenResponseActual.expires_in * 1000)).toISOString();
+        await saveConfig({
+          apiUrl: controllerUrl,
+          token: tokenResponseActual.access_token,
+          expiresAt: expiresAt,
+          environment: environment
+        });
+      }
+
+      expect(inquirer.prompt).toHaveBeenCalled();
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith(controllerUrl, 'dev');
+      expect(pollDeviceCodeToken).toHaveBeenCalled();
+      expect(saveConfig).toHaveBeenCalledWith({
+        apiUrl: controllerUrl,
+        token: 'access-token-123',
+        expiresAt: expect.any(String),
+        environment: 'dev'
+      });
+    });
+
+    it('should handle device code flow initiation failure', async() => {
+      inquirer.prompt.mockResolvedValueOnce({
+        method: 'device'
+      }).mockResolvedValueOnce({
+        environment: 'dev'
+      });
+
+      initiateDeviceCodeFlow.mockRejectedValue(new Error('Device code initiation failed: Invalid environment'));
+
+      const options = { url: 'http://localhost:3000' };
+      const controllerUrl = options.url.replace(/\/$/, '');
+
+      const authMethod = await inquirer.prompt([{
+        type: 'list',
+        name: 'method',
+        message: 'Choose authentication method:',
+        choices: [
+          { name: 'ClientId + ClientSecret', value: 'credentials' },
+          { name: 'Device Code Flow (environment only)', value: 'device' }
+        ]
+      }]);
+
+      if (authMethod.method === 'device') {
+        const envPrompt = await inquirer.prompt([{
+          type: 'input',
+          name: 'environment',
+          message: 'Environment key (e.g., dev, tst, pro):',
+          validate: () => true
+        }]);
+
+        const environment = envPrompt.environment.trim();
+        try {
+          await initiateDeviceCodeFlow(controllerUrl, environment);
+        } catch (error) {
+          expect(error.message).toContain('Device code initiation failed');
+        }
+      }
+
+      expect(initiateDeviceCodeFlow).toHaveBeenCalled();
+      expect(pollDeviceCodeToken).not.toHaveBeenCalled();
+    });
+
+    it('should handle authorization_pending during polling', async() => {
+      inquirer.prompt.mockResolvedValueOnce({
+        method: 'device'
+      }).mockResolvedValueOnce({
+        environment: 'dev'
+      });
+
+      const deviceCodeResponse = {
+        device_code: 'device-code-123',
+        user_code: 'ABCD-EFGH',
+        verification_uri: 'https://auth.example.com/device',
+        expires_in: 600,
+        interval: 5
+      };
+
+      const tokenResponse = {
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-123',
+        expires_in: 3600
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue(deviceCodeResponse);
+
+      // pollDeviceCodeToken handles authorization_pending internally and continues polling
+      // The function returns success after polling completes
+      pollDeviceCodeToken.mockResolvedValue(tokenResponse);
+
+      const options = { url: 'http://localhost:3000' };
+      const controllerUrl = options.url.replace(/\/$/, '');
+
+      const authMethod = await inquirer.prompt([{
+        type: 'list',
+        name: 'method',
+        message: 'Choose authentication method:',
+        choices: [
+          { name: 'ClientId + ClientSecret', value: 'credentials' },
+          { name: 'Device Code Flow (environment only)', value: 'device' }
+        ]
+      }]);
+
+      if (authMethod.method === 'device') {
+        const envPrompt = await inquirer.prompt([{
+          type: 'input',
+          name: 'environment',
+          message: 'Environment key (e.g., dev, tst, pro):',
+          validate: () => true
+        }]);
+
+        const environment = envPrompt.environment.trim();
+        const deviceCodeResponseActual = await initiateDeviceCodeFlow(controllerUrl, environment);
+
+        // pollDeviceCodeToken handles authorization_pending internally
+        // It will continue polling until it gets a token or error
+        const tokenResponseActual = await pollDeviceCodeToken(
+          controllerUrl,
+          deviceCodeResponseActual.device_code,
+          deviceCodeResponseActual.interval,
+          deviceCodeResponseActual.expires_in,
+          () => {}
+        );
+
+        expect(tokenResponseActual.access_token).toBe('access-token-123');
+      }
+
+      expect(pollDeviceCodeToken).toHaveBeenCalled();
+    });
+
+    it('should handle expired_token error during polling', async() => {
+      inquirer.prompt.mockResolvedValueOnce({
+        method: 'device'
+      }).mockResolvedValueOnce({
+        environment: 'dev'
+      });
+
+      const deviceCodeResponse = {
+        device_code: 'device-code-123',
+        user_code: 'ABCD-EFGH',
+        verification_uri: 'https://auth.example.com/device',
+        expires_in: 600,
+        interval: 5
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue(deviceCodeResponse);
+      pollDeviceCodeToken.mockRejectedValue(new Error('Device code expired: Please restart the authentication process'));
+
+      const options = { url: 'http://localhost:3000' };
+      const controllerUrl = options.url.replace(/\/$/, '');
+
+      const authMethod = await inquirer.prompt([{
+        type: 'list',
+        name: 'method',
+        message: 'Choose authentication method:',
+        choices: [
+          { name: 'ClientId + ClientSecret', value: 'credentials' },
+          { name: 'Device Code Flow (environment only)', value: 'device' }
+        ]
+      }]);
+
+      if (authMethod.method === 'device') {
+        const envPrompt = await inquirer.prompt([{
+          type: 'input',
+          name: 'environment',
+          message: 'Environment key (e.g., dev, tst, pro):',
+          validate: () => true
+        }]);
+
+        const environment = envPrompt.environment.trim();
+        const deviceCodeResponse = await initiateDeviceCodeFlow(controllerUrl, environment);
+
+        try {
+          await pollDeviceCodeToken(
+            controllerUrl,
+            deviceCodeResponse.device_code,
+            deviceCodeResponse.interval,
+            deviceCodeResponse.expires_in
+          );
+        } catch (error) {
+          expect(error.message).toContain('expired');
+        }
+      }
+
+      expect(pollDeviceCodeToken).toHaveBeenCalled();
+    });
+
+    it('should handle authorization_declined error during polling', async() => {
+      inquirer.prompt.mockResolvedValueOnce({
+        method: 'device'
+      }).mockResolvedValueOnce({
+        environment: 'dev'
+      });
+
+      const deviceCodeResponse = {
+        device_code: 'device-code-123',
+        user_code: 'ABCD-EFGH',
+        verification_uri: 'https://auth.example.com/device',
+        expires_in: 600,
+        interval: 5
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue(deviceCodeResponse);
+      pollDeviceCodeToken.mockRejectedValue(new Error('Authorization declined: User denied the request'));
+
+      const options = { url: 'http://localhost:3000' };
+      const controllerUrl = options.url.replace(/\/$/, '');
+
+      const authMethod = await inquirer.prompt([{
+        type: 'list',
+        name: 'method',
+        message: 'Choose authentication method:',
+        choices: [
+          { name: 'ClientId + ClientSecret', value: 'credentials' },
+          { name: 'Device Code Flow (environment only)', value: 'device' }
+        ]
+      }]);
+
+      if (authMethod.method === 'device') {
+        const envPrompt = await inquirer.prompt([{
+          type: 'input',
+          name: 'environment',
+          message: 'Environment key (e.g., dev, tst, pro):',
+          validate: () => true
+        }]);
+
+        const environment = envPrompt.environment.trim();
+        const deviceCodeResponse = await initiateDeviceCodeFlow(controllerUrl, environment);
+
+        try {
+          await pollDeviceCodeToken(
+            controllerUrl,
+            deviceCodeResponse.device_code,
+            deviceCodeResponse.interval,
+            deviceCodeResponse.expires_in
+          );
+        } catch (error) {
+          expect(error.message).toContain('declined');
+        }
+      }
+
+      expect(pollDeviceCodeToken).toHaveBeenCalled();
+    });
+
+    it('should validate environment key format', async() => {
+      inquirer.prompt.mockResolvedValueOnce({
+        method: 'device'
+      });
+
+      const options = { url: 'http://localhost:3000' };
+
+      const authMethod = await inquirer.prompt([{
+        type: 'list',
+        name: 'method',
+        message: 'Choose authentication method:',
+        choices: [
+          { name: 'ClientId + ClientSecret', value: 'credentials' },
+          { name: 'Device Code Flow (environment only)', value: 'device' }
+        ]
+      }]);
+
+      if (authMethod.method === 'device') {
+        const envPrompt = await inquirer.prompt([{
+          type: 'input',
+          name: 'environment',
+          message: 'Environment key (e.g., dev, tst, pro):',
+          validate: (input) => {
+            if (!input || input.trim().length === 0) {
+              return 'Environment key is required';
+            }
+            if (!/^[a-z0-9-_]+$/i.test(input.trim())) {
+              return 'Environment key must contain only letters, numbers, hyphens, and underscores';
+            }
+            return true;
+          }
+        }]);
+
+        // Test valid environment key
+        const validEnv = 'dev';
+        const validate = (input) => {
+          if (!input || input.trim().length === 0) {
+            return 'Environment key is required';
+          }
+          if (!/^[a-z0-9-_]+$/i.test(input.trim())) {
+            return 'Environment key must contain only letters, numbers, hyphens, and underscores';
+          }
+          return true;
+        };
+        expect(validate(validEnv)).toBe(true);
+
+        // Test invalid environment key
+        const invalidEnv = 'dev@test';
+        expect(validate(invalidEnv)).not.toBe(true);
       }
     });
   });

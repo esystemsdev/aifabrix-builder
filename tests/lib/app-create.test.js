@@ -89,11 +89,12 @@ describe('Application Create Module', () => {
       expect(variablesContent).toContain('language: typescript');
       expect(variablesContent).toContain('port: 3000');
       expect(variablesContent).toContain('database: true');
-      expect(variablesContent).toContain('requireAuth: true');
+      expect(variablesContent).toContain('authentication:');
+      expect(variablesContent).toContain('type: azure');
 
       // Verify env.template content
       const envContent = await fs.readFile(envTemplatePath, 'utf8');
-      expect(envContent).toContain('# Database Configuration');
+      expect(envContent).toContain('# DATABASE CONFIGURATION');
       expect(envContent).toContain('DATABASE_URL=kv://databases-test-app-0-urlKeyVault');
       expect(envContent).toContain('DB_USER=test-app_user');
       expect(envContent).toContain('DB_PASSWORD=kv://databases-test-app-0-passwordKeyVault');
@@ -101,7 +102,9 @@ describe('Application Create Module', () => {
       // Verify rbac.yaml content
       const rbacContent = await fs.readFile(rbacPath, 'utf8');
       expect(rbacContent).toContain('roles:');
-      expect(rbacContent).toContain('- name: admin');
+      expect(rbacContent).toContain('permissions:');
+      expect(rbacContent).toContain('- name: AI Fabrix Admin');
+      expect(rbacContent).toContain('value: aifabrix-admin');
     });
 
     it('should validate app name format', async() => {

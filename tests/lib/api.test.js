@@ -6,7 +6,7 @@
  * @version 2.0.0
  */
 
-const { makeApiCall, authenticatedApiCall } = require('../../lib/utils/api');
+const { makeApiCall, authenticatedApiCall, initiateDeviceCodeFlow, pollDeviceCodeToken, displayDeviceCodeInfo } = require('../../lib/utils/api');
 
 // Mock global fetch
 global.fetch = jest.fn();
@@ -217,6 +217,653 @@ describe('API Utilities', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('Access denied');
       expect(result.status).toBe(403);
+    });
+  });
+
+  describe('initiateDeviceCodeFlow', () => {
+    it('should successfully initiate device code flow', async() => {
+      // OpenAPI schema uses camelCase
+      const deviceCodeResponse = {
+        success: true,
+        data: {
+          deviceCode: 'device-code-123',
+          userCode: 'ABCD-EFGH',
+          verificationUri: 'https://auth.example.com/device',
+          expiresIn: 600,
+          interval: 5
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: jest.fn().mockResolvedValue(deviceCodeResponse)
+      });
+
+      const result = await initiateDeviceCodeFlow('https://controller.example.com', 'dev');
+
+      expect(result.device_code).toBe('device-code-123');
+      expect(result.user_code).toBe('ABCD-EFGH');
+      expect(result.verification_uri).toBe('https://auth.example.com/device');
+      expect(result.expires_in).toBe(600);
+      expect(result.interval).toBe(5);
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://controller.example.com/api/v1/auth/login?environment=dev',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
+    });
+
+    it('should support snake_case for RFC 8628 compatibility', async() => {
+      // RFC 8628 uses snake_case
+      const deviceCodeResponse = {
+        success: true,
+        data: {
+          device_code: 'device-code-123',
+          user_code: 'ABCD-EFGH',
+          verification_uri: 'https://auth.example.com/device',
+          expires_in: 600,
+          interval: 5
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: jest.fn().mockResolvedValue(deviceCodeResponse)
+      });
+
+      const result = await initiateDeviceCodeFlow('https://controller.example.com', 'dev');
+
+      expect(result.device_code).toBe('device-code-123');
+      expect(result.user_code).toBe('ABCD-EFGH');
+      expect(result.verification_uri).toBe('https://auth.example.com/device');
+      expect(result.expires_in).toBe(600);
+      expect(result.interval).toBe(5);
+    });
+
+    it('should use default values for expires_in and interval', async() => {
+      const deviceCodeResponse = {
+        success: true,
+        data: {
+          deviceCode: 'device-code-123',
+          userCode: 'ABCD-EFGH',
+          verificationUri: 'https://auth.example.com/device'
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: jest.fn().mockResolvedValue(deviceCodeResponse)
+      });
+
+      const result = await initiateDeviceCodeFlow('https://controller.example.com', 'dev');
+
+      expect(result.expires_in).toBe(600);
+      expect(result.interval).toBe(5);
+    });
+
+    it('should throw error if environment key is missing', async() => {
+      await expect(initiateDeviceCodeFlow('https://controller.example.com', null))
+        .rejects.toThrow('Environment key is required');
+    });
+
+    it('should throw error if API call fails', async() => {
+      global.fetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        text: jest.fn().mockResolvedValue(JSON.stringify({ error: 'Invalid environment' }))
+      });
+
+      await expect(initiateDeviceCodeFlow('https://controller.example.com', 'dev'))
+        .rejects.toThrow('Device code initiation failed');
+    });
+
+    it('should throw error if response is missing required fields', async() => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: jest.fn().mockResolvedValue({
+          success: true,
+          data: { deviceCode: 'test' },
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      await expect(initiateDeviceCodeFlow('https://controller.example.com', 'dev'))
+        .rejects.toThrow('Invalid device code response');
+    });
+
+    it('should URL encode environment parameter', async() => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: jest.fn().mockResolvedValue({
+          success: true,
+          data: {
+            deviceCode: 'test',
+            userCode: 'TEST',
+            verificationUri: 'https://example.com',
+            expiresIn: 600,
+            interval: 5
+          },
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      await initiateDeviceCodeFlow('https://controller.example.com', 'dev-test');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://controller.example.com/api/v1/auth/login?environment=dev-test',
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('pollDeviceCodeToken', () => {
+    beforeEach(() => {
+      jest.useFakeTimers({
+        now: Date.now(),
+        advanceTimers: true
+      });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should successfully poll and get token', async() => {
+      // OpenAPI schema uses camelCase
+      const tokenResponse = {
+        success: true,
+        data: {
+          accessToken: 'access-token-123',
+          refreshToken: 'refresh-token-123',
+          expiresIn: 3600
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: jest.fn().mockResolvedValue(tokenResponse)
+      });
+
+      const pollPromise = pollDeviceCodeToken('https://controller.example.com', 'device-code-123', 5, 600);
+
+      // Process pending promises
+      await Promise.resolve();
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+
+      const result = await pollPromise;
+
+      expect(result.access_token).toBe('access-token-123');
+      expect(result.refresh_token).toBe('refresh-token-123');
+      expect(result.expires_in).toBe(3600);
+
+      // Verify request uses camelCase
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://controller.example.com/api/v1/auth/login/device/token',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ deviceCode: 'device-code-123' })
+        })
+      );
+    });
+
+    it('should support snake_case token response for RFC 8628 compatibility', async() => {
+      // RFC 8628 uses snake_case
+      const tokenResponse = {
+        success: true,
+        data: {
+          access_token: 'access-token-123',
+          refresh_token: 'refresh-token-123',
+          expires_in: 3600
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: jest.fn().mockResolvedValue(tokenResponse)
+      });
+
+      const pollPromise = pollDeviceCodeToken('https://controller.example.com', 'device-code-123', 5, 600);
+
+      await Promise.resolve();
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+
+      const result = await pollPromise;
+
+      expect(result.access_token).toBe('access-token-123');
+      expect(result.refresh_token).toBe('refresh-token-123');
+      expect(result.expires_in).toBe(3600);
+    });
+
+    it('should use default expires_in if not provided', async() => {
+      const tokenResponse = {
+        success: true,
+        data: {
+          accessToken: 'access-token-123'
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: jest.fn().mockResolvedValue(tokenResponse)
+      });
+
+      const pollPromise = pollDeviceCodeToken('https://controller.example.com', 'device-code-123', 5, 600);
+
+      await Promise.resolve();
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+
+      const result = await pollPromise;
+
+      expect(result.expires_in).toBe(3600);
+    });
+
+    it('should handle authorization_pending and continue polling', async() => {
+      // OpenAPI schema: 202 response with error field
+      const tokenResponse = {
+        success: true,
+        data: {
+          accessToken: 'access-token-123',
+          expiresIn: 3600
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      let callCount = 0;
+      global.fetch.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          // 202 status for authorization_pending
+          return Promise.resolve({
+            ok: false,
+            status: 202,
+            statusText: 'Accepted',
+            text: jest.fn().mockResolvedValue(JSON.stringify({
+              success: false,
+              error: 'authorization_pending',
+              errorDescription: 'Authorization pending',
+              timestamp: new Date().toISOString()
+            }))
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: {
+            get: () => 'application/json'
+          },
+          json: jest.fn().mockResolvedValue(tokenResponse)
+        });
+      });
+
+      const pollPromise = pollDeviceCodeToken('https://controller.example.com', 'device-code-123', 5, 600);
+
+      // Let first fetch execute
+      await Promise.resolve();
+
+      // Advance timers and flush pending promises
+      jest.advanceTimersByTime(5000);
+      await jest.runAllTimersAsync();
+      await Promise.resolve();
+
+      const result = await pollPromise;
+
+      expect(result.access_token).toBe('access-token-123');
+      expect(callCount).toBe(2);
+    }, 15000);
+
+    it('should handle authorization_pending in HTTP 200 response and continue polling', async() => {
+      // Some APIs return HTTP 200 with authorization_pending in the body
+      const tokenResponse = {
+        success: true,
+        data: {
+          accessToken: 'access-token-123',
+          refreshToken: 'refresh-token-123',
+          expiresIn: 3600
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      let callCount = 0;
+      global.fetch.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          // 200 status with authorization_pending in body
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            headers: {
+              get: () => 'application/json'
+            },
+            json: jest.fn().mockResolvedValue({
+              success: true,
+              data: {
+                error: 'authorization_pending',
+                errorDescription: 'Authorization pending'
+              },
+              timestamp: new Date().toISOString()
+            })
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: {
+            get: () => 'application/json'
+          },
+          json: jest.fn().mockResolvedValue(tokenResponse)
+        });
+      });
+
+      const pollPromise = pollDeviceCodeToken('https://controller.example.com', 'device-code-123', 5, 600);
+
+      // Let first fetch execute
+      await Promise.resolve();
+
+      // Advance timers and flush pending promises
+      jest.advanceTimersByTime(5000);
+      await jest.runAllTimersAsync();
+      await Promise.resolve();
+
+      const result = await pollPromise;
+
+      expect(result.access_token).toBe('access-token-123');
+      expect(callCount).toBe(2);
+    }, 15000);
+
+    it('should throw error on expired_token', async() => {
+      // OpenAPI schema: 410 status for expired_token
+      global.fetch.mockResolvedValue({
+        ok: false,
+        status: 410,
+        statusText: 'Gone',
+        text: jest.fn().mockResolvedValue(JSON.stringify({
+          success: false,
+          error: 'expired_token',
+          errorDescription: 'Device code expired',
+          timestamp: new Date().toISOString()
+        }))
+      });
+
+      const pollPromise = pollDeviceCodeToken('https://controller.example.com', 'device-code-123', 5, 600);
+
+      await Promise.resolve();
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+
+      await expect(pollPromise).rejects.toThrow('Device code expired');
+    });
+
+    it('should throw error on authorization_declined', async() => {
+      // OpenAPI schema: 410 status for authorization_declined
+      global.fetch.mockResolvedValue({
+        ok: false,
+        status: 410,
+        statusText: 'Gone',
+        text: jest.fn().mockResolvedValue(JSON.stringify({
+          success: false,
+          error: 'authorization_declined',
+          errorDescription: 'User declined authorization',
+          timestamp: new Date().toISOString()
+        }))
+      });
+
+      const pollPromise = pollDeviceCodeToken('https://controller.example.com', 'device-code-123', 5, 600);
+
+      await Promise.resolve();
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+
+      await expect(pollPromise).rejects.toThrow('Authorization declined');
+    });
+
+    it('should handle slow_down and increase interval', async() => {
+      // OpenAPI schema: 202 status for slow_down
+      const tokenResponse = {
+        success: true,
+        data: {
+          accessToken: 'access-token-123',
+          expiresIn: 3600
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      let callCount = 0;
+      global.fetch.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          return Promise.resolve({
+            ok: false,
+            status: 202,
+            statusText: 'Accepted',
+            text: jest.fn().mockResolvedValue(JSON.stringify({
+              success: false,
+              error: 'slow_down',
+              errorDescription: 'Polling too fast',
+              timestamp: new Date().toISOString()
+            }))
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: {
+            get: () => 'application/json'
+          },
+          json: jest.fn().mockResolvedValue(tokenResponse)
+        });
+      });
+
+      const pollPromise = pollDeviceCodeToken('https://controller.example.com', 'device-code-123', 5, 600);
+
+      // Let first fetch execute
+      await Promise.resolve();
+
+      // Wait for slow_down interval (5 * 2 = 10 seconds)
+      jest.advanceTimersByTime(10000);
+      await jest.runAllTimersAsync();
+      await Promise.resolve();
+
+      const result = await pollPromise;
+
+      expect(result.access_token).toBe('access-token-123');
+    }, 15000);
+
+    it('should throw error if device_code is missing', async() => {
+      await expect(pollDeviceCodeToken('https://controller.example.com', null, 5, 600))
+        .rejects.toThrow('Device code is required');
+    });
+
+    it('should throw error if token response is missing access_token', async() => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: jest.fn().mockResolvedValue({
+          success: true,
+          data: { refreshToken: 'token' },
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      const pollPromise = pollDeviceCodeToken('https://controller.example.com', 'device-code-123', 5, 600);
+
+      await Promise.resolve();
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+
+      await expect(pollPromise).rejects.toThrow('Invalid token response');
+    });
+
+    it('should timeout after expires_in + buffer', async() => {
+      // Mock Date.now() before calling the function so startTime uses mocked time
+      const startTime = Date.now();
+      let callCount = 0;
+      let mockTime = startTime;
+      let setTimeoutCalled = false;
+
+      // Timeout is expiresIn (10) + 30 buffer = 40 seconds = 40000ms
+      const timeoutMs = 40000;
+
+      const dateNowSpy = jest.spyOn(Date, 'now').mockImplementation(() => {
+        callCount++;
+        // After setTimeout has been called and we loop back, advance time past timeout
+        if (setTimeoutCalled && callCount >= 3) {
+          // Set time to 42 seconds past start to trigger timeout
+          mockTime = startTime + timeoutMs + 2000;
+        }
+        return mockTime;
+      });
+
+      // Track when setTimeout is called
+      const originalSetTimeout = global.setTimeout;
+      const setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation((fn, delay) => {
+        setTimeoutCalled = true;
+        return originalSetTimeout(fn, delay);
+      });
+
+      // OpenAPI schema: 202 status for authorization_pending
+      global.fetch.mockResolvedValue({
+        ok: false,
+        status: 202,
+        statusText: 'Accepted',
+        text: jest.fn().mockResolvedValue(JSON.stringify({
+          success: false,
+          error: 'authorization_pending',
+          errorDescription: 'Authorization pending',
+          timestamp: new Date().toISOString()
+        }))
+      });
+
+      const pollPromise = pollDeviceCodeToken('https://controller.example.com', 'device-code-123', 5, 10); // 10 second expiry
+
+      // Let first fetch execute (this will check timeout at start, then make API call)
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Wait for the setTimeout interval (5 seconds) to complete
+      // This will cause the loop to continue and check timeout again
+      jest.advanceTimersByTime(5000);
+      await Promise.resolve();
+
+      // After setTimeout completes, advance Date.now() past timeout
+      // Then advance timers one more time to trigger the timeout check
+      mockTime = startTime + timeoutMs + 2000;
+      await Promise.resolve();
+
+      // Now the timeout should be checked and error thrown
+      try {
+        await pollPromise;
+        // If we get here, the promise didn't reject as expected
+        throw new Error('Expected promise to reject with timeout error');
+      } catch (error) {
+        expect(error.message).toContain('Maximum polling time exceeded');
+      }
+
+      // Restore spies
+      dateNowSpy.mockRestore();
+      setTimeoutSpy.mockRestore();
+    }, 20000);
+
+    it('should call onPoll callback on each poll attempt', async() => {
+      const tokenResponse = {
+        success: true,
+        data: {
+          accessToken: 'access-token-123',
+          expiresIn: 3600
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: jest.fn().mockResolvedValue(tokenResponse)
+      });
+
+      const onPoll = jest.fn();
+      const pollPromise = pollDeviceCodeToken('https://controller.example.com', 'device-code-123', 5, 600, onPoll);
+
+      await Promise.resolve();
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+
+      await pollPromise;
+
+      expect(onPoll).toHaveBeenCalled();
+    });
+  });
+
+  describe('displayDeviceCodeInfo', () => {
+    it('should format and display device code information', () => {
+      const logger = {
+        log: jest.fn()
+      };
+      const chalk = {
+        cyan: jest.fn((str) => str),
+        yellow: jest.fn((str) => str),
+        gray: jest.fn((str) => str),
+        blue: {
+          underline: jest.fn((str) => str)
+        },
+        bold: {
+          cyan: jest.fn((str) => str)
+        }
+      };
+
+      displayDeviceCodeInfo('ABCD-EFGH', 'https://auth.example.com/device', logger, chalk);
+
+      expect(logger.log).toHaveBeenCalled();
+      expect(chalk.cyan).toHaveBeenCalled();
+      expect(chalk.yellow).toHaveBeenCalled();
     });
   });
 });

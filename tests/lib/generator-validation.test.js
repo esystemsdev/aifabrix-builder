@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 const generator = require('../../lib/generator');
+const validator = require('../../lib/validator');
 const keyGenerator = require('../../lib/key-generator');
 
 // Mock fs module
@@ -25,9 +26,14 @@ describe('Generator Validation Module', () => {
       const deployment = {
         key: 'testapp',
         displayName: 'Test App',
+        description: 'A test application',
+        type: 'webapp',
         image: 'testapp:latest',
+        registryMode: 'acr', // Use 'acr' to avoid external registry requirements
         port: 3000,
-        deploymentKey: 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        requiresDatabase: false,
+        requiresRedis: false,
+        requiresStorage: false,
         configuration: [
           { name: 'PORT', value: '3000', location: 'variable', required: false }
         ],
@@ -36,12 +42,13 @@ describe('Generator Validation Module', () => {
           interval: 30
         },
         authentication: {
-          enabled: false,
-          type: 'none'
+          type: 'none',
+          enableSSO: false,
+          requiredRoles: []
         }
       };
 
-      const result = generator.validateDeploymentJson(deployment);
+      const result = validator.validateDeploymentJson(deployment);
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
     });
@@ -49,85 +56,102 @@ describe('Generator Validation Module', () => {
     it('should detect missing required fields', () => {
       const deployment = {
         port: 3000
-        // Missing key, displayName, image, deploymentKey
+        // Missing key, displayName, description, type, image, registryMode
       };
 
-      const result = generator.validateDeploymentJson(deployment);
+      const result = validator.validateDeploymentJson(deployment);
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Missing required field: key');
-      expect(result.errors).toContain('Missing required field: displayName');
-      expect(result.errors).toContain('Missing required field: image');
-      expect(result.errors).toContain('Missing required field: deploymentKey');
+      expect(result.errors.some(err => err.includes('key'))).toBe(true);
+      expect(result.errors.some(err => err.includes('displayName'))).toBe(true);
+      expect(result.errors.some(err => err.includes('image'))).toBe(true);
     });
 
     it('should detect invalid port', () => {
       const deployment = {
         key: 'testapp',
         displayName: 'Test App',
+        description: 'A test application',
+        type: 'webapp',
         image: 'testapp:latest',
-        port: 99999, // Invalid port
-        deploymentKey: 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        registryMode: 'external',
+        port: 99999, // Invalid port (> 65535)
+        requiresDatabase: false,
+        requiresRedis: false,
+        requiresStorage: false,
         configuration: []
       };
 
-      const result = generator.validateDeploymentJson(deployment);
+      const result = validator.validateDeploymentJson(deployment);
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Invalid port: must be between 1 and 65535');
+      expect(result.errors.some(err => err.includes('port'))).toBe(true);
     });
 
-    it('should detect invalid deployment key format', () => {
+    it('should detect invalid field types', () => {
       const deployment = {
         key: 'testapp',
         displayName: 'Test App',
+        description: 'A test application',
+        type: 'webapp',
         image: 'testapp:latest',
-        port: 3000,
-        deploymentKey: 'invalid-key', // Invalid format
+        registryMode: 'external',
+        port: 'invalid', // Should be number
+        requiresDatabase: false,
+        requiresRedis: false,
+        requiresStorage: false,
         configuration: []
       };
 
-      const result = generator.validateDeploymentJson(deployment);
+      const result = validator.validateDeploymentJson(deployment);
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Invalid deployment key format');
+      expect(result.errors.length).toBeGreaterThan(0);
     });
 
-    it('should generate warnings for health check issues', () => {
+    it('should detect invalid health check values', () => {
       const deployment = {
         key: 'testapp',
         displayName: 'Test App',
+        description: 'A test application',
+        type: 'webapp',
         image: 'testapp:latest',
+        registryMode: 'external',
         port: 3000,
-        deploymentKey: 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        requiresDatabase: false,
+        requiresRedis: false,
+        requiresStorage: false,
         configuration: [],
         healthCheck: {
           path: 'health', // Should start with /
-          interval: 1 // Should be at least 5
+          interval: 1 // Should be at least 10
         }
       };
 
-      const result = generator.validateDeploymentJson(deployment);
-      expect(result.valid).toBe(true);
-      expect(result.warnings).toContain('Health check path should start with /');
-      expect(result.warnings).toContain('Health check interval should be between 5 and 300 seconds');
+      const result = validator.validateDeploymentJson(deployment);
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(err => err.includes('healthCheck'))).toBe(true);
     });
 
-    it('should generate warnings for authentication issues', () => {
+    it('should detect missing required authentication fields', () => {
       const deployment = {
         key: 'testapp',
         displayName: 'Test App',
+        description: 'A test application',
+        type: 'webapp',
         image: 'testapp:latest',
+        registryMode: 'external',
         port: 3000,
-        deploymentKey: 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        requiresDatabase: false,
+        requiresRedis: false,
+        requiresStorage: false,
         configuration: [],
         authentication: {
-          enabled: true
+          type: 'azure'
+          // Missing enableSSO and requiredRoles
         }
-        // Missing roles and permissions
       };
 
-      const result = generator.validateDeploymentJson(deployment);
-      expect(result.valid).toBe(true);
-      expect(result.warnings).toContain('Authentication enabled but no roles defined');
-      expect(result.warnings).toContain('Authentication enabled but no permissions defined');
+      const result = validator.validateDeploymentJson(deployment);
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(err => err.includes('authentication'))).toBe(true);
     });
   });
 
@@ -142,7 +166,14 @@ describe('Generator Validation Module', () => {
       port: 3000,
       image: {
         name: 'testapp',
-        tag: 'latest'
+        tag: 'latest',
+        registry: '',
+        registryMode: 'acr' // Use 'acr' to avoid external registry requirements
+      },
+      requires: {
+        database: false,
+        redis: false,
+        storage: false
       }
     };
 
@@ -165,9 +196,15 @@ describe('Generator Validation Module', () => {
           return JSON.stringify({
             key: 'testapp',
             displayName: 'Test App',
+            description: 'A test application',
+            type: 'webapp',
             image: 'testapp:latest',
+            registryMode: 'acr',
             port: 3000,
-            deploymentKey: 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+            requiresDatabase: false,
+            requiresRedis: false,
+            requiresStorage: false,
+            databases: [],
             configuration: []
           });
         }
@@ -191,10 +228,10 @@ describe('Generator Validation Module', () => {
       expect(result.deployment.key).toBe('testapp');
     });
 
-    it('should return validation errors when invalid', async() => {
-      // Mock invalid variables
+    it('should throw error when validation fails', async() => {
+      // Mock invalid variables - missing required fields
       const invalidVariables = {
-        port: 99999 // Invalid port
+        port: 99999 // Invalid port and missing required fields
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
@@ -204,23 +241,12 @@ describe('Generator Validation Module', () => {
         if (filePath.includes('env.template')) {
           return mockEnvTemplate;
         }
-        if (filePath.includes('aifabrix-deploy.json')) {
-          return JSON.stringify({
-            key: 'testapp',
-            displayName: 'Test App',
-            port: 99999, // Invalid port
-            deploymentKey: 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
-            configuration: []
-          });
-        }
         return '';
       });
 
-      const result = await generator.generateDeployJsonWithValidation('testapp');
-
-      expect(result.success).toBe(false);
-      expect(result.validation.valid).toBe(false);
-      expect(result.validation.errors.length).toBeGreaterThan(0);
+      // generateDeployJson will throw error due to schema validation
+      await expect(generator.generateDeployJsonWithValidation('testapp'))
+        .rejects.toThrow('Generated deployment JSON does not match schema');
     });
   });
 });

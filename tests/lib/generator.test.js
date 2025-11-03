@@ -39,7 +39,8 @@ describe('Generator Module', () => {
       image: {
         name: 'testapp',
         registry: 'myacr.azurecr.io',
-        tag: 'v1.0.0'
+        tag: 'v1.0.0',
+        registryMode: 'acr'
       },
       requires: {
         database: true,
@@ -126,12 +127,20 @@ PUBLIC_CONFIG=public-value`;
       expect(deployment.description).toBe('A test application');
       expect(deployment.type).toBe('webapp');
       expect(deployment.image).toBe('myacr.azurecr.io/testapp:v1.0.0');
+      expect(deployment.registryMode).toBe('acr');
       expect(deployment.port).toBe(3000);
-      expect(deployment.deploymentKey).toBeDefined();
+      expect(deployment.requiresDatabase).toBe(true);
+      expect(deployment.requiresRedis).toBe(true);
+      expect(deployment.requiresStorage).toBe(false);
+      expect(deployment.databases).toEqual([{ name: 'testapp' }]);
       expect(deployment.configuration).toHaveLength(6);
       expect(deployment.roles).toHaveLength(2);
       expect(deployment.permissions).toHaveLength(2);
-      expect(deployment.authentication.enabled).toBe(true);
+      expect(deployment.authentication).toBeDefined();
+      // authentication should have type, enableSSO, requiredRoles from schema
+      expect(deployment.authentication.type).toBeDefined();
+      expect(deployment.authentication.enableSSO).toBeDefined();
+      expect(deployment.authentication.requiredRoles).toBeDefined();
     });
 
     it('should handle missing rbac.yaml gracefully', async() => {
@@ -146,8 +155,9 @@ PUBLIC_CONFIG=public-value`;
       const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
       const deployment = JSON.parse(writeCall[1]);
 
-      expect(deployment.authentication.enabled).toBe(false);
+      expect(deployment.authentication.enableSSO).toBe(false);
       expect(deployment.authentication.type).toBe('none');
+      expect(deployment.authentication.requiredRoles).toEqual([]);
       expect(deployment.roles).toBeUndefined();
       expect(deployment.permissions).toBeUndefined();
     });
@@ -326,9 +336,7 @@ NORMAL_VAR=value`;
       const result = generator.buildHealthCheck(variables);
       expect(result).toEqual({
         path: '/api/v1/health',
-        interval: 60,
-        timeout: 15,
-        retries: 5
+        interval: 60
       });
     });
 
@@ -338,9 +346,7 @@ NORMAL_VAR=value`;
       const result = generator.buildHealthCheck(variables);
       expect(result).toEqual({
         path: '/health',
-        interval: 30,
-        timeout: 10,
-        retries: 3
+        interval: 30
       });
     });
 
@@ -354,9 +360,7 @@ NORMAL_VAR=value`;
       const result = generator.buildHealthCheck(variables);
       expect(result).toEqual({
         path: '/custom/health',
-        interval: 30,
-        timeout: 10,
-        retries: 3
+        interval: 30
       });
     });
   });
@@ -429,19 +433,18 @@ NORMAL_VAR=value`;
 
       const result = generator.buildAuthentication(rbac);
       expect(result).toEqual({
-        enabled: true,
-        type: 'keycloak',
-        sso: true,
-        requiredRoles: ['admin'],
-        permissions: ['app:admin']
+        type: 'azure',
+        enableSSO: true,
+        requiredRoles: ['admin']
       });
     });
 
     it('should build disabled authentication when no RBAC', () => {
       const result = generator.buildAuthentication(null);
       expect(result).toEqual({
-        enabled: false,
-        type: 'none'
+        type: 'none',
+        enableSSO: false,
+        requiredRoles: []
       });
     });
 
@@ -450,11 +453,9 @@ NORMAL_VAR=value`;
 
       const result = generator.buildAuthentication(rbac);
       expect(result).toEqual({
-        enabled: true,
-        type: 'keycloak',
-        sso: true,
-        requiredRoles: [],
-        permissions: []
+        type: 'azure',
+        enableSSO: true,
+        requiredRoles: []
       });
     });
   });

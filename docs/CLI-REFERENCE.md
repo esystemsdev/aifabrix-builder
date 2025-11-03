@@ -53,26 +53,40 @@ Authenticate with Miso Controller.
 
 **Usage:**
 ```bash
-# Login with default localhost:3000
+# Login with default localhost:3000 (interactive prompts)
 aifabrix login
 
 # Login with custom controller URL
 aifabrix login --url https://controller.aifabrix.ai
+
+# CI/CD: Login with credentials method
+aifabrix login --url http://localhost:3010 --method credentials --client-id $CLIENT_ID --client-secret $CLIENT_SECRET
+
+# CI/CD: Login with device code flow
+aifabrix login --url http://localhost:3010 --method device --environment dev
 ```
 
 **Options:**
 - `-u, --url <url>` - Controller URL (default: http://localhost:3000)
+- `-m, --method <method>` - Authentication method: `device` or `credentials` (optional, prompts if not provided)
+- `--client-id <id>` - Client ID for credentials method (optional, prompts if not provided)
+- `--client-secret <secret>` - Client Secret for credentials method (optional, prompts if not provided)
+- `-e, --environment <env>` - Environment key for device method (e.g., dev, tst, pro) (optional, prompts if not provided)
 
 **Authentication Methods:**
 
-1. **Browser-based OAuth (recommended)**
-   - Opens browser for authentication
-   - Authenticates via Keycloak → Entra ID
-   - Paste token from browser when complete
-
-2. **ClientId + ClientSecret**
-   - Prompts for credentials
+1. **ClientId + ClientSecret**
+   - Use `--method credentials` with `--client-id` and `--client-secret` flags
+   - If flags not provided, prompts for credentials interactively
    - Useful for CI/CD or non-interactive environments
+
+2. **Device Code Flow (environment only)**
+   - Use `--method device` with `--environment` flag
+   - If `--environment` not provided, prompts interactively
+   - Authenticate with only an environment key
+   - No client credentials required
+   - Useful for initial setup before application registration
+   - Follows OAuth2 Device Code Flow (RFC 8628)
 
 **Output:**
 ```
@@ -81,10 +95,76 @@ Controller: http://localhost:3000
 Token stored securely in ~/.aifabrix/config.yaml
 ```
 
+**Device Code Flow Example:**
+
+With flags (CI/CD):
+```bash
+aifabrix login --url http://localhost:3010 --method device --environment dev
+```
+
+Interactive (prompts for environment):
+```bash
+aifabrix login --url http://localhost:3010 --method device
+# Prompts: Environment key (e.g., dev, tst, pro): dev
+```
+
+**Device Code Flow Output:**
+```
+📱 Initiating device code flow...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Device Code Flow Authentication
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+To complete authentication:
+  1. Visit: https://auth.example.com/device
+  2. Enter code: ABCD-EFGH
+  3. Approve the request
+
+Waiting for approval...
+⏳ Waiting for approval (attempt 1)...
+✅ Authentication approved!
+
+✅ Successfully logged in!
+Controller: http://localhost:3000
+Token stored securely in ~/.aifabrix/config.yaml
+```
+
+**Device Code Flow Steps:**
+
+1. CLI initiates device code flow with environment key
+2. Display user code and verification URL
+3. User visits URL and enters code in browser
+4. User approves request in browser
+5. CLI polls for token (automatically)
+6. Token is saved to configuration
+
+**CI/CD Usage Examples:**
+
+```bash
+# GitHub Actions / Azure DevOps
+aifabrix login \
+  --url ${{ secrets.AIFABRIX_CONTROLLER_URL }} \
+  --method credentials \
+  --client-id ${{ secrets.AIFABRIX_CLIENT_ID }} \
+  --client-secret ${{ secrets.AIFABRIX_CLIENT_SECRET }}
+
+# Device code flow in CI/CD (if environment key is available)
+aifabrix login \
+  --url $CONTROLLER_URL \
+  --method device \
+  --environment $ENVIRONMENT_KEY
+```
+
 **Issues:**
+- **"Invalid method"** → Method must be `device` or `credentials`
 - **"Login failed"** → Check controller URL and credentials
 - **"Token expired"** → Run login again
 - **"Not logged in"** → Run `aifabrix login` before other commands
+- **"Device code expired"** → Restart device code flow (codes expire after ~10 minutes)
+- **"Authorization declined"** → User denied the request; run login again
+- **"Device code initiation failed"** → Check environment key is valid and controller is accessible
+- **"Environment key must contain only letters, numbers, hyphens, and underscores"** → Use valid environment format (e.g., dev, tst, pro)
 
 **Next Steps:**
 After logging in, you can:
