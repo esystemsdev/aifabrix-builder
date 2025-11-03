@@ -32,12 +32,12 @@ Want authentication or deployment controller?
 
 ```bash
 # Keycloak for authentication
-aifabrix create keycloak --port 8082 --database --template platform
+aifabrix create keycloak --port 8082 --database --template keycloak
 aifabrix build keycloak
 aifabrix run keycloak
 
 # Miso Controller for Azure deployments
-aifabrix create miso-controller --port 3000 --database --redis --template platform
+aifabrix create miso-controller --port 3000 --database --redis --template miso-controller
 aifabrix build miso-controller
 aifabrix run miso-controller
 ```

@@ -17,8 +17,7 @@
     "build": "npm run lint && npm run test:ci",
     "validate": "npm run build",
     "prepublishOnly": "npm run validate",
-    "precommit": "npm run lint:fix && npm run test",
-    "posttest": "npm run lint"
+    "precommit": "npm run lint:fix && npm run test"
   },
   "keywords": [
     "aifabrix",

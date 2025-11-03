@@ -16,6 +16,7 @@
 const { Command } = require('commander');
 const cli = require('../lib/cli');
 const { setupAppCommands } = require('../lib/commands/app');
+const logger = require('../lib/utils/logger');
 
 /**
  * Initialize and configure the CLI
@@ -47,7 +48,7 @@ if (require.main === module) {
   try {
     initializeCLI();
   } catch (error) {
-    console.error('❌ Failed to initialize CLI:', error.message);
+    logger.error('❌ Failed to initialize CLI:', error.message);
     process.exit(1);
   }
 }

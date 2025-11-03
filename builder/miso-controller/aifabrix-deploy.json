@@ -1,0 +1,26 @@
+{
+  "apiVersion": "v1",
+  "kind": "ApplicationDeployment",
+  "metadata": {
+    "name": "miso-controller",
+    "namespace": "default"
+  },
+  "spec": {
+    "application": {
+      "name": "miso-controller",
+      "version": "1.0.0",
+      "language": "typescript",
+      "port": 3000
+    },
+    "services": {
+      "database": true,
+      "redis": true,
+      "storage": true,
+      "authentication": true
+    },
+    "deployment": {
+      "replicas": 1,
+      "strategy": "RollingUpdate"
+    }
+  }
+}

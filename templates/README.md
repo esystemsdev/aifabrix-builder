@@ -8,16 +8,17 @@ The templates directory is organized as follows:
 
 ### Application Templates (for `--template` flag)
 
-Application templates are folder-based and located directly under `templates/`. When you use `--template <name>`, the tool looks for `templates/<name>/` and copies all files from that folder to `builder/<app>/`.
+Application templates are folder-based and located under `templates/applications/`. When you use `--template <name>`, the tool looks for `templates/applications/<name>/` and copies all files from that folder to `builder/<app>/`.
 
 **Example:**
-- `templates/controller/` - Controller application template
-- `templates/keycloak/` - Keycloak application template
+- `templates/applications/miso-controller/` - Miso Controller application template
+- `templates/applications/keycloak/` - Keycloak application template
 
 **Template Validation:**
-- Template folder must exist
+- Template folder must exist in `templates/applications/<name>/`
 - Template folder must contain at least one file
 - Hidden files (starting with `.`) are skipped
+- If a template includes a `Dockerfile`, it will be copied to `builder/<app>/Dockerfile` along with other files
 
 ### Language Templates
 
@@ -79,10 +80,10 @@ Extra workflow steps are located in `templates/github/steps/`. When you use `--g
 Use `--template <name>` when creating an application:
 
 ```bash
-aifabrix create myapp --template controller --port 3000
+aifabrix create myapp --template miso-controller --port 3000
 ```
 
-This validates that `templates/controller/` exists and copies all files from it to `builder/myapp/`.
+This validates that `templates/applications/miso-controller/` exists and copies all files (including Dockerfile if present) from it to `builder/myapp/`.
 
 ### GitHub Workflow Steps
 

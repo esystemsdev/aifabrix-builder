@@ -90,7 +90,7 @@ Keycloak provides authentication and user management for your applications.
 
 ### 1. Create
 ```bash
-aifabrix create keycloak --port 8082 --database --template platform
+aifabrix create keycloak --port 8082 --database --template keycloak
 ```
 
 ### 2. Build
@@ -122,7 +122,7 @@ Miso Controller deploys your applications to Azure.
 
 ### 1. Create
 ```bash
-aifabrix create miso-controller --port 3000 --database --redis --template platform
+aifabrix create miso-controller --port 3000 --database --redis --template miso-controller
 ```
 
 ### 2. Build

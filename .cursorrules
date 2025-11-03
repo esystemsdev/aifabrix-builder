@@ -1,6 +1,292 @@
 # AI Fabrix Builder - Cursor Rules
 # ISO 27001 Compliant Development Standards
 
+## Project Overview
+
+This is the AI Fabrix Builder - a CLI tool for local development infrastructure and Azure deployment. The builder provides:
+- **Local Infrastructure** - Postgres + Redis via Docker Compose
+- **Application Scaffolding** - Generate configuration files for apps
+- **Docker Generation** - Auto-detect runtime and generate Dockerfiles
+- **Template System** - Handlebars-based templates for TypeScript and Python
+- **Azure Deployment** - Push to ACR and deploy via Miso Controller
+- **Configuration Management** - YAML-based config with schema validation
+
+Technologies:
+- Node.js/JavaScript (CommonJS modules)
+- Commander.js for CLI
+- Handlebars for template generation
+- js-yaml for YAML parsing
+- AJV for JSON schema validation
+- Jest for testing
+- Docker for containerization
+
+## Architecture Patterns
+
+### Module Structure
+- All modules use CommonJS (`require`/`module.exports`)
+- Main entry point: `bin/aifabrix.js`
+- Core logic in `lib/` directory
+- Commands in `lib/cli.js` and `lib/commands/`
+- Utilities in `lib/utils/`
+- Schemas in `lib/schema/`
+- Templates in `templates/` directory
+
+### File Organization
+```
+lib/
+├── cli.js              # CLI command definitions (Commander.js)
+├── commands/           # Command implementations
+├── app.js              # App creation and management
+├── generator.js        # Deployment JSON generation
+├── validator.js        # Schema validation
+├── build.js            # Docker build logic
+├── infra.js            # Infrastructure management
+├── deployer.js          # Azure deployment
+├── templates.js        # Template rendering
+├── secrets.js          # Secret resolution (kv://)
+├── config.js           # Configuration management
+├── utils/              # Utility functions
+└── schema/             # JSON schemas
+```
+
+### CLI Command Pattern
+Commands are defined in `lib/cli.js` using Commander.js:
+```javascript
+program.command('command-name')
+  .description('Command description')
+  .option('-f, --flag <value>', 'Option description', defaultValue)
+  .action(async (options) => {
+    try {
+      // Command implementation
+      await commandFunction(options);
+    } catch (error) {
+      console.error(chalk.red(`Error: ${error.message}`));
+      process.exit(1);
+    }
+  });
+```
+
+### Module Export Pattern
+- Use named exports for multiple functions
+- Use default exports for single-purpose modules
+- Pattern:
+```javascript
+/**
+ * Module description
+ * @fileoverview Brief description
+ * @author AI Fabrix Team
+ * @version 2.0.0
+ */
+
+const dependency = require('./dependency');
+
+/**
+ * Function description
+ * @async
+ * @function functionName
+ * @param {string} param - Parameter description
+ * @returns {Promise<Type>} Return description
+ * @throws {Error} Error description
+ */
+async function functionName(param) {
+  // Implementation
+}
+
+module.exports = { functionName };
+```
+
+### Template Generation Pattern
+Templates use Handlebars and are stored in `templates/`:
+```javascript
+const Handlebars = require('handlebars');
+const fs = require('fs');
+
+const templateContent = fs.readFileSync(templatePath, 'utf8');
+const template = Handlebars.compile(templateContent);
+const rendered = template(context);
+fs.writeFileSync(outputPath, rendered, 'utf8');
+```
+
+### YAML Processing Pattern
+All YAML files use js-yaml with proper error handling:
+```javascript
+const yaml = require('js-yaml');
+const fs = require('fs');
+
+try {
+  const content = fs.readFileSync(yamlPath, 'utf8');
+  const parsed = yaml.load(content);
+  // Process parsed YAML
+} catch (error) {
+  throw new Error(`Invalid YAML syntax: ${error.message}`);
+}
+```
+
+### Schema Validation Pattern
+Use AJV for JSON schema validation:
+```javascript
+const Ajv = require('ajv');
+const schema = require('./schema/application-schema.json');
+
+const ajv = new Ajv({ allErrors: true, strict: false });
+const validate = ajv.compile(schema);
+const valid = validate(data);
+
+if (!valid) {
+  const errors = formatValidationErrors(validate.errors);
+  throw new Error(`Validation failed: ${errors.join(', ')}`);
+}
+```
+
+## Code Style
+
+### JavaScript Conventions
+- Use strict mode where applicable
+- Use async/await for asynchronous operations
+- Use try-catch for error handling
+- Prefer const over let, avoid var
+- Use template literals for string interpolation
+- Use object destructuring where appropriate
+
+### Naming Conventions
+- **Files**: kebab-case (`app-deploy.js`, `env-reader.js`)
+- **Functions**: camelCase (`createApp`, `validateVariables`)
+- **Constants**: UPPER_SNAKE_CASE (`MAX_FILE_SIZE`, `DEFAULT_PORT`)
+- **Classes**: PascalCase (not common in this project, but if used)
+- **Private functions**: prefix with underscore if needed (rare in CommonJS)
+
+### Error Handling
+- Always wrap async operations in try-catch
+- Provide meaningful error messages
+- Include context in error messages (file path, app name, etc.)
+- Use chalk for colored error output
+- Pattern:
+```javascript
+try {
+  await operation();
+} catch (error) {
+  console.error(chalk.red(`Error: ${error.message}`));
+  throw new Error(`Operation failed: ${error.message}`);
+}
+```
+
+### Input Validation
+- Validate all function parameters
+- Check for null/undefined values
+- Validate file paths and existence
+- Validate app names (alphanumeric, hyphens, underscores)
+- Pattern:
+```javascript
+function validateAppName(appName) {
+  if (!appName || typeof appName !== 'string') {
+    throw new Error('App name is required and must be a string');
+  }
+  if (!/^[a-z0-9-_]+$/.test(appName)) {
+    throw new Error('App name must contain only lowercase letters, numbers, hyphens, and underscores');
+  }
+}
+```
+
+### Async/Await
+- Always use async/await, never raw promises
+- Always use try-catch with async operations
+- Return appropriate default values on error (empty arrays, null, etc.)
+- Pattern:
+```javascript
+async function getItems() {
+  try {
+    const items = await fetchItems();
+    return items || [];
+  } catch (error) {
+    console.error('Failed to get items:', error);
+    return [];
+  }
+}
+```
+
+### File Operations
+- Use `fs.promises` for async file operations
+- Use `fs.existsSync` for synchronous checks when needed
+- Always handle file not found errors
+- Use `path.join()` for cross-platform path construction
+- Pattern:
+```javascript
+const fs = require('fs').promises;
+const path = require('path');
+
+const filePath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
+try {
+  const content = await fs.readFileSync(filePath, 'utf8');
+  // Process content
+} catch (error) {
+  if (error.code === 'ENOENT') {
+    throw new Error(`File not found: ${filePath}`);
+  }
+  throw error;
+}
+```
+
+## Testing Conventions
+
+### Test File Structure
+- Test files mirror source structure: `tests/lib/app.test.js`
+- Use Jest for testing framework
+- Mock all external dependencies (fs, axios, child_process)
+- Test both success and error paths
+- Test edge cases (missing files, invalid YAML, etc.)
+
+### Test Organization
+```
+tests/
+├── lib/
+│   ├── app.test.js
+│   ├── validator.test.js
+│   ├── cli.test.js
+│   └── generator.test.js
+├── bin/
+│   └── aifabrix.test.js
+└── integration/
+    ├── build.test.js
+    └── deploy.test.js
+```
+
+### Mock Patterns
+- Mock fs operations: `jest.mock('fs')` or `jest.mock('fs').promises`
+- Mock axios: `jest.mock('axios')` or use `makeApiCall` mock
+- Mock child_process: `jest.mock('child_process')`
+- Mock templates: provide test templates in `tests/fixtures/`
+- Pattern:
+```javascript
+jest.mock('fs');
+jest.mock('fs').promises;
+
+const fs = require('fs');
+const fsp = require('fs').promises;
+
+describe('ModuleName', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should handle success case', async () => {
+    fsp.readFile = jest.fn().resolves('content');
+    // Test implementation
+  });
+
+  it('should handle error case', async () => {
+    fsp.readFile = jest.fn().rejects(new Error('File not found'));
+    // Test error handling
+  });
+});
+```
+
+### Test Coverage
+- Aim for 80%+ branch coverage
+- Test edge cases (null tokens, empty arrays, file errors)
+- Test validation failures
+- Test template rendering
+- Test Docker operations (mocked)
+
 ## Security & Compliance (ISO 27001)
 
 ### Information Security Management
@@ -11,18 +297,51 @@
 - Regular security reviews and vulnerability assessments required
 
 ### Data Protection
-- No hardcoded secrets, passwords, or sensitive data in code
+- **No hardcoded secrets, passwords, or sensitive data in code**
 - Use environment variables and secure configuration management
 - Implement proper input validation and sanitization
 - Follow principle of least privilege for all operations
 - Encrypt sensitive data at rest and in transit
+- Never log sensitive information (passwords, tokens, secrets)
+
+### Secret Management
+- Use `kv://` references in env.template for secrets
+- Resolve secrets via `lib/secrets.js` before deployment
+- Never expose secrets in generated files
+- Mask secrets in logs and error messages
+- Pattern:
+```javascript
+// In env.template
+DATABASE_PASSWORD=kv://secrets/database/password
+
+// In secrets.js
+function resolveSecret(key) {
+  // Resolve from secure key store
+  // Never log the actual value
+}
+```
 
 ### Audit & Compliance
 - All actions must be logged and auditable
+- Use `lib/audit-logger.js` for audit logging
 - Maintain comprehensive documentation for compliance
 - Regular code reviews and security assessments
 - Version control all changes with proper commit messages
 - Document all dependencies and their security implications
+
+### Input Validation
+- Sanitize all user inputs (app names, file paths, URLs)
+- Validate YAML syntax before processing
+- Validate JSON schemas before deployment
+- Prevent path traversal attacks
+- Validate URLs and endpoints
+
+### Infrastructure Security
+- Use secure container configurations
+- Implement proper network security
+- Follow Docker security best practices
+- Use secure base images and dependencies
+- Validate Dockerfile security before generation
 
 ## Code Quality Standards
 
@@ -37,30 +356,35 @@
 - Use meaningful, descriptive names for variables and functions
 - Implement proper error handling and logging
 - Write self-documenting code with clear comments
-- Use TypeScript for type safety where applicable
+- Use JSDoc for all public functions
 
-### Testing Requirements
-- **ALL actions/functions MUST have corresponding tests**
-- Test coverage must be at least 80% for all modules
-- Write unit tests, integration tests, and end-to-end tests
-- Tests must be in separate `tests/` folder mirroring code structure
-- **NO tests in the main code directories** - keep tests separate
-- Use Jest for testing framework
-- Mock external dependencies appropriately
+### Documentation Requirements
+- **JSDoc comments for all public functions**
+- Include parameter types and return types
+- Document error conditions
+- Add examples in comments for complex methods
+- Document security considerations
 
-### Test Structure
-```
-tests/
-├── lib/
-│   ├── app.test.js
-│   ├── validator.test.js
-│   ├── cli.test.js
-│   └── generator.test.js
-├── bin/
-│   └── aifabrix.test.js
-└── integration/
-    ├── build.test.js
-    └── deploy.test.js
+### Code Comments
+- Use JSDoc format for function documentation
+- Include `@fileoverview` at top of each file
+- Include `@author` and `@version` tags
+- Use inline comments for complex logic
+- Pattern:
+```javascript
+/**
+ * Function description
+ * @async
+ * @function functionName
+ * @param {string} appName - Application name
+ * @param {Object} options - Configuration options
+ * @param {number} [options.port] - Application port (optional)
+ * @returns {Promise<void>} Resolves when operation completes
+ * @throws {Error} If app name is invalid or operation fails
+ *
+ * @example
+ * await functionName('myapp', { port: 3000 });
+ */
 ```
 
 ## Development Workflow
@@ -77,67 +401,187 @@ tests/
 3. Follow coding standards and file size limits
 4. Document all security-related decisions
 5. Use proper error handling and logging
+6. Validate all inputs
+7. Use JSDoc for documentation
 
 ### Post-Development
-1. **Build project** - Ensure all dependencies are resolved
-2. **Validate linting** - Run ESLint and fix all issues
-3. **Run tests** - Execute full test suite and ensure 100% pass rate
-4. **Security review** - Check for vulnerabilities and compliance
-5. **Code review** - Peer review for quality and security
+1. **Build project** - Run `npm run build` (lint + test)
+2. **Validate linting** - Run `npm run lint` and fix all issues
+3. **Run tests** - Execute `npm test` and ensure 100% pass rate
+4. **Check coverage** - Ensure 80%+ coverage for new code
+5. **Security review** - Check for vulnerabilities and compliance
+6. **Code review** - Peer review for quality and security
 
-## Linting & Validation
+## CLI Command Development
 
-### ESLint Configuration
-- Use strict ESLint rules for security and quality
-- Enforce consistent code style across the project
-- Validate against security best practices
-- Check for potential vulnerabilities and anti-patterns
+### Adding New Commands
+1. Add command definition in `lib/cli.js`
+2. Implement command logic in `lib/commands/` or appropriate module
+3. Add input validation
+4. Add error handling with user-friendly messages
+5. Use chalk for colored output
+6. Write tests for the command
 
-### Build Process
-- Always run `npm run build` before committing
-- Ensure all dependencies are properly installed
-- Validate configuration files and schemas
-- Check for TypeScript errors if applicable
+### Command Pattern
+```javascript
+program.command('new-command')
+  .description('Clear description of what the command does')
+  .option('-f, --flag <value>', 'Option description', defaultValue)
+  .action(async (options) => {
+    try {
+      // Validate inputs
+      if (!options.required) {
+        throw new Error('Required option missing');
+      }
 
-### Testing Process
-- Run `npm test` before any commit
-- Ensure all tests pass with 100% success rate
-- Generate test coverage reports
-- Validate test quality and completeness
+      // Execute command
+      const result = await executeCommand(options);
+      
+      // Success message
+      console.log(chalk.green(`✓ Success: ${result}`));
+    } catch (error) {
+      console.error(chalk.red(`✗ Error: ${error.message}`));
+      process.exit(1);
+    }
+  });
+```
 
-## Security Best Practices
+### User Experience
+- Provide clear, actionable error messages
+- Use emoji/icons for visual feedback (✓, ✗, ⚠️, 🔐, etc.)
+- Show progress for long-running operations (use ora spinner)
+- Provide helpful hints in error messages
+- Use consistent formatting across commands
 
-### Authentication & Authorization
-- Implement proper RBAC (Role-Based Access Control)
-- Use secure authentication mechanisms
-- Validate all user inputs and permissions
-- Implement proper session management
+## Template Development
 
-### Data Handling
-- Sanitize all user inputs
-- Use parameterized queries to prevent injection attacks
-- Implement proper data validation schemas
-- Encrypt sensitive data appropriately
+### Template Location
+- Templates in `templates/` directory
+- Organize by type: `templates/typescript/`, `templates/python/`, `templates/github/`
+- Use `.hbs` extension for Handlebars templates
 
-### Infrastructure Security
-- Use secure container configurations
-- Implement proper network security
+### Template Patterns
+- Use Handlebars helpers for conditionals: `{{#if condition}}`
+- Use Handlebars loops: `{{#each items}}`
+- Use context variables: `{{variableName}}`
+- Provide default values: `{{variableName default="value"}}`
+- Pattern:
+```handlebars
+# {{appName}} Dockerfile
+FROM {{baseImage}}
+{{#if hasDatabase}}
+ENV DATABASE_URL={{databaseUrl}}
+{{/if}}
+```
+
+### Template Context
+- Build context object with all necessary variables
+- Validate context before rendering
+- Provide sensible defaults for optional values
+- Document required context variables
+
+## Validation Patterns
+
+### Schema Validation
+- Define schemas in `lib/schema/` directory
+- Use JSON Schema format
+- Validate before deployment
+- Provide developer-friendly error messages
+- Pattern:
+```javascript
+const schema = require('./schema/application-schema.json');
+const ajv = new Ajv({ allErrors: true });
+const validate = ajv.compile(schema);
+
+if (!validate(data)) {
+  const errors = validate.errors.map(err => 
+    `${err.instancePath} ${err.message}`
+  ).join(', ');
+  throw new Error(`Validation failed: ${errors}`);
+}
+```
+
+### YAML Validation
+- Validate YAML syntax before parsing
+- Validate against schemas after parsing
+- Provide line numbers in error messages when possible
+- Pattern:
+```javascript
+try {
+  const parsed = yaml.load(content);
+  await validateAgainstSchema(parsed);
+} catch (error) {
+  if (error.message.includes('YAML')) {
+    throw new Error(`Invalid YAML syntax: ${error.message}`);
+  }
+  throw error;
+}
+```
+
+## Docker & Infrastructure
+
+### Dockerfile Generation
+- Auto-detect runtime (TypeScript/Python)
+- Use appropriate base images
+- Follow security best practices
+- Minimize image size
+- Pattern in `lib/app-dockerfile.js`:
+```javascript
+function detectRuntime(appPath) {
+  // Check for package.json (Node.js/TypeScript)
+  // Check for requirements.txt (Python)
+  // Return appropriate template
+}
+```
+
+### Docker Compose
+- Infrastructure templates in `templates/infra/`
+- Use environment variables for configuration
 - Follow Docker security best practices
-- Use secure base images and dependencies
+- Validate compose files before deployment
 
-## Documentation Requirements
+## Common Patterns
 
-### Code Documentation
-- Document all public APIs and functions
-- Include security considerations in documentation
-- Provide usage examples and best practices
-- Document all configuration options and their security implications
+### App Name Validation
+```javascript
+function validateAppName(appName) {
+  if (!appName || typeof appName !== 'string') {
+    throw new Error('App name is required and must be a string');
+  }
+  if (!/^[a-z0-9-_]+$/.test(appName)) {
+    throw new Error('App name must contain only lowercase letters, numbers, hyphens, and underscores');
+  }
+}
+```
 
-### Security Documentation
-- Document all security controls and measures
-- Maintain security architecture documentation
-- Document incident response procedures
-- Keep security policies and procedures up to date
+### File Path Construction
+```javascript
+const path = require('path');
+
+const appPath = path.join(process.cwd(), 'builder', appName);
+const configPath = path.join(appPath, 'variables.yaml');
+```
+
+### Configuration Loading
+```javascript
+async function loadConfig(appName) {
+  const configPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
+  const content = await fs.readFile(configPath, 'utf8');
+  return yaml.load(content);
+}
+```
+
+### Template Rendering
+```javascript
+const Handlebars = require('handlebars');
+const fs = require('fs');
+
+const templatePath = path.join(__dirname, '../templates/typescript/Dockerfile.hbs');
+const templateContent = fs.readFileSync(templatePath, 'utf8');
+const template = Handlebars.compile(templateContent);
+const rendered = template(context);
+await fs.writeFile(outputPath, rendered, 'utf8');
+```
 
 ## Quality Gates
 
@@ -145,31 +589,38 @@ tests/
 1. ✅ File size limits respected (≤500 lines, ≤50 lines per function)
 2. ✅ All functions have corresponding tests
 3. ✅ Tests are in `tests/` folder (not in code directories)
-4. ✅ Build process completes successfully
-5. ✅ Linting passes with no errors
+4. ✅ Build process completes successfully (`npm run build`)
+5. ✅ Linting passes with no errors (`npm run lint`)
 6. ✅ All tests pass (100% success rate)
-7. ✅ Security review completed
-8. ✅ Documentation updated
+7. ✅ Test coverage ≥80% for new code
+8. ✅ Security review completed
+9. ✅ Documentation updated (JSDoc comments)
+10. ✅ No hardcoded secrets or sensitive data
 
 ### Continuous Integration
 - Automated testing on all pull requests
 - Security scanning and vulnerability assessment
 - Code quality metrics and coverage reporting
 - Automated deployment validation
+- Linting enforcement
 
 ## Error Handling & Logging
 
 ### Error Handling
 - Implement comprehensive error handling
-- Use structured error messages
+- Use structured error messages with context
 - Log all errors with appropriate context
 - Never expose sensitive information in error messages
+- Use chalk for colored error output
+- Provide actionable error messages
 
 ### Logging Standards
-- Use structured logging (JSON format)
-- Include security-relevant events
-- Implement proper log rotation and retention
-- Ensure logs are tamper-evident
+- Use console.log for normal output (with chalk coloring)
+- Use console.error for errors
+- Use console.warn for warnings
+- Use ora spinner for progress indication
+- Never log secrets, passwords, or tokens
+- Use structured logging for audit trail
 
 ## Dependencies & Security
 
@@ -178,12 +629,49 @@ tests/
 - Use only trusted and well-maintained packages
 - Implement dependency scanning and vulnerability assessment
 - Document all dependencies and their purposes
+- Review security advisories regularly
 
 ### Security Scanning
 - Regular security scans of dependencies
 - Vulnerability assessment and remediation
 - Security testing in CI/CD pipeline
 - Regular security audits and reviews
+- Use `npm audit` regularly
+
+## When Adding New Features
+
+1. **Plan** - Analyze requirements and design architecture
+2. **Test First** - Write tests before implementation (TDD)
+3. **Implement** - Write code following all patterns and standards
+4. **Validate** - Run build, lint, and tests
+5. **Document** - Add JSDoc comments and update README if needed
+6. **Security Review** - Check for vulnerabilities and compliance
+7. **Code Review** - Peer review for quality and security
+
+## Critical Rules
+
+### Must Do (✅)
+- ✅ Validate all inputs (app names, file paths, URLs)
+- ✅ Use try-catch for all async operations
+- ✅ Provide meaningful error messages with context
+- ✅ Use JSDoc for all public functions
+- ✅ Write tests for all functions
+- ✅ Keep files ≤500 lines and functions ≤50 lines
+- ✅ Use chalk for colored output in CLI
+- ✅ Use path.join() for cross-platform paths
+- ✅ Validate YAML syntax before parsing
+- ✅ Never log secrets or sensitive data
+
+### Must Not Do (❌)
+- ❌ Never hardcode secrets, passwords, or tokens
+- ❌ Never expose sensitive data in error messages
+- ❌ Never use synchronous file operations in async functions (unless necessary)
+- ❌ Never ignore errors or use empty catch blocks
+- ❌ Never commit files with secrets or sensitive data
+- ❌ Never skip input validation
+- ❌ Never skip tests for new functionality
+- ❌ Never use `eval()` or `Function()` constructor
+- ❌ Never use raw paths (always use path.join)
 
 ---
 

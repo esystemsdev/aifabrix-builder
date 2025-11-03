@@ -59,7 +59,7 @@ aifabrix create myapp --github --main-branch main
 
 **Want to use a template?** Add `--template`:
 ```bash
-aifabrix create myapp --template controller --port 3000
+aifabrix create myapp --template miso-controller --port 3000
 ```
 
 **Want extra GitHub workflow steps?** Add `--github-steps`:

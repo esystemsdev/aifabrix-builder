@@ -40,11 +40,10 @@ describe('Template Validator Module', () => {
   describe('validateTemplate', () => {
     it('should validate existing template with files', async() => {
       // Use the actual templates directory from the project
-      const projectTemplatesDir = path.join(projectRoot, 'templates');
+      const projectTemplatesDir = path.join(projectRoot, 'templates', 'applications');
 
-      // Check if any templates exist (controller or keycloak)
-      // If not, create a test one
-      const templateName = 'controller';
+      // Check if miso-controller template exists, otherwise create a test one
+      const templateName = 'miso-controller';
       const templatePath = path.join(projectTemplatesDir, templateName);
 
       if (!fsSync.existsSync(templatePath)) {
@@ -65,8 +64,8 @@ describe('Template Validator Module', () => {
     });
 
     it('should throw error if template folder is empty', async() => {
-      // Create empty template directory in project templates
-      const emptyTemplatePath = path.join(projectRoot, 'templates', 'test-empty');
+      // Create empty template directory in project templates/applications
+      const emptyTemplatePath = path.join(projectRoot, 'templates', 'applications', 'test-empty');
       fsSync.mkdirSync(emptyTemplatePath, { recursive: true });
 
       try {
@@ -82,7 +81,7 @@ describe('Template Validator Module', () => {
 
     it('should skip hidden files when validating', async() => {
       // Create template with hidden file only
-      const hiddenTemplatePath = path.join(projectRoot, 'templates', 'test-hidden');
+      const hiddenTemplatePath = path.join(projectRoot, 'templates', 'applications', 'test-hidden');
       fsSync.mkdirSync(hiddenTemplatePath, { recursive: true });
       fsSync.writeFileSync(path.join(hiddenTemplatePath, '.hidden'), 'hidden');
       fsSync.writeFileSync(path.join(hiddenTemplatePath, 'visible.yaml'), 'visible');
@@ -102,7 +101,7 @@ describe('Template Validator Module', () => {
   describe('copyTemplateFiles', () => {
     it('should copy all files from template to app directory', async() => {
       // Create a test template
-      const testTemplatePath = path.join(projectRoot, 'templates', 'test-copy');
+      const testTemplatePath = path.join(projectRoot, 'templates', 'applications', 'test-copy');
       const appPath = path.join(tempDir, 'builder', 'test-app');
 
       fsSync.mkdirSync(testTemplatePath, { recursive: true });
@@ -126,7 +125,7 @@ describe('Template Validator Module', () => {
 
     it('should preserve directory structure when copying', async() => {
       // Create a test template with subdirectory
-      const testTemplatePath = path.join(projectRoot, 'templates', 'test-subdir');
+      const testTemplatePath = path.join(projectRoot, 'templates', 'applications', 'test-subdir');
       const appPath = path.join(tempDir, 'builder', 'test-app');
 
       fsSync.mkdirSync(path.join(testTemplatePath, 'config'), { recursive: true });
@@ -149,7 +148,7 @@ describe('Template Validator Module', () => {
 
     it('should skip hidden files when copying', async() => {
       // Create a test template with hidden file
-      const testTemplatePath = path.join(projectRoot, 'templates', 'test-hidden-copy');
+      const testTemplatePath = path.join(projectRoot, 'templates', 'applications', 'test-hidden-copy');
       const appPath = path.join(tempDir, 'builder', 'test-app');
 
       fsSync.mkdirSync(testTemplatePath, { recursive: true });
@@ -194,12 +193,12 @@ describe('Template Validator Module', () => {
     it('should exclude system template directories', async() => {
       const templates = await templateValidator.listAvailableTemplates();
 
-      // Should not include github, infra, python, typescript, template
+      // Should not include github, infra, python, typescript, applications (since we read from it)
       expect(templates).not.toContain('github');
       expect(templates).not.toContain('infra');
       expect(templates).not.toContain('python');
       expect(templates).not.toContain('typescript');
-      expect(templates).not.toContain('template');
+      expect(templates).not.toContain('applications');
     });
   });
 });

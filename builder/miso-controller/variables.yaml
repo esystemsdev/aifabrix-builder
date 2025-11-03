@@ -1,0 +1,41 @@
+app:
+  key: miso-controller
+  displayName: Miso Controller
+  description: AI Fabrix Miso Controller - Backend API and orchestration service
+  type: webapp
+image:
+  name: aifabrix/miso-controller
+  registry: devflowiseacr.azurecr.io
+  registryMode: acr
+port: 3000
+requires:
+  database: true
+  databases:
+    - name: miso
+    - name: miso-logs
+  redis: true
+  storage: true
+healthCheck:
+  path: /health
+  interval: 30
+  probePath: /health
+  probeRequestType: GET
+  probeProtocol: Https
+  probeIntervalInSeconds: 120
+authentication:
+  type: keycloak
+  enableSSO: true
+  requiredRoles:
+    - aifabrix-user
+  endpoints:
+    local: http://localhost:3000/auth/callback
+build:
+  context: ..
+  dockerfile: builder/Dockerfile
+  envOutputPath: ../packages/miso-controller/.env
+  localPort: 3010
+  language: typescript
+  secrets: ../../secrets.local.yaml
+compose:
+  file: docker-compose.yaml
+  service: miso-controller
