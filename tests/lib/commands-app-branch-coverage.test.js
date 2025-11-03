@@ -258,7 +258,7 @@ describe('Application Commands Branch Coverage Tests', () => {
 
       const config = await getConfig();
       const response = await authenticatedApiCall(
-        `${config.apiUrl}/api/applications/test-app/rotate-secret?environmentId=dev`,
+        `${config.apiUrl}/api/v1/applications/test-app/rotate-secret?environmentId=dev`,
         { method: 'POST' },
         config.token
       );
@@ -286,7 +286,7 @@ describe('Application Commands Branch Coverage Tests', () => {
 
       const config = await getConfig();
       const response = await authenticatedApiCall(
-        `${config.apiUrl}/api/applications/test-app/rotate-secret?environmentId=dev`,
+        `${config.apiUrl}/api/v1/applications/test-app/rotate-secret?environmentId=dev`,
         { method: 'POST' },
         config.token
       );
@@ -334,7 +334,7 @@ describe('Application Commands Branch Coverage Tests', () => {
 
       const config = await getConfig();
       const response = await authenticatedApiCall(
-        `${config.apiUrl}/api/applications?environmentId=dev`,
+        `${config.apiUrl}/api/v1/applications?environmentId=dev`,
         {},
         config.token
       );

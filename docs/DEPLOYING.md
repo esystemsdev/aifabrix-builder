@@ -114,7 +114,7 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
    - Used for authentication and integrity check
 
 3. **Sends to controller**
-   - POST to `/api/pipeline/deploy`
+   - POST to `/api/v1/pipeline/deploy`
    - Includes manifest + deployment key
 
 4. **Controller processes**
@@ -626,13 +626,13 @@ The `aifabrix deploy` command performs the following steps:
    - Returns validation errors and warnings
 
 6. **Send to Controller**
-   - POST request to `<controller>/api/pipeline/deploy`
+   - POST request to `<controller>/api/v1/pipeline/deploy`
    - HTTPS-only communication for security
    - Retries with exponential backoff on transient failures
    - Includes structured error handling
 
 7. **Poll Status (Optional)**
-   - Polls `/api/deployments/{deploymentId}` endpoint
+   - Polls `/api/v1/deployments/{deploymentId}` endpoint
    - Configurable interval (default: 5 seconds)
    - Maximum attempts (default: 60)
    - Terminal states: completed, failed, cancelled
@@ -655,7 +655,7 @@ The `aifabrix deploy` command performs the following steps:
 
 **Deploy Endpoint:**
 ```
-POST https://controller.aifabrix.ai/api/pipeline/deploy
+POST https://controller.aifabrix.ai/api/v1/pipeline/deploy
 Content-Type: application/json
 
 {
@@ -670,7 +670,7 @@ Content-Type: application/json
 
 **Status Endpoint:**
 ```
-GET https://controller.aifabrix.ai/api/pipeline/status/{deploymentId}
+GET https://controller.aifabrix.ai/api/v1/pipeline/status/{deploymentId}
 
 Response: {
   "deploymentId": "deploy-123",

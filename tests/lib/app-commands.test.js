@@ -85,7 +85,7 @@ describe('App Commands', () => {
       // We need to import Commander program and test the command
       // For now, just test the API call behavior
       const response = await authenticatedApiCall(
-        `http://localhost:3000/api/applications/${appName}/rotate-secret?environmentId=${environment}`,
+        `http://localhost:3000/api/v1/applications/${appName}/rotate-secret?environmentId=${environment}`,
         { method: 'POST' },
         'test-token-123'
       );
@@ -93,7 +93,7 @@ describe('App Commands', () => {
       expect(response.success).toBe(true);
       expect(response.data.credentials.clientSecret).toBe('new-secret-123');
       expect(authenticatedApiCall).toHaveBeenCalledWith(
-        `http://localhost:3000/api/applications/${appName}/rotate-secret?environmentId=${environment}`,
+        `http://localhost:3000/api/v1/applications/${appName}/rotate-secret?environmentId=${environment}`,
         { method: 'POST' },
         'test-token-123'
       );
@@ -104,7 +104,7 @@ describe('App Commands', () => {
 
       await expect(async() => {
         const response = await authenticatedApiCall(
-          `http://localhost:3000/api/applications/${appName}/rotate-secret`,
+          `http://localhost:3000/api/v1/applications/${appName}/rotate-secret`,
           { method: 'POST' },
           'test-token-123'
         );
@@ -139,7 +139,7 @@ describe('App Commands', () => {
       });
 
       const response = await authenticatedApiCall(
-        `http://localhost:3000/api/applications/${appName}/rotate-secret?environmentId=${environment}`,
+        `http://localhost:3000/api/v1/applications/${appName}/rotate-secret?environmentId=${environment}`,
         { method: 'POST' },
         'test-token-123'
       );
@@ -263,7 +263,7 @@ build:
       });
 
       const response = await authenticatedApiCall(
-        `http://localhost:3000/api/applications?environmentId=${environment}`,
+        `http://localhost:3000/api/v1/applications?environmentId=${environment}`,
         {},
         'test-token-123'
       );

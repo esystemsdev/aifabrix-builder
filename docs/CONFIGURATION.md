@@ -420,7 +420,7 @@ All authentication and authorization decisions are automatically logged by miso-
 **View audit logs:**
 ```bash
 # Via miso-controller API
-curl https://controller.aifabrix.ai/api/audit/logs?app=myapp
+curl https://controller.aifabrix.ai/api/v1/audit/logs?app=myapp
 ```
 
 ### Environment Variables

@@ -240,7 +240,7 @@ All containers are on `infra_aifabrix-network`.
 **Example:** App A calls App B:
 ```typescript
 // From app A
-fetch('http://aifabrix-appb:3000/api/data')
+fetch('http://aifabrix-appb:3000/api/v1/data')
 ```
 
 ---

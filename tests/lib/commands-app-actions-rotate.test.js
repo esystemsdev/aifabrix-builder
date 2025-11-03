@@ -137,7 +137,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         });
 
         expect(authenticatedApiCall).toHaveBeenCalledWith(
-          'http://localhost:3000/api/applications/test-app/rotate-secret?environmentId=dev',
+          'http://localhost:3000/api/v1/applications/test-app/rotate-secret?environmentId=dev',
           expect.objectContaining({ method: 'POST' }),
           'test-token'
         );

@@ -163,7 +163,7 @@ describe('deployer', () => {
       );
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://controller.example.com/api/pipeline/tst/deploy',
+        'https://controller.example.com/api/v1/pipeline/tst/deploy',
         manifest,
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -304,7 +304,7 @@ describe('deployer', () => {
       );
 
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        'https://controller.example.com/api/environments/pro/deployments/test-123',
+        'https://controller.example.com/api/v1/environments/pro/deployments/test-123',
         expect.objectContaining({
           headers: expect.objectContaining({
             'x-client-id': 'client-id',
@@ -468,7 +468,7 @@ describe('deployer', () => {
       );
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://controller.example.com/api/pipeline/tst/deploy',
+        'https://controller.example.com/api/v1/pipeline/tst/deploy',
         manifest,
         expect.any(Object)
       );
@@ -496,7 +496,7 @@ describe('deployer', () => {
 
       // Should normalize to lowercase
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://controller.example.com/api/pipeline/dev/deploy',
+        'https://controller.example.com/api/v1/pipeline/dev/deploy',
         manifest,
         expect.any(Object)
       );

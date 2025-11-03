@@ -321,7 +321,7 @@ aifabrix create myapp --github --github-steps npm
 - `-a, --authentication` - Requires authentication/RBAC
 - `-l, --language <lang>` - typescript or python
 - `-t, --template <name>` - Template to use (e.g., miso-controller, keycloak). Template folder must exist in `templates/{template}/`
-- `-g, --github` - Generate GitHub Actions workflows
+- `-g, --github` - (Optional) Generate GitHub Actions workflows
 - `--github-steps <steps>` - Extra GitHub workflow steps (comma-separated, e.g., `npm`). Step templates must exist in `templates/github/steps/{step}.hbs`. When included, these steps are rendered and injected into workflow files (e.g., `release.yaml`). Available step templates: `npm.hbs` (adds NPM publishing job)
 - `--main-branch <branch>` - Main branch name for workflows (default: main)
 

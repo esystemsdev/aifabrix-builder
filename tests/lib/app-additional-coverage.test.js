@@ -273,7 +273,7 @@ describe('App.js Additional Coverage Tests', () => {
       });
 
       envReader.generateEnvTemplate.mockResolvedValue({
-        template: '# Environment template\nDATABASE_URL=kv://database-url\n',
+        template: '# Environment template\nDATABASE_URL=kv://databases-test-app-0-urlKeyVault\n',
         warnings: warnings
       });
 

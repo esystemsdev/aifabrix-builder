@@ -40,7 +40,7 @@ async function createMockController(options = {}) {
     req.on('end', () => {
       res.setHeader('Content-Type', 'application/json');
 
-      if (req.url === '/api/pipeline/deploy' && req.method === 'POST') {
+      if (req.url === '/api/v1/pipeline/deploy' && req.method === 'POST') {
         const manifest = JSON.parse(body);
         deployCounter++;
         const deploymentId = `deploy-${deployCounter}-${Date.now()}`;
@@ -73,7 +73,7 @@ async function createMockController(options = {}) {
           res.end(JSON.stringify(defaultResponse));
         }
 
-      } else if (req.url?.startsWith('/api/pipeline/status/') && req.method === 'GET') {
+      } else if (req.url?.startsWith('/api/v1/pipeline/status/') && req.method === 'GET') {
         const deploymentId = req.url.split('/').pop();
         const deployment = deployments.get(deploymentId);
 

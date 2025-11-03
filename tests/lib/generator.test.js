@@ -316,7 +316,7 @@ NORMAL_VAR=value`;
     it('should build health check with custom values', () => {
       const variables = {
         healthCheck: {
-          path: '/api/health',
+          path: '/api/v1/health',
           interval: 60,
           timeout: 15,
           retries: 5
@@ -325,7 +325,7 @@ NORMAL_VAR=value`;
 
       const result = generator.buildHealthCheck(variables);
       expect(result).toEqual({
-        path: '/api/health',
+        path: '/api/v1/health',
         interval: 60,
         timeout: 15,
         retries: 5

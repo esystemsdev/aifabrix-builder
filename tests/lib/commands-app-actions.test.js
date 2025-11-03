@@ -166,7 +166,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
         expect(fs.readFile).toHaveBeenCalled();
         expect(authenticatedApiCall).toHaveBeenCalledWith(
-          'http://localhost:3000/api/applications/register',
+          'http://localhost:3000/api/v1/applications/register',
           expect.objectContaining({ method: 'POST' }),
           'test-token'
         );
@@ -396,7 +396,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
       if (listAction) {
         await listAction({ environment: 'dev' });
         expect(authenticatedApiCall).toHaveBeenCalledWith(
-          'http://localhost:3000/api/applications?environmentId=dev',
+          'http://localhost:3000/api/v1/applications?environmentId=dev',
           {},
           'test-token'
         );

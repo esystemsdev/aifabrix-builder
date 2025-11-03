@@ -39,7 +39,7 @@ aifabrix create myapp --github --main-branch develop
 ```
 
 **Options:**
-- `--github` - Enable workflow generation
+- `--github` - (Optional) Enable workflow generation
 - `--main-branch <branch>` - Set main branch name (default: main)
 - `--github-steps <steps>` - Extra GitHub workflow steps (comma-separated, e.g., `npm`). Step templates must exist in `templates/github/steps/{step}.hbs`
 
@@ -589,7 +589,7 @@ EOF
 
 Use the Pipeline API for automated deployments with proper authentication.
 
-**Note:** The `/api/pipeline/validate` endpoint returns a **one-time use token** (`validateToken`) that expires after deployment. This is designed for CI/CD pipeline flows only - there's no standalone `aifabrix validate` CLI command because the token is only valid during a single deployment sequence.
+**Note:** The `/api/v1/pipeline/validate` endpoint returns a **one-time use token** (`validateToken`) that expires after deployment. This is designed for CI/CD pipeline flows only - there's no standalone `aifabrix validate` CLI command because the token is only valid during a single deployment sequence.
 
 **Response from validate endpoint:**
 ```json
@@ -628,7 +628,7 @@ jobs:
       - name: Validate and Get Registry Credentials
         id: validate
         run: |
-          RESPONSE=$(curl -X POST "${{ secrets.AIFABRIX_API_URL }}/api/pipeline/validate" \
+          RESPONSE=$(curl -X POST "${{ secrets.AIFABRIX_API_URL }}/api/v1/pipeline/validate" \
             -H "Content-Type: application/json" \
             -d '{
               "clientId": "${{ secrets.DEV_AIFABRIX_CLIENT_ID }}",
@@ -649,7 +649,7 @@ jobs:
       
       - name: Deploy Application
         run: |
-          curl -X POST "${{ secrets.AIFABRIX_API_URL }}/api/pipeline/deploy" \
+          curl -X POST "${{ secrets.AIFABRIX_API_URL }}/api/v1/pipeline/deploy" \
             -H "Content-Type: application/json" \
             -d '{
               "validateToken": "${{ steps.validate.outputs.validateToken }}",
@@ -680,7 +680,7 @@ jobs:
           docker build -t myapp:${{ github.sha }} .
           
           # Get environment-specific credentials
-          RESPONSE=$(curl -X POST "${{ secrets.AIFABRIX_API_URL }}/api/pipeline/validate" \
+          RESPONSE=$(curl -X POST "${{ secrets.AIFABRIX_API_URL }}/api/v1/pipeline/validate" \
             -H "Content-Type: application/json" \
             -d '{
               "clientId": "${{ secrets.DEV_AIFABRIX_CLIENT_ID }}",

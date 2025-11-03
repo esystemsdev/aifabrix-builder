@@ -71,7 +71,7 @@ describe('CLI Command Actions', () => {
       let token;
 
       if (authMethod.method === 'browser') {
-        const authUrl = `${controllerUrl}/api/auth/oauth/login`;
+        const authUrl = `${controllerUrl}/api/v1/auth/oauth/login`;
         const startCommand = process.platform === 'win32' ? 'start' :
           process.platform === 'darwin' ? 'open' : 'xdg-open';
         exec(`${startCommand} "${authUrl}"`);
@@ -143,7 +143,7 @@ describe('CLI Command Actions', () => {
             }
           ]);
 
-          const response = await makeApiCall(`${controllerUrl}/api/auth/login`, {
+          const response = await makeApiCall(`${controllerUrl}/api/v1/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -201,7 +201,7 @@ describe('CLI Command Actions', () => {
             { type: 'password', name: 'clientSecret', message: 'Client Secret:', mask: '*', validate: () => true }
           ]);
 
-          const response = await makeApiCall(`${controllerUrl}/api/auth/login`, {
+          const response = await makeApiCall(`${controllerUrl}/api/v1/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

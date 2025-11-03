@@ -1,27 +1,27 @@
 # Application Metadata
 app:
-  key: miso
-  displayName: "Miso Controller"
-  description: "AI Fabrix Miso Controller - Backend API and orchestration service"
+  key: keycloak
+  displayName: "AI Fabrix Keycloak"
+  description: "Identity and Access Management"
   type: webapp
 
 # Image Configuration
 image:
-  name: aifabrix/miso-controller
+  name: aifabrix/keycloak
+  tag: "latest"
   registry: devflowiseacr.azurecr.io
   registryMode: acr
 
 # Port Configuration
-port: 3000
+port: 8082
 
 # Azure Requirements
 requires:
   database: true
   databases:
-    - name: miso
-    - name: miso-logs
-  redis: true
-  storage: true
+    - name: keycloak
+  redis: false
+  storage: false
 
 # Health Check
 healthCheck:
@@ -38,19 +38,18 @@ authentication:
   enableSSO: true
   requiredRoles: ["aifabrix-user"]
   endpoints:
-    local: "http://localhost:3000/auth/callback"
+    local: "http://localhost:8082/auth/callback"
 
 # Build Configuration
 build:
   context: ..                                           # Docker build context (relative to builder/)
   dockerfile: builder/Dockerfile                        # Dockerfile name (empty = use template)
-  envOutputPath: ../packages/miso-controller/.env       # Copy .env to repo root for local dev
-  localPort: 3010                                       # Port for local development (different from Docker port)
+  envOutputPath: .env                                   # Copy .env to repo root for local dev
+  localPort: 8082                                       # Port for local development (different from Docker port)
   language: typescript                                  # Runtime language for template selection
   secrets:                                              # Path to secrets file (optional)
 
 # Docker Compose
 compose:
   file: docker-compose.yaml
-  service: miso-controller
-
+  service: keycloak

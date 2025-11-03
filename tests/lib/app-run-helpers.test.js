@@ -268,7 +268,7 @@ describe('Application Run Helper Functions', () => {
       // Create env.template to avoid missing file errors
       fsSync.writeFileSync(
         path.join(builderPath, 'env.template'),
-        'PORT=3000\nDATABASE_URL=kv://database-url'
+        'PORT=3000\nDATABASE_URL=kv://databases-test-app-0-urlKeyVault'
       );
     });
 

@@ -271,7 +271,8 @@ DATABASE_URL="postgres://localhost:5432/test"
       const result = await envReader.generateEnvTemplate(config, existingEnv);
 
       expect(result.template).toContain('NODE_ENV=development');
-      expect(result.template).toContain('DB_PASSWORD=kv://database-password');
+      expect(result.template).toContain('DB_PASSWORD=kv://databases-test-app-0-passwordKeyVault');
+      expect(result.template).toContain('DB_USER=test-app_user');
       expect(result.template).toContain('API_KEY=kv://api-key');
       expect(result.template).toContain('PUBLIC_URL=https://example.com');
       expect(result.template).toContain('PORT=3000');
