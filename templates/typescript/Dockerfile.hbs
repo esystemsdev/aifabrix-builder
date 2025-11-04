@@ -16,8 +16,8 @@ RUN apk add --no-cache \
 # Copy package files first for better layer caching
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install dependencies (including devDependencies for ts-node)
+RUN npm install && npm cache clean --force
 
 # Copy application code
 COPY . .

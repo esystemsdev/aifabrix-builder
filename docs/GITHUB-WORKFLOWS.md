@@ -168,8 +168,8 @@ aifabrix app register myapp --environment dev
 1. Reads configuration from `builder/myapp/variables.yaml` automatically
 2. Creates minimal configuration if file doesn't exist
 3. Registers with controller
-4. Saves credentials to `~/.aifabrix/secrets-dev.yaml`
-5. Displays setup instructions
+4. Displays credentials (not automatically saved)
+5. Shows setup instructions
 
 **Output:**
 ```
@@ -180,7 +180,11 @@ aifabrix app register myapp --environment dev
    Display Name: My Application
    Environment:  dev
 
-🔑 Credentials saved to: ~/.aifabrix/secrets-dev.yaml
+🔑 CREDENTIALS (save these immediately):
+   Client ID:     ctrl-dev-myapp
+   Client Secret: xyz-abc-123...
+
+⚠️  IMPORTANT: Client Secret will not be shown again!
 
 📝 Add to GitHub Secrets:
    Repository level:
@@ -191,7 +195,7 @@ aifabrix app register myapp --environment dev
      DEV_AIFABRIX_CLIENT_SECRET = xyz-abc-123...
 ```
 
-**Important:** Credentials are automatically saved locally. Copy them to GitHub Secrets.
+**Important:** Credentials are displayed but not automatically saved. Copy them to GitHub Secrets manually.
 
 ### Step 3: Add to GitHub Secrets
 
@@ -234,7 +238,7 @@ aifabrix app rotate-secret --app myapp --environment dev
 ⚠️  Old secret is now invalid. Update GitHub Secrets!
 ```
 
-This updates credentials in `~/.aifabrix/secrets-dev.yaml`. Then update `DEV_AIFABRIX_CLIENT_SECRET` in GitHub Secrets.
+This displays new credentials. Then update `DEV_AIFABRIX_CLIENT_SECRET` in GitHub Secrets.
 
 → [See CLI Reference for `app register` command](CLI-REFERENCE.md#app-register)
 
@@ -649,8 +653,10 @@ jobs:
       
       - name: Deploy Application
         run: |
-          curl -X POST "${{ secrets.AIFABRIX_API_URL }}/api/v1/pipeline/deploy" \
+          curl -X POST "${{ secrets.AIFABRIX_API_URL }}/api/v1/pipeline/{env}/deploy" \
             -H "Content-Type: application/json" \
+            -H "x-client-id: ${{ secrets.DEV_AIFABRIX_CLIENT_ID }}" \
+            -H "x-client-secret: ${{ secrets.DEV_AIFABRIX_CLIENT_SECRET }}" \
             -d '{
               "validateToken": "${{ steps.validate.outputs.validateToken }}",
               "imageTag": "${{ github.sha }}"

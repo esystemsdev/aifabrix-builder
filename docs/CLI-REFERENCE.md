@@ -226,6 +226,84 @@ aifabrix down --volumes
 
 ---
 
+## aifabrix status
+
+Show detailed infrastructure service status.
+
+**What:** Displays the current status of all infrastructure services (Postgres, Redis, pgAdmin, Redis Commander) including their running state, ports, and URLs.
+
+**When:** Checking infrastructure health, troubleshooting connection issues.
+
+**Example:**
+```bash
+aifabrix status
+```
+
+**Output:**
+```
+📊 Infrastructure Status
+
+✅ postgres:
+   Status: running
+   Port: 5432
+   URL: localhost:5432
+
+✅ redis:
+   Status: running
+   Port: 6379
+   URL: localhost:6379
+
+✅ pgadmin:
+   Status: running
+   Port: 5050
+   URL: http://localhost:5050
+
+✅ redis-commander:
+   Status: running
+   Port: 8081
+   URL: http://localhost:8081
+```
+
+**Issues:**
+- **"Infrastructure not running"** → Run `aifabrix up` first
+- **"Docker not running"** → Start Docker Desktop
+
+---
+
+## aifabrix restart <service>
+
+Restart a specific infrastructure service.
+
+**What:** Restarts a single infrastructure service (postgres, redis, pgadmin, redis-commander) without affecting other services.
+
+**When:** Service is misbehaving, after configuration changes, troubleshooting.
+
+**Example:**
+```bash
+# Restart Postgres
+aifabrix restart postgres
+
+# Restart Redis
+aifabrix restart redis
+```
+
+**Available services:**
+- `postgres` - PostgreSQL database
+- `redis` - Redis cache
+- `pgadmin` - pgAdmin web UI
+- `redis-commander` - Redis Commander web UI
+
+**Output:**
+```
+✅ postgres service restarted successfully
+```
+
+**Issues:**
+- **"Service not found"** → Use correct service name (postgres, redis, pgadmin, redis-commander)
+- **"Service not running"** → Service may not be started; use `aifabrix up` to start all services
+
+---
+
 ## aifabrix app
 
 Application management commands for registering and managing applications with the Miso Controller.
@@ -262,6 +340,7 @@ aifabrix app register myapp --environment dev --port 8080 --name "My Application
 3. Validates required fields
 4. Registers with Miso Controller
 5. Returns ClientId and ClientSecret
+6. **Note:** Credentials are displayed but not automatically saved. Copy them to your secrets file or GitHub Secrets.
 
 **Output:**
 ```
@@ -401,6 +480,7 @@ aifabrix create myapp --github --github-steps npm
 - `-a, --authentication` - Requires authentication/RBAC
 - `-l, --language <lang>` - typescript or python
 - `-t, --template <name>` - Template to use (e.g., miso-controller, keycloak). Template folder must exist in `templates/{template}/`
+- `--app` - Generate minimal application files (package.json, index.ts or requirements.txt, main.py)
 - `-g, --github` - (Optional) Generate GitHub Actions workflows
 - `--github-steps <steps>` - Extra GitHub workflow steps (comma-separated, e.g., `npm`). Step templates must exist in `templates/github/steps/{step}.hbs`. When included, these steps are rendered and injected into workflow files (e.g., `release.yaml`). Available step templates: `npm.hbs` (adds NPM publishing job)
 - `--main-branch <branch>` - Main branch name for workflows (default: main)
@@ -731,35 +811,15 @@ aifabrix deploy myapp --client-id override-id --client-secret override-secret
 
 ## aifabrix deployments
 
-List deployments for an environment.
+**Note:** This command is planned but not yet implemented in the current version. Deployment status can be monitored during deployment using the `--poll` option of the `deploy` command, or by checking the controller dashboard directly.
 
-**Example:**
-```bash
-aifabrix deployments --environment dev
-```
+**Planned functionality:**
+- List all deployments for an environment
+- View specific deployment details
+- View deployment logs
 
-**Flags:**
-- `-e, --environment <env>` - Environment to list (required)
-- `-d, --deployment-id <id>` - Show specific deployment details
-- `-l, --logs` - Show deployment logs
-
-**Output:**
-```
-📦 Deployments (dev):
-
-✓ myapp-v1.2.3
-   Status: running
-   URL: https://myapp-dev.aifabrix.ai
-   Deployed: 2024-01-15 10:30:00
-
-⏳ myapp-v1.2.4
-   Status: deploying
-   Progress: 75%
-```
-
-**Issues:**
-- **"Not logged in"** → Run: `aifabrix login --url https://controller.aifabrix.ai`
-- **"No deployments found"** → Deploy application first: `aifabrix deploy`
+**Workaround:**
+Use `aifabrix deploy <app> --poll` to monitor deployment status, or access the controller dashboard at `https://controller.aifabrix.ai/deployments`.
 
 ---
 
@@ -776,11 +836,20 @@ Generate `.env` file from template.
 aifabrix resolve myapp
 ```
 
+**Force generate missing secrets:**
+```bash
+aifabrix resolve myapp --force
+```
+This will automatically generate missing secret keys in the secrets file with placeholder values.
+
+**Flags:**
+- `-f, --force` - Generate missing secret keys in secrets file
+
 **Creates:** `builder/myapp/.env`
 
 **Issues:**
 - **"Secrets file not found"** → Create `~/.aifabrix/secrets.yaml`
-- **"Missing kv:// reference"** → Add secret to secrets file
+- **"Missing kv:// reference"** → Add secret to secrets file or use `--force` to auto-generate
 - **"Permission denied"** → Check file permissions on secrets.yaml
 
 ---

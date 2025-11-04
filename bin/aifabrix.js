@@ -10,13 +10,14 @@
  *
  * @fileoverview CLI entry point for AI Fabrix Builder SDK
  * @author AI Fabrix Team
- * @version 2.0.0
+ * @version 2.0.2
  */
 
 const { Command } = require('commander');
 const cli = require('../lib/cli');
 const { setupAppCommands } = require('../lib/commands/app');
 const logger = require('../lib/utils/logger');
+const packageJson = require('../package.json');
 
 /**
  * Initialize and configure the CLI
@@ -26,7 +27,7 @@ function initializeCLI() {
   const program = new Command();
 
   program.name('aifabrix')
-    .version('2.0.0')
+    .version(packageJson.version)
     .description('AI Fabrix Local Fabric & Deployment SDK');
 
   // Delegate command setup to lib/cli.js

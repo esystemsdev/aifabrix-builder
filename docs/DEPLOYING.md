@@ -19,7 +19,8 @@ Before deploying:
 
 3. **Registered Application**
    - Run `aifabrix app register myapp --environment dev` to get pipeline credentials
-   - Credentials are automatically saved to `~/.aifabrix/secrets-dev.yaml`
+   - Credentials are displayed (not automatically saved)
+   - Copy credentials to GitHub Secrets for CI/CD
 
 ---
 
@@ -114,8 +115,9 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
    - Used for authentication and integrity check
 
 3. **Sends to controller**
-   - POST to `/api/v1/pipeline/deploy`
+   - POST to `/api/v1/pipeline/{env}/deploy` (environment-aware endpoint)
    - Includes manifest + deployment key
+   - Uses ClientId/ClientSecret authentication
 
 4. **Controller processes**
    - Validates configuration
@@ -240,9 +242,13 @@ aifabrix app register myapp --environment dev
    Display Name: My Application
    Environment:  dev
 
-🔑 Credentials saved to: ~/.aifabrix/secrets-dev.yaml
+🔑 CREDENTIALS (save these immediately):
+   Client ID:     ctrl-dev-myapp
+   Client Secret: xyz-abc-123...
 
-📝 Add to GitHub Secrets (if using GitHub Actions):
+⚠️  IMPORTANT: Client Secret will not be shown again!
+
+📝 Add to GitHub Secrets:
    Repository level:
      AIFABRIX_API_URL = https://controller.aifabrix.ai
    
@@ -250,6 +256,8 @@ aifabrix app register myapp --environment dev
      DEV_AIFABRIX_CLIENT_ID = ctrl-dev-myapp
      DEV_AIFABRIX_CLIENT_SECRET = xyz-abc-123...
 ```
+
+**Note:** Credentials are displayed but not automatically saved to a file. Copy them to GitHub Secrets manually.
 
 ### Step 3: Add to GitHub Secrets (CI/CD Only)
 
@@ -287,7 +295,7 @@ aifabrix app rotate-secret --app myapp --environment dev
 ⚠️  Old secret is now invalid. Update GitHub Secrets!
 ```
 
-Updates credentials in `~/.aifabrix/secrets-dev.yaml`. Also update `DEV_AIFABRIX_CLIENT_SECRET` in GitHub Secrets if using CI/CD.
+Updates credentials display. Copy the new credentials to `DEV_AIFABRIX_CLIENT_SECRET` in GitHub Secrets if using CI/CD.
 
 ## CI/CD Integration
 
@@ -400,43 +408,16 @@ image:
 
 ### Check Deployments Using CLI
 
-Use the AI Fabrix Builder CLI to manage deployments:
+**Note:** The `aifabrix deployments` command is planned but not yet implemented. Deployment status is monitored during deployment using the `--poll` option of the `deploy` command.
 
+**Current approach:**
 ```bash
-# List all deployments for an environment
-aifabrix deployments --environment dev
+# Deploy with status polling
+aifabrix deploy myapp --controller https://controller.aifabrix.ai --poll
+
+# Or check status via controller dashboard
+# Visit: https://controller.aifabrix.ai/deployments
 ```
-
-**Output:**
-```
-📦 Deployments (dev):
-
-✓ myapp-v1.2.3
-   Status: running
-   URL: https://myapp-dev.aifabrix.ai
-   Deployed: 2024-01-15 10:30:00
-
-⏳ myapp-v1.2.4
-   Status: deploying
-   Progress: 75%
-```
-
-### View Status and Logs
-
-```bash
-# Check deployment status
-aifabrix deployments --environment dev --deployment-id deploy-456
-
-# View deployment logs
-aifabrix deployments --environment dev --deployment-id deploy-456 --logs
-```
-
-Deployment logs show:
-- Container startup progress
-- Health check results  
-- Configuration validation
-- Service connection status
-- Error messages
 
 ---
 
@@ -626,13 +607,14 @@ The `aifabrix deploy` command performs the following steps:
    - Returns validation errors and warnings
 
 6. **Send to Controller**
-   - POST request to `<controller>/api/v1/pipeline/deploy`
+   - POST request to `<controller>/api/v1/pipeline/{env}/deploy` (environment-aware endpoint)
    - HTTPS-only communication for security
    - Retries with exponential backoff on transient failures
    - Includes structured error handling
+   - Uses ClientId/ClientSecret authentication
 
 7. **Poll Status (Optional)**
-   - Polls `/api/v1/deployments/{deploymentId}` endpoint
+   - Polls `/api/v1/environments/{env}/deployments/{deploymentId}` endpoint
    - Configurable interval (default: 5 seconds)
    - Maximum attempts (default: 60)
    - Terminal states: completed, failed, cancelled
@@ -643,7 +625,7 @@ The `aifabrix deploy` command performs the following steps:
 - **Dual Authentication Model**: 
   - Pipeline API uses ClientId/ClientSecret (from `aifabrix app register`)
   - Controller APIs use bearer tokens (from `aifabrix login`, stored in `~/.aifabrix/config`)
-- **Credential Storage**: Client credentials saved to `~/.aifabrix/secrets-<env>.yaml` with secure permissions
+- **Credential Storage**: Client credentials displayed but not automatically saved (copy to GitHub Secrets)
 - **Token Management**: Bearer tokens auto-refresh with expiry tracking
 - **Deployment Key Authentication**: SHA256 hash validates configuration integrity
 - **Sensitive Data Masking**: Passwords, secrets, tokens masked in logs
@@ -655,8 +637,11 @@ The `aifabrix deploy` command performs the following steps:
 
 **Deploy Endpoint:**
 ```
-POST https://controller.aifabrix.ai/api/v1/pipeline/deploy
+POST https://controller.aifabrix.ai/api/v1/pipeline/{env}/deploy
 Content-Type: application/json
+Headers:
+  x-client-id: <client-id>
+  x-client-secret: <client-secret>
 
 {
   "key": "myapp",
@@ -670,7 +655,10 @@ Content-Type: application/json
 
 **Status Endpoint:**
 ```
-GET https://controller.aifabrix.ai/api/v1/pipeline/status/{deploymentId}
+GET https://controller.aifabrix.ai/api/v1/environments/{env}/deployments/{deploymentId}
+Headers:
+  x-client-id: <client-id>
+  x-client-secret: <client-secret>
 
 Response: {
   "deploymentId": "deploy-123",

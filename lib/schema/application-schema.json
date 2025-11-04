@@ -90,7 +90,7 @@
           "name": {
             "type": "string",
             "description": "Database name",
-            "pattern": "^[a-z0-9_]+$"
+            "pattern": "^[a-z0-9-_]+$"
           }
         },
         "additionalProperties": false
