@@ -1,7 +1,6 @@
 # 🧱 @aifabrix/builder
 
 [![npm version](https://img.shields.io/npm/v/%40aifabrix%2Fbuilder.svg)](https://www.npmjs.com/package/%40aifabrix%2Fbuilder)
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Local development infrastructure + Azure deployment tool.
