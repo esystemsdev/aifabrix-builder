@@ -1307,13 +1307,12 @@ describe('CLI Commands', () => {
         const expectedKey = 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456';
         keyGenerator.generateDeploymentKey.mockResolvedValue(expectedKey);
 
-        // Simulate the command handler action from cli.js line 262-272
+        // Simulate the command handler action from cli.js line 266-275 (exact match)
         const action = async(appName) => {
           try {
             const key = await keyGenerator.generateDeploymentKey(appName);
             logger.log(`\nDeployment key for ${appName}:`);
             logger.log(key);
-            logger.log(`\nGenerated from: builder/${appName}/variables.yaml`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'genkey');
             process.exit(1);
@@ -1333,13 +1332,12 @@ describe('CLI Commands', () => {
         keyGenerator.generateDeploymentKey.mockRejectedValue(new Error(errorMessage));
         cliUtils.handleCommandError.mockImplementation(() => {});
 
-        // Simulate the command handler action from cli.js line 262-272
+        // Simulate the command handler action from cli.js line 266-275 (exact match)
         const action = async(appName) => {
           try {
             const key = await keyGenerator.generateDeploymentKey(appName);
             logger.log(`\nDeployment key for ${appName}:`);
             logger.log(key);
-            logger.log(`\nGenerated from: builder/${appName}/variables.yaml`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'genkey');
             process.exit(1);
@@ -1359,7 +1357,7 @@ describe('CLI Commands', () => {
         const dockerfilePath = 'builder/testapp/Dockerfile';
         app.generateDockerfileForApp.mockResolvedValue(dockerfilePath);
 
-        // Simulate the command handler action from cli.js line 278-287
+        // Simulate the command handler action from cli.js line 281-290 (exact match)
         const action = async(appName, options) => {
           try {
             const dockerfilePath = await app.generateDockerfileForApp(appName, options);
@@ -1385,7 +1383,7 @@ describe('CLI Commands', () => {
         app.generateDockerfileForApp.mockRejectedValue(new Error(errorMessage));
         cliUtils.handleCommandError.mockImplementation(() => {});
 
-        // Simulate the command handler action from cli.js line 278-287
+        // Simulate the command handler action from cli.js line 281-290 (exact match)
         const action = async(appName, options) => {
           try {
             const dockerfilePath = await app.generateDockerfileForApp(appName, options);
@@ -1399,6 +1397,984 @@ describe('CLI Commands', () => {
 
         await action(appName, options);
         expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'dockerfile');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+    });
+  });
+
+  describe('Additional edge cases and branch coverage', () => {
+    describe('login command error handling', () => {
+      it('should handle login errors with proper error logging', async() => {
+        const errorMessage = 'Authentication failed';
+        handleLogin.mockRejectedValue(new Error(errorMessage));
+        logger.error.mockImplementation(() => {});
+
+        // Simulate the command handler action from cli.js line 36-43
+        const action = async(options) => {
+          try {
+            await handleLogin(options);
+          } catch (error) {
+            logger.error(chalk.red('\n❌ Login failed:'), error.message);
+            process.exit(1);
+          }
+        };
+
+        await action({ url: 'http://localhost:3000' });
+        expect(handleLogin).toHaveBeenCalledWith({ url: 'http://localhost:3000' });
+        expect(logger.error).toHaveBeenCalledWith(chalk.red('\n❌ Login failed:'), errorMessage);
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+    });
+
+    describe('down command with volumes option', () => {
+      it('should stop infrastructure with volumes when volumes option is set', async() => {
+        infra.stopInfraWithVolumes.mockResolvedValue();
+
+        // Simulate the command handler action from cli.js line 60-71
+        const action = async(options) => {
+          try {
+            if (options.volumes) {
+              await infra.stopInfraWithVolumes();
+            } else {
+              await infra.stopInfra();
+            }
+          } catch (error) {
+            cliUtils.handleCommandError(error, 'down');
+            process.exit(1);
+          }
+        };
+
+        await action({ volumes: true });
+        expect(infra.stopInfraWithVolumes).toHaveBeenCalled();
+        expect(infra.stopInfra).not.toHaveBeenCalled();
+        expect(process.exit).not.toHaveBeenCalled();
+      });
+
+      it('should stop infrastructure without volumes when volumes option is not set', async() => {
+        infra.stopInfra.mockResolvedValue();
+
+        // Simulate the command handler action from cli.js line 60-71
+        const action = async(options) => {
+          try {
+            if (options.volumes) {
+              await infra.stopInfraWithVolumes();
+            } else {
+              await infra.stopInfra();
+            }
+          } catch (error) {
+            cliUtils.handleCommandError(error, 'down');
+            process.exit(1);
+          }
+        };
+
+        await action({ volumes: false });
+        expect(infra.stopInfra).toHaveBeenCalled();
+        expect(infra.stopInfraWithVolumes).not.toHaveBeenCalled();
+        expect(process.exit).not.toHaveBeenCalled();
+      });
+
+      it('should handle errors when stopping infrastructure with volumes', async() => {
+        const errorMessage = 'Stop with volumes failed';
+        infra.stopInfraWithVolumes.mockRejectedValue(new Error(errorMessage));
+        cliUtils.handleCommandError.mockImplementation(() => {});
+
+        // Simulate the command handler action from cli.js line 60-71
+        const action = async(options) => {
+          try {
+            if (options.volumes) {
+              await infra.stopInfraWithVolumes();
+            } else {
+              await infra.stopInfra();
+            }
+          } catch (error) {
+            cliUtils.handleCommandError(error, 'down');
+            process.exit(1);
+          }
+        };
+
+        await action({ volumes: true });
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'down');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+    });
+
+    describe('resolve command with force option', () => {
+      it('should generate env file with force option', async() => {
+        const appName = 'testapp';
+        const envPath = 'builder/testapp/.env';
+        secrets.generateEnvFile.mockResolvedValue(envPath);
+
+        // Simulate the command handler action from cli.js line 229-237
+        const action = async(appName, options) => {
+          try {
+            const envPath = await secrets.generateEnvFile(appName, undefined, 'local', options.force);
+            logger.log(`✓ Generated .env file: ${envPath}`);
+          } catch (error) {
+            cliUtils.handleCommandError(error, 'resolve');
+            process.exit(1);
+          }
+        };
+
+        await action(appName, { force: true });
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'local', true);
+        expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
+        expect(process.exit).not.toHaveBeenCalled();
+      });
+
+      it('should generate env file without force option', async() => {
+        const appName = 'testapp';
+        const envPath = 'builder/testapp/.env';
+        secrets.generateEnvFile.mockResolvedValue(envPath);
+
+        // Simulate the command handler action from cli.js line 229-237
+        const action = async(appName, options) => {
+          try {
+            const envPath = await secrets.generateEnvFile(appName, undefined, 'local', options.force);
+            logger.log(`✓ Generated .env file: ${envPath}`);
+          } catch (error) {
+            cliUtils.handleCommandError(error, 'resolve');
+            process.exit(1);
+          }
+        };
+
+        await action(appName, { force: false });
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'local', false);
+        expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
+        expect(process.exit).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('json command validation failure', () => {
+      it('should handle json command with validation errors array', async() => {
+        const appName = 'testapp';
+        const mockResult = {
+          success: false,
+          path: '',
+          validation: {
+            valid: false,
+            errors: ['Missing required field: key'],
+            warnings: []
+          },
+          deployment: null
+        };
+
+        generator.generateDeployJsonWithValidation.mockResolvedValue(mockResult);
+        logger.log.mockImplementation(() => {});
+
+        // Simulate the command handler action from cli.js line 239-262
+        const action = async(appName) => {
+          try {
+            const result = await generator.generateDeployJsonWithValidation(appName);
+            if (result.success) {
+              logger.log(`✓ Generated deployment JSON: ${result.path}`);
+
+              if (result.validation.warnings && result.validation.warnings.length > 0) {
+                logger.log('\n⚠️  Warnings:');
+                result.validation.warnings.forEach(warning => logger.log(`   • ${warning}`));
+              }
+            } else {
+              logger.log('❌ Validation failed:');
+              if (result.validation.errors && result.validation.errors.length > 0) {
+                result.validation.errors.forEach(error => logger.log(`   • ${error}`));
+              }
+              process.exit(1);
+            }
+          } catch (error) {
+            cliUtils.handleCommandError(error, 'json');
+            process.exit(1);
+          }
+        };
+
+        await action(appName);
+        expect(logger.log).toHaveBeenCalledWith('❌ Validation failed:');
+        expect(logger.log).toHaveBeenCalledWith('   • Missing required field: key');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+
+      it('should handle json command with validation warnings array', async() => {
+        const appName = 'testapp';
+        const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'aifabrix-deploy.json');
+        const mockResult = {
+          success: true,
+          path: expectedJsonPath,
+          validation: {
+            valid: true,
+            errors: [],
+            warnings: ['Health check path should start with /']
+          },
+          deployment: {
+            key: 'testapp',
+            displayName: 'Test App'
+          }
+        };
+
+        generator.generateDeployJsonWithValidation.mockResolvedValue(mockResult);
+        logger.log.mockImplementation(() => {});
+
+        // Simulate the command handler action from cli.js line 239-262
+        const action = async(appName) => {
+          try {
+            const result = await generator.generateDeployJsonWithValidation(appName);
+            if (result.success) {
+              logger.log(`✓ Generated deployment JSON: ${result.path}`);
+
+              if (result.validation.warnings && result.validation.warnings.length > 0) {
+                logger.log('\n⚠️  Warnings:');
+                result.validation.warnings.forEach(warning => logger.log(`   • ${warning}`));
+              }
+            } else {
+              logger.log('❌ Validation failed:');
+              if (result.validation.errors && result.validation.errors.length > 0) {
+                result.validation.errors.forEach(error => logger.log(`   • ${error}`));
+              }
+              process.exit(1);
+            }
+          } catch (error) {
+            cliUtils.handleCommandError(error, 'json');
+            process.exit(1);
+          }
+        };
+
+        await action(appName);
+        expect(logger.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
+        expect(logger.log).toHaveBeenCalledWith('\n⚠️  Warnings:');
+        expect(logger.log).toHaveBeenCalledWith('   • Health check path should start with /');
+        expect(process.exit).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('doctor command health check edge cases', () => {
+      it('should handle doctor command when docker is not ok', async() => {
+        const mockEnvResult = {
+          docker: 'error',
+          ports: 'ok',
+          secrets: 'ok',
+          recommendations: []
+        };
+
+        validator.checkEnvironment.mockResolvedValue(mockEnvResult);
+        logger.log.mockImplementation(() => {});
+
+        // Simulate the command handler action from cli.js line 157-190
+        const action = async() => {
+          try {
+            const result = await validator.checkEnvironment();
+            logger.log('\n🔍 AI Fabrix Environment Check\n');
+
+            logger.log(`Docker: ${result.docker === 'ok' ? '✅ Running' : '❌ Not available'}`);
+            logger.log(`Ports: ${result.ports === 'ok' ? '✅ Available' : '⚠️  Some ports in use'}`);
+            logger.log(`Secrets: ${result.secrets === 'ok' ? '✅ Configured' : '❌ Missing'}`);
+
+            if (result.recommendations.length > 0) {
+              logger.log('\n📋 Recommendations:');
+              result.recommendations.forEach(rec => logger.log(`  • ${rec}`));
+            }
+
+            // Check infrastructure health if Docker is available
+            if (result.docker === 'ok') {
+              try {
+                const health = await infra.checkInfraHealth();
+                logger.log('\n🏥 Infrastructure Health:');
+                Object.entries(health).forEach(([service, status]) => {
+                  const icon = status === 'healthy' ? '✅' : status === 'unknown' ? '❓' : '❌';
+                  logger.log(`  ${icon} ${service}: ${status}`);
+                });
+              } catch (error) {
+                logger.log('\n🏥 Infrastructure: Not running');
+              }
+            }
+
+            logger.log('');
+          } catch (error) {
+            cliUtils.handleCommandError(error, 'doctor');
+            process.exit(1);
+          }
+        };
+
+        await action();
+        expect(logger.log).toHaveBeenCalledWith('Docker: ❌ Not available');
+        expect(infra.checkInfraHealth).not.toHaveBeenCalled();
+      });
+
+      it('should handle doctor command with unknown health status', async() => {
+        const mockEnvResult = {
+          docker: 'ok',
+          ports: 'ok',
+          secrets: 'ok',
+          recommendations: []
+        };
+
+        const mockHealthResult = {
+          postgres: 'unknown',
+          redis: 'unhealthy'
+        };
+
+        validator.checkEnvironment.mockResolvedValue(mockEnvResult);
+        infra.checkInfraHealth.mockResolvedValue(mockHealthResult);
+        logger.log.mockImplementation(() => {});
+
+        // Simulate the command handler action from cli.js line 157-190
+        const action = async() => {
+          try {
+            const result = await validator.checkEnvironment();
+            logger.log('\n🔍 AI Fabrix Environment Check\n');
+
+            logger.log(`Docker: ${result.docker === 'ok' ? '✅ Running' : '❌ Not available'}`);
+            logger.log(`Ports: ${result.ports === 'ok' ? '✅ Available' : '⚠️  Some ports in use'}`);
+            logger.log(`Secrets: ${result.secrets === 'ok' ? '✅ Configured' : '❌ Missing'}`);
+
+            if (result.recommendations.length > 0) {
+              logger.log('\n📋 Recommendations:');
+              result.recommendations.forEach(rec => logger.log(`  • ${rec}`));
+            }
+
+            // Check infrastructure health if Docker is available
+            if (result.docker === 'ok') {
+              try {
+                const health = await infra.checkInfraHealth();
+                logger.log('\n🏥 Infrastructure Health:');
+                Object.entries(health).forEach(([service, status]) => {
+                  const icon = status === 'healthy' ? '✅' : status === 'unknown' ? '❓' : '❌';
+                  logger.log(`  ${icon} ${service}: ${status}`);
+                });
+              } catch (error) {
+                logger.log('\n🏥 Infrastructure: Not running');
+              }
+            }
+
+            logger.log('');
+          } catch (error) {
+            cliUtils.handleCommandError(error, 'doctor');
+            process.exit(1);
+          }
+        };
+
+        await action();
+        expect(logger.log).toHaveBeenCalledWith('  ❓ postgres: unknown');
+        expect(logger.log).toHaveBeenCalledWith('  ❌ redis: unhealthy');
+      });
+    });
+
+    describe('status command with stopped services', () => {
+      it('should show status for stopped services', async() => {
+        const mockStatus = {
+          postgres: { status: 'stopped', port: 5432, url: 'postgresql://localhost:5432' },
+          redis: { status: 'running', port: 6379, url: 'redis://localhost:6379' }
+        };
+
+        infra.getInfraStatus.mockResolvedValue(mockStatus);
+        logger.log.mockImplementation(() => {});
+
+        // Simulate the command handler action from cli.js line 194-211
+        const action = async() => {
+          try {
+            const status = await infra.getInfraStatus();
+            logger.log('\n📊 Infrastructure Status\n');
+
+            Object.entries(status).forEach(([service, info]) => {
+              const icon = info.status === 'running' ? '✅' : '❌';
+              logger.log(`${icon} ${service}:`);
+              logger.log(`   Status: ${info.status}`);
+              logger.log(`   Port: ${info.port}`);
+              logger.log(`   URL: ${info.url}`);
+              logger.log('');
+            });
+          } catch (error) {
+            cliUtils.handleCommandError(error, 'status');
+            process.exit(1);
+          }
+        };
+
+        await action();
+        expect(logger.log).toHaveBeenCalledWith('❌ postgres:');
+        expect(logger.log).toHaveBeenCalledWith('   Status: stopped');
+        expect(logger.log).toHaveBeenCalledWith('✅ redis:');
+        expect(logger.log).toHaveBeenCalledWith('   Status: running');
+      });
+    });
+  });
+
+  describe('setupCommands - Direct Command Handler Execution', () => {
+    let mockProgram;
+    let commandActions;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      commandActions = {};
+      mockProgram = {
+        command: jest.fn((cmdName) => {
+          const mockCommand = {
+            description: jest.fn().mockReturnThis(),
+            option: jest.fn().mockReturnThis(),
+            action: function(action) {
+              commandActions[cmdName] = action;
+              return this;
+            }
+          };
+          return mockCommand;
+        })
+      };
+      // Ensure logger methods are properly mocked after clearAllMocks
+      // These will be used by handlers when setupCommands is called
+      logger.log = jest.fn();
+      logger.error = jest.fn();
+      logger.warn = jest.fn();
+      logger.info = jest.fn();
+    });
+
+    // Helper function to setup commands and reset logger
+    function setupCommandsAndResetLogger() {
+      // Reset commandActions to ensure clean state
+      commandActions = {};
+      // Recreate mockProgram to ensure fresh action handlers
+      mockProgram = {
+        command: jest.fn((cmdName) => {
+          const mockCommand = {
+            description: jest.fn().mockReturnThis(),
+            option: jest.fn().mockReturnThis(),
+            action: function(action) {
+              commandActions[cmdName] = action;
+              return this;
+            }
+          };
+          return mockCommand;
+        })
+      };
+
+      // Reset modules to ensure fresh logger reference is captured by handlers
+      jest.resetModules();
+
+      // Re-require logger after resetModules to get fresh mock
+      const freshLogger = require('../../lib/utils/logger');
+      // Set up logger mock functions
+      freshLogger.log = jest.fn();
+      freshLogger.error = jest.fn();
+      freshLogger.warn = jest.fn();
+      freshLogger.info = jest.fn();
+
+      // Update the outer scope logger reference
+      Object.assign(logger, freshLogger);
+
+      // Re-require other mocked modules that CLI depends on
+      const freshKeyGenerator = require('../../lib/key-generator');
+      const freshApp = require('../../lib/app');
+      const freshSecrets = require('../../lib/secrets');
+      const freshGenerator = require('../../lib/generator');
+      const freshValidator = require('../../lib/validator');
+      const freshInfra = require('../../lib/infra');
+      const freshCliUtils = require('../../lib/utils/cli-utils');
+      const freshHandleLoginModule = require('../../lib/commands/login');
+
+      // Update outer scope references
+      Object.assign(keyGenerator, freshKeyGenerator);
+      Object.assign(app, freshApp);
+      Object.assign(secrets, freshSecrets);
+      Object.assign(generator, freshGenerator);
+      Object.assign(validator, freshValidator);
+      Object.assign(infra, freshInfra);
+      Object.assign(cliUtils, freshCliUtils);
+      // handleLogin is a destructured export, so update the module's handleLogin property
+      // This ensures the fresh module has the mocked handleLogin
+      if (freshHandleLoginModule.handleLogin) {
+        freshHandleLoginModule.handleLogin = handleLogin;
+      }
+
+      const { setupCommands } = require('../../lib/cli');
+      setupCommands(mockProgram);
+
+      // Clear mock calls after setupCommands so we can track new calls from handlers
+      logger.log.mockClear();
+      logger.error.mockClear();
+      logger.warn.mockClear();
+      logger.info.mockClear();
+    }
+
+    describe('genkey command handler execution', () => {
+      it('should execute genkey command handler via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const appName = 'testapp';
+        const expectedKey = 'test-deployment-key-12345';
+        keyGenerator.generateDeploymentKey.mockResolvedValue(expectedKey);
+
+        const handler = commandActions['genkey <app>'];
+        expect(handler).toBeDefined();
+        expect(typeof handler).toBe('function');
+
+        await handler(appName);
+
+        expect(keyGenerator.generateDeploymentKey).toHaveBeenCalledWith(appName);
+        expect(logger.log).toHaveBeenCalledWith(`\nDeployment key for ${appName}:`);
+        expect(logger.log).toHaveBeenCalledWith(expectedKey);
+      });
+
+      it('should handle genkey command handler error via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const appName = 'testapp';
+        const errorMessage = 'Key generation failed';
+        keyGenerator.generateDeploymentKey.mockRejectedValue(new Error(errorMessage));
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['genkey <app>'];
+        expect(handler).toBeDefined();
+
+        await handler(appName);
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'genkey');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+    });
+
+    describe('dockerfile command handler execution', () => {
+      it('should execute dockerfile command handler via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const appName = 'testapp';
+        const options = { language: 'typescript', force: true };
+        const dockerfilePath = 'builder/testapp/Dockerfile';
+        app.generateDockerfileForApp.mockResolvedValue(dockerfilePath);
+        chalk.green.mockImplementation((text) => text);
+        chalk.gray.mockImplementation((text) => text);
+
+        const handler = commandActions['dockerfile <app>'];
+        expect(handler).toBeDefined();
+
+        await handler(appName, options);
+
+        expect(app.generateDockerfileForApp).toHaveBeenCalledWith(appName, options);
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('\n✅ Dockerfile generated successfully!'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.gray(`Location: ${dockerfilePath}`));
+      });
+
+      it('should handle dockerfile command handler error via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const appName = 'testapp';
+        const options = {};
+        const errorMessage = 'Dockerfile generation failed';
+        app.generateDockerfileForApp.mockRejectedValue(new Error(errorMessage));
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['dockerfile <app>'];
+        expect(handler).toBeDefined();
+
+        await handler(appName, options);
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'dockerfile');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+    });
+
+    describe('resolve command handler execution', () => {
+      it('should execute resolve command handler with force option via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const appName = 'testapp';
+        const options = { force: true };
+        const envPath = 'builder/testapp/.env';
+        secrets.generateEnvFile.mockResolvedValue(envPath);
+
+        const handler = commandActions['resolve <app>'];
+        expect(handler).toBeDefined();
+
+        await handler(appName, options);
+
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'local', true);
+        expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
+      });
+
+      it('should execute resolve command handler without force option via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const appName = 'testapp';
+        const options = {};
+        const envPath = 'builder/testapp/.env';
+        secrets.generateEnvFile.mockResolvedValue(envPath);
+
+        const handler = commandActions['resolve <app>'];
+        expect(handler).toBeDefined();
+
+        await handler(appName, options);
+
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'local', undefined);
+        expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
+      });
+
+      it('should handle resolve command handler error via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const appName = 'testapp';
+        const options = {};
+        const errorMessage = 'Secrets file not found';
+        secrets.generateEnvFile.mockRejectedValue(new Error(errorMessage));
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['resolve <app>'];
+        expect(handler).toBeDefined();
+
+        await handler(appName, options);
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'resolve');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+    });
+
+    describe('json command handler execution', () => {
+      it('should execute json command handler with warnings via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const appName = 'testapp';
+        const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'aifabrix-deploy.json');
+        const mockResult = {
+          success: true,
+          path: expectedJsonPath,
+          validation: {
+            valid: true,
+            errors: [],
+            warnings: ['Warning 1', 'Warning 2']
+          }
+        };
+        generator.generateDeployJsonWithValidation.mockResolvedValue(mockResult);
+
+        const handler = commandActions['json <app>'];
+        expect(handler).toBeDefined();
+
+        await handler(appName);
+
+        expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
+        expect(logger.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
+        expect(logger.log).toHaveBeenCalledWith('\n⚠️  Warnings:');
+        expect(logger.log).toHaveBeenCalledWith('   • Warning 1');
+        expect(logger.log).toHaveBeenCalledWith('   • Warning 2');
+      });
+
+      it('should execute json command handler with validation errors via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const appName = 'testapp';
+        const mockResult = {
+          success: false,
+          path: '',
+          validation: {
+            valid: false,
+            errors: ['Error 1', 'Error 2'],
+            warnings: []
+          }
+        };
+        generator.generateDeployJsonWithValidation.mockResolvedValue(mockResult);
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['json <app>'];
+        expect(handler).toBeDefined();
+
+        await handler(appName);
+
+        expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
+        expect(logger.log).toHaveBeenCalledWith('❌ Validation failed:');
+        expect(logger.log).toHaveBeenCalledWith('   • Error 1');
+        expect(logger.log).toHaveBeenCalledWith('   • Error 2');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+
+      it('should handle json command handler generation error via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const appName = 'testapp';
+        const errorMessage = 'Generation failed';
+        generator.generateDeployJsonWithValidation.mockRejectedValue(new Error(errorMessage));
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['json <app>'];
+        expect(handler).toBeDefined();
+
+        await handler(appName);
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'json');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+
+      it('should execute json command handler with validation errors array check via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const appName = 'testapp';
+        const mockResult = {
+          success: false,
+          path: '',
+          validation: {
+            valid: false,
+            errors: null,
+            warnings: []
+          }
+        };
+        generator.generateDeployJsonWithValidation.mockResolvedValue(mockResult);
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['json <app>'];
+        expect(handler).toBeDefined();
+
+        await handler(appName);
+
+        expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
+        expect(logger.log).toHaveBeenCalledWith('❌ Validation failed:');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+
+      it('should execute json command handler with empty warnings array via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const appName = 'testapp';
+        const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'aifabrix-deploy.json');
+        const mockResult = {
+          success: true,
+          path: expectedJsonPath,
+          validation: {
+            valid: true,
+            errors: [],
+            warnings: []
+          }
+        };
+        generator.generateDeployJsonWithValidation.mockResolvedValue(mockResult);
+
+        const handler = commandActions['json <app>'];
+        expect(handler).toBeDefined();
+
+        await handler(appName);
+
+        expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
+        expect(logger.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
+        expect(logger.log).not.toHaveBeenCalledWith('\n⚠️  Warnings:');
+      });
+    });
+
+    describe('login command handler execution', () => {
+      it('should execute login command handler via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = { url: 'http://localhost:3000', method: 'device' };
+        handleLogin.mockResolvedValue();
+
+        const handler = commandActions['login'];
+        expect(handler).toBeDefined();
+
+        await handler(options);
+
+        expect(handleLogin).toHaveBeenCalledWith(options);
+        expect(process.exit).not.toHaveBeenCalled();
+      });
+
+      it('should handle login command handler error via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = { url: 'http://localhost:3000' };
+        const errorMessage = 'Login failed';
+        handleLogin.mockRejectedValue(new Error(errorMessage));
+        process.exit.mockImplementation(() => {});
+        chalk.red.mockImplementation((text) => text);
+
+        const handler = commandActions['login'];
+        expect(handler).toBeDefined();
+
+        await handler(options);
+
+        expect(logger.error).toHaveBeenCalledWith(chalk.red('\n❌ Login failed:'), errorMessage);
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+    });
+
+    describe('down command handler execution', () => {
+      it('should execute down command handler with volumes via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = { volumes: true };
+        infra.stopInfraWithVolumes.mockResolvedValue();
+        cliUtils.handleCommandError.mockImplementation(() => {});
+
+        const handler = commandActions['down'];
+        expect(handler).toBeDefined();
+
+        await handler(options);
+
+        expect(infra.stopInfraWithVolumes).toHaveBeenCalled();
+        expect(infra.stopInfra).not.toHaveBeenCalled();
+      });
+
+      it('should execute down command handler without volumes via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = {};
+        infra.stopInfra.mockResolvedValue();
+        cliUtils.handleCommandError.mockImplementation(() => {});
+
+        const handler = commandActions['down'];
+        expect(handler).toBeDefined();
+
+        await handler(options);
+
+        expect(infra.stopInfra).toHaveBeenCalled();
+        expect(infra.stopInfraWithVolumes).not.toHaveBeenCalled();
+      });
+
+      it('should handle down command handler error via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = {};
+        const errorMessage = 'Stop failed';
+        infra.stopInfra.mockRejectedValue(new Error(errorMessage));
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['down'];
+        expect(handler).toBeDefined();
+
+        await handler(options);
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'down');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+    });
+
+    describe('doctor command handler execution', () => {
+      it('should execute doctor command handler with health check via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const mockEnvResult = {
+          docker: 'ok',
+          ports: 'ok',
+          secrets: 'ok',
+          recommendations: []
+        };
+        const mockHealthResult = {
+          postgres: 'healthy',
+          redis: 'unknown',
+          pgadmin: 'unhealthy'
+        };
+        validator.checkEnvironment.mockResolvedValue(mockEnvResult);
+        infra.checkInfraHealth.mockResolvedValue(mockHealthResult);
+
+        const handler = commandActions['doctor'];
+        expect(handler).toBeDefined();
+
+        await handler();
+
+        expect(validator.checkEnvironment).toHaveBeenCalled();
+        expect(infra.checkInfraHealth).toHaveBeenCalled();
+        expect(logger.log).toHaveBeenCalledWith('Docker: ✅ Running');
+        expect(logger.log).toHaveBeenCalledWith('Ports: ✅ Available');
+        expect(logger.log).toHaveBeenCalledWith('Secrets: ✅ Configured');
+        expect(logger.log).toHaveBeenCalledWith('\n🏥 Infrastructure Health:');
+        expect(logger.log).toHaveBeenCalledWith('  ✅ postgres: healthy');
+        expect(logger.log).toHaveBeenCalledWith('  ❓ redis: unknown');
+        expect(logger.log).toHaveBeenCalledWith('  ❌ pgadmin: unhealthy');
+      });
+
+      it('should execute doctor command handler without health check when docker not ok via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const mockEnvResult = {
+          docker: 'error',
+          ports: 'ok',
+          secrets: 'ok',
+          recommendations: []
+        };
+        validator.checkEnvironment.mockResolvedValue(mockEnvResult);
+
+        const handler = commandActions['doctor'];
+        expect(handler).toBeDefined();
+
+        await handler();
+
+        expect(validator.checkEnvironment).toHaveBeenCalled();
+        expect(infra.checkInfraHealth).not.toHaveBeenCalled();
+        expect(logger.log).toHaveBeenCalledWith('Docker: ❌ Not available');
+      });
+
+      it('should execute doctor command handler with health check error via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const mockEnvResult = {
+          docker: 'ok',
+          ports: 'ok',
+          secrets: 'ok',
+          recommendations: []
+        };
+        validator.checkEnvironment.mockResolvedValue(mockEnvResult);
+        infra.checkInfraHealth.mockRejectedValue(new Error('Health check failed'));
+
+        const handler = commandActions['doctor'];
+        expect(handler).toBeDefined();
+
+        await handler();
+
+        expect(logger.log).toHaveBeenCalledWith('\n🏥 Infrastructure: Not running');
+      });
+
+      it('should execute doctor command handler with recommendations via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const mockEnvResult = {
+          docker: 'ok',
+          ports: 'ok',
+          secrets: 'ok',
+          recommendations: ['Recommendation 1', 'Recommendation 2']
+        };
+        validator.checkEnvironment.mockResolvedValue(mockEnvResult);
+        infra.checkInfraHealth.mockResolvedValue({});
+        // Reset logger mock calls but keep it as jest.fn()
+        logger.log.mockClear();
+
+        const handler = commandActions['doctor'];
+        expect(handler).toBeDefined();
+
+        await handler();
+
+        expect(logger.log).toHaveBeenCalledWith('\n📋 Recommendations:');
+        expect(logger.log).toHaveBeenCalledWith('  • Recommendation 1');
+        expect(logger.log).toHaveBeenCalledWith('  • Recommendation 2');
+      });
+    });
+
+    describe('status command handler execution', () => {
+      it('should execute status command handler via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const mockStatus = {
+          postgres: { status: 'running', port: 5432, url: 'postgresql://localhost:5432' },
+          redis: { status: 'stopped', port: 6379, url: 'redis://localhost:6379' }
+        };
+        infra.getInfraStatus.mockResolvedValue(mockStatus);
+
+        const handler = commandActions['status'];
+        expect(handler).toBeDefined();
+
+        await handler();
+
+        expect(infra.getInfraStatus).toHaveBeenCalled();
+        expect(logger.log).toHaveBeenCalledWith('\n📊 Infrastructure Status\n');
+        expect(logger.log).toHaveBeenCalledWith('✅ postgres:');
+        expect(logger.log).toHaveBeenCalledWith('   Status: running');
+        expect(logger.log).toHaveBeenCalledWith('❌ redis:');
+        expect(logger.log).toHaveBeenCalledWith('   Status: stopped');
+      });
+
+      it('should handle status command handler error via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const errorMessage = 'Status check failed';
+        infra.getInfraStatus.mockRejectedValue(new Error(errorMessage));
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['status'];
+        expect(handler).toBeDefined();
+
+        await handler();
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'status');
         expect(process.exit).toHaveBeenCalledWith(1);
       });
     });

@@ -10,6 +10,52 @@ const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+
+// Mock chalk before requiring modules that use it
+jest.mock('chalk', () => {
+  const mockChalk = (text) => text;
+  mockChalk.blue = jest.fn((text) => text);
+  mockChalk.green = jest.fn((text) => text);
+  mockChalk.red = jest.fn((text) => text);
+  mockChalk.yellow = jest.fn((text) => text);
+  mockChalk.cyan = jest.fn((text) => text);
+  mockChalk.magenta = jest.fn((text) => text);
+  mockChalk.white = jest.fn((text) => text);
+  mockChalk.gray = jest.fn((text) => text);
+  mockChalk.bold = jest.fn((text) => text);
+  mockChalk.dim = jest.fn((text) => text);
+  mockChalk.italic = jest.fn((text) => text);
+  mockChalk.underline = jest.fn((text) => text);
+  mockChalk.strikethrough = jest.fn((text) => text);
+  mockChalk.reset = jest.fn((text) => text);
+  mockChalk.inverse = jest.fn((text) => text);
+  mockChalk.black = jest.fn((text) => text);
+  mockChalk.redBright = jest.fn((text) => text);
+  mockChalk.greenBright = jest.fn((text) => text);
+  mockChalk.yellowBright = jest.fn((text) => text);
+  mockChalk.blueBright = jest.fn((text) => text);
+  mockChalk.magentaBright = jest.fn((text) => text);
+  mockChalk.cyanBright = jest.fn((text) => text);
+  mockChalk.whiteBright = jest.fn((text) => text);
+  mockChalk.bgBlack = jest.fn((text) => text);
+  mockChalk.bgRed = jest.fn((text) => text);
+  mockChalk.bgGreen = jest.fn((text) => text);
+  mockChalk.bgYellow = jest.fn((text) => text);
+  mockChalk.bgBlue = jest.fn((text) => text);
+  mockChalk.bgMagenta = jest.fn((text) => text);
+  mockChalk.bgCyan = jest.fn((text) => text);
+  mockChalk.bgWhite = jest.fn((text) => text);
+  mockChalk.bgBlackBright = jest.fn((text) => text);
+  mockChalk.bgRedBright = jest.fn((text) => text);
+  mockChalk.bgGreenBright = jest.fn((text) => text);
+  mockChalk.bgYellowBright = jest.fn((text) => text);
+  mockChalk.bgBlueBright = jest.fn((text) => text);
+  mockChalk.bgMagentaBright = jest.fn((text) => text);
+  mockChalk.bgCyanBright = jest.fn((text) => text);
+  mockChalk.bgWhiteBright = jest.fn((text) => text);
+  return mockChalk;
+});
+
 const infra = require('../../lib/infra');
 const secrets = require('../../lib/secrets');
 

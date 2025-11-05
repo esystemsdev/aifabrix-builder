@@ -482,7 +482,7 @@ describe('App.js Additional Coverage Tests', () => {
       pushUtils.validateRegistryURL.mockReturnValue(false);
 
       await expect(app.pushApp(appName, {}))
-        .rejects.toThrow('Invalid registry URL format');
+        .rejects.toThrow('Invalid ACR URL format');
     });
   });
 });

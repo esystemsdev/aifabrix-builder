@@ -52,6 +52,11 @@ Options: `typescript`, `python`
 Port for local development (if different from container port)  
 Example: `3001`
 
+**build.containerPort**  
+Container internal port (if different from main port)  
+Example: `8080`  
+*Defaults to `port` if not specified*
+
 **build.dockerfile**  
 Custom Dockerfile path  
 Example: `Dockerfile`, `custom/Dockerfile.prod`  
@@ -441,9 +446,9 @@ REDIS_PASSWORD=
 MISO_LOG_LEVEL=info
 
 # Pipeline API Deployment (optional - for automated deployments)
-AIFABRIX_API_URL=https://controller.aifabrix.ai
-AIFABRIX_CLIENT_ID=ctrl-dev-myapp
-AIFABRIX_CLIENT_SECRET=kv://aifabrix-client-secretKeyVault
+MISO_CONTROLLER_URL=https://controller.aifabrix.ai
+MISO_CLIENT_ID=ctrl-dev-myapp
+MISO_CLIENTSECRET=kv://aifabrix-client-secretKeyVault
 ```
 
 **Note:** Pipeline environment variables are only needed if you're using automated CI/CD deployments. Get ClientId and ClientSecret via `aifabrix app register`.

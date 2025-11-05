@@ -586,6 +586,12 @@
           "minimum": 1000,
           "maximum": 65535
         },
+        "containerPort": {
+          "type": "integer",
+          "description": "Container internal port (defaults to port if not specified)",
+          "minimum": 1,
+          "maximum": 65535
+        },
         "language": {
           "type": "string",
           "description": "Runtime language for template selection",

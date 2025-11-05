@@ -6,12 +6,24 @@ FROM quay.io/keycloak/keycloak:24.0
 # Set working directory
 WORKDIR /opt/keycloak
 
-# Copy custom themes from share directory
+# Copy custom themes from share directory (only if themes/ folder exists)
 USER root
-COPY themes/ /opt/keycloak/themes/
+# Use a shell script approach: copy themes if it exists, otherwise skip
+# First, copy everything from build context to a staging area
+COPY . /tmp/build-context/
+# Then conditionally copy themes if the directory exists
+RUN if [ -d "/tmp/build-context/themes" ] && [ "$(ls -A /tmp/build-context/themes)" ]; then \
+      cp -r /tmp/build-context/themes/* /opt/keycloak/themes/ && \
+      chown -R keycloak:keycloak /opt/keycloak/themes/ && \
+      echo "Themes copied successfully"; \
+    else \
+      echo "No themes directory found, skipping theme copy"; \
+    fi && \
+    rm -rf /tmp/build-context
 
-# Ensure proper permissions
-RUN chown -R keycloak:keycloak /opt/keycloak/themes/
+# Build Keycloak with health checks enabled
+# This enables the /health, /health/live, /health/ready, and /health/started endpoints
+RUN /opt/keycloak/bin/kc.sh build --health-enabled=true
 
 # Switch back to keycloak user
 USER keycloak
@@ -20,4 +32,5 @@ USER keycloak
 EXPOSE 8080
 
 # Default Keycloak command (can be overridden in docker-compose.yaml)
+# Health checks are enabled via the build step above
 CMD ["start-dev"]

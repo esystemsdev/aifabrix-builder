@@ -214,6 +214,7 @@ describe('Application Module - Comprehensive Tests', () => {
       expect(build.generateDockerfile).toHaveBeenCalledWith(
         expect.any(String),
         'python',
+        expect.any(Object),
         expect.any(Object)
       );
     });
@@ -255,6 +256,13 @@ describe('Application Module - Comprehensive Tests', () => {
           image: { registry: 'myacr.azurecr.io' }
         })
       );
+      // Ensure validateRegistryURL returns true for valid ACR URLs
+      // This needs to be set after the outer beforeEach to override mockReturnValue
+      pushUtils.validateRegistryURL.mockReset();
+      pushUtils.validateRegistryURL.mockImplementation((url) => {
+        // Return true for valid ACR URLs, false otherwise
+        return /^[^.]+\.azurecr\.io$/.test(url);
+      });
     });
 
     it('should push app successfully', async() => {
@@ -289,9 +297,14 @@ describe('Application Module - Comprehensive Tests', () => {
     });
 
     it('should validate registry URL format', async() => {
+      // Override the default mock for this test only
       pushUtils.validateRegistryURL.mockReturnValueOnce(false);
       await expect(app.pushApp('test-app', { registry: 'invalid.com' }))
-        .rejects.toThrow('Invalid registry URL format');
+        .rejects.toThrow('Invalid ACR URL format');
+      // Restore mock implementation for subsequent tests
+      pushUtils.validateRegistryURL.mockImplementation((url) => {
+        return /^[^.]+\.azurecr\.io$/.test(url);
+      });
     });
 
     it('should handle missing local image', async() => {

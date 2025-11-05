@@ -188,11 +188,11 @@ aifabrix app register myapp --environment dev
 
 📝 Add to GitHub Secrets:
    Repository level:
-     AIFABRIX_API_URL = https://controller.aifabrix.ai
+     MISO_CONTROLLER_URL = https://controller.aifabrix.ai
    
    Environment level (dev):
-     DEV_AIFABRIX_CLIENT_ID = ctrl-dev-myapp
-     DEV_AIFABRIX_CLIENT_SECRET = xyz-abc-123...
+     DEV_MISO_CLIENT_ID = ctrl-dev-myapp
+     DEV_MISO_CLIENTSECRET = xyz-abc-123...
 ```
 
 **Important:** Credentials are displayed but not automatically saved. Copy them to GitHub Secrets manually.
@@ -202,10 +202,10 @@ aifabrix app register myapp --environment dev
 1. Go to repository → Settings → Secrets and variables → Actions
 2. Click "New repository secret"
 3. Add repository-level secret:
-   - **Name:** `AIFABRIX_API_URL` **Value:** `https://controller.aifabrix.ai`
+   - **Name:** `MISO_CONTROLLER_URL` **Value:** `https://controller.aifabrix.ai`
 4. Add environment-level secrets (for dev environment):
-   - **Name:** `DEV_AIFABRIX_CLIENT_ID` **Value:** `ctrl-dev-myapp`
-   - **Name:** `DEV_AIFABRIX_CLIENT_SECRET` **Value:** (from registration output)
+   - **Name:** `DEV_MISO_CLIENT_ID` **Value:** `ctrl-dev-myapp`
+   - **Name:** `DEV_MISO_CLIENTSECRET` **Value:** (from registration output)
    
 **Note:** For other environments (staging/production), use `TST_` or `PRO_` prefixes.
 
@@ -238,7 +238,7 @@ aifabrix app rotate-secret --app myapp --environment dev
 ⚠️  Old secret is now invalid. Update GitHub Secrets!
 ```
 
-This displays new credentials. Then update `DEV_AIFABRIX_CLIENT_SECRET` in GitHub Secrets.
+This displays new credentials. Then update `DEV_MISO_CLIENTSECRET` in GitHub Secrets.
 
 → [See CLI Reference for `app register` command](CLI-REFERENCE.md#app-register)
 
@@ -376,11 +376,11 @@ For coverage reporting:
 For automated deployment via pipeline API:
 
 **Repository level:**
-1. **AIFABRIX_API_URL** - Controller API endpoint (e.g., `https://controller.aifabrix.ai`)
+1. **MISO_CONTROLLER_URL** - Controller API endpoint (e.g., `https://controller.aifabrix.ai`)
 
 **Environment level (dev/staging/production):**
-2. **DEV_AIFABRIX_CLIENT_ID** - Pipeline ClientId from application registration
-3. **DEV_AIFABRIX_CLIENT_SECRET** - Pipeline ClientSecret from application registration
+2. **DEV_MISO_CLIENT_ID** - Pipeline ClientId from application registration
+3. **DEV_MISO_CLIENTSECRET** - Pipeline ClientSecret from application registration
 
 **Getting Pipeline Credentials:**
 ```bash
@@ -632,11 +632,11 @@ jobs:
       - name: Validate and Get Registry Credentials
         id: validate
         run: |
-          RESPONSE=$(curl -X POST "${{ secrets.AIFABRIX_API_URL }}/api/v1/pipeline/validate" \
+          RESPONSE=$(curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/validate" \
             -H "Content-Type: application/json" \
             -d '{
-              "clientId": "${{ secrets.DEV_AIFABRIX_CLIENT_ID }}",
-              "clientSecret": "${{ secrets.DEV_AIFABRIX_CLIENT_SECRET }}",
+              "clientId": "${{ secrets.DEV_MISO_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.DEV_MISO_CLIENTSECRET }}",
               "repositoryUrl": "${{ github.server_url }}/${{ github.repository }}",
               "applicationConfig": $(cat application.json)
             }')
@@ -653,10 +653,10 @@ jobs:
       
       - name: Deploy Application
         run: |
-          curl -X POST "${{ secrets.AIFABRIX_API_URL }}/api/v1/pipeline/{env}/deploy" \
+          curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/{env}/deploy" \
             -H "Content-Type: application/json" \
-            -H "x-client-id: ${{ secrets.DEV_AIFABRIX_CLIENT_ID }}" \
-            -H "x-client-secret: ${{ secrets.DEV_AIFABRIX_CLIENT_SECRET }}" \
+            -H "x-client-id: ${{ secrets.DEV_MISO_CLIENT_ID }}" \
+            -H "x-client-secret: ${{ secrets.DEV_MISO_CLIENTSECRET }}" \
             -d '{
               "validateToken": "${{ steps.validate.outputs.validateToken }}",
               "imageTag": "${{ github.sha }}"
@@ -686,11 +686,11 @@ jobs:
           docker build -t myapp:${{ github.sha }} .
           
           # Get environment-specific credentials
-          RESPONSE=$(curl -X POST "${{ secrets.AIFABRIX_API_URL }}/api/v1/pipeline/validate" \
+          RESPONSE=$(curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/validate" \
             -H "Content-Type: application/json" \
             -d '{
-              "clientId": "${{ secrets.DEV_AIFABRIX_CLIENT_ID }}",
-              "clientSecret": "${{ secrets.DEV_AIFABRIX_CLIENT_SECRET }}",
+              "clientId": "${{ secrets.DEV_MISO_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.DEV_MISO_CLIENTSECRET }}",
               "repositoryUrl": "${{ github.server_url }}/${{ github.repository }}",
               "applicationConfig": $(cat application.json)
             }')

@@ -235,7 +235,7 @@ describe('App.js Uncovered Paths', () => {
 
       pushUtils.validateRegistryURL = jest.fn().mockReturnValue(false);
 
-      await expect(app.pushApp(appName, {})).rejects.toThrow('Invalid registry URL format');
+      await expect(app.pushApp(appName, {})).rejects.toThrow('Invalid ACR URL format');
     });
 
     it('should handle ACR authentication flow - already authenticated', async() => {

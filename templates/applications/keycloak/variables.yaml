@@ -46,6 +46,7 @@ build:
   dockerfile: builder/Dockerfile                        # Dockerfile name (empty = use template)
   envOutputPath: .env                                   # Copy .env to repo root for local dev
   localPort: 8082                                       # Port for local development (different from Docker port)
+  containerPort: 8080                                   # Container port (different from local port)
   language: typescript                                  # Runtime language for template selection
   secrets:                                              # Path to secrets file (optional)
 

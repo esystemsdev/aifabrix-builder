@@ -40,7 +40,7 @@ describe('Templates Module', () => {
       expect(parsed.requires.database).toBe(true);
       expect(parsed.requires.redis).toBe(false);
       expect(parsed.requires.storage).toBe(false);
-      expect(parsed.requires.databases).toEqual([{ name: 'test-app' }]);
+      expect(parsed.requires.databases).toEqual([{ name: 'test_app' }]);
       expect(parsed.authentication).toBeDefined();
       expect(parsed.authentication.type).toBe('azure');
       expect(parsed.authentication.enableSSO).toBe(true);
@@ -74,7 +74,7 @@ describe('Templates Module', () => {
       expect(parsed.requires.database).toBe(true);
       expect(parsed.requires.redis).toBe(true);
       expect(parsed.requires.storage).toBe(true);
-      expect(parsed.requires.databases).toEqual([{ name: 'python-app' }]);
+      expect(parsed.requires.databases).toEqual([{ name: 'python_app' }]);
       expect(parsed.authentication).toBeUndefined();
       expect(parsed.security).toBeUndefined(); // security section removed
       expect(parsed.monitoring).toBeUndefined(); // monitoring section removed
@@ -152,7 +152,7 @@ describe('Templates Module', () => {
       expect(result).toContain('PORT=3000');
       expect(result).toContain('APP_NAME=test-app');
       expect(result).toContain('DATABASE_URL=kv://databases-test-app-0-urlKeyVault');
-      expect(result).toContain('DB_USER=test-app_user');
+      expect(result).toContain('DB_USER=test_app_user');
       expect(result).toContain('DB_PASSWORD=kv://databases-test-app-0-passwordKeyVault');
       expect(result).toContain('REDIS_URL=kv://redis-url');
       expect(result).toContain('STORAGE_URL=kv://storage-url');

@@ -250,11 +250,11 @@ aifabrix app register myapp --environment dev
 
 📝 Add to GitHub Secrets:
    Repository level:
-     AIFABRIX_API_URL = https://controller.aifabrix.ai
+     MISO_CONTROLLER_URL = https://controller.aifabrix.ai
    
    Environment level (dev):
-     DEV_AIFABRIX_CLIENT_ID = ctrl-dev-myapp
-     DEV_AIFABRIX_CLIENT_SECRET = xyz-abc-123...
+     DEV_MISO_CLIENT_ID = ctrl-dev-myapp
+     DEV_MISO_CLIENTSECRET = xyz-abc-123...
 ```
 
 **Note:** Credentials are displayed but not automatically saved to a file. Copy them to GitHub Secrets manually.
@@ -263,10 +263,10 @@ aifabrix app register myapp --environment dev
 
 1. Go to repository Settings → Secrets and variables → Actions
 2. Add repository-level secret:
-   - `AIFABRIX_API_URL` - Controller URL (e.g., `https://controller.aifabrix.ai`)
+   - `MISO_CONTROLLER_URL` - Controller URL (e.g., `https://controller.aifabrix.ai`)
 3. Add environment-level secrets (for dev):
-   - `DEV_AIFABRIX_CLIENT_ID` - From registration output
-   - `DEV_AIFABRIX_CLIENT_SECRET` - From registration output
+   - `DEV_MISO_CLIENT_ID` - From registration output
+   - `DEV_MISO_CLIENTSECRET` - From registration output
    
 **Note:** For staging/production, use `TST_` or `PRO_` prefixes.
 
@@ -295,7 +295,7 @@ aifabrix app rotate-secret --app myapp --environment dev
 ⚠️  Old secret is now invalid. Update GitHub Secrets!
 ```
 
-Updates credentials display. Copy the new credentials to `DEV_AIFABRIX_CLIENT_SECRET` in GitHub Secrets if using CI/CD.
+Updates credentials display. Copy the new credentials to `DEV_MISO_CLIENTSECRET` in GitHub Secrets if using CI/CD.
 
 ## CI/CD Integration
 
@@ -498,9 +498,9 @@ aifabrix app register myapp --environment dev
 ```
 
 **Check credentials in GitHub Secrets:**
-- `DEV_AIFABRIX_CLIENT_ID` exists and is correct (for dev environment)
-- `DEV_AIFABRIX_CLIENT_SECRET` exists and is correct
-- `AIFABRIX_API_URL` points to correct controller (repository level)
+- `DEV_MISO_CLIENT_ID` exists and is correct (for dev environment)
+- `DEV_MISO_CLIENTSECRET` exists and is correct
+- `MISO_CONTROLLER_URL` points to correct controller (repository level)
 
 **Common issues:**
 - ClientSecret expired (rotate with `aifabrix app rotate-secret --app myapp --environment dev`)

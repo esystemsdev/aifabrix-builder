@@ -144,10 +144,10 @@ Token stored securely in ~/.aifabrix/config.yaml
 ```bash
 # GitHub Actions / Azure DevOps
 aifabrix login \
-  --url ${{ secrets.AIFABRIX_CONTROLLER_URL }} \
+  --url ${{ secrets.MISO_CONTROLLER_URL }} \
   --method credentials \
-  --client-id ${{ secrets.AIFABRIX_CLIENT_ID }} \
-  --client-secret ${{ secrets.AIFABRIX_CLIENT_SECRET }}
+  --client-id ${{ secrets.MISO_CLIENT_ID }} \
+  --client-secret ${{ secrets.MISO_CLIENTSECRET }}
 
 # Device code flow in CI/CD (if environment key is available)
 aifabrix login \
@@ -358,9 +358,9 @@ aifabrix app register myapp --environment dev --port 8080 --name "My Application
 ⚠️  IMPORTANT: Client Secret will not be shown again!
 
 📝 Add to GitHub Secrets:
-   AIFABRIX_CLIENT_ID = ctrl-dev-myapp
-   AIFABRIX_CLIENT_SECRET = x7K9mP2nQ4vL8wR5tY1uE3oA6sD9fG2hJ4kM7pN0qT5
-   AIFABRIX_API_URL = http://localhost:3000
+   MISO_CLIENT_ID = ctrl-dev-myapp
+   MISO_CLIENTSECRET = x7K9mP2nQ4vL8wR5tY1uE3oA6sD9fG2hJ4kM7pN0qT5
+   MISO_CONTROLLER_URL = http://localhost:3000
 ```
 
 **Issues:**

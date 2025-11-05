@@ -278,6 +278,36 @@ describe('Build Module', () => {
       expect(result).toBe(`${appName}:latest`);
     });
 
+    it('should use existing Dockerfile in builder/{appName}/ directory', async() => {
+      const appName = 'test-app';
+      const appPath = path.join(process.cwd(), 'builder', appName);
+      await fs.mkdir(appPath, { recursive: true });
+
+      // Create variables.yaml (without custom dockerfile path)
+      const variablesPath = path.join(appPath, 'variables.yaml');
+      const config = {
+        name: appName,
+        port: 3000,
+        image: `${appName}:latest`,
+        build: {
+          context: '..'
+        }
+      };
+      await fs.writeFile(variablesPath, yaml.dump(config));
+
+      // Create Dockerfile directly in builder/{appName}/ directory
+      await fs.writeFile(path.join(appPath, 'Dockerfile'), 'FROM keycloak:24.0\nWORKDIR /opt/keycloak');
+
+      // Mock validator
+      jest.spyOn(validator, 'validateVariables').mockResolvedValue({ valid: true, errors: [] });
+
+      // Mock secrets
+      jest.spyOn(secrets, 'generateEnvFile').mockResolvedValue('/path/to/.env');
+
+      const result = await build.buildApp(appName);
+      expect(result).toBe(`${appName}:latest`);
+    });
+
     it('should force template regeneration when requested', async() => {
       const appName = 'test-app';
       const appPath = path.join(process.cwd(), 'builder', appName);

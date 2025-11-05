@@ -115,7 +115,7 @@ describe('Application Module', () => {
       const envContent = await fs.readFile(envTemplatePath, 'utf8');
       expect(envContent).toContain('# DATABASE CONFIGURATION');
       expect(envContent).toContain('DATABASE_URL=kv://databases-test-app-0-urlKeyVault');
-      expect(envContent).toContain('DB_USER=test-app_user');
+      expect(envContent).toContain('DB_USER=test_app_user');
       expect(envContent).toContain('DB_PASSWORD=kv://databases-test-app-0-passwordKeyVault');
 
       // Verify rbac.yaml content
@@ -215,7 +215,7 @@ describe('Application Module', () => {
       const envTemplatePath = path.join(appPath, 'env.template');
       const envContent = await fs.readFile(envTemplatePath, 'utf8');
       expect(envContent).toContain('DATABASE_URL=kv://databases-env-conversion-app-0-urlKeyVault');
-      expect(envContent).toContain('DB_USER=env-conversion-app_user');
+      expect(envContent).toContain('DB_USER=env_conversion_app_user');
       expect(envContent).toContain('DB_PASSWORD=kv://databases-env-conversion-app-0-passwordKeyVault');
       expect(envContent).toContain('API_KEY=kv://api-key');
     });

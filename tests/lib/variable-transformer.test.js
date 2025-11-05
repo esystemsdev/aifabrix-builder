@@ -288,7 +288,7 @@ describe('Variable Transformer Module', () => {
 
         const result = transformVariablesForValidation(variables, defaultAppName);
 
-        expect(result.authentication).toEqual({ type: 'oauth2', clientId: 'client123' });
+        expect(result.authentication).toEqual({ type: 'azure', clientId: 'client123' });
       });
     });
 
@@ -1038,7 +1038,7 @@ describe('Variable Transformer Module', () => {
         expect(result.requiresStorage).toBe(false);
         expect(result.databases).toEqual([{ name: 'primary' }, { name: 'secondary' }]);
         expect(result.healthCheck).toEqual({ path: '/health', interval: 30 });
-        expect(result.authentication).toEqual({ type: 'oauth2' });
+        expect(result.authentication).toEqual({ type: 'azure' });
         expect(result.repository.enabled).toBe(true);
         expect(result.build.dockerfile).toBe('Dockerfile.prod');
         expect(result.deployment.clientId).toBe('my-client-id');

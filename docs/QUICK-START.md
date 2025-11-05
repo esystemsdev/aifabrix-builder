@@ -124,11 +124,11 @@ If you used `--github`, you'll also have:
 **Required secrets** (add in GitHub repository settings):
 
 **For deployment (repository level):**
-- `AIFABRIX_API_URL` - Controller URL (e.g., `https://controller.aifabrix.ai`)
+- `MISO_CONTROLLER_URL` - Controller URL (e.g., `https://controller.aifabrix.ai`)
 
 **For deployment (environment level, e.g., dev):**
-- `DEV_AIFABRIX_CLIENT_ID` - Pipeline ClientId from registration
-- `DEV_AIFABRIX_CLIENT_SECRET` - Pipeline ClientSecret from registration
+- `DEV_MISO_CLIENT_ID` - Pipeline ClientId from registration
+- `DEV_MISO_CLIENTSECRET` - Pipeline ClientSecret from registration
 
 **Optional:**
 - `NPM_TOKEN` - For publishing packages
@@ -213,9 +213,9 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 ### Automated CI/CD Deployment
 
 1. **Add secrets in GitHub repository settings:**
-   - `AIFABRIX_CLIENT_ID` - From registration
-   - `AIFABRIX_CLIENT_SECRET` - From registration
-   - `AIFABRIX_API_URL` - Controller URL
+   - `MISO_CLIENT_ID` - From registration
+   - `MISO_CLIENTSECRET` - From registration
+   - `MISO_CONTROLLER_URL` - Controller URL
 
 2. **Set up GitHub Actions workflow** (see [GitHub Workflows Guide](GITHUB-WORKFLOWS.md))
 
@@ -267,8 +267,8 @@ aifabrix doctor
 **Set up GitHub Actions (if you used --github):**
 1. Register application: `aifabrix app register myapp --environment dev`
 2. Add secrets in repository settings:
-   - Repository level: `AIFABRIX_API_URL` - Your controller URL
-   - Environment level (dev): `DEV_AIFABRIX_CLIENT_ID` and `DEV_AIFABRIX_CLIENT_SECRET` - From registration output
+   - Repository level: `MISO_CONTROLLER_URL` - Your controller URL
+   - Environment level (dev): `DEV_MISO_CLIENT_ID` and `DEV_MISO_CLIENTSECRET` - From registration output
 3. Push your code to GitHub
 4. Watch automatic deployment!
 

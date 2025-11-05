@@ -10,6 +10,9 @@
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --watchAll=false",
+    "test:integration": "jest --config jest.config.integration.js --runInBand",
+    "test:integration:python": "cross-env TEST_LANGUAGE=python jest --config jest.config.integration.js --runInBand",
+    "test:integration:typescript": "cross-env TEST_LANGUAGE=typescript jest --config jest.config.integration.js --runInBand",
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
     "lint:ci": "eslint . --ext .js --format json --output-file eslint-report.json",
@@ -33,19 +36,20 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "commander": "^11.1.0",
-    "js-yaml": "^4.1.0",
     "ajv": "^8.12.0",
-    "handlebars": "^4.7.8",
     "axios": "^1.6.0",
     "chalk": "^4.1.2",
-    "ora": "^5.4.1",
-    "inquirer": "^8.2.5"
+    "commander": "^11.1.0",
+    "handlebars": "^4.7.8",
+    "inquirer": "^8.2.5",
+    "js-yaml": "^4.1.0",
+    "ora": "^5.4.1"
   },
   "devDependencies": {
-    "jest": "^29.7.0",
+    "@types/node": "^20.10.0",
+    "cross-env": "^10.1.0",
     "eslint": "^8.55.0",
-    "@types/node": "^20.10.0"
+    "jest": "^29.7.0"
   },
   "repository": {
     "type": "git",

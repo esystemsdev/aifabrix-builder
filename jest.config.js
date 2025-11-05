@@ -4,6 +4,13 @@ module.exports = {
     '**/tests/**/*.test.js',
     '**/tests/**/*.spec.js'
   ],
+  // Exclude integration tests from normal test runs
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '\\\\node_modules\\\\',
+    '/tests/integration/',
+    '\\\\tests\\\\integration\\\\'
+  ],
   collectCoverageFrom: [
     'lib/**/*.js',
     'bin/**/*.js',
@@ -26,7 +33,8 @@ module.exports = {
     }
   },
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-  testTimeout: 30000,
+  // Normal test timeout (integration tests specify their own timeout)
+  testTimeout: 30000, // 30 seconds for unit tests
   verbose: true,
   forceExit: true,
   detectOpenHandles: true

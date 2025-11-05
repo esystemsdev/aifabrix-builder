@@ -9,11 +9,64 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const yaml = require('js-yaml');
+
+// Mock chalk before requiring modules that use it
+jest.mock('chalk', () => {
+  const mockChalk = (text) => text;
+  mockChalk.blue = jest.fn((text) => text);
+  mockChalk.green = jest.fn((text) => text);
+  mockChalk.red = jest.fn((text) => text);
+  mockChalk.yellow = jest.fn((text) => text);
+  mockChalk.cyan = jest.fn((text) => text);
+  mockChalk.magenta = jest.fn((text) => text);
+  mockChalk.white = jest.fn((text) => text);
+  mockChalk.gray = jest.fn((text) => text);
+  mockChalk.bold = jest.fn((text) => text);
+  mockChalk.dim = jest.fn((text) => text);
+  mockChalk.italic = jest.fn((text) => text);
+  mockChalk.underline = jest.fn((text) => text);
+  mockChalk.strikethrough = jest.fn((text) => text);
+  mockChalk.reset = jest.fn((text) => text);
+  mockChalk.inverse = jest.fn((text) => text);
+  mockChalk.black = jest.fn((text) => text);
+  mockChalk.redBright = jest.fn((text) => text);
+  mockChalk.greenBright = jest.fn((text) => text);
+  mockChalk.yellowBright = jest.fn((text) => text);
+  mockChalk.blueBright = jest.fn((text) => text);
+  mockChalk.magentaBright = jest.fn((text) => text);
+  mockChalk.cyanBright = jest.fn((text) => text);
+  mockChalk.whiteBright = jest.fn((text) => text);
+  mockChalk.bgBlack = jest.fn((text) => text);
+  mockChalk.bgRed = jest.fn((text) => text);
+  mockChalk.bgGreen = jest.fn((text) => text);
+  mockChalk.bgYellow = jest.fn((text) => text);
+  mockChalk.bgBlue = jest.fn((text) => text);
+  mockChalk.bgMagenta = jest.fn((text) => text);
+  mockChalk.bgCyan = jest.fn((text) => text);
+  mockChalk.bgWhite = jest.fn((text) => text);
+  mockChalk.bgBlackBright = jest.fn((text) => text);
+  mockChalk.bgRedBright = jest.fn((text) => text);
+  mockChalk.bgGreenBright = jest.fn((text) => text);
+  mockChalk.bgYellowBright = jest.fn((text) => text);
+  mockChalk.bgBlueBright = jest.fn((text) => text);
+  mockChalk.bgMagentaBright = jest.fn((text) => text);
+  mockChalk.bgCyanBright = jest.fn((text) => text);
+  mockChalk.bgWhiteBright = jest.fn((text) => text);
+  return mockChalk;
+});
+
 const secrets = require('../../lib/secrets');
 
 // Mock fs module
 jest.mock('fs');
 jest.mock('os');
+jest.mock('../../lib/utils/logger', () => ({
+  log: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  info: jest.fn()
+}));
 
 describe('Secrets Module', () => {
   const mockHomeDir = '/home/test';
@@ -23,6 +76,28 @@ describe('Secrets Module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     os.homedir.mockReturnValue(mockHomeDir);
+
+    // Default mock for env-config.yaml used by loadEnvConfig
+    fs.existsSync.mockImplementation((filePath) => {
+      if (filePath && filePath.includes('env-config.yaml')) {
+        return true;
+      }
+      return false;
+    });
+    fs.readFileSync.mockImplementation((filePath) => {
+      if (filePath && filePath.includes('env-config.yaml')) {
+        return `
+environments:
+  local:
+    DB_HOST: localhost
+    REDIS_HOST: localhost
+  docker:
+    DB_HOST: postgres
+    REDIS_HOST: redis
+`;
+      }
+      return '';
+    });
   });
 
   describe('loadSecrets', () => {
@@ -61,6 +136,20 @@ describe('Secrets Module', () => {
     it('should throw error if secrets file has invalid format', async() => {
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('invalid yaml content');
+
+      await expect(secrets.loadSecrets()).rejects.toThrow('Invalid secrets file format');
+    });
+
+    it('should throw error if secrets file contains null', async() => {
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('null');
+
+      await expect(secrets.loadSecrets()).rejects.toThrow('Invalid secrets file format');
+    });
+
+    it('should throw error if secrets file contains non-object', async() => {
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('"just a string"');
 
       await expect(secrets.loadSecrets()).rejects.toThrow('Invalid secrets file format');
     });
@@ -285,6 +374,943 @@ environments:
 
       expect(fs.mkdirSync).toHaveBeenCalledWith('/custom/path', { recursive: true, mode: 0o700 });
       expect(fs.writeFileSync).toHaveBeenCalledWith(secretsPath, expect.any(String), { mode: 0o600 });
+    });
+  });
+
+  describe('loadSecrets - branch coverage', () => {
+    it('should resolve relative path starting with ..', async() => {
+      const customPath = '../../secrets.local.yaml';
+      const resolvedPath = path.resolve(process.cwd(), customPath);
+      const mockSecrets = { 'redis-passwordKeyVault': 'redis123' };
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('redis-passwordKeyVault: "redis123"');
+
+      const result = await secrets.loadSecrets(customPath);
+
+      expect(fs.existsSync).toHaveBeenCalledWith(resolvedPath);
+      expect(result).toEqual(mockSecrets);
+    });
+
+    it('should handle loadSecrets with non-relative path', async() => {
+      const customPath = '/absolute/path/secrets.yaml';
+      const mockSecrets = { 'redis-passwordKeyVault': 'redis123' };
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('redis-passwordKeyVault: "redis123"');
+
+      const result = await secrets.loadSecrets(customPath);
+
+      expect(fs.existsSync).toHaveBeenCalledWith(customPath);
+      expect(result).toEqual(mockSecrets);
+    });
+  });
+
+  describe('resolveKvReferences - branch coverage', () => {
+    const mockSecrets = {
+      'postgres-passwordKeyVault': 'admin123',
+      'redis-urlKeyVault': 'redis://${REDIS_HOST}:6379',
+      'non-string-secret': 12345
+    };
+
+    beforeEach(() => {
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(`
+environments:
+  local:
+    REDIS_HOST: localhost
+    DB_HOST: localhost
+`);
+    });
+
+    it('should fallback to local environment when specified environment does not exist', async() => {
+      const template = 'REDIS_URL=kv://redis-urlKeyVault';
+
+      const result = await secrets.resolveKvReferences(template, mockSecrets, 'nonexistent');
+
+      expect(result).toBe('REDIS_URL=redis://localhost:6379');
+    });
+
+    it('should handle non-string secret values', async() => {
+      const template = 'SECRET=kv://non-string-secret';
+
+      const result = await secrets.resolveKvReferences(template, mockSecrets);
+
+      expect(result).toBe('SECRET=12345');
+    });
+
+    it('should handle ${VAR} references in template', async() => {
+      fs.readFileSync.mockReturnValue(`
+environments:
+  local:
+    DB_HOST: localhost
+`);
+      const template = 'DATABASE_URL=postgresql://user:pass@${DB_HOST}:5432/db';
+
+      const result = await secrets.resolveKvReferences(template, mockSecrets);
+
+      expect(result).toBe('DATABASE_URL=postgresql://user:pass@localhost:5432/db');
+    });
+
+    it('should handle ${VAR} references that do not exist in env vars', async() => {
+      const template = 'VAR=${NONEXISTENT}';
+
+      const result = await secrets.resolveKvReferences(template, mockSecrets);
+
+      expect(result).toBe('VAR=${NONEXISTENT}');
+    });
+
+    it('should replace ${VAR} references inside secret values', async() => {
+      fs.readFileSync.mockReturnValue(`
+environments:
+  local:
+    DB_HOST: localhost
+    REDIS_HOST: localhost
+`);
+      const mockSecretsWithVar = {
+        'database-urlKeyVault': 'postgresql://user:pass@${DB_HOST}:5432/db',
+        'redis-urlKeyVault': 'redis://${REDIS_HOST}:6379'
+      };
+      const template = 'DATABASE_URL=kv://database-urlKeyVault\nREDIS_URL=kv://redis-urlKeyVault';
+
+      const result = await secrets.resolveKvReferences(template, mockSecretsWithVar);
+
+      expect(result).toContain('DATABASE_URL=postgresql://user:pass@localhost:5432/db');
+      expect(result).toContain('REDIS_URL=redis://localhost:6379');
+    });
+
+    it('should handle ${VAR} references inside secret values that do not exist', async() => {
+      fs.readFileSync.mockReturnValue(`
+environments:
+  local:
+    DB_HOST: localhost
+`);
+      const mockSecretsWithVar = {
+        'database-urlKeyVault': 'postgresql://user:pass@${NONEXISTENT_HOST}:5432/db'
+      };
+      const template = 'DATABASE_URL=kv://database-urlKeyVault';
+
+      const result = await secrets.resolveKvReferences(template, mockSecretsWithVar);
+
+      expect(result).toContain('DATABASE_URL=postgresql://user:pass@${NONEXISTENT_HOST}:5432/db');
+    });
+
+    it('should handle multiple kv:// references in template', async() => {
+      fs.readFileSync.mockReturnValue(`
+environments:
+  local:
+    DB_HOST: localhost
+`);
+      const mockSecrets = {
+        'secret1': 'value1',
+        'secret2': 'value2',
+        'secret3': 'value3'
+      };
+      const template = 'KEY1=kv://secret1\nKEY2=kv://secret2\nKEY3=kv://secret3';
+
+      const result = await secrets.resolveKvReferences(template, mockSecrets);
+
+      expect(result).toContain('KEY1=value1');
+      expect(result).toContain('KEY2=value2');
+      expect(result).toContain('KEY3=value3');
+    });
+
+    it('should handle ${VAR} references in template before kv:// resolution', async() => {
+      fs.readFileSync.mockReturnValue(`
+environments:
+  local:
+    DB_HOST: localhost
+    APP_NAME: myapp
+`);
+      const mockSecrets = {
+        'database-passwordKeyVault': 'admin123'
+      };
+      const template = 'APP_NAME=${APP_NAME}\nDATABASE_URL=postgresql://user:pass@${DB_HOST}:5432/db\nPASSWORD=kv://database-passwordKeyVault';
+
+      const result = await secrets.resolveKvReferences(template, mockSecrets);
+
+      expect(result).toContain('APP_NAME=myapp');
+      expect(result).toContain('DATABASE_URL=postgresql://user:pass@localhost:5432/db');
+      expect(result).toContain('PASSWORD=admin123');
+    });
+  });
+
+  describe('generateMissingSecrets - branch coverage', () => {
+    beforeEach(() => {
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(`
+environments:
+  local:
+    REDIS_HOST: localhost
+`);
+    });
+
+    it('should generate database password for databases-{app}-{index}-passwordKeyVault format', async() => {
+      const template = 'DATABASE_PASSWORD=kv://databases-myapp-0-passwordKeyVault';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === secretsPath;
+      });
+      fs.readFileSync.mockReturnValue('');
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === secretsPath);
+      expect(writeCall[1]).toContain('myapp_pass123');
+    });
+
+    it('should generate database URL for databases-{app}-{index}-urlKeyVault format', async() => {
+      const template = 'DATABASE_URL=kv://databases-myapp-0-urlKeyVault';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === secretsPath;
+      });
+      fs.readFileSync.mockReturnValue('');
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === secretsPath);
+      expect(writeCall[1]).toContain('postgresql://myapp_user:myapp_pass123');
+    });
+
+    it('should generate random password for generic password key', async() => {
+      const template = 'PASSWORD=kv://some-password-key';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === secretsPath;
+      });
+      fs.readFileSync.mockReturnValue('');
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === secretsPath);
+      expect(writeCall[1]).toMatch(/some-password-key:/);
+    });
+
+    it('should generate empty string for URL keys that are not database URLs', async() => {
+      const template = 'API_URL=kv://some-url-key';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === secretsPath;
+      });
+      fs.readFileSync.mockReturnValue('');
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === secretsPath);
+      expect(writeCall[1]).toMatch(/some-url-key: ''/);
+    });
+
+    it('should generate random key for key/secret/token patterns', async() => {
+      const template = 'API_KEY=kv://some-api-key';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === secretsPath;
+      });
+      fs.readFileSync.mockReturnValue('');
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+    it('should handle existing secrets file with invalid YAML', async() => {
+      const template = 'PASSWORD=kv://some-password';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('invalid yaml');
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+    it('should handle error when reading existing secrets file', async() => {
+      const template = 'PASSWORD=kv://some-password';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockImplementation(() => {
+        throw new Error('Permission denied');
+      });
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+    it('should handle secret key that does not match any pattern', async() => {
+      const template = 'CUSTOM_VALUE=kv://some-unknown-value-setting';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockReturnValue(false);
+      fs.readFileSync.mockReturnValue('');
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === secretsPath);
+      expect(writeCall[1]).toMatch(/some-unknown-value-setting: ''/);
+    });
+
+    it('should handle existing secrets file with non-object YAML', async() => {
+      const template = 'PASSWORD=kv://some-password';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('123');
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+    it('should create directory if it does not exist', async() => {
+      const template = 'PASSWORD=kv://some-password';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === secretsPath;
+      });
+      fs.readFileSync.mockReturnValue('');
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.mkdirSync).toHaveBeenCalledWith(path.dirname(secretsPath), { recursive: true, mode: 0o700 });
+    });
+
+    it('should return empty array when no missing keys', async() => {
+      const template = 'EXISTING=kv://existing-secret';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('existing-secret: "value"');
+
+      const result = await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(result).toEqual([]);
+      expect(fs.writeFileSync).not.toHaveBeenCalled();
+    });
+
+    it('should handle secrets file that does not exist', async() => {
+      const template = 'PASSWORD=kv://some-password';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockReturnValue(false);
+
+      const result = await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(result).toEqual(['some-password']);
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+    it('should handle empty secrets file', async() => {
+      const template = 'PASSWORD=kv://some-password';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('');
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+    it('should handle duplicate kv:// references in template', async() => {
+      const template = 'PASSWORD1=kv://same-secret\nPASSWORD2=kv://same-secret';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockReturnValue(false);
+
+      const result = await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(result).toEqual(['same-secret']);
+    });
+
+    it('should generate default secret for keys containing token', async() => {
+      const template = 'API_TOKEN=kv://some-api-token-key';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockReturnValue(false);
+      fs.readFileSync.mockReturnValue('');
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === secretsPath);
+      expect(writeCall[1]).toMatch(/some-api-token-key:/);
+    });
+
+    it('should merge new secrets with existing ones', async() => {
+      const template = 'NEW_SECRET=kv://new-secret';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+      const existingSecrets = { 'existing-secret': 'existing-value' };
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(yaml.dump(existingSecrets));
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === secretsPath);
+      const writtenContent = writeCall[1];
+      expect(writtenContent).toContain('existing-secret');
+      expect(writtenContent).toContain('new-secret');
+    });
+
+    it('should handle app name with hyphens in database password generation', async() => {
+      const template = 'DATABASE_PASSWORD=kv://databases-my-app-name-0-passwordKeyVault';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockReturnValue(false);
+      fs.readFileSync.mockReturnValue('');
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === secretsPath);
+      expect(writeCall[1]).toContain('my_app_name_pass123');
+    });
+
+    it('should handle app name with hyphens in database URL generation', async() => {
+      const template = 'DATABASE_URL=kv://databases-my-app-name-0-urlKeyVault';
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockReturnValue(false);
+      fs.readFileSync.mockReturnValue('');
+
+      await secrets.generateMissingSecrets(template, secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === secretsPath);
+      expect(writeCall[1]).toContain('postgresql://my_app_name_user:my_app_name_pass123');
+    });
+
+    it('should handle default secrets path when not provided', async() => {
+      const template = 'PASSWORD=kv://some-password';
+
+      fs.existsSync.mockReturnValue(false);
+      fs.readFileSync.mockReturnValue('');
+
+      await secrets.generateMissingSecrets(template);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === mockSecretsPath);
+      expect(writeCall).toBeDefined();
+    });
+  });
+
+  describe('generateEnvFile - branch coverage', () => {
+    const appName = 'testapp';
+    const builderPath = path.join(process.cwd(), 'builder', appName);
+
+    beforeEach(() => {
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        return '';
+      });
+    });
+
+    it('should not copy .env when envOutputPath is null', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('env.template') ||
+               filePath.includes('variables.yaml') ||
+               filePath.includes('secrets.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return `
+build:
+  envOutputPath: null
+`;
+        }
+        if (filePath.includes('env.template')) {
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName);
+
+      expect(fs.copyFileSync).not.toHaveBeenCalled();
+    });
+
+    it('should handle envOutputPath ending with .env', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('env.template') ||
+               filePath.includes('variables.yaml') ||
+               filePath.includes('secrets.yaml');
+      });
+      if (!fs.statSync) {
+        fs.statSync = jest.fn();
+      }
+      fs.statSync.mockReturnValue({ isDirectory: () => false });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return `
+build:
+  envOutputPath: ../app/.env
+`;
+        }
+        if (filePath.includes('env.template')) {
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName);
+
+      expect(fs.copyFileSync).toHaveBeenCalled();
+    });
+
+    it('should handle envOutputPath pointing to existing directory', async() => {
+      const outputPath = path.resolve(process.cwd(), '../app');
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template') ||
+            filePath.includes('variables.yaml') ||
+            filePath.includes('secrets.yaml')) {
+          return true;
+        }
+        if (filePath === outputPath) {
+          return true;
+        }
+        return false;
+      });
+      if (!fs.statSync) {
+        fs.statSync = jest.fn();
+      }
+      fs.statSync.mockImplementation((filePath) => {
+        if (filePath === outputPath) {
+          return { isDirectory: () => true };
+        }
+        return { isDirectory: () => false };
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return `
+build:
+  envOutputPath: ../app
+`;
+        }
+        if (filePath.includes('env.template')) {
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName);
+
+      expect(fs.statSync).toHaveBeenCalledWith(outputPath);
+      expect(fs.copyFileSync).toHaveBeenCalled();
+    });
+
+    it('should generate missing secrets when force flag is true', async() => {
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+      let secretsFileExists = false;
+      let generatedSecrets = '';
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === secretsPath) {
+          return secretsFileExists;
+        }
+        return filePath.includes('env.template');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath === secretsPath && secretsFileExists) {
+          return generatedSecrets || 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        return '';
+      });
+      fs.writeFileSync.mockImplementation((filePath, content) => {
+        if (filePath === secretsPath) {
+          secretsFileExists = true;
+          generatedSecrets = content;
+        }
+      });
+
+      await secrets.generateEnvFile(appName, secretsPath, 'local', true);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+    it('should handle envOutputPath when output directory does not exist', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('env.template') ||
+               filePath.includes('variables.yaml') ||
+               filePath.includes('secrets.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return `
+build:
+  envOutputPath: ../app/.env
+`;
+        }
+        if (filePath.includes('env.template')) {
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName);
+
+      expect(fs.mkdirSync).toHaveBeenCalled();
+      expect(fs.copyFileSync).toHaveBeenCalled();
+    });
+
+    it('should handle envOutputPath when variables.yaml does not exist', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('env.template') || filePath.includes('secrets.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName);
+
+      expect(fs.copyFileSync).not.toHaveBeenCalled();
+    });
+
+    it('should handle envOutputPath when build.envOutputPath is not set', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('env.template') ||
+               filePath.includes('variables.yaml') ||
+               filePath.includes('secrets.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return 'build: {}';
+        }
+        if (filePath.includes('env.template')) {
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName);
+
+      expect(fs.copyFileSync).not.toHaveBeenCalled();
+    });
+
+    it('should handle envOutputPath when path does not end with .env and directory does not exist', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('env.template') ||
+               filePath.includes('variables.yaml') ||
+               filePath.includes('secrets.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return `
+build:
+  envOutputPath: ../app
+`;
+        }
+        if (filePath.includes('env.template')) {
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName);
+
+      expect(fs.mkdirSync).toHaveBeenCalled();
+      expect(fs.copyFileSync).toHaveBeenCalled();
+    });
+
+    it('should use custom secretsPath when provided', async() => {
+      const customSecretsPath = '../../custom/secrets.yaml';
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('env.template') || filePath.includes('secrets.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, customSecretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+    it('should use custom environment when provided', async() => {
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'REDIS_URL=kv://redis-urlKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'redis-urlKeyVault: "redis://${REDIS_HOST}:6379"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  docker:
+    REDIS_HOST: redis
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker');
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+  });
+
+  describe('generateAdminSecretsEnv - branch coverage', () => {
+    it('should handle error when secrets file does not exist but path exists', async() => {
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === secretsPath;
+      });
+      fs.readFileSync.mockImplementation(() => {
+        throw new Error('Permission denied');
+      });
+
+      await expect(secrets.generateAdminSecretsEnv()).rejects.toThrow();
+    });
+
+    it('should create default secrets when file does not exist', async() => {
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+      let secretsFileExists = false;
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === secretsPath) {
+          return secretsFileExists;
+        }
+        return false;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === secretsPath && secretsFileExists) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        throw new Error('File not found');
+      });
+      fs.writeFileSync.mockImplementation((filePath) => {
+        if (filePath === secretsPath) {
+          secretsFileExists = true;
+        }
+      });
+
+      const result = await secrets.generateAdminSecretsEnv();
+
+      expect(result).toBe(mockAdminSecretsPath);
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+    it('should use empty string when postgres-passwordKeyVault is missing', async() => {
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('other-key: "value"');
+
+      const result = await secrets.generateAdminSecretsEnv();
+
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        mockAdminSecretsPath,
+        expect.stringContaining('POSTGRES_PASSWORD='),
+        { mode: 0o600 }
+      );
+    });
+
+    it('should use custom secretsPath when provided', async() => {
+      const customSecretsPath = '../../custom/secrets.yaml';
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('postgres-passwordKeyVault: "admin123"');
+
+      await secrets.generateAdminSecretsEnv(customSecretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+    it('should handle error when creating default secrets fails', async() => {
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === secretsPath;
+      });
+      fs.readFileSync.mockImplementation(() => {
+        throw new Error('File not found');
+      });
+      fs.writeFileSync.mockImplementation(() => {
+        throw new Error('Permission denied');
+      });
+
+      await expect(secrets.generateAdminSecretsEnv()).rejects.toThrow();
+    });
+  });
+
+  describe('createDefaultSecrets - branch coverage', () => {
+    beforeEach(() => {
+      // Reset writeFileSync mock to default implementation
+      fs.writeFileSync.mockImplementation(() => {});
+    });
+
+    it('should handle path without ~ prefix', async() => {
+      const secretsPath = '/absolute/path/secrets.yaml';
+
+      await secrets.createDefaultSecrets(secretsPath);
+
+      expect(fs.mkdirSync).toHaveBeenCalledWith('/absolute/path', { recursive: true, mode: 0o700 });
+      expect(fs.writeFileSync).toHaveBeenCalledWith(secretsPath, expect.any(String), { mode: 0o600 });
+    });
+
+    it('should create directory if it does not exist', async() => {
+      const secretsPath = '~/.aifabrix/secrets.yaml';
+      const resolvedPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockReturnValue(false);
+
+      await secrets.createDefaultSecrets(secretsPath);
+
+      expect(fs.mkdirSync).toHaveBeenCalledWith(path.dirname(resolvedPath), { recursive: true, mode: 0o700 });
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+    it('should write default secrets content', async() => {
+      const secretsPath = '~/.aifabrix/secrets.yaml';
+      const resolvedPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      fs.existsSync.mockReturnValue(true);
+
+      await secrets.createDefaultSecrets(secretsPath);
+
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        resolvedPath,
+        expect.stringContaining('postgres-passwordKeyVault: "admin123"'),
+        { mode: 0o600 }
+      );
+    });
+
+    it('should include all default secrets in output', async() => {
+      const secretsPath = '~/.aifabrix/secrets.yaml';
+      const resolvedPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+
+      await secrets.createDefaultSecrets(secretsPath);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === resolvedPath);
+      const content = writeCall[1];
+
+      expect(content).toContain('postgres-passwordKeyVault');
+      expect(content).toContain('redis-passwordKeyVault');
+      expect(content).toContain('redis-urlKeyVault');
+      expect(content).toContain('keycloak-admin-passwordKeyVault');
+      expect(content).toContain('keycloak-auth-server-urlKeyVault');
     });
   });
 });

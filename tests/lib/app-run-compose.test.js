@@ -20,7 +20,7 @@ describe('app-run Docker Compose Generation', () => {
   });
 
   describe('generateDockerCompose', () => {
-    it('should generate compose file with db-init service when requiresDatabase is true', async () => {
+    it('should generate compose file with db-init service when requiresDatabase is true', async() => {
       const appName = 'test-app';
       const config = {
         build: { language: 'python' },
@@ -41,7 +41,7 @@ describe('app-run Docker Compose Generation', () => {
       expect(result).toContain('pgvector/pgvector:pg15');
     });
 
-    it('should not include db-init service when requiresDatabase is false', async () => {
+    it('should not include db-init service when requiresDatabase is false', async() => {
       const appName = 'test-app';
       const config = {
         build: { language: 'python' },
@@ -59,7 +59,7 @@ describe('app-run Docker Compose Generation', () => {
       expect(result).not.toContain('depends_on:');
     });
 
-    it('should use databases from config.requires.databases', async () => {
+    it('should use databases from config.requires.databases', async() => {
       const appName = 'test-app';
       const config = {
         build: { language: 'python' },
@@ -80,7 +80,7 @@ describe('app-run Docker Compose Generation', () => {
       expect(result).toContain('test_db2');
     });
 
-    it('should convert Windows paths to forward slashes for volumes', async () => {
+    it('should convert Windows paths to forward slashes for volumes', async() => {
       const appName = 'test-app';
       const config = {
         build: { language: 'python' },
@@ -104,7 +104,7 @@ describe('app-run Docker Compose Generation', () => {
       process.cwd = originalCwd;
     });
 
-    it('should generate valid YAML that can be parsed', async () => {
+    it('should generate valid YAML that can be parsed', async() => {
       const appName = 'test-app';
       const config = {
         build: { language: 'python' },
@@ -120,7 +120,7 @@ describe('app-run Docker Compose Generation', () => {
 
       // Should be valid YAML
       expect(() => yaml.load(result)).not.toThrow();
-      
+
       const parsed = yaml.load(result);
       expect(parsed).toHaveProperty('services');
       expect(parsed.services).toHaveProperty('test-app');

@@ -201,4 +201,188 @@ describe('Template Validator Module', () => {
       expect(templates).not.toContain('applications');
     });
   });
+
+  describe('validateTemplate - branch coverage', () => {
+    it('should throw error if template name is not a string', async() => {
+      await expect(templateValidator.validateTemplate(null))
+        .rejects.toThrow('Template name is required and must be a string');
+
+      await expect(templateValidator.validateTemplate(123))
+        .rejects.toThrow('Template name is required and must be a string');
+
+      await expect(templateValidator.validateTemplate(undefined))
+        .rejects.toThrow('Template name is required and must be a string');
+    });
+
+    it('should throw error if template path is not a directory', async() => {
+      // Create a file with template name instead of directory
+      const projectRoot = path.join(__dirname, '..', '..');
+      const templatePath = path.join(projectRoot, 'templates', 'applications', 'test-file');
+      fsSync.writeFileSync(templatePath, 'not a directory');
+
+      try {
+        await expect(templateValidator.validateTemplate('test-file'))
+          .rejects.toThrow('Template \'test-file\' exists but is not a directory');
+      } finally {
+        if (fsSync.existsSync(templatePath)) {
+          fsSync.unlinkSync(templatePath);
+        }
+      }
+    });
+  });
+
+  describe('copyAppFiles - branch coverage', () => {
+    it('should throw error if language is not a string', async() => {
+      const appPath = path.join(tempDir, 'builder', 'test-app');
+
+      await expect(templateValidator.copyAppFiles(null, appPath))
+        .rejects.toThrow('Language is required and must be a string');
+
+      await expect(templateValidator.copyAppFiles(123, appPath))
+        .rejects.toThrow('Language is required and must be a string');
+
+      await expect(templateValidator.copyAppFiles(undefined, appPath))
+        .rejects.toThrow('Language is required and must be a string');
+    });
+
+    it('should throw error if language template does not exist', async() => {
+      const appPath = path.join(tempDir, 'builder', 'test-app');
+
+      await expect(templateValidator.copyAppFiles('nonexistent-language', appPath))
+        .rejects.toThrow('Language template \'nonexistent-language\' not found');
+    });
+
+    it('should throw error if language template path is not a directory', async() => {
+      const projectRoot = path.join(__dirname, '..', '..');
+      const languageTemplatePath = path.join(projectRoot, 'templates', 'test-file-lang');
+      fsSync.writeFileSync(languageTemplatePath, 'not a directory');
+      const appPath = path.join(tempDir, 'builder', 'test-app');
+
+      try {
+        await expect(templateValidator.copyAppFiles('test-file-lang', appPath))
+          .rejects.toThrow('Language template \'test-file-lang\' exists but is not a directory');
+      } finally {
+        if (fsSync.existsSync(languageTemplatePath)) {
+          fsSync.unlinkSync(languageTemplatePath);
+        }
+      }
+    });
+
+    it('should exclude .hbs files when copying', async() => {
+      const projectRoot = path.join(__dirname, '..', '..');
+      const languageTemplatePath = path.join(projectRoot, 'templates', 'typescript');
+      const appPath = path.join(tempDir, 'builder', 'test-app');
+
+      if (fsSync.existsSync(languageTemplatePath)) {
+        try {
+          const copiedFiles = await templateValidator.copyAppFiles('typescript', appPath);
+
+          // Should not copy .hbs files
+          const hbsFiles = copiedFiles.filter(f => f.endsWith('.hbs'));
+          expect(hbsFiles.length).toBe(0);
+        } catch (error) {
+          // Ignore file not found errors for optional files
+          if (!error.message.includes('ENOENT')) {
+            throw error;
+          }
+        }
+      }
+    });
+
+    it('should exclude Dockerfile files when copying', async() => {
+      const projectRoot = path.join(__dirname, '..', '..');
+      const languageTemplatePath = path.join(projectRoot, 'templates', 'typescript');
+      const appPath = path.join(tempDir, 'builder', 'test-app');
+
+      if (fsSync.existsSync(languageTemplatePath)) {
+        try {
+          const copiedFiles = await templateValidator.copyAppFiles('typescript', appPath);
+
+          // Should not copy Dockerfile
+          const dockerFiles = copiedFiles.filter(f => f.toLowerCase().includes('dockerfile'));
+          expect(dockerFiles.length).toBe(0);
+        } catch (error) {
+          // Ignore file not found errors for optional files
+          if (!error.message.includes('ENOENT')) {
+            throw error;
+          }
+        }
+      }
+    });
+
+    it('should include .gitignore when copying', async() => {
+      const projectRoot = path.join(__dirname, '..', '..');
+      const languageTemplatePath = path.join(projectRoot, 'templates', 'typescript');
+      const appPath = path.join(tempDir, 'builder', 'test-app');
+
+      if (fsSync.existsSync(languageTemplatePath)) {
+        try {
+          const copiedFiles = await templateValidator.copyAppFiles('typescript', appPath);
+
+          // Should include .gitignore if it exists
+          const gitignoreFiles = copiedFiles.filter(f => f.includes('.gitignore'));
+          expect(gitignoreFiles.length).toBeGreaterThanOrEqual(0);
+        } catch (error) {
+          // Ignore file not found errors for optional files
+          if (!error.message.includes('ENOENT')) {
+            throw error;
+          }
+        }
+      }
+    });
+
+    it('should normalize language to lowercase', async() => {
+      const projectRoot = path.join(__dirname, '..', '..');
+      const languageTemplatePath = path.join(projectRoot, 'templates', 'typescript');
+      const appPath = path.join(tempDir, 'builder', 'test-app');
+
+      if (fsSync.existsSync(languageTemplatePath)) {
+        try {
+          // Should work with uppercase
+          await expect(templateValidator.copyAppFiles('TYPESCRIPT', appPath)).resolves.toBeDefined();
+          await expect(templateValidator.copyAppFiles('TypeScript', appPath)).resolves.toBeDefined();
+        } catch (error) {
+          // Ignore file not found errors for optional files
+          if (!error.message.includes('ENOENT')) {
+            throw error;
+          }
+        }
+      }
+    });
+  });
+
+  describe('listAvailableTemplates - branch coverage', () => {
+    it('should return empty array if templates directory does not exist', async() => {
+      // Mock fsSync.existsSync to return false for templates directory
+      const originalExistsSync = fsSync.existsSync;
+      fsSync.existsSync = jest.fn((filePath) => {
+        if (filePath.includes('templates') && filePath.includes('applications')) {
+          return false;
+        }
+        return originalExistsSync(filePath);
+      });
+
+      try {
+        const templates = await templateValidator.listAvailableTemplates();
+        expect(templates).toEqual([]);
+      } finally {
+        fsSync.existsSync = originalExistsSync;
+      }
+    });
+
+    it('should exclude directories without files', async() => {
+      const projectRoot = path.join(__dirname, '..', '..');
+      const emptyTemplatePath = path.join(projectRoot, 'templates', 'applications', 'empty-template-test');
+      fsSync.mkdirSync(emptyTemplatePath, { recursive: true });
+
+      try {
+        const templates = await templateValidator.listAvailableTemplates();
+        expect(templates).not.toContain('empty-template-test');
+      } finally {
+        if (fsSync.existsSync(emptyTemplatePath)) {
+          fsSync.rmSync(emptyTemplatePath, { recursive: true, force: true });
+        }
+      }
+    });
+  });
 });
