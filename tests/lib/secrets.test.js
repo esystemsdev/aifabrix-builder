@@ -274,10 +274,15 @@ environments:
           return `
 build:
   envOutputPath: ../app/.env
+port: 3000
 `;
         }
         if (filePath.includes('env.template')) {
-          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+          return 'PORT=3000\nDATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('.env')) {
+          // Return content when reading the generated .env file
+          return 'PORT=3000\nDATABASE_URL=postgres://localhost';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -294,7 +299,7 @@ environments:
 
       await secrets.generateEnvFile(appName);
 
-      expect(fs.copyFileSync).toHaveBeenCalled();
+      expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
     it('should throw error if env.template not found', async() => {
@@ -898,10 +903,14 @@ environments:
           return `
 build:
   envOutputPath: ../app/.env
+port: 3000
 `;
         }
         if (filePath.includes('env.template')) {
-          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+          return 'PORT=3000\nDATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('.env')) {
+          return 'PORT=3000\nDATABASE_URL=postgres://localhost';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -918,7 +927,7 @@ environments:
 
       await secrets.generateEnvFile(appName);
 
-      expect(fs.copyFileSync).toHaveBeenCalled();
+      expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
     it('should handle envOutputPath pointing to existing directory', async() => {
@@ -948,10 +957,14 @@ environments:
           return `
 build:
   envOutputPath: ../app
+port: 3000
 `;
         }
         if (filePath.includes('env.template')) {
-          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+          return 'PORT=3000\nDATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('.env')) {
+          return 'PORT=3000\nDATABASE_URL=postgres://localhost';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -969,7 +982,7 @@ environments:
       await secrets.generateEnvFile(appName);
 
       expect(fs.statSync).toHaveBeenCalledWith(outputPath);
-      expect(fs.copyFileSync).toHaveBeenCalled();
+      expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
     it('should generate missing secrets when force flag is true', async() => {
@@ -1021,10 +1034,14 @@ environments:
           return `
 build:
   envOutputPath: ../app/.env
+port: 3000
 `;
         }
         if (filePath.includes('env.template')) {
-          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+          return 'PORT=3000\nDATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('.env')) {
+          return 'PORT=3000\nDATABASE_URL=postgres://localhost';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -1042,7 +1059,7 @@ environments:
       await secrets.generateEnvFile(appName);
 
       expect(fs.mkdirSync).toHaveBeenCalled();
-      expect(fs.copyFileSync).toHaveBeenCalled();
+      expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
     it('should handle envOutputPath when variables.yaml does not exist', async() => {
@@ -1113,10 +1130,14 @@ environments:
           return `
 build:
   envOutputPath: ../app
+port: 3000
 `;
         }
         if (filePath.includes('env.template')) {
-          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+          return 'PORT=3000\nDATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('.env')) {
+          return 'PORT=3000\nDATABASE_URL=postgres://localhost';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -1134,7 +1155,7 @@ environments:
       await secrets.generateEnvFile(appName);
 
       expect(fs.mkdirSync).toHaveBeenCalled();
-      expect(fs.copyFileSync).toHaveBeenCalled();
+      expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
     it('should use custom secretsPath when provided', async() => {

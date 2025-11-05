@@ -9,11 +9,7 @@ services:
     env_file:
       - {{envFile}}
     ports:
-      {{#if containerPort}}
-      - "{{build.localPort}}:{{containerPort}}"
-      {{else}}
-      - "{{build.localPort}}:{{port}}"
-      {{/if}}
+      - "{{hostPort}}:{{containerPort}}"
     networks:
       - infra_aifabrix-network
     {{#if requiresStorage}}
