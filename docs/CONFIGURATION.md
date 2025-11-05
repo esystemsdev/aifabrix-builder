@@ -447,7 +447,7 @@ MISO_LOG_LEVEL=info
 
 # Pipeline API Deployment (optional - for automated deployments)
 MISO_CONTROLLER_URL=https://controller.aifabrix.ai
-MISO_CLIENT_ID=ctrl-dev-myapp
+MISO_CLIENTID=ctrl-dev-myapp
 MISO_CLIENTSECRET=kv://aifabrix-client-secretKeyVault
 ```
 

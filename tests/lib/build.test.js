@@ -14,16 +14,23 @@ const yaml = require('js-yaml');
 const build = require('../../lib/build');
 const validator = require('../../lib/validator');
 const secrets = require('../../lib/secrets');
+const dockerBuild = require('../../lib/utils/docker-build');
 
 // Mock inquirer to avoid interactive prompts
 jest.mock('inquirer', () => ({
   prompt: jest.fn()
 }));
 
-// Mock util.promisify to prevent actual Docker commands
+// Mock docker-build module to prevent actual Docker commands
+jest.mock('../../lib/utils/docker-build', () => ({
+  executeDockerBuild: jest.fn().mockResolvedValue(),
+  isDockerNotAvailableError: jest.fn()
+}));
+
+// Mock util.promisify for exec calls (still used for tagging)
 jest.mock('util', () => ({
   promisify: jest.fn(() => jest.fn().mockResolvedValue({
-    stdout: 'Build successful',
+    stdout: 'Tag successful',
     stderr: ''
   }))
 }));
@@ -34,6 +41,10 @@ describe('Build Module', () => {
   beforeEach(async() => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aifabrix-test-'));
     process.chdir(tempDir);
+
+    // Reset docker-build mock
+    dockerBuild.executeDockerBuild.mockClear();
+    dockerBuild.executeDockerBuild.mockResolvedValue();
   });
 
   afterEach(async() => {

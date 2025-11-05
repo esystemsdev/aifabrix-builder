@@ -253,7 +253,7 @@ aifabrix app register myapp --environment dev
      MISO_CONTROLLER_URL = https://controller.aifabrix.ai
    
    Environment level (dev):
-     DEV_MISO_CLIENT_ID = ctrl-dev-myapp
+     DEV_MISO_CLIENTID = ctrl-dev-myapp
      DEV_MISO_CLIENTSECRET = xyz-abc-123...
 ```
 
@@ -265,7 +265,7 @@ aifabrix app register myapp --environment dev
 2. Add repository-level secret:
    - `MISO_CONTROLLER_URL` - Controller URL (e.g., `https://controller.aifabrix.ai`)
 3. Add environment-level secrets (for dev):
-   - `DEV_MISO_CLIENT_ID` - From registration output
+   - `DEV_MISO_CLIENTID` - From registration output
    - `DEV_MISO_CLIENTSECRET` - From registration output
    
 **Note:** For staging/production, use `TST_` or `PRO_` prefixes.
@@ -498,7 +498,7 @@ aifabrix app register myapp --environment dev
 ```
 
 **Check credentials in GitHub Secrets:**
-- `DEV_MISO_CLIENT_ID` exists and is correct (for dev environment)
+- `DEV_MISO_CLIENTID` exists and is correct (for dev environment)
 - `DEV_MISO_CLIENTSECRET` exists and is correct
 - `MISO_CONTROLLER_URL` points to correct controller (repository level)
 

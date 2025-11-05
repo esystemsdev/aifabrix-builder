@@ -1,6 +1,6 @@
 # Application Metadata
 app:
-  key: miso
+  key: miso-controller
   displayName: "Miso Controller"
   description: "AI Fabrix Miso Controller - Backend API and orchestration service"
   type: webapp
@@ -36,21 +36,21 @@ healthCheck:
 authentication:
   type: keycloak
   enableSSO: true
-  requiredRoles: ["aifabrix-user"]
+  requiredRoles:
+    - aifabrix-user
   endpoints:
-    local: "http://localhost:3000/auth/callback"
+    local: http://localhost:3000/auth/callback
 
 # Build Configuration
 build:
-  context: ..                                           # Docker build context (relative to builder/)
-  dockerfile: builder/Dockerfile                        # Dockerfile name (empty = use template)
-  envOutputPath: ../packages/miso-controller/.env       # Copy .env to repo root for local dev
-  localPort: 3010                                       # Port for local development (different from Docker port)
-  language: typescript                                  # Runtime language for template selection
-  secrets:                                              # Path to secrets file (optional)
+  context: ..                                           		# Docker build context (relative to builder/)
+  dockerfile: builder/miso-controller/Dockerfile         		# Dockerfile name (empty = use template)
+  envOutputPath:          	                                # Copy .env to repo root for local dev (relative to builder/) (if null, no .env file is copied) (if empty, .env file is copied to repo root)
+  localPort: 3010                                           # Port for local development (different from Docker port)
+  language: typescript                                  		# Runtime language for template selection (typescript or python)
+  secrets:                                                 	# Path to secrets file
 
 # Docker Compose
 compose:
   file: docker-compose.yaml
   service: miso-controller
-

@@ -52,6 +52,53 @@ permissions:
     roles: ["aifabrix-platform-admin", "aifabrix-security-admin"]
     description: "Deactivate service users"
   
+  # User Management
+  - name: "users:create"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin"]
+    description: "Create new users"
+  
+  - name: "users:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-observer"]
+    description: "View user information and profiles"
+  
+  - name: "users:update"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin"]
+    description: "Update user information and manage group memberships"
+  
+  - name: "users:delete"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin"]
+    description: "Delete users"
+  
+  # Group Management
+  - name: "groups:create"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin"]
+    description: "Create new groups"
+  
+  - name: "groups:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-observer"]
+    description: "View group information and members"
+  
+  - name: "groups:update"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin"]
+    description: "Update group information"
+  
+  - name: "groups:delete"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin"]
+    description: "Delete groups"
+  
+  # Administrative Permissions
+  - name: "admin:read"
+    roles: ["aifabrix-platform-admin"]
+    description: "Administrative read access to all resources"
+  
+  - name: "admin:write"
+    roles: ["aifabrix-platform-admin"]
+    description: "Administrative write access to all resources"
+  
+  - name: "admin:delete"
+    roles: ["aifabrix-platform-admin"]
+    description: "Administrative delete access to all resources"
+  
   # Template Applications (environment = null)
   - name: "applications:create"
     roles: ["aifabrix-platform-admin", "aifabrix-infrastructure-admin", "aifabrix-deployment-admin"]
@@ -165,4 +212,3 @@ permissions:
   - name: "dashboard:read"
     roles: ["aifabrix-platform-admin", "aifabrix-deployment-admin", "aifabrix-developer", "aifabrix-observer"]
     description: "View dashboard summaries and aggregates"
-

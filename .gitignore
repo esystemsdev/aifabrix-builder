@@ -37,3 +37,6 @@ build/
 out/
 builder/
 apps/
+
+# Package tarballs
+*.tgz

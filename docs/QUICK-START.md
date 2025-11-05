@@ -127,7 +127,7 @@ If you used `--github`, you'll also have:
 - `MISO_CONTROLLER_URL` - Controller URL (e.g., `https://controller.aifabrix.ai`)
 
 **For deployment (environment level, e.g., dev):**
-- `DEV_MISO_CLIENT_ID` - Pipeline ClientId from registration
+- `DEV_MISO_CLIENTID` - Pipeline ClientId from registration
 - `DEV_MISO_CLIENTSECRET` - Pipeline ClientSecret from registration
 
 **Optional:**
@@ -213,7 +213,7 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 ### Automated CI/CD Deployment
 
 1. **Add secrets in GitHub repository settings:**
-   - `MISO_CLIENT_ID` - From registration
+   - `MISO_CLIENTID` - From registration
    - `MISO_CLIENTSECRET` - From registration
    - `MISO_CONTROLLER_URL` - Controller URL
 
@@ -268,7 +268,7 @@ aifabrix doctor
 1. Register application: `aifabrix app register myapp --environment dev`
 2. Add secrets in repository settings:
    - Repository level: `MISO_CONTROLLER_URL` - Your controller URL
-   - Environment level (dev): `DEV_MISO_CLIENT_ID` and `DEV_MISO_CLIENTSECRET` - From registration output
+   - Environment level (dev): `DEV_MISO_CLIENTID` and `DEV_MISO_CLIENTSECRET` - From registration output
 3. Push your code to GitHub
 4. Watch automatic deployment!
 

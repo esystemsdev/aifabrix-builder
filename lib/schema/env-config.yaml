@@ -7,9 +7,17 @@ environments:
     REDIS_HOST: redis
     MISO_HOST: miso-controller
     KEYCLOAK_HOST: keycloak
-    
+    MORI_HOST: mori-controller
+    OPENWEBUI_HOST: openwebui
+    FLOWISE_HOST: flowise
+    DATAPLANE_HOST: dataplane
+
   local:
     DB_HOST: localhost
     REDIS_HOST: localhost
     MISO_HOST: localhost
     KEYCLOAK_HOST: localhost
+    MORI_HOST: localhost
+    OPENWEBUI_HOST: localhost
+    FLOWISE_HOST: localhost
+    DATAPLANE_HOST: localhost

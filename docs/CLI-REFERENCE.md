@@ -10,6 +10,8 @@ Complete command reference with examples and troubleshooting.
 - [aifabrix login](#aifabrix-login) - Authenticate with Miso Controller
 - [aifabrix up](#aifabrix-up) - Start infrastructure (Postgres + Redis)
 - [aifabrix down](#aifabrix-down) - Stop infrastructure
+- [aifabrix status](#aifabrix-status) - Show infrastructure service status
+- [aifabrix restart](#aifabrix-restart-service) - Restart infrastructure service
 - [aifabrix doctor](#aifabrix-doctor) - Check environment and configuration
 
 ### Application Management
@@ -146,7 +148,7 @@ Token stored securely in ~/.aifabrix/config.yaml
 aifabrix login \
   --url ${{ secrets.MISO_CONTROLLER_URL }} \
   --method credentials \
-  --client-id ${{ secrets.MISO_CLIENT_ID }} \
+  --client-id ${{ secrets.MISO_CLIENTID }} \
   --client-secret ${{ secrets.MISO_CLIENTSECRET }}
 
 # Device code flow in CI/CD (if environment key is available)
@@ -270,6 +272,7 @@ aifabrix status
 
 ---
 
+<a id="aifabrix-restart-service"></a>
 ## aifabrix restart <service>
 
 Restart a specific infrastructure service.
@@ -308,6 +311,7 @@ aifabrix restart redis
 
 Application management commands for registering and managing applications with the Miso Controller.
 
+<a id="aifabrix-app-register-appkey"></a>
 ### aifabrix app register <appKey>
 
 Register application and get pipeline credentials.
@@ -358,7 +362,7 @@ aifabrix app register myapp --environment dev --port 8080 --name "My Application
 ⚠️  IMPORTANT: Client Secret will not be shown again!
 
 📝 Add to GitHub Secrets:
-   MISO_CLIENT_ID = ctrl-dev-myapp
+   MISO_CLIENTID = ctrl-dev-myapp
    MISO_CLIENTSECRET = x7K9mP2nQ4vL8wR5tY1uE3oA6sD9fG2hJ4kM7pN0qT5
    MISO_CONTROLLER_URL = http://localhost:3000
 ```
@@ -437,6 +441,7 @@ aifabrix app rotate-secret --app myapp --environment dev
 
 ---
 
+<a id="aifabrix-create-app"></a>
 ## aifabrix create <app>
 
 Create new application with configuration files.
@@ -512,6 +517,7 @@ aifabrix create myapp --github --github-steps npm
 
 ---
 
+<a id="aifabrix-build-app"></a>
 ## aifabrix build <app>
 
 Build Docker image.
@@ -551,6 +557,7 @@ aifabrix build myapp --force-template
 
 ---
 
+<a id="aifabrix-run-app"></a>
 ## aifabrix run <app>
 
 Run application locally in Docker container with automatic infrastructure connectivity.
@@ -604,6 +611,7 @@ aifabrix run myapp --port 3001
 
 ---
 
+<a id="aifabrix-push-app"></a>
 ## aifabrix push <app>
 
 Push image to Azure Container Registry.
@@ -690,6 +698,7 @@ Tags: v1.0.0, latest
 
 ---
 
+<a id="aifabrix-deploy-app"></a>
 ## aifabrix deploy <app>
 
 Deploy to Azure via Miso Controller.
@@ -823,6 +832,7 @@ Use `aifabrix deploy <app> --poll` to monitor deployment status, or access the c
 
 ---
 
+<a id="aifabrix-resolve-app"></a>
 ## aifabrix resolve <app>
 
 Generate `.env` file from template.
@@ -854,6 +864,7 @@ This will automatically generate missing secret keys in the secrets file with pl
 
 ---
 
+<a id="aifabrix-json-app"></a>
 ## aifabrix json <app>
 
 Generate deployment JSON.
@@ -875,6 +886,7 @@ aifabrix json myapp
 
 ---
 
+<a id="aifabrix-dockerfile-app"></a>
 ## aifabrix dockerfile <app>
 
 Generate Dockerfile for an application.
@@ -919,6 +931,7 @@ Location: builder/myapp/Dockerfile
 
 ---
 
+<a id="aifabrix-genkey-app"></a>
 ## aifabrix genkey <app>
 
 Generate deployment key.

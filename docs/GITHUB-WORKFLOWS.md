@@ -191,7 +191,7 @@ aifabrix app register myapp --environment dev
      MISO_CONTROLLER_URL = https://controller.aifabrix.ai
    
    Environment level (dev):
-     DEV_MISO_CLIENT_ID = ctrl-dev-myapp
+     DEV_MISO_CLIENTID = ctrl-dev-myapp
      DEV_MISO_CLIENTSECRET = xyz-abc-123...
 ```
 
@@ -204,7 +204,7 @@ aifabrix app register myapp --environment dev
 3. Add repository-level secret:
    - **Name:** `MISO_CONTROLLER_URL` **Value:** `https://controller.aifabrix.ai`
 4. Add environment-level secrets (for dev environment):
-   - **Name:** `DEV_MISO_CLIENT_ID` **Value:** `ctrl-dev-myapp`
+   - **Name:** `DEV_MISO_CLIENTID` **Value:** `ctrl-dev-myapp`
    - **Name:** `DEV_MISO_CLIENTSECRET` **Value:** (from registration output)
    
 **Note:** For other environments (staging/production), use `TST_` or `PRO_` prefixes.
@@ -379,7 +379,7 @@ For automated deployment via pipeline API:
 1. **MISO_CONTROLLER_URL** - Controller API endpoint (e.g., `https://controller.aifabrix.ai`)
 
 **Environment level (dev/staging/production):**
-2. **DEV_MISO_CLIENT_ID** - Pipeline ClientId from application registration
+2. **DEV_MISO_CLIENTID** - Pipeline ClientId from application registration
 3. **DEV_MISO_CLIENTSECRET** - Pipeline ClientSecret from application registration
 
 **Getting Pipeline Credentials:**
@@ -635,7 +635,7 @@ jobs:
           RESPONSE=$(curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/validate" \
             -H "Content-Type: application/json" \
             -d '{
-              "clientId": "${{ secrets.DEV_MISO_CLIENT_ID }}",
+              "clientId": "${{ secrets.DEV_MISO_CLIENTID }}",
               "clientSecret": "${{ secrets.DEV_MISO_CLIENTSECRET }}",
               "repositoryUrl": "${{ github.server_url }}/${{ github.repository }}",
               "applicationConfig": $(cat application.json)
@@ -655,7 +655,7 @@ jobs:
         run: |
           curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/{env}/deploy" \
             -H "Content-Type: application/json" \
-            -H "x-client-id: ${{ secrets.DEV_MISO_CLIENT_ID }}" \
+            -H "x-client-id: ${{ secrets.DEV_MISO_CLIENTID }}" \
             -H "x-client-secret: ${{ secrets.DEV_MISO_CLIENTSECRET }}" \
             -d '{
               "validateToken": "${{ steps.validate.outputs.validateToken }}",
@@ -689,7 +689,7 @@ jobs:
           RESPONSE=$(curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/validate" \
             -H "Content-Type: application/json" \
             -d '{
-              "clientId": "${{ secrets.DEV_MISO_CLIENT_ID }}",
+              "clientId": "${{ secrets.DEV_MISO_CLIENTID }}",
               "clientSecret": "${{ secrets.DEV_MISO_CLIENTSECRET }}",
               "repositoryUrl": "${{ github.server_url }}/${{ github.repository }}",
               "applicationConfig": $(cat application.json)
