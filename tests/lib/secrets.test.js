@@ -82,6 +82,10 @@ describe('Secrets Module', () => {
       if (filePath && filePath.includes('env-config.yaml')) {
         return true;
       }
+      // Return false for auto-detected paths (so tests use default path)
+      if (filePath && (filePath.includes('aifabrix-setup') || filePath.includes('secrets.local.yaml'))) {
+        return false;
+      }
       return false;
     });
     fs.readFileSync.mockImplementation((filePath) => {
@@ -103,13 +107,24 @@ environments:
   describe('loadSecrets', () => {
     it('should load secrets from default path when no path provided', async() => {
       const mockSecrets = { 'postgres-passwordKeyVault': 'admin123' };
-      fs.existsSync.mockReturnValue(true);
+      const defaultSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+      fs.existsSync.mockImplementation((filePath) => {
+        // Return false for auto-detected paths (so it falls back to default)
+        if (filePath && (filePath.includes('aifabrix-setup') || filePath.includes('secrets.local.yaml'))) {
+          return false;
+        }
+        // Return true for default secrets path
+        if (filePath === defaultSecretsPath || filePath.includes('.aifabrix')) {
+          return true;
+        }
+        return false;
+      });
       fs.readFileSync.mockReturnValue('postgres-passwordKeyVault: "admin123"');
 
       const result = await secrets.loadSecrets();
 
-      expect(fs.existsSync).toHaveBeenCalledWith(mockSecretsPath);
-      expect(fs.readFileSync).toHaveBeenCalledWith(mockSecretsPath, 'utf8');
+      expect(fs.existsSync).toHaveBeenCalled();
+      expect(fs.readFileSync).toHaveBeenCalledWith(defaultSecretsPath, 'utf8');
       expect(result).toEqual(mockSecrets);
     });
 
@@ -1150,7 +1165,22 @@ environments:
     });
 
     it('should use custom environment when provided', async() => {
-      fs.existsSync.mockReturnValue(true);
+      const defaultSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+      fs.existsSync.mockImplementation((filePath) => {
+        // Return true for env.template and the default secrets path
+        if (filePath.includes('env.template')) {
+          return true;
+        }
+        // Return false for auto-detected paths (so it falls back to default)
+        if (filePath.includes('aifabrix-setup') || filePath.includes('secrets.local.yaml')) {
+          return false;
+        }
+        // Return true for default secrets path
+        if (filePath === defaultSecretsPath || filePath.includes('.aifabrix')) {
+          return true;
+        }
+        return false;
+      });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
           return 'REDIS_URL=kv://redis-urlKeyVault';

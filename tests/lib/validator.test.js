@@ -221,6 +221,30 @@ port: 99999`);
       expect(result.valid).toBe(true);
     });
 
+    it('should allow empty values in environment variables', async() => {
+      const templateWithEmptyValue = 'EMPTY_VAR=\nPORT=3000\nKEYCLOAK_PUBLIC_KEY=\n# Comment line';
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(templateWithEmptyValue);
+
+      const result = await validator.validateEnvTemplate(appName);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('should allow commented lines with kv:// references', async() => {
+      const templateWithCommentedKv = '#MY_VALUE=kv://value-is-not-in-secure file\nPORT=3000\nACTIVE_VAR=kv://active-secret';
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(templateWithCommentedKv);
+
+      const result = await validator.validateEnvTemplate(appName);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
     it('should throw error if env.template not found', async() => {
       fs.existsSync.mockReturnValue(false);
 

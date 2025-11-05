@@ -50,6 +50,12 @@ cd /path/to/other-project
 npm install ./@aifabrix-builder-*.tgz
 aifabrix --version
 ```
+or
+```bash
+pnpm install C:\git\esystemsdev\aifabrix-builder\aifabrix-builder-2.0.4.tgz
+aifabrix --version
+```
+
 
 ### Step 4: Publish (After Testing)
 
