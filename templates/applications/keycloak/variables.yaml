@@ -25,9 +25,9 @@ requires:
 
 # Health Check
 healthCheck:
-  path: /health
+  path: /health/ready
   interval: 30
-  probePath: /health
+  probePath: /health/ready
   probeRequestType: GET
   probeProtocol: Https
   probeIntervalInSeconds: 120

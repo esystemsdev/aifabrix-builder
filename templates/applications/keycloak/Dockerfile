@@ -21,9 +21,10 @@ RUN if [ -d "/tmp/build-context/themes" ] && [ "$(ls -A /tmp/build-context/theme
     fi && \
     rm -rf /tmp/build-context
 
-# Build Keycloak with health checks enabled
+# Build Keycloak with health checks enabled (similar to Keycloak 24.0)
 # This enables the /health, /health/live, /health/ready, and /health/started endpoints
-RUN /opt/keycloak/bin/kc.sh build --health-enabled=true
+# Expose health endpoints on main HTTP port (like 24.0) instead of management port
+RUN /opt/keycloak/bin/kc.sh build --health-enabled=true --http-management-health-enabled=false
 
 # Switch back to keycloak user
 USER keycloak
