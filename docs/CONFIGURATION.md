@@ -153,6 +153,42 @@ authentication:
   requiredRoles: ["user"]
 ```
 
+**Health Check Response Formats:**
+
+The health check endpoint must return HTTP 200 status code and a JSON response with one of the following formats:
+
+1. **Keycloak Format:**
+   ```json
+   {"status": "UP", "checks": []}
+   ```
+   Validation: `status === "UP"`
+
+2. **Standard Format:**
+   ```json
+   {"status": "ok", "database": "connected"}
+   ```
+   Validation: `status === "ok" && (database === "connected" || !database)`
+
+3. **Alternative Format:**
+   ```json
+   {"status": "healthy", "service": "dataplane"}
+   ```
+   Validation: `status === "healthy"`
+
+4. **Success-based Format:**
+   ```json
+   {"success": true, "message": "Service is running"}
+   ```
+   Validation: `success === true`
+
+5. **Non-JSON Format:**
+   ```
+   OK
+   ```
+   Validation: HTTP status code === 200 (any non-JSON response with 200 status is considered healthy)
+
+**Note:** For non-JSON responses, only the HTTP status code is checked. A 200 status code indicates a healthy service.
+
 ---
 
 ## env.template

@@ -25,10 +25,12 @@ const appRun = require('../../lib/app-run');
 jest.mock('../../lib/validator');
 jest.mock('../../lib/infra');
 jest.mock('../../lib/secrets');
+jest.mock('http');
 
 const validator = require('../../lib/validator');
 const infra = require('../../lib/infra');
 const secrets = require('../../lib/secrets');
+const http = require('http');
 
 describe('Application Run Module - Additional Coverage', () => {
   let tempDir;
@@ -245,28 +247,71 @@ describe('Application Run Module - Additional Coverage', () => {
   });
 
   describe('waitForHealthCheck - timeout scenarios', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+
+      // Mock http.request to return unhealthy responses
+      const mockHttpRequest = {
+        on: jest.fn(),
+        destroy: jest.fn(),
+        end: jest.fn()
+      };
+
+      http.request.mockImplementation((options, callback) => {
+        const mockResponse = {
+          statusCode: 500,
+          headers: {},
+          on: jest.fn((event, handler) => {
+            if (event === 'data') {
+              handler(Buffer.from(JSON.stringify({ status: 'down' })));
+            }
+            if (event === 'end') {
+              handler();
+            }
+          })
+        };
+        if (callback) callback(mockResponse);
+        return mockHttpRequest;
+      });
+
+      // Mock exec for docker commands
+      const { exec } = require('child_process');
+      exec.mockImplementation((command, callback) => {
+        if (command && command.includes('docker ps -a')) {
+          callback(null, { stdout: '', stderr: '' });
+        } else if (command && command.includes('docker inspect')) {
+          callback(null, { stdout: '', stderr: '' });
+        } else {
+          callback(null, { stdout: '', stderr: '' });
+        }
+      });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      jest.clearAllMocks();
+    });
+
     it('should timeout when container never becomes healthy', async() => {
       const appName = 'test-app';
 
-      jest.spyOn(appRun, 'checkImageExists').mockResolvedValue(false);
-      jest.spyOn(appRun, 'checkContainerRunning').mockResolvedValue(true);
+      const promise = appRun.waitForHealthCheck(appName, 2, 3000);
 
-      await expect(appRun.waitForHealthCheck(appName, 1)).rejects.toThrow('Health check timeout');
+      // Fast-forward timers to exceed timeout
+      jest.runAllTimersAsync();
 
-      appRun.checkImageExists.mockRestore();
-      appRun.checkContainerRunning.mockRestore();
+      await expect(promise).rejects.toThrow('Health check timeout');
     }, 10000);
 
     it('should handle container becoming unhealthy', async() => {
       const appName = 'test-app';
 
-      jest.spyOn(appRun, 'checkImageExists').mockResolvedValue(false);
-      jest.spyOn(appRun, 'checkContainerRunning').mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+      const promise = appRun.waitForHealthCheck(appName, 2, 3000);
 
-      await expect(appRun.waitForHealthCheck(appName, 1)).rejects.toThrow();
+      // Fast-forward timers to exceed timeout
+      jest.runAllTimersAsync();
 
-      appRun.checkImageExists.mockRestore();
-      appRun.checkContainerRunning.mockRestore();
+      await expect(promise).rejects.toThrow('Health check timeout');
     });
   });
 

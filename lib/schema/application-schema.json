@@ -284,7 +284,7 @@
     },
     "healthCheck": {
       "type": "object",
-      "description": "Health check configuration",
+      "description": "Health check configuration. The health check endpoint must return HTTP 200 and a JSON response with one of the following formats: {\"status\": \"UP\"} (Keycloak format), {\"status\": \"ok\"} (standard format, optionally with {\"database\": \"connected\"}), {\"status\": \"healthy\"} (alternative format), or {\"success\": true} (success-based format). For non-JSON responses, HTTP 200 status code is sufficient.",
       "required": ["path", "interval"],
       "properties": {
         "path": {
@@ -320,7 +320,51 @@
           "maximum": 600
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "examples": [
+        {
+          "path": "/health",
+          "interval": 30
+        },
+        {
+          "path": "/api/health",
+          "interval": 60,
+          "probePath": "/api/health",
+          "probeRequestType": "GET",
+          "probeProtocol": "Http",
+          "probeIntervalInSeconds": 120
+        }
+      ],
+      "responseFormats": {
+        "description": "Valid health check response formats",
+        "formats": [
+          {
+            "format": "Keycloak",
+            "example": "{\"status\": \"UP\", \"checks\": []}",
+            "validation": "status === 'UP'"
+          },
+          {
+            "format": "Standard",
+            "example": "{\"status\": \"ok\", \"database\": \"connected\"}",
+            "validation": "status === 'ok' && (database === 'connected' || !database)"
+          },
+          {
+            "format": "Alternative",
+            "example": "{\"status\": \"healthy\", \"service\": \"dataplane\"}",
+            "validation": "status === 'healthy'"
+          },
+          {
+            "format": "Success-based",
+            "example": "{\"success\": true, \"message\": \"Service is running\"}",
+            "validation": "success === true"
+          },
+          {
+            "format": "Non-JSON",
+            "example": "OK",
+            "validation": "HTTP status code === 200"
+          }
+        ]
+      }
     },
     "frontDoorRouting": {
       "type": "object",

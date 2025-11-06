@@ -392,6 +392,7 @@ describe('API Utilities', () => {
 
     afterEach(() => {
       jest.useRealTimers();
+      jest.clearAllMocks();
     });
 
     it('should successfully poll and get token', async() => {
@@ -741,31 +742,14 @@ describe('API Utilities', () => {
     });
 
     it('should timeout after expires_in + buffer', async() => {
-      // Mock Date.now() before calling the function so startTime uses mocked time
       const startTime = Date.now();
-      let callCount = 0;
-      let mockTime = startTime;
-      let setTimeoutCalled = false;
 
       // Timeout is expiresIn (10) + 30 buffer = 40 seconds = 40000ms
       const timeoutMs = 40000;
 
-      const dateNowSpy = jest.spyOn(Date, 'now').mockImplementation(() => {
-        callCount++;
-        // After setTimeout has been called and we loop back, advance time past timeout
-        if (setTimeoutCalled && callCount >= 3) {
-          // Set time to 42 seconds past start to trigger timeout
-          mockTime = startTime + timeoutMs + 2000;
-        }
-        return mockTime;
-      });
-
-      // Track when setTimeout is called
-      const originalSetTimeout = global.setTimeout;
-      const setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation((fn, delay) => {
-        setTimeoutCalled = true;
-        return originalSetTimeout(fn, delay);
-      });
+      // Mock Date.now() to advance time when needed
+      let mockTime = startTime;
+      const dateNowSpy = jest.spyOn(Date, 'now').mockImplementation(() => mockTime);
 
       // OpenAPI schema: 202 status for authorization_pending
       global.fetch.mockResolvedValue({
@@ -782,32 +766,24 @@ describe('API Utilities', () => {
 
       const pollPromise = pollDeviceCodeToken('https://controller.example.com', 'device-code-123', 5, 10); // 10 second expiry
 
-      // Let first fetch execute (this will check timeout at start, then make API call)
-      await Promise.resolve();
-      await Promise.resolve();
-
-      // Wait for the setTimeout interval (5 seconds) to complete
-      // This will cause the loop to continue and check timeout again
-      jest.advanceTimersByTime(5000);
+      // Let first fetch execute
       await Promise.resolve();
 
-      // After setTimeout completes, advance Date.now() past timeout
-      // Then advance timers one more time to trigger the timeout check
+      // Advance time past timeout (40 seconds + buffer)
       mockTime = startTime + timeoutMs + 2000;
+
+      // Advance timers to trigger setTimeout callbacks and timeout check
+      jest.advanceTimersByTime(timeoutMs + 2000);
+
+      // Process pending promises
+      await Promise.resolve();
       await Promise.resolve();
 
       // Now the timeout should be checked and error thrown
-      try {
-        await pollPromise;
-        // If we get here, the promise didn't reject as expected
-        throw new Error('Expected promise to reject with timeout error');
-      } catch (error) {
-        expect(error.message).toContain('Maximum polling time exceeded');
-      }
+      await expect(pollPromise).rejects.toThrow('Maximum polling time exceeded');
 
-      // Restore spies
+      // Restore
       dateNowSpy.mockRestore();
-      setTimeoutSpy.mockRestore();
     }, 20000);
 
     it('should call onPoll callback on each poll attempt', async() => {

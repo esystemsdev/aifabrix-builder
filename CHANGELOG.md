@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2025-11-06
+
+### Added
+- `--debug` flag for `aifabrix run` command to output detailed container information
+- Debug logging for port detection, container status, Docker commands, and health check details
+- Health check response format documentation in application schema
+- Health check response format validation documentation in CONFIGURATION.md
+
+### Changed
+- Enhanced health check validation to support multiple response formats:
+  - `status: "UP"` (Keycloak format)
+  - `status: "ok"` (standard format with optional database connection check)
+  - `status: "healthy"` (alternative format)
+  - `success: true` (success-based format)
+  - Non-JSON responses with HTTP 200 status code
+
+### Documentation
+- Added health check response format documentation to application schema JSON
+- Added health check response format examples to CONFIGURATION.md
+- Added `--debug` flag documentation to CLI-REFERENCE.md
+
 ## [2.1.0] - 2025-11-06
 
 ### Added

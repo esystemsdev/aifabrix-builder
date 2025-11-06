@@ -584,6 +584,19 @@ aifabrix run myapp --port 3001
 
 **Flags:**
 - `-p, --port <port>` - Override local port (default: from variables.yaml)
+- `-d, --debug` - Enable debug output with detailed container information (port detection, container status, Docker commands, health check details)
+
+**Debug Mode:**
+When `--debug` is enabled, the command outputs detailed information including:
+- Port detection: Shows detected port, fallback logic, and Docker inspect commands
+- Container status: Shows container state, running status, and port mappings
+- Docker commands: Logs all Docker commands executed (docker ps, docker inspect, docker-compose, etc.)
+- Health check details: Shows health check URL, response codes, response bodies (truncated), retry attempts, and timeout information
+
+**Example with debug:**
+```bash
+aifabrix run myapp --debug
+```
 
 **Process:**
 1. Validates app configuration

@@ -90,7 +90,7 @@ describe('Health Check Utilities', () => {
     // Setup default mock for execAsync
     execAsync.mockResolvedValue({ stdout: '', stderr: '' });
 
-    // Setup mock for http.get with proper request/response handling
+    // Setup mock for http.request with proper request/response handling
     mockResponseHandlers = {
       data: [],
       end: null,
@@ -106,13 +106,15 @@ describe('Health Check Utilities', () => {
           mockResponseHandlers.timeout = handler;
         }
       }),
-      destroy: jest.fn()
+      destroy: jest.fn(),
+      end: jest.fn()
     };
 
-    http.get.mockImplementation((url, options, callback) => {
+    http.request.mockImplementation((options, callback) => {
       // Call the callback with a mock response object
       const mockResponse = {
         statusCode: 200,
+        headers: {},
         on: jest.fn((event, handler) => {
           if (event === 'data') {
             mockResponseHandlers.data.push(handler);
@@ -159,9 +161,10 @@ describe('Health Check Utilities', () => {
         });
 
         // Mock successful HTTP health check
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'ok' })));
@@ -197,9 +200,10 @@ describe('Health Check Utilities', () => {
         });
 
         // Mock successful HTTP health check
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'ok' })));
@@ -240,9 +244,10 @@ describe('Health Check Utilities', () => {
         });
 
         // Mock successful HTTP health check
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'ok' })));
@@ -288,9 +293,10 @@ describe('Health Check Utilities', () => {
         });
 
         // Mock successful HTTP health check
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'ok' })));
@@ -325,9 +331,10 @@ describe('Health Check Utilities', () => {
         });
 
         // Mock successful HTTP health check
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'ok' })));
@@ -355,9 +362,10 @@ describe('Health Check Utilities', () => {
         });
 
         // Mock successful HTTP health check
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'ok' })));
@@ -387,9 +395,10 @@ describe('Health Check Utilities', () => {
         });
 
         // Mock successful HTTP health check
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'ok' })));
@@ -407,9 +416,12 @@ describe('Health Check Utilities', () => {
         await expect(healthCheck.waitForHealthCheck('test-app', 10, null))
           .resolves.not.toThrow();
 
-        expect(http.get).toHaveBeenCalledWith(
-          expect.stringContaining('localhost:3000'),
-          expect.any(Object),
+        expect(http.request).toHaveBeenCalledWith(
+          expect.objectContaining({
+            hostname: 'localhost',
+            port: '3000',
+            path: '/health'
+          }),
           expect.any(Function)
         );
       });
@@ -423,9 +435,10 @@ describe('Health Check Utilities', () => {
         });
 
         // Mock successful HTTP health check
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'ok' })));
@@ -443,9 +456,12 @@ describe('Health Check Utilities', () => {
         await expect(healthCheck.waitForHealthCheck('test-app', 10, null))
           .resolves.not.toThrow();
 
-        expect(http.get).toHaveBeenCalledWith(
-          expect.stringContaining('localhost:3000'),
-          expect.any(Object),
+        expect(http.request).toHaveBeenCalledWith(
+          expect.objectContaining({
+            hostname: 'localhost',
+            port: '3000',
+            path: '/health'
+          }),
           expect.any(Function)
         );
       });
@@ -459,9 +475,10 @@ describe('Health Check Utilities', () => {
         });
 
         // Mock successful HTTP health check
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'ok' })));
@@ -479,9 +496,12 @@ describe('Health Check Utilities', () => {
         await expect(healthCheck.waitForHealthCheck('test-app', 10, null))
           .resolves.not.toThrow();
 
-        expect(http.get).toHaveBeenCalledWith(
-          expect.stringContaining('localhost:3000'),
-          expect.any(Object),
+        expect(http.request).toHaveBeenCalledWith(
+          expect.objectContaining({
+            hostname: 'localhost',
+            port: '3000',
+            path: '/health'
+          }),
           expect.any(Function)
         );
       });
@@ -496,9 +516,10 @@ describe('Health Check Utilities', () => {
         };
 
         // Mock successful HTTP health check
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'ok' })));
@@ -516,18 +537,20 @@ describe('Health Check Utilities', () => {
         await expect(healthCheck.waitForHealthCheck('test-app', 10, 3000, config))
           .resolves.not.toThrow();
 
-        expect(http.get).toHaveBeenCalledWith(
-          expect.stringContaining('/api/health'),
-          expect.any(Object),
+        expect(http.request).toHaveBeenCalledWith(
+          expect.objectContaining({
+            path: '/api/health'
+          }),
           expect.any(Function)
         );
       });
 
       it('should use default /health path when not configured', async() => {
         // Mock successful HTTP health check
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'ok' })));
@@ -545,9 +568,10 @@ describe('Health Check Utilities', () => {
         await expect(healthCheck.waitForHealthCheck('test-app', 10, 3000))
           .resolves.not.toThrow();
 
-        expect(http.get).toHaveBeenCalledWith(
-          expect.stringContaining('/health'),
-          expect.any(Object),
+        expect(http.request).toHaveBeenCalledWith(
+          expect.objectContaining({
+            path: '/health'
+          }),
           expect.any(Function)
         );
       });
@@ -555,9 +579,10 @@ describe('Health Check Utilities', () => {
 
     describe('health check response formats', () => {
       it('should handle Keycloak format with status UP', async() => {
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'UP', checks: [] })));
@@ -579,9 +604,10 @@ describe('Health Check Utilities', () => {
       });
 
       it('should handle standard format with status ok and database connected', async() => {
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'ok', database: 'connected' })));
@@ -603,9 +629,10 @@ describe('Health Check Utilities', () => {
       });
 
       it('should handle standard format with status ok and no database field', async() => {
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'ok' })));
@@ -626,10 +653,61 @@ describe('Health Check Utilities', () => {
         expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Application is healthy'));
       });
 
-      it('should reject when status ok but database not connected', async() => {
-        http.get.mockImplementation((url, options, callback) => {
+      it('should handle alternative format with status healthy', async() => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
+            on: jest.fn((event, handler) => {
+              if (event === 'data') {
+                handler(Buffer.from(JSON.stringify({ status: 'healthy', service: 'dataplane' })));
+              }
+              if (event === 'end') {
+                handler();
+              }
+            })
+          };
+          // Call callback synchronously for testing with fake timers
+          if (callback) callback(mockResponse);
+          return mockHttpRequest;
+        });
+
+        await expect(healthCheck.waitForHealthCheck('test-app', 10, 3000))
+          .resolves.not.toThrow();
+
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Application is healthy'));
+      });
+
+      it('should handle success-based format with success true', async() => {
+        http.request.mockImplementation((options, callback) => {
+          const mockResponse = {
+            statusCode: 200,
+            headers: {},
+            on: jest.fn((event, handler) => {
+              if (event === 'data') {
+                handler(Buffer.from(JSON.stringify({ success: true, message: 'Service is running' })));
+              }
+              if (event === 'end') {
+                handler();
+              }
+            })
+          };
+          // Call callback synchronously for testing with fake timers
+          if (callback) callback(mockResponse);
+          return mockHttpRequest;
+        });
+
+        await expect(healthCheck.waitForHealthCheck('test-app', 10, 3000))
+          .resolves.not.toThrow();
+
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Application is healthy'));
+      });
+
+      it('should reject when status ok but database not connected', async() => {
+        http.request.mockImplementation((options, callback) => {
+          const mockResponse = {
+            statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'ok', database: 'disconnected' })));
@@ -653,9 +731,10 @@ describe('Health Check Utilities', () => {
       });
 
       it('should handle non-JSON response with status 200', async() => {
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from('OK'));
@@ -677,9 +756,10 @@ describe('Health Check Utilities', () => {
       });
 
       it('should reject non-JSON response with non-200 status', async() => {
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 500,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from('Error'));
@@ -703,9 +783,10 @@ describe('Health Check Utilities', () => {
       });
 
       it('should handle invalid JSON response', async() => {
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from('invalid json'));
@@ -727,9 +808,10 @@ describe('Health Check Utilities', () => {
       });
 
       it('should reject when health status is neither UP nor ok', async() => {
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from(JSON.stringify({ status: 'down' })));
@@ -753,9 +835,69 @@ describe('Health Check Utilities', () => {
       });
     });
 
+    describe('debug mode', () => {
+      it('should log debug information when debug is enabled', async() => {
+        http.request.mockImplementation((options, callback) => {
+          const mockResponse = {
+            statusCode: 200,
+            headers: { 'content-type': 'application/json' },
+            on: jest.fn((event, handler) => {
+              if (event === 'data') {
+                handler(Buffer.from(JSON.stringify({ status: 'ok' })));
+              }
+              if (event === 'end') {
+                handler();
+              }
+            })
+          };
+          if (callback) callback(mockResponse);
+          return mockHttpRequest;
+        });
+
+        execAsync.mockImplementation((cmd) => {
+          if (cmd.includes('docker inspect') && cmd.includes('NetworkSettings.Ports')) {
+            return Promise.resolve({ stdout: '3000\n', stderr: '' });
+          }
+          return Promise.resolve({ stdout: '', stderr: '' });
+        });
+
+        await expect(healthCheck.waitForHealthCheck('test-app', 10, null, null, true))
+          .resolves.not.toThrow();
+
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('[DEBUG]'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Health check URL'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Health check result'));
+      });
+
+      it('should not log debug information when debug is disabled', async() => {
+        http.request.mockImplementation((options, callback) => {
+          const mockResponse = {
+            statusCode: 200,
+            headers: {},
+            on: jest.fn((event, handler) => {
+              if (event === 'data') {
+                handler(Buffer.from(JSON.stringify({ status: 'ok' })));
+              }
+              if (event === 'end') {
+                handler();
+              }
+            })
+          };
+          if (callback) callback(mockResponse);
+          return mockHttpRequest;
+        });
+
+        await expect(healthCheck.waitForHealthCheck('test-app', 10, 3000, null, false))
+          .resolves.not.toThrow();
+
+        const debugLogs = logger.log.mock.calls.filter(call => call[0].includes('[DEBUG]'));
+        expect(debugLogs.length).toBe(0);
+      });
+    });
+
     describe('error handling', () => {
       it('should handle HTTP request errors', async() => {
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const req = {
             on: jest.fn((event, handler) => {
               if (event === 'error') {
@@ -763,7 +905,8 @@ describe('Health Check Utilities', () => {
                 handler(new Error('Network error'));
               }
             }),
-            destroy: jest.fn()
+            destroy: jest.fn(),
+            end: jest.fn()
           };
           return req;
         });
@@ -778,7 +921,7 @@ describe('Health Check Utilities', () => {
       });
 
       it('should handle HTTP request timeout', async() => {
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const req = {
             on: jest.fn((event, handler) => {
               if (event === 'timeout') {
@@ -786,7 +929,8 @@ describe('Health Check Utilities', () => {
                 handler();
               }
             }),
-            destroy: jest.fn()
+            destroy: jest.fn(),
+            end: jest.fn()
           };
           return req;
         });
@@ -802,10 +946,11 @@ describe('Health Check Utilities', () => {
 
       it('should retry health check on failure', async() => {
         let callCount = 0;
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           callCount++;
           const mockResponse = {
             statusCode: callCount === 2 ? 200 : 500,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 if (callCount === 2) {
@@ -831,13 +976,13 @@ describe('Health Check Utilities', () => {
 
         await expect(promise).resolves.not.toThrow();
 
-        expect(http.get).toHaveBeenCalledTimes(2);
+        expect(http.request).toHaveBeenCalledTimes(2);
         expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Waiting for health check'));
         expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Application is healthy'));
       });
 
       it('should handle exceptions during health check', async() => {
-        http.get.mockImplementation(() => {
+        http.request.mockImplementation(() => {
           throw new Error('Unexpected error');
         });
 
@@ -853,9 +998,10 @@ describe('Health Check Utilities', () => {
 
     describe('timeout handling', () => {
       it('should throw error after timeout', async() => {
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 500,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from('Error'));
@@ -880,10 +1026,11 @@ describe('Health Check Utilities', () => {
 
       it('should not log waiting message on final attempt', async() => {
         let attemptCount = 0;
-        http.get.mockImplementation((url, options, callback) => {
+        http.request.mockImplementation((options, callback) => {
           attemptCount++;
           const mockResponse = {
             statusCode: 500,
+            headers: {},
             on: jest.fn((event, handler) => {
               if (event === 'data') {
                 handler(Buffer.from('Error'));
@@ -912,6 +1059,162 @@ describe('Health Check Utilities', () => {
         expect(waitingLogs.length).toBeGreaterThan(0);
         expect(waitingLogs.length).toBeLessThan(3); // Max attempts = timeout/2 = 4/2 = 2
       });
+    });
+  });
+
+  describe('checkHealthEndpoint', () => {
+    it('should return true for healthy response with status UP', async() => {
+      http.request.mockImplementation((options, callback) => {
+        const mockResponse = {
+          statusCode: 200,
+          headers: {},
+          on: jest.fn((event, handler) => {
+            if (event === 'data') {
+              handler(Buffer.from(JSON.stringify({ status: 'UP' })));
+            }
+            if (event === 'end') {
+              handler();
+            }
+          })
+        };
+        if (callback) callback(mockResponse);
+        return mockHttpRequest;
+      });
+
+      const result = await healthCheck.checkHealthEndpoint('http://localhost:3000/health');
+      expect(result).toBe(true);
+    });
+
+    it('should return true for healthy response with status healthy', async() => {
+      http.request.mockImplementation((options, callback) => {
+        const mockResponse = {
+          statusCode: 200,
+          headers: {},
+          on: jest.fn((event, handler) => {
+            if (event === 'data') {
+              handler(Buffer.from(JSON.stringify({ status: 'healthy' })));
+            }
+            if (event === 'end') {
+              handler();
+            }
+          })
+        };
+        if (callback) callback(mockResponse);
+        return mockHttpRequest;
+      });
+
+      const result = await healthCheck.checkHealthEndpoint('http://localhost:3000/health');
+      expect(result).toBe(true);
+    });
+
+    it('should return true for healthy response with success true', async() => {
+      http.request.mockImplementation((options, callback) => {
+        const mockResponse = {
+          statusCode: 200,
+          headers: {},
+          on: jest.fn((event, handler) => {
+            if (event === 'data') {
+              handler(Buffer.from(JSON.stringify({ success: true })));
+            }
+            if (event === 'end') {
+              handler();
+            }
+          })
+        };
+        if (callback) callback(mockResponse);
+        return mockHttpRequest;
+      });
+
+      const result = await healthCheck.checkHealthEndpoint('http://localhost:3000/health');
+      expect(result).toBe(true);
+    });
+
+    it('should return false for unhealthy response', async() => {
+      http.request.mockImplementation((options, callback) => {
+        const mockResponse = {
+          statusCode: 200,
+          headers: {},
+          on: jest.fn((event, handler) => {
+            if (event === 'data') {
+              handler(Buffer.from(JSON.stringify({ status: 'down' })));
+            }
+            if (event === 'end') {
+              handler();
+            }
+          })
+        };
+        if (callback) callback(mockResponse);
+        return mockHttpRequest;
+      });
+
+      const result = await healthCheck.checkHealthEndpoint('http://localhost:3000/health');
+      expect(result).toBe(false);
+    });
+
+    it('should return false on HTTP error', async() => {
+      http.request.mockImplementation((options, callback) => {
+        const req = {
+          on: jest.fn((event, handler) => {
+            if (event === 'error') {
+              handler(new Error('Connection error'));
+            }
+          }),
+          destroy: jest.fn(),
+          end: jest.fn()
+        };
+        return req;
+      });
+
+      const result = await healthCheck.checkHealthEndpoint('http://localhost:3000/health');
+      expect(result).toBe(false);
+    });
+
+    it('should return false on timeout', async() => {
+      http.request.mockImplementation((options, callback) => {
+        const req = {
+          on: jest.fn((event, handler) => {
+            if (event === 'timeout') {
+              handler();
+            }
+          }),
+          destroy: jest.fn(),
+          end: jest.fn()
+        };
+        return req;
+      });
+
+      const result = await healthCheck.checkHealthEndpoint('http://localhost:3000/health');
+      expect(result).toBe(false);
+    });
+
+    it('should log debug information when debug is enabled', async() => {
+      http.request.mockImplementation((options, callback) => {
+        const mockResponse = {
+          statusCode: 200,
+          headers: { 'content-type': 'application/json' },
+          on: jest.fn((event, handler) => {
+            if (event === 'data') {
+              handler(Buffer.from(JSON.stringify({ status: 'ok' })));
+            }
+            if (event === 'end') {
+              handler();
+            }
+          })
+        };
+        if (callback) callback(mockResponse);
+        return mockHttpRequest;
+      });
+
+      await healthCheck.checkHealthEndpoint('http://localhost:3000/health', true);
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('[DEBUG]'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Health check request'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Response status code'));
+    });
+
+    it('should throw error on invalid URL', async() => {
+      await expect(healthCheck.checkHealthEndpoint('invalid-url'))
+        .rejects.toThrow();
     });
   });
 });
