@@ -190,6 +190,22 @@ permissions:
     roles: ["aifabrix-platform-admin", "aifabrix-developer"]
     description: "Write audit and error logs"
   
+  - name: "logs:export"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-compliance-admin"]
+    description: "Export logs for archival and compliance"
+  
+  - name: "audit:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-compliance-admin"]
+    description: "View audit trail logs"
+  
+  - name: "jobs:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-infrastructure-admin", "aifabrix-deployment-admin", "aifabrix-observer"]
+    description: "View job and performance logs"
+  
+  - name: "admin:export"
+    roles: ["aifabrix-platform-admin"]
+    description: "Administrative export access to all data"
+  
   # Admin Operations
   - name: "admin.sync"
     roles: ["aifabrix-platform-admin", "aifabrix-infrastructure-admin"]

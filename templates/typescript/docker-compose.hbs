@@ -36,11 +36,19 @@ services:
     container_name: aifabrix-{{app.key}}-db-init
     env_file:
       - ${ADMIN_SECRETS_PATH}
+      - {{envFile}}
     environment:
       POSTGRES_DB: postgres
       PGHOST: postgres
       PGPORT: "5432"
       PGUSER: pgadmin
+      {{#if databases}}
+      {{#each databases}}
+      DB_{{@index}}_PASSWORD: {{lookup ../databasePasswords.array @index}}
+      {{/each}}
+      {{else}}
+      DB_PASSWORD: {{lookup databasePasswords.array 0}}
+      {{/if}}
     networks:
       - infra_aifabrix-network
     command: >
@@ -49,31 +57,31 @@ services:
         export PGPASSWORD=\"${POSTGRES_PASSWORD}\" &&
         echo 'Waiting for PostgreSQL to be ready...' &&
         counter=0 &&
-        while [ $counter -lt 30 ]; do
+        while [ ${counter:-0} -lt 30 ]; do
           if pg_isready -h postgres -p 5432 -U pgadmin >/dev/null 2>&1; then
             echo 'PostgreSQL is ready!'
             break
           fi
           echo 'Waiting for PostgreSQL...'
           sleep 1
-          counter=$((counter + 1))
+          counter=$((${counter:-0} + 1))
         done &&
         {{#if databases}}
         {{#each databases}}
         echo 'Creating {{name}} database and user...' &&
-        (psql -d postgres -c 'CREATE DATABASE {{name}};' || true) &&
-        (psql -d postgres -c \"CREATE USER {{name}}_user WITH PASSWORD '{{name}}_pass123';\" || true) &&
-        psql -d postgres -c 'GRANT ALL PRIVILEGES ON DATABASE {{name}} TO {{name}}_user;' || true &&
-        psql -d {{name}} -c 'ALTER SCHEMA public OWNER TO {{name}}_user;' || true &&
-        psql -d {{name}} -c 'GRANT ALL ON SCHEMA public TO {{name}}_user;' || true &&
+        (psql -d postgres -c \"CREATE DATABASE \\\"{{name}}\\\";\" || true) &&
+        (psql -d postgres -c \"CREATE USER \\\"{{name}}_user\\\" WITH PASSWORD '${DB_{{@index}}_PASSWORD}';\" || true) &&
+        psql -d postgres -c \"GRANT ALL PRIVILEGES ON DATABASE \\\"{{name}}\\\" TO \\\"{{name}}_user\\\";\" || true &&
+        psql -d {{name}} -c \"ALTER SCHEMA public OWNER TO \\\"{{name}}_user\\\";\" || true &&
+        psql -d {{name}} -c \"GRANT ALL ON SCHEMA public TO \\\"{{name}}_user\\\";\" || true &&
         {{/each}}
         {{else}}
         echo 'Creating {{app.key}} database and user...' &&
-        (psql -d postgres -c 'CREATE DATABASE {{app.key}};' || true) &&
-        (psql -d postgres -c \"CREATE USER {{app.key}}_user WITH PASSWORD '{{app.key}}_pass123';\" || true) &&
-        psql -d postgres -c 'GRANT ALL PRIVILEGES ON DATABASE {{app.key}} TO {{app.key}}_user;' || true &&
-        psql -d {{app.key}} -c 'ALTER SCHEMA public OWNER TO {{app.key}}_user;' || true &&
-        psql -d {{app.key}} -c 'GRANT ALL ON SCHEMA public TO {{app.key}}_user;' || true &&
+        (psql -d postgres -c \"CREATE DATABASE \\\"{{app.key}}\\\";\" || true) &&
+        (psql -d postgres -c \"CREATE USER \\\"{{app.key}}_user\\\" WITH PASSWORD '${DB_0_PASSWORD:-${DB_PASSWORD}}';\" || true) &&
+        psql -d postgres -c \"GRANT ALL PRIVILEGES ON DATABASE \\\"{{app.key}}\\\" TO \\\"{{app.key}}_user\\\";\" || true &&
+        psql -d {{app.key}} -c \"ALTER SCHEMA public OWNER TO \\\"{{app.key}}_user\\\";\" || true &&
+        psql -d {{app.key}} -c \"GRANT ALL ON SCHEMA public TO \\\"{{app.key}}_user\\\";\" || true &&
         {{/if}}
         echo 'Database initialization complete!'
       "

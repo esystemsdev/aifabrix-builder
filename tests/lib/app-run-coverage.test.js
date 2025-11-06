@@ -190,6 +190,10 @@ describe('Application Run Module - Additional Coverage', () => {
   describe('generateDockerCompose - edge cases', () => {
     it('should generate compose with all services', async() => {
       const appName = 'test-app';
+      // Create .env file with DB_PASSWORD
+      fsSync.mkdirSync(path.join(tempDir, 'builder', appName), { recursive: true });
+      fsSync.writeFileSync(path.join(tempDir, 'builder', appName, '.env'), 'DB_PASSWORD=secret123\n');
+
       const config = {
         build: {
           language: 'typescript',
@@ -212,6 +216,10 @@ describe('Application Run Module - Additional Coverage', () => {
 
     it('should generate compose for Python app', async() => {
       const appName = 'python-app';
+      // Create .env file with DB_PASSWORD
+      fsSync.mkdirSync(path.join(tempDir, 'builder', appName), { recursive: true });
+      fsSync.writeFileSync(path.join(tempDir, 'builder', appName, '.env'), 'DB_PASSWORD=secret123\n');
+
       const config = {
         build: {
           language: 'python',

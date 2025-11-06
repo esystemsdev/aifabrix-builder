@@ -49,6 +49,7 @@ build:
   localPort: 3010                                           # Port for local development (different from Docker port)
   language: typescript                                  		# Runtime language for template selection (typescript or python)
   secrets:                                                 	# Path to secrets file
+  envFilePath: .env                                     		# Generated in builder/
 
 # Docker Compose
 compose:

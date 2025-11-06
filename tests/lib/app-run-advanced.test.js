@@ -10,6 +10,9 @@ const appRun = require('../../lib/app-run');
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const net = require('net');
+const fsSync = require('fs');
+const path = require('path');
+const os = require('os');
 
 jest.mock('child_process', () => ({
   exec: jest.fn()
@@ -20,13 +23,29 @@ jest.mock('../../lib/push', () => ({
 }));
 
 describe('Application Run Advanced Tests', () => {
+  let tempDir;
+  let originalCwd;
+
   beforeEach(() => {
+    tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));
+    originalCwd = process.cwd();
+    process.chdir(tempDir);
     jest.clearAllMocks();
     jest.setTimeout(1000); // Set 1 second timeout for all tests in this suite
   });
 
+  afterEach(() => {
+    process.chdir(originalCwd);
+    jest.restoreAllMocks();
+  });
+
   describe('generateDockerCompose additional paths', () => {
     it('should generate compose for Python app', async() => {
+      const appName = 'test-app';
+      const appDir = path.join(tempDir, 'builder', appName);
+      fsSync.mkdirSync(appDir, { recursive: true });
+      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_PASSWORD=secret123\n');
+
       const config = {
         language: 'python',
         port: 3000
@@ -38,6 +57,11 @@ describe('Application Run Advanced Tests', () => {
     });
 
     it('should generate compose with database', async() => {
+      const appName = 'test-app';
+      const appDir = path.join(tempDir, 'builder', appName);
+      fsSync.mkdirSync(appDir, { recursive: true });
+      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_PASSWORD=secret123\n');
+
       const config = {
         language: 'typescript',
         port: 3000
@@ -50,6 +74,11 @@ describe('Application Run Advanced Tests', () => {
     });
 
     it('should generate compose with redis', async() => {
+      const appName = 'test-app';
+      const appDir = path.join(tempDir, 'builder', appName);
+      fsSync.mkdirSync(appDir, { recursive: true });
+      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_PASSWORD=secret123\n');
+
       const config = {
         language: 'typescript',
         port: 3000
@@ -62,6 +91,11 @@ describe('Application Run Advanced Tests', () => {
     });
 
     it('should generate compose with storage', async() => {
+      const appName = 'test-app';
+      const appDir = path.join(tempDir, 'builder', appName);
+      fsSync.mkdirSync(appDir, { recursive: true });
+      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_PASSWORD=secret123\n');
+
       const config = {
         language: 'typescript',
         port: 3000
@@ -74,6 +108,11 @@ describe('Application Run Advanced Tests', () => {
     });
 
     it('should generate compose with authentication', async() => {
+      const appName = 'test-app';
+      const appDir = path.join(tempDir, 'builder', appName);
+      fsSync.mkdirSync(appDir, { recursive: true });
+      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_PASSWORD=secret123\n');
+
       const config = {
         language: 'typescript',
         port: 3000

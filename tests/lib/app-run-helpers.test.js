@@ -115,6 +115,12 @@ describe('Application Run Helper Functions', () => {
 
   describe('generateDockerCompose', () => {
     it('should generate compose content for TypeScript app', async() => {
+      // Create .env file with DB_PASSWORD
+      const appName = 'test-app';
+      const appDir = path.join(tempDir, 'builder', appName);
+      fsSync.mkdirSync(appDir, { recursive: true });
+      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_PASSWORD=secret123\n');
+
       const config = {
         language: 'typescript',
         port: 3000,
@@ -131,6 +137,12 @@ describe('Application Run Helper Functions', () => {
     });
 
     it('should generate compose content for Python app', async() => {
+      // Create .env file with DB_PASSWORD
+      const appName = 'test-app';
+      const appDir = path.join(tempDir, 'builder', appName);
+      fsSync.mkdirSync(appDir, { recursive: true });
+      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_PASSWORD=secret123\n');
+
       const config = {
         language: 'python',
         port: 8000,

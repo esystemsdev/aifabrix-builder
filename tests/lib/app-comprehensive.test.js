@@ -461,7 +461,7 @@ describe('Application Module - Comprehensive Tests', () => {
       expect(pushUtils.checkAzureCLIInstalled).toHaveBeenCalled();
       expect(pushUtils.checkACRAuthentication).toHaveBeenCalled();
       expect(pushUtils.tagImage).toHaveBeenCalledWith('test-app:latest', 'myacr.azurecr.io/test-app:v1.0.0');
-      expect(pushUtils.pushImage).toHaveBeenCalledWith('myacr.azurecr.io/test-app:v1.0.0');
+      expect(pushUtils.pushImage).toHaveBeenCalledWith('myacr.azurecr.io/test-app:v1.0.0', 'myacr.azurecr.io');
     });
 
     it('should handle full deployment workflow', async() => {

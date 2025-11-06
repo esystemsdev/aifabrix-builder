@@ -37,7 +37,7 @@ docker stop {{appName}}
 ## Push to Azure Container Registry
 
 ```bash
-aifabrix push {{appName}} --action acr --tag latest
+aifabrix push {{appName}} --registry {{registry}} --tag latest
 ```
 
 **Note:** ACR push requires `az login` or ACR credentials in `variables.yaml`

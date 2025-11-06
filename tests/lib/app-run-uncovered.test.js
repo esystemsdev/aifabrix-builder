@@ -92,11 +92,16 @@ const net = require('net');
 describe('App-Run Uncovered Code Paths', () => {
   let tempDir;
   let originalCwd;
+  let originalHomedir;
 
   beforeEach(() => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));
     originalCwd = process.cwd();
     process.chdir(tempDir);
+
+    // Mock os.homedir() to return temp directory to avoid writing to real home directory
+    originalHomedir = os.homedir;
+    jest.spyOn(os, 'homedir').mockReturnValue(tempDir);
 
     fsSync.mkdirSync(path.join(tempDir, 'builder'), { recursive: true });
 
@@ -117,7 +122,7 @@ describe('App-Run Uncovered Code Paths', () => {
       redis: 'healthy'
     });
 
-    infra.ensureAdminSecrets.mockResolvedValue(path.join(os.homedir(), '.aifabrix', 'admin-secrets.env'));
+    infra.ensureAdminSecrets.mockResolvedValue(path.join(tempDir, '.aifabrix', 'admin-secrets.env'));
 
     secrets.generateEnvFile.mockResolvedValue();
 
@@ -136,6 +141,9 @@ describe('App-Run Uncovered Code Paths', () => {
 
   afterEach(async() => {
     process.chdir(originalCwd);
+    if (os.homedir.mockRestore) {
+      os.homedir.mockRestore();
+    }
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
     jest.clearAllMocks();
   });

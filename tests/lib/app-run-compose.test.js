@@ -22,6 +22,11 @@ describe('app-run Docker Compose Generation', () => {
   describe('generateDockerCompose', () => {
     it('should generate compose file with db-init service when requiresDatabase is true', async() => {
       const appName = 'test-app';
+      // Create .env file with DB_PASSWORD
+      const appDir = path.join(process.cwd(), 'builder', appName);
+      fsSync.mkdirSync(appDir, { recursive: true });
+      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_0_PASSWORD=secret123\n');
+
       const config = {
         build: { language: 'python' },
         port: 3000,
@@ -43,6 +48,11 @@ describe('app-run Docker Compose Generation', () => {
 
     it('should not include db-init service when requiresDatabase is false', async() => {
       const appName = 'test-app';
+      // Create .env file with DB_PASSWORD
+      const appDir = path.join(process.cwd(), 'builder', appName);
+      fsSync.mkdirSync(appDir, { recursive: true });
+      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_PASSWORD=secret123\n');
+
       const config = {
         build: { language: 'python' },
         port: 3000,
@@ -61,6 +71,11 @@ describe('app-run Docker Compose Generation', () => {
 
     it('should use databases from config.requires.databases', async() => {
       const appName = 'test-app';
+      // Create .env file with DB_PASSWORD for multiple databases
+      const appDir = path.join(process.cwd(), 'builder', appName);
+      fsSync.mkdirSync(appDir, { recursive: true });
+      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_0_PASSWORD=pass1\nDB_1_PASSWORD=pass2\n');
+
       const config = {
         build: { language: 'python' },
         port: 3000,
@@ -82,6 +97,11 @@ describe('app-run Docker Compose Generation', () => {
 
     it('should convert Windows paths to forward slashes for volumes', async() => {
       const appName = 'test-app';
+      // Create .env file with DB_PASSWORD
+      const appDir = path.join(process.cwd(), 'builder', appName);
+      fsSync.mkdirSync(appDir, { recursive: true });
+      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_PASSWORD=secret123\n');
+
       const config = {
         build: { language: 'python' },
         port: 3000,
@@ -106,6 +126,11 @@ describe('app-run Docker Compose Generation', () => {
 
     it('should generate valid YAML that can be parsed', async() => {
       const appName = 'test-app';
+      // Create .env file with DB_PASSWORD
+      const appDir = path.join(process.cwd(), 'builder', appName);
+      fsSync.mkdirSync(appDir, { recursive: true });
+      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_0_PASSWORD=secret123\n');
+
       const config = {
         build: { language: 'python' },
         port: 3000,

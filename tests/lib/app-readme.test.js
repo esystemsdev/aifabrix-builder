@@ -63,7 +63,7 @@ describe('Application README Module', () => {
       expect(result).toContain('aifabrix/test-app:latest');
       expect(result).toContain('docker logs test-app -f');
       expect(result).toContain('docker stop test-app');
-      expect(result).toContain('aifabrix push test-app --action acr --tag latest');
+      expect(result).toContain('aifabrix push test-app --registry myacr.azurecr.io --tag latest');
     });
 
     it('should include database prerequisite when database is enabled', () => {

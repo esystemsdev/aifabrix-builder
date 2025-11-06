@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.4] - 2025-11-06
+
+### Fixed
+- Fixed PostgreSQL database initialization to support database names with hyphens (e.g., `miso-logs`)
+  - Added `pgQuote` Handlebars helper to properly quote PostgreSQL identifiers in SQL commands
+  - Added `pgUser` Handlebars helper to generate properly quoted PostgreSQL user names
+  - Database and user names with hyphens are now correctly quoted in CREATE DATABASE and CREATE USER commands
+- Fixed password handling security issue in Docker Compose generation
+  - Changed from parsing passwords from DATABASE_URL or generating random passwords to requiring explicit `DB_PASSWORD` or `DB_0_PASSWORD` variables in `.env` files
+  - Passwords must now be explicitly set in `.env` files (typically resolved from `kv://` references)
+  - Improved password validation to distinguish between missing password variables and empty password values
+  - Provides clear error messages when required password variables are missing or empty
+
+### Changed
+- Database password resolution now requires `DB_PASSWORD` (single database) or `DB_0_PASSWORD`, `DB_1_PASSWORD`, etc. (multiple databases) to be set in `.env` files
+- Password validation now uses key existence checks (`in` operator) instead of truthiness checks to properly handle empty values
+- Docker Compose templates now use environment variables (`DB_0_PASSWORD`, `DB_1_PASSWORD`) for database passwords instead of hardcoded values
+
+### Security
+- Eliminated hardcoded database passwords from Docker Compose templates
+- Database passwords must now be explicitly provided via `.env` files (resolved from secure key vaults)
+- Improved password validation prevents accidental use of empty passwords
+
+## [2.1.3] - 2025-11-06
+
+### Fixed
+- Fixed `aifabrix status` command showing ❌ for running services (normalized status value to handle quotes and whitespace)
+- Fixed `aifabrix push` command to use correct image name from `variables.yaml` instead of app name
+  - Now correctly resolves image name from `image.name`, `app.key`, or falls back to app name
+  - Matches the same logic used by `aifabrix build` command
+- Improved authentication error handling in push command:
+  - Detects authentication errors and provides clear login instructions
+  - Automatically retries authentication if push fails with auth error
+  - Shows helpful error messages with `az acr login` command
+
+### Changed
+- Enhanced push error messages to include authentication troubleshooting steps
+- Status command now normalizes Docker container status values before comparison
+
 ## [2.1.2] - 2025-11-06
 
 ### Fixed
