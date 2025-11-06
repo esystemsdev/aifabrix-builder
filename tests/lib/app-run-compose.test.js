@@ -5,6 +5,7 @@
 
 const fsSync = require('fs');
 const path = require('path');
+const os = require('os');
 const yaml = require('js-yaml');
 
 // Mock dependencies
@@ -15,8 +16,24 @@ jest.mock('../../lib/validator');
 const appRun = require('../../lib/app-run');
 
 describe('app-run Docker Compose Generation', () => {
+  let tempDir;
+  let originalCwd;
+
   beforeEach(() => {
+    tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-compose-test-'));
+    originalCwd = process.cwd();
+    process.chdir(tempDir);
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    // Cleanup temp directory
+    try {
+      fsSync.rmSync(tempDir, { recursive: true, force: true });
+    } catch (error) {
+      // Ignore cleanup errors
+    }
   });
 
   describe('generateDockerCompose', () => {
@@ -111,15 +128,19 @@ describe('app-run Docker Compose Generation', () => {
       };
       const options = { port: 3090 };
 
-      // Mock process.cwd() to return Windows path
+      // Mock process.cwd() to return a Windows-style path (using tempDir with backslashes)
+      // This simulates Windows path behavior without hardcoding a specific path
       const originalCwd = process.cwd;
-      process.cwd = jest.fn(() => 'C:\\git\\test-project');
+      const windowsPath = tempDir.replace(/\//g, '\\'); // Convert forward slashes to backslashes
+      process.cwd = jest.fn(() => windowsPath);
 
       const result = await appRun.generateDockerCompose(appName, config, options);
 
-      // Should use forward slashes, not backslashes
-      expect(result).toContain('C:/git/test-project');
-      expect(result).not.toContain('C:\\git\\test-project');
+      // Should use forward slashes, not backslashes (even if cwd returns backslashes)
+      // The result should contain the path with forward slashes
+      const forwardSlashPath = tempDir.replace(/\\/g, '/');
+      expect(result).toContain(forwardSlashPath);
+      expect(result).not.toContain(windowsPath);
 
       process.cwd = originalCwd;
     });

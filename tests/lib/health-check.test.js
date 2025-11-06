@@ -1170,21 +1170,25 @@ describe('Health Check Utilities', () => {
     });
 
     it('should return false on timeout', async() => {
+      // Mock http.request to return a request that never responds
       http.request.mockImplementation((options, callback) => {
         const req = {
-          on: jest.fn((event, handler) => {
-            if (event === 'timeout') {
-              handler();
-            }
-          }),
+          on: jest.fn(),
           destroy: jest.fn(),
           end: jest.fn()
         };
+        // Don't call callback or trigger any events - simulate timeout
         return req;
       });
 
-      const result = await healthCheck.checkHealthEndpoint('http://localhost:3000/health');
+      const promise = healthCheck.checkHealthEndpoint('http://localhost:3000/health');
+
+      // Advance timers to trigger timeout (5 seconds = 5000ms)
+      jest.advanceTimersByTime(5000);
+
+      const result = await promise;
       expect(result).toBe(false);
+      expect(http.request).toHaveBeenCalled();
     });
 
     it('should log debug information when debug is enabled', async() => {
