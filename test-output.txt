@@ -1,0 +1,5431 @@
+
+> @aifabrix/builder@2.1.6 test
+> jest --coverage
+
+PASS tests/lib/api.test.js (8.071 s)
+  API Utilities
+    makeApiCall
+      ΓêÜ should make successful API call and return JSON (5 ms)
+      ΓêÜ should make successful API call and return text (1 ms)
+      ΓêÜ should handle 400 error with JSON error response (3 ms)
+      ΓêÜ should handle 404 error with text error response (1 ms)
+      ΓêÜ should handle 401 error with error JSON (1 ms)
+      ΓêÜ should handle network errors (1 ms)
+      ΓêÜ should pass options to fetch (1 ms)
+    authenticatedApiCall
+      ΓêÜ should add Authorization header with bearer token (1 ms)
+      ΓêÜ should work without token (1 ms)
+      ΓêÜ should merge existing headers (1 ms)
+      ΓêÜ should propagate errors from makeApiCall (1 ms)
+    initiateDeviceCodeFlow
+      ΓêÜ should successfully initiate device code flow (1 ms)
+      ΓêÜ should support snake_case for RFC 8628 compatibility (1 ms)
+      ΓêÜ should use default values for expires_in and interval (1 ms)
+      ΓêÜ should throw error if environment key is missing (13 ms)
+      ΓêÜ should throw error if API call fails (1 ms)
+      ΓêÜ should throw error if response is missing required fields
+      ΓêÜ should URL encode environment parameter
+    pollDeviceCodeToken
+      ΓêÜ should successfully poll and get token (8 ms)
+      ΓêÜ should support snake_case token response for RFC 8628 compatibility (1 ms)
+      ΓêÜ should use default expires_in if not provided (2 ms)
+      ΓêÜ should handle authorization_pending and continue polling (46 ms)
+      ΓêÜ should handle authorization_pending in HTTP 200 response and continue polling (2 ms)
+      ΓêÜ should throw error on expired_token (2 ms)
+      ΓêÜ should throw error on authorization_declined (1 ms)
+      ΓêÜ should handle slow_down and increase interval (1 ms)
+      ΓêÜ should throw error if device_code is missing (1 ms)
+      ΓêÜ should throw error if token response is missing access_token (1 ms)
+      ΓêÜ should timeout after expires_in + buffer (7787 ms)
+      ΓêÜ should call onPoll callback on each poll attempt (5 ms)
+    displayDeviceCodeInfo
+      ΓêÜ should format and display device code information (2 ms)
+
+  console.log
+    ΓÜá∩╕Å  Deployment attempt 1 failed, retrying in 1000ms...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    ΓÜá∩╕Å  Deployment attempt 2 failed, retrying in 2000ms...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    ΓÜá∩╕Å  Deployment attempt 1 failed, retrying in 1000ms...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    ΓÜá∩╕Å  Deployment attempt 1 failed, retrying in 1000ms...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    ΓÜá∩╕Å  Deployment attempt 2 failed, retrying in 2000ms...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Status: pending (attempt 1/3)
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Status: pending (attempt 2/3)
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Status: pending (attempt 3/3)
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    {"timestamp":"2025-11-06T19:58:06.603Z","level":"AUDIT","message":"Deployment initiated","metadata":{"action":"deploy","appName":"test-app","controllerUrl":"https://controller.example.com","environment":"unknown","timestamp":"1762459086603"}}
+
+      at log (lib/audit-logger.js:83:11)
+
+  console.log
+    ≡ƒôñ Sending deployment request to https://controller.example.com/api/v1/pipeline/dev/deploy...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    {"timestamp":"2025-11-06T19:58:06.605Z","level":"AUDIT","message":"Deployment succeeded","metadata":{"action":"deploy","appName":"test-app","deploymentId":"deploy-123","controllerUrl":"https://controller.example.com","status":"success","timestamp":"1762459086605"}}
+
+      at log (lib/audit-logger.js:83:11)
+
+  console.log
+    {"timestamp":"2025-11-06T19:58:06.606Z","level":"AUDIT","message":"Deployment initiated","metadata":{"action":"deploy","appName":"test-app","controllerUrl":"https://controller.example.com","environment":"unknown","timestamp":"1762459086606"}}
+
+      at log (lib/audit-logger.js:83:11)
+
+  console.log
+    ≡ƒôñ Sending deployment request to https://controller.example.com/api/v1/pipeline/tst/deploy...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    {"timestamp":"2025-11-06T19:58:06.607Z","level":"AUDIT","message":"Deployment succeeded","metadata":{"action":"deploy","appName":"test-app","deploymentId":"deploy-123","controllerUrl":"https://controller.example.com","status":"success","timestamp":"1762459086607"}}
+
+      at log (lib/audit-logger.js:83:11)
+
+  console.log
+    {"timestamp":"2025-11-06T19:58:06.608Z","level":"AUDIT","message":"Deployment initiated","metadata":{"action":"deploy","appName":"test-app","controllerUrl":"https://controller.example.com","environment":"unknown","timestamp":"1762459086608"}}
+
+      at log (lib/audit-logger.js:83:11)
+
+  console.log
+    ≡ƒôñ Sending deployment request to https://controller.example.com/api/v1/pipeline/dev/deploy...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    {"timestamp":"2025-11-06T19:58:06.609Z","level":"AUDIT","message":"Deployment succeeded","metadata":{"action":"deploy","appName":"test-app","deploymentId":"deploy-123","controllerUrl":"https://controller.example.com","status":"success","timestamp":"1762459086609"}}
+
+      at log (lib/audit-logger.js:83:11)
+
+  console.log
+    {"timestamp":"2025-11-06T19:58:06.614Z","level":"AUDIT","message":"Deployment initiated","metadata":{"action":"deploy","appName":"test-app","controllerUrl":"https://controller.example.com","environment":"unknown","timestamp":"1762459086614"}}
+
+      at log (lib/audit-logger.js:83:11)
+
+  console.log
+    ≡ƒôñ Sending deployment request to https://controller.example.com/api/v1/pipeline/dev/deploy...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    {"timestamp":"2025-11-06T19:58:06.616Z","level":"ERROR","message":"Deployment failed","metadata":{"action":"deploy","appName":"test-app","controllerUrl":"https://controller.example.com","status":"failure","errorMessage":"Deployment failed after 1 attempts: Controller returned error: 401 Unauthorized","errorCode":"UNKNOWN","timestamp":"1762459086616"}}
+
+      at log (lib/audit-logger.js:83:11)
+
+  console.log
+    {"timestamp":"2025-11-06T19:58:06.618Z","level":"AUDIT","message":"Deployment initiated","metadata":{"action":"deploy","appName":"test-app","controllerUrl":"https://controller.example.com","environment":"unknown","timestamp":"1762459086618"}}
+
+      at log (lib/audit-logger.js:83:11)
+
+  console.log
+    ≡ƒôñ Sending deployment request to https://controller.example.com/api/v1/pipeline/dev/deploy...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    {"timestamp":"2025-11-06T19:58:06.618Z","level":"ERROR","message":"Deployment failed","metadata":{"action":"deploy","appName":"test-app","controllerUrl":"https://controller.example.com","status":"failure","errorMessage":"Deployment failed after 1 attempts: Controller returned error: 400 Bad Request","errorCode":"UNKNOWN","timestamp":"1762459086618"}}
+
+      at log (lib/audit-logger.js:83:11)
+
+  console.log
+    {"timestamp":"2025-11-06T19:58:06.620Z","level":"AUDIT","message":"Deployment initiated","metadata":{"action":"deploy","appName":"test-app","controllerUrl":"https://controller.example.com","environment":"unknown","timestamp":"1762459086620"}}
+
+      at log (lib/audit-logger.js:83:11)
+
+  console.log
+    ≡ƒôñ Sending deployment request to https://controller.example.com/api/v1/pipeline/dev/deploy...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    {"timestamp":"2025-11-06T19:58:06.621Z","level":"ERROR","message":"Deployment failed","metadata":{"action":"deploy","appName":"test-app","controllerUrl":"https://controller.example.com","status":"failure","errorMessage":"Deployment failed after 1 attempts: Connection refused","errorCode":"UNKNOWN","timestamp":"1762459086621"}}
+
+      at log (lib/audit-logger.js:83:11)
+
+PASS tests/lib/deployer.test.js (7.36 s)
+  deployer
+    createClientCredentialsHeaders
+      ΓêÜ should create headers with client ID and secret (2 ms)
+      ΓêÜ should throw error when client ID is missing (12 ms)
+      ΓêÜ should throw error when client secret is missing (2 ms)
+      ΓêÜ should throw error when both credentials are missing (2 ms)
+    validateEnvironmentKey
+      ΓêÜ should accept valid environment keys (4 ms)
+      ΓêÜ should normalize environment keys to lowercase (2 ms)
+      ΓêÜ should reject invalid environment keys (4 ms)
+      ΓêÜ should reject null or undefined environment keys (2 ms)
+    validateControllerUrl
+      ΓêÜ should accept valid HTTPS URLs (5 ms)
+      ΓêÜ should reject HTTP URLs (1 ms)
+      ΓêÜ should reject invalid URL formats (2 ms)
+      ΓêÜ should trim trailing slashes (1 ms)
+    sendDeploymentRequest
+      ΓêÜ should send deployment request successfully (1 ms)
+      ΓêÜ should use environment-aware endpoint
+      ΓêÜ should include authentication headers in request (1 ms)
+      ΓêÜ should validate environment key before sending request (1 ms)
+      ΓêÜ should retry on transient failures (3033 ms)
+      ΓêÜ should fail after max retries (1011 ms)
+      ΓêÜ should handle 400 errors (3015 ms)
+    pollDeploymentStatus
+      ΓêÜ should poll deployment status successfully (2 ms)
+      ΓêÜ should use environment-aware status endpoint (2 ms)
+      ΓêÜ should include authentication headers in status polling (1 ms)
+      ΓêÜ should handle completed deployments (1 ms)
+      ΓêÜ should timeout when max attempts reached (118 ms)
+      ΓêÜ should handle 404 errors (1 ms)
+    handleDeploymentError
+      ΓêÜ should mask sensitive data in error messages (1 ms)
+      ΓêÜ should preserve error codes (1 ms)
+      ΓêÜ should detect timeout errors (3 ms)
+    deployToController
+      ΓêÜ should deploy successfully with valid manifest (3 ms)
+      ΓêÜ should use environment key in deployment endpoint (1 ms)
+      ΓêÜ should validate and normalize environment key (1 ms)
+      ΓêÜ should require environment key (1 ms)
+      ΓêÜ should require client credentials (1 ms)
+      ΓêÜ should reject HTTP URLs (except localhost) (1 ms)
+      ΓêÜ should reject invalid URLs (1 ms)
+      ΓêÜ should provide user-friendly error messages for authentication (4 ms)
+      ΓêÜ should handle validation errors (2 ms)
+      ΓêÜ should handle network errors gracefully (2 ms)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 8080
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: python
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - Database enabled
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated GitHub Actions workflows:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app-controller
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app-controller/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app-controller
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app-controller
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: full-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/full-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - Database enabled
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - Redis enabled
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - Storage enabled
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - Authentication enabled
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build full-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run full-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated Dockerfile from template
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/app-coverage-extra.test.js
+  Application Module - Additional Coverage
+    promptForOptions - edge cases
+      ΓêÜ should prompt for port when not provided (29 ms)
+      ΓêÜ should prompt for language when not provided (16 ms)
+      ΓêÜ should prompt for database when not provided (17 ms)
+      ΓêÜ should handle controller URL prompt when controller is enabled (12 ms)
+    generateConfigFiles - coverage
+      ΓêÜ should generate config files with all services enabled (16 ms)
+    generateDockerfile
+      ΓêÜ should detect language from package.json (3 ms)
+      ΓêÜ should detect language from requirements.txt (3 ms)
+    generateDockerfileForApp
+      ΓêÜ should generate Dockerfile for existing app (11 ms)
+      ΓêÜ should handle generation errors gracefully (6 ms)
+    createApp - error paths
+      ΓêÜ should handle missing directory creation errors (11 ms)
+    app helper functions
+      ΓêÜ should check image exists (65 ms)
+      ΓêÜ should check container running (60 ms)
+      ΓêÜ should check port available (3 ms)
+
+  console.log
+    Γ£ô Copied 2 application file(s) to apps/test-app-display/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app-display
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app-display/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Application files: apps/test-app-display/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app-display
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app-display
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Copied 1 application file(s) to apps/test-app-update-vars/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app-update-vars
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app-update-vars/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Application files: apps/test-app-update-vars/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app-update-vars
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app-update-vars
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Copied 1 application file(s) to apps/test-app-no-build/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app-no-build
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app-no-build/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Application files: apps/test-app-no-build/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app-no-build
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app-no-build
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Copied 1 application file(s) to apps/test-app-error-vars/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app-error-vars
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app-error-vars/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Application files: apps/test-app-error-vars/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app-error-vars
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app-error-vars
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Copied 1 application file(s) to apps/test-app-lang-config/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app-lang-config
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app-lang-config/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Application files: apps/test-app-lang-config/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: python
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app-lang-config
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app-lang-config
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Copied 1 application file(s) to apps/test-app-lang-yaml/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app-lang-yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app-lang-yaml/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Application files: apps/test-app-lang-yaml/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: python
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app-lang-yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app-lang-yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Copied 3 application file(s) to apps/test-app-setup/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app-setup
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app-setup/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Application files: apps/test-app-setup/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app-setup
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app-setup
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Copied 1 application file(s) to apps/test-app-lang-options/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app-lang-options
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app-lang-options/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Application files: apps/test-app-lang-options/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app-lang-options
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app-lang-options
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Copied 1 application file(s) to apps/test-app-flag-true/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app-flag-true
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app-flag-true/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Application files: apps/test-app-flag-true/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app-flag-true
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app-flag-true
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app-no-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app-no-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app-no-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app-no-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/app-uncovered-paths.test.js
+  App Module - Uncovered Code Paths
+    displaySuccessMessage with hasAppFiles
+      ΓêÜ should display app files location when hasAppFiles is true (12 ms)
+    validateAppCreation with options.app
+      ΓêÜ should throw error when apps directory already exists (16 ms)
+      ΓêÜ should throw error when apps directory access fails with non-ENOENT error (3 ms)
+    updateVariablesForAppFlag
+      ΓêÜ should update variables.yaml with build context and envOutputPath (9 ms)
+      ΓêÜ should create build section if it does not exist (9 ms)
+      ΓêÜ should handle error when updating variables.yaml (7 ms)
+    getLanguageForAppFiles
+      ΓêÜ should return language from config when provided (6 ms)
+      ΓêÜ should read language from variables.yaml when not in config (8 ms)
+      ΓêÜ should throw error when language cannot be determined (6 ms)
+    setupAppFiles
+      ΓêÜ should create apps directory and copy application files (8 ms)
+      ΓêÜ should use language from options when config.language is not set (6 ms)
+    createApp with --app flag
+      ΓêÜ should call setupAppFiles when options.app is true (6 ms)
+      ΓêÜ should not call setupAppFiles when options.app is false (4 ms)
+
+  console.log
+    Checking if image test-app:latest exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking if image test-app:latest exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking if image test-app:latest exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Stopping existing container aifabrix-aifabrix-existing-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Container aifabrix-aifabrix-existing-app was not running
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/app-run-coverage.test.js
+  Application Run Module - Additional Coverage
+    runApp - validation paths
+      ΓêÜ should validate app name is required (15 ms)
+      ΓêÜ should handle missing configuration file (2 ms)
+      ΓêÜ should handle validation failures (4 ms)
+      ΓêÜ should handle missing Docker image (4 ms)
+      ΓêÜ should handle unhealthy infrastructure services (67 ms)
+    generateDockerCompose - edge cases
+      ΓêÜ should generate compose with all services (12 ms)
+      ΓêÜ should generate compose for Python app (8 ms)
+      ΓêÜ should throw error for unsupported language (5 ms)
+    waitForHealthCheck - timeout scenarios
+      ΓêÜ should timeout when container never becomes healthy (6 ms)
+      ΓêÜ should handle container becoming unhealthy (2 ms)
+    port and container management
+      ΓêÜ should check port availability (2 ms)
+      ΓêÜ should handle port conflicts (58 ms)
+      ΓêÜ should stop and remove existing container (62 ms)
+
+PASS tests/lib/cli.test.js
+  CLI Commands
+    resolve command
+      ΓêÜ should generate .env file successfully (3 ms)
+      ΓêÜ should handle errors gracefully (1 ms)
+      ΓêÜ should handle missing app name (3 ms)
+    json command
+      ΓêÜ should generate deployment JSON successfully (1 ms)
+      ΓêÜ should handle validation warnings (1 ms)
+      ΓêÜ should handle validation errors (1 ms)
+      ΓêÜ should handle generation errors (1 ms)
+    genkey command
+      ΓêÜ should generate deployment key successfully (1 ms)
+      ΓêÜ should handle key generation errors
+      ΓêÜ should handle invalid app name (1 ms)
+    doctor command
+      ΓêÜ should check environment successfully (1 ms)
+      ΓêÜ should handle environment issues (1 ms)
+      ΓêÜ should handle infrastructure health check failure (1 ms)
+      ΓêÜ should handle doctor command errors (20 ms)
+    login command
+      ΓêÜ should handle login successfully (1 ms)
+      ΓêÜ should handle login errors (1 ms)
+    up command
+      ΓêÜ should start infrastructure successfully (1 ms)
+      ΓêÜ should handle infrastructure start errors
+    down command
+      ΓêÜ should stop infrastructure without volumes
+      ΓêÜ should stop infrastructure with volumes (1 ms)
+      ΓêÜ should handle infrastructure stop errors (1 ms)
+    create command
+      ΓêÜ should create app successfully (1 ms)
+      ΓêÜ should handle create app errors (1 ms)
+    build command
+      ΓêÜ should build app successfully
+      ΓêÜ should handle build app errors (1 ms)
+    run command
+      ΓêÜ should run app successfully (1 ms)
+      ΓêÜ should handle run app errors (2 ms)
+    push command
+      ΓêÜ should push app successfully (1 ms)
+      ΓêÜ should handle push app errors
+    deploy command
+      ΓêÜ should deploy app successfully (1 ms)
+      ΓêÜ should handle deploy app errors (1 ms)
+    status command
+      ΓêÜ should show infrastructure status successfully (1 ms)
+      ΓêÜ should handle status command errors
+    restart command
+      ΓêÜ should restart service successfully (1 ms)
+      ΓêÜ should handle restart service errors (1 ms)
+    resolve command - CLI handler
+      ΓêÜ should handle resolve command errors in CLI handler (1 ms)
+    json command - CLI handler
+      ΓêÜ should handle json command generation errors in CLI handler
+    genkey command - CLI handler
+      ΓêÜ should handle genkey command errors in CLI handler (1 ms)
+    dockerfile command
+      ΓêÜ should generate dockerfile successfully (1 ms)
+      ΓêÜ should handle dockerfile generation errors
+    CLI command handlers - direct execution
+      create command handler
+        ΓêÜ should execute create command handler successfully (4 ms)
+        ΓêÜ should handle create command handler errors (3 ms)
+      build command handler
+        ΓêÜ should execute build command handler successfully (3 ms)
+        ΓêÜ should handle build command handler errors (3 ms)
+      run command handler
+        ΓêÜ should execute run command handler successfully (3 ms)
+        ΓêÜ should handle run command handler errors (3 ms)
+      push command handler
+        ΓêÜ should execute push command handler successfully (4 ms)
+        ΓêÜ should handle push command handler errors (2 ms)
+      deploy command handler
+        ΓêÜ should execute deploy command handler successfully (3 ms)
+        ΓêÜ should handle deploy command handler errors (3 ms)
+      restart command handler
+        ΓêÜ should execute restart command handler successfully (4 ms)
+        ΓêÜ should handle restart command handler errors (3 ms)
+      resolve command handler
+        ΓêÜ should execute resolve command handler successfully (3 ms)
+        ΓêÜ should handle resolve command handler errors (2 ms)
+      json command handler
+        ΓêÜ should execute json command handler successfully (5 ms)
+        ΓêÜ should handle json command handler errors (3 ms)
+      genkey command handler
+        ΓêÜ should execute genkey command handler successfully (4 ms)
+        ΓêÜ should handle genkey command handler errors (2 ms)
+      dockerfile command handler
+        ΓêÜ should execute dockerfile command handler successfully (3 ms)
+        ΓêÜ should handle dockerfile command handler errors (4 ms)
+    Additional edge cases and branch coverage
+      login command error handling
+        ΓêÜ should handle login errors with proper error logging (1 ms)
+      down command with volumes option
+        ΓêÜ should stop infrastructure with volumes when volumes option is set (1 ms)
+        ΓêÜ should stop infrastructure without volumes when volumes option is not set
+        ΓêÜ should handle errors when stopping infrastructure with volumes (1 ms)
+      resolve command with force option
+        ΓêÜ should generate env file with force option (1 ms)
+        ΓêÜ should generate env file without force option (1 ms)
+      json command validation failure
+        ΓêÜ should handle json command with validation errors array (1 ms)
+        ΓêÜ should handle json command with validation warnings array (1 ms)
+      doctor command health check edge cases
+        ΓêÜ should handle doctor command when docker is not ok
+        ΓêÜ should handle doctor command with unknown health status (3 ms)
+      status command with stopped services
+        ΓêÜ should show status for stopped services
+    setupCommands - Direct Command Handler Execution
+      genkey command handler execution
+        ΓêÜ should execute genkey command handler via setupCommands (3 ms)
+        ΓêÜ should handle genkey command handler error via setupCommands (3 ms)
+      dockerfile command handler execution
+        ΓêÜ should execute dockerfile command handler via setupCommands (3 ms)
+        ΓêÜ should handle dockerfile command handler error via setupCommands (3 ms)
+      resolve command handler execution
+        ΓêÜ should execute resolve command handler with force option via setupCommands (4 ms)
+        ΓêÜ should execute resolve command handler without force option via setupCommands (2 ms)
+        ΓêÜ should handle resolve command handler error via setupCommands (3 ms)
+      json command handler execution
+        ΓêÜ should execute json command handler with warnings via setupCommands (3 ms)
+        ΓêÜ should execute json command handler with validation errors via setupCommands (5 ms)
+        ΓêÜ should handle json command handler generation error via setupCommands (2 ms)
+        ΓêÜ should execute json command handler with validation errors array check via setupCommands (3 ms)
+        ΓêÜ should execute json command handler with empty warnings array via setupCommands (3 ms)
+      login command handler execution
+        ΓêÜ should execute login command handler via setupCommands (5 ms)
+        ΓêÜ should handle login command handler error via setupCommands (3 ms)
+      down command handler execution
+        ΓêÜ should execute down command handler with volumes via setupCommands (2 ms)
+        ΓêÜ should execute down command handler without volumes via setupCommands (3 ms)
+        ΓêÜ should handle down command handler error via setupCommands (4 ms)
+      doctor command handler execution
+        ΓêÜ should execute doctor command handler with health check via setupCommands (3 ms)
+        ΓêÜ should execute doctor command handler without health check when docker not ok via setupCommands (4 ms)
+        ΓêÜ should execute doctor command handler with health check error via setupCommands (3 ms)
+        ΓêÜ should execute doctor command handler with recommendations via setupCommands (5 ms)
+      status command handler execution
+        ΓêÜ should execute status command handler via setupCommands (3 ms)
+        ΓêÜ should handle status command handler error via setupCommands (3 ms)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - Database enabled
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - Authentication enabled
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: existing-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/existing-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build existing-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run existing-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated GitHub Actions workflows:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-1sNxRW\.github\workflows\ci.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+          at Array.forEach (<anonymous>)
+
+  console.log
+      - C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-1sNxRW\.github\workflows\pr-checks.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+          at Array.forEach (<anonymous>)
+
+  console.log
+      - C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-1sNxRW\.github\workflows\release.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+          at Array.forEach (<anonymous>)
+
+  console.log
+      - C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-1sNxRW\.github\workflows\test
+
+      at Object.log (lib/utils/logger.js:24:13)
+          at Array.forEach (<anonymous>)
+
+  console.log
+      - C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-1sNxRW\.github\workflows\test.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+          at Array.forEach (<anonymous>)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: github-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/github-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build github-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run github-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Copied 2 file(s) from template 'controller'
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: template-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/template-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build template-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run template-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: env-conversion-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/env-conversion-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - Database enabled
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Found existing .env file - sensitive values will be converted to kv:// references
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build env-conversion-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run env-conversion-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/app.test.js
+  Application Module
+    createApp
+      ΓêÜ should create application with scaffolded configuration files (21 ms)
+      ΓêÜ should validate app name format (9 ms)
+      ΓêÜ should handle existing application conflicts (11 ms)
+      ΓêÜ should generate GitHub workflows when requested (27 ms)
+      ΓêÜ should validate and copy template files when template is specified (13 ms)
+      ΓêÜ should handle existing .env file conversion (13 ms)
+    buildApp
+      ΓêÜ should build container image for application (2 ms)
+      ΓêÜ should auto-detect runtime language (2 ms)
+      ΓêÜ should handle build failures gracefully (2 ms)
+    runApp
+      ΓêÜ should run application locally using Docker (2 ms)
+      ΓêÜ should handle port conflicts (1 ms)
+      ΓêÜ should wait for application health (1 ms)
+    detectLanguage
+      ΓêÜ should detect TypeScript/Node.js projects (3 ms)
+      ΓêÜ should detect Python projects (4 ms)
+      ΓêÜ should handle unknown project types (2 ms)
+    generateDockerfile
+      ΓêÜ should generate Dockerfile from template (2 ms)
+      ΓêÜ should handle template errors gracefully (3 ms)
+    pushApp
+      ΓêÜ should push image to Azure Container Registry (4 ms)
+      ΓêÜ should handle multiple tags (3 ms)
+      ΓêÜ should handle authentication failures (4 ms)
+      ΓêÜ should error when image does not exist locally (4 ms)
+      ΓêÜ should error when Azure CLI is not installed (3 ms)
+      ΓêÜ should error when registry URL is invalid (4 ms)
+      ΓêÜ should use registry from variables.yaml when not provided via flag (4 ms)
+      ΓêÜ should error when no registry is configured (3 ms)
+      ΓêÜ should error when app configuration is missing (3 ms)
+    deployApp
+      ΓêÜ should deploy application via Miso Controller (1 ms)
+      ΓêÜ should handle deployment failures (1 ms)
+      ΓêÜ should monitor deployment status (1 ms)
+    loadTemplateVariables
+      ΓêÜ should load template variables.yaml successfully (3 ms)
+      ΓêÜ should return null when template not found (3 ms)
+      ΓêÜ should return null when template name is empty (1 ms)
+      ΓêÜ should warn and return null on non-ENOENT error (4 ms)
+    updateTemplateVariables
+      ΓêÜ should update variables.yaml with app name and port (5 ms)
+      ΓêÜ should update app.key when app section exists (5 ms)
+      ΓêÜ should update displayName when it contains miso (4 ms)
+      ΓêÜ should update port when provided in options (5 ms)
+      ΓêÜ should handle file not found error silently (1 ms)
+      ΓêÜ should warn on non-ENOENT error (3 ms)
+    mergeTemplateVariables
+      ΓêÜ should merge port from template variables (2 ms)
+      ΓêÜ should merge language from template variables (1 ms)
+      ΓêÜ should merge database requirement from template variables (2 ms)
+      ΓêÜ should merge redis requirement from template variables (1 ms)
+      ΓêÜ should merge storage requirement from template variables (2 ms)
+      ΓêÜ should merge authentication from template variables (2 ms)
+      ΓêÜ should not override existing options with template variables (1 ms)
+      ΓêÜ should merge all template variables together (3 ms)
+      ΓêÜ should return options unchanged when templateVariables is null (2 ms)
+      ΓêÜ should handle undefined template variables (1 ms)
+      ΓêÜ should handle template variables with undefined requires (2 ms)
+
+  console.log
+    Γ£ô Generated Dockerfile from template
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated Dockerfile from template
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated Dockerfile from template
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Already authenticated with myacr.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Successfully pushed 1 tag(s) to myacr.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Image: myacr.azurecr.io/test-app:*
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Tags: latest
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Already authenticated with custom.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Successfully pushed 1 tag(s) to custom.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Image: custom.azurecr.io/test-app:*
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Tags: latest
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Successfully pushed 1 tag(s) to myacr.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Image: myacr.azurecr.io/test-app:*
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Tags: latest
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Already authenticated with myacr.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Successfully pushed 3 tag(s) to myacr.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Image: myacr.azurecr.io/test-app:*
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Tags: v1.0.0, v1.0.1, latest
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Already authenticated with myacr.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Already authenticated with myacr.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Already authenticated with myacr.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Successfully pushed 1 tag(s) to myacr.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Image: myacr.azurecr.io/test-app:*
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Tags: v1.0.0
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Already authenticated with myacr.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Successfully pushed 1 tag(s) to myacr.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Image: myacr.azurecr.io/test-app:*
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Tags: latest
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/app-comprehensive.test.js
+  Application Module - Comprehensive Tests
+    buildApp
+      ΓêÜ should delegate to build.buildApp (6 ms)
+      ΓêÜ should handle build errors (8 ms)
+      ΓêÜ should pass options to build module (2 ms)
+    runApp
+      ΓêÜ should delegate to appRun.runApp (2 ms)
+      ΓêÜ should handle run errors (2 ms)
+      ΓêÜ should pass options correctly (2 ms)
+    detectLanguage
+      ΓêÜ should delegate to build.detectLanguage (2 ms)
+      ΓêÜ should handle detection errors (6 ms)
+      ΓêÜ should detect different languages (1 ms)
+    generateDockerfile
+      ΓêÜ should delegate to build.generateDockerfile (2 ms)
+      ΓêÜ should handle generation errors (2 ms)
+    generateDockerfileForApp
+      ΓêÜ should generate Dockerfile for application (5 ms)
+      ΓêÜ should validate app name (4 ms)
+      ΓêÜ should handle missing variables.yaml (5 ms)
+      ΓêÜ should use language from options if provided (7 ms)
+      ΓêÜ should handle existing Dockerfile without force flag (3 ms)
+      ΓêÜ should overwrite existing Dockerfile with force flag (5 ms)
+      ΓêÜ should handle generation errors (5 ms)
+    pushApp
+      ΓêÜ should push app successfully (8 ms)
+      ΓêÜ should validate app name (6 ms)
+      ΓêÜ should handle missing variables.yaml (4 ms)
+      ΓêÜ should use registry from options (4 ms)
+      ΓêÜ should handle missing registry (6 ms)
+      ΓêÜ should validate registry URL format (5 ms)
+      ΓêÜ should handle missing local image (6 ms)
+      ΓêÜ should handle missing Azure CLI (5 ms)
+      ΓêÜ should authenticate if not already authenticated (4 ms)
+      ΓêÜ should push multiple tags (5 ms)
+      ΓêÜ should handle push errors (4 ms)
+    deployApp
+      ΓêÜ should delegate to appDeploy.deployApp (1 ms)
+      ΓêÜ should handle deployment errors (2 ms)
+      ΓêÜ should pass all options correctly (2 ms)
+    Exported appRun functions
+      ΓêÜ should export checkImageExists (2 ms)
+      ΓêÜ should export checkContainerRunning (2 ms)
+      ΓêÜ should export stopAndRemoveContainer (1 ms)
+      ΓêÜ should export checkPortAvailable (2 ms)
+      ΓêÜ should export generateDockerCompose (1 ms)
+      ΓêÜ should export waitForHealthCheck (1 ms)
+    Error handling and edge cases
+      ΓêÜ should handle pushApp with authentication error (4 ms)
+      ΓêÜ should handle pushApp with tag error (5 ms)
+      ΓêÜ should handle generateDockerfileForApp with detection error (5 ms)
+    Integration scenarios
+      ΓêÜ should handle full push workflow (5 ms)
+      ΓêÜ should handle full deployment workflow (2 ms)
+      ΓêÜ should handle build and push sequence (5 ms)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 8080
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated GitHub Actions workflows:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated GitHub Actions workflows:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated GitHub Actions workflows:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app-2
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app-2/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app-2
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app-2
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/app-additional-coverage.test.js
+  App.js Additional Coverage Tests
+    promptForOptions - port validation in createApp flow
+      ΓêÜ should prompt for port and validate invalid port values (23 ms)
+      ΓêÜ should not prompt for port when port is already provided (12 ms)
+    promptForOptions - controller prompt when conditions
+      ΓêÜ should NOT prompt for controller when github is explicitly false (12 ms)
+      ΓêÜ should prompt for controller URL when controller is true and controllerUrl not provided (13 ms)
+      ΓêÜ should use MISO_HOST env var or localhost for controller URL default (18 ms)
+    generateConfigFiles - environment warnings display
+      ΓêÜ should display warnings when env conversion has warnings (5 ms)
+    generateConfigFiles - error handling
+      ΓêÜ should wrap errors in generateConfigFiles catch block (7 ms)
+    pushApp - successful ACR authentication and push flow
+      ΓêÜ should handle successful push with ACR already authenticated (11 ms)
+      ΓêÜ should handle successful push with ACR authentication required (11 ms)
+      ΓêÜ should push multiple tags successfully (7 ms)
+      ΓêÜ should display image and tags in success message (6 ms)
+    pushApp - error paths
+      ΓêÜ should handle missing config file error (10 ms)
+      ΓêÜ should handle invalid registry URL error (5 ms)
+
+  console.log
+    Γ£ô Already authenticated with myacr.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Successfully pushed 3 tag(s) to myacr.azurecr.io
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Image: myacr.azurecr.io/test-app:*
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Tags: v1.0.0, v1.0.1, latest
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒôï Generating deployment manifest for test-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Manifest generated: C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-820aos\builder\test-app\aifabrix-deploy.json
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Key: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Display Name: Test App
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Image: test:latest
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒÜÇ Deploying to https://controller.example.com (environment: tst)...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£à Deployment initiated successfully
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Deployment ID: deploy-123
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒôï Generating deployment manifest for test-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Manifest generated: C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-t08MyI\builder\test-app\aifabrix-deploy.json
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Key: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Display Name: undefined
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Image: test:latest
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒÜÇ Deploying to https://controller.example.com (environment: dev)...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£à Deployment initiated successfully
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Deployment ID: deploy-123
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒôï Generating deployment manifest for test-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Manifest generated: C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-81Jt97\builder\test-app\aifabrix-deploy.json
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Key: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Display Name: undefined
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Image: test:latest
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒÜÇ Deploying to https://option-controller.example.com (environment: pro)...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£à Deployment initiated successfully
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Deployment ID: deploy-123
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒôï Generating deployment manifest for test-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒôï Generating deployment manifest for test-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Manifest generated: C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-1eE0NQ\builder\test-app\aifabrix-deploy.json
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Key: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Display Name: Test App
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Image: test:latest
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒÜÇ Deploying to https://controller.example.com (environment: dev)...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒôï Generating deployment manifest for test-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Manifest generated: C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-S95AxW\builder\test-app\aifabrix-deploy.json
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Key: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Display Name: Test App
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Image: test:latest
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒÜÇ Deploying to https://controller.example.com (environment: dev)...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£à Deployment initiated successfully
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Deployment ID: deploy-123
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/app-deploy.test.js
+  Application Deploy Module
+    pushApp error scenarios
+      ΓêÜ should error when app configuration is missing (15 ms)
+      ΓêÜ should error when no registry is configured (5 ms)
+      ΓêÜ should error when registry URL is invalid (4 ms)
+      ΓêÜ should error when image does not exist locally (6 ms)
+      ΓêÜ should error when Azure CLI is not installed (5 ms)
+      ΓêÜ should handle multiple tags (5 ms)
+    deployApp error scenarios
+      ΓêÜ should error when app name is missing (5 ms)
+      ΓêÜ should error when controller URL is missing (6 ms)
+      ΓêÜ should error when client credentials are missing (7 ms)
+      ΓêÜ should load deployment configuration from variables.yaml (29 ms)
+      ΓêÜ should use default environment when not specified (9 ms)
+      ΓêÜ should allow options to override variables.yaml configuration (8 ms)
+      ΓêÜ should error when app not found in builder (4 ms)
+      ΓêÜ should error on validation failures (5 ms)
+      ΓêÜ should handle controller deployment failures (8 ms)
+      ΓêÜ should display warnings correctly (8 ms)
+    validateAppName in deploy module
+      ΓêÜ should accept valid app names (2 ms)
+      ΓêÜ should reject invalid characters (3 ms)
+
+  console.log
+    Checking if image test-app:v1.0.0 exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Image test-app:v1.0.0 found
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking infrastructure health...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Infrastructure is running
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Generating .env file from template...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Generating Docker Compose configuration...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Starting test-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ΓÜá∩╕Å  Compose file preserved at: C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-32v8zV\builder\test-app\docker-compose.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Review the file to debug issues
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking if image test-app:latest exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Image test-app:latest found
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking infrastructure health...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking if image test-app:latest exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Image test-app:latest found
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking infrastructure health...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Infrastructure is running
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Updating .env file for Docker environment...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Ensuring .env file in apps/ directory is updated for Docker...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Generating Docker Compose configuration...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Starting test-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ΓÜá∩╕Å  Compose file preserved at: C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-q5fek5\builder\test-app\docker-compose.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Review the file to debug issues
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking if image test-app:latest exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Image test-app:latest found
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking infrastructure health...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Infrastructure is running
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Generating .env file from template...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Ensuring .env file in apps/ directory is updated for Docker...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Generating Docker Compose configuration...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Starting test-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ΓÜá∩╕Å  Compose file preserved at: C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-cGVwP5\builder\test-app\docker-compose.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Review the file to debug issues
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking if image test-app:latest exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking if image test-app:latest exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking if image test-app:latest exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Image test-app:latest found
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking infrastructure health...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Infrastructure is running
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Generating .env file from template...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Generating Docker Compose configuration...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Starting test-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ΓÜá∩╕Å  Compose file preserved at: C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-lKk5rI\builder\test-app\docker-compose.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Review the file to debug issues
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking if image test-app:latest exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Image test-app:latest found
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking infrastructure health...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Infrastructure is running
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Generating .env file from template...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Generating Docker Compose configuration...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Starting test-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ΓÜá∩╕Å  Compose file preserved at: C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-aA4ONO\builder\test-app\docker-compose.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Review the file to debug issues
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking if image test-app:latest exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Image test-app:latest found
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking infrastructure health...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Infrastructure is running
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Generating .env file from template...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Generating Docker Compose configuration...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Starting test-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ΓÜá∩╕Å  Compose file preserved at: C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-JccxVp\builder\test-app\docker-compose.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Review the file to debug issues
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking if image test-app:latest exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Image test-app:latest found
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking infrastructure health...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Infrastructure is running
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking if image test-app:latest exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Image test-app:latest found
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking infrastructure health...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Infrastructure is running
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Generating .env file from template...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Generating Docker Compose configuration...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Starting test-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ΓÜá∩╕Å  Compose file preserved at: C:\Users\MIKARO~1\AppData\Local\Temp\aifabrix-test-pKQwBA\builder\test-app\docker-compose.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+       Review the file to debug issues
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/app-run-uncovered.test.js
+  App-Run Uncovered Code Paths
+    validateAppConfiguration - uncovered paths
+      ΓêÜ should throw error when running from inside builder directory (24 ms)
+      ΓêÜ should handle validation errors with rbac.yaml errors (5 ms)
+      ΓêÜ should handle validation errors with env.template errors (5 ms)
+      ΓêÜ should handle validation failed with no specific errors (5 ms)
+    checkPrerequisites - uncovered paths
+      ΓêÜ should log success messages (19 ms)
+      ΓêÜ should handle unhealthy infrastructure services (6 ms)
+    prepareEnvironment - uncovered paths
+      ΓêÜ should handle .env file already exists (22 ms)
+      ΓêÜ should handle envOutputPath in variables.yaml (16 ms)
+    startContainer - uncovered paths
+      ΓêÜ should start container and wait for health check (5 ms)
+      ΓêÜ should handle missing POSTGRES_PASSWORD in admin-secrets.env (5 ms)
+    displayRunStatus - uncovered paths
+      ΓêÜ should display run status with custom health check path (20 ms)
+      ΓêÜ should display run status with default health check path (14 ms)
+    runApp - uncovered paths
+      ΓêÜ should handle container already running (15 ms)
+      ΓêÜ should handle port already in use (13 ms)
+      ΓêÜ should handle startContainer error and preserve compose file (9 ms)
+      ΓêÜ should handle error with proper error message wrapping (5 ms)
+
+PASS tests/lib/validator.test.js
+  Validator Module
+    validateVariables
+      ΓêÜ should validate valid variables.yaml (39 ms)
+      ΓêÜ should return errors for invalid variables.yaml (24 ms)
+      ΓêÜ should throw error if app name is invalid (8 ms)
+      ΓêÜ should throw error if variables.yaml not found (1 ms)
+      ΓêÜ should throw error for invalid YAML syntax (1 ms)
+    validateRbac
+      ΓêÜ should validate valid rbac.yaml (1 ms)
+      ΓêÜ should return warning if rbac.yaml not found (2 ms)
+      ΓêÜ should return errors for invalid rbac structure (1 ms)
+      ΓêÜ should detect duplicate roles
+      ΓêÜ should throw error for invalid YAML syntax
+    validateEnvTemplate
+      ΓêÜ should validate valid env.template (1 ms)
+      ΓêÜ should detect invalid environment variable format (1 ms)
+      ΓêÜ should validate kv:// reference format
+      ΓêÜ should allow empty values in environment variables (1 ms)
+      ΓêÜ should allow commented lines with kv:// references (1 ms)
+      ΓêÜ should throw error if env.template not found
+    checkEnvironment
+      ΓêÜ should return ok status when everything is working (4 ms)
+      ΓêÜ should return error when Docker is not available (5 ms)
+      ΓêÜ should return warning when ports are in use (2 ms)
+      ΓêÜ should return missing when secrets file not found (4 ms)
+    formatValidationErrors
+      ΓêÜ should format required field errors (1 ms)
+      ΓêÜ should format type errors (1 ms)
+      ΓêÜ should format minimum/maximum errors (1 ms)
+      ΓêÜ should handle empty errors array (1 ms)
+      ΓêÜ should handle non-array input (1 ms)
+    validateApplication
+      ΓêÜ should run complete validation suite (21 ms)
+      ΓêÜ should aggregate errors from all validations (22 ms)
+      ΓêÜ should throw error if app name is invalid (1 ms)
+    validateDeploymentJson
+      ΓêÜ should validate correct deployment JSON (24 ms)
+      ΓêÜ should fail validation for missing required fields (13 ms)
+      ΓêÜ should fail validation for invalid field types (11 ms)
+      ΓêÜ should return error if deployment is not an object
+      ΓêÜ should validate deployment with all optional fields (12 ms)
+
+  console.log
+    Γ£ô Generated GitHub Actions workflows:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 70000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/app-coverage-uncovered.test.js
+  App.js Uncovered Paths
+    promptForOptions - port validation
+      ΓêÜ should validate port input and reject invalid ports (6 ms)
+      ΓêÜ should handle controller URL prompt when controller is true and github is not false (13 ms)
+    generateConfigFiles - error handling
+      ΓêÜ should handle errors when generating config files (4 ms)
+      ΓêÜ should display warnings from env conversion (5 ms)
+    pushApp - uncovered paths
+      ΓêÜ should handle config load errors (10 ms)
+      ΓêÜ should validate registry URL format (5 ms)
+      ΓêÜ should handle ACR authentication flow - already authenticated (4 ms)
+      ΓêÜ should handle ACR authentication flow - needs authentication (4 ms)
+      ΓêÜ should handle multiple tags (3 ms)
+    generateDockerfileForApp - uncovered paths
+      ΓêÜ should handle existing Dockerfile without force flag (6 ms)
+      ΓêÜ should allow overwrite with force flag (6 ms)
+      ΓêÜ should handle missing variables.yaml (3 ms)
+    buildApp and runApp delegation
+      ΓêÜ should delegate buildApp to build module (3 ms)
+      ΓêÜ should delegate runApp to appRun module (2 ms)
+    deployApp delegation
+      ΓêÜ should delegate deployApp to appDeploy module (5 ms)
+
+PASS tests/lib/generator-validation.test.js
+  Generator Validation Module
+    validateDeploymentJson
+      ΓêÜ should validate correct deployment JSON (22 ms)
+      ΓêÜ should detect missing required fields (14 ms)
+      ΓêÜ should detect invalid port (17 ms)
+      ΓêÜ should detect invalid field types (14 ms)
+      ΓêÜ should detect invalid health check values (15 ms)
+      ΓêÜ should detect missing required authentication fields when enableSSO is true (11 ms)
+      ΓêÜ should validate authentication with enableSSO false and missing type/requiredRoles (16 ms)
+    generateDeployJsonWithValidation
+      ΓêÜ should generate JSON with validation (23 ms)
+      ΓêÜ should throw error when validation fails (21 ms)
+
+PASS tests/lib/app-run-debug.test.js
+  App-Run Debug Paths and Error Handling
+    checkImageExists with debug=true
+      ΓêÜ should log debug messages when debug is enabled and image exists (9 ms)
+      ΓêÜ should log debug messages when debug is enabled and image does not exist (5 ms)
+      ΓêÜ should log debug error message when debug is enabled and exec fails (4 ms)
+    runApp with debug=true
+      ΓêÜ should log debug messages throughout runApp when debug is enabled (17 ms)
+      ΓêÜ should log debug messages when container is already running (16 ms)
+      ΓêÜ should log debug error message when container start fails (24 ms)
+      ΓêÜ should log debug error message when runApp fails (4 ms)
+    checkContainerRunning with debug=true
+      ΓêÜ should log debug messages and container details when container is running (4 ms)
+      ΓêÜ should log debug error message when container check fails (3 ms)
+    stopAndRemoveContainer with debug=true
+      ΓêÜ should log debug messages when stopping container (5 ms)
+      ΓêÜ should log debug error message when stop fails (4 ms)
+    startContainer with debug=true (via runApp)
+      ΓêÜ should log debug messages when starting container through runApp (16 ms)
+      ΓêÜ should log debug container status after start through runApp (15 ms)
+
+PASS tests/lib/cli-comprehensive.test.js
+  CLI Comprehensive Tests
+    setupCommands - Command Registration
+      ΓêÜ should register all commands (2 ms)
+    login command action
+      ΓêÜ should handle credentials login with flags (CI/CD) (2 ms)
+      ΓêÜ should handle credentials login with prompts (1 ms)
+      ΓêÜ should handle login failure and exit (1 ms)
+      ΓêÜ should handle login exceptions (1 ms)
+    up command action
+      ΓêÜ should start infrastructure successfully (1 ms)
+      ΓêÜ should handle infrastructure start errors (4 ms)
+    down command action
+      ΓêÜ should stop infrastructure without volumes (1 ms)
+      ΓêÜ should stop infrastructure with volumes (1 ms)
+      ΓêÜ should handle stop errors (1 ms)
+    create command action
+      ΓêÜ should create application with all options (1 ms)
+      ΓêÜ should handle create errors (1 ms)
+    build command action
+      ΓêÜ should build application and log result (1 ms)
+      ΓêÜ should handle build errors (1 ms)
+    run command action
+      ΓêÜ should run application with port override (1 ms)
+      ΓêÜ should handle run errors (3 ms)
+    push command action
+      ΓêÜ should push application with registry and tags (1 ms)
+      ΓêÜ should handle push errors (1 ms)
+    deploy command action
+      ΓêÜ should deploy application with all options (1 ms)
+      ΓêÜ should handle deploy with no-poll option (1 ms)
+      ΓêÜ should handle deploy errors (1 ms)
+    doctor command action
+      ΓêÜ should check environment successfully (1 ms)
+      ΓêÜ should show recommendations (1 ms)
+      ΓêÜ should handle infra health check errors (1 ms)
+      ΓêÜ should handle doctor errors (1 ms)
+    status command action
+      ΓêÜ should show infrastructure status (3 ms)
+      ΓêÜ should handle status errors (1 ms)
+    restart command action
+      ΓêÜ should restart service successfully (1 ms)
+      ΓêÜ should handle restart errors (1 ms)
+    resolve command action
+      ΓêÜ should generate .env file (1 ms)
+      ΓêÜ should handle resolve errors (1 ms)
+    json command action
+      ΓêÜ should generate deployment JSON with warnings (1 ms)
+      ΓêÜ should handle validation errors and exit (2 ms)
+      ΓêÜ should handle generation errors (1 ms)
+    genkey command action
+      ΓêÜ should generate deployment key (1 ms)
+      ΓêÜ should handle genkey errors (3 ms)
+    dockerfile command action
+      ΓêÜ should generate Dockerfile (1 ms)
+      ΓêÜ should handle dockerfile errors (1 ms)
+
+PASS tests/lib/generator.test.js
+  Generator Module
+    generateDeployJson
+      ΓêÜ should generate deployment JSON with all components (24 ms)
+      ΓêÜ should handle missing rbac.yaml gracefully (17 ms)
+      ΓêÜ should throw error when validation fails (14 ms)
+      ΓêÜ should throw error if app name is invalid (1 ms)
+      ΓêÜ should throw error if variables.yaml not found (1 ms)
+      ΓêÜ should throw error if env.template not found (1 ms)
+      ΓêÜ should throw error for invalid YAML syntax in variables.yaml (2 ms)
+      ΓêÜ should throw error for invalid YAML syntax in rbac.yaml (1 ms)
+    parseEnvironmentVariables
+      ΓêÜ should parse environment variables correctly (1 ms)
+      ΓêÜ should mark sensitive variables as required
+      ΓêÜ should handle empty template (1 ms)
+      ΓêÜ should handle template with only comments (2 ms)
+    buildImageReference
+      ΓêÜ should build image reference with registry (1 ms)
+      ΓêÜ should build image reference without registry
+      ΓêÜ should use app key as fallback for image name (1 ms)
+      ΓêÜ should use default values when image config is missing
+    buildHealthCheck
+      ΓêÜ should build health check with custom values (1 ms)
+      ΓêÜ should use default values when health check config is missing
+      ΓêÜ should use partial custom values (1 ms)
+      ΓêÜ should include probePath when provided
+      ΓêÜ should include probeRequestType when provided (1 ms)
+      ΓêÜ should include probeProtocol when provided
+      ΓêÜ should include probeIntervalInSeconds when provided (1 ms)
+      ΓêÜ should include all probe fields when provided
+    buildRequirements
+      ΓêÜ should build requirements with all services (1 ms)
+      ΓêÜ should build requirements with defaults (1 ms)
+      ΓêÜ should create default database when database is true but no databases specified
+    buildAuthenticationConfig
+      ΓêÜ should build authentication config with enableSSO false and missing fields (1 ms)
+      ΓêÜ should build authentication config with enableSSO true and missing fields
+      ΓêÜ should build authentication config with all fields provided (1 ms)
+      ΓêÜ should build authentication config with endpoints
+      ΓêÜ should fall back to RBAC when authentication not in variables (1 ms)
+    buildAuthentication
+      ΓêÜ should build authentication with RBAC
+      ΓêÜ should build disabled authentication when no RBAC (1 ms)
+      ΓêÜ should handle empty RBAC
+    generateDeployJson - registry mode filtering
+      ΓêÜ should filter configuration for external registry mode (1 ms)
+      ΓêÜ should not filter configuration for acr registry mode
+    generateDeployJson - optional fields
+      ΓêÜ should include repository when only enabled flag is true (1 ms)
+      ΓêÜ should include repository when enabled (1 ms)
+      ΓêÜ should include repository when only repositoryUrl provided (1 ms)
+      ΓêÜ should include build fields when provided (1 ms)
+      ΓêÜ should include deployment fields when provided (1 ms)
+      ΓêÜ should include startupCommand when provided (1 ms)
+      ΓêÜ should include runtimeVersion when provided (1 ms)
+      ΓêÜ should include scaling when provided (1 ms)
+      ΓêÜ should include frontDoorRouting when provided (2 ms)
+      ΓêÜ should prioritize variables.roles over rbac.roles (1 ms)
+      ΓêÜ should use rbac.roles when variables.roles not provided (2 ms)
+      ΓêÜ should prioritize variables.permissions over rbac.permissions (1 ms)
+    generateDeployJson - buildBaseDeployment edge cases
+      ΓêÜ should use app.key fallback when app.displayName missing (1 ms)
+      ΓêÜ should use appName fallback when app.key missing (1 ms)
+      ΓêÜ should use default port when port missing (1 ms)
+      ΓêÜ should create default database when database true but databases missing (1 ms)
+      ΓêÜ should use default app name when app.key missing for database (1 ms)
+    generateDeployJson - validation edge cases
+      ΓêÜ should reject deployment config with http controllerUrl (1 ms)
+      ΓêÜ should reject deployment config with empty strings
+      ΓêÜ should reject build config with empty dockerfile
+      ΓêÜ should reject build config with non-string secrets (1 ms)
+      ΓêÜ should reject repository config with empty repositoryUrl (1 ms)
+    parseEnvironmentVariables - edge cases
+      ΓêÜ should handle variables with empty values (1 ms)
+      ΓêÜ should handle variables with whitespace around equals (1 ms)
+      ΓêÜ should handle variables with kv:// in value but not at start
+      ΓêÜ should handle variables with multiple sensitive keywords (1 ms)
+    generateDeployJsonWithValidation
+      ΓêÜ should generate and validate deployment JSON (2 ms)
+      ΓêÜ should return validation result when validation fails on second check (1 ms)
+
+PASS tests/lib/compose-generator.test.js
+  Compose Generator Module
+    loadDockerComposeTemplate error handling
+      ΓêÜ should throw error when template not found (9 ms)
+    Handlebars helpers
+      ΓêÜ should return empty string for pgQuote with null identifier (2 ms)
+      ΓêÜ should return empty string for pgUser with null dbName (1 ms)
+      ΓêÜ should return empty string for pgUser with undefined dbName (1 ms)
+      ΓêÜ should quote identifiers with hyphens (1 ms)
+      ΓêÜ should escape quotes in identifiers (1 ms)
+      ΓêÜ should generate user name with _user suffix and convert hyphens to underscores (1 ms)
+      ΓêÜ should generate old user name format for migration (preserving hyphens) (1 ms)
+    getImageName
+      ΓêÜ should extract image name from string config.image (3 ms)
+      ΓêÜ should use config.image.name when image is object (2 ms)
+      ΓêÜ should use config.app.key when image.name not available (1 ms)
+      ΓêÜ should use appName fallback when no image config (1 ms)
+    readDatabasePasswords error handling
+      ΓêÜ should throw error when .env file does not exist (2 ms)
+      ΓêÜ should throw error when DB_PASSWORD is missing (4 ms)
+      ΓêÜ should throw error when DB_PASSWORD is empty (3 ms)
+      ΓêÜ should throw error when DB_0_PASSWORD is missing for multiple databases (2 ms)
+      ΓêÜ should throw error when DB_1_PASSWORD is missing for multiple databases (2 ms)
+    readDatabasePasswords (via generateDockerCompose)
+      ΓêÜ should read DB_PASSWORD from .env file (9 ms)
+      ΓêÜ should read DB_0_PASSWORD from .env file (5 ms)
+      ΓêÜ should handle file read errors (2 ms)
+      ΓêÜ should parse .env file with comments and empty lines (6 ms)
+      ΓêÜ should handle .env file with invalid format (no equals sign) (6 ms)
+      ΓêÜ should handle .env file with equals at start (5 ms)
+      ΓêÜ should read passwords for multiple databases (5 ms)
+      ΓêÜ should handle multiple databases with all passwords (4 ms)
+      ΓêÜ should use database name from config when provided (6 ms)
+      ΓêÜ should use appKey fallback when database name not provided (5 ms)
+    generateDockerCompose
+      ΓêÜ should generate compose file with database passwords (4 ms)
+      ΓêÜ should throw error when .env file is missing (2 ms)
+      ΓêÜ should use options.port when provided (4 ms)
+      ΓêÜ should use config.port when options.port not provided (5 ms)
+      ΓêÜ should default to port 3000 when no port specified (4 ms)
+      ΓêÜ should handle Python language (4 ms)
+      ΓêÜ should handle config.build.language (4 ms)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - Database enabled
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - Authentication enabled
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: existing-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/existing-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build existing-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run existing-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated GitHub Actions workflows:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - .github/workflows/ci.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+          at Array.forEach (<anonymous>)
+
+  console.log
+      - .github/workflows/release.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+          at Array.forEach (<anonymous>)
+
+  console.log
+      - .github/workflows/pr-checks.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+          at Array.forEach (<anonymous>)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: github-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/github-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build github-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run github-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: env-conversion-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/env-conversion-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - Database enabled
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Found existing .env file - sensitive values will be converted to kv:// references
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build env-conversion-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run env-conversion-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: valid-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/valid-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build valid-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run valid-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: app123
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/app123/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build app123
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run app123
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/app-create.test.js
+  Application Create Module
+    createApp
+      ΓêÜ should create application with scaffolded configuration files (19 ms)
+      ΓêÜ should validate app name format (7 ms)
+      ΓêÜ should handle existing application conflicts (12 ms)
+      ΓêÜ should generate GitHub workflows when requested (15 ms)
+      ΓêÜ should handle existing .env file conversion (13 ms)
+    validateAppName
+      ΓêÜ should accept valid app names (19 ms)
+      ΓêÜ should reject invalid characters (2 ms)
+      ΓêÜ should reject names starting with dash (1 ms)
+      ΓêÜ should reject names ending with dash (2 ms)
+      ΓêÜ should reject consecutive dashes (1 ms)
+
+PASS tests/lib/cli-command-actions.test.js
+  CLI Command Actions
+    login command action
+      ΓêÜ should handle credentials-based login with flags (CI/CD) (1 ms)
+      ΓêÜ should handle credentials-based login with prompts (3 ms)
+      ΓêÜ should handle login failure (1 ms)
+      ΓêÜ should reject invalid method value (1 ms)
+      ΓêÜ should handle credentials login with partial flags (prompts for missing)
+      ΓêÜ should handle device code flow login with flag (CI/CD) (1 ms)
+      ΓêÜ should handle device code flow login with prompts (1 ms)
+      ΓêÜ should handle device code flow initiation failure
+      ΓêÜ should handle authorization_pending during polling
+      ΓêÜ should handle expired_token error during polling (1 ms)
+      ΓêÜ should handle authorization_declined error during polling (1 ms)
+      ΓêÜ should validate environment key format (1 ms)
+    up command action
+      ΓêÜ should start infrastructure (1 ms)
+      ΓêÜ should handle infrastructure start errors (2 ms)
+    down command action
+      ΓêÜ should stop infrastructure without volumes (1 ms)
+      ΓêÜ should stop infrastructure with volumes (1 ms)
+    create command action
+      ΓêÜ should create application (1 ms)
+      ΓêÜ should handle create errors
+    build command action
+      ΓêÜ should build application and log result (1 ms)
+    run command action
+      ΓêÜ should run application (1 ms)
+    push command action
+      ΓêÜ should push application
+    deploy command action
+      ΓêÜ should deploy application (1 ms)
+    status command action
+      ΓêÜ should show infrastructure status (1 ms)
+    restart command action
+      ΓêÜ should restart service
+    resolve command action
+      ΓêÜ should generate .env file
+    json command action
+      ΓêÜ should generate deployment JSON successfully (1 ms)
+      ΓêÜ should handle validation errors (1 ms)
+    genkey command action
+      ΓêÜ should generate deployment key (1 ms)
+    dockerfile command action
+      ΓêÜ should generate Dockerfile
+
+  console.log
+    Γ£ô Generated GitHub Actions workflows:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - .github/workflows/ci.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+          at Array.forEach (<anonymous>)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated GitHub Actions workflows:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - .github/workflows/ci.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+          at Array.forEach (<anonymous>)
+
+  console.log
+      - .github/workflows/release.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+          at Array.forEach (<anonymous>)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated GitHub Actions workflows:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - .github/workflows/ci.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+          at Array.forEach (<anonymous>)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated GitHub Actions workflows:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - .github/workflows/ci.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+          at Array.forEach (<anonymous>)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated GitHub Actions workflows:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+      - .github/workflows/ci.yaml
+
+      at Object.log (lib/utils/logger.js:24:13)
+          at Array.forEach (<anonymous>)
+
+  console.log
+    
+    Γ£ô Application created successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Location: builder/test-app/
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Port: 3000
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Next steps:
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    1. Copy env.template to .env and fill in your values
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    2. Run: aifabrix build test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    3. Run: aifabrix run test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/app-uncovered-lines.test.js
+  App.js Uncovered Lines Tests
+    promptForOptions - line 146: conditional controller prompt
+      ΓêÜ should prompt for controller when github is not false and controller not provided (26 ms)
+      ΓêÜ should not prompt for controller when github is false (13 ms)
+    generateConfigFiles - lines 201-202: warning display
+      ΓêÜ should display warnings when env conversion has warnings (12 ms)
+      ΓêÜ should not display warnings when env conversion has no warnings (8 ms)
+    createApp - line 329: githubSteps parsing
+      ΓêÜ should parse githubSteps from comma-separated string (13 ms)
+      ΓêÜ should parse githubSteps with spaces and filter empty strings (11 ms)
+      ΓêÜ should handle empty githubSteps string (11 ms)
+      ΓêÜ should handle githubSteps when not provided (10 ms)
+
+PASS tests/lib/cli-additional.test.js
+  CLI Additional Coverage Tests
+    setupCommands
+      ΓêÜ should handle all command registrations (1 ms)
+      ΓêÜ should register up command (1 ms)
+      ΓêÜ should register down command
+      ΓêÜ should register build command
+      ΓêÜ should register run command (1 ms)
+      ΓêÜ should register push command
+      ΓêÜ should register deploy command (1 ms)
+    validateCommand
+      ΓêÜ should return true for valid command (1 ms)
+      ΓêÜ should return true for any command string
+    handleCommandError
+      ΓêÜ should handle generic errors (1 ms)
+      ΓêÜ should handle permission errors (1 ms)
+      ΓêÜ should handle port conflict errors
+      ΓêÜ should handle Azure CLI errors (1 ms)
+      ΓêÜ should handle ACR authentication errors (2 ms)
+      ΓêÜ should handle image not found errors (1 ms)
+      ΓêÜ should handle invalid registry URL errors (1 ms)
+      ΓêÜ should handle registry URL required errors
+      ΓêÜ should handle Docker errors (1 ms)
+    Command action handlers
+      ΓêÜ should handle create command (1 ms)
+      ΓêÜ should handle build command
+      ΓêÜ should handle run command (1 ms)
+      ΓêÜ should handle push command (1 ms)
+      ΓêÜ should handle deploy command
+      ΓêÜ should handle up command (1 ms)
+      ΓêÜ should handle down command
+
+PASS tests/lib/template-validator.test.js
+  Template Validator Module
+    validateTemplate
+      ΓêÜ should validate existing template with files (7 ms)
+      ΓêÜ should throw error if template folder does not exist (9 ms)
+      ΓêÜ should throw error if template folder is empty (4 ms)
+      ΓêÜ should skip hidden files when validating (3 ms)
+    copyTemplateFiles
+      ΓêÜ should copy all files from template to app directory (6 ms)
+      ΓêÜ should preserve directory structure when copying (10 ms)
+      ΓêÜ should skip hidden files when copying (6 ms)
+      ΓêÜ should throw error if template does not exist (3 ms)
+    listAvailableTemplates
+      ΓêÜ should list available templates (4 ms)
+      ΓêÜ should exclude system template directories (5 ms)
+    validateTemplate - branch coverage
+      ΓêÜ should throw error if template name is not a string (4 ms)
+      ΓêÜ should throw error if template path is not a directory (5 ms)
+    copyAppFiles - branch coverage
+      ΓêÜ should throw error if language is not a string (2 ms)
+      ΓêÜ should throw error if language template does not exist (3 ms)
+      ΓêÜ should throw error if language template path is not a directory (2 ms)
+      ΓêÜ should exclude .hbs files when copying (4 ms)
+      ΓêÜ should exclude Dockerfile files when copying (4 ms)
+      ΓêÜ should include .gitignore when copying (3 ms)
+      ΓêÜ should normalize language to lowercase (4 ms)
+    listAvailableTemplates - branch coverage
+      ΓêÜ should return empty array if templates directory does not exist (4 ms)
+      ΓêÜ should exclude directories without files (4 ms)
+
+  console.log
+    
+    ≡ƒö¿ Building application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Detected language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated Dockerfile from template: ..\..\..\..\..\MikaRoivainen\.aifabrix\test-app\Dockerfile.typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated .env file: /path/to/.env
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£à Build completed successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒö¿ Building application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Detected language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Using custom Dockerfile: CustomDockerfile
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated .env file: /path/to/.env
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£à Build completed successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒö¿ Building application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Using existing Dockerfile: builder/test-app/Dockerfile
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated .env file: /path/to/.env
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£à Build completed successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒö¿ Building application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Detected language: typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated Dockerfile from template: ..\..\..\..\..\MikaRoivainen\.aifabrix\test-app\Dockerfile.typescript
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Generated .env file: /path/to/.env
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    Γ£à Build completed successfully!
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    
+    ≡ƒö¿ Building application: test-app
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/build.test.js
+  Build Module
+    loadVariablesYaml
+      ΓêÜ should load and parse variables.yaml file (8 ms)
+      ΓêÜ should throw error if variables.yaml not found (8 ms)
+      ΓêÜ should throw error for invalid YAML syntax (6 ms)
+    resolveContextPath
+      ΓêÜ should return current directory if no context path provided (4 ms)
+      ΓêÜ should resolve relative context path (4 ms)
+      ΓêÜ should throw error if context path does not exist (2 ms)
+    detectLanguage
+      ΓêÜ should detect TypeScript from package.json (4 ms)
+      ΓêÜ should detect Python from requirements.txt (4 ms)
+      ΓêÜ should detect Python from pyproject.toml (5 ms)
+      ΓêÜ should throw error for custom Dockerfile (6 ms)
+      ΓêÜ should default to typescript if no indicators found (4 ms)
+    generateDockerfile
+      ΓêÜ should generate TypeScript Dockerfile from template (8 ms)
+      ΓêÜ should generate Python Dockerfile from template (6 ms)
+      ΓêÜ should throw error for unsupported language (4 ms)
+    buildApp
+      ΓêÜ should build application with generated Dockerfile (11 ms)
+      ΓêÜ should use custom Dockerfile when specified (6 ms)
+      ΓêÜ should use existing Dockerfile in builder/{appName}/ directory (6 ms)
+      ΓêÜ should force template regeneration when requested (8 ms)
+      ΓêÜ should handle validation errors (7 ms)
+      Γùï skipped should handle Docker build errors
+
+PASS tests/lib/docker-build.test.js
+  Docker Build Utilities
+    isDockerNotAvailableError
+      ΓêÜ should detect docker command not found error (1 ms)
+      ΓêÜ should detect Docker daemon connection error (1 ms)
+      ΓêÜ should detect Docker daemon running check error
+      ΓêÜ should detect generic Docker connection error (1 ms)
+      ΓêÜ should return false for other errors
+    parseDockerBuildProgress - tested through executeDockerBuild
+      ΓêÜ should parse step progress from stdout (15 ms)
+      ΓêÜ should parse pulling layer from stdout (16 ms)
+      ΓêÜ should parse extracting layer (15 ms)
+      ΓêÜ should parse build progress (16 ms)
+      ΓêÜ should parse progress bar with MB (15 ms)
+    executeDockerBuild
+      ΓêÜ should successfully build Docker image (1 ms)
+      ΓêÜ should handle build failure with error code (7 ms)
+      ΓêÜ should handle Docker not available error (1 ms)
+      ΓêÜ should handle spawn error event (1 ms)
+      ΓêÜ should handle generic spawn error
+      ΓêÜ should throttle progress updates (1 ms)
+      ΓêÜ should handle progress from stderr (1 ms)
+      ΓêÜ should ignore warnings in stderr (1 ms)
+      ΓêÜ should handle build failure with last error lines
+      ΓêÜ should handle empty error output
+      ΓêÜ should handle Windows shell option (1 ms)
+
+PASS tests/lib/cli-additional-branches.test.js
+  CLI Additional Branch Coverage
+    doctor command - all branch paths
+      ΓêÜ should handle Docker not available (2 ms)
+      ΓêÜ should handle ports in use (1 ms)
+      ΓêÜ should handle secrets missing
+      ΓêÜ should handle unknown service status (1 ms)
+      ΓêÜ should handle unhealthy service status (1 ms)
+      ΓêÜ should skip health check when Docker not available (1 ms)
+    status command - all branch paths
+      ΓêÜ should handle stopped service (1 ms)
+    json command - all branches
+      ΓêÜ should handle result with no warnings (1 ms)
+      ΓêÜ should handle warnings (3 ms)
+      ΓêÜ should handle validation errors (1 ms)
+
+  console.log
+    Stopping existing container aifabrix-nonexistent-container...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Container aifabrix-nonexistent-container stopped and removed
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Stopping existing container aifabrix-test-container...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Γ£ô Container aifabrix-test-container stopped and removed
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Checking if image test-app:latest exists...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/app-run-helpers.test.js
+  Application Run Helper Functions
+    checkImageExists
+      ΓêÜ should return true when image exists (5 ms)
+      ΓêÜ should return false when image does not exist (2 ms)
+      ΓêÜ should handle exec errors gracefully (1 ms)
+    checkContainerRunning
+      ΓêÜ should return true when container is running (1 ms)
+      ΓêÜ should return false when container is not running (2 ms)
+      ΓêÜ should handle exec errors gracefully (1 ms)
+    checkPortAvailable
+      ΓêÜ should return true when port is available (5 ms)
+      ΓêÜ should return false when port is in use (2 ms)
+    generateDockerCompose
+      ΓêÜ should generate compose content for TypeScript app (9 ms)
+      ΓêÜ should generate compose content for Python app (8 ms)
+      ΓêÜ should throw error for unsupported language (8 ms)
+    stopAndRemoveContainer
+      ΓêÜ should handle container not existing gracefully (4 ms)
+      ΓêÜ should handle stop command errors gracefully (2 ms)
+    waitForHealthCheck
+      ΓêÜ should resolve when container becomes healthy (2 ms)
+      ΓêÜ should throw error when container becomes unhealthy (1 ms)
+      ΓêÜ should timeout after specified duration (3 ms)
+      ΓêÜ should handle checkImageExists errors (1 ms)
+      ΓêÜ should handle checkContainerRunning errors (2 ms)
+    Error Scenarios
+      ΓêÜ should handle Docker compose generation errors (2 ms)
+      ΓêÜ should handle port conflicts (2 ms)
+    runApp
+      ΓêÜ should throw error if app name is empty (10 ms)
+      ΓêÜ should throw error if app name is not a string (4 ms)
+      ΓêÜ should throw error if configuration file not found (4 ms)
+      ΓêÜ should throw error if Docker image does not exist (5 ms)
+
+PASS tests/lib/secrets.test.js
+  Secrets Module
+    loadSecrets
+      ΓêÜ should load secrets from default path when no path provided (1 ms)
+      ΓêÜ should load secrets from provided path (1 ms)
+      ΓêÜ should throw error if secrets file not found (12 ms)
+      ΓêÜ should throw error if secrets file has invalid format (1 ms)
+      ΓêÜ should throw error if secrets file contains null
+      ΓêÜ should throw error if secrets file contains non-object
+    resolveKvReferences
+      ΓêÜ should resolve kv:// references with secrets (1 ms)
+      ΓêÜ should resolve environment variables in secret values (1 ms)
+      ΓêÜ should throw error for missing secrets (1 ms)
+      ΓêÜ should use docker environment when specified (1 ms)
+    generateEnvFile
+      ΓêÜ should generate .env file from template (4 ms)
+      ΓêÜ should copy .env to envOutputPath if specified in variables.yaml (1 ms)
+      ΓêÜ should throw error if env.template not found (1 ms)
+    generateAdminSecretsEnv
+      ΓêÜ should generate admin-secrets.env file (1 ms)
+      ΓêÜ should create .aifabrix directory if it does not exist (1 ms)
+    validateSecrets
+      ΓêÜ should return valid true when all secrets are present
+      ΓêÜ should return valid false when secrets are missing (1 ms)
+      ΓêÜ should handle multiple missing secrets (1 ms)
+    createDefaultSecrets
+      ΓêÜ should create default secrets file (1 ms)
+      ΓêÜ should handle absolute paths (1 ms)
+    loadSecrets - branch coverage
+      ΓêÜ should resolve relative path starting with ..
+      ΓêÜ should handle loadSecrets with non-relative path (1 ms)
+    resolveKvReferences - branch coverage
+      ΓêÜ should fallback to local environment when specified environment does not exist (1 ms)
+      ΓêÜ should handle non-string secret values (1 ms)
+      ΓêÜ should handle ${VAR} references in template
+      ΓêÜ should handle ${VAR} references that do not exist in env vars (1 ms)
+      ΓêÜ should replace ${VAR} references inside secret values (3 ms)
+      ΓêÜ should handle ${VAR} references inside secret values that do not exist
+      ΓêÜ should handle multiple kv:// references in template
+      ΓêÜ should handle ${VAR} references in template before kv:// resolution (1 ms)
+    generateMissingSecrets - branch coverage
+      ΓêÜ should generate database password for databases-{app}-{index}-passwordKeyVault format (1 ms)
+      ΓêÜ should generate database URL for databases-{app}-{index}-urlKeyVault format (1 ms)
+      ΓêÜ should generate random password for generic password key (1 ms)
+      ΓêÜ should generate empty string for URL keys that are not database URLs (1 ms)
+      ΓêÜ should generate random key for key/secret/token patterns (1 ms)
+      ΓêÜ should handle existing secrets file with invalid YAML (1 ms)
+      ΓêÜ should handle error when reading existing secrets file (1 ms)
+      ΓêÜ should handle secret key that does not match any pattern (1 ms)
+      ΓêÜ should handle existing secrets file with non-object YAML (1 ms)
+      ΓêÜ should create directory if it does not exist (1 ms)
+      ΓêÜ should return empty array when no missing keys (1 ms)
+      ΓêÜ should handle secrets file that does not exist (1 ms)
+      ΓêÜ should handle empty secrets file (2 ms)
+      ΓêÜ should handle duplicate kv:// references in template (1 ms)
+      ΓêÜ should generate default secret for keys containing token (1 ms)
+      ΓêÜ should merge new secrets with existing ones (1 ms)
+      ΓêÜ should handle app name with hyphens in database password generation (1 ms)
+      ΓêÜ should handle app name with hyphens in database URL generation
+      ΓêÜ should handle default secrets path when not provided (1 ms)
+    generateEnvFile - branch coverage
+      ΓêÜ should not copy .env when envOutputPath is null (1 ms)
+      ΓêÜ should handle envOutputPath ending with .env (1 ms)
+      ΓêÜ should handle envOutputPath pointing to existing directory (1 ms)
+      ΓêÜ should generate missing secrets when force flag is true (1 ms)
+      ΓêÜ should handle envOutputPath when output directory does not exist (1 ms)
+      ΓêÜ should handle envOutputPath when variables.yaml does not exist
+      ΓêÜ should handle envOutputPath when build.envOutputPath is not set (1 ms)
+      ΓêÜ should handle envOutputPath when path does not end with .env and directory does not exist (1 ms)
+      ΓêÜ should use custom secretsPath when provided (1 ms)
+      ΓêÜ should use custom environment when provided (2 ms)
+    generateAdminSecretsEnv - branch coverage
+      ΓêÜ should handle error when secrets file does not exist but path exists (1 ms)
+      ΓêÜ should create default secrets when file does not exist
+      ΓêÜ should use empty string when postgres-passwordKeyVault is missing (1 ms)
+      ΓêÜ should use custom secretsPath when provided (1 ms)
+      ΓêÜ should handle error when creating default secrets fails
+    createDefaultSecrets - branch coverage
+      ΓêÜ should handle path without ~ prefix (1 ms)
+      ΓêÜ should create directory if it does not exist (1 ms)
+      ΓêÜ should write default secrets content (1 ms)
+      ΓêÜ should include all default secrets in output
+    loadSecrets - cascading lookup
+      ΓêÜ should load from user secrets.local.yaml first (1 ms)
+      ΓêÜ should fallback to build.secrets when value missing in user file (1 ms)
+      ΓêÜ should use build.secrets for empty values in user file (1 ms)
+      ΓêÜ should fallback to default secrets.yaml if no secrets found (1 ms)
+      ΓêÜ should throw error if no secrets file found (1 ms)
+    saveLocalSecret
+      ΓêÜ should save secret to secrets.local.yaml (1 ms)
+      ΓêÜ should merge with existing secrets
+      ΓêÜ should throw error if key is invalid (3 ms)
+      ΓêÜ should throw error if value is invalid
+      ΓêÜ should handle existing secrets file with invalid YAML (1 ms)
+    isLocalhost
+      ΓêÜ should return true for localhost URLs (1 ms)
+      ΓêÜ should return false for non-localhost URLs
+      ΓêÜ should return false for invalid inputs (1 ms)
+
+PASS tests/lib/cli-branch-coverage.test.js
+  CLI Branch Coverage Tests
+    handleCommandError - all error message branches
+      ΓêÜ should handle Docker errors (1 ms)
+      ΓêÜ should handle port errors (1 ms)
+      ΓêÜ should handle permission errors (1 ms)
+      ΓêÜ should handle Azure CLI errors
+      ΓêÜ should handle ACR authentication errors
+      ΓêÜ should handle image not found errors (1 ms)
+      ΓêÜ should handle invalid registry URL format (1 ms)
+      ΓêÜ should handle registry URL required errors (3 ms)
+      ΓêÜ should handle generic errors (1 ms)
+    login command - method validation
+      ΓêÜ should validate method is device or credentials
+      ΓêÜ should accept device method (1 ms)
+      ΓêÜ should accept credentials method (1 ms)
+
+PASS tests/lib/filesystem.test.js
+  File System Operations
+    Directory Operations
+      ΓêÜ should create application directory structure (6 ms)
+      ΓêÜ should create nested directories (4 ms)
+      ΓêÜ should handle directory already existing (5 ms)
+    File Write Operations
+      ΓêÜ should write variables.yaml file (6 ms)
+      ΓêÜ should write .env file (5 ms)
+      ΓêÜ should write rbac.yaml file (10 ms)
+      ΓêÜ should write multiple files to application directory (40 ms)
+    File Read Operations
+      ΓêÜ should read variables.yaml file (6 ms)
+      ΓêÜ should handle reading non-existent file (2 ms)
+      ΓêÜ should read .env file with multiple variables (6 ms)
+    File Existence Checks
+      ΓêÜ should check if file exists (5 ms)
+      ΓêÜ should check if file does not exist (2 ms)
+      ΓêÜ should check multiple files exist (8 ms)
+    YAML File Operations
+      ΓêÜ should parse valid YAML file (5 ms)
+      ΓêÜ should handle invalid YAML gracefully (10 ms)
+      ΓêÜ should preserve YAML formatting (5 ms)
+    File Cleanup Operations
+      ΓêÜ should delete file (8 ms)
+      ΓêÜ should handle deleting non-existent file (2 ms)
+      ΓêÜ should delete directory (4 ms)
+    Path Operations
+      ΓêÜ should join paths correctly (2 ms)
+      ΓêÜ should resolve absolute paths (2 ms)
+      ΓêÜ should normalize path separators (3 ms)
+
+PASS tests/lib/cli-error-handling.test.js
+  CLI Error Handling
+    Error handling
+      ΓêÜ should handle command errors with helpful messages (51 ms)
+      ΓêÜ should handle port conflict errors (1 ms)
+      ΓêÜ should handle permission errors (1 ms)
+      ΓêÜ should handle Azure CLI errors
+      ΓêÜ should handle ACR authentication errors (1 ms)
+      ΓêÜ should handle image not found errors (1 ms)
+      ΓêÜ should handle invalid registry URL errors (1 ms)
+      ΓêÜ should handle registry URL required errors
+      ΓêÜ should handle generic errors (1 ms)
+    Command validation
+      ΓêÜ should validate command arguments (3 ms)
+
+PASS tests/lib/commands-app-actions-rotate.test.js
+  Application Commands - Rotate Secret Action
+    rotate-secret command action
+      ΓêÜ should rotate secret successfully (6 ms)
+      ΓêÜ should handle not logged in (1 ms)
+      ΓêÜ should handle missing environment (3 ms)
+      ΓêÜ should handle API failure (2 ms)
+      ΓêÜ should handle missing application key in response (2 ms)
+
+PASS tests/lib/commands-login.test.js
+  Login Command Module
+    validateEnvironmentKey
+      ΓêÜ should accept valid environment keys (1 ms)
+      ΓêÜ should reject invalid environment key format (1 ms)
+      ΓêÜ should reject environment key with spaces (1 ms)
+      ΓêÜ should accept environment key with hyphens and underscores (1 ms)
+    determineAuthMethod
+      ΓêÜ should reject invalid method (1 ms)
+      ΓêÜ should prompt for method when not provided (1 ms)
+    promptForCredentials
+      ΓêÜ should validate empty client ID
+      ΓêÜ should validate valid client ID
+      ΓêÜ should validate empty client secret (1 ms)
+      ΓêÜ should validate valid client secret (1 ms)
+      ΓêÜ should trim whitespace from credentials (3 ms)
+      ΓêÜ should return credentials without prompting when both provided (1 ms)
+    getEnvironmentKey
+      ΓêÜ should prompt for environment key when not provided
+      ΓêÜ should validate empty environment key in prompt
+      ΓêÜ should validate environment key format in prompt - valid key (1 ms)
+      ΓêÜ should validate environment key format in prompt - test line 124 with non-empty input (1 ms)
+      ΓêÜ should validate and reject invalid environment key format in prompt (1 ms)
+      ΓêÜ should trim whitespace from environment key (1 ms)
+    handleDeviceCodeLogin
+      ΓêÜ should handle successful device code flow (1 ms)
+      ΓêÜ should handle device code flow failure
+      ΓêÜ should handle polling failure (1 ms)
+      ΓêÜ should update spinner text during polling (1 ms)
+    handleCredentialsLogin
+      ΓêÜ should handle token response with token field (1 ms)
+      ΓêÜ should handle token response with accessToken field (1 ms)
+      ΓêÜ should handle login failure (1 ms)
+    handleLogin
+      ΓêÜ should remove trailing slash from URL (3 ms)
+      ΓêÜ should save environment for device flow (1 ms)
+      ΓêÜ should not save environment for credentials flow
+      ΓêÜ should display success message after login (1 ms)
+
+PASS tests/lib/cli-setup.test.js
+  CLI Setup Tests
+    setupCommands
+      ΓêÜ should initialize CLI without errors (1 ms)
+    Command actions
+      ΓêÜ should handle create command action (1 ms)
+      ΓêÜ should handle build command action (1 ms)
+      ΓêÜ should handle run command action
+      ΓêÜ should handle push command action (1 ms)
+      ΓêÜ should handle deploy command action (1 ms)
+      ΓêÜ should handle up command action
+      ΓêÜ should handle down command action (1 ms)
+    Error handling in command actions
+      ΓêÜ should handle create command errors (3 ms)
+      ΓêÜ should handle build command errors (1 ms)
+      ΓêÜ should handle run command errors (1 ms)
+      ΓêÜ should handle push command errors (1 ms)
+      ΓêÜ should handle deploy command errors (2 ms)
+      ΓêÜ should handle infra start errors (1 ms)
+      ΓêÜ should handle infra stop errors (1 ms)
+    Command option handling
+      ΓêÜ should handle port option
+      ΓêÜ should handle language option (1 ms)
+      ΓêÜ should handle registry option
+      ΓêÜ should handle tag option
+
+PASS tests/lib/app-coverage.test.js
+  Application Module Coverage
+    validateAppName
+      ΓêÜ should reject names with invalid characters (9 ms)
+      ΓêÜ should reject names starting with dash (2 ms)
+      ΓêÜ should reject names ending with dash (4 ms)
+      ΓêÜ should reject names with consecutive dashes (2 ms)
+      ΓêÜ should reject names that are too short (1 ms)
+      ΓêÜ should reject names that are too long (2 ms)
+    createApp error paths
+      ΓêÜ should handle existing application directory (4 ms)
+      ΓêÜ should handle empty app name (2 ms)
+      ΓêÜ should handle undefined app name (2 ms)
+    pushApp error paths
+      ΓêÜ should handle missing registry (9 ms)
+      ΓêÜ should handle invalid registry URL (5 ms)
+      ΓêÜ should handle missing local image (5 ms)
+      ΓêÜ should handle missing Azure CLI (4 ms)
+
+PASS tests/lib/app-readme.test.js
+  Application README Module
+    formatAppDisplayName
+      ΓêÜ should capitalize first letter of each word (3 ms)
+      ΓêÜ should handle app names with multiple hyphens (2 ms)
+      ΓêÜ should handle app names without hyphens (2 ms)
+    generateReadmeMd
+      ΓêÜ should generate README with basic configuration (7 ms)
+      ΓêÜ should include database prerequisite when database is enabled (4 ms)
+      ΓêÜ should include redis prerequisite when redis is enabled (3 ms)
+      ΓêÜ should include storage prerequisite when storage is enabled (3 ms)
+      ΓêÜ should include authentication prerequisite when authentication is enabled (3 ms)
+      ΓêÜ should include all prerequisites when all services are enabled (4 ms)
+      ΓêÜ should use default port 3000 when port is not specified (3 ms)
+      ΓêÜ should use custom port when specified (3 ms)
+      ΓêÜ should include all required sections (3 ms)
+      ΓêÜ should generate correct image name (2 ms)
+      ΓêÜ should not include database troubleshooting when database is disabled (2 ms)
+    generateReadmeMdFile
+      ΓêÜ should create README.md file when it does not exist (7 ms)
+      ΓêÜ should not overwrite existing README.md file (4 ms)
+      ΓêÜ should handle errors gracefully (3 ms)
+      ΓêÜ should generate README with all services enabled (4 ms)
+      ΓêÜ should generate README with no services enabled (6 ms)
+
+PASS tests/lib/health-check.test.js
+  Health Check Utilities
+    waitForHealthCheck
+      db-init container handling
+        ΓêÜ should check db-init container exists and is already completed (2 ms)
+        ΓêÜ should log warning when db-init exits with non-zero code (1 ms)
+        ΓêÜ should wait for db-init container to complete (1 ms)
+        ΓêÜ should handle db-init container exiting with non-zero code during wait (1 ms)
+        ΓêÜ should handle db-init container not existing (1 ms)
+        ΓêÜ should handle db-init container error gracefully (3 ms)
+      port detection
+        ΓêÜ should auto-detect port from container (2 ms)
+        ΓêÜ should use default port when container port detection fails (1 ms)
+        ΓêÜ should use default port when no ports found (1 ms)
+      health check path configuration
+        ΓêÜ should use custom health check path from config (1 ms)
+        ΓêÜ should use default /health path when not configured (1 ms)
+      health check response formats
+        ΓêÜ should handle Keycloak format with status UP (1 ms)
+        ΓêÜ should handle standard format with status ok and database connected (1 ms)
+        ΓêÜ should handle standard format with status ok and no database field (1 ms)
+        ΓêÜ should handle alternative format with status healthy (1 ms)
+        ΓêÜ should handle success-based format with success true (2 ms)
+        ΓêÜ should reject when status ok but database not connected (15 ms)
+        ΓêÜ should handle non-JSON response with status 200 (2 ms)
+        ΓêÜ should reject non-JSON response with non-200 status (1 ms)
+        ΓêÜ should handle invalid JSON response (1 ms)
+        ΓêÜ should reject when health status is neither UP nor ok (2 ms)
+      debug mode
+        ΓêÜ should log debug information when debug is enabled (1 ms)
+        ΓêÜ should not log debug information when debug is disabled (1 ms)
+      error handling
+        ΓêÜ should handle HTTP request errors (2 ms)
+        ΓêÜ should handle HTTP request timeout (3 ms)
+        ΓêÜ should retry health check on failure (2 ms)
+        ΓêÜ should handle exceptions during health check (2 ms)
+      timeout handling
+        ΓêÜ should throw error after timeout (1 ms)
+        ΓêÜ should not log waiting message on final attempt (2 ms)
+    checkHealthEndpoint
+      ΓêÜ should return true for healthy response with status UP (1 ms)
+      ΓêÜ should return true for healthy response with status healthy (1 ms)
+      ΓêÜ should return true for healthy response with success true (1 ms)
+      ΓêÜ should return false for unhealthy response
+      ΓêÜ should return false on HTTP error (1 ms)
+      ΓêÜ should return false on timeout (1 ms)
+      ΓêÜ should log debug information when debug is enabled (1 ms)
+      ΓêÜ should throw error on invalid URL (5 ms)
+
+PASS tests/lib/cli-coverage.test.js
+  CLI Coverage Tests
+    Command execution
+      ΓêÜ should execute createApp command (1 ms)
+      ΓêÜ should execute buildApp command (1 ms)
+      ΓêÜ should execute runApp command (3 ms)
+      ΓêÜ should execute pushApp command (1 ms)
+      ΓêÜ should execute deployApp command
+    Error handling
+      ΓêÜ should handle createApp errors (4 ms)
+      ΓêÜ should handle buildApp errors (1 ms)
+      ΓêÜ should handle runApp errors (1 ms)
+      ΓêÜ should handle pushApp errors (1 ms)
+      ΓêÜ should handle deployApp errors
+    Infrastructure commands
+      ΓêÜ should handle up command with volumes
+      ΓêÜ should handle infra restart service (1 ms)
+      ΓêÜ should handle infra health check
+      ΓêÜ should handle infra status (1 ms)
+    Utility commands
+      ΓêÜ should handle resolve command (1 ms)
+      ΓêÜ should handle json command with warnings
+      ΓêÜ should handle json command with errors (1 ms)
+      ΓêÜ should handle genkey command (1 ms)
+      ΓêÜ should handle doctor command with recommendations (2 ms)
+      ΓêÜ should handle doctor command with unhealthy infra (1 ms)
+    validateCommand
+      ΓêÜ should validate commands
+      ΓêÜ should return true for any command (1 ms)
+
+PASS tests/lib/app-run-compose.test.js
+  app-run Docker Compose Generation
+    generateDockerCompose
+      ΓêÜ should generate compose file with db-init service when requiresDatabase is true (10 ms)
+      ΓêÜ should not include db-init service when requiresDatabase is false (12 ms)
+      ΓêÜ should use databases from config.requires.databases (5 ms)
+      ΓêÜ should convert Windows paths to forward slashes for volumes (5 ms)
+      ΓêÜ should generate valid YAML that can be parsed (9 ms)
+
+PASS tests/lib/dockerfile-utils.test.js
+  Dockerfile Utils
+    loadDockerfileTemplate
+      ΓêÜ should load TypeScript Dockerfile template (4 ms)
+      ΓêÜ should load Python Dockerfile template (2 ms)
+      ΓêÜ should throw error for unsupported language (10 ms)
+    renderDockerfile
+      ΓêÜ should render Dockerfile without app flag (2 ms)
+      ΓêÜ should replace COPY . . with app source path for TypeScript when isAppFlag is true (2 ms)
+      ΓêÜ should replace COPY package*.json with app source path for TypeScript when isAppFlag is true (2 ms)
+      ΓêÜ should replace COPY . . with app source path for Python when isAppFlag is true (2 ms)
+      ΓêÜ should replace COPY requirements*.txt with app source path for Python when isAppFlag is true (2 ms)
+      ΓêÜ should replace COPY requirements.txt with app source path for Python when isAppFlag is true (3 ms)
+      ΓêÜ should handle multiple COPY statements correctly (2 ms)
+    checkTemplateDockerfile
+      ΓêÜ should return Dockerfile path if exists and forceTemplate is false (4 ms)
+      ΓêÜ should return null if Dockerfile does not exist (2 ms)
+      ΓêÜ should return null if forceTemplate is true even if Dockerfile exists (5 ms)
+    checkProjectDockerfile
+      ΓêÜ should return null if dockerfile is not specified in buildConfig (1 ms)
+      ΓêÜ should return null if forceTemplate is true (2 ms)
+      ΓêÜ should return custom Dockerfile path if exists in contextPath (3 ms)
+      ΓêÜ should return custom Dockerfile path if exists in builder directory (5 ms)
+      ΓêÜ should return null if custom Dockerfile does not exist in either location (2 ms)
+      ΓêÜ should prefer contextPath Dockerfile over builder directory Dockerfile (4 ms)
+
+PASS tests/lib/cli-commands.test.js
+  CLI Commands
+    create command
+      ΓêÜ should call createApp with correct parameters (1 ms)
+      ΓêÜ should handle create command errors (5 ms)
+    build command
+      ΓêÜ should call buildApp with correct parameters (1 ms)
+      ΓêÜ should handle build command errors (1 ms)
+    run command
+      ΓêÜ should call runApp with correct parameters
+      ΓêÜ should handle run command errors (1 ms)
+    push command
+      ΓêÜ should call pushApp with correct parameters (1 ms)
+      ΓêÜ should handle push command errors
+    deploy command
+      ΓêÜ should call deployApp with correct parameters (1 ms)
+      ΓêÜ should handle deploy command errors (1 ms)
+
+PASS tests/lib/github-generator.test.js
+  GitHub Generator Module
+    getTemplateContext
+      ΓêÜ should generate correct context for TypeScript application (6 ms)
+      ΓêÜ should generate correct context for Python application (2 ms)
+      ΓêÜ should use default values when options are missing (2 ms)
+    validateWorkflowConfig
+      ΓêÜ should validate correct configuration (1 ms)
+      ΓêÜ should detect missing required fields (2 ms)
+      ΓêÜ should detect invalid language (1 ms)
+      ΓêÜ should detect invalid port (3 ms)
+      ΓêÜ should detect invalid branch name (1 ms)
+      ΓêÜ should generate warnings for common issues (2 ms)
+    generateWorkflowsWithValidation
+      ΓêÜ should generate workflows with valid configuration (23 ms)
+      ΓêÜ should fail with invalid configuration (1 ms)
+      Γùï skipped should handle template generation errors
+    generateWorkflowFile
+      ΓêÜ should generate a specific workflow file (8 ms)
+      ΓêÜ should handle template file not found (9 ms)
+
+  console.log
+    Stopping existing container aifabrix-test-app...
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+  console.log
+    Container aifabrix-test-app was not running
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/app-run-advanced.test.js
+  Application Run Advanced Tests
+    generateDockerCompose additional paths
+      ΓêÜ should generate compose for Python app (8 ms)
+      ΓêÜ should generate compose with database (5 ms)
+      ΓêÜ should generate compose with redis (8 ms)
+      ΓêÜ should generate compose with storage (5 ms)
+      ΓêÜ should generate compose with authentication (5 ms)
+    stopAndRemoveContainer error paths
+      ΓêÜ should handle exec errors gracefully (4 ms)
+    checkContainerRunning error paths
+      ΓêÜ should handle exec errors gracefully (1 ms)
+    checkImageExists error paths
+      ΓêÜ should handle docker exec errors (1 ms)
+
+PASS tests/lib/app-run-branch-coverage.test.js
+  App-Run Branch Coverage Tests
+    waitForHealthCheck - branch coverage
+      ΓêÜ should handle unhealthy container status branch (6 ms)
+      ΓêÜ should handle waiting loop - status not healthy or unhealthy branch (2 ms)
+      ΓêÜ should handle error retry branch logic (3 ms)
+    runApp - branch coverage for lines 214-274
+      ΓêÜ should use options.port when provided (4 ms)
+      ΓêÜ should use config.build.localPort when options.port not provided (2 ms)
+      ΓêÜ should use config.port when build.localPort not provided (2 ms)
+      ΓêÜ should default to 3000 when no port specified (4 ms)
+      ΓêÜ should handle .env file already exists (4 ms)
+      ΓêÜ should handle cleanup error in finally block (2 ms)
+    checkPortAvailable - error path
+      ΓêÜ should test port availability branch logic (2 ms)
+    stopAndRemoveContainer - error handling
+      ΓêÜ should handle container not existing gracefully - branch logic (2 ms)
+
+PASS tests/lib/commands-app.test.js
+  Application Commands Module
+    setupAppCommands
+      ΓêÜ should set up app commands with register, list, and rotate-secret (5 ms)
+    register command
+      ΓêÜ should register application successfully (5 ms)
+      ΓêÜ should handle missing variables.yaml by creating app (2 ms)
+      ΓêÜ should validate application key format (2 ms)
+      ΓêÜ should validate port range (2 ms)
+    list command
+      ΓêÜ should list applications for environment (2 ms)
+      ΓêÜ should handle empty application list (5 ms)
+      ΓêÜ should handle API errors gracefully (2 ms)
+    rotate-secret command
+      ΓêÜ should rotate secret successfully (2 ms)
+      ΓêÜ should handle rotation failure (2 ms)
+    error handling
+      ΓêÜ should handle missing config gracefully (3 ms)
+      ΓêÜ should handle missing variables.yaml gracefully (2 ms)
+      ΓêÜ should validate required fields in variables.yaml (2 ms)
+    configuration validation
+      ΓêÜ should validate application type (2 ms)
+      ΓêÜ should validate registry mode (2 ms)
+      ΓêÜ should extract app configuration from variables.yaml (6 ms)
+
+PASS tests/lib/env-reader.test.js
+  Environment Reader Module
+    readExistingEnv
+      ΓêÜ should read existing .env file (5 ms)
+      ΓêÜ should return null when .env file does not exist (2 ms)
+      ΓêÜ should handle empty .env file (3 ms)
+      ΓêÜ should skip comments and empty lines (3 ms)
+      ΓêÜ should handle quoted values (3 ms)
+    detectSensitiveValue
+      ΓêÜ should detect sensitive keys (4 ms)
+      ΓêÜ should detect sensitive values by pattern (2 ms)
+      ΓêÜ should not detect non-sensitive values (2 ms)
+    convertToEnvTemplate
+      ΓêÜ should convert sensitive values to kv:// references (2 ms)
+      ΓêÜ should handle empty existing environment (1 ms)
+    generateSecretsFromEnv
+      ΓêÜ should extract sensitive values for secrets (2 ms)
+      ΓêÜ should handle empty environment variables (2 ms)
+    validateEnvKey
+      ΓêÜ should validate proper environment variable names (1 ms)
+      ΓêÜ should reject invalid environment variable names (2 ms)
+    sanitizeEnvValue
+      ΓêÜ should remove injection characters (3 ms)
+    generateEnvTemplate
+      ΓêÜ should generate template with existing environment conversion (4 ms)
+      ΓêÜ should handle validation warnings (1 ms)
+
+PASS tests/lib/variable-transformer.test.js
+  Variable Transformer Module
+    transformVariablesForValidation
+      flat structure
+        ΓêÜ should return flat structure as-is with defaults (4 ms)
+        ΓêÜ should preserve all flat structure fields (1 ms)
+        ΓêÜ should use appName fallback when key is missing in flat structure
+        ΓêÜ should use appName fallback when displayName is missing in flat structure
+      nested structure - basic transformation
+        ΓêÜ should transform nested app structure (1 ms)
+        ΓêÜ should use appName fallback when app.key missing (1 ms)
+        ΓêÜ should handle image without registry
+        ΓêÜ should default image tag to latest (1 ms)
+        ΓêÜ should use image.name or app.key or appName for image name (1 ms)
+      nested structure - requires fields
+        ΓêÜ should transform requires.database to requiresDatabase
+        ΓêÜ should transform requires.redis to requiresRedis (1 ms)
+        ΓêÜ should transform requires.storage to requiresStorage (1 ms)
+        ΓêÜ should create databases array when requires.database is true
+        ΓêÜ should use appName fallback in databases when app.key is missing (1 ms)
+        ΓêÜ should use requires.databases if provided
+      optional fields - healthCheck
+        ΓêÜ should include healthCheck when present (1 ms)
+      optional fields - authentication
+        ΓêÜ should include authentication when present with all fields (1 ms)
+        ΓêÜ should handle authentication with enableSSO false and missing type/requiredRoles
+        ΓêÜ should handle authentication with enableSSO true and missing type/requiredRoles (2 ms)
+        ΓêÜ should sanitize keycloak type to azure (1 ms)
+      optional fields - repository
+        ΓêÜ should include repository when enabled is true (1 ms)
+        ΓêÜ should include repository when repositoryUrl is valid GitHub URL
+        ΓêÜ should include repository when repositoryUrl is valid GitLab URL (1 ms)
+        ΓêÜ should include repository when repositoryUrl is valid Azure DevOps URL
+        ΓêÜ should not include repositoryUrl when URL is empty string (1 ms)
+        ΓêÜ should not include repositoryUrl when URL is whitespace only
+        ΓêÜ should not include repositoryUrl when URL is invalid (1 ms)
+        ΓêÜ should not include repository when both enabled is false and repositoryUrl is invalid
+      optional fields - build
+        ΓêÜ should include build with envOutputPath (1 ms)
+        ΓêÜ should include build with secrets when not null/undefined/empty string
+        ΓêÜ should not include secrets when null (1 ms)
+        ΓêÜ should exclude secrets when null but include other valid fields
+        ΓêÜ should not include secrets when undefined (1 ms)
+        ΓêÜ should not include secrets when empty string
+        ΓêÜ should exclude secrets when empty string but include other valid fields (1 ms)
+        ΓêÜ should include build with localPort
+        ΓêÜ should include build with language (1 ms)
+        ΓêÜ should include build with context
+        ΓêÜ should include build with dockerfile when not empty (1 ms)
+        ΓêÜ should not include dockerfile when empty string
+        ΓêÜ should exclude dockerfile when empty string but include other valid fields (1 ms)
+        ΓêÜ should not include dockerfile when whitespace only
+        ΓêÜ should exclude dockerfile when whitespace only but include other valid fields (1 ms)
+        ΓêÜ should not include build when all fields are empty/missing
+        ΓêÜ should include build with all fields (1 ms)
+      optional fields - deployment
+        ΓêÜ should include deployment with valid controllerUrl
+        ΓêÜ should not include controllerUrl when empty string
+        ΓêÜ should not include controllerUrl when whitespace only (1 ms)
+        ΓêÜ should not include controllerUrl when not https
+        ΓêÜ should include deployment with valid clientId (1 ms)
+        ΓêÜ should not include clientId when empty string
+        ΓêÜ should not include clientId when whitespace only (1 ms)
+        ΓêÜ should not include clientId when invalid format (uppercase)
+        ΓêÜ should not include clientId when contains invalid characters (1 ms)
+        ΓêÜ should include deployment with valid clientSecret (kv://)
+        ΓêÜ should include deployment with valid clientSecret (any string) (1 ms)
+        ΓêÜ should not include clientSecret when empty string
+        ΓêÜ should not include clientSecret when whitespace only (1 ms)
+        ΓêÜ should not include deployment when all fields are invalid
+        ΓêÜ should include deployment with all valid fields (1 ms)
+      optional fields - startupCommand
+        ΓêÜ should include startupCommand when present
+      optional fields - runtimeVersion
+        ΓêÜ should include runtimeVersion when present (1 ms)
+      optional fields - scaling
+        ΓêÜ should include scaling when present
+      optional fields - frontDoorRouting
+        ΓêÜ should include frontDoorRouting when present
+      optional fields - roles
+        ΓêÜ should include roles when present (1 ms)
+      optional fields - permissions
+        ΓêÜ should include permissions when present (1 ms)
+      complex nested structure
+        ΓêÜ should transform complete nested structure with all optional fields (3 ms)
+
+PASS tests/lib/commands-app-actions.test.js
+  Application Commands Actions - Invoke Handlers
+    register command action
+      ΓêÜ should register application with full flow (4 ms)
+      ΓêÜ should handle missing variables.yaml and create app (3 ms)
+      ΓêÜ should handle file read error (non-ENOENT) (2 ms)
+      ΓêÜ should handle missing required fields (2 ms)
+      ΓêÜ should handle validation errors (2 ms)
+      ΓêÜ should handle not logged in (2 ms)
+      ΓêÜ should handle registration API failure (2 ms)
+      ΓêÜ should use options.name when app.name is missing (2 ms)
+      ΓêÜ should handle Python language (service type) (3 ms)
+    list command action
+      ΓêÜ should list applications successfully (1 ms)
+      ΓêÜ should handle not logged in (1 ms)
+      ΓêÜ should handle API failure (2 ms)
+      ΓêÜ should handle empty data (1 ms)
+
+PASS tests/lib/app-commands.test.js
+  App Commands
+    rotate-secret command
+      ΓêÜ should rotate secret with environment parameter (8 ms)
+      ΓêÜ should fail when environment is not provided (3 ms)
+      ΓêÜ should fail when not logged in (5 ms)
+      ΓêÜ should handle rotation failure gracefully (2 ms)
+    register command
+      ΓêÜ should register app with existing variables.yaml (4 ms)
+      ΓêÜ should create minimal config if variables.yaml is missing (2 ms)
+    list command
+      ΓêÜ should list applications in an environment (4 ms)
+      ΓêÜ should fail when not logged in (3 ms)
+
+PASS tests/lib/push.test.js
+  Push Utilities
+    checkAzureCLIInstalled
+      ΓêÜ should return true when Azure CLI is installed (1 ms)
+      ΓêÜ should return false when Azure CLI is not installed (2 ms)
+      ΓêÜ should return false on any error (1 ms)
+    validateRegistryURL
+      ΓêÜ should accept valid ACR URLs (1 ms)
+      ΓêÜ should accept external registries
+      ΓêÜ should reject invalid formats
+    extractRegistryName
+      ΓêÜ should extract registry name from valid ACR URL (1 ms)
+      ΓêÜ should throw error for invalid URL format (7 ms)
+      ΓêÜ should handle URLs with paths (1 ms)
+    checkACRAuthentication
+      ΓêÜ should return true when authenticated (1 ms)
+      ΓêÜ should return false when not authenticated
+      ΓêÜ should handle authentication errors gracefully (1 ms)
+    authenticateACR
+      ΓêÜ should authenticate successfully (3 ms)
+      ΓêÜ should throw error on authentication failure
+      ΓêÜ should handle invalid registry name (1 ms)
+    checkLocalImageExists
+      ΓêÜ should return true when image exists
+      ΓêÜ should return false when image does not exist
+      ΓêÜ should return false on error (1 ms)
+    tagImage
+      ΓêÜ should tag image successfully (1 ms)
+      ΓêÜ should throw error on tagging failure (1 ms)
+      ΓêÜ should handle invalid image names (1 ms)
+    pushImage
+      ΓêÜ should push image successfully
+      ΓêÜ should throw error on push failure
+      ΓêÜ should handle authentication errors
+      ΓêÜ should handle network errors (1 ms)
+
+  console.log
+    Infrastructure not running or not properly configured
+
+      at Object.log (lib/utils/logger.js:24:13)
+
+PASS tests/lib/infra.test.js
+  Infrastructure Module
+    startInfra
+      Γùï skipped should start infrastructure services successfully
+      Γùï skipped should generate admin-secrets.env if it does not exist
+      Γùï skipped should throw error if Docker is not available
+      Γùï skipped should throw error if compose template not found
+      Γùï skipped should handle docker-compose failures gracefully
+    stopInfra
+      ΓêÜ should handle case when infrastructure is not running (3 ms)
+      Γùï skipped should stop infrastructure services successfully
+      Γùï skipped should handle docker-compose failures gracefully
+    checkInfraHealth
+      Γùï skipped should return health status for all services
+      Γùï skipped should return unknown for services that fail health check
+    getInfraStatus
+      ΓêÜ should return not running for services that fail status check (1 ms)
+      Γùï skipped should return status information for all services
+    restartService
+      ΓêÜ should throw error for invalid service name (9 ms)
+      ΓêÜ should throw error if service name is not provided (1 ms)
+      ΓêÜ should throw error if infrastructure not properly configured (1 ms)
+      Γùï skipped should restart a valid service successfully
+      Γùï skipped should handle restart failures gracefully
+    waitForServices (private function)
+      ΓêÜ should wait for services to become healthy
+
+PASS tests/lib/templates.test.js
+  Templates Module
+    generateVariablesYaml
+      ΓêÜ should generate valid YAML for TypeScript application (2 ms)
+      ΓêÜ should generate valid YAML for Python application (1 ms)
+      ΓêÜ should handle missing configuration values (2 ms)
+      ΓêÜ should include deployment section with default values
+      ΓêÜ should include deployment section in all generated YAMLs (1 ms)
+    generateEnvTemplate
+      ΓêÜ should generate environment template with all services (1 ms)
+      ΓêÜ should generate minimal environment template (3 ms)
+      ΓêÜ should include proper section headers
+      ΓêÜ should include MISO Controller variables when controller is enabled
+      ΓêÜ should use custom controllerUrl when provided (1 ms)
+      ΓêÜ should not include MISO Controller variables when controller is disabled
+      ΓêÜ should include MISO Controller section with all other services (1 ms)
+    generateRbacYaml
+      ΓêÜ should generate RBAC configuration when authentication is enabled (1 ms)
+      ΓêÜ should return null when authentication is disabled
+      ΓêÜ should include proper role definitions (1 ms)
+    generateSecretsYaml
+      ΓêÜ should generate secrets configuration with all services (1 ms)
+      ΓêÜ should generate minimal secrets configuration
+
+PASS tests/lib/utils/secrets-path.test.js
+  Secrets Path Module
+    resolveSecretsPath
+      ΓêÜ should return provided path when path is given (1 ms)
+      ΓêÜ should resolve relative path starting with ..
+      ΓêÜ should check common locations when no path provided (1 ms)
+      ΓêÜ should check second location when first does not exist (1 ms)
+      ΓêÜ should check third location when first two do not exist (1 ms)
+      ΓêÜ should check fourth location when first three do not exist
+      ΓêÜ should check fifth location when first four do not exist (1 ms)
+      ΓêÜ should return default location when no common locations exist (2 ms)
+    getActualSecretsPath
+      ΓêÜ should return resolved path when explicit path provided (1 ms)
+      ΓêÜ should return user secrets path when it exists
+      ΓêÜ should check build.secrets from variables.yaml when appName provided and user file does not exist (1 ms)
+      ΓêÜ should handle build.secrets path that does not exist (1 ms)
+      ΓêÜ should handle variables.yaml that does not exist (1 ms)
+      ΓêÜ should handle variables.yaml with no build.secrets
+      ΓêÜ should handle error when reading variables.yaml (1 ms)
+      ΓêÜ should handle error when parsing invalid YAML in variables.yaml
+      ΓêÜ should return default path when it exists and user file does not (1 ms)
+      ΓêÜ should return user secrets path as fallback when no files exist (1 ms)
+      ΓêÜ should not check variables.yaml when appName is not provided
+
+PASS tests/lib/key-generator.test.js
+  Key Generator Module
+    generateDeploymentKey
+      ΓêÜ should generate deployment key from variables.yaml (1 ms)
+      ΓêÜ should throw error if app name is invalid (4 ms)
+      ΓêÜ should throw error if variables.yaml not found
+    generateDeploymentKeyFromContent
+      ΓêÜ should generate SHA256 hash from content (1 ms)
+      ΓêÜ should generate consistent hash for same content
+      ΓêÜ should generate different hash for different content
+      ΓêÜ should throw error if content is invalid (1 ms)
+      ΓêÜ should handle empty content (3 ms)
+      ΓêÜ should handle special characters in content (1 ms)
+    validateDeploymentKey
+      ΓêÜ should return true for valid SHA256 hash
+      ΓêÜ should return true for valid SHA256 hash with uppercase letters (1 ms)
+      ΓêÜ should return false for invalid key formats (1 ms)
+      ΓêÜ should return false for non-hex characters
+      ΓêÜ should handle edge cases (1 ms)
+    Integration tests
+      ΓêÜ should work end-to-end: generate key from file and validate it (1 ms)
+      ΓêÜ should generate same key for identical content
+
+PASS tests/lib/commands-app-branch-coverage.test.js
+  Application Commands Branch Coverage Tests
+    register command - error path branches
+      ΓêÜ should handle file read error other than ENOENT (1 ms)
+      ΓêÜ should handle createApp not available
+      ΓêÜ should handle missing app.key in variables (1 ms)
+      ΓêÜ should handle application key fallback to appKey parameter
+      ΓêÜ should handle displayName fallback chain (1 ms)
+      ΓêÜ should handle override with options.name (1 ms)
+      ΓêÜ should handle Python language for appType (1 ms)
+      ΓêÜ should handle port fallback chain
+      ΓêÜ should handle language fallback
+    rotate-secret command - branch coverage
+      ΓêÜ should handle application key from response.data (1 ms)
+      ΓêÜ should handle missing application key in response (3 ms)
+    list command - branch coverage
+      ΓêÜ should handle applications with pipeline configuration
+
+PASS tests/lib/config.test.js
+  Config Module
+    getConfig
+      ΓêÜ should return config when file exists (1 ms)
+      ΓêÜ should return null values when file does not exist (1 ms)
+      ΓêÜ should throw error for other file errors (6 ms)
+    saveConfig
+      ΓêÜ should save config successfully (1 ms)
+      ΓêÜ should handle save errors (1 ms)
+    clearConfig
+      ΓêÜ should delete config file
+      ΓêÜ should handle file not existing gracefully (1 ms)
+      ΓêÜ should throw for other errors
+    CONSTANTS
+      ΓêÜ should export CONFIG_DIR (1 ms)
+      ΓêÜ should export CONFIG_FILE
+
+PASS tests/lib/commands-app-direct.test.js
+  Application Registration Commands - Direct Logic Tests
+    register command logic
+      ΓêÜ should register application with existing variables.yaml (1 ms)
+      ΓêÜ should handle registration failure (1 ms)
+      ΓêÜ should require login before registration (1 ms)
+    list command logic
+      ΓêÜ should list applications successfully (1 ms)
+      ΓêÜ should handle list failure
+    rotate-secret command logic
+      ΓêÜ should rotate secret successfully (1 ms)
+      ΓêÜ should handle rotation failure (1 ms)
+
+PASS tests/lib/audit-logger.test.js
+  Audit Logger Module
+    maskSensitiveData
+      ΓêÜ should return non-string values unchanged (line 23) (1 ms)
+      ΓêÜ should mask password patterns (1 ms)
+      ΓêÜ should mask secret patterns (1 ms)
+      ΓêÜ should mask key patterns
+      ΓêÜ should mask token patterns (1 ms)
+      ΓêÜ should mask api_key patterns
+      ΓêÜ should mask long hex strings (line 42) (1 ms)
+      ΓêÜ should not mask short hex strings (1 ms)
+      ΓêÜ should mask trimmed hex strings (2 ms)
+      ΓêÜ should handle empty string (1 ms)
+    logSecurityEvent
+      ΓêÜ should log security events (line 147) (1 ms)
+      ΓêÜ should handle security events without details (1 ms)
+    auditLog
+      ΓêÜ should log audit entries (1 ms)
+
+PASS tests/lib/commands/app.test.js
+  App Commands Module
+    updateEnvTemplate
+      ΓêÜ should add MISO_CLIENTID and MISO_CLIENTSECRET to env.template when not present (2 ms)
+      ΓêÜ should update existing MISO_CLIENTID and MISO_CLIENTSECRET (1 ms)
+      ΓêÜ should warn if env.template not found (1 ms)
+      ΓêÜ should handle errors gracefully
+
+PASS tests/bin/aifabrix.test.js
+  AI Fabrix CLI Entry Point
+    initializeCLI
+      ΓêÜ should be a function (1 ms)
+      ΓêÜ should not throw when called (3 ms)
+      ΓêÜ should be exported as module
+    module structure
+      ΓêÜ should export initializeCLI function (1 ms)
+
+PASS tests/lib/commands-app-comprehensive.test.js
+  Application Registration Commands
+    ΓêÜ should be tested in commands-app-direct.test.js (1 ms)
+
+--------------------------|---------|----------|---------|---------|---------------------------------------------------
+File                      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                 
+--------------------------|---------|----------|---------|---------|---------------------------------------------------
+All files                 |   93.38 |     88.5 |   94.85 |   93.31 |                                                   
+ bin                      |      75 |       50 |     100 |      75 |                                                   
+  aifabrix.js             |      75 |       50 |     100 |      75 | 49-53                                             
+ lib                      |    92.7 |    88.61 |   93.45 |   92.57 |                                                   
+  app-config.js           |   97.67 |    71.42 |     100 |   97.61 | 28                                                
+  app-deploy.js           |   90.09 |    76.92 |     100 |      90 | 26,37,42,56,81,157,173,294,300-302                
+  app-dockerfile.js       |     100 |    84.61 |     100 |     100 | 54,73                                             
+  app-prompts.js          |   95.83 |    97.82 |    90.9 |   95.83 | 112,128                                           
+  app-push.js             |   91.42 |    86.66 |    90.9 |    91.3 | 25,53,149-153                                     
+  app-readme.js           |   96.29 |       95 |     100 |   96.29 | 51                                                
+  app-run.js              |     100 |       90 |     100 |     100 | 231,287,318,330-351,420,437                       
+  app.js                  |   99.15 |    89.58 |     100 |   99.11 | 210                                               
+  audit-logger.js         |     100 |    86.66 |     100 |     100 | 56,93                                             
+  build.js                |   86.55 |    80.28 |     100 |   86.55 | 156,233-238,265-266,275-285                       
+  cli.js                  |    80.3 |    92.85 |   71.42 |   79.84 | 88-92,102-107,116-120,130-134,147-151,219-224     
+  config.js               |     100 |      100 |     100 |     100 |                                                   
+  deployer.js             |   86.48 |       80 |   88.23 |   85.98 | 37,96,202,218,224,293-307,323,327,331,335,339,343 
+  env-reader.js           |   93.42 |    82.75 |     100 |   93.33 | 27,51,110,246-250                                 
+  generator.js            |     100 |    98.36 |     100 |     100 | 127,220,443                                       
+  github-generator.js     |   80.24 |    82.85 |   71.42 |   80.24 | 15-42,95,126,198,261                              
+  key-generator.js        |     100 |      100 |     100 |     100 |                                                   
+  push.js                 |   75.29 |    80.48 |    64.7 |   74.69 | 137-173,229-230                                   
+  secrets.js              |   93.63 |    91.83 |     100 |   93.63 | 48,56,61-62,94,116-117,147,160,166                
+  template-validator.js   |   95.29 |     91.3 |     100 |   95.29 | 142,145,157-161                                   
+  templates.js            |   99.24 |     90.8 |     100 |   99.21 | 274                                               
+  validator.js            |   91.57 |    88.05 |     100 |   91.57 | 86-87,113,115,125,171,198,210                     
+ lib/commands             |   95.57 |    89.13 |   96.77 |   95.52 |                                                   
+  app.js                  |   93.47 |    85.71 |   94.44 |   93.37 | 27,36,45,54,57,61,67,70,74,112,333,445            
+  login.js                |     100 |     97.5 |     100 |     100 | 287                                               
+ lib/utils                |    94.6 |     88.3 |   98.01 |   94.66 |                                                   
+  api.js                  |   96.96 |    84.53 |     100 |   96.93 | 215-219                                           
+  cli-utils.js            |   97.56 |     90.9 |     100 |    97.5 | 37                                                
+  compose-generator.js    |   98.96 |    97.43 |     100 |   98.95 | 248                                               
+  docker-build.js         |   94.02 |    91.42 |     100 |   93.93 | 108-109,128-129                                   
+  dockerfile-utils.js     |     100 |      100 |     100 |     100 |                                                   
+  env-template.js         |   88.88 |       80 |     100 |   88.88 | 54-56                                             
+  environment-checker.js  |     100 |      100 |     100 |     100 |                                                   
+  error-formatter.js      |     100 |       90 |     100 |     100 | 21                                                
+  health-check.js         |   88.11 |    71.56 |   92.85 |    88.4 | 58,97,102-112,118,123,211,220,228,285,298         
+  local-secrets.js        |   93.75 |    95.45 |     100 |   93.75 | 59-60                                             
+  logger.js               |   83.33 |      100 |      75 |   83.33 | 48                                                
+  secrets-generator.js    |     100 |      100 |     100 |     100 |                                                   
+  secrets-path.js         |     100 |      100 |     100 |     100 |                                                   
+  template-helpers.js     |   90.47 |     80.7 |     100 |   90.32 | 38,80,96-99                                       
+  variable-transformer.js |   91.91 |    91.17 |     100 |   91.91 | 53,60-73                                          
+--------------------------|---------|----------|---------|---------|---------------------------------------------------
+Test Suites: 61 passed, 61 total
+Tests:       14 skipped, 1307 passed, 1321 total
+Snapshots:   0 total
+Time:        24.705 s
+Ran all test suites.

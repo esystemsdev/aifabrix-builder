@@ -57,6 +57,7 @@ jest.mock('chalk', () => {
 });
 
 const secrets = require('../../lib/secrets');
+const localSecrets = require('../../lib/utils/local-secrets');
 
 // Mock fs module
 jest.mock('fs');
@@ -1362,6 +1363,214 @@ environments:
       expect(content).toContain('redis-urlKeyVault');
       expect(content).toContain('keycloak-admin-passwordKeyVault');
       expect(content).toContain('keycloak-auth-server-urlKeyVault');
+    });
+  });
+
+  describe('loadSecrets - cascading lookup', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      os.homedir.mockReturnValue(mockHomeDir);
+    });
+
+    it('should load from user secrets.local.yaml first', async() => {
+      const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const userSecrets = { 'myapp-client-idKeyVault': 'user-client-id' };
+
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return true;
+        }
+        return false;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return yaml.dump(userSecrets);
+        }
+        return '';
+      });
+
+      const result = await secrets.loadSecrets(undefined, 'myapp');
+
+      expect(result).toEqual(userSecrets);
+      expect(fs.readFileSync).toHaveBeenCalledWith(userSecretsPath, 'utf8');
+    });
+
+    it('should fallback to build.secrets when value missing in user file', async() => {
+      const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const variablesPath = path.join(process.cwd(), 'builder', 'myapp', 'variables.yaml');
+      const buildSecretsPath = path.resolve(path.dirname(variablesPath), '../../secrets.local.yaml');
+      const userSecrets = { 'myapp-client-idKeyVault': 'user-client-id' };
+      const buildSecrets = {
+        'myapp-client-idKeyVault': 'build-client-id',
+        'myapp-client-secretKeyVault': 'build-client-secret'
+      };
+
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath || filePath === variablesPath || filePath === buildSecretsPath) {
+          return true;
+        }
+        return false;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return yaml.dump(userSecrets);
+        }
+        if (filePath === variablesPath) {
+          return yaml.dump({ build: { secrets: '../../secrets.local.yaml' } });
+        }
+        if (filePath === buildSecretsPath) {
+          return yaml.dump(buildSecrets);
+        }
+        return '';
+      });
+
+      const result = await secrets.loadSecrets(undefined, 'myapp');
+
+      expect(result['myapp-client-idKeyVault']).toBe('user-client-id'); // User takes priority
+      expect(result['myapp-client-secretKeyVault']).toBe('build-client-secret'); // From build.secrets
+    });
+
+    it('should use build.secrets for empty values in user file', async() => {
+      const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const variablesPath = path.join(process.cwd(), 'builder', 'myapp', 'variables.yaml');
+      const buildSecretsPath = path.resolve(path.dirname(variablesPath), '../../secrets.local.yaml');
+      const userSecrets = { 'myapp-client-idKeyVault': '' };
+      const buildSecrets = { 'myapp-client-idKeyVault': 'build-client-id' };
+
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath || filePath === variablesPath || filePath === buildSecretsPath) {
+          return true;
+        }
+        return false;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return yaml.dump(userSecrets);
+        }
+        if (filePath === variablesPath) {
+          return yaml.dump({ build: { secrets: '../../secrets.local.yaml' } });
+        }
+        if (filePath === buildSecretsPath) {
+          return yaml.dump(buildSecrets);
+        }
+        return '';
+      });
+
+      const result = await secrets.loadSecrets(undefined, 'myapp');
+
+      expect(result['myapp-client-idKeyVault']).toBe('build-client-id');
+    });
+
+    it('should fallback to default secrets.yaml if no secrets found', async() => {
+      const defaultSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+      const defaultSecrets = { 'postgres-passwordKeyVault': 'admin123' };
+
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === defaultSecretsPath) {
+          return true;
+        }
+        return false;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === defaultSecretsPath) {
+          return yaml.dump(defaultSecrets);
+        }
+        return '';
+      });
+
+      const result = await secrets.loadSecrets(undefined, 'myapp');
+
+      expect(result).toEqual(defaultSecrets);
+    });
+
+    it('should throw error if no secrets file found', async() => {
+      fs.existsSync.mockReturnValue(false);
+
+      await expect(secrets.loadSecrets(undefined, 'myapp')).rejects.toThrow('No secrets file found');
+    });
+  });
+
+  describe('saveLocalSecret', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      os.homedir.mockReturnValue(mockHomeDir);
+    });
+
+    it('should save secret to secrets.local.yaml', async() => {
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const secretsDir = path.dirname(secretsPath);
+
+      fs.existsSync.mockReturnValue(false);
+      fs.mkdirSync.mockImplementation(() => {});
+      fs.writeFileSync.mockImplementation(() => {});
+
+      await localSecrets.saveLocalSecret('myapp-client-idKeyVault', 'client-id-value');
+
+      expect(fs.mkdirSync).toHaveBeenCalledWith(secretsDir, { recursive: true, mode: 0o700 });
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        secretsPath,
+        expect.stringContaining('myapp-client-idKeyVault'),
+        { mode: 0o600 }
+      );
+    });
+
+    it('should merge with existing secrets', async() => {
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const existingSecrets = { 'existing-key': 'existing-value' };
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(yaml.dump(existingSecrets));
+      fs.writeFileSync.mockImplementation(() => {});
+
+      await localSecrets.saveLocalSecret('new-key', 'new-value');
+
+      const writeCall = fs.writeFileSync.mock.calls[0];
+      const savedSecrets = yaml.load(writeCall[1]);
+
+      expect(savedSecrets['existing-key']).toBe('existing-value');
+      expect(savedSecrets['new-key']).toBe('new-value');
+    });
+
+    it('should throw error if key is invalid', async() => {
+      await expect(localSecrets.saveLocalSecret(null, 'value')).rejects.toThrow('Secret key is required');
+      await expect(localSecrets.saveLocalSecret('', 'value')).rejects.toThrow('Secret key is required');
+    });
+
+    it('should throw error if value is invalid', async() => {
+      await expect(localSecrets.saveLocalSecret('key', null)).rejects.toThrow('Secret value is required');
+      await expect(localSecrets.saveLocalSecret('key', undefined)).rejects.toThrow('Secret value is required');
+    });
+
+    it('should handle existing secrets file with invalid YAML', async() => {
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('invalid yaml');
+      fs.writeFileSync.mockImplementation(() => {});
+
+      await localSecrets.saveLocalSecret('key', 'value');
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+  });
+
+  describe('isLocalhost', () => {
+    it('should return true for localhost URLs', () => {
+      expect(localSecrets.isLocalhost('http://localhost:3000')).toBe(true);
+      expect(localSecrets.isLocalhost('http://127.0.0.1:3000')).toBe(true);
+      expect(localSecrets.isLocalhost('https://localhost')).toBe(true);
+      expect(localSecrets.isLocalhost('http://LOCALHOST:3000')).toBe(true);
+    });
+
+    it('should return false for non-localhost URLs', () => {
+      expect(localSecrets.isLocalhost('https://api.example.com')).toBe(false);
+      expect(localSecrets.isLocalhost('http://example.com')).toBe(false);
+    });
+
+    it('should return false for invalid inputs', () => {
+      expect(localSecrets.isLocalhost(null)).toBe(false);
+      expect(localSecrets.isLocalhost(undefined)).toBe(false);
+      expect(localSecrets.isLocalhost('')).toBe(false);
     });
   });
 });

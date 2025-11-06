@@ -62,6 +62,9 @@ RUN pnpm exec tsc -p tsconfig.docker.json || true
 # Copy sensitive-fields.config.json to dist folder
 RUN mkdir -p dist/src/services/logging && \
     cp src/services/logging/sensitive-fields.config.json dist/src/services/logging/ || true
+# Copy generated Prisma logs client to dist folder (needed at runtime)
+RUN mkdir -p dist/database/generated && \
+    cp -r src/database/generated/logs-client dist/database/generated/ || true
 
 # Return to root to prune correctly (needed to keep workspace dependencies)
 WORKDIR /app

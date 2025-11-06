@@ -11,6 +11,7 @@ const path = require('path');
 const yaml = require('js-yaml');
 const generator = require('../../lib/generator');
 const keyGenerator = require('../../lib/key-generator');
+const validator = require('../../lib/validator');
 
 // Mock fs module
 jest.mock('fs');
@@ -160,6 +161,36 @@ PUBLIC_CONFIG=public-value`;
       expect(deployment.authentication.requiredRoles).toEqual([]);
       expect(deployment.roles).toBeUndefined();
       expect(deployment.permissions).toBeUndefined();
+    });
+
+    it('should throw error when validation fails', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000
+      };
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('variables.yaml') || filePath.includes('env.template');
+      });
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({
+        valid: false,
+        errors: ['Error 1', 'Error 2']
+      });
+
+      await expect(generator.generateDeployJson(appName)).rejects.toThrow(
+        'Generated deployment JSON does not match schema'
+      );
     });
 
     it('should throw error if app name is invalid', async() => {
@@ -363,6 +394,97 @@ NORMAL_VAR=value`;
         interval: 30
       });
     });
+
+    it('should include probePath when provided', () => {
+      const variables = {
+        healthCheck: {
+          path: '/health',
+          interval: 30,
+          probePath: '/probe'
+        }
+      };
+
+      const result = generator.buildHealthCheck(variables);
+      expect(result).toEqual({
+        path: '/health',
+        interval: 30,
+        probePath: '/probe'
+      });
+    });
+
+    it('should include probeRequestType when provided', () => {
+      const variables = {
+        healthCheck: {
+          path: '/health',
+          interval: 30,
+          probeRequestType: 'POST'
+        }
+      };
+
+      const result = generator.buildHealthCheck(variables);
+      expect(result).toEqual({
+        path: '/health',
+        interval: 30,
+        probeRequestType: 'POST'
+      });
+    });
+
+    it('should include probeProtocol when provided', () => {
+      const variables = {
+        healthCheck: {
+          path: '/health',
+          interval: 30,
+          probeProtocol: 'HTTPS'
+        }
+      };
+
+      const result = generator.buildHealthCheck(variables);
+      expect(result).toEqual({
+        path: '/health',
+        interval: 30,
+        probeProtocol: 'HTTPS'
+      });
+    });
+
+    it('should include probeIntervalInSeconds when provided', () => {
+      const variables = {
+        healthCheck: {
+          path: '/health',
+          interval: 30,
+          probeIntervalInSeconds: 60
+        }
+      };
+
+      const result = generator.buildHealthCheck(variables);
+      expect(result).toEqual({
+        path: '/health',
+        interval: 30,
+        probeIntervalInSeconds: 60
+      });
+    });
+
+    it('should include all probe fields when provided', () => {
+      const variables = {
+        healthCheck: {
+          path: '/health',
+          interval: 30,
+          probePath: '/probe',
+          probeRequestType: 'POST',
+          probeProtocol: 'HTTPS',
+          probeIntervalInSeconds: 60
+        }
+      };
+
+      const result = generator.buildHealthCheck(variables);
+      expect(result).toEqual({
+        path: '/health',
+        interval: 30,
+        probePath: '/probe',
+        probeRequestType: 'POST',
+        probeProtocol: 'HTTPS',
+        probeIntervalInSeconds: 60
+      });
+    });
   });
 
   describe('buildRequirements', () => {
@@ -549,6 +671,906 @@ NORMAL_VAR=value`;
         enableSSO: true,
         requiredRoles: []
       });
+    });
+  });
+
+  describe('generateDeployJson - registry mode filtering', () => {
+    it('should filter configuration for external registry mode', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        image: { registryMode: 'external' }
+      };
+
+      const envTemplate = `NODE_ENV=development
+DOCKER_REGISTRY_SERVER_URL=https://registry.example.com
+DOCKER_REGISTRY_SERVER_USERNAME=user
+DOCKER_REGISTRY_SERVER_PASSWORD=pass
+OTHER_VAR=value`;
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('variables.yaml') || filePath.includes('env.template');
+      });
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return envTemplate;
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      // Only DOCKER_REGISTRY_* vars should be included
+      const configNames = deployment.configuration.map(c => c.name);
+      expect(configNames).toContain('DOCKER_REGISTRY_SERVER_URL');
+      expect(configNames).toContain('DOCKER_REGISTRY_SERVER_USERNAME');
+      expect(configNames).toContain('DOCKER_REGISTRY_SERVER_PASSWORD');
+      expect(configNames).not.toContain('NODE_ENV');
+      expect(configNames).not.toContain('OTHER_VAR');
+    });
+
+    it('should not filter configuration for acr registry mode', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        image: { registryMode: 'acr' }
+      };
+
+      const envTemplate = `NODE_ENV=development
+DOCKER_REGISTRY_SERVER_URL=https://registry.example.com
+OTHER_VAR=value`;
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('variables.yaml') || filePath.includes('env.template');
+      });
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return envTemplate;
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      // All vars should be included for acr mode
+      const configNames = deployment.configuration.map(c => c.name);
+      expect(configNames).toContain('NODE_ENV');
+      expect(configNames).toContain('DOCKER_REGISTRY_SERVER_URL');
+      expect(configNames).toContain('OTHER_VAR');
+    });
+  });
+
+  describe('generateDeployJson - optional fields', () => {
+    beforeEach(() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('variables.yaml') || filePath.includes('env.template');
+      });
+    });
+
+    it('should include repository when only enabled flag is true', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        repository: { enabled: true }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.repository).toEqual({ enabled: true });
+    });
+
+    it('should include repository when enabled', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        repository: { enabled: true, repositoryUrl: 'https://github.com/user/repo' }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.repository).toEqual({
+        enabled: true,
+        repositoryUrl: 'https://github.com/user/repo'
+      });
+    });
+
+    it('should include repository when only repositoryUrl provided', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        repository: { repositoryUrl: 'https://github.com/user/repo' }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.repository).toEqual({
+        enabled: false,
+        repositoryUrl: 'https://github.com/user/repo'
+      });
+    });
+
+    it('should include build fields when provided', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        build: {
+          envOutputPath: '../.env',
+          secrets: '../../secrets.local.yaml',
+          dockerfile: 'Dockerfile.prod'
+        }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.build).toEqual({
+        envOutputPath: '../.env',
+        secrets: '../../secrets.local.yaml',
+        dockerfile: 'Dockerfile.prod'
+      });
+    });
+
+    it('should include deployment fields when provided', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://controller.example.com',
+          clientId: 'client-id-value',
+          clientSecret: 'client-secret-value'
+        }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.deployment).toEqual({
+        controllerUrl: 'https://controller.example.com',
+        clientId: 'client-id-value',
+        clientSecret: 'client-secret-value'
+      });
+    });
+
+    it('should include startupCommand when provided', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        startupCommand: 'npm start'
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.startupCommand).toBe('npm start');
+    });
+
+    it('should include runtimeVersion when provided', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        runtimeVersion: '18'
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.runtimeVersion).toBe('18');
+    });
+
+    it('should include scaling when provided', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        scaling: { minInstances: 1, maxInstances: 5 }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.scaling).toEqual({ minInstances: 1, maxInstances: 5 });
+    });
+
+    it('should include frontDoorRouting when provided', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        frontDoorRouting: { enabled: true, path: '/api' }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.frontDoorRouting).toEqual({ enabled: true, path: '/api' });
+    });
+
+    it('should prioritize variables.roles over rbac.roles', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        roles: [{ name: 'CustomRole', value: 'custom' }]
+      };
+
+      const rbac = {
+        roles: [{ name: 'RBACRole', value: 'rbac' }]
+      };
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('variables.yaml') ||
+               filePath.includes('env.template') ||
+               filePath.includes('rbac.yaml');
+      });
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        if (filePath.includes('rbac.yaml')) {
+          return yaml.dump(rbac);
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.roles).toEqual([{ name: 'CustomRole', value: 'custom' }]);
+    });
+
+    it('should use rbac.roles when variables.roles not provided', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000
+      };
+
+      const rbac = {
+        roles: [{ name: 'RBACRole', value: 'rbac' }]
+      };
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('variables.yaml') ||
+               filePath.includes('env.template') ||
+               filePath.includes('rbac.yaml');
+      });
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        if (filePath.includes('rbac.yaml')) {
+          return yaml.dump(rbac);
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.roles).toEqual([{ name: 'RBACRole', value: 'rbac' }]);
+    });
+
+    it('should prioritize variables.permissions over rbac.permissions', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        permissions: [{ name: 'custom:permission', roles: ['admin'] }]
+      };
+
+      const rbac = {
+        permissions: [{ name: 'rbac:permission', roles: ['user'] }]
+      };
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('variables.yaml') ||
+               filePath.includes('env.template') ||
+               filePath.includes('rbac.yaml');
+      });
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        if (filePath.includes('rbac.yaml')) {
+          return yaml.dump(rbac);
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.permissions).toEqual([{ name: 'custom:permission', roles: ['admin'] }]);
+    });
+  });
+
+  describe('generateDeployJson - buildBaseDeployment edge cases', () => {
+    beforeEach(() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('variables.yaml') || filePath.includes('env.template');
+      });
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+    });
+
+    it('should use app.key fallback when app.displayName missing', async() => {
+      const variables = {
+        app: { key: 'testapp' },
+        port: 3000
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.displayName).toBe('testapp');
+    });
+
+    it('should use appName fallback when app.key missing', async() => {
+      const variables = {
+        app: { displayName: 'Test App' },
+        port: 3000
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.key).toBe(appName);
+    });
+
+    it('should use default port when port missing', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.port).toBe(3000);
+    });
+
+    it('should create default database when database true but databases missing', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        requires: { database: true }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.databases).toEqual([{ name: 'testapp' }]);
+    });
+
+    it('should use default app name when app.key missing for database', async() => {
+      const variables = {
+        app: { displayName: 'Test App' },
+        port: 3000,
+        requires: { database: true }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      // When app.key is missing, defaults to 'app' (not appName)
+      expect(deployment.databases).toEqual([{ name: 'app' }]);
+    });
+  });
+
+  describe('generateDeployJson - validation edge cases', () => {
+    beforeEach(() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('variables.yaml') || filePath.includes('env.template');
+      });
+    });
+
+    it('should reject deployment config with http controllerUrl', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'http://controller.example.com',
+          clientId: 'client-id',
+          clientSecret: 'client-secret'
+        }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      // http:// URLs should be filtered out
+      expect(deployment.deployment).not.toHaveProperty('controllerUrl');
+    });
+
+    it('should reject deployment config with empty strings', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://controller.example.com',
+          clientId: '   ',
+          clientSecret: ''
+        }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      // Empty strings should be filtered out
+      expect(deployment.deployment).not.toHaveProperty('clientId');
+      expect(deployment.deployment).not.toHaveProperty('clientSecret');
+      expect(deployment.deployment.controllerUrl).toBe('https://controller.example.com');
+    });
+
+    it('should reject build config with empty dockerfile', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        build: {
+          envOutputPath: '../.env',
+          dockerfile: '   '
+        }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      // Empty dockerfile should be filtered out
+      expect(deployment.build).not.toHaveProperty('dockerfile');
+      expect(deployment.build.envOutputPath).toBe('../.env');
+    });
+
+    it('should reject build config with non-string secrets', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        build: {
+          secrets: 123
+        }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      // Non-string secrets should be filtered out, so build should be null/undefined
+      expect(deployment.build).toBeUndefined();
+    });
+
+    it('should reject repository config with empty repositoryUrl', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000,
+        repository: {
+          enabled: false,
+          repositoryUrl: '   '
+        }
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const deployment = JSON.parse(writeCall[1]);
+
+      // Empty repositoryUrl should result in null repository
+      expect(deployment.repository).toBeUndefined();
+    });
+  });
+
+  describe('parseEnvironmentVariables - edge cases', () => {
+    it('should handle variables with empty values', () => {
+      const template = `KEY1=value1
+KEY2=
+KEY3=value3`;
+
+      const result = generator.parseEnvironmentVariables(template);
+
+      expect(result).toHaveLength(2);
+      expect(result.find(c => c.name === 'KEY1')).toBeDefined();
+      expect(result.find(c => c.name === 'KEY3')).toBeDefined();
+      expect(result.find(c => c.name === 'KEY2')).toBeUndefined();
+    });
+
+    it('should handle variables with whitespace around equals', () => {
+      const template = `KEY1 = value1
+KEY2=value2
+KEY3 =value3
+KEY4= value4`;
+
+      const result = generator.parseEnvironmentVariables(template);
+
+      expect(result).toHaveLength(4);
+      expect(result.find(c => c.name === 'KEY1').value).toBe('value1');
+      expect(result.find(c => c.name === 'KEY2').value).toBe('value2');
+      expect(result.find(c => c.name === 'KEY3').value).toBe('value3');
+      expect(result.find(c => c.name === 'KEY4').value).toBe('value4');
+    });
+
+    it('should handle variables with kv:// in value but not at start', () => {
+      const template = `KEY1=value kv://something
+KEY2=kv://actual-keyvault`;
+
+      const result = generator.parseEnvironmentVariables(template);
+
+      const kvRef = result.find(c => c.location === 'keyvault');
+      expect(kvRef).toBeDefined();
+      expect(kvRef.name).toBe('KEY2');
+      expect(kvRef.value).toBe('actual-keyvault');
+    });
+
+    it('should handle variables with multiple sensitive keywords', () => {
+      const template = `API_SECRET_TOKEN=value123
+NORMAL_VAR=value456`;
+
+      const result = generator.parseEnvironmentVariables(template);
+
+      const requiredVars = result.filter(c => c.required);
+      expect(requiredVars.length).toBeGreaterThan(0);
+      expect(requiredVars.find(v => v.name === 'API_SECRET_TOKEN')).toBeDefined();
+    });
+  });
+
+  describe('generateDeployJsonWithValidation', () => {
+    beforeEach(() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('variables.yaml') ||
+               filePath.includes('env.template');
+      });
+    });
+
+    it('should generate and validate deployment JSON', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        if (filePath.includes('aifabrix-deploy.json')) {
+          return JSON.stringify({ key: 'testapp', port: 3000 });
+        }
+        return '';
+      });
+
+      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({
+        valid: true,
+        errors: []
+      });
+
+      const result = await generator.generateDeployJsonWithValidation(appName);
+
+      expect(result.success).toBe(true);
+      expect(result.path).toBe(jsonPath);
+      expect(result.validation.valid).toBe(true);
+      expect(result.deployment).toBeDefined();
+      expect(result.deployment.key).toBe('testapp');
+    });
+
+    it('should return validation result when validation fails on second check', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        if (filePath.includes('aifabrix-deploy.json')) {
+          return JSON.stringify({ key: 'testapp', port: 3000 });
+        }
+        return '';
+      });
+
+      // First validation (in generateDeployJson) passes, second (in generateDeployJsonWithValidation) fails
+      jest.spyOn(validator, 'validateDeploymentJson')
+        .mockReturnValueOnce({ valid: true, errors: [] })
+        .mockReturnValueOnce({ valid: false, errors: ['Validation error'] });
+
+      const result = await generator.generateDeployJsonWithValidation(appName);
+
+      expect(result.success).toBe(false);
+      expect(result.validation.valid).toBe(false);
+      expect(result.validation.errors).toEqual(['Validation error']);
     });
   });
 });
