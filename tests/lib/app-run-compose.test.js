@@ -27,12 +27,22 @@ describe('app-run Docker Compose Generation', () => {
   });
 
   afterEach(() => {
-    process.chdir(originalCwd);
+    // Always restore cwd BEFORE cleanup to avoid uv_cwd errors
+    try {
+      process.chdir(originalCwd);
+    } catch (error) {
+      // If chdir fails, try to chdir to a safe location
+      try {
+        process.chdir(process.env.HOME || process.env.USERPROFILE || '/');
+      } catch (e) {
+        // Ignore if we can't change directory
+      }
+    }
     // Cleanup temp directory
     try {
       fsSync.rmSync(tempDir, { recursive: true, force: true });
     } catch (error) {
-      // Ignore cleanup errors
+      // Ignore cleanup errors (directory might already be deleted or in use)
     }
   });
 
@@ -115,7 +125,7 @@ describe('app-run Docker Compose Generation', () => {
     it('should convert Windows paths to forward slashes for volumes', async() => {
       const appName = 'test-app';
       // Create .env file with DB_PASSWORD
-      const appDir = path.join(process.cwd(), 'builder', appName);
+      const appDir = path.join(tempDir, 'builder', appName);
       fsSync.mkdirSync(appDir, { recursive: true });
       fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_PASSWORD=secret123\n');
 
@@ -133,6 +143,14 @@ describe('app-run Docker Compose Generation', () => {
       const originalCwd = process.cwd;
       const windowsPath = tempDir.replace(/\//g, '\\'); // Convert forward slashes to backslashes
       process.cwd = jest.fn(() => windowsPath);
+
+      // path.join() will normalize the path, so we need to create the file at the normalized location
+      // On Linux, path.join() treats backslashes as regular characters, so we need to create
+      // the file using the actual tempDir path (which path.join will resolve to)
+      const normalizedPath = path.join(windowsPath, 'builder', appName);
+      // Ensure the directory exists at the normalized path
+      fsSync.mkdirSync(normalizedPath, { recursive: true });
+      fsSync.writeFileSync(path.join(normalizedPath, '.env'), 'DB_PASSWORD=secret123\n');
 
       const result = await appRun.generateDockerCompose(appName, config, options);
 
