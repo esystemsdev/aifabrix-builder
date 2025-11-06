@@ -495,6 +495,7 @@ aifabrix create myapp --github --github-steps npm
 - `builder/<app>/env.template` - Environment template with kv:// references
 - `builder/<app>/rbac.yaml` - RBAC configuration (if authentication enabled)
 - `builder/<app>/aifabrix-deploy.json` - Deployment manifest
+- `builder/<app>/README.md` - Application documentation
 - `.github/workflows/` - GitHub Actions workflows (if --github specified)
 
 **Environment File Conversion:**

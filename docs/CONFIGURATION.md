@@ -288,6 +288,72 @@ Pattern: `resource:action` or `feature:action`
 
 ---
 
+## README.md
+
+Application documentation automatically generated during `aifabrix create`.
+
+**What:** Application-specific README with build instructions, prerequisites, and troubleshooting tips.
+
+**When:** Generated automatically when running `aifabrix create` if `README.md` doesn't already exist in the application directory.
+
+**Content:**
+
+The README includes:
+- Application display name and description
+- Installation instructions
+- Build commands (`aifabrix build`)
+- Run commands (`aifabrix run`)
+- Access URLs (with correct port)
+- Container logging commands
+- Push to Azure Container Registry instructions
+- Prerequisites checklist (conditional based on app configuration)
+- Troubleshooting tips
+
+**Example Structure:**
+
+```markdown
+# My Application Builder
+
+Build, run, and deploy My Application using @aifabrix/builder.
+
+## Install
+npm install -g @aifabrix/builder
+
+## Build
+aifabrix build myapp
+
+## Run Locally
+aifabrix run myapp
+**Access:** http://localhost:3000
+
+## Prerequisites
+- @aifabrix/builder installed globally
+- Docker Desktop running
+- Infrastructure running (aifabrix up)
+- PostgreSQL database (if required)
+- Redis (if required)
+```
+
+**Conditional Sections:**
+
+The README automatically includes sections based on your application configuration:
+- Database prerequisites (if `requires.database: true`)
+- Redis prerequisites (if `requires.redis: true`)
+- Storage prerequisites (if `requires.storage: true`)
+- Authentication prerequisites (if `requires.authentication: true`)
+
+**Customization:**
+
+If you want to customize the README, you can:
+1. Edit `builder/<app>/README.md` manually after creation
+2. The file will not be overwritten on subsequent `aifabrix create` runs (generation is skipped if file exists)
+
+**Template Location:**
+
+The README template is located at `templates/applications/README.md.hbs` and uses Handlebars templating with application context.
+
+---
+
 ## Authentication & Access Control
 
 Authentication and access rights are implemented using **miso-client** libraries with **1-2ms response times** thanks to Redis caching.

@@ -46,6 +46,7 @@ aifabrix create myapp
 - `builder/<app>/env.template` - Environment variables  
 - `builder/<app>/rbac.yaml` - Roles & permissions (if authentication=yes)
 - `builder/<app>/aifabrix-deploy.json` - Deployment manifest
+- `builder/<app>/README.md` - Application documentation
 
 **Pro tip:** Use flags to skip prompts:
 ```bash

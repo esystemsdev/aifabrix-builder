@@ -1,0 +1,70 @@
+# {{displayName}} Builder
+
+Build, run, and deploy {{displayName}} using `@aifabrix/builder`.
+
+## Install
+
+```bash
+npm install -g @aifabrix/builder
+```
+
+## Build
+
+```bash
+aifabrix build {{appName}}
+```
+
+Builds Docker image: `{{imageName}}:latest`
+
+## Run Locally
+
+```bash
+aifabrix run {{appName}}
+```
+
+**Access:** http://localhost:{{port}}
+
+**Logs:**
+```bash
+docker logs {{appName}} -f
+```
+
+**Stop:**
+```bash
+docker stop {{appName}}
+```
+
+## Push to Azure Container Registry
+
+```bash
+aifabrix push {{appName}} --action acr --tag latest
+```
+
+**Note:** ACR push requires `az login` or ACR credentials in `variables.yaml`
+
+## Prerequisites
+
+- `@aifabrix/builder` installed globally
+- Docker Desktop running
+- Infrastructure running (`aifabrix up`)
+{{#if hasDatabase}}
+- PostgreSQL database
+{{/if}}
+{{#if hasRedis}}
+- Redis
+{{/if}}
+{{#if hasStorage}}
+- File storage configured
+{{/if}}
+{{#if hasAuthentication}}
+- Authentication/RBAC configured
+{{/if}}
+
+## Troubleshooting
+
+**Build fails:** Check Docker is running and `variables.yaml` → `build.secrets` path is correct
+
+**Can't connect:** Verify infrastructure is running (`aifabrix up`){{#if hasDatabase}} and PostgreSQL is accessible{{/if}}
+
+**Port in use:** Change `build.localPort` in `variables.yaml` (default: {{port}})
+
