@@ -1,7 +1,7 @@
 # Keycloak Identity and Access Management with Custom Themes
-# This Dockerfile extends Keycloak 24.0 with custom themes
+# This Dockerfile extends Keycloak 26.4 with custom themes
 
-FROM quay.io/keycloak/keycloak:24.0
+FROM quay.io/keycloak/keycloak:26.4
 
 # Set working directory
 WORKDIR /opt/keycloak

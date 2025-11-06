@@ -62,10 +62,13 @@ describe('Integration Step 07: Run Docker Container', () => {
     const result = await execCommand(`aifabrix run ${appName} --port ${port}`, 150000); // 2.5 minute timeout for run
     const runExitCode = result.exitCode;
 
-    // Log output for debugging
-    if (result.exitCode !== 0) {
-      console.error('Run command stdout:', result.stdout);
-      console.error('Run command stderr:', result.stderr);
+    // Always log output for debugging (not just on error)
+    console.log('Run command exit code:', runExitCode);
+    if (result.stdout) {
+      console.log('Run command stdout:', result.stdout);
+    }
+    if (result.stderr) {
+      console.log('Run command stderr:', result.stderr);
     }
 
     // Verify docker-compose.yaml was generated
@@ -73,6 +76,10 @@ describe('Integration Step 07: Run Docker Container', () => {
     const composeExists = await testFileExists(composeFile);
 
     if (!composeExists) {
+      // Provide more context if command failed
+      if (runExitCode !== 0) {
+        throw new Error(`docker-compose.yaml file not generated. Run command failed with exit code ${runExitCode}. Error: ${result.stderr || result.stdout || 'Unknown error'}`);
+      }
       throw new Error('docker-compose.yaml file not generated');
     }
     expect(composeExists).toBe(true);

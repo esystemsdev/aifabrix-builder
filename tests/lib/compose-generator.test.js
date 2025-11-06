@@ -66,19 +66,33 @@ describe('Compose Generator Module', () => {
     it('should quote identifiers with hyphens', () => {
       const handlebars = require('handlebars');
       const result = handlebars.helpers.pgQuote('miso-logs');
-      expect(result).toBe('"miso-logs"');
+      // SafeString objects have a .string property
+      const value = result && typeof result === 'object' && result.string ? result.string : result;
+      expect(value).toBe('"miso-logs"');
     });
 
     it('should escape quotes in identifiers', () => {
       const handlebars = require('handlebars');
       const result = handlebars.helpers.pgQuote('test"db');
-      expect(result).toBe('"test""db"');
+      // SafeString objects have a .string property
+      const value = result && typeof result === 'object' && result.string ? result.string : result;
+      expect(value).toBe('"test""db"');
     });
 
-    it('should generate user name with _user suffix', () => {
+    it('should generate user name with _user suffix and convert hyphens to underscores', () => {
       const handlebars = require('handlebars');
       const result = handlebars.helpers.pgUser('miso-logs');
-      expect(result).toBe('"miso-logs_user"');
+      // SafeString objects have a .string property
+      const value = result && typeof result === 'object' && result.string ? result.string : result;
+      expect(value).toBe('"miso_logs_user"');
+    });
+
+    it('should generate old user name format for migration (preserving hyphens)', () => {
+      const handlebars = require('handlebars');
+      const result = handlebars.helpers.pgUserOld('miso-logs');
+      // SafeString objects have a .string property
+      const value = result && typeof result === 'object' && result.string ? result.string : result;
+      expect(value).toBe('"miso-logs_user"');
     });
   });
 
@@ -287,6 +301,16 @@ describe('Compose Generator Module', () => {
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
       expect(result).toContain('DB_0_PASSWORD');
       expect(result).toContain('DB_1_PASSWORD');
+      // Verify user names use underscores (not hyphens) in CREATE USER and GRANT commands
+      // Note: DROP USER commands will contain old user names with hyphens (for migration)
+      expect(result).toContain('miso_controller_user');
+      expect(result).toContain('miso_logs_user');
+      // Verify CREATE USER commands use underscores (SafeString prevents HTML escaping, so quotes are correct)
+      expect(result).toContain('CREATE USER "miso_controller_user"');
+      expect(result).toContain('CREATE USER "miso_logs_user"');
+      // Verify old user names are only in DROP USER commands (for migration)
+      expect(result).toContain('DROP USER IF EXISTS "miso-controller_user"');
+      expect(result).toContain('DROP USER IF EXISTS "miso-logs_user"');
       expect(result).toBeDefined();
     });
 
