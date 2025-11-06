@@ -420,6 +420,98 @@ NORMAL_VAR=value`;
     });
   });
 
+  describe('buildAuthenticationConfig', () => {
+    it('should build authentication config with enableSSO false and missing fields', () => {
+      const variables = {
+        authentication: {
+          enableSSO: false
+          // Missing type and requiredRoles
+        }
+      };
+
+      const result = generator.buildAuthenticationConfig(variables, null);
+      expect(result).toEqual({
+        enableSSO: false,
+        type: 'none',
+        requiredRoles: []
+      });
+    });
+
+    it('should build authentication config with enableSSO true and missing fields', () => {
+      const variables = {
+        authentication: {
+          enableSSO: true
+          // Missing type and requiredRoles
+        }
+      };
+
+      const result = generator.buildAuthenticationConfig(variables, null);
+      expect(result).toEqual({
+        enableSSO: true,
+        type: 'azure',
+        requiredRoles: []
+      });
+    });
+
+    it('should build authentication config with all fields provided', () => {
+      const variables = {
+        authentication: {
+          type: 'azure',
+          enableSSO: true,
+          requiredRoles: ['admin', 'user']
+        }
+      };
+
+      const result = generator.buildAuthenticationConfig(variables, null);
+      expect(result).toEqual({
+        type: 'azure',
+        enableSSO: true,
+        requiredRoles: ['admin', 'user']
+      });
+    });
+
+    it('should build authentication config with endpoints', () => {
+      const variables = {
+        authentication: {
+          type: 'local',
+          enableSSO: true,
+          requiredRoles: ['user'],
+          endpoints: {
+            local: 'http://localhost:8080/auth',
+            custom: 'https://custom.example.com/auth'
+          }
+        }
+      };
+
+      const result = generator.buildAuthenticationConfig(variables, null);
+      expect(result).toEqual({
+        type: 'local',
+        enableSSO: true,
+        requiredRoles: ['user'],
+        endpoints: {
+          local: 'http://localhost:8080/auth',
+          custom: 'https://custom.example.com/auth'
+        }
+      });
+    });
+
+    it('should fall back to RBAC when authentication not in variables', () => {
+      const variables = {};
+      const rbac = {
+        roles: [
+          { name: 'Admin', value: 'admin', description: 'Admin role' }
+        ]
+      };
+
+      const result = generator.buildAuthenticationConfig(variables, rbac);
+      expect(result).toEqual({
+        type: 'azure',
+        enableSSO: true,
+        requiredRoles: ['admin']
+      });
+    });
+  });
+
   describe('buildAuthentication', () => {
     it('should build authentication with RBAC', () => {
       const rbac = {

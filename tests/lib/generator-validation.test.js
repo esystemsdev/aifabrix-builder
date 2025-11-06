@@ -130,7 +130,7 @@ describe('Generator Validation Module', () => {
       expect(result.errors.some(err => err.includes('healthCheck'))).toBe(true);
     });
 
-    it('should detect missing required authentication fields', () => {
+    it('should detect missing required authentication fields when enableSSO is true', () => {
       const deployment = {
         key: 'testapp',
         displayName: 'Test App',
@@ -144,14 +144,38 @@ describe('Generator Validation Module', () => {
         requiresStorage: false,
         configuration: [],
         authentication: {
-          type: 'azure'
-          // Missing enableSSO and requiredRoles
+          enableSSO: true
+          // Missing type and requiredRoles when enableSSO is true
         }
       };
 
       const result = validator.validateDeploymentJson(deployment);
       expect(result.valid).toBe(false);
       expect(result.errors.some(err => err.includes('authentication'))).toBe(true);
+    });
+
+    it('should validate authentication with enableSSO false and missing type/requiredRoles', () => {
+      const deployment = {
+        key: 'testapp',
+        displayName: 'Test App',
+        description: 'A test application',
+        type: 'webapp',
+        image: 'testapp:latest',
+        registryMode: 'acr',
+        port: 3000,
+        requiresDatabase: false,
+        requiresRedis: false,
+        requiresStorage: false,
+        configuration: [],
+        authentication: {
+          enableSSO: false
+          // type and requiredRoles are optional when enableSSO is false
+        }
+      };
+
+      const result = validator.validateDeploymentJson(deployment);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
     });
   });
 

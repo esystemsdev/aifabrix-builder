@@ -34,11 +34,7 @@ healthCheck:
 
 # Authentication
 authentication:
-  type: keycloak
-  enableSSO: true
-  requiredRoles: ["aifabrix-user"]
-  endpoints:
-    local: "http://localhost:8082/auth/callback"
+  enableSSO: false
 
 # Build Configuration
 build:

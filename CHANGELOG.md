@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.2] - 2025-11-06
+
+### Fixed
+- Authentication validation now allows `enableSSO: false` without requiring `type` and `requiredRoles` fields
+- Fixed validation error when using authentication section with only `enableSSO: false` (e.g., in keycloak template)
+- Authentication fields are now conditionally required based on `enableSSO` value:
+  - When `enableSSO: false`: only `enableSSO` field is required
+  - When `enableSSO: true`: `type`, `enableSSO`, and `requiredRoles` are required
+
+### Changed
+- Updated authentication schema to use conditional validation with `allOf` rules
+- Updated `buildAuthenticationConfig()` to default `type: 'none'` and `requiredRoles: []` when `enableSSO: false`
+- Updated variable transformer to handle partial authentication objects correctly
+
 ## [2.1.1] - 2025-11-06
 
 ### Added

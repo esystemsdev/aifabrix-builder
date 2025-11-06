@@ -279,16 +279,60 @@ describe('Variable Transformer Module', () => {
     });
 
     describe('optional fields - authentication', () => {
-      it('should include authentication when present', () => {
+      it('should include authentication when present with all fields', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
-          authentication: { type: 'oauth2', clientId: 'client123' }
+          authentication: { type: 'oauth2', enableSSO: true, requiredRoles: ['admin'] }
         };
 
         const result = transformVariablesForValidation(variables, defaultAppName);
 
-        expect(result.authentication).toEqual({ type: 'azure', clientId: 'client123' });
+        expect(result.authentication.type).toBe('azure');
+        expect(result.authentication.enableSSO).toBe(true);
+        expect(result.authentication.requiredRoles).toEqual(['admin']);
+      });
+
+      it('should handle authentication with enableSSO false and missing type/requiredRoles', () => {
+        const variables = {
+          app: { key: 'myapp' },
+          image: { name: 'myapp', tag: 'latest' },
+          authentication: { enableSSO: false }
+        };
+
+        const result = transformVariablesForValidation(variables, defaultAppName);
+
+        expect(result.authentication.enableSSO).toBe(false);
+        expect(result.authentication.type).toBe('none');
+        expect(result.authentication.requiredRoles).toEqual([]);
+      });
+
+      it('should handle authentication with enableSSO true and missing type/requiredRoles', () => {
+        const variables = {
+          app: { key: 'myapp' },
+          image: { name: 'myapp', tag: 'latest' },
+          authentication: { enableSSO: true }
+        };
+
+        const result = transformVariablesForValidation(variables, defaultAppName);
+
+        expect(result.authentication.enableSSO).toBe(true);
+        expect(result.authentication.type).toBe('azure');
+        expect(result.authentication.requiredRoles).toEqual([]);
+      });
+
+      it('should sanitize keycloak type to azure', () => {
+        const variables = {
+          app: { key: 'myapp' },
+          image: { name: 'myapp', tag: 'latest' },
+          authentication: { type: 'keycloak', enableSSO: true, requiredRoles: ['user'] }
+        };
+
+        const result = transformVariablesForValidation(variables, defaultAppName);
+
+        expect(result.authentication.type).toBe('azure');
+        expect(result.authentication.enableSSO).toBe(true);
+        expect(result.authentication.requiredRoles).toEqual(['user']);
       });
     });
 
@@ -1038,7 +1082,9 @@ describe('Variable Transformer Module', () => {
         expect(result.requiresStorage).toBe(false);
         expect(result.databases).toEqual([{ name: 'primary' }, { name: 'secondary' }]);
         expect(result.healthCheck).toEqual({ path: '/health', interval: 30 });
-        expect(result.authentication).toEqual({ type: 'azure' });
+        expect(result.authentication.type).toBe('azure');
+        expect(result.authentication.enableSSO).toBe(true);
+        expect(result.authentication.requiredRoles).toEqual([]);
         expect(result.repository.enabled).toBe(true);
         expect(result.build.dockerfile).toBe('Dockerfile.prod');
         expect(result.deployment.clientId).toBe('my-client-id');

@@ -428,8 +428,8 @@
     },
     "authentication": {
       "type": "object",
-      "description": "Authentication configuration",
-      "required": ["type", "enableSSO", "requiredRoles"],
+      "description": "Authentication configuration. When enableSSO is false, only enableSSO is required. When enableSSO is true, type and requiredRoles are also required.",
+      "required": ["enableSSO"],
       "properties": {
         "type": {
           "type": "string",
@@ -466,7 +466,21 @@
           "additionalProperties": false
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enableSSO": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": ["type", "enableSSO", "requiredRoles"]
+          }
+        }
+      ]
     },
     "roles": {
       "type": "array",
