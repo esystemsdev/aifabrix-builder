@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.7] - 2025-11-07
+
+### Fixed
+- Fixed Keycloak port configuration for Docker containers
+  - URLs in `.env` files now automatically resolve ports based on environment context
+  - Docker environment uses `containerPort` from service's `variables.yaml` (e.g., `http://keycloak:8080`)
+  - Local environment uses `localPort` or original port (e.g., `http://localhost:8082`)
+  - Resolves connection failures when services try to connect to Keycloak in Docker containers
+  - Port resolution works for all services (keycloak, miso-controller, dataplane, etc.)
+
+### Changed
+- Refactored `lib/secrets.js` to comply with code quality standards
+  - Reduced file size from 595 lines to 367 lines (under 500 line limit)
+  - Split large functions into smaller, focused helper functions (all under 50 lines)
+  - Created `lib/utils/secrets-utils.js` utility module for secrets loading and port resolution
+  - Improved code organization and maintainability
+  - All functions now comply with cursor rules (≤50 lines per function, ≤500 lines per file)
+
+### Added
+- `lib/utils/secrets-utils.js` utility module with helper functions:
+  - `loadSecretsFromFile()` - Loads secrets from file
+  - `loadUserSecrets()` - Loads user secrets from ~/.aifabrix/secrets.local.yaml
+  - `loadBuildSecrets()` - Loads build secrets from variables.yaml
+  - `loadDefaultSecrets()` - Loads default secrets from ~/.aifabrix/secrets.yaml
+  - `buildHostnameToServiceMap()` - Builds hostname to service name mapping
+  - `resolveUrlPort()` - Resolves port for URLs in Docker environment
+
 ## [2.1.4] - 2025-11-06
 
 ### Fixed

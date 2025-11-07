@@ -203,10 +203,37 @@ environments:
       expect(result).toBe('REDIS_URL=redis://localhost:6379');
     });
 
-    it('should throw error for missing secrets', async() => {
+    it('should throw error for missing secrets with file path', async() => {
       const template = 'SECRET=kv://missing-secret';
+      const userPath = '/home/test/.aifabrix/secrets.local.yaml';
 
-      await expect(secrets.resolveKvReferences(template, mockSecrets)).rejects.toThrow('Missing secrets: kv://missing-secret');
+      await expect(
+        secrets.resolveKvReferences(template, mockSecrets, 'local', { userPath, buildPath: null })
+      ).rejects.toThrow('Missing secrets: kv://missing-secret');
+
+      const error = await secrets.resolveKvReferences(template, mockSecrets, 'local', { userPath, buildPath: null })
+        .catch(e => e);
+      expect(error.message).toContain('Secrets file location: /home/test/.aifabrix/secrets.local.yaml');
+    });
+
+    it('should throw error for missing secrets with both file paths when buildPath is configured', async() => {
+      const template = 'SECRET=kv://missing-secret';
+      const userPath = '/home/test/.aifabrix/secrets.local.yaml';
+      const buildPath = '/project/builder/secrets.local.yaml';
+
+      const error = await secrets.resolveKvReferences(template, mockSecrets, 'local', { userPath, buildPath })
+        .catch(e => e);
+      expect(error.message).toContain('Missing secrets: kv://missing-secret');
+      expect(error.message).toContain('Secrets file location: /home/test/.aifabrix/secrets.local.yaml and /project/builder/secrets.local.yaml');
+    });
+
+    it('should handle backward compatibility with string path', async() => {
+      const template = 'SECRET=kv://missing-secret';
+      const stringPath = '/home/test/.aifabrix/secrets.local.yaml';
+
+      const error = await secrets.resolveKvReferences(template, mockSecrets, 'local', stringPath)
+        .catch(e => e);
+      expect(error.message).toContain('Secrets file location: /home/test/.aifabrix/secrets.local.yaml');
     });
 
     it('should use docker environment when specified', async() => {
@@ -1225,6 +1252,304 @@ environments:
       await secrets.generateEnvFile(appName, undefined, 'docker');
 
       expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+  });
+
+  describe('generateEnvFile - port resolution for docker environment', () => {
+    const appName = 'miso-controller';
+    const builderPath = path.join(process.cwd(), 'builder', appName);
+
+    beforeEach(() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        // Return true for env.template, secrets.yaml, and keycloak variables.yaml
+        if (filePath.includes('env.template') ||
+            filePath.includes('secrets.yaml') ||
+            filePath.includes('keycloak/variables.yaml')) {
+          return true;
+        }
+        return false;
+      });
+    });
+
+    it('should replace port in URLs with containerPort for docker environment', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        // Return true for env.template, secrets.yaml, and keycloak variables.yaml
+        if (filePath.includes('env.template') ||
+            filePath.includes('secrets.yaml') ||
+            filePath.includes('keycloak/variables.yaml') ||
+            filePath.includes('keycloak') && filePath.includes('variables.yaml')) {
+          return true;
+        }
+        return false;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-auth-server-urlKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'keycloak-auth-server-urlKeyVault: "http://${KEYCLOAK_HOST}:8082"';
+        }
+        if (filePath.includes('keycloak/variables.yaml') || (filePath.includes('keycloak') && filePath.includes('variables.yaml'))) {
+          return `
+port: 8082
+build:
+  containerPort: 8080
+  localPort: 8082
+`;
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  docker:
+    KEYCLOAK_HOST: keycloak
+  local:
+    KEYCLOAK_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker');
+
+      // Verify that the URL port was replaced with containerPort
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envContent = writeCalls.find(call => call[0].includes('.env'))?.[1];
+      expect(envContent).toContain('KEYCLOAK_AUTH_SERVER_URL=http://keycloak:8080');
+    });
+
+    it('should not replace ports in local environment', async() => {
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-auth-server-urlKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'keycloak-auth-server-urlKeyVault: "http://${KEYCLOAK_HOST}:8082"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  docker:
+    KEYCLOAK_HOST: keycloak
+  local:
+    KEYCLOAK_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'local');
+
+      // Verify that the URL port was not changed in local environment
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envContent = writeCalls.find(call => call[0].includes('.env'))?.[1];
+      expect(envContent).toContain('KEYCLOAK_AUTH_SERVER_URL=http://localhost:8082');
+    });
+
+    it('should fallback to port when containerPort not defined', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template') ||
+            filePath.includes('secrets.yaml') ||
+            (filePath.includes('keycloak') && filePath.includes('variables.yaml'))) {
+          return true;
+        }
+        return false;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-auth-server-urlKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'keycloak-auth-server-urlKeyVault: "http://${KEYCLOAK_HOST}:8082"';
+        }
+        if (filePath.includes('keycloak') && filePath.includes('variables.yaml')) {
+          return `
+port: 8080
+build:
+  localPort: 8082
+`;
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  docker:
+    KEYCLOAK_HOST: keycloak
+  local:
+    KEYCLOAK_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker');
+
+      // Verify that the URL port was replaced with port (fallback)
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envContent = writeCalls.find(call => call[0].includes('.env'))?.[1];
+      expect(envContent).toContain('KEYCLOAK_AUTH_SERVER_URL=http://keycloak:8080');
+    });
+
+    it('should keep original port when service variables.yaml not found', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        // Return false for keycloak variables.yaml
+        if (filePath.includes('keycloak/variables.yaml')) {
+          return false;
+        }
+        if (filePath.includes('env.template') || filePath.includes('secrets.yaml')) {
+          return true;
+        }
+        return false;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-auth-server-urlKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'keycloak-auth-server-urlKeyVault: "http://${KEYCLOAK_HOST}:8082"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  docker:
+    KEYCLOAK_HOST: keycloak
+  local:
+    KEYCLOAK_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker');
+
+      // Verify that the URL port was kept as original (service not found)
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envContent = writeCalls.find(call => call[0].includes('.env'))?.[1];
+      expect(envContent).toContain('KEYCLOAK_AUTH_SERVER_URL=http://keycloak:8082');
+    });
+
+    it('should handle URLs without service hostnames (no change)', async() => {
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'EXTERNAL_API_URL=kv://external-api-urlKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'external-api-urlKeyVault: "https://api.example.com:443"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  docker:
+    KEYCLOAK_HOST: keycloak
+  local:
+    KEYCLOAK_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker');
+
+      // Verify that external URLs are not changed
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envContent = writeCalls.find(call => call[0].includes('.env'))?.[1];
+      expect(envContent).toContain('EXTERNAL_API_URL=https://api.example.com:443');
+    });
+
+    it('should handle multiple service URLs in same .env file', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template') ||
+            filePath.includes('secrets.yaml') ||
+            (filePath.includes('keycloak') && filePath.includes('variables.yaml')) ||
+            (filePath.includes('miso-controller') && filePath.includes('variables.yaml'))) {
+          return true;
+        }
+        return false;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'KEYCLOAK_URL=kv://keycloak-urlKeyVault\nMISO_URL=kv://miso-urlKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return `keycloak-urlKeyVault: "http://\${KEYCLOAK_HOST}:8082"
+miso-urlKeyVault: "http://\${MISO_HOST}:3010"`;
+        }
+        if (filePath.includes('keycloak') && filePath.includes('variables.yaml')) {
+          return `
+port: 8082
+build:
+  containerPort: 8080
+`;
+        }
+        if (filePath.includes('miso-controller') && filePath.includes('variables.yaml')) {
+          return `
+port: 3010
+build:
+  containerPort: 3000
+`;
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  docker:
+    KEYCLOAK_HOST: keycloak
+    MISO_HOST: miso-controller
+  local:
+    KEYCLOAK_HOST: localhost
+    MISO_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker');
+
+      // Verify that both URLs had their ports replaced
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envContent = writeCalls.find(call => call[0].includes('.env'))?.[1];
+      expect(envContent).toContain('KEYCLOAK_URL=http://keycloak:8080');
+      expect(envContent).toContain('MISO_URL=http://miso-controller:3000');
+    });
+
+    it('should preserve URL paths and query parameters', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template') ||
+            filePath.includes('secrets.yaml') ||
+            (filePath.includes('keycloak') && filePath.includes('variables.yaml'))) {
+          return true;
+        }
+        return false;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'KEYCLOAK_URL=kv://keycloak-urlKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth/realms/master?param=value"';
+        }
+        if (filePath.includes('keycloak') && filePath.includes('variables.yaml')) {
+          return `
+port: 8082
+build:
+  containerPort: 8080
+`;
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  docker:
+    KEYCLOAK_HOST: keycloak
+  local:
+    KEYCLOAK_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker');
+
+      // Verify that path and query params are preserved
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envContent = writeCalls.find(call => call[0].includes('.env'))?.[1];
+      expect(envContent).toContain('KEYCLOAK_URL=http://keycloak:8080/auth/realms/master?param=value');
     });
   });
 
