@@ -10,6 +10,7 @@
  */
 
 const deployer = require('../../lib/deployer');
+const authHeaders = require('../../lib/utils/auth-headers');
 const axios = require('axios');
 
 // Mock axios
@@ -21,29 +22,93 @@ describe('deployer', () => {
     jest.clearAllMocks();
   });
 
+  describe('createBearerTokenHeaders', () => {
+    it('should create headers with bearer token', () => {
+      const headers = authHeaders.createBearerTokenHeaders('test-token-123');
+      expect(headers['Authorization']).toBe('Bearer test-token-123');
+    });
+
+    it('should throw error when token is missing', () => {
+      expect(() => {
+        authHeaders.createBearerTokenHeaders('');
+      }).toThrow('Authentication token is required');
+    });
+
+    it('should throw error when token is null', () => {
+      expect(() => {
+        authHeaders.createBearerTokenHeaders(null);
+      }).toThrow('Authentication token is required');
+    });
+  });
+
   describe('createClientCredentialsHeaders', () => {
     it('should create headers with client ID and secret', () => {
-      const headers = deployer.createClientCredentialsHeaders('test-client-id', 'test-secret');
+      const headers = authHeaders.createClientCredentialsHeaders('test-client-id', 'test-secret');
       expect(headers['x-client-id']).toBe('test-client-id');
       expect(headers['x-client-secret']).toBe('test-secret');
     });
 
     it('should throw error when client ID is missing', () => {
       expect(() => {
-        deployer.createClientCredentialsHeaders('', 'secret');
+        authHeaders.createClientCredentialsHeaders('', 'secret');
       }).toThrow('Client ID and Client Secret are required');
     });
 
     it('should throw error when client secret is missing', () => {
       expect(() => {
-        deployer.createClientCredentialsHeaders('client-id', '');
+        authHeaders.createClientCredentialsHeaders('client-id', '');
       }).toThrow('Client ID and Client Secret are required');
     });
 
     it('should throw error when both credentials are missing', () => {
       expect(() => {
-        deployer.createClientCredentialsHeaders(null, null);
+        authHeaders.createClientCredentialsHeaders(null, null);
       }).toThrow('Client ID and Client Secret are required');
+    });
+  });
+
+  describe('createAuthHeaders', () => {
+    it('should create bearer token headers when type is bearer', () => {
+      const authConfig = { type: 'bearer', token: 'test-token-123' };
+      const headers = authHeaders.createAuthHeaders(authConfig);
+      expect(headers['Authorization']).toBe('Bearer test-token-123');
+    });
+
+    it('should create client credentials headers when type is credentials', () => {
+      const authConfig = { type: 'credentials', clientId: 'test-id', clientSecret: 'test-secret' };
+      const headers = authHeaders.createAuthHeaders(authConfig);
+      expect(headers['x-client-id']).toBe('test-id');
+      expect(headers['x-client-secret']).toBe('test-secret');
+    });
+
+    it('should throw error when auth config is missing', () => {
+      expect(() => {
+        authHeaders.createAuthHeaders(null);
+      }).toThrow('Authentication configuration is required');
+    });
+
+    it('should throw error when auth type is missing', () => {
+      expect(() => {
+        authHeaders.createAuthHeaders({});
+      }).toThrow('Authentication configuration is required');
+    });
+
+    it('should throw error when bearer token is missing', () => {
+      expect(() => {
+        authHeaders.createAuthHeaders({ type: 'bearer' });
+      }).toThrow('Bearer token is required for bearer authentication');
+    });
+
+    it('should throw error when client credentials are missing', () => {
+      expect(() => {
+        authHeaders.createAuthHeaders({ type: 'credentials' });
+      }).toThrow('Client ID and Client Secret are required');
+    });
+
+    it('should throw error for invalid auth type', () => {
+      expect(() => {
+        authHeaders.createAuthHeaders({ type: 'invalid' });
+      }).toThrow('Invalid authentication type');
     });
   });
 
@@ -121,8 +186,9 @@ describe('deployer', () => {
   });
 
   describe('sendDeploymentRequest', () => {
-    it('should send deployment request successfully', async() => {
-      const manifest = { key: 'test-app', image: 'test-app:latest', port: 3000 };
+    it('should send deployment request successfully with bearer token', async() => {
+      const validateToken = 'validate-token-123';
+      const authConfig = { type: 'bearer', token: 'test-token-123', clientId: 'test-id', clientSecret: 'test-secret' };
 
       mockedAxios.post.mockResolvedValue({
         status: 200,
@@ -135,9 +201,33 @@ describe('deployer', () => {
       const result = await deployer.sendDeploymentRequest(
         'https://controller.example.com',
         'dev',
-        manifest,
-        'test-client-id',
-        'test-client-secret',
+        validateToken,
+        authConfig,
+        { timeout: 5000 }
+      );
+
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
+      expect(mockedAxios.post).toHaveBeenCalled();
+    });
+
+    it('should send deployment request successfully with client credentials', async() => {
+      const validateToken = 'validate-token-123';
+      const authConfig = { type: 'credentials', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      mockedAxios.post.mockResolvedValue({
+        status: 200,
+        data: {
+          success: true,
+          deploymentId: 'deploy-123'
+        }
+      });
+
+      const result = await deployer.sendDeploymentRequest(
+        'https://controller.example.com',
+        'dev',
+        validateToken,
+        authConfig,
         { timeout: 5000 }
       );
 
@@ -147,7 +237,8 @@ describe('deployer', () => {
     });
 
     it('should use environment-aware endpoint', async() => {
-      const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const validateToken = 'validate-token-123';
+      const authConfig = { type: 'bearer', token: 'test-token-456', clientId: 'test-id', clientSecret: 'test-secret' };
 
       mockedAxios.post.mockResolvedValue({
         status: 200,
@@ -157,25 +248,25 @@ describe('deployer', () => {
       await deployer.sendDeploymentRequest(
         'https://controller.example.com',
         'tst',
-        manifest,
-        'client-id',
-        'secret'
+        validateToken,
+        authConfig
       );
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
         'https://controller.example.com/api/v1/pipeline/tst/deploy',
-        manifest,
+        { validateToken: validateToken, imageTag: 'latest' },
         expect.objectContaining({
           headers: expect.objectContaining({
-            'x-client-id': 'client-id',
-            'x-client-secret': 'secret'
+            'x-client-id': 'test-id',
+            'x-client-secret': 'test-secret'
           })
         })
       );
     });
 
-    it('should include authentication headers in request', async() => {
-      const manifest = { key: 'test-app', image: 'test-app:latest' };
+    it('should include bearer token authentication headers in request', async() => {
+      const validateToken = 'validate-token-123';
+      const authConfig = { type: 'bearer', token: 'my-bearer-token', clientId: 'my-client-id', clientSecret: 'my-client-secret' };
 
       mockedAxios.post.mockResolvedValue({
         status: 200,
@@ -185,9 +276,32 @@ describe('deployer', () => {
       await deployer.sendDeploymentRequest(
         'https://controller.example.com',
         'dev',
-        manifest,
-        'my-client-id',
-        'my-client-secret'
+        validateToken,
+        authConfig
+      );
+
+      const callArgs = mockedAxios.post.mock.calls[0];
+      const requestConfig = callArgs[2];
+      expect(requestConfig.headers['x-client-id']).toBe('my-client-id');
+      expect(requestConfig.headers['x-client-secret']).toBe('my-client-secret');
+      expect(requestConfig.headers['Content-Type']).toBe('application/json');
+      expect(requestConfig.headers['User-Agent']).toBe('aifabrix-builder/2.0.0');
+    });
+
+    it('should include client credentials authentication headers in request', async() => {
+      const validateToken = 'validate-token-123';
+      const authConfig = { type: 'credentials', clientId: 'my-client-id', clientSecret: 'my-client-secret' };
+
+      mockedAxios.post.mockResolvedValue({
+        status: 200,
+        data: { success: true, deploymentId: 'deploy-123' }
+      });
+
+      await deployer.sendDeploymentRequest(
+        'https://controller.example.com',
+        'dev',
+        validateToken,
+        authConfig
       );
 
       const callArgs = mockedAxios.post.mock.calls[0];
@@ -199,21 +313,22 @@ describe('deployer', () => {
     });
 
     it('should validate environment key before sending request', async() => {
-      const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const validateToken = 'validate-token-123';
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
 
       await expect(
         deployer.sendDeploymentRequest(
           'https://controller.example.com',
           'invalid-env',
-          manifest,
-          'client-id',
-          'secret'
+          validateToken,
+          authConfig
         )
       ).rejects.toThrow('Invalid environment key');
     });
 
     it('should retry on transient failures', async() => {
-      const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const validateToken = 'validate-token-123';
+      const authConfig = { type: 'bearer', token: 'test-token-123', clientId: 'test-id', clientSecret: 'test-secret' };
 
       mockedAxios.post
         .mockRejectedValueOnce(new Error('Network error'))
@@ -226,9 +341,8 @@ describe('deployer', () => {
       const result = await deployer.sendDeploymentRequest(
         'https://controller.example.com',
         'dev',
-        manifest,
-        'test-client-id',
-        'test-client-secret',
+        validateToken,
+        authConfig,
         { timeout: 10000, maxRetries: 5 }
       );
 
@@ -239,10 +353,11 @@ describe('deployer', () => {
     it('should fail after max retries', async() => {
       mockedAxios.post.mockRejectedValue(new Error('Always fails'));
 
-      const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const validateToken = 'validate-token-123';
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
 
       await expect(
-        deployer.sendDeploymentRequest('https://controller.example.com', 'dev', manifest, 'client-id', 'secret', {
+        deployer.sendDeploymentRequest('https://controller.example.com', 'dev', validateToken, authConfig, {
           timeout: 1000,
           maxRetries: 2
         })
@@ -256,10 +371,11 @@ describe('deployer', () => {
         data: { error: 'Invalid manifest' }
       });
 
-      const manifest = { key: 'test-app' };
+      const validateToken = 'validate-token-123';
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
 
       await expect(
-        deployer.sendDeploymentRequest('https://controller.example.com', 'dev', manifest, 'client-id', 'secret')
+        deployer.sendDeploymentRequest('https://controller.example.com', 'dev', validateToken, authConfig)
       ).rejects.toThrow();
     });
   });
@@ -269,46 +385,53 @@ describe('deployer', () => {
       mockedAxios.get.mockResolvedValue({
         status: 200,
         data: {
-          deploymentId: 'test-deploy-123',
-          status: 'completed',
-          progress: 100
+          success: true,
+          data: {
+            id: 'test-deploy-123',
+            status: 'completed',
+            progress: 100
+          },
+          timestamp: '2024-01-01T12:00:00Z'
         }
       });
 
+      const authConfig = { type: 'bearer', token: 'test-token-123' };
       const result = await deployer.pollDeploymentStatus(
         'test-deploy-123',
         'https://controller.example.com',
         'dev',
-        'test-client-id',
-        'test-client-secret',
+        authConfig,
         { interval: 100, maxAttempts: 10 }
       );
 
       expect(result).toBeDefined();
-      expect(result.deploymentId).toBe('test-deploy-123');
+      expect(result.id).toBe('test-deploy-123');
       expect(result.status).toBe('completed');
     });
 
     it('should use environment-aware status endpoint', async() => {
       mockedAxios.get.mockResolvedValue({
         status: 200,
-        data: { deploymentId: 'test-123', status: 'completed' }
+        data: {
+          success: true,
+          data: { id: 'test-123', status: 'completed' },
+          timestamp: '2024-01-01T12:00:00Z'
+        }
       });
 
+      const authConfig = { type: 'bearer', token: 'test-token-456' };
       await deployer.pollDeploymentStatus(
         'test-123',
         'https://controller.example.com',
         'pro',
-        'client-id',
-        'secret'
+        authConfig
       );
 
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        'https://controller.example.com/api/v1/environments/pro/deployments/test-123',
+        'https://controller.example.com/api/v1/pipeline/pro/deployments/test-123',
         expect.objectContaining({
           headers: expect.objectContaining({
-            'x-client-id': 'client-id',
-            'x-client-secret': 'secret'
+            'Authorization': 'Bearer test-token-456'
           })
         })
       );
@@ -317,40 +440,72 @@ describe('deployer', () => {
     it('should include authentication headers in status polling', async() => {
       mockedAxios.get.mockResolvedValue({
         status: 200,
-        data: { deploymentId: 'test-123', status: 'completed' }
+        data: {
+          success: true,
+          data: { id: 'test-123', status: 'completed' },
+          timestamp: '2024-01-01T12:00:00Z'
+        }
       });
 
+      const authConfig = { type: 'bearer', token: 'poll-bearer-token' };
       await deployer.pollDeploymentStatus(
         'test-123',
         'https://controller.example.com',
         'dev',
-        'poll-client-id',
-        'poll-secret',
+        authConfig,
         { interval: 10, maxAttempts: 1 }
       );
 
       const callArgs = mockedAxios.get.mock.calls[0];
       const requestConfig = callArgs[1];
-      expect(requestConfig.headers['x-client-id']).toBe('poll-client-id');
-      expect(requestConfig.headers['x-client-secret']).toBe('poll-secret');
+      expect(requestConfig.headers['Authorization']).toBe('Bearer poll-bearer-token');
+    });
+
+    it('should support client credentials in status polling', async() => {
+      mockedAxios.get.mockResolvedValue({
+        status: 200,
+        data: {
+          success: true,
+          data: { id: 'test-123', status: 'completed' },
+          timestamp: '2024-01-01T12:00:00Z'
+        }
+      });
+
+      const authConfig = { type: 'credentials', clientId: 'test-id', clientSecret: 'test-secret' };
+      await deployer.pollDeploymentStatus(
+        'test-123',
+        'https://controller.example.com',
+        'dev',
+        authConfig,
+        { interval: 10, maxAttempts: 1 }
+      );
+
+      const callArgs = mockedAxios.get.mock.calls[0];
+      const requestConfig = callArgs[1];
+      expect(requestConfig.headers['x-client-id']).toBe('test-id');
+      expect(requestConfig.headers['x-client-secret']).toBe('test-secret');
     });
 
     it('should handle completed deployments', async() => {
       mockedAxios.get.mockResolvedValue({
         status: 200,
         data: {
-          deploymentId: 'test-deploy-456',
-          status: 'completed',
-          progress: 100
+          success: true,
+          data: {
+            id: 'test-deploy-456',
+            status: 'completed',
+            progress: 100
+          },
+          timestamp: '2024-01-01T12:00:00Z'
         }
       });
 
+      const authConfig = { type: 'bearer', token: 'test-token-789' };
       const result = await deployer.pollDeploymentStatus(
         'test-deploy-456',
         'https://controller.example.com',
         'dev',
-        'test-client-id',
-        'test-client-secret',
+        authConfig,
         { interval: 100, maxAttempts: 5 }
       );
 
@@ -361,14 +516,19 @@ describe('deployer', () => {
       mockedAxios.get.mockResolvedValue({
         status: 200,
         data: {
-          deploymentId: 'never-complete',
-          status: 'pending',
-          progress: 25
+          success: true,
+          data: {
+            id: 'never-complete',
+            status: 'pending',
+            progress: 25
+          },
+          timestamp: '2024-01-01T12:00:00Z'
         }
       });
 
+      const authConfig = { type: 'bearer', token: 'test-token' };
       await expect(
-        deployer.pollDeploymentStatus('never-complete', 'https://controller.example.com', 'dev', 'client-id', 'secret', {
+        deployer.pollDeploymentStatus('never-complete', 'https://controller.example.com', 'dev', authConfig, {
           interval: 50,
           maxAttempts: 3
         })
@@ -381,8 +541,9 @@ describe('deployer', () => {
         message: 'Not found'
       });
 
+      const authConfig = { type: 'bearer', token: 'test-token' };
       await expect(
-        deployer.pollDeploymentStatus('non-existent', 'https://controller.example.com', 'dev', 'client-id', 'secret')
+        deployer.pollDeploymentStatus('non-existent', 'https://controller.example.com', 'dev', authConfig)
       ).rejects.toThrow();
     });
   });
@@ -415,7 +576,7 @@ describe('deployer', () => {
   });
 
   describe('deployToController', () => {
-    it('should deploy successfully with valid manifest', async() => {
+    it('should deploy successfully with valid manifest using bearer token', async() => {
       const manifest = {
         key: 'test-app',
         displayName: 'Test App',
@@ -423,8 +584,20 @@ describe('deployer', () => {
         port: 3000,
         deploymentKey: 'abc123'
       };
+      const authConfig = { type: 'bearer', token: 'test-token-123', clientId: 'test-id', clientSecret: 'test-secret' };
 
-      mockedAxios.post.mockResolvedValue({
+      // Mock validate endpoint
+      mockedAxios.post.mockResolvedValueOnce({
+        status: 200,
+        data: {
+          valid: true,
+          validateToken: 'validate-token-123',
+          draftDeploymentId: 'draft-123'
+        }
+      });
+
+      // Mock deploy endpoint
+      mockedAxios.post.mockResolvedValueOnce({
         status: 200,
         data: {
           success: true,
@@ -437,13 +610,56 @@ describe('deployer', () => {
         manifest,
         'https://controller.example.com',
         'dev',
-        'test-client-id',
-        'test-client-secret',
+        authConfig,
         { poll: false }
       );
 
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
+      expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+    });
+
+    it('should deploy successfully with valid manifest using client credentials', async() => {
+      const manifest = {
+        key: 'test-app',
+        displayName: 'Test App',
+        image: 'test-app:latest',
+        port: 3000,
+        deploymentKey: 'abc123'
+      };
+      const authConfig = { type: 'credentials', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      // Mock validate endpoint
+      mockedAxios.post.mockResolvedValueOnce({
+        status: 200,
+        data: {
+          valid: true,
+          validateToken: 'validate-token-123',
+          draftDeploymentId: 'draft-123'
+        }
+      });
+
+      // Mock deploy endpoint
+      mockedAxios.post.mockResolvedValueOnce({
+        status: 200,
+        data: {
+          success: true,
+          deploymentId: 'deploy-123',
+          deploymentUrl: 'https://app.example.com/test-app'
+        }
+      });
+
+      const result = await deployer.deployToController(
+        manifest,
+        'https://controller.example.com',
+        'dev',
+        authConfig,
+        { poll: false }
+      );
+
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
+      expect(mockedAxios.post).toHaveBeenCalledTimes(2);
     });
 
     it('should use environment key in deployment endpoint', async() => {
@@ -452,8 +668,19 @@ describe('deployer', () => {
         image: 'test-app:latest',
         port: 3000
       };
+      const authConfig = { type: 'bearer', token: 'test-token-456', clientId: 'test-id', clientSecret: 'test-secret' };
 
-      mockedAxios.post.mockResolvedValue({
+      // Mock validate endpoint
+      mockedAxios.post.mockResolvedValueOnce({
+        status: 200,
+        data: {
+          valid: true,
+          validateToken: 'validate-token-123'
+        }
+      });
+
+      // Mock deploy endpoint
+      mockedAxios.post.mockResolvedValueOnce({
         status: 200,
         data: { success: true, deploymentId: 'deploy-123' }
       });
@@ -462,14 +689,26 @@ describe('deployer', () => {
         manifest,
         'https://controller.example.com',
         'tst',
-        'client-id',
-        'secret',
+        authConfig,
         { poll: false }
       );
 
+      // Check that validate was called with correct endpoint
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        'https://controller.example.com/api/v1/pipeline/tst/validate',
+        expect.objectContaining({
+          applicationConfig: manifest
+        }),
+        expect.any(Object)
+      );
+
+      // Check that deploy was called with validateToken
       expect(mockedAxios.post).toHaveBeenCalledWith(
         'https://controller.example.com/api/v1/pipeline/tst/deploy',
-        manifest,
+        expect.objectContaining({
+          validateToken: 'validate-token-123',
+          imageTag: 'latest'
+        }),
         expect.any(Object)
       );
     });
@@ -479,8 +718,19 @@ describe('deployer', () => {
         key: 'test-app',
         image: 'test-app:latest'
       };
+      const authConfig = { type: 'bearer', token: 'test-token-789', clientId: 'test-id', clientSecret: 'test-secret' };
 
-      mockedAxios.post.mockResolvedValue({
+      // Mock validate endpoint
+      mockedAxios.post.mockResolvedValueOnce({
+        status: 200,
+        data: {
+          valid: true,
+          validateToken: 'validate-token-123'
+        }
+      });
+
+      // Mock deploy endpoint
+      mockedAxios.post.mockResolvedValueOnce({
         status: 200,
         data: { success: true, deploymentId: 'deploy-123' }
       });
@@ -489,48 +739,50 @@ describe('deployer', () => {
         manifest,
         'https://controller.example.com',
         'DEV',
-        'client-id',
-        'secret',
+        authConfig,
         { poll: false }
       );
 
-      // Should normalize to lowercase
+      // Should normalize to lowercase - check validate endpoint
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://controller.example.com/api/v1/pipeline/dev/deploy',
-        manifest,
+        'https://controller.example.com/api/v1/pipeline/dev/validate',
+        expect.any(Object),
         expect.any(Object)
       );
     });
 
     it('should require environment key', async() => {
       const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const authConfig = { type: 'bearer', token: 'test-token' };
 
       await expect(
-        deployer.deployToController(manifest, 'https://controller.example.com', '', 'client-id', 'secret')
+        deployer.deployToController(manifest, 'https://controller.example.com', '', authConfig)
       ).rejects.toThrow('Environment key is required');
     });
 
-    it('should require client credentials', async() => {
+    it('should require authentication configuration', async() => {
       const manifest = { key: 'test-app', image: 'test-app:latest' };
 
       await expect(
-        deployer.deployToController(manifest, 'https://controller.example.com', 'dev', '', '')
-      ).rejects.toThrow('Client ID and Client Secret are required');
+        deployer.deployToController(manifest, 'https://controller.example.com', 'dev', null)
+      ).rejects.toThrow('Authentication configuration is required');
     });
 
     it('should reject HTTP URLs (except localhost)', async() => {
       const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const authConfig = { type: 'bearer', token: 'test-token' };
 
       await expect(
-        deployer.deployToController(manifest, 'http://controller.example.com', 'dev', 'client-id', 'secret')
+        deployer.deployToController(manifest, 'http://controller.example.com', 'dev', authConfig)
       ).rejects.toThrow('Controller URL must use HTTPS');
     });
 
     it('should reject invalid URLs', async() => {
       const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const authConfig = { type: 'bearer', token: 'test-token' };
 
       await expect(
-        deployer.deployToController(manifest, 'not-a-url', 'dev', 'client-id', 'secret')
+        deployer.deployToController(manifest, 'not-a-url', 'dev', authConfig)
       ).rejects.toThrow();
     });
 
@@ -538,7 +790,8 @@ describe('deployer', () => {
       const auditLogger = require('../../lib/audit-logger');
       jest.spyOn(auditLogger, 'logDeploymentFailure');
 
-      mockedAxios.post.mockResolvedValue({
+      // Mock validate endpoint returning authentication error
+      mockedAxios.post.mockResolvedValueOnce({
         status: 401,
         statusText: 'Unauthorized',
         data: { error: 'Unauthorized' }
@@ -549,19 +802,29 @@ describe('deployer', () => {
         image: 'test-app:latest',
         deploymentKey: 'abc123'
       };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
 
       await expect(
-        deployer.deployToController(manifest, 'https://controller.example.com', 'dev', 'client-id', 'secret', { maxRetries: 1 })
+        deployer.deployToController(manifest, 'https://controller.example.com', 'dev', authConfig, { maxRetries: 1 })
       ).rejects.toThrow();
 
       expect(auditLogger.logDeploymentFailure).toHaveBeenCalled();
     });
 
     it('should handle validation errors', async() => {
-      mockedAxios.post.mockResolvedValue({
+      // Mock validate endpoint returning validation error
+      mockedAxios.post.mockResolvedValueOnce({
         status: 400,
         statusText: 'Bad Request',
-        data: { error: 'Invalid manifest' }
+        data: {
+          type: '/Errors/BadRequest',
+          title: 'Bad Request',
+          status: 400,
+          detail: 'Pipeline validation failed',
+          errors: [
+            { field: 'validation', message: 'INVALID_APPLICATION_SCHEMA' }
+          ]
+        }
       });
 
       const manifest = {
@@ -569,9 +832,10 @@ describe('deployer', () => {
         image: 'test-app:latest',
         deploymentKey: 'abc123'
       };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
 
       await expect(
-        deployer.deployToController(manifest, 'https://controller.example.com', 'dev', 'client-id', 'secret', { maxRetries: 1 })
+        deployer.deployToController(manifest, 'https://controller.example.com', 'dev', authConfig, { maxRetries: 1 })
       ).rejects.toThrow();
     });
 
@@ -579,7 +843,8 @@ describe('deployer', () => {
       const auditLogger = require('../../lib/audit-logger');
       jest.spyOn(auditLogger, 'logDeploymentFailure');
 
-      mockedAxios.post.mockRejectedValue({
+      // Mock validate endpoint failing with network error
+      mockedAxios.post.mockRejectedValueOnce({
         code: 'ECONNREFUSED',
         message: 'Connection refused'
       });
@@ -589,9 +854,10 @@ describe('deployer', () => {
         image: 'test-app:latest',
         deploymentKey: 'abc123'
       };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
 
       await expect(
-        deployer.deployToController(manifest, 'https://controller.example.com', 'dev', 'client-id', 'secret', { maxRetries: 1 })
+        deployer.deployToController(manifest, 'https://controller.example.com', 'dev', authConfig, { maxRetries: 1 })
       ).rejects.toThrow();
 
       expect(auditLogger.logDeploymentFailure).toHaveBeenCalled();

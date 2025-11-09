@@ -403,7 +403,7 @@ describe('CLI Command Actions', () => {
         const envPrompt = await inquirer.prompt([{
           type: 'input',
           name: 'environment',
-          message: 'Environment key (e.g., dev, tst, pro):',
+          message: 'Environment key (e.g., miso, dev, tst, pro):',
           validate: (input) => {
             if (!input || input.trim().length === 0) {
               return 'Environment key is required';
@@ -472,7 +472,7 @@ describe('CLI Command Actions', () => {
         const envPrompt = await inquirer.prompt([{
           type: 'input',
           name: 'environment',
-          message: 'Environment key (e.g., dev, tst, pro):',
+          message: 'Environment key (e.g., miso, dev, tst, pro):',
           validate: () => true
         }]);
 
@@ -532,7 +532,7 @@ describe('CLI Command Actions', () => {
         const envPrompt = await inquirer.prompt([{
           type: 'input',
           name: 'environment',
-          message: 'Environment key (e.g., dev, tst, pro):',
+          message: 'Environment key (e.g., miso, dev, tst, pro):',
           validate: () => true
         }]);
 
@@ -590,7 +590,7 @@ describe('CLI Command Actions', () => {
         const envPrompt = await inquirer.prompt([{
           type: 'input',
           name: 'environment',
-          message: 'Environment key (e.g., dev, tst, pro):',
+          message: 'Environment key (e.g., miso, dev, tst, pro):',
           validate: () => true
         }]);
 
@@ -647,7 +647,7 @@ describe('CLI Command Actions', () => {
         const envPrompt = await inquirer.prompt([{
           type: 'input',
           name: 'environment',
-          message: 'Environment key (e.g., dev, tst, pro):',
+          message: 'Environment key (e.g., miso, dev, tst, pro):',
           validate: () => true
         }]);
 
@@ -690,7 +690,7 @@ describe('CLI Command Actions', () => {
         const envPrompt = await inquirer.prompt([{
           type: 'input',
           name: 'environment',
-          message: 'Environment key (e.g., dev, tst, pro):',
+          message: 'Environment key (e.g., miso, dev, tst, pro):',
           validate: (input) => {
             if (!input || input.trim().length === 0) {
               return 'Environment key is required';

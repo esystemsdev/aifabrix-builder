@@ -2,56 +2,193 @@
 
 Build, run, and deploy {{displayName}} using `@aifabrix/builder`.
 
-## Install
+---
+
+## Quick Start
+
+### 1. Install
 
 ```bash
 npm install -g @aifabrix/builder
 ```
 
-## Build
+### 2. First Time Setup
 
 ```bash
-aifabrix build {{appName}}
+# Check your environment
+aifabrix doctor
+
+# Login to controller
+aifabrix login --method device --environment dev
+
+# Register your application (gets you credentials automatically)
+aifabrix app register {{appName}} --environment dev
 ```
 
-Builds Docker image: `{{imageName}}:latest`
-
-## Run Locally
+### 3. Build & Run Locally
 
 ```bash
+# Build the Docker image
+aifabrix build {{appName}}
+
+# Generate environment variables
+aifabrix resolve {{appName}}
+
+# Run locally
 aifabrix run {{appName}}
 ```
 
-**Access:** http://localhost:{{port}}
+**Access your app:** http://localhost:{{port}}
 
-**Logs:**
+**View logs:**
 ```bash
-docker logs {{appName}} -f
+docker logs aifabrix-{{appName}} -f
 ```
 
 **Stop:**
 ```bash
-docker stop {{appName}}
+docker stop aifabrix-{{appName}}
 ```
 
-## Push to Azure Container Registry
+### 4. Deploy to Azure
 
 ```bash
-aifabrix push {{appName}} --registry {{registry}} --tag latest
+# Build with version tag
+aifabrix build {{appName}} --tag v1.0.0
+
+# Push to registry
+aifabrix push {{appName}} --registry {{registry}} --tag "v1.0.0,latest"
+
+# Deploy to miso-controller
+aifabrix deploy {{appName}} --controller https://controller.aifabrix.ai --environment dev
 ```
 
-**Note:** ACR push requires `az login` or ACR credentials in `variables.yaml`
+---
+
+## Using miso-client
+
+> [miso-client](https://github.com/esystemsdev/aifabrix-miso-client)
+
+After registering your app, you automatically get credentials in your secret file. Use miso-client for login, RBAC, audit logs, etc.
+
+**Rotate credentials if needed:**
+```bash
+aifabrix app rotate-secret {{appName}} --environment dev
+```
+
+---
+
+## Reference
+
+### Common Commands
+
+```bash
+# Development
+aifabrix build {{appName}}                        # Build app
+aifabrix run {{appName}}                          # Run locally
+aifabrix dockerfile {{appName}} --force           # Generate Dockerfile
+aifabrix resolve {{appName}}                      # Generate .env file
+
+# Deployment
+aifabrix json {{appName}}                         # Preview deployment JSON
+aifabrix genkey {{appName}}                       # Generate deployment key
+aifabrix push {{appName}} --registry {{registry}} # Push to ACR
+aifabrix deploy {{appName}} --controller <url>    # Deploy to Azure
+
+# Management
+aifabrix app register {{appName}} --environment dev
+aifabrix app list --environment dev
+aifabrix app rotate-secret {{appName}} --environment dev
+
+# Utilities
+aifabrix doctor                                   # Check environment
+aifabrix login --method device --environment dev  # Login
+aifabrix --help                                   # Get help
+```
+
+### Build Options
+
+```bash
+aifabrix build {{appName}} --tag v1.0.0           # Custom tag
+aifabrix build {{appName}} --force-template       # Force template regeneration
+aifabrix build {{appName}} --language typescript  # Override language detection
+```
+
+### Run Options
+
+```bash
+aifabrix run {{appName}} --port {{port}}          # Custom port
+aifabrix run {{appName}} --debug                  # Debug output
+```
+
+### Push Options
+
+```bash
+aifabrix push {{appName}} --registry {{registry}} --tag v1.0.0
+aifabrix push {{appName}} --registry {{registry}} --tag "v1.0.0,latest,stable"
+```
+
+### Deploy Options
+
+```bash
+aifabrix deploy {{appName}} --controller <url> --environment dev
+aifabrix deploy {{appName}} --controller <url> --environment dev --no-poll
+```
+
+### Login Methods
+
+```bash
+# Device code flow
+aifabrix login --method device --environment dev
+
+# Credentials (reads from secrets.local.yaml)
+aifabrix login --method credentials --app {{appName}} --environment dev
+
+# Explicit credentials
+aifabrix login --method credentials --app {{appName}} --client-id $CLIENT_ID --client-secret $CLIENT_SECRET --environment dev
+```
+
+### Environment Variables
+
+```bash
+export AIFABRIX_HOME=/custom/path
+export AIFABRIX_SECRETS=/path/to/secrets.yaml
+```
+
+---
+
+## Troubleshooting
+
+- **"Docker not running"** → Start Docker Desktop
+- **"Not logged in"** → Run `aifabrix login` first
+- **"Port already in use"** → Use `--port` flag or change `build.localPort` in `variables.yaml` (default: {{port}})
+- **"Authentication failed"** → Run `aifabrix login` again
+- **"Build fails"** → Check Docker is running and `variables.yaml` → `build.secrets` path is correct
+- **"Can't connect"** → Verify infrastructure is running{{#if hasDatabase}} and PostgreSQL is accessible{{/if}}
+
+**Regenerate files:**
+```bash
+aifabrix resolve {{appName}} --force
+aifabrix json {{appName}}
+aifabrix genkey {{appName}}
+```
+
+---
 
 ## Prerequisites
 
 - `@aifabrix/builder` installed globally
 - Docker Desktop running
-- Infrastructure running (`aifabrix up`)
+- Azure CLI installed (for push command)
+- Authenticated with controller (for deploy command)
+{{#unless hasAnyService}}
+- Infrastructure running
+{{/unless}}
 {{#if hasDatabase}}
-- PostgreSQL database
+- PostgreSQL database (ensure infrastructure is running)
 {{/if}}
 {{#if hasRedis}}
-- Redis
+- Redis (ensure infrastructure is running)
 {{/if}}
 {{#if hasStorage}}
 - File storage configured
@@ -60,11 +197,6 @@ aifabrix push {{appName}} --registry {{registry}} --tag latest
 - Authentication/RBAC configured
 {{/if}}
 
-## Troubleshooting
+---
 
-**Build fails:** Check Docker is running and `variables.yaml` → `build.secrets` path is correct
-
-**Can't connect:** Verify infrastructure is running (`aifabrix up`){{#if hasDatabase}} and PostgreSQL is accessible{{/if}}
-
-**Port in use:** Change `build.localPort` in `variables.yaml` (default: {{port}})
-
+**Application**: {{appName}} | **Port**: {{port}} | **Registry**: {{registry}} | **Image**: {{imageName}}:latest

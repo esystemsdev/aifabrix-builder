@@ -101,6 +101,8 @@ jest.mock('../../lib/build');
 jest.mock('../../lib/utils/cli-utils');
 jest.mock('../../lib/utils/logger');
 jest.mock('../../lib/commands/login');
+jest.mock('../../lib/config');
+jest.mock('../../lib/utils/dev-config');
 
 const chalk = require('chalk');
 const secrets = require('../../lib/secrets');
@@ -112,6 +114,8 @@ const app = require('../../lib/app');
 const cliUtils = require('../../lib/utils/cli-utils');
 const logger = require('../../lib/utils/logger');
 const { handleLogin } = require('../../lib/commands/login');
+const config = require('../../lib/config');
+const devConfig = require('../../lib/utils/dev-config');
 
 describe('CLI Commands', () => {
   const mockHomeDir = '/home/test';
@@ -1864,6 +1868,8 @@ describe('CLI Commands', () => {
       const freshInfra = require('../../lib/infra');
       const freshCliUtils = require('../../lib/utils/cli-utils');
       const freshHandleLoginModule = require('../../lib/commands/login');
+      const freshConfig = require('../../lib/config');
+      const freshDevConfig = require('../../lib/utils/dev-config');
 
       // Update outer scope references
       Object.assign(keyGenerator, freshKeyGenerator);
@@ -1873,6 +1879,8 @@ describe('CLI Commands', () => {
       Object.assign(validator, freshValidator);
       Object.assign(infra, freshInfra);
       Object.assign(cliUtils, freshCliUtils);
+      Object.assign(config, freshConfig);
+      Object.assign(devConfig, freshDevConfig);
       // handleLogin is a destructured export, so update the module's handleLogin property
       // This ensures the fresh module has the mocked handleLogin
       if (freshHandleLoginModule.handleLogin) {
@@ -2376,6 +2384,317 @@ describe('CLI Commands', () => {
 
         expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'status');
         expect(process.exit).toHaveBeenCalledWith(1);
+      });
+    });
+
+    describe('up command with developer option', () => {
+      it('should execute up command with developer option via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = { developer: '1' };
+        config.setDeveloperId.mockResolvedValue();
+        infra.startInfra.mockResolvedValue();
+        process.env.AIFABRIX_DEVELOPERID = undefined;
+
+        const handler = commandActions['up'];
+        expect(handler).toBeDefined();
+
+        await handler(options);
+
+        expect(config.setDeveloperId).toHaveBeenCalledWith(1);
+        expect(process.env.AIFABRIX_DEVELOPERID).toBe('1');
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Developer ID set to 1'));
+        expect(infra.startInfra).toHaveBeenCalledWith(1);
+      });
+
+      it('should handle up command with invalid developer ID via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = { developer: '-1' };
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['up'];
+        expect(handler).toBeDefined();
+
+        await handler(options);
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'up');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+
+      it('should handle up command with NaN developer ID via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = { developer: 'invalid' };
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['up'];
+        expect(handler).toBeDefined();
+
+        await handler(options);
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'up');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+
+      it('should execute up command without developer option via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = {};
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up'];
+        expect(handler).toBeDefined();
+
+        await handler(options);
+
+        expect(config.setDeveloperId).not.toHaveBeenCalled();
+        expect(infra.startInfra).toHaveBeenCalledWith(null);
+      });
+
+      it('should handle up command error via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = {};
+        const errorMessage = 'Start failed';
+        infra.startInfra.mockRejectedValue(new Error(errorMessage));
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['up'];
+        expect(handler).toBeDefined();
+
+        await handler(options);
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'up');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+    });
+
+    describe('status command with running applications', () => {
+      it('should execute status command with running applications via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const mockStatus = {
+          postgres: { status: 'running', port: 5432, url: 'postgresql://localhost:5432' },
+          redis: { status: 'running', port: 6379, url: 'redis://localhost:6379' }
+        };
+        const mockApps = [
+          { name: 'testapp', container: 'testapp-container', port: 3000, status: 'running', url: 'http://localhost:3000' },
+          { name: 'testapp2', container: 'testapp2-container', port: 3001, status: 'up', url: 'http://localhost:3001' }
+        ];
+        infra.getInfraStatus.mockResolvedValue(mockStatus);
+        infra.getAppStatus.mockResolvedValue(mockApps);
+
+        const handler = commandActions['status'];
+        expect(handler).toBeDefined();
+
+        await handler();
+
+        expect(infra.getInfraStatus).toHaveBeenCalled();
+        expect(infra.getAppStatus).toHaveBeenCalled();
+        expect(logger.log).toHaveBeenCalledWith('\n📊 Infrastructure Status\n');
+        expect(logger.log).toHaveBeenCalledWith('📱 Running Applications\n');
+        expect(logger.log).toHaveBeenCalledWith('✅ testapp:');
+        expect(logger.log).toHaveBeenCalledWith('   Container: testapp-container');
+        expect(logger.log).toHaveBeenCalledWith('   Port: 3000');
+        expect(logger.log).toHaveBeenCalledWith('   Status: running');
+        expect(logger.log).toHaveBeenCalledWith('   URL: http://localhost:3000');
+        expect(logger.log).toHaveBeenCalledWith('✅ testapp2:');
+        expect(logger.log).toHaveBeenCalledWith('   Container: testapp2-container');
+        expect(logger.log).toHaveBeenCalledWith('   Port: 3001');
+        expect(logger.log).toHaveBeenCalledWith('   Status: up');
+        expect(logger.log).toHaveBeenCalledWith('   URL: http://localhost:3001');
+      });
+
+      it('should execute status command without running applications via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const mockStatus = {
+          postgres: { status: 'running', port: 5432, url: 'postgresql://localhost:5432' }
+        };
+        const mockApps = [];
+        infra.getInfraStatus.mockResolvedValue(mockStatus);
+        infra.getAppStatus.mockResolvedValue(mockApps);
+
+        const handler = commandActions['status'];
+        expect(handler).toBeDefined();
+
+        await handler();
+
+        expect(infra.getInfraStatus).toHaveBeenCalled();
+        expect(infra.getAppStatus).toHaveBeenCalled();
+        expect(logger.log).not.toHaveBeenCalledWith('📱 Running Applications\n');
+      });
+
+      it('should execute status command with stopped applications via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const mockStatus = {
+          postgres: { status: 'running', port: 5432, url: 'postgresql://localhost:5432' }
+        };
+        const mockApps = [
+          { name: 'testapp', container: 'testapp-container', port: 3000, status: 'stopped', url: 'http://localhost:3000' }
+        ];
+        infra.getInfraStatus.mockResolvedValue(mockStatus);
+        infra.getAppStatus.mockResolvedValue(mockApps);
+
+        const handler = commandActions['status'];
+        expect(handler).toBeDefined();
+
+        await handler();
+
+        expect(logger.log).toHaveBeenCalledWith('📱 Running Applications\n');
+        expect(logger.log).toHaveBeenCalledWith('❌ testapp:');
+        expect(logger.log).toHaveBeenCalledWith('   Status: stopped');
+      });
+    });
+
+    describe('dev config command handler execution', () => {
+      it('should execute dev config command with set-id option via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = { setId: '1' };
+        config.setDeveloperId.mockResolvedValue();
+        devConfig.getDevPorts.mockReturnValue({
+          app: 3100,
+          postgres: 5532,
+          redis: 6479,
+          pgadmin: 5150,
+          redisCommander: 8181
+        });
+        process.env.AIFABRIX_DEVELOPERID = undefined;
+        chalk.green.mockImplementation((text) => text);
+
+        const handler = commandActions['dev config'];
+        expect(handler).toBeDefined();
+
+        await handler('dev config', options);
+
+        expect(config.setDeveloperId).toHaveBeenCalledWith(1);
+        expect(process.env.AIFABRIX_DEVELOPERID).toBe('1');
+        expect(devConfig.getDevPorts).toHaveBeenCalledWith(1);
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Developer ID set to 1'));
+        expect(logger.log).toHaveBeenCalledWith('\n🔧 Developer Configuration\n');
+        expect(logger.log).toHaveBeenCalledWith('Developer ID: 1');
+        expect(logger.log).toHaveBeenCalledWith('\nPorts:');
+        expect(logger.log).toHaveBeenCalledWith('  App: 3100');
+        expect(logger.log).toHaveBeenCalledWith('  Postgres: 5532');
+        expect(logger.log).toHaveBeenCalledWith('  Redis: 6479');
+        expect(logger.log).toHaveBeenCalledWith('  pgAdmin: 5150');
+        expect(logger.log).toHaveBeenCalledWith('  Redis Commander: 8181');
+      });
+
+      it('should execute dev config command with set-id option using set-id key via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = { 'set-id': '2' };
+        config.setDeveloperId.mockResolvedValue();
+        devConfig.getDevPorts.mockReturnValue({
+          app: 3200,
+          postgres: 5632,
+          redis: 6579,
+          pgadmin: 5250,
+          redisCommander: 8281
+        });
+        process.env.AIFABRIX_DEVELOPERID = undefined;
+        chalk.green.mockImplementation((text) => text);
+
+        const handler = commandActions['dev config'];
+        expect(handler).toBeDefined();
+
+        await handler('dev config', options);
+
+        expect(config.setDeveloperId).toHaveBeenCalledWith(2);
+        expect(devConfig.getDevPorts).toHaveBeenCalledWith(2);
+      });
+
+      it('should execute dev config command without set-id option via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = {};
+        config.getDeveloperId.mockResolvedValue(0);
+        devConfig.getDevPorts.mockReturnValue({
+          app: 3000,
+          postgres: 5432,
+          redis: 6379,
+          pgadmin: 5050,
+          redisCommander: 8081
+        });
+
+        const handler = commandActions['dev config'];
+        expect(handler).toBeDefined();
+
+        await handler('dev config', options);
+
+        expect(config.getDeveloperId).toHaveBeenCalled();
+        expect(config.setDeveloperId).not.toHaveBeenCalled();
+        expect(devConfig.getDevPorts).toHaveBeenCalledWith(0);
+        expect(logger.log).toHaveBeenCalledWith('\n🔧 Developer Configuration\n');
+        expect(logger.log).toHaveBeenCalledWith('Developer ID: 0');
+        expect(logger.log).toHaveBeenCalledWith('\nPorts:');
+        expect(logger.log).toHaveBeenCalledWith('  App: 3000');
+        expect(logger.log).toHaveBeenCalledWith('  Postgres: 5432');
+        expect(logger.log).toHaveBeenCalledWith('  Redis: 6379');
+        expect(logger.log).toHaveBeenCalledWith('  pgAdmin: 5050');
+        expect(logger.log).toHaveBeenCalledWith('  Redis Commander: 8081');
+      });
+
+      it('should handle dev config command with invalid set-id via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = { setId: '-1' };
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['dev config'];
+        expect(handler).toBeDefined();
+
+        await handler('dev config', options);
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'dev config');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+
+      it('should handle dev config command with NaN set-id via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = { setId: 'invalid' };
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['dev config'];
+        expect(handler).toBeDefined();
+
+        await handler('dev config', options);
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'dev config');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+
+      it('should handle dev config command when options is object via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        const options = { setId: '1' };
+        config.setDeveloperId.mockResolvedValue();
+        devConfig.getDevPorts.mockReturnValue({
+          app: 3100,
+          postgres: 5532,
+          redis: 6479,
+          pgadmin: 5150,
+          redisCommander: 8181
+        });
+        chalk.green.mockImplementation((text) => text);
+
+        const handler = commandActions['dev config'];
+        expect(handler).toBeDefined();
+
+        // Simulate Commander.js passing options as first arg when it's an object
+        await handler(options);
+
+        expect(config.setDeveloperId).toHaveBeenCalledWith(1);
       });
     });
   });

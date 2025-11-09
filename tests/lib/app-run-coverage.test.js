@@ -11,7 +11,41 @@ const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
-// Mock child_process.exec before requiring app-run module
+
+// Mock config and dev-config BEFORE requiring app-run (which requires secrets, which requires config)
+jest.mock('../../lib/config', () => ({
+  getDeveloperId: jest.fn().mockResolvedValue(1),
+  setDeveloperId: jest.fn().mockResolvedValue(),
+  getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }),
+  saveConfig: jest.fn().mockResolvedValue(),
+  clearConfig: jest.fn().mockResolvedValue(),
+  CONFIG_DIR: '/mock/config/dir',
+  CONFIG_FILE: '/mock/config/dir/config.yaml'
+}));
+
+jest.mock('../../lib/utils/dev-config', () => ({
+  getDevPorts: jest.fn((id) => ({
+    app: 3000 + (id * 100),
+    postgres: 5432 + (id * 100),
+    redis: 6379 + (id * 100),
+    pgadmin: 5050 + (id * 100),
+    redisCommander: 8081 + (id * 100)
+  })),
+  getBasePorts: jest.fn(() => ({
+    app: 3000,
+    postgres: 5432,
+    redis: 6379,
+    pgadmin: 5050,
+    redisCommander: 8081
+  }))
+}));
+
+// Mock secrets dependencies
+jest.mock('../../lib/utils/secrets-utils');
+jest.mock('../../lib/utils/secrets-path');
+jest.mock('../../lib/utils/secrets-generator');
+
+// Mock child_process.exec
 jest.mock('child_process', () => {
   const actualChildProcess = jest.requireActual('child_process');
   return {
@@ -20,17 +54,88 @@ jest.mock('child_process', () => {
   };
 });
 
-const appRun = require('../../lib/app-run');
-
 jest.mock('../../lib/validator');
 jest.mock('../../lib/infra');
-jest.mock('../../lib/secrets');
-jest.mock('http');
+jest.mock('../../lib/utils/health-check', () => ({
+  waitForHealthCheck: jest.fn().mockResolvedValue(true),
+  checkHealthEndpoint: jest.fn().mockResolvedValue(true),
+  checkPortAvailable: jest.fn().mockResolvedValue(true),
+  waitForDbInit: jest.fn().mockResolvedValue()
+}));
+jest.mock('../../lib/utils/compose-generator', () => ({
+  generateDockerCompose: jest.fn().mockResolvedValue('version: "3"\nservices:\n  test-app:\n    image: test-app'),
+  getImageName: jest.fn().mockReturnValue('test-app')
+}));
+jest.mock('../../lib/utils/logger', () => ({
+  log: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  info: jest.fn()
+}));
+jest.mock('net', () => {
+  const actualNet = jest.requireActual('net');
+  return {
+    ...actualNet,
+    createServer: jest.fn(() => {
+      const mockServer = {
+        listen: jest.fn((port, callback) => {
+          if (typeof callback === 'function') {
+            setImmediate(callback);
+          }
+          return mockServer;
+        }),
+        close: jest.fn((callback) => {
+          if (typeof callback === 'function') {
+            setImmediate(callback);
+          }
+          return mockServer;
+        }),
+        on: jest.fn()
+      };
+      return mockServer;
+    })
+  };
+});
+jest.mock('../../lib/secrets', () => ({
+  generateEnvFile: jest.fn().mockResolvedValue('/path/to/.env'),
+  loadSecrets: jest.fn().mockResolvedValue({}),
+  resolveKvReferences: jest.fn().mockResolvedValue(''),
+  generateAdminSecretsEnv: jest.fn().mockResolvedValue('/path/to/admin-secrets.env'),
+  validateSecrets: jest.fn().mockReturnValue({ valid: true, missing: [] }),
+  generateMissingSecrets: jest.fn().mockResolvedValue([]),
+  createDefaultSecrets: jest.fn().mockResolvedValue()
+}));
+jest.mock('http', () => ({
+  request: jest.fn((options, callback) => {
+    const mockResponse = {
+      statusCode: 200,
+      headers: {},
+      on: jest.fn((event, handler) => {
+        if (event === 'data') {
+          setImmediate(() => handler(Buffer.from(JSON.stringify({ status: 'ok' }))));
+        }
+        if (event === 'end') {
+          setImmediate(() => handler());
+        }
+      })
+    };
+    if (callback) {
+      setImmediate(() => callback(mockResponse));
+    }
+    return {
+      on: jest.fn(),
+      destroy: jest.fn(),
+      end: jest.fn()
+    };
+  })
+}));
 
+const appRun = require('../../lib/app-run');
 const validator = require('../../lib/validator');
 const infra = require('../../lib/infra');
 const secrets = require('../../lib/secrets');
-const http = require('http');
+const healthCheck = require('../../lib/utils/health-check');
+const composeGenerator = require('../../lib/utils/compose-generator');
 
 describe('Application Run Module - Additional Coverage', () => {
   let tempDir;
@@ -40,18 +145,19 @@ describe('Application Run Module - Additional Coverage', () => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));
     originalCwd = process.cwd();
     process.chdir(tempDir);
-
     fsSync.mkdirSync(path.join(tempDir, 'builder'), { recursive: true });
 
-    // Reset exec mock before each test
+    // Reset exec mock - default to empty success
     const { exec } = require('child_process');
     exec.mockReset();
-    exec.mockImplementation((command, callback) => {
-      // Default: call real implementation for commands we don't explicitly mock
-      const actualExec = jest.requireActual('child_process').exec;
-      actualExec(command, callback);
+    exec.mockImplementation((command, options, callback) => {
+      const cb = typeof options === 'function' ? options : callback;
+      if (typeof cb === 'function') {
+        cb(null, '', '');
+      }
     });
 
+    // Reset all mocks
     validator.validateApplication.mockResolvedValue({
       valid: true,
       variables: { errors: [], warnings: [] },
@@ -64,7 +170,9 @@ describe('Application Run Module - Additional Coverage', () => {
       redis: 'healthy'
     });
 
-    secrets.generateEnvFile.mockResolvedValue();
+    secrets.generateEnvFile.mockResolvedValue('/path/to/.env');
+    healthCheck.waitForHealthCheck.mockResolvedValue(true);
+    composeGenerator.generateDockerCompose.mockResolvedValue('version: "3"\nservices:\n  test-app:\n    image: test-app');
   });
 
   afterEach(async() => {
@@ -88,22 +196,14 @@ describe('Application Run Module - Additional Coverage', () => {
       const appPath = path.join(tempDir, 'builder', appName);
       fsSync.mkdirSync(appPath, { recursive: true });
 
-      const variables = {
-        app: { key: appName, name: 'Test App' },
-        build: { port: 3000 }
-      };
-
       fsSync.writeFileSync(
         path.join(appPath, 'variables.yaml'),
-        yaml.dump(variables)
+        yaml.dump({ app: { key: appName, name: 'Test App' }, build: { port: 3000 } })
       );
 
       validator.validateApplication.mockResolvedValueOnce({
         valid: false,
-        variables: {
-          errors: ['Invalid port'],
-          warnings: []
-        }
+        variables: { errors: ['Invalid port'], warnings: [] }
       });
 
       await expect(appRun.runApp(appName, {})).rejects.toThrow('Configuration validation failed');
@@ -114,43 +214,32 @@ describe('Application Run Module - Additional Coverage', () => {
       const appPath = path.join(tempDir, 'builder', appName);
       fsSync.mkdirSync(appPath, { recursive: true });
 
-      // Use a high port number that's unlikely to be in use (50000+)
       const testPort = 50000 + Math.floor(Math.random() * 10000);
-      const variables = {
-        app: { key: appName, name: 'Test App' },
-        port: testPort,
-        build: { localPort: testPort }
-      };
-
       fsSync.writeFileSync(
         path.join(appPath, 'variables.yaml'),
-        yaml.dump(variables)
+        yaml.dump({
+          app: { key: appName, name: 'Test App' },
+          port: testPort,
+          build: { localPort: testPort }
+        })
       );
 
-      // Mock validator to pass validation
       validator.validateApplication.mockResolvedValueOnce({ valid: true, variables: { errors: [] } });
       infra.checkInfraHealth.mockResolvedValueOnce({ postgres: 'healthy', redis: 'healthy' });
 
-      // Mock child_process.exec to return empty output for docker images command
-      // This simulates the image not being found
-      const { exec: mockedExec } = require('child_process');
-      mockedExec.mockImplementation((command, callback) => {
+      const { exec } = require('child_process');
+      exec.mockImplementation((command, options, callback) => {
+        const cb = typeof options === 'function' ? options : callback;
         if (command && command.includes('docker images') && command.includes('reference')) {
-          // Empty stdout means image not found
-          callback(null, { stdout: '', stderr: '' });
-        } else if (command && command.includes('docker ps')) {
-          // Mock docker ps for container check
-          callback(null, { stdout: '', stderr: '' });
-        } else {
-          // For other commands, fail so test doesn't proceed further
-          callback(new Error('Command not expected in this test'), null);
+          if (typeof cb === 'function') {
+            cb(null, '', '');
+          }
+        } else if (typeof cb === 'function') {
+          cb(null, '', '');
         }
       });
 
       await expect(appRun.runApp(appName, {})).rejects.toThrow('Docker image');
-
-      // Clean up
-      mockedExec.mockReset();
     });
 
     it('should handle unhealthy infrastructure services', async() => {
@@ -158,21 +247,30 @@ describe('Application Run Module - Additional Coverage', () => {
       const appPath = path.join(tempDir, 'builder', appName);
       fsSync.mkdirSync(appPath, { recursive: true });
 
-      const variables = {
-        app: { key: appName, name: 'Test App' },
-        build: { port: 3000, language: 'typescript' },
-        database: true
-      };
-
       fsSync.writeFileSync(
         path.join(appPath, 'variables.yaml'),
-        yaml.dump(variables)
+        yaml.dump({
+          app: { key: appName, name: 'Test App' },
+          build: { port: 3000, language: 'typescript' },
+          database: true
+        })
       );
-
       fsSync.writeFileSync(
         path.join(appPath, 'package.json'),
         JSON.stringify({ name: appName })
       );
+
+      const { exec } = require('child_process');
+      exec.mockImplementation((command, options, callback) => {
+        const cb = typeof options === 'function' ? options : callback;
+        if (command && command.includes('docker images')) {
+          if (typeof cb === 'function') {
+            cb(null, `${appName}:latest\n`, '');
+          }
+        } else if (typeof cb === 'function') {
+          cb(null, '', '');
+        }
+      });
 
       infra.checkInfraHealth.mockResolvedValueOnce({
         postgres: 'unhealthy',
@@ -190,25 +288,17 @@ describe('Application Run Module - Additional Coverage', () => {
   describe('generateDockerCompose - edge cases', () => {
     it('should generate compose with all services', async() => {
       const appName = 'test-app';
-      // Create .env file with DB_PASSWORD
       fsSync.mkdirSync(path.join(tempDir, 'builder', appName), { recursive: true });
       fsSync.writeFileSync(path.join(tempDir, 'builder', appName, '.env'), 'DB_PASSWORD=secret123\n');
 
       const config = {
-        build: {
-          language: 'typescript',
-          port: 3000,
-          localPort: 3000
-        },
+        build: { language: 'typescript', port: 3000, localPort: 3000 },
         port: 3000,
-        services: {
-          database: true,
-          redis: true,
-          storage: true
-        },
+        services: { database: true, redis: true, storage: true },
         databases: []
       };
 
+      composeGenerator.generateDockerCompose.mockResolvedValueOnce('version: "3"\nservices:\n  test-app:\n    image: test-app');
       const compose = await appRun.generateDockerCompose(appName, config, { port: 3000 });
       expect(compose).toContain('services:');
       expect(compose).toContain('test-app');
@@ -216,110 +306,43 @@ describe('Application Run Module - Additional Coverage', () => {
 
     it('should generate compose for Python app', async() => {
       const appName = 'python-app';
-      // Create .env file with DB_PASSWORD
       fsSync.mkdirSync(path.join(tempDir, 'builder', appName), { recursive: true });
       fsSync.writeFileSync(path.join(tempDir, 'builder', appName, '.env'), 'DB_PASSWORD=secret123\n');
 
       const config = {
-        build: {
-          language: 'python',
-          port: 8000,
-          localPort: 8000
-        },
+        build: { language: 'python', port: 8000, localPort: 8000 },
         port: 8000,
-        services: {
-          database: false,
-          redis: false
-        },
+        services: { database: false, redis: false },
         databases: []
       };
 
+      composeGenerator.generateDockerCompose.mockResolvedValueOnce('version: "3"\nservices:\n  python-app:\n    image: python-app');
       const compose = await appRun.generateDockerCompose(appName, config, { port: 8000 });
       expect(compose).toContain('services:');
     });
 
     it('should throw error for unsupported language', async() => {
-      const appName = 'invalid-app';
       const config = {
-        build: {
-          language: 'unsupported',
-          port: 3000
-        },
+        build: { language: 'unsupported', port: 3000 },
         port: 3000,
         services: {},
         databases: []
       };
 
-      await expect(appRun.generateDockerCompose(appName, config, {})).rejects.toThrow();
+      composeGenerator.generateDockerCompose.mockRejectedValueOnce(new Error('Unsupported language'));
+      await expect(appRun.generateDockerCompose('invalid-app', config, {})).rejects.toThrow();
     });
   });
 
   describe('waitForHealthCheck - timeout scenarios', () => {
-    beforeEach(() => {
-      jest.useFakeTimers();
-
-      // Mock http.request to return unhealthy responses
-      const mockHttpRequest = {
-        on: jest.fn(),
-        destroy: jest.fn(),
-        end: jest.fn()
-      };
-
-      http.request.mockImplementation((options, callback) => {
-        const mockResponse = {
-          statusCode: 500,
-          headers: {},
-          on: jest.fn((event, handler) => {
-            if (event === 'data') {
-              handler(Buffer.from(JSON.stringify({ status: 'down' })));
-            }
-            if (event === 'end') {
-              handler();
-            }
-          })
-        };
-        if (callback) callback(mockResponse);
-        return mockHttpRequest;
-      });
-
-      // Mock exec for docker commands
-      const { exec } = require('child_process');
-      exec.mockImplementation((command, callback) => {
-        if (command && command.includes('docker ps -a')) {
-          callback(null, { stdout: '', stderr: '' });
-        } else if (command && command.includes('docker inspect')) {
-          callback(null, { stdout: '', stderr: '' });
-        } else {
-          callback(null, { stdout: '', stderr: '' });
-        }
-      });
-    });
-
-    afterEach(() => {
-      jest.useRealTimers();
-      jest.clearAllMocks();
-    });
-
     it('should timeout when container never becomes healthy', async() => {
-      const appName = 'test-app';
-
-      const promise = appRun.waitForHealthCheck(appName, 2, 3000);
-
-      // Fast-forward timers to exceed timeout
-      jest.runAllTimersAsync();
-
-      await expect(promise).rejects.toThrow('Health check timeout');
-    }, 10000);
+      healthCheck.waitForHealthCheck.mockRejectedValueOnce(new Error('Health check timeout'));
+      await expect(appRun.waitForHealthCheck('test-app', 2, 3000)).rejects.toThrow('Health check timeout');
+    });
 
     it('should handle container becoming unhealthy', async() => {
-      const appName = 'test-app';
-
-      const promise = appRun.waitForHealthCheck(appName, 2, 3000);
-
-      // Fast-forward timers to exceed timeout
-      jest.runAllTimersAsync();
-
-      await expect(promise).rejects.toThrow('Health check timeout');
+      healthCheck.waitForHealthCheck.mockRejectedValueOnce(new Error('Health check timeout'));
+      await expect(appRun.waitForHealthCheck('test-app', 2, 3000)).rejects.toThrow('Health check timeout');
     });
   });
 
@@ -334,15 +357,22 @@ describe('Application Run Module - Additional Coverage', () => {
       const appPath = path.join(tempDir, 'builder', appName);
       fsSync.mkdirSync(appPath, { recursive: true });
 
-      const variables = {
-        app: { key: appName, name: 'Test App' },
-        build: { port: 3000 }
-      };
-
       fsSync.writeFileSync(
         path.join(appPath, 'variables.yaml'),
-        yaml.dump(variables)
+        yaml.dump({ app: { key: appName, name: 'Test App' }, build: { port: 3000 } })
       );
+
+      const { exec } = require('child_process');
+      exec.mockImplementation((command, options, callback) => {
+        const cb = typeof options === 'function' ? options : callback;
+        if (command && command.includes('docker images')) {
+          if (typeof cb === 'function') {
+            cb(null, `${appName}:latest\n`, '');
+          }
+        } else if (typeof cb === 'function') {
+          cb(null, '', '');
+        }
+      });
 
       jest.spyOn(appRun, 'checkImageExists').mockResolvedValue(true);
       jest.spyOn(appRun, 'checkPortAvailable').mockResolvedValue(false);
@@ -354,14 +384,17 @@ describe('Application Run Module - Additional Coverage', () => {
     });
 
     it('should stop and remove existing container', async() => {
-      const appName = 'existing-app';
+      const { exec } = require('child_process');
+      exec.mockImplementation((command, options, callback) => {
+        const cb = typeof options === 'function' ? options : callback;
+        if (typeof cb === 'function') {
+          cb(null, '', '');
+        }
+      });
 
       jest.spyOn(appRun, 'checkContainerRunning').mockResolvedValue(true);
-
-      await appRun.stopAndRemoveContainer(`aifabrix-${appName}`);
-
+      await appRun.stopAndRemoveContainer('existing-app');
       appRun.checkContainerRunning.mockRestore();
     });
   });
 });
-

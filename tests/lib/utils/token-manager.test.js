@@ -1,0 +1,791 @@
+/**
+ * Tests for Token Manager Module
+ *
+ * @fileoverview Tests for token-manager.js module
+ * @author AI Fabrix Team
+ * @version 2.0.0
+ */
+
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const yaml = require('js-yaml');
+
+// Mock dependencies
+jest.mock('../../../lib/config');
+jest.mock('../../../lib/utils/api');
+jest.mock('../../../lib/utils/logger');
+
+const tokenManager = require('../../../lib/utils/token-manager');
+const config = require('../../../lib/config');
+const api = require('../../../lib/utils/api');
+
+describe('Token Manager Module', () => {
+  const mockHomeDir = '/mock/home';
+  const mockSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Mock os.homedir
+    jest.spyOn(os, 'homedir').mockReturnValue(mockHomeDir);
+  });
+
+  describe('loadClientCredentials', () => {
+    it('should load credentials from secrets.local.yaml', async() => {
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      const result = await tokenManager.loadClientCredentials('keycloak');
+
+      expect(result).toEqual({
+        clientId: 'test-client-id',
+        clientSecret: 'test-client-secret'
+      });
+    });
+
+    it('should return null when secrets file does not exist', async() => {
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+      const result = await tokenManager.loadClientCredentials('keycloak');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when credentials not found', async() => {
+      const mockSecrets = {
+        'other-app-client-idKeyVault': 'some-id'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      const result = await tokenManager.loadClientCredentials('keycloak');
+
+      expect(result).toBeNull();
+    });
+
+    it('should throw error when app name is invalid', async() => {
+      await expect(tokenManager.loadClientCredentials('')).rejects.toThrow('App name is required');
+      await expect(tokenManager.loadClientCredentials(null)).rejects.toThrow('App name is required');
+      await expect(tokenManager.loadClientCredentials(undefined)).rejects.toThrow('App name is required');
+    });
+
+    it('should return null when file read fails', async() => {
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
+        throw new Error('Permission denied');
+      });
+
+      const result = await tokenManager.loadClientCredentials('keycloak');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when YAML parsing fails', async() => {
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('invalid: yaml: content: [unclosed');
+
+      const result = await tokenManager.loadClientCredentials('keycloak');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when secrets file is empty', async() => {
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('');
+
+      const result = await tokenManager.loadClientCredentials('keycloak');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when only clientId is missing', async() => {
+      const mockSecrets = {
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      const result = await tokenManager.loadClientCredentials('keycloak');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when only clientSecret is missing', async() => {
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      const result = await tokenManager.loadClientCredentials('keycloak');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('getDeviceToken', () => {
+    it('should get device token from config for controller', async() => {
+      const controllerUrl = 'http://localhost:3010';
+      const mockToken = {
+        controller: controllerUrl,
+        token: 'device-token-123',
+        refreshToken: 'refresh-token-456',
+        expiresAt: new Date(Date.now() + 3600000).toISOString()
+      };
+
+      config.getDeviceToken.mockResolvedValue(mockToken);
+
+      const result = await tokenManager.getDeviceToken(controllerUrl);
+
+      expect(result).toEqual(mockToken);
+      expect(config.getDeviceToken).toHaveBeenCalledWith(controllerUrl);
+    });
+  });
+
+  describe('getClientToken', () => {
+    it('should get client token from config', async() => {
+      const mockToken = {
+        controller: 'http://localhost:3010',
+        token: 'client-token-456',
+        expiresAt: new Date(Date.now() + 3600000).toISOString()
+      };
+
+      config.getClientToken.mockResolvedValue(mockToken);
+
+      const result = await tokenManager.getClientToken('miso', 'keycloak');
+
+      expect(result).toEqual(mockToken);
+      expect(config.getClientToken).toHaveBeenCalledWith('miso', 'keycloak');
+    });
+  });
+
+  describe('isTokenExpired', () => {
+    it('should return true for expired token', () => {
+      const pastDate = new Date(Date.now() - 1000 * 60 * 10).toISOString();
+      config.isTokenExpired.mockReturnValue(true);
+      expect(tokenManager.isTokenExpired(pastDate)).toBe(true);
+      expect(config.isTokenExpired).toHaveBeenCalledWith(pastDate);
+    });
+
+    it('should return false for valid token', () => {
+      const futureDate = new Date(Date.now() + 1000 * 60 * 60).toISOString();
+      config.isTokenExpired.mockReturnValue(false);
+      expect(tokenManager.isTokenExpired(futureDate)).toBe(false);
+      expect(config.isTokenExpired).toHaveBeenCalledWith(futureDate);
+    });
+
+    it('should return true for null expiresAt', () => {
+      config.isTokenExpired.mockReturnValue(true);
+      expect(tokenManager.isTokenExpired(null)).toBe(true);
+      expect(config.isTokenExpired).toHaveBeenCalledWith(null);
+    });
+  });
+
+  describe('refreshClientToken', () => {
+    it('should refresh token using credentials from secrets.local.yaml', async() => {
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      api.makeApiCall.mockResolvedValue({
+        success: true,
+        data: {
+          token: 'new-token-123',
+          expiresIn: 3600,
+          expiresAt: new Date(Date.now() + 3600000).toISOString()
+        }
+      });
+
+      config.saveClientToken.mockResolvedValue();
+
+      const result = await tokenManager.refreshClientToken('miso', 'keycloak', 'http://localhost:3010');
+
+      expect(result.token).toBe('new-token-123');
+      expect(config.saveClientToken).toHaveBeenCalledWith(
+        'miso',
+        'keycloak',
+        'http://localhost:3010',
+        'new-token-123',
+        expect.any(String)
+      );
+    });
+
+    it('should refresh token using provided credentials', async() => {
+      api.makeApiCall.mockResolvedValue({
+        success: true,
+        data: {
+          token: 'new-token-456',
+          expiresIn: 3600
+        }
+      });
+
+      config.saveClientToken.mockResolvedValue();
+
+      const result = await tokenManager.refreshClientToken(
+        'miso',
+        'keycloak',
+        'http://localhost:3010',
+        'provided-client-id',
+        'provided-client-secret'
+      );
+
+      expect(result.token).toBe('new-token-456');
+      expect(api.makeApiCall).toHaveBeenCalledWith(
+        'http://localhost:3010/api/v1/auth/token',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'x-client-id': 'provided-client-id',
+            'x-client-secret': 'provided-client-secret'
+          })
+        })
+      );
+    });
+
+    it('should throw error when credentials not found', async() => {
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+      await expect(
+        tokenManager.refreshClientToken('miso', 'keycloak', 'http://localhost:3010')
+      ).rejects.toThrow('Client credentials not found');
+    });
+
+    it('should throw error when API call fails', async() => {
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      api.makeApiCall.mockResolvedValue({
+        success: false,
+        error: 'Authentication failed'
+      });
+
+      await expect(
+        tokenManager.refreshClientToken('miso', 'keycloak', 'http://localhost:3010')
+      ).rejects.toThrow('Failed to refresh token');
+    });
+
+    it('should throw error with Unknown error when API call fails without error message', async() => {
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      api.makeApiCall.mockResolvedValue({
+        success: false
+      });
+
+      await expect(
+        tokenManager.refreshClientToken('miso', 'keycloak', 'http://localhost:3010')
+      ).rejects.toThrow('Failed to refresh token: Unknown error');
+    });
+
+    it('should throw error when environment is invalid', async() => {
+      await expect(
+        tokenManager.refreshClientToken('', 'keycloak', 'http://localhost:3010')
+      ).rejects.toThrow('Environment is required');
+
+      await expect(
+        tokenManager.refreshClientToken(null, 'keycloak', 'http://localhost:3010')
+      ).rejects.toThrow('Environment is required');
+
+      await expect(
+        tokenManager.refreshClientToken(undefined, 'keycloak', 'http://localhost:3010')
+      ).rejects.toThrow('Environment is required');
+    });
+
+    it('should throw error when appName is invalid', async() => {
+      await expect(
+        tokenManager.refreshClientToken('miso', '', 'http://localhost:3010')
+      ).rejects.toThrow('App name is required');
+
+      await expect(
+        tokenManager.refreshClientToken('miso', null, 'http://localhost:3010')
+      ).rejects.toThrow('App name is required');
+
+      await expect(
+        tokenManager.refreshClientToken('miso', undefined, 'http://localhost:3010')
+      ).rejects.toThrow('App name is required');
+    });
+
+    it('should throw error when controllerUrl is invalid', async() => {
+      await expect(
+        tokenManager.refreshClientToken('miso', 'keycloak', '')
+      ).rejects.toThrow('Controller URL is required');
+
+      await expect(
+        tokenManager.refreshClientToken('miso', 'keycloak', null)
+      ).rejects.toThrow('Controller URL is required');
+
+      await expect(
+        tokenManager.refreshClientToken('miso', 'keycloak', undefined)
+      ).rejects.toThrow('Controller URL is required');
+    });
+
+    it('should throw error when API response is missing token', async() => {
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      api.makeApiCall.mockResolvedValue({
+        success: true,
+        data: {
+          expiresIn: 3600
+        }
+      });
+
+      await expect(
+        tokenManager.refreshClientToken('miso', 'keycloak', 'http://localhost:3010')
+      ).rejects.toThrow('Invalid response: missing token');
+    });
+
+    it('should throw error when API response data is null', async() => {
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      api.makeApiCall.mockResolvedValue({
+        success: true,
+        data: null
+      });
+
+      await expect(
+        tokenManager.refreshClientToken('miso', 'keycloak', 'http://localhost:3010')
+      ).rejects.toThrow('Invalid response: missing token');
+    });
+
+    it('should calculate expiration from expiresAt when provided', async() => {
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      const expectedExpiresAt = new Date(Date.now() + 7200000).toISOString();
+
+      api.makeApiCall.mockResolvedValue({
+        success: true,
+        data: {
+          token: 'new-token-with-expiresAt',
+          expiresAt: expectedExpiresAt
+        }
+      });
+
+      config.saveClientToken.mockResolvedValue();
+
+      const result = await tokenManager.refreshClientToken('miso', 'keycloak', 'http://localhost:3010');
+
+      expect(result.token).toBe('new-token-with-expiresAt');
+      expect(result.expiresAt).toBe(expectedExpiresAt);
+      expect(config.saveClientToken).toHaveBeenCalledWith(
+        'miso',
+        'keycloak',
+        'http://localhost:3010',
+        'new-token-with-expiresAt',
+        expectedExpiresAt
+      );
+    });
+
+    it('should calculate expiration from expiresIn when expiresAt not provided', async() => {
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      const expiresIn = 7200; // 2 hours in seconds
+      const beforeCall = Date.now();
+
+      api.makeApiCall.mockResolvedValue({
+        success: true,
+        data: {
+          token: 'new-token-with-expiresIn',
+          expiresIn: expiresIn
+        }
+      });
+
+      config.saveClientToken.mockResolvedValue();
+
+      const result = await tokenManager.refreshClientToken('miso', 'keycloak', 'http://localhost:3010');
+
+      const afterCall = Date.now();
+      const expectedExpiresAt = new Date(beforeCall + expiresIn * 1000).toISOString();
+      const actualExpiresAt = new Date(result.expiresAt);
+
+      expect(result.token).toBe('new-token-with-expiresIn');
+      // Allow 1 second tolerance for test execution time
+      expect(Math.abs(actualExpiresAt.getTime() - new Date(expectedExpiresAt).getTime())).toBeLessThan(1000);
+    });
+
+    it('should use default 24 hours expiration when neither expiresAt nor expiresIn provided', async() => {
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      const beforeCall = Date.now();
+      const defaultExpiresIn = 86400; // 24 hours in seconds
+
+      api.makeApiCall.mockResolvedValue({
+        success: true,
+        data: {
+          token: 'new-token-default-expiration'
+        }
+      });
+
+      config.saveClientToken.mockResolvedValue();
+
+      const result = await tokenManager.refreshClientToken('miso', 'keycloak', 'http://localhost:3010');
+
+      const afterCall = Date.now();
+      const expectedExpiresAt = new Date(beforeCall + defaultExpiresIn * 1000).toISOString();
+      const actualExpiresAt = new Date(result.expiresAt);
+
+      expect(result.token).toBe('new-token-default-expiration');
+      // Allow 1 second tolerance for test execution time
+      expect(Math.abs(actualExpiresAt.getTime() - new Date(expectedExpiresAt).getTime())).toBeLessThan(1000);
+    });
+  });
+
+  describe('getOrRefreshClientToken', () => {
+    it('should return existing token if valid', async() => {
+      const mockToken = {
+        controller: 'http://localhost:3010',
+        token: 'valid-token-123',
+        expiresAt: new Date(Date.now() + 3600000).toISOString()
+      };
+
+      config.getClientToken.mockResolvedValue(mockToken);
+      config.isTokenExpired.mockReturnValue(false);
+
+      const result = await tokenManager.getOrRefreshClientToken('miso', 'keycloak', 'http://localhost:3010');
+
+      expect(result.token).toBe('valid-token-123');
+      expect(result.controller).toBe('http://localhost:3010');
+    });
+
+    it('should refresh token if expired', async() => {
+      const mockToken = {
+        controller: 'http://localhost:3010',
+        token: 'expired-token',
+        expiresAt: new Date(Date.now() - 1000).toISOString()
+      };
+
+      config.getClientToken.mockResolvedValue(mockToken);
+      config.isTokenExpired.mockReturnValue(true);
+
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      api.makeApiCall.mockResolvedValue({
+        success: true,
+        data: {
+          token: 'new-token-789',
+          expiresIn: 3600
+        }
+      });
+
+      config.saveClientToken.mockResolvedValue();
+
+      const result = await tokenManager.getOrRefreshClientToken('miso', 'keycloak', 'http://localhost:3010');
+
+      expect(result.token).toBe('new-token-789');
+    });
+
+    it('should refresh token if missing', async() => {
+      config.getClientToken.mockResolvedValue(null);
+
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      api.makeApiCall.mockResolvedValue({
+        success: true,
+        data: {
+          token: 'new-token-999',
+          expiresIn: 3600
+        }
+      });
+
+      config.saveClientToken.mockResolvedValue();
+
+      const result = await tokenManager.getOrRefreshClientToken('miso', 'keycloak', 'http://localhost:3010');
+
+      expect(result.token).toBe('new-token-999');
+      expect(result.controller).toBe('http://localhost:3010');
+    });
+
+    it('should refresh token if controller URL does not match', async() => {
+      const mockToken = {
+        controller: 'http://different-controller:3010',
+        token: 'valid-token-wrong-controller',
+        expiresAt: new Date(Date.now() + 3600000).toISOString()
+      };
+
+      config.getClientToken.mockResolvedValue(mockToken);
+      config.isTokenExpired.mockReturnValue(false);
+
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      api.makeApiCall.mockResolvedValue({
+        success: true,
+        data: {
+          token: 'new-token-controller-mismatch',
+          expiresIn: 3600
+        }
+      });
+
+      config.saveClientToken.mockResolvedValue();
+
+      const result = await tokenManager.getOrRefreshClientToken('miso', 'keycloak', 'http://localhost:3010');
+
+      expect(result.token).toBe('new-token-controller-mismatch');
+      expect(result.controller).toBe('http://localhost:3010');
+    });
+
+    it('should refresh token if controller URL matches but token is expired', async() => {
+      const mockToken = {
+        controller: 'http://localhost:3010',
+        token: 'expired-token-same-controller',
+        expiresAt: new Date(Date.now() - 1000).toISOString()
+      };
+
+      config.getClientToken.mockResolvedValue(mockToken);
+      config.isTokenExpired.mockReturnValue(true);
+
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      api.makeApiCall.mockResolvedValue({
+        success: true,
+        data: {
+          token: 'new-token-expired-same-controller',
+          expiresIn: 3600
+        }
+      });
+
+      config.saveClientToken.mockResolvedValue();
+
+      const result = await tokenManager.getOrRefreshClientToken('miso', 'keycloak', 'http://localhost:3010');
+
+      expect(result.token).toBe('new-token-expired-same-controller');
+      expect(result.controller).toBe('http://localhost:3010');
+    });
+  });
+
+  describe('refreshDeviceToken', () => {
+    const controllerUrl = 'http://localhost:3010';
+    const refreshToken = 'refresh-token-123';
+
+    beforeEach(() => {
+      config.saveDeviceToken.mockResolvedValue();
+    });
+
+    it('should refresh device token using refresh token', async() => {
+      api.refreshDeviceToken.mockResolvedValue({
+        access_token: 'new-access-token-789',
+        refresh_token: 'new-refresh-token-456',
+        expires_in: 3600
+      });
+
+      const result = await tokenManager.refreshDeviceToken(controllerUrl, refreshToken);
+
+      expect(result.token).toBe('new-access-token-789');
+      expect(result.refreshToken).toBe('new-refresh-token-456');
+      expect(result.expiresAt).toBeDefined();
+      expect(api.refreshDeviceToken).toHaveBeenCalledWith(controllerUrl, refreshToken);
+      expect(config.saveDeviceToken).toHaveBeenCalledWith(
+        controllerUrl,
+        'new-access-token-789',
+        'new-refresh-token-456',
+        expect.any(String)
+      );
+    });
+
+    it('should use old refresh token if new one not provided', async() => {
+      api.refreshDeviceToken.mockResolvedValue({
+        access_token: 'new-access-token-789',
+        expires_in: 3600
+        // No refresh_token in response
+      });
+
+      const result = await tokenManager.refreshDeviceToken(controllerUrl, refreshToken);
+
+      expect(result.token).toBe('new-access-token-789');
+      expect(result.refreshToken).toBe(refreshToken); // Should keep old refresh token
+      expect(config.saveDeviceToken).toHaveBeenCalledWith(
+        controllerUrl,
+        'new-access-token-789',
+        refreshToken,
+        expect.any(String)
+      );
+    });
+
+    it('should throw error when controller URL is missing', async() => {
+      await expect(
+        tokenManager.refreshDeviceToken(null, refreshToken)
+      ).rejects.toThrow('Controller URL is required');
+    });
+
+    it('should throw error when refresh token is missing', async() => {
+      await expect(
+        tokenManager.refreshDeviceToken(controllerUrl, null)
+      ).rejects.toThrow('Refresh token is required');
+    });
+
+    it('should throw error when API refresh fails', async() => {
+      api.refreshDeviceToken.mockRejectedValue(new Error('Refresh failed'));
+
+      await expect(
+        tokenManager.refreshDeviceToken(controllerUrl, refreshToken)
+      ).rejects.toThrow('Refresh failed');
+    });
+  });
+
+  describe('getOrRefreshDeviceToken', () => {
+    const controllerUrl = 'http://localhost:3010';
+
+    it('should return existing token if valid', async() => {
+      const mockToken = {
+        controller: controllerUrl,
+        token: 'valid-device-token-123',
+        refreshToken: 'refresh-token-456',
+        expiresAt: new Date(Date.now() + 3600000).toISOString()
+      };
+
+      config.getDeviceToken.mockResolvedValue(mockToken);
+      config.isTokenExpired.mockReturnValue(false);
+
+      const result = await tokenManager.getOrRefreshDeviceToken(controllerUrl);
+
+      expect(result.token).toBe('valid-device-token-123');
+      expect(result.controller).toBe(controllerUrl);
+    });
+
+    it('should return null when token does not exist', async() => {
+      config.getDeviceToken.mockResolvedValue(null);
+
+      const result = await tokenManager.getOrRefreshDeviceToken(controllerUrl);
+
+      expect(result).toBeNull();
+    });
+
+    it('should refresh token if expired and refresh token exists', async() => {
+      const mockToken = {
+        controller: controllerUrl,
+        token: 'expired-device-token',
+        refreshToken: 'refresh-token-456',
+        expiresAt: new Date(Date.now() - 1000).toISOString()
+      };
+
+      config.getDeviceToken.mockResolvedValue(mockToken);
+      config.isTokenExpired.mockReturnValue(true);
+
+      api.refreshDeviceToken.mockResolvedValue({
+        access_token: 'new-device-token-789',
+        refresh_token: 'new-refresh-token-999',
+        expires_in: 3600
+      });
+
+      config.saveDeviceToken.mockResolvedValue();
+
+      const result = await tokenManager.getOrRefreshDeviceToken(controllerUrl);
+
+      expect(result.token).toBe('new-device-token-789');
+      expect(result.controller).toBe(controllerUrl);
+      expect(api.refreshDeviceToken).toHaveBeenCalledWith(controllerUrl, 'refresh-token-456');
+    });
+
+    it('should return null when token expired but no refresh token', async() => {
+      const mockToken = {
+        controller: controllerUrl,
+        token: 'expired-device-token',
+        expiresAt: new Date(Date.now() - 1000).toISOString()
+        // No refreshToken
+      };
+
+      config.getDeviceToken.mockResolvedValue(mockToken);
+      config.isTokenExpired.mockReturnValue(true);
+
+      const result = await tokenManager.getOrRefreshDeviceToken(controllerUrl);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when refresh fails', async() => {
+      const mockToken = {
+        controller: controllerUrl,
+        token: 'expired-device-token',
+        refreshToken: 'invalid-refresh-token',
+        expiresAt: new Date(Date.now() - 1000).toISOString()
+      };
+
+      config.getDeviceToken.mockResolvedValue(mockToken);
+      config.isTokenExpired.mockReturnValue(true);
+
+      api.refreshDeviceToken.mockRejectedValue(new Error('Refresh failed'));
+
+      const logger = require('../../../lib/utils/logger');
+      logger.warn.mockImplementation(() => {});
+
+      const result = await tokenManager.getOrRefreshDeviceToken(controllerUrl);
+
+      expect(result).toBeNull();
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Failed to refresh device token'));
+    });
+  });
+});
+

@@ -181,11 +181,13 @@ describe('Application Commands Module', () => {
       authenticatedApiCall.mockResolvedValue({
         success: true,
         data: {
-          application: { id: 'app-123', key: appKey },
+          success: true,
           credentials: {
             clientId: 'ctrl-dev-test-app',
             clientSecret: 'new-secret-123'
-          }
+          },
+          message: 'IMPORTANT: Save new clientSecret now - old secret is now invalid',
+          timestamp: '2025-11-07T18:48:55.726Z'
         }
       });
 

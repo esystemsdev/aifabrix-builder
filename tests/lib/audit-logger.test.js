@@ -10,14 +10,24 @@ const auditLogger = require('../../lib/audit-logger');
 
 describe('Audit Logger Module', () => {
   let originalConsoleLog;
+  let originalAuditLogConsole;
 
   beforeEach(() => {
     originalConsoleLog = console.log;
     console.log = jest.fn();
+    // Set environment variable to enable console logging for tests
+    originalAuditLogConsole = process.env.AUDIT_LOG_CONSOLE;
+    process.env.AUDIT_LOG_CONSOLE = 'true';
   });
 
   afterEach(() => {
     console.log = originalConsoleLog;
+    // Restore original environment variable
+    if (originalAuditLogConsole === undefined) {
+      delete process.env.AUDIT_LOG_CONSOLE;
+    } else {
+      process.env.AUDIT_LOG_CONSOLE = originalAuditLogConsole;
+    }
   });
 
   describe('maskSensitiveData', () => {
@@ -83,8 +93,8 @@ describe('Audit Logger Module', () => {
   });
 
   describe('logSecurityEvent', () => {
-    it('should log security events (line 147)', () => {
-      auditLogger.logSecurityEvent('authentication_failure', {
+    it('should log security events (line 147)', async() => {
+      await auditLogger.logSecurityEvent('authentication_failure', {
         userId: 'user123',
         ip: '192.168.1.1'
       });
@@ -98,8 +108,8 @@ describe('Audit Logger Module', () => {
       expect(logData.metadata.event).toBe('authentication_failure');
     });
 
-    it('should handle security events without details', () => {
-      auditLogger.logSecurityEvent('access_denied');
+    it('should handle security events without details', async() => {
+      await auditLogger.logSecurityEvent('access_denied');
 
       expect(console.log).toHaveBeenCalled();
       const logCall = console.log.mock.calls[0][0];
@@ -109,8 +119,8 @@ describe('Audit Logger Module', () => {
   });
 
   describe('auditLog', () => {
-    it('should log audit entries', () => {
-      auditLogger.auditLog('INFO', 'Test message', { key: 'value' });
+    it('should log audit entries', async() => {
+      await auditLogger.auditLog('INFO', 'Test message', { key: 'value' });
 
       expect(console.log).toHaveBeenCalled();
       const logCall = console.log.mock.calls[0][0];

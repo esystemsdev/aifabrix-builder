@@ -49,9 +49,9 @@ Complete command reference with examples and troubleshooting.
 
 Authenticate with Miso Controller.
 
-**What:** Logs in to the controller and stores authentication token for subsequent operations.
+**What:** Logs in to the controller and stores authentication token for subsequent operations. Supports multiple tokens per environment (device login tokens vs client credentials tokens).
 
-**When:** First time using the CLI, when token expires, or when switching controllers.
+**When:** First time using the CLI, when token expires, or when switching controllers/environments.
 
 **Usage:**
 ```bash
@@ -59,56 +59,100 @@ Authenticate with Miso Controller.
 aifabrix login
 
 # Login with custom controller URL
-aifabrix login --url https://controller.aifabrix.ai
+aifabrix login --controller https://controller.aifabrix.ai
 
-# CI/CD: Login with credentials method
-aifabrix login --url http://localhost:3010 --method credentials --client-id $CLIENT_ID --client-secret $CLIENT_SECRET
+# Credentials login with app (reads from secrets.local.yaml)
+aifabrix login --controller http://localhost:3010 --method credentials --app keycloak
 
-# CI/CD: Login with device code flow
-aifabrix login --url http://localhost:3010 --method device --environment dev
+# Credentials login with explicit credentials
+aifabrix login --controller http://localhost:3010 --method credentials --app keycloak --client-id $CLIENT_ID --client-secret $CLIENT_SECRET
+
+# Device code flow with environment
+aifabrix login --controller http://localhost:3010 --method device --environment miso
 ```
 
 **Options:**
-- `-u, --url <url>` - Controller URL (default: http://localhost:3000)
+- `-c, --controller <url>` - Controller URL (default: http://localhost:3000)
 - `-m, --method <method>` - Authentication method: `device` or `credentials` (optional, prompts if not provided)
-- `--client-id <id>` - Client ID for credentials method (optional, prompts if not provided)
-- `--client-secret <secret>` - Client Secret for credentials method (optional, prompts if not provided)
-- `-e, --environment <env>` - Environment key for device method (e.g., dev, tst, pro) (optional, prompts if not provided)
+- `-a, --app <app>` - Application name (required for credentials method, reads from secrets.local.yaml using pattern `<app-name>-client-idKeyVault`)
+- `--client-id <id>` - Client ID for credentials method (optional, overrides secrets.local.yaml)
+- `--client-secret <secret>` - Client Secret for credentials method (optional, overrides secrets.local.yaml)
+- `-e, --environment <env>` - Environment key (updates root-level environment in config.yaml, e.g., miso, dev, tst, pro)
 
 **Authentication Methods:**
 
-1. **ClientId + ClientSecret**
-   - Use `--method credentials` with `--client-id` and `--client-secret` flags
-   - If flags not provided, prompts for credentials interactively
-   - Useful for CI/CD or non-interactive environments
+1. **ClientId + ClientSecret (Credentials)**
+   - Use `--method credentials` with `--app` flag (required)
+   - Reads credentials from `~/.aifabrix/secrets.local.yaml` using pattern:
+     - `<app-name>-client-idKeyVault` for client ID
+     - `<app-name>-client-secretKeyVault` for client secret
+   - If credentials not found in secrets.local.yaml, prompts interactively
+   - Can override with `--client-id` and `--client-secret` flags
+   - Token is saved per app and environment in config.yaml
+   - Useful for application-specific deployments
 
-2. **Device Code Flow (environment only)**
-   - Use `--method device` with `--environment` flag
+2. **Device Code Flow (Environment)**
+   - Use `--method device` with optional `--environment` flag
    - If `--environment` not provided, prompts interactively
    - Authenticate with only an environment key
    - No client credentials required
    - Useful for initial setup before application registration
    - Follows OAuth2 Device Code Flow (RFC 8628)
+   - Token is saved at root level in config.yaml, keyed by controller URL (universal per controller)
+   - Includes refresh token for automatic token renewal on 401 errors
 
-**Output:**
+**Output (Credentials):**
 ```
-✓ Successfully logged in!
-Controller: http://localhost:3000
+🔐 Logging in to Miso Controller...
+
+Controller URL: http://localhost:3010
+Environment: miso
+
+✅ Successfully logged in!
+Controller: http://localhost:3010
+Environment: miso
+App: keycloak
+Token stored securely in ~/.aifabrix/config.yaml
+```
+
+**Output (Device Code):**
+```
+🔐 Logging in to Miso Controller...
+
+Controller URL: http://localhost:3010
+Environment: miso
+
+✅ Successfully logged in!
+Controller: http://localhost:3010
+Environment: miso
 Token stored securely in ~/.aifabrix/config.yaml
 ```
 
 **Device Code Flow Example:**
 
-With flags (CI/CD):
+With flags:
 ```bash
-aifabrix login --url http://localhost:3010 --method device --environment dev
+aifabrix login --controller http://localhost:3010 --method device --environment dev
 ```
 
 Interactive (prompts for environment):
 ```bash
-aifabrix login --url http://localhost:3010 --method device
-# Prompts: Environment key (e.g., dev, tst, pro): dev
+aifabrix login --controller http://localhost:3010 --method device
+# Prompts: Environment key (e.g., miso, dev, tst, pro): dev
 ```
+
+**Credentials Login Example:**
+
+Reads from secrets.local.yaml:
+```bash
+aifabrix login --controller http://localhost:3010 --method credentials --app keycloak --environment miso
+```
+
+This reads:
+- `keycloak-client-idKeyVault` from `~/.aifabrix/secrets.local.yaml`
+- `keycloak-client-secretKeyVault` from `~/.aifabrix/secrets.local.yaml`
+
+And saves the token to config.yaml under `environments.miso.clients.keycloak`.
 
 **Device Code Flow Output:**
 ```
@@ -128,7 +172,8 @@ Waiting for approval...
 ✅ Authentication approved!
 
 ✅ Successfully logged in!
-Controller: http://localhost:3000
+Controller: http://localhost:3010
+Environment: miso
 Token stored securely in ~/.aifabrix/config.yaml
 ```
 
@@ -141,19 +186,23 @@ Token stored securely in ~/.aifabrix/config.yaml
 5. CLI polls for token (automatically)
 6. Token is saved to configuration
 
+**Environment Management:**
+
+The `--environment` flag updates the root-level `environment` in `~/.aifabrix/config.yaml`, which indicates the currently selected environment. This environment is used by default in subsequent commands like `deploy`.
+
 **CI/CD Usage Examples:**
 
 ```bash
 # GitHub Actions / Azure DevOps
 aifabrix login \
-  --url ${{ secrets.MISO_CONTROLLER_URL }} \
+  --controller ${{ secrets.MISO_CONTROLLER_URL }} \
   --method credentials \
-  --client-id ${{ secrets.MISO_CLIENTID }} \
-  --client-secret ${{ secrets.MISO_CLIENTSECRET }}
+  --app myapp \
+  --environment dev
 
 # Device code flow in CI/CD (if environment key is available)
 aifabrix login \
-  --url $CONTROLLER_URL \
+  --controller $CONTROLLER_URL \
   --method device \
   --environment $ENVIRONMENT_KEY
 ```
@@ -166,7 +215,7 @@ aifabrix login \
 - **"Device code expired"** → Restart device code flow (codes expire after ~10 minutes)
 - **"Authorization declined"** → User denied the request; run login again
 - **"Device code initiation failed"** → Check environment key is valid and controller is accessible
-- **"Environment key must contain only letters, numbers, hyphens, and underscores"** → Use valid environment format (e.g., dev, tst, pro)
+- **"Environment key must contain only letters, numbers, hyphens, and underscores"** → Use valid environment format (e.g., miso, dev, tst, pro)
 
 **Next Steps:**
 After logging in, you can:
@@ -410,11 +459,13 @@ Rotate pipeline ClientSecret for an application.
 
 **Usage:**
 ```bash
-aifabrix app rotate-secret --app myapp --environment dev
+aifabrix app rotate-secret myapp --environment dev
 ```
 
+**Arguments:**
+- `<appKey>` - Application key (required, positional)
+
 **Options:**
-- `-a, --app <appKey>` - Application key (required)
 - `-e, --environment <env>` - Environment ID or key (required)
 
 **Output:**
@@ -436,7 +487,7 @@ aifabrix app rotate-secret --app myapp --environment dev
 
 **Issues:**
 - **"Not logged in"** → Run `aifabrix login` first
-- **"Environment is required"** → Provide `--environment` flag (dev/tst/pro)
+- **"Environment is required"** → Provide `--environment` flag (miso/dev/tst/pro)
 - **"Rotation failed"** → Check application key and permissions
 
 ---
@@ -717,14 +768,17 @@ Tags: v1.0.0, latest
 
 Deploy to Azure via Miso Controller.
 
-**What:** Generates deployment manifest from variables.yaml, env.template, and rbac.yaml. Creates deployment key for authentication, validates configuration, and sends to Miso Controller API for Azure deployment. Polls deployment status by default to track progress.
+**What:** Generates deployment manifest from variables.yaml, env.template, and rbac.yaml. Automatically retrieves or refreshes authentication token, validates configuration, and sends to Miso Controller API for Azure deployment. Polls deployment status by default to track progress.
 
 **When:** Deploying to Azure after pushing images to ACR.
 
 **Example:**
 ```bash
-# Basic deployment
+# Basic deployment (uses current environment from config.yaml and token from login)
 aifabrix deploy myapp --controller https://controller.aifabrix.ai
+
+# Deploy to specific environment (updates root-level environment in config.yaml)
+aifabrix deploy myapp --controller https://controller.aifabrix.ai --environment miso
 ```
 
 **Output:**
@@ -736,9 +790,8 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
    Image: myacr.azurecr.io/myapp:latest
    Port: 3000
 
-🚀 Deploying to https://controller.aifabrix.ai...
-📤 Sending deployment request to https://controller.aifabrix.ai...
-✓ Already authenticated with myacr.azurecr.io
+🚀 Deploying to https://controller.aifabrix.ai (environment: miso)...
+📤 Sending deployment request to https://controller.aifabrix.ai/api/v1/pipeline/miso/deploy...
 ⏳ Polling deployment status (5000ms intervals)...
 
 ✅ Deployment initiated successfully
@@ -747,18 +800,11 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
    Status: ✅ completed
 ```
 
-**With environment and credentials:**
-```bash
-aifabrix deploy myapp --controller https://controller.aifabrix.ai --environment dev --client-id my-client-id --client-secret my-secret
-```
-
 **Configuration in variables.yaml (recommended):**
 ```yaml
 deployment:
   controllerUrl: 'https://controller.aifabrix.ai'
-  environment: 'dev'
-  clientId: 'your-client-id'
-  clientSecret: 'your-client-secret'
+  environment: 'dev'  # Optional, uses root-level environment from config.yaml if not specified
 ```
 
 Then simply run:
@@ -766,34 +812,46 @@ Then simply run:
 aifabrix deploy myapp
 ```
 
+**Authentication:**
+
+The deploy command automatically:
+1. Gets current environment from root-level `environment` in `~/.aifabrix/config.yaml`
+2. Updates root-level environment if `--environment` is provided
+3. Retrieves client token from config.yaml for current environment + app
+4. If token missing or expired:
+   - Reads clientId/secret from `~/.aifabrix/secrets.local.yaml` using pattern:
+     - `<app-name>-client-idKeyVault` for client ID
+     - `<app-name>-client-secretKeyVault` for client secret
+   - Calls login API to get new token
+   - Saves token to config.yaml (never saves credentials)
+5. Uses token for deployment
+
 **Advanced options:**
 ```bash
 # Without status polling
 aifabrix deploy myapp --no-poll
 
-# Override credentials from command line
-aifabrix deploy myapp --client-id override-id --client-secret override-secret
+# Deploy to specific environment (updates root-level environment)
+aifabrix deploy myapp --environment pro
 ```
 
 **Flags:**
 - `-c, --controller <url>` - Controller URL (overrides variables.yaml)
-- `-e, --environment <env>` - Environment (dev, tst, pro) (default: dev)
-- `--client-id <id>` - Client ID for authentication (overrides variables.yaml)
-- `--client-secret <secret>` - Client Secret for authentication (overrides variables.yaml)
+- `-e, --environment <env>` - Environment (miso, dev, tst, pro) - updates root-level environment in config.yaml if provided
 - `--poll` - Poll for deployment status (default: true)
 - `--no-poll` - Do not poll for status
 
 **Process:**
 1. Validates app name format
 2. Loads variables.yaml from `builder/<app>/`
-3. Loads env.template and parses environment variables
-4. Loads rbac.yaml for roles and permissions
-5. Extracts controller URL, environment, clientId, and clientSecret from variables.yaml
-6. Overrides with command-line options if provided
-7. Validates all required configuration (URL, environment, credentials)
+3. Updates root-level environment in config.yaml if `--environment` provided
+4. Gets current environment from root-level config.yaml
+5. Retrieves or refreshes client token for environment + app
+6. Loads env.template and parses environment variables
+7. Loads rbac.yaml for roles and permissions
 8. Generates deployment manifest
 9. Validates manifest (checks required fields, format)
-10. Sends deployment request to controller API with Client Credentials authentication
+10. Sends deployment request to controller API with Bearer token authentication
 11. Polls deployment status (if enabled)
 12. Displays deployment results
 
@@ -822,9 +880,11 @@ aifabrix deploy myapp --client-id override-id --client-secret override-secret
 - **"Application not found in builder/"** → Run `aifabrix create <app>` first
 - **"Controller URL is required"** → Provide `--controller` flag with HTTPS URL
 - **"Controller URL must use HTTPS"** → Use `https://` protocol
+- **"Failed to get authentication token"** → Run `aifabrix login --method credentials --app <app>` first, or ensure credentials are in `~/.aifabrix/secrets.local.yaml` as `<app-name>-client-idKeyVault` and `<app-name>-client-secretKeyVault`
+- **"Client credentials not found for app"** → Add credentials to `~/.aifabrix/secrets.local.yaml` or run `aifabrix login` first
 - **"Validation failed"** → Check `aifabrix-deploy.json` for missing required fields
 - **"Deployment key mismatch"** → Regenerate: `aifabrix genkey <app>`
-- **"Authentication failed"** → Check deployment key is valid
+- **"Authentication failed"** → Token may be expired, run `aifabrix login` again
 - **"Invalid deployment manifest"** → Check configuration in variables.yaml
 - **"Can't reach controller"** → Check URL, network connection, firewall
 - **"Request timed out"** → Controller may be overloaded, try again later

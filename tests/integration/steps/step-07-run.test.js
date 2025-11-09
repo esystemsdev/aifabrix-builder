@@ -9,6 +9,8 @@
 
 const path = require('path');
 const fs = require('fs').promises;
+const config = require('../../../lib/config');
+const buildCopy = require('../../../lib/utils/build-copy');
 const {
   execCommand,
   testAppExists,
@@ -25,7 +27,6 @@ describe('Integration Step 07: Run Docker Container', () => {
   const language = process.env.TEST_LANGUAGE || 'python';
   const appName = getLanguageAppName(language);
   const port = getLanguagePort(language);
-  const containerName = `aifabrix-${appName}`;
 
   // Increase timeout for this test suite (health check can take time)
   jest.setTimeout(180000); // 3 minutes
@@ -71,16 +72,22 @@ describe('Integration Step 07: Run Docker Container', () => {
       console.log('Run command stderr:', result.stderr);
     }
 
-    // Verify docker-compose.yaml was generated
-    const composeFile = path.join(appInfo.builderPath, 'docker-compose.yaml');
+    // Verify docker-compose.yaml was generated in dev-specific directory
+    const developerId = await config.getDeveloperId();
+    const devDir = buildCopy.getDevDirectory(appName, developerId);
+    const composeFile = path.join(devDir, 'docker-compose.yaml');
     const composeExists = await testFileExists(composeFile);
+
+    // Calculate container name based on developer ID
+    // Dev 0: aifabrix-{appName}, Dev > 0: aifabrix-dev{id}-{appName}
+    const containerName = developerId === 0 ? `aifabrix-${appName}` : `aifabrix-dev${developerId}-${appName}`;
 
     if (!composeExists) {
       // Provide more context if command failed
       if (runExitCode !== 0) {
-        throw new Error(`docker-compose.yaml file not generated. Run command failed with exit code ${runExitCode}. Error: ${result.stderr || result.stdout || 'Unknown error'}`);
+        throw new Error(`docker-compose.yaml file not generated in ${devDir}. Run command failed with exit code ${runExitCode}. Error: ${result.stderr || result.stdout || 'Unknown error'}`);
       }
-      throw new Error('docker-compose.yaml file not generated');
+      throw new Error(`docker-compose.yaml file not generated in ${devDir}`);
     }
     expect(composeExists).toBe(true);
 

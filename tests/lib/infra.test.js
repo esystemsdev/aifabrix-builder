@@ -56,19 +56,53 @@ jest.mock('chalk', () => {
   return mockChalk;
 });
 
-const infra = require('../../lib/infra');
-const secrets = require('../../lib/secrets');
-
-// Mock modules
+// Mock modules BEFORE requiring infra (which requires secrets, which requires config)
 jest.mock('child_process', () => ({
   exec: jest.fn()
 }));
-jest.mock('fs');
-jest.mock('os');
+// Mock fs with fs.promises for config.js
+jest.mock('fs', () => {
+  const actualFs = jest.requireActual('fs');
+  return {
+    ...actualFs,
+    existsSync: jest.fn(),
+    readFileSync: jest.fn(),
+    writeFileSync: jest.fn(),
+    mkdirSync: jest.fn(),
+    unlinkSync: jest.fn(),
+    promises: {
+      readFile: jest.fn(),
+      writeFile: jest.fn(),
+      mkdir: jest.fn(),
+      unlink: jest.fn()
+    }
+  };
+});
+// Mock os.homedir BEFORE requiring modules that use it
+const mockHomeDir = '/home/test';
+jest.mock('os', () => ({
+  ...jest.requireActual('os'),
+  homedir: jest.fn(() => mockHomeDir),
+  tmpdir: jest.fn(() => '/tmp')
+}));
 jest.mock('util', () => ({
   promisify: jest.fn()
 }));
+// Mock config BEFORE requiring infra (which requires secrets, which requires config)
+jest.mock('../../lib/config', () => ({
+  getDeveloperId: jest.fn().mockResolvedValue(1),
+  setDeveloperId: jest.fn().mockResolvedValue(),
+  getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }),
+  saveConfig: jest.fn().mockResolvedValue(),
+  clearConfig: jest.fn().mockResolvedValue(),
+  CONFIG_DIR: '/mock/config/dir',
+  CONFIG_FILE: '/mock/config/dir/config.yaml',
+  developerId: 1 // Property access
+}));
 jest.mock('../../lib/secrets');
+
+const infra = require('../../lib/infra');
+const secrets = require('../../lib/secrets');
 
 // Mock setTimeout to make waitForServices exit immediately
 jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
@@ -77,7 +111,6 @@ jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
 });
 
 describe('Infrastructure Module', () => {
-  const mockHomeDir = '/home/test';
   const mockTempDir = '/tmp';
   const mockAdminSecretsPath = path.join(mockHomeDir, '.aifabrix', 'admin-secrets.env');
   const mockTemplatePath = path.join(__dirname, '..', '..', 'templates', 'infra', 'compose.yaml');
@@ -85,6 +118,7 @@ describe('Infrastructure Module', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // os.homedir is already mocked at module level, but ensure it returns the correct value
     os.homedir.mockReturnValue(mockHomeDir);
     os.tmpdir.mockReturnValue(mockTempDir);
   });
@@ -416,6 +450,10 @@ describe('Infrastructure Module', () => {
     }, 10000);
 
     it('should return not running for services that fail status check', async() => {
+      // Mock config.getDeveloperId to return 0 (default infra) for base ports
+      const config = require('../../lib/config');
+      config.getDeveloperId.mockResolvedValueOnce(0); // Default infra uses base ports
+
       // Mock exec to return empty (containers not found)
       exec.mockImplementation((command, callback) => {
         setImmediate(() => callback(null, '', ''));
@@ -425,7 +463,7 @@ describe('Infrastructure Module', () => {
       const result = await infra.getInfraStatus();
 
       expect(result.postgres.status).toBe('not running');
-      expect(result.postgres.port).toBe(5432);
+      expect(result.postgres.port).toBe(5432); // Base port for default infra (devId = 0)
       expect(result.postgres.url).toBe('localhost:5432');
     });
   });

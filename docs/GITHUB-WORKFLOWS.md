@@ -148,7 +148,7 @@ Before using automated pipeline deployment in GitHub Actions, you must register 
 
 1. AI Fabrix CLI installed and authenticated
 2. Application variables.yaml configured
-3. Access to controller environment (dev/tst/pro)
+3. Access to controller environment (miso/dev/tst/pro)
 
 ### Step 1: Login to Controller
 
@@ -168,8 +168,9 @@ aifabrix app register myapp --environment dev
 1. Reads configuration from `builder/myapp/variables.yaml` automatically
 2. Creates minimal configuration if file doesn't exist
 3. Registers with controller
-4. Displays credentials (not automatically saved)
-5. Shows setup instructions
+4. For localhost deployments: automatically saves credentials to `~/.aifabrix/secrets.local.yaml` and updates `env.template` with `MISO_CLIENTID`, `MISO_CLIENTSECRET`, and `MISO_CONTROLLER_URL`
+5. Displays credentials (for production, copy to GitHub Secrets manually)
+6. Shows setup instructions
 
 **Output:**
 ```
@@ -195,7 +196,9 @@ aifabrix app register myapp --environment dev
      DEV_MISO_CLIENTSECRET = xyz-abc-123...
 ```
 
-**Important:** Credentials are displayed but not automatically saved. Copy them to GitHub Secrets manually.
+**Important:** 
+- For localhost deployments, credentials are automatically saved to `~/.aifabrix/secrets.local.yaml` and `env.template` is updated with `MISO_CLIENTID`, `MISO_CLIENTSECRET`, and `MISO_CONTROLLER_URL` entries.
+- For production deployments, credentials are displayed but not automatically saved. Copy them to GitHub Secrets manually.
 
 ### Step 3: Add to GitHub Secrets
 
@@ -218,7 +221,7 @@ Create `.github/workflows/deploy.yaml` with pipeline API calls (see [Integration
 To rotate your ClientSecret (expires after 90 days):
 
 ```bash
-aifabrix app rotate-secret --app myapp --environment dev
+aifabrix app rotate-secret myapp --environment dev
 ```
 
 **Output:**
@@ -593,7 +596,7 @@ EOF
 
 Use the Pipeline API for automated deployments with proper authentication.
 
-**Note:** The `/api/v1/pipeline/validate` endpoint returns a **one-time use token** (`validateToken`) that expires after deployment. This is designed for CI/CD pipeline flows only - there's no standalone `aifabrix validate` CLI command because the token is only valid during a single deployment sequence.
+**Note:** The `/api/v1/pipeline/dev/validate` endpoint returns a **one-time use token** (`validateToken`) that expires after deployment. This is designed for CI/CD pipeline flows only - there's no standalone `aifabrix validate` CLI command because the token is only valid during a single deployment sequence.
 
 **Response from validate endpoint:**
 ```json
@@ -632,11 +635,12 @@ jobs:
       - name: Validate and Get Registry Credentials
         id: validate
         run: |
-          RESPONSE=$(curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/validate" \
+          RESPONSE=$(curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/dev/validate" \
+            -H "x-client-id: ${{ secrets.DEV_MISO_CLIENTID }}" \
+            -H "x-client-secret: ${{ secrets.DEV_MISO_CLIENTSECRET }}" \
             -H "Content-Type: application/json" \
             -d '{
               "clientId": "${{ secrets.DEV_MISO_CLIENTID }}",
-              "clientSecret": "${{ secrets.DEV_MISO_CLIENTSECRET }}",
               "repositoryUrl": "${{ github.server_url }}/${{ github.repository }}",
               "applicationConfig": $(cat application.json)
             }')
@@ -653,7 +657,19 @@ jobs:
       
       - name: Deploy Application
         run: |
-          curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/{env}/deploy" \
+          # Option 1: Use Bearer token (device token) for user-level audit tracking
+          # Preferred for interactive CLI usage - provides user-level audit logs
+          # curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/dev/deploy" \
+          #   -H "Authorization: Bearer ${{ secrets.DEVICE_TOKEN }}" \
+          #   -H "Content-Type: application/json" \
+          #   -d '{
+          #     "validateToken": "${{ steps.validate.outputs.validateToken }}",
+          #     "imageTag": "${{ github.sha }}"
+          #   }'
+          
+          # Option 2: Use client credentials (x-client-id/x-client-secret) for application-level authentication
+          # Preferred for CI/CD pipelines - provides application-level audit logs
+          curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/dev/deploy" \
             -H "Content-Type: application/json" \
             -H "x-client-id: ${{ secrets.DEV_MISO_CLIENTID }}" \
             -H "x-client-secret: ${{ secrets.DEV_MISO_CLIENTSECRET }}" \
@@ -686,11 +702,15 @@ jobs:
           docker build -t myapp:${{ github.sha }} .
           
           # Get environment-specific credentials
-          RESPONSE=$(curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/validate" \
+          # Note: Both authentication methods are supported:
+          # - Bearer token (Authorization header) for user-level audit
+          # - Client credentials (x-client-id/x-client-secret headers) for application-level audit
+          RESPONSE=$(curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/dev/validate" \
+            -H "x-client-id: ${{ secrets.DEV_MISO_CLIENTID }}" \
+            -H "x-client-secret: ${{ secrets.DEV_MISO_CLIENTSECRET }}" \
             -H "Content-Type: application/json" \
             -d '{
               "clientId": "${{ secrets.DEV_MISO_CLIENTID }}",
-              "clientSecret": "${{ secrets.DEV_MISO_CLIENTSECRET }}",
               "repositoryUrl": "${{ github.server_url }}/${{ github.repository }}",
               "applicationConfig": $(cat application.json)
             }')

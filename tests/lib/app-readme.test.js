@@ -61,9 +61,9 @@ describe('Application README Module', () => {
       expect(result).toContain('aifabrix run test-app');
       expect(result).toContain('http://localhost:3000');
       expect(result).toContain('aifabrix/test-app:latest');
-      expect(result).toContain('docker logs test-app -f');
-      expect(result).toContain('docker stop test-app');
-      expect(result).toContain('aifabrix push test-app --registry myacr.azurecr.io --tag latest');
+      expect(result).toContain('docker logs aifabrix-test-app -f');
+      expect(result).toContain('docker stop aifabrix-test-app');
+      expect(result).toContain('aifabrix push test-app --registry myacr.azurecr.io --tag "v1.0.0,latest"');
     });
 
     it('should include database prerequisite when database is enabled', () => {
@@ -163,10 +163,10 @@ describe('Application README Module', () => {
 
       const result = appReadme.generateReadmeMd(appName, config);
 
-      expect(result).toContain('## Install');
-      expect(result).toContain('## Build');
-      expect(result).toContain('## Run Locally');
-      expect(result).toContain('## Push to Azure Container Registry');
+      expect(result).toContain('## Quick Start');
+      expect(result).toContain('### 1. Install');
+      expect(result).toContain('### 3. Build & Run Locally');
+      expect(result).toContain('### 4. Deploy to Azure');
       expect(result).toContain('## Prerequisites');
       expect(result).toContain('## Troubleshooting');
     });

@@ -56,6 +56,33 @@ jest.mock('chalk', () => {
   return mockChalk;
 });
 
+// Mock config and dev-config BEFORE requiring secrets
+jest.mock('../../lib/config', () => ({
+  getDeveloperId: jest.fn().mockResolvedValue(1),
+  setDeveloperId: jest.fn().mockResolvedValue(),
+  getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }),
+  saveConfig: jest.fn().mockResolvedValue(),
+  clearConfig: jest.fn().mockResolvedValue(),
+  CONFIG_DIR: '/mock/config/dir',
+  CONFIG_FILE: '/mock/config/dir/config.yaml'
+}));
+jest.mock('../../lib/utils/dev-config', () => ({
+  getDevPorts: jest.fn((devId) => {
+    const offset = devId * 100;
+    return {
+      postgres: 5432 + offset,
+      redis: 6379 + offset
+    };
+  }),
+  getBasePorts: jest.fn(() => ({
+    app: 3000,
+    postgres: 5432,
+    redis: 6379,
+    pgadmin: 5050,
+    redisCommander: 8081
+  }))
+}));
+
 const secrets = require('../../lib/secrets');
 const localSecrets = require('../../lib/utils/local-secrets');
 
@@ -154,6 +181,16 @@ environments:
       fs.readFileSync.mockReturnValue('invalid yaml content');
 
       await expect(secrets.loadSecrets()).rejects.toThrow('Invalid secrets file format');
+    });
+
+    it('should throw error if explicit path secrets file has invalid format', async() => {
+      const customPath = '../../secrets.local.yaml';
+      const resolvedPath = path.resolve(process.cwd(), customPath);
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('invalid yaml content');
+
+      await expect(secrets.loadSecrets(customPath)).rejects.toThrow(`Invalid secrets file format: ${resolvedPath}`);
     });
 
     it('should throw error if secrets file contains null', async() => {
@@ -1896,6 +1933,550 @@ environments:
       expect(localSecrets.isLocalhost(null)).toBe(false);
       expect(localSecrets.isLocalhost(undefined)).toBe(false);
       expect(localSecrets.isLocalhost('')).toBe(false);
+    });
+  });
+
+  describe('loadEnvTemplate', () => {
+    it('should load env template from file', async() => {
+      const templatePath = path.join(process.cwd(), 'builder', 'testapp', 'env.template');
+      const templateContent = 'DATABASE_URL=kv://postgres-passwordKeyVault\nPORT=3000';
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('env.template') || filePath.includes('secrets.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return templateContent;
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      // Test through generateEnvFile which calls loadEnvTemplate
+      await secrets.generateEnvFile('testapp');
+
+      expect(fs.existsSync).toHaveBeenCalledWith(templatePath);
+      expect(fs.readFileSync).toHaveBeenCalledWith(templatePath, 'utf8');
+    });
+
+    it('should throw error if env template not found', async() => {
+      fs.existsSync.mockReturnValue(false);
+
+      await expect(secrets.generateEnvFile('testapp')).rejects.toThrow('env.template not found');
+    });
+  });
+
+  describe('resolveServicePortsInEnvContent', () => {
+    const appName = 'testapp';
+    const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+
+    beforeEach(() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return true;
+        }
+        return filePath.includes('env.template') ||
+               filePath.includes('secrets.yaml') ||
+               filePath.includes('env-config.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth"';
+        }
+        if (filePath.includes('env.template')) {
+          return 'KEYCLOAK_URL=kv://keycloak-urlKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  docker:
+    KEYCLOAK_HOST: keycloak
+    MISO_HOST: miso-controller
+  local:
+    KEYCLOAK_HOST: localhost
+    MISO_HOST: localhost
+`;
+        }
+        return '';
+      });
+    });
+
+    it('should return content unchanged for non-docker environment', async() => {
+      // Test through generateEnvFile with local environment
+      await secrets.generateEnvFile(appName, undefined, 'local');
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envCall = writeCalls.find(call => call[0].includes('.env') && !call[0].includes('../'));
+      expect(envCall).toBeDefined();
+      // Should not change ports in local environment
+      expect(envCall[1]).toContain('KEYCLOAK_URL');
+    });
+
+    it('should resolve service ports in URLs for docker environment', async() => {
+      const keycloakVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'variables.yaml');
+
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === keycloakVariablesPath) {
+          return true;
+        }
+        return filePath.includes('env.template') ||
+               filePath.includes('secrets.yaml') ||
+               filePath.includes('env-config.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'KEYCLOAK_URL=kv://keycloak-urlKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth"';
+        }
+        if (filePath === keycloakVariablesPath) {
+          return `
+port: 8082
+build:
+  containerPort: 8080
+`;
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  docker:
+    KEYCLOAK_HOST: keycloak
+  local:
+    KEYCLOAK_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker');
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envCall = writeCalls.find(call => call[0].includes('.env') && !call[0].includes('../'));
+      expect(envCall).toBeDefined();
+      expect(envCall[1]).toContain('http://keycloak:8080/auth');
+    });
+
+    it('should handle URLs without service hostnames', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return true;
+        }
+        return filePath.includes('env.template') ||
+               filePath.includes('secrets.yaml') ||
+               filePath.includes('env-config.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return 'external-urlKeyVault: "https://api.example.com:443/path"';
+        }
+        if (filePath.includes('env.template')) {
+          return 'EXTERNAL_URL=kv://external-urlKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'external-urlKeyVault: "https://api.example.com:443/path"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  docker:
+    KEYCLOAK_HOST: keycloak
+  local:
+    KEYCLOAK_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker');
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envCall = writeCalls.find(call => call[0].includes('.env') && !call[0].includes('../'));
+      expect(envCall).toBeDefined();
+      expect(envCall[1]).toContain('https://api.example.com:443/path');
+    });
+
+    it('should preserve URL paths and query parameters', async() => {
+      const keycloakVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'variables.yaml');
+
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === keycloakVariablesPath) {
+          return true;
+        }
+        return filePath.includes('env.template') ||
+               filePath.includes('secrets.yaml') ||
+               filePath.includes('env-config.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'KEYCLOAK_URL=kv://keycloak-urlKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth/realms/master?param=value"';
+        }
+        if (filePath === keycloakVariablesPath) {
+          return `
+port: 8082
+build:
+  containerPort: 8080
+`;
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  docker:
+    KEYCLOAK_HOST: keycloak
+  local:
+    KEYCLOAK_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker');
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envCall = writeCalls.find(call => call[0].includes('.env') && !call[0].includes('../'));
+      expect(envCall).toBeDefined();
+      expect(envCall[1]).toContain('http://keycloak:8080/auth/realms/master?param=value');
+    });
+  });
+
+  describe('processEnvVariables', () => {
+    const appName = 'testapp';
+    const builderPath = path.join(process.cwd(), 'builder', appName);
+    const envPath = path.join(builderPath, '.env');
+    const variablesPath = path.join(builderPath, 'variables.yaml');
+
+    beforeEach(() => {
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'PORT=3000\nDATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        if (filePath === variablesPath) {
+          return `
+build:
+  envOutputPath: ../app/.env
+  localPort: 4000
+port: 3000
+`;
+        }
+        if (filePath === envPath) {
+          return 'PORT=3000\nDATABASE_URL=postgres://localhost';
+        }
+        return '';
+      });
+    });
+
+    it('should copy .env to envOutputPath with localPort', async() => {
+      const outputPath = path.resolve(process.cwd(), '../app/.env');
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('env.template') ||
+               filePath.includes('variables.yaml') ||
+               filePath.includes('secrets.yaml') ||
+               filePath === envPath;
+      });
+      if (!fs.statSync) {
+        fs.statSync = jest.fn();
+      }
+      fs.statSync.mockReturnValue({ isDirectory: () => false });
+
+      await secrets.generateEnvFile(appName);
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const outputCall = writeCalls.find(call => call[0] === outputPath);
+      expect(outputCall).toBeDefined();
+      expect(outputCall[1]).toContain('PORT=4000');
+    });
+
+    it('should use port when localPort not specified', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('env.template') ||
+               filePath.includes('variables.yaml') ||
+               filePath.includes('secrets.yaml') ||
+               filePath === envPath;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === variablesPath) {
+          return `
+build:
+  envOutputPath: ../app/.env
+port: 5000
+`;
+        }
+        if (filePath.includes('env.template')) {
+          return 'PORT=3000\nDATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        if (filePath === envPath) {
+          return 'PORT=3000\nDATABASE_URL=postgres://localhost';
+        }
+        return '';
+      });
+      if (!fs.statSync) {
+        fs.statSync = jest.fn();
+      }
+      fs.statSync.mockReturnValue({ isDirectory: () => false });
+
+      await secrets.generateEnvFile(appName);
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const outputPath = path.resolve(process.cwd(), '../app/.env');
+      const outputCall = writeCalls.find(call => call[0] === outputPath);
+      expect(outputCall).toBeDefined();
+      expect(outputCall[1]).toContain('PORT=5000');
+    });
+
+    it('should not copy when envOutputPath is null', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('env.template') ||
+               filePath.includes('variables.yaml') ||
+               filePath.includes('secrets.yaml') ||
+               filePath === envPath;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === variablesPath) {
+          return `
+build:
+  envOutputPath: null
+port: 3000
+`;
+        }
+        if (filePath.includes('env.template')) {
+          return 'PORT=3000\nDATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        if (filePath === envPath) {
+          return 'PORT=3000\nDATABASE_URL=postgres://localhost';
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName);
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const outputPath = path.resolve(process.cwd(), '../app/.env');
+      const outputCall = writeCalls.find(call => call[0] === outputPath);
+      expect(outputCall).toBeUndefined();
+    });
+
+    it('should create output directory if it does not exist', async() => {
+      const outputDir = path.resolve(process.cwd(), '../app');
+      const outputPath = path.join(outputDir, '.env');
+
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === outputDir) {
+          return false;
+        }
+        return filePath.includes('env.template') ||
+               filePath.includes('variables.yaml') ||
+               filePath.includes('secrets.yaml') ||
+               filePath === envPath;
+      });
+      if (!fs.statSync) {
+        fs.statSync = jest.fn();
+      }
+      fs.statSync.mockReturnValue({ isDirectory: () => false });
+
+      await secrets.generateEnvFile(appName);
+
+      expect(fs.mkdirSync).toHaveBeenCalledWith(outputDir, { recursive: true });
+    });
+
+    it('should handle envOutputPath pointing to existing directory', async() => {
+      const outputDir = path.resolve(process.cwd(), '../app');
+      const outputPath = path.join(outputDir, '.env');
+
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === outputDir) {
+          return true;
+        }
+        return filePath.includes('env.template') ||
+               filePath.includes('variables.yaml') ||
+               filePath.includes('secrets.yaml') ||
+               filePath === envPath;
+      });
+      if (!fs.statSync) {
+        fs.statSync = jest.fn();
+      }
+      fs.statSync.mockImplementation((filePath) => {
+        if (filePath === outputDir) {
+          return { isDirectory: () => true };
+        }
+        return { isDirectory: () => false };
+      });
+
+      await secrets.generateEnvFile(appName);
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const outputCall = writeCalls.find(call => call[0] === outputPath);
+      expect(outputCall).toBeDefined();
+    });
+
+    it('should not process when variables.yaml does not exist', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === variablesPath) {
+          return false;
+        }
+        return filePath.includes('env.template') ||
+               filePath.includes('secrets.yaml') ||
+               filePath === envPath;
+      });
+
+      await secrets.generateEnvFile(appName);
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const outputPath = path.resolve(process.cwd(), '../app/.env');
+      const outputCall = writeCalls.find(call => call[0] === outputPath);
+      expect(outputCall).toBeUndefined();
+    });
+  });
+
+  describe('generateEnvFile - local environment port updates', () => {
+    const appName = 'testapp';
+    const builderPath = path.join(process.cwd(), 'builder', appName);
+    const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      os.homedir.mockReturnValue(mockHomeDir);
+
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return true;
+        }
+        return filePath.includes('env.template') ||
+               filePath.includes('secrets.yaml') ||
+               filePath.includes('env-config.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env.template')) {
+          return 'DATABASE_PORT=5432\nREDIS_URL=redis://localhost:6379\nREDIS_HOST=localhost:6379';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        return '';
+      });
+    });
+
+    it('should update DATABASE_PORT for local environment', async() => {
+      await secrets.generateEnvFile(appName, undefined, 'local');
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envCall = writeCalls.find(call => call[0].includes('.env') && !call[0].includes('../'));
+      expect(envCall).toBeDefined();
+      expect(envCall[1]).toContain('DATABASE_PORT=5532');
+    });
+
+    it('should update REDIS_URL for local environment', async() => {
+      await secrets.generateEnvFile(appName, undefined, 'local');
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envCall = writeCalls.find(call => call[0].includes('.env') && !call[0].includes('../'));
+      expect(envCall).toBeDefined();
+      expect(envCall[1]).toContain('REDIS_URL=redis://localhost:6479');
+    });
+
+    it('should update REDIS_HOST for local environment', async() => {
+      await secrets.generateEnvFile(appName, undefined, 'local');
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envCall = writeCalls.find(call => call[0].includes('.env') && !call[0].includes('../'));
+      expect(envCall).toBeDefined();
+      expect(envCall[1]).toContain('REDIS_HOST=localhost:6479');
+    });
+
+    it('should not update ports for docker environment', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return true;
+        }
+        return filePath.includes('env.template') ||
+               filePath.includes('secrets.yaml') ||
+               filePath.includes('env-config.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env.template')) {
+          return 'DATABASE_PORT=5432\nREDIS_URL=redis://localhost:6379';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  docker:
+    REDIS_HOST: redis
+  local:
+    REDIS_HOST: localhost
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker');
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envCall = writeCalls.find(call => call[0].includes('.env') && !call[0].includes('../'));
+      expect(envCall).toBeDefined();
+      expect(envCall[1]).toContain('DATABASE_PORT=5432');
+      expect(envCall[1]).toContain('REDIS_URL=redis://localhost:6379');
     });
   });
 });

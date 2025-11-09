@@ -222,7 +222,7 @@ describe('Application Registration Commands - Direct Logic Tests', () => {
 
       const config = await getConfig();
       const response = await authenticatedApiCall(
-        `${config.apiUrl}/api/v1/applications?environmentId=dev`,
+        `${config.apiUrl}/api/v1/environments/dev/applications`,
         {},
         config.token
       );
@@ -244,7 +244,7 @@ describe('Application Registration Commands - Direct Logic Tests', () => {
 
       const config = await getConfig();
       const response = await authenticatedApiCall(
-        `${config.apiUrl}/api/v1/applications?environmentId=dev`,
+        `${config.apiUrl}/api/v1/environments/dev/applications`,
         {},
         config.token
       );
@@ -271,13 +271,13 @@ describe('Application Registration Commands - Direct Logic Tests', () => {
       authenticatedApiCall.mockResolvedValue({
         success: true,
         data: {
-          application: {
-            key: 'test-app'
-          },
+          success: true,
           credentials: {
             clientId: 'client-id-123',
             clientSecret: 'new-client-secret-789'
-          }
+          },
+          message: 'IMPORTANT: Save new clientSecret now - old secret is now invalid',
+          timestamp: '2025-11-07T18:48:55.726Z'
         }
       });
 

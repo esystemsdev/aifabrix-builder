@@ -8,12 +8,76 @@
 
 jest.mock('../../lib/infra');
 jest.mock('../../lib/app');
-jest.mock('../../lib/secrets');
 jest.mock('../../lib/generator');
 jest.mock('../../lib/validator');
 jest.mock('../../lib/key-generator');
-jest.mock('../../lib/config');
+// Mock config BEFORE secrets to ensure config mock is available when secrets.js loads
+jest.mock('../../lib/config', () => {
+  const mockGetDeveloperId = jest.fn().mockResolvedValue(1);
+  const mockSetDeveloperId = jest.fn().mockResolvedValue();
+  const mockGetConfig = jest.fn().mockResolvedValue({ 'developer-id': 1, environment: 'dev', environments: {} });
+  const mockSaveConfig = jest.fn().mockResolvedValue();
+  const mockClearConfig = jest.fn().mockResolvedValue();
+  const mockGetCurrentEnvironment = jest.fn().mockResolvedValue('dev');
+  const mockSetCurrentEnvironment = jest.fn().mockResolvedValue();
+  const mockSaveClientToken = jest.fn().mockResolvedValue();
+  const mockSaveDeviceToken = jest.fn().mockResolvedValue();
+
+  return {
+    getDeveloperId: mockGetDeveloperId,
+    setDeveloperId: mockSetDeveloperId,
+    getConfig: mockGetConfig,
+    saveConfig: mockSaveConfig,
+    clearConfig: mockClearConfig,
+    getCurrentEnvironment: mockGetCurrentEnvironment,
+    setCurrentEnvironment: mockSetCurrentEnvironment,
+    saveClientToken: mockSaveClientToken,
+    saveDeviceToken: mockSaveDeviceToken,
+    CONFIG_DIR: '/mock/config/dir',
+    CONFIG_FILE: '/mock/config/dir/config.yaml'
+  };
+});
+// Mock dev-config BEFORE secrets (secrets requires dev-config)
+jest.mock('../../lib/utils/dev-config', () => {
+  const mockGetDevPorts = jest.fn((id) => ({
+    app: 3000 + (id * 100),
+    postgres: 5432 + (id * 100),
+    redis: 6379 + (id * 100),
+    pgadmin: 5050 + (id * 100),
+    redisCommander: 8081 + (id * 100)
+  }));
+
+  return {
+    getDevPorts: mockGetDevPorts,
+    getBasePorts: jest.fn(() => ({
+      app: 3000,
+      postgres: 5432,
+      redis: 6379,
+      pgadmin: 5050,
+      redisCommander: 8081
+    }))
+  };
+});
+// Mock secrets dependencies BEFORE secrets
+jest.mock('../../lib/utils/secrets-utils');
+jest.mock('../../lib/utils/secrets-path');
+jest.mock('../../lib/utils/secrets-generator');
+// Mock secrets - must be after config and dev-config mocks
+// Using factory function to prevent loading actual secrets.js which requires config
+jest.mock('../../lib/secrets', () => {
+  // Don't require actual secrets.js here - it would load config
+  return {
+    generateEnvFile: jest.fn().mockResolvedValue('/path/to/.env'),
+    loadSecrets: jest.fn().mockResolvedValue({}),
+    resolveKvReferences: jest.fn().mockResolvedValue(''),
+    generateAdminSecretsEnv: jest.fn().mockResolvedValue('/path/to/admin-secrets.env'),
+    validateSecrets: jest.fn().mockReturnValue({ valid: true, missing: [] }),
+    generateMissingSecrets: jest.fn().mockResolvedValue([]),
+    createDefaultSecrets: jest.fn().mockResolvedValue()
+  };
+});
 jest.mock('../../lib/utils/api');
+jest.mock('../../lib/utils/token-manager');
 jest.mock('inquirer');
 jest.mock('child_process');
 
@@ -23,8 +87,9 @@ const secrets = require('../../lib/secrets');
 const generator = require('../../lib/generator');
 const validator = require('../../lib/validator');
 const keyGenerator = require('../../lib/key-generator');
-const { saveConfig } = require('../../lib/config');
+const config = require('../../lib/config');
 const { makeApiCall } = require('../../lib/utils/api');
+const tokenManager = require('../../lib/utils/token-manager');
 const inquirer = require('inquirer');
 const { exec } = require('child_process');
 const { setupCommands } = require('../../lib/cli');
@@ -35,6 +100,27 @@ describe('CLI Comprehensive Tests', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Reset config mock to ensure it's working
+    const config = require('../../lib/config');
+    config.getDeveloperId.mockClear();
+    config.getDeveloperId.mockResolvedValue(1);
+    config.getConfig.mockClear();
+    config.getConfig.mockResolvedValue({ 'developer-id': 1, environment: 'dev', environments: {} });
+    config.getCurrentEnvironment.mockClear();
+    config.getCurrentEnvironment.mockResolvedValue('dev');
+    config.setCurrentEnvironment.mockClear();
+    config.setCurrentEnvironment.mockResolvedValue();
+    config.saveClientToken.mockClear();
+    config.saveClientToken.mockResolvedValue();
+    config.saveDeviceToken.mockClear();
+    config.saveDeviceToken.mockResolvedValue();
+
+    // Reset token-manager mock
+    const tokenManager = require('../../lib/utils/token-manager');
+    tokenManager.loadClientCredentials.mockClear();
+    tokenManager.loadClientCredentials.mockResolvedValue(null);
+
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
     jest.spyOn(process, 'exit').mockImplementation(() => {});
@@ -90,28 +176,40 @@ describe('CLI Comprehensive Tests', () => {
     it('should handle credentials login with flags (CI/CD)', async() => {
       makeApiCall.mockResolvedValue({
         success: true,
-        data: { accessToken: 'test-token-123' }
+        data: {
+          token: 'test-token-123',
+          expiresIn: 3600,
+          expiresAt: new Date(Date.now() + 3600000).toISOString()
+        }
       });
 
-      saveConfig.mockResolvedValue();
+      config.setCurrentEnvironment.mockResolvedValue();
+      config.saveClientToken.mockResolvedValue();
+      tokenManager.loadClientCredentials.mockResolvedValue(null);
 
       const action = commandActions.login;
       await action({
-        url: 'http://localhost:3000',
+        controller: 'http://localhost:3000',
         method: 'credentials',
+        app: 'test-app',
         clientId: 'test-client-id',
-        clientSecret: 'test-secret'
+        clientSecret: 'test-secret',
+        environment: 'dev'
       });
 
       expect(makeApiCall).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/auth/login',
+        'http://localhost:3000/api/v1/auth/token',
         expect.objectContaining({
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: expect.stringContaining('test-client-id')
+          headers: {
+            'Content-Type': 'application/json',
+            'x-client-id': 'test-client-id',
+            'x-client-secret': 'test-secret'
+          }
         })
       );
-      expect(saveConfig).toHaveBeenCalled();
+      expect(config.setCurrentEnvironment).toHaveBeenCalledWith('dev');
+      expect(config.saveClientToken).toHaveBeenCalled();
     });
 
     it('should handle credentials login with prompts', async() => {
@@ -124,17 +222,27 @@ describe('CLI Comprehensive Tests', () => {
 
       makeApiCall.mockResolvedValue({
         success: true,
-        data: { accessToken: 'test-token-123' }
+        data: {
+          token: 'test-token-123',
+          expiresIn: 3600,
+          expiresAt: new Date(Date.now() + 3600000).toISOString()
+        }
       });
 
-      saveConfig.mockResolvedValue();
+      config.getCurrentEnvironment.mockResolvedValue('dev');
+      config.setCurrentEnvironment.mockResolvedValue();
+      config.saveClientToken.mockResolvedValue();
+      tokenManager.loadClientCredentials.mockResolvedValue(null);
 
       const action = commandActions.login;
-      await action({ url: 'http://localhost:3000' });
+      await action({
+        controller: 'http://localhost:3000',
+        app: 'test-app'
+      });
 
       expect(inquirer.prompt).toHaveBeenCalled();
       expect(makeApiCall).toHaveBeenCalled();
-      expect(saveConfig).toHaveBeenCalled();
+      expect(config.saveClientToken).toHaveBeenCalled();
     });
 
     it('should handle login failure and exit', async() => {
@@ -150,8 +258,14 @@ describe('CLI Comprehensive Tests', () => {
         error: 'Invalid credentials'
       });
 
+      config.getCurrentEnvironment.mockResolvedValue('dev');
+      tokenManager.loadClientCredentials.mockResolvedValue(null);
+
       const action = commandActions.login;
-      await action({ url: 'http://localhost:3000' });
+      await action({
+        controller: 'http://localhost:3000',
+        app: 'test-app'
+      });
 
       expect(console.error).toHaveBeenCalled();
       expect(process.exit).toHaveBeenCalledWith(1);
@@ -160,8 +274,13 @@ describe('CLI Comprehensive Tests', () => {
     it('should handle login exceptions', async() => {
       inquirer.prompt.mockRejectedValue(new Error('Prompt failed'));
 
+      config.getCurrentEnvironment.mockResolvedValue('dev');
+
       const action = commandActions.login;
-      await action({ url: 'http://localhost:3000' });
+      await action({
+        controller: 'http://localhost:3000',
+        app: 'test-app'
+      });
 
       expect(console.error).toHaveBeenCalled();
       expect(process.exit).toHaveBeenCalledWith(1);
@@ -177,16 +296,16 @@ describe('CLI Comprehensive Tests', () => {
       infra.startInfra.mockResolvedValue();
 
       const action = commandActions.up;
-      await action();
+      await action({});
 
-      expect(infra.startInfra).toHaveBeenCalled();
+      expect(infra.startInfra).toHaveBeenCalledWith(null);
     });
 
     it('should handle infrastructure start errors', async() => {
       infra.startInfra.mockRejectedValue(new Error('Docker not running'));
 
       const action = commandActions.up;
-      await action();
+      await action({});
 
       expect(console.error).toHaveBeenCalled();
       expect(process.exit).toHaveBeenCalledWith(1);

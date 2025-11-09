@@ -60,19 +60,17 @@ describe('App Commands', () => {
       const appDir = path.join(tempDir, 'builder', appName);
       fsSync.mkdirSync(appDir, { recursive: true });
 
-      // Mock API response
+      // Mock API response - matches actual API structure
       authenticatedApiCall.mockResolvedValue({
         success: true,
         data: {
-          application: {
-            id: 'app-123',
-            key: appName,
-            displayName: 'Test App'
-          },
+          success: true,
           credentials: {
             clientId: 'ctrl-dev-test-app',
             clientSecret: 'new-secret-123'
-          }
+          },
+          message: 'IMPORTANT: Save new clientSecret now - old secret is now invalid',
+          timestamp: '2025-11-07T18:48:55.726Z'
         }
       });
 
@@ -233,45 +231,49 @@ build:
     it('should list applications in an environment', async() => {
       const environment = 'dev';
 
-      // Mock API response
+      // Mock API response with nested structure
       authenticatedApiCall.mockResolvedValue({
         success: true,
-        data: [
-          {
-            id: 'app-1',
-            key: 'app1',
-            displayName: 'App One',
-            status: 'active',
-            configuration: {
-              pipeline: {
-                isActive: true
+        data: {
+          success: true,
+          data: [
+            {
+              id: 'app-1',
+              key: 'app1',
+              displayName: 'App One',
+              status: 'active',
+              configuration: {
+                pipeline: {
+                  isActive: true
+                }
+              }
+            },
+            {
+              id: 'app-2',
+              key: 'app2',
+              displayName: 'App Two',
+              status: 'inactive',
+              configuration: {
+                pipeline: {
+                  isActive: false
+                }
               }
             }
-          },
-          {
-            id: 'app-2',
-            key: 'app2',
-            displayName: 'App Two',
-            status: 'inactive',
-            configuration: {
-              pipeline: {
-                isActive: false
-              }
-            }
-          }
-        ]
+          ],
+          timestamp: '2025-11-07T16:48:04.007Z'
+        }
       });
 
       const response = await authenticatedApiCall(
-        `http://localhost:3000/api/v1/applications?environmentId=${environment}`,
+        `http://localhost:3000/api/v1/environments/${environment}/applications`,
         {},
         'test-token-123'
       );
 
       expect(response.success).toBe(true);
-      expect(response.data).toHaveLength(2);
-      expect(response.data[0].key).toBe('app1');
-      expect(response.data[1].key).toBe('app2');
+      expect(response.data.data).toHaveLength(2);
+      expect(response.data.data[0].key).toBe('app1');
+      expect(response.data.data[1].key).toBe('app2');
     });
 
     it('should fail when not logged in', async() => {

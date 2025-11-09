@@ -13,11 +13,62 @@ const net = require('net');
 const { exec } = require('child_process');
 const validator = require('../../lib/validator');
 
+// CRITICAL: Mock fetch FIRST before any modules that might use it
+// Ensure global fetch is mocked (from tests/setup.js)
+if (!global.fetch || typeof global.fetch.mockResolvedValue !== 'function') {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    headers: {
+      get: jest.fn().mockReturnValue('application/json')
+    },
+    json: jest.fn().mockResolvedValue({ success: true }),
+    text: jest.fn().mockResolvedValue('OK')
+  });
+}
+
 // Mock modules
 jest.mock('fs');
 jest.mock('os');
-jest.mock('net');
-jest.mock('child_process');
+jest.mock('net', () => {
+  const actualNet = jest.requireActual('net');
+  return {
+    ...actualNet,
+    createServer: jest.fn(() => {
+      const mockServer = {
+        listen: jest.fn((port, callback) => {
+          if (typeof callback === 'function') {
+            setImmediate(() => callback());
+          }
+          return mockServer;
+        }),
+        close: jest.fn((callback) => {
+          if (typeof callback === 'function') {
+            setImmediate(() => callback());
+          }
+          return mockServer;
+        }),
+        on: jest.fn()
+      };
+      return mockServer;
+    })
+  };
+});
+jest.mock('child_process', () => {
+  const actualChildProcess = jest.requireActual('child_process');
+  return {
+    ...actualChildProcess,
+    exec: jest.fn((command, options, callback) => {
+      const cb = typeof options === 'function' ? options : callback;
+      if (typeof cb === 'function') {
+        // Default: return success for docker commands
+        setImmediate(() => cb(null, { stdout: 'Docker version 20.10.0', stderr: '' }));
+      }
+      return { stdout: 'Docker version 20.10.0', stderr: '' };
+    })
+  };
+});
 
 describe('Validator Module', () => {
   const mockHomeDir = '/home/test';
@@ -26,6 +77,31 @@ describe('Validator Module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     os.homedir.mockReturnValue(mockHomeDir);
+
+    // Reset fetch mock to default implementation
+    if (global.fetch && typeof global.fetch.mockResolvedValue === 'function') {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        headers: {
+          get: jest.fn().mockReturnValue('application/json')
+        },
+        json: jest.fn().mockResolvedValue({ success: true }),
+        text: jest.fn().mockResolvedValue('OK')
+      });
+    }
+
+    // Reset child_process.exec mock
+    const { exec } = require('child_process');
+    exec.mockImplementation((command, options, callback) => {
+      const cb = typeof options === 'function' ? options : callback;
+      if (typeof cb === 'function') {
+        // Default: return success for docker commands
+        setImmediate(() => cb(null, { stdout: 'Docker version 20.10.0', stderr: '' }));
+      }
+      return { stdout: 'Docker version 20.10.0', stderr: '' };
+    });
   });
 
   describe('validateVariables', () => {

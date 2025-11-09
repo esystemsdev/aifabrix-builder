@@ -113,6 +113,8 @@
         "max-lines": "off",
         "complexity": "off",
         "max-statements": "off",
+        "max-depth": "off",
+        "max-params": "off",
         "no-unused-vars": "off"
       }
     },

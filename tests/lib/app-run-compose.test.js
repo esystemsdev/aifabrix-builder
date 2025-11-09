@@ -12,6 +12,33 @@ const yaml = require('js-yaml');
 jest.mock('../../lib/infra');
 jest.mock('../../lib/secrets');
 jest.mock('../../lib/validator');
+jest.mock('../../lib/config', () => ({
+  getDeveloperId: jest.fn().mockResolvedValue(1),
+  setDeveloperId: jest.fn().mockResolvedValue(),
+  getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }),
+  saveConfig: jest.fn().mockResolvedValue(),
+  clearConfig: jest.fn().mockResolvedValue()
+}));
+jest.mock('../../lib/utils/dev-config', () => ({
+  getDevPorts: jest.fn((id) => ({
+    app: 3000 + (id * 100),
+    postgres: 5432 + (id * 100),
+    redis: 6379 + (id * 100),
+    pgadmin: 5050 + (id * 100),
+    redisCommander: 8081 + (id * 100)
+  }))
+}));
+jest.mock('../../lib/utils/build-copy', () => {
+  const os = require('os');
+  const path = require('path');
+  return {
+    getDevDirectory: jest.fn((appName, devId) => {
+      return path.join(os.homedir(), '.aifabrix', `${appName}-dev-${devId}`);
+    }),
+    copyBuilderToDevDirectory: jest.fn().mockResolvedValue(path.join(os.homedir(), '.aifabrix', 'test-app-dev-1')),
+    devDirectoryExists: jest.fn().mockReturnValue(true)
+  };
+});
 
 const appRun = require('../../lib/app-run');
 
@@ -49,10 +76,15 @@ describe('app-run Docker Compose Generation', () => {
   describe('generateDockerCompose', () => {
     it('should generate compose file with db-init service when requiresDatabase is true', async() => {
       const appName = 'test-app';
-      // Create .env file with DB_PASSWORD
+      // Create .env file with DB_PASSWORD in dev directory
+      const buildCopy = require('../../lib/utils/build-copy');
+      const devDir = buildCopy.getDevDirectory(appName, 1);
+      fsSync.mkdirSync(devDir, { recursive: true });
+      fsSync.writeFileSync(path.join(devDir, '.env'), 'DB_0_PASSWORD=secret123\n');
+
+      // Also create builder directory for test setup
       const appDir = path.join(process.cwd(), 'builder', appName);
       fsSync.mkdirSync(appDir, { recursive: true });
-      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_0_PASSWORD=secret123\n');
 
       const config = {
         build: { language: 'python' },
@@ -75,10 +107,15 @@ describe('app-run Docker Compose Generation', () => {
 
     it('should not include db-init service when requiresDatabase is false', async() => {
       const appName = 'test-app';
-      // Create .env file with DB_PASSWORD
+      // Create .env file with DB_PASSWORD in dev directory
+      const buildCopy = require('../../lib/utils/build-copy');
+      const devDir = buildCopy.getDevDirectory(appName, 1);
+      fsSync.mkdirSync(devDir, { recursive: true });
+      fsSync.writeFileSync(path.join(devDir, '.env'), 'DB_PASSWORD=secret123\n');
+
+      // Also create builder directory for test setup
       const appDir = path.join(process.cwd(), 'builder', appName);
       fsSync.mkdirSync(appDir, { recursive: true });
-      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_PASSWORD=secret123\n');
 
       const config = {
         build: { language: 'python' },
@@ -98,10 +135,15 @@ describe('app-run Docker Compose Generation', () => {
 
     it('should use databases from config.requires.databases', async() => {
       const appName = 'test-app';
-      // Create .env file with DB_PASSWORD for multiple databases
+      // Create .env file with DB_PASSWORD for multiple databases in dev directory
+      const buildCopy = require('../../lib/utils/build-copy');
+      const devDir = buildCopy.getDevDirectory(appName, 1);
+      fsSync.mkdirSync(devDir, { recursive: true });
+      fsSync.writeFileSync(path.join(devDir, '.env'), 'DB_0_PASSWORD=pass1\nDB_1_PASSWORD=pass2\n');
+
+      // Also create builder directory for test setup
       const appDir = path.join(process.cwd(), 'builder', appName);
       fsSync.mkdirSync(appDir, { recursive: true });
-      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_0_PASSWORD=pass1\nDB_1_PASSWORD=pass2\n');
 
       const config = {
         build: { language: 'python' },
@@ -150,7 +192,11 @@ describe('app-run Docker Compose Generation', () => {
       const normalizedPath = path.join(windowsPath, 'builder', appName);
       // Ensure the directory exists at the normalized path
       fsSync.mkdirSync(normalizedPath, { recursive: true });
-      fsSync.writeFileSync(path.join(normalizedPath, '.env'), 'DB_PASSWORD=secret123\n');
+      // Create .env file in dev directory
+      const buildCopy = require('../../lib/utils/build-copy');
+      const devDir = buildCopy.getDevDirectory(appName, 1);
+      fsSync.mkdirSync(devDir, { recursive: true });
+      fsSync.writeFileSync(path.join(devDir, '.env'), 'DB_PASSWORD=secret123\n');
 
       const result = await appRun.generateDockerCompose(appName, config, options);
 
@@ -165,10 +211,15 @@ describe('app-run Docker Compose Generation', () => {
 
     it('should generate valid YAML that can be parsed', async() => {
       const appName = 'test-app';
-      // Create .env file with DB_PASSWORD
+      // Create .env file with DB_PASSWORD in dev directory
+      const buildCopy = require('../../lib/utils/build-copy');
+      const devDir = buildCopy.getDevDirectory(appName, 1);
+      fsSync.mkdirSync(devDir, { recursive: true });
+      fsSync.writeFileSync(path.join(devDir, '.env'), 'DB_0_PASSWORD=secret123\n');
+
+      // Also create builder directory for test setup
       const appDir = path.join(process.cwd(), 'builder', appName);
       fsSync.mkdirSync(appDir, { recursive: true });
-      fsSync.writeFileSync(path.join(appDir, '.env'), 'DB_0_PASSWORD=secret123\n');
 
       const config = {
         build: { language: 'python' },

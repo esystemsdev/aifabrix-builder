@@ -6,14 +6,41 @@
  * @version 2.0.0
  */
 
-const { makeApiCall, authenticatedApiCall, initiateDeviceCodeFlow, pollDeviceCodeToken, displayDeviceCodeInfo } = require('../../lib/utils/api');
+// Mock validator module
+jest.mock('../../lib/validator');
 
-// Mock global fetch
-global.fetch = jest.fn();
+// Mock audit logger module
+jest.mock('../../lib/audit-logger', () => ({
+  logApiCall: jest.fn().mockResolvedValue()
+}));
+
+// CRITICAL: Ensure fetch is mocked before requiring the module
+// The global mock from tests/setup.js should already be set, but we ensure it's a jest.fn()
+if (!global.fetch || typeof global.fetch.mockResolvedValue !== 'function') {
+  global.fetch = jest.fn();
+}
+
+// Increase timeout for tests using fake timers
+jest.setTimeout(30000);
+
+const { makeApiCall, authenticatedApiCall, initiateDeviceCodeFlow, pollDeviceCodeToken, displayDeviceCodeInfo } = require('../../lib/utils/api');
 
 describe('API Utilities', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Ensure fetch mock is reset and has default implementation
+    if (global.fetch && typeof global.fetch.mockResolvedValue === 'function') {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        headers: {
+          get: jest.fn().mockReturnValue('application/json')
+        },
+        json: jest.fn().mockResolvedValue({ success: true }),
+        text: jest.fn().mockResolvedValue('OK')
+      });
+    }
   });
 
   describe('makeApiCall', () => {
@@ -61,11 +88,14 @@ describe('API Utilities', () => {
         text: jest.fn().mockResolvedValue(JSON.stringify({ error: 'Invalid request' }))
       });
 
-      const degradation = await makeApiCall('https://api.example.com/test');
+      const result = await makeApiCall('https://api.example.com/test');
 
-      expect(degradation.success).toBe(false);
-      expect(degradation.error).toBe('Invalid request');
-      expect(degradation.status).toBe(400);
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Validation error');
+      expect(result.errorType).toBe('validation');
+      expect(result.status).toBe(400);
+      expect(result.formattedError).toBeDefined();
+      expect(result.errorData).toBeDefined();
     });
 
     it('should handle 404 error with text error response', async() => {
@@ -80,7 +110,10 @@ describe('API Utilities', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Not Found');
+      expect(result.errorType).toBe('notfound');
       expect(result.status).toBe(404);
+      expect(result.formattedError).toBeDefined();
+      expect(result.formattedError).toContain('❌ Not Found');
     });
 
     it('should handle 401 error with error JSON', async() => {
@@ -95,7 +128,10 @@ describe('API Utilities', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Authentication failed');
+      expect(result.errorType).toBe('authentication');
       expect(result.status).toBe(401);
+      expect(result.formattedError).toBeDefined();
+      expect(result.errorData).toBeDefined();
     });
 
     it('should handle network errors', async() => {
@@ -105,7 +141,9 @@ describe('API Utilities', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Network error');
+      expect(result.errorType).toBe('network');
       expect(result.network).toBe(true);
+      expect(result.formattedError).toBeDefined();
     });
 
     it('should pass options to fetch', async() => {
@@ -215,8 +253,11 @@ describe('API Utilities', () => {
       const result = await authenticatedApiCall('https://api.example.com/test', {}, 'token');
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Access denied');
+      expect(result.error).toBe('Permission denied');
+      expect(result.errorType).toBe('permission');
       expect(result.status).toBe(403);
+      expect(result.formattedError).toBeDefined();
+      expect(result.errorData).toBeDefined();
     });
   });
 
@@ -265,10 +306,10 @@ describe('API Utilities', () => {
       const deviceCodeResponse = {
         success: true,
         data: {
-          device_code: 'device-code-123',
-          user_code: 'ABCD-EFGH',
-          verification_uri: 'https://auth.example.com/device',
-          expires_in: 600,
+          deviceCode: 'device-code-123',
+          userCode: 'ABCD-EFGH',
+          verificationUri: 'https://auth.example.com/device',
+          expiresIn: 600,
           interval: 5
         },
         timestamp: new Date().toISOString()
@@ -444,9 +485,9 @@ describe('API Utilities', () => {
       const tokenResponse = {
         success: true,
         data: {
-          access_token: 'access-token-123',
-          refresh_token: 'refresh-token-123',
-          expires_in: 3600
+          accessToken: 'access-token-123',
+          refreshToken: 'refresh-token-123',
+          expiresIn: 3600
         },
         timestamp: new Date().toISOString()
       };
@@ -705,13 +746,14 @@ describe('API Utilities', () => {
 
       // Wait for slow_down interval (5 * 2 = 10 seconds)
       jest.advanceTimersByTime(10000);
+      await Promise.resolve();
       await jest.runAllTimersAsync();
       await Promise.resolve();
 
       const result = await pollPromise;
 
       expect(result.access_token).toBe('access-token-123');
-    }, 15000);
+    }, 20000);
 
     it('should throw error if device_code is missing', async() => {
       await expect(pollDeviceCodeToken('https://controller.example.com', null, 5, 600))

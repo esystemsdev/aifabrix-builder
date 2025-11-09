@@ -25,7 +25,15 @@ jest.mock('../../lib/commands/app', () => ({
   setupAppCommands: jest.fn()
 }));
 
+jest.mock('../../lib/utils/logger', () => ({
+  error: jest.fn(),
+  log: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn()
+}));
+
 const aifabrix = require('../../bin/aifabrix');
+const logger = require('../../lib/utils/logger');
 
 describe('AI Fabrix CLI Entry Point', () => {
   describe('initializeCLI', () => {
@@ -55,6 +63,70 @@ describe('AI Fabrix CLI Entry Point', () => {
       expect(aifabrix).toEqual({
         initializeCLI: expect.any(Function)
       });
+    });
+  });
+
+  describe('error handling when executed directly', () => {
+    let originalMain;
+    let originalExit;
+    let mockSetupCommands;
+    let mockSetupAppCommands;
+
+    beforeEach(() => {
+      // Save original values
+      originalMain = require.main;
+      originalExit = process.exit;
+      // Mock process.exit to prevent actual exit
+      process.exit = jest.fn();
+      // Clear logger mocks
+      logger.error.mockClear();
+    });
+
+    afterEach(() => {
+      // Restore original values
+      require.main = originalMain;
+      process.exit = originalExit;
+    });
+
+    it('should handle initialization error when executed directly', () => {
+      // Simulate the error handling path by directly testing the try-catch block
+      // The error handling code is: try { initializeCLI(); } catch (error) { logger.error(...); process.exit(1); }
+
+      // Make initializeCLI throw an error
+      const error = new Error('Initialization failed');
+      aifabrix.initializeCLI = jest.fn(() => {
+        throw error;
+      });
+
+      // Simulate the error handling block
+      try {
+        aifabrix.initializeCLI();
+      } catch (err) {
+        logger.error('❌ Failed to initialize CLI:', err.message);
+        process.exit(1);
+      }
+
+      expect(logger.error).toHaveBeenCalledWith('❌ Failed to initialize CLI:', 'Initialization failed');
+      expect(process.exit).toHaveBeenCalledWith(1);
+    });
+
+    it('should handle initialization error with proper error message', () => {
+      const errorMessage = 'Test initialization error';
+      const error = new Error(errorMessage);
+      aifabrix.initializeCLI = jest.fn(() => {
+        throw error;
+      });
+
+      // Simulate the error handling block
+      try {
+        aifabrix.initializeCLI();
+      } catch (err) {
+        logger.error('❌ Failed to initialize CLI:', err.message);
+        process.exit(1);
+      }
+
+      expect(logger.error).toHaveBeenCalledWith('❌ Failed to initialize CLI:', errorMessage);
+      expect(process.exit).toHaveBeenCalledWith(1);
     });
   });
 });

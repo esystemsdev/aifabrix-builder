@@ -28,12 +28,14 @@ jest.mock('fs', () => {
 
 jest.mock('../../lib/config');
 jest.mock('../../lib/utils/api');
+jest.mock('../../lib/utils/token-manager');
 jest.mock('../../lib/app', () => ({
   createApp: jest.fn()
 }));
 
 const { getConfig } = require('../../lib/config');
 const { authenticatedApiCall } = require('../../lib/utils/api');
+const tokenManager = require('../../lib/utils/token-manager');
 const app = require('../../lib/app');
 const { setupAppCommands } = require('../../lib/commands/app');
 
@@ -72,7 +74,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
     // The structure is: program.command('app').command('register <appKey>').action(handler)
     const mockAppCommand = {
       command: jest.fn().mockImplementation((cmdName) => {
-        // cmdName could be 'register <appKey>', 'list', 'rotate-secret'
+        // cmdName could be 'register <appKey>', 'list', 'rotate-secret <appKey>'
         const cmdObj = {
           description: jest.fn().mockReturnThis(),
           requiredOption: jest.fn().mockReturnThis(),
@@ -83,7 +85,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
               registerAction = handler;
             } else if (cmdName === 'list') {
               listAction = handler;
-            } else if (cmdName === 'rotate-secret') {
+            } else if (cmdName && cmdName.startsWith('rotate-secret')) {
               rotateSecretAction = handler;
             }
             return cmdObj;
@@ -142,8 +144,20 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
       fs.readFile.mockResolvedValue(variablesContent);
       getConfig.mockResolvedValue({
-        apiUrl: 'http://localhost:3000',
-        token: 'test-token'
+        'developer-id': 0,
+        environment: 'dev',
+        device: {
+          'http://localhost:3000': {
+            token: 'test-token',
+            refreshToken: 'refresh-token',
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'test-token',
+        controller: 'http://localhost:3000'
       });
 
       authenticatedApiCall.mockResolvedValue({
@@ -189,8 +203,20 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
       app.createApp.mockResolvedValue();
       getConfig.mockResolvedValue({
-        apiUrl: 'http://localhost:3000',
-        token: 'test-token'
+        'developer-id': 0,
+        environment: 'dev',
+        device: {
+          'http://localhost:3000': {
+            token: 'test-token',
+            refreshToken: 'refresh-token',
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'test-token',
+        controller: 'http://localhost:3000'
       });
 
       authenticatedApiCall.mockResolvedValue({
@@ -230,8 +256,20 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
       fs.readFile.mockResolvedValue(variablesContent);
       getConfig.mockResolvedValue({
-        apiUrl: 'http://localhost:3000',
-        token: 'test-token'
+        'developer-id': 0,
+        environment: 'dev',
+        device: {
+          'http://localhost:3000': {
+            token: 'test-token',
+            refreshToken: 'refresh-token',
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'test-token',
+        controller: 'http://localhost:3000'
       });
 
       if (registerAction) {
@@ -252,8 +290,20 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
       fs.readFile.mockResolvedValue(variablesContent);
       getConfig.mockResolvedValue({
-        apiUrl: 'http://localhost:3000',
-        token: 'test-token'
+        'developer-id': 0,
+        environment: 'dev',
+        device: {
+          'http://localhost:3000': {
+            token: 'test-token',
+            refreshToken: 'refresh-token',
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'test-token',
+        controller: 'http://localhost:3000'
       });
 
       if (registerAction) {
@@ -290,8 +340,20 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
       fs.readFile.mockResolvedValue(variablesContent);
       getConfig.mockResolvedValue({
-        apiUrl: 'http://localhost:3000',
-        token: 'test-token'
+        'developer-id': 0,
+        environment: 'dev',
+        device: {
+          'http://localhost:3000': {
+            token: 'test-token',
+            refreshToken: 'refresh-token',
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'test-token',
+        controller: 'http://localhost:3000'
       });
 
       authenticatedApiCall.mockResolvedValue({
@@ -314,8 +376,20 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
       fs.readFile.mockResolvedValue(variablesContent);
       getConfig.mockResolvedValue({
-        apiUrl: 'http://localhost:3000',
-        token: 'test-token'
+        'developer-id': 0,
+        environment: 'dev',
+        device: {
+          'http://localhost:3000': {
+            token: 'test-token',
+            refreshToken: 'refresh-token',
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'test-token',
+        controller: 'http://localhost:3000'
       });
 
       authenticatedApiCall.mockResolvedValue({
@@ -343,8 +417,20 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
       fs.readFile.mockResolvedValue(variablesContent);
       getConfig.mockResolvedValue({
-        apiUrl: 'http://localhost:3000',
-        token: 'test-token'
+        'developer-id': 0,
+        environment: 'dev',
+        device: {
+          'http://localhost:3000': {
+            token: 'test-token',
+            refreshToken: 'refresh-token',
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'test-token',
+        controller: 'http://localhost:3000'
       });
 
       authenticatedApiCall.mockResolvedValue({
@@ -367,36 +453,57 @@ describe('Application Commands Actions - Invoke Handlers', () => {
   describe('list command action', () => {
     it('should list applications successfully', async() => {
       getConfig.mockResolvedValue({
-        apiUrl: 'http://localhost:3000',
-        token: 'test-token'
+        'developer-id': 0,
+        environment: 'dev',
+        device: {
+          'http://localhost:3000': {
+            token: 'test-token',
+            refreshToken: 'refresh-token',
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'test-token',
+        controller: 'http://localhost:3000'
       });
 
       authenticatedApiCall.mockResolvedValue({
         success: true,
-        data: [
-          {
-            key: 'app1',
-            displayName: 'App 1',
-            status: 'active',
-            configuration: {
-              pipeline: { isActive: true }
+        data: {
+          items: [
+            {
+              key: 'app1',
+              displayName: 'App 1',
+              status: 'active',
+              configuration: {
+                pipeline: { isActive: true }
+              }
+            },
+            {
+              key: 'app2',
+              displayName: 'App 2',
+              status: 'inactive',
+              configuration: {
+                pipeline: { isActive: false }
+              }
             }
+          ],
+          meta: {
+            totalItems: 2,
+            currentPage: 1,
+            pageSize: 10,
+            type: 'application'
           },
-          {
-            key: 'app2',
-            displayName: 'App 2',
-            status: 'inactive',
-            configuration: {
-              pipeline: { isActive: false }
-            }
-          }
-        ]
+          links: {}
+        }
       });
 
       if (listAction) {
         await listAction({ environment: 'dev' });
         expect(authenticatedApiCall).toHaveBeenCalledWith(
-          'http://localhost:3000/api/v1/applications?environmentId=dev',
+          'http://localhost:3000/api/v1/environments/dev/applications',
           {},
           'test-token'
         );
@@ -419,8 +526,20 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
     it('should handle API failure', async() => {
       getConfig.mockResolvedValue({
-        apiUrl: 'http://localhost:3000',
-        token: 'test-token'
+        'developer-id': 0,
+        environment: 'dev',
+        device: {
+          'http://localhost:3000': {
+            token: 'test-token',
+            refreshToken: 'refresh-token',
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'test-token',
+        controller: 'http://localhost:3000'
       });
 
       authenticatedApiCall.mockResolvedValue({
@@ -429,15 +548,28 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
       if (listAction) {
         await listAction({ environment: 'dev' });
-        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Failed to fetch applications'));
+        // formatApiError will be called first, then catch block if process.exit throws
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('❌ Error (HTTP 0)'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
 
     it('should handle empty data', async() => {
       getConfig.mockResolvedValue({
-        apiUrl: 'http://localhost:3000',
-        token: 'test-token'
+        'developer-id': 0,
+        environment: 'dev',
+        device: {
+          'http://localhost:3000': {
+            token: 'test-token',
+            refreshToken: 'refresh-token',
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'test-token',
+        controller: 'http://localhost:3000'
       });
 
       authenticatedApiCall.mockResolvedValue({
@@ -447,7 +579,8 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
       if (listAction) {
         await listAction({ environment: 'dev' });
-        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Failed to fetch applications'));
+        // formatApiError will return "❌ Unknown error occurred" when success is true
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('❌ Unknown error occurred'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });

@@ -5,6 +5,131 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-11-09
+
+### Added
+- **Developer Isolation System**: Complete isolation for multiple developers running applications simultaneously
+  - Developer-specific numeric IDs (1, 2, 3, etc.) stored in `~/.aifabrix/config.yaml`
+  - Automatic port calculation: `basePort + (developer-id * 100)` for all infrastructure services
+  - Developer-specific Docker containers, networks, and volumes
+  - Separate Docker Compose projects per developer (`infra-dev{id}`)
+  - No conflicts between developers running the same applications
+- **Port Management**: Intelligent port offsetting based on developer ID
+  - Base ports: app=3000, postgres=5432, redis=6379, pgadmin=5050, redisCommander=8081
+  - Developer 1: app=3100, postgres=5532, redis=6479, pgadmin=5150, redisCommander=8181
+  - Developer 2: app=3200, postgres=5632, redis=6579, pgadmin=5250, redisCommander=8281
+  - `localPort` in `variables.yaml` remains unchanged (only Docker host ports are offset)
+  - Dockerfile container ports remain unchanged (internal container ports)
+- **Developer Configuration Command**: New `aifabrix dev config` command
+  - `aifabrix dev config` - Display current developer ID and calculated ports
+  - `aifabrix dev config --set-id <id>` - Set developer ID in configuration
+  - Shows all calculated ports for current developer
+- **Enhanced Status Command**: Now displays both infrastructure services and running applications
+  - Infrastructure services: postgres, redis, pgadmin, redisCommander
+  - Running applications: Shows app name, container name, port mapping, and status
+  - Developer-specific container discovery and status reporting
+- **Developer Flag for Infrastructure**: `--developer <id>` option for `up` command
+  - `aifabrix up --developer 1` - Sets developer ID and starts infrastructure
+  - Automatically saves developer ID to configuration
+  - Sets environment variable `AIFABRIX_DEVELOPERID` for current process
+- **Developer Config Utility**: New `lib/utils/dev-config.js` module
+  - `getDevPorts(developerId)` - Calculates all ports based on developer ID
+  - Centralized port calculation logic
+  - Returns object with all calculated ports for infrastructure and applications
+- **API Error Handling System**: Comprehensive error handling with user-friendly messages
+  - New `lib/utils/api-error-handler.js` module for structured error parsing and formatting
+  - Support for RFC 7807 Problem Details format (detail, title, errors array)
+  - Error type detection: permission (403), validation (400), authentication (401), network, server (500+), conflict (409), not found (404)
+  - User-friendly formatted error messages with actionable guidance
+  - Correlation ID tracking for error tracing
+  - Context-aware error messages (e.g., "application already exists" for 409 conflicts)
+  - Missing and required permissions display for permission errors
+  - Field-level validation error details with path information
+- **Two-Step Deployment Process**: Validate then deploy workflow
+  - Step 1: Validate deployment via `/api/v1/pipeline/{env}/validate` endpoint
+  - Step 2: Deploy using `validateToken` from validation step
+  - Validation includes retry logic with exponential backoff
+  - Draft deployment ID tracking during validation
+  - Image server credentials returned from validation endpoint
+  - Clear separation between validation and deployment phases
+- **API Performance Logging**: Comprehensive audit logging for all API calls
+  - All API calls logged to audit log with duration, status code, and success/failure
+  - Error information including error type, message, and correlation ID
+  - Performance metrics tracking for troubleshooting
+  - Network error detection and logging
+  - Automatic logging in `lib/utils/api.js` for all API calls
+  - New `logApiCall()` function in `lib/audit-logger.js` for structured API logging
+
+### Changed
+- **Configuration System**: Extended `lib/config.js` to support developer IDs
+  - `getConfig()` now returns `{ apiUrl, token, developerId }` (defaults to 1)
+  - `saveConfig()` accepts and saves `developerId` alongside `apiUrl` and `token`
+  - New helper functions: `getDeveloperId()` and `setDeveloperId(id)`
+  - Config structure: `developer-id: 1` in `~/.aifabrix/config.yaml`
+- **Infrastructure Management**: Complete isolation with developer-specific resources
+  - Container names: `aifabrix-dev{id}-postgres`, `aifabrix-dev{id}-redis`, etc.
+  - Network name: `infra-dev{id}-aifabrix-network`
+  - Volume names: `dev{id}_postgres_data`, `dev{id}_redis_data`
+  - Docker Compose project name: `infra-dev{id}`
+  - All infrastructure functions now use developer-specific configuration
+- **Application Running**: Developer-specific container naming and port mapping
+  - Container names: `aifabrix-dev{id}-{appName}`
+  - Docker host port uses dev-specific offset, container port uses config value (unchanged)
+  - Port conflict detection with infrastructure ports
+- **Docker Compose Generation**: Developer-specific network integration
+  - Applications connect to developer-specific network: `infra-dev{id}-aifabrix-network`
+  - Host port mapping uses dev-specific port, container port uses config value
+- **Environment File Generation**: Developer-specific infrastructure ports for local context
+  - Docker context (container-to-container): Uses service names (unchanged)
+  - Local context (host machine): Uses `localhost` with dev-specific ports
+  - `PORT` variable still uses `localPort` from `variables.yaml` (unchanged)
+- **Infrastructure Template**: Converted to Handlebars template with developer variables
+  - `templates/infra/compose.yaml.hbs` - Parameterized template
+  - Variables: `{{devId}}`, `{{postgresPort}}`, `{{redisPort}}`, etc.
+  - Dynamic generation with developer-specific values
+- **Deployment Error Handling**: Unified error handling across all deployment operations
+  - All deployment errors now use unified error handler from `lib/utils/api-error-handler.js`
+  - Deployment errors automatically parsed and formatted with user-friendly messages
+  - Error types properly categorized (permission, validation, network, server, etc.)
+  - Correlation IDs included in error messages for troubleshooting
+  - Audit logging integrated with error handling (prevents double-logging)
+  - Network errors detected and handled separately from HTTP errors
+- **API Error Handling**: Enhanced error handling in all API calls
+  - `lib/utils/api.js` now uses unified error handler for all API calls
+  - All API errors automatically parsed and formatted before returning
+  - Error responses include `formattedError` field for direct CLI display
+  - Network errors properly detected and categorized
+  - RFC 7807 Problem Details format fully supported (detail, title, errors array)
+  - Error data structure normalized for consistent handling
+- **Deployment Process**: Two-step validation and deployment workflow
+  - `lib/deployer.js` now implements validate-then-deploy pattern
+  - `validateDeployment()` function validates configuration before deployment
+  - `sendDeployment()` orchestrates validation and deployment steps
+  - Validation errors caught early before deployment attempt
+  - Retry logic with exponential backoff for both validation and deployment
+  - Clear progress messages for each step (validation, deployment, polling)
+
+### Documentation
+- **Developer Isolation Guide**: New `docs/DEVELOPER-ISOLATION.md`
+  - Explains developer isolation concept and benefits
+  - Port calculation examples for different developer IDs
+  - Configuration instructions and usage examples
+  - Clarifies that `localPort` and Dockerfile ports remain unchanged
+  - Complete isolation explanation (separate Docker Compose projects)
+
+### Technical
+- Infrastructure template generation now uses Handlebars for dynamic composition
+- All Docker operations use developer-specific project names (`-p infra-dev{id}`)
+- Developer-specific network and volume management
+- Container discovery and status reporting for applications
+- Port calculation utility for consistent port management across all commands
+- Unified error handling architecture with `lib/utils/api-error-handler.js` as central error processing module
+- All API calls automatically log performance metrics and errors to audit log
+- Error parsing supports multiple response formats (RFC 7807, legacy formats, nested structures)
+- Deployment validation endpoint integration with proper error handling and retry logic
+- Correlation ID tracking throughout error handling chain for better troubleshooting
+- Network error detection separated from HTTP error handling for better user experience
+
 ## [2.1.7] - 2025-11-07
 
 ### Fixed

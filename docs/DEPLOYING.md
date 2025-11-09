@@ -40,7 +40,7 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 
 For automated deployments using the Pipeline API, see [GitHub Workflows Guide](GITHUB-WORKFLOWS.md#pipeline-deployment-integration) for detailed workflow examples.
 
-The pipeline API uses ClientId/ClientSecret authentication (from `aifabrix app register`), while regular controller APIs use bearer tokens (from `aifabrix login`).
+The deploy command uses Bearer token authentication. Tokens are automatically retrieved or refreshed from config.yaml, or obtained using credentials from secrets.local.yaml if needed.
 
 ---
 
@@ -106,20 +106,28 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 
 ### What Happens
 
-1. **Generates deployment manifest**
+1. **Gets or refreshes authentication token**
+   - Retrieves client token from config.yaml for current environment + app
+   - If token missing or expired:
+     - Reads credentials from `~/.aifabrix/secrets.local.yaml` using pattern `<app-name>-client-idKeyVault` and `<app-name>-client-secretKeyVault`
+     - Calls login API to get new token
+     - Saves token to config.yaml (never saves credentials)
+   - **Note:** Device tokens (from device code flow) are stored at root level keyed by controller URL and include refresh tokens for automatic renewal on 401 errors
+
+2. **Generates deployment manifest**
    - Creates `aifabrix-deploy.json`
    - Includes all configuration from variables.yaml, env.template, rbac.yaml
 
-2. **Generates deployment key**
+3. **Generates deployment key**
    - SHA256 hash of variables.yaml
    - Used for authentication and integrity check
 
-3. **Sends to controller**
+4. **Sends to controller**
    - POST to `/api/v1/pipeline/{env}/deploy` (environment-aware endpoint)
    - Includes manifest + deployment key
-   - Uses ClientId/ClientSecret authentication
+   - Uses Bearer token authentication
 
-4. **Controller processes**
+5. **Controller processes**
    - Validates configuration
    - Checks deployment key
    - Deploys to Azure Container Apps
@@ -221,11 +229,21 @@ Before deploying via pipeline API, you must register your application to get Cli
 
 ### Step 1: Login to Controller
 
+**For credentials-based login (recommended for deployments):**
 ```bash
-aifabrix login --url https://controller.aifabrix.ai
+aifabrix login --controller https://controller.aifabrix.ai --method credentials --app myapp --environment dev
 ```
 
-This authenticates you via Keycloak OIDC flow.
+This reads credentials from `~/.aifabrix/secrets.local.yaml` using pattern:
+- `myapp-client-idKeyVault` for client ID
+- `myapp-client-secretKeyVault` for client secret
+
+**For device code flow (initial setup):**
+```bash
+aifabrix login --controller https://controller.aifabrix.ai --method device --environment dev
+```
+
+This authenticates you via Keycloak OIDC device code flow.
 
 ### Step 2: Register Application
 
@@ -257,7 +275,11 @@ aifabrix app register myapp --environment dev
      DEV_MISO_CLIENTSECRET = xyz-abc-123...
 ```
 
-**Note:** Credentials are displayed but not automatically saved to a file. Copy them to GitHub Secrets manually.
+**Note:** 
+- For localhost deployments, credentials are automatically saved to `~/.aifabrix/secrets.local.yaml` using pattern `<app-name>-client-idKeyVault` and `<app-name>-client-secretKeyVault`
+- `env.template` is updated with `MISO_CLIENTID`, `MISO_CLIENTSECRET`, and `MISO_CONTROLLER_URL` entries
+- Tokens are saved to `~/.aifabrix/config.yaml` (never credentials)
+- For production deployments, credentials are displayed but not automatically saved. Copy them to GitHub Secrets manually.
 
 ### Step 3: Add to GitHub Secrets (CI/CD Only)
 
@@ -275,7 +297,7 @@ aifabrix app register myapp --environment dev
 To rotate your ClientSecret (use when credentials are compromised or need rotation):
 
 ```bash
-aifabrix app rotate-secret --app myapp --environment dev
+aifabrix app rotate-secret myapp --environment dev
 ```
 
 **Output:**
@@ -480,31 +502,51 @@ aifabrix genkey myapp
 
 **Check authentication:**
 ```bash
-aifabrix login --url https://controller.aifabrix.ai
+# For credentials login (reads from secrets.local.yaml)
+aifabrix login --controller https://controller.aifabrix.ai --method credentials --app myapp --environment dev
+
+# For device code flow
+aifabrix login --controller https://controller.aifabrix.ai --method device --environment dev
 ```
 
-This opens browser for Keycloak authentication. Token is stored in `~/.aifabrix/config` and auto-refreshes on subsequent commands.
+Token is stored in `~/.aifabrix/config.yaml` and auto-refreshes on subsequent commands.
 
 **Check network:**
 ```bash
 ping controller.aifabrix.ai
 ```
 
-### "Authentication failed"
+### "Authentication failed" or "Failed to get authentication token"
+
+**Verify credentials in secrets.local.yaml:**
+```bash
+# Check if credentials exist
+cat ~/.aifabrix/secrets.local.yaml | grep myapp-client
+```
+
+Should show:
+- `myapp-client-idKeyVault: <client-id>`
+- `myapp-client-secretKeyVault: <client-secret>`
+
+**Login to refresh token:**
+```bash
+aifabrix login --controller https://controller.aifabrix.ai --method credentials --app myapp --environment dev
+```
 
 **Verify registration:**
 ```bash
 aifabrix app register myapp --environment dev
 ```
 
-**Check credentials in GitHub Secrets:**
+**Check credentials in GitHub Secrets (for CI/CD):**
 - `DEV_MISO_CLIENTID` exists and is correct (for dev environment)
 - `DEV_MISO_CLIENTSECRET` exists and is correct
 - `MISO_CONTROLLER_URL` points to correct controller (repository level)
 
 **Common issues:**
-- ClientSecret expired (rotate with `aifabrix app rotate-secret --app myapp --environment dev`)
-- Wrong environment (dev/tst/pro)
+- Token expired (automatically refreshed, but may need to run login again)
+- Credentials missing from secrets.local.yaml (add them using pattern `<app-name>-client-idKeyVault` and `<app-name>-client-secretKeyVault`)
+- Wrong environment (miso/dev/tst/pro)
 - Invalid application configuration
 
 ---
@@ -623,8 +665,21 @@ The `aifabrix deploy` command performs the following steps:
 
 - **HTTPS Enforcement**: All controller URLs must use HTTPS protocol
 - **Dual Authentication Model**: 
-  - Pipeline API uses ClientId/ClientSecret (from `aifabrix app register`)
-  - Controller APIs use bearer tokens (from `aifabrix login`, stored in `~/.aifabrix/config`)
+  - **Bearer Token (Device Token)**: Preferred for interactive CLI usage - provides user-level audit tracking
+    - Uses `Authorization: Bearer <token>` header
+    - Token obtained via `aifabrix login --method device`
+    - Stored in `~/.aifabrix/config.yaml` under `device` section
+  - **Client Credentials**: Preferred for CI/CD pipelines - provides application-level audit logs
+    - Uses `x-client-id` and `x-client-secret` headers
+    - Credentials from `aifabrix app register` or `~/.aifabrix/secrets.local.yaml`
+  - **Client Token (Bearer)**: Application-level authentication with auto-refresh
+    - Uses `Authorization: Bearer <token>` header
+    - Token obtained via `aifabrix login --method credentials`
+    - Stored in `~/.aifabrix/config.yaml` under `environments.<env>.clients.<app>`
+- **Authentication Priority**: The deploy command automatically selects authentication method:
+  1. Device token (if available) - for user-level audit
+  2. Client token (if available) - for application-level authentication
+  3. Client credentials (fallback) - direct credential authentication
 - **Credential Storage**: Client credentials displayed but not automatically saved (copy to GitHub Secrets)
 - **Token Management**: Bearer tokens auto-refresh with expiry tracking
 - **Deployment Key Authentication**: SHA256 hash validates configuration integrity
@@ -639,10 +694,17 @@ The `aifabrix deploy` command performs the following steps:
 ```
 POST https://controller.aifabrix.ai/api/v1/pipeline/{env}/deploy
 Content-Type: application/json
+
+# Option 1: Bearer token (device token) - for user-level audit
+Headers:
+  Authorization: Bearer <device-token>
+
+# Option 2: Client credentials - for application-level audit
 Headers:
   x-client-id: <client-id>
   x-client-secret: <client-secret>
 
+Body:
 {
   "key": "myapp",
   "displayName": "My Application",
@@ -656,6 +718,12 @@ Headers:
 **Status Endpoint:**
 ```
 GET https://controller.aifabrix.ai/api/v1/environments/{env}/deployments/{deploymentId}
+
+# Option 1: Bearer token (device token)
+Headers:
+  Authorization: Bearer <device-token>
+
+# Option 2: Client credentials
 Headers:
   x-client-id: <client-id>
   x-client-secret: <client-secret>

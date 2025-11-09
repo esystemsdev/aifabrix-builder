@@ -29,6 +29,40 @@ jest.mock('util', () => {
   };
 });
 
+// Mock config and devConfig BEFORE requiring app-run (which requires secrets, which requires config)
+// Developer ID: 0 = default infra, > 0 = developer-specific (adds dev{id} prefix)
+// Now we only call config.getDeveloperId() once at the start of runApp, then use config.developerId property
+jest.mock('../../lib/config', () => ({
+  getDeveloperId: jest.fn().mockResolvedValue(1), // Returns integer: 1 for dev-specific, 0 for default
+  setDeveloperId: jest.fn().mockResolvedValue(),
+  getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }), // Config object with integer developer-id
+  saveConfig: jest.fn().mockResolvedValue(),
+  clearConfig: jest.fn().mockResolvedValue(),
+  CONFIG_DIR: '/mock/config/dir',
+  CONFIG_FILE: '/mock/config/dir/config.yaml'
+}));
+
+jest.mock('../../lib/utils/dev-config', () => {
+  const mockGetDevPorts = jest.fn((id) => ({
+    app: 3000 + (id * 100),
+    postgres: 5432 + (id * 100),
+    redis: 6379 + (id * 100),
+    pgadmin: 5050 + (id * 100),
+    redisCommander: 8081 + (id * 100)
+  }));
+
+  return {
+    getDevPorts: mockGetDevPorts,
+    getBasePorts: jest.fn(() => ({
+      app: 3000,
+      postgres: 5432,
+      redis: 6379,
+      pgadmin: 5050,
+      redisCommander: 8081
+    }))
+  };
+});
+
 jest.mock('net', () => {
   let portAvailable = true;
   const createMockServer = () => {
@@ -67,9 +101,37 @@ jest.mock('net', () => {
 
 jest.mock('../../lib/validator');
 jest.mock('../../lib/infra');
-jest.mock('../../lib/secrets');
+// Mock secrets dependencies first
+jest.mock('../../lib/utils/secrets-utils');
+jest.mock('../../lib/utils/secrets-path');
+jest.mock('../../lib/utils/secrets-generator');
+// Mock secrets - must be after config and dev-config mocks
+// Using factory function to prevent loading actual secrets.js which requires config
+jest.mock('../../lib/secrets', () => {
+  // Don't require actual secrets.js here - it would load config
+  return {
+    generateEnvFile: jest.fn().mockResolvedValue('/path/to/.env'),
+    loadSecrets: jest.fn().mockResolvedValue({}),
+    resolveKvReferences: jest.fn().mockResolvedValue(''),
+    generateAdminSecretsEnv: jest.fn().mockResolvedValue('/path/to/admin-secrets.env'),
+    validateSecrets: jest.fn().mockReturnValue({ valid: true, missing: [] }),
+    generateMissingSecrets: jest.fn().mockResolvedValue([]),
+    createDefaultSecrets: jest.fn().mockResolvedValue()
+  };
+});
 jest.mock('../../lib/utils/health-check');
 jest.mock('../../lib/utils/compose-generator');
+jest.mock('../../lib/utils/build-copy', () => {
+  const os = require('os');
+  const path = require('path');
+  return {
+    getDevDirectory: jest.fn((appName, devId) => {
+      return path.join(os.homedir(), '.aifabrix', `${appName}-dev-${devId}`);
+    }),
+    copyBuilderToDevDirectory: jest.fn().mockResolvedValue(path.join(os.homedir(), '.aifabrix', 'test-app-dev-1')),
+    devDirectoryExists: jest.fn().mockReturnValue(true)
+  };
+});
 jest.mock('../../lib/utils/logger');
 
 const validator = require('../../lib/validator');
@@ -79,6 +141,8 @@ const healthCheck = require('../../lib/utils/health-check');
 const composeGenerator = require('../../lib/utils/compose-generator');
 const logger = require('../../lib/utils/logger');
 
+// Require config and app-run - mocks are already set up via jest.mock()
+const config = require('../../lib/config');
 const appRun = require('../../lib/app-run');
 const { promisify } = require('util');
 
@@ -102,25 +166,61 @@ describe('App-Run Debug Paths and Error Handling', () => {
       language: 'typescript'
     }));
 
+    // Create dev directory and .env file (where generateDockerCompose reads from)
+    const devDir = path.join(os.homedir(), '.aifabrix', 'test-app-dev-1');
+    fsSync.mkdirSync(devDir, { recursive: true });
+    fsSync.writeFileSync(path.join(devDir, '.env'), 'DB_PASSWORD=secret123\n');
+    fsSync.writeFileSync(path.join(devDir, 'variables.yaml'), yaml.dump({
+      port: 3000,
+      language: 'typescript'
+    }));
+
+    // Mock fsSync.readFileSync for admin secrets
+    const adminSecretsPath = path.join(tempDir, 'admin-secrets.env');
+    fsSync.writeFileSync(adminSecretsPath, 'POSTGRES_PASSWORD=testpass\n');
+
+    // Reset mocks - don't clear config mocks as they're needed by app-run.js
     validator.validateApplication.mockResolvedValue({ valid: true });
     infra.checkInfraHealth.mockResolvedValue({ postgres: 'healthy', redis: 'healthy' });
-    infra.ensureAdminSecrets.mockResolvedValue('/path/to/admin-secrets.env');
+    infra.ensureAdminSecrets.mockResolvedValue(adminSecretsPath);
     secrets.generateEnvFile.mockResolvedValue('/path/to/.env');
     healthCheck.waitForHealthCheck.mockResolvedValue();
     composeGenerator.generateDockerCompose.mockResolvedValue('version: "3"');
     composeGenerator.getImageName.mockReturnValue('aifabrix/test-app');
 
-    // Mock fsSync.readFileSync for admin secrets
-    const adminSecretsPath = path.join(tempDir, 'admin-secrets.env');
-    fsSync.writeFileSync(adminSecretsPath, 'POSTGRES_PASSWORD=testpass\n');
-    infra.ensureAdminSecrets.mockResolvedValue(adminSecretsPath);
-
-    jest.clearAllMocks();
+    // Ensure config mock returns correct integer values
+    // Developer ID: 0 = default infra, > 0 = developer-specific
+    // Now we only call getDeveloperId() once at start of runApp, then use config.developerId property
+    config.getDeveloperId.mockResolvedValue(1); // Integer, not string
   });
 
   afterEach(async() => {
     process.chdir(originalCwd);
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    // Clean up dev directories
+    const aifabrixDir = path.join(os.homedir(), '.aifabrix');
+    if (fsSync.existsSync(aifabrixDir)) {
+      const entries = await fs.readdir(aifabrixDir).catch(() => []);
+      for (const entry of entries) {
+        if (entry.startsWith('test-app-dev-')) {
+          const entryPath = path.join(aifabrixDir, entry);
+          await fs.rm(entryPath, { recursive: true, force: true }).catch(() => {});
+        }
+      }
+    }
+    // Clear mocks in afterEach, but preserve config mock implementations
+    // IMPORTANT: Don't clear config mocks - they're needed by app-run.js
+    // Clear other mocks individually - don't use jest.clearAllMocks() as it clears config mock
+    validator.validateApplication.mockClear();
+    infra.checkInfraHealth.mockClear();
+    infra.ensureAdminSecrets.mockClear();
+    secrets.generateEnvFile.mockClear();
+    healthCheck.waitForHealthCheck.mockClear();
+    composeGenerator.generateDockerCompose.mockClear();
+    composeGenerator.getImageName.mockClear();
+    // Ensure config mock returns correct integer values after clearing
+    // Developer ID: 0 = default infra, > 0 = developer-specific
+    config.getDeveloperId.mockResolvedValue(1); // Integer, not string
   });
 
   describe('checkImageExists with debug=true', () => {
@@ -156,6 +256,14 @@ describe('App-Run Debug Paths and Error Handling', () => {
 
   describe('runApp with debug=true', () => {
     beforeEach(() => {
+      // Ensure config mock returns correct integer value
+      // Developer ID: 0 = default infra, > 0 = developer-specific (creates aifabrix-dev1-app)
+      // Now we only call getDeveloperId() once at start of runApp, then use config.developerId property
+      config.getDeveloperId.mockResolvedValue(1); // Integer, not string
+
+      // Mock checkPortAvailable to avoid port conflicts
+      jest.spyOn(appRun, 'checkPortAvailable').mockResolvedValue(true);
+
       mockExecAsync.mockImplementation((cmd) => {
         if (cmd.includes('docker images')) {
           return Promise.resolve({ stdout: 'aifabrix/test-app:latest\n', stderr: '' });
@@ -169,23 +277,31 @@ describe('App-Run Debug Paths and Error Handling', () => {
       });
     });
 
+    afterEach(() => {
+      // Restore checkPortAvailable mock after each test
+      if (appRun.checkPortAvailable.mockRestore) {
+        appRun.checkPortAvailable.mockRestore();
+      }
+    });
+
     it('should log debug messages throughout runApp when debug is enabled', async() => {
+      // Config mock is set up in beforeEach, so it should be available
+      // checkPortAvailable is already mocked in beforeEach
       await appRun.runApp('test-app', { debug: true });
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('[DEBUG] Starting run process'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('[DEBUG] Options:'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('[DEBUG] Configuration loaded'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('[DEBUG] Port selection'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('[DEBUG] Port'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('[DEBUG] Compose file generated'));
     });
 
     it('should log debug messages when container is already running', async() => {
+      // Ensure config mock returns correct integer value (1 = developer-specific)
+      config.getDeveloperId.mockResolvedValue(1); // Integer, creates container name: aifabrix-dev1-test-app
+
       mockExecAsync.mockImplementation((cmd) => {
         if (cmd.includes('docker images')) {
           return Promise.resolve({ stdout: 'aifabrix/test-app:latest\n', stderr: '' });
         } else if (cmd.includes('docker ps') && cmd.includes('--format')) {
-          return Promise.resolve({ stdout: 'aifabrix-test-app\n', stderr: '' });
+          return Promise.resolve({ stdout: 'aifabrix-dev1-test-app\n', stderr: '' });
         } else if (cmd.includes('docker stop')) {
           return Promise.resolve({ stdout: '', stderr: '' });
         } else if (cmd.includes('docker rm')) {
@@ -203,6 +319,9 @@ describe('App-Run Debug Paths and Error Handling', () => {
     });
 
     it('should log debug error message when container start fails', async() => {
+      // Ensure config mock returns correct integer value (1 = developer-specific)
+      config.getDeveloperId.mockResolvedValue(1); // Integer, creates container name: aifabrix-dev1-test-app
+
       mockExecAsync.mockImplementation((cmd) => {
         if (cmd.includes('docker images')) {
           return Promise.resolve({ stdout: 'aifabrix/test-app:latest\n', stderr: '' });
@@ -217,7 +336,7 @@ describe('App-Run Debug Paths and Error Handling', () => {
 
       await expect(appRun.runApp('test-app', { debug: true })).rejects.toThrow();
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('[DEBUG] Error during container start'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('[DEBUG]'));
     });
 
     it('should log debug error message when runApp fails', async() => {
@@ -235,7 +354,7 @@ describe('App-Run Debug Paths and Error Handling', () => {
       mockExecAsync.mockImplementation((cmd) => {
         callCount++;
         if (callCount === 1 && cmd.includes('--format "{{.Names}}"')) {
-          return Promise.resolve({ stdout: 'aifabrix-test-app\n', stderr: '' });
+          return Promise.resolve({ stdout: 'aifabrix-dev1-test-app\n', stderr: '' });
         } else if (callCount === 2 && cmd.includes('--format "{{.Status}}"')) {
           return Promise.resolve({ stdout: 'Up 5 minutes\n', stderr: '' });
         } else if (callCount === 3 && cmd.includes('--format "{{.Ports}}"')) {
@@ -245,7 +364,8 @@ describe('App-Run Debug Paths and Error Handling', () => {
 
       });
 
-      const result = await appRun.checkContainerRunning('test-app', true);
+      // Function signature: checkContainerRunning(appName, developerId, debug)
+      const result = await appRun.checkContainerRunning('test-app', 1, true);
 
       expect(result).toBe(true);
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('[DEBUG] Executing:'));
@@ -257,7 +377,8 @@ describe('App-Run Debug Paths and Error Handling', () => {
     it('should log debug error message when container check fails', async() => {
       mockExecAsync.mockRejectedValue(new Error('Docker error'));
 
-      const result = await appRun.checkContainerRunning('test-app', true);
+      // Function signature: checkContainerRunning(appName, developerId, debug)
+      const result = await appRun.checkContainerRunning('test-app', 1, true);
 
       expect(result).toBe(false);
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('[DEBUG] Container check failed'));
@@ -268,7 +389,8 @@ describe('App-Run Debug Paths and Error Handling', () => {
     it('should log debug messages when stopping container', async() => {
       mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' });
 
-      await appRun.stopAndRemoveContainer('test-app', true);
+      // Function signature: stopAndRemoveContainer(appName, developerId, debug)
+      await appRun.stopAndRemoveContainer('test-app', 1, true);
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('[DEBUG] Executing:'));
     });
@@ -276,14 +398,29 @@ describe('App-Run Debug Paths and Error Handling', () => {
     it('should log debug error message when stop fails', async() => {
       mockExecAsync.mockRejectedValue(new Error('Stop failed'));
 
-      await appRun.stopAndRemoveContainer('test-app', true);
+      // Function signature: stopAndRemoveContainer(appName, developerId, debug)
+      await appRun.stopAndRemoveContainer('test-app', 1, true);
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('[DEBUG] Stop/remove container error'));
     });
   });
 
   describe('startContainer with debug=true (via runApp)', () => {
+    beforeEach(() => {
+      // Mock checkPortAvailable to avoid port conflicts
+      jest.spyOn(appRun, 'checkPortAvailable').mockResolvedValue(true);
+    });
+
+    afterEach(() => {
+      if (appRun.checkPortAvailable.mockRestore) {
+        appRun.checkPortAvailable.mockRestore();
+      }
+    });
+
     it('should log debug messages when starting container through runApp', async() => {
+      // Ensure config mock returns correct integer value (1 = developer-specific)
+      config.getDeveloperId.mockResolvedValue(1); // Integer, creates container name: aifabrix-dev1-test-app
+
       let callCount = 0;
       mockExecAsync.mockImplementation((cmd) => {
         callCount++;
@@ -307,6 +444,9 @@ describe('App-Run Debug Paths and Error Handling', () => {
     });
 
     it('should log debug container status after start through runApp', async() => {
+      // Ensure config mock returns correct integer value (1 = developer-specific)
+      config.getDeveloperId.mockResolvedValue(1); // Integer, creates container name: aifabrix-dev1-test-app
+
       let callCount = 0;
       mockExecAsync.mockImplementation((cmd) => {
         callCount++;

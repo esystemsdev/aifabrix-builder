@@ -101,15 +101,12 @@ Controller API URL for pipeline deployments
 Example: `https://controller.aifabrix.ai`  
 *Optional - enables automated deployment*
 
-**deployment.clientId**  
-Pipeline ClientId for automated deployment  
-Example: `ctrl-dev-myapp`  
-*Required if using pipeline API*
+**deployment.environment**  
+Target environment for deployment  
+Example: `miso`, `dev`, `tst`, `pro`  
+*Optional - uses root-level environment from config.yaml if not specified*
 
-**deployment.clientSecret**  
-Pipeline ClientSecret (use kv:// reference)  
-Example: `kv://aifabrix-client-secretKeyVault`  
-*Required if using pipeline API - should reference Key Vault secret*
+**Note:** Client credentials are no longer stored in variables.yaml. They are read from `~/.aifabrix/secrets.local.yaml` using pattern `<app-name>-client-idKeyVault` and `<app-name>-client-secretKeyVault`. Tokens are automatically retrieved or refreshed during deployment.
 
 ### Full Example
 
@@ -324,6 +321,117 @@ Pattern: `resource:action` or `feature:action`
 
 ---
 
+## config.yaml
+
+Stored in `~/.aifabrix/config.yaml`. Manages authentication tokens and selected environment.
+
+### Structure
+
+```yaml
+developer-id: 0
+environment: miso  # Root-level: currently selected environment
+device:  # Root-level: device tokens keyed by controller URL (universal per controller)
+  http://localhost:3010:
+    token: device-token-123
+    refreshToken: refresh-token-456
+    expiresAt: 2024-01-01T12:00:00.000Z
+  https://dev-controller.example.com:
+    token: dev-device-token
+    refreshToken: dev-refresh-token
+    expiresAt: 2024-01-01T12:00:00.000Z
+environments:
+  miso:
+    clients:  # Client tokens per environment and app
+      keycloak:
+        controller: http://localhost:3010
+        token: client-token-456
+        expiresAt: 2024-01-01T12:00:00.000Z
+  dev:
+    clients:
+      myapp:
+        controller: https://dev-controller.example.com
+        token: dev-client-token
+        expiresAt: 2024-01-01T12:00:00.000Z
+```
+
+### Fields
+
+**developer-id**  
+Developer ID for local infrastructure isolation  
+Default: `0` (shared infrastructure)  
+Example: `1`, `2`, `5` (developer-specific ports)
+
+**environment** (root-level)  
+Currently selected environment  
+Updated when `--environment` flag is provided in login or deploy commands  
+Example: `miso`, `dev`, `tst`, `pro`
+
+**device** (root-level)  
+Device code flow tokens, keyed by controller URL (universal per controller, not per environment)  
+- `device.\<controller-url\>.token` - Device access token  
+- `device.\<controller-url\>.refreshToken` - Refresh token for automatic token renewal  
+- `device.\<controller-url\>.expiresAt` - Token expiration timestamp (ISO 8601)
+
+**environments**  
+Per-environment client token storage
+
+**environments.\<env\>.clients.\<app-name\>**  
+Client credentials token for app in environment  
+- `controller` - Controller URL  
+- `token` - Client authentication token  
+- `expiresAt` - Token expiration timestamp (ISO 8601)
+
+### Important Notes
+
+- **Never stores credentials** - Only tokens are stored in config.yaml
+- **Automatic token refresh** - Tokens are automatically refreshed when expired (device tokens use refresh tokens, client tokens use credentials from secrets.local.yaml)
+- **Environment selection** - Root-level `environment` indicates current environment
+- **Device tokens** - Stored at root level, keyed by controller URL (universal per controller, not per environment)
+- **Client tokens** - Stored per environment and app, automatically refreshed using credentials from secrets.local.yaml
+- **Refresh tokens** - Device tokens include refresh tokens for automatic renewal on 401 errors
+
+---
+
+## secrets.local.yaml
+
+Stored in `~/.aifabrix/secrets.local.yaml`. Contains client credentials for applications.
+
+### Structure
+
+Flat key-value pairs using pattern: `<app-name>-client-idKeyVault` and `<app-name>-client-secretKeyVault`
+
+```yaml
+keycloak-client-idKeyVault: miso-controller-miso-keycloak
+keycloak-client-secretKeyVault: YY_j0RdTWBPEA4Seb1uTdR4RbGs1Sy48QhA3vkmz0_c
+myapp-client-idKeyVault: myapp-client-id
+myapp-client-secretKeyVault: myapp-client-secret
+postgres-passwordKeyVault: admin123
+redis-passwordKeyVault: redis-secret
+```
+
+### Pattern
+
+For application client credentials:
+- **Client ID key:** `<app-name>-client-idKeyVault`
+- **Client Secret key:** `<app-name>-client-secretKeyVault`
+
+**Example for app `keycloak`:**
+- `keycloak-client-idKeyVault` → Client ID
+- `keycloak-client-secretKeyVault` → Client Secret
+
+### Usage
+
+Credentials are read from secrets.local.yaml when:
+- Running `aifabrix login --method credentials --app <app-name>`
+- Running `aifabrix deploy <app>` (if token is missing or expired)
+
+**Important:**
+- This file structure is **read-only** - never modified by the CLI
+- Credentials are **never** stored in config.yaml - only tokens
+- File permissions: `600` (read/write for owner only)
+
+---
+
 ## README.md
 
 Application documentation automatically generated during `aifabrix create`.
@@ -414,7 +522,7 @@ import { MisoClient } from '@aifabrix/miso-client';
 
 const client = new MisoClient({
   controllerUrl: process.env.MISO_CONTROLLER_URL,
-  environment: process.env.MISO_ENVIRONMENT, // dev or 'tst', 'pro'
+  environment: process.env.MISO_ENVIRONMENT, // 'miso', 'dev', 'tst', or 'pro'
   applicationKey: process.env.APPLICATION_KEY
 });
 
@@ -440,7 +548,7 @@ from aifabrix_miso_client import MisoClient
 
 client = MisoClient(
     controller_url=os.getenv('MISO_CONTROLLER_URL'),
-    environment=os.getenv('MISO_ENVIRONMENT'),  # 'dev', 'tst', or 'pro'
+    environment=os.getenv('MISO_ENVIRONMENT'),  # 'miso', 'dev', 'tst', or 'pro'
     application_key=os.getenv('APPLICATION_KEY')
 )
 
@@ -536,7 +644,7 @@ Add to your `env.template`:
 ```bash
 # Miso Controller connection
 MISO_CONTROLLER_URL=https://controller.aifabrix.ai
-MISO_ENVIRONMENT=dev  # or 'tst', 'pro'
+MISO_ENVIRONMENT=dev  # or 'miso', 'tst', 'pro'
 APPLICATION_KEY=myapp
 
 # Optional: Redis configuration for caching
