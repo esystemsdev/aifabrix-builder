@@ -107,11 +107,11 @@ describe('app-run Docker Compose Generation', () => {
 
     it('should not include db-init service when requiresDatabase is false', async() => {
       const appName = 'test-app';
-      // Create .env file with DB_PASSWORD in dev directory
+      // Create .env file WITHOUT DB_PASSWORD (should not be required when database is false)
       const buildCopy = require('../../lib/utils/build-copy');
       const devDir = buildCopy.getDevDirectory(appName, 1);
       fsSync.mkdirSync(devDir, { recursive: true });
-      fsSync.writeFileSync(path.join(devDir, '.env'), 'DB_PASSWORD=secret123\n');
+      fsSync.writeFileSync(path.join(devDir, '.env'), 'PORT=3000\n');
 
       // Also create builder directory for test setup
       const appDir = path.join(process.cwd(), 'builder', appName);

@@ -138,7 +138,7 @@ describe('CLI Error Handling', () => {
       cli.handleCommandError(error, command);
 
       expect(console.error).toHaveBeenCalledWith('\n❌ Error in push command:');
-      expect(console.error).toHaveBeenCalledWith('   Azure CLI is not installed.');
+      expect(console.error).toHaveBeenCalledWith('   Azure CLI is not installed or not working properly.');
     });
 
     it('should handle ACR authentication errors', () => {

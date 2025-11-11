@@ -63,6 +63,10 @@ jest.mock('../../lib/config', () => ({
   getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }),
   saveConfig: jest.fn().mockResolvedValue(),
   clearConfig: jest.fn().mockResolvedValue(),
+  getSecretsEncryptionKey: jest.fn().mockResolvedValue(null),
+  setSecretsEncryptionKey: jest.fn().mockResolvedValue(),
+  getSecretsPath: jest.fn().mockResolvedValue(null),
+  setSecretsPath: jest.fn().mockResolvedValue(),
   CONFIG_DIR: '/mock/config/dir',
   CONFIG_FILE: '/mock/config/dir/config.yaml'
 }));

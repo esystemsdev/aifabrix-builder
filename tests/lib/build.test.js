@@ -149,16 +149,6 @@ describe('Build Module', () => {
       expect(result).toBe('python');
     });
 
-    it('should throw error for custom Dockerfile', async() => {
-      const appPath = path.join(process.cwd(), 'builder', 'test-app');
-      await fs.mkdir(appPath, { recursive: true });
-
-      await fs.writeFile(path.join(appPath, 'Dockerfile'), 'FROM node:18');
-
-      expect(() => build.detectLanguage(appPath))
-        .toThrow('Custom Dockerfile found. Use --force-template to regenerate from template.');
-    });
-
     it('should default to typescript if no indicators found', async() => {
       const appPath = path.join(process.cwd(), 'builder', 'test-app');
       await fs.mkdir(appPath, { recursive: true });

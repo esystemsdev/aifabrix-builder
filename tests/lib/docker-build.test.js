@@ -10,6 +10,7 @@ jest.mock('child_process');
 jest.mock('ora');
 
 const { spawn } = require('child_process');
+const path = require('path');
 const ora = require('ora');
 const dockerBuild = require('../../lib/utils/docker-build');
 
@@ -309,9 +310,14 @@ describe('Docker Build Utilities', () => {
       expect(ora).toHaveBeenCalled();
       expect(mockSpinner.start).toHaveBeenCalled();
       expect(mockSpinner.succeed).toHaveBeenCalledWith(`Image built: ${imageName}:${tag}`);
+
+      // Paths are resolved to absolute paths in executeDockerBuild
+      const expectedDockerfilePath = path.resolve(dockerfilePath);
+      const expectedContextPath = path.resolve(contextPath);
+
       expect(mockSpawn).toHaveBeenCalledWith(
         'docker',
-        ['build', '-t', `${imageName}:${tag}`, '-f', dockerfilePath, contextPath],
+        ['build', '-t', `${imageName}:${tag}`, '-f', expectedDockerfilePath, expectedContextPath],
         { shell: process.platform === 'win32' }
       );
     });
@@ -654,9 +660,13 @@ describe('Docker Build Utilities', () => {
 
       await buildPromise;
 
+      // Paths are resolved to absolute paths in executeDockerBuild
+      const expectedDockerfilePath = path.resolve(dockerfilePath);
+      const expectedContextPath = path.resolve(contextPath);
+
       expect(mockSpawn).toHaveBeenCalledWith(
         'docker',
-        ['build', '-t', `${imageName}:${tag}`, '-f', dockerfilePath, contextPath],
+        ['build', '-t', `${imageName}:${tag}`, '-f', expectedDockerfilePath, expectedContextPath],
         { shell: true }
       );
 

@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2025-11-11
+
+### Added
+- **Secrets Encryption Command**: New `aifabrix secure` command for ISO 27001 compliance
+  - Encrypts all secrets in `secrets.local.yaml` files using AES-256-GCM encryption
+  - Supports user secrets file (`~/.aifabrix/secrets.local.yaml`) and app build secrets
+  - Finds and encrypts secrets from all applications configured with `build.secrets` in `variables.yaml`
+  - Encryption key management stored in `~/.aifabrix/config.yaml`
+  - Interactive prompts for encryption key if not provided
+  - Validates encryption key format (32 bytes, hex or base64)
+  - Preserves YAML structure and comments during encryption
+  - Skips already encrypted values (detected by `secure://` prefix)
+- **AES-256-GCM Encryption Implementation**: ISO 27001 compliant encryption
+  - New `lib/utils/secrets-encryption.js` module for encryption/decryption utilities
+  - AES-256-GCM algorithm with 96-bit IV and 128-bit authentication tag
+  - Encrypted values use `secure://<iv>:<ciphertext>:<authTag>` format
+  - All components base64 encoded for safe storage in YAML files
+  - Encryption key validation (64 hex characters or 44 base64 characters = 32 bytes)
+  - Secure key normalization from hex or base64 format
+- **Automatic Secret Decryption**: Seamless decryption during secret resolution
+  - `lib/secrets.js` automatically detects and decrypts `secure://` prefixed values
+  - Decryption uses encryption key from `config.yaml`
+  - Transparent to applications - secrets are decrypted before use
+  - Error handling for invalid keys or corrupted encrypted data
+  - Graceful fallback if encryption key is not configured
+
+### Changed
+- **Secrets Loading**: Enhanced to support encrypted secrets
+  - `loadSecrets()` function now automatically decrypts `secure://` prefixed values
+  - `decryptSecretsObject()` function added to handle decryption of all encrypted values
+  - Encryption key retrieved from config using `getSecretsEncryptionKey()`
+  - Only attempts decryption if encrypted values are detected
+  - Maintains backward compatibility with plaintext secrets
+- **Configuration Management**: Extended to support encryption keys
+  - `lib/config.js` now includes `getSecretsEncryptionKey()` and `setSecretsEncryptionKey()` functions
+  - Encryption key stored in `~/.aifabrix/config.yaml` as `secrets-encryption-key`
+  - Key persisted across CLI sessions for automatic decryption
+  - Key validation before storage to ensure proper format
+
+### Security
+- **ISO 27001 Compliance**: Enhanced secrets protection
+  - All secrets can now be encrypted at rest in YAML files
+  - AES-256-GCM provides authenticated encryption (confidentiality and integrity)
+  - Encryption keys stored separately from encrypted data
+  - File permissions set to 0o600 (read/write for owner only) after encryption
+  - No plaintext secrets in version control when using encryption
+
+### Technical
+- New `lib/commands/secure.js` module for secure command implementation
+- Encryption utilities in `lib/utils/secrets-encryption.js` with comprehensive validation
+- Integration with existing secrets resolution pipeline
+- Support for multiple secrets files (user secrets and per-app build secrets)
+- YAML structure preservation during encryption/decryption operations
+
 ## [2.2.0] - 2025-11-09
 
 ### Added

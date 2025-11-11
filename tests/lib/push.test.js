@@ -36,16 +36,37 @@ describe('Push Utilities', () => {
   });
 
   describe('checkAzureCLIInstalled', () => {
+    const originalPlatform = process.platform;
+
+    afterEach(() => {
+      Object.defineProperty(process, 'platform', {
+        value: originalPlatform,
+        writable: true
+      });
+    });
+
     it('should return true when Azure CLI is installed', async() => {
       execAsync.mockResolvedValueOnce({ stdout: 'azure-cli 2.50.0', stderr: '' });
 
       const result = await pushUtils.checkAzureCLIInstalled();
 
       expect(result).toBe(true);
-      expect(execAsync).toHaveBeenCalledWith('az --version');
+      // On non-Windows, no options; on Windows, shell: true
+      // Both include timeout: 5000
+      if (process.platform === 'win32') {
+        expect(execAsync).toHaveBeenCalledWith('az --version', { shell: true, timeout: 5000 });
+      } else {
+        expect(execAsync).toHaveBeenCalledWith('az --version', { timeout: 5000 });
+      }
     });
 
     it('should return false when Azure CLI is not installed', async() => {
+      // Set platform to non-Windows to avoid fallback behavior
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        writable: true
+      });
+
       execAsync.mockRejectedValueOnce(new Error('command not found: az'));
 
       const result = await pushUtils.checkAzureCLIInstalled();
@@ -54,7 +75,44 @@ describe('Push Utilities', () => {
     });
 
     it('should return false on any error', async() => {
+      // Set platform to non-Windows to avoid fallback behavior
+      Object.defineProperty(process, 'platform', {
+        value: 'linux',
+        writable: true
+      });
+
       execAsync.mockRejectedValueOnce(new Error('Unknown error'));
+
+      const result = await pushUtils.checkAzureCLIInstalled();
+
+      expect(result).toBe(false);
+    });
+
+    it('should try az.cmd fallback on Windows when az fails', async() => {
+      Object.defineProperty(process, 'platform', {
+        value: 'win32',
+        writable: true
+      });
+
+      // First call fails, second succeeds with az.cmd
+      execAsync.mockRejectedValueOnce(new Error('command not found: az'));
+      execAsync.mockResolvedValueOnce({ stdout: 'azure-cli 2.50.0', stderr: '' });
+
+      const result = await pushUtils.checkAzureCLIInstalled();
+
+      expect(result).toBe(true);
+      expect(execAsync).toHaveBeenCalledWith('az --version', { shell: true, timeout: 5000 });
+      expect(execAsync).toHaveBeenCalledWith('az.cmd --version', { shell: true, timeout: 5000 });
+    });
+
+    it('should return false on Windows when both az and az.cmd fail', async() => {
+      Object.defineProperty(process, 'platform', {
+        value: 'win32',
+        writable: true
+      });
+
+      execAsync.mockRejectedValueOnce(new Error('command not found: az'));
+      execAsync.mockRejectedValueOnce(new Error('command not found: az.cmd'));
 
       const result = await pushUtils.checkAzureCLIInstalled();
 
@@ -118,7 +176,12 @@ describe('Push Utilities', () => {
       const result = await pushUtils.checkACRAuthentication('myacr.azurecr.io');
 
       expect(result).toBe(true);
-      expect(execAsync).toHaveBeenCalledWith('az acr show --name myacr');
+      // On Windows, includes shell: true option
+      if (process.platform === 'win32') {
+        expect(execAsync).toHaveBeenCalledWith('az acr show --name myacr', { shell: true });
+      } else {
+        expect(execAsync).toHaveBeenCalledWith('az acr show --name myacr', {});
+      }
     });
 
     it('should return false when not authenticated', async() => {
@@ -144,7 +207,12 @@ describe('Push Utilities', () => {
 
       await pushUtils.authenticateACR('myacr.azurecr.io');
 
-      expect(execAsync).toHaveBeenCalledWith('az acr login --name myacr');
+      // On Windows, includes shell: true option
+      if (process.platform === 'win32') {
+        expect(execAsync).toHaveBeenCalledWith('az acr login --name myacr', { shell: true });
+      } else {
+        expect(execAsync).toHaveBeenCalledWith('az acr login --name myacr', {});
+      }
       expect(console.log).toHaveBeenCalled();
     });
 

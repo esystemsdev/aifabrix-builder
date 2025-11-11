@@ -11,6 +11,11 @@ const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
 
+// Mock config BEFORE requiring secrets-path
+jest.mock('../../../lib/config', () => ({
+  getSecretsPath: jest.fn().mockResolvedValue(null)
+}));
+
 const secretsPath = require('../../../lib/utils/secrets-path');
 
 // Mock fs module
@@ -157,31 +162,31 @@ describe('Secrets Path Module', () => {
   });
 
   describe('getActualSecretsPath', () => {
-    it('should return object with resolved path when explicit path provided', () => {
+    it('should return object with resolved path when explicit path provided', async() => {
       const explicitPath = '/custom/path/secrets.yaml';
       fs.existsSync.mockReturnValue(true);
 
-      const result = secretsPath.getActualSecretsPath(explicitPath);
+      const result = await secretsPath.getActualSecretsPath(explicitPath);
       expect(result).toEqual({
         userPath: explicitPath,
         buildPath: null
       });
     });
 
-    it('should return object with user secrets path when it exists', () => {
+    it('should return object with user secrets path when it exists', async() => {
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       fs.existsSync.mockImplementation((filePath) => {
         return filePath === userSecretsPath;
       });
 
-      const result = secretsPath.getActualSecretsPath();
+      const result = await secretsPath.getActualSecretsPath();
       expect(result).toEqual({
         userPath: userSecretsPath,
         buildPath: null
       });
     });
 
-    it('should return object with build.secrets path when appName provided and build.secrets is configured', () => {
+    it('should return object with build.secrets path when appName provided and build.secrets is configured', async() => {
       const appName = 'test-app';
       const variablesPath = path.join(mockCwd, 'builder', appName, 'variables.yaml');
       const buildSecretsPath = path.resolve(path.dirname(variablesPath), 'custom-secrets.yaml');
@@ -208,7 +213,7 @@ describe('Secrets Path Module', () => {
         return '';
       });
 
-      const result = secretsPath.getActualSecretsPath(undefined, appName);
+      const result = await secretsPath.getActualSecretsPath(undefined, appName);
       expect(result).toEqual({
         userPath: userSecretsPath,
         buildPath: buildSecretsPath
@@ -217,7 +222,7 @@ describe('Secrets Path Module', () => {
       expect(fs.readFileSync).toHaveBeenCalledWith(variablesPath, 'utf8');
     });
 
-    it('should return object with buildPath even when build.secrets file does not exist', () => {
+    it('should return object with buildPath even when build.secrets file does not exist', async() => {
       const appName = 'test-app';
       const variablesPath = path.join(mockCwd, 'builder', appName, 'variables.yaml');
       const buildSecretsPath = path.resolve(path.dirname(variablesPath), 'custom-secrets.yaml');
@@ -243,14 +248,14 @@ describe('Secrets Path Module', () => {
         return '';
       });
 
-      const result = secretsPath.getActualSecretsPath(undefined, appName);
+      const result = await secretsPath.getActualSecretsPath(undefined, appName);
       expect(result).toEqual({
         userPath: userSecretsPath,
         buildPath: buildSecretsPath
       });
     });
 
-    it('should return object with null buildPath when variables.yaml does not exist', () => {
+    it('should return object with null buildPath when variables.yaml does not exist', async() => {
       const appName = 'test-app';
       const variablesPath = path.join(mockCwd, 'builder', appName, 'variables.yaml');
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
@@ -261,14 +266,14 @@ describe('Secrets Path Module', () => {
         return false;
       });
 
-      const result = secretsPath.getActualSecretsPath(undefined, appName);
+      const result = await secretsPath.getActualSecretsPath(undefined, appName);
       expect(result).toEqual({
         userPath: userSecretsPath,
         buildPath: null
       });
     });
 
-    it('should return object with null buildPath when variables.yaml has no build.secrets', () => {
+    it('should return object with null buildPath when variables.yaml has no build.secrets', async() => {
       const appName = 'test-app';
       const variablesPath = path.join(mockCwd, 'builder', appName, 'variables.yaml');
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
@@ -290,14 +295,14 @@ describe('Secrets Path Module', () => {
         return '';
       });
 
-      const result = secretsPath.getActualSecretsPath(undefined, appName);
+      const result = await secretsPath.getActualSecretsPath(undefined, appName);
       expect(result).toEqual({
         userPath: userSecretsPath,
         buildPath: null
       });
     });
 
-    it('should return object with null buildPath when error reading variables.yaml', () => {
+    it('should return object with null buildPath when error reading variables.yaml', async() => {
       const appName = 'test-app';
       const variablesPath = path.join(mockCwd, 'builder', appName, 'variables.yaml');
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
@@ -315,7 +320,7 @@ describe('Secrets Path Module', () => {
         return '';
       });
 
-      const result = secretsPath.getActualSecretsPath(undefined, appName);
+      const result = await secretsPath.getActualSecretsPath(undefined, appName);
       // Should return userPath with null buildPath despite error
       expect(result).toEqual({
         userPath: userSecretsPath,
@@ -323,7 +328,7 @@ describe('Secrets Path Module', () => {
       });
     });
 
-    it('should return object with null buildPath when parsing invalid YAML in variables.yaml', () => {
+    it('should return object with null buildPath when parsing invalid YAML in variables.yaml', async() => {
       const appName = 'test-app';
       const variablesPath = path.join(mockCwd, 'builder', appName, 'variables.yaml');
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
@@ -341,7 +346,7 @@ describe('Secrets Path Module', () => {
         return '';
       });
 
-      const result = secretsPath.getActualSecretsPath(undefined, appName);
+      const result = await secretsPath.getActualSecretsPath(undefined, appName);
       // Should return userPath with null buildPath despite YAML parse error
       expect(result).toEqual({
         userPath: userSecretsPath,
@@ -349,7 +354,7 @@ describe('Secrets Path Module', () => {
       });
     });
 
-    it('should return object with userPath when user file does not exist', () => {
+    it('should return object with userPath when user file does not exist', async() => {
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
 
       fs.existsSync.mockImplementation((filePath) => {
@@ -357,26 +362,26 @@ describe('Secrets Path Module', () => {
         return false;
       });
 
-      const result = secretsPath.getActualSecretsPath();
+      const result = await secretsPath.getActualSecretsPath();
       expect(result).toEqual({
         userPath: userSecretsPath,
         buildPath: null
       });
     });
 
-    it('should return object with userPath as fallback when no files exist', () => {
+    it('should return object with userPath as fallback when no files exist', async() => {
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
 
       fs.existsSync.mockReturnValue(false);
 
-      const result = secretsPath.getActualSecretsPath();
+      const result = await secretsPath.getActualSecretsPath();
       expect(result).toEqual({
         userPath: userSecretsPath,
         buildPath: null
       });
     });
 
-    it('should return object with null buildPath when appName is not provided', () => {
+    it('should return object with null buildPath when appName is not provided', async() => {
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
 
       fs.existsSync.mockImplementation((filePath) => {
@@ -384,7 +389,7 @@ describe('Secrets Path Module', () => {
         return false;
       });
 
-      const result = secretsPath.getActualSecretsPath();
+      const result = await secretsPath.getActualSecretsPath();
       expect(result).toEqual({
         userPath: userSecretsPath,
         buildPath: null

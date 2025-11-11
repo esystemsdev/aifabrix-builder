@@ -247,6 +247,9 @@ openai-keyKeyVault: "sk-proj-xyz..."
 postgres-passwordKeyVault: "admin123"
 ```
 
+**Encrypted secrets:**
+Secrets can be encrypted using `aifabrix secure` command. Encrypted values use `secure://` prefix and are automatically decrypted when loaded. See [Secrets Encryption](#secrets-encryption) section below.
+
 **Resolution:**
 ```bash
 # Before (env.template)
@@ -256,6 +259,8 @@ API_KEY=kv://my-api-keyKeyVault
 API_KEY=sk-1234567890abcdef
 ```
 
+**Note:** Encrypted secrets (with `secure://` prefix) are automatically decrypted during resolution. The encryption key is retrieved from `~/.aifabrix/config.yaml`.
+
 ### Existing .env Files
 
 Have an existing `.env`? 
@@ -263,6 +268,80 @@ Have an existing `.env`?
 `aifabrix create` reads it and converts to template:
 - Regular values stay as-is
 - Sensitive values (passwords, keys) → `kv://` references
+
+### Secrets Encryption
+
+For ISO 27001 compliance, secrets can be encrypted at rest using the `aifabrix secure` command. Encrypted secrets use the `secure://` prefix format and are automatically decrypted when loaded.
+
+**Encryption Format:**
+Encrypted values use the format: `secure://<iv>:<ciphertext>:<authTag>`
+- All components are base64 encoded
+- Uses AES-256-GCM encryption algorithm
+- IV (Initialization Vector): 96 bits, randomly generated per encryption
+- Ciphertext: Encrypted secret value
+- Auth Tag: 128-bit authentication tag for integrity verification
+
+**Example:**
+```yaml
+# Before encryption (secrets.local.yaml)
+my-api-keyKeyVault: "sk-1234567890abcdef"
+database-passwordKeyVault: "admin123"
+
+# After encryption with aifabrix secure
+my-api-keyKeyVault: "secure://xK9mP2qR5tW8vY1z:AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcdef:ZxYwVuTsRqPoNmLkJiHgFeDcBa9876543210"
+database-passwordKeyVault: "secure://yL0nQ3rS6uX9wZ2a:BcDeFgHiJkLmNoPqRsTuVwXyZa2345678901bcdefg:YwXvUtSrQpOnMlKjIhGfEdCbA8765432109"
+```
+
+**Encrypting Secrets:**
+```bash
+# Encrypt all secrets (interactive - prompts for encryption key)
+aifabrix secure
+
+# Encrypt with provided key (hex format, 64 characters)
+aifabrix secure --secrets-encryption "a1b2c3d4e5f6789abcdef1234567890abcdef1234567890abcdef1234567890ab"
+
+# Encrypt with base64 key (44 characters)
+aifabrix secure --secrets-encryption "YWJjZGVmZ2hpams="
+```
+
+**Encryption Key:**
+- **Format**: 32 bytes (256 bits)
+  - Hex: 64 hexadecimal characters
+  - Base64: 44 base64 characters
+- **Storage**: Saved to `~/.aifabrix/config.yaml` as `secrets-encryption-key`
+- **Usage**: Automatically retrieved for decryption when loading secrets
+- **Security**: Store encryption key securely (e.g., password manager, secure vault)
+
+**What Gets Encrypted:**
+- User secrets: `~/.aifabrix/secrets.local.yaml`
+- App build secrets: Files specified in `build.secrets` in each app's `variables.yaml`
+- General secrets: File specified in `secrets-path` in `config.yaml` (if configured)
+
+**Automatic Decryption:**
+Encrypted secrets are automatically decrypted when:
+- Running `aifabrix resolve` to generate `.env` files
+- Building Docker images with `aifabrix build`
+- Deploying applications with `aifabrix deploy`
+- Any command that loads secrets
+
+The encryption key is automatically retrieved from `~/.aifabrix/config.yaml`. No manual decryption is required.
+
+**Security Best Practices:**
+- **Encrypt before committing**: Encrypt secrets before committing to version control
+- **Key management**: Store encryption key securely (password manager, secure vault)
+- **Key rotation**: Re-run `aifabrix secure` with a new key to rotate encryption
+- **File permissions**: Encrypted files are automatically set to 0o600 (owner read/write only)
+- **Backup encryption key**: Ensure encryption key is backed up securely - losing it means losing access to encrypted secrets
+
+**Backward Compatibility:**
+Plaintext secrets continue to work if no encryption key is configured. The system automatically detects encrypted values (by `secure://` prefix) and only attempts decryption when needed.
+
+**Troubleshooting:**
+- **"Decryption failed"**: Encryption key in `config.yaml` doesn't match the key used for encryption
+- **"Invalid encryption key format"**: Key must be 32 bytes (64 hex chars or 44 base64 chars)
+- **"No secrets files found"**: Create `~/.aifabrix/secrets.local.yaml` or configure `build.secrets` in `variables.yaml`
+
+For more details, see [aifabrix secure](CLI-REFERENCE.md#aifabrix-secure) command documentation.
 
 ---
 
