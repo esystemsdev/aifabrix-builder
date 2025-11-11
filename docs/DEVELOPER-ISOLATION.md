@@ -70,9 +70,8 @@ aifabrix dev config --set-id 2
 Edit `~/.aifabrix/config.yaml`:
 
 ```yaml
-apiUrl: http://localhost:3000
-token: abc123...
 developer-id: 1
+environment: dev
 ```
 
 ## How It Works
