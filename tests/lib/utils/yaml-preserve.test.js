@@ -71,10 +71,10 @@ describe('yaml-preserve', () => {
     });
 
     it('should extract single-quoted values', () => {
-      const result = extractValue("'my-value'");
+      const result = extractValue('\'my-value\'');
       expect(result.value).toBe('my-value');
       expect(result.quoted).toBe(true);
-      expect(result.quoteChar).toBe("'");
+      expect(result.quoteChar).toBe('\'');
     });
 
     it('should handle values with whitespace', () => {
@@ -93,7 +93,7 @@ describe('yaml-preserve', () => {
     });
 
     it('should format single-quoted values', () => {
-      expect(formatValue('value', true, "'")).toBe("'value'");
+      expect(formatValue('value', true, '\'')).toBe('\'value\'');
     });
   });
 
@@ -258,9 +258,9 @@ secret: my-secret`;
 
       // URLs should not be encrypted even if quoted
       expect(result.content).toContain('"http://example.com"');
-      expect(result.content).toContain("'https://api.example.com'");
+      expect(result.content).toContain('\'https://api.example.com\'');
       expect(result.content).toContain('http://localhost:3000');
-      
+
       // Secret should be encrypted
       expect(result.content).toMatch(/secret: secure:\/\//);
       expect(result.encrypted).toBe(1);
@@ -281,7 +281,7 @@ m-key: value-m`;
     });
 
     it('should handle values with special characters', () => {
-      const content = `special-key: value-with-special-chars!@#$%^&*()`;
+      const content = 'special-key: value-with-special-chars!@#$%^&*()';
 
       const result = encryptYamlValues(content, validHexKey);
 

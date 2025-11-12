@@ -628,13 +628,13 @@ key3: value3
       expect(writeCall).toBeDefined();
 
       const writtenContent = writeCall[1];
-      
+
       // Verify comments are preserved
       expect(writtenContent).toContain('# Header comment');
       expect(writtenContent).toContain('# Another comment');
       expect(writtenContent).toContain('# inline comment');
       expect(writtenContent).toContain('# Section comment');
-      
+
       // Verify blank lines are preserved
       const lines = writtenContent.split('\n');
       expect(lines[2]).toBe(''); // Blank line after comments
@@ -679,7 +679,7 @@ secret-key: my-secret-value
 
       // URL should not be encrypted
       expect(writtenContent).toContain('http://localhost:3000');
-      
+
       // Secret should be encrypted
       expect(writtenContent).not.toContain('my-secret-value');
       expect(writtenContent).toMatch(/secret-key: secure:\/\//);
@@ -702,7 +702,7 @@ secret-key: my-secret-value
 
       // URL should not be encrypted
       expect(writtenContent).toContain('https://api.example.com');
-      
+
       // Secret should be encrypted
       expect(writtenContent).not.toContain('my-secret-value');
       expect(writtenContent).toMatch(/secret-key: secure:\/\//);
@@ -726,8 +726,8 @@ secret: my-secret
 
       // URLs should not be encrypted even if quoted
       expect(writtenContent).toContain('"http://example.com"');
-      expect(writtenContent).toContain("'https://api.example.com'");
-      
+      expect(writtenContent).toContain('\'https://api.example.com\'');
+
       // Secret should be encrypted
       expect(writtenContent).toMatch(/secret: secure:\/\//);
     });
