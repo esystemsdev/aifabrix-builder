@@ -53,7 +53,7 @@ describe('Config Module', () => {
 
       expect(result).toEqual({
         ...mockConfig,
-        'developer-id': 0,
+        'developer-id': '0',
         environment: 'dev',
         environments: {},
         device: {}
@@ -74,11 +74,12 @@ describe('Config Module', () => {
 
       expect(result).toEqual({
         ...mockConfig,
+        'developer-id': '5', // getConfig converts numbers to strings
         environment: 'dev',
         environments: {},
         device: {}
       });
-      expect(result['developer-id']).toBe(5);
+      expect(result['developer-id']).toBe('5');
     });
 
     it('should return default values when file does not exist', async() => {
@@ -89,7 +90,7 @@ describe('Config Module', () => {
       const result = await getConfig();
 
       expect(result).toEqual({
-        'developer-id': 0,
+        'developer-id': '0',
         environment: 'dev',
         environments: {},
         device: {}
@@ -102,7 +103,7 @@ describe('Config Module', () => {
       const result = await getConfig();
 
       expect(result).toEqual({
-        'developer-id': 0,
+        'developer-id': '0',
         environment: 'dev',
         environments: {},
         device: {}
@@ -115,7 +116,7 @@ describe('Config Module', () => {
       const result = await getConfig();
 
       expect(result).toEqual({
-        'developer-id': 0,
+        'developer-id': '0',
         environment: 'dev',
         environments: {},
         device: {}
@@ -240,7 +241,7 @@ describe('Config Module', () => {
 
       const result = await getDeveloperId();
 
-      expect(result).toBe(3);
+      expect(result).toBe('3');
       expect(fsPromises.readFile).toHaveBeenCalledWith(CONFIG_FILE, 'utf8');
     });
 
@@ -254,7 +255,7 @@ describe('Config Module', () => {
 
       const result = await getDeveloperId();
 
-      expect(result).toBe(0);
+      expect(result).toBe('0');
     });
 
     it('should return 0 when config file does not exist', async() => {
@@ -264,7 +265,24 @@ describe('Config Module', () => {
 
       const result = await getDeveloperId();
 
-      expect(result).toBe(0);
+      expect(result).toBe('0');
+    });
+
+    it('should preserve string developer-id with leading zeros (e.g., "01" -> "01")', async() => {
+      const yaml = require('js-yaml');
+      const mockConfig = {
+        apiUrl: 'https://controller.example.com',
+        token: 'test-token',
+        'developer-id': '01' // String with leading zero
+      };
+      const configYaml = yaml.dump(mockConfig);
+
+      fsPromises.readFile.mockResolvedValue(configYaml);
+
+      const result = await getDeveloperId();
+
+      expect(result).toBe('01'); // Should preserve leading zeros
+      expect(typeof result).toBe('string');
     });
   });
 
@@ -345,12 +363,45 @@ describe('Config Module', () => {
       expect(fsPromises.writeFile).toHaveBeenCalled();
     });
 
+    it('should preserve string developer-id with leading zeros (e.g., "01" stays "01")', async() => {
+      const mockFd = {
+        sync: jest.fn().mockResolvedValue(undefined),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
+      const existingConfig = {
+        apiUrl: 'https://controller.example.com',
+        token: 'test-token',
+        'developer-id': 0
+      };
+      const yaml = require('js-yaml');
+      const configYaml = yaml.dump(existingConfig);
+      const updatedConfig = { ...existingConfig, 'developer-id': '01' };
+      const updatedYaml = yaml.dump(updatedConfig);
+
+      fsPromises.readFile
+        .mockResolvedValueOnce(configYaml) // First read in setDeveloperId
+        .mockResolvedValueOnce(updatedYaml); // Second read for verification
+      fsPromises.mkdir.mockResolvedValue(undefined);
+      fsPromises.writeFile.mockResolvedValue(undefined);
+      fsPromises.open.mockResolvedValue(mockFd);
+
+      await setDeveloperId('01'); // String with leading zero
+
+      expect(fsPromises.writeFile).toHaveBeenCalled();
+      // Verify the saved value is a number, not a string
+      const writeCall = fsPromises.writeFile.mock.calls[0];
+      const savedYaml = writeCall[1];
+      const savedConfig = yaml.load(savedYaml);
+      expect(savedConfig['developer-id']).toBe('01');
+      expect(typeof savedConfig['developer-id']).toBe('string');
+    });
+
     it('should throw error for invalid developer ID (non-number)', async() => {
-      await expect(setDeveloperId('invalid')).rejects.toThrow('Developer ID must be a non-negative number');
+      await expect(setDeveloperId('invalid')).rejects.toThrow('Developer ID must be a non-negative digit string or number');
     });
 
     it('should throw error for invalid developer ID (negative)', async() => {
-      await expect(setDeveloperId(-1)).rejects.toThrow('Developer ID must be a non-negative number');
+      await expect(setDeveloperId(-1)).rejects.toThrow('Developer ID must be a non-negative digit string or number');
     });
 
     it('should throw error when reading config fails', async() => {
@@ -412,7 +463,7 @@ describe('Config Module', () => {
 
       const result = await loadDevId();
 
-      expect(result).toBe(7);
+      expect(result).toBe('7');
       expect(fsPromises.readFile).toHaveBeenCalledWith(CONFIG_FILE, 'utf8');
     });
 
@@ -432,11 +483,11 @@ describe('Config Module', () => {
 
       // First call loads and caches
       const result1 = await loadDevId();
-      expect(result1).toBe(4);
+      expect(result1).toBe('4');
 
       // Second call should use cache (but loadDeveloperId always calls getConfig)
       const result2 = await loadDevId();
-      expect(result2).toBe(4);
+      expect(result2).toBe('4');
     });
 
     it('should return 0 when config file does not exist', async() => {
@@ -448,7 +499,7 @@ describe('Config Module', () => {
 
       const result = await loadDevId();
 
-      expect(result).toBe(0);
+      expect(result).toBe('0');
     });
   });
 
@@ -470,7 +521,7 @@ describe('Config Module', () => {
       // Load config to cache developer ID
       await config.getConfig();
 
-      expect(config.developerId).toBe(8);
+      expect(config.developerId).toBe('8');
     });
 
     it('should return 0 when cache is null', async() => {
@@ -479,7 +530,7 @@ describe('Config Module', () => {
       // Re-require to get fresh module instance
       const config = require('../../lib/config');
 
-      expect(config.developerId).toBe(0);
+      expect(config.developerId).toBe('0');
     });
   });
 

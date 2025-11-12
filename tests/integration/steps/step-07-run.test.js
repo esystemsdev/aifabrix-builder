@@ -74,13 +74,14 @@ describe('Integration Step 07: Run Docker Container', () => {
 
     // Verify docker-compose.yaml was generated in dev-specific directory
     const developerId = await config.getDeveloperId();
+    const devIdNum = typeof developerId === 'string' ? parseInt(developerId, 10) : developerId;
     const devDir = buildCopy.getDevDirectory(appName, developerId);
     const composeFile = path.join(devDir, 'docker-compose.yaml');
     const composeExists = await testFileExists(composeFile);
 
     // Calculate container name based on developer ID
     // Dev 0: aifabrix-{appName}, Dev > 0: aifabrix-dev{id}-{appName}
-    const containerName = developerId === 0 ? `aifabrix-${appName}` : `aifabrix-dev${developerId}-${appName}`;
+    const containerName = devIdNum === 0 ? `aifabrix-${appName}` : `aifabrix-dev${developerId}-${appName}`;
 
     if (!composeExists) {
       // Provide more context if command failed

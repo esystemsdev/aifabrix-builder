@@ -284,13 +284,23 @@ Encrypted values use the format: `secure://<iv>:<ciphertext>:<authTag>`
 **Example:**
 ```yaml
 # Before encryption (secrets.local.yaml)
+# API Configuration
 my-api-keyKeyVault: "sk-1234567890abcdef"
 database-passwordKeyVault: "admin123"
 
-# After encryption with aifabrix secure
+# Service URLs (not encrypted)
+api-url: "https://api.example.com"
+
+# After encryption with aifabrix secure (comments preserved)
+# API Configuration
 my-api-keyKeyVault: "secure://xK9mP2qR5tW8vY1z:AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcdef:ZxYwVuTsRqPoNmLkJiHgFeDcBa9876543210"
 database-passwordKeyVault: "secure://yL0nQ3rS6uX9wZ2a:BcDeFgHiJkLmNoPqRsTuVwXyZa2345678901bcdefg:YwXvUtSrQpOnMlKjIhGfEdCbA8765432109"
+
+# Service URLs (not encrypted - URLs are not secrets)
+api-url: "https://api.example.com"
 ```
+
+**Note:** The `aifabrix secure` command preserves all comments, blank lines, and formatting. URLs (starting with `http://` or `https://`) are automatically skipped as they are not secrets.
 
 **Encrypting Secrets:**
 ```bash

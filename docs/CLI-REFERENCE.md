@@ -1089,9 +1089,11 @@ Processing: C:\git\myapp\builder\myapp\secrets.local.yaml (app:myapp)
 2. Prompts for encryption key if not provided (or uses existing key from config)
 3. Encrypts all plaintext string values in each file
 4. Skips values already encrypted (detected by `secure://` prefix)
-5. Preserves YAML structure and comments
-6. Sets file permissions to 0o600 (read/write for owner only)
-7. Saves encryption key to `~/.aifabrix/config.yaml` for automatic decryption
+5. Skips URLs (values starting with `http://` or `https://`) - URLs are not secrets
+6. Skips YAML primitives (numbers, booleans, null) - only encrypts string values
+7. Preserves YAML structure, comments (inline and block), blank lines, and indentation
+8. Sets file permissions to 0o600 (read/write for owner only)
+9. Saves encryption key to `~/.aifabrix/config.yaml` for automatic decryption
 
 **Encrypted Value Format:**
 Encrypted values use the format: `secure://<iv>:<ciphertext>:<authTag>`
@@ -1103,13 +1105,29 @@ Encrypted values use the format: `secure://<iv>:<ciphertext>:<authTag>`
 **Example:**
 ```yaml
 # Before encryption (secrets.local.yaml)
+# API Configuration
 my-api-keyKeyVault: "sk-1234567890abcdef"
 database-passwordKeyVault: "admin123"
 
-# After encryption
+# Service URLs (not encrypted - URLs are not secrets)
+api-url: "https://api.example.com"
+service-endpoint: "http://localhost:3000"
+
+# After encryption (comments and URLs preserved)
+# API Configuration
 my-api-keyKeyVault: "secure://xK9mP2qR5tW8vY1z:AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcdef:ZxYwVuTsRqPoNmLkJiHgFeDcBa9876543210"
 database-passwordKeyVault: "secure://yL0nQ3rS6uX9wZ2a:BcDeFgHiJkLmNoPqRsTuVwXyZa2345678901bcdefg:YwXvUtSrQpOnMlKjIhGfEdCbA8765432109"
+
+# Service URLs (not encrypted - URLs are not secrets)
+api-url: "https://api.example.com"
+service-endpoint: "http://localhost:3000"
 ```
+
+**What Gets Skipped:**
+- **URLs**: Values starting with `http://` or `https://` (e.g., `https://api.example.com`)
+- **YAML Primitives**: Numbers (e.g., `123`, `45.67`), booleans (e.g., `true`, `false`), null values
+- **Already Encrypted**: Values with `secure://` prefix are left unchanged
+- **Empty Values**: Empty strings and whitespace-only values
 
 **Automatic Decryption:**
 Encrypted secrets are automatically decrypted when loaded by `aifabrix resolve`, `aifabrix build`, `aifabrix deploy`, and other commands that use secrets. The encryption key is retrieved from `~/.aifabrix/config.yaml` automatically.

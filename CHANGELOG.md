@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.2] - 2025-11-12
+
+### Fixed
+- **Comment Preservation in Secure Command**: Fixed `aifabrix secure` command to preserve all comments and formatting
+  - Replaced YAML load/dump approach with line-by-line parsing
+  - All comments (inline and block) are now preserved during encryption
+  - Blank lines and indentation are maintained
+  - Original file structure is kept intact
+- **URL Exclusion**: Enhanced secure command to skip encrypting URLs
+  - Values starting with `http://` or `https://` are not encrypted (URLs are not secrets)
+  - Works for both quoted and unquoted URL values
+  - Prevents accidental encryption of service endpoints and API URLs
+
+### Changed
+- **Secure Command Implementation**: Improved encryption process
+  - Line-by-line YAML parsing preserves all formatting and comments
+  - Skips YAML primitives (numbers, booleans, null) - only encrypts string values
+  - Better handling of quoted strings (preserves quote style)
+  - More robust handling of edge cases (multiline values, special characters)
+
+### Technical
+- New `lib/utils/yaml-preserve.js` module for line-by-line YAML encryption
+- Enhanced `shouldEncryptValue()` function to detect URLs and YAML primitives
+- Comprehensive test coverage for comment preservation and URL exclusion
+
 ## [2.3.0] - 2025-11-11
 
 ### Added

@@ -270,24 +270,22 @@ describe('secure command', () => {
       expect(generalWriteCall).toBeDefined();
     });
 
-    it('should handle invalid secrets file format', async() => {
+    it('should handle invalid secrets file format gracefully', async() => {
       const options = { secretsEncryption: validHexKey };
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('invalid: yaml: content: [');
 
-      await handleSecure(options);
-
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Error'));
+      // Should not throw, but may not encrypt anything due to invalid format
+      await expect(handleSecure(options)).resolves.not.toThrow();
     });
 
-    it('should handle non-object secrets file', async() => {
+    it('should handle non-object secrets file gracefully', async() => {
       const options = { secretsEncryption: validHexKey };
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('not an object');
 
-      await handleSecure(options);
-
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Error'));
+      // Should not throw, but may not encrypt anything due to invalid format
+      await expect(handleSecure(options)).resolves.not.toThrow();
     });
 
     it('should prompt for new key when user declines existing key', async() => {
@@ -607,6 +605,177 @@ describe('secure command', () => {
       await handleSecure(options);
 
       expect(config.setSecretsEncryptionKey).toHaveBeenCalledWith(validHexKey);
+    });
+
+    it('should preserve comments when encrypting', async() => {
+      const options = { secretsEncryption: validHexKey };
+      const originalContent = `# Header comment
+# Another comment
+
+key1: value1 # inline comment
+key2: value2
+# Section comment
+key3: value3
+`;
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(originalContent);
+
+      await handleSecure(options);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === mockSecretsPath);
+      expect(writeCall).toBeDefined();
+
+      const writtenContent = writeCall[1];
+      
+      // Verify comments are preserved
+      expect(writtenContent).toContain('# Header comment');
+      expect(writtenContent).toContain('# Another comment');
+      expect(writtenContent).toContain('# inline comment');
+      expect(writtenContent).toContain('# Section comment');
+      
+      // Verify blank lines are preserved
+      const lines = writtenContent.split('\n');
+      expect(lines[2]).toBe(''); // Blank line after comments
+    });
+
+    it('should preserve formatting and indentation', async() => {
+      const options = { secretsEncryption: validHexKey };
+      const originalContent = `  key1: value1
+    key2: value2
+key3: value3
+`;
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(originalContent);
+
+      await handleSecure(options);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === mockSecretsPath);
+      const writtenContent = writeCall[1];
+
+      // Verify indentation is preserved
+      expect(writtenContent).toContain('  key1:');
+      expect(writtenContent).toContain('    key2:');
+      expect(writtenContent).toContain('key3:');
+    });
+
+    it('should skip encrypting http:// URLs', async() => {
+      const options = { secretsEncryption: validHexKey };
+      const originalContent = `http-url: http://localhost:3000
+secret-key: my-secret-value
+`;
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(originalContent);
+
+      await handleSecure(options);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === mockSecretsPath);
+      const writtenContent = writeCall[1];
+
+      // URL should not be encrypted
+      expect(writtenContent).toContain('http://localhost:3000');
+      
+      // Secret should be encrypted
+      expect(writtenContent).not.toContain('my-secret-value');
+      expect(writtenContent).toMatch(/secret-key: secure:\/\//);
+    });
+
+    it('should skip encrypting https:// URLs', async() => {
+      const options = { secretsEncryption: validHexKey };
+      const originalContent = `https-url: https://api.example.com
+secret-key: my-secret-value
+`;
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(originalContent);
+
+      await handleSecure(options);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === mockSecretsPath);
+      const writtenContent = writeCall[1];
+
+      // URL should not be encrypted
+      expect(writtenContent).toContain('https://api.example.com');
+      
+      // Secret should be encrypted
+      expect(writtenContent).not.toContain('my-secret-value');
+      expect(writtenContent).toMatch(/secret-key: secure:\/\//);
+    });
+
+    it('should skip encrypting URLs even when quoted', async() => {
+      const options = { secretsEncryption: validHexKey };
+      const originalContent = `url1: "http://example.com"
+url2: 'https://api.example.com'
+secret: my-secret
+`;
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(originalContent);
+
+      await handleSecure(options);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === mockSecretsPath);
+      const writtenContent = writeCall[1];
+
+      // URLs should not be encrypted even if quoted
+      expect(writtenContent).toContain('"http://example.com"');
+      expect(writtenContent).toContain("'https://api.example.com'");
+      
+      // Secret should be encrypted
+      expect(writtenContent).toMatch(/secret: secure:\/\//);
+    });
+
+    it('should preserve comments and skip URLs in complex file', async() => {
+      const options = { secretsEncryption: validHexKey };
+      const originalContent = `# Configuration file
+# Contains secrets and URLs
+
+# Database URL (not a secret)
+database-url: https://db.example.com
+
+# API Key (secret)
+api-key: my-api-key-123
+
+# Service endpoint (not a secret)
+service-url: http://localhost:8080
+
+# Another secret
+secret-token: my-secret-token
+`;
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(originalContent);
+
+      await handleSecure(options);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === mockSecretsPath);
+      const writtenContent = writeCall[1];
+
+      // All comments should be preserved
+      expect(writtenContent).toContain('# Configuration file');
+      expect(writtenContent).toContain('# Contains secrets and URLs');
+      expect(writtenContent).toContain('# Database URL (not a secret)');
+      expect(writtenContent).toContain('# API Key (secret)');
+      expect(writtenContent).toContain('# Service endpoint (not a secret)');
+      expect(writtenContent).toContain('# Another secret');
+
+      // URLs should not be encrypted
+      expect(writtenContent).toContain('https://db.example.com');
+      expect(writtenContent).toContain('http://localhost:8080');
+
+      // Secrets should be encrypted
+      expect(writtenContent).not.toContain('my-api-key-123');
+      expect(writtenContent).not.toContain('my-secret-token');
+      expect(writtenContent).toMatch(/api-key: secure:\/\//);
+      expect(writtenContent).toMatch(/secret-token: secure:\/\//);
     });
   });
 });
