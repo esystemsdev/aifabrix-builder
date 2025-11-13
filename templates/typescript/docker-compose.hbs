@@ -14,7 +14,7 @@ services:
       - {{networkName}}
     {{#if requiresStorage}}
     volumes:
-      - "{{mountVolume}}:/mnt/data"
+      - {{#if (eq devId 0)}}aifabrix_{{app.key}}_data{{else}}aifabrix_dev{{devId}}_{{app.key}}_data{{/if}}:/mnt/data
     {{/if}}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:{{port}}{{healthCheck.path}}"]
@@ -97,6 +97,19 @@ services:
       "
     restart: "no"
   {{/if}}
+
+{{#if requiresStorage}}
+volumes:
+  {{#if (eq devId 0)}}
+  aifabrix_{{app.key}}_data:
+    name: aifabrix_{{app.key}}_data
+    driver: local
+  {{else}}
+  aifabrix_dev{{devId}}_{{app.key}}_data:
+    name: aifabrix_dev{{devId}}_{{app.key}}_data
+    driver: local
+  {{/if}}
+{{/if}}
 
 networks:
   {{networkName}}:

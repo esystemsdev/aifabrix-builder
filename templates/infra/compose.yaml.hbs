@@ -82,8 +82,10 @@ services:
 
 volumes:
   dev{{devId}}_postgres_data:
+    name: {{#if (eq devId 0)}}infra_postgres_data{{else}}infra_dev{{devId}}_postgres_data{{/if}}
     driver: local
   dev{{devId}}_redis_data:
+    name: {{#if (eq devId 0)}}infra_redis_data{{else}}infra_dev{{devId}}_redis_data{{/if}}
     driver: local
 
 networks:
