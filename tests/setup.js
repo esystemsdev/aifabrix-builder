@@ -3,6 +3,9 @@
  * Global test configuration and utilities
  */
 
+// Preserve the original working directory to avoid ENOENT errors if tests change/remove CWD
+const ORIGINAL_CWD = process.cwd();
+
 // Global test timeout
 jest.setTimeout(30000);
 
@@ -109,9 +112,21 @@ beforeEach(() => {
 // Cleanup after each test
 afterEach(() => {
   global.testUtils.cleanupTempFiles();
+  // Always restore the original working directory to ensure Jest reporters/workers have a valid CWD
+  try {
+    process.chdir(ORIGINAL_CWD);
+  } catch (e) {
+    // Ignore; if ORIGINAL_CWD were somehow invalid, Jest will still fail loudly elsewhere
+  }
 });
 
 // Cleanup after all tests
 afterAll(() => {
   global.testUtils.cleanupTempFiles();
+  // Ensure final CWD is valid for coverage reporters
+  try {
+    process.chdir(ORIGINAL_CWD);
+  } catch (e) {
+    // Ignore
+  }
 });

@@ -11,6 +11,12 @@ Local development infrastructure + Azure deployment tool.
 npm install -g @aifabrix/builder
 ```
 
+OR
+
+```bash
+sudo npm install -g @aifabrix/builder
+```
+
 ## Quick Start
 
 ```bash

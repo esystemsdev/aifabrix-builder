@@ -200,10 +200,10 @@ describe('app-run Docker Compose Generation', () => {
 
       const result = await appRun.generateDockerCompose(appName, config, options);
 
-      // Should use forward slashes, not backslashes (even if cwd returns backslashes)
-      // The result should contain the path with forward slashes
-      const forwardSlashPath = tempDir.replace(/\\/g, '/');
-      expect(result).toContain(forwardSlashPath);
+      // Should not include Windows-style backslashes anywhere
+      expect(result).not.toMatch(/\\/);
+      // Should use named volume for storage (no host path bind mount)
+      expect(result).toContain('aifabrix_dev1_test-app_data:/mnt/data');
       expect(result).not.toContain(windowsPath);
 
       process.cwd = originalCwd;
