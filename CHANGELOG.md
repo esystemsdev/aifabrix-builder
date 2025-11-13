@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.5] - 2025-11-13
+
+### Fixed
+- Infrastructure health detection for developer ID "0"/"01"
+  - Compose generation now passes a numeric `devId` into templates to avoid misnamed containers/networks for dev0
+  - `aifabrix up` no longer times out waiting for health due to dev0 container name mismatches
+- Container discovery collisions
+  - Exact container-name matching prevents `redis` from being confused with `redis-commander`
+  - Doctor/status now correctly report health instead of "unknown" for running services
+
+### Changed
+- Developer ID handling
+  - Preserve string form in config (e.g., "01") while consistently using numeric form for Docker resource naming and port calculations
+
+### Technical
+- Updated `lib/infra.js` to send numeric `devId` into `templates/infra/compose.yaml.hbs`
+- Hardened lookup in `lib/utils/infra-containers.js`:
+  - Prefer exact-name match, safe fallback to `aifabrix-dev0-*` for dev0
+  - Deterministic selection when multiple names are returned
+
 ## [2.3.2] - 2025-11-12
 
 ### Fixed
