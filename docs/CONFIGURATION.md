@@ -237,8 +237,9 @@ SMTP_PORT=587
 `kv://name` means "get value from secrets file"
 
 **Secrets file location:**
-- Default: `~/.aifabrix/secrets.yaml`
-- Override: Set `build.secrets` in variables.yaml
+- Default: `<home>/secrets.yaml`
+  - `<home>` is resolved from `config.yaml` key `aifabrix-home` (defaults to `~/.aifabrix`)
+- Override for app: set `build.secrets` in `variables.yaml`
 
 **Example secrets.yaml:**
 ```yaml
@@ -412,12 +413,14 @@ Pattern: `resource:action` or `feature:action`
 
 ## config.yaml
 
-Stored in `~/.aifabrix/config.yaml`. Manages authentication tokens and selected environment.
+Stored in `~/.aifabrix/config.yaml`. Manages authentication tokens, selected environment, and base paths.
 
 ### Structure
 
 ```yaml
 developer-id: 0
+aifabrix-home: "/custom/path"            # Optional: base directory for local files (default: ~/.aifabrix)
+aifabrix-secrets: "/path/to/secrets.yaml" # Optional: default secrets file path (default: <home>/secrets.yaml)
 environment: miso  # Root-level: currently selected environment
 device:  # Root-level: device tokens keyed by controller URL (universal per controller)
   http://localhost:3010:
@@ -449,6 +452,14 @@ environments:
 Developer ID for local infrastructure isolation  
 Default: `0` (shared infrastructure)  
 Example: `1`, `2`, `5` (developer-specific ports)
+
+**aifabrix-home**  
+Base directory for AI Fabrix local files (apps, infra, secrets, logs)  
+Default: `~/.aifabrix`
+
+**aifabrix-secrets**  
+Default secrets file path to use as fallback when app-level `build.secrets` is not set  
+Default: `<home>/secrets.yaml` (where `<home>` is `aifabrix-home`)
 
 **environment** (root-level)  
 Currently selected environment  

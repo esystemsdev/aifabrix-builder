@@ -1,3 +1,27 @@
+## [2.4.0] - 2025-11-14
+
+### Changed
+- Centralized configuration for home and secrets paths in `config.yaml`:
+  - New keys: `aifabrix-home` (base directory), `aifabrix-secrets` (default secrets file)
+  - All path resolution now derives from `config.yaml` (single source of truth)
+- Secrets resolution precedence clarified and enforced:
+  1) User-local: `<home>/secrets.local.yaml` (highest)
+  2) App build secrets: `builder/<app>/variables.yaml` → `build.secrets` (fills only missing keys)
+  3) Default fallback: `<home>/secrets.yaml`
+
+### Removed
+- Environment variable overrides `AIFABRIX_HOME` and `AIFABRIX_SECRETS`
+
+### Deprecated
+- Legacy `secrets-path` in `config.yaml` is still read for backward compatibility
+  - Prefer `aifabrix-secrets`; `secrets-path` will be removed in a future release
+
+### Technical
+- `lib/utils/paths.js` now reads `aifabrix-home` directly from `~/.aifabrix/config.yaml`
+- `lib/utils/secrets-path.js` uses config for defaults and updated precedence
+- `lib/secrets.js` uses configured home for admin secrets file locations
+- Updated tests for new precedence and config-based resolution
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

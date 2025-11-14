@@ -13,7 +13,7 @@ const yaml = require('js-yaml');
 
 // Mock config BEFORE requiring secrets-path
 jest.mock('../../../lib/config', () => ({
-  getSecretsPath: jest.fn().mockResolvedValue(null)
+  getAifabrixSecretsPath: jest.fn().mockResolvedValue(null)
 }));
 
 const secretsPath = require('../../../lib/utils/secrets-path');
@@ -45,115 +45,8 @@ describe('Secrets Path Module', () => {
       expect(result).toBe(expectedPath);
     });
 
-    it('should check common locations when no path provided', () => {
-      const commonLocations = [
-        path.join(mockCwd, '..', 'aifabrix-setup', 'secrets.local.yaml'),
-        path.join(mockCwd, '..', '..', 'aifabrix-setup', 'secrets.local.yaml'),
-        path.join(mockCwd, 'secrets.local.yaml'),
-        path.join(mockCwd, '..', 'secrets.local.yaml'),
-        path.join(mockHomeDir, '.aifabrix', 'secrets.yaml')
-      ];
-
-      // Test first location exists
-      fs.existsSync.mockImplementation((filePath) => {
-        return filePath === commonLocations[0];
-      });
-
-      const result = secretsPath.resolveSecretsPath();
-      expect(result).toBe(commonLocations[0]);
-      expect(fs.existsSync).toHaveBeenCalledWith(commonLocations[0]);
-    });
-
-    it('should check second location when first does not exist', () => {
-      const commonLocations = [
-        path.join(mockCwd, '..', 'aifabrix-setup', 'secrets.local.yaml'),
-        path.join(mockCwd, '..', '..', 'aifabrix-setup', 'secrets.local.yaml'),
-        path.join(mockCwd, 'secrets.local.yaml'),
-        path.join(mockCwd, '..', 'secrets.local.yaml'),
-        path.join(mockHomeDir, '.aifabrix', 'secrets.yaml')
-      ];
-
-      let callCount = 0;
-      fs.existsSync.mockImplementation((filePath) => {
-        callCount++;
-        // First location doesn't exist, second does
-        if (callCount === 1) return false;
-        if (callCount === 2) return true;
-        return false;
-      });
-
-      const result = secretsPath.resolveSecretsPath();
-      expect(result).toBe(commonLocations[1]);
-    });
-
-    it('should check third location when first two do not exist', () => {
-      const commonLocations = [
-        path.join(mockCwd, '..', 'aifabrix-setup', 'secrets.local.yaml'),
-        path.join(mockCwd, '..', '..', 'aifabrix-setup', 'secrets.local.yaml'),
-        path.join(mockCwd, 'secrets.local.yaml'),
-        path.join(mockCwd, '..', 'secrets.local.yaml'),
-        path.join(mockHomeDir, '.aifabrix', 'secrets.yaml')
-      ];
-
-      let callCount = 0;
-      fs.existsSync.mockImplementation((filePath) => {
-        callCount++;
-        // First two don't exist, third does
-        if (callCount <= 2) return false;
-        if (callCount === 3) return true;
-        return false;
-      });
-
-      const result = secretsPath.resolveSecretsPath();
-      expect(result).toBe(commonLocations[2]);
-    });
-
-    it('should check fourth location when first three do not exist', () => {
-      const commonLocations = [
-        path.join(mockCwd, '..', 'aifabrix-setup', 'secrets.local.yaml'),
-        path.join(mockCwd, '..', '..', 'aifabrix-setup', 'secrets.local.yaml'),
-        path.join(mockCwd, 'secrets.local.yaml'),
-        path.join(mockCwd, '..', 'secrets.local.yaml'),
-        path.join(mockHomeDir, '.aifabrix', 'secrets.yaml')
-      ];
-
-      let callCount = 0;
-      fs.existsSync.mockImplementation((filePath) => {
-        callCount++;
-        // First three don't exist, fourth does
-        if (callCount <= 3) return false;
-        if (callCount === 4) return true;
-        return false;
-      });
-
-      const result = secretsPath.resolveSecretsPath();
-      expect(result).toBe(commonLocations[3]);
-    });
-
-    it('should check fifth location when first four do not exist', () => {
-      const commonLocations = [
-        path.join(mockCwd, '..', 'aifabrix-setup', 'secrets.local.yaml'),
-        path.join(mockCwd, '..', '..', 'aifabrix-setup', 'secrets.local.yaml'),
-        path.join(mockCwd, 'secrets.local.yaml'),
-        path.join(mockCwd, '..', 'secrets.local.yaml'),
-        path.join(mockHomeDir, '.aifabrix', 'secrets.yaml')
-      ];
-
-      let callCount = 0;
-      fs.existsSync.mockImplementation((filePath) => {
-        callCount++;
-        // First four don't exist, fifth does
-        if (callCount <= 4) return false;
-        if (callCount === 5) return true;
-        return false;
-      });
-
-      const result = secretsPath.resolveSecretsPath();
-      expect(result).toBe(commonLocations[4]);
-    });
-
     it('should return default location when no common locations exist', () => {
-      fs.existsSync.mockReturnValue(false);
+      fs.existsSync.mockReturnValue(false); // Not used in new logic but keep harmless
       const expectedPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
 
       const result = secretsPath.resolveSecretsPath();

@@ -148,11 +148,13 @@ aifabrix login --method credentials --app {{appName}} --environment dev
 aifabrix login --method credentials --app {{appName}} --client-id $CLIENT_ID --client-secret $CLIENT_SECRET --environment dev
 ```
 
-### Environment Variables
+### Configuration
 
-```bash
-export AIFABRIX_HOME=/custom/path
-export AIFABRIX_SECRETS=/path/to/secrets.yaml
+Set overrides in `~/.aifabrix/config.yaml`:
+
+```yaml
+aifabrix-home: "/custom/path"
+aifabrix-secrets: "/path/to/secrets.yaml"
 ```
 
 ---

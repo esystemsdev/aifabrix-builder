@@ -38,11 +38,10 @@ Complete command reference with examples and troubleshooting.
 - [aifabrix secure](#aifabrix-secure) - Encrypt secrets in secrets.local.yaml files
 
 ### Additional Resources
-- [Common Workflows](#common-workflows) - Typical usage patterns
-- [Global Options](#global-options) - Command-line options available to all commands
-- [Environment Variables](#environment-variables) - Configuration via environment
-- [Exit Codes](#exit-codes) - Command exit code reference
-- [Getting Help](#getting-help) - Where to find more information
+ - [Common Workflows](#common-workflows) - Typical usage patterns
+ - [Global Options](#global-options) - Command-line options available to all commands
+ - [Exit Codes](#exit-codes) - Command exit code reference
+ - [Getting Help](#getting-help) - Where to find more information
 
 ---
 
@@ -1247,22 +1246,14 @@ aifabrix build myapp --verbose
 
 ---
 
-## Environment Variables
+## Configuration (config.yaml)
 
-**AIFABRIX_HOME**  
-Override default home directory  
-Default: `~/.aifabrix`
+Set these keys in `~/.aifabrix/config.yaml`:
 
-**AIFABRIX_SECRETS**  
-Override secrets file location  
-Default: `~/.aifabrix/secrets.yaml`
-
-**Example:**
-```bash
-export AIFABRIX_HOME=/custom/path
-export AIFABRIX_SECRETS=/path/to/secrets.yaml
-aifabrix build myapp
-```
+- aifabrix-home: Base directory for local files (default `~/.aifabrix`)
+  - Example: `aifabrix-home: "/custom/path"`
+- aifabrix-secrets: Default secrets file path (default `<home>/secrets.yaml`)
+  - Example: `aifabrix-secrets: "/path/to/secrets.yaml"`
 
 ---
 
