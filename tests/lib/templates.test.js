@@ -35,7 +35,6 @@ describe('Templates Module', () => {
       expect(parsed.image.name).toBe('test-app');
       expect(parsed.image.tag).toBe('latest');
       expect(parsed.build.language).toBe('typescript');
-      expect(parsed.build.secrets).toBeNull();
       expect(parsed.port).toBe(3000);
       expect(parsed.requires.database).toBe(true);
       expect(parsed.requires.redis).toBe(false);
@@ -69,7 +68,6 @@ describe('Templates Module', () => {
       expect(parsed.image.name).toBe('python-app');
       expect(parsed.image.tag).toBe('latest');
       expect(parsed.build.language).toBe('python');
-      expect(parsed.build.secrets).toBeNull();
       expect(parsed.port).toBe(8000);
       expect(parsed.requires.database).toBe(true);
       expect(parsed.requires.redis).toBe(true);
@@ -93,7 +91,6 @@ describe('Templates Module', () => {
       expect(parsed.image.name).toBe('minimal-app');
       expect(parsed.image.tag).toBe('latest');
       expect(parsed.build.language).toBe('typescript');
-      expect(parsed.build.secrets).toBeNull();
       expect(parsed.port).toBe(3000);
       expect(parsed.requires.database).toBe(false);
       expect(parsed.requires.redis).toBe(false);
@@ -114,8 +111,6 @@ describe('Templates Module', () => {
       expect(parsed.deployment).toBeDefined();
       expect(parsed.deployment.controllerUrl).toBe('');
       expect(parsed.deployment.environment).toBe('dev');
-      expect(parsed.deployment.clientId).toBe('');
-      expect(parsed.deployment.clientSecret).toBe('');
     });
 
     it('should include deployment section in all generated YAMLs', () => {
@@ -155,8 +150,7 @@ describe('Templates Module', () => {
       expect(result).toContain('DB_USER=test_app_user');
       expect(result).toContain('DB_PASSWORD=kv://databases-test-app-0-passwordKeyVault');
       expect(result).toContain('REDIS_URL=kv://redis-url');
-      expect(result).toContain('STORAGE_URL=kv://storage-url');
-      expect(result).toContain('JWT_SECRET=kv://jwt-secret');
+      expect(result).toContain('JWT_SECRET=kv://miso-controller-jwt-secretKeyVault');
     });
 
     it('should generate minimal environment template', () => {
@@ -373,11 +367,8 @@ describe('Templates Module', () => {
 
       // Check service-specific secrets
       expect(parsed.data['database-password']).toBeDefined();
-      expect(parsed.data['redis-password']).toBeDefined();
-      expect(parsed.data['storage-key']).toBeDefined();
-      expect(parsed.data['storage-secret']).toBeDefined();
-      expect(parsed.data['jwt-secret']).toBeDefined();
-      expect(parsed.data['session-secret']).toBeDefined();
+      expect(parsed.data['redis-passwordKeyVault']).toBeDefined();
+      expect(parsed.data['miso-controller-jwt-secretKeyVault']).toBeDefined();
 
       // Check existing secrets
       expect(parsed.data['custom-secret']).toBeDefined();

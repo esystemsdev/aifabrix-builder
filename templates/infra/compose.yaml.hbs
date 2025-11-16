@@ -16,7 +16,7 @@ services:
     ports:
       - "{{postgresPort}}:5432"
     volumes:
-      - dev{{devId}}_postgres_data:/var/lib/postgresql/data
+      - {{#if (eq devId 0)}}postgres_data{{else}}dev{{devId}}_postgres_data{{/if}}:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
       - {{networkName}}
@@ -35,7 +35,7 @@ services:
     ports:
       - "{{redisPort}}:6379"
     volumes:
-      - dev{{devId}}_redis_data:/data
+      - {{#if (eq devId 0)}}redis_data{{else}}dev{{devId}}_redis_data{{/if}}:/data
     networks:
       - {{networkName}}
     healthcheck:
@@ -55,6 +55,8 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
       - "{{pgadminPort}}:80"
+    volumes:
+      - {{#if (eq devId 0)}}pgadmin_data{{else}}dev{{devId}}_pgadmin_data{{/if}}:/var/lib/pgadmin
     restart: unless-stopped
     depends_on:
       postgres:
@@ -81,11 +83,14 @@ services:
       - {{networkName}}
 
 volumes:
-  dev{{devId}}_postgres_data:
+  {{#if (eq devId 0)}}postgres_data{{else}}dev{{devId}}_postgres_data{{/if}}:
     name: {{#if (eq devId 0)}}infra_postgres_data{{else}}infra_dev{{devId}}_postgres_data{{/if}}
     driver: local
-  dev{{devId}}_redis_data:
+  {{#if (eq devId 0)}}redis_data{{else}}dev{{devId}}_redis_data{{/if}}:
     name: {{#if (eq devId 0)}}infra_redis_data{{else}}infra_dev{{devId}}_redis_data{{/if}}
+    driver: local
+  {{#if (eq devId 0)}}pgadmin_data{{else}}dev{{devId}}_pgadmin_data{{/if}}:
+    name: {{#if (eq devId 0)}}infra_pgadmin_data{{else}}infra_dev{{devId}}_pgadmin_data{{/if}}
     driver: local
 
 networks:

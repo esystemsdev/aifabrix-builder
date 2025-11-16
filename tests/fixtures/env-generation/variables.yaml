@@ -1,0 +1,5 @@
+port: 3077
+build:
+  localPort: 3087
+  envOutputPath: .env
+

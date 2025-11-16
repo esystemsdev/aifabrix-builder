@@ -633,11 +633,6 @@
           "description": "Path where .env file is copied for local development (relative to builder/)",
           "pattern": "^[^/].*"
         },
-        "secrets": {
-          "type": "string",
-          "description": "Path to secrets file (defaults to ~/.aifabrix/secrets.yaml if empty)",
-          "pattern": "^[^/].*"
-        },
         "localPort": {
           "type": "integer",
           "description": "Port for local development (different from Docker port)",
@@ -676,16 +671,6 @@
           "type": "string",
           "description": "Controller API URL for deployment",
           "pattern": "^https://.*$"
-        },
-        "clientId": {
-          "type": "string",
-          "description": "Pipeline ClientId for automated deployment",
-          "pattern": "^[a-z0-9-]+$"
-        },
-        "clientSecret": {
-          "type": "string",
-          "description": "Pipeline ClientSecret (use kv:// reference)",
-          "pattern": "^(kv://.*|.+)$"
         }
       },
       "additionalProperties": false

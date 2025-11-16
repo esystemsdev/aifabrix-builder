@@ -35,9 +35,12 @@ jest.mock('../../lib/utils/build-copy', () => {
 
   return {
     getDevDirectory: jest.fn((appName, devId) => {
-      return path.join(os.homedir(), '.aifabrix', `${appName}-dev-${devId}`);
+      const idNum = typeof devId === 'string' ? parseInt(devId, 10) : devId;
+      return idNum === 0
+        ? path.join(os.homedir(), '.aifabrix', 'applications')
+        : path.join(os.homedir(), '.aifabrix', `applications-dev-${devId}`);
     }),
-    copyBuilderToDevDirectory: jest.fn().mockResolvedValue(path.join(os.homedir(), '.aifabrix', 'test-app-dev-1')),
+    copyBuilderToDevDirectory: jest.fn().mockResolvedValue(path.join(os.homedir(), '.aifabrix', 'applications-dev-1')),
     devDirectoryExists: jest.fn().mockReturnValue(true)
   };
 });

@@ -1,5 +1,7 @@
 # CLI Reference
 
+← [Back to Quick Start](QUICK-START.md)
+
 Complete command reference with examples and troubleshooting.
 
 ---
@@ -9,10 +11,13 @@ Complete command reference with examples and troubleshooting.
 ### Authentication & Setup
 - [aifabrix login](#aifabrix-login) - Authenticate with Miso Controller
 - [aifabrix up](#aifabrix-up) - Start infrastructure (Postgres + Redis)
-- [aifabrix down](#aifabrix-down) - Stop infrastructure
+- [aifabrix down](#aifabrix-down) - Stop infrastructure or an app
 - [aifabrix status](#aifabrix-status) - Show infrastructure service status
 - [aifabrix restart](#aifabrix-restart-service) - Restart infrastructure service
 - [aifabrix doctor](#aifabrix-doctor) - Check environment and configuration
+
+### Developer Isolation
+- [aifabrix dev config](#aifabrix-dev-config) - View or set developer ID for port isolation
 
 ### Application Management
 - [aifabrix app](#aifabrix-app) - Application management commands
@@ -228,16 +233,30 @@ After logging in, you can:
 
 Start infrastructure (Postgres + Redis).
 
-**What:** Starts PostgreSQL, Redis, pgAdmin, and Redis Commander in Docker.
+**What:** Starts PostgreSQL, Redis, pgAdmin, and Redis Commander in Docker. Supports developer isolation with developer-specific ports and infrastructure resources.
 
 **When:** First time setup, after system restart, when infrastructure is down.
 
-**Example:**
+**Usage:**
 ```bash
+# Start infrastructure with default ports (developer ID 0)
 aifabrix up
+
+# Set developer ID and start infrastructure (developer-specific ports)
+aifabrix up --developer 1
 ```
 
-**Output:**
+**Options:**
+- `-d, --developer <id>` - Set developer ID and start infrastructure with developer-specific ports. Developer ID must be a non-negative integer (0 = default infra, 1+ = developer-specific). When provided, sets the developer ID in `~/.aifabrix/config.yaml` and starts infrastructure with isolated ports.
+
+**Port Calculation:**
+Ports are calculated using: `basePort + (developer-id * 100)`
+
+- **Developer ID 0** (default): App=3000, Postgres=5432, Redis=6379, pgAdmin=5050, Redis Commander=8081
+- **Developer ID 1**: App=3100, Postgres=5532, Redis=6479, pgAdmin=5150, Redis Commander=8181
+- **Developer ID 2**: App=3200, Postgres=5632, Redis=6579, pgAdmin=5250, Redis Commander=8281
+
+**Output (default):**
 ```
 ✓ Starting Postgres...
 ✓ Starting Redis...
@@ -248,30 +267,63 @@ aifabrix up
   Redis Commander: http://localhost:8081
 ```
 
+**Output (with developer ID):**
+```
+✓ Developer ID set to 1
+✓ Starting Postgres...
+✓ Starting Redis...
+✓ Infrastructure ready
+  Postgres: localhost:5532
+  Redis: localhost:6479
+  pgAdmin: http://localhost:5150
+  Redis Commander: http://localhost:8181
+```
+
+**Developer Isolation:**
+When using `--developer`, each developer gets:
+- Separate Docker Compose project: `infra-dev{id}`
+- Isolated network: `infra-dev{id}-aifabrix-network`
+- Isolated volumes: `dev{id}_postgres_data`, `dev{id}_redis_data`
+- Isolated containers: `aifabrix-dev{id}-postgres`, `aifabrix-dev{id}-redis`, etc.
+
 **Issues:**
-- **"Port 5432 already in use"** → Stop other Postgres: `docker stop <container>`
+- **"Port 5432 already in use"** → Stop other Postgres: `docker stop <container>`, or use `--developer` to use different ports
 - **"Docker not running"** → Start Docker Desktop
 - **"Permission denied"** → Add user to docker group (Linux)
+- **"Developer ID must be a non-negative digit string"** → Use a valid integer (0, 1, 2, etc.)
 
 ---
 
 ## aifabrix down
 
-Stop infrastructure.
+Stop infrastructure or a specific application.
 
-**What:** Stops all infrastructure containers. Data is preserved in volumes.
+**What:** 
+- Without arguments: stops all infrastructure containers. Data is preserved unless `--volumes` is used.
+- With an app name: stops and removes the application container. With `--volumes`, also removes the app's named Docker volume.
 
 **When:** Shutting down, freeing resources, before system maintenance.
 
-**Example:**
+**Usage:**
 ```bash
+# Stop infrastructure
 aifabrix down
+
+# Stop infrastructure and delete infra volumes (all data)
+aifabrix down --volumes
+
+# Stop a specific application container
+aifabrix down myapp
+
+# Stop an application and remove its data volume
+aifabrix down myapp --volumes
 ```
 
-**Delete all data:**
-```bash
-aifabrix down --volumes
-```
+**Notes:**
+- App volumes are named per developer ID:
+  - Dev 0: `aifabrix_<app>_data`
+  - Dev > 0: `aifabrix_dev<id>_<app>_data`
+- `--volumes` for apps removes only the Docker named volume. It does not delete files in `builder/<app>` or `apps/<app>`.
 
 **Issues:** None common.
 
@@ -353,6 +405,144 @@ aifabrix restart redis
 **Issues:**
 - **"Service not found"** → Use correct service name (postgres, redis, pgadmin, redis-commander)
 - **"Service not running"** → Service may not be started; use `aifabrix up` to start all services
+
+---
+
+<a id="aifabrix-dev-config"></a>
+## aifabrix dev config
+
+View or set developer ID for port isolation.
+
+**What:** Displays current developer configuration (developer ID and calculated ports) or sets a new developer ID. Developer isolation allows multiple developers to run applications simultaneously on the same machine without port conflicts.
+
+**When:** Setting up developer isolation, checking current port assignments, troubleshooting port conflicts.
+
+**Usage:**
+```bash
+# View current developer configuration
+aifabrix dev config
+
+# Set developer ID
+aifabrix dev config --set-id 1
+
+# Set developer ID to 2
+aifabrix dev config --set-id 2
+```
+
+**Options:**
+- `--set-id <id>` - Set developer ID (non-negative integer). Developer ID 0 = default infrastructure (base ports), 1+ = developer-specific (offset ports). Updates `~/.aifabrix/config.yaml` and sets `AIFABRIX_DEVELOPERID` environment variable.
+
+**Output (view):**
+```
+🔧 Developer Configuration
+
+Developer ID: 1
+
+Ports:
+  App: 3100
+  Postgres: 5532
+  Redis: 6479
+  pgAdmin: 5150
+  Redis Commander: 8181
+```
+
+**Output (view with configuration variables):**
+```
+🔧 Developer Configuration
+
+Developer ID: 1
+
+Ports:
+  App: 3100
+  Postgres: 5532
+  Redis: 6479
+  pgAdmin: 5150
+  Redis Commander: 8181
+
+Configuration:
+  aifabrix-home: /workspace/.aifabrix
+  aifabrix-secrets: /workspace/aifabrix-miso/builder/secrets.local.yaml
+  aifabrix-env-config: /workspace/aifabrix-miso/builder/env-config.yaml
+```
+
+**Output (set):**
+```
+✓ Developer ID set to 1
+
+🔧 Developer Configuration
+
+Developer ID: 1
+
+Ports:
+  App: 3100
+  Postgres: 5532
+  Redis: 6479
+  pgAdmin: 5150
+  Redis Commander: 8181
+```
+
+**Output (set with configuration variables):**
+```
+✓ Developer ID set to 1
+
+🔧 Developer Configuration
+
+Developer ID: 1
+
+Ports:
+  App: 3100
+  Postgres: 5532
+  Redis: 6479
+  pgAdmin: 5150
+  Redis Commander: 8181
+
+Configuration:
+  aifabrix-home: /workspace/.aifabrix
+  aifabrix-secrets: /workspace/aifabrix-miso/builder/secrets.local.yaml
+  aifabrix-env-config: /workspace/aifabrix-miso/builder/env-config.yaml
+```
+
+**Port Calculation:**
+Ports are calculated using: `basePort + (developer-id * 100)`
+
+- **Developer ID 0** (default): App=3000, Postgres=5432, Redis=6379, pgAdmin=5050, Redis Commander=8081
+- **Developer ID 1**: App=3100, Postgres=5532, Redis=6479, pgAdmin=5150, Redis Commander=8181
+- **Developer ID 2**: App=3200, Postgres=5632, Redis=6579, pgAdmin=5250, Redis Commander=8281
+
+**How It Works:**
+- Developer ID is stored in `~/.aifabrix/config.yaml` as `developer-id`
+- Setting developer ID also sets `AIFABRIX_DEVELOPERID` environment variable
+- All infrastructure and application commands use this developer ID for port calculation
+- Each developer gets isolated Docker resources (containers, networks, volumes)
+
+**Configuration Variables:**
+The command displays configuration variables if they are set in `~/.aifabrix/config.yaml`:
+- `aifabrix-home` - Base directory for AI Fabrix local files (default: `~/.aifabrix`)
+- `aifabrix-secrets` - Default secrets file path (default: `<home>/secrets.yaml`)
+- `aifabrix-env-config` - Custom environment configuration file path
+
+These variables are only shown if they are explicitly set in the configuration file. If not set, the Configuration section is omitted from the output.
+
+**Configuration File:**
+The developer ID is stored in `~/.aifabrix/config.yaml`:
+```yaml
+developer-id: 1
+environment: dev
+```
+
+**Issues:**
+- **"Developer ID must be a non-negative digit string"** → Use a valid integer (0, 1, 2, etc.)
+- **"Port already in use"** → Try a different developer ID or check if another process is using the port
+- **"Configuration file not found"** → The config file will be created automatically when setting developer ID
+
+**Next Steps:**
+After setting developer ID:
+- Start infrastructure: `aifabrix up` (or `aifabrix up --developer <id>`)
+- Run applications: `aifabrix run <app>` (uses developer-specific ports automatically)
+- Check status: `aifabrix status` (shows developer-specific ports)
+
+**See Also:**
+- [Developer Isolation Guide](DEVELOPER-ISOLATION.md) - Complete guide to developer isolation features
 
 ---
 
@@ -601,6 +791,7 @@ aifabrix build myapp --force-template
 **Creates:**
 - Docker image: `myapp:latest`
 - `.env` file in `builder/`
+  - Note: build resolves variables using the local environment (run uses docker)
 
 **Issues:**
 - **"Docker not running"** → Start Docker Desktop
@@ -1036,7 +1227,7 @@ Generated from: builder/myapp/variables.yaml
 
 Encrypt secrets in secrets.local.yaml files for ISO 27001 compliance.
 
-**What:** Encrypts all plaintext secret values in secrets files using AES-256-GCM encryption. Automatically finds and encrypts user secrets (`~/.aifabrix/secrets.local.yaml`) and app build secrets (configured via `build.secrets` in `variables.yaml`). Encrypted values use `secure://` prefix format and are automatically decrypted when secrets are loaded.
+**What:** Encrypts all plaintext secret values in secrets files using AES-256-GCM encryption. Automatically finds and encrypts user secrets (`~/.aifabrix/secrets.local.yaml`) and general secrets files (configured via `aifabrix-secrets` in `config.yaml`). Encrypted values use `secure://` prefix format and are automatically decrypted when secrets are loaded.
 
 **When:** First-time setup for ISO 27001 compliance, securing secrets before committing to version control, or when rotating encryption keys.
 
@@ -1062,8 +1253,7 @@ aifabrix secure --secrets-encryption "YWJjZGVmZ2hpams="
 
 **What Gets Encrypted:**
 - User secrets file: `~/.aifabrix/secrets.local.yaml`
-- App build secrets: Files specified in `build.secrets` in each app's `variables.yaml`
-- General secrets: File specified in `secrets-path` in `config.yaml` (if configured)
+- General secrets: File specified in `aifabrix-secrets` in `config.yaml` (if configured)
 
 **Output:**
 ```
@@ -1140,7 +1330,7 @@ Encrypted secrets are automatically decrypted when loaded by `aifabrix resolve`,
 - **Key Rotation**: Re-run `aifabrix secure` with a new key to re-encrypt all values
 
 **Issues:**
-- **"No secrets files found"** → Create `~/.aifabrix/secrets.local.yaml` or configure `build.secrets` in `variables.yaml`
+- **"No secrets files found"** → Create `~/.aifabrix/secrets.local.yaml` or configure `aifabrix-secrets` in `config.yaml`
 - **"Invalid encryption key format"** → Key must be 32 bytes (64 hex chars or 44 base64 chars)
 - **"Decryption failed"** → Encryption key in config.yaml doesn't match the key used for encryption
 - **"File permission error"** → Ensure you have read/write access to secrets files
@@ -1254,6 +1444,9 @@ Set these keys in `~/.aifabrix/config.yaml`:
   - Example: `aifabrix-home: "/custom/path"`
 - aifabrix-secrets: Default secrets file path (default `<home>/secrets.yaml`)
   - Example: `aifabrix-secrets: "/path/to/secrets.yaml"`
+- developer-id: Developer ID for port isolation (default: 0)
+  - Example: `developer-id: 1` (sets ports to basePort + 100)
+  - See [Developer Isolation](DEVELOPER-ISOLATION.md) for details
 
 ---
 
@@ -1297,3 +1490,4 @@ aifabrix doctor
 - [Building](BUILDING.md)
 - [Running](RUNNING.md)
 - [Deploying](DEPLOYING.md)
+- [Developer Isolation](DEVELOPER-ISOLATION.md)

@@ -47,7 +47,8 @@ docker logs aifabrix-{{appName}} -f
 
 **Stop:**
 ```bash
-docker stop aifabrix-{{appName}}
+aifabrix down {{appName}}
+# aifabrix down {{appName}} --volumes   # also remove data volume
 ```
 
 ### 4. Deploy to Azure
@@ -86,6 +87,7 @@ aifabrix app rotate-secret {{appName}} --environment dev
 # Development
 aifabrix build {{appName}}                        # Build app
 aifabrix run {{appName}}                          # Run locally
+aifabrix down {{appName}} [--volumes]             # Stop app (optionally remove volume)
 aifabrix dockerfile {{appName}} --force           # Generate Dockerfile
 aifabrix resolve {{appName}}                      # Generate .env file
 

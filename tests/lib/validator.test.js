@@ -12,6 +12,7 @@ const os = require('os');
 const net = require('net');
 const { exec } = require('child_process');
 const validator = require('../../lib/validator');
+const secretsPath = require('../../lib/utils/secrets-path');
 
 // CRITICAL: Mock fetch FIRST before any modules that might use it
 // Ensure global fetch is mocked (from tests/setup.js)
@@ -31,6 +32,9 @@ if (!global.fetch || typeof global.fetch.mockResolvedValue !== 'function') {
 // Mock modules
 jest.mock('fs');
 jest.mock('os');
+jest.mock('../../lib/utils/secrets-path', () => ({
+  getActualSecretsPath: jest.fn()
+}));
 jest.mock('net', () => {
   const actualNet = jest.requireActual('net');
   return {
@@ -346,6 +350,11 @@ port: 99999`);
       };
       net.createServer.mockReturnValue(mockServer);
 
+      const mockSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      secretsPath.getActualSecretsPath.mockResolvedValue({
+        userPath: mockSecretsPath,
+        buildPath: null
+      });
       fs.existsSync.mockReturnValue(true);
 
       const result = await validator.checkEnvironment();
@@ -383,6 +392,11 @@ port: 99999`);
       };
       net.createServer.mockReturnValue(mockServer);
 
+      const mockSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      secretsPath.getActualSecretsPath.mockResolvedValue({
+        userPath: mockSecretsPath,
+        buildPath: null
+      });
       fs.existsSync.mockReturnValue(true);
 
       const result = await validator.checkEnvironment();
@@ -407,12 +421,17 @@ port: 99999`);
       };
       net.createServer.mockReturnValue(mockServer);
 
+      const mockSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      secretsPath.getActualSecretsPath.mockResolvedValue({
+        userPath: mockSecretsPath,
+        buildPath: null
+      });
       fs.existsSync.mockReturnValue(false);
 
       const result = await validator.checkEnvironment();
 
       expect(result.secrets).toBe('missing');
-      expect(result.recommendations).toContain('Create secrets file: ~/.aifabrix/secrets.yaml');
+      expect(result.recommendations.some(rec => rec.includes('Create secrets file'))).toBe(true);
     }, 10000);
   });
 

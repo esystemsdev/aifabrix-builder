@@ -1,0 +1,40 @@
+# Environment Configuration
+# Defines host values for different deployment contexts
+
+environments:
+  docker:
+    DB_HOST: postgres
+    DB_PORT: 5432
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    MISO_HOST: miso-controller
+    MISO_PORT: 3000
+    KEYCLOAK_HOST: keycloak
+    KEYCLOAK_PORT: 8082
+    MORI_HOST: mori-controller
+    MORI_PORT: 3014
+    OPENWEBUI_HOST: openwebui
+    OPENWEBUI_PORT: 3003
+    FLOWISE_HOST: flowise
+    FLOWISE_PORT: 3002
+    DATAPLANE_HOST: dataplane
+    DATAPLANE_PORT: 3001
+
+  local:
+    DB_HOST: localhost
+    DB_PORT: 5432
+    REDIS_HOST: localhost
+    REDIS_PORT: 6379
+    MISO_HOST: localhost
+    MISO_PORT: 3010
+    KEYCLOAK_HOST: localhost
+    KEYCLOAK_PORT: 8082
+    MORI_HOST: localhost
+    MORI_PORT: 3014
+    OPENWEBUI_HOST: localhost
+    OPENWEBUI_PORT: 3013
+    FLOWISE_HOST: localhost
+    FLOWISE_PORT: 3012
+    DATAPLANE_HOST: localhost
+    DATAPLANE_PORT: 3011
+

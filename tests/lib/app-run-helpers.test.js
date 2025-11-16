@@ -1,365 +1,58 @@
 /**
- * Tests for AI Fabrix Builder Application Run Helper Functions
- *
- * @fileoverview Unit tests for app-run.js helper functions
- * @author AI Fabrix Team
- * @version 2.0.0
+ * Tests for run .env generation environment (docker)
  */
 
-const fs = require('fs').promises;
-const fsSync = require('fs');
-const path = require('path');
-const os = require('os');
-
-// Mock execAsync to avoid actual Docker builds
-jest.mock('util', () => ({
-  promisify: jest.fn(() => jest.fn())
+jest.mock('../../lib/secrets', () => ({
+  generateEnvFile: jest.fn().mockResolvedValue('/tmp/.env')
 }));
 
-// Mock config and devConfig
-jest.mock('../../lib/config', () => {
-  const mockGetDeveloperId = jest.fn().mockResolvedValue(1);
-  const mockSetDeveloperId = jest.fn().mockResolvedValue();
-  const mockGetConfig = jest.fn().mockResolvedValue({ 'developer-id': 1 });
-  const mockSaveConfig = jest.fn().mockResolvedValue();
-  const mockClearConfig = jest.fn().mockResolvedValue();
+jest.mock('../../lib/config', () => ({
+  getDeveloperId: jest.fn().mockResolvedValue(0)
+}));
 
-  return {
-    getDeveloperId: mockGetDeveloperId,
-    setDeveloperId: mockSetDeveloperId,
-    getConfig: mockGetConfig,
-    saveConfig: mockSaveConfig,
-    clearConfig: mockClearConfig
-  };
-});
+jest.mock('../../lib/utils/build-copy', () => ({
+  getDevDirectory: jest.fn().mockReturnValue('/tmp/dev/myapp'),
+  copyBuilderToDevDirectory: jest.fn().mockResolvedValue('/tmp/dev/myapp')
+}));
 
-jest.mock('../../lib/utils/dev-config', () => {
-  const mockGetDevPorts = jest.fn((id) => ({
-    app: 3000 + (id * 100),
-    postgres: 5432 + (id * 100),
-    redis: 6379 + (id * 100),
-    pgadmin: 5050 + (id * 100),
-    redisCommander: 8081 + (id * 100)
-  }));
+jest.mock('../../lib/utils/compose-generator', () => ({
+  generateDockerCompose: jest.fn().mockResolvedValue('services: {}')
+}));
 
-  return {
-    getDevPorts: mockGetDevPorts
-  };
-});
-
-const appRun = require('../../lib/app-run');
-
-describe('Application Run Helper Functions', () => {
-  let tempDir;
-  let originalCwd;
-
-  beforeEach(() => {
-    // Create temporary directory for tests
-    tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));
-    originalCwd = process.cwd();
-    process.chdir(tempDir);
-  });
-
-  afterEach(async() => {
-    // Clean up temporary directory
-    process.chdir(originalCwd);
-    await fs.rm(tempDir, { recursive: true, force: true });
-    // Clean up dev directories
-    const aifabrixDir = path.join(os.homedir(), '.aifabrix');
-    if (fsSync.existsSync(aifabrixDir)) {
-      const entries = await fs.readdir(aifabrixDir);
-      for (const entry of entries) {
-        if (entry.startsWith('test-app-dev-')) {
-          const entryPath = path.join(aifabrixDir, entry);
-          await fs.rm(entryPath, { recursive: true, force: true });
-        }
-      }
+jest.mock('fs', () => {
+  const actualFs = jest.requireActual('fs');
+  const existsSync = jest.fn((p) => {
+    const str = String(p || '');
+    if (str.includes('/builder/myapp/.env') || str.endsWith('/tmp/dev/myapp')) {
+      return true;
     }
+    return false;
+  });
+  return {
+    ...actualFs,
+    existsSync,
+    readFileSync: jest.fn(),
+    statSync: jest.fn(),
+    promises: {
+      ...actualFs.promises,
+      copyFile: jest.fn().mockResolvedValue(),
+      writeFile: jest.fn().mockResolvedValue()
+    }
+  };
+});
+
+const secrets = require('../../lib/secrets');
+const { prepareEnvironment } = require('../../lib/app-run-helpers');
+
+describe('Run .env generation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('checkImageExists', () => {
-    it('should return true when image exists', async() => {
-      // Mock the execAsync function for this test
-      const originalExecAsync = require('../../lib/app-run').checkImageExists;
-      jest.spyOn(require('../../lib/app-run'), 'checkImageExists')
-        .mockImplementation(async(appName) => {
-          return appName === 'test-app';
-        });
-
-      const result = await appRun.checkImageExists('test-app');
-      expect(result).toBe(true);
-    });
-
-    it('should return false when image does not exist', async() => {
-      jest.spyOn(appRun, 'checkImageExists')
-        .mockImplementation(async() => false);
-
-      const result = await appRun.checkImageExists('test-app');
-      expect(result).toBe(false);
-    });
-
-    it('should handle exec errors gracefully', async() => {
-      // This tests the error catch block in checkImageExists
-      const { exec } = require('child_process');
-      const execAsync = require('../../lib/app-run');
-      jest.spyOn(require('util'), 'promisify').mockReturnValue(() =>
-        Promise.reject(new Error('Docker error'))
-      );
-
-      // Force the function to use the mocked execAsync
-      const result = await appRun.checkImageExists('test-app');
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('checkContainerRunning', () => {
-    it('should return true when container is running', async() => {
-      jest.spyOn(appRun, 'checkContainerRunning')
-        .mockImplementation(async() => true);
-
-      const result = await appRun.checkContainerRunning('test-app');
-      expect(result).toBe(true);
-    });
-
-    it('should return false when container is not running', async() => {
-      jest.spyOn(appRun, 'checkContainerRunning')
-        .mockImplementation(async() => false);
-
-      const result = await appRun.checkContainerRunning('test-app');
-      expect(result).toBe(false);
-    });
-
-    it('should handle exec errors gracefully', async() => {
-      jest.spyOn(require('util'), 'promisify').mockReturnValue(() =>
-        Promise.reject(new Error('Docker error'))
-      );
-
-      const result = await appRun.checkContainerRunning('test-app');
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('checkPortAvailable', () => {
-    it('should return true when port is available', async() => {
-      // Mock checkPortAvailable to return true (avoid actual port binding)
-      jest.spyOn(appRun, 'checkPortAvailable').mockResolvedValue(true);
-      const result = await appRun.checkPortAvailable(9999);
-      expect(result).toBe(true);
-      appRun.checkPortAvailable.mockRestore();
-    });
-
-    it('should return false when port is in use', async() => {
-      // Mock the port check to avoid actual socket binding
-      jest.spyOn(appRun, 'checkPortAvailable').mockResolvedValue(false);
-
-      const result = await appRun.checkPortAvailable(3000);
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('generateDockerCompose', () => {
-    it('should generate compose content for TypeScript app', async() => {
-      // Create .env file with DB_PASSWORD in dev directory (where generateDockerCompose looks for it)
-      const appName = 'test-app';
-      const appDir = path.join(tempDir, 'builder', appName);
-      fsSync.mkdirSync(appDir, { recursive: true });
-      // Also create .env in dev directory (where generateDockerCompose reads from)
-      // Dev > 0: applications-dev-{id}/{appName}-dev-{id}/
-      const devDir = path.join(os.homedir(), '.aifabrix', 'applications-dev-1', `${appName}-dev-1`);
-      fsSync.mkdirSync(devDir, { recursive: true });
-      fsSync.writeFileSync(path.join(devDir, '.env'), 'DB_PASSWORD=secret123\n');
-
-      const config = {
-        language: 'typescript',
-        port: 3000,
-        services: { database: true },
-        healthCheck: { path: '/health', interval: 30 }
-      };
-
-      const result = await appRun.generateDockerCompose('test-app', config, { port: 3001 });
-
-      expect(result).toContain('test-app');
-      expect(result).toContain('3001:3000');
-      expect(result).toContain('aifabrix-dev1-test-app');
-      expect(result).toContain('infra-dev1-aifabrix-network');
-    });
-
-    it('should generate compose content for Python app', async() => {
-      // Create .env file with DB_PASSWORD in dev directory (where generateDockerCompose looks for it)
-      const appName = 'test-app';
-      const appDir = path.join(tempDir, 'builder', appName);
-      fsSync.mkdirSync(appDir, { recursive: true });
-      // Also create .env in dev directory (where generateDockerCompose reads from)
-      // Dev > 0: applications-dev-{id}/{appName}-dev-{id}/
-      const devDir = path.join(os.homedir(), '.aifabrix', 'applications-dev-1', `${appName}-dev-1`);
-      fsSync.mkdirSync(devDir, { recursive: true });
-      fsSync.writeFileSync(path.join(devDir, '.env'), 'DB_PASSWORD=secret123\n');
-
-      const config = {
-        language: 'python',
-        port: 8000,
-        services: { database: false },
-        healthCheck: { path: '/health', interval: 30 }
-      };
-
-      const result = await appRun.generateDockerCompose('test-app', config, { port: 8001 });
-
-      expect(result).toContain('test-app');
-      expect(result).toContain('8001:8000');
-      expect(result).toContain('aifabrix-dev1-test-app');
-    });
-
-    it('should throw error for unsupported language', async() => {
-      const config = {
-        language: 'unsupported',
-        port: 3000
-      };
-
-      await expect(appRun.generateDockerCompose('test-app', config, {}))
-        .rejects.toThrow('Docker Compose template not found for language: unsupported');
-    });
-  });
-
-  describe('stopAndRemoveContainer', () => {
-    it('should handle container not existing gracefully', async() => {
-      // This test exercises the real implementation
-      // Should not throw when container doesn't exist
-      await expect(appRun.stopAndRemoveContainer('nonexistent-container'))
-        .resolves.not.toThrow();
-    });
-
-    it('should handle stop command errors gracefully', async() => {
-      // Mock execAsync to fail on first call (docker stop)
-      jest.spyOn(require('util'), 'promisify').mockReturnValue(() =>
-        Promise.reject(new Error('Container not found'))
-      );
-
-      // Should not throw
-      await expect(appRun.stopAndRemoveContainer('test-container'))
-        .resolves.not.toThrow();
-    });
-  });
-
-  describe('waitForHealthCheck', () => {
-    it('should resolve when container becomes healthy', async() => {
-      jest.spyOn(appRun, 'waitForHealthCheck')
-        .mockImplementation(async() => {
-          // Simulate successful health check
-          return Promise.resolve();
-        });
-
-      await expect(appRun.waitForHealthCheck('test-app', 2)).resolves.not.toThrow();
-    });
-
-    it('should throw error when container becomes unhealthy', async() => {
-      jest.spyOn(appRun, 'waitForHealthCheck')
-        .mockImplementation(async() => {
-          throw new Error('Container aifabrix-test-app is unhealthy');
-        });
-
-      await expect(appRun.waitForHealthCheck('test-app', 2))
-        .rejects.toThrow('Container aifabrix-test-app is unhealthy');
-    });
-
-    it('should timeout after specified duration', async() => {
-      jest.spyOn(appRun, 'waitForHealthCheck')
-        .mockImplementation(async() => {
-          throw new Error('Health check timeout after 2 seconds');
-        });
-
-      await expect(appRun.waitForHealthCheck('test-app', 2))
-        .rejects.toThrow('Health check timeout after 2 seconds');
-    });
-
-    it('should handle checkImageExists errors', async() => {
-      const execAsync = jest.fn().mockRejectedValueOnce(new Error('Docker error'));
-
-      const { promisify } = require('util');
-      jest.spyOn(require('util'), 'promisify').mockReturnValue(execAsync);
-
-      const result = await appRun.checkImageExists('test-app');
-      expect(result).toBe(false);
-    });
-
-    it('should handle checkContainerRunning errors', async() => {
-      const execAsync = jest.fn().mockRejectedValueOnce(new Error('Docker error'));
-
-      const { promisify } = require('util');
-      jest.spyOn(require('util'), 'promisify').mockReturnValue(execAsync);
-
-      const result = await appRun.checkContainerRunning('test-app');
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('Error Scenarios', () => {
-    it('should handle Docker compose generation errors', async() => {
-      const config = {
-        language: 'invalid-language',
-        port: 3000
-      };
-
-      await expect(appRun.generateDockerCompose('test-app', config, {}))
-        .rejects.toThrow('Docker Compose template not found');
-    });
-
-    it('should handle port conflicts', async() => {
-      // Mock the port check to avoid actual socket binding
-      jest.spyOn(appRun, 'checkPortAvailable').mockResolvedValue(false);
-
-      const result = await appRun.checkPortAvailable(3000);
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('runApp', () => {
-    beforeEach(() => {
-      // Create builder directory structure
-      const builderPath = path.join(tempDir, 'builder', 'test-app');
-      fsSync.mkdirSync(builderPath, { recursive: true });
-
-      // Create variables.yaml
-      const variables = {
-        app: { key: 'test-app', displayName: 'Test App', port: 3000 },
-        build: { language: 'typescript' },
-        services: { database: true }
-      };
-      fsSync.writeFileSync(
-        path.join(builderPath, 'variables.yaml'),
-        require('js-yaml').dump(variables)
-      );
-
-      // Create env.template to avoid missing file errors
-      fsSync.writeFileSync(
-        path.join(builderPath, 'env.template'),
-        'PORT=3000\nDATABASE_URL=kv://databases-test-app-0-urlKeyVault'
-      );
-    });
-
-    it('should throw error if app name is empty', async() => {
-      await expect(appRun.runApp('')).rejects.toThrow('Application name is required');
-    });
-
-    it('should throw error if app name is not a string', async() => {
-      await expect(appRun.runApp(null)).rejects.toThrow('Application name is required');
-    });
-
-    it('should throw error if configuration file not found', async() => {
-      // Remove the variables.yaml file
-      fsSync.unlinkSync(path.join(tempDir, 'builder', 'test-app', 'variables.yaml'));
-
-      await expect(appRun.runApp('test-app'))
-        .rejects.toThrow('Application configuration not found');
-    });
-
-    it('should throw error if Docker image does not exist', async() => {
-      const validator = require('../../lib/validator');
-      jest.spyOn(appRun, 'checkImageExists').mockResolvedValue(false);
-      jest.spyOn(validator, 'validateApplication').mockResolvedValue({ valid: true, variables: { errors: [] } });
-
-      await expect(appRun.runApp('test-app'))
-        .rejects.toThrow('Docker image test-app:latest not found');
-    });
-
+  it('uses docker environment when generating .env during run prepare', async() => {
+    const appConfig = { port: 3000 };
+    await prepareEnvironment('myapp', appConfig, {});
+    expect(secrets.generateEnvFile).toHaveBeenCalledWith('myapp', null, 'docker');
   });
 });
+

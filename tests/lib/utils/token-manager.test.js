@@ -787,5 +787,257 @@ describe('Token Manager Module', () => {
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Failed to refresh device token'));
     });
   });
+
+  describe('getDeploymentAuth', () => {
+    const controllerUrl = 'http://localhost:3010';
+    const environment = 'miso';
+    const appName = 'keycloak';
+    let getOrRefreshDeviceTokenSpy;
+    let getOrRefreshClientTokenSpy;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    afterEach(() => {
+      // Restore spies after each test if they exist
+      if (getOrRefreshDeviceTokenSpy) {
+        getOrRefreshDeviceTokenSpy.mockRestore();
+      }
+      if (getOrRefreshClientTokenSpy) {
+        getOrRefreshClientTokenSpy.mockRestore();
+      }
+    });
+
+    it('should return device token when available (Priority 1)', async() => {
+      const mockDeviceToken = {
+        token: 'device-token-123',
+        controller: controllerUrl,
+        refreshToken: 'refresh-token',
+        expiresAt: new Date(Date.now() + 3600000).toISOString()
+      };
+
+      // Mock the underlying config functions that getOrRefreshDeviceToken uses
+      config.getDeviceToken.mockResolvedValue(mockDeviceToken);
+      config.isTokenExpired.mockReturnValue(false);
+
+      const result = await tokenManager.getDeploymentAuth(controllerUrl, environment, appName);
+
+      expect(result.type).toBe('bearer');
+      expect(result.token).toBe('device-token-123');
+      expect(result.controller).toBe(controllerUrl);
+    });
+
+    it('should return client token when device token unavailable (Priority 2)', async() => {
+      // Mock device token as unavailable
+      config.getDeviceToken.mockResolvedValue(null);
+
+      const mockClientToken = {
+        token: 'client-token-456',
+        controller: controllerUrl,
+        expiresAt: new Date(Date.now() + 3600000).toISOString()
+      };
+
+      // Mock the underlying config functions that getOrRefreshClientToken uses
+      config.getClientToken.mockResolvedValue(mockClientToken);
+      config.isTokenExpired.mockReturnValue(false);
+
+      const result = await tokenManager.getDeploymentAuth(controllerUrl, environment, appName);
+
+      expect(result.type).toBe('bearer');
+      expect(result.token).toBe('client-token-456');
+      expect(result.controller).toBe(controllerUrl);
+    });
+
+    it('should return client credentials when device and client tokens unavailable (Priority 3)', async() => {
+      // Mock device token as unavailable
+      config.getDeviceToken.mockResolvedValue(null);
+      // Mock client token as unavailable - this will cause getOrRefreshClientToken to try to refresh
+      config.getClientToken.mockResolvedValue(null);
+      // Mock refreshClientToken to fail (no credentials available for refresh)
+      // This will cause getOrRefreshClientToken to throw, which getDeploymentAuth catches
+      // and then falls back to loading credentials directly
+      api.makeApiCall.mockRejectedValue(new Error('Credentials not found'));
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump({
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      }));
+
+      const logger = require('../../../lib/utils/logger');
+      logger.warn.mockImplementation(() => {});
+
+      const result = await tokenManager.getDeploymentAuth(controllerUrl, environment, appName);
+
+      expect(result.type).toBe('credentials');
+      expect(result.clientId).toBe('test-client-id');
+      expect(result.clientSecret).toBe('test-client-secret');
+      expect(result.controller).toBe(controllerUrl);
+    });
+
+    it('should throw error when no authentication method available', async() => {
+      // Mock device token as unavailable
+      config.getDeviceToken.mockResolvedValue(null);
+      // Mock client token as unavailable
+      config.getClientToken.mockResolvedValue(null);
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+      await expect(
+        tokenManager.getDeploymentAuth(controllerUrl, environment, appName)
+      ).rejects.toThrow('No authentication method available');
+    });
+
+    it('should handle client token error and fallback to credentials', async() => {
+      // Mock device token as unavailable
+      config.getDeviceToken.mockResolvedValue(null);
+      // Mock client token to throw error
+      config.getClientToken.mockRejectedValue(new Error('Client token failed'));
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump({
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      }));
+
+      const logger = require('../../../lib/utils/logger');
+      logger.warn.mockImplementation(() => {});
+
+      const result = await tokenManager.getDeploymentAuth(controllerUrl, environment, appName);
+
+      expect(result.type).toBe('credentials');
+      expect(result.clientId).toBe('test-client-id');
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Client token unavailable'));
+    });
+
+    it('should throw error when controllerUrl is invalid', async() => {
+      await expect(
+        tokenManager.getDeploymentAuth('', environment, appName)
+      ).rejects.toThrow('Controller URL is required');
+
+      await expect(
+        tokenManager.getDeploymentAuth(null, environment, appName)
+      ).rejects.toThrow('Controller URL is required');
+    });
+
+    it('should throw error when environment is invalid', async() => {
+      await expect(
+        tokenManager.getDeploymentAuth(controllerUrl, '', appName)
+      ).rejects.toThrow('Environment is required');
+    });
+
+    it('should throw error when appName is invalid', async() => {
+      await expect(
+        tokenManager.getDeploymentAuth(controllerUrl, environment, '')
+      ).rejects.toThrow('App name is required');
+    });
+  });
+
+  describe('extractClientCredentials', () => {
+    const appKey = 'keycloak';
+    const envKey = 'miso';
+
+    it('should return credentials when type is credentials and both provided', async() => {
+      const authConfig = {
+        type: 'credentials',
+        clientId: 'test-client-id',
+        clientSecret: 'test-client-secret',
+        controller: 'http://localhost:3010'
+      };
+
+      const result = await tokenManager.extractClientCredentials(authConfig, appKey, envKey);
+
+      expect(result.clientId).toBe('test-client-id');
+      expect(result.clientSecret).toBe('test-client-secret');
+    });
+
+    it('should throw error when credentials type but clientId missing', async() => {
+      const authConfig = {
+        type: 'credentials',
+        clientSecret: 'test-client-secret',
+        controller: 'http://localhost:3010'
+      };
+
+      await expect(
+        tokenManager.extractClientCredentials(authConfig, appKey, envKey)
+      ).rejects.toThrow('Client ID and Client Secret are required');
+    });
+
+    it('should throw error when credentials type but clientSecret missing', async() => {
+      const authConfig = {
+        type: 'credentials',
+        clientId: 'test-client-id',
+        controller: 'http://localhost:3010'
+      };
+
+      await expect(
+        tokenManager.extractClientCredentials(authConfig, appKey, envKey)
+      ).rejects.toThrow('Client ID and Client Secret are required');
+    });
+
+    it('should return credentials from authConfig when bearer type and both provided', async() => {
+      const authConfig = {
+        type: 'bearer',
+        token: 'bearer-token-123',
+        clientId: 'test-client-id',
+        clientSecret: 'test-client-secret',
+        controller: 'http://localhost:3010'
+      };
+
+      const result = await tokenManager.extractClientCredentials(authConfig, appKey, envKey);
+
+      expect(result.clientId).toBe('test-client-id');
+      expect(result.clientSecret).toBe('test-client-secret');
+    });
+
+    it('should load credentials from secrets when bearer type and not in authConfig', async() => {
+      const authConfig = {
+        type: 'bearer',
+        token: 'bearer-token-123',
+        controller: 'http://localhost:3010'
+      };
+
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'loaded-client-id',
+        'keycloak-client-secretKeyVault': 'loaded-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      const result = await tokenManager.extractClientCredentials(authConfig, appKey, envKey);
+
+      expect(result.clientId).toBe('loaded-client-id');
+      expect(result.clientSecret).toBe('loaded-client-secret');
+      // Should store in authConfig
+      expect(authConfig.clientId).toBe('loaded-client-id');
+      expect(authConfig.clientSecret).toBe('loaded-client-secret');
+    });
+
+    it('should throw error when bearer type and credentials not found in secrets', async() => {
+      const authConfig = {
+        type: 'bearer',
+        token: 'bearer-token-123',
+        controller: 'http://localhost:3010'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+      await expect(
+        tokenManager.extractClientCredentials(authConfig, appKey, envKey)
+      ).rejects.toThrow('Client ID and Client Secret are required');
+    });
+
+    it('should throw error when invalid authentication type', async() => {
+      const authConfig = {
+        type: 'invalid',
+        controller: 'http://localhost:3010'
+      };
+
+      await expect(
+        tokenManager.extractClientCredentials(authConfig, appKey, envKey)
+      ).rejects.toThrow('Invalid authentication type');
+    });
+  });
 });
 

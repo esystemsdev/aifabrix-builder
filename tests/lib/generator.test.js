@@ -858,7 +858,6 @@ OTHER_VAR=value`;
         port: 3000,
         build: {
           envOutputPath: '../.env',
-          secrets: '../../secrets.local.yaml',
           dockerfile: 'Dockerfile.prod'
         }
       };
@@ -882,7 +881,6 @@ OTHER_VAR=value`;
 
       expect(deployment.build).toEqual({
         envOutputPath: '../.env',
-        secrets: '../../secrets.local.yaml',
         dockerfile: 'Dockerfile.prod'
       });
     });
@@ -892,9 +890,7 @@ OTHER_VAR=value`;
         app: { key: 'testapp', displayName: 'Test App' },
         port: 3000,
         deployment: {
-          controllerUrl: 'https://controller.example.com',
-          clientId: 'client-id-value',
-          clientSecret: 'client-secret-value'
+          controllerUrl: 'https://controller.example.com'
         }
       };
 
@@ -916,9 +912,7 @@ OTHER_VAR=value`;
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.deployment).toEqual({
-        controllerUrl: 'https://controller.example.com',
-        clientId: 'client-id-value',
-        clientSecret: 'client-secret-value'
+        controllerUrl: 'https://controller.example.com'
       });
     });
 
@@ -1293,9 +1287,7 @@ OTHER_VAR=value`;
         app: { key: 'testapp', displayName: 'Test App' },
         port: 3000,
         deployment: {
-          controllerUrl: 'http://controller.example.com',
-          clientId: 'client-id',
-          clientSecret: 'client-secret'
+          controllerUrl: 'http://controller.example.com'
         }
       };
 
@@ -1316,8 +1308,8 @@ OTHER_VAR=value`;
       const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
       const deployment = JSON.parse(writeCall[1]);
 
-      // http:// URLs should be filtered out
-      expect(deployment.deployment).not.toHaveProperty('controllerUrl');
+      // http:// URLs should be filtered out, so deployment should be undefined
+      expect(deployment.deployment).toBeUndefined();
     });
 
     it('should reject deployment config with empty strings', async() => {
@@ -1325,9 +1317,7 @@ OTHER_VAR=value`;
         app: { key: 'testapp', displayName: 'Test App' },
         port: 3000,
         deployment: {
-          controllerUrl: 'https://controller.example.com',
-          clientId: '   ',
-          clientSecret: ''
+          controllerUrl: 'https://controller.example.com'
         }
       };
 
@@ -1349,8 +1339,6 @@ OTHER_VAR=value`;
       const deployment = JSON.parse(writeCall[1]);
 
       // Empty strings should be filtered out
-      expect(deployment.deployment).not.toHaveProperty('clientId');
-      expect(deployment.deployment).not.toHaveProperty('clientSecret');
       expect(deployment.deployment.controllerUrl).toBe('https://controller.example.com');
     });
 

@@ -192,7 +192,9 @@ describe('Secrets Utils Module', () => {
     });
   });
 
-  describe('loadBuildSecrets', () => {
+  // loadBuildSecrets removed - functionality moved to config.yaml aifabrix-secrets
+  // Tests removed as function no longer exists
+  describe.skip('loadBuildSecrets (removed)', () => {
     const appName = 'testapp';
     const variablesPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
 

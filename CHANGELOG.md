@@ -1,3 +1,115 @@
+## [2.5.0] - 2025-11-16
+
+### Added
+- **New CLI Command: `aifabrix down [app] --volumes`**
+  - Stop and remove a specific application container: `aifabrix down myapp`
+  - Optionally remove the app's named Docker volume: `aifabrix down myapp --volumes`
+  - Preserves `builder/<app>` and `apps/<app>` files (no file deletions)
+  - Handles developer-specific volume naming (dev0 vs dev{id} patterns)
+  - New module: `lib/app-down.js` with comprehensive container and volume management
+- **Environment Configuration System**
+  - New `lib/utils/env-config-loader.js` utility for loading and merging environment configurations
+  - Supports base config from `lib/schema/env-config.yaml` with user overrides from `~/.aifabrix/config.yaml`
+  - Deep merging of environment variables for `local` and `docker` contexts
+  - Configurable via `aifabrix-env-config` key in `config.yaml`
+- **Environment Port Management**
+  - New `lib/utils/env-ports.js` utility for updating container PORT values
+  - Automatic developer-id offset calculation: `finalPort = basePort + (developerId * 100)`
+  - Supports both environment variable and config file developer-id sources
+  - Updates `.env` files in running containers with correct port values
+- **Environment Endpoint Rewriting**
+  - Enhanced `lib/utils/env-endpoints.js` with `rewriteInfraEndpoints()` function
+  - Dynamic service endpoint rewriting based on environment context (local vs docker)
+  - Infrastructure ports (Postgres, Redis) automatically adjusted for developer-id
+  - Uses `getEnvHosts()` to get service values from env-config system
+  - Supports config.yaml overrides for environment-specific endpoints
+- **Token Management System**
+  - New `lib/utils/token-manager.js` module for centralized token management
+  - Device token management with automatic refresh via refresh tokens
+  - Client token management with automatic refresh using client credentials
+  - Priority-based authentication: Device token → Client token → Client credentials
+  - Token expiration checking and automatic refresh on 401 errors
+  - Client credentials loading from `~/.aifabrix/secrets.local.yaml`
+  - Token storage in `~/.aifabrix/config.yaml` with expiration tracking
+- **Image Name Utilities**
+  - New `lib/utils/image-name.js` utility for developer-scoped Docker image names
+  - Format: `<base>-dev<developerId>` for developer builds
+  - Special handling for dev0: uses `<base>-extra` format
+  - Ensures consistent local build naming across developer environments
+- **Secrets Helpers Enhancement**
+  - New `lib/utils/secrets-helpers.js` with comprehensive secrets and environment processing
+  - Port offset handling for local and docker environments
+  - Environment variable interpolation with `${VAR}` syntax support
+  - Missing secrets detection and reporting
+  - URL port resolution for Docker environment context
+  - Hostname-to-service mapping for container-to-container communication
+- **Comprehensive Test Coverage**
+  - New test suite: `tests/lib/utils/env-generation.test.js` (1,454+ lines)
+  - New test suite: `tests/lib/utils/env-ports.test.js` (444+ lines)
+  - New test suite: `tests/lib/utils/env-config-loader.test.js` (202+ lines)
+  - New test suite: `tests/lib/utils/token-manager.test.js` (252+ lines)
+  - New test suite: `tests/lib/utils/image-name.test.js` (35+ lines)
+  - New test suite: `tests/lib/utils/secrets-helpers.port-offset.test.js` (152+ lines)
+  - New test suite: `tests/lib/utils/secrets-helpers.test.js` (117+ lines)
+  - Expanded tests for environment generation, port handling, and token management
+
+### Changed
+- **Environment Generation Flow**
+  - Fixed local `.env` file generation to use correct PORT from `build.localPort` or `port` in `variables.yaml`
+  - Fixed local `.env` file to use correct infrastructure endpoints (e.g., `redis://dev.aifabrix:6379` instead of `redis://redis:6379`)
+  - Implemented clear override chain for environment variables:
+    1. Base config from `lib/schema/env-config.yaml`
+    2. User config from `~/.aifabrix/config.yaml` → `aifabrix-env-config` file
+    3. Application config from `variables.yaml`
+    4. Developer-id adjustment: `finalPort = basePort + (developerId * 100)`
+  - Local environment: Uses `build.localPort` (or `port` fallback) with developer-id offset
+  - Docker environment: Uses `port` from `variables.yaml` with developer-id offset
+  - Infrastructure ports (Postgres, Redis) now correctly use base ports + developer-id offset
+- **Secrets Resolution**
+  - Enhanced `lib/secrets.js` with improved environment transformations
+  - `updatePortForDocker()` now follows proper override chain: env-config → config.yaml → variables.yaml → developer-id
+  - `adjustLocalEnvPortsInContent()` correctly reads `build.localPort` with fallback to `port`
+  - Improved port resolution for URLs in Docker environment context
+- **Build and Template Pipeline**
+  - Enhanced `lib/build.js` with improved environment file generation
+  - Updated `lib/templates.js` for better template rendering
+  - Improved `lib/env-reader.js` for environment variable processing
+  - Enhanced `lib/utils/build-copy.js` for file operations
+  - Updated `lib/utils/paths.js` for path resolution
+- **Infrastructure Templates**
+  - Updated `templates/infra/compose.yaml.hbs` with improved developer-id handling
+  - Generated `templates/infra/compose.yaml` now correctly uses numeric devId
+- **Application Templates**
+  - Updated `templates/applications/miso-controller/env.template` with correct environment variables
+- **API Authentication**
+  - Enhanced `lib/utils/api.js` with automatic token refresh on 401 errors
+  - `authenticatedApiCall()` now automatically refreshes device tokens when expired
+  - Improved error handling for authentication failures
+- **Configuration Management**
+  - Extended `lib/config.js` to support environment config file paths
+  - Added `getAifabrixEnvConfigPath()` for loading user env-config files
+  - Enhanced token storage with expiration tracking for device and client tokens
+- **Documentation Updates**
+  - Updated `docs/BUILDING.md` with environment generation details
+  - Updated `docs/CONFIGURATION.md` with env-config system documentation
+  - Updated `docs/DEVELOPER-ISOLATION.md` with port handling clarifications
+  - Updated `docs/CLI-REFERENCE.md` with `down` command documentation
+  - Updated `docs/DEPLOYING.md` with token management and authentication details
+  - Updated `docs/INFRASTRUCTURE.md`, `docs/RUNNING.md`, `docs/GITHUB-WORKFLOWS.md`, and `docs/QUICK-START.md`
+- **Test Suite Updates**
+  - Expanded and updated tests across `tests/lib/*.test.js` modules
+  - Updated `tests/lib/utils/*.test.js` with new utility test coverage
+  - Enhanced test fixtures for environment generation scenarios
+  - Improved test coverage for secrets resolution and port handling
+
+### Technical
+- **78 files changed** with 6,453 insertions and 1,700 deletions
+- Modular architecture improvements with focused utility modules
+- Improved separation of concerns for environment generation, port management, and token handling
+- Enhanced error handling and validation throughout the codebase
+- Comprehensive test coverage for all new features and improvements
+- ISO 27001 compliant implementation maintained throughout
+
 ## [2.4.0] - 2025-11-14
 
 ### Changed

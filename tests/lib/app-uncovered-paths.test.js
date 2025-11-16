@@ -180,7 +180,7 @@ describe('App Module - Uncovered Code Paths', () => {
 
       expect(updatedVariables.build).toBeDefined();
       expect(updatedVariables.build.context).toBe('../..');
-      expect(updatedVariables.build.envOutputPath).toBe(`apps/${appName}/.env`);
+      expect(updatedVariables.build.envOutputPath).toBe(`../../apps/${appName}/.env`);
     });
 
     it('should create build section if it does not exist', async() => {
@@ -212,7 +212,7 @@ describe('App Module - Uncovered Code Paths', () => {
 
       expect(updatedVariables.build).toBeDefined();
       expect(updatedVariables.build.context).toBe('../..');
-      expect(updatedVariables.build.envOutputPath).toBe(`apps/${appName}/.env`);
+      expect(updatedVariables.build.envOutputPath).toBe(`../../apps/${appName}/.env`);
     });
 
     it('should handle error when updating variables.yaml', async() => {

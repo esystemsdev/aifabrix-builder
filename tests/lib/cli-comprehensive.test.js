@@ -152,7 +152,7 @@ describe('CLI Comprehensive Tests', () => {
       setupCommands(mockProgram);
       expect(mockProgram.command).toHaveBeenCalledWith('login');
       expect(mockProgram.command).toHaveBeenCalledWith('up');
-      expect(mockProgram.command).toHaveBeenCalledWith('down');
+      expect(mockProgram.command).toHaveBeenCalledWith('down [app]');
       expect(mockProgram.command).toHaveBeenCalledWith('create <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('build <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('run <app>');
@@ -320,8 +320,8 @@ describe('CLI Comprehensive Tests', () => {
     it('should stop infrastructure without volumes', async() => {
       infra.stopInfra.mockResolvedValue();
 
-      const action = commandActions.down;
-      await action({});
+      const action = commandActions['down [app]'];
+      await action(undefined, {});
 
       expect(infra.stopInfra).toHaveBeenCalled();
       expect(infra.stopInfraWithVolumes).not.toHaveBeenCalled();
@@ -330,8 +330,8 @@ describe('CLI Comprehensive Tests', () => {
     it('should stop infrastructure with volumes', async() => {
       infra.stopInfraWithVolumes = jest.fn().mockResolvedValue();
 
-      const action = commandActions.down;
-      await action({ volumes: true });
+      const action = commandActions['down [app]'];
+      await action(undefined, { volumes: true });
 
       expect(infra.stopInfraWithVolumes).toHaveBeenCalled();
     });
@@ -339,8 +339,8 @@ describe('CLI Comprehensive Tests', () => {
     it('should handle stop errors', async() => {
       infra.stopInfra.mockRejectedValue(new Error('Stop failed'));
 
-      const action = commandActions.down;
-      await action({});
+      const action = commandActions['down [app]'];
+      await action(undefined, {});
 
       expect(console.error).toHaveBeenCalled();
       expect(process.exit).toHaveBeenCalledWith(1);

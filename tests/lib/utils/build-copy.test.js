@@ -26,6 +26,22 @@ describe('Build Copy Utilities', () => {
     process.chdir(tempDir);
   });
 
+  describe('string developerId preservation', () => {
+    it('should preserve developerId "01" in target directory', async() => {
+      const appName = 'test-app';
+      const developerId = '01';
+      const builderPath = path.join('builder', appName);
+
+      await fs.mkdir(builderPath, { recursive: true });
+      await fs.writeFile(path.join(builderPath, 'variables.yaml'), 'test: value');
+
+      const devDir = await buildCopy.copyBuilderToDevDirectory(appName, developerId);
+      const expectedPath = path.join(os.homedir(), '.aifabrix', 'applications-dev-01');
+      expect(devDir).toBe(expectedPath);
+      expect(fsSync.existsSync(path.join(devDir, 'variables.yaml'))).toBe(true);
+    });
+  });
+
   afterEach(async() => {
     // Clean up temporary directory
     process.chdir(originalCwd);
@@ -60,8 +76,8 @@ describe('Build Copy Utilities', () => {
 
       expect(devDir).toBeDefined();
       expect(fsSync.existsSync(devDir)).toBe(true);
-      // Verify path is correct for dev > 0
-      const expectedPath = path.join(os.homedir(), '.aifabrix', `applications-dev-${developerId}`, `${appName}-dev-${developerId}`);
+      // Verify path is correct for dev > 0 (root of applications-dev-{id})
+      const expectedPath = path.join(os.homedir(), '.aifabrix', `applications-dev-${developerId}`);
       expect(devDir).toBe(expectedPath);
 
       // Verify files were copied
@@ -176,9 +192,7 @@ describe('Build Copy Utilities', () => {
       expect(fsSync.existsSync(devDir2)).toBe(true);
       // Verify paths are correct
       expect(devDir1).toContain('applications-dev-1');
-      expect(devDir1).toContain(`${appName}-dev-1`);
       expect(devDir2).toContain('applications-dev-2');
-      expect(devDir2).toContain(`${appName}-dev-2`);
     });
 
     it('should copy files and directories in the same directory', async() => {
@@ -218,7 +232,7 @@ describe('Build Copy Utilities', () => {
 
       const devDir = buildCopy.getDevDirectory(appName, developerId);
 
-      const expectedPath = path.join(os.homedir(), '.aifabrix', `applications-dev-${developerId}`, `${appName}-dev-${developerId}`);
+      const expectedPath = path.join(os.homedir(), '.aifabrix', `applications-dev-${developerId}`);
       expect(devDir).toBe(expectedPath);
     });
 
@@ -237,9 +251,7 @@ describe('Build Copy Utilities', () => {
       const devDir2 = buildCopy.getDevDirectory('app2', 2);
 
       expect(devDir1).toContain('applications-dev-1');
-      expect(devDir1).toContain('app1-dev-1');
       expect(devDir2).toContain('applications-dev-2');
-      expect(devDir2).toContain('app2-dev-2');
       expect(devDir1).not.toBe(devDir2);
     });
   });

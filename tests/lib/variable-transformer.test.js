@@ -473,63 +473,18 @@ describe('Variable Transformer Module', () => {
         expect(result.build.envOutputPath).toBe('.env.production');
       });
 
-      it('should include build with secrets when not null/undefined/empty string', () => {
+      it('should not include build when undefined', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
           build: {
-            secrets: 'kv://secrets/build'
-          }
-        };
-
-        const result = transformVariablesForValidation(variables, defaultAppName);
-
-        expect(result.build.secrets).toBe('kv://secrets/build');
-      });
-
-      it('should not include secrets when null', () => {
-        const variables = {
-          app: { key: 'myapp' },
-          image: { name: 'myapp', tag: 'latest' },
-          build: {
-            secrets: null
-          }
-        };
-
-        const result = transformVariablesForValidation(variables, defaultAppName);
-
-        expect(result.build).toBeUndefined();
-      });
-
-      it('should exclude secrets when null but include other valid fields', () => {
-        const variables = {
-          app: { key: 'myapp' },
-          image: { name: 'myapp', tag: 'latest' },
-          build: {
-            secrets: null,
             envOutputPath: '.env'
           }
         };
 
         const result = transformVariablesForValidation(variables, defaultAppName);
 
-        expect(result.build).toBeDefined();
-        expect(result.build.secrets).toBeUndefined();
         expect(result.build.envOutputPath).toBe('.env');
-      });
-
-      it('should not include secrets when undefined', () => {
-        const variables = {
-          app: { key: 'myapp' },
-          image: { name: 'myapp', tag: 'latest' },
-          build: {
-            envOutputPath: '.env'
-          }
-        };
-
-        const result = transformVariablesForValidation(variables, defaultAppName);
-
-        expect(result.build.secrets).toBeUndefined();
       });
 
       it('should not include secrets when empty string', () => {
@@ -559,7 +514,6 @@ describe('Variable Transformer Module', () => {
         const result = transformVariablesForValidation(variables, defaultAppName);
 
         expect(result.build).toBeDefined();
-        expect(result.build.secrets).toBeUndefined();
         expect(result.build.localPort).toBe(3001);
       });
 
@@ -699,7 +653,6 @@ describe('Variable Transformer Module', () => {
           image: { name: 'myapp', tag: 'latest' },
           build: {
             envOutputPath: '.env',
-            secrets: 'kv://secrets',
             localPort: 3001,
             language: 'typescript',
             context: './src',
@@ -711,7 +664,6 @@ describe('Variable Transformer Module', () => {
 
         expect(result.build).toEqual({
           envOutputPath: '.env',
-          secrets: 'kv://secrets',
           localPort: 3001,
           language: 'typescript',
           context: './src',
@@ -777,26 +729,12 @@ describe('Variable Transformer Module', () => {
         expect(result.deployment).toBeUndefined();
       });
 
-      it('should include deployment with valid clientId', () => {
+      it('should not include deployment when controllerUrl is invalid', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
           deployment: {
-            clientId: 'my-client-id'
-          }
-        };
-
-        const result = transformVariablesForValidation(variables, defaultAppName);
-
-        expect(result.deployment.clientId).toBe('my-client-id');
-      });
-
-      it('should not include clientId when empty string', () => {
-        const variables = {
-          app: { key: 'myapp' },
-          image: { name: 'myapp', tag: 'latest' },
-          deployment: {
-            clientId: ''
+            controllerUrl: 'http://invalid'
           }
         };
 
@@ -805,137 +743,19 @@ describe('Variable Transformer Module', () => {
         expect(result.deployment).toBeUndefined();
       });
 
-      it('should not include clientId when whitespace only', () => {
+      it('should include deployment with valid controllerUrl', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
           deployment: {
-            clientId: '   '
-          }
-        };
-
-        const result = transformVariablesForValidation(variables, defaultAppName);
-
-        expect(result.deployment).toBeUndefined();
-      });
-
-      it('should not include clientId when invalid format (uppercase)', () => {
-        const variables = {
-          app: { key: 'myapp' },
-          image: { name: 'myapp', tag: 'latest' },
-          deployment: {
-            clientId: 'MY-CLIENT-ID'
-          }
-        };
-
-        const result = transformVariablesForValidation(variables, defaultAppName);
-
-        expect(result.deployment).toBeUndefined();
-      });
-
-      it('should not include clientId when contains invalid characters', () => {
-        const variables = {
-          app: { key: 'myapp' },
-          image: { name: 'myapp', tag: 'latest' },
-          deployment: {
-            clientId: 'client_id_with_underscore'
-          }
-        };
-
-        const result = transformVariablesForValidation(variables, defaultAppName);
-
-        expect(result.deployment).toBeUndefined();
-      });
-
-      it('should include deployment with valid clientSecret (kv://)', () => {
-        const variables = {
-          app: { key: 'myapp' },
-          image: { name: 'myapp', tag: 'latest' },
-          deployment: {
-            clientSecret: 'kv://secrets/deployment/client-secret'
-          }
-        };
-
-        const result = transformVariablesForValidation(variables, defaultAppName);
-
-        expect(result.deployment.clientSecret).toBe('kv://secrets/deployment/client-secret');
-      });
-
-      it('should include deployment with valid clientSecret (any string)', () => {
-        const variables = {
-          app: { key: 'myapp' },
-          image: { name: 'myapp', tag: 'latest' },
-          deployment: {
-            clientSecret: 'plain-secret-value'
-          }
-        };
-
-        const result = transformVariablesForValidation(variables, defaultAppName);
-
-        expect(result.deployment.clientSecret).toBe('plain-secret-value');
-      });
-
-      it('should not include clientSecret when empty string', () => {
-        const variables = {
-          app: { key: 'myapp' },
-          image: { name: 'myapp', tag: 'latest' },
-          deployment: {
-            clientSecret: ''
-          }
-        };
-
-        const result = transformVariablesForValidation(variables, defaultAppName);
-
-        expect(result.deployment).toBeUndefined();
-      });
-
-      it('should not include clientSecret when whitespace only', () => {
-        const variables = {
-          app: { key: 'myapp' },
-          image: { name: 'myapp', tag: 'latest' },
-          deployment: {
-            clientSecret: '   '
-          }
-        };
-
-        const result = transformVariablesForValidation(variables, defaultAppName);
-
-        expect(result.deployment).toBeUndefined();
-      });
-
-      it('should not include deployment when all fields are invalid', () => {
-        const variables = {
-          app: { key: 'myapp' },
-          image: { name: 'myapp', tag: 'latest' },
-          deployment: {
-            controllerUrl: 'http://invalid',
-            clientId: 'INVALID',
-            clientSecret: ''
-          }
-        };
-
-        const result = transformVariablesForValidation(variables, defaultAppName);
-
-        expect(result.deployment).toBeUndefined();
-      });
-
-      it('should include deployment with all valid fields', () => {
-        const variables = {
-          app: { key: 'myapp' },
-          image: { name: 'myapp', tag: 'latest' },
-          deployment: {
-            controllerUrl: 'https://controller.example.com',
-            clientId: 'my-client-id',
-            clientSecret: 'kv://secrets/client-secret'
+            controllerUrl: 'https://controller.example.com'
           }
         };
 
         const result = transformVariablesForValidation(variables, defaultAppName);
 
         expect(result.deployment).toEqual({
-          controllerUrl: 'https://controller.example.com',
-          clientId: 'my-client-id',
-          clientSecret: 'kv://secrets/client-secret'
+          controllerUrl: 'https://controller.example.com'
         });
       });
     });
@@ -1054,16 +874,13 @@ describe('Variable Transformer Module', () => {
           },
           build: {
             envOutputPath: '.env.prod',
-            secrets: 'kv://secrets/build',
             localPort: 3001,
             language: 'typescript',
             context: './',
             dockerfile: 'Dockerfile.prod'
           },
           deployment: {
-            controllerUrl: 'https://controller.example.com',
-            clientId: 'my-client-id',
-            clientSecret: 'kv://secrets/deployment/secret'
+            controllerUrl: 'https://controller.example.com'
           },
           startupCommand: 'npm run start:prod',
           runtimeVersion: '18.0.0',
@@ -1087,7 +904,7 @@ describe('Variable Transformer Module', () => {
         expect(result.authentication.requiredRoles).toEqual([]);
         expect(result.repository.enabled).toBe(true);
         expect(result.build.dockerfile).toBe('Dockerfile.prod');
-        expect(result.deployment.clientId).toBe('my-client-id');
+        expect(result.deployment.controllerUrl).toBe('https://controller.example.com');
         expect(result.startupCommand).toBe('npm run start:prod');
         expect(result.runtimeVersion).toBe('18.0.0');
         expect(result.scaling).toEqual({ min: 2, max: 10 });

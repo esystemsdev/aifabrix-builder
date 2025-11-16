@@ -1,6 +1,6 @@
 # Configuration Reference
 
-→ [Back to Quick Start](QUICK-START.md)
+← [Back to Quick Start](QUICK-START.md)
 
 Simple reference for all configuration files.
 
@@ -66,14 +66,10 @@ Example: `Dockerfile`, `custom/Dockerfile.prod`
 Docker build context  
 Default: `.` (current directory)
 
-**build.secrets**  
-Path to secrets file  
-Default: `~/.aifabrix/secrets.yaml`  
-Example: `../../secrets.local.yaml`
-
 **build.envOutputPath**  
-Where to copy `.env` file  
-Example: `../.env`, `../src/.env`
+Path where a **local development** `.env` file is generated (separate from the docker `.env` file)  
+Example: `../../apps/myapp/.env`, `../src/.env`  
+**Note:** This generates a NEW `.env` file with local values (localhost hosts, `build.localPort`), not a copy of the docker `.env` file. If not set, only the docker `.env` file is generated at `builder/myapp/.env`.
 
 **requires.database**  
 Set `true` if you need database  
@@ -137,7 +133,6 @@ build:
   localPort: 3001
   dockerfile: ""  # Auto-generate
   context: .
-  secrets: "../../secrets.local.yaml"
   envOutputPath: ../.env
 
 healthCheck:
@@ -239,7 +234,7 @@ SMTP_PORT=587
 **Secrets file location:**
 - Default: `<home>/secrets.yaml`
   - `<home>` is resolved from `config.yaml` key `aifabrix-home` (defaults to `~/.aifabrix`)
-- Override for app: set `build.secrets` in `variables.yaml`
+- Override: set `aifabrix-secrets` in `config.yaml` to specify a default secrets file path
 
 **Example secrets.yaml:**
 ```yaml
@@ -325,8 +320,7 @@ aifabrix secure --secrets-encryption "YWJjZGVmZ2hpams="
 
 **What Gets Encrypted:**
 - User secrets: `~/.aifabrix/secrets.local.yaml`
-- App build secrets: Files specified in `build.secrets` in each app's `variables.yaml`
-- General secrets: File specified in `secrets-path` in `config.yaml` (if configured)
+- General secrets: File specified in `aifabrix-secrets` in `config.yaml` (if configured)
 
 **Automatic Decryption:**
 Encrypted secrets are automatically decrypted when:
@@ -350,7 +344,7 @@ Plaintext secrets continue to work if no encryption key is configured. The syste
 **Troubleshooting:**
 - **"Decryption failed"**: Encryption key in `config.yaml` doesn't match the key used for encryption
 - **"Invalid encryption key format"**: Key must be 32 bytes (64 hex chars or 44 base64 chars)
-- **"No secrets files found"**: Create `~/.aifabrix/secrets.local.yaml` or configure `build.secrets` in `variables.yaml`
+- **"No secrets files found"**: Create `~/.aifabrix/secrets.local.yaml` or configure `aifabrix-secrets` in `config.yaml`
 
 For more details, see [aifabrix secure](CLI-REFERENCE.md#aifabrix-secure) command documentation.
 
@@ -421,6 +415,7 @@ Stored in `~/.aifabrix/config.yaml`. Manages authentication tokens, selected env
 developer-id: 0
 aifabrix-home: "/custom/path"            # Optional: base directory for local files (default: ~/.aifabrix)
 aifabrix-secrets: "/path/to/secrets.yaml" # Optional: default secrets file path (default: <home>/secrets.yaml)
+aifabrix-env-config: "~/.aifabrix/custom-env-config.yaml" # Optional: custom env-config file path
 environment: miso  # Root-level: currently selected environment
 device:  # Root-level: device tokens keyed by controller URL (universal per controller)
   http://localhost:3010:
@@ -458,8 +453,16 @@ Base directory for AI Fabrix local files (apps, infra, secrets, logs)
 Default: `~/.aifabrix`
 
 **aifabrix-secrets**  
-Default secrets file path to use as fallback when app-level `build.secrets` is not set  
+Default secrets file path to use as fallback  
 Default: `<home>/secrets.yaml` (where `<home>` is `aifabrix-home`)
+Note: This path acts as a fallback-only source and never overrides values from `~/.aifabrix/secrets.local.yaml`.
+
+**aifabrix-env-config**  
+Path to user's custom environment configuration file that extends/overrides the system-level `env-config.yaml`  
+Set this variable in `~/.aifabrix/config.yaml` to point to your custom env-config.yaml file.  
+Example: `aifabrix-env-config: ~/.aifabrix/custom-env-config.yaml` or `aifabrix-env-config: ./my-env-config.yaml`  
+When set, the user's env-config file is merged with the base `lib/schema/env-config.yaml`. User values override base values, and new environments can be added.  
+This allows customizing host and port values for different deployment contexts (docker/local) without modifying the system file.
 
 **environment** (root-level)  
 Currently selected environment  
@@ -489,6 +492,18 @@ Client credentials token for app in environment
 - **Device tokens** - Stored at root level, keyed by controller URL (universal per controller, not per environment)
 - **Client tokens** - Stored per environment and app, automatically refreshed using credentials from secrets.local.yaml
 - **Refresh tokens** - Device tokens include refresh tokens for automatic renewal on 401 errors
+
+### Developer directories and generation flow
+
+- Directory names mirror the `developer-id` text in `~/.aifabrix/config.yaml`:
+  - Developer ID "0": `<home>/applications`
+  - Developer ID "NN": `<home>/applications-dev-NN` (e.g., `"01"` → `applications-dev-01`)
+- Application files are generated at the ROOT of that folder (no per-app subfolder).
+- Generation steps:
+  1. Create the applications folder (with or without `-dev-{id}`)
+  2. Clean the folder
+  3. Generate all builder/app files into the folder root
+  4. Build image and/or run using files from this root
 
 ---
 

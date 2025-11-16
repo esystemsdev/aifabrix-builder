@@ -1,0 +1,11 @@
+# User config.yaml for testing
+# This file simulates ~/.aifabrix/config.yaml
+
+environments:
+  local:
+    REDIS_HOST: custom-redis-host
+  docker:
+    REDIS_HOST: custom-redis-service
+
+aifabrix-localhost: 192.168.1.100
+

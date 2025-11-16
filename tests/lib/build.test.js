@@ -1,4 +1,27 @@
 /**
+ * Tests for build .env generation environment
+ */
+
+jest.mock('../../lib/secrets', () => ({
+  generateEnvFile: jest.fn().mockResolvedValue('/tmp/.env')
+}));
+
+const secretsModule = require('../../lib/secrets');
+const buildModule = require('../../lib/build');
+
+describe('Build .env generation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('uses docker environment when generating .env in postBuildTasks', async() => {
+    const buildConfig = { secrets: '/path/to/secrets.yaml' };
+    await buildModule.postBuildTasks('myapp', buildConfig);
+    expect(secretsModule.generateEnvFile).toHaveBeenCalledWith('myapp', '/path/to/secrets.yaml', 'docker');
+  });
+});
+
+/**
  * Tests for AI Fabrix Builder Build Module
  *
  * @fileoverview Unit tests for build.js module
@@ -12,6 +35,7 @@ const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
 const build = require('../../lib/build');
+const configModule = require('../../lib/config');
 const validator = require('../../lib/validator');
 const secrets = require('../../lib/secrets');
 const dockerBuild = require('../../lib/utils/docker-build');
@@ -241,9 +265,25 @@ describe('Build Module', () => {
 
       // Mock secrets
       jest.spyOn(secrets, 'generateEnvFile').mockResolvedValue('/path/to/.env');
+      // Ensure deterministic developer id for test stability
+      jest.spyOn(configModule, 'getDeveloperId').mockResolvedValue(0);
 
       const result = await build.buildApp(appName);
       expect(result).toBe(`${appName}:latest`);
+      // Ensure docker build used developer-scoped image name (dev<number> or extra)
+      const builtImageName = dockerBuild.executeDockerBuild.mock.calls[0][0];
+      expect(builtImageName).toMatch(new RegExp(`^${appName}-(dev\\d+|extra)$`));
+      // Ensure compatibility tag is created to base image name
+      const util = require('util');
+      const foundCompatibilityTag = util.promisify.mock.results.some(r => {
+        const fn = r.value;
+        return fn && fn.mock && fn.mock.calls.some(args =>
+          typeof args[0] === 'string' &&
+          args[0].includes('docker tag') &&
+          args[0].trim().endsWith(`${appName}:latest`)
+        );
+      });
+      expect(foundCompatibilityTag).toBe(true);
     });
 
     it('should use custom Dockerfile when specified', async() => {

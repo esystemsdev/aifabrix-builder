@@ -134,7 +134,7 @@ describe('Secrets Generator Module', () => {
 
       const result = secretsGenerator.generateSecretValue(key);
 
-      expect(result).toBe('postgresql://myapp_user:myapp_pass123@${DB_HOST}:5432/myapp');
+      expect(result).toBe('postgresql://myapp_user:myapp_pass123@${DB_HOST}:${DB_PORT}/myapp');
     });
 
     it('should handle app name with hyphens in database URL', () => {
@@ -142,7 +142,7 @@ describe('Secrets Generator Module', () => {
 
       const result = secretsGenerator.generateSecretValue(key);
 
-      expect(result).toBe('postgresql://my_app_name_user:my_app_name_pass123@${DB_HOST}:5432/my_app_name');
+      expect(result).toBe('postgresql://my_app_name_user:my_app_name_pass123@${DB_HOST}:${DB_PORT}/my_app_name');
     });
 
     it('should return empty string for URL keys that are not database URLs', () => {
@@ -591,7 +591,7 @@ API_KEY=kv://myapp-api-key
       const parsed = yaml.load(yamlContent);
 
       expect(parsed['databases-myapp-0-passwordKeyVault']).toBe('myapp_pass123');
-      expect(parsed['databases-myapp-0-urlKeyVault']).toBe('postgresql://myapp_user:myapp_pass123@${DB_HOST}:5432/myapp');
+      expect(parsed['databases-myapp-0-urlKeyVault']).toBe('postgresql://myapp_user:myapp_pass123@${DB_HOST}:${DB_PORT}/myapp');
       expect(parsed['myapp-api-key']).toBeTruthy();
       expect(typeof parsed['myapp-api-key']).toBe('string');
       expect(parsed['myapp-api-key'].length).toBe(44);

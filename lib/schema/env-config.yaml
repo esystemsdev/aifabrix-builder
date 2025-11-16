@@ -4,20 +4,20 @@
 environments:
   docker:
     DB_HOST: postgres
+    DB_PORT: 5432
     REDIS_HOST: redis
+    REDIS_PORT: 6379
     MISO_HOST: miso-controller
+    MISO_PORT: 3000
     KEYCLOAK_HOST: keycloak
-    MORI_HOST: mori-controller
-    OPENWEBUI_HOST: openwebui
-    FLOWISE_HOST: flowise
-    DATAPLANE_HOST: dataplane
+    KEYCLOAK_PORT: 8082
 
   local:
     DB_HOST: localhost
+    DB_PORT: 5432
     REDIS_HOST: localhost
+    REDIS_PORT: 6379
     MISO_HOST: localhost
+    MISO_PORT: 3010
     KEYCLOAK_HOST: localhost
-    MORI_HOST: localhost
-    OPENWEBUI_HOST: localhost
-    FLOWISE_HOST: localhost
-    DATAPLANE_HOST: localhost
+    KEYCLOAK_PORT: 8082

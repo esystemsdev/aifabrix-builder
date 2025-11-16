@@ -232,6 +232,7 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 - [Building](BUILDING.md) - Custom Dockerfiles and templates
 - [Running](RUNNING.md) - Local development workflow
 - [GitHub Workflows](GITHUB-WORKFLOWS.md) - CI/CD automation setup
+- [Developer Isolation](DEVELOPER-ISOLATION.md) - Run multiple developers on the same machine
 
 ### Install Platform Apps
 - [Keycloak](INFRASTRUCTURE.md#install-keycloak) - Authentication and user management
@@ -281,7 +282,8 @@ aifabrix doctor
 → Start Docker Desktop
 
 **"Port 5432 already in use"**  
-→ Stop other Postgres: `docker stop <container>`
+→ Stop other Postgres: `docker stop <container>`  
+→ Or use [Developer Isolation](DEVELOPER-ISOLATION.md) to avoid port conflicts
 
 **"Infrastructure not running"**  
 → `aifabrix up`

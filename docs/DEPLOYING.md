@@ -1,6 +1,6 @@
 # Deploying Applications
 
-→ [Back to Quick Start](QUICK-START.md)
+← [Back to Quick Start](QUICK-START.md)
 
 Deploy your application via [Azure Marketplace](https://azuremarketplace.microsoft.com/) or Miso Controller. Enterprise versions deploy to Azure Container Apps, while open source versions deploy to local Docker instances.
 

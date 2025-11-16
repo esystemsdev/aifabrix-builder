@@ -563,6 +563,109 @@ describe('Config Module', () => {
     });
   });
 
+  describe('secrets path accessors and precedence', () => {
+    it('getSecretsPath prefers aifabrix-secrets over legacy secrets-path', async() => {
+      const yamlLib = require('js-yaml');
+      const mockConfig = {
+        'developer-id': '0',
+        'aifabrix-secrets': '/canonical/secrets.yaml',
+        'secrets-path': '/legacy/secrets.yaml'
+      };
+      fsPromises.readFile.mockResolvedValue(yamlLib.dump(mockConfig));
+
+      const { getSecretsPath } = require('../../lib/config');
+      const result = await getSecretsPath();
+      expect(result).toBe('/canonical/secrets.yaml');
+    });
+
+    it('setSecretsPath validates input type', async() => {
+      const { setSecretsPath } = require('../../lib/config');
+      await expect(setSecretsPath(null)).rejects.toThrow('Secrets path is required and must be a string');
+      await expect(setSecretsPath(123)).rejects.toThrow('Secrets path is required and must be a string');
+    });
+
+    it('get/setAifabrixSecretsPath round-trip', async() => {
+      const yamlLib = require('js-yaml');
+      const mockFd = {
+        sync: jest.fn().mockResolvedValue(undefined),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
+      fsPromises.open.mockResolvedValue(mockFd);
+      fsPromises.mkdir.mockResolvedValue(undefined);
+      fsPromises.writeFile.mockResolvedValue(undefined);
+      // Initial config
+      fsPromises.readFile.mockResolvedValue(yamlLib.dump({ 'developer-id': '0' }));
+
+      const { setAifabrixSecretsPath, getAifabrixSecretsPath } = require('../../lib/config');
+      await setAifabrixSecretsPath('/canonical/secrets.yaml');
+
+      // After write, read back returns with the new key
+      fsPromises.readFile.mockResolvedValue(yamlLib.dump({
+        'developer-id': '0',
+        'aifabrix-secrets': '/canonical/secrets.yaml'
+      }));
+
+      const value = await getAifabrixSecretsPath();
+      expect(value).toBe('/canonical/secrets.yaml');
+    });
+
+    it('setAifabrixSecretsPath validates input type', async() => {
+      const { setAifabrixSecretsPath } = require('../../lib/config');
+      await expect(setAifabrixSecretsPath(null)).rejects.toThrow('Secrets path is required and must be a string');
+      await expect(setAifabrixSecretsPath(42)).rejects.toThrow('Secrets path is required and must be a string');
+    });
+  });
+
+  describe('getAifabrixEnvConfigPath / setAifabrixEnvConfigPath', () => {
+    it('get/setAifabrixEnvConfigPath round-trip', async() => {
+      const yamlLib = require('js-yaml');
+      const mockFd = {
+        sync: jest.fn().mockResolvedValue(undefined),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
+      fsPromises.open.mockResolvedValue(mockFd);
+      fsPromises.mkdir.mockResolvedValue(undefined);
+      fsPromises.writeFile.mockResolvedValue(undefined);
+      // Initial config
+      fsPromises.readFile.mockResolvedValue(yamlLib.dump({ 'developer-id': '0' }));
+
+      const { setAifabrixEnvConfigPath, getAifabrixEnvConfigPath } = require('../../lib/config');
+      await setAifabrixEnvConfigPath('/custom/env-config.yaml');
+
+      // After write, read back returns with the new key
+      fsPromises.readFile.mockResolvedValue(yamlLib.dump({
+        'developer-id': '0',
+        'aifabrix-env-config': '/custom/env-config.yaml'
+      }));
+
+      const value = await getAifabrixEnvConfigPath();
+      expect(value).toBe('/custom/env-config.yaml');
+    });
+
+    it('setAifabrixEnvConfigPath validates input type', async() => {
+      const { setAifabrixEnvConfigPath } = require('../../lib/config');
+      await expect(setAifabrixEnvConfigPath(null)).rejects.toThrow('Env config path is required and must be a string');
+      await expect(setAifabrixEnvConfigPath(42)).rejects.toThrow('Env config path is required and must be a string');
+    });
+
+    it('getAifabrixEnvConfigPath returns null when not set', async() => {
+      const yamlLib = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yamlLib.dump({ 'developer-id': '0' }));
+
+      const { getAifabrixEnvConfigPath } = require('../../lib/config');
+      const value = await getAifabrixEnvConfigPath();
+      expect(value).toBeNull();
+    });
+  });
+
+  describe('setCurrentEnvironment validation', () => {
+    it('throws for invalid environment input', async() => {
+      const { setCurrentEnvironment } = require('../../lib/config');
+      await expect(setCurrentEnvironment(null)).rejects.toThrow('Environment must be a non-empty string');
+      await expect(setCurrentEnvironment(123)).rejects.toThrow('Environment must be a non-empty string');
+    });
+  });
+
   describe('setCurrentEnvironment', () => {
     it('should update root-level environment', async() => {
       const mockConfig = {

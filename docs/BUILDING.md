@@ -1,6 +1,6 @@
 # Building Your App
 
-→ [Back to Quick Start](QUICK-START.md)
+← [Back to Quick Start](QUICK-START.md)
 
 How the build process works and how to customize it.
 
@@ -18,8 +18,16 @@ aifabrix build myapp
    - Looks in your app root
    - If not found, generates from template
 4. **Builds Docker image** with proper context
-5. **Tags as** `myapp:latest`
-6. **Generates `.env`** from env.template + secrets
+5. **Builds image as** `myapp-dev<developerId>:<tag>` and also tags `myapp:<tag>` for compatibility
+6. **Generates `.env` files** from env.template + secrets
+   - **Docker `.env`**: `builder/myapp/.env` - For container runtime
+     - Uses `port` from variables.yaml
+     - Uses docker service names (redis, postgres)
+     - All ports get developer-id adjustment
+   - **Local `.env`**: Generated at `build.envOutputPath` (if configured) - For local development
+     - Uses `build.localPort` (or `port` as fallback) from variables.yaml
+     - Uses localhost/dev.aifabrix for infrastructure hosts
+     - App port gets developer-id adjustment; infra ports use base + developer-id adjustment
 
 ### Output
 
@@ -28,7 +36,8 @@ aifabrix build myapp
 ✓ Detected language: typescript
 ✓ Using Dockerfile from: .aifabrix/Dockerfile.typescript
 ✓ Building image...
-✓ Image built: myapp:latest
+✓ Image built: myapp-dev123:latest
+✓ Tagged image: myapp:latest
 ✓ Generated .env file
 ```
 
@@ -203,21 +212,39 @@ build:
 ## What Gets Created
 
 ### Docker Image
-**Name:** `myapp:latest` (or `myapp:<tag>`)  
+**Name:** `myapp-dev<developerId>:<tag>` locally, plus compatibility tag `myapp:<tag>`  
 **Where:** Local Docker
 
 **View images:**
 ```bash
 docker images | grep myapp
+docker images | grep myapp-dev
 ```
 
-### .env File
+### .env Files
+
+**Docker `.env` file**  
 **Location:** `builder/myapp/.env`  
-**Contains:** Resolved environment variables (kv:// → actual values)
+**Contains:** Resolved environment variables for Docker container runtime
+- Uses docker service names (redis, postgres) for infrastructure
+- Uses `port` from variables.yaml for application port
+- All ports include developer-id adjustment
 
 **View:**
 ```bash
 cat builder/myapp/.env
+```
+
+**Local `.env` file** (if `build.envOutputPath` is configured)  
+**Location:** Path specified in `build.envOutputPath` (e.g., `../../apps/myapp/.env`)  
+**Contains:** Resolved environment variables for local development
+- Uses localhost/dev.aifabrix for infrastructure hosts
+- Uses `build.localPort` (or `port` as fallback) from variables.yaml
+- App port includes developer-id adjustment; infra ports use base + developer-id adjustment
+
+**View:**
+```bash
+cat apps/myapp/.env  # If envOutputPath points here
 ```
 
 ### Build Logs

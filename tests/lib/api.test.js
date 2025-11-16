@@ -14,6 +14,11 @@ jest.mock('../../lib/audit-logger', () => ({
   logApiCall: jest.fn().mockResolvedValue()
 }));
 
+// Mock token-manager module
+jest.mock('../../lib/utils/token-manager', () => ({
+  getOrRefreshDeviceToken: jest.fn()
+}));
+
 // CRITICAL: Ensure fetch is mocked before requiring the module
 // The global mock from tests/setup.js should already be set, but we ensure it's a jest.fn()
 if (!global.fetch || typeof global.fetch.mockResolvedValue !== 'function') {
@@ -24,6 +29,7 @@ if (!global.fetch || typeof global.fetch.mockResolvedValue !== 'function') {
 jest.setTimeout(30000);
 
 const { makeApiCall, authenticatedApiCall, initiateDeviceCodeFlow, pollDeviceCodeToken, displayDeviceCodeInfo } = require('../../lib/utils/api');
+const { getOrRefreshDeviceToken } = require('../../lib/utils/token-manager');
 
 describe('API Utilities', () => {
   beforeEach(() => {
@@ -258,6 +264,150 @@ describe('API Utilities', () => {
       expect(result.status).toBe(403);
       expect(result.formattedError).toBeDefined();
       expect(result.errorData).toBeDefined();
+    });
+
+    it('should handle 401 error with successful token refresh and retry', async() => {
+      // First call returns 401, second call (after refresh) returns success
+      let callCount = 0;
+      global.fetch.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          // First call: 401 error
+          return Promise.resolve({
+            ok: false,
+            status: 401,
+            statusText: 'Unauthorized',
+            text: jest.fn().mockResolvedValue(JSON.stringify({ error: 'Token expired' }))
+          });
+        }
+        // Second call: success after refresh
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: {
+            get: () => 'application/json'
+          },
+          json: jest.fn().mockResolvedValue({ id: 1 })
+        });
+      });
+
+      // Mock successful token refresh
+      getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'refreshed-token-123',
+        controller: 'https://api.example.com'
+      });
+
+      const result = await authenticatedApiCall('https://api.example.com/api/v1/test', {}, 'old-token');
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual({ id: 1 });
+      expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+
+      // Verify second call uses refreshed token
+      const secondCall = global.fetch.mock.calls[1];
+      expect(secondCall[1].headers['Authorization']).toBe('Bearer refreshed-token-123');
+    });
+
+    it('should handle 401 error when token refresh fails', async() => {
+      global.fetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        text: jest.fn().mockResolvedValue(JSON.stringify({ error: 'Token expired' }))
+      });
+
+      // Mock failed token refresh
+      getOrRefreshDeviceToken.mockResolvedValue(null);
+
+      const result = await authenticatedApiCall('https://api.example.com/api/v1/test', {}, 'old-token');
+
+      expect(result.success).toBe(false);
+      expect(result.status).toBe(401);
+      expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
+      // Should only call fetch once (no retry when refresh fails)
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle 401 error when token refresh throws error', async() => {
+      global.fetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        text: jest.fn().mockResolvedValue(JSON.stringify({ error: 'Token expired' }))
+      });
+
+      // Mock token refresh throwing error
+      getOrRefreshDeviceToken.mockRejectedValue(new Error('Refresh failed'));
+
+      const result = await authenticatedApiCall('https://api.example.com/api/v1/test', {}, 'old-token');
+
+      expect(result.success).toBe(false);
+      expect(result.status).toBe(401);
+      expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
+      // Should only call fetch once (no retry when refresh throws)
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should extract controller URL using regex when URL parsing fails', async() => {
+      // Mock URL constructor to throw (simulating invalid URL)
+      const originalURL = global.URL;
+      global.URL = jest.fn(() => {
+        throw new TypeError('Invalid URL');
+      });
+
+      global.fetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        text: jest.fn().mockResolvedValue(JSON.stringify({ error: 'Token expired' }))
+      });
+
+      getOrRefreshDeviceToken.mockResolvedValue(null);
+
+      // Use a URL that will cause URL parsing to fail but regex can match
+      // Note: The URL constructor will throw, so extractControllerUrl will use regex fallback
+      const malformedUrl = 'https://api.example.com/api/v1/test';
+
+      const result = await authenticatedApiCall(malformedUrl, {}, 'old-token');
+
+      expect(result.success).toBe(false);
+      expect(result.status).toBe(401);
+      // Should extract controller URL using regex fallback
+      expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
+
+      // Restore URL
+      global.URL = originalURL;
+    });
+
+    it('should return original URL when regex extraction fails', async() => {
+      // Mock URL constructor to throw
+      const originalURL = global.URL;
+      global.URL = jest.fn(() => {
+        throw new TypeError('Invalid URL');
+      });
+
+      global.fetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        text: jest.fn().mockResolvedValue(JSON.stringify({ error: 'Token expired' }))
+      });
+
+      getOrRefreshDeviceToken.mockResolvedValue(null);
+
+      // Use a URL that doesn't match the regex pattern
+      const invalidUrl = 'not-a-valid-url';
+
+      const result = await authenticatedApiCall(invalidUrl, {}, 'old-token');
+
+      expect(result.success).toBe(false);
+      expect(result.status).toBe(401);
+      // Should use original URL when regex fails
+      expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('not-a-valid-url');
+
+      // Restore URL
+      global.URL = originalURL;
     });
   });
 

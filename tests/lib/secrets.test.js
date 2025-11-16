@@ -56,6 +56,14 @@ jest.mock('chalk', () => {
   return mockChalk;
 });
 
+// Mock encryption helpers BEFORE requiring secrets
+jest.mock('../../lib/utils/secrets-encryption', () => {
+  return {
+    decryptSecret: jest.fn((val) => `decrypted(${val})`),
+    isEncrypted: (val) => typeof val === 'string' && val.startsWith('secure://')
+  };
+});
+
 // Mock config and dev-config BEFORE requiring secrets
 jest.mock('../../lib/config', () => ({
   getDeveloperId: jest.fn().mockResolvedValue(1),
@@ -70,6 +78,10 @@ jest.mock('../../lib/config', () => ({
   CONFIG_DIR: '/mock/config/dir',
   CONFIG_FILE: '/mock/config/dir/config.yaml'
 }));
+
+// Require config after mock is defined
+const config = require('../../lib/config');
+
 jest.mock('../../lib/utils/dev-config', () => ({
   getDevPorts: jest.fn((devId) => {
     const offset = devId * 100;
@@ -86,6 +98,27 @@ jest.mock('../../lib/utils/dev-config', () => ({
     redisCommander: 8081
   }))
 }));
+
+// Mock env-config-loader for buildEnvVarMap
+const mockEnvConfig = {
+  environments: {
+    local: {
+      DB_HOST: 'localhost',
+      DB_PORT: '5432',
+      REDIS_HOST: 'localhost',
+      REDIS_PORT: '6379'
+    },
+    docker: {
+      DB_HOST: 'postgres',
+      DB_PORT: '5432',
+      REDIS_HOST: 'redis',
+      REDIS_PORT: '6379'
+    }
+  }
+};
+
+// Don't mock env-config-loader - let it use real implementation with fs mocks
+// The tests set up fs.readFileSync to return env-config.yaml content
 
 const secrets = require('../../lib/secrets');
 const localSecrets = require('../../lib/utils/local-secrets');
@@ -324,11 +357,13 @@ environments:
     it('should generate .env file from template', async() => {
       const result = await secrets.generateEnvFile(appName);
 
-      expect(fs.writeFileSync).toHaveBeenCalledWith(
-        path.join(builderPath, '.env'),
-        'DATABASE_URL=admin123',
-        { mode: 0o600 }
-      );
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const call = fs.writeFileSync.mock.calls.find(c => c[0] === path.join(builderPath, '.env'));
+      expect(call).toBeDefined();
+      const written = call[1];
+      expect(written).toContain('DATABASE_URL=admin123');
+      // With dev-id 1 mocked in this test file, PORT should be appended (+100)
+      expect(written).toMatch(/^PORT=3100$/m);
       expect(result).toBe(path.join(builderPath, '.env'));
     });
 
@@ -1000,7 +1035,7 @@ environments:
     });
 
     it('should handle envOutputPath pointing to existing directory', async() => {
-      const outputPath = path.resolve(process.cwd(), '../app');
+      const outputPath = path.resolve(builderPath, '../app');
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template') ||
             filePath.includes('variables.yaml') ||
@@ -1738,6 +1773,93 @@ environments:
       os.homedir.mockReturnValue(mockHomeDir);
     });
 
+    it('should use canonical aifabrix-secrets when user and build secrets are absent', async() => {
+      const configMock = require('../../lib/config');
+      const canonicalPath = path.join(process.cwd(), 'canonical', 'secrets.yaml');
+      const canonicalSecrets = { 'postgres-passwordKeyVault': 'admin-from-canonical' };
+
+      configMock.getSecretsPath.mockResolvedValue(canonicalPath);
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === canonicalPath; // only canonical exists
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === canonicalPath) {
+          return yaml.dump(canonicalSecrets);
+        }
+        return '';
+      });
+
+      const result = await secrets.loadSecrets(undefined, 'myapp');
+      expect(result).toEqual(canonicalSecrets);
+    });
+
+    it('should not override user/build secrets with canonical aifabrix-secrets (fallback only)', async() => {
+      const configMock = require('../../lib/config');
+      const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const canonicalPath = path.join(process.cwd(), 'canonical', 'secrets.yaml');
+      const userSecrets = { 'myapp-client-idKeyVault': 'user-client-id' };
+      const canonicalSecrets = { 'myapp-client-idKeyVault': 'canonical-client-id', 'extra-secret': 'extra' };
+
+      configMock.getSecretsPath.mockResolvedValue(canonicalPath);
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === userSecretsPath || filePath === canonicalPath;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return yaml.dump(userSecrets);
+        }
+        if (filePath === canonicalPath) {
+          return yaml.dump(canonicalSecrets);
+        }
+        return '';
+      });
+
+      const result = await secrets.loadSecrets(undefined, 'myapp');
+      // User value should win for overlapping keys
+      expect(result['myapp-client-idKeyVault']).toBe('user-client-id');
+      // Canonical-only keys should be added as fallback
+      expect(result['extra-secret']).toBe('extra');
+    });
+
+    it('should ignore canonical aifabrix-secrets when invalid or non-object', async() => {
+      const configMock = require('../../lib/config');
+      const canonicalPath = path.join(process.cwd(), 'canonical', 'secrets.yaml');
+      const defaultSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+      const defaultSecrets = { 'postgres-passwordKeyVault': 'admin123' };
+
+      // Case 1: invalid YAML (readYamlAtPath will throw via yaml.load)
+      configMock.getSecretsPath.mockResolvedValue(canonicalPath);
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === canonicalPath) return true;
+        if (filePath === defaultSecretsPath) return true;
+        return false;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === canonicalPath) {
+          return 'invalid: yaml: content: ['; // invalid
+        }
+        if (filePath === defaultSecretsPath) {
+          return yaml.dump(defaultSecrets);
+        }
+        return '';
+      });
+      const resultInvalid = await secrets.loadSecrets(undefined, 'myapp');
+      expect(resultInvalid).toEqual(defaultSecrets);
+
+      // Case 2: non-object YAML (e.g., number)
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === canonicalPath) {
+          return '123'; // non-object
+        }
+        if (filePath === defaultSecretsPath) {
+          return yaml.dump(defaultSecrets);
+        }
+        return '';
+      });
+      const resultNonObject = await secrets.loadSecrets(undefined, 'myapp');
+      expect(resultNonObject).toEqual(defaultSecrets);
+    });
+
     it('should load from user secrets.local.yaml first', async() => {
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       const userSecrets = { 'myapp-client-idKeyVault': 'user-client-id' };
@@ -1761,7 +1883,7 @@ environments:
       expect(fs.readFileSync).toHaveBeenCalledWith(userSecretsPath, 'utf8');
     });
 
-    it('should fallback to build.secrets when value missing in user file', async() => {
+    it.skip('should fallback to build.secrets when value missing in user file (removed - use config.yaml aifabrix-secrets)', async() => {
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       const variablesPath = path.join(process.cwd(), 'builder', 'myapp', 'variables.yaml');
       const buildSecretsPath = path.resolve(path.dirname(variablesPath), '../../secrets.local.yaml');
@@ -1796,7 +1918,7 @@ environments:
       expect(result['myapp-client-secretKeyVault']).toBe('build-client-secret'); // From build.secrets
     });
 
-    it('should use build.secrets for empty values in user file', async() => {
+    it.skip('should use build.secrets for empty values in user file (removed - use config.yaml aifabrix-secrets)', async() => {
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       const variablesPath = path.join(process.cwd(), 'builder', 'myapp', 'variables.yaml');
       const buildSecretsPath = path.resolve(path.dirname(variablesPath), '../../secrets.local.yaml');
@@ -2196,7 +2318,12 @@ port: 3000
     });
 
     it('should copy .env to envOutputPath with localPort', async() => {
-      const outputPath = path.resolve(process.cwd(), '../app/.env');
+      const outputPath = path.resolve(builderPath, '../app/.env');
+
+      // Set developer-id to 0 for this test to avoid offset
+      // Reset the mock first, then set it to return 0
+      config.getDeveloperId.mockReset();
+      config.getDeveloperId.mockResolvedValue(0);
 
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('env.template') ||
@@ -2218,6 +2345,11 @@ port: 3000
     });
 
     it('should use port when localPort not specified', async() => {
+      // Set developer-id to 0 for this test to avoid offset
+      // Reset the mock first, then set it to return 0
+      config.getDeveloperId.mockReset();
+      config.getDeveloperId.mockResolvedValue(0);
+
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('env.template') ||
                filePath.includes('variables.yaml') ||
@@ -2258,7 +2390,7 @@ environments:
       await secrets.generateEnvFile(appName);
 
       const writeCalls = fs.writeFileSync.mock.calls;
-      const outputPath = path.resolve(process.cwd(), '../app/.env');
+      const outputPath = path.resolve(builderPath, '../app/.env');
       const outputCall = writeCalls.find(call => call[0] === outputPath);
       expect(outputCall).toBeDefined();
       expect(outputCall[1]).toContain('PORT=5000');
@@ -2307,7 +2439,7 @@ environments:
     });
 
     it('should create output directory if it does not exist', async() => {
-      const outputDir = path.resolve(process.cwd(), '../app');
+      const outputDir = path.resolve(builderPath, '../app');
       const outputPath = path.join(outputDir, '.env');
 
       fs.existsSync.mockImplementation((filePath) => {
@@ -2330,7 +2462,7 @@ environments:
     });
 
     it('should handle envOutputPath pointing to existing directory', async() => {
-      const outputDir = path.resolve(process.cwd(), '../app');
+      const outputDir = path.resolve(builderPath, '../app');
       const outputPath = path.join(outputDir, '.env');
 
       fs.existsSync.mockImplementation((filePath) => {
@@ -2386,6 +2518,8 @@ environments:
     beforeEach(() => {
       jest.clearAllMocks();
       os.homedir.mockReturnValue(mockHomeDir);
+      // Ensure developer-id is 1 for port offset tests (default is already 1, but ensure it's set after clearAllMocks)
+      config.getDeveloperId.mockResolvedValue(1);
 
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath === userSecretsPath) {
@@ -2393,7 +2527,8 @@ environments:
         }
         return filePath.includes('env.template') ||
                filePath.includes('secrets.yaml') ||
-               filePath.includes('env-config.yaml');
+               filePath.includes('env-config.yaml') ||
+               filePath.includes('variables.yaml');
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath === userSecretsPath) {
@@ -2411,6 +2546,9 @@ environments:
   local:
     REDIS_HOST: localhost
 `;
+        }
+        if (filePath.includes('variables.yaml')) {
+          return 'port: 3000';
         }
         return '';
       });
@@ -2443,7 +2581,10 @@ environments:
       expect(envCall[1]).toContain('REDIS_HOST=localhost:6479');
     });
 
-    it('should not update ports for docker environment', async() => {
+    it('should apply developer-id adjustment to infra ports for docker environment', async() => {
+      // Set developer-id to 1 for this test (default mock is already 1, but ensure it's set)
+      config.getDeveloperId.mockResolvedValue(1);
+
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath === userSecretsPath) {
           return true;
@@ -2467,6 +2608,8 @@ environments:
 environments:
   docker:
     REDIS_HOST: redis
+    REDIS_PORT: 6379
+    DB_PORT: 5432
   local:
     REDIS_HOST: localhost
 `;
@@ -2479,8 +2622,89 @@ environments:
       const writeCalls = fs.writeFileSync.mock.calls;
       const envCall = writeCalls.find(call => call[0].includes('.env') && !call[0].includes('../'));
       expect(envCall).toBeDefined();
-      expect(envCall[1]).toContain('DATABASE_PORT=5432');
-      expect(envCall[1]).toContain('REDIS_URL=redis://localhost:6379');
+      // Infra ports get developer-id adjustment: 5432 + 100 = 5532, 6379 + 100 = 6479
+      expect(envCall[1]).toContain('DATABASE_PORT=5532');
+      expect(envCall[1]).toContain('REDIS_URL=redis://redis:6479');
+    });
+  });
+
+  describe('decryptSecretsObject behavior', () => {
+    const encryption = require('../../lib/utils/secrets-encryption');
+    const configMock = require('../../lib/config');
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      os.homedir.mockReturnValue(mockHomeDir);
+    });
+
+    it('throws when encrypted values exist but no encryption key is configured', async() => {
+      const explicitPath = path.join(process.cwd(), 'secrets.encrypted.yaml');
+      const secretsYaml = yaml.dump({ 'secretKey': 'secure://iv:ciphertext:tag' });
+      configMock.getSecretsEncryptionKey.mockResolvedValue(null);
+      fs.existsSync.mockImplementation((filePath) => filePath === explicitPath);
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === explicitPath) return secretsYaml;
+        return '';
+      });
+
+      await expect(secrets.loadSecrets(explicitPath)).rejects.toThrow('Encrypted secrets found but no encryption key configured');
+    });
+
+    it('decrypts encrypted values when encryption key is set', async() => {
+      const explicitPath = path.join(process.cwd(), 'secrets.encrypted.yaml');
+      const secretsYaml = yaml.dump({
+        'encKey': 'secure://iv:ciphertext:tag',
+        'plainKey': 'value'
+      });
+      configMock.getSecretsEncryptionKey.mockResolvedValue('a'.repeat(64)); // hex-like
+      fs.existsSync.mockImplementation((filePath) => filePath === explicitPath);
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === explicitPath) return secretsYaml;
+        return '';
+      });
+      // decryptSecret mocked to prefix decrypted(...)
+      const result = await secrets.loadSecrets(explicitPath);
+      expect(result.encKey).toMatch(/^decrypted\(.+\)$/);
+      expect(result.plainKey).toBe('value');
+      expect(encryption.decryptSecret).toHaveBeenCalled();
+    });
+
+    it('propagates decryption errors with helpful message', async() => {
+      const explicitPath = path.join(process.cwd(), 'secrets.encrypted.yaml');
+      const secretsYaml = yaml.dump({ 'encKey': 'secure://iv:ciphertext:tag' });
+      configMock.getSecretsEncryptionKey.mockResolvedValue('a'.repeat(64));
+      fs.existsSync.mockImplementation((filePath) => filePath === explicitPath);
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === explicitPath) return secretsYaml;
+        return '';
+      });
+      const { decryptSecret } = require('../../lib/utils/secrets-encryption');
+      decryptSecret.mockImplementation(() => {
+        throw new Error('bad decrypt');
+      });
+
+      await expect(secrets.loadSecrets(explicitPath)).rejects.toThrow('Failed to decrypt secret \'encKey\': bad decrypt');
+    });
+  });
+
+  describe('getCanonicalSecretName', () => {
+    it('should convert typical env keys to canonical names', () => {
+      expect(secrets.getCanonicalSecretName('JWT_SECRET')).toBe('jwt-secret');
+      expect(secrets.getCanonicalSecretName('REDIS_PASSWORD')).toBe('redis-password');
+      expect(secrets.getCanonicalSecretName('DATABASE_URL')).toBe('database-url');
+      expect(secrets.getCanonicalSecretName('API KEY')).toBe('api-key');
+      expect(secrets.getCanonicalSecretName('PRIVATE-KEY')).toBe('private-key');
+    });
+
+    it('should collapse repeated separators and trim hyphens', () => {
+      expect(secrets.getCanonicalSecretName('___STRANGE___KEY___')).toBe('strange-key');
+      expect(secrets.getCanonicalSecretName('---A---B---')).toBe('a-b');
+    });
+
+    it('should handle invalid inputs gracefully', () => {
+      expect(secrets.getCanonicalSecretName('')).toBe('');
+      expect(secrets.getCanonicalSecretName(null)).toBe('');
+      expect(secrets.getCanonicalSecretName(undefined)).toBe('');
     });
   });
 });

@@ -1,5 +1,7 @@
 # Developer Isolation
 
+← [Back to Quick Start](QUICK-START.md)
+
 ## Overview
 
 The AI Fabrix Builder supports developer isolation, allowing multiple developers to run applications simultaneously on the same machine without port conflicts. Each developer has a unique numeric ID (1, 2, 3, etc.) that determines their port assignments and infrastructure resources.
@@ -104,8 +106,11 @@ Example for developer 1:
 ## Important Notes
 
 ### localPort in variables.yaml
-
-The `localPort` field in `variables.yaml` is **NOT changed**. It remains as configured (e.g., 3000). Only the Docker host port mapping uses developer-specific offsets.
+The `build.localPort` field in `variables.yaml` specifies the base application port for local development (e.g., 3000). This is used when generating the local `.env` file (at `build.envOutputPath`). For local development, generated `.env` files are adjusted to reflect developer-specific ports:
+- `PORT` is set to `baseAppPort + (developer-id * 100)` (e.g., 3100 for dev 1 when base is 3000).
+- The base port is determined by: `build.localPort` (if set) → `port` (fallback)
+- Any `http(s)://localhost:<baseAppPort>` occurrences (e.g., in `ALLOWED_ORIGINS`) are rewritten to use the developer-specific port.
+- **Note:** The docker `.env` file (`builder/myapp/.env`) always uses `port` from variables.yaml, not `build.localPort`.
 
 ### Dockerfile Ports
 
@@ -113,16 +118,43 @@ Dockerfiles use internal container ports (from `config.port` or `config.build?.c
 
 ### Environment Variables
 
-For **Docker context** (container-to-container communication):
-- `DATABASE_HOST=postgres` (service name)
-- `REDIS_URL=redis://redis:6379` (service name)
+- Split variables are used where applicable:
+  - `DB_HOST` and `DB_PORT`
+  - `REDIS_HOST` and `REDIS_PORT`
+  - Combined URLs (e.g., `REDIS_URL`) are constructed from host/port where present.
+  - PortAddition applies to all ports: `port + (developer-id * 100)`.
 
-For **local context** (host machine):
-- `DATABASE_HOST=localhost`
-- `DATABASE_PORT={devPostgresPort}` (dev-specific port)
-- `REDIS_URL=redis://localhost:{devRedisPort}` (dev-specific port)
+For docker context (builder/.env):
+- `DB_HOST=postgres`, `DB_PORT=5432 + PortAddition`
+- `REDIS_HOST=redis`, `REDIS_PORT=6379 + PortAddition`
+- `REDIS_URL=redis://redis:{REDIS_PORT}`
+- `PORT=variables.port + PortAddition`
 
-The `PORT` variable uses `localPort` from `variables.yaml` (unchanged), NOT the dev-specific port.
+For local context (apps/.env, generated when `build.envOutputPath` is set):
+- `DB_HOST=localhost` (or `aifabrix-localhost` override from config.yaml)
+- `DB_PORT=5432 + PortAddition`
+- `REDIS_HOST=localhost` (or `aifabrix-localhost` override from config.yaml)
+- `REDIS_PORT=6379 + PortAddition`
+- `REDIS_URL=redis://{REDIS_HOST}:{REDIS_PORT}`
+- `PORT=(build.localPort || variables.port) + PortAddition`
+
+**Port Override Chain for Local Context:**
+1. Start with `env-config.yaml` → `environments.local.PORT` (if exists)
+2. Override with `config.yaml` → `environments.local.PORT` (if exists)
+3. Override with `variables.yaml` → `build.localPort` (if exists)
+4. Fallback to `variables.yaml` → `port` (if build.localPort not set)
+5. Apply developer-id adjustment: `finalPort = basePort + (developerId * 100)`
+
+**Infrastructure Port Override Chain for Local Context:**
+1. Start with `env-config.yaml` → `environments.local.{REDIS_PORT|DB_PORT}` (if exists)
+2. Override with `config.yaml` → `environments.local.{REDIS_PORT|DB_PORT}` (if exists)
+3. Apply developer-id adjustment: `finalPort = basePort + (developerId * 100)`
+
+Overrides and fallbacks:
+- Values come from `lib/schema/env-config.yaml` per context, merged with `~/.aifabrix/config.yaml` under `environments.{context}`.
+- If `env-config.yaml` or keys are missing:
+  - docker: use compose service names for *_HOST and base ports for *_PORT.
+  - local: use `localhost` (or `aifabrix-localhost` if set) for *_HOST and base ports for *_PORT.
 
 ## Usage Examples
 

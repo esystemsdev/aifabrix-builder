@@ -18,6 +18,9 @@ aifabrix up              # Start Postgres + Redis
 aifabrix create myapp    # Create your app
 aifabrix build myapp     # Build Docker image
 aifabrix run myapp       # Run locally
+# Stop the app (optionally remove its data volume)
+aifabrix down myapp
+# aifabrix down myapp --volumes
 ```
 
 → [Full Guide](docs/QUICK-START.md) | [CLI Commands](docs/CLI-REFERENCE.md)

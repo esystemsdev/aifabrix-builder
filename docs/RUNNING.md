@@ -1,6 +1,6 @@
 # Running Your App Locally
 
-→ [Back to Quick Start](QUICK-START.md)
+← [Back to Quick Start](QUICK-START.md)
 
 How to run your application in Docker for local development.
 
@@ -420,8 +420,15 @@ docker run -d --name aifabrix-myapp-3 -p 3003:3000 myapp:latest
 
 Remove everything and start fresh:
 ```bash
-docker stop aifabrix-myapp
-docker rm aifabrix-myapp
+aifabrix down myapp --volumes
+docker rmi myapp:latest
+aifabrix build myapp
+aifabrix run myapp
+```
+
+**Without removing volumes:**
+```bash
+aifabrix down myapp
 docker rmi myapp:latest
 aifabrix build myapp
 aifabrix run myapp
