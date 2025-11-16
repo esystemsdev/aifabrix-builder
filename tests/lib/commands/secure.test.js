@@ -42,7 +42,8 @@ jest.mock('../../../lib/utils/logger', () => ({
 jest.mock('../../../lib/config', () => ({
   getSecretsEncryptionKey: jest.fn(),
   setSecretsEncryptionKey: jest.fn(),
-  getSecretsPath: jest.fn()
+  getSecretsPath: jest.fn(),
+  getAifabrixSecretsPath: jest.fn()
 }));
 
 const fs = require('fs');
@@ -78,6 +79,7 @@ describe('secure command', () => {
     config.getSecretsEncryptionKey.mockResolvedValue(null);
     config.setSecretsEncryptionKey.mockResolvedValue();
     config.getSecretsPath.mockResolvedValue(null);
+    config.getAifabrixSecretsPath.mockResolvedValue(null);
   });
 
   describe('handleSecure', () => {
@@ -253,10 +255,10 @@ describe('secure command', () => {
       expect(config.setSecretsEncryptionKey).not.toHaveBeenCalled();
     });
 
-    it('should check config.yaml for general secrets-path', async() => {
+    it('should check config.yaml for aifabrix-secrets', async() => {
       const options = { secretsEncryption: validHexKey };
       const generalSecretsPath = '/path/to/general/secrets.yaml';
-      config.getSecretsPath.mockResolvedValue(generalSecretsPath);
+      config.getAifabrixSecretsPath.mockResolvedValue(generalSecretsPath);
       fs.existsSync.mockImplementation((filePath) => {
         return filePath === generalSecretsPath;
       });
@@ -264,7 +266,7 @@ describe('secure command', () => {
 
       await handleSecure(options);
 
-      expect(config.getSecretsPath).toHaveBeenCalled();
+      expect(config.getAifabrixSecretsPath).toHaveBeenCalled();
       const writeCalls = fs.writeFileSync.mock.calls;
       const generalWriteCall = writeCalls.find(call => call[0] === generalSecretsPath);
       expect(generalWriteCall).toBeDefined();
@@ -499,39 +501,26 @@ describe('secure command', () => {
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
-    it('should handle findSecretsFiles when build.secrets file does not exist', async() => {
+    it('should handle findSecretsFiles when aifabrix-secrets is not configured', async() => {
       const options = { secretsEncryption: validHexKey };
-      const appName = 'test-app';
-      const builderDir = path.join(process.cwd(), 'builder');
-      const variablesPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
-      const buildSecretsPath = path.join(process.cwd(), 'builder', appName, 'secrets.local.yaml');
 
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath === mockSecretsPath) return true;
-        if (filePath === builderDir) return true;
-        if (filePath === variablesPath) return true;
-        if (filePath === buildSecretsPath) return false; // Build secrets doesn't exist
         return false;
       });
-      fs.readdirSync.mockReturnValue([
-        { name: appName, isDirectory: () => true }
-      ]);
-      fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath === variablesPath) {
-          return yaml.dump({ build: { secrets: 'secrets.local.yaml' } });
-        }
-        return yaml.dump({ 'test-key': 'test-value' });
-      });
+      config.getAifabrixSecretsPath.mockResolvedValue(null);
 
       await handleSecure(options);
 
-      // Should only process user secrets file
+      // Should only process user secrets file (no builder directory scanning)
       expect(fs.writeFileSync).toHaveBeenCalled();
+      expect(config.getAifabrixSecretsPath).toHaveBeenCalled();
+      expect(fs.readdirSync).not.toHaveBeenCalled();
     });
 
-    it('should handle findSecretsFiles when getSecretsPath fails', async() => {
+    it('should handle findSecretsFiles when getAifabrixSecretsPath fails', async() => {
       const options = { secretsEncryption: validHexKey };
-      config.getSecretsPath.mockRejectedValue(new Error('Config error'));
+      config.getAifabrixSecretsPath.mockRejectedValue(new Error('Config error'));
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(yaml.dump({ 'test-key': 'test-value' }));
 
@@ -541,11 +530,11 @@ describe('secure command', () => {
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
-    it('should handle findSecretsFiles with relative general secrets path', async() => {
+    it('should handle findSecretsFiles with relative aifabrix-secrets path', async() => {
       const options = { secretsEncryption: validHexKey };
       const relativePath = '../../secrets.local.yaml';
       const resolvedPath = path.resolve(process.cwd(), relativePath);
-      config.getSecretsPath.mockResolvedValue(relativePath);
+      config.getAifabrixSecretsPath.mockResolvedValue(relativePath);
       fs.existsSync.mockImplementation((filePath) => {
         return filePath === resolvedPath;
       });
@@ -553,16 +542,16 @@ describe('secure command', () => {
 
       await handleSecure(options);
 
-      expect(config.getSecretsPath).toHaveBeenCalled();
+      expect(config.getAifabrixSecretsPath).toHaveBeenCalled();
       const writeCalls = fs.writeFileSync.mock.calls;
       const generalWriteCall = writeCalls.find(call => call[0] === resolvedPath);
       expect(generalWriteCall).toBeDefined();
     });
 
-    it('should skip general secrets path if already in files list', async() => {
+    it('should skip aifabrix-secrets path if already in files list', async() => {
       const options = { secretsEncryption: validHexKey };
       const generalSecretsPath = mockSecretsPath; // Same as user path
-      config.getSecretsPath.mockResolvedValue(generalSecretsPath);
+      config.getAifabrixSecretsPath.mockResolvedValue(generalSecretsPath);
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(yaml.dump({ 'test-key': 'test-value' }));
 

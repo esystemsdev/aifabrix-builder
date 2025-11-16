@@ -167,7 +167,7 @@ aifabrix-secrets: "/path/to/secrets.yaml"
 - **"Not logged in"** → Run `aifabrix login` first
 - **"Port already in use"** → Use `--port` flag or change `build.localPort` in `variables.yaml` (default: {{port}})
 - **"Authentication failed"** → Run `aifabrix login` again
-- **"Build fails"** → Check Docker is running and `variables.yaml` → `build.secrets` path is correct
+- **"Build fails"** → Check Docker is running and `aifabrix-secrets` in `config.yaml` is configured correctly
 - **"Can't connect"** → Verify infrastructure is running{{#if hasDatabase}} and PostgreSQL is accessible{{/if}}
 
 **Regenerate files:**
