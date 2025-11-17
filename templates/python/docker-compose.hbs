@@ -83,7 +83,7 @@ services:
           echo 'Dropping old user if exists...' &&
           psql -d postgres -c "DROP USER IF EXISTS \"{{pgUserOld name}}\";" || true &&
           echo 'Creating user "{{pgUserName name}}"...' &&
-          psql -d postgres -c "CREATE USER \"{{pgUserName name}}\" WITH PASSWORD '${DB_{{@index}}_PASSWORD}';" &&
+          psql -d postgres -c 'CREATE USER "{{pgUserName name}}" WITH PASSWORD '\''${DB_{{@index}}_PASSWORD}'\'';' &&
           echo 'Granting privileges...' &&
           psql -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"{{name}}\" TO \"{{pgUserName name}}\";" &&
           psql -d {{name}} -c "ALTER SCHEMA public OWNER TO \"{{pgUserName name}}\";" &&
@@ -101,7 +101,7 @@ services:
           echo 'Dropping old user if exists...' &&
           psql -d postgres -c "DROP USER IF EXISTS \"{{pgUserOld app.key}}\";" || true &&
           echo 'Creating user "{{pgUserName app.key}}"...' &&
-          psql -d postgres -c "CREATE USER \"{{pgUserName app.key}}\" WITH PASSWORD '${DB_0_PASSWORD:-${DB_PASSWORD}}';" &&
+          psql -d postgres -c 'CREATE USER "{{pgUserName app.key}}" WITH PASSWORD '\''${DB_0_PASSWORD:-${DB_PASSWORD}}'\'';' &&
           echo 'Granting privileges...' &&
           psql -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"{{app.key}}\" TO \"{{pgUserName app.key}}\";" &&
           psql -d {{app.key}} -c "ALTER SCHEMA public OWNER TO \"{{pgUserName app.key}}\";" &&
