@@ -1,3 +1,48 @@
+## [2.5.3] - 2025-11-19
+
+### Added
+- **Automatic Server Registration for pgAdmin4**
+  - PostgreSQL server automatically registered in pgAdmin4 on first launch
+  - New `templates/infra/servers.json.hbs` template for pgAdmin4 server configuration
+  - Automatic generation of `servers.json` and `pgpass` files during infrastructure startup
+  - Files are copied into pgAdmin4 container using `docker cp` to avoid Docker bind mount issues
+  - Server appears as "PostgreSQL (pgvector)" in pgAdmin4 interface
+  - Uses `PassFile` for secure password storage (ISO 27001 compliant)
+- **Automatic Server Registration for Redis Commander**
+  - Redis server automatically registered in Redis Commander on startup
+  - Updated `REDIS_HOST` format to include database number: `local:redis:6379:0:`
+  - Redis connection appears as "local" in Redis Commander interface
+  - No manual configuration required
+
+### Changed
+- **Infrastructure File Generation**
+  - `lib/infra.js` now generates `servers.json` and `pgpass` files before starting containers
+  - Files are generated from Handlebars templates with PostgreSQL password from admin-secrets.env
+  - Added `generatePgAdminConfig()` helper function for cleaner code organization
+  - Files are automatically copied into containers after startup to ensure they're available
+- **Redis Commander Configuration**
+  - Updated `lib/secrets.js` to use correct `REDIS_HOST` format: `local:redis:6379:0:`
+  - Format includes database index (0) for proper Redis Commander registration
+- **Docker Compose Template**
+  - Updated `templates/infra/compose.yaml.hbs` with pgAdmin4 environment variables
+  - Added `PGADMIN_SERVER_JSON_FILE` and `PGPASSFILE` environment variables
+  - Mounts infra directory to `/host-config` for file access
+  - Command override to copy files into container on startup
+
+### Fixed
+- **File Size Compliance**
+  - Reduced `lib/infra.js` from 523 lines to 478 lines (under 500 line limit)
+  - Extracted `generatePgAdminConfig()` helper function
+  - Consolidated comments and removed unnecessary blank lines
+  - All files now comply with code quality standards
+
+### Technical
+- New `generatePgAdminConfig()` function in `lib/infra.js` for pgAdmin4 file generation
+- Automatic file copying using `docker cp` after container startup
+- Handlebars template for pgAdmin4 server configuration
+- Improved error handling for file copy operations
+- ISO 27001 compliant password handling using `PassFile` instead of plaintext passwords
+
 ## [2.5.0] - 2025-11-16
 
 ### Added

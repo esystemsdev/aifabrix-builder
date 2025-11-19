@@ -53,10 +53,24 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
+      PGPASSFILE: /pgpass
     ports:
       - "{{pgadminPort}}:80"
     volumes:
       - {{#if (eq devId 0)}}pgadmin_data{{else}}dev{{devId}}_pgadmin_data{{/if}}:/var/lib/pgadmin
+      - {{infraDir}}:/host-config:ro
+    command: >
+      sh -c "
+      if [ -f /host-config/servers.json ]; then
+        cp /host-config/servers.json /pgadmin4/servers.json;
+      fi &&
+      if [ -f /host-config/pgpass ]; then
+        cp /host-config/pgpass /pgpass;
+        chmod 600 /pgpass;
+      fi &&
+      /entrypoint.sh
+      "
     restart: unless-stopped
     depends_on:
       postgres:
