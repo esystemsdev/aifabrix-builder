@@ -153,7 +153,7 @@ Before using automated pipeline deployment in GitHub Actions, you must register 
 ### Step 1: Login to Controller
 
 ```bash
-aifabrix login --url https://controller.aifabrix.ai
+aifabrix login --controller https://controller.aifabrix.ai
 ```
 
 This authenticates you via Keycloak OIDC flow.
@@ -388,7 +388,7 @@ For automated deployment via pipeline API:
 **Getting Pipeline Credentials:**
 ```bash
 # Login to controller
-aifabrix login --url https://controller.aifabrix.ai
+aifabrix login --controller https://controller.aifabrix.ai
 
 # Register application
 aifabrix app register myapp --environment dev

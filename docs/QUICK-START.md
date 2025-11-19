@@ -191,7 +191,7 @@ Before deploying, register your application to get pipeline credentials:
 
 ```bash
 # Login to controller
-aifabrix login --url https://controller.aifabrix.ai
+aifabrix login --controller https://controller.aifabrix.ai
 
 # Register application
 aifabrix app register myapp --environment dev
