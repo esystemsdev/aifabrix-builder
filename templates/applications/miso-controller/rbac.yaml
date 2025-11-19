@@ -134,19 +134,19 @@ permissions:
     description: "Delete environments"
   
   # Environment Applications
-  - name: "environments_applications:create"
+  - name: "environments-applications:create"
     roles: ["aifabrix-platform-admin", "aifabrix-deployment-admin", "aifabrix-developer"]
     description: "Create applications within environments"
   
-  - name: "environments_applications:read"
+  - name: "environments-applications:read"
     roles: ["aifabrix-platform-admin", "aifabrix-deployment-admin", "aifabrix-developer", "aifabrix-observer"]
     description: "View applications within environments"
   
-  - name: "environments_applications:update"
+  - name: "environments-applications:update"
     roles: ["aifabrix-platform-admin", "aifabrix-deployment-admin", "aifabrix-developer"]
     description: "Update applications within environments"
   
-  - name: "environments_applications:delete"
+  - name: "environments-applications:delete"
     roles: ["aifabrix-platform-admin", "aifabrix-deployment-admin"]
     description: "Remove applications from environments"
   
@@ -207,11 +207,11 @@ permissions:
     description: "Administrative export access to all data"
   
   # Admin Operations
-  - name: "admin.sync"
+  - name: "admin:sync"
     roles: ["aifabrix-platform-admin", "aifabrix-infrastructure-admin"]
     description: "Full system synchronization operations"
   
-  - name: "admin.keycloak"
+  - name: "admin:keycloak"
     roles: ["aifabrix-platform-admin", "aifabrix-security-admin"]
     description: "Keycloak administration and configuration"
   

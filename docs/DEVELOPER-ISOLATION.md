@@ -153,8 +153,8 @@ For local context (apps/.env, generated when `build.envOutputPath` is set):
 Overrides and fallbacks:
 - Values come from `lib/schema/env-config.yaml` per context, merged with `~/.aifabrix/config.yaml` under `environments.{context}`.
 - If `env-config.yaml` or keys are missing:
-  - docker: use compose service names for *_HOST and base ports for *_PORT.
-  - local: use `localhost` (or `aifabrix-localhost` if set) for *_HOST and base ports for *_PORT.
+  - docker: use compose service names for *_HOST and base ports for*_PORT.
+  - local: use `localhost` (or `aifabrix-localhost` if set) for *_HOST and base ports for*_PORT.
 
 ## Usage Examples
 
@@ -187,7 +187,7 @@ aifabrix status
 
 Example output:
 
-```
+```yaml
 📊 Infrastructure Status
 
 ✅ postgres:
@@ -217,7 +217,7 @@ aifabrix dev config
 
 Example output:
 
-```
+```yaml
 🔧 Developer Configuration
 
 Developer ID: 1
@@ -267,4 +267,130 @@ If you see container name conflicts:
 2. **Use consistent IDs**: Use the same developer ID across all sessions
 3. **Document assignments**: Keep a list of developer ID assignments for your team
 4. **Check before starting**: Run `aifabrix dev config` to verify your developer ID before starting infrastructure
+
+## Port Scenarios Reference
+
+### Infrastructure Ports by Developer ID
+
+| Service | Base Port | Dev ID 0 | Dev ID 1 | Dev ID 2 | Dev ID 3 |
+|---------|-----------|----------|----------|----------|----------|
+| Postgres | 5432 | 5432 | 5532 | 5632 | 5732 |
+| Redis | 6379 | 6379 | 6479 | 6579 | 6679 |
+| pgAdmin | 5050 | 5050 | 5150 | 5250 | 5350 |
+| Redis Commander | 8081 | 8081 | 8181 | 8281 | 8381 |
+
+### Application Ports by Developer ID
+
+| Base Port | Dev ID 0 | Dev ID 1 | Dev ID 2 | Dev ID 3 |
+|-----------|----------|----------|----------|----------|
+| 3000 | 3000 | 3100 | 3200 | 3300 |
+| 3010 | 3010 | 3110 | 3210 | 3310 |
+| 3014 | 3014 | 3114 | 3214 | 3314 |
+
+### Environment Variable Scenarios
+
+#### Docker Context (builder/.env)
+
+| Variable | Source | Dev ID 0 | Dev ID 1 | Dev ID 2 |
+|----------|--------|----------|----------|----------|
+| `DB_HOST` | env-config.yaml | postgres | postgres | postgres |
+| `DB_PORT` | env-config.yaml + adjustment | 5432 | 5532 | 5632 |
+| `REDIS_HOST` | env-config.yaml | redis | redis | redis |
+| `REDIS_PORT` | env-config.yaml + adjustment | 6379 | 6479 | 6579 |
+| `REDIS_URL` | Constructed | redis://redis:6379 | redis://redis:6479 | redis://redis:6579 |
+| `PORT` | variables.yaml port | 3000 | 3000 | 3000 |
+
+#### Local Context (apps/.env)
+
+| Variable | Source | Dev ID 0 | Dev ID 1 | Dev ID 2 |
+|----------|--------|----------|----------|----------|
+| `DB_HOST` | env-config.yaml | localhost | localhost | localhost |
+| `DB_PORT` | env-config.yaml + adjustment | 5432 | 5532 | 5632 |
+| `REDIS_HOST` | env-config.yaml | localhost | localhost | localhost |
+| `REDIS_PORT` | env-config.yaml + adjustment | 6379 | 6479 | 6579 |
+| `REDIS_URL` | Constructed | redis://localhost:6379 | redis://localhost:6479 | redis://localhost:6579 |
+| `PORT` | Override chain + adjustment | See PORT Override Scenarios below | | |
+
+### PORT Override Chain Scenarios (Local Context)
+
+#### Scenario 1: All Sources Present
+
+| Source | Value | Final Port (Dev ID 1) |
+|--------|-------|----------------------|
+| env-config.yaml → environments.local.PORT | 3000 | 3100 |
+| config.yaml → environments.local.PORT | 3010 | 3110 (overrides) |
+| variables.yaml → build.localPort | 3015 | 3115 (strongest) |
+| Result | | **3115** |
+
+#### Scenario 2: Only variables.yaml Present
+
+| Source | Value | Final Port (Dev ID 1) |
+|--------|-------|----------------------|
+| env-config.yaml → environments.local.PORT | (not set) | - |
+| config.yaml → environments.local.PORT | (not set) | - |
+| variables.yaml → build.localPort | 3010 | 3110 |
+| Result | | **3110** |
+
+#### Scenario 3: Only variables.yaml port (no build.localPort)
+
+| Source | Value | Final Port (Dev ID 1) |
+|--------|-------|----------------------|
+| env-config.yaml → environments.local.PORT | (not set) | - |
+| config.yaml → environments.local.PORT | (not set) | - |
+| variables.yaml → build.localPort | (not set) | - |
+| variables.yaml → port | 3000 | 3100 (fallback) |
+| Result | | **3100** |
+
+#### Scenario 4: Only env-config.yaml Present
+
+| Source | Value | Final Port (Dev ID 1) |
+|--------|-------|----------------------|
+| env-config.yaml → environments.local.PORT | 3000 | 3100 |
+| config.yaml → environments.local.PORT | (not set) | - |
+| variables.yaml → build.localPort | (not set) | - |
+| variables.yaml → port | (not set) | - |
+| Result | | **3100** |
+
+### Infrastructure Port Override Scenarios (Local Context)
+
+#### DB_PORT Override Chain
+
+| Source | Value | Final Port (Dev ID 1) |
+|--------|-------|----------------------|
+| env-config.yaml → environments.local.DB_PORT | 5432 | 5532 |
+| config.yaml → environments.local.DB_PORT | 5433 | 5533 (overrides) |
+| Result | | **5533** |
+
+#### REDIS_PORT Override Chain
+
+| Source | Value | Final Port (Dev ID 1) |
+|--------|-------|----------------------|
+| env-config.yaml → environments.local.REDIS_PORT | 6379 | 6479 |
+| config.yaml → environments.local.REDIS_PORT | 6380 | 6480 (overrides) |
+| Result | | **6480** |
+
+### Variable Interpolation Scenarios
+
+#### Scenario: Secret with ${VAR} Reference
+
+| Template/Secret | Value | Interpolated (Dev ID 1) |
+|-----------------|-------|------------------------|
+| `KEYCLOAK_SERVER_URL=kv://keycloak-server-urlKeyVault` | `"http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}"` | `http://localhost:8082` |
+| `KC_PORT=${KEYCLOAK_PORT}` | (from env-config.yaml) | `8082` |
+| `DATABASE_URL=kv://db-urlKeyVault` | `"postgresql://user:pass@${DB_HOST}:${DB_PORT}/db"` | `postgresql://localhost:5532/db` |
+
+### Complete Example: Developer ID 1, Local Context
+
+| Variable | Source | Value |
+|----------|--------|-------|
+| `PORT` | variables.yaml → build.localPort (3010) + adjustment | 3110 |
+| `DB_HOST` | env-config.yaml | localhost |
+| `DB_PORT` | env-config.yaml (5432) + adjustment | 5532 |
+| `REDIS_HOST` | env-config.yaml | localhost |
+| `REDIS_PORT` | env-config.yaml (6379) + adjustment | 6479 |
+| `REDIS_URL` | Constructed from REDIS_HOST:REDIS_PORT | redis://localhost:6479 |
+| `KEYCLOAK_HOST` | env-config.yaml | localhost |
+| `KEYCLOAK_PORT` | env-config.yaml (8082) + adjustment | 8182 |
+| `MISO_HOST` | env-config.yaml | localhost |
+| `MISO_PORT` | env-config.yaml (3010) + adjustment | 3110 |
 

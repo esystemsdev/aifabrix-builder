@@ -26,7 +26,7 @@ describe('Integration Step 05: Generate Deployment Key', () => {
       throw new Error(`Prerequisite failed: Application not found. Run step-01-create.test.js first. App: ${appName}`);
     }
 
-    // Generate deployment key
+    // Generate deployment key (this should generate JSON first, then extract key)
     console.log('Generating deployment key...');
     const result = await execCommand(`aifabrix genkey ${appName}`, 30000);
 
@@ -35,6 +35,22 @@ describe('Integration Step 05: Generate Deployment Key', () => {
     }
 
     expect(result.exitCode).toBe(0);
+
+    // Verify that JSON file was generated (genkey command generates JSON first)
+    const fs = require('fs');
+    const path = require('path');
+    const jsonPath = path.join(process.cwd(), 'builder', appName, 'aifabrix-deploy.json');
+    expect(fs.existsSync(jsonPath)).toBe(true);
+
+    // Verify JSON contains deploymentKey
+    const jsonContent = fs.readFileSync(jsonPath, 'utf8');
+    const deployment = JSON.parse(jsonContent);
+    expect(deployment.deploymentKey).toBeDefined();
+    expect(deployment.deploymentKey).toMatch(/^[a-f0-9]{64}$/);
+
+    // Verify output contains the key
+    expect(result.stdout).toContain('Deployment key for');
+    expect(result.stdout).toContain(deployment.deploymentKey);
   });
 });
 

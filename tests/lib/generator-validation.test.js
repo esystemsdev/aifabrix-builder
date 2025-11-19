@@ -31,6 +31,7 @@ describe('Generator Validation Module', () => {
         image: 'testapp:latest',
         registryMode: 'acr', // Use 'acr' to avoid external registry requirements
         port: 3000,
+        deploymentKey: '0000000000000000000000000000000000000000000000000000000000000000',
         requiresDatabase: false,
         requiresRedis: false,
         requiresStorage: false,
@@ -163,6 +164,7 @@ describe('Generator Validation Module', () => {
         image: 'testapp:latest',
         registryMode: 'acr',
         port: 3000,
+        deploymentKey: '0000000000000000000000000000000000000000000000000000000000000000',
         requiresDatabase: false,
         requiresRedis: false,
         requiresStorage: false,
@@ -203,10 +205,14 @@ describe('Generator Validation Module', () => {
 
     const mockEnvTemplate = 'PORT=3000\nNODE_ENV=development';
 
+    let writtenFiles = {};
+
     beforeEach(() => {
+      writtenFiles = {};
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('variables.yaml') ||
-               filePath.includes('env.template');
+               filePath.includes('env.template') ||
+               filePath.includes('aifabrix-deploy.json');
       });
 
       fs.readFileSync.mockImplementation((filePath) => {
@@ -217,7 +223,8 @@ describe('Generator Validation Module', () => {
           return mockEnvTemplate;
         }
         if (filePath.includes('aifabrix-deploy.json')) {
-          return JSON.stringify({
+          // Return what was written, or a default if nothing was written yet
+          return writtenFiles[filePath] || JSON.stringify({
             key: 'testapp',
             displayName: 'Test App',
             description: 'A test application',
@@ -225,6 +232,7 @@ describe('Generator Validation Module', () => {
             image: 'testapp:latest',
             registryMode: 'acr',
             port: 3000,
+            deploymentKey: '0000000000000000000000000000000000000000000000000000000000000000',
             requiresDatabase: false,
             requiresRedis: false,
             requiresStorage: false,
@@ -235,7 +243,9 @@ describe('Generator Validation Module', () => {
         return '';
       });
 
-      fs.writeFileSync.mockImplementation(() => {});
+      fs.writeFileSync.mockImplementation((filePath, content) => {
+        writtenFiles[filePath] = content;
+      });
     });
 
     it('should generate JSON with validation', async() => {

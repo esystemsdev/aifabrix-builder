@@ -71,7 +71,7 @@ aifabrix push myapp --registry myacr.azurecr.io --tag v1.0.0
    - Or prompts you to log in
 
 2. **Tags image**
-   ```
+   ```yaml
    myapp:latest → myacr.azurecr.io/myapp:v1.0.0
    ```
 
@@ -81,7 +81,7 @@ aifabrix push myapp --registry myacr.azurecr.io --tag v1.0.0
 
 ### Output
 
-```
+```yaml
 ✓ Authenticated with myacr.azurecr.io
 ✓ Tagged image: myacr.azurecr.io/myapp:v1.0.0
 ✓ Pushing...
@@ -136,7 +136,7 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 
 ### Output
 
-```
+```yaml
 ✓ Generated deployment manifest
 ✓ Deployment key: a1b2c3d4...
 ✓ Sending to controller...
@@ -148,7 +148,7 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 
 ## Deployment Key
 
-Unique key generated from your `variables.yaml` file.
+Unique key generated from the deployment manifest JSON (excluding the deploymentKey field itself). The key is computed from the complete deployment configuration, ensuring integrity verification.
 
 ### View Your Key
 
@@ -157,7 +157,7 @@ aifabrix genkey myapp
 ```
 
 Output:
-```
+```yaml
 Deployment key for myapp:
 a1b2c3d4e5f6789abcdef1234567890abcdef1234567890abcdef1234567890ab
 
@@ -252,7 +252,7 @@ aifabrix app register myapp --environment dev
 ```
 
 **Output:**
-```
+```yaml
 ✓ Application registered successfully!
 
 📋 Application Details:
@@ -275,7 +275,7 @@ aifabrix app register myapp --environment dev
      DEV_MISO_CLIENTSECRET = xyz-abc-123...
 ```
 
-**Note:** 
+**Note:**
 - For localhost deployments, credentials are automatically saved to `~/.aifabrix/secrets.local.yaml` using pattern `<app-name>-client-idKeyVault` and `<app-name>-client-secretKeyVault`
 - `env.template` is updated with `MISO_CLIENTID`, `MISO_CLIENTSECRET`, and `MISO_CONTROLLER_URL` entries
 - Tokens are saved to `~/.aifabrix/config.yaml` (never credentials)
@@ -289,7 +289,7 @@ aifabrix app register myapp --environment dev
 3. Add environment-level secrets (for dev):
    - `DEV_MISO_CLIENTID` - From registration output
    - `DEV_MISO_CLIENTSECRET` - From registration output
-   
+
 **Note:** For staging/production, use `TST_` or `PRO_` prefixes.
 
 ### Secret Rotation
@@ -301,7 +301,7 @@ aifabrix app rotate-secret myapp --environment dev
 ```
 
 **Output:**
-```
+```yaml
 ⚠️  This will invalidate the old ClientSecret!
 
 ✓ Secret rotated successfully!
@@ -494,7 +494,7 @@ aifabrix doctor
 aifabrix genkey myapp
 ```
 
-**Cause:** `variables.yaml` changed since last deployment.
+**Cause:** Deployment configuration changed (variables.yaml, env.template, or rbac.yaml) since last deployment, resulting in a new deployment manifest and thus a new key.
 
 **Fix:** This is expected. New deployment with new configuration = new key.
 
@@ -627,20 +627,22 @@ The `aifabrix deploy` command performs the following steps:
    - Reads `builder/<app>/env.template` for environment variables
    - Reads `builder/<app>/rbac.yaml` for roles and permissions (optional)
 
-2. **Generate Deployment Key**
-   - Creates SHA256 hash from variables.yaml content
-   - Used for authentication and integrity verification
-   - Key format: 64-character hexadecimal string
-
-3. **Parse Environment Variables**
+2. **Parse Environment Variables**
    - Converts env.template entries to configuration array
    - Handles `kv://` references for Key Vault secrets
    - Maps variables to `location` (variable/keyvault)
 
-4. **Build Deployment Manifest**
+3. **Build Deployment Manifest**
    - Merges all configuration into single JSON object
    - Includes: app metadata, image reference, port, configuration, roles, permissions
    - Validates required fields and format
+
+4. **Generate Deployment Key**
+   - Creates SHA256 hash from deployment manifest (excluding deploymentKey field)
+   - Uses deterministic JSON stringification (sorted keys, no whitespace)
+   - Used for authentication and integrity verification
+   - Key format: 64-character hexadecimal string
+   - Added to manifest as `deploymentKey` field
 
 5. **Validate Manifest**
    - Checks required fields: key, displayName, image, port, deploymentKey
@@ -664,7 +666,7 @@ The `aifabrix deploy` command performs the following steps:
 ### Security Features
 
 - **HTTPS Enforcement**: All controller URLs must use HTTPS protocol
-- **Dual Authentication Model**: 
+- **Dual Authentication Model**:
   - **Bearer Token (Device Token)**: Preferred for interactive CLI usage - provides user-level audit tracking
     - Uses `Authorization: Bearer <token>` header
     - Token obtained via `aifabrix login --method device`
@@ -691,7 +693,7 @@ The `aifabrix deploy` command performs the following steps:
 ### API Endpoints
 
 **Deploy Endpoint:**
-```
+```yaml
 POST https://controller.aifabrix.ai/api/v1/pipeline/{env}/deploy
 Content-Type: application/json
 
@@ -716,7 +718,7 @@ Body:
 ```
 
 **Status Endpoint:**
-```
+```yaml
 GET https://controller.aifabrix.ai/api/v1/environments/{env}/deployments/{deploymentId}
 
 # Option 1: Bearer token (device token)

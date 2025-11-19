@@ -34,7 +34,7 @@
     ]
   },
   "type": "object",
-  "required": ["key", "displayName", "description", "type", "image", "registryMode", "port"],
+  "required": ["key", "displayName", "description", "type", "image", "registryMode", "port", "deploymentKey"],
   "properties": {
     "key": {
       "type": "string",
@@ -75,6 +75,11 @@
       "description": "Application port number",
       "minimum": 1,
       "maximum": 65535
+    },
+    "deploymentKey": {
+      "type": "string",
+      "description": "SHA256 hash of deployment manifest (excluding deploymentKey field)",
+      "pattern": "^[a-f0-9]{64}$"
     },
     "requiresDatabase": {
       "type": "boolean",

@@ -1,3 +1,43 @@
+## [2.6.0] - 2025-11-19
+
+### Added
+- **JSON-Based Deployment Key Generation**
+  - Deployment keys are now generated from the complete deployment manifest JSON (excluding the `deploymentKey` field itself)
+  - New `generateDeploymentKeyFromJson()` function in `lib/key-generator.js` for manifest-based key generation
+  - Deterministic JSON stringification with sorted keys ensures consistent hashing across environments
+  - Enables Miso Controller to validate deployments by regenerating and comparing the key
+  - Keys are SHA256 hashes of the complete deployment configuration for integrity verification
+- **Deployment Key Validation**
+  - New `validateDeploymentKey()` function to verify key format (64-character lowercase hex SHA256)
+  - Key validation ensures proper format before deployment operations
+- **Deployment Key Schema Requirement**
+  - `deploymentKey` is now a required field in the application schema (`lib/schema/application-schema.json`)
+  - Schema enforces 64-character lowercase hexadecimal pattern: `^[a-f0-9]{64}$`
+  - All generated deployment JSON files must include a valid `deploymentKey`
+
+### Changed
+- **Deployment Key Generation Flow**
+  - `aifabrix genkey` command now generates `aifabrix-deploy.json` first, then extracts the `deploymentKey` from it
+  - Deployment key is computed from the complete manifest object rather than just `variables.yaml` content
+  - Key generation uses deterministic JSON serialization (sorted keys, no whitespace) for consistency
+  - Updated command output to show source file: "Generated from: builder/myapp/aifabrix-deploy.json"
+- **Deployment JSON Generation**
+  - `lib/generator.js` now builds the complete manifest first, then generates `deploymentKey` from it
+  - `deploymentKey` is added to the manifest after generation, ensuring it's excluded from the hash calculation
+  - Manifest validation occurs after `deploymentKey` is added to ensure schema compliance
+- **Key Generator Module**
+  - Enhanced `lib/key-generator.js` with JSON-based key generation capabilities
+  - Added `sortObjectKeys()` helper function for deterministic object serialization
+  - Maintains backward compatibility with `generateDeploymentKey()` and `generateDeploymentKeyFromContent()` functions
+  - New `generateDeploymentKeyFromJson()` function for manifest-based generation
+
+### Technical
+- Deterministic JSON stringification ensures consistent deployment keys across different systems
+- Recursive key sorting for nested objects and arrays maintains hash consistency
+- Deployment key excludes itself from hash calculation to prevent circular dependencies
+- Schema validation enforces deployment key format and presence in all deployment manifests
+- Improved deployment integrity verification through manifest-based key generation
+
 ## [2.5.3] - 2025-11-19
 
 ### Added

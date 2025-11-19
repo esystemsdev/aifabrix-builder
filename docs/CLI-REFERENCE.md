@@ -77,7 +77,7 @@ aifabrix login --controller http://localhost:3010 --method device --environment 
 ```
 
 **Options:**
-- `-c, --controller <url>` - Controller URL (default: http://localhost:3000)
+- `-c, --controller <url>` - Controller URL (default: <http://localhost:3000>)
 - `-m, --method <method>` - Authentication method: `device` or `credentials` (optional, prompts if not provided)
 - `-a, --app <app>` - Application name (required for credentials method, reads from secrets.local.yaml using pattern `<app-name>-client-idKeyVault`)
 - `--client-id <id>` - Client ID for credentials method (optional, overrides secrets.local.yaml)
@@ -107,7 +107,7 @@ aifabrix login --controller http://localhost:3010 --method device --environment 
    - Includes refresh token for automatic token renewal on 401 errors
 
 **Output (Credentials):**
-```
+```yaml
 🔐 Logging in to Miso Controller...
 
 Controller URL: http://localhost:3010
@@ -121,7 +121,7 @@ Token stored securely in ~/.aifabrix/config.yaml
 ```
 
 **Output (Device Code):**
-```
+```yaml
 🔐 Logging in to Miso Controller...
 
 Controller URL: http://localhost:3010
@@ -160,7 +160,7 @@ This reads:
 And saves the token to config.yaml under `environments.miso.clients.keycloak`.
 
 **Device Code Flow Output:**
-```
+```yaml
 📱 Initiating device code flow...
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -257,7 +257,7 @@ Ports are calculated using: `basePort + (developer-id * 100)`
 - **Developer ID 2**: App=3200, Postgres=5632, Redis=6579, pgAdmin=5250, Redis Commander=8281
 
 **Output (default):**
-```
+```yaml
 ✓ Starting Postgres...
 ✓ Starting Redis...
 ✓ Infrastructure ready
@@ -268,7 +268,7 @@ Ports are calculated using: `basePort + (developer-id * 100)`
 ```
 
 **Output (with developer ID):**
-```
+```yaml
 ✓ Developer ID set to 1
 ✓ Starting Postgres...
 ✓ Starting Redis...
@@ -298,7 +298,7 @@ When using `--developer`, each developer gets:
 
 Stop infrastructure or a specific application.
 
-**What:** 
+**What:**
 - Without arguments: stops all infrastructure containers. Data is preserved unless `--volumes` is used.
 - With an app name: stops and removes the application container. With `--volumes`, also removes the app's named Docker volume.
 
@@ -343,7 +343,7 @@ aifabrix status
 ```
 
 **Output:**
-```
+```yaml
 📊 Infrastructure Status
 
 ✅ postgres:
@@ -398,7 +398,7 @@ aifabrix restart redis
 - `redis-commander` - Redis Commander web UI
 
 **Output:**
-```
+```yaml
 ✅ postgres service restarted successfully
 ```
 
@@ -433,7 +433,7 @@ aifabrix dev config --set-id 2
 - `--set-id <id>` - Set developer ID (non-negative integer). Developer ID 0 = default infrastructure (base ports), 1+ = developer-specific (offset ports). Updates `~/.aifabrix/config.yaml` and sets `AIFABRIX_DEVELOPERID` environment variable.
 
 **Output (view):**
-```
+```yaml
 🔧 Developer Configuration
 
 Developer ID: 1
@@ -447,7 +447,7 @@ Ports:
 ```
 
 **Output (view with configuration variables):**
-```
+```yaml
 🔧 Developer Configuration
 
 Developer ID: 1
@@ -466,7 +466,7 @@ Configuration:
 ```
 
 **Output (set):**
-```
+```yaml
 ✓ Developer ID set to 1
 
 🔧 Developer Configuration
@@ -482,7 +482,7 @@ Ports:
 ```
 
 **Output (set with configuration variables):**
-```
+```yaml
 ✓ Developer ID set to 1
 
 🔧 Developer Configuration
@@ -586,7 +586,7 @@ aifabrix app register myapp --environment dev --port 8080 --name "My Application
 6. **Note:** Credentials are displayed but not automatically saved. Copy them to your secrets file or GitHub Secrets.
 
 **Output:**
-```
+```yaml
 ✓ Application registered successfully!
 
 📋 Application Details:
@@ -628,7 +628,7 @@ aifabrix app list --environment dev
 - `-e, --environment <env>` - Environment ID or key (required)
 
 **Output:**
-```
+```yaml
 📱 Applications:
 
 ✓ ctrl-dev-myapp    - My App (active)
@@ -659,7 +659,7 @@ aifabrix app rotate-secret myapp --environment dev
 - `-e, --environment <env>` - Environment ID or key (required)
 
 **Output:**
-```
+```yaml
 ⚠️  This will invalidate the old ClientSecret!
 
 ✓ Secret rotated successfully!
@@ -851,7 +851,7 @@ aifabrix run myapp --debug
 8. Waits for health check to pass
 9. Displays access URL
 
-**Access:** http://localhost:<port>
+**Access:** <http://localhost>:<port>
 
 **Container:** `aifabrix-<app>`
 
@@ -926,7 +926,7 @@ Pushes with `latest` tag.
 7. Displays success summary
 
 **Output:**
-```
+```yaml
 Authenticating with myacr.azurecr.io...
 ✓ Authenticated with myacr.azurecr.io
 Tagging myapp:latest as myacr.azurecr.io/myapp:v1.0.0...
@@ -944,7 +944,7 @@ Tags: v1.0.0, latest
 ```
 
 **Issues:**
-- **"Azure CLI is not installed"** → Install from: https://docs.microsoft.com/cli/azure/install-azure-cli
+- **"Azure CLI is not installed"** → Install from: <https://docs.microsoft.com/cli/azure/install-azure-cli>
 - **"Authentication failed"** → Run: `az login` then `az acr login --name myacr`
 - **"Docker image not found locally"** → Build first: `aifabrix build myapp`
 - **"Invalid registry URL format"** → Use format: `*.azurecr.io` (e.g., `myacr.azurecr.io`)
@@ -973,7 +973,7 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai --environment 
 ```
 
 **Output:**
-```
+```yaml
 📋 Generating deployment manifest for myapp...
 ✓ Manifest generated: builder/myapp/aifabrix-deploy.json
    Key: myapp
@@ -1184,7 +1184,7 @@ aifabrix dockerfile myapp --language python
 5. Saves to `builder/{app}/Dockerfile`
 
 **Output:**
-```
+```yaml
 ✓ Generated Dockerfile from template
 Location: builder/myapp/Dockerfile
 ```
@@ -1201,7 +1201,7 @@ Location: builder/myapp/Dockerfile
 
 Generate deployment key.
 
-**What:** Computes SHA256 hash of `variables.yaml` for controller authentication.
+**What:** Generates deployment JSON first, then extracts deployment key from it. The deployment key is a SHA256 hash of the deployment manifest (excluding the deploymentKey field) for controller authentication and integrity verification.
 
 **When:** Checking deployment key, troubleshooting authentication.
 
@@ -1211,11 +1211,11 @@ aifabrix genkey myapp
 ```
 
 **Output:**
-```
+```text
 Deployment key for myapp:
 a1b2c3d4e5f6789abcdef1234567890abcdef1234567890abcdef1234567890ab
 
-Generated from: builder/myapp/variables.yaml
+Generated from: builder/myapp/aifabrix-deploy.json
 ```
 
 **Issues:** None common.
@@ -1256,7 +1256,7 @@ aifabrix secure --secrets-encryption "YWJjZGVmZ2hpams="
 - General secrets: File specified in `aifabrix-secrets` in `config.yaml` (if configured)
 
 **Output:**
-```
+```yaml
 🔐 Securing secrets files...
 
 Found 2 secrets file(s) to process:
@@ -1351,7 +1351,7 @@ aifabrix doctor
 ```
 
 **Output:**
-```
+```yaml
 ✓ Docker is running
 ✓ Port 5432 available
 ✓ Port 6379 available

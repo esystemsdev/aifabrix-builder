@@ -106,6 +106,129 @@ describe('Key Generator Module', () => {
     });
   });
 
+  describe('generateDeploymentKeyFromJson', () => {
+    it('should generate SHA256 hash from deployment object', () => {
+      const deployment = {
+        key: 'testapp',
+        displayName: 'Test App',
+        type: 'webapp',
+        port: 3000
+      };
+
+      const result = keyGenerator.generateDeploymentKeyFromJson(deployment);
+
+      expect(result).toMatch(/^[a-f0-9]{64}$/);
+      expect(result).toHaveLength(64);
+    });
+
+    it('should exclude deploymentKey field when generating hash', () => {
+      const deployment1 = {
+        key: 'testapp',
+        displayName: 'Test App',
+        deploymentKey: 'should-be-ignored-1234567890123456789012345678901234567890123456789012345678901234'
+      };
+
+      const deployment2 = {
+        key: 'testapp',
+        displayName: 'Test App',
+        deploymentKey: 'different-key-should-still-match-123456789012345678901234567890123456789012345678901234567890'
+      };
+
+      const hash1 = keyGenerator.generateDeploymentKeyFromJson(deployment1);
+      const hash2 = keyGenerator.generateDeploymentKeyFromJson(deployment2);
+
+      // Should generate same hash regardless of deploymentKey value
+      expect(hash1).toBe(hash2);
+    });
+
+    it('should generate consistent hash for same object', () => {
+      const deployment = {
+        key: 'testapp',
+        displayName: 'Test App',
+        type: 'webapp',
+        port: 3000
+      };
+
+      const hash1 = keyGenerator.generateDeploymentKeyFromJson(deployment);
+      const hash2 = keyGenerator.generateDeploymentKeyFromJson(deployment);
+
+      expect(hash1).toBe(hash2);
+    });
+
+    it('should generate different hash for different objects', () => {
+      const deployment1 = {
+        key: 'testapp',
+        displayName: 'Test App',
+        port: 3000
+      };
+
+      const deployment2 = {
+        key: 'testapp',
+        displayName: 'Different App',
+        port: 3000
+      };
+
+      const hash1 = keyGenerator.generateDeploymentKeyFromJson(deployment1);
+      const hash2 = keyGenerator.generateDeploymentKeyFromJson(deployment2);
+
+      expect(hash1).not.toBe(hash2);
+    });
+
+    it('should handle nested objects and arrays', () => {
+      const deployment = {
+        key: 'testapp',
+        configuration: [
+          { name: 'VAR1', value: 'value1' },
+          { name: 'VAR2', value: 'value2' }
+        ],
+        authentication: {
+          type: 'azure',
+          enableSSO: true
+        }
+      };
+
+      const result = keyGenerator.generateDeploymentKeyFromJson(deployment);
+
+      expect(result).toMatch(/^[a-f0-9]{64}$/);
+      expect(result).toHaveLength(64);
+    });
+
+    it('should use deterministic key ordering', () => {
+      const deployment1 = {
+        b: 'second',
+        a: 'first',
+        c: 'third'
+      };
+
+      const deployment2 = {
+        a: 'first',
+        b: 'second',
+        c: 'third'
+      };
+
+      const hash1 = keyGenerator.generateDeploymentKeyFromJson(deployment1);
+      const hash2 = keyGenerator.generateDeploymentKeyFromJson(deployment2);
+
+      // Should generate same hash regardless of key order
+      expect(hash1).toBe(hash2);
+    });
+
+    it('should throw error if deployment object is invalid', () => {
+      expect(() => keyGenerator.generateDeploymentKeyFromJson()).toThrow('Deployment object is required and must be an object');
+      expect(() => keyGenerator.generateDeploymentKeyFromJson(null)).toThrow('Deployment object is required and must be an object');
+      expect(() => keyGenerator.generateDeploymentKeyFromJson(123)).toThrow('Deployment object is required and must be an object');
+      expect(() => keyGenerator.generateDeploymentKeyFromJson('string')).toThrow('Deployment object is required and must be an object');
+    });
+
+    it('should handle empty object', () => {
+      const deployment = {};
+      const result = keyGenerator.generateDeploymentKeyFromJson(deployment);
+
+      expect(result).toMatch(/^[a-f0-9]{64}$/);
+      expect(result).toHaveLength(64);
+    });
+  });
+
   describe('validateDeploymentKey', () => {
     it('should return true for valid SHA256 hash', () => {
       const validKey = 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456';

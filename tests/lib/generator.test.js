@@ -142,6 +142,9 @@ PUBLIC_CONFIG=public-value`;
       expect(deployment.authentication.type).toBeDefined();
       expect(deployment.authentication.enableSSO).toBeDefined();
       expect(deployment.authentication.requiredRoles).toBeDefined();
+      // deploymentKey should be present and valid SHA256 hash
+      expect(deployment.deploymentKey).toBeDefined();
+      expect(deployment.deploymentKey).toMatch(/^[a-f0-9]{64}$/);
     });
 
     it('should handle missing rbac.yaml gracefully', async() => {
@@ -158,6 +161,9 @@ PUBLIC_CONFIG=public-value`;
 
       expect(deployment.authentication.enableSSO).toBe(false);
       expect(deployment.authentication.type).toBe('none');
+      // deploymentKey should be present and valid SHA256 hash
+      expect(deployment.deploymentKey).toBeDefined();
+      expect(deployment.deploymentKey).toMatch(/^[a-f0-9]{64}$/);
       expect(deployment.authentication.requiredRoles).toEqual([]);
       expect(deployment.roles).toBeUndefined();
       expect(deployment.permissions).toBeUndefined();

@@ -66,7 +66,9 @@ const mockEnvConfig = {
       DATAPLANE_HOST: 'localhost',
       DATAPLANE_PORT: '3011',
       MISO_HOST: 'localhost',
-      MISO_PORT: '3010'
+      MISO_PORT: '3010',
+      KEYCLOAK_HOST: 'localhost',
+      KEYCLOAK_PORT: '8082'
     },
     docker: {
       DB_HOST: 'postgres',
@@ -76,7 +78,9 @@ const mockEnvConfig = {
       DATAPLANE_HOST: 'dataplane',
       DATAPLANE_PORT: '3001',
       MISO_HOST: 'miso-controller',
-      MISO_PORT: '3000'
+      MISO_PORT: '3000',
+      KEYCLOAK_HOST: 'keycloak',
+      KEYCLOAK_PORT: '8082'
     }
   }
 };
@@ -825,9 +829,52 @@ DB_PORT=\${DB_PORT}`;
         expect(result).toMatch(/^PORT=3187$/m); // 3087 + 100
       });
 
-      it('should apply offset to infra ports', async() => {
+    });
+  });
+
+  describe('PORT Override Chain Scenarios', () => {
+    describe('Scenario 1: All sources present', () => {
+      it('should use variables.yaml build.localPort as strongest override (dev-id 1)', async() => {
+        // env-config.yaml → PORT: 3000
+        // config.yaml → PORT: 3010
+        // variables.yaml → build.localPort: 3015 (strongest)
+        // Expected: 3015 + 100 = 3115
+
         const variables = {
-          port: 3077
+          port: 3000,
+          build: {
+            localPort: 3015
+          }
+        };
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockVariablesPath) return yaml.dump(variables);
+          if (filePath.includes('config.yaml')) {
+            return yaml.dump({ environments: { local: { PORT: 3010 } } });
+          }
+          return '';
+        });
+
+        fs.existsSync.mockImplementation((filePath) => {
+          return filePath === mockVariablesPath || filePath.includes('config.yaml') || filePath.includes('env-config.yaml');
+        });
+
+        mockConfig.getDeveloperId.mockResolvedValue('1');
+
+        const envContent = 'PORT=3000';
+        const result = await adjustLocalEnvPortsInContent(envContent, mockVariablesPath);
+
+        expect(result).toMatch(/^PORT=3115$/m); // 3015 + 100
+      });
+    });
+
+    describe('Scenario 2: Only variables.yaml present', () => {
+      it('should use variables.yaml build.localPort when other sources missing (dev-id 1)', async() => {
+        const variables = {
+          port: 3000,
+          build: {
+            localPort: 3010
+          }
         };
 
         fs.readFileSync.mockImplementation((filePath) => {
@@ -841,11 +888,138 @@ DB_PORT=\${DB_PORT}`;
 
         mockConfig.getDeveloperId.mockResolvedValue('1');
 
-        const envContent = 'PORT=3077\nDATABASE_PORT=5432\nREDIS_PORT=6379';
+        const envContent = 'PORT=3000';
         const result = await adjustLocalEnvPortsInContent(envContent, mockVariablesPath);
 
-        expect(result).toMatch(/DATABASE_PORT=5532/); // 5432 + 100
-        expect(result).toMatch(/REDIS_PORT=6479/); // 6379 + 100
+        expect(result).toMatch(/^PORT=3110$/m); // 3010 + 100
+      });
+    });
+
+    describe('Scenario 3: Only variables.yaml port (no build.localPort)', () => {
+      it('should use variables.yaml port as fallback (dev-id 1)', async() => {
+        const variables = {
+          port: 3000
+        };
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockVariablesPath) return yaml.dump(variables);
+          return '';
+        });
+
+        fs.existsSync.mockImplementation((filePath) => {
+          return filePath === mockVariablesPath;
+        });
+
+        mockConfig.getDeveloperId.mockResolvedValue('1');
+
+        const envContent = 'PORT=3000';
+        const result = await adjustLocalEnvPortsInContent(envContent, mockVariablesPath);
+
+        expect(result).toMatch(/^PORT=3100$/m); // 3000 + 100
+      });
+    });
+
+    describe('Scenario 4: Only env-config.yaml present', () => {
+      it('should use env-config.yaml PORT when variables.yaml missing (dev-id 1)', async() => {
+        fs.readFileSync.mockImplementation((filePath) => {
+          return '';
+        });
+
+        fs.existsSync.mockImplementation((filePath) => {
+          return filePath.includes('env-config.yaml');
+        });
+
+        mockConfig.getDeveloperId.mockResolvedValue('1');
+
+        const envContent = 'PORT=3000';
+        const result = await adjustLocalEnvPortsInContent(envContent, null);
+
+        // Should use env content PORT as fallback: 3000 + 100 = 3100
+        expect(result).toMatch(/^PORT=3100$/m);
+      });
+    });
+  });
+
+  describe('Infrastructure Port Override Scenarios', () => {
+    describe('DB_PORT override chain', () => {
+      it('should use config.yaml DB_PORT override with developer-id adjustment (dev-id 1)', async() => {
+        // env-config.yaml → DB_PORT: 5432
+        // config.yaml → DB_PORT: 5433 (overrides)
+        // Expected in buildEnvVarMap: 5433 + 100 = 5533
+
+        const configYaml = {
+          environments: {
+            local: {
+              DB_PORT: 5433
+            }
+          }
+        };
+
+        const configYamlPath = path.join(mockHomeDir, '.aifabrix', 'config.yaml');
+        os.homedir.mockReturnValue(mockHomeDir);
+
+        fs.existsSync.mockImplementation((filePath) => {
+          if (filePath === configYamlPath || (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix'))) return true;
+          if (filePath && filePath.includes('env-config.yaml')) return true;
+          return false;
+        });
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === configYamlPath || (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix'))) {
+            return yaml.dump(configYaml);
+          }
+          if (filePath && filePath.includes('env-config.yaml')) {
+            return yaml.dump(mockEnvConfig);
+          }
+          return '';
+        });
+
+        mockConfig.getDeveloperId.mockResolvedValue('1');
+
+        const result = await buildEnvVarMap('local', os);
+
+        expect(result.DB_PORT).toBe('5533'); // 5433 + 100
+      });
+    });
+
+    describe('REDIS_PORT override chain', () => {
+      it('should use config.yaml REDIS_PORT override with developer-id adjustment (dev-id 1)', async() => {
+        // env-config.yaml → REDIS_PORT: 6379
+        // config.yaml → REDIS_PORT: 6380 (overrides)
+        // Expected in buildEnvVarMap: 6380 + 100 = 6480
+
+        const configYaml = {
+          environments: {
+            local: {
+              REDIS_PORT: 6380
+            }
+          }
+        };
+
+        const configYamlPath = path.join(mockHomeDir, '.aifabrix', 'config.yaml');
+        os.homedir.mockReturnValue(mockHomeDir);
+
+        fs.existsSync.mockImplementation((filePath) => {
+          if (filePath === configYamlPath || (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix'))) return true;
+          if (filePath && filePath.includes('env-config.yaml')) return true;
+          return false;
+        });
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === configYamlPath || (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix'))) {
+            return yaml.dump(configYaml);
+          }
+          if (filePath && filePath.includes('env-config.yaml')) {
+            return yaml.dump(mockEnvConfig);
+          }
+          return '';
+        });
+
+        mockConfig.getDeveloperId.mockResolvedValue('1');
+
+        const result = await buildEnvVarMap('local', os);
+
+        expect(result.REDIS_PORT).toBe('6480'); // 6380 + 100
       });
     });
   });
@@ -1018,6 +1192,50 @@ DB_PORT=\${DB_PORT}`;
       });
     });
 
+    describe('Developer-id adjustment for port variables', () => {
+      it('should apply developer-id adjustment to DB_PORT for local context (dev-id 1)', async() => {
+        mockConfig.getDeveloperId.mockResolvedValue('1');
+
+        const result = await buildEnvVarMap('local', os);
+
+        expect(result.DB_PORT).toBe('5532'); // 5432 + 100
+      });
+
+      it('should apply developer-id adjustment to REDIS_PORT for local context (dev-id 1)', async() => {
+        mockConfig.getDeveloperId.mockResolvedValue('1');
+
+        const result = await buildEnvVarMap('local', os);
+
+        expect(result.REDIS_PORT).toBe('6479'); // 6379 + 100
+      });
+
+      it('should apply developer-id adjustment to KEYCLOAK_PORT for local context (dev-id 1)', async() => {
+        mockConfig.getDeveloperId.mockResolvedValue('1');
+
+        const result = await buildEnvVarMap('local', os);
+
+        expect(result.KEYCLOAK_PORT).toBe('8182'); // 8082 + 100
+      });
+
+      it('should not apply developer-id adjustment for docker context', async() => {
+        mockConfig.getDeveloperId.mockResolvedValue('1');
+
+        const result = await buildEnvVarMap('docker', os);
+
+        expect(result.DB_PORT).toBe('5432'); // No adjustment for docker
+        expect(result.REDIS_PORT).toBe('6379'); // No adjustment for docker
+      });
+
+      it('should not apply adjustment when developer-id is 0', async() => {
+        mockConfig.getDeveloperId.mockResolvedValue('0');
+
+        const result = await buildEnvVarMap('local', os);
+
+        expect(result.DB_PORT).toBe('5432'); // No adjustment
+        expect(result.REDIS_PORT).toBe('6379'); // No adjustment
+      });
+    });
+
     describe('Host:port splitting', () => {
       it('should split DB_HOST: "postgres:5432" into DB_HOST and DB_PORT', async() => {
         const envConfig = {
@@ -1057,6 +1275,122 @@ DB_PORT=\${DB_PORT}`;
         expect(result.REDIS_PORT).toBe('6379');
         // Reset mock for other tests
         loadEnvConfig.mockResolvedValue(mockEnvConfig);
+      });
+    });
+  });
+
+  describe('Complete End-to-End Scenarios', () => {
+    describe('Developer ID 1, Local Context', () => {
+      it('should generate all variables with developer-id adjustment', async() => {
+        const variables = {
+          port: 3000,
+          build: {
+            localPort: 3010
+          }
+        };
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockVariablesPath) return yaml.dump(variables);
+          if (filePath === mockTemplatePath) {
+            return `PORT=3000
+DB_HOST=\${DB_HOST}
+DB_PORT=\${DB_PORT}
+REDIS_HOST=\${REDIS_HOST}
+REDIS_PORT=\${REDIS_PORT}
+REDIS_URL=redis://\${REDIS_HOST}:\${REDIS_PORT}
+KEYCLOAK_HOST=\${KEYCLOAK_HOST}
+KEYCLOAK_PORT=\${KEYCLOAK_PORT}
+MISO_HOST=\${MISO_HOST}
+MISO_PORT=\${MISO_PORT}`;
+          }
+          return '';
+        });
+
+        fs.existsSync.mockImplementation((filePath) => {
+          return filePath === mockVariablesPath || filePath === mockTemplatePath || filePath.includes('env-config.yaml');
+        });
+
+        mockConfig.getDeveloperId.mockResolvedValue('1');
+
+        const { generateEnvContent } = require('../../../lib/secrets');
+        const result = await generateEnvContent(mockAppName, null, 'local', false);
+
+        // Verify PORT uses build.localPort + adjustment: 3010 + 100 = 3110
+        expect(result).toMatch(/^PORT=3110$/m);
+        // Verify DB_PORT uses env-config + adjustment: 5432 + 100 = 5532
+        expect(result).toMatch(/^DB_PORT=5532$/m);
+        // Verify REDIS_PORT uses env-config + adjustment: 6379 + 100 = 6479
+        expect(result).toMatch(/^REDIS_PORT=6479$/m);
+        // Verify REDIS_URL uses adjusted ports
+        expect(result).toMatch(/^REDIS_URL=redis:\/\/localhost:6479$/m);
+        // Verify KEYCLOAK_PORT uses env-config + adjustment: 8082 + 100 = 8182
+        expect(result).toMatch(/^KEYCLOAK_PORT=8182$/m);
+        // Verify MISO_PORT uses env-config + adjustment: 3010 + 100 = 3110
+        expect(result).toMatch(/^MISO_PORT=3110$/m);
+      });
+    });
+
+    describe('Developer ID 2, Local Context', () => {
+      it('should generate all variables with developer-id adjustment', async() => {
+        const variables = {
+          port: 3000,
+          build: {
+            localPort: 3010
+          }
+        };
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockVariablesPath) return yaml.dump(variables);
+          if (filePath === mockTemplatePath) {
+            return `PORT=3000
+DB_PORT=\${DB_PORT}
+REDIS_PORT=\${REDIS_PORT}`;
+          }
+          return '';
+        });
+
+        fs.existsSync.mockImplementation((filePath) => {
+          return filePath === mockVariablesPath || filePath === mockTemplatePath || filePath.includes('env-config.yaml');
+        });
+
+        mockConfig.getDeveloperId.mockResolvedValue('2');
+
+        const { generateEnvContent } = require('../../../lib/secrets');
+        const result = await generateEnvContent(mockAppName, null, 'local', false);
+
+        // Verify PORT: 3010 + 200 = 3210
+        expect(result).toMatch(/^PORT=3210$/m);
+        // Verify DB_PORT: 5432 + 200 = 5632
+        expect(result).toMatch(/^DB_PORT=5632$/m);
+        // Verify REDIS_PORT: 6379 + 200 = 6579
+        expect(result).toMatch(/^REDIS_PORT=6579$/m);
+      });
+    });
+
+    describe('Docker Context (no developer-id adjustment for infra ports)', () => {
+      it('should use base ports without adjustment', async() => {
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockTemplatePath) {
+            return `PORT=3000
+DB_PORT=\${DB_PORT}
+REDIS_PORT=\${REDIS_PORT}`;
+          }
+          return '';
+        });
+
+        fs.existsSync.mockImplementation((filePath) => {
+          return filePath === mockTemplatePath || filePath.includes('env-config.yaml');
+        });
+
+        mockConfig.getDeveloperId.mockResolvedValue('1');
+
+        const { generateEnvContent } = require('../../../lib/secrets');
+        const result = await generateEnvContent(mockAppName, null, 'docker', false);
+
+        // Verify DB_PORT: 5432 (no adjustment for docker)
+        expect(result).toMatch(/^DB_PORT=5432$/m);
+        // Verify REDIS_PORT: 6379 (no adjustment for docker)
+        expect(result).toMatch(/^REDIS_PORT=6379$/m);
       });
     });
   });

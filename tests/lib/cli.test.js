@@ -1902,8 +1902,19 @@ describe('CLI Commands', () => {
         setupCommandsAndResetLogger();
 
         const appName = 'testapp';
-        const expectedKey = 'test-deployment-key-12345';
-        keyGenerator.generateDeploymentKey.mockResolvedValue(expectedKey);
+        const expectedKey = '0000000000000000000000000000000000000000000000000000000000000000';
+        const jsonPath = 'builder/testapp/aifabrix-deploy.json';
+        const deploymentJson = {
+          key: appName,
+          displayName: 'Test App',
+          deploymentKey: expectedKey
+        };
+
+        generator.generateDeployJson.mockResolvedValue(jsonPath);
+        // Mock fs.readFileSync - the handler uses require('fs') inside, so this should work
+        const freshFs = require('fs');
+        freshFs.readFileSync = jest.fn().mockReturnValue(JSON.stringify(deploymentJson));
+        chalk.gray.mockImplementation((text) => text);
 
         const handler = commandActions['genkey <app>'];
         expect(handler).toBeDefined();
@@ -1911,17 +1922,19 @@ describe('CLI Commands', () => {
 
         await handler(appName);
 
-        expect(keyGenerator.generateDeploymentKey).toHaveBeenCalledWith(appName);
+        expect(generator.generateDeployJson).toHaveBeenCalledWith(appName);
+        // Note: fs.readFileSync is called inside the handler via require('fs'), so we verify via the result
         expect(logger.log).toHaveBeenCalledWith(`\nDeployment key for ${appName}:`);
         expect(logger.log).toHaveBeenCalledWith(expectedKey);
+        expect(logger.log).toHaveBeenCalledWith(chalk.gray(`\nGenerated from: ${jsonPath}`));
       });
 
       it('should handle genkey command handler error via setupCommands', async() => {
         setupCommandsAndResetLogger();
 
         const appName = 'testapp';
-        const errorMessage = 'Key generation failed';
-        keyGenerator.generateDeploymentKey.mockRejectedValue(new Error(errorMessage));
+        const errorMessage = 'JSON generation failed';
+        generator.generateDeployJson.mockRejectedValue(new Error(errorMessage));
         cliUtils.handleCommandError.mockImplementation(() => {});
         process.exit.mockImplementation(() => {});
 
@@ -1930,6 +1943,7 @@ describe('CLI Commands', () => {
 
         await handler(appName);
 
+        expect(generator.generateDeployJson).toHaveBeenCalledWith(appName);
         expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'genkey');
         expect(process.exit).toHaveBeenCalledWith(1);
       });

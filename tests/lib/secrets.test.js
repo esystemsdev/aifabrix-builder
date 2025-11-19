@@ -619,6 +619,86 @@ environments:
       expect(result).toContain('DATABASE_URL=postgresql://user:pass@${NONEXISTENT_HOST}:5432/db');
     });
 
+    describe('Variable interpolation with developer-id adjusted ports', () => {
+      it('should interpolate ${DB_PORT} with developer-id adjustment in secret values (dev-id 1)', async() => {
+        fs.readFileSync.mockReturnValue(`
+environments:
+  local:
+    DB_HOST: localhost
+    DB_PORT: 5432
+`);
+        const mockSecretsWithPort = {
+          'database-urlKeyVault': 'postgresql://user:pass@${DB_HOST}:${DB_PORT}/db'
+        };
+        const template = 'DATABASE_URL=kv://database-urlKeyVault';
+
+        config.getDeveloperId.mockResolvedValue('1');
+
+        const result = await secrets.resolveKvReferences(template, mockSecretsWithPort, 'local');
+
+        // DB_PORT should be adjusted: 5432 + 100 = 5532
+        expect(result).toContain('DATABASE_URL=postgresql://user:pass@localhost:5532/db');
+      });
+
+      it('should interpolate ${KEYCLOAK_PORT} with developer-id adjustment in secret values (dev-id 1)', async() => {
+        fs.readFileSync.mockReturnValue(`
+environments:
+  local:
+    KEYCLOAK_HOST: localhost
+    KEYCLOAK_PORT: 8082
+`);
+        const mockSecretsWithPort = {
+          'keycloak-server-urlKeyVault': 'http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}'
+        };
+        const template = 'KEYCLOAK_SERVER_URL=kv://keycloak-server-urlKeyVault';
+
+        config.getDeveloperId.mockResolvedValue('1');
+
+        const result = await secrets.resolveKvReferences(template, mockSecretsWithPort, 'local');
+
+        // KEYCLOAK_PORT should be adjusted: 8082 + 100 = 8182
+        expect(result).toContain('KEYCLOAK_SERVER_URL=http://localhost:8182');
+      });
+
+      it('should interpolate ${VAR} directly in env.template with developer-id adjustment (dev-id 1)', async() => {
+        fs.readFileSync.mockReturnValue(`
+environments:
+  local:
+    KEYCLOAK_PORT: 8082
+    DB_PORT: 5432
+`);
+        const template = 'KC_PORT=${KEYCLOAK_PORT}\nDATABASE_PORT=${DB_PORT}';
+
+        config.getDeveloperId.mockResolvedValue('1');
+
+        const result = await secrets.resolveKvReferences(template, {}, 'local');
+
+        // Ports should be adjusted
+        expect(result).toMatch(/^KC_PORT=8182$/m); // 8082 + 100
+        expect(result).toMatch(/^DATABASE_PORT=5532$/m); // 5432 + 100
+      });
+
+      it('should not apply developer-id adjustment for docker context', async() => {
+        fs.readFileSync.mockReturnValue(`
+environments:
+  docker:
+    DB_HOST: postgres
+    DB_PORT: 5432
+`);
+        const mockSecretsWithPort = {
+          'database-urlKeyVault': 'postgresql://user:pass@${DB_HOST}:${DB_PORT}/db'
+        };
+        const template = 'DATABASE_URL=kv://database-urlKeyVault';
+
+        config.getDeveloperId.mockResolvedValue('1');
+
+        const result = await secrets.resolveKvReferences(template, mockSecretsWithPort, 'docker');
+
+        // DB_PORT should NOT be adjusted for docker
+        expect(result).toContain('DATABASE_URL=postgresql://user:pass@postgres:5432/db');
+      });
+    });
+
     it('should handle multiple kv:// references in template', async() => {
       fs.readFileSync.mockReturnValue(`
 environments:
@@ -2581,7 +2661,7 @@ environments:
       expect(envCall[1]).toContain('REDIS_HOST=localhost:6479');
     });
 
-    it('should apply developer-id adjustment to infra ports for docker environment', async() => {
+    it('should NOT apply developer-id adjustment to infra ports for docker environment', async() => {
       // Set developer-id to 1 for this test (default mock is already 1, but ensure it's set)
       config.getDeveloperId.mockResolvedValue(1);
 
@@ -2622,9 +2702,9 @@ environments:
       const writeCalls = fs.writeFileSync.mock.calls;
       const envCall = writeCalls.find(call => call[0].includes('.env') && !call[0].includes('../'));
       expect(envCall).toBeDefined();
-      // Infra ports get developer-id adjustment: 5432 + 100 = 5532, 6379 + 100 = 6479
-      expect(envCall[1]).toContain('DATABASE_PORT=5532');
-      expect(envCall[1]).toContain('REDIS_URL=redis://redis:6479');
+      // Infra ports should NOT get developer-id adjustment for docker: 5432, 6379
+      expect(envCall[1]).toContain('DATABASE_PORT=5432');
+      expect(envCall[1]).toContain('REDIS_URL=redis://redis:6379');
     });
   });
 
