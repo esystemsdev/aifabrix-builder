@@ -1,4 +1,4 @@
-## [2.6.1] - 2025-11-20
+## [2.6.2] - 2025-11-20
 
 ### Added
 - **Secrets Set Command**: New `aifabrix secrets set <key> <value> [--shared]` command

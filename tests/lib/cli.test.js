@@ -1813,7 +1813,20 @@ describe('CLI Commands', () => {
             action: function(action) {
               commandActions[cmdName] = action;
               return this;
-            }
+            },
+            // Support nested commands for command groups (e.g., 'secrets set')
+            command: jest.fn((subCmdName) => {
+              const fullCmdName = `${cmdName} ${subCmdName}`;
+              const mockSubCommand = {
+                description: jest.fn().mockReturnThis(),
+                option: jest.fn().mockReturnThis(),
+                action: function(action) {
+                  commandActions[fullCmdName] = action;
+                  return this;
+                }
+              };
+              return mockSubCommand;
+            })
           };
           return mockCommand;
         })
@@ -1839,7 +1852,20 @@ describe('CLI Commands', () => {
             action: function(action) {
               commandActions[cmdName] = action;
               return this;
-            }
+            },
+            // Support nested commands for command groups (e.g., 'secrets set')
+            command: jest.fn((subCmdName) => {
+              const fullCmdName = `${cmdName} ${subCmdName}`;
+              const mockSubCommand = {
+                description: jest.fn().mockReturnThis(),
+                option: jest.fn().mockReturnThis(),
+                action: function(action) {
+                  commandActions[fullCmdName] = action;
+                  return this;
+                }
+              };
+              return mockSubCommand;
+            })
           };
           return mockCommand;
         })

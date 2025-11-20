@@ -136,6 +136,20 @@ describe('CLI Comprehensive Tests', () => {
           action: jest.fn((action) => {
             commandActions[cmdName] = action;
             return mockCommand;
+          }),
+          // Support nested commands for command groups (e.g., 'secrets set')
+          command: jest.fn((subCmdName) => {
+            const fullCmdName = `${cmdName} ${subCmdName}`;
+            const mockSubCommand = {
+              description: jest.fn().mockReturnThis(),
+              option: jest.fn().mockReturnThis(),
+              requiredOption: jest.fn().mockReturnThis(),
+              action: jest.fn((action) => {
+                commandActions[fullCmdName] = action;
+                return mockSubCommand;
+              })
+            };
+            return mockSubCommand;
           })
         };
         return mockCommand;
