@@ -41,6 +41,8 @@ Complete command reference with examples and troubleshooting.
 - [aifabrix json](#aifabrix-json-app) - Generate deployment JSON
 - [aifabrix genkey](#aifabrix-genkey-app) - Generate deployment key
 - [aifabrix secure](#aifabrix-secure) - Encrypt secrets in secrets.local.yaml files
+- [aifabrix secrets](#aifabrix-secrets) - Manage secrets in secrets files
+  - [aifabrix secrets set](#aifabrix-secrets-set) - Set a secret value in secrets file
 
 ### Additional Resources
  - [Common Workflows](#common-workflows) - Typical usage patterns
@@ -1334,6 +1336,80 @@ Encrypted secrets are automatically decrypted when loaded by `aifabrix resolve`,
 - **"Invalid encryption key format"** → Key must be 32 bytes (64 hex chars or 44 base64 chars)
 - **"Decryption failed"** → Encryption key in config.yaml doesn't match the key used for encryption
 - **"File permission error"** → Ensure you have read/write access to secrets files
+
+---
+
+## aifabrix secrets
+
+Manage secrets in secrets files.
+
+### aifabrix secrets set
+
+Set a secret value in secrets file.
+
+**What:** Dynamically sets a secret value in either the user secrets file (`~/.aifabrix/secrets.local.yaml`) or the general secrets file (from `config.yaml` `aifabrix-secrets`). Supports both full URLs and environment variable interpolation.
+
+**When:** Setting up new secrets, updating existing secret values, or configuring environment-specific secrets.
+
+**Usage:**
+```bash
+# Set secret in user secrets file (default)
+aifabrix secrets set keycloak-public-server-urlKeyVault "https://mydomain.com/keycloak"
+
+# Set secret in general secrets file (shared across projects)
+aifabrix secrets set keycloak-public-server-urlKeyVault "https://mydomain.com/keycloak" --shared
+
+# Set secret with environment variable interpolation
+aifabrix secrets set keycloak-public-server-urlKeyVault "https://\${KEYCLOAK_HOST}:\${KEYCLOAK_PORT}"
+
+# Set secret with full URL path
+aifabrix secrets set keycloak-public-server-urlKeyVault "https://keycloak.example.com/auth/realms/master"
+```
+
+**Options:**
+- `--shared` - Save to general secrets file (from `config.yaml` `aifabrix-secrets`) instead of user secrets file
+
+**Secret Value Formats:**
+- **Full URLs**: Direct URL values (e.g., `https://mydomain.com/keycloak`)
+- **Environment Variable Interpolation**: Values with `${VAR}` placeholders (e.g., `https://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}`)
+  - Variables are resolved from `env-config.yaml` and `config.yaml` when secrets are loaded
+
+**Secrets File Locations:**
+- **User secrets** (default): `~/.aifabrix/secrets.local.yaml`
+- **General secrets** (with `--shared`): Path specified in `config.yaml` under `aifabrix-secrets`
+
+**Examples:**
+```bash
+# Set Keycloak public server URL in user secrets
+aifabrix secrets set keycloak-public-server-urlKeyVault "https://keycloak.example.com"
+
+# Set Keycloak public server URL in shared secrets file
+aifabrix secrets set keycloak-public-server-urlKeyVault "https://keycloak.example.com" --shared
+
+# Set database password in user secrets
+aifabrix secrets set postgres-passwordKeyVault "my-secure-password"
+
+# Set API key with environment variable interpolation
+aifabrix secrets set api-keyKeyVault "\${API_KEY}"
+```
+
+**Output:**
+```yaml
+✓ Secret 'keycloak-public-server-urlKeyVault' saved to user secrets file: /home/user/.aifabrix/secrets.local.yaml
+```
+
+**Behavior:**
+- Merges with existing secrets (doesn't overwrite other keys)
+- Creates secrets file if it doesn't exist
+- Creates directory structure if needed
+- Sets proper file permissions (0o600 - owner read/write only)
+- Preserves existing YAML structure and formatting
+
+**Issues:**
+- **"General secrets file not configured"** → Set `aifabrix-secrets` in `config.yaml` or use without `--shared` flag for user secrets
+- **"Secret key is required"** → Provide a non-empty key name
+- **"Secret value is required"** → Provide a non-empty value
+- **"File permission error"** → Ensure you have read/write access to secrets files directory
 
 ---
 

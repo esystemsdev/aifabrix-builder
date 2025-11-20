@@ -1,3 +1,32 @@
+## [2.6.1] - 2025-11-20
+
+### Added
+- **Secrets Set Command**: New `aifabrix secrets set <key> <value> [--shared]` command
+  - Dynamically set secret values in secrets files without manual file editing
+  - Supports saving to user secrets file (`~/.aifabrix/secrets.local.yaml`) or general secrets file (from `config.yaml` `aifabrix-secrets`)
+  - `--shared` flag saves to general secrets file for shared configuration across projects
+  - Supports both full URLs (e.g., `https://mydomain.com/keycloak`) and environment variable interpolation (e.g., `https://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}`)
+  - Automatically creates secrets file and directory structure if they don't exist
+  - Merges with existing secrets without overwriting other keys
+  - Sets proper file permissions (0o600 - owner read/write only) for ISO 27001 compliance
+- **Extended Local Secrets Utilities**
+  - New `saveSecret(key, value, secretsPath)` function in `lib/utils/local-secrets.js` for flexible path support
+  - Supports both absolute and relative paths for general secrets files
+  - Maintains backward compatibility with existing `saveLocalSecret()` function
+
+### Changed
+- **Secrets Management**: Enhanced secret management capabilities
+  - Command handler in `lib/commands/secrets-set.js` with comprehensive validation
+  - Path resolution for general secrets files (absolute vs relative paths)
+  - Improved error handling with user-friendly messages
+
+### Technical
+- New command handler module: `lib/commands/secrets-set.js`
+- Extended `lib/utils/local-secrets.js` with `saveSecret()` function
+- Comprehensive test coverage: 19 test cases covering validation, path resolution, error handling, and edge cases
+- Full JSDoc documentation for all public functions
+- ISO 27001 compliant implementation with proper file permissions and secure handling
+
 ## [2.6.0] - 2025-11-19
 
 ### Added
