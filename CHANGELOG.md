@@ -1,3 +1,34 @@
+## [2.6.3] - 2025-11-23
+
+### Added
+- **Proactive Token Refresh**: New `shouldRefreshToken()` function to prevent Keycloak session timeouts
+  - Tokens are now refreshed proactively when within 15 minutes of expiry
+  - Helps keep Keycloak SSO sessions alive by refreshing before the SSO Session Idle timeout (30 minutes)
+  - Prevents authentication failures due to session expiration during long-running operations
+  - Available in both `lib/config.js` and `lib/utils/token-manager.js` modules
+
+### Changed
+- **Token Refresh Logic**: Enhanced device token refresh to use proactive refresh
+  - `getOrRefreshDeviceToken()` now checks if token should be refreshed proactively (15 minutes before expiry)
+  - Previously only refreshed when token was expired (5 minutes before expiry)
+  - Ensures tokens are refreshed before Keycloak session timeout occurs
+- **Error Handling**: Improved authentication error messages
+  - Enhanced error messages in `lib/utils/api.js` when token refresh fails
+  - Provides clear guidance to users: "Please login again using: aifabrix login"
+  - Better error context when refresh token is expired or invalid
+  - Improved error handling for 401 Unauthorized responses with user-friendly messages
+- **Code Quality**: Code refactoring and simplification
+  - Simplified conditional statements in `lib/config.js` for better readability
+  - Used object shorthand syntax where appropriate
+  - Improved code consistency across token management functions
+
+### Technical
+- New `shouldRefreshToken()` function in `lib/config.js` with 15-minute buffer for proactive refresh
+- Enhanced `getOrRefreshDeviceToken()` in `lib/utils/token-manager.js` to use proactive refresh logic
+- Improved error handling in `authenticatedApiCall()` with better user guidance
+- Comprehensive test coverage: Added 133+ lines of tests for proactive refresh and error handling scenarios
+- Tests cover proactive refresh timing, refresh token expiry, and 401 error handling
+
 ## [2.6.2] - 2025-11-20
 
 ### Added

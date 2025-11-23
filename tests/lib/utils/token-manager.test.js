@@ -189,6 +189,28 @@ describe('Token Manager Module', () => {
     });
   });
 
+  describe('shouldRefreshToken', () => {
+    it('should return true when token should be refreshed proactively', () => {
+      config.shouldRefreshToken.mockReturnValue(true);
+      const expiresIn10Minutes = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      expect(tokenManager.shouldRefreshToken(expiresIn10Minutes)).toBe(true);
+      expect(config.shouldRefreshToken).toHaveBeenCalledWith(expiresIn10Minutes);
+    });
+
+    it('should return false when token does not need proactive refresh', () => {
+      config.shouldRefreshToken.mockReturnValue(false);
+      const expiresIn20Minutes = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+      expect(tokenManager.shouldRefreshToken(expiresIn20Minutes)).toBe(false);
+      expect(config.shouldRefreshToken).toHaveBeenCalledWith(expiresIn20Minutes);
+    });
+
+    it('should return true for null expiresAt', () => {
+      config.shouldRefreshToken.mockReturnValue(true);
+      expect(tokenManager.shouldRefreshToken(null)).toBe(true);
+      expect(config.shouldRefreshToken).toHaveBeenCalledWith(null);
+    });
+  });
+
   describe('refreshClientToken', () => {
     it('should refresh token using credentials from secrets.local.yaml', async() => {
       const mockSecrets = {
@@ -693,6 +715,30 @@ describe('Token Manager Module', () => {
         tokenManager.refreshDeviceToken(controllerUrl, refreshToken)
       ).rejects.toThrow('Refresh failed');
     });
+
+    it('should throw user-friendly error when refresh token is expired', async() => {
+      api.refreshDeviceToken.mockRejectedValue(new Error('Refresh token has expired'));
+
+      await expect(
+        tokenManager.refreshDeviceToken(controllerUrl, refreshToken)
+      ).rejects.toThrow('Refresh token has expired. Please login again using: aifabrix login');
+    });
+
+    it('should throw user-friendly error when refresh token is invalid', async() => {
+      api.refreshDeviceToken.mockRejectedValue(new Error('Invalid refresh token'));
+
+      await expect(
+        tokenManager.refreshDeviceToken(controllerUrl, refreshToken)
+      ).rejects.toThrow('Refresh token has expired. Please login again using: aifabrix login');
+    });
+
+    it('should throw user-friendly error on 401 Unauthorized', async() => {
+      api.refreshDeviceToken.mockRejectedValue(new Error('Unauthorized: 401'));
+
+      await expect(
+        tokenManager.refreshDeviceToken(controllerUrl, refreshToken)
+      ).rejects.toThrow('Refresh token has expired. Please login again using: aifabrix login');
+    });
   });
 
   describe('getOrRefreshDeviceToken', () => {
@@ -708,6 +754,7 @@ describe('Token Manager Module', () => {
 
       config.getDeviceToken.mockResolvedValue(mockToken);
       config.isTokenExpired.mockReturnValue(false);
+      config.shouldRefreshToken.mockReturnValue(false);
 
       const result = await tokenManager.getOrRefreshDeviceToken(controllerUrl);
 
@@ -733,6 +780,7 @@ describe('Token Manager Module', () => {
 
       config.getDeviceToken.mockResolvedValue(mockToken);
       config.isTokenExpired.mockReturnValue(true);
+      config.shouldRefreshToken.mockReturnValue(true);
 
       api.refreshDeviceToken.mockResolvedValue({
         access_token: 'new-device-token-789',
@@ -749,6 +797,36 @@ describe('Token Manager Module', () => {
       expect(api.refreshDeviceToken).toHaveBeenCalledWith(controllerUrl, 'refresh-token-456');
     });
 
+    it('should proactively refresh token when within 15 minutes of expiry', async() => {
+      // Token expires in 10 minutes (within 15-minute proactive refresh window)
+      const expiresIn10Minutes = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      const mockToken = {
+        controller: controllerUrl,
+        token: 'device-token-123',
+        refreshToken: 'refresh-token-456',
+        expiresAt: expiresIn10Minutes
+      };
+
+      config.getDeviceToken.mockResolvedValue(mockToken);
+      config.isTokenExpired.mockReturnValue(false); // Not expired yet
+      config.shouldRefreshToken.mockReturnValue(true); // But should refresh proactively
+
+      api.refreshDeviceToken.mockResolvedValue({
+        access_token: 'new-device-token-789',
+        refresh_token: 'new-refresh-token-999',
+        expires_in: 3600
+      });
+
+      config.saveDeviceToken.mockResolvedValue();
+
+      const result = await tokenManager.getOrRefreshDeviceToken(controllerUrl);
+
+      expect(result.token).toBe('new-device-token-789');
+      expect(result.controller).toBe(controllerUrl);
+      expect(api.refreshDeviceToken).toHaveBeenCalledWith(controllerUrl, 'refresh-token-456');
+      expect(config.shouldRefreshToken).toHaveBeenCalledWith(expiresIn10Minutes);
+    });
+
     it('should return null when token expired but no refresh token', async() => {
       const mockToken = {
         controller: controllerUrl,
@@ -759,10 +837,15 @@ describe('Token Manager Module', () => {
 
       config.getDeviceToken.mockResolvedValue(mockToken);
       config.isTokenExpired.mockReturnValue(true);
+      config.shouldRefreshToken.mockReturnValue(true);
+
+      const logger = require('../../../lib/utils/logger');
+      logger.warn.mockImplementation(() => {});
 
       const result = await tokenManager.getOrRefreshDeviceToken(controllerUrl);
 
       expect(result).toBeNull();
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('no refresh token available'));
     });
 
     it('should return null when refresh fails', async() => {
@@ -775,6 +858,7 @@ describe('Token Manager Module', () => {
 
       config.getDeviceToken.mockResolvedValue(mockToken);
       config.isTokenExpired.mockReturnValue(true);
+      config.shouldRefreshToken.mockReturnValue(true);
 
       api.refreshDeviceToken.mockRejectedValue(new Error('Refresh failed'));
 
@@ -785,6 +869,54 @@ describe('Token Manager Module', () => {
 
       expect(result).toBeNull();
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Failed to refresh device token'));
+    });
+
+    it('should handle refresh token expiry with user-friendly error', async() => {
+      const mockToken = {
+        controller: controllerUrl,
+        token: 'expired-device-token',
+        refreshToken: 'expired-refresh-token',
+        expiresAt: new Date(Date.now() - 1000).toISOString()
+      };
+
+      config.getDeviceToken.mockResolvedValue(mockToken);
+      config.isTokenExpired.mockReturnValue(true);
+      config.shouldRefreshToken.mockReturnValue(true);
+
+      // Simulate refresh token expiry error
+      api.refreshDeviceToken.mockRejectedValue(new Error('Refresh token has expired'));
+
+      const logger = require('../../../lib/utils/logger');
+      logger.warn.mockImplementation(() => {});
+
+      const result = await tokenManager.getOrRefreshDeviceToken(controllerUrl);
+
+      expect(result).toBeNull();
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Refresh token expired'));
+    });
+
+    it('should handle 401 Unauthorized error as refresh token expiry', async() => {
+      const mockToken = {
+        controller: controllerUrl,
+        token: 'expired-device-token',
+        refreshToken: 'expired-refresh-token',
+        expiresAt: new Date(Date.now() - 1000).toISOString()
+      };
+
+      config.getDeviceToken.mockResolvedValue(mockToken);
+      config.isTokenExpired.mockReturnValue(true);
+      config.shouldRefreshToken.mockReturnValue(true);
+
+      // Simulate 401 error (refresh token expired)
+      api.refreshDeviceToken.mockRejectedValue(new Error('Unauthorized: 401'));
+
+      const logger = require('../../../lib/utils/logger');
+      logger.warn.mockImplementation(() => {});
+
+      const result = await tokenManager.getOrRefreshDeviceToken(controllerUrl);
+
+      expect(result).toBeNull();
+      expect(logger.warn).toHaveBeenCalled();
     });
   });
 
@@ -820,6 +952,7 @@ describe('Token Manager Module', () => {
       // Mock the underlying config functions that getOrRefreshDeviceToken uses
       config.getDeviceToken.mockResolvedValue(mockDeviceToken);
       config.isTokenExpired.mockReturnValue(false);
+      config.shouldRefreshToken.mockReturnValue(false); // Token doesn't need proactive refresh
 
       const result = await tokenManager.getDeploymentAuth(controllerUrl, environment, appName);
 

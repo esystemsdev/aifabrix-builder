@@ -20,6 +20,7 @@ const {
   getCurrentEnvironment,
   setCurrentEnvironment,
   isTokenExpired,
+  shouldRefreshToken,
   getDeviceToken,
   getClientToken,
   saveDeviceToken,
@@ -700,6 +701,40 @@ describe('Config Module', () => {
 
     it('should return true for null expiresAt', () => {
       expect(isTokenExpired(null)).toBe(true);
+    });
+  });
+
+  describe('shouldRefreshToken', () => {
+    it('should return true for token expiring within 15 minutes', () => {
+      // Token expires in 10 minutes (within 15-minute proactive refresh window)
+      const expiresIn10Minutes = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      expect(shouldRefreshToken(expiresIn10Minutes)).toBe(true);
+    });
+
+    it('should return true for expired token', () => {
+      const pastDate = new Date(Date.now() - 1000 * 60 * 10).toISOString();
+      expect(shouldRefreshToken(pastDate)).toBe(true);
+    });
+
+    it('should return false for token expiring after 15 minutes', () => {
+      // Token expires in 20 minutes (outside 15-minute proactive refresh window)
+      const expiresIn20Minutes = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+      expect(shouldRefreshToken(expiresIn20Minutes)).toBe(false);
+    });
+
+    it('should return true for token expiring exactly at 15 minutes', () => {
+      // Token expires in exactly 15 minutes (at the boundary)
+      const expiresIn15Minutes = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+      expect(shouldRefreshToken(expiresIn15Minutes)).toBe(true);
+    });
+
+    it('should return true for null expiresAt', () => {
+      expect(shouldRefreshToken(null)).toBe(true);
+    });
+
+    it('should return false for token expiring in 1 hour', () => {
+      const expiresIn1Hour = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      expect(shouldRefreshToken(expiresIn1Hour)).toBe(false);
     });
   });
 

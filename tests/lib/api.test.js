@@ -324,6 +324,8 @@ describe('API Utilities', () => {
 
       expect(result.success).toBe(false);
       expect(result.status).toBe(401);
+      expect(result.error).toContain('Authentication failed');
+      expect(result.error).toContain('Please login again using: aifabrix login');
       expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
       // Should only call fetch once (no retry when refresh fails)
       expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -344,6 +346,9 @@ describe('API Utilities', () => {
 
       expect(result.success).toBe(false);
       expect(result.status).toBe(401);
+      expect(result.error).toContain('Authentication failed');
+      expect(result.error).toContain('Refresh failed');
+      expect(result.error).toContain('Please login again using: aifabrix login');
       expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
       // Should only call fetch once (no retry when refresh throws)
       expect(global.fetch).toHaveBeenCalledTimes(1);
