@@ -1,725 +1,866 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AI Fabrix Application Configuration Schema",
-  "description": "Schema for AI Fabrix applications deployed via the API-Driven Deployment System",
-  "metadata": {
-    "key": "application-schema",
-    "name": "Application Configuration Schema",
-    "description": "JSON schema for validating AI Fabrix application configuration files",
-    "version": "1.0.0",
-    "type": "schema",
-    "category": "infrastructure",
-    "author": "AI Fabrix Team",
-    "createdAt": "2024-01-01T00:00:00Z",
-    "updatedAt": "2024-01-01T00:00:00Z",
-    "compatibility": {
-      "minVersion": "1.0.0",
-      "maxVersion": "2.0.0",
-      "deprecated": false
-    },
-    "tags": ["schema", "application", "validation", "configuration"],
-    "dependencies": [],
-    "changelog": [
-      {
-        "version": "1.0.0",
-        "date": "2024-01-01T00:00:00Z",
-        "changes": [
-          "Initial application configuration schema",
-          "Added application resource validation",
-          "Added database configuration validation",
-          "Added environment variable validation"
-        ],
-        "breaking": false
-      }
-    ]
+  "$schema":"http://json-schema.org/draft-07/schema#",
+  "title":"AI Fabrix Application Configuration Schema",
+  "description":"Schema for AI Fabrix applications deployed via the API-Driven Deployment System",
+  "metadata":{
+     "key":"application-schema",
+     "name":"Application Configuration Schema",
+     "description":"JSON schema for validating AI Fabrix application configuration files",
+     "version":"1.1.0",
+     "type":"schema",
+     "category":"infrastructure",
+     "author":"AI Fabrix Team",
+     "createdAt":"2024-01-01T00:00:00Z",
+     "updatedAt":"2025-11-26T00:00:00Z",
+     "compatibility":{
+        "minVersion":"1.0.0",
+        "maxVersion":"2.0.0",
+        "deprecated":false
+     },
+     "tags":[
+        "schema",
+        "application",
+        "validation",
+        "configuration",
+        "external-integration"
+     ],
+     "dependencies":[
+        
+     ],
+     "changelog":[
+        {
+           "version":"1.1.0",
+           "date":"2025-11-26T00:00:00Z",
+           "changes":[
+              "Added externalIntegration block for ExternalSystem + ExternalDataSource pipeline deployments",
+              "Added schemaBasePath, systems, dataSources and autopublish fields"
+           ],
+           "breaking":false
+        }
+     ]
   },
-  "type": "object",
-  "required": ["key", "displayName", "description", "type", "image", "registryMode", "port", "deploymentKey"],
-  "properties": {
-    "key": {
-      "type": "string",
-      "description": "Unique application identifier (cannot be changed after registration)",
-      "pattern": "^[a-z0-9-]+$",
-      "minLength": 3,
-      "maxLength": 40
-    },
-    "displayName": {
-      "type": "string",
-      "description": "Human-readable application name",
-      "minLength": 1,
-      "maxLength": 100
-    },
-    "description": {
-      "type": "string",
-      "description": "Application description",
-      "minLength": 1,
-      "maxLength": 500
-    },
-    "type": {
-      "type": "string",
-      "description": "Azure application type",
-      "enum": ["webapp", "functionapp", "api", "service"]
-    },
-    "image": {
-      "type": "string",
-      "description": "Container image reference",
-      "pattern": "^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$"
-    },
-    "registryMode": {
-      "type": "string",
-      "description": "Registry mode for image authentication",
-      "enum": ["acr", "external", "public"]
-    },
-    "port": {
-      "type": "number",
-      "description": "Application port number",
-      "minimum": 1,
-      "maximum": 65535
-    },
-    "deploymentKey": {
-      "type": "string",
-      "description": "SHA256 hash of deployment manifest (excluding deploymentKey field)",
-      "pattern": "^[a-f0-9]{64}$"
-    },
-    "requiresDatabase": {
-      "type": "boolean",
-      "description": "Whether application requires database"
-    },
-    "databases": {
-      "type": "array",
-      "description": "Database configurations",
-      "items": {
-        "type": "object",
-        "required": ["name"],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Database name",
-            "pattern": "^[a-z0-9-_]+$"
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "requiresRedis": {
-      "type": "boolean",
-      "description": "Whether application requires Redis"
-    },
-    "requiresStorage": {
-      "type": "boolean",
-      "description": "Whether application requires storage.Physical storage is mapped to /mnt/data/. Blob storage is mapped to SMB File share /data/{app-key}/."
-    },
-    "configuration": {
-      "type": "array",
-      "description": "Core application configuration",
-      "items": {
-        "type": "object",
-        "required": ["name", "value", "location", "required"],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Configuration variable name",
-            "pattern": "^[A-Z_][A-Z0-9_]*$"
-          },
-          "value": {
-            "type": "string",
-            "description": "Configuration value (literal or ready-made parameter reference)"
-          },
-          "location": {
-            "type": "string",
-            "description": "Where the value is stored",
-            "enum": ["variable", "keyvault"]
-          },
-          "required": {
-            "type": "boolean",
-            "description": "Whether this configuration is required"
-          },
-          "portalInput": {
-            "type": "object",
-            "description": "Portal input configuration for user-provided values",
-            "properties": {
-              "field": {
-                "type": "string",
-                "enum": ["password", "text", "textarea", "select"]
-              },
-              "label": {
-                "type": "string",
-                "description": "Display label for the input field"
-              },
-              "placeholder": {
-                "type": "string",
-                "description": "Placeholder text for the input field"
-              },
-              "masked": {
-                "type": "boolean",
-                "description": "Whether to mask the input (for passwords)"
-              },
-              "validation": {
-                "type": "object",
-                "properties": {
-                  "minLength": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  "maxLength": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  "pattern": {
-                    "type": "string",
-                    "description": "Regex pattern for validation"
-                  },
-                  "required": {
-                    "type": "boolean"
-                  }
-                },
-                "additionalProperties": false
-              },
-              "options": {
-                "type": "array",
-                "description": "Options for select fields",
-                "items": {
-                  "type": "string"
-                }
-              }
-            },
-            "required": ["field", "label"],
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "conditionalConfiguration": {
-      "type": "array",
-      "description": "Conditional configuration based on service requirements",
-      "items": {
-        "type": "object",
-        "required": ["condition", "configuration"],
-        "properties": {
-          "condition": {
-            "type": "string",
-            "description": "Condition for including this configuration",
-            "pattern": "^\\{\\{.*\\}\\}$"
-          },
-          "configuration": {
-            "type": "array",
-            "description": "Configuration items to include when condition is true",
-            "items": {
-              "type": "object",
-              "required": ["name", "value", "location", "required"],
-              "properties": {
-                "name": {
-                  "type": "string",
-                  "description": "Configuration variable name",
-                  "pattern": "^[A-Z_][A-Z0-9_]*$"
-                },
-                "value": {
-                  "type": "string",
-                  "description": "Configuration value (literal or ready-made parameter reference)"
-                },
-                "location": {
-                  "type": "string",
-                  "description": "Where the value is stored",
-                  "enum": ["variable", "keyvault"]
-                },
-                "required": {
-                  "type": "boolean",
-                  "description": "Whether this configuration is required"
-                },
-                "portalInput": {
-                  "type": "object",
-                  "description": "Portal input configuration for user-provided values",
-                  "properties": {
-                    "field": {
-                      "type": "string",
-                      "enum": ["password", "text", "textarea", "select"]
-                    },
-                    "label": {
-                      "type": "string",
-                      "description": "Display label for the input field"
-                    },
-                    "placeholder": {
-                      "type": "string",
-                      "description": "Placeholder text for the input field"
-                    },
-                    "masked": {
-                      "type": "boolean",
-                      "description": "Whether to mask the input (for passwords)"
-                    },
-                    "validation": {
-                      "type": "object",
-                      "properties": {
-                        "minLength": {
-                          "type": "integer",
-                          "minimum": 1
-                        },
-                        "maxLength": {
-                          "type": "integer",
-                          "minimum": 1
-                        },
-                        "pattern": {
-                          "type": "string",
-                          "description": "Regex pattern for validation"
-                        },
-                        "required": {
-                          "type": "boolean"
-                        }
-                      },
-                      "additionalProperties": false
-                    },
-                    "options": {
-                      "type": "array",
-                      "description": "Options for select fields",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  "required": ["field", "label"],
-                  "additionalProperties": false
-                }
-              },
-              "additionalProperties": false
-            }
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "healthCheck": {
-      "type": "object",
-      "description": "Health check configuration. The health check endpoint must return HTTP 200 and a JSON response with one of the following formats: {\"status\": \"UP\"} (Keycloak format), {\"status\": \"ok\"} (standard format, optionally with {\"database\": \"connected\"}), {\"status\": \"healthy\"} (alternative format), or {\"success\": true} (success-based format). For non-JSON responses, HTTP 200 status code is sufficient.",
-      "required": ["path", "interval"],
-      "properties": {
-        "path": {
-          "type": "string",
-          "description": "Health check endpoint path",
-          "pattern": "^/"
-        },
-        "interval": {
-          "type": "integer",
-          "description": "Health check interval in seconds",
-          "minimum": 10,
-          "maximum": 300
-        },
-        "probePath": {
-          "type": "string",
-          "description": "Front Door health probe path (defaults to path if not specified)",
-          "pattern": "^/"
-        },
-        "probeRequestType": {
-          "type": "string",
-          "description": "HTTP method for Front Door probe",
-          "enum": ["GET", "POST", "HEAD", "PUT", "DELETE"]
-        },
-        "probeProtocol": {
-          "type": "string",
-          "description": "Protocol for Front Door probe",
-          "enum": ["Http", "Https"]
-        },
-        "probeIntervalInSeconds": {
-          "type": "integer",
-          "description": "Front Door probe interval in seconds (default 120)",
-          "minimum": 60,
-          "maximum": 600
-        }
-      },
-      "additionalProperties": false,
-      "examples": [
-        {
-          "path": "/health",
-          "interval": 30
-        },
-        {
-          "path": "/api/health",
-          "interval": 60,
-          "probePath": "/api/health",
-          "probeRequestType": "GET",
-          "probeProtocol": "Http",
-          "probeIntervalInSeconds": 120
-        }
-      ],
-      "responseFormats": {
-        "description": "Valid health check response formats",
-        "formats": [
-          {
-            "format": "Keycloak",
-            "example": "{\"status\": \"UP\", \"checks\": []}",
-            "validation": "status === 'UP'"
-          },
-          {
-            "format": "Standard",
-            "example": "{\"status\": \"ok\", \"database\": \"connected\"}",
-            "validation": "status === 'ok' && (database === 'connected' || !database)"
-          },
-          {
-            "format": "Alternative",
-            "example": "{\"status\": \"healthy\", \"service\": \"dataplane\"}",
-            "validation": "status === 'healthy'"
-          },
-          {
-            "format": "Success-based",
-            "example": "{\"success\": true, \"message\": \"Service is running\"}",
-            "validation": "success === true"
-          },
-          {
-            "format": "Non-JSON",
-            "example": "OK",
-            "validation": "HTTP status code === 200"
-          }
+  "type":"object",
+  "required":[
+     "key",
+     "displayName",
+     "description",
+     "type",
+     "image",
+     "registryMode",
+     "port",
+     "deploymentKey"
+  ],
+  "properties":{
+     "key":{
+        "type":"string",
+        "description":"Unique application identifier (cannot be changed after registration)",
+        "pattern":"^[a-z0-9-]+$",
+        "minLength":3,
+        "maxLength":40
+     },
+     "displayName":{
+        "type":"string",
+        "description":"Human-readable application name",
+        "minLength":1,
+        "maxLength":100
+     },
+     "description":{
+        "type":"string",
+        "description":"Application description",
+        "minLength":1,
+        "maxLength":500
+     },
+     "type":{
+        "type":"string",
+        "description":"Azure application type",
+        "enum":[
+           "webapp",
+           "functionapp",
+           "api",
+           "service"
         ]
-      }
-    },
-    "frontDoorRouting": {
-      "type": "object",
-      "description": "Front Door routing configuration",
-      "properties": {
-        "pattern": {
-          "type": "string",
-          "description": "URL pattern for routing (e.g., '/app/*')",
-          "pattern": "^/.+"
-        },
-        "requiresRuleSet": {
-          "type": "boolean",
-          "description": "Whether URL rewriting rule set is required"
-        },
-        "ruleSetConditions": {
-          "type": "array",
-          "description": "Rule set conditions for URL rewriting",
-          "items": {
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "description": "Condition type (e.g., 'UrlPath')"
-              },
-              "operator": {
-                "type": "string",
-                "description": "Condition operator (e.g., 'BeginsWith')"
-              },
-              "matchValues": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
+     },
+     "image":{
+        "type":"string",
+        "description":"Container image reference",
+        "pattern":"^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$"
+     },
+     "registryMode":{
+        "type":"string",
+        "description":"Registry mode for image authentication",
+        "enum":[
+           "acr",
+           "external",
+           "public"
+        ]
+     },
+     "port":{
+        "type":"number",
+        "description":"Application port number",
+        "minimum":1,
+        "maximum":65535
+     },
+     "deploymentKey":{
+        "type":"string",
+        "description":"SHA256 hash of deployment manifest (excluding deploymentKey field)",
+        "pattern":"^[a-f0-9]{64}$"
+     },
+     "requiresDatabase":{
+        "type":"boolean",
+        "description":"Whether application requires database"
+     },
+     "databases":{
+        "type":"array",
+        "description":"Database configurations",
+        "items":{
+           "type":"object",
+           "required":[
+              "name"
+           ],
+           "properties":{
+              "name":{
+                 "type":"string",
+                 "description":"Database name",
+                 "pattern":"^[a-z0-9-_]+$"
               }
-            }
-          }
-        },
-        "ruleSetActions": {
-          "type": "array",
-          "description": "Rule set actions for URL rewriting",
-          "items": {
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "description": "Action type (e.g., 'UrlRewrite')"
+           },
+           "additionalProperties":false
+        }
+     },
+     "requiresRedis":{
+        "type":"boolean",
+        "description":"Whether application requires Redis"
+     },
+     "requiresStorage":{
+        "type":"boolean",
+        "description":"Whether application requires storage.Physical storage is mapped to /mnt/data/. Blob storage is mapped to SMB File share /data/{app-key}/."
+     },
+     "configuration":{
+        "type":"array",
+        "description":"Core application configuration",
+        "items":{
+           "type":"object",
+           "required":[
+              "name",
+              "value",
+              "location",
+              "required"
+           ],
+           "properties":{
+              "name":{
+                 "type":"string",
+                 "description":"Configuration variable name",
+                 "pattern":"^[A-Z_][A-Z0-9_]*$"
               },
-              "sourcePattern": {
-                "type": "string",
-                "description": "Source URL pattern for rewriting"
+              "value":{
+                 "type":"string",
+                 "description":"Configuration value (literal or ready-made parameter reference)"
               },
-              "destination": {
-                "type": "string",
-                "description": "Destination URL pattern"
+              "location":{
+                 "type":"string",
+                 "description":"Where the value is stored",
+                 "enum":[
+                    "variable",
+                    "keyvault"
+                 ]
+              },
+              "required":{
+                 "type":"boolean",
+                 "description":"Whether this configuration is required"
+              },
+              "portalInput":{
+                 "type":"object",
+                 "description":"Portal input configuration for user-provided values",
+                 "properties":{
+                    "field":{
+                       "type":"string",
+                       "enum":[
+                          "password",
+                          "text",
+                          "textarea",
+                          "select"
+                       ]
+                    },
+                    "label":{
+                       "type":"string",
+                       "description":"Display label for the input field"
+                    },
+                    "placeholder":{
+                       "type":"string",
+                       "description":"Placeholder text for the input field"
+                    },
+                    "masked":{
+                       "type":"boolean",
+                       "description":"Whether to mask the input (for passwords)"
+                    },
+                    "validation":{
+                       "type":"object",
+                       "properties":{
+                          "minLength":{
+                             "type":"integer",
+                             "minimum":1
+                          },
+                          "maxLength":{
+                             "type":"integer",
+                             "minimum":1
+                          },
+                          "pattern":{
+                             "type":"string",
+                             "description":"Regex pattern for validation"
+                          },
+                          "required":{
+                             "type":"boolean"
+                          }
+                       },
+                       "additionalProperties":false
+                    },
+                    "options":{
+                       "type":"array",
+                       "description":"Options for select fields",
+                       "items":{
+                          "type":"string"
+                       }
+                    }
+                 },
+                 "required":[
+                    "field",
+                    "label"
+                 ],
+                 "additionalProperties":false
               }
-            }
-          }
+           },
+           "additionalProperties":false
         }
-      },
-      "additionalProperties": false
-    },
-    "authentication": {
-      "type": "object",
-      "description": "Authentication configuration. When enableSSO is false, only enableSSO is required. When enableSSO is true, type and requiredRoles are also required.",
-      "required": ["enableSSO"],
-      "properties": {
-        "type": {
-          "type": "string",
-          "description": "Authentication type",
-          "enum": ["azure", "local", "none"]
-        },
-        "enableSSO": {
-          "type": "boolean",
-          "description": "Whether to enable SSO"
-        },
-        "requiredRoles": {
-          "type": "array",
-          "description": "Required roles for access",
-          "items": {
-            "type": "string",
-            "pattern": "^[a-z-]+$"
-          }
-        },
-        "endpoints": {
-          "type": "object",
-          "description": "Authentication endpoints",
-          "properties": {
-            "local": {
-              "type": "string",
-              "description": "Local authentication endpoint",
-              "pattern": "^(http|https)://.*$"
-            },
-            "custom": {
-              "type": "string",
-              "description": "Custom authentication endpoint",
-              "pattern": "^(http|https)://.*$"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false,
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "enableSSO": {
-                "const": true
+     },
+     "conditionalConfiguration":{
+        "type":"array",
+        "description":"Conditional configuration based on service requirements",
+        "items":{
+           "type":"object",
+           "required":[
+              "condition",
+              "configuration"
+           ],
+           "properties":{
+              "condition":{
+                 "type":"string",
+                 "description":"Condition for including this configuration",
+                 "pattern":"^\\{\\{.*\\}\\}$"
+              },
+              "configuration":{
+                 "type":"array",
+                 "description":"Configuration items to include when condition is true",
+                 "items":{
+                    "type":"object",
+                    "required":[
+                       "name",
+                       "value",
+                       "location",
+                       "required"
+                    ],
+                    "properties":{
+                       "name":{
+                          "type":"string",
+                          "description":"Configuration variable name",
+                          "pattern":"^[A-Z_][A-Z0-9_]*$"
+                       },
+                       "value":{
+                          "type":"string",
+                          "description":"Configuration value (literal or ready-made parameter reference)"
+                       },
+                       "location":{
+                          "type":"string",
+                          "description":"Where the value is stored",
+                          "enum":[
+                             "variable",
+                             "keyvault"
+                          ]
+                       },
+                       "required":{
+                          "type":"boolean",
+                          "description":"Whether this configuration is required"
+                       },
+                       "portalInput":{
+                          "type":"object",
+                          "description":"Portal input configuration for user-provided values",
+                          "properties":{
+                             "field":{
+                                "type":"string",
+                                "enum":[
+                                   "password",
+                                   "text",
+                                   "textarea",
+                                   "select"
+                                ]
+                             },
+                             "label":{
+                                "type":"string",
+                                "description":"Display label for the input field"
+                             },
+                             "placeholder":{
+                                "type":"string",
+                                "description":"Placeholder text for the input field"
+                             },
+                             "masked":{
+                                "type":"boolean",
+                                "description":"Whether to mask the input (for passwords)"
+                             },
+                             "validation":{
+                                "type":"object",
+                                "properties":{
+                                   "minLength":{
+                                      "type":"integer",
+                                      "minimum":1
+                                   },
+                                   "maxLength":{
+                                      "type":"integer",
+                                      "minimum":1
+                                   },
+                                   "pattern":{
+                                      "type":"string",
+                                      "description":"Regex pattern for validation"
+                                   },
+                                   "required":{
+                                      "type":"boolean"
+                                   }
+                                },
+                                "additionalProperties":false
+                             },
+                             "options":{
+                                "type":"array",
+                                "description":"Options for select fields",
+                                "items":{
+                                   "type":"string"
+                                }
+                             }
+                          },
+                          "required":[
+                             "field",
+                             "label"
+                          ],
+                          "additionalProperties":false
+                       }
+                    },
+                    "additionalProperties":false
+                 }
               }
-            }
-          },
-          "then": {
-            "required": ["type", "enableSSO", "requiredRoles"]
-          }
+           },
+           "additionalProperties":false
         }
-      ]
-    },
-    "roles": {
-      "type": "array",
-      "description": "Application roles for Azure AD group mapping",
-      "items": {
-        "type": "object",
-        "required": ["name", "value", "description"],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Human-readable role name",
-            "minLength": 1,
-            "maxLength": 100
-          },
-          "value": {
-            "type": "string",
-            "description": "Role identifier (used in JWT and ACL)",
-            "pattern": "^[a-z-]+$"
-          },
-          "description": {
-            "type": "string",
-            "description": "Role description",
-            "minLength": 1,
-            "maxLength": 500
-          },
-          "Groups": {
-            "type": "array",
-            "description": "Azure AD groups mapped to this role",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 100
-            }
-          }
+     },
+     "healthCheck":{
+        "type":"object",
+        "description":"Health check configuration. The health check endpoint must return HTTP 200 and a JSON response with one of the following formats: {\"status\": \"UP\"} (Keycloak format), {\"status\": \"ok\"} (standard format, optionally with {\"database\": \"connected\"}), {\"status\": \"healthy\"} (alternative format), or {\"success\": true} (success-based format). For non-JSON responses, HTTP 200 status code is sufficient.",
+        "required":[
+           "path",
+           "interval"
+        ],
+        "properties":{
+           "path":{
+              "type":"string",
+              "description":"Health check endpoint path",
+              "pattern":"^/"
+           },
+           "interval":{
+              "type":"integer",
+              "description":"Health check interval in seconds",
+              "minimum":10,
+              "maximum":300
+           },
+           "probePath":{
+              "type":"string",
+              "description":"Front Door health probe path (defaults to path if not specified)",
+              "pattern":"^/"
+           },
+           "probeRequestType":{
+              "type":"string",
+              "description":"HTTP method for Front Door probe",
+              "enum":[
+                 "GET",
+                 "POST",
+                 "HEAD",
+                 "PUT",
+                 "DELETE"
+              ]
+           },
+           "probeProtocol":{
+              "type":"string",
+              "description":"Protocol for Front Door probe",
+              "enum":[
+                 "Http",
+                 "Https"
+              ]
+           },
+           "probeIntervalInSeconds":{
+              "type":"integer",
+              "description":"Front Door probe interval in seconds (default 120)",
+              "minimum":60,
+              "maximum":600
+           }
         },
-        "additionalProperties": false
-      }
-    },
-    "permissions": {
-      "type": "array",
-      "description": "Application permissions with role mappings for access control",
-      "items": {
-        "type": "object",
-        "required": ["name", "roles", "description"],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Permission identifier (e.g., 'documentstore:read', 'flowise:dev:access')",
-            "pattern": "^[a-z0-9-:]+$",
-            "minLength": 1,
-            "maxLength": 100
-          },
-          "roles": {
-            "type": "array",
-            "description": "Roles that have this permission",
-            "items": {
-              "type": "string",
-              "pattern": "^[a-z-]+$",
-              "minLength": 1,
-              "maxLength": 50
-            },
-            "minItems": 1
-          },
-          "description": {
-            "type": "string",
-            "description": "Permission description",
-            "minLength": 1,
-            "maxLength": 500
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "repository": {
-      "type": "object",
-      "description": "Repository deployment configuration",
-      "properties": {
-        "enabled": {
-          "type": "boolean",
-          "description": "Whether repository deployment is enabled"
-        },
-        "repositoryUrl": {
-          "type": "string",
-          "description": "Full repository URL for pipeline validation (same as OAuth callback)",
-          "pattern": "^(https://github.com/[^/]+/[^/]+|https://gitlab.com/[^/]+/[^/]+|https://dev.azure.com/[^/]+/[^/]+/[^/]+)$"
+        "additionalProperties":false,
+        "examples":[
+           {
+              "path":"/health",
+              "interval":30
+           },
+           {
+              "path":"/api/health",
+              "interval":60,
+              "probePath":"/api/health",
+              "probeRequestType":"GET",
+              "probeProtocol":"Http",
+              "probeIntervalInSeconds":120
+           }
+        ],
+        "responseFormats":{
+           "description":"Valid health check response formats",
+           "formats":[
+              {
+                 "format":"Keycloak",
+                 "example":"{\"status\": \"UP\", \"checks\": []}",
+                 "validation":"status === 'UP'"
+              },
+              {
+                 "format":"Standard",
+                 "example":"{\"status\": \"ok\", \"database\": \"connected\"}",
+                 "validation":"status === 'ok' && (database === 'connected' || !database)"
+              },
+              {
+                 "format":"Alternative",
+                 "example":"{\"status\": \"healthy\", \"service\": \"dataplane\"}",
+                 "validation":"status === 'healthy'"
+              },
+              {
+                 "format":"Success-based",
+                 "example":"{\"success\": true, \"message\": \"Service is running\"}",
+                 "validation":"success === true"
+              },
+              {
+                 "format":"Non-JSON",
+                 "example":"OK",
+                 "validation":"HTTP status code === 200"
+              }
+           ]
         }
-      },
-      "required": ["enabled"],
-      "additionalProperties": false
-    },
-    "startupCommand": {
-      "type": "string",
-      "description": "Application startup command (e.g., 'pnpm start', 'python app.py')",
-      "minLength": 1,
-      "maxLength": 200
-    },
-    "runtimeVersion": {
-      "type": "object",
-      "description": "Runtime version configuration",
-      "properties": {
-        "node": {
-          "type": "string",
-          "description": "Node.js version (e.g., '18.17.0')",
-          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+     },
+     "frontDoorRouting":{
+        "type":"object",
+        "description":"Front Door routing configuration",
+        "properties":{
+           "pattern":{
+              "type":"string",
+              "description":"URL pattern for routing (e.g., '/app/*')",
+              "pattern":"^/.+"
+           },
+           "requiresRuleSet":{
+              "type":"boolean",
+              "description":"Whether URL rewriting rule set is required"
+           },
+           "ruleSetConditions":{
+              "type":"array",
+              "description":"Rule set conditions for URL rewriting",
+              "items":{
+                 "type":"object",
+                 "properties":{
+                    "type":{
+                       "type":"string",
+                       "description":"Condition type (e.g., 'UrlPath')"
+                    },
+                    "operator":{
+                       "type":"string",
+                       "description":"Condition operator (e.g., 'BeginsWith')"
+                    },
+                    "matchValues":{
+                       "type":"array",
+                       "items":{
+                          "type":"string"
+                       }
+                    }
+                 }
+              }
+           },
+           "ruleSetActions":{
+              "type":"array",
+              "description":"Rule set actions for URL rewriting",
+              "items":{
+                 "type":"object",
+                 "properties":{
+                    "type":{
+                       "type":"string",
+                       "description":"Action type (e.g., 'UrlRewrite')"
+                    },
+                    "sourcePattern":{
+                       "type":"string",
+                       "description":"Source URL pattern for rewriting"
+                    },
+                    "destination":{
+                       "type":"string",
+                       "description":"Destination URL pattern"
+                    }
+                 }
+              }
+           }
         },
-        "python": {
-          "type": "string",
-          "description": "Python version (e.g., '3.11')",
-          "pattern": "^[0-9]+\\.[0-9]+$"
+        "additionalProperties":false
+     },
+     "authentication":{
+        "type":"object",
+        "description":"Authentication configuration. When enableSSO is false, only enableSSO is required. When enableSSO is true, type and requiredRoles are also required.",
+        "required":[
+           "enableSSO"
+        ],
+        "properties":{
+           "type":{
+              "type":"string",
+              "description":"Authentication type",
+              "enum":[
+                 "azure",
+                 "local",
+                 "none"
+              ]
+           },
+           "enableSSO":{
+              "type":"boolean",
+              "description":"Whether to enable SSO"
+           },
+           "requiredRoles":{
+              "type":"array",
+              "description":"Required roles for access",
+              "items":{
+                 "type":"string",
+                 "pattern":"^[a-z-]+$"
+              }
+           },
+           "endpoints":{
+              "type":"object",
+              "description":"Authentication endpoints",
+              "properties":{
+                 "local":{
+                    "type":"string",
+                    "description":"Local authentication endpoint",
+                    "pattern":"^(http|https)://.*$"
+                 },
+                 "custom":{
+                    "type":"string",
+                    "description":"Custom authentication endpoint",
+                    "pattern":"^(http|https)://.*$"
+                 }
+              },
+              "additionalProperties":false
+           }
         },
-        "dotnet": {
-          "type": "string",
-          "description": ".NET version (e.g., '8.0')",
-          "pattern": "^[0-9]+\\.[0-9]+$"
+        "additionalProperties":false,
+        "allOf":[
+           {
+              "if":{
+                 "properties":{
+                    "enableSSO":{
+                       "const":true
+                    }
+                 }
+              },
+              "then":{
+                 "required":[
+                    "type",
+                    "enableSSO",
+                    "requiredRoles"
+                 ]
+              }
+           }
+        ]
+     },
+     "roles":{
+        "type":"array",
+        "description":"Application roles for Azure AD group mapping",
+        "items":{
+           "type":"object",
+           "required":[
+              "name",
+              "value",
+              "description"
+           ],
+           "properties":{
+              "name":{
+                 "type":"string",
+                 "description":"Human-readable role name",
+                 "minLength":1,
+                 "maxLength":100
+              },
+              "value":{
+                 "type":"string",
+                 "description":"Role identifier (used in JWT and ACL)",
+                 "pattern":"^[a-z-]+$"
+              },
+              "description":{
+                 "type":"string",
+                 "description":"Role description",
+                 "minLength":1,
+                 "maxLength":500
+              },
+              "Groups":{
+                 "type":"array",
+                 "description":"Azure AD groups mapped to this role",
+                 "items":{
+                    "type":"string",
+                    "minLength":1,
+                    "maxLength":100
+                 }
+              }
+           },
+           "additionalProperties":false
         }
-      },
-      "additionalProperties": false
-    },
-    "scaling": {
-      "type": "object",
-      "description": "Application scaling configuration",
-      "properties": {
-        "minInstances": {
-          "type": "integer",
-          "description": "Minimum number of instances",
-          "minimum": 1,
-          "maximum": 20
-        },
-        "maxInstances": {
-          "type": "integer",
-          "description": "Maximum number of instances",
-          "minimum": 1,
-          "maximum": 20
-        },
-        "cpuThreshold": {
-          "type": "number",
-          "description": "CPU threshold for scaling (percentage)",
-          "minimum": 10,
-          "maximum": 90
+     },
+     "permissions":{
+        "type":"array",
+        "description":"Application permissions with role mappings for access control",
+        "items":{
+           "type":"object",
+           "required":[
+              "name",
+              "roles",
+              "description"
+           ],
+           "properties":{
+              "name":{
+                 "type":"string",
+                 "description":"Permission identifier (e.g., 'documentstore:read', 'flowise:dev:access')",
+                 "pattern":"^[a-z0-9-:]+$",
+                 "minLength":1,
+                 "maxLength":100
+              },
+              "roles":{
+                 "type":"array",
+                 "description":"Roles that have this permission",
+                 "items":{
+                    "type":"string",
+                    "pattern":"^[a-z-]+$",
+                    "minLength":1,
+                    "maxLength":50
+                 },
+                 "minItems":1
+              },
+              "description":{
+                 "type":"string",
+                 "description":"Permission description",
+                 "minLength":1,
+                 "maxLength":500
+              }
+           },
+           "additionalProperties":false
         }
-      },
-      "additionalProperties": false
-    },
-    "build": {
-      "type": "object",
-      "description": "Build and local development configuration",
-      "properties": {
-        "envOutputPath": {
-          "type": "string",
-          "description": "Path where .env file is copied for local development (relative to builder/)",
-          "pattern": "^[^/].*"
+     },
+     "repository":{
+        "type":"object",
+        "description":"Repository deployment configuration",
+        "properties":{
+           "enabled":{
+              "type":"boolean",
+              "description":"Whether repository deployment is enabled"
+           },
+           "repositoryUrl":{
+              "type":"string",
+              "description":"Full repository URL for pipeline validation (same as OAuth callback)",
+              "pattern":"^(https://github.com/[^/]+/[^/]+|https://gitlab.com/[^/]+/[^/]+|https://dev.azure.com/[^/]+/[^/]+/[^/]+)$"
+           }
         },
-        "localPort": {
-          "type": "integer",
-          "description": "Port for local development (different from Docker port)",
-          "minimum": 1000,
-          "maximum": 65535
+        "required":[
+           "enabled"
+        ],
+        "additionalProperties":false
+     },
+     "startupCommand":{
+        "type":"string",
+        "description":"Application startup command (e.g., 'pnpm start', 'python app.py')",
+        "minLength":1,
+        "maxLength":200
+     },
+     "runtimeVersion":{
+        "type":"object",
+        "description":"Runtime version configuration",
+        "properties":{
+           "node":{
+              "type":"string",
+              "description":"Node.js version (e.g., '18.17.0')",
+              "pattern":"^[0-9]+\\.[0-9]+\\.[0-9]+$"
+           },
+           "python":{
+              "type":"string",
+              "description":"Python version (e.g., '3.11')",
+              "pattern":"^[0-9]+\\.[0-9]+$"
+           },
+           "dotnet":{
+              "type":"string",
+              "description":".NET version (e.g., '8.0')",
+              "pattern":"^[0-9]+\\.[0-9]+$"
+           }
         },
-        "containerPort": {
-          "type": "integer",
-          "description": "Container internal port (defaults to port if not specified)",
-          "minimum": 1,
-          "maximum": 65535
+        "additionalProperties":false
+     },
+     "scaling":{
+        "type":"object",
+        "description":"Application scaling configuration",
+        "properties":{
+           "minInstances":{
+              "type":"integer",
+              "description":"Minimum number of instances",
+              "minimum":1,
+              "maximum":20
+           },
+           "maxInstances":{
+              "type":"integer",
+              "description":"Maximum number of instances",
+              "minimum":1,
+              "maximum":20
+           },
+           "cpuThreshold":{
+              "type":"number",
+              "description":"CPU threshold for scaling (percentage)",
+              "minimum":10,
+              "maximum":90
+           }
         },
-        "language": {
-          "type": "string",
-          "description": "Runtime language for template selection",
-          "enum": ["typescript", "python"]
+        "additionalProperties":false
+     },
+     "build":{
+        "type":"object",
+        "description":"Build and local development configuration",
+        "properties":{
+           "envOutputPath":{
+              "type":"string",
+              "description":"Path where .env file is copied for local development (relative to builder/)",
+              "pattern":"^[^/].*"
+           },
+           "localPort":{
+              "type":"integer",
+              "description":"Port for local development (different from Docker port)",
+              "minimum":1000,
+              "maximum":65535
+           },
+           "containerPort":{
+              "type":"integer",
+              "description":"Container internal port (defaults to port if not specified)",
+              "minimum":1,
+              "maximum":65535
+           },
+           "language":{
+              "type":"string",
+              "description":"Runtime language for template selection",
+              "enum":[
+                 "typescript",
+                 "python"
+              ]
+           },
+           "context":{
+              "type":"string",
+              "description":"Docker build context path (relative to builder/)",
+              "pattern":"^[^/].*"
+           },
+           "dockerfile":{
+              "type":"string",
+              "description":"Dockerfile name (empty or missing = use auto-generated template)",
+              "pattern":"^[^/].*"
+           }
         },
-        "context": {
-          "type": "string",
-          "description": "Docker build context path (relative to builder/)",
-          "pattern": "^[^/].*"
+        "additionalProperties":false
+     },
+     "deployment":{
+        "type":"object",
+        "description":"Deployment configuration for pipeline API",
+        "properties":{
+           "controllerUrl":{
+              "type":"string",
+              "description":"Controller API URL for deployment",
+              "pattern":"^https://.*$"
+           }
         },
-        "dockerfile": {
-          "type": "string",
-          "description": "Dockerfile name (empty or missing = use auto-generated template)",
-          "pattern": "^[^/].*"
-        }
-      },
-      "additionalProperties": false
-    },
-    "deployment": {
-      "type": "object",
-      "description": "Deployment configuration for pipeline API",
-      "properties": {
-        "controllerUrl": {
-          "type": "string",
-          "description": "Controller API URL for deployment",
-          "pattern": "^https://.*$"
-        }
-      },
-      "additionalProperties": false
-    }
+        "additionalProperties":false
+     },
+     "externalIntegration":{
+        "type":"object",
+        "description":"Defines External Systems & External Data Sources shipped with this application. Pipeline registers these in Miso-Controller and publishes schemas to Dataplane.",
+        "required":[
+           "schemaBasePath"
+        ],
+        "properties":{
+           "schemaBasePath":{
+              "type":"string",
+              "description":"Base folder path containing external-system.json and external-datasource.json files.",
+              "pattern":"^[^ ].*$"
+           },
+           "systems":{
+              "type":"array",
+              "description":"List of external-system JSON files to deploy via pipeline.",
+              "items":{
+                 "type":"string",
+                 "pattern":"^[^ ].+\\.json$"
+              },
+              "uniqueItems":true
+           },
+           "dataSources":{
+              "type":"array",
+              "description":"List of external-datasource JSON files belonging to this app.",
+              "items":{
+                 "type":"string",
+                 "pattern":"^[^ ].+\\.json$"
+              },
+              "uniqueItems":true
+           },
+           "autopublish":{
+              "type":"boolean",
+              "default":true,
+              "description":"If true, pipeline automatically publishes ExternalSystems + ExternalDataSources to Dataplane after deployment."
+           },
+           "version":{
+              "type":"string",
+              "description":"Version of the integration set (used for schema diffing & migrations).",
+              "pattern":"^[0-9]+\\.[0-9]+\\.[0-9]+$"
+           }
+        },
+        "additionalProperties":false
+     }
   },
-  "additionalProperties": false,
-  "allOf": [
-    {
-      "if": {
-        "properties": {
-          "requiresDatabase": {
-            "const": true
-          }
-        }
-      },
-      "then": {
-        "required": ["databases"]
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "registryMode": {
-            "const": "external"
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "configuration": {
-            "items": {
-              "properties": {
-                "name": {
-                  "enum": [
-                    "DOCKER_REGISTRY_SERVER_URL",
-                    "DOCKER_REGISTRY_SERVER_USERNAME",
-                    "DOCKER_REGISTRY_SERVER_PASSWORD"
-                  ]
-                }
+  "additionalProperties":false,
+  "allOf":[
+     {
+        "if":{
+           "properties":{
+              "requiresDatabase":{
+                 "const":true
               }
-            }
-          }
+           }
+        },
+        "then":{
+           "required":[
+              "databases"
+           ]
         }
-      }
-    }
+     },
+     {
+        "if":{
+           "properties":{
+              "registryMode":{
+                 "const":"external"
+              }
+           }
+        },
+        "then":{
+           "properties":{
+              "configuration":{
+                 "items":{
+                    "properties":{
+                       "name":{
+                          "enum":[
+                             "DOCKER_REGISTRY_SERVER_URL",
+                             "DOCKER_REGISTRY_SERVER_USERNAME",
+                             "DOCKER_REGISTRY_SERVER_PASSWORD"
+                          ]
+                       }
+                    }
+                 }
+              }
+           }
+        }
+     }
   ]
 }
