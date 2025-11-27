@@ -5,12 +5,23 @@
 // Mock commander before anything else
 const mockParse = jest.fn();
 jest.mock('commander', () => {
-  const mockCommand = jest.fn().mockImplementation(() => ({
-    name: jest.fn().mockReturnThis(),
-    version: jest.fn().mockReturnThis(),
-    description: jest.fn().mockReturnThis(),
-    parse: mockParse
-  }));
+  // Create a mock command object that supports nested commands
+  const createMockCommand = () => {
+    const mockCmd = {
+      name: jest.fn().mockReturnThis(),
+      version: jest.fn().mockReturnThis(),
+      description: jest.fn().mockReturnThis(),
+      requiredOption: jest.fn().mockReturnThis(),
+      option: jest.fn().mockReturnThis(),
+      action: jest.fn().mockReturnThis(),
+      parse: mockParse
+    };
+    // Set command to return a new mock command (using function to avoid recursion during object creation)
+    mockCmd.command = jest.fn(() => createMockCommand());
+    return mockCmd;
+  };
+
+  const mockCommand = jest.fn(() => createMockCommand());
   return {
     Command: mockCommand
   };
@@ -23,6 +34,10 @@ jest.mock('../../lib/cli', () => ({
 
 jest.mock('../../lib/commands/app', () => ({
   setupAppCommands: jest.fn()
+}));
+
+jest.mock('../../lib/commands/datasource', () => ({
+  setupDatasourceCommands: jest.fn()
 }));
 
 jest.mock('../../lib/utils/logger', () => ({

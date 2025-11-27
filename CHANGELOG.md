@@ -1,3 +1,87 @@
+## [2.7.0] - 2025-11-24
+
+### Added
+- **External Integration Validation and Deployment**: Complete system for managing external systems and datasources
+  - New validation system for external integration files (external-system.json and external-datasource.json)
+  - Schema-based validation using JSON Schema (draft-07 for systems, draft-2020-12 for datasources)
+  - Automatic schema type detection from file content and naming
+  - Support for `externalIntegration` block in `variables.yaml` with `schemaBasePath` configuration
+  - Path resolution for external files (absolute and relative paths supported)
+- **New CLI Commands**:
+  - `aifabrix validate <appOrFile>` - Validate applications or external integration files
+    - Supports app name validation (includes externalIntegration block validation)
+    - Supports direct file validation (auto-detects schema type)
+    - Aggregates validation results for applications and external files
+    - Clear error messages with file context
+  - `aifabrix diff <file1> <file2>` - Compare two configuration files
+    - Deep object comparison with nested field detection
+    - Breaking changes detection (removed fields, type changes)
+    - Version comparison and change tracking
+    - Formatted output with color-coded differences
+    - Summary statistics (added, removed, changed, breaking changes)
+- **Datasource Command Group**: New `aifabrix datasource` command group for datasource management
+  - `aifabrix datasource validate <file>` - Validate external datasource JSON files
+    - Validates against external-datasource.schema.json
+    - Clear validation error messages with field paths
+  - `aifabrix datasource list` - List datasources from environment
+    - Lists all datasources in specified environment via controller API
+    - Displays key, display name, system key, version, and status
+    - Formatted table output with color-coded status
+    - Requires `-e, --environment <env>` option
+  - `aifabrix datasource diff <file1> <file2>` - Compare two datasource configuration files
+    - Specialized comparison for dataplane deployment validation
+    - Highlights dataplane-relevant changes (fieldMappings, exposed fields, sync config, OpenAPI, MCP)
+    - Uses standard diff engine with dataplane-specific filtering
+  - `aifabrix datasource deploy <myapp> <file>` - Deploy datasource to dataplane
+    - Validates datasource file before deployment
+    - Gets dataplane URL from controller via application details API
+    - Deploys to dataplane pipeline endpoint
+    - Requires `--controller <url>` and `-e, --environment <env>` options
+    - Uses deployment authentication (device token or client credentials)
+- **Schema Resolution Utilities**: New utility modules for schema management
+  - `lib/utils/schema-resolver.js` - Path resolution for external integration schemas
+    - `resolveSchemaBasePath(appName)` - Resolves schema base path from variables.yaml
+    - `resolveExternalFiles(appName)` - Resolves all external system and datasource files
+    - Supports absolute and relative paths
+    - Validates file existence and directory structure
+  - `lib/utils/schema-loader.js` - Schema loading and type detection
+    - `loadExternalSystemSchema()` - Loads and compiles external-system schema
+    - `loadExternalDataSourceSchema()` - Loads and compiles external-datasource schema
+    - `detectSchemaType(filePath, content)` - Auto-detects schema type from file
+    - Cached compiled validators for performance
+- **File Comparison Utilities**: New `lib/diff.js` module for configuration file comparison
+  - Deep object comparison with nested field tracking
+  - Breaking changes identification (removed fields, type changes)
+  - Version change detection
+  - Formatted output with chalk color coding
+  - Summary statistics generation
+
+### Changed
+- **Validation System**: Enhanced application validation to support external integration
+  - `lib/validator.js` now integrates with external file validation
+  - Validation results aggregate application and external file validations
+  - Clear separation between application validation and external file validation
+- **CLI Command Structure**: Extended command registration system
+  - New `validate` and `diff` commands registered in `lib/cli.js`
+  - New `datasource` command group registered in `bin/aifabrix.js`
+  - Command error handling unified across all new commands
+- **API Integration**: Enhanced API utilities for datasource operations
+  - `lib/datasource-list.js` uses controller API for datasource listing
+  - `lib/datasource-deploy.js` integrates with controller and dataplane APIs
+  - Response format handling for multiple API response structures
+  - Error handling with formatted API error messages
+
+### Technical
+- New modules: `lib/validate.js`, `lib/diff.js`, `lib/datasource-validate.js`, `lib/datasource-list.js`, `lib/datasource-diff.js`, `lib/datasource-deploy.js`, `lib/commands/datasource.js`
+- New utilities: `lib/utils/schema-resolver.js`, `lib/utils/schema-loader.js`
+- Comprehensive test coverage: Unit tests for all new modules (validate, diff, datasource commands, schema utilities)
+- Integration tests for end-to-end validation and deployment flows
+- ISO 27001 compliant implementation maintained throughout
+- All functions follow project patterns (CommonJS, JSDoc, error handling, file size limits)
+- Schema validation uses AJV with proper error formatting
+- Path resolution handles edge cases (absolute, relative, missing files)
+- API calls use existing authentication patterns (device tokens, client credentials)
+
 ## [2.6.3] - 2025-11-23
 
 ### Added

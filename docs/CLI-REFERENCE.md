@@ -36,6 +36,17 @@ Complete command reference with examples and troubleshooting.
 - [aifabrix deploy](#aifabrix-deploy-app) - Deploy to Azure via Miso Controller
 - [aifabrix deployments](#aifabrix-deployments) - List deployments for an environment
 
+### Validation & Comparison
+- [aifabrix validate](#aifabrix-validate-apporfile) - Validate application or external integration file
+- [aifabrix diff](#aifabrix-diff-file1-file2) - Compare two configuration files
+
+### External Integration
+- [aifabrix datasource](#aifabrix-datasource) - Manage external data sources
+  - [aifabrix datasource validate](#aifabrix-datasource-validate-file) - Validate external datasource JSON file
+  - [aifabrix datasource list](#aifabrix-datasource-list) - List datasources from environment
+  - [aifabrix datasource diff](#aifabrix-datasource-diff-file1-file2) - Compare two datasource configuration files
+  - [aifabrix datasource deploy](#aifabrix-datasource-deploy-myapp-file) - Deploy datasource to dataplane
+
 ### Utilities
 - [aifabrix resolve](#aifabrix-resolve-app) - Generate `.env` file from template
 - [aifabrix json](#aifabrix-json-app) - Generate deployment JSON
@@ -1096,6 +1107,509 @@ aifabrix deploy myapp --environment pro
 
 **Workaround:**
 Use `aifabrix deploy <app> --poll` to monitor deployment status, or access the controller dashboard at `https://controller.aifabrix.ai/deployments`.
+
+---
+
+<a id="aifabrix-validate-apporfile"></a>
+## aifabrix validate <appOrFile>
+
+Validate application or external integration file.
+
+**What:** Validates application configurations or external integration files (external-system.json, external-datasource.json) against their schemas. Supports both app name validation (including externalIntegration block) and direct file validation.
+
+**When:** Before deployment, when troubleshooting configuration issues, validating external integration schemas, or checking configuration changes.
+
+**Usage:**
+```bash
+# Validate application by name (includes externalIntegration files if present)
+aifabrix validate myapp
+
+# Validate external system file directly
+aifabrix validate ./schemas/hubspot.json
+
+# Validate external datasource file directly
+aifabrix validate ./schemas/hubspot-deal.json
+```
+
+**Arguments:**
+- `<appOrFile>` - Application name or path to configuration file
+
+**Process:**
+1. Detects if input is app name or file path
+2. If app name:
+   - Validates application configuration (variables.yaml)
+   - If `externalIntegration` block exists in variables.yaml:
+     - Resolves schema base path
+     - Finds all external-system.json and external-datasource.json files
+     - Validates each file against its schema
+   - Aggregates all validation results
+3. If file path:
+   - Detects schema type (application, external-system, external-datasource)
+   - Loads appropriate schema
+   - Validates file against schema
+
+**Output (app validation with external files):**
+```yaml
+✓ Validation passed!
+
+Application:
+  ✓ Application configuration is valid
+
+External Integration Files:
+  ✓ hubspot.json (system)
+  ✓ hubspot-deal.json (datasource)
+```
+
+**Output (validation failed):**
+```yaml
+✗ Validation failed!
+
+Application:
+  ✗ Application configuration has errors:
+    • Missing required field 'app.key'
+
+External Integration Files:
+  ✗ hubspot.json (system):
+    • Missing required field 'key'
+    • Field 'version' must match pattern ^[0-9]+\.[0-9]+\.[0-9]+$
+```
+
+**Output (file validation):**
+```yaml
+✓ Validation passed!
+
+File: ./schemas/hubspot.json
+Type: external-system
+  ✓ File is valid
+```
+
+**Issues:**
+- **"App name or file path is required"** → Provide application name or file path
+- **"File not found"** → Check file path is correct
+- **"Invalid JSON syntax"** → Fix JSON syntax errors in file
+- **"externalIntegration block not found"** → Add externalIntegration block to variables.yaml or validate file directly
+- **"schemaBasePath not found"** → Add schemaBasePath to externalIntegration block
+- **"File not found: <path>"** → Check that external system/datasource files exist at specified paths
+- **"Unknown schema type"** → File must be application, external-system, or external-datasource JSON
+
+**Next Steps:**
+After validation:
+- Fix any errors reported
+- For external integrations, ensure all referenced files exist
+- Use `aifabrix diff` to compare configuration versions
+- Deploy validated configuration: `aifabrix deploy <app>`
+
+---
+
+<a id="aifabrix-diff-file1-file2"></a>
+## aifabrix diff <file1> <file2>
+
+Compare two configuration files.
+
+**What:** Performs deep comparison of two JSON configuration files, identifying added, removed, and changed fields. Categorizes changes as breaking or non-breaking. Used for deployment pipeline validation and schema migration detection.
+
+**When:** Before deploying configuration changes, comparing schema versions, validating migrations, or reviewing configuration differences.
+
+**Usage:**
+```bash
+# Compare two external system files
+aifabrix diff ./schemas/hubspot-v1.json ./schemas/hubspot-v2.json
+
+# Compare two datasource files
+aifabrix diff ./schemas/hubspot-deal-v1.json ./schemas/hubspot-deal-v2.json
+
+# Compare deployment configurations
+aifabrix diff ./old-config.json ./new-config.json
+```
+
+**Arguments:**
+- `<file1>` - Path to first configuration file
+- `<file2>` - Path to second configuration file
+
+**Process:**
+1. Reads and parses both JSON files
+2. Performs deep object comparison
+3. Identifies:
+   - Added fields (present in file2, not in file1)
+   - Removed fields (present in file1, not in file2)
+   - Changed fields (different values)
+   - Version changes
+4. Categorizes breaking changes:
+   - Removed fields (potentially breaking)
+   - Type changes (breaking)
+5. Displays formatted diff output
+
+**Output (identical files):**
+```yaml
+Comparing: hubspot-v1.json ↔ hubspot-v2.json
+
+✓ Files are identical
+```
+
+**Output (different files):**
+```yaml
+Comparing: hubspot-v1.json ↔ hubspot-v2.json
+
+Files are different
+
+Version: 1.0.0 → 2.0.0
+
+⚠️  Breaking Changes:
+  • Field removed: apiKey.path (string)
+  • Type changed: timeout (number → string)
+
+Added Fields:
+  + authentication.type: "oauth2"
+  + rateLimit: 100
+
+Removed Fields:
+  - apiKey.path: "config.apiKey"
+
+Changed Fields:
+  ~ timeout:
+    Old: 30
+    New: "30s"
+  ~ baseUrl:
+    Old: "https://api.hubspot.com"
+    New: "https://api.hubspot.com/v3"
+
+Summary:
+  Added: 2
+  Removed: 1
+  Changed: 2
+  Breaking: 2
+```
+
+**Breaking Changes:**
+- **Removed fields** - Fields present in file1 but not in file2
+- **Type changes** - Fields with different types between files
+
+**Non-Breaking Changes:**
+- **Added fields** - New fields in file2
+- **Value changes** - Same type, different values
+
+**Exit Codes:**
+- **0** - Files are identical
+- **1** - Files are different
+
+**Issues:**
+- **"First file path is required"** → Provide path to first file
+- **"Second file path is required"** → Provide path to second file
+- **"File not found: <path>"** → Check file paths are correct
+- **"Failed to parse <file>"** → Fix JSON syntax errors in file
+
+**Next Steps:**
+After comparing:
+- Review breaking changes before deployment
+- Update configuration if needed
+- Use `aifabrix validate` to ensure new configuration is valid
+- Deploy updated configuration: `aifabrix deploy <app>`
+
+---
+
+<a id="aifabrix-datasource"></a>
+## aifabrix datasource
+
+Manage external data sources.
+
+**What:** Command group for managing external datasource configurations. Includes validation, listing, comparison, and deployment operations for datasources that integrate with external systems.
+
+**Subcommands:**
+- `validate` - Validate external datasource JSON file
+- `list` - List datasources from environment
+- `diff` - Compare two datasource configuration files
+- `deploy` - Deploy datasource to dataplane
+
+**When:** Managing external integrations, deploying datasource configurations, or validating datasource schemas.
+
+**See Also:**
+- [aifabrix datasource validate](#aifabrix-datasource-validate-file)
+- [aifabrix datasource list](#aifabrix-datasource-list)
+- [aifabrix datasource diff](#aifabrix-datasource-diff-file1-file2)
+- [aifabrix datasource deploy](#aifabrix-datasource-deploy-myapp-file)
+
+---
+
+<a id="aifabrix-datasource-validate-file"></a>
+### aifabrix datasource validate <file>
+
+Validate external datasource JSON file.
+
+**What:** Validates an external datasource JSON file against the external-datasource schema. Checks required fields, data types, and schema compliance.
+
+**When:** Before deploying datasource, troubleshooting configuration issues, or validating schema changes.
+
+**Usage:**
+```bash
+# Validate datasource file
+aifabrix datasource validate ./schemas/hubspot-deal.json
+
+# Validate with relative path
+aifabrix datasource validate schemas/my-datasource.json
+```
+
+**Arguments:**
+- `<file>` - Path to external datasource JSON file
+
+**Process:**
+1. Reads datasource JSON file
+2. Parses JSON content
+3. Loads external-datasource schema
+4. Validates file against schema
+5. Displays validation results
+
+**Output (valid):**
+```yaml
+✓ Datasource file is valid: ./schemas/hubspot-deal.json
+```
+
+**Output (invalid):**
+```yaml
+✗ Datasource file has errors: ./schemas/hubspot-deal.json
+  • Missing required field 'key'
+  • Field 'systemKey' must be a string
+  • Field 'version' must match pattern ^[0-9]+\.[0-9]+\.[0-9]+$
+```
+
+**Issues:**
+- **"File path is required"** → Provide path to datasource file
+- **"File not found: <path>"** → Check file path is correct
+- **"Invalid JSON syntax"** → Fix JSON syntax errors in file
+- **"Missing required field"** → Add required fields to datasource configuration
+
+**Next Steps:**
+After validation:
+- Fix any validation errors
+- Use `aifabrix datasource diff` to compare versions
+- Deploy validated datasource: `aifabrix datasource deploy <app> <file>`
+
+---
+
+<a id="aifabrix-datasource-list"></a>
+### aifabrix datasource list
+
+List datasources from environment.
+
+**What:** Lists all datasources registered in an environment via the Miso Controller API. Displays datasource key, display name, system key, version, and status.
+
+**When:** Viewing available datasources, checking datasource status, or auditing environment configuration.
+
+**Usage:**
+```bash
+# List datasources in environment
+aifabrix datasource list --environment dev
+
+# List datasources in production
+aifabrix datasource list --environment pro
+```
+
+**Options:**
+- `-e, --environment <env>` - Environment ID or key (required)
+
+**Prerequisites:**
+- Must be logged in: `aifabrix login --method device --environment <env>`
+
+**Process:**
+1. Gets authentication token from config
+2. Calls controller API: `GET /api/v1/environments/{env}/datasources`
+3. Extracts datasources from response
+4. Displays datasources in formatted table
+
+**Output:**
+```yaml
+📋 Datasources in environment: dev
+
+Key                           Display Name                  System Key           Version         Status
+------------------------------------------------------------------------------------------------------------------------
+hubspot-deal                  HubSpot Deal                 hubspot              1.0.0           enabled
+salesforce-contact            Salesforce Contact            salesforce           2.1.0           enabled
+```
+
+**Output (no datasources):**
+```yaml
+No datasources found in environment: dev
+```
+
+**Issues:**
+- **"Not logged in"** → Run `aifabrix login --method device --environment <env>` first
+- **"Environment is required"** → Provide `--environment` flag (miso/dev/tst/pro)
+- **"Failed to list datasources"** → Check controller URL and network connection
+- **"Invalid API response format"** → Controller API may have changed; check API version
+
+**Next Steps:**
+After listing:
+- Validate datasource: `aifabrix datasource validate <file>`
+- Deploy datasource: `aifabrix datasource deploy <app> <file>`
+- Compare datasources: `aifabrix datasource diff <file1> <file2>`
+
+---
+
+<a id="aifabrix-datasource-diff-file1-file2"></a>
+### aifabrix datasource diff <file1> <file2>
+
+Compare two datasource configuration files.
+
+**What:** Compares two datasource JSON files and highlights differences, with special focus on dataplane-relevant fields (fieldMappings, exposed fields, sync configuration, OpenAPI, MCP).
+
+**When:** Before deploying datasource updates, validating schema migrations, or reviewing configuration changes for dataplane deployment.
+
+**Usage:**
+```bash
+# Compare two datasource versions
+aifabrix datasource diff ./schemas/hubspot-deal-v1.json ./schemas/hubspot-deal-v2.json
+
+# Compare datasource configurations
+aifabrix datasource diff ./old-datasource.json ./new-datasource.json
+```
+
+**Arguments:**
+- `<file1>` - Path to first datasource file
+- `<file2>` - Path to second datasource file
+
+**Process:**
+1. Compares files using standard diff logic
+2. Identifies dataplane-relevant changes:
+   - Field mappings changes
+   - Exposed fields changes
+   - Sync configuration changes
+   - OpenAPI configuration changes
+   - MCP configuration changes
+3. Displays formatted diff with dataplane highlights
+
+**Output:**
+```yaml
+Comparing: hubspot-deal-v1.json ↔ hubspot-deal-v2.json
+
+Files are different
+
+Version: 1.0.0 → 2.0.0
+
+Added Fields:
+  + fieldMappings.dealStage: "properties.dealstage"
+
+Changed Fields:
+  ~ exposed.fields:
+    Old: ["dealname", "amount"]
+    New: ["dealname", "amount", "dealstage"]
+  ~ sync.interval:
+    Old: 300
+    New: 60
+
+Summary:
+  Added: 1
+  Removed: 0
+  Changed: 2
+  Breaking: 0
+
+📊 Dataplane-Relevant Changes:
+  • Field Mappings: 1 changes
+  • Exposed Fields: 1 changes
+  • Sync Configuration: 1 changes
+```
+
+**Dataplane-Relevant Fields:**
+- **fieldMappings** - Field mapping configuration changes
+- **exposed** - Exposed fields changes
+- **sync** - Sync configuration changes
+- **openapi** - OpenAPI configuration changes
+- **mcp** - MCP configuration changes
+
+**Exit Codes:**
+- **0** - Files are identical
+- **1** - Files are different
+
+**Issues:**
+- **"File not found"** → Check file paths are correct
+- **"Failed to parse"** → Fix JSON syntax errors in files
+- **"Comparison failed"** → Check both files are valid datasource configurations
+
+**Next Steps:**
+After comparing:
+- Review dataplane-relevant changes
+- Validate new configuration: `aifabrix datasource validate <file2>`
+- Deploy updated datasource: `aifabrix datasource deploy <app> <file2>`
+
+---
+
+<a id="aifabrix-datasource-deploy-myapp-file"></a>
+### aifabrix datasource deploy <myapp> <file>
+
+Deploy datasource to dataplane.
+
+**What:** Validates and deploys an external datasource configuration to the dataplane via the Miso Controller. Gets dataplane URL from controller, then deploys datasource configuration.
+
+**When:** Deploying new datasource, updating existing datasource, or pushing datasource configuration changes to dataplane.
+
+**Usage:**
+```bash
+# Deploy datasource to dataplane
+aifabrix datasource deploy myapp ./schemas/hubspot-deal.json \
+  --controller https://controller.aifabrix.ai \
+  --environment dev
+```
+
+**Arguments:**
+- `<myapp>` - Application key
+- `<file>` - Path to datasource JSON file
+
+**Options:**
+- `--controller <url>` - Controller URL (required)
+- `-e, --environment <env>` - Environment (miso, dev, tst, pro) (required)
+
+**Prerequisites:**
+- Application must be registered: `aifabrix app register <myapp> --environment <env>`
+- Must be logged in or have credentials in secrets.local.yaml
+- Datasource file must be valid
+
+**Process:**
+1. Validates datasource file against schema
+2. Loads datasource configuration
+3. Extracts systemKey from configuration
+4. Gets authentication (device token or client credentials)
+5. Gets dataplane URL from controller API
+6. Deploys datasource to dataplane:
+   - POST to `http://<dataplane-url>/api/v1/pipeline/{systemKey}/deploy`
+   - Sends datasource configuration as request body
+7. Displays deployment results
+
+**Output:**
+```yaml
+📋 Deploying datasource...
+
+🔍 Validating datasource file...
+✓ Datasource file is valid
+🔐 Getting authentication...
+✓ Authentication successful
+🌐 Getting dataplane URL from controller...
+✓ Dataplane URL: https://dataplane.aifabrix.ai
+
+🚀 Deploying to dataplane...
+
+✓ Datasource deployed successfully!
+
+Datasource: hubspot-deal
+System: hubspot
+Environment: dev
+```
+
+**Issues:**
+- **"Application key is required"** → Provide application key as first argument
+- **"File path is required"** → Provide path to datasource file
+- **"Controller URL is required"** → Provide `--controller` flag
+- **"Environment is required"** → Provide `-e, --environment` flag
+- **"File not found"** → Check datasource file path is correct
+- **"Datasource validation failed"** → Fix validation errors in datasource file
+- **"systemKey is required"** → Add systemKey field to datasource configuration
+- **"Not logged in"** → Run `aifabrix login` first
+- **"Failed to get application from controller"** → Check application is registered and controller URL is correct
+- **"Dataplane URL not found"** → Application may not have dataplane configured
+- **"Deployment failed"** → Check dataplane URL, authentication, and network connection
+
+**Next Steps:**
+After deployment:
+- Verify datasource: `aifabrix datasource list --environment <env>`
+- Check datasource status in controller dashboard
+- Monitor dataplane for datasource activity
 
 ---
 

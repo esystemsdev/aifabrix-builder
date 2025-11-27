@@ -16,6 +16,7 @@
 const { Command } = require('commander');
 const cli = require('../lib/cli');
 const { setupAppCommands } = require('../lib/commands/app');
+const { setupDatasourceCommands } = require('../lib/commands/datasource');
 const logger = require('../lib/utils/logger');
 const packageJson = require('../package.json');
 
@@ -35,6 +36,9 @@ function initializeCLI() {
 
   // Add application management commands
   setupAppCommands(program);
+
+  // Add datasource management commands
+  setupDatasourceCommands(program);
 
   // Parse command line arguments
   program.parse();

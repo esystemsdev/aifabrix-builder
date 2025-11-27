@@ -129,6 +129,54 @@ jest.mock('../../../lib/utils/env-endpoints', () => ({
     }
     // Default: return content as-is
     return envContent;
+  }),
+  getServicePort: jest.fn().mockImplementation(async(portKey, serviceName, hosts, context, devPorts) => {
+    // If devPorts provided, use it (already has developer-id adjustment)
+    if (devPorts && typeof devPorts[serviceName] === 'number') {
+      return devPorts[serviceName];
+    }
+    // Get base port from hosts config
+    let basePort = null;
+    if (hosts && hosts[portKey] !== undefined && hosts[portKey] !== null) {
+      const portVal = typeof hosts[portKey] === 'number' ? hosts[portKey] : parseInt(hosts[portKey], 10);
+      if (!Number.isNaN(portVal)) {
+        basePort = portVal;
+      }
+    }
+    // Fallback to devConfig base ports
+    if (basePort === null || basePort === undefined) {
+      const basePorts = {
+        redis: 6379,
+        postgres: 5432
+      };
+      basePort = basePorts[serviceName];
+    }
+    // Apply developer-id adjustment only for local context
+    if (context === 'local') {
+      const config = require('../../../lib/config');
+      const devId = await config.getDeveloperId();
+      let devIdNum = 0;
+      if (devId !== null && devId !== undefined) {
+        const parsed = parseInt(devId, 10);
+        if (!Number.isNaN(parsed)) {
+          devIdNum = parsed;
+        }
+      }
+      return devIdNum === 0 ? basePort : (basePort + (devIdNum * 100));
+    }
+    // For docker context, return base port without adjustment
+    return basePort;
+  }),
+  getServiceHost: jest.fn().mockImplementation((host, context, defaultHost, localhostOverride) => {
+    const finalHost = host || defaultHost;
+    if (context === 'local' && localhostOverride && finalHost === 'localhost') {
+      return localhostOverride;
+    }
+    return finalHost;
+  }),
+  getLocalhostOverride: jest.fn().mockImplementation((context) => {
+    if (context !== 'local') return null;
+    return null; // No override in tests by default
   })
 }));
 

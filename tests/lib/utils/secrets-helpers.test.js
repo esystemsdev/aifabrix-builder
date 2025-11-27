@@ -113,5 +113,88 @@ describe('applyCanonicalSecretsOverride', () => {
     expect(result.other).toBe('v');
     expect(result.new).toBe('from-canonical'); // new key added
   });
+
+  it('fills empty string values from canonical secrets', async() => {
+    const canonicalPath = path.join(process.cwd(), 'canonical.yaml');
+    const canonical = { 'miso-controller-url': 'http://${MISO_HOST}:${MISO_PORT}', 'other-key': 'canonical-value' };
+    const current = { 'miso-controller-url': '', 'existing-key': 'existing-value' };
+
+    config.getSecretsPath.mockResolvedValue(canonicalPath);
+    fs.existsSync.mockReturnValue(true);
+    fs.readFileSync.mockReturnValue(yaml.dump(canonical));
+
+    const result = await applyCanonicalSecretsOverride(current);
+    expect(result['miso-controller-url']).toBe('http://${MISO_HOST}:${MISO_PORT}'); // empty value filled from canonical
+    expect(result['existing-key']).toBe('existing-value'); // existing non-empty value preserved
+    expect(result['other-key']).toBe('canonical-value'); // new key added
+  });
+
+  it('fills undefined values from canonical secrets', async() => {
+    const canonicalPath = path.join(process.cwd(), 'canonical.yaml');
+    const canonical = { 'miso-controller-url': 'http://localhost:3000', 'new-key': 'canonical' };
+    const current = { 'miso-controller-url': undefined, 'existing-key': 'existing' };
+
+    config.getSecretsPath.mockResolvedValue(canonicalPath);
+    fs.existsSync.mockReturnValue(true);
+    fs.readFileSync.mockReturnValue(yaml.dump(canonical));
+
+    const result = await applyCanonicalSecretsOverride(current);
+    expect(result['miso-controller-url']).toBe('http://localhost:3000'); // undefined value filled from canonical
+    expect(result['existing-key']).toBe('existing'); // existing value preserved
+    expect(result['new-key']).toBe('canonical'); // new key added
+  });
+
+  it('fills null values from canonical secrets', async() => {
+    const canonicalPath = path.join(process.cwd(), 'canonical.yaml');
+    const canonical = { 'miso-controller-url': 'http://localhost:3000' };
+    const current = { 'miso-controller-url': null };
+
+    config.getSecretsPath.mockResolvedValue(canonicalPath);
+    fs.existsSync.mockReturnValue(true);
+    fs.readFileSync.mockReturnValue(yaml.dump(canonical));
+
+    const result = await applyCanonicalSecretsOverride(current);
+    expect(result['miso-controller-url']).toBe('http://localhost:3000'); // null value filled from canonical
+  });
+
+  it('replaces encrypted values (secure://) with plaintext from canonical secrets', async() => {
+    const canonicalPath = path.join(process.cwd(), 'canonical.yaml');
+    // Canonical has plaintext UUID values
+    const canonical = {
+      'azure-subscription-idKeyVault': '67576622-504a-4532-9903-dbae7df491f5',
+      'azure-tenant-idKeyVault': '09aff594-ba37-4af2-bf40-b773b654c563',
+      'azure-service-nameKeyVault': 'aifabrix001'
+    };
+    // User secrets have encrypted values (secure:// prefix)
+    const current = {
+      'azure-subscription-idKeyVault': 'secure://xK9mP2qR5tW8vY1z:AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcdef:ZxYwVuTsRqPoNmLkJiHgFeDcBa9876543210',
+      'azure-tenant-idKeyVault': 'secure://yL0nQ3rS6uX9wZ2a:BcDeFgHiJkLmNoPqRsTuVwXyZa2345678901bcdefg:YwXvUtSrQpOnMlKjIhGfEdCbA8765432109',
+      'azure-service-nameKeyVault': 'secure://zM1pO4sT7vY0xZ3b:CdEfGhIjKlMnOpQrStUvWxYzAb3456789012cdefgh:XvWuVtUsTrQpPnOmLkKjJiIhHgGfFeEdDcCbBaA9876543210'
+    };
+
+    config.getSecretsPath.mockResolvedValue(canonicalPath);
+    fs.existsSync.mockReturnValue(true);
+    fs.readFileSync.mockReturnValue(yaml.dump(canonical));
+
+    const result = await applyCanonicalSecretsOverride(current);
+    // Encrypted values (secure://) should be replaced with plaintext from canonical
+    expect(result['azure-subscription-idKeyVault']).toBe('67576622-504a-4532-9903-dbae7df491f5');
+    expect(result['azure-tenant-idKeyVault']).toBe('09aff594-ba37-4af2-bf40-b773b654c563');
+    expect(result['azure-service-nameKeyVault']).toBe('aifabrix001');
+  });
+
+  it('does not replace plaintext values with canonical', async() => {
+    const canonicalPath = path.join(process.cwd(), 'canonical.yaml');
+    const canonical = { 'some-key': 'canonical-value' };
+    const current = { 'some-key': 'user-value' }; // Plaintext value, should keep user value
+
+    config.getSecretsPath.mockResolvedValue(canonicalPath);
+    fs.existsSync.mockReturnValue(true);
+    fs.readFileSync.mockReturnValue(yaml.dump(canonical));
+
+    const result = await applyCanonicalSecretsOverride(current);
+    expect(result['some-key']).toBe('user-value'); // User value preserved (plaintext, not encrypted)
+  });
+
 });
 

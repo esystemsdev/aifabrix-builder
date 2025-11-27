@@ -1,0 +1,262 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aifabrix.ai/schemas/external-system.schema.json",
+  "title": "AI Fabrix External System Configuration Schema",
+  "description": "Schema for configuring an external system connected to the AI Fabrix Dataplane. This defines authentication, OpenAPI/MCP bindings, field mappings defaults, metadata handling and portal inputs.",
+
+  "metadata": {
+    "key": "external-system-schema",
+    "name": "External System Configuration Schema",
+    "description": "JSON schema for validating ExternalSystem configuration files",
+    "version": "1.0.0",
+    "type": "schema",
+    "category": "integration",
+    "author": "AI Fabrix Team",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z",
+    "compatibility": {
+      "minVersion": "1.0.0",
+      "maxVersion": "2.0.0",
+      "deprecated": false
+    },
+    "tags": ["schema", "external-system", "dataplane", "integration", "validation"],
+    "dependencies": [],
+    "changelog": [
+      {
+        "version": "1.0.0",
+        "date": "2024-01-01T00:00:00Z",
+        "changes": [
+          "Initial schema for External Systems",
+          "Added OpenAPI and MCP contract configuration",
+          "Added authentication and environment variables",
+          "Added portalInput for UI-driven onboarding",
+          "Compatible with field-mappings.schema and security-model.schema"
+        ],
+        "breaking": false
+      }
+    ]
+  },
+
+  "type": "object",
+
+  "required": [
+    "key",
+    "displayName",
+    "description",
+    "type",
+    "authentication"
+  ],
+
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Unique external system identifier (cannot be changed after creation). Example: 'hubspot', 'salesforce', 'teams'.",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 3,
+      "maxLength": 40
+    },
+
+    "displayName": {
+      "type": "string",
+      "description": "Human-readable name for the external system",
+      "minLength": 1,
+      "maxLength": 100
+    },
+
+    "description": {
+      "type": "string",
+      "description": "Description of this external system integration",
+      "minLength": 1,
+      "maxLength": 500
+    },
+
+    "type": {
+      "type": "string",
+      "enum": ["openapi", "mcp", "custom"],
+      "description": "Integration type: OpenAPI-driven, MCP-driven, or custom Python connector."
+    },
+
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+
+    "environment": {
+      "type": "object",
+      "description": "Environment-level configuration values used by dataplane and external data sources.",
+      "properties": {
+        "baseUrl": {
+          "type": "string",
+          "description": "Base API URL or MCP server URL",
+          "pattern": "^(http|https)://.*$"
+        },
+        "region": {
+          "type": "string",
+          "description": "Optional region setting for API routing"
+        }
+      },
+      "additionalProperties": true
+    },
+
+    "authentication": {
+      "type": "object",
+      "description": "Authentication configuration for the external system.",
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["oauth2", "apikey", "basic", "aad", "none"],
+          "description": "Authentication method used for API access."
+        },
+
+        "oauth2": {
+          "type": "object",
+          "description": "OAuth2 configuration used when mode == 'oauth2'. All secrets are stored in Key Vault.",
+          "properties": {
+            "tokenUrl": {
+              "type": "string",
+              "pattern": "^(http|https)://.*$"
+            },
+            "clientId": {
+              "type": "string"
+            },
+            "clientSecret": {
+              "type": "string"
+            },
+            "scopes": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": false
+        },
+
+        "apikey": {
+          "type": "object",
+          "properties": {
+            "headerName": { "type": "string" },
+            "key": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+
+        "basic": {
+          "type": "object",
+          "properties": {
+            "username": { "type": "string" },
+            "password": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "openapi": {
+      "type": "object",
+      "description": "OpenAPI integration configuration.",
+      "properties": {
+        "documentKey": {
+          "type": "string",
+          "description": "Reference to OpenAPI spec registered via builder. Example: 'hubspot-v3'."
+        },
+        "autoDiscoverEntities": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically discover resources/entities from OpenAPI schema."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "mcp": {
+      "type": "object",
+      "description": "Model Context Protocol integration config.",
+      "properties": {
+        "serverUrl": {
+          "type": "string",
+          "pattern": "^(http|https)://.*$"
+        },
+        "toolPrefix": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Prefix for MCP tool names generated from this system."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "dataSources": {
+      "type": "array",
+      "description": "List of data source keys belonging to this external system. Each must match external-datasource.schema.json.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "uniqueItems": true
+    },
+
+    "configuration": {
+      "type": "array",
+      "description": "External system configuration variables (same pattern as application-schema).",
+      "items": {
+        "type": "object",
+        "required": ["name", "value", "location", "required"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Z_][A-Z0-9_]*$"
+          },
+          "value": {
+            "type": "string",
+            "description": "Literal value or parameter reference ({{parameter}})"
+          },
+          "location": {
+            "type": "string",
+            "enum": ["variable", "keyvault"]
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "portalInput": {
+            "type": "object",
+            "required": ["field", "label"],
+            "properties": {
+              "field": {
+                "type": "string",
+                "enum": ["password", "text", "textarea", "select", "json"]
+              },
+              "label": { "type": "string" },
+              "placeholder": { "type": "string" },
+              "options": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "masked": { "type": "boolean" },
+              "validation": {
+                "type": "object",
+                "properties": {
+                  "minLength": { "type": "integer" },
+                  "maxLength": { "type": "integer" },
+                  "pattern": { "type": "string" },
+                  "required": { "type": "boolean" }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+
+    "tags": {
+      "type": "array",
+      "description": "Optional tags for search / filtering",
+      "items": { "type": "string" }
+    }
+  },
+
+  "additionalProperties": false
+}

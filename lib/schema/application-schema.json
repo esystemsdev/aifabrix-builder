@@ -1,5 +1,6 @@
 {
   "$schema":"http://json-schema.org/draft-07/schema#",
+  "$id":"https://aifabrix.ai/schemas/application-schema.json",
   "title":"AI Fabrix Application Configuration Schema",
   "description":"Schema for AI Fabrix applications deployed via the API-Driven Deployment System",
   "metadata":{

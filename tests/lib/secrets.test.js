@@ -2706,6 +2706,82 @@ environments:
       expect(envCall[1]).toContain('DATABASE_PORT=5432');
       expect(envCall[1]).toContain('REDIS_URL=redis://redis:6379');
     });
+
+    it('should replace DATABASE_URL with postgres host and base port for docker context', async() => {
+      const appName = 'test-app';
+      const mockHomeDir = '/home/user';
+      const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const builderPath = path.join(process.cwd(), 'builder', appName);
+      const envTemplatePath = path.join(builderPath, 'env.template');
+      const variablesPath = path.join(builderPath, 'variables.yaml');
+      const envPath = path.join(builderPath, '.env');
+
+      // Mock os.homedir
+      os.homedir.mockReturnValue(mockHomeDir);
+      config.getDeveloperId.mockResolvedValue(1);
+
+      // Mock file system
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return true;
+        }
+        return filePath === builderPath ||
+               filePath === envTemplatePath ||
+               filePath === variablesPath ||
+               filePath.includes('env-config.yaml');
+      });
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath === variablesPath) {
+          return 'port: 3000\nbuild:\n  containerPort: 3000';
+        }
+        if (filePath === envTemplatePath) {
+          // Template has DATABASE_URL with localhost and dev-id adjusted port
+          return 'DATABASE_URL=postgresql://miso_user:miso_pass123@localhost:5532/miso\nDB_HOST=localhost\nDB_PORT=5532';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  docker:
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    DB_HOST: postgres
+    DB_PORT: 5432
+  local:
+    REDIS_HOST: localhost
+    REDIS_PORT: 6379
+    DB_HOST: localhost
+    DB_PORT: 5432
+`;
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker');
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envCall = writeCalls.find(call => call[0].includes('.env') && !call[0].includes('../'));
+      expect(envCall).toBeDefined();
+      const envContent = envCall[1];
+
+      // DATABASE_URL should use postgres (docker service name) not localhost
+      expect(envContent).toContain('DATABASE_URL=postgresql://miso_user:miso_pass123@postgres:5432/miso');
+      // Should NOT contain localhost in DATABASE_URL
+      expect(envContent).not.toMatch(/DATABASE_URL=.*localhost/);
+      // Should NOT contain dev-id adjusted port (5532) in DATABASE_URL
+      expect(envContent).not.toMatch(/DATABASE_URL=.*:5532/);
+      // DB_HOST should be postgres for docker
+      expect(envContent).toContain('DB_HOST=postgres');
+      // DB_PORT should be base port (5432) not dev-id adjusted (5532)
+      expect(envContent).toContain('DB_PORT=5432');
+      expect(envContent).not.toContain('DB_PORT=5532');
+    });
   });
 
   describe('decryptSecretsObject behavior', () => {

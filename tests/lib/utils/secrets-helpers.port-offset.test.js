@@ -19,10 +19,8 @@ jest.mock('../../../lib/config', () => ({
   getDeveloperId: jest.fn().mockResolvedValue('2') // dev-id 2 => +200
 }));
 
-const {
-  adjustLocalEnvPortsInContent,
-  processEnvVariables
-} = require('../../../lib/utils/secrets-helpers');
+const { adjustLocalEnvPortsInContent } = require('../../../lib/utils/secrets-helpers');
+const { processEnvVariables } = require('../../../lib/utils/env-copy');
 
 describe('adjustLocalEnvPortsInContent - developer-id app PORT and localhost URL offsets', () => {
   beforeEach(() => {

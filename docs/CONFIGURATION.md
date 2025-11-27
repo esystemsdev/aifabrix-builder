@@ -104,6 +104,90 @@ Example: `miso`, `dev`, `tst`, `pro`
 
 **Note:** Client credentials are no longer stored in variables.yaml. They are read from `~/.aifabrix/secrets.local.yaml` using pattern `<app-name>-client-idKeyVault` and `<app-name>-client-secretKeyVault`. Tokens are automatically retrieved or refreshed during deployment.
 
+**externalIntegration**  
+Defines external systems and data sources shipped with this application. Pipeline registers these in Miso Controller and publishes schemas to Dataplane.  
+*Optional - only needed for applications with external integrations*
+
+**externalIntegration.schemaBasePath**  
+Base folder path containing external-system.json and external-datasource.json files.  
+Example: `./schemas`, `/absolute/path/to/schemas`  
+*Required if externalIntegration block is present*  
+*Supports both absolute and relative paths (relative to variables.yaml location)*
+
+**externalIntegration.systems**  
+List of external-system JSON files to deploy via pipeline.  
+Example:
+```yaml
+systems:
+  - hubspot.json
+  - salesforce.json
+```
+Optional - array of file names (must end with .json)
+
+**externalIntegration.dataSources**  
+List of external-datasource JSON files belonging to this app.  
+Example:
+```yaml
+dataSources:
+  - hubspot-deal.json
+  - salesforce-contact.json
+```
+Optional - array of file names (must end with .json)
+
+**externalIntegration.autopublish**  
+If true, pipeline automatically publishes ExternalSystems + ExternalDataSources to Dataplane after deployment.  
+Example: `true`, `false`  
+*Optional - defaults to `true`*
+
+**externalIntegration.version**  
+Version of the integration set (used for schema diffing & migrations).  
+Example: `1.0.0`, `2.1.3`  
+*Optional - must match pattern `^[0-9]+\.[0-9]+\.[0-9]+$`*
+
+**Path Resolution:**
+- **Relative paths** are resolved relative to the `variables.yaml` file location
+- **Absolute paths** are used as-is
+- All referenced files must exist at resolved paths
+- File paths in `systems` and `dataSources` arrays are resolved relative to `schemaBasePath`
+
+**Example externalIntegration block:**
+```yaml
+externalIntegration:
+  schemaBasePath: ./schemas
+  systems:
+    - hubspot.json
+    - salesforce.json
+  dataSources:
+    - hubspot-deal.json
+    - salesforce-contact.json
+  autopublish: true
+  version: 1.0.0
+```
+
+**File Structure:**
+```yaml
+builder/
+  myapp/
+    variables.yaml          # Contains externalIntegration block
+    schemas/                # schemaBasePath
+      hubspot.json          # External system
+      salesforce.json       # External system
+      hubspot-deal.json     # External datasource
+      salesforce-contact.json # External datasource
+```
+
+**Validation:**
+- `aifabrix validate myapp` validates both application configuration and all external integration files
+- External system files are validated against `external-system.schema.json`
+- External datasource files are validated against `external-datasource.schema.json`
+- All files must exist and be valid JSON
+
+**Related Commands:**
+- `aifabrix validate <app>` - Validates application and external integration files
+- `aifabrix datasource validate <file>` - Validates individual datasource file
+- `aifabrix datasource list` - Lists deployed datasources
+- `aifabrix datasource diff <file1> <file2>` - Compares datasource versions
+
 ### Full Example
 
 ```yaml
@@ -143,6 +227,15 @@ authentication:
   type: keycloak
   enableSSO: true
   requiredRoles: ["user"]
+
+externalIntegration:
+  schemaBasePath: ./schemas
+  systems:
+    - hubspot.json
+  dataSources:
+    - hubspot-deal.json
+  autopublish: true
+  version: 1.0.0
 ```
 
 **Health Check Response Formats:**
@@ -174,7 +267,7 @@ The health check endpoint must return HTTP 200 status code and a JSON response w
    Validation: `success === true`
 
 5. **Non-JSON Format:**
-   ```
+   ```yaml
    OK
    ```
    Validation: HTTP status code === 200 (any non-JSON response with 200 status is considered healthy)
@@ -259,7 +352,7 @@ API_KEY=sk-1234567890abcdef
 
 ### Existing .env Files
 
-Have an existing `.env`? 
+Have an existing `.env`?
 
 `aifabrix create` reads it and converts to template:
 - Regular values stay as-is
@@ -852,7 +945,7 @@ aifabrix doctor
 - Registry mode is acr, external, or public
 
 **Example errors:**
-```
+```yaml
 ❌ variables.yaml: Missing required field 'app.key'
 ❌ variables.yaml: Port must be between 1 and 65535 (found: 99999)
 ❌ variables.yaml: app.key must be lowercase with dashes (found: 'MyApp')
