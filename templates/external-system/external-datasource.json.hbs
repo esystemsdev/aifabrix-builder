@@ -1,0 +1,55 @@
+{
+  "key": "{{datasourceKey}}",
+  "displayName": "{{datasourceDisplayName}}",
+  "description": "{{datasourceDescription}}",
+  "systemKey": "{{systemKey}}",
+  "entityKey": "{{entityKey}}",
+  "resourceType": "{{resourceType}}",
+  "enabled": true,
+  "version": "1.0.0",
+  "metadataSchema": {
+    "type": "object",
+    "properties": {}
+  },
+  "fieldMappings": {
+    "accessFields": ["id", "name"],
+    "fields": {
+      "id": {
+        "expression": "{{raw.id}}",
+        "type": "string",
+        "description": "Unique identifier",
+        "required": true
+      },
+      "name": {
+        "expression": "{{raw.name}}",
+        "type": "string",
+        "description": "Display name",
+        "required": true
+      }
+    }
+  },
+  "exposed": {
+    "fields": ["id", "name"],
+    "description": "Exposed fields for {{datasourceDisplayName}}"
+  }{{#if (eq systemType "openapi")}},
+  "openapi": {
+    "enabled": true,
+    "documentKey": "{{systemKey}}-api",
+    "baseUrl": "https://api.example.com",
+    "resourcePath": "/{{entityKey}}",
+    "operations": {
+      "list": {
+        "operationId": "list{{entityKey}}",
+        "method": "GET",
+        "path": "/{{entityKey}}"
+      },
+      "get": {
+        "operationId": "get{{entityKey}}",
+        "method": "GET",
+        "path": "/{{entityKey}}/{id}"
+      }
+    },
+    "autoRbac": true
+  }{{/if}}
+}
+

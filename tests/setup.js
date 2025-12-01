@@ -74,7 +74,8 @@ global.testUtils = {
 
   // Helper to clean up temporary files
   cleanupTempFiles: () => {
-    const fs = require('fs');
+    // Use jest.requireActual to get the real fs module, not the mocked one
+    const fs = jest.requireActual('fs');
     const path = require('path');
     const tempDir = path.join(__dirname, 'temp');
     if (fs.existsSync(tempDir)) {

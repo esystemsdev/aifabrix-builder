@@ -10,6 +10,14 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
+
+// Mock token-encryption module before requiring config
+jest.mock('../../lib/utils/token-encryption', () => ({
+  isTokenEncrypted: jest.fn(),
+  encryptToken: jest.fn(),
+  decryptToken: jest.fn()
+}));
+
 const {
   getConfig,
   saveConfig,
@@ -25,9 +33,13 @@ const {
   getClientToken,
   saveDeviceToken,
   saveClientToken,
+  encryptTokenValue,
+  decryptTokenValue,
   CONFIG_DIR,
   CONFIG_FILE
 } = require('../../lib/config');
+
+const tokenEncryption = require('../../lib/utils/token-encryption');
 
 // Spy on fs.promises methods
 jest.spyOn(fsPromises, 'readFile');
@@ -38,7 +50,17 @@ jest.spyOn(fsPromises, 'open');
 
 describe('Config Module', () => {
   beforeEach(() => {
+    // Fully reset all mocks to ensure clean state between tests
     jest.clearAllMocks();
+    // Reset token encryption mocks to remove any previous implementations
+    tokenEncryption.isTokenEncrypted.mockReset();
+    tokenEncryption.encryptToken.mockReset();
+    tokenEncryption.decryptToken.mockReset();
+    // Reset fs mocks to ensure clean state
+    fsPromises.readFile.mockReset();
+    fsPromises.writeFile.mockReset();
+    fsPromises.mkdir.mockReset();
+    fsPromises.open.mockReset();
   });
 
   describe('getConfig', () => {
@@ -780,6 +802,116 @@ describe('Config Module', () => {
 
       expect(result).toBeNull();
     });
+
+    it('should decrypt encrypted tokens when encryption key is set', async() => {
+      const controllerUrl = 'http://localhost:3010';
+      const encryptedToken = 'secure://iv:ciphertext:tag';
+      const encryptedRefreshToken = 'secure://iv2:ciphertext2:tag2';
+      const decryptedToken = 'device-token-123';
+      const decryptedRefreshToken = 'refresh-token-456';
+
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'miso',
+        'secrets-encryption': 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        device: {
+          [controllerUrl]: {
+            token: encryptedToken,
+            refreshToken: encryptedRefreshToken,
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      const configYaml = yaml.dump(mockConfig);
+      fsPromises.readFile.mockImplementation(() => Promise.resolve(configYaml));
+      fsPromises.open.mockResolvedValue({ sync: jest.fn().mockResolvedValue(), close: jest.fn().mockResolvedValue() });
+      fsPromises.writeFile.mockResolvedValue();
+      fsPromises.mkdir.mockResolvedValue();
+
+      // Ensure isTokenEncrypted returns true for encrypted tokens
+      // Must be set up before any async operations
+      tokenEncryption.isTokenEncrypted.mockImplementation((val) => {
+        if (val === encryptedToken || val === encryptedRefreshToken) return true;
+        if (!val || typeof val !== 'string') return false;
+        return val.startsWith('secure://');
+      });
+      // Ensure decryptToken returns the decrypted value
+      tokenEncryption.decryptToken.mockImplementation((val, key) => {
+        if (val === encryptedToken) return decryptedToken;
+        if (val === encryptedRefreshToken) return decryptedRefreshToken;
+        // For any other encrypted token, try to decrypt (fallback)
+        if (val && typeof val === 'string' && val.startsWith('secure://')) {
+          return val.replace('secure://', 'decrypted-');
+        }
+        return val;
+      });
+
+      const result = await getDeviceToken(controllerUrl);
+
+      expect(result.token).toBe(decryptedToken);
+      expect(result.refreshToken).toBe(decryptedRefreshToken);
+      expect(tokenEncryption.decryptToken).toHaveBeenCalledWith(encryptedToken, expect.any(String));
+      expect(tokenEncryption.decryptToken).toHaveBeenCalledWith(encryptedRefreshToken, expect.any(String));
+    });
+
+    it('should migrate plain-text tokens to encrypted when encryption key is set', async() => {
+      const controllerUrl = 'http://localhost:3010';
+      const plainToken = 'device-token-123';
+      const plainRefreshToken = 'refresh-token-456';
+      const encryptedToken = 'secure://iv:ciphertext:tag';
+      const encryptedRefreshToken = 'secure://iv2:ciphertext2:tag2';
+
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'miso',
+        'secrets-encryption': 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        device: {
+          [controllerUrl]: {
+            token: plainToken,
+            refreshToken: plainRefreshToken,
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      const configYaml = yaml.dump(mockConfig);
+      fsPromises.readFile.mockImplementation(() => Promise.resolve(configYaml));
+      fsPromises.writeFile.mockResolvedValue();
+      fsPromises.mkdir.mockResolvedValue();
+      fsPromises.open.mockResolvedValue({ sync: jest.fn().mockResolvedValue(), close: jest.fn().mockResolvedValue() });
+
+      // Explicitly set up mocks - use mockImplementation for consistency
+      tokenEncryption.isTokenEncrypted.mockImplementation((val) => {
+        // Return false for plain tokens (to trigger encryption)
+        if (val === plainToken || val === plainRefreshToken) return false;
+        // Return true for encrypted tokens
+        if (val === encryptedToken || val === encryptedRefreshToken) return true;
+        // Default: check if it starts with secure://
+        return val && typeof val === 'string' && val.startsWith('secure://');
+      });
+      tokenEncryption.encryptToken.mockImplementation((val, key) => {
+        if (val === plainToken) return encryptedToken;
+        if (val === plainRefreshToken) return encryptedRefreshToken;
+        return val;
+      });
+      tokenEncryption.decryptToken.mockImplementation((val, key) => {
+        if (val === encryptedToken) return plainToken;
+        if (val === encryptedRefreshToken) return plainRefreshToken;
+        return val;
+      });
+
+      const result = await getDeviceToken(controllerUrl);
+
+      expect(result.token).toBe(plainToken);
+      expect(result.refreshToken).toBe(plainRefreshToken);
+      // Verify tokens were encrypted and saved
+      expect(fsPromises.writeFile).toHaveBeenCalled();
+      expect(tokenEncryption.encryptToken).toHaveBeenCalledWith(plainToken, expect.any(String));
+      expect(tokenEncryption.encryptToken).toHaveBeenCalledWith(plainRefreshToken, expect.any(String));
+    });
   });
 
   describe('getClientToken', () => {
@@ -824,6 +956,102 @@ describe('Config Module', () => {
 
       expect(result).toBeNull();
     });
+
+    it('should decrypt encrypted client token when encryption key is set', async() => {
+      const encryptedToken = 'secure://iv:ciphertext:tag';
+      const decryptedToken = 'client-token-123';
+
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'miso',
+        'secrets-encryption': 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        environments: {
+          miso: {
+            clients: {
+              keycloak: {
+                controller: 'http://localhost:3010',
+                token: encryptedToken,
+                expiresAt: new Date(Date.now() + 3600000).toISOString()
+              }
+            }
+          }
+        }
+      };
+      const yaml = require('js-yaml');
+      const configYaml = yaml.dump(mockConfig);
+      fsPromises.readFile.mockImplementation(() => Promise.resolve(configYaml));
+      fsPromises.open.mockResolvedValue({ sync: jest.fn().mockResolvedValue(), close: jest.fn().mockResolvedValue() });
+      fsPromises.writeFile.mockResolvedValue();
+      fsPromises.mkdir.mockResolvedValue();
+
+      tokenEncryption.isTokenEncrypted.mockImplementation((val) => {
+        if (val === encryptedToken) return true;
+        if (!val || typeof val !== 'string') return false;
+        return val.startsWith('secure://');
+      });
+      tokenEncryption.decryptToken.mockImplementation((val, key) => {
+        if (val === encryptedToken) return decryptedToken;
+        return val;
+      });
+
+      const result = await getClientToken('miso', 'keycloak');
+
+      expect(result.token).toBe(decryptedToken);
+      expect(tokenEncryption.decryptToken).toHaveBeenCalledWith(encryptedToken, expect.any(String));
+    });
+
+    it('should migrate plain-text client token to encrypted when encryption key is set', async() => {
+      const plainToken = 'client-token-123';
+      const encryptedToken = 'secure://iv:ciphertext:tag';
+
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'miso',
+        'secrets-encryption': 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        environments: {
+          miso: {
+            clients: {
+              keycloak: {
+                controller: 'http://localhost:3010',
+                token: plainToken,
+                expiresAt: new Date(Date.now() + 3600000).toISOString()
+              }
+            }
+          }
+        }
+      };
+      const yaml = require('js-yaml');
+      const configYaml = yaml.dump(mockConfig);
+      fsPromises.readFile.mockImplementation(() => Promise.resolve(configYaml));
+      fsPromises.writeFile.mockResolvedValue();
+      fsPromises.mkdir.mockResolvedValue();
+      fsPromises.open.mockResolvedValue({ sync: jest.fn().mockResolvedValue(), close: jest.fn().mockResolvedValue() });
+
+      // Explicitly set up mocks - use mockImplementation for consistency
+      tokenEncryption.isTokenEncrypted.mockImplementation((val) => {
+        // Return false for plain tokens (to trigger encryption)
+        if (val === plainToken) return false;
+        // Return true for encrypted tokens
+        if (val === encryptedToken) return true;
+        // Default: check if it starts with secure://
+        return val && typeof val !== 'string' ? false : (val && val.startsWith('secure://'));
+      });
+      tokenEncryption.encryptToken.mockImplementation((val, key) => {
+        if (val === plainToken) return encryptedToken;
+        return val;
+      });
+      tokenEncryption.decryptToken.mockImplementation((val, key) => {
+        if (val === encryptedToken) return plainToken;
+        return val;
+      });
+
+      const result = await getClientToken('miso', 'keycloak');
+
+      expect(result.token).toBe(plainToken);
+      // Verify token was encrypted and saved
+      expect(fsPromises.writeFile).toHaveBeenCalled();
+      expect(tokenEncryption.encryptToken).toHaveBeenCalledWith(plainToken, expect.any(String));
+    });
   });
 
   describe('saveDeviceToken', () => {
@@ -851,6 +1079,71 @@ describe('Config Module', () => {
       expect(writtenConfig.device[controllerUrl].refreshToken).toBe('refresh-token-456');
       expect(writtenConfig.device[controllerUrl].expiresAt).toBe(expiresAt);
     });
+
+    it('should encrypt tokens when encryption key is set', async() => {
+      const controllerUrl = 'http://localhost:3010';
+      const plainToken = 'device-token-123';
+      const plainRefreshToken = 'refresh-token-456';
+      const encryptedToken = 'secure://iv:ciphertext:tag';
+      const encryptedRefreshToken = 'secure://iv2:ciphertext2:tag2';
+
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'miso',
+        'secrets-encryption': 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        device: {},
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      const configYaml = yaml.dump(mockConfig);
+      fsPromises.readFile.mockImplementation(() => Promise.resolve(configYaml));
+      fsPromises.writeFile.mockResolvedValue();
+      fsPromises.mkdir.mockResolvedValue();
+      fsPromises.open.mockResolvedValue({ sync: jest.fn().mockResolvedValue(), close: jest.fn().mockResolvedValue() });
+
+      tokenEncryption.isTokenEncrypted.mockImplementation((val) => {
+        if (val === plainToken || val === plainRefreshToken) return false;
+        return val && typeof val === 'string' && val.startsWith('secure://');
+      });
+      tokenEncryption.encryptToken.mockImplementation((val, key) => {
+        if (val === plainToken) return encryptedToken;
+        if (val === plainRefreshToken) return encryptedRefreshToken;
+        return val;
+      });
+
+      const expiresAt = new Date(Date.now() + 3600000).toISOString();
+      await saveDeviceToken(controllerUrl, plainToken, plainRefreshToken, expiresAt);
+
+      expect(fsPromises.writeFile).toHaveBeenCalled();
+      const writtenContent = fsPromises.writeFile.mock.calls[0][1];
+      const writtenConfig = yaml.load(writtenContent);
+      expect(writtenConfig.device[controllerUrl].token).toBe(encryptedToken);
+      expect(writtenConfig.device[controllerUrl].refreshToken).toBe(encryptedRefreshToken);
+      expect(tokenEncryption.encryptToken).toHaveBeenCalledWith(plainToken, expect.any(String));
+      expect(tokenEncryption.encryptToken).toHaveBeenCalledWith(plainRefreshToken, expect.any(String));
+    });
+
+    it('should handle null refresh token', async() => {
+      const controllerUrl = 'http://localhost:3010';
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'miso',
+        device: {},
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+      fsPromises.writeFile.mockResolvedValue();
+      fsPromises.open.mockResolvedValue({ sync: jest.fn().mockResolvedValue(), close: jest.fn().mockResolvedValue() });
+
+      const expiresAt = new Date(Date.now() + 3600000).toISOString();
+      await saveDeviceToken(controllerUrl, 'device-token-123', null, expiresAt);
+
+      expect(fsPromises.writeFile).toHaveBeenCalled();
+      const writtenContent = fsPromises.writeFile.mock.calls[0][1];
+      const writtenConfig = yaml.load(writtenContent);
+      expect(writtenConfig.device[controllerUrl].refreshToken).toBeNull();
+    });
   });
 
   describe('saveClientToken', () => {
@@ -872,6 +1165,229 @@ describe('Config Module', () => {
       const writtenConfig = yaml.load(writtenContent);
       expect(writtenConfig.environments.miso.clients.keycloak).toBeDefined();
       expect(writtenConfig.environments.miso.clients.keycloak.token).toBe('client-token-123');
+    });
+
+    it('should encrypt client token when encryption key is set', async() => {
+      const plainToken = 'client-token-123';
+      const encryptedToken = 'secure://iv:ciphertext:tag';
+
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'miso',
+        'secrets-encryption': 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      const configYaml = yaml.dump(mockConfig);
+      fsPromises.readFile.mockImplementation(() => Promise.resolve(configYaml));
+      fsPromises.writeFile.mockResolvedValue();
+      fsPromises.mkdir.mockResolvedValue();
+      fsPromises.open.mockResolvedValue({ sync: jest.fn().mockResolvedValue(), close: jest.fn().mockResolvedValue() });
+
+      tokenEncryption.isTokenEncrypted.mockImplementation((val) => {
+        if (val === plainToken) return false;
+        return val && typeof val === 'string' && val.startsWith('secure://');
+      });
+      tokenEncryption.encryptToken.mockImplementation((val, key) => {
+        if (val === plainToken) return encryptedToken;
+        return val;
+      });
+
+      await saveClientToken('miso', 'keycloak', 'http://localhost:3010', plainToken, new Date(Date.now() + 3600000).toISOString());
+
+      expect(fsPromises.writeFile).toHaveBeenCalled();
+      const writtenContent = fsPromises.writeFile.mock.calls[0][1];
+      const writtenConfig = yaml.load(writtenContent);
+      expect(writtenConfig.environments.miso.clients.keycloak.token).toBe(encryptedToken);
+      expect(tokenEncryption.encryptToken).toHaveBeenCalledWith(plainToken, expect.any(String));
+    });
+  });
+
+  describe('encryptTokenValue and decryptTokenValue', () => {
+
+    it('should return plain value when no encryption key is set', async() => {
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'dev',
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      const result = await encryptTokenValue('plain-token');
+      expect(result).toBe('plain-token');
+    });
+
+    it('should encrypt value when encryption key is set', async() => {
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'dev',
+        'secrets-encryption': 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      const configYaml = yaml.dump(mockConfig);
+      fsPromises.readFile.mockImplementation(() => Promise.resolve(configYaml));
+
+      tokenEncryption.isTokenEncrypted.mockImplementation((val) => {
+        if (val === 'plain-token') return false;
+        return val && typeof val === 'string' && val.startsWith('secure://');
+      });
+      tokenEncryption.encryptToken.mockImplementation((val, key) => {
+        if (val === 'plain-token') return 'secure://encrypted';
+        return val;
+      });
+
+      const result = await encryptTokenValue('plain-token');
+      expect(result).toBe('secure://encrypted');
+      expect(tokenEncryption.encryptToken).toHaveBeenCalledWith('plain-token', expect.any(String));
+    });
+
+    it('should return already encrypted value as-is', async() => {
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'dev',
+        'secrets-encryption': 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      tokenEncryption.isTokenEncrypted.mockReturnValue(true);
+
+      const result = await encryptTokenValue('secure://already-encrypted');
+      expect(result).toBe('secure://already-encrypted');
+      expect(tokenEncryption.encryptToken).not.toHaveBeenCalled();
+    });
+
+    it('should return plain value when no encryption key for decryption', async() => {
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'dev',
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      const result = await decryptTokenValue('plain-token');
+      expect(result).toBe('plain-token');
+    });
+
+    it('should decrypt encrypted value when encryption key is set', async() => {
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'dev',
+        'secrets-encryption': 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      const configYaml = yaml.dump(mockConfig);
+      fsPromises.readFile.mockImplementation(() => Promise.resolve(configYaml));
+
+      tokenEncryption.isTokenEncrypted.mockImplementation((val) => {
+        if (val === 'secure://encrypted') return true;
+        return val && typeof val === 'string' && val.startsWith('secure://');
+      });
+      tokenEncryption.decryptToken.mockImplementation((val, key) => {
+        if (val === 'secure://encrypted') return 'decrypted-token';
+        return val;
+      });
+
+      const result = await decryptTokenValue('secure://encrypted');
+      expect(result).toBe('decrypted-token');
+      expect(tokenEncryption.decryptToken).toHaveBeenCalledWith('secure://encrypted', expect.any(String));
+    });
+
+    it('should handle null values gracefully', async() => {
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'dev',
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      const encrypted = await encryptTokenValue(null);
+      const decrypted = await decryptTokenValue(null);
+
+      expect(encrypted).toBeNull();
+      expect(decrypted).toBeNull();
+    });
+
+    it('should handle encryption errors gracefully', async() => {
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'dev',
+        'secrets-encryption': 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      tokenEncryption.isTokenEncrypted.mockReturnValue(false);
+      tokenEncryption.encryptToken.mockImplementation(() => {
+        throw new Error('Encryption failed');
+      });
+
+      // Should return original value on error
+      const result = await encryptTokenValue('plain-token');
+      expect(result).toBe('plain-token');
+    });
+
+    it('should handle decryption errors gracefully', async() => {
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'dev',
+        'secrets-encryption': 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      tokenEncryption.isTokenEncrypted.mockReturnValue(true);
+      tokenEncryption.decryptToken.mockImplementation(() => {
+        throw new Error('Decryption failed');
+      });
+
+      // Should return original value on error
+      const result = await decryptTokenValue('secure://encrypted');
+      expect(result).toBe('secure://encrypted');
+    });
+
+    it('should return original value when decryption returns undefined', async() => {
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'dev',
+        'secrets-encryption': 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      tokenEncryption.isTokenEncrypted.mockReturnValue(true);
+      tokenEncryption.decryptToken.mockReturnValue(undefined);
+
+      // Should return original value when decryption returns undefined
+      const result = await decryptTokenValue('secure://encrypted');
+      expect(result).toBe('secure://encrypted');
+    });
+
+    it('should return original value when decryption returns null', async() => {
+      const mockConfig = {
+        'developer-id': 0,
+        environment: 'dev',
+        'secrets-encryption': 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      tokenEncryption.isTokenEncrypted.mockReturnValue(true);
+      tokenEncryption.decryptToken.mockReturnValue(null);
+
+      // Should return original value when decryption returns null
+      const result = await decryptTokenValue('secure://encrypted');
+      expect(result).toBe('secure://encrypted');
     });
   });
 

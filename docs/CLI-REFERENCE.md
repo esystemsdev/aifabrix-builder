@@ -87,6 +87,12 @@ aifabrix login --controller http://localhost:3010 --method credentials --app key
 
 # Device code flow with environment
 aifabrix login --controller http://localhost:3010 --method device --environment miso
+
+# Device code flow with offline token (long-lived refresh token)
+aifabrix login --controller http://localhost:3010 --method device --environment miso --offline
+
+# Device code flow with custom scope
+aifabrix login --controller http://localhost:3010 --method device --environment miso --scope "openid profile email offline_access"
 ```
 
 **Options:**
@@ -96,6 +102,8 @@ aifabrix login --controller http://localhost:3010 --method device --environment 
 - `--client-id <id>` - Client ID for credentials method (optional, overrides secrets.local.yaml)
 - `--client-secret <secret>` - Client Secret for credentials method (optional, overrides secrets.local.yaml)
 - `-e, --environment <env>` - Environment key (updates root-level environment in config.yaml, e.g., miso, dev, tst, pro)
+- `--offline` - Request offline token with `offline_access` scope (device flow only, adds to default scope)
+- `--scope <scopes>` - Custom OAuth2 scope string (device flow only, default: `"openid profile email"`)
 
 **Authentication Methods:**
 
@@ -113,6 +121,10 @@ aifabrix login --controller http://localhost:3010 --method device --environment 
    - Use `--method device` with optional `--environment` flag
    - If `--environment` not provided, prompts interactively
    - Authenticate with only an environment key
+   - **Offline Tokens**: Use `--offline` flag to request `offline_access` scope for long-lived refresh tokens
+   - **Custom Scopes**: Use `--scope` option to specify custom OAuth2 scopes (default: `"openid profile email"`)
+   - When `--offline` is used, `offline_access` is automatically added to the scope
+   - **Note**: `--offline` and `--scope` options are only available for device flow (ignored for credentials method)
    - No client credentials required
    - Useful for initial setup before application registration
    - Follows OAuth2 Device Code Flow (RFC 8628)
@@ -731,26 +743,42 @@ aifabrix create myapp --github --github-steps npm
 ```
 **Note:** Step templates must exist in `templates/github/steps/{step}.hbs`. Currently available: `npm.hbs`
 
+**Example (external system):**
+```bash
+aifabrix create hubspot --type external
+```
+Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2/apikey/basic), number of datasources.
+
 **Flags:**
-- `-p, --port <port>` - Application port (default: 3000)
-- `-d, --database` - Requires database
-- `-r, --redis` - Requires Redis
-- `-s, --storage` - Requires file storage
-- `-a, --authentication` - Requires authentication/RBAC
-- `-l, --language <lang>` - typescript or python
+- `-p, --port <port>` - Application port (default: 3000, not used for external type)
+- `-d, --database` - Requires database (not used for external type)
+- `-r, --redis` - Requires Redis (not used for external type)
+- `-s, --storage` - Requires file storage (not used for external type)
+- `-a, --authentication` - Requires authentication/RBAC (not used for external type)
+- `-l, --language <lang>` - typescript or python (not used for external type)
 - `-t, --template <name>` - Template to use (e.g., miso-controller, keycloak). Template folder must exist in `templates/{template}/`
-- `--app` - Generate minimal application files (package.json, index.ts or requirements.txt, main.py)
+- `--type <type>` - Application type: `webapp`, `api`, `service`, `functionapp`, or `external` (default: webapp)
+- `--app` - Generate minimal application files (package.json, index.ts or requirements.txt, main.py) (not used for external type)
 - `-g, --github` - (Optional) Generate GitHub Actions workflows
 - `--github-steps <steps>` - Extra GitHub workflow steps (comma-separated, e.g., `npm`). Step templates must exist in `templates/github/steps/{step}.hbs`. When included, these steps are rendered and injected into workflow files (e.g., `release.yaml`). Available step templates: `npm.hbs` (adds NPM publishing job)
 - `--main-branch <branch>` - Main branch name for workflows (default: main)
 
 **Creates:**
 - `builder/<app>/variables.yaml` - Application configuration
-- `builder/<app>/env.template` - Environment template with kv:// references
-- `builder/<app>/rbac.yaml` - RBAC configuration (if authentication enabled)
-- `builder/<app>/aifabrix-deploy.json` - Deployment manifest
+- `builder/<app>/env.template` - Environment template with kv:// references (not created for external type)
+- `builder/<app>/rbac.yaml` - RBAC configuration (if authentication enabled, not used for external type)
+- `builder/<app>/aifabrix-deploy.json` - Deployment manifest (not created for external type)
 - `builder/<app>/README.md` - Application documentation
+- `builder/<app>/schemas/` - External system and datasource JSON files (for external type only)
 - `.github/workflows/` - GitHub Actions workflows (if --github specified)
+
+**External Type (`--type external`):**
+When using `--type external`, the command creates an external system integration:
+- Generates `variables.yaml` with `app.type: "external"` and `externalIntegration` block
+- Creates `schemas/` directory with external system JSON template
+- Creates datasource JSON templates based on the number specified
+- Skips Docker-related files (Dockerfile, env.template, aifabrix-deploy.json)
+- External systems are deployed via pipeline API (`aifabrix build` and `aifabrix deploy` work differently)
 
 **Environment File Conversion:**
 - Automatically detects existing `.env` file in current directory
@@ -769,6 +797,7 @@ aifabrix create myapp --github --github-steps npm
 - **"Application name must be 3-40 characters"** → Use valid format (lowercase, dashes only)
 - **"Port must be between 1 and 65535"** → Use valid port number
 - **"Language must be either typescript or python"** → Use supported language
+- **"Invalid type: <type>"** → Type must be one of: webapp, api, service, functionapp, external
 
 ---
 
@@ -777,13 +806,19 @@ aifabrix create myapp --github --github-steps npm
 
 Build Docker image.
 
-**What:** Detects language, generates/uses Dockerfile, builds image, creates `.env`.
+**What:** Detects language, generates/uses Dockerfile, builds image, creates `.env`. For external type applications, deploys to dataplane via pipeline API instead of building Docker images.
 
-**When:** After code changes, first build, when Dockerfile needs regeneration.
+**When:** After code changes, first build, when Dockerfile needs regeneration. For external systems, when ready to deploy to dataplane.
 
 **Example:**
 ```bash
 aifabrix build myapp
+```
+
+**Example (external system):**
+```bash
+aifabrix build hubspot
+# For external type, this deploys via /api/v1/pipeline/deploy instead of building Docker image
 ```
 
 **Override language:**
@@ -972,9 +1007,9 @@ Tags: v1.0.0, latest
 
 Deploy to Azure via Miso Controller.
 
-**What:** Generates deployment manifest from variables.yaml, env.template, and rbac.yaml. Automatically retrieves or refreshes authentication token, validates configuration, and sends to Miso Controller API for Azure deployment. Polls deployment status by default to track progress.
+**What:** Generates deployment manifest from variables.yaml, env.template, and rbac.yaml. Automatically retrieves or refreshes authentication token, validates configuration, and sends to Miso Controller API for Azure deployment. Polls deployment status by default to track progress. For external type applications, publishes to dataplane via pipeline API instead of Azure deployment.
 
-**When:** Deploying to Azure after pushing images to ACR.
+**When:** Deploying to Azure after pushing images to ACR. For external systems, when ready to publish to dataplane.
 
 **Example:**
 ```bash
@@ -983,6 +1018,9 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 
 # Deploy to specific environment (updates root-level environment in config.yaml)
 aifabrix deploy myapp --controller https://controller.aifabrix.ai --environment miso
+
+# External system deployment (publishes via /api/v1/pipeline/publish)
+aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environment dev
 ```
 
 **Output:**

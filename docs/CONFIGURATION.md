@@ -564,9 +564,10 @@ Example: `miso`, `dev`, `tst`, `pro`
 
 **device** (root-level)  
 Device code flow tokens, keyed by controller URL (universal per controller, not per environment)  
-- `device.\<controller-url\>.token` - Device access token  
-- `device.\<controller-url\>.refreshToken` - Refresh token for automatic token renewal  
-- `device.\<controller-url\>.expiresAt` - Token expiration timestamp (ISO 8601)
+- `device.\<controller-url\>.token` - Device access token (encrypted if encryption key is set)  
+- `device.\<controller-url\>.refreshToken` - Refresh token for automatic token renewal (encrypted if encryption key is set)  
+- `device.\<controller-url\>.expiresAt` - Token expiration timestamp (ISO 8601)  
+- **Offline Tokens**: When `--offline` flag is used during login, refresh tokens with `offline_access` scope don't expire
 
 **environments**  
 Per-environment client token storage
@@ -574,13 +575,16 @@ Per-environment client token storage
 **environments.\<env\>.clients.\<app-name\>**  
 Client credentials token for app in environment  
 - `controller` - Controller URL  
-- `token` - Client authentication token  
+- `token` - Client authentication token (encrypted if encryption key is set)  
 - `expiresAt` - Token expiration timestamp (ISO 8601)
 
 ### Important Notes
 
 - **Never stores credentials** - Only tokens are stored in config.yaml
+- **Token Encryption** - Tokens are automatically encrypted at rest if `secrets-encryption` key is set in config.yaml (uses AES-256-GCM)
+- **Automatic Migration** - Plain-text tokens are automatically encrypted on first read if encryption key is available
 - **Automatic token refresh** - Tokens are automatically refreshed when expired (device tokens use refresh tokens, client tokens use credentials from secrets.local.yaml)
+- **Offline Tokens** - Device flow supports `offline_access` scope via `--offline` flag, providing long-lived refresh tokens that don't expire
 - **Environment selection** - Root-level `environment` indicates current environment
 - **Device tokens** - Stored at root level, keyed by controller URL (universal per controller, not per environment)
 - **Client tokens** - Stored per environment and app, automatically refreshed using credentials from secrets.local.yaml

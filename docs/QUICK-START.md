@@ -69,6 +69,22 @@ aifabrix create myapp --github --github-steps npm
 ```
 **Note:** Step templates must exist in `templates/github/steps/{step}.hbs`. The `npm` step adds NPM publishing to the release workflow.
 
+**Creating an External System Integration?** Use `--type external`:
+```bash
+aifabrix create hubspot --type external
+```
+Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2/apikey/basic), number of datasources.
+
+**What gets created for external systems:**
+- `builder/<app>/variables.yaml` - App configuration with `app.type: "external"` and `externalIntegration` block
+- `builder/<app>/schemas/<system-key>.json` - External system JSON template
+- `builder/<app>/schemas/<system-key>-entity*.json` - Datasource JSON templates
+- `builder/<app>/README.md` - Application documentation
+
+**Note:** External systems don't require Docker images, ports, or build configuration. They're deployed directly to the dataplane via pipeline API.
+
+→ [External System Workflow](#external-system-workflow) (see below)
+
 ## Step 4: Review Configuration
 
 ### builder/myapp/variables.yaml
@@ -221,6 +237,119 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 2. **Set up GitHub Actions workflow** (see [GitHub Workflows Guide](GITHUB-WORKFLOWS.md))
 
 → [Deployment Guide](DEPLOYING.md)
+
+---
+
+## External System Workflow
+
+External systems integrate with third-party APIs (like HubSpot, Salesforce, etc.) and don't require Docker containers or traditional application deployment.
+
+### Step 1: Create External System
+
+```bash
+aifabrix create hubspot --type external
+```
+
+**You'll be asked:**
+- System key? *(defaults to app name)*
+- System display name?
+- System description?
+- System type? *OpenAPI / MCP / Custom*
+- Authentication type? *OAuth2 / API Key / Basic Auth*
+- Number of datasources? *(1-10)*
+
+**What gets created:**
+- `builder/hubspot/variables.yaml` - Configuration with `externalIntegration` block
+- `builder/hubspot/schemas/hubspot.json` - External system definition
+- `builder/hubspot/schemas/hubspot-entity*.json` - Datasource definitions
+
+### Step 2: Configure External System
+
+Edit the generated JSON files in `builder/hubspot/schemas/`:
+
+**`hubspot.json`** - System configuration:
+```json
+{
+  "key": "hubspot",
+  "displayName": "HubSpot",
+  "description": "HubSpot CRM integration",
+  "type": "openapi",
+  "environment": {
+    "baseUrl": "https://api.hubapi.com"
+  },
+  "authentication": {
+    "mode": "apikey",
+    "apikey": {
+      "headerName": "Authorization",
+      "key": "kv://hubspot-api-keyKeyVault"
+    }
+  }
+}
+```
+
+**`hubspot-deal.json`** - Datasource configuration:
+```json
+{
+  "key": "hubspot-deal",
+  "displayName": "HubSpot Deal",
+  "systemKey": "hubspot",
+  "entityKey": "deal",
+  "resourceType": "document",
+  "enabled": true
+}
+```
+
+### Step 3: Validate Configuration
+
+```bash
+# Validate entire application (includes external files)
+aifabrix validate hubspot
+
+# Or validate individual files
+aifabrix validate builder/hubspot/schemas/hubspot.json
+aifabrix validate builder/hubspot/schemas/hubspot-deal.json
+```
+
+### Step 4: Deploy to Dataplane
+
+```bash
+# Login to controller
+aifabrix login --controller https://controller.aifabrix.ai --method device --environment dev
+
+# Register application (if not already registered)
+aifabrix app register hubspot --environment dev
+
+# Deploy to dataplane (build command for external systems)
+aifabrix build hubspot --controller https://controller.aifabrix.ai --environment dev
+
+# Publish to dataplane (deploy command for external systems)
+aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environment dev
+```
+
+**What happens:**
+- `aifabrix build` - Deploys system and datasources via `/api/v1/pipeline/deploy`
+- `aifabrix deploy` - Publishes system and datasources via `/api/v1/pipeline/publish`
+
+### Step 5: Verify Deployment
+
+```bash
+# List datasources in environment
+aifabrix datasource list --environment dev
+
+# View datasource details
+aifabrix datasource validate builder/hubspot/schemas/hubspot-deal.json
+```
+
+### External System Commands
+
+**Note:** These commands behave differently for external systems:
+- `aifabrix build` - Deploys to dataplane (no Docker build)
+- `aifabrix deploy` - Publishes to dataplane (no Azure deployment)
+- `aifabrix run` - Shows warning (external systems don't run as containers)
+- `aifabrix dockerfile` - Shows warning and skips
+- `aifabrix push` - Shows warning and skips (no Docker images)
+
+→ [External Integration Guide](CONFIGURATION.md#external-integration)
 
 ---
 

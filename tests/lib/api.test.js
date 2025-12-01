@@ -451,7 +451,76 @@ describe('API Utilities', () => {
         'https://controller.example.com/api/v1/auth/login?environment=dev',
         expect.objectContaining({
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scope: 'openid profile email' })
+        })
+      );
+    });
+
+    it('should include default scope in request body', async() => {
+      const deviceCodeResponse = {
+        success: true,
+        data: {
+          deviceCode: 'device-code-123',
+          userCode: 'ABCD-EFGH',
+          verificationUri: 'https://auth.example.com/device',
+          expiresIn: 600,
+          interval: 5
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: jest.fn().mockResolvedValue(deviceCodeResponse)
+      });
+
+      await initiateDeviceCodeFlow('https://controller.example.com', 'dev');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://controller.example.com/api/v1/auth/login?environment=dev',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scope: 'openid profile email' })
+        })
+      );
+    });
+
+    it('should include custom scope in request body', async() => {
+      const deviceCodeResponse = {
+        success: true,
+        data: {
+          deviceCode: 'device-code-123',
+          userCode: 'ABCD-EFGH',
+          verificationUri: 'https://auth.example.com/device',
+          expiresIn: 600,
+          interval: 5
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: jest.fn().mockResolvedValue(deviceCodeResponse)
+      });
+
+      await initiateDeviceCodeFlow('https://controller.example.com', 'dev', 'openid profile email offline_access');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://controller.example.com/api/v1/auth/login?environment=dev',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scope: 'openid profile email offline_access' })
         })
       );
     });

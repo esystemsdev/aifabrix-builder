@@ -85,7 +85,222 @@ describe('Login Command Module', () => {
         throw error;
       }
 
-      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev');
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email');
+    });
+
+    it('should pass default scope when no scope options provided', async() => {
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'device',
+        environment: 'dev'
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        device_code: 'device-code-123',
+        user_code: 'ABCD-EFGH',
+        verification_uri: 'https://example.com/verify',
+        interval: 5,
+        expires_in: 600
+      });
+
+      pollDeviceCodeToken.mockResolvedValue({
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-456',
+        expires_in: 3600
+      });
+
+      displayDeviceCodeInfo.mockImplementation(() => {});
+
+      try {
+        await handleLogin(options);
+      } catch (error) {
+        if (error.message.includes('process.exit')) {
+          return;
+        }
+        throw error;
+      }
+
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email');
+    });
+
+    it('should add offline_access scope when --offline flag is used', async() => {
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'device',
+        environment: 'dev',
+        offline: true
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        device_code: 'device-code-123',
+        user_code: 'ABCD-EFGH',
+        verification_uri: 'https://example.com/verify',
+        interval: 5,
+        expires_in: 600
+      });
+
+      pollDeviceCodeToken.mockResolvedValue({
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-456',
+        expires_in: 3600
+      });
+
+      displayDeviceCodeInfo.mockImplementation(() => {});
+
+      try {
+        await handleLogin(options);
+      } catch (error) {
+        if (error.message.includes('process.exit')) {
+          return;
+        }
+        throw error;
+      }
+
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email offline_access');
+    });
+
+    it('should use custom scope when --scope option is provided', async() => {
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'device',
+        environment: 'dev',
+        scope: 'openid profile email custom_scope'
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        device_code: 'device-code-123',
+        user_code: 'ABCD-EFGH',
+        verification_uri: 'https://example.com/verify',
+        interval: 5,
+        expires_in: 600
+      });
+
+      pollDeviceCodeToken.mockResolvedValue({
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-456',
+        expires_in: 3600
+      });
+
+      displayDeviceCodeInfo.mockImplementation(() => {});
+
+      try {
+        await handleLogin(options);
+      } catch (error) {
+        if (error.message.includes('process.exit')) {
+          return;
+        }
+        throw error;
+      }
+
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email custom_scope');
+    });
+
+    it('should add offline_access to custom scope when both --scope and --offline are used', async() => {
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'device',
+        environment: 'dev',
+        scope: 'openid profile',
+        offline: true
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        device_code: 'device-code-123',
+        user_code: 'ABCD-EFGH',
+        verification_uri: 'https://example.com/verify',
+        interval: 5,
+        expires_in: 600
+      });
+
+      pollDeviceCodeToken.mockResolvedValue({
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-456',
+        expires_in: 3600
+      });
+
+      displayDeviceCodeInfo.mockImplementation(() => {});
+
+      try {
+        await handleLogin(options);
+      } catch (error) {
+        if (error.message.includes('process.exit')) {
+          return;
+        }
+        throw error;
+      }
+
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile offline_access');
+    });
+
+    it('should not duplicate offline_access if already in custom scope', async() => {
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'device',
+        environment: 'dev',
+        scope: 'openid profile offline_access',
+        offline: true
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        device_code: 'device-code-123',
+        user_code: 'ABCD-EFGH',
+        verification_uri: 'https://example.com/verify',
+        interval: 5,
+        expires_in: 600
+      });
+
+      pollDeviceCodeToken.mockResolvedValue({
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-456',
+        expires_in: 3600
+      });
+
+      displayDeviceCodeInfo.mockImplementation(() => {});
+
+      try {
+        await handleLogin(options);
+      } catch (error) {
+        if (error.message.includes('process.exit')) {
+          return;
+        }
+        throw error;
+      }
+
+      // Should not duplicate offline_access (buildScope checks if it's already included)
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile offline_access');
+    });
+
+    it('should show warning when --offline or --scope used with credentials method', async() => {
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'credentials',
+        app: 'myapp',
+        offline: true
+      };
+
+      tokenManager.loadClientCredentials.mockResolvedValue({
+        clientId: 'client-id-123',
+        clientSecret: 'client-secret-456'
+      });
+
+      makeApiCall.mockResolvedValue({
+        success: true,
+        data: {
+          token: 'client-token-123',
+          expiresIn: 3600
+        }
+      });
+
+      try {
+        await handleLogin(options);
+      } catch (error) {
+        if (error.message.includes('process.exit')) {
+          return;
+        }
+        throw error;
+      }
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Warning: --offline and --scope options are only available for device flow'));
     });
 
     it('should reject invalid environment key format', async() => {
@@ -152,7 +367,7 @@ describe('Login Command Module', () => {
         throw error;
       }
 
-      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev-env_test');
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev-env_test', 'openid profile email');
     });
   });
 
@@ -656,7 +871,7 @@ describe('Login Command Module', () => {
         throw error;
       }
 
-      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev');
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email');
     });
   });
 
