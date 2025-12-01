@@ -1,6 +1,6 @@
 {
    "$schema":"https://json-schema.org/draft/2020-12/schema",
-   "$id":"https://github.com/esystemsdev/aifabrix-builder/blob/main/lib/schema/external-datasource.schema.json",
+   "$id":"https://raw.githubusercontent.com/esystemsdev/aifabrix-builder/refs/heads/main/lib/schema/external-datasource.schema.json",
    "title":"External Data Source",
    "description":"Configuration for AI Fabrix ExternalDataSource entities. Includes metadata schema, ABAC access fields, transformation mappings, OpenAPI/MCP exposure, and sync behavior.",
    "metadata":{

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/esystemsdev/aifabrix-builder/blob/main/lib/schema/external-system.schema.json",
+  "$id": "https://raw.githubusercontent.com/esystemsdev/aifabrix-builder/refs/heads/main/lib/schema/external-system.schema.json",
   "title": "AI Fabrix External System Configuration Schema",
   "description": "Schema for configuring an external system connected to the AI Fabrix Dataplane. This defines authentication, OpenAPI/MCP bindings, field mappings defaults, metadata handling and portal inputs.",
 
