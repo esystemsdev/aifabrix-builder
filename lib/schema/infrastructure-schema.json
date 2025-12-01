@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://docs.aifabrix.ai/schemas/Configuration-Schema-Infra.json",
+  "$id": "https://github.com/esystemsdev/aifabrix-builder/blob/main/lib/schema/infrastructure-schema.json",
   "title": "AI Fabrix Infrastructure Configuration Schema",
   "description": "Infrastructure-level configuration schema for AI Fabrix deployment",
   "metadata": {

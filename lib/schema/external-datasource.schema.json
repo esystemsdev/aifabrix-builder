@@ -1,8 +1,50 @@
 {
    "$schema":"https://json-schema.org/draft/2020-12/schema",
-   "$id":"https://aifabrix.ai/schemas/external-datasource.schema.json",
+   "$id":"https://github.com/esystemsdev/aifabrix-builder/blob/main/lib/schema/external-datasource.schema.json",
    "title":"External Data Source",
    "description":"Configuration for AI Fabrix ExternalDataSource entities. Includes metadata schema, ABAC access fields, transformation mappings, OpenAPI/MCP exposure, and sync behavior.",
+   "metadata":{
+      "key":"external-datasource-schema",
+      "name":"External Data Source Configuration Schema",
+      "description":"JSON schema for validating ExternalDataSource configuration files",
+      "version":"1.0.0",
+      "type":"schema",
+      "category":"integration",
+      "author":"AI Fabrix Team",
+      "createdAt":"2024-01-01T00:00:00Z",
+      "updatedAt":"2024-01-01T00:00:00Z",
+      "compatibility":{
+         "minVersion":"1.0.0",
+         "maxVersion":"2.0.0",
+         "deprecated":false
+      },
+      "tags":[
+         "schema",
+         "external-datasource",
+         "dataplane",
+         "integration",
+         "validation"
+      ],
+      "dependencies":[
+         "external-system.schema.json"
+      ],
+      "changelog":[
+         {
+            "version":"1.0.0",
+            "date":"2024-01-01T00:00:00Z",
+            "changes":[
+               "Initial schema for External Data Sources",
+               "Added fieldMappings DSL with transformation expressions",
+               "Added metadataSchema validation",
+               "Added exposed fields configuration for MCP/OpenAPI",
+               "Added ABAC accessFields validation",
+               "Added OpenAPI and MCP operation configurations",
+               "Added sync configuration and validation rules"
+            ],
+            "breaking":false
+         }
+      ]
+   },
    "type":"object",
    "required":[
       "key",
@@ -37,6 +79,12 @@
       "entityKey":{
          "type":"string",
          "pattern":"^[a-z0-9-]+$"
+      },
+      "resourceType":{
+         "type":"string",
+         "enum":["customer","contact","person","document","deal"],
+         "default":"document",
+         "description":"Resource type for the datasource. Maps to database ResourceType enum."
       },
       "version":{
          "type":"string",
