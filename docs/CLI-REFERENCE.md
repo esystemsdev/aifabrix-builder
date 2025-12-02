@@ -33,6 +33,7 @@ Complete command reference with examples and troubleshooting.
 
 ### Deployment
 - [aifabrix push](#aifabrix-push-app) - Push image to Azure Container Registry
+- [aifabrix environment deploy](#aifabrix-environment-deploy-env) - Deploy/setup environment in Miso Controller
 - [aifabrix deploy](#aifabrix-deploy-app) - Deploy to Azure via Miso Controller
 - [aifabrix deployments](#aifabrix-deployments) - List deployments for an environment
 
@@ -999,6 +1000,168 @@ Tags: v1.0.0, latest
 - **"Registry URL is required"** → Provide via `--registry` flag or configure in `variables.yaml`
 - **"Permission denied"** → Check ACR permissions and Azure role assignments
 - **"Failed to push image"** → Check network connectivity, registry accessibility, and image size limits
+
+---
+
+<a id="aifabrix-environment-deploy-env"></a>
+## aifabrix environment deploy <env>
+
+Deploy/setup environment in Miso Controller.
+
+**What:** Sets up and deploys an environment (miso, dev, tst, pro) in the Miso Controller. Provisions environment-level infrastructure, configures resources, and prepares the environment for application deployments. Automatically retrieves or refreshes authentication token, validates configuration, and sends environment deployment request to Miso Controller API. Polls deployment status by default to track progress.
+
+**When:** Setting up a new environment for the first time, provisioning environment infrastructure, updating environment-level configuration, or before deploying applications to an environment. This should be done before deploying applications.
+
+**Example:**
+```bash
+# Deploy development environment
+aifabrix environment deploy dev --controller https://controller.aifabrix.ai
+
+# Deploy testing environment
+aifabrix environment deploy tst --controller https://controller.aifabrix.ai
+
+# Deploy production environment
+aifabrix environment deploy pro --controller https://controller.aifabrix.ai
+
+# Deploy miso environment
+aifabrix environment deploy miso --controller https://controller.aifabrix.ai
+
+# Using alias
+aifabrix env deploy dev --controller https://controller.aifabrix.ai
+
+# Without status polling
+aifabrix environment deploy dev --controller https://controller.aifabrix.ai --no-poll
+```
+
+**Output:**
+```yaml
+📋 Deploying environment 'dev' to https://controller.aifabrix.ai...
+✓ Environment validated
+✓ Authentication successful
+
+🚀 Deploying environment infrastructure...
+📤 Sending deployment request to https://controller.aifabrix.ai/api/v1/environments/dev/deploy...
+⏳ Polling deployment status (5000ms intervals)...
+
+✅ Environment deployed successfully
+   Environment: dev
+   Status: ✅ ready
+   URL: https://controller.aifabrix.ai/environments/dev
+   
+✓ Environment is ready for application deployments
+```
+
+**Configuration:**
+
+The environment deploy command requires:
+- Controller URL (via `--controller` flag)
+- Valid environment key (miso, dev, tst, pro)
+- Authentication token (device token, obtained via `aifabrix login`)
+
+**Authentication:**
+
+The environment deploy command automatically:
+1. Gets or refreshes device token for the controller
+2. Uses device token (not app-specific client credentials)
+3. Requires admin/operator privileges for environment deployment
+4. If token missing or expired:
+   - Prompts to run `aifabrix login` first
+   - Or uses existing device token from config.yaml
+
+**Advanced options:**
+```bash
+# Without status polling
+aifabrix environment deploy dev --controller https://controller.aifabrix.ai --no-poll
+
+# With environment configuration file
+aifabrix environment deploy dev --controller https://controller.aifabrix.ai --config ./env-config.yaml
+
+# Skip validation checks
+aifabrix environment deploy dev --controller https://controller.aifabrix.ai --skip-validation
+```
+
+**Flags:**
+- `-c, --controller <url>` - Controller URL (required)
+- `--config <file>` - Environment configuration file (optional, for custom environment setup)
+- `--skip-validation` - Skip environment validation checks
+- `--poll` - Poll for deployment status (default: true)
+- `--no-poll` - Do not poll for status
+
+**Process:**
+1. Validates environment key format (must be: miso, dev, tst, pro)
+2. Validates controller URL
+3. Gets or refreshes device token for authentication
+4. Sends environment deployment request to controller API
+5. Polls deployment status (if enabled)
+6. Verifies environment is ready for application deployments
+7. Displays deployment results
+
+**Environment Deployment Request:**
+```json
+{
+  "key": "dev",
+  "displayName": "Development Environment",
+  "description": "Development environment for testing and development",
+  "configuration": {
+    "infrastructure": {...},
+    "resources": {...},
+    "security": {...}
+  }
+}
+```
+
+**Differences from `aifabrix deploy <app>`:**
+
+| Aspect | `environment deploy <env>` | `deploy <app>` |
+|--------|---------------------------|----------------|
+| **Target** | Environment (dev, tst, pro, miso) | Application |
+| **Purpose** | Set up environment infrastructure | Deploy application to environment |
+| **Prerequisites** | Controller access, authentication | Environment must exist, app must be built |
+| **Authentication** | Device token | Client credentials (app-specific) |
+| **Use Case** | Environment provisioning | Application deployment |
+| **Order** | First (setup environment) | Second (deploy apps to environment) |
+| **Frequency** | Once per environment (or when updating) | Multiple times per app |
+
+**When to Use:**
+
+- ✅ **Use `environment deploy`** when:
+  - Setting up a new environment for the first time
+  - Provisioning environment infrastructure
+  - Updating environment-level configuration
+  - Before deploying applications to an environment
+
+- ✅ **Use `deploy <app>`** when:
+  - Deploying applications to an already-set-up environment
+  - Application-level deployment only
+  - Environment already exists and is ready
+
+**Workflow:**
+
+The typical deployment workflow:
+
+1. **Deploy Environment** (first)
+   ```bash
+   aifabrix environment deploy dev --controller https://controller.aifabrix.ai
+   ```
+
+2. **Deploy Applications** (second)
+   ```bash
+   aifabrix deploy myapp --controller https://controller.aifabrix.ai --environment dev
+   ```
+
+**Issues:**
+- **"Environment key is required"** → Provide environment key as argument (miso, dev, tst, pro)
+- **"Invalid environment key"** → Environment must be one of: miso, dev, tst, pro
+- **"Controller URL is required"** → Provide `--controller` flag with HTTPS URL
+- **"Controller URL must use HTTPS"** → Use `https://` protocol
+- **"Failed to get authentication token"** → Run `aifabrix login` first to get device token
+- **"Authentication failed"** → Token may be expired, run `aifabrix login` again
+- **"Environment already exists"** → Environment may already be deployed, check controller dashboard
+- **"Insufficient permissions"** → Requires admin/operator privileges for environment deployment
+- **"Can't reach controller"** → Check URL, network connection, firewall
+- **"Request timed out"** → Controller may be overloaded, try again later
+- **"Deployment timeout"** → Check controller logs, deployment may be in progress
+- **"Environment not ready"** → Wait for environment deployment to complete, check status
 
 ---
 
