@@ -31,7 +31,7 @@ aifabrix build myapp
 
 ### Output
 
-```
+```yaml
 ✓ Loaded configuration
 ✓ Detected language: typescript
 ✓ Using Dockerfile from: .aifabrix/Dockerfile.typescript
@@ -52,7 +52,7 @@ SDK auto-detects your language:
 | `package.json` | TypeScript | Node 20 Alpine |
 | `requirements.txt` or `pyproject.toml` | Python | Python 3.11 Alpine |
 
-###Override Detection
+### Override Detection
 
 ```bash
 aifabrix build myapp --language python
