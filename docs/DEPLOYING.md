@@ -98,7 +98,57 @@ Tags: `v1.0.0`, `latest`, `stable`
 
 ---
 
-## Step 2: Deploy via Controller
+## Step 2: Deploy Environment (First Time)
+
+Before deploying applications, ensure the environment is set up:
+
+```bash
+# Deploy/setup the environment (dev, tst, pro, miso)
+aifabrix environment deploy dev --controller https://controller.aifabrix.ai
+```
+
+### What Happens
+
+1. **Validates environment**
+   - Ensures environment key is valid (miso, dev, tst, pro)
+   - Checks controller accessibility
+
+2. **Authenticates**
+   - Uses device token (from `aifabrix login`)
+   - Requires admin/operator privileges
+
+3. **Deploys environment**
+   - Provisions environment infrastructure
+   - Configures environment resources
+   - Sets up environment isolation
+
+4. **Verifies readiness**
+   - Checks environment status
+   - Confirms environment is ready for applications
+
+### Output
+
+```yaml
+📋 Deploying environment 'dev' to https://controller.aifabrix.ai...
+✓ Environment validated
+✓ Authentication successful
+
+🚀 Deploying environment infrastructure...
+📤 Sending deployment request to https://controller.aifabrix.ai/api/v1/environments/dev/deploy...
+⏳ Polling deployment status (5000ms intervals)...
+
+✅ Environment deployed successfully
+   Environment: dev
+   Status: ✅ ready
+   
+✓ Environment is ready for application deployments
+```
+
+**Note:** Environment deployment is typically done once per environment, or when updating environment-level configuration. After the environment is set up, you can deploy multiple applications to it.
+
+---
+
+## Step 3: Deploy Application via Controller
 
 ```bash
 aifabrix deploy myapp --controller https://controller.aifabrix.ai
@@ -106,7 +156,11 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 
 ### What Happens
 
-1. **Gets or refreshes authentication token**
+1. **Validates environment exists**
+   - Checks that target environment is set up
+   - Verifies environment is ready for deployments
+
+2. **Gets or refreshes authentication token**
    - Retrieves client token from config.yaml for current environment + app
    - If token missing or expired:
      - Reads credentials from `~/.aifabrix/secrets.local.yaml` using pattern `<app-name>-client-idKeyVault` and `<app-name>-client-secretKeyVault`
