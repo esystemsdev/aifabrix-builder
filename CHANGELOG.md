@@ -1,3 +1,21 @@
+## [2.8.0] - 2025-01-XX
+
+### Added
+- **Environment Deployment Command**: New `aifabrix environment deploy <env>` command for deploying/setting up environments
+  - Deploys environment infrastructure (dev, tst, pro, miso) to Miso Controller
+  - Uses device token authentication (not app-specific credentials)
+  - Validates environment key and controller URL
+  - Polls deployment status to verify environment readiness
+  - Command alias: `aifabrix env deploy <env>`
+  - Documentation added to CLI-REFERENCE.md and DEPLOYING.md
+  - Implementation in `lib/environment-deploy.js`
+  - Follows same patterns as `app deploy` command
+
+### Documentation
+- Added comprehensive documentation for `environment deploy` command
+- Updated deployment workflow: environment deploy → app deploy
+- Added environment deployment section to DEPLOYING.md before app deployment
+
 ## [2.7.0] - 2025-11-24
 
 ### Added
