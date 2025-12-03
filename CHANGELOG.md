@@ -1,4 +1,4 @@
-## [2.8.0] - 2025-01-XX
+## [2.8.0] - 2025-12-03
 
 ### Added
 - **Environment Deployment Command**: New `aifabrix environment deploy <env>` command for deploying/setting up environments
