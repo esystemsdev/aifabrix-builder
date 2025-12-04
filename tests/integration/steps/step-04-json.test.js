@@ -38,7 +38,7 @@ describe('Integration Step 04: Generate Deployment JSON', () => {
       console.warn('Continuing anyway...');
     } else {
       // Verify deployment JSON exists
-      const deployJson = path.join(appInfo.builderPath, 'aifabrix-deploy.json');
+      const deployJson = path.join(appInfo.builderPath, `${appName}-deploy.json`);
       const deployJsonExists = await testFileExists(deployJson);
 
       if (deployJsonExists) {

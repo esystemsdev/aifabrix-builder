@@ -779,7 +779,7 @@ describe('CLI Comprehensive Tests', () => {
     it('should generate deployment JSON with warnings', async() => {
       generator.generateDeployJsonWithValidation.mockResolvedValue({
         success: true,
-        path: '/path/to/aifabrix-deploy.json',
+        path: '/path/to/test-app-deploy.json',
         validation: {
           warnings: ['Warning 1', 'Warning 2'],
           errors: []

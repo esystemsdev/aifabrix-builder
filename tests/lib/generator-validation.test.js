@@ -212,17 +212,21 @@ describe('Generator Validation Module', () => {
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('variables.yaml') ||
                filePath.includes('env.template') ||
-               filePath.includes('aifabrix-deploy.json');
+               filePath.includes('testapp-deploy.json');
       });
 
       fs.readFileSync.mockImplementation((filePath) => {
+        // First check if this file was written (for deploy.json files)
+        if (writtenFiles[filePath]) {
+          return writtenFiles[filePath];
+        }
         if (filePath.includes('variables.yaml')) {
           return yaml.dump(mockVariables);
         }
         if (filePath.includes('env.template')) {
           return mockEnvTemplate;
         }
-        if (filePath.includes('aifabrix-deploy.json')) {
+        if (filePath.includes('testapp-deploy.json')) {
           // Return what was written, or a default if nothing was written yet
           return writtenFiles[filePath] || JSON.stringify({
             key: 'testapp',
@@ -251,7 +255,7 @@ describe('Generator Validation Module', () => {
     it('should generate JSON with validation', async() => {
       const appName = 'testapp';
       const builderPath = path.join(process.cwd(), 'builder', appName);
-      const jsonPath = path.join(builderPath, 'aifabrix-deploy.json');
+      const jsonPath = path.join(builderPath, 'testapp-deploy.json');
 
       const result = await generator.generateDeployJsonWithValidation(appName);
 

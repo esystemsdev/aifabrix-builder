@@ -1,0 +1,248 @@
+{
+  "key": "hubspot-deal",
+  "displayName": "HubSpot Deal",
+  "description": "HubSpot deals datasource with field mappings for CRM deal data",
+  "systemKey": "hubspot",
+  "entityKey": "deal",
+  "resourceType": "deal",
+  "enabled": true,
+  "version": "1.0.0",
+  "metadataSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "dealname": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "amount": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "deal_currency_code": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "dealstage": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "pipeline": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "closedate": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "dealtype": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "createdate": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "hs_lastmodifieddate": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "associations": {
+        "type": "object",
+        "properties": {
+          "companies": {
+            "type": "object",
+            "properties": {
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "contacts": {
+            "type": "object",
+            "properties": {
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "required": ["id", "properties"]
+  },
+  "fieldMappings": {
+    "accessFields": ["stage", "pipeline"],
+    "fields": {
+      "id": {
+        "expression": "{{id}}",
+        "type": "string",
+        "description": "Unique deal identifier",
+        "required": true
+      },
+      "dealName": {
+        "expression": "{{properties.dealname.value}} | trim",
+        "type": "string",
+        "description": "Deal name",
+        "required": false
+      },
+      "amount": {
+        "expression": "{{properties.amount.value}}",
+        "type": "string",
+        "description": "Deal amount",
+        "required": false
+      },
+      "currency": {
+        "expression": "{{properties.deal_currency_code.value}} | toUpper | trim",
+        "type": "string",
+        "description": "Currency code",
+        "required": false
+      },
+      "stage": {
+        "expression": "{{properties.dealstage.value}} | trim",
+        "type": "string",
+        "description": "Deal stage for ABAC filtering",
+        "required": false
+      },
+      "pipeline": {
+        "expression": "{{properties.pipeline.value}} | trim",
+        "type": "string",
+        "description": "Pipeline name for ABAC filtering",
+        "required": false
+      },
+      "closeDate": {
+        "expression": "{{properties.closedate.value}}",
+        "type": "string",
+        "description": "Expected close date",
+        "required": false
+      },
+      "dealType": {
+        "expression": "{{properties.dealtype.value}} | trim",
+        "type": "string",
+        "description": "Deal type",
+        "required": false
+      },
+      "associatedCompany": {
+        "expression": "{{associations.companies.results[0].id}}",
+        "type": "string",
+        "description": "Associated company ID",
+        "required": false
+      },
+      "associatedContacts": {
+        "expression": "{{associations.contacts.results}}",
+        "type": "array",
+        "description": "Array of associated contact IDs",
+        "required": false
+      },
+      "createdAt": {
+        "expression": "{{properties.createdate.value}}",
+        "type": "string",
+        "description": "Creation timestamp",
+        "required": false
+      },
+      "updatedAt": {
+        "expression": "{{properties.hs_lastmodifieddate.value}}",
+        "type": "string",
+        "description": "Last modification timestamp",
+        "required": false
+      }
+    }
+  },
+  "exposed": {
+    "fields": ["id", "dealName", "amount", "currency", "stage", "pipeline", "closeDate", "dealType", "associatedCompany", "associatedContacts", "createdAt", "updatedAt"],
+    "description": "Exposed fields for HubSpot deals"
+  },
+  "openapi": {
+    "enabled": true,
+    "documentKey": "hubspot-v3",
+    "baseUrl": "https://api.hubapi.com",
+    "operations": {
+      "list": {
+        "operationId": "getDeals",
+        "method": "GET",
+        "path": "/crm/v3/objects/deals"
+      },
+      "get": {
+        "operationId": "getDeal",
+        "method": "GET",
+        "path": "/crm/v3/objects/deals/{dealId}"
+      },
+      "create": {
+        "operationId": "createDeal",
+        "method": "POST",
+        "path": "/crm/v3/objects/deals"
+      },
+      "update": {
+        "operationId": "updateDeal",
+        "method": "PATCH",
+        "path": "/crm/v3/objects/deals/{dealId}"
+      },
+      "delete": {
+        "operationId": "deleteDeal",
+        "method": "DELETE",
+        "path": "/crm/v3/objects/deals/{dealId}"
+      }
+    },
+    "autoRbac": true
+  }
+}
+

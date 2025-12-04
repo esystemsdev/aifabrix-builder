@@ -1,0 +1,228 @@
+{
+  "key": "hubspot-contact",
+  "displayName": "HubSpot Contact",
+  "description": "HubSpot contacts datasource with field mappings for CRM contact data",
+  "systemKey": "hubspot",
+  "entityKey": "contact",
+  "resourceType": "contact",
+  "enabled": true,
+  "version": "1.0.0",
+  "metadataSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "firstname": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "lastname": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "email": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "phone": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "company": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "jobtitle": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "address": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "city": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "country": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "createdate": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "hs_lastmodifieddate": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "required": ["id", "properties"]
+  },
+  "fieldMappings": {
+    "accessFields": ["email", "country"],
+    "fields": {
+      "id": {
+        "expression": "{{id}}",
+        "type": "string",
+        "description": "Unique contact identifier",
+        "required": true
+      },
+      "firstName": {
+        "expression": "{{properties.firstname.value}} | trim",
+        "type": "string",
+        "description": "First name",
+        "required": false
+      },
+      "lastName": {
+        "expression": "{{properties.lastname.value}} | trim",
+        "type": "string",
+        "description": "Last name",
+        "required": false
+      },
+      "email": {
+        "expression": "{{properties.email.value}} | toLower | trim",
+        "type": "string",
+        "description": "Email address for ABAC filtering",
+        "required": false
+      },
+      "phone": {
+        "expression": "{{properties.phone.value}} | trim",
+        "type": "string",
+        "description": "Phone number",
+        "required": false
+      },
+      "company": {
+        "expression": "{{properties.company.value}} | trim",
+        "type": "string",
+        "description": "Associated company name",
+        "required": false
+      },
+      "jobTitle": {
+        "expression": "{{properties.jobtitle.value}} | trim",
+        "type": "string",
+        "description": "Job title",
+        "required": false
+      },
+      "address": {
+        "expression": "{{properties.address.value}} | trim",
+        "type": "string",
+        "description": "Street address",
+        "required": false
+      },
+      "city": {
+        "expression": "{{properties.city.value}} | trim",
+        "type": "string",
+        "description": "City name",
+        "required": false
+      },
+      "country": {
+        "expression": "{{properties.country.value}} | toUpper | trim",
+        "type": "string",
+        "description": "Country code for ABAC filtering",
+        "required": false
+      },
+      "createdAt": {
+        "expression": "{{properties.createdate.value}}",
+        "type": "string",
+        "description": "Creation timestamp",
+        "required": false
+      },
+      "updatedAt": {
+        "expression": "{{properties.hs_lastmodifieddate.value}}",
+        "type": "string",
+        "description": "Last modification timestamp",
+        "required": false
+      }
+    }
+  },
+  "exposed": {
+    "fields": ["id", "firstName", "lastName", "email", "phone", "company", "jobTitle", "address", "city", "country", "createdAt", "updatedAt"],
+    "description": "Exposed fields for HubSpot contacts"
+  },
+  "openapi": {
+    "enabled": true,
+    "documentKey": "hubspot-v3",
+    "baseUrl": "https://api.hubapi.com",
+    "operations": {
+      "list": {
+        "operationId": "getContacts",
+        "method": "GET",
+        "path": "/crm/v3/objects/contacts"
+      },
+      "get": {
+        "operationId": "getContact",
+        "method": "GET",
+        "path": "/crm/v3/objects/contacts/{contactId}"
+      },
+      "create": {
+        "operationId": "createContact",
+        "method": "POST",
+        "path": "/crm/v3/objects/contacts"
+      },
+      "update": {
+        "operationId": "updateContact",
+        "method": "PATCH",
+        "path": "/crm/v3/objects/contacts/{contactId}"
+      },
+      "delete": {
+        "operationId": "deleteContact",
+        "method": "DELETE",
+        "path": "/crm/v3/objects/contacts/{contactId}"
+      }
+    },
+    "autoRbac": true
+  }
+}
+
+

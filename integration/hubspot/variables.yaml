@@ -1,0 +1,17 @@
+app:
+  key: hubspot
+  displayName: "HubSpot CRM Integration"
+  description: "HubSpot CRM external system integration with companies, contacts, and deals"
+  type: external
+
+externalIntegration:
+  schemaBasePath: ./
+  systems:
+    - hubspot-deploy.json
+  dataSources:
+    - hubspot-deploy-company.json
+    - hubspot-deploy-contact.json
+    - hubspot-deploy-deal.json
+  autopublish: true
+  version: 1.0.0
+

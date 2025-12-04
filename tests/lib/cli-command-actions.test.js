@@ -942,7 +942,7 @@ describe('CLI Command Actions', () => {
     it('should generate deployment JSON successfully', async() => {
       const mockResult = {
         success: true,
-        path: '/path/to/aifabrix-deploy.json',
+        path: '/path/to/test-app-deploy.json',
         validation: {
           warnings: ['Warning 1'],
           errors: []
@@ -964,7 +964,7 @@ describe('CLI Command Actions', () => {
           }
         }
         expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
-        expect(console.log).toHaveBeenCalledWith('✓ Generated deployment JSON: /path/to/aifabrix-deploy.json');
+        expect(console.log).toHaveBeenCalledWith('✓ Generated deployment JSON: /path/to/test-app-deploy.json');
         expect(console.log).toHaveBeenCalledWith('\n⚠️  Warnings:');
       } catch (error) {
         cli.handleCommandError(error, 'json');

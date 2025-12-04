@@ -264,7 +264,7 @@ describe('CLI Commands', () => {
   describe('json command', () => {
     it('should generate deployment JSON successfully', async() => {
       const appName = 'testapp';
-      const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'aifabrix-deploy.json');
+      const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'testapp-deploy.json');
       const mockResult = {
         success: true,
         path: expectedJsonPath,
@@ -307,7 +307,7 @@ describe('CLI Commands', () => {
 
     it('should handle validation warnings', async() => {
       const appName = 'testapp';
-      const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'aifabrix-deploy.json');
+      const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'testapp-deploy.json');
       const mockResult = {
         success: true,
         path: expectedJsonPath,
@@ -1298,7 +1298,7 @@ describe('CLI Commands', () => {
     describe('json command handler', () => {
       it('should execute json command handler successfully', async() => {
         const appName = 'testapp';
-        const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'aifabrix-deploy.json');
+        const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'testapp-deploy.json');
         const mockResult = {
           success: true,
           path: expectedJsonPath,
@@ -1664,7 +1664,7 @@ describe('CLI Commands', () => {
 
       it('should handle json command with validation warnings array', async() => {
         const appName = 'testapp';
-        const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'aifabrix-deploy.json');
+        const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'testapp-deploy.json');
         const mockResult = {
           success: true,
           path: expectedJsonPath,
@@ -1996,7 +1996,7 @@ describe('CLI Commands', () => {
 
         const appName = 'testapp';
         const expectedKey = '0000000000000000000000000000000000000000000000000000000000000000';
-        const jsonPath = 'builder/testapp/aifabrix-deploy.json';
+        const jsonPath = 'builder/testapp/testapp-deploy.json';
         const deploymentJson = {
           key: appName,
           displayName: 'Test App',
@@ -2143,7 +2143,7 @@ describe('CLI Commands', () => {
         setupCommandsAndResetLogger();
 
         const appName = 'testapp';
-        const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'aifabrix-deploy.json');
+        const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'testapp-deploy.json');
         const mockResult = {
           success: true,
           path: expectedJsonPath,
@@ -2243,7 +2243,7 @@ describe('CLI Commands', () => {
         setupCommandsAndResetLogger();
 
         const appName = 'testapp';
-        const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'aifabrix-deploy.json');
+        const expectedJsonPath = path.join(process.cwd(), 'builder', appName, 'testapp-deploy.json');
         const mockResult = {
           success: true,
           path: expectedJsonPath,

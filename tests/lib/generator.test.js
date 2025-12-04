@@ -16,16 +16,38 @@ const validator = require('../../lib/validator');
 // Mock fs module
 jest.mock('fs');
 
+// Mock paths module to return builder path for regular apps
+jest.mock('../../lib/utils/paths', () => {
+  const actualPaths = jest.requireActual('../../lib/utils/paths');
+  const path = require('path');
+  return {
+    ...actualPaths,
+    detectAppType: jest.fn().mockResolvedValue({
+      isExternal: false,
+      appPath: path.join(process.cwd(), 'builder', 'testapp'),
+      appType: 'regular',
+      baseDir: 'builder'
+    }),
+    getDeployJsonPath: jest.fn((appName, appType, preferNew) => {
+      const appPath = path.join(process.cwd(), 'builder', appName);
+      return path.join(appPath, `${appName}-deploy.json`);
+    })
+  };
+});
+
 describe('Generator Module', () => {
   const appName = 'testapp';
   const builderPath = path.join(process.cwd(), 'builder', appName);
   const variablesPath = path.join(builderPath, 'variables.yaml');
   const templatePath = path.join(builderPath, 'env.template');
   const rbacPath = path.join(builderPath, 'rbac.yaml');
-  const jsonPath = path.join(builderPath, 'aifabrix-deploy.json');
+  const jsonPath = path.join(builderPath, 'testapp-deploy.json');
+  const writtenFiles = {};
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Clear writtenFiles
+    Object.keys(writtenFiles).forEach(key => delete writtenFiles[key]);
   });
 
   describe('generateDeployJson', () => {
@@ -90,6 +112,13 @@ PUBLIC_CONFIG=public-value`;
     };
 
     beforeEach(() => {
+      // Clear writtenFiles for this describe block
+      Object.keys(writtenFiles).forEach(key => delete writtenFiles[key]);
+
+      fs.writeFileSync.mockImplementation((filePath, content) => {
+        writtenFiles[filePath] = content;
+      });
+
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('variables.yaml') ||
                filePath.includes('env.template') ||
@@ -97,6 +126,10 @@ PUBLIC_CONFIG=public-value`;
       });
 
       fs.readFileSync.mockImplementation((filePath) => {
+        // First check if this file was written (for deploy.json files)
+        if (writtenFiles[filePath]) {
+          return writtenFiles[filePath];
+        }
         if (filePath.includes('variables.yaml')) {
           return yaml.dump(mockVariables);
         }
@@ -106,6 +139,10 @@ PUBLIC_CONFIG=public-value`;
         if (filePath.includes('rbac.yaml')) {
           return yaml.dump(mockRbac);
         }
+        if (filePath.includes('testapp-deploy.json')) {
+          // Return what was written, or empty if nothing
+          return writtenFiles[filePath] || '';
+        }
         return '';
       });
     });
@@ -114,13 +151,18 @@ PUBLIC_CONFIG=public-value`;
       const result = await generator.generateDeployJson(appName);
 
       expect(fs.writeFileSync).toHaveBeenCalledWith(
-        jsonPath,
+        expect.stringContaining('testapp-deploy.json'),
         expect.any(String),
         { mode: 0o644 }
       );
 
-      // Verify the written content
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      // Verify the written content - use the result path or find by filename
+      const resultPath = result || jsonPath;
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        path.normalize(call[0]) === path.normalize(resultPath) ||
+        call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.key).toBe('testapp');
@@ -156,7 +198,10 @@ PUBLIC_CONFIG=public-value`;
 
       const result = await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.authentication.enableSSO).toBe(false);
@@ -712,7 +757,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       // Only DOCKER_REGISTRY_* vars should be included
@@ -753,7 +801,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       // All vars should be included for acr mode
@@ -792,7 +843,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.repository).toEqual({ enabled: true });
@@ -819,7 +873,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.repository).toEqual({
@@ -849,7 +906,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.repository).toEqual({
@@ -882,7 +942,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.build).toEqual({
@@ -914,7 +977,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.deployment).toEqual({
@@ -943,7 +1009,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.startupCommand).toBe('npm start');
@@ -970,7 +1039,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.runtimeVersion).toBe('18');
@@ -997,7 +1069,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.scaling).toEqual({ minInstances: 1, maxInstances: 5 });
@@ -1024,7 +1099,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.frontDoorRouting).toEqual({ enabled: true, path: '/api' });
@@ -1064,7 +1142,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.roles).toEqual([{ name: 'CustomRole', value: 'custom' }]);
@@ -1103,7 +1184,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.roles).toEqual([{ name: 'RBACRole', value: 'rbac' }]);
@@ -1143,7 +1227,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.permissions).toEqual([{ name: 'custom:permission', roles: ['admin'] }]);
@@ -1176,7 +1263,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.displayName).toBe('testapp');
@@ -1200,7 +1290,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.key).toBe(appName);
@@ -1223,7 +1316,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.port).toBe(3000);
@@ -1248,7 +1344,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       expect(deployment.databases).toEqual([{ name: 'testapp' }]);
@@ -1273,7 +1372,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       // When app.key is missing, defaults to 'app' (not appName)
@@ -1311,7 +1413,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       // http:// URLs should be filtered out, so deployment should be undefined
@@ -1341,7 +1446,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       // Empty strings should be filtered out
@@ -1372,7 +1480,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       // Empty dockerfile should be filtered out
@@ -1403,7 +1514,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       // Non-string secrets should be filtered out, so build should be null/undefined
@@ -1434,7 +1548,10 @@ OTHER_VAR=value`;
 
       await generator.generateDeployJson(appName);
 
-      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === jsonPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
       // Empty repositoryUrl should result in null repository
@@ -1510,14 +1627,19 @@ NORMAL_VAR=value456`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
+        // First check if this file was written (for deploy.json files)
+        if (writtenFiles[filePath]) {
+          return writtenFiles[filePath];
+        }
         if (filePath.includes('variables.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
           return 'NODE_ENV=development';
         }
-        if (filePath.includes('aifabrix-deploy.json')) {
-          return JSON.stringify({ key: 'testapp', port: 3000 });
+        if (filePath.includes('testapp-deploy.json')) {
+          // Return what was written, or a default if nothing was written yet
+          return writtenFiles[filePath] || JSON.stringify({ key: 'testapp', port: 3000 });
         }
         return '';
       });
@@ -1543,14 +1665,19 @@ NORMAL_VAR=value456`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
+        // First check if this file was written (for deploy.json files)
+        if (writtenFiles[filePath]) {
+          return writtenFiles[filePath];
+        }
         if (filePath.includes('variables.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
           return 'NODE_ENV=development';
         }
-        if (filePath.includes('aifabrix-deploy.json')) {
-          return JSON.stringify({ key: 'testapp', port: 3000 });
+        if (filePath.includes('testapp-deploy.json')) {
+          // Return what was written, or a default if nothing was written yet
+          return writtenFiles[filePath] || JSON.stringify({ key: 'testapp', port: 3000 });
         }
         return '';
       });

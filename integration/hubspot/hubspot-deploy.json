@@ -1,0 +1,91 @@
+{
+  "key": "hubspot",
+  "displayName": "HubSpot CRM",
+  "description": "HubSpot CRM integration with OpenAPI support for companies, contacts, and deals",
+  "type": "openapi",
+  "enabled": true,
+  "environment": {
+    "baseUrl": "https://api.hubapi.com"
+  },
+  "authentication": {
+    "type": "oauth2",
+    "mode": "oauth2",
+    "oauth2": {
+      "tokenUrl": "{{TOKENURL}}",
+      "clientId": "{{CLIENTID}}",
+      "clientSecret": "{{CLIENTSECRET}}",
+      "scopes": [
+        "crm.objects.companies.read",
+        "crm.objects.companies.write",
+        "crm.objects.contacts.read",
+        "crm.objects.contacts.write",
+        "crm.objects.deals.read",
+        "crm.objects.deals.write"
+      ]
+    }
+  },
+  "configuration": [
+    {
+      "name": "CLIENTID",
+      "value": "hubspot-clientidKeyVault",
+      "location": "keyvault",
+      "required": true
+    },
+    {
+      "name": "CLIENTSECRET",
+      "value": "hubspot-clientsecretKeyVault",
+      "location": "keyvault",
+      "required": true
+    },
+    {
+      "name": "TOKENURL",
+      "value": "https://api.hubapi.com/oauth/v1/token",
+      "location": "variable",
+      "required": true
+    },
+    {
+      "name": "REDIRECT_URI",
+      "value": "hubspot-redirect-uriKeyVault",
+      "location": "keyvault",
+      "required": false
+    },
+    {
+      "name": "HUBSPOT_API_VERSION",
+      "value": "v3",
+      "location": "variable",
+      "required": false,
+      "portalInput": {
+        "field": "select",
+        "label": "HubSpot API Version",
+        "placeholder": "Select API version",
+        "options": ["v1", "v2", "v3"],
+        "validation": {
+          "required": false
+        }
+      }
+    },
+    {
+      "name": "MAX_PAGE_SIZE",
+      "value": "100",
+      "location": "variable",
+      "required": false,
+      "portalInput": {
+        "field": "text",
+        "label": "Maximum Page Size",
+        "placeholder": "100",
+        "validation": {
+          "required": false,
+          "pattern": "^[0-9]+$",
+          "min": 1,
+          "max": 1000
+        }
+      }
+    }
+  ],
+  "openapi": {
+    "documentKey": "hubspot-v3",
+    "autoDiscoverEntities": false
+  },
+  "tags": ["crm", "sales", "marketing", "hubspot"]
+}
+

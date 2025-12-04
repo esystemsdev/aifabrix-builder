@@ -750,6 +750,11 @@ aifabrix create hubspot --type external
 ```
 Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2/apikey/basic), number of datasources.
 
+**Complete HubSpot example:**
+See `integration/hubspot/` for a complete HubSpot integration with companies, contacts, and deals datasources. Includes OAuth2 authentication, field mappings, and OpenAPI operations.
+
+→ [External Systems Guide](EXTERNAL-SYSTEMS.md) - Complete guide with step-by-step instructions
+
 **Flags:**
 - `-p, --port <port>` - Application port (default: 3000, not used for external type)
 - `-d, --database` - Requires database (not used for external type)
@@ -765,21 +770,24 @@ Prompts for: system key, display name, description, system type (openapi/mcp/cus
 - `--main-branch <branch>` - Main branch name for workflows (default: main)
 
 **Creates:**
-- `builder/<app>/variables.yaml` - Application configuration
-- `builder/<app>/env.template` - Environment template with kv:// references (not created for external type)
-- `builder/<app>/rbac.yaml` - RBAC configuration (if authentication enabled, not used for external type)
-- `builder/<app>/aifabrix-deploy.json` - Deployment manifest (not created for external type)
+- `builder/<app>/variables.yaml` - Application configuration (regular apps)
+- `builder/<app>/env.template` - Environment template with kv:// references
+- `builder/<app>/rbac.yaml` - RBAC configuration (if authentication enabled)
+- `builder/<app>/aifabrix-deploy.json` - Deployment manifest
 - `builder/<app>/README.md` - Application documentation
-- `builder/<app>/schemas/` - External system and datasource JSON files (for external type only)
 - `.github/workflows/` - GitHub Actions workflows (if --github specified)
 
 **External Type (`--type external`):**
-When using `--type external`, the command creates an external system integration:
-- Generates `variables.yaml` with `app.type: "external"` and `externalIntegration` block
-- Creates `schemas/` directory with external system JSON template
-- Creates datasource JSON templates based on the number specified
-- Skips Docker-related files (Dockerfile, env.template, aifabrix-deploy.json)
-- External systems are deployed via pipeline API (`aifabrix build` and `aifabrix deploy` work differently)
+When using `--type external`, the command creates an external system integration in `integration/<app>/`:
+- `integration/<app>/variables.yaml` - App configuration with `app.type: "external"` and `externalIntegration` block
+- `integration/<app>/<app-name>-deploy.json` - External system JSON
+- `integration/<app>/<app-name>-deploy-<datasource-key>.json` - Datasource JSON files (all in same folder)
+- `integration/<app>/env.template` - Environment variables template
+- `integration/<app>/README.md` - Application documentation
+- All files are in the same folder for easy viewing and management
+- External systems use the pipeline API for deployment via Miso Controller
+
+→ [External Systems Guide](EXTERNAL-SYSTEMS.md) - Complete guide with HubSpot example
 
 **Environment File Conversion:**
 - Automatically detects existing `.env` file in current directory
@@ -807,9 +815,9 @@ When using `--type external`, the command creates an external system integration
 
 Build Docker image.
 
-**What:** Detects language, generates/uses Dockerfile, builds image, creates `.env`. For external type applications, deploys to dataplane via pipeline API instead of building Docker images.
+**What:** Detects language, generates/uses Dockerfile, builds image, creates `.env`. For external type applications, generates `application-schema.json` file only (does not build Docker images or deploy).
 
-**When:** After code changes, first build, when Dockerfile needs regeneration. For external systems, when ready to deploy to dataplane.
+**When:** After code changes, first build, when Dockerfile needs regeneration. For external systems, when ready to generate the application schema file for deployment.
 
 **Example:**
 ```bash
@@ -819,7 +827,7 @@ aifabrix build myapp
 **Example (external system):**
 ```bash
 aifabrix build hubspot
-# For external type, this deploys via /api/v1/pipeline/deploy instead of building Docker image
+# For external type, this generates application-schema.json only (no Docker build, no deployment)
 ```
 
 **Override language:**
@@ -1170,9 +1178,9 @@ The typical deployment workflow:
 
 Deploy to Azure via Miso Controller.
 
-**What:** Generates deployment manifest from variables.yaml, env.template, and rbac.yaml. Automatically retrieves or refreshes authentication token, validates configuration, and sends to Miso Controller API for Azure deployment. Polls deployment status by default to track progress. For external type applications, publishes to dataplane via pipeline API instead of Azure deployment.
+**What:** Generates deployment manifest from variables.yaml, env.template, and rbac.yaml. Automatically retrieves or refreshes authentication token, validates configuration, and sends to Miso Controller API for Azure deployment. Polls deployment status by default to track progress. For external type applications, uses the same normal deployment flow with `application-schema.json` (generated by `aifabrix json` or `aifabrix build`).
 
-**When:** Deploying to Azure after pushing images to ACR. For external systems, when ready to publish to dataplane.
+**When:** Deploying to Azure after pushing images to ACR. For external systems, after generating `application-schema.json` with `aifabrix json` or `aifabrix build`.
 
 **Example:**
 ```bash
@@ -1182,7 +1190,7 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 # Deploy to specific environment (updates root-level environment in config.yaml)
 aifabrix deploy myapp --controller https://controller.aifabrix.ai --environment miso
 
-# External system deployment (publishes via /api/v1/pipeline/publish)
+# External system deployment (uses application-schema.json, deploys via normal controller flow)
 aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environment dev
 ```
 
@@ -1768,8 +1776,8 @@ aifabrix datasource deploy myapp ./schemas/hubspot-deal.json \
 3. Extracts systemKey from configuration
 4. Gets authentication (device token or client credentials)
 5. Gets dataplane URL from controller API
-6. Deploys datasource to dataplane:
-   - POST to `http://<dataplane-url>/api/v1/pipeline/{systemKey}/deploy`
+6. Publishes datasource to dataplane:
+   - POST to `http://<dataplane-url>/api/v1/pipeline/{systemKey}/publish`
    - Sends datasource configuration as request body
 7. Displays deployment results
 
@@ -1784,9 +1792,9 @@ aifabrix datasource deploy myapp ./schemas/hubspot-deal.json \
 🌐 Getting dataplane URL from controller...
 ✓ Dataplane URL: https://dataplane.aifabrix.ai
 
-🚀 Deploying to dataplane...
+🚀 Publishing datasource to dataplane...
 
-✓ Datasource deployed successfully!
+✓ Datasource published successfully!
 
 Datasource: hubspot-deal
 System: hubspot
@@ -1851,20 +1859,29 @@ This will automatically generate missing secret keys in the secrets file with pl
 
 Generate deployment JSON.
 
-**What:** Creates `aifabrix-deploy.json` from variables.yaml, env.template, rbac.yaml.
+**What:** Creates `aifabrix-deploy.json` from variables.yaml, env.template, rbac.yaml for normal applications. For external type applications, generates `application-schema.json` by combining external-system.schema.json, external-datasource.schema.json, and actual system/datasource JSON files.
 
-**When:** Previewing deployment configuration, debugging deployments.
+**When:** Previewing deployment configuration, debugging deployments. For external systems, before deploying to generate the combined application schema file.
 
-**Example:**
+**Example (normal app):**
 ```bash
 aifabrix json myapp
 ```
 
-**Creates:** `builder/myapp/aifabrix-deploy.json`
+**Example (external system):**
+```bash
+aifabrix json hubspot
+# Generates builder/hubspot/application-schema.json
+```
+
+**Creates:**
+- Normal apps: `builder/<app>/aifabrix-deploy.json`
+- External systems: `builder/<app>/application-schema.json` (combines schemas and JSON files)
 
 **Issues:**
 - **"Validation failed"** → Check configuration files for errors
 - **"Missing required fields"** → Complete variables.yaml
+- **"External system file not found"** → Ensure system/datasource JSON files exist in schemas/ directory
 
 ---
 

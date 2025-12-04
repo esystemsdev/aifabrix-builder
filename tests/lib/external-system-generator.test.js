@@ -45,8 +45,7 @@ const logger = require('../../lib/utils/logger');
 
 describe('External System Generator Module', () => {
   const appName = 'test-external-app';
-  const appPath = path.join(process.cwd(), 'builder', appName);
-  const schemasDir = path.join(appPath, 'schemas');
+  const appPath = path.join(process.cwd(), 'integration', appName);
   const variablesPath = path.join(appPath, 'variables.yaml');
   const templateDir = path.join(__dirname, '..', '..', 'templates', 'external-system');
   const systemTemplatePath = path.join(templateDir, 'external-system.json.hbs');
@@ -106,9 +105,11 @@ describe('External System Generator Module', () => {
       const { generateExternalSystemTemplate } = require('../../lib/external-system-generator');
       const result = await generateExternalSystemTemplate(appPath, systemKey, config);
 
-      expect(result).toBe(path.join(schemasDir, `${systemKey}.json`));
+      // Files are now in same folder as variables.yaml (not schemas/ subfolder)
+      // Naming: <app-name>-deploy.json
+      expect(result).toBe(path.join(appPath, `${systemKey}-deploy.json`));
       expect(fsPromises.readFile).toHaveBeenCalledWith(systemTemplatePath, 'utf8');
-      expect(fsPromises.mkdir).toHaveBeenCalledWith(schemasDir, { recursive: true });
+      // mkdir should not be called (no subfolder needed)
       expect(fsPromises.writeFile).toHaveBeenCalled();
     });
 
@@ -192,11 +193,16 @@ describe('External System Generator Module', () => {
       fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
 
       const { generateExternalDataSourceTemplate } = require('../../lib/external-system-generator');
-      const result = await generateExternalDataSourceTemplate(appPath, datasourceKey, config);
+      // The function adds -deploy suffix internally, so pass just the base key
+      // Function expects: <systemKey>-deploy-<datasourceKey>
+      const fullDatasourceKey = `test-system-deploy-${datasourceKey}`;
+      const result = await generateExternalDataSourceTemplate(appPath, fullDatasourceKey, config);
 
-      expect(result).toBe(path.join(schemasDir, `${datasourceKey}.json`));
+      // Files are now in same folder as variables.yaml (not schemas/ subfolder)
+      // Naming: <app-name>-deploy-<datasource-key>.json (function adds -deploy.json)
+      expect(result).toBe(path.join(appPath, `${fullDatasourceKey}-deploy.json`));
       expect(fsPromises.readFile).toHaveBeenCalledWith(datasourceTemplatePath, 'utf8');
-      expect(fsPromises.mkdir).toHaveBeenCalledWith(schemasDir, { recursive: true });
+      // mkdir should not be called (no subfolder needed)
       expect(fsPromises.writeFile).toHaveBeenCalled();
     });
 
@@ -310,10 +316,12 @@ describe('External System Generator Module', () => {
       const { generateExternalSystemFiles } = require('../../lib/external-system-generator');
       const result = await generateExternalSystemFiles(appPath, appName, config);
 
-      expect(result.systemPath).toBe(path.join(schemasDir, 'test-system.json'));
+      // Files are now in same folder with new naming: <app-name>-deploy.json
+      expect(result.systemPath).toBe(path.join(appPath, 'test-system-deploy.json'));
       expect(result.datasourcePaths).toHaveLength(2);
-      expect(result.datasourcePaths[0]).toBe(path.join(schemasDir, 'test-system-entity1.json'));
-      expect(result.datasourcePaths[1]).toBe(path.join(schemasDir, 'test-system-entity2.json'));
+      // Datasource naming: <systemKey>-deploy-<entityKey>-deploy.json (function adds -deploy.json)
+      expect(result.datasourcePaths[0]).toBe(path.join(appPath, 'test-system-deploy-entity1-deploy.json'));
+      expect(result.datasourcePaths[1]).toBe(path.join(appPath, 'test-system-deploy-entity2-deploy.json'));
       expect(logger.log).toHaveBeenCalled();
     });
 
@@ -325,7 +333,8 @@ describe('External System Generator Module', () => {
       const { generateExternalSystemFiles } = require('../../lib/external-system-generator');
       const result = await generateExternalSystemFiles(appPath, appName, config);
 
-      expect(result.systemPath).toBe(path.join(schemasDir, `${appName}.json`));
+      // Files are now in same folder with new naming: <app-name>-deploy.json
+      expect(result.systemPath).toBe(path.join(appPath, `${appName}-deploy.json`));
     });
 
     it('should use default datasourceCount of 1', async() => {
@@ -379,8 +388,10 @@ describe('External System Generator Module', () => {
       expect(variablesWriteCall).toBeDefined();
       const writtenYaml = yaml.load(variablesWriteCall[1]);
       expect(writtenYaml.externalIntegration).toBeDefined();
-      expect(writtenYaml.externalIntegration.schemaBasePath).toBe('./schemas');
-      expect(writtenYaml.externalIntegration.systems).toEqual(['test-system.json']);
+      // schemaBasePath is now './' (same folder)
+      expect(writtenYaml.externalIntegration.schemaBasePath).toBe('./');
+      // System file naming: <app-name>-deploy.json
+      expect(writtenYaml.externalIntegration.systems).toEqual(['test-system-deploy.json']);
       expect(writtenYaml.externalIntegration.dataSources).toHaveLength(2);
       expect(writtenYaml.externalIntegration.autopublish).toBe(true);
       expect(writtenYaml.externalIntegration.version).toBe('1.0.0');
@@ -443,9 +454,10 @@ describe('External System Generator Module', () => {
       };
 
       const systemKey = 'test-system';
+      // Files are now in same folder with new naming: <systemKey>-deploy-<entityKey>-deploy.json
       const datasourcePaths = [
-        path.join(schemasDir, 'test-system-entity1.json'),
-        path.join(schemasDir, 'test-system-entity2.json')
+        path.join(appPath, 'test-system-deploy-entity1-deploy.json'),
+        path.join(appPath, 'test-system-deploy-entity2-deploy.json')
       ];
 
       fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
@@ -476,10 +488,12 @@ describe('External System Generator Module', () => {
       expect(variablesWriteCall).toBeDefined();
       const writtenYaml = yaml.load(variablesWriteCall[1]);
       expect(writtenYaml.externalIntegration).toBeDefined();
-      expect(writtenYaml.externalIntegration.systems).toEqual([`${systemKey}.json`]);
+      // System file naming: <app-name>-deploy.json
+      expect(writtenYaml.externalIntegration.systems).toEqual([`${systemKey}-deploy.json`]);
+      // Datasource naming: <systemKey>-deploy-<entityKey>-deploy.json (function adds -deploy.json)
       expect(writtenYaml.externalIntegration.dataSources).toEqual([
-        'test-system-entity1.json',
-        'test-system-entity2.json'
+        'test-system-deploy-entity1-deploy.json',
+        'test-system-deploy-entity2-deploy.json'
       ]);
     });
 

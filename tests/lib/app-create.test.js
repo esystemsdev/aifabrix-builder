@@ -76,7 +76,7 @@ describe('Application Create Module', () => {
       const variablesPath = path.join(appPath, 'variables.yaml');
       const envTemplatePath = path.join(appPath, 'env.template');
       const rbacPath = path.join(appPath, 'rbac.yaml');
-      const deployPath = path.join(appPath, 'aifabrix-deploy.json');
+      const deployPath = path.join(appPath, `${appName}-deploy.json`);
 
       expect(await fs.access(variablesPath).then(() => true).catch(() => false)).toBe(true);
       expect(await fs.access(envTemplatePath).then(() => true).catch(() => false)).toBe(true);

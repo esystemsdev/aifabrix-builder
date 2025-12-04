@@ -39,7 +39,7 @@ describe('Integration Step 05: Generate Deployment Key', () => {
     // Verify that JSON file was generated (genkey command generates JSON first)
     const fs = require('fs');
     const path = require('path');
-    const jsonPath = path.join(process.cwd(), 'builder', appName, 'aifabrix-deploy.json');
+    const jsonPath = path.join(process.cwd(), 'builder', appName, `${appName}-deploy.json`);
     expect(fs.existsSync(jsonPath)).toBe(true);
 
     // Verify JSON contains deploymentKey

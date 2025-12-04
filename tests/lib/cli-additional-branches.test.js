@@ -166,7 +166,7 @@ describe('CLI Additional Branch Coverage', () => {
     it('should handle result with no warnings', async() => {
       generator.generateDeployJsonWithValidation.mockResolvedValue({
         success: true,
-        path: '/path/to/aifabrix-deploy.json',
+        path: '/path/to/test-app-deploy.json',
         validation: {
           warnings: [],
           errors: []
@@ -182,14 +182,14 @@ describe('CLI Additional Branch Coverage', () => {
         }
       }
 
-      expect(console.log).toHaveBeenCalledWith('✓ Generated deployment JSON: /path/to/aifabrix-deploy.json');
+      expect(console.log).toHaveBeenCalledWith('✓ Generated deployment JSON: /path/to/test-app-deploy.json');
       expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('⚠️  Warnings:'));
     });
 
     it('should handle warnings', async() => {
       generator.generateDeployJsonWithValidation.mockResolvedValue({
         success: true,
-        path: '/path/to/aifabrix-deploy.json',
+        path: '/path/to/test-app-deploy.json',
         validation: {
           warnings: ['Warning 1'],
           errors: []

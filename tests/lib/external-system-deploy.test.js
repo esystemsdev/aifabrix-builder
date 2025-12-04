@@ -17,6 +17,7 @@ jest.mock('fs', () => {
   const actualFs = jest.requireActual('fs');
   return {
     ...actualFs,
+    existsSync: jest.fn(() => true),
     promises: {
       readFile: jest.fn(),
       writeFile: jest.fn(),
@@ -52,39 +53,79 @@ jest.mock('../../lib/datasource-deploy', () => ({
   getDataplaneUrl: jest.fn()
 }));
 
+// Mock paths module to return integration folder for external apps
+jest.mock('../../lib/utils/paths', () => {
+  const actualPaths = jest.requireActual('../../lib/utils/paths');
+  return {
+    ...actualPaths,
+    detectAppType: jest.fn(),
+    getDeployJsonPath: jest.fn()
+  };
+});
+
 const { getDeploymentAuth } = require('../../lib/utils/token-manager');
 const { authenticatedApiCall } = require('../../lib/utils/api');
 const { getConfig } = require('../../lib/config');
 const logger = require('../../lib/utils/logger');
 const { getDataplaneUrl } = require('../../lib/datasource-deploy');
+const { detectAppType, getDeployJsonPath } = require('../../lib/utils/paths');
 
 describe('External System Deploy Module', () => {
   const appName = 'test-external-app';
-  const builderPath = path.join(process.cwd(), 'builder', appName);
-  const variablesPath = path.join(builderPath, 'variables.yaml');
-  const schemasPath = path.join(builderPath, 'schemas');
-  const systemFile = path.join(schemasPath, 'test-system.json');
-  const datasourceFile1 = path.join(schemasPath, 'test-system-entity1.json');
-  const datasourceFile2 = path.join(schemasPath, 'test-system-entity2.json');
+  const appPath = path.join(process.cwd(), 'integration', appName);
+  const variablesPath = path.join(appPath, 'variables.yaml');
+  // Files are now in same folder (not schemas/ subfolder)
+  const systemFile = path.join(appPath, 'test-external-app-deploy.json');
+  const datasourceFile1 = path.join(appPath, 'test-external-app-deploy-entity1.json');
+  const datasourceFile2 = path.join(appPath, 'test-external-app-deploy-entity2.json');
 
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset getDataplaneUrl mock to default value
     getDataplaneUrl.mockResolvedValue('http://dataplane:8080');
+    // Setup detectAppType mock to return integration folder
+    detectAppType.mockResolvedValue({
+      isExternal: true,
+      appPath: appPath,
+      appType: 'external',
+      baseDir: 'integration'
+    });
+    // Setup getDeployJsonPath mock to return the system file path
+    getDeployJsonPath.mockImplementation((appName, appType, preferNew) => {
+      return systemFile;
+    });
+    // Setup default existsSync mock - return true for system and datasource files
+    fs.existsSync.mockImplementation((filePath) => {
+      return filePath === systemFile ||
+             filePath === datasourceFile1 ||
+             filePath === datasourceFile2 ||
+             filePath.includes('test-external-app-deploy.json') ||
+             filePath.includes('test-external-app-deploy-entity');
+    });
   });
 
   describe('validateExternalSystemFiles', () => {
     it('should validate external system files successfully', async() => {
       const mockVariables = {
         externalIntegration: {
-          schemaBasePath: './schemas',
-          systems: ['test-system.json'],
-          dataSources: ['test-system-entity1.json', 'test-system-entity2.json']
+          schemaBasePath: './',
+          systems: ['test-external-app-deploy.json'],
+          dataSources: ['test-external-app-deploy-entity1.json', 'test-external-app-deploy-entity2.json']
         }
       };
 
       fsPromises.readFile = jest.fn().mockResolvedValue(yaml.dump(mockVariables));
       fsPromises.access = jest.fn().mockResolvedValue(undefined);
+      // Mock existsSync - return true for the system file (newSystemPath check)
+      // The code will use existsSync first, then fall back to fs.access if false
+      fs.existsSync.mockImplementation((filePath) => {
+        // Return true for the system file path (newSystemPath from getDeployJsonPath)
+        if (filePath === systemFile) {
+          return true;
+        }
+        // Return false for datasources so code uses fs.access
+        return false;
+      });
 
       const { validateExternalSystemFiles } = require('../../lib/external-system-deploy');
       const result = await validateExternalSystemFiles(appName);
@@ -92,12 +133,17 @@ describe('External System Deploy Module', () => {
       expect(result.systemFiles).toHaveLength(1);
       expect(result.systemFiles[0]).toBe(systemFile);
       expect(result.datasourceFiles).toHaveLength(2);
-      expect(result.systemKey).toBe('test-system');
-      expect(fsPromises.access).toHaveBeenCalledTimes(3);
+      // systemKey is extracted from filename (removes -deploy suffix)
+      expect(result.systemKey).toBe('test-external-app');
+      // System file uses existsSync (returns true), so no fs.access call for it
+      // Datasources use fs.access - 2 datasources = 2 calls (or 4 if fallback is tried)
+      // Since datasourcePath exists, each datasource makes 1 call = 2 total
+      expect(fsPromises.access).toHaveBeenCalledTimes(2);
     });
 
     it('should validate with custom schemaBasePath', async() => {
-      const customSchemasPath = path.join(builderPath, 'custom-schemas');
+      const customSchemasPath = path.join(process.cwd(), 'integration', appName, 'custom-schemas');
+      const customSystemFile = path.join(customSchemasPath, 'test-system.json');
       const mockVariables = {
         externalIntegration: {
           schemaBasePath: './custom-schemas',
@@ -108,11 +154,16 @@ describe('External System Deploy Module', () => {
 
       fsPromises.readFile = jest.fn().mockResolvedValue(yaml.dump(mockVariables));
       fsPromises.access = jest.fn().mockResolvedValue(undefined);
+      // For custom schemaBasePath, newSystemPath should not exist, so it falls back to custom path
+      fs.existsSync.mockImplementation((filePath) => {
+        // Return false for newSystemPath so it uses custom schema path
+        return filePath === customSystemFile;
+      });
 
       const { validateExternalSystemFiles } = require('../../lib/external-system-deploy');
       const result = await validateExternalSystemFiles(appName);
 
-      expect(result.systemFiles[0]).toBe(path.join(customSchemasPath, 'test-system.json'));
+      expect(result.systemFiles[0]).toBe(customSystemFile);
     });
 
     it('should throw error if externalIntegration block is missing', async() => {
@@ -166,6 +217,8 @@ describe('External System Deploy Module', () => {
 
       fsPromises.readFile = jest.fn().mockResolvedValue(yaml.dump(mockVariables));
       fsPromises.access = jest.fn().mockRejectedValue(new Error('ENOENT'));
+      // Make sure newSystemPath doesn't exist so it tries the fallback
+      fs.existsSync.mockReturnValue(false);
 
       const { validateExternalSystemFiles } = require('../../lib/external-system-deploy');
       await expect(validateExternalSystemFiles(appName))
@@ -182,9 +235,13 @@ describe('External System Deploy Module', () => {
       };
 
       fsPromises.readFile = jest.fn().mockResolvedValue(yaml.dump(mockVariables));
+      // System file exists via existsSync, so no access call for it
+      // Datasource file fails on both datasourcePath and fallbackPath
       fsPromises.access = jest.fn()
-        .mockResolvedValueOnce(undefined) // system file exists
-        .mockRejectedValueOnce(new Error('ENOENT')); // datasource file missing
+        .mockRejectedValueOnce(new Error('ENOENT')) // datasourcePath fails
+        .mockRejectedValueOnce(new Error('ENOENT')); // fallbackPath also fails
+      // System file exists via existsSync
+      fs.existsSync.mockReturnValue(true);
 
       const { validateExternalSystemFiles } = require('../../lib/external-system-deploy');
       await expect(validateExternalSystemFiles(appName))
@@ -212,23 +269,23 @@ describe('External System Deploy Module', () => {
 
   describe('buildExternalSystem', () => {
     const mockSystemJson = {
-      key: 'test-system',
+      key: 'test-external-app',
       displayName: 'Test System',
       type: 'openapi'
     };
 
     const mockDatasourceJson = {
-      key: 'test-system-entity1',
-      systemKey: 'test-system',
+      key: 'test-external-app-entity1',
+      systemKey: 'test-external-app',
       entityKey: 'entity1'
     };
 
     beforeEach(() => {
       const mockVariables = {
         externalIntegration: {
-          schemaBasePath: './schemas',
-          systems: ['test-system.json'],
-          dataSources: ['test-system-entity1.json']
+          schemaBasePath: './',
+          systems: ['test-external-app-deploy.json'],
+          dataSources: ['test-external-app-deploy-entity1.json']
         }
       };
 
@@ -246,6 +303,10 @@ describe('External System Deploy Module', () => {
       });
 
       fsPromises.access = jest.fn().mockResolvedValue(undefined);
+      // Setup existsSync for validateExternalSystemFiles - system file exists
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === systemFile;
+      });
       getConfig.mockResolvedValue({
         deployment: {
           controllerUrl: 'http://localhost:3000'
@@ -261,11 +322,11 @@ describe('External System Deploy Module', () => {
       authenticatedApiCall
         .mockResolvedValueOnce({
           success: true,
-          data: { key: 'test-system' }
+          data: { key: 'test-external-app' }
         })
         .mockResolvedValueOnce({
           success: true,
-          data: { key: 'test-system-entity1' }
+          data: { key: 'test-external-app-entity1' }
         });
 
       const { buildExternalSystem } = require('../../lib/external-system-deploy');
@@ -289,7 +350,7 @@ describe('External System Deploy Module', () => {
       );
       expect(authenticatedApiCall).toHaveBeenNthCalledWith(
         2,
-        'http://dataplane:8080/api/v1/pipeline/test-system/deploy',
+        'http://dataplane:8080/api/v1/pipeline/test-external-app/deploy',
         {
           method: 'POST',
           body: JSON.stringify(mockDatasourceJson)
@@ -302,9 +363,9 @@ describe('External System Deploy Module', () => {
     it('should build external system with multiple datasources', async() => {
       const mockVariables = {
         externalIntegration: {
-          schemaBasePath: './schemas',
-          systems: ['test-system.json'],
-          dataSources: ['test-system-entity1.json', 'test-system-entity2.json']
+          schemaBasePath: './',
+          systems: ['test-external-app-deploy.json'],
+          dataSources: ['test-external-app-deploy-entity1.json', 'test-external-app-deploy-entity2.json']
         }
       };
 
@@ -478,23 +539,23 @@ describe('External System Deploy Module', () => {
 
   describe('deployExternalSystem', () => {
     const mockSystemJson = {
-      key: 'test-system',
+      key: 'test-external-app',
       displayName: 'Test System',
       type: 'openapi'
     };
 
     const mockDatasourceJson = {
-      key: 'test-system-entity1',
-      systemKey: 'test-system',
+      key: 'test-external-app-entity1',
+      systemKey: 'test-external-app',
       entityKey: 'entity1'
     };
 
     beforeEach(() => {
       const mockVariables = {
         externalIntegration: {
-          schemaBasePath: './schemas',
-          systems: ['test-system.json'],
-          dataSources: ['test-system-entity1.json']
+          schemaBasePath: './',
+          systems: ['test-external-app-deploy.json'],
+          dataSources: ['test-external-app-deploy-entity1.json']
         }
       };
 
@@ -512,6 +573,10 @@ describe('External System Deploy Module', () => {
       });
 
       fsPromises.access = jest.fn().mockResolvedValue(undefined);
+      // Setup existsSync for validateExternalSystemFiles - system file exists
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === systemFile;
+      });
       getConfig.mockResolvedValue({
         deployment: {
           controllerUrl: 'http://localhost:3000'
@@ -528,11 +593,11 @@ describe('External System Deploy Module', () => {
       authenticatedApiCall
         .mockResolvedValueOnce({
           success: true,
-          data: { key: 'test-system' }
+          data: { key: 'test-external-app' }
         })
         .mockResolvedValueOnce({
           success: true,
-          data: { key: 'test-system-entity1' }
+          data: { key: 'test-external-app-entity1' }
         });
 
       const { deployExternalSystem } = require('../../lib/external-system-deploy');
@@ -556,7 +621,7 @@ describe('External System Deploy Module', () => {
       );
       expect(authenticatedApiCall).toHaveBeenNthCalledWith(
         2,
-        'http://dataplane:8080/api/v1/pipeline/test-system/publish',
+        'http://dataplane:8080/api/v1/pipeline/test-external-app/publish',
         {
           method: 'POST',
           body: JSON.stringify(mockDatasourceJson)
@@ -569,9 +634,9 @@ describe('External System Deploy Module', () => {
     it('should publish external system with multiple datasources', async() => {
       const mockVariables = {
         externalIntegration: {
-          schemaBasePath: './schemas',
-          systems: ['test-system.json'],
-          dataSources: ['test-system-entity1.json', 'test-system-entity2.json']
+          schemaBasePath: './',
+          systems: ['test-external-app-deploy.json'],
+          dataSources: ['test-external-app-deploy-entity1.json', 'test-external-app-deploy-entity2.json']
         }
       };
 

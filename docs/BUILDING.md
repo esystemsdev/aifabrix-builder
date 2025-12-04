@@ -191,7 +191,7 @@ build:
 
 ### Example: Monorepo
 
-```
+```yaml
 workspace/
 ├── packages/
 │   ├── shared/       # Shared code

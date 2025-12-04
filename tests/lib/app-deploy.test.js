@@ -231,7 +231,7 @@ app:
         yaml.dump(config)
       );
 
-      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
@@ -290,7 +290,7 @@ app:
         yaml.dump(config)
       );
 
-      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         image: 'test:latest',
@@ -349,7 +349,7 @@ app:
         yaml.dump(config)
       );
 
-      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         image: 'test:latest',
@@ -451,7 +451,7 @@ app:
         yaml.dump(config)
       );
 
-      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
@@ -492,7 +492,7 @@ app:
         yaml.dump(config)
       );
 
-      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
@@ -570,7 +570,7 @@ app:
       );
 
       // Create manifest file
-      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
@@ -663,7 +663,7 @@ app:
         yaml.dump(config)
       );
 
-      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
@@ -710,7 +710,7 @@ app:
         yaml.dump(config)
       );
 
-      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
@@ -757,7 +757,7 @@ app:
         yaml.dump(config)
       );
 
-      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
@@ -804,7 +804,7 @@ app:
         yaml.dump(config)
       );
 
-      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'aifabrix-deploy.json');
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',

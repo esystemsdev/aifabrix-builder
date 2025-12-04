@@ -170,7 +170,7 @@ describe('CLI Coverage Tests', () => {
     it('should handle json command with warnings', async() => {
       generator.generateDeployJsonWithValidation.mockResolvedValue({
         success: true,
-        path: 'builder/test-app/aifabrix-deploy.json',
+        path: 'builder/test-app/test-app-deploy.json',
         validation: { warnings: ['Warning 1', 'Warning 2'], errors: [] }
       });
       const result = await generator.generateDeployJsonWithValidation('test-app');
@@ -181,7 +181,7 @@ describe('CLI Coverage Tests', () => {
     it('should handle json command with errors', async() => {
       generator.generateDeployJsonWithValidation.mockResolvedValue({
         success: false,
-        path: 'builder/test-app/aifabrix-deploy.json',
+        path: 'builder/test-app/test-app-deploy.json',
         validation: { warnings: [], errors: ['Error 1', 'Error 2'] }
       });
       const result = await generator.generateDeployJsonWithValidation('test-app');

@@ -22,7 +22,7 @@ When the `/validate-tests` command is used, the agent must automatically fix all
    - Re-run `npm test` until all tests pass (exit code 0)
    - Do not proceed until test step is green
    - **All tests MUST be mocked** - no real database connections, external API calls, or I/O operations
-   - **Test execution time MUST be less than 0.5 seconds** - if tests take longer, optimize by ensuring all external dependencies are properly mocked
+   - **Test execution time MUST be less than 0.5 seconds** - if one test take longer, optimize by ensuring all external dependencies are properly mocked
 
 4. **Final Verification Step**:
    - Run `npm run lint:fix` again to ensure no formatting changes were introduced

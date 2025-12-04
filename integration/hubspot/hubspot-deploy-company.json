@@ -1,0 +1,200 @@
+{
+  "key": "hubspot-company",
+  "displayName": "HubSpot Company",
+  "description": "HubSpot companies datasource with field mappings for CRM company data",
+  "systemKey": "hubspot",
+  "entityKey": "company",
+  "resourceType": "customer",
+  "enabled": true,
+  "version": "1.0.0",
+  "metadataSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "domain": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "country": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "city": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "industry": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "website": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "phone": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "createdate": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "hs_lastmodifieddate": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "required": ["id", "properties"]
+  },
+  "fieldMappings": {
+    "accessFields": ["country", "domain"],
+    "fields": {
+      "id": {
+        "expression": "{{id}}",
+        "type": "string",
+        "description": "Unique company identifier",
+        "required": true
+      },
+      "name": {
+        "expression": "{{properties.name.value}} | trim",
+        "type": "string",
+        "description": "Company name",
+        "required": false
+      },
+      "domain": {
+        "expression": "{{properties.domain.value}} | toLower | trim",
+        "type": "string",
+        "description": "Company domain for ABAC filtering",
+        "required": false
+      },
+      "country": {
+        "expression": "{{properties.country.value}} | toUpper | trim",
+        "type": "string",
+        "description": "Country code for ABAC filtering",
+        "required": false
+      },
+      "city": {
+        "expression": "{{properties.city.value}} | trim",
+        "type": "string",
+        "description": "City name",
+        "required": false
+      },
+      "industry": {
+        "expression": "{{properties.industry.value}} | trim",
+        "type": "string",
+        "description": "Industry classification",
+        "required": false
+      },
+      "website": {
+        "expression": "{{properties.website.value}} | trim",
+        "type": "string",
+        "description": "Company website URL",
+        "required": false
+      },
+      "phone": {
+        "expression": "{{properties.phone.value}} | trim",
+        "type": "string",
+        "description": "Phone number",
+        "required": false
+      },
+      "createdAt": {
+        "expression": "{{properties.createdate.value}}",
+        "type": "string",
+        "description": "Creation timestamp",
+        "required": false
+      },
+      "updatedAt": {
+        "expression": "{{properties.hs_lastmodifieddate.value}}",
+        "type": "string",
+        "description": "Last modification timestamp",
+        "required": false
+      }
+    }
+  },
+  "exposed": {
+    "fields": ["id", "name", "domain", "country", "city", "industry", "website", "phone", "createdAt", "updatedAt"],
+    "description": "Exposed fields for HubSpot companies"
+  },
+  "openapi": {
+    "enabled": true,
+    "documentKey": "hubspot-v3",
+    "baseUrl": "https://api.hubapi.com",
+    "operations": {
+      "list": {
+        "operationId": "getCompanies",
+        "method": "GET",
+        "path": "/crm/v3/objects/companies"
+      },
+      "get": {
+        "operationId": "getCompany",
+        "method": "GET",
+        "path": "/crm/v3/objects/companies/{companyId}"
+      },
+      "create": {
+        "operationId": "createCompany",
+        "method": "POST",
+        "path": "/crm/v3/objects/companies"
+      },
+      "update": {
+        "operationId": "updateCompany",
+        "method": "PATCH",
+        "path": "/crm/v3/objects/companies/{companyId}"
+      },
+      "delete": {
+        "operationId": "deleteCompany",
+        "method": "DELETE",
+        "path": "/crm/v3/objects/companies/{companyId}"
+      }
+    },
+    "autoRbac": true
+  }
+}
+
+

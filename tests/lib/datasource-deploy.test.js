@@ -343,7 +343,7 @@ describe('Datasource Deploy Module', () => {
       await expect(deployDatasource('myapp', '/path/to/file.json', {
         controller: 'http://localhost:3010',
         environment: 'dev'
-      })).rejects.toThrow('Dataplane deployment failed');
+      })).rejects.toThrow('Dataplane publish failed');
     });
 
     it('should throw error for non-bearer authentication in deployment', async() => {
