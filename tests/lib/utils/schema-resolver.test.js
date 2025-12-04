@@ -34,9 +34,14 @@ describe('Schema Resolver Utilities', () => {
         }
       });
 
+      // Use path.normalize to match what the actual code does
+      const path = require('path');
+      const normalizedPath = path.normalize(absolutePath);
+
       fsSync.existsSync.mockImplementation((filePath) => {
         if (filePath === mockVariablesPath) return true;
-        if (filePath === absolutePath) return true;
+        // Handle both original and normalized paths (Windows vs Unix)
+        if (filePath === absolutePath || filePath === normalizedPath) return true;
         return false;
       });
       fsSync.readFileSync.mockImplementation((filePath) => {
@@ -44,15 +49,17 @@ describe('Schema Resolver Utilities', () => {
         return '';
       });
       fsSync.statSync.mockImplementation((filePath) => ({
-        isDirectory: () => filePath === absolutePath
+        isDirectory: () => filePath === absolutePath || filePath === normalizedPath
       }));
 
       const { resolveSchemaBasePath } = require('../../../lib/utils/schema-resolver');
       const result = await resolveSchemaBasePath(mockAppName);
 
-      expect(result).toBe(absolutePath);
+      // Result should be normalized
+      expect(result).toBe(normalizedPath);
       expect(fsSync.existsSync).toHaveBeenCalledWith(mockVariablesPath);
-      expect(fsSync.existsSync).toHaveBeenCalledWith(absolutePath);
+      // Check that existsSync was called with normalized path
+      expect(fsSync.existsSync).toHaveBeenCalledWith(normalizedPath);
     });
 
     it('should resolve relative path from variables.yaml', async() => {
