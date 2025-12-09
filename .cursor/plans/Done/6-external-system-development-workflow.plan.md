@@ -1,4 +1,3 @@
-<!-- e42a60b6-2c8d-4380-bfcc-8f9bf5e5aa71 075c00d7-6cae-46d4-a3c1-c932fbae1892 -->
 # External System Development Workflow Implementation
 
 ## Overview
@@ -21,13 +20,22 @@ Enhance the AI Fabrix Builder CLI to support a complete external system developm
 **Workflow**:
 
 1. Download from dataplane API: `GET /api/v1/external/systems/{systemIdOrKey}/config`
+
+   - **Note**: Verify this endpoint exists in dataplane API. If not available, use alternative endpoint or document alternative approach.
+   - **Alternative**: May need to use `GET /api/v1/pipeline/{systemIdOrKey}` or similar endpoint
+
 2. Response contains:
 
    - `application` - External system configuration (matches external-system.schema.json)
    - `dataSources` - Array of datasource configurations (matches external-datasource.schema.json)
 
 3. Download to temporary folder first
-4. Validate system type from downloaded `application.type` field
+4. Validate downloaded data:
+
+   - Validate system type from downloaded `application.type` field
+   - Validate JSON structure against schemas before writing files
+   - Handle partial downloads gracefully (if system downloads but datasources fail)
+
 5. Create `integration/<system-key>/` folder structure
 6. Generate development files:
 
@@ -41,9 +49,11 @@ Enhance the AI Fabrix Builder CLI to support a complete external system developm
 
 - `downloadExternalSystem(systemKey, options)` - Main download function
 - `validateSystemType(application)` - Validate and determine system type
+- `validateDownloadedData(application, dataSources)` - Validate JSON structure before writing
 - `generateVariablesYaml(systemKey, application, dataSources)` - Generate variables.yaml
 - `generateEnvTemplate(application)` - Extract env vars from auth config
 - `generateReadme(systemKey, application, dataSources)` - Generate README.md
+- `handlePartialDownload(systemKey, systemData, datasourceErrors)` - Handle partial download errors gracefully
 
 **Dependencies**:
 
@@ -83,6 +93,8 @@ Enhance the AI Fabrix Builder CLI to support a complete external system developm
 }
 ```
 
+**Note**: `testPayload` is optional (not required). Do not add it to the root `required` array. This allows datasources without test payloads to still be valid.
+
 ## Phase 3: Unit Test Command (Local Validation)
 
 ### Implementation
@@ -116,7 +128,11 @@ Enhance the AI Fabrix Builder CLI to support a complete external system developm
 
 - JSON syntax validation
 - Schema validation (external-system.schema.json, external-datasource.schema.json)
-- Field mapping expression syntax validation
+- Field mapping expression syntax validation:
+  - Validate pipe-based DSL syntax: `{{path.to.field}} | toUpper | trim`
+  - Ensure path is wrapped in `{{}}`
+  - Validate transformation names (toUpper, toLower, trim, default, toNumber, etc.)
+  - Check for proper pipe separator `|`
 - Metadata schema validation against test payload
 - Required fields presence
 - Relationship validation (systemKey, entityKey)
@@ -145,8 +161,9 @@ Enhance the AI Fabrix Builder CLI to support a complete external system developm
 **Key Functions**:
 
 - `testExternalSystemIntegration(appName, options)` - Main integration test function
-- `callPipelineTestEndpoint(systemKey, datasourceKey, payloadTemplate, dataplaneUrl, authConfig)` - Call pipeline test API
-- `displayIntegrationTestResults(results)` - Display formatted integration test results
+- `callPipelineTestEndpoint(systemKey, datasourceKey, payloadTemplate, dataplaneUrl, authConfig, timeout)` - Call pipeline test API with timeout
+- `displayIntegrationTestResults(results, verbose)` - Display formatted integration test results
+- `retryApiCall(fn, maxRetries, backoffMs)` - Retry API calls with exponential backoff
 
 **Response Handling**:
 
@@ -160,17 +177,37 @@ Enhance the AI Fabrix Builder CLI to support a complete external system developm
 
 **File**: `lib/external-system-deploy.js` (modify existing)
 
+**File**: `lib/generator.js` (add new function)
+
 **Current Behavior**: Individual publishing (publish system, then publish each datasource separately)
 
 **New Behavior**: Use application-level deployment workflow for external systems
 
 **Workflow**:
 
-1. Generate `application-schema.json` using existing `generateExternalSystemApplicationSchema()` from `lib/generator.js`
-2. Deploy via miso-controller (existing `deployApp()` function):
+1. Generate `application-schema.json` structure:
 
-   - Controller handles: upload to dataplane → validate → publish
-   - Uses application-schema.json structure
+   - **New Function**: Create `generateExternalSystemApplicationSchema(appName)` in `lib/generator.js`
+   - Function should:
+     - Load system JSON file (`<system-key>-deploy.json`)
+     - Load all datasource JSON files (`<system-key>-deploy-<entity>.json`)
+     - Combine into application-schema.json format:
+       ```json
+       {
+         "version": "1.0.0",
+         "application": { /* external system JSON */ },
+         "dataSources": [ /* array of datasource JSONs */ ]
+       }
+       ```
+
+     - Validate against `application-schema.json` schema
+     - Return path to generated file or in-memory object
+
+2. Application-level deployment via dataplane API (not miso-controller):
+
+   - **Step 1 - Upload**: `POST /api/v1/pipeline/upload` with application-schema.json structure
+   - **Step 2 - Validate**: `POST /api/v1/pipeline/upload/{uploadId}/validate` to see changes before publishing
+   - **Step 3 - Publish**: `POST /api/v1/pipeline/upload/{uploadId}/publish?generateMcpContract=true` for atomic publish
 
 3. For datasource-only deployments (if needed in future):
 
@@ -179,11 +216,21 @@ Enhance the AI Fabrix Builder CLI to support a complete external system developm
 
 **Key Changes**:
 
-- Modify `deployExternalSystem()` to use application-level workflow
-- Ensure `application-schema.json` is generated before deployment
-- Use existing miso-controller deployment flow (upload → validate → publish)
+- **Create** `generateExternalSystemApplicationSchema(appName)` function in `lib/generator.js`:
+  - Load system JSON from `<system-key>-deploy.json`
+  - Load all datasource JSONs matching pattern `<system-key>-deploy-*.json`
+  - Combine into application-schema.json structure
+  - Validate against `lib/schema/application-schema.json`
+  - Return application schema object (or write to temp file)
+- Modify `deployExternalSystem()` in `lib/external-system-deploy.js`:
+  - Replace individual publishing with application-level workflow
+  - Add upload step: `POST /api/v1/pipeline/upload`
+  - Add validation step: `POST /api/v1/pipeline/upload/{uploadId}/validate` (show changes, optional `--skip-validation`)
+  - Add publish step: `POST /api/v1/pipeline/upload/{uploadId}/publish?generateMcpContract=true`
+- Use dataplane API directly (not miso-controller) for application-level deployment
+- Add `--skip-validation` flag to skip validation step and go straight to publish
 
-**Note**: The user clarified that we always use application file (e.g., `hubspot-deploy.json` or `application-schema.json`) for deployment, so the application-level workflow is appropriate.
+**Note**: The user clarified that we always use application file (e.g., `hubspot-deploy.json` or `application-schema.json`) for deployment, so the application-level workflow is appropriate. The application-level workflow provides atomic transactions and rollback support.
 
 ## CLI Commands
 
@@ -195,6 +242,7 @@ program.command('download <system-key>')
   .description('Download external system from dataplane to local development structure')
   .option('-e, --environment <env>', 'Environment (dev, tst, pro)', 'dev')
   .option('-c, --controller <url>', 'Controller URL')
+  .option('--dry-run', 'Show what would be downloaded without actually downloading')
   .action(async(systemKey, options) => {
     try {
       const download = require('./external-system-download');
@@ -209,6 +257,7 @@ program.command('download <system-key>')
 program.command('test <app>')
   .description('Run unit tests for external system (local validation, no API calls)')
   .option('-d, --datasource <key>', 'Test specific datasource only')
+  .option('-v, --verbose', 'Show detailed validation output')
   .action(async(appName, options) => {
     try {
       const test = require('./external-system-test');
@@ -230,6 +279,8 @@ program.command('test-integration <app>')
   .option('-p, --payload <file>', 'Path to custom test payload file')
   .option('-e, --environment <env>', 'Environment (dev, tst, pro)', 'dev')
   .option('-c, --controller <url>', 'Controller URL')
+  .option('-v, --verbose', 'Show detailed test output')
+  .option('--timeout <ms>', 'Request timeout in milliseconds', '30000')
   .action(async(appName, options) => {
     try {
       const test = require('./external-system-test');
@@ -296,20 +347,56 @@ aifabrix deploy hubspot --environment dev
 - Handle authentication errors gracefully
 - Validate system type before moving files
 - Handle missing test payloads gracefully (warn but don't fail)
+- Add retry logic for transient API failures (3 retries with exponential backoff)
+- Handle partial downloads gracefully (if system downloads but datasources fail, show clear error)
+- Validate file paths to prevent directory traversal attacks
+- Add structured error codes for programmatic error handling
 
 ## Security Considerations
 
 - Never log secrets or sensitive data in test outputs
 - Mask kv:// references in logs
-- Validate all inputs before API calls
+- Validate all inputs before API calls (sanitize system keys, file paths)
 - Use secure temporary folder for downloads
+- Validate file paths to prevent directory traversal attacks
+- Add input sanitization for system keys (alphanumeric, hyphens, underscores only)
+- Add audit logging for download and test operations (use `lib/audit-logger.js`)
+- Rate limiting for API calls (prevent abuse)
 
-### To-dos
+## Pre-Implementation Verification
 
-- [ ] Create lib/external-system-download.js with download functionality (download to temp, validate type, move to integration/)
-- [ ] Extend lib/schema/external-datasource.schema.json with testPayload property
-- [ ] Create lib/external-system-test.js with unit test and integration test functions
-- [ ] Add download, test, and test-integration commands to lib/cli.js
-- [ ] Enhance lib/external-system-deploy.js to use application-level deployment workflow
-- [ ] Add unit tests for download, test, and test-integration functionality
-- [ ] Update docs/EXTERNAL-SYSTEMS.md and docs/CLI-REFERENCE.md with new commands
+### Critical Action Items
+
+Before starting implementation, verify the following:
+
+1. **Phase 1 - Download Endpoint**:
+
+   - ✅ Verify `GET /api/v1/external/systems/{systemIdOrKey}/config` endpoint exists in dataplane API
+   - ✅ If not available, identify alternative endpoint (e.g., `GET /api/v1/pipeline/{systemIdOrKey}`)
+   - ✅ Document the actual endpoint and response structure
+   - ✅ Test endpoint with sample system key to confirm response format
+
+2. **Phase 5 - Application Schema Generation**:
+
+   - ✅ Review `lib/schema/application-schema.json` structure
+   - ✅ Verify schema supports external system + datasources structure
+   - ✅ Plan implementation of `generateExternalSystemApplicationSchema()` function
+   - ✅ Test schema validation with sample data
+
+### Implementation Order
+
+Recommended implementation order:
+
+1. **Phase 2** - Schema extension (simplest, no dependencies)
+2. **Phase 3** - Unit test command (local validation, no API calls)
+3. **Phase 1** - Download command (after endpoint verification)
+4. **Phase 4** - Integration test command (uses verified API endpoint)
+5. **Phase 5** - Enhanced deploy command (most complex, depends on all previous phases)
+
+### Testing Strategy
+
+- Start with unit tests for each phase
+- Mock API calls for integration test command
+- Add integration tests after all phases complete
+- Test error scenarios (missing files, invalid configs, API failures)
+- Test edge cases (empty datasources, missing test payloads, partial downloads)

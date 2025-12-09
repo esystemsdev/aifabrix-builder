@@ -35,11 +35,21 @@ jest.mock('../../lib/utils/local-secrets', () => ({
 jest.mock('../../lib/utils/env-template', () => ({
   updateEnvTemplate: jest.fn().mockResolvedValue()
 }));
+jest.mock('../../lib/secrets', () => ({
+  generateEnvFile: jest.fn().mockResolvedValue('/path/to/.env')
+}));
+jest.mock('../../lib/utils/logger', () => ({
+  log: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn()
+}));
 
 const { getConfig } = require('../../lib/config');
 const { authenticatedApiCall } = require('../../lib/utils/api');
 const tokenManager = require('../../lib/utils/token-manager');
 const localSecrets = require('../../lib/utils/local-secrets');
+const secrets = require('../../lib/secrets');
+const logger = require('../../lib/utils/logger');
 const { setupAppCommands } = require('../../lib/commands/app');
 
 jest.mock('chalk', () => {
@@ -126,6 +136,12 @@ describe('Application Commands - Rotate Secret Action', () => {
     }
     jest.clearAllMocks();
     jest.restoreAllMocks();
+    // Clear logger mocks
+    if (logger) {
+      logger.log.mockClear();
+      logger.warn.mockClear();
+      logger.error.mockClear();
+    }
   });
 
   describe('rotate-secret command action', () => {
@@ -160,6 +176,9 @@ describe('Application Commands - Rotate Secret Action', () => {
         }
       });
 
+      // Set isLocalhost to true to test .env file generation
+      localSecrets.isLocalhost.mockReturnValue(true);
+
       if (rotateSecretAction) {
         await rotateSecretAction('test-app', {
           environment: 'dev'
@@ -170,11 +189,15 @@ describe('Application Commands - Rotate Secret Action', () => {
           expect.objectContaining({ method: 'POST' }),
           'test-token'
         );
-        expect(console.log).toHaveBeenCalledWith(expect.stringContaining('✅ Secret rotated successfully!'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Secret rotated successfully!'));
         // Verify that saveLocalSecret is called (always saves now)
         expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith('test-app-client-idKeyVault', 'new-client-id');
         expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith('test-app-client-secretKeyVault', 'new-client-secret');
-        expect(console.log).toHaveBeenCalledWith(expect.stringContaining('✓ Credentials saved to ~/.aifabrix/secrets.local.yaml'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ Credentials saved to ~/.aifabrix/secrets.local.yaml'));
+        // Verify that env.template is updated and .env file is generated when localhost
+        expect(require('../../lib/utils/env-template').updateEnvTemplate).toHaveBeenCalled();
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local');
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ .env file updated with new credentials'));
       }
     });
 
@@ -191,7 +214,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
-        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Not logged in'));
+        expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Not logged in'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
@@ -218,7 +241,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         await rotateSecretAction('test-app', {
           environment: ''
         });
-        expect(console.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Environment is required'));
+        expect(logger.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Environment is required'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
@@ -250,7 +273,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
-        expect(console.error).toHaveBeenCalled();
+        expect(logger.error).toHaveBeenCalled();
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
@@ -290,7 +313,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
-        expect(console.log).toHaveBeenCalled();
+        expect(logger.log).toHaveBeenCalled();
       }
     });
 
@@ -321,7 +344,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
-        expect(console.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Invalid response: missing data'));
+        expect(logger.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Invalid response: missing data'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
@@ -356,7 +379,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
-        expect(console.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Invalid response: missing or invalid credentials'));
+        expect(logger.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Invalid response: missing or invalid credentials'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
@@ -393,7 +416,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
-        expect(console.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Invalid response: missing or invalid credentials'));
+        expect(logger.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Invalid response: missing or invalid credentials'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
@@ -430,7 +453,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
-        expect(console.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Invalid response: missing or invalid credentials'));
+        expect(logger.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Invalid response: missing or invalid credentials'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
@@ -470,10 +493,59 @@ describe('Application Commands - Rotate Secret Action', () => {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
-        // The message from API response is displayed with "⚠️  " prefix
-        // Implementation logs: chalk.bold.red(`⚠️  ${response.data.message}\n`)
-        // Since chalk.bold.red is mocked to just return the text, the message should be logged as-is
-        expect(console.log).toHaveBeenCalledWith(expect.stringContaining('IMPORTANT: Save new clientSecret now'));
+        // The message from API response is displayed via logger.log
+        // Since logger is mocked, check logger.log instead of console.log
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('IMPORTANT: Save new clientSecret now'));
+      }
+    });
+
+    it('should handle error when generating .env file', async() => {
+      getConfig.mockResolvedValue({
+        'developer-id': 0,
+        environment: 'dev',
+        device: {
+          'http://localhost:3000': {
+            token: 'test-token',
+            refreshToken: 'refresh-token',
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'test-token',
+        controller: 'http://localhost:3000'
+      });
+
+      authenticatedApiCall.mockResolvedValue({
+        success: true,
+        data: {
+          success: true,
+          credentials: {
+            clientId: 'new-client-id',
+            clientSecret: 'new-client-secret'
+          },
+          message: 'IMPORTANT: Save new clientSecret now - old secret is now invalid',
+          timestamp: '2025-11-07T18:48:55.726Z'
+        }
+      });
+
+      // Set isLocalhost to true to test .env file generation
+      localSecrets.isLocalhost.mockReturnValue(true);
+      secrets.generateEnvFile.mockRejectedValueOnce(new Error('Failed to generate .env'));
+
+      if (rotateSecretAction) {
+        await rotateSecretAction('test-app', {
+          environment: 'dev'
+        });
+
+        expect(require('../../lib/utils/env-template').updateEnvTemplate).toHaveBeenCalled();
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local');
+        expect(logger.warn).toHaveBeenCalledWith(
+          expect.stringContaining('⚠️  Could not regenerate .env file')
+        );
+        // Should still complete successfully
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Secret rotated successfully!'));
       }
     });
   });

@@ -1,3 +1,50 @@
+## [2.9.0] - 2025-12-09
+
+### Added
+- **Validate Implementation Command**: New `validate-implementation` command for validating plan implementations
+  - Analyzes plan files from `.cursor/plans/` to extract implementation requirements
+  - Validates that all tasks are completed
+  - Verifies that all mentioned files exist and are implemented
+  - Checks that tests exist for new/modified code
+  - Runs code quality validation (format → lint → test)
+  - Validates against cursor rules
+  - Generates comprehensive validation reports in `.cursor/plans/` with `-VALIDATION-REPORT.md` suffix
+  - Command documentation in `.cursor/commands/validate-implementation.md`
+- **External Systems Documentation**: New comprehensive guide for external system integration
+  - New `docs/EXTERNAL-SYSTEMS.md` documentation file
+  - Complete guide for creating and deploying external systems
+  - Integration examples and best practices
+  - Step-by-step instructions for HubSpot and other third-party API integrations
+- **HubSpot Integration Example**: Complete integration example in `integration/hubspot/`
+  - Example external system configuration files
+  - HubSpot datasource deployment configurations
+  - Environment template and variables.yaml examples
+  - README with integration instructions
+
+### Changed
+- **External System Workflows**: Enhanced external system creation and deployment workflows
+  - Improved external system generator with better validation
+  - Enhanced external system deployment process
+  - Updated CLI commands to better support external system handling
+  - Improved schema validation for external systems and datasources
+- **Documentation Updates**: Updated multiple documentation files
+  - Updated `docs/BUILDING.md` with external system build information
+  - Updated `docs/CLI-REFERENCE.md` with new command references
+  - Updated `docs/QUICK-START.md` with external system quick start guide
+- **Code Quality**: Enhanced validation and error handling
+  - Improved CLI utilities for better error formatting
+  - Enhanced schema resolver for external system files
+  - Updated validator to support external system validation
+  - Improved generator builders for external system schemas
+
+### Technical
+- New command handler for validate-implementation validation workflow
+- Enhanced external system generator with improved file structure
+- Updated generator builders module for external system application schema generation
+- Comprehensive test coverage for new features and enhancements
+- Updated integration tests for external system workflows
+- ISO 27001 compliant implementation maintained throughout
+
 ## [2.8.0] - 2025-12-03
 
 ### Added

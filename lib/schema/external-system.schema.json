@@ -98,6 +98,80 @@
       },
       "additionalProperties": true
     },
+    "authentication": {
+      "type": "object",
+      "description": "Authentication configuration for external system",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "oauth2",
+            "apikey",
+            "basic",
+            "aad",
+            "none"
+          ],
+          "description": "Authentication type"
+        },
+        "oauth2": {
+          "type": "object",
+          "description": "OAuth2 authentication configuration",
+          "additionalProperties": true
+        },
+        "apikey": {
+          "type": "object",
+          "description": "API key authentication configuration",
+          "additionalProperties": true
+        },
+        "basic": {
+          "type": "object",
+          "description": "Basic authentication configuration",
+          "additionalProperties": true
+        },
+        "aad": {
+          "type": "object",
+          "description": "Azure AD authentication configuration",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "openapi": {
+      "type": "object",
+      "description": "OpenAPI integration configuration",
+      "properties": {
+        "documentKey": {
+          "type": "string",
+          "description": "Key of the OpenAPI document in the registry"
+        },
+        "specUrl": {
+          "type": "string",
+          "description": "URL to the OpenAPI specification",
+          "pattern": "^(http|https)://.*$"
+        }
+      },
+      "additionalProperties": true
+    },
+    "mcp": {
+      "type": "object",
+      "description": "Model Context Protocol integration configuration",
+      "properties": {
+        "serverUrl": {
+          "type": "string",
+          "description": "MCP server URL",
+          "pattern": "^(http|https)://.*$"
+        },
+        "toolPrefix": {
+          "type": "string",
+          "description": "Prefix for MCP tool names",
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        }
+      },
+      "additionalProperties": true
+    },
     "dataSources": {
       "type": "array",
       "description": "List of data source keys belonging to this external system. Each must match external-datasource.schema.json.",

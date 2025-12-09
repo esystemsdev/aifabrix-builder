@@ -14,7 +14,20 @@ const keyGenerator = require('../../lib/key-generator');
 const validator = require('../../lib/validator');
 
 // Mock fs module
-jest.mock('fs');
+jest.mock('fs', () => {
+  const actualFs = jest.requireActual('fs');
+  const mockFs = {
+    ...actualFs,
+    existsSync: jest.fn(),
+    readFileSync: jest.fn(),
+    writeFileSync: jest.fn(),
+    promises: {
+      readFile: jest.fn(),
+      writeFile: jest.fn()
+    }
+  };
+  return mockFs;
+});
 
 // Mock paths module to return builder path for regular apps
 jest.mock('../../lib/utils/paths', () => {
@@ -1692,6 +1705,152 @@ NORMAL_VAR=value456`;
       expect(result.success).toBe(false);
       expect(result.validation.valid).toBe(false);
       expect(result.validation.errors).toEqual(['Validation error']);
+    });
+  });
+
+  describe('generateExternalSystemApplicationSchema', () => {
+    const externalAppName = 'hubspot';
+    const externalAppPath = path.join(process.cwd(), 'integration', externalAppName);
+    const externalVariablesPath = path.join(externalAppPath, 'variables.yaml');
+    const systemFilePath = path.join(externalAppPath, 'hubspot-deploy.json');
+    const datasourceFile1 = path.join(externalAppPath, 'hubspot-deploy-company.json');
+    const datasourceFile2 = path.join(externalAppPath, 'hubspot-deploy-contact.json');
+
+    const mockExternalVariables = {
+      externalIntegration: {
+        schemaBasePath: './',
+        systems: ['hubspot-deploy.json'],
+        dataSources: ['hubspot-deploy-company.json', 'hubspot-deploy-contact.json'],
+        version: '1.0.0'
+      }
+    };
+
+    const mockSystemJson = {
+      key: 'hubspot',
+      displayName: 'HubSpot CRM',
+      description: 'HubSpot CRM integration',
+      type: 'openapi',
+      authentication: {
+        type: 'oauth2'
+      }
+    };
+
+    const mockDatasourceJson1 = {
+      key: 'hubspot-companies-get',
+      displayName: 'HubSpot Companies',
+      systemKey: 'hubspot',
+      entityKey: 'company',
+      resourceType: 'customer',
+      fieldMappings: {
+        accessFields: ['country'],
+        fields: {
+          country: {
+            expression: '{{properties.country.value}} | toUpper',
+            type: 'string'
+          }
+        }
+      }
+    };
+
+    const mockDatasourceJson2 = {
+      key: 'hubspot-contacts-get',
+      displayName: 'HubSpot Contacts',
+      systemKey: 'hubspot',
+      entityKey: 'contact',
+      resourceType: 'contact',
+      fieldMappings: {
+        accessFields: ['email'],
+        fields: {
+          email: {
+            expression: '{{properties.email.value}} | trim',
+            type: 'string'
+          }
+        }
+      }
+    };
+
+    beforeEach(() => {
+      const { detectAppType } = require('../../lib/utils/paths');
+      detectAppType.mockResolvedValue({
+        isExternal: true,
+        appPath: externalAppPath,
+        appType: 'external'
+      });
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === systemFilePath ||
+               filePath === datasourceFile1 ||
+               filePath === datasourceFile2 ||
+               filePath === externalVariablesPath;
+      });
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === externalVariablesPath) {
+          return yaml.dump(mockExternalVariables);
+        }
+        throw new Error(`Unexpected file read: ${filePath}`);
+      });
+
+      // Mock fs.promises for async file operations
+      if (!fs.promises) {
+        fs.promises = {};
+      }
+      fs.promises.readFile = jest.fn().mockImplementation((filePath) => {
+        if (filePath === systemFilePath) {
+          return Promise.resolve(JSON.stringify(mockSystemJson));
+        }
+        if (filePath === datasourceFile1) {
+          return Promise.resolve(JSON.stringify(mockDatasourceJson1));
+        }
+        if (filePath === datasourceFile2) {
+          return Promise.resolve(JSON.stringify(mockDatasourceJson2));
+        }
+        throw new Error(`File not found: ${filePath}`);
+      });
+    });
+
+    it('should generate application schema successfully', async() => {
+      const result = await generator.generateExternalSystemApplicationSchema(externalAppName);
+
+      expect(result).toHaveProperty('version');
+      expect(result).toHaveProperty('application');
+      expect(result).toHaveProperty('dataSources');
+      expect(result.version).toBe('1.0.0');
+      expect(result.application).toEqual(mockSystemJson);
+      expect(result.dataSources).toHaveLength(2);
+      expect(result.dataSources[0]).toEqual(mockDatasourceJson1);
+      expect(result.dataSources[1]).toEqual(mockDatasourceJson2);
+    });
+
+    it('should throw error when externalIntegration block is missing', async() => {
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === externalVariablesPath) {
+          return yaml.dump({ name: 'test' });
+        }
+        throw new Error(`Unexpected file read: ${filePath}`);
+      });
+
+      await expect(
+        generator.generateExternalSystemApplicationSchema(externalAppName)
+      ).rejects.toThrow('externalIntegration block not found');
+    });
+
+    it('should throw error when system file is missing', async() => {
+      fs.existsSync.mockReturnValue(false);
+
+      await expect(
+        generator.generateExternalSystemApplicationSchema(externalAppName)
+      ).rejects.toThrow('variables.yaml not found');
+    });
+
+    it('should throw error when datasource file is missing', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === systemFilePath || filePath === externalVariablesPath;
+      });
+
+      await expect(
+        generator.generateExternalSystemApplicationSchema(externalAppName)
+      ).rejects.toThrow('Datasource file not found');
     });
   });
 });

@@ -597,6 +597,7 @@ Field mappings transform external API data into normalized schemas.
 - `toLower` - Convert to lowercase
 - `toUpper` - Convert to uppercase
 - `default("value")` - Use default if empty
+- `toNumber` - Convert to number
 
 **HubSpot example:**
 HubSpot uses nested properties:
@@ -625,6 +626,56 @@ Map to flat structure:
 
 **Access fields:**
 Fields listed in `accessFields` are used for ABAC (Attribute-Based Access Control) filtering. These should be fields that identify data ownership or access scope (e.g., `country`, `domain`, `organization`).
+
+### Test Payloads
+
+Test payloads allow you to test field mappings and metadata schemas locally and via integration tests. Add a `testPayload` property to your datasource configuration:
+
+```json
+{
+  "key": "hubspot-company",
+  "systemKey": "hubspot",
+  "entityKey": "company",
+  "fieldMappings": {
+    "fields": {
+      "name": {
+        "expression": "{{properties.name.value}} | trim",
+        "type": "string"
+      },
+      "country": {
+        "expression": "{{properties.country.value}} | toUpper | trim",
+        "type": "string"
+      }
+    }
+  },
+  "testPayload": {
+    "payloadTemplate": {
+      "properties": {
+        "name": { "value": "Acme Corp" },
+        "country": { "value": "us" }
+      }
+    },
+    "expectedResult": {
+      "name": "Acme Corp",
+      "country": "US"
+    }
+  }
+}
+```
+
+**Test Payload Properties:**
+- `payloadTemplate` - Sample payload matching the expected API response structure. Used for testing field mappings and metadata schema validation.
+- `expectedResult` - (Optional) Expected normalized result after field mapping transformations. Used for validation in unit tests.
+
+**Using Test Payloads:**
+- **Unit tests** (`aifabrix test`): Validates field mappings against `payloadTemplate` and compares with `expectedResult` if provided
+- **Integration tests** (`aifabrix test-integration`): Sends `payloadTemplate` to dataplane pipeline test API for real validation
+
+**Benefits:**
+- Test field mappings locally without API calls
+- Validate metadata schemas before deployment
+- Catch mapping errors early in development
+- Ensure consistent transformation results
 
 ### OpenAPI Operations
 
@@ -867,6 +918,113 @@ REDIRECT_URI=kv://hubspot-redirect-uriKeyVault
 
 ---
 
+## Development Workflow
+
+### Complete External System Development Workflow
+
+The AI Fabrix Builder supports a complete development workflow for external systems:
+
+1. **Download** - Get existing system from dataplane
+2. **Unit Test** - Validate locally without API calls
+3. **Integration Test** - Test via dataplane pipeline API
+4. **Deploy** - Deploy using application-level workflow
+
+### 1. Download External System from Dataplane
+
+Download an existing external system from the dataplane to your local development environment:
+
+```bash
+# Download external system
+aifabrix download hubspot --environment dev
+```
+
+**What happens:**
+- Downloads system configuration from dataplane API
+- Downloads all datasource configurations
+- Creates `integration/<system-key>/` folder structure
+- Generates all development files (variables.yaml, JSON files, env.template, README.md)
+
+**File structure created:**
+```
+integration/
+  hubspot/
+    variables.yaml                    # App configuration with externalIntegration block
+    hubspot-deploy.json              # External system definition
+    hubspot-deploy-company.json      # Companies datasource
+    hubspot-deploy-contact.json      # Contacts datasource
+    hubspot-deploy-deal.json         # Deals datasource
+    env.template                     # Environment variables template
+    README.md                        # Documentation
+```
+
+### 2. Edit Configuration Files
+
+Edit the configuration files in `integration/<system-key>/` to make your changes:
+- Update field mappings in datasource JSON files
+- Modify authentication configuration
+- Add or update test payloads for testing
+
+### 3. Unit Test (Local Validation)
+
+Test your configuration locally without making API calls:
+
+```bash
+# Test entire system
+aifabrix test hubspot
+
+# Test specific datasource
+aifabrix test hubspot --datasource hubspot-company
+
+# Verbose output
+aifabrix test hubspot --verbose
+```
+
+**What happens:**
+- Validates JSON syntax
+- Validates against schemas
+- Tests field mapping expressions
+- Validates metadata schemas against test payloads (if provided)
+- Validates relationships
+
+**No API calls are made** - this is pure local validation.
+
+### 4. Integration Test (Via Dataplane)
+
+Test your configuration against the real dataplane pipeline API:
+
+```bash
+# Test entire system
+aifabrix test-integration hubspot --environment dev
+
+# Test specific datasource
+aifabrix test-integration hubspot --environment dev --datasource hubspot-company
+
+# Use custom test payload
+aifabrix test-integration hubspot --environment dev --payload ./test-payload.json
+```
+
+**What happens:**
+- Calls dataplane pipeline test API
+- Tests field mappings with real API responses
+- Validates metadata schemas
+- Tests endpoint connectivity
+- Returns detailed validation results
+
+### 5. Deploy to Controller
+
+Deploy using the application-level workflow:
+
+```bash
+aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environment dev
+```
+
+**What happens:**
+1. Generates `application-schema.json` (combines system + all datasources)
+2. Uploads to dataplane via pipeline API
+3. Validates changes (optional, can skip with `--skip-validation`)
+4. Publishes atomically with rollback support
+5. System and datasources are deployed together
+
 ## Deployment Workflow
 
 ### 1. Configure Authentication Values
@@ -894,7 +1052,7 @@ aifabrix json hubspot
 
 **What happens:**
 - Combines `variables.yaml` with all JSON files
-- Generates `hubspot-deploy.json` ready for deployment
+- Generates `application-schema.json` ready for deployment (for external systems)
 - Validates all configurations
 
 ### 4. Deploy to Controller
@@ -904,11 +1062,21 @@ aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environmen
 ```
 
 **What happens:**
-1. External system is registered via pipeline API
-2. Datasources are published to dataplane
-3. Field mappings are compiled
-4. OpenAPI operations are registered
-5. System is ready for querying
+1. Generates `application-schema.json` (if not already generated)
+2. Uses application-level deployment workflow:
+   - Upload: `POST /api/v1/pipeline/upload`
+   - Validate: `POST /api/v1/pipeline/upload/{uploadId}/validate` (optional, can skip with `--skip-validation`)
+   - Publish: `POST /api/v1/pipeline/upload/{uploadId}/publish?generateMcpContract=true`
+3. External system and datasources are deployed atomically
+4. Field mappings are compiled
+5. OpenAPI operations are registered
+6. System is ready for querying
+
+**Application-Level Workflow Benefits:**
+- Atomic deployment (all or nothing)
+- Rollback support
+- Change validation before publishing
+- Better error handling
 
 ### 5. Deploy Individual Datasources (Optional)
 
@@ -935,6 +1103,54 @@ aifabrix datasource validate hubspot-company --environment dev
 
 # Query via MCP
 # (Use MCP client to query hubspot.company.list, etc.)
+```
+
+---
+
+## Complete Workflow Example
+
+Here's a complete workflow for developing an external system:
+
+### Download and Modify Existing System
+
+```bash
+# 1. Download external system from dataplane
+aifabrix download hubspot --environment dev
+
+# 2. Edit configuration files in integration/hubspot/
+#    - Update field mappings
+#    - Add test payloads
+#    - Modify authentication
+
+# 3. Run unit tests (local validation, no API calls)
+aifabrix test hubspot
+
+# 4. Run integration tests (via dataplane pipeline API)
+aifabrix test-integration hubspot --environment dev
+
+# 5. Deploy back to dataplane (via application-level workflow)
+aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environment dev
+```
+
+### Create New System from Scratch
+
+```bash
+# 1. Create new external system
+aifabrix create hubspot --type external
+
+# 2. Edit configuration files in integration/hubspot/
+#    - Configure authentication
+#    - Set up field mappings
+#    - Add test payloads
+
+# 3. Run unit tests
+aifabrix test hubspot
+
+# 4. Run integration tests
+aifabrix test-integration hubspot --environment dev
+
+# 5. Deploy to dataplane
+aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environment dev
 ```
 
 ---
@@ -1050,6 +1266,11 @@ Use defaults for optional fields:
 
 ## Command Reference
 
+**Download external system:**
+```bash
+aifabrix download <system-key> --environment <env>
+```
+
 **Create external system:**
 ```bash
 aifabrix create <app> --type external
@@ -1061,6 +1282,16 @@ aifabrix validate <app>
 aifabrix validate <file-path>
 ```
 
+**Unit test (local validation):**
+```bash
+aifabrix test <app> [--datasource <key>] [--verbose]
+```
+
+**Integration test (via dataplane):**
+```bash
+aifabrix test-integration <app> --environment <env> [--datasource <key>] [--payload <file>]
+```
+
 **Generate deployment JSON:**
 ```bash
 aifabrix json <app>
@@ -1068,7 +1299,7 @@ aifabrix json <app>
 
 **Deploy to controller:**
 ```bash
-aifabrix deploy <app> --controller <url> --environment <env>
+aifabrix deploy <app> --controller <url> --environment <env> [--skip-validation]
 ```
 
 **Deploy individual datasource:**

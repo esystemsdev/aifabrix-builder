@@ -16,10 +16,17 @@ const yaml = require('js-yaml');
 jest.mock('../../lib/config');
 jest.mock('../../lib/utils/api');
 jest.mock('../../lib/utils/api-error-handler');
-jest.mock('../../lib/utils/logger');
+jest.mock('../../lib/utils/logger', () => ({
+  log: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn()
+}));
 jest.mock('../../lib/utils/local-secrets');
 jest.mock('../../lib/utils/env-template');
 jest.mock('../../lib/utils/token-manager');
+jest.mock('../../lib/secrets', () => ({
+  generateEnvFile: jest.fn().mockResolvedValue('/path/to/.env')
+}));
 jest.mock('../../lib/app', () => ({
   createApp: jest.fn()
 }));
@@ -32,6 +39,7 @@ const logger = require('../../lib/utils/logger');
 const localSecrets = require('../../lib/utils/local-secrets');
 const envTemplate = require('../../lib/utils/env-template');
 const tokenManager = require('../../lib/utils/token-manager');
+const secrets = require('../../lib/secrets');
 const app = require('../../lib/app');
 
 describe('App Register Module', () => {
@@ -87,6 +95,7 @@ describe('App Register Module', () => {
     localSecrets.isLocalhost.mockReturnValue(true);
     localSecrets.saveLocalSecret.mockResolvedValue();
     envTemplate.updateEnvTemplate.mockResolvedValue();
+    secrets.generateEnvFile.mockResolvedValue('/path/to/.env');
 
     app.createApp.mockResolvedValue();
 
@@ -466,6 +475,8 @@ describe('App Register Module', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Application registered successfully'));
       expect(localSecrets.saveLocalSecret).toHaveBeenCalledTimes(2);
       expect(envTemplate.updateEnvTemplate).toHaveBeenCalled();
+      expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local');
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ .env file updated with new credentials'));
     });
 
     it('should handle error when saving credentials locally', async() => {
@@ -525,6 +536,7 @@ describe('App Register Module', () => {
 
       expect(localSecrets.saveLocalSecret).not.toHaveBeenCalled();
       expect(envTemplate.updateEnvTemplate).not.toHaveBeenCalled();
+      expect(secrets.generateEnvFile).not.toHaveBeenCalled();
     });
 
     it('should handle missing authentication', async() => {

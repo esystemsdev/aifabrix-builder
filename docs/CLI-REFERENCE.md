@@ -42,6 +42,9 @@ Complete command reference with examples and troubleshooting.
 - [aifabrix diff](#aifabrix-diff-file1-file2) - Compare two configuration files
 
 ### External Integration
+- [aifabrix download](#aifabrix-download-system-key) - Download external system from dataplane
+- [aifabrix test](#aifabrix-test-app) - Run unit tests for external system (local validation)
+- [aifabrix test-integration](#aifabrix-test-integration-app) - Run integration tests via dataplane pipeline API
 - [aifabrix datasource](#aifabrix-datasource) - Manage external data sources
   - [aifabrix datasource validate](#aifabrix-datasource-validate-file) - Validate external datasource JSON file
   - [aifabrix datasource list](#aifabrix-datasource-list) - List datasources from environment
@@ -609,7 +612,9 @@ aifabrix app register myapp --environment dev --port 8080 --name "My Application
 3. Validates required fields
 4. Registers with Miso Controller
 5. Returns ClientId and ClientSecret
-6. **Note:** Credentials are displayed but not automatically saved. Copy them to your secrets file or GitHub Secrets.
+6. Updates `env.template` with new credentials (for localhost scenarios)
+7. Regenerates `.env` file with updated credentials (for localhost scenarios)
+8. **Note:** Credentials are displayed but not automatically saved. Copy them to your secrets file or GitHub Secrets.
 
 **Output:**
 ```yaml
@@ -625,6 +630,8 @@ aifabrix app register myapp --environment dev --port 8080 --name "My Application
    Client Secret: x7K9mP2nQ4vL8wR5tY1uE3oA6sD9fG2hJ4kM7pN0qT5
 
 ⚠️  IMPORTANT: Client Secret will not be shown again!
+
+✓ .env file updated with new credentials
 
 📝 Add to GitHub Secrets:
    MISO_CLIENTID = ctrl-dev-myapp
@@ -671,7 +678,7 @@ aifabrix app list --environment dev
 
 Rotate pipeline ClientSecret for an application.
 
-**What:** Generates a new ClientSecret, invalidating the old one. Use when credentials are compromised or need rotation.
+**What:** Generates a new ClientSecret, invalidating the old one. Updates `env.template` and regenerates `.env` file with new credentials (for localhost scenarios). Use when credentials are compromised or need rotation.
 
 **Usage:**
 ```bash
@@ -683,6 +690,13 @@ aifabrix app rotate-secret myapp --environment dev
 
 **Options:**
 - `-e, --environment <env>` - Environment ID or key (required)
+
+**Process:**
+1. Validates application key and environment
+2. Rotates ClientSecret via Miso Controller API
+3. Updates `env.template` with new credentials (for localhost scenarios)
+4. Regenerates `.env` file with updated credentials (for localhost scenarios)
+5. Displays new credentials
 
 **Output:**
 ```yaml
@@ -697,6 +711,8 @@ aifabrix app rotate-secret myapp --environment dev
 🔑 NEW CREDENTIALS:
    Client ID:     ctrl-dev-myapp
    Client Secret: new-secret-789
+
+✓ .env file updated with new credentials
 
 ⚠️  Old secret is now invalid. Update GitHub Secrets!
 ```
@@ -1513,6 +1529,370 @@ After comparing:
 - Update configuration if needed
 - Use `aifabrix validate` to ensure new configuration is valid
 - Deploy updated configuration: `aifabrix deploy <app>`
+
+---
+
+<a id="aifabrix-download-system-key"></a>
+## aifabrix download <system-key>
+
+Download external system from dataplane to local development structure.
+
+**What:** Downloads an external system configuration and all its datasources from the dataplane API to a local development folder structure. Creates all necessary files for local development and testing.
+
+**When:** Setting up local development for an existing external system, cloning a system from another environment, or retrieving a system configuration for modification.
+
+**Usage:**
+```bash
+# Download external system from dataplane
+aifabrix download hubspot --environment dev
+
+# Download with custom controller URL
+aifabrix download hubspot --environment dev --controller https://controller.aifabrix.ai
+
+# Dry run to see what would be downloaded
+aifabrix download hubspot --environment dev --dry-run
+```
+
+**Arguments:**
+- `<system-key>` - External system key (identifier)
+
+**Options:**
+- `-e, --environment <env>` - Environment (dev, tst, pro) (default: dev)
+- `-c, --controller <url>` - Controller URL (optional, uses configured controller if not provided)
+- `--dry-run` - Show what would be downloaded without actually downloading
+
+**Prerequisites:**
+- Must be logged in: `aifabrix login --method device --environment <env>`
+- System must exist in the dataplane
+
+**Process:**
+1. Gets dataplane URL from controller
+2. Downloads system configuration from dataplane API: `GET /api/v1/external/systems/{systemKey}/config`
+3. Downloads datasource configurations
+4. Validates downloaded data against schemas
+5. Creates `integration/<system-key>/` folder structure
+6. Generates development files:
+   - `variables.yaml` - Application configuration with externalIntegration block
+   - `<system-key>-deploy.json` - External system definition
+   - `<system-key>-deploy-<entity>.json` - Datasource files (one per entity)
+   - `env.template` - Environment variables template
+   - `README.md` - Documentation with setup instructions
+
+**Output:**
+```yaml
+📥 Downloading external system 'hubspot' from dataplane...
+
+🔐 Getting authentication...
+✓ Authentication successful
+🌐 Getting dataplane URL from controller...
+✓ Dataplane URL: https://dataplane.aifabrix.ai
+
+📥 Downloading system configuration...
+✓ System configuration downloaded
+📥 Downloading datasources...
+✓ Downloaded 3 datasource(s)
+
+📝 Generating development files...
+✓ Created integration/hubspot/variables.yaml
+✓ Created integration/hubspot/hubspot-deploy.json
+✓ Created integration/hubspot/hubspot-deploy-company.json
+✓ Created integration/hubspot/hubspot-deploy-contact.json
+✓ Created integration/hubspot/hubspot-deploy-deal.json
+✓ Created integration/hubspot/env.template
+✓ Created integration/hubspot/README.md
+
+✅ External system downloaded successfully!
+   Location: integration/hubspot/
+```
+
+**File Structure:**
+```text
+integration/
+  <system-key>/
+    variables.yaml                    # App configuration with externalIntegration block
+    <system-key>-deploy.json         # External system definition
+    <system-key>-deploy-<entity1>.json  # Datasource 1
+    <system-key>-deploy-<entity2>.json  # Datasource 2
+    env.template                     # Environment variables template
+    README.md                        # Documentation
+```
+
+**Issues:**
+- **"System key is required"** → Provide system key as argument
+- **"Not logged in"** → Run `aifabrix login --method device --environment <env>` first
+- **"System not found"** → Check system key exists in the dataplane
+- **"Failed to download system"** → Check dataplane URL, authentication, and network connection
+- **"Partial download failed"** → Some datasources may have failed; check error messages
+- **"Validation failed"** → Downloaded data doesn't match expected schema
+
+**Next Steps:**
+After downloading:
+- Review configuration files in `integration/<system-key>/`
+- Run unit tests: `aifabrix test <system-key>`
+- Run integration tests: `aifabrix test-integration <system-key>`
+- Deploy changes: `aifabrix deploy <system-key>`
+
+---
+
+<a id="aifabrix-test-app"></a>
+## aifabrix test <app>
+
+Run unit tests for external system (local validation, no API calls).
+
+**What:** Validates external system configuration locally without making API calls. Tests JSON syntax, schema validation, field mapping expressions, metadata schemas, and relationships. Uses test payloads from datasource configuration if available.
+
+**When:** Before deploying changes, validating configuration locally, or testing field mappings without network access.
+
+**Usage:**
+```bash
+# Test entire external system
+aifabrix test hubspot
+
+# Test specific datasource only
+aifabrix test hubspot --datasource hubspot-company
+
+# Verbose output with detailed validation
+aifabrix test hubspot --verbose
+```
+
+**Arguments:**
+- `<app>` - Application name (external system)
+
+**Options:**
+- `-d, --datasource <key>` - Test specific datasource only
+- `-v, --verbose` - Show detailed validation output
+
+**Process:**
+1. Loads and validates `variables.yaml` syntax
+2. Loads and validates system JSON file(s) against `external-system.schema.json`
+3. Loads and validates datasource JSON file(s) against `external-datasource.schema.json`
+4. If `testPayload.payloadTemplate` exists in datasource:
+   - Validates metadata schema against test payload
+   - Tests field mapping expressions (mock transformer, no real API calls)
+   - Compares with `expectedResult` if provided
+5. Validates relationships (systemKey matches, entityKey consistency)
+6. Returns structured test results
+
+**Validation Checks:**
+- JSON syntax validation
+- Schema validation (external-system.schema.json, external-datasource.schema.json)
+- Field mapping expression syntax validation:
+  - Validates pipe-based DSL syntax: `{{path.to.field}} | toUpper | trim`
+  - Ensures path is wrapped in `{{}}`
+  - Validates transformation names (toUpper, toLower, trim, default, toNumber, etc.)
+  - Checks for proper pipe separator `|`
+- Metadata schema validation against test payload
+- Required fields presence
+- Relationship validation (systemKey, entityKey)
+
+**Output (success):**
+```yaml
+🧪 Running unit tests for 'hubspot'...
+
+✓ Application configuration is valid
+✓ System configuration is valid (hubspot-deploy.json)
+✓ Datasource configuration is valid (hubspot-deploy-company.json)
+✓ Datasource configuration is valid (hubspot-deploy-contact.json)
+✓ Datasource configuration is valid (hubspot-deploy-deal.json)
+
+Field Mapping Tests:
+  ✓ hubspot-company: All field mappings valid
+  ✓ hubspot-contact: All field mappings valid
+  ✓ hubspot-deal: All field mappings valid
+
+Metadata Schema Tests:
+  ✓ hubspot-company: Metadata schema valid against test payload
+  ✓ hubspot-contact: Metadata schema valid against test payload
+  ✓ hubspot-deal: Metadata schema valid against test payload
+
+✅ All tests passed!
+```
+
+**Output (failure):**
+```yaml
+🧪 Running unit tests for 'hubspot'...
+
+✓ Application configuration is valid
+✓ System configuration is valid (hubspot-deploy.json)
+✗ Datasource configuration has errors (hubspot-deploy-company.json):
+  • Field mapping expression invalid: '{{properties.name.value | trim' (missing closing brace)
+  • Metadata schema validation failed: Field 'country' not found in test payload
+
+Field Mapping Tests:
+  ✗ hubspot-company: 1 field mapping error(s)
+
+❌ Tests failed!
+```
+
+**Test Payload Configuration:**
+Test payloads are configured in datasource JSON files using the `testPayload` property:
+
+```json
+{
+  "key": "hubspot-company",
+  "testPayload": {
+    "payloadTemplate": {
+      "properties": {
+        "name": { "value": "Acme Corp" },
+        "country": { "value": "us" }
+      }
+    },
+    "expectedResult": {
+      "name": "Acme Corp",
+      "country": "US"
+    }
+  }
+}
+```
+
+**Issues:**
+- **"App name is required"** → Provide application name as argument
+- **"Application not found"** → Check application exists in `integration/<app>/`
+- **"Validation failed"** → Fix errors reported in test output
+- **"Test payload not found"** → Add `testPayload` to datasource configuration or use `--datasource` to test specific datasource
+- **"Field mapping expression invalid"** → Check expression syntax: `{{path}} | transformation`
+
+**Next Steps:**
+After unit tests:
+- Fix any validation errors
+- Run integration tests: `aifabrix test-integration <app>`
+- Deploy validated configuration: `aifabrix deploy <app>`
+
+---
+
+<a id="aifabrix-test-integration-app"></a>
+## aifabrix test-integration <app>
+
+Run integration tests via dataplane pipeline API.
+
+**What:** Tests external system configuration by calling the dataplane pipeline test API. Validates field mappings, metadata schemas, and endpoint connectivity using real API calls. Requires dataplane access and authentication.
+
+**When:** After unit tests pass, validating against real dataplane, or testing endpoint connectivity before deployment.
+
+**Usage:**
+```bash
+# Test entire external system
+aifabrix test-integration hubspot --environment dev
+
+# Test specific datasource only
+aifabrix test-integration hubspot --environment dev --datasource hubspot-company
+
+# Use custom test payload file
+aifabrix test-integration hubspot --environment dev --payload ./test-payload.json
+
+# Verbose output with detailed results
+aifabrix test-integration hubspot --environment dev --verbose
+
+# Custom timeout
+aifabrix test-integration hubspot --environment dev --timeout 60000
+```
+
+**Arguments:**
+- `<app>` - Application name (external system)
+
+**Options:**
+- `-d, --datasource <key>` - Test specific datasource only
+- `-p, --payload <file>` - Path to custom test payload file (overrides datasource testPayload)
+- `-e, --environment <env>` - Environment (dev, tst, pro) (default: dev)
+- `-c, --controller <url>` - Controller URL (optional)
+- `-v, --verbose` - Show detailed test output
+- `--timeout <ms>` - Request timeout in milliseconds (default: 30000)
+
+**Prerequisites:**
+- Must be logged in: `aifabrix login --method device --environment <env>`
+- Dataplane must be accessible
+- System must exist in dataplane (or be ready for testing)
+
+**Process:**
+1. Gets dataplane URL from controller
+2. For each datasource (or specified one):
+   - Loads test payload from datasource config (`testPayload.payloadTemplate`) or from `--payload` file
+   - Calls dataplane pipeline API: `POST /api/v1/pipeline/{systemKey}/{datasourceKey}/test`
+   - Request body: `{ "payloadTemplate": <testPayload> }`
+   - Parses response with validation results, field mapping results, endpoint test results
+3. Displays results for each datasource
+4. Returns aggregated results
+
+**Response Handling:**
+- Parses `validationResults` (isValid, errors, warnings, normalizedMetadata)
+- Parses `fieldMappingResults` (accessFields, mappedFields, mappingCount)
+- Parses `endpointTestResults` (endpointConfigured, connectivity status)
+
+**Output (success):**
+```yaml
+🧪 Running integration tests for 'hubspot' via dataplane...
+
+🔐 Getting authentication...
+✓ Authentication successful
+🌐 Getting dataplane URL from controller...
+✓ Dataplane URL: https://dataplane.aifabrix.ai
+
+Testing datasource: hubspot-company
+  ✓ Validation: passed
+  ✓ Field mappings: 5 fields mapped successfully
+  ✓ Endpoint connectivity: connected
+  ✓ Metadata schema: valid
+
+Testing datasource: hubspot-contact
+  ✓ Validation: passed
+  ✓ Field mappings: 8 fields mapped successfully
+  ✓ Endpoint connectivity: connected
+  ✓ Metadata schema: valid
+
+Testing datasource: hubspot-deal
+  ✓ Validation: passed
+  ✓ Field mappings: 6 fields mapped successfully
+  ✓ Endpoint connectivity: connected
+  ✓ Metadata schema: valid
+
+✅ All integration tests passed!
+```
+
+**Output (failure):**
+```yaml
+🧪 Running integration tests for 'hubspot' via dataplane...
+
+🔐 Getting authentication...
+✓ Authentication successful
+🌐 Getting dataplane URL from controller...
+✓ Dataplane URL: https://dataplane.aifabrix.ai
+
+Testing datasource: hubspot-company
+  ✗ Validation: failed
+    • Field 'country' not found in payload
+  ✗ Field mappings: 3 of 5 fields mapped successfully
+  ✓ Endpoint connectivity: connected
+  ✗ Metadata schema: invalid
+
+❌ Integration tests failed!
+```
+
+**Test Payload:**
+Test payloads can be:
+1. From datasource configuration (`testPayload.payloadTemplate`)
+2. From custom file (`--payload` flag)
+3. Generated automatically if not provided (basic structure)
+
+**Retry Logic:**
+The command includes automatic retry logic for transient API failures:
+- 3 retries with exponential backoff
+- Retries on network errors, timeouts, and 5xx server errors
+
+**Issues:**
+- **"App name is required"** → Provide application name as argument
+- **"Not logged in"** → Run `aifabrix login --method device --environment <env>` first
+- **"Environment is required"** → Provide `--environment` flag (dev/tst/pro)
+- **"Dataplane URL not found"** → Check controller configuration and network connection
+- **"Test payload not found"** → Add `testPayload` to datasource configuration or use `--payload` flag
+- **"API call failed"** → Check dataplane URL, authentication, and network connection
+- **"Request timeout"** → Increase timeout with `--timeout` flag or check network connection
+- **"Validation failed"** → Fix errors reported in test output
+
+**Next Steps:**
+After integration tests:
+- Fix any validation or connectivity errors
+- Re-run unit tests: `aifabrix test <app>`
+- Deploy validated configuration: `aifabrix deploy <app>`
 
 ---
 
