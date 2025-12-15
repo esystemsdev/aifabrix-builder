@@ -1,3 +1,38 @@
+## [2.10.0] - 2025-12-15
+
+### Added
+- **Language-Specific Environment Variables**: Automatic generation of language-specific environment variables
+  - Python apps automatically get `PYTHONUNBUFFERED`, `PYTHONDONTWRITEBYTECODE`, and `PYTHONIOENCODING` variables
+  - Variables use `${VAR}` interpolation pattern and are resolved from `env-config.yaml` based on docker/local context
+  - TypeScript apps use `${NODE_ENV}` interpolation (resolves to `production` for docker, `development` for local)
+- **Automatic Environment Variables**: New variables automatically added to all `env.template` files
+  - `ALLOWED_ORIGINS=http://localhost:*,` - My application public address (added to APPLICATION ENVIRONMENT section)
+  - `WEB_SERVER_URL=http://localhost:${PORT},` - Miso public address (added to APPLICATION ENVIRONMENT section)
+  - `MISO_WEB_SERVER_URL=kv://miso-controller-web-server-url` - Miso web server URL (added to MISO Controller Configuration section when controller is enabled)
+
+### Changed
+- **Environment Variable Generation**: Enhanced template generation with language-aware variables
+  - `NODE_ENV` now uses `${NODE_ENV}` interpolation instead of hardcoded `development` value
+  - Python-specific variables are automatically included for Python applications
+  - Variables are resolved from `lib/schema/env-config.yaml` based on deployment context (docker/local)
+- **MISO Controller URL**: Updated to use template format for environment-specific resolution
+  - `MISO_CONTROLLER_URL` now uses `http://${MISO_HOST}:${MISO_PORT}` template format
+  - Replaces hardcoded controller URLs in `updateEnvTemplate` function
+  - Allows environment-specific resolution during `.env` file generation
+- **Template Generation**: Automatic addition of application and monitoring variables
+  - `ALLOWED_ORIGINS` and `WEB_SERVER_URL` automatically added to APPLICATION ENVIRONMENT section
+  - `MISO_WEB_SERVER_URL` automatically added to MISO Controller Configuration section when controller is enabled
+
+### Technical
+- New `buildPythonEnv()` function in `lib/templates.js` for Python-specific variables
+- Updated `buildCoreEnv()` to use `${NODE_ENV}` interpolation
+- Updated `addCoreVariables()` to include `ALLOWED_ORIGINS` and `WEB_SERVER_URL`
+- Updated `addMonitoringSection()` to include `MISO_WEB_SERVER_URL`
+- Updated `updateEnvTemplate()` in `lib/utils/env-template.js` to use template format for `MISO_CONTROLLER_URL`
+- Updated `lib/schema/env-config.yaml` with Python variables for both docker and local contexts
+- Comprehensive test coverage for all new functionality
+- ISO 27001 compliant implementation maintained throughout
+
 ## [2.9.0] - 2025-12-09
 
 ### Added

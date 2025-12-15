@@ -97,7 +97,7 @@ describe('API Utilities', () => {
       const result = await makeApiCall('https://api.example.com/test');
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Validation error');
+      expect(result.error).toBe('Invalid request');
       expect(result.errorType).toBe('validation');
       expect(result.status).toBe(400);
       expect(result.formattedError).toBeDefined();

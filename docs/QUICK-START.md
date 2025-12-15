@@ -111,12 +111,21 @@ build:
 
 ### builder/myapp/env.template
 ```bash
-NODE_ENV=development
+# Language-specific variables (auto-added based on build.language)
+NODE_ENV=${NODE_ENV}  # Resolves to 'production' (docker) or 'development' (local)
+
+# Application environment (auto-added)
 PORT=3000
+ALLOWED_ORIGINS=http://localhost:*,
+WEB_SERVER_URL=http://localhost:${PORT},
+
+# Database configuration (if requires.database: true)
 DATABASE_URL=kv://databases-0-urlKeyVault
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
 ```
+
+**Note:** For Python apps, `PYTHONUNBUFFERED`, `PYTHONDONTWRITEBYTECODE`, and `PYTHONIOENCODING` are automatically added instead of `NODE_ENV`.
 
 **What to add:**
 - Your app's environment variables

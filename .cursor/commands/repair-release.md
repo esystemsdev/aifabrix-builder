@@ -37,7 +37,7 @@ When the `/repair-release` command is used, the agent must automatically prepare
      - `### Technical` - Technical details, dependencies, architecture changes
    - Add new version entry at the top of CHANGELOG.md with:
      - Version number in format: `## [X.Y.Z] - YYYY-MM-DD`
-     - Date in format: YYYY-MM-DD (current date)
+     - Date in format: YYYY-MM-DD (today's date - the date when the release is being prepared)
      - Categorized changes from git analysis
    - Follow the existing changelog format and style
 
@@ -61,7 +61,7 @@ When the `/repair-release` command is used, the agent must automatically prepare
 - **Version Semantics**:
   - Patch (2.7.0 → 2.7.1): Bug fixes, small corrections, patches
   - Minor (2.7.0 → 2.8.0): New features, new commands, new modules, significant functionality
-- **Date Format**: Use YYYY-MM-DD format for changelog dates
+- **Date Format**: Use YYYY-MM-DD format for changelog dates (always use today's date)
 - **Git Tag Detection**: Use `git tag --sort=-version:refname` to find the latest version tag
 - **Change Extraction**: Extract meaningful change descriptions from git commits
 - **No User Input**: Work autonomously and only report completion when all steps are done

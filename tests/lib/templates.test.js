@@ -143,7 +143,7 @@ describe('Templates Module', () => {
 
       const result = templates.generateEnvTemplate(config);
 
-      expect(result).toContain('NODE_ENV=development');
+      expect(result).toContain('NODE_ENV=${NODE_ENV}');
       expect(result).toContain('PORT=3000');
       expect(result).toContain('APP_NAME=test-app');
       expect(result).toContain('DATABASE_URL=kv://databases-test-app-0-urlKeyVault');
@@ -165,7 +165,7 @@ describe('Templates Module', () => {
 
       const result = templates.generateEnvTemplate(config);
 
-      expect(result).toContain('NODE_ENV=development');
+      expect(result).toContain('NODE_ENV=${NODE_ENV}');
       expect(result).toContain('PORT=3000');
       expect(result).toContain('APP_NAME=minimal-app');
       expect(result).not.toContain('DATABASE_URL');
@@ -207,8 +207,9 @@ describe('Templates Module', () => {
       expect(result).toContain('# MISO Controller Configuration');
       expect(result).toContain('MISO_CONTROLLER_URL=https://controller.aifabrix.ai');
       expect(result).toContain('MISO_ENVIRONMENT=dev');
-      expect(result).toContain('MISO_CLIENTID=kv://miso-clientid');
-      expect(result).toContain('MISO_CLIENTSECRET=kv://miso-clientsecret');
+      expect(result).toContain('MISO_CLIENTID=kv://miso-controller-client-idKeyVault');
+      expect(result).toContain('MISO_CLIENTSECRET=kv://miso-controller-client-secretKeyVault');
+      expect(result).toContain('MISO_WEB_SERVER_URL=kv://miso-controller-web-server-url');
     });
 
     it('should use custom controllerUrl when provided', () => {
@@ -238,6 +239,7 @@ describe('Templates Module', () => {
       expect(result).not.toContain('MISO_ENVIRONMENT');
       expect(result).not.toContain('MISO_CLIENTID');
       expect(result).not.toContain('MISO_CLIENTSECRET');
+      expect(result).not.toContain('MISO_WEB_SERVER_URL');
     });
 
     it('should include MISO Controller section with all other services', () => {
@@ -260,6 +262,37 @@ describe('Templates Module', () => {
       expect(result).toContain('# AUTHENTICATION CONFIGURATION');
       expect(result).toContain('# MISO Controller Configuration');
       expect(result).toContain('MISO_CONTROLLER_URL=https://controller.example.com');
+      expect(result).toContain('MISO_WEB_SERVER_URL=kv://miso-controller-web-server-url');
+    });
+
+    it('should include ALLOWED_ORIGINS and WEB_SERVER_URL in APPLICATION ENVIRONMENT section', () => {
+      const config = {
+        port: 3000,
+        appName: 'test-app'
+      };
+
+      const result = templates.generateEnvTemplate(config);
+
+      expect(result).toContain('# APPLICATION ENVIRONMENT');
+      expect(result).toContain('ALLOWED_ORIGINS=http://localhost:*,');
+      expect(result).toContain('WEB_SERVER_URL=http://localhost:${PORT},');
+    });
+
+    it('should include ALLOWED_ORIGINS and WEB_SERVER_URL after PORT variable', () => {
+      const config = {
+        port: 3000,
+        appName: 'test-app'
+      };
+
+      const result = templates.generateEnvTemplate(config);
+      const lines = result.split('\n');
+      const portIndex = lines.findIndex(line => line.startsWith('PORT='));
+      const allowedOriginsIndex = lines.findIndex(line => line.startsWith('ALLOWED_ORIGINS='));
+      const webServerUrlIndex = lines.findIndex(line => line.startsWith('WEB_SERVER_URL='));
+
+      expect(portIndex).toBeGreaterThan(-1);
+      expect(allowedOriginsIndex).toBeGreaterThan(portIndex);
+      expect(webServerUrlIndex).toBeGreaterThan(allowedOriginsIndex);
     });
   });
 
@@ -388,6 +421,135 @@ describe('Templates Module', () => {
 
       expect(parsed.data).toBeDefined();
       expect(Object.keys(parsed.data)).toHaveLength(0);
+    });
+  });
+
+  describe('buildPythonEnv', () => {
+    it('should return Python environment variables when language is python', () => {
+      const config = {
+        language: 'python'
+      };
+
+      // Access the function directly if exported, or test via generateEnvTemplate
+      // Since buildPythonEnv is not exported, we test it via generateEnvTemplate
+      const result = templates.generateEnvTemplate(config);
+
+      expect(result).toContain('PYTHONUNBUFFERED=${PYTHONUNBUFFERED}');
+      expect(result).toContain('PYTHONDONTWRITEBYTECODE=${PYTHONDONTWRITEBYTECODE}');
+      expect(result).toContain('PYTHONIOENCODING=${PYTHONIOENCODING}');
+    });
+
+    it('should not return Python variables when language is typescript', () => {
+      const config = {
+        language: 'typescript',
+        port: 3000,
+        appName: 'test-app'
+      };
+
+      const result = templates.generateEnvTemplate(config);
+
+      expect(result).not.toContain('PYTHONUNBUFFERED');
+      expect(result).not.toContain('PYTHONDONTWRITEBYTECODE');
+      expect(result).not.toContain('PYTHONIOENCODING');
+      expect(result).toContain('NODE_ENV=${NODE_ENV}');
+    });
+
+    it('should not return Python variables when language is not specified (defaults to typescript)', () => {
+      const config = {
+        port: 3000,
+        appName: 'test-app'
+      };
+
+      const result = templates.generateEnvTemplate(config);
+
+      expect(result).not.toContain('PYTHONUNBUFFERED');
+      expect(result).not.toContain('PYTHONDONTWRITEBYTECODE');
+      expect(result).not.toContain('PYTHONIOENCODING');
+      expect(result).toContain('NODE_ENV=${NODE_ENV}');
+    });
+
+    it('should include Python variables in core variables section for Python apps', () => {
+      const config = {
+        language: 'python',
+        port: 8000,
+        appName: 'python-app'
+      };
+
+      const result = templates.generateEnvTemplate(config);
+
+      // Python variables should appear in APPLICATION ENVIRONMENT section
+      const lines = result.split('\n');
+      const appEnvSectionIndex = lines.findIndex(line => line.includes('# APPLICATION ENVIRONMENT'));
+      const pythonVarsStart = lines.slice(appEnvSectionIndex);
+
+      expect(pythonVarsStart.some(line => line.includes('PYTHONUNBUFFERED=${PYTHONUNBUFFERED}'))).toBe(true);
+      expect(pythonVarsStart.some(line => line.includes('PYTHONDONTWRITEBYTECODE=${PYTHONDONTWRITEBYTECODE}'))).toBe(true);
+      expect(pythonVarsStart.some(line => line.includes('PYTHONIOENCODING=${PYTHONIOENCODING}'))).toBe(true);
+    });
+  });
+
+  describe('generateEnvTemplate - Language-specific behavior', () => {
+    it('should use ${NODE_ENV} interpolation for TypeScript apps', () => {
+      const config = {
+        language: 'typescript',
+        port: 3000,
+        appName: 'ts-app'
+      };
+
+      const result = templates.generateEnvTemplate(config);
+
+      expect(result).toContain('NODE_ENV=${NODE_ENV}');
+      expect(result).not.toContain('NODE_ENV=development');
+      expect(result).not.toContain('NODE_ENV=production');
+    });
+
+    it('should include Python variables for Python apps with all services', () => {
+      const config = {
+        language: 'python',
+        port: 8000,
+        appName: 'python-app',
+        database: true,
+        redis: true,
+        storage: true,
+        authentication: true
+      };
+
+      const result = templates.generateEnvTemplate(config);
+
+      // Should have Python variables
+      expect(result).toContain('PYTHONUNBUFFERED=${PYTHONUNBUFFERED}');
+      expect(result).toContain('PYTHONDONTWRITEBYTECODE=${PYTHONDONTWRITEBYTECODE}');
+      expect(result).toContain('PYTHONIOENCODING=${PYTHONIOENCODING}');
+
+      // NODE_ENV is still included (buildCoreEnv always includes it, even for Python)
+      // This is fine - Python apps can ignore it if not needed
+      expect(result).toContain('NODE_ENV=${NODE_ENV}');
+
+      // Should have other services
+      expect(result).toContain('DATABASE_URL');
+      expect(result).toContain('REDIS_URL');
+      expect(result).toContain('STORAGE_TYPE');
+      expect(result).toContain('JWT_SECRET');
+    });
+
+    it('should include Python variables for minimal Python app', () => {
+      const config = {
+        language: 'python',
+        port: 8000,
+        appName: 'minimal-python',
+        database: false,
+        redis: false,
+        storage: false,
+        authentication: false
+      };
+
+      const result = templates.generateEnvTemplate(config);
+
+      expect(result).toContain('PYTHONUNBUFFERED=${PYTHONUNBUFFERED}');
+      expect(result).toContain('PYTHONDONTWRITEBYTECODE=${PYTHONDONTWRITEBYTECODE}');
+      expect(result).toContain('PYTHONIOENCODING=${PYTHONIOENCODING}');
+      expect(result).toContain('PORT=8000');
+      expect(result).toContain('APP_NAME=minimal-python');
     });
   });
 });

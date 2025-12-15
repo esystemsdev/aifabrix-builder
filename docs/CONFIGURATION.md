@@ -298,13 +298,78 @@ REDIS_URL=redis://localhost:6379
 REDIS_PASSWORD=
 ```
 
+### Language-Specific Variables (Auto-added)
+
+Variables are automatically added based on the application language (`build.language` in `variables.yaml`):
+
+**For TypeScript/Node.js apps:**
+```bash
+NODE_ENV=${NODE_ENV}
+```
+
+The `${NODE_ENV}` value is resolved from `env-config.yaml`:
+- Docker context: `NODE_ENV=production`
+- Local context: `NODE_ENV=development`
+
+**For Python apps:**
+```bash
+PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
+PYTHONDONTWRITEBYTECODE=${PYTHONDONTWRITEBYTECODE}
+PYTHONIOENCODING=${PYTHONIOENCODING}
+```
+
+These values are resolved from `env-config.yaml` (same values for both docker and local contexts):
+- `PYTHONUNBUFFERED=1` - Ensures Python output is unbuffered (important for Docker logs)
+- `PYTHONDONTWRITEBYTECODE=1` - Prevents `.pyc` files from being written
+- `PYTHONIOENCODING=utf-8` - Ensures UTF-8 encoding
+
+**Note:** You can override these values in your custom `env-config.yaml` file (set `aifabrix-env-config` in `config.yaml`).
+
+### Application Environment Variables (Auto-added)
+
+The following variables are automatically added to all applications:
+
+```bash
+ALLOWED_ORIGINS=http://localhost:*,
+WEB_SERVER_URL=http://localhost:${PORT},
+```
+
+- `ALLOWED_ORIGINS` - My application public address (trailing comma allows easy addition of more origins)
+- `WEB_SERVER_URL` - Miso public address (uses `${PORT}` template variable to reference the application's PORT)
+
+### MISO Controller Variables (Auto-added when controller enabled)
+
+If `requires.controller: true` or controller URL is configured, the following variables are automatically added:
+
+```bash
+MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}
+MISO_ENVIRONMENT=dev
+MISO_CLIENTID=kv://miso-controller-client-idKeyVault
+MISO_CLIENTSECRET=kv://miso-controller-client-secretKeyVault
+MISO_WEB_SERVER_URL=kv://miso-controller-web-server-url
+```
+
+- `MISO_CONTROLLER_URL` - Controller API URL (uses template format for environment-specific resolution)
+- `MISO_ENVIRONMENT` - Target environment (`miso`, `dev`, `tst`, or `pro`)
+- `MISO_CLIENTID` - Client ID for pipeline API (kv:// reference)
+- `MISO_CLIENTSECRET` - Client secret for pipeline API (kv:// reference)
+- `MISO_WEB_SERVER_URL` - Miso web server URL (kv:// reference)
+
+**Note:** `MISO_CONTROLLER_URL` uses `${MISO_HOST}` and `${MISO_PORT}` template variables which are resolved from `env-config.yaml` based on deployment context (docker/local).
+
 ### Your Variables
 
-Add whatever your app needs:
+Add whatever your app needs (note: `NODE_ENV`, `PORT`, `APP_NAME`, and `LOG_LEVEL` are automatically added):
+
 ```bash
-NODE_ENV=development
-PORT=3000
-LOG_LEVEL=debug
+# These are auto-added, but you can override them:
+# NODE_ENV=${NODE_ENV}  # Auto-added for TypeScript apps
+# PORT=3000              # Auto-added
+# APP_NAME=myapp         # Auto-added
+# LOG_LEVEL=info          # Auto-added
+
+# Your custom variables:
+LOG_LEVEL=debug  # Override default 'info'
 
 # API Keys (use kv:// for secrets)
 API_KEY=kv://my-api-keyKeyVault
@@ -440,6 +505,53 @@ Plaintext secrets continue to work if no encryption key is configured. The syste
 - **"No secrets files found"**: Create `~/.aifabrix/secrets.local.yaml` or configure `aifabrix-secrets` in `config.yaml`
 
 For more details, see [aifabrix secure](CLI-REFERENCE.md#aifabrix-secure) command documentation.
+
+### Environment-Specific Variable Interpolation
+
+Environment variables can use `${VAR}` syntax to reference values from `env-config.yaml`. These values are automatically resolved based on deployment context (docker vs local).
+
+**System Configuration File:**
+- `lib/schema/env-config.yaml` - System-level default values
+
+**User Override File:**
+- Set `aifabrix-env-config` in `~/.aifabrix/config.yaml` to point to your custom `env-config.yaml` file
+- User values override system defaults
+- New environments can be added
+
+**Supported Variables:**
+- `${NODE_ENV}` - Resolves to `production` (docker) or `development` (local)
+- `${PYTHONUNBUFFERED}` - Resolves to `1` (both docker and local)
+- `${PYTHONDONTWRITEBYTECODE}` - Resolves to `1` (both docker and local)
+- `${PYTHONIOENCODING}` - Resolves to `utf-8` (both docker and local)
+- `${MISO_HOST}` - Resolves to host from env-config.yaml based on context
+- `${MISO_PORT}` - Resolves to port from env-config.yaml based on context
+- `${DB_HOST}`, `${DB_PORT}`, `${REDIS_HOST}`, `${REDIS_PORT}` - Service host/port values
+
+**Example:**
+```bash
+# In env.template
+NODE_ENV=${NODE_ENV}
+MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}
+
+# Generated .env (docker context)
+NODE_ENV=production
+MISO_CONTROLLER_URL=http://controller.aifabrix.ai:443
+
+# Generated .env (local context)
+NODE_ENV=development
+MISO_CONTROLLER_URL=http://localhost:3010
+```
+
+**Customization:**
+
+Create your own `env-config.yaml` file and set `aifabrix-env-config` in `config.yaml`:
+
+```yaml
+# ~/.aifabrix/config.yaml
+aifabrix-env-config: ~/.aifabrix/my-env-config.yaml
+```
+
+Your custom file will be merged with system defaults, allowing you to override values or add new environments.
 
 ---
 
@@ -855,7 +967,7 @@ curl https://controller.aifabrix.ai/api/v1/audit/logs?app=myapp
 Add to your `env.template`:
 ```bash
 # Miso Controller connection
-MISO_CONTROLLER_URL=https://controller.aifabrix.ai
+MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}
 MISO_ENVIRONMENT=dev  # or 'miso', 'tst', 'pro'
 APPLICATION_KEY=myapp
 
@@ -868,12 +980,15 @@ REDIS_PASSWORD=
 MISO_LOG_LEVEL=info
 
 # Pipeline API Deployment (optional - for automated deployments)
-MISO_CONTROLLER_URL=https://controller.aifabrix.ai
-MISO_CLIENTID=ctrl-dev-myapp
-MISO_CLIENTSECRET=kv://aifabrix-client-secretKeyVault
+MISO_CLIENTID=kv://miso-controller-client-idKeyVault
+MISO_CLIENTSECRET=kv://miso-controller-client-secretKeyVault
+MISO_WEB_SERVER_URL=kv://miso-controller-web-server-url
 ```
 
-**Note:** Pipeline environment variables are only needed if you're using automated CI/CD deployments. Get ClientId and ClientSecret via `aifabrix app register`.
+**Note:** 
+- `MISO_CONTROLLER_URL` uses template format (`http://${MISO_HOST}:${MISO_PORT}`) which is resolved from `env-config.yaml` based on deployment context
+- Pipeline environment variables are only needed if you're using automated CI/CD deployments. Get ClientId and ClientSecret via `aifabrix app register`
+- `MISO_WEB_SERVER_URL` is automatically added when controller is enabled
 
 ### Benefits
 

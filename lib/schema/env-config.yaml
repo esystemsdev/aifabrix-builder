@@ -11,6 +11,10 @@ environments:
     MISO_PORT: 3000
     KEYCLOAK_HOST: keycloak
     KEYCLOAK_PORT: 8082
+    NODE_ENV: production
+    PYTHONUNBUFFERED: 1
+    PYTHONDONTWRITEBYTECODE: 1
+    PYTHONIOENCODING: utf-8
 
   local:
     DB_HOST: localhost
@@ -21,3 +25,7 @@ environments:
     MISO_PORT: 3010
     KEYCLOAK_HOST: localhost
     KEYCLOAK_PORT: 8082
+    NODE_ENV: development
+    PYTHONUNBUFFERED: 1
+    PYTHONDONTWRITEBYTECODE: 1
+    PYTHONIOENCODING: utf-8

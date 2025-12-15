@@ -1,14 +1,14 @@
 # Application Metadata
 app:
   key: keycloak
-  displayName: "AI Fabrix Keycloak"
-  description: "Identity and Access Management"
+  displayName: 'AI Fabrix Keycloak'
+  description: 'Identity and Access Management'
   type: webapp
 
 # Image Configuration
 image:
   name: aifabrix/keycloak
-  tag: "latest"
+  tag: 'latest'
   registry: devflowiseacr.azurecr.io
   registryMode: acr
 

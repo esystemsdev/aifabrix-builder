@@ -1,8 +1,8 @@
 # Application Metadata
 app:
   key: miso-controller
-  displayName: "Miso Controller"
-  description: "AI Fabrix Miso Controller - Backend API and orchestration service"
+  displayName: 'Miso Controller'
+  description: 'AI Fabrix Miso Controller - Backend API and orchestration service'
   type: webapp
 
 # Image Configuration
@@ -34,7 +34,7 @@ healthCheck:
 
 # Authentication
 authentication:
-  type: local
+  type: keycloak
   enableSSO: true
   requiredRoles:
     - aifabrix-user
