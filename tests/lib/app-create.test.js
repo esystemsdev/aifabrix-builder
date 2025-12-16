@@ -209,5 +209,88 @@ describe('Application Create Module', () => {
       expect(app.createApp('my--app', {})).rejects.toThrow();
     });
   });
+
+  describe('createApp - External System', () => {
+    beforeEach(() => {
+      // Mock inquirer prompts for external system
+      const inquirer = require('inquirer');
+      inquirer.prompt.mockResolvedValue({
+        systemKey: 'test-external',
+        systemDisplayName: 'Test External',
+        systemDescription: 'Test external system integration',
+        systemType: 'openapi',
+        authType: 'oauth2',
+        datasourceCount: '2',
+        github: false
+      });
+    });
+
+    it('should create external system with env.template file', async() => {
+      const appName = 'test-external';
+      const options = {
+        type: 'external'
+      };
+
+      await app.createApp(appName, options);
+
+      // Verify directory structure
+      const appPath = path.join('integration', appName);
+      expect(await fs.access(appPath).then(() => true).catch(() => false)).toBe(true);
+
+      // Verify env.template was created
+      const envTemplatePath = path.join(appPath, 'env.template');
+      expect(await fs.access(envTemplatePath).then(() => true).catch(() => false)).toBe(true);
+
+      // Verify env.template content
+      const envContent = await fs.readFile(envTemplatePath, 'utf8');
+      expect(envContent).toContain('# test-external OAUTH2 Configuration');
+      expect(envContent).toContain('CLIENTID=kv://test-external-clientidKeyVault');
+      expect(envContent).toContain('CLIENTSECRET=kv://test-external-clientsecretKeyVault');
+    });
+
+    it('should use prompt values in variables.yaml for external system', async() => {
+      const appName = 'test-external';
+      const options = {
+        type: 'external'
+      };
+
+      await app.createApp(appName, options);
+
+      // Verify variables.yaml uses prompt values
+      const variablesPath = path.join('integration', appName, 'variables.yaml');
+      const variablesContent = await fs.readFile(variablesPath, 'utf8');
+
+      expect(variablesContent).toContain('key: test-external');
+      expect(variablesContent).toContain('displayName: Test External');
+      expect(variablesContent).toContain('description: Test external system integration');
+      expect(variablesContent).toContain('type: external');
+    });
+
+    it('should create external system with API Key auth', async() => {
+      const appName = 'test-external';
+      const inquirer = require('inquirer');
+      inquirer.prompt.mockResolvedValue({
+        systemKey: 'test-external',
+        systemDisplayName: 'Test External',
+        systemDescription: 'Test external system',
+        systemType: 'openapi',
+        authType: 'apikey',
+        datasourceCount: '1',
+        github: false
+      });
+
+      const options = {
+        type: 'external'
+      };
+
+      await app.createApp(appName, options);
+
+      // Verify env.template for API Key
+      const envTemplatePath = path.join('integration', appName, 'env.template');
+      const envContent = await fs.readFile(envTemplatePath, 'utf8');
+      expect(envContent).toContain('# test-external APIKEY Configuration');
+      expect(envContent).toContain('API_KEY=kv://test-external-api-keyKeyVault');
+    });
+  });
 });
 

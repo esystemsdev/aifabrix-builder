@@ -128,6 +128,59 @@ describe('Templates Module', () => {
         expect(parsed.deployment.environment).toBe('dev');
       });
     });
+
+    it('should generate variables.yaml for external type with config values', () => {
+      const appName = 'test-external';
+      const config = {
+        type: 'external',
+        systemKey: 'test-external',
+        systemDisplayName: 'Test External',
+        systemDescription: 'Test external system integration'
+      };
+
+      const result = templates.generateVariablesYaml(appName, config);
+      const parsed = yaml.load(result);
+
+      expect(parsed.app.key).toBe('test-external');
+      expect(parsed.app.displayName).toBe('Test External');
+      expect(parsed.app.description).toBe('Test external system integration');
+      expect(parsed.app.type).toBe('external');
+      expect(parsed.externalIntegration).toBeDefined();
+      expect(parsed.externalIntegration.schemaBasePath).toBe('./');
+    });
+
+    it('should use defaults for external type when config values are missing', () => {
+      const appName = 'test-external';
+      const config = {
+        type: 'external'
+        // No systemKey, systemDisplayName, systemDescription provided
+      };
+
+      const result = templates.generateVariablesYaml(appName, config);
+      const parsed = yaml.load(result);
+
+      expect(parsed.app.key).toBe('test-external'); // Uses appName
+      expect(parsed.app.displayName).toBe('Test External'); // Uses appName transformation
+      expect(parsed.app.description).toBe('External system integration for test-external'); // Uses prompt default
+      expect(parsed.app.type).toBe('external');
+    });
+
+    it('should use appName as fallback for systemKey in external type', () => {
+      const appName = 'my-external-app';
+      const config = {
+        type: 'external',
+        systemDisplayName: 'My External App',
+        systemDescription: 'My external system'
+        // systemKey not provided
+      };
+
+      const result = templates.generateVariablesYaml(appName, config);
+      const parsed = yaml.load(result);
+
+      expect(parsed.app.key).toBe('my-external-app'); // Uses appName as fallback
+      expect(parsed.app.displayName).toBe('My External App'); // Uses provided value
+      expect(parsed.app.description).toBe('My external system'); // Uses provided value
+    });
   });
 
   describe('generateEnvTemplate', () => {

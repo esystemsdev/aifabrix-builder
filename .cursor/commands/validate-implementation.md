@@ -114,8 +114,9 @@ Run this command in chat with `/validate-implementation [plan-file-path]`
 ### 6. Report Generation
 
 **Creates Validation Report**:
-- **Default Location**: Attached inside the plan file itself (appended to the plan)
-- **Alternative Location**: `.cursor/plans/<plan-name>-VALIDATION-REPORT.md` (if separate file is needed)
+- **Location**: **ALWAYS** appended directly to the plan file itself (at the end of the plan file)
+- **Format**: Added as a new section `## Implementation Validation Report` at the end of the plan
+- **NOT** created as a separate file - the validation report is part of the plan document
 - Contains:
   - Executive summary (overall status)
   - Task completion status
@@ -225,7 +226,7 @@ Run this command in chat with `/validate-implementation [plan-file-path]`
 - **File Detection**: Identifies file paths mentioned in plan (code blocks, file references, paths in text)
 - **Test Detection**: Looks for test files in `tests/` directory that mirror `lib/` structure
 - **Rule Validation**: Reads rules from `.cursor/rules/project-rules.mdc`
-- **Report Location**: By default, validation reports are attached inside the plan file itself (appended to the plan). Optionally, reports can be saved as separate files in `.cursor/plans/` with suffix `-VALIDATION-REPORT.md`
+- **Report Location**: Validation reports are **ALWAYS** appended directly to the plan file itself as a new section `## Implementation Validation Report` at the end. **NOT** created as separate files.
 
 ## Integration with Plans
 
@@ -260,6 +261,6 @@ This will validate:
 After completing all tasks, run:
 /validate-implementation .cursor/plans/example-plan.plan.md
 
-This will generate a validation report (attached inside the plan file) confirming all requirements are met.
+This will append a validation report section directly to the plan file (not a separate document) confirming all requirements are met.
 ```
 

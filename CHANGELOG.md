@@ -1,3 +1,22 @@
+## [2.10.1] - 2025-12-16
+
+### Fixed
+- **External System Environment Template Generation**: Fixed missing `env.template` generation for external systems
+  - External systems now properly generate `env.template` files based on authentication type (OAuth2, API Key, Basic Auth)
+  - Template includes appropriate environment variables with Key Vault references (`kv://`) for each auth type
+  - Previously, external systems skipped `env.template` generation entirely
+- **External System Variables Configuration**: Fixed hardcoded values in `variables.yaml` generation for external systems
+  - Now properly uses `systemKey`, `systemDisplayName`, and `systemDescription` from configuration
+  - Falls back to app name and generated display name when config values are not provided
+  - Ensures consistent configuration across external system creation workflow
+
+### Technical
+- Added `generateExternalSystemEnvTemplate()` function in `lib/app-config.js` for auth-type-specific template generation
+- Updated `generateEnvTemplateFile()` to handle external system type with proper template generation
+- Updated `generateVariablesYaml()` in `lib/templates.js` to use config values for external system metadata
+- Added comprehensive test coverage for external system configuration file generation
+- ISO 27001 compliant implementation maintained throughout
+
 ## [2.10.0] - 2025-12-15
 
 ### Added
