@@ -19,7 +19,7 @@ npm install -g @aifabrix/builder
 aifabrix doctor
 
 # Login to controller
-aifabrix login --method device --environment dev
+aifabrix login --method device --environment dev --offline --controller http://localhost:3000
 
 # Register your application (gets you credentials automatically)
 aifabrix app register {{appName}} --environment dev

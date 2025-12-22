@@ -48,13 +48,13 @@ aifabrix validate hubspot
 
 ```bash
 # Login to controller
-aifabrix login --controller https://controller.aifabrix.ai --method device --environment dev
+aifabrix login --controller http://localhost:3100 --method device --environment dev
 
 # Register application
 aifabrix app register hubspot --environment dev
 
 # Deploy entire system
-aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environment dev
+aifabrix deploy hubspot --controller http://localhost:3100 --environment dev
 
 # Or deploy individual datasources for testing
 aifabrix datasource deploy hubspot-company --environment dev --file integration/hubspot/hubspot-deploy-company.json

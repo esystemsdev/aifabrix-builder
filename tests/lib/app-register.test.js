@@ -750,7 +750,7 @@ describe('App Register Module', () => {
 
       const callArgs = api.authenticatedApiCall.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
-      expect(body.configuration.port).toBe(8080);
+      expect(body.port).toBe(8080);
     });
 
     it('should validate app.key schema - empty string fails', async() => {
@@ -887,6 +887,20 @@ describe('App Register Module', () => {
         yaml.dump(variables)
       );
 
+      // Create external system JSON file with URL
+      const systemJson = {
+        key: 'hubspot2',
+        displayName: 'Hubspot Service',
+        type: 'openapi',
+        environment: {
+          baseUrl: 'https://api.hubspot.com'
+        }
+      };
+      fsSync.writeFileSync(
+        path.join(appDir, 'hubspot2-deploy.json'),
+        JSON.stringify(systemJson, null, 2)
+      );
+
       await appRegister.registerApplication(appKey, { environment: 'dev' });
 
       expect(api.authenticatedApiCall).toHaveBeenCalled();
@@ -894,9 +908,12 @@ describe('App Register Module', () => {
       const body = JSON.parse(callArgs[1].body);
 
       // Verify external system configuration
-      expect(body.configuration.type).toBe('external');
-      expect(body.configuration.registryMode).toBe('external');
-      expect(body.configuration.port).toBeUndefined(); // Port should not be included for external
+      expect(body.type).toBe('external');
+      expect(body.registryMode).toBeUndefined(); // registryMode should not be included for external
+      expect(body.port).toBeUndefined(); // Port should not be included for external
+      expect(body.image).toBeUndefined(); // Image should not be included for external
+      expect(body.externalIntegration).toBeDefined(); // externalIntegration should be included
+      expect(body.externalIntegration.url).toBe('https://api.hubspot.com'); // URL extracted from system JSON
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Application registered successfully'));
     });
 
@@ -922,6 +939,20 @@ describe('App Register Module', () => {
       fsSync.writeFileSync(
         path.join(appDir, 'variables.yaml'),
         yaml.dump(variables)
+      );
+
+      // Create external system JSON file with URL
+      const systemJson = {
+        key: 'external-app',
+        displayName: 'External App',
+        type: 'openapi',
+        environment: {
+          baseUrl: 'https://api.external.com'
+        }
+      };
+      fsSync.writeFileSync(
+        path.join(appDir, 'external-app-deploy.json'),
+        JSON.stringify(systemJson, null, 2)
       );
 
       // Should not throw error about port validation
@@ -956,7 +987,7 @@ describe('App Register Module', () => {
       expect(api.authenticatedApiCall).toHaveBeenCalled();
       const callArgs = api.authenticatedApiCall.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
-      expect(body.configuration.port).toBe(3000); // Default port
+      expect(body.port).toBe(3000); // Default port
     });
   });
 
@@ -973,9 +1004,12 @@ describe('App Register Module', () => {
           name: 'Test App',
           type: 'external' // This should be valid according to schema
         },
-        build: {
-          language: 'typescript',
-          port: 3000
+        externalIntegration: {
+          schemaBasePath: './',
+          systems: ['test-app-deploy.json'],
+          dataSources: [],
+          autopublish: true,
+          version: '1.0.0'
         }
       };
       fsSync.writeFileSync(
@@ -983,8 +1017,20 @@ describe('App Register Module', () => {
         yaml.dump(variables)
       );
 
-      // Note: This will actually create a webapp because build.language exists
-      // To test external, we need to use integration directory
+      // Create external system JSON file with URL
+      const systemJson = {
+        key: 'test-app',
+        displayName: 'Test App',
+        type: 'openapi',
+        environment: {
+          baseUrl: 'https://api.test.com'
+        }
+      };
+      fsSync.writeFileSync(
+        path.join(appDir, 'test-app-deploy.json'),
+        JSON.stringify(systemJson, null, 2)
+      );
+
       await appRegister.registerApplication(appKey, { environment: 'dev' });
 
       // Should succeed
@@ -1017,7 +1063,7 @@ describe('App Register Module', () => {
       const body = JSON.parse(callArgs[1].body);
 
       // Registry mode should be one of: acr, external, public (from schema)
-      expect(['acr', 'external', 'public']).toContain(body.configuration.registryMode);
+      expect(['acr', 'external', 'public']).toContain(body.registryMode);
     });
 
     it('should validate port range according to schema constraints', async() => {
@@ -1046,7 +1092,7 @@ describe('App Register Module', () => {
       expect(api.authenticatedApiCall).toHaveBeenCalled();
       const callArgs = api.authenticatedApiCall.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
-      expect(body.configuration.port).toBe(1);
+      expect(body.port).toBe(1);
 
       // Test maximum port (65535)
       const variablesMax = {
@@ -1069,7 +1115,7 @@ describe('App Register Module', () => {
 
       const callArgsMax = api.authenticatedApiCall.mock.calls[0];
       const bodyMax = JSON.parse(callArgsMax[1].body);
-      expect(bodyMax.configuration.port).toBe(65535);
+      expect(bodyMax.port).toBe(65535);
     });
 
     it('should validate key pattern according to schema', async() => {

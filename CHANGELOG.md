@@ -1,3 +1,32 @@
+## [2.11.0] - 2025-12-22
+
+### Changed
+- **Application Registration Code Refactoring**: Significant code organization improvements for application registration
+  - Split `lib/app-register.js` (473 lines) into focused utility modules following single responsibility principle
+  - Created `lib/utils/app-register-api.js` for API call utilities
+  - Created `lib/utils/app-register-auth.js` for authentication handling
+  - Created `lib/utils/app-register-config.js` for configuration extraction
+  - Created `lib/utils/app-register-display.js` for display utilities
+  - Created `lib/utils/app-register-validator.js` for validation logic
+  - Improved code maintainability and testability with modular architecture
+- **Error Handling Refactoring**: Enhanced error handling with specialized formatters
+  - Split `lib/utils/api-error-handler.js` (464 lines) into focused error formatter modules
+  - Created `lib/utils/error-formatters/` directory with specialized formatters:
+    - `error-parser.js` - Core error parsing utilities
+    - `http-status-errors.js` - HTTP status code error handling
+    - `network-errors.js` - Network error handling
+    - `permission-errors.js` - Permission error handling
+    - `validation-errors.js` - Validation error handling
+  - Improved error message clarity and user guidance
+  - Better separation of concerns for error handling logic
+
+### Technical
+- Code quality improvements: All modules now comply with file size limits (≤500 lines) and function size limits (≤50 lines)
+- Improved code organization following single responsibility principle
+- Enhanced test coverage for refactored modules
+- Better error handling with specialized formatters for different error types
+- ISO 27001 compliant implementation maintained throughout
+
 ## [2.10.1] - 2025-12-16
 
 ### Fixed

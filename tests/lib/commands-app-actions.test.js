@@ -445,7 +445,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
         await registerAction('python-app', { environment: 'dev' });
         const callArgs = authenticatedApiCall.mock.calls[0];
         const body = JSON.parse(callArgs[1].body);
-        expect(body.configuration.type).toBe('service');
+        expect(body.type).toBe('service');
       }
     });
   });
