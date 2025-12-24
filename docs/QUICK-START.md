@@ -20,8 +20,8 @@ flowchart TD
     Run --> Register[Register Application]
     Register --> Deploy[Deploy to Azure]
     
-    style Install fill:#e1f5ff
-    style Deploy fill:#c8e6c9
+    style Install fill:#0062FF,color:#FFFFFF
+    style Deploy fill:#10B981,color:#FFFFFF
 ```
 
 ## Step 2: Start Infrastructure
@@ -74,8 +74,8 @@ graph TD
     EnvTemplate --> Build
     Rbac --> Build
     
-    style Create fill:#e1f5ff
-    style Build fill:#fff9c4
+    style Create fill:#0062FF,color:#FFFFFF
+    style Build fill:#3B82F6,color:#FFFFFF
 ```
 
 **Pro tip:** Use flags to skip prompts:

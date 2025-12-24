@@ -17,9 +17,9 @@ flowchart LR
     Env --> Container[Docker Container]
     DeployJson --> Controller[Miso Controller]
     
-    style Variables fill:#e1f5ff
-    style Container fill:#c8e6c9
-    style Controller fill:#fff9c4
+    style Variables fill:#0062FF,color:#FFFFFF
+    style Container fill:#10B981,color:#FFFFFF
+    style Controller fill:#3B82F6,color:#FFFFFF
 ```
 
 ### Required Fields
@@ -413,11 +413,11 @@ graph TD
     Pipeline --> Controller[Miso Controller]
     Pipeline --> Dataplane[Dataplane<br/>Schema Publishing]
     
-    style Variables fill:#e1f5ff
-    style SchemaPath fill:#fff9c4
-    style Pipeline fill:#ffebee
-    style Controller fill:#c8e6c9
-    style Dataplane fill:#e8f5e9
+    style Variables fill:#0062FF,color:#FFFFFF
+    style SchemaPath fill:#3B82F6,color:#FFFFFF
+    style Pipeline fill:#F59E0B,color:#FFFFFF
+    style Controller fill:#10B981,color:#FFFFFF
+    style Dataplane fill:#10B981,color:#FFFFFF
 ```
 
 ### Full Example
@@ -659,10 +659,10 @@ flowchart LR
     EnvConfig[env-config.yaml<br/>Template variables] --> Resolver
     Resolver --> Env[.env<br/>SECRET=value<br/>Resolved]
     
-    style Template fill:#e1f5ff
-    style Secrets fill:#ffebee
-    style Resolver fill:#fff9c4
-    style Env fill:#c8e6c9
+    style Template fill:#0062FF,color:#FFFFFF
+    style Secrets fill:#EF4444,color:#FFFFFF
+    style Resolver fill:#3B82F6,color:#FFFFFF
+    style Env fill:#10B981,color:#FFFFFF
 ```
 
 ### Existing .env Files

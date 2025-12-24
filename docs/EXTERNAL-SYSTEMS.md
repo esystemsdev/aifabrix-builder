@@ -33,11 +33,11 @@ flowchart LR
     Datasources --> Dataplane[Dataplane<br/>Schema Publishing]
     Dataplane --> AIModels[AI Models<br/>Query via MCP/OpenAPI]
     
-    style ExternalAPI fill:#e1f5ff
-    style ExternalSystem fill:#fff9c4
-    style Datasources fill:#e8f5e9
-    style Dataplane fill:#c8e6c9
-    style AIModels fill:#f3e5f5
+    style ExternalAPI fill:#0062FF,color:#FFFFFF
+    style ExternalSystem fill:#3B82F6,color:#FFFFFF
+    style Datasources fill:#10B981,color:#FFFFFF
+    style Dataplane fill:#10B981,color:#FFFFFF
+    style AIModels fill:#F59E0B,color:#FFFFFF
 ```
 
 ---
@@ -91,8 +91,8 @@ graph TD
     Datasource2 --> Deploy
     Datasource3 --> Deploy
     
-    style Create fill:#e1f5ff
-    style Deploy fill:#c8e6c9
+    style Create fill:#0062FF,color:#FFFFFF
+    style Deploy fill:#10B981,color:#FFFFFF
 ```
 
 ### Step 2: Configure Authentication
@@ -215,11 +215,11 @@ flowchart LR
     TransformedData --> DataplaneSchema[Dataplane Schema<br/>Normalized structure<br/>ABAC accessFields]
     DataplaneSchema --> Query[Query via<br/>MCP/OpenAPI]
     
-    style ExternalAPI fill:#e1f5ff
-    style FieldMappings fill:#fff9c4
-    style TransformedData fill:#e8f5e9
-    style DataplaneSchema fill:#c8e6c9
-    style Query fill:#f3e5f5
+    style ExternalAPI fill:#0062FF,color:#FFFFFF
+    style FieldMappings fill:#3B82F6,color:#FFFFFF
+    style TransformedData fill:#10B981,color:#FFFFFF
+    style DataplaneSchema fill:#10B981,color:#FFFFFF
+    style Query fill:#F59E0B,color:#FFFFFF
 ```
 
 ### Step 4: Validate Configuration

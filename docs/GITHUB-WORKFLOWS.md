@@ -35,9 +35,9 @@ flowchart TD
     PRChecks --> TODO[TODO Detection]
     PRChecks --> CommitMsg[Commit Message Validation]
     
-    style CI fill:#e1f5ff
-    style Release fill:#c8e6c9
-    style PRChecks fill:#fff9c4
+    style CI fill:#0062FF,color:#FFFFFF
+    style Release fill:#10B981,color:#FFFFFF
+    style PRChecks fill:#3B82F6,color:#FFFFFF
 ```
 
 ---
@@ -185,10 +185,10 @@ flowchart TD
     
     Secrets --> Deploy
     
-    style GitHub fill:#e1f5ff
-    style Azure fill:#c8e6c9
-    style Controller fill:#fff9c4
-    style Secrets fill:#ffebee
+    style GitHub fill:#0062FF,color:#FFFFFF
+    style Azure fill:#10B981,color:#FFFFFF
+    style Controller fill:#3B82F6,color:#FFFFFF
+    style Secrets fill:#E5E7EB,stroke:#6B7280,stroke-width:2px
 ```
 
 ### Prerequisites

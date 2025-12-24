@@ -76,8 +76,8 @@ flowchart TD
     Build --> Run[Run Locally]
     Run --> Deploy[Deploy to Azure]
     
-    style Install fill:#e1f5ff
-    style Deploy fill:#c8e6c9
+    style Install fill:#0062FF,color:#FFFFFF
+    style Deploy fill:#10B981,color:#FFFFFF
 ```
 
 ## Requirements

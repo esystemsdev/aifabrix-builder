@@ -21,13 +21,16 @@ aifabrix run myapp
 
 ```mermaid
 graph TB
-    subgraph DockerNetwork[infra_aifabrix-network]
-        subgraph Infrastructure[Infrastructure]
-            Postgres[PostgreSQL<br/>postgres:5432]
-            Redis[Redis<br/>redis:6379]
+    subgraph DockerNetwork["infra_aifabrix-network"]
+        
+        subgraph Infrastructure["Infrastructure"]
+            InfraNote["Stateful · Always running"]
+            Postgres[(PostgreSQL<br/>postgres:5432)]
+            Redis[(Redis<br/>redis:6379)]
         end
         
-        subgraph Applications[Applications]
+        subgraph Applications["Applications"]
+            AppNote["Start / Stop · Scale"]
             YourApp[aifabrix-myapp<br/>Port 3000]
             OtherApp[aifabrix-otherapp<br/>Port 3001]
         end
@@ -39,12 +42,17 @@ graph TB
         YourApp -.->|HTTP calls| OtherApp
     end
     
-    Localhost[localhost:3000] -->|Port mapping| YourApp
-    Localhost2[localhost:5432] -->|Port mapping| Postgres
+    LocalhostApp[localhost:3000] -->|Port mapping| YourApp
+    LocalhostDb[localhost:5432] -->|Port mapping| Postgres
     
-    style Infrastructure fill:#e3f2fd
-    style Applications fill:#fff9c4
-    style Localhost fill:#e8f5e9
+    style DockerNetwork fill:#FFFFFF,stroke:#E5E7EB,stroke-width:2px
+    style Infrastructure fill:#F9FAFB,stroke:#E5E7EB,stroke-width:2px
+    style Applications fill:#E5E7EB,stroke:#6B7280,stroke-width:2px
+    style InfraNote fill:#FFFFFF,stroke:#CCCCCC,stroke-dasharray: 3 3
+    style AppNote fill:#FFFFFF,stroke:#CCCCCC,stroke-dasharray: 3 3
+    style LocalhostApp fill:#10B981,color:#FFFFFF
+    style LocalhostDb fill:#10B981,color:#FFFFFF
+
 ```
 
 ### Output
@@ -162,19 +170,23 @@ psql -h localhost -U pgadmin -d myapp
 
 ```mermaid
 flowchart LR
-    subgraph Container[From Inside Container]
-        App[Your App] -->|postgres:5432<br/>Docker service name| PostgresContainer[PostgreSQL Container]
+    subgraph Container["Inside Container"]
+        ContainerNote["Docker network resolution"]
+        App["Your App"] -->|postgres:5432<br/>Docker service name| PostgresContainer["PostgreSQL"]
     end
     
-    subgraph Localhost[From Local Machine]
-        LocalApp[Your Local Tools] -->|localhost:5432<br/>Port mapping| PostgresLocal[PostgreSQL Container]
+    subgraph Localhost["Local Machine"]
+        LocalNote["Host access via port mapping"]
+        LocalApp["Local tools"] -->|localhost:5432<br/>Port mapping| PostgresLocal["PostgreSQL"]
     end
     
-    PostgresContainer[PostgreSQL<br/>Same Container]
-    PostgresLocal[PostgreSQL<br/>Same Container]
+    PostgresContainer --- PostgresLocal
     
-    style Container fill:#e3f2fd
-    style Localhost fill:#fff9c4
+    style Container fill:#F9FAFB,stroke:#E5E7EB,stroke-width:2px
+    style Localhost fill:#E5E7EB,stroke:#6B7280,stroke-width:2px
+    style ContainerNote fill:#FFFFFF,stroke:#CCCCCC,stroke-dasharray: 3 3
+    style LocalNote fill:#FFFFFF,stroke:#CCCCCC,stroke-dasharray: 3 3
+
 ```
 
 ---

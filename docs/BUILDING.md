@@ -45,8 +45,8 @@ flowchart TD
     DockerEnv --> Complete[Build Complete]
     LocalEnv --> Complete
     
-    style Start fill:#e1f5ff
-    style Complete fill:#c8e6c9
+    style Start fill:#0062FF,color:#FFFFFF
+    style Complete fill:#10B981,color:#FFFFFF
 ```
 
 ### Output
@@ -98,9 +98,9 @@ flowchart TD
     TypeScript --> Dockerfile[Generate Dockerfile]
     Python --> Dockerfile
     
-    style TypeScript fill:#e3f2fd
-    style Python fill:#fff3e0
-    style Error fill:#ffebee
+    style TypeScript fill:#3B82F6,color:#FFFFFF
+    style Python fill:#3B82F6,color:#FFFFFF
+    style Error fill:#EF4444,color:#FFFFFF
 ```
 
 ---
@@ -298,10 +298,10 @@ flowchart LR
     DockerEnv --> DockerContainer[Docker Container]
     LocalEnv --> LocalDev[Local Development]
     
-    style EnvTemplate fill:#e1f5ff
-    style Resolver fill:#fff9c4
-    style DockerEnv fill:#c8e6c9
-    style LocalEnv fill:#e8f5e9
+    style EnvTemplate fill:#0062FF,color:#FFFFFF
+    style Resolver fill:#3B82F6,color:#FFFFFF
+    style DockerEnv fill:#10B981,color:#FFFFFF
+    style LocalEnv fill:#10B981,color:#FFFFFF
 ```
 
 ### Build Logs

@@ -32,18 +32,36 @@ When you run `aifabrix up`, you get **shared baseline services** that all your a
 - **Login:** admin / admin123
 
 ```mermaid
-graph TB
-    subgraph Infrastructure[Infrastructure Services]
-        Postgres[PostgreSQL<br/>Port 5432<br/>pgvector extension]
-        Redis[Redis<br/>Port 6379<br/>Cache & Sessions]
-        pgAdmin[pgAdmin<br/>Port 5050<br/>Web UI]
-        RedisCommander[Redis Commander<br/>Port 8081<br/>Web UI]
+ graph TB
+    subgraph Infrastructure["Infrastructure"]
+        InfraNote["Stateful · Always running"]
+        Postgres[(PostgreSQL)]
+        Redis[(Redis)]
     end
-    
-    Infrastructure --> Apps[Your Applications]
-    
-    style Infrastructure fill:#e3f2fd
-    style Apps fill:#fff9c4
+
+    subgraph OpsTools["Operations Tools"]
+        OpsNote["On-demand / Admin only"]
+        pgAdmin[pgAdmin]
+        RedisCommander[Redis Commander]
+    end
+
+    subgraph Applications["Applications"]
+        AppNote["Start / Stop · Scale"]
+        Keycloak[Keycloak<br/>Identity & Access]
+        MisoController[Miso Controller<br/>Deployment & Governance]
+        YourApp[Customer Application]
+        OtherApps[Other Applications]
+    end
+
+    Applications --> Infrastructure
+    OpsTools --> Infrastructure
+
+    style Infrastructure fill:#F9FAFB,stroke:#E5E7EB,stroke-width:2px
+    style Applications fill:#E5E7EB,stroke:#6B7280,stroke-width:2px
+    style OpsTools fill:#F9FAFB,stroke:#E5E7EB,stroke-width:2px
+    style InfraNote fill:#ffffff,stroke:#cccccc,stroke-dasharray: 3 3
+    style OpsNote fill:#ffffff,stroke:#cccccc,stroke-dasharray: 3 3
+    style AppNote fill:#ffffff,stroke:#cccccc,stroke-dasharray: 3 3
 ```
 
 ---
@@ -99,14 +117,16 @@ You might not need Keycloak or Miso-Controller for basic development. Install th
 
 ```mermaid
 graph TB
-    subgraph Infrastructure[Infrastructure - Always Running]
-        Postgres[PostgreSQL]
-        Redis[Redis]
+    subgraph Infrastructure["Infrastructure"]
+        InfraNote["Stateful · Always running"]
+        Postgres[(PostgreSQL)]
+        Redis[(Redis)]
         pgAdmin[pgAdmin]
         RedisCommander[Redis Commander]
     end
     
-    subgraph Applications[Applications - Start/Stop as Needed]
+    subgraph Applications["Applications"]
+        AppNote["Start / Stop · Scale"]
         Keycloak[Keycloak<br/>Authentication]
         MisoController[Miso Controller<br/>Azure Deployment]
         YourApp[Your App]
@@ -115,8 +135,11 @@ graph TB
     
     Applications --> Infrastructure
     
-    style Infrastructure fill:#e3f2fd
-    style Applications fill:#fff9c4
+    style Infrastructure fill:#F9FAFB,stroke:#E5E7EB,stroke-width:2px
+    style Applications fill:#E5E7EB,stroke:#6B7280,stroke-width:2px
+    style InfraNote fill:#FFFFFF,stroke:#CCCCCC,stroke-dasharray: 3 3
+    style AppNote fill:#FFFFFF,stroke:#CCCCCC,stroke-dasharray: 3 3
+
 ```
 
 ---

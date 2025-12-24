@@ -57,10 +57,10 @@ flowchart LR
         DeployCI --> Controller
     end
     
-    style Local fill:#e1f5ff
-    style Azure fill:#c8e6c9
-    style Controller fill:#fff9c4
-    style CICD fill:#f3e5f5
+    style Local fill:#0062FF,color:#FFFFFF
+    style Azure fill:#10B981,color:#FFFFFF
+    style Controller fill:#3B82F6,color:#FFFFFF
+    style CICD fill:#E5E7EB,stroke:#6B7280,stroke-width:2px
 ```
 
 ---
@@ -228,9 +228,9 @@ flowchart TD
     SendController --> ControllerProcess[Controller Processes]
     ControllerProcess --> DeployAzure[Deploy to Azure Container Apps]
     
-    style Start fill:#e1f5ff
-    style DeployAzure fill:#c8e6c9
-    style ControllerProcess fill:#fff9c4
+    style Start fill:#0062FF,color:#FFFFFF
+    style DeployAzure fill:#10B981,color:#FFFFFF
+    style ControllerProcess fill:#3B82F6,color:#FFFFFF
 ```
 
 ### Output
@@ -779,9 +779,9 @@ flowchart TD
     PollStatus --> Complete[Deployment Complete]
     Poll -->|No| Complete
     
-    style Variables fill:#e1f5ff
-    style Complete fill:#c8e6c9
-    style Send fill:#fff9c4
+    style Variables fill:#0062FF,color:#FFFFFF
+    style Complete fill:#10B981,color:#FFFFFF
+    style Send fill:#3B82F6,color:#FFFFFF
 ```
 
 ### Security Features
@@ -829,10 +829,11 @@ flowchart TD
     UseClient --> Controller
     UseCreds --> Controller
     
-    style DeviceToken fill:#e3f2fd
-    style ClientToken fill:#fff3e0
-    style ClientCreds fill:#f3e5f5
-    style Controller fill:#c8e6c9
+    style AuthMethods fill:#E5E7EB,stroke:#6B7280,stroke-width:2px
+    style DeviceToken fill:#0062FF,color:#FFFFFF
+    style ClientToken fill:#3B82F6,color:#FFFFFF
+    style ClientCreds fill:#6B7280,color:#FFFFFF
+    style Controller fill:#10B981,color:#FFFFFF
 ```
 
 ### API Endpoints
