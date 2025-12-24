@@ -208,7 +208,13 @@ This command ensures that:
 4. Definition of Done (add here)
 5. Tasks/Implementation (existing)
 
-### Step 6: Generate Validation Report
+### Step 6: Generate and Attach Validation Report
+
+**Report Attachment**:
+
+- Append the validation report directly to the plan file at the end
+- Do not create separate validation documents
+- Place the report after all existing plan content
 
 **Report Structure**:
 
@@ -255,10 +261,11 @@ This command ensures that:
 - ⚠️ **NEEDS UPDATES**: DoD requirements present but some rules missing or incomplete
 - ❌ **INCOMPLETE**: Missing critical DoD requirements or major rule violations
 
-**Output Modes**:
+**Report Attachment**:
 
-1. **Attach to Plan** (default): Append validation report to plan file at the end
-2. **Separate Report**: Create `.cursor/plans/<plan-name>-VALIDATION.md` (if user requests)
+- **Always append validation report to plan file**: The validation report is appended directly to the plan file at the end, after all existing content
+- **No separate documents**: Validation reports are never created as separate files - they are always integrated into the plan file itself
+- **Report placement**: Add the validation report section at the very end of the plan file, after all tasks and other sections
 
 ## Integration with Existing Commands
 
@@ -386,4 +393,5 @@ Before marking this plan as complete, ensure:
 - **DoD Order**: Always document validation order as BUILD → LINT → TEST
 - **Status**: Report status accurately based on compliance level
 - **Project-Specific**: This is a CLI tool project, adapt scope detection accordingly
+- **Report Attachment**: Validation reports are always appended to the plan file itself - never create separate validation documents
 

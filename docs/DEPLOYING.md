@@ -42,6 +42,27 @@ For automated deployments using the Pipeline API, see [GitHub Workflows Guide](G
 
 The deploy command uses Bearer token authentication. Tokens are automatically retrieved or refreshed from config.yaml, or obtained using credentials from secrets.local.yaml if needed.
 
+```mermaid
+flowchart LR
+    Local[Local Development] --> Build[Build Image]
+    Build --> Push[Push to ACR<br/>myacr.azurecr.io]
+    Push --> Deploy[Deploy via Controller]
+    Deploy --> Controller[Miso Controller]
+    Controller --> Azure[Azure Container Apps]
+    
+    subgraph CICD[CI/CD Pipeline]
+        GitHub[GitHub Actions] --> BuildCI[Build]
+        BuildCI --> PushCI[Push to ACR]
+        PushCI --> DeployCI[Deploy via Controller]
+        DeployCI --> Controller
+    end
+    
+    style Local fill:#e1f5ff
+    style Azure fill:#c8e6c9
+    style Controller fill:#fff9c4
+    style CICD fill:#f3e5f5
+```
+
 ---
 
 ## Enterprise vs Open Source
@@ -187,6 +208,30 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
    - Deploys to Azure Container Apps
    - Configures database, Redis, networking
    - Sets up RBAC and permissions
+
+```mermaid
+flowchart TD
+    Start[aifabrix deploy myapp] --> ValidateEnv[Validate Environment Exists]
+    ValidateEnv --> GetToken{Get/Refresh Token}
+    GetToken -->|Token Missing| ReadCreds[Read Credentials<br/>secrets.local.yaml]
+    ReadCreds --> Login[Login API]
+    Login --> SaveToken[Save Token to config.yaml]
+    GetToken -->|Token Valid| GenerateManifest[Generate Deployment Manifest]
+    SaveToken --> GenerateManifest
+    
+    GenerateManifest --> LoadConfig[Load Config Files<br/>variables.yaml<br/>env.template<br/>rbac.yaml]
+    LoadConfig --> ParseEnv[Parse Environment Variables]
+    ParseEnv --> BuildManifest[Build JSON Manifest]
+    BuildManifest --> GenKey[Generate Deployment Key<br/>SHA256 hash]
+    GenKey --> ValidateManifest[Validate Manifest]
+    ValidateManifest --> SendController[Send to Controller<br/>POST /api/v1/pipeline/env/deploy]
+    SendController --> ControllerProcess[Controller Processes]
+    ControllerProcess --> DeployAzure[Deploy to Azure Container Apps]
+    
+    style Start fill:#e1f5ff
+    style DeployAzure fill:#c8e6c9
+    style ControllerProcess fill:#fff9c4
+```
 
 ### Output
 
@@ -717,6 +762,28 @@ The `aifabrix deploy` command performs the following steps:
    - Maximum attempts (default: 60)
    - Terminal states: completed, failed, cancelled
 
+```mermaid
+flowchart TD
+    Variables[variables.yaml<br/>App metadata] --> Load[Load Configuration Files]
+    EnvTemplate[env.template<br/>Environment variables] --> Load
+    Rbac[rbac.yaml<br/>Roles & permissions] --> Load
+    
+    Load --> Parse[Parse Environment Variables<br/>Convert kv:// references]
+    Parse --> Build[Build Deployment Manifest<br/>Merge all configuration]
+    Build --> GenKey[Generate Deployment Key<br/>SHA256 hash of manifest]
+    GenKey --> Validate[Validate Manifest<br/>Required fields<br/>Structure checks]
+    Validate --> Send[Send to Controller<br/>POST /api/v1/pipeline/env/deploy]
+    
+    Send --> Poll{Poll Status?}
+    Poll -->|Yes| PollStatus[Poll Deployment Status<br/>Every 5 seconds]
+    PollStatus --> Complete[Deployment Complete]
+    Poll -->|No| Complete
+    
+    style Variables fill:#e1f5ff
+    style Complete fill:#c8e6c9
+    style Send fill:#fff9c4
+```
+
 ### Security Features
 
 - **HTTPS Enforcement**: All controller URLs must use HTTPS protocol
@@ -743,6 +810,30 @@ The `aifabrix deploy` command performs the following steps:
 - **Input Validation**: App names, URLs, and configurations validated
 - **Audit Logging**: All deployment attempts logged for ISO 27001 compliance
 - **Error Sanitization**: No internal paths or secrets exposed in error messages
+
+```mermaid
+flowchart TD
+    subgraph AuthMethods[Authentication Methods]
+        DeviceToken[Device Token<br/>Interactive CLI<br/>User-level audit]
+        ClientToken[Client Token<br/>Application-level<br/>Auto-refresh]
+        ClientCreds[Client Credentials<br/>CI/CD pipelines<br/>Application-level audit]
+    end
+    
+    Deploy[aifabrix deploy] --> CheckDevice{Device Token<br/>Available?}
+    CheckDevice -->|Yes| UseDevice[Use Device Token<br/>Bearer token]
+    CheckDevice -->|No| CheckClient{Client Token<br/>Available?}
+    CheckClient -->|Yes| UseClient[Use Client Token<br/>Bearer token]
+    CheckClient -->|No| UseCreds[Use Client Credentials<br/>x-client-id<br/>x-client-secret]
+    
+    UseDevice --> Controller[Miso Controller]
+    UseClient --> Controller
+    UseCreds --> Controller
+    
+    style DeviceToken fill:#e3f2fd
+    style ClientToken fill:#fff3e0
+    style ClientCreds fill:#f3e5f5
+    style Controller fill:#c8e6c9
+```
 
 ### API Endpoints
 

@@ -68,6 +68,18 @@ aifabrix run miso-controller
 4. **Run** - Start locally, connected to infrastructure
 5. **Deploy** - Push to ACR and deploy via controller
 
+```mermaid
+flowchart TD
+    Install[Install CLI] --> Up[Start Infrastructure]
+    Up --> Create[Create App]
+    Create --> Build[Build Image]
+    Build --> Run[Run Locally]
+    Run --> Deploy[Deploy to Azure]
+    
+    style Install fill:#e1f5ff
+    style Deploy fill:#c8e6c9
+```
+
 ## Requirements
 
 - **Docker Desktop** - For running containers

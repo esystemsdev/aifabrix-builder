@@ -11,7 +11,8 @@ const chalk = require('chalk');
 const ora = require('ora');
 const { handleLogin } = require('../../lib/commands/login');
 const config = require('../../lib/config');
-const { makeApiCall, initiateDeviceCodeFlow, pollDeviceCodeToken, displayDeviceCodeInfo } = require('../../lib/utils/api');
+const { makeApiCall, pollDeviceCodeToken, displayDeviceCodeInfo } = require('../../lib/utils/api');
+const { initiateDeviceCodeFlow, getToken } = require('../../lib/api/auth.api');
 const tokenManager = require('../../lib/utils/token-manager');
 const logger = require('../../lib/utils/logger');
 
@@ -20,6 +21,7 @@ jest.mock('inquirer');
 jest.mock('ora');
 jest.mock('../../lib/config');
 jest.mock('../../lib/utils/api');
+jest.mock('../../lib/api/auth.api');
 jest.mock('../../lib/utils/token-manager');
 jest.mock('../../lib/utils/logger');
 
@@ -57,11 +59,16 @@ describe('Login Command Module', () => {
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -96,11 +103,16 @@ describe('Login Command Module', () => {
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -132,11 +144,16 @@ describe('Login Command Module', () => {
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -168,11 +185,16 @@ describe('Login Command Module', () => {
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -205,11 +227,16 @@ describe('Login Command Module', () => {
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -242,11 +269,16 @@ describe('Login Command Module', () => {
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -283,7 +315,7 @@ describe('Login Command Module', () => {
         clientSecret: 'client-secret-456'
       });
 
-      makeApiCall.mockResolvedValue({
+      getToken.mockResolvedValue({
         success: true,
         data: {
           token: 'client-token-123',
@@ -341,11 +373,16 @@ describe('Login Command Module', () => {
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -395,11 +432,16 @@ describe('Login Command Module', () => {
         .mockResolvedValueOnce({ environment: 'dev' });
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -449,7 +491,7 @@ describe('Login Command Module', () => {
         clientSecret: 'test-secret'
       });
 
-      makeApiCall.mockResolvedValue({
+      getToken.mockResolvedValue({
         success: true,
         data: {
           token: 'test-token',
@@ -485,7 +527,7 @@ describe('Login Command Module', () => {
         environment: 'dev'
       };
 
-      makeApiCall.mockResolvedValue({
+      getToken.mockResolvedValue({
         success: true,
         data: {
           token: 'test-token',
@@ -507,7 +549,7 @@ describe('Login Command Module', () => {
         environment: 'dev'
       };
 
-      makeApiCall.mockResolvedValue({
+      getToken.mockResolvedValue({
         success: true,
         data: {
           token: 'test-token',
@@ -529,7 +571,7 @@ describe('Login Command Module', () => {
         environment: 'dev'
       };
 
-      makeApiCall.mockResolvedValue({
+      getToken.mockResolvedValue({
         success: true,
         data: {
           token: 'test-token',
@@ -551,7 +593,7 @@ describe('Login Command Module', () => {
         environment: 'dev'
       };
 
-      makeApiCall.mockResolvedValue({
+      getToken.mockResolvedValue({
         success: true,
         data: {
           token: 'test-token',
@@ -562,14 +604,10 @@ describe('Login Command Module', () => {
 
       await handleLogin(options);
 
-      expect(makeApiCall).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/auth/token',
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            'x-client-id': 'test-id',
-            'x-client-secret': 'test-secret'
-          })
-        })
+      expect(getToken).toHaveBeenCalledWith(
+        'test-id',
+        'test-secret',
+        'http://localhost:3000'
       );
     });
 
@@ -583,7 +621,7 @@ describe('Login Command Module', () => {
         environment: 'dev'
       };
 
-      makeApiCall.mockResolvedValue({
+      getToken.mockResolvedValue({
         success: true,
         data: {
           token: 'test-token',
@@ -601,14 +639,10 @@ describe('Login Command Module', () => {
       );
       expect(credentialsPrompt).toBeUndefined();
 
-      expect(makeApiCall).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/auth/token',
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            'x-client-id': 'provided-id',
-            'x-client-secret': 'provided-secret'
-          })
-        })
+      expect(getToken).toHaveBeenCalledWith(
+        'provided-id',
+        'provided-secret',
+        'http://localhost:3000'
       );
     });
   });
@@ -619,11 +653,16 @@ describe('Login Command Module', () => {
       inquirer.prompt.mockResolvedValueOnce({ environment: 'dev' });
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -669,11 +708,16 @@ describe('Login Command Module', () => {
       });
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -713,11 +757,16 @@ describe('Login Command Module', () => {
       });
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -762,11 +811,16 @@ describe('Login Command Module', () => {
       });
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -810,11 +864,16 @@ describe('Login Command Module', () => {
       });
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -845,11 +904,16 @@ describe('Login Command Module', () => {
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -884,11 +948,16 @@ describe('Login Command Module', () => {
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -966,14 +1035,20 @@ describe('Login Command Module', () => {
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
-      pollDeviceCodeToken.mockRejectedValue(new Error('Polling failed'));
+      const pollError = new Error('Polling failed');
+      pollDeviceCodeToken.mockRejectedValue(pollError);
 
       const mockSpinner = {
         start: jest.fn().mockReturnThis(),
@@ -1002,11 +1077,16 @@ describe('Login Command Module', () => {
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       const mockSpinner = {
@@ -1053,7 +1133,7 @@ describe('Login Command Module', () => {
         environment: 'dev'
       };
 
-      makeApiCall.mockResolvedValue({
+      getToken.mockResolvedValue({
         success: true,
         data: {
           token: 'test-token-123',
@@ -1084,7 +1164,7 @@ describe('Login Command Module', () => {
         environment: 'dev'
       };
 
-      makeApiCall.mockResolvedValue({
+      getToken.mockResolvedValue({
         success: true,
         data: {
           token: 'test-token-456',
@@ -1118,8 +1198,9 @@ describe('Login Command Module', () => {
       config.setCurrentEnvironment.mockResolvedValue();
       tokenManager.loadClientCredentials.mockResolvedValue(null);
 
-      makeApiCall.mockResolvedValue({
+      getToken.mockResolvedValue({
         success: false,
+        formattedError: 'Invalid credentials',
         error: 'Invalid credentials'
       });
 
@@ -1130,7 +1211,7 @@ describe('Login Command Module', () => {
         expect(error.message).toContain('process.exit(1)');
       }
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('❌ Error'));
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Invalid credentials'));
       expect(mockExit).toHaveBeenCalledWith(1);
     });
   });
@@ -1146,7 +1227,7 @@ describe('Login Command Module', () => {
         environment: 'dev'
       };
 
-      makeApiCall.mockResolvedValue({
+      getToken.mockResolvedValue({
         success: true,
         data: {
           token: 'test-token',
@@ -1175,11 +1256,16 @@ describe('Login Command Module', () => {
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
-        device_code: 'device-code-123',
-        user_code: 'ABCD-EFGH',
-        verification_uri: 'https://example.com/verify',
-        interval: 5,
-        expires_in: 600
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
       });
 
       pollDeviceCodeToken.mockResolvedValue({
@@ -1209,7 +1295,7 @@ describe('Login Command Module', () => {
         environment: 'dev'
       };
 
-      makeApiCall.mockResolvedValue({
+      getToken.mockResolvedValue({
         success: true,
         data: {
           token: 'test-token',
@@ -1240,7 +1326,7 @@ describe('Login Command Module', () => {
         environment: 'dev'
       };
 
-      makeApiCall.mockResolvedValue({
+      getToken.mockResolvedValue({
         success: true,
         data: {
           token: 'test-token',

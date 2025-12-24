@@ -29,6 +29,7 @@ jest.mock('fs', () => {
 jest.mock('../../lib/config');
 jest.mock('../../lib/utils/api');
 jest.mock('../../lib/utils/token-manager');
+jest.mock('../../lib/api/environments.api');
 jest.mock('../../lib/app', () => ({
   createApp: jest.fn()
 }));
@@ -36,6 +37,7 @@ jest.mock('../../lib/app', () => ({
 const { getConfig } = require('../../lib/config');
 const { authenticatedApiCall } = require('../../lib/utils/api');
 const tokenManager = require('../../lib/utils/token-manager');
+const { listEnvironmentApplications } = require('../../lib/api/environments.api');
 const app = require('../../lib/app');
 const { setupAppCommands } = require('../../lib/commands/app');
 
@@ -469,7 +471,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
         controller: 'http://localhost:3000'
       });
 
-      authenticatedApiCall.mockResolvedValue({
+      listEnvironmentApplications.mockResolvedValue({
         success: true,
         data: {
           items: [
@@ -502,10 +504,10 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
       if (listAction) {
         await listAction({ environment: 'dev' });
-        expect(authenticatedApiCall).toHaveBeenCalledWith(
-          'http://localhost:3000/api/v1/environments/dev/applications',
-          {},
-          'test-token'
+        expect(listEnvironmentApplications).toHaveBeenCalledWith(
+          'http://localhost:3000',
+          'dev',
+          { type: 'bearer', token: 'test-token' }
         );
         expect(console.log).toHaveBeenCalled();
       }
@@ -542,14 +544,14 @@ describe('Application Commands Actions - Invoke Handlers', () => {
         controller: 'http://localhost:3000'
       });
 
-      authenticatedApiCall.mockResolvedValue({
+      listEnvironmentApplications.mockResolvedValue({
         success: false
       });
 
       if (listAction) {
         await listAction({ environment: 'dev' });
         // formatApiError will be called first, then catch block if process.exit throws
-        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('❌ Error (HTTP 0)'));
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('❌ Error'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
@@ -572,7 +574,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
         controller: 'http://localhost:3000'
       });
 
-      authenticatedApiCall.mockResolvedValue({
+      listEnvironmentApplications.mockResolvedValue({
         success: true,
         data: null
       });

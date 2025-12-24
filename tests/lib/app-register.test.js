@@ -609,10 +609,17 @@ describe('App Register Module', () => {
 
       config.getConfig.mockResolvedValue({
         apiUrl: null,
-        token: null
+        token: null,
+        device: {}
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue(null);
+      jest.spyOn(process, 'exit').mockImplementation((code) => {
+        throw new Error(`process.exit(${code})`);
       });
 
-      await appRegister.registerApplication(appKey, { environment: 'dev' });
+      await expect(
+        appRegister.registerApplication(appKey, { environment: 'dev' })
+      ).rejects.toThrow('process.exit(1)');
 
       expect(process.exit).toHaveBeenCalledWith(1);
       expect(logger.error).toHaveBeenCalledWith(

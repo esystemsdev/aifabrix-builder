@@ -29,6 +29,26 @@ aifabrix build myapp
      - Uses localhost/dev.aifabrix for infrastructure hosts
      - App port gets developer-id adjustment; infra ports use base + developer-id adjustment
 
+```mermaid
+flowchart TD
+    Start[aifabrix build myapp] --> LoadConfig[Load variables.yaml]
+    LoadConfig --> DetectLang[Detect Language]
+    DetectLang --> FindDockerfile{Find Dockerfile?}
+    FindDockerfile -->|Found| UseExisting[Use Existing Dockerfile]
+    FindDockerfile -->|Not Found| GenerateDockerfile[Generate from Template]
+    UseExisting --> BuildImage[Build Docker Image]
+    GenerateDockerfile --> BuildImage
+    BuildImage --> TagImage[Tag Image<br/>myapp-devID:tag]
+    TagImage --> GenerateEnv[Generate .env Files]
+    GenerateEnv --> DockerEnv[Docker .env<br/>builder/myapp/.env]
+    GenerateEnv --> LocalEnv[Local .env<br/>envOutputPath if configured]
+    DockerEnv --> Complete[Build Complete]
+    LocalEnv --> Complete
+    
+    style Start fill:#e1f5ff
+    style Complete fill:#c8e6c9
+```
+
 ### Output
 
 ```yaml
@@ -62,6 +82,25 @@ Or set in `variables.yaml`:
 ```yaml
 build:
   language: python
+```
+
+```mermaid
+flowchart TD
+    Start[Build Process] --> CheckPackage{Check package.json?}
+    CheckPackage -->|Found| TypeScript[TypeScript/Node.js<br/>Node 20 Alpine]
+    CheckPackage -->|Not Found| CheckRequirements{Check requirements.txt<br/>or pyproject.toml?}
+    CheckRequirements -->|Found| Python[Python<br/>Python 3.11 Alpine]
+    CheckRequirements -->|Not Found| UseConfig{Use variables.yaml<br/>build.language?}
+    UseConfig -->|typescript| TypeScript
+    UseConfig -->|python| Python
+    UseConfig -->|Not Set| Error[Error: Cannot detect language]
+    
+    TypeScript --> Dockerfile[Generate Dockerfile]
+    Python --> Dockerfile
+    
+    style TypeScript fill:#e3f2fd
+    style Python fill:#fff3e0
+    style Error fill:#ffebee
 ```
 
 ---
@@ -245,6 +284,24 @@ cat builder/myapp/.env
 **View:**
 ```bash
 cat apps/myapp/.env  # If envOutputPath points here
+```
+
+```mermaid
+flowchart LR
+    EnvTemplate[env.template<br/>Template variables] --> Resolver[Secret Resolver]
+    Secrets[secrets.yaml<br/>kv:// references] --> Resolver
+    EnvConfig[env-config.yaml<br/>Template values] --> Resolver
+    
+    Resolver --> DockerEnv[Docker .env<br/>builder/myapp/.env<br/>Docker service names<br/>Container ports]
+    Resolver --> LocalEnv[Local .env<br/>envOutputPath<br/>localhost hosts<br/>Local ports]
+    
+    DockerEnv --> DockerContainer[Docker Container]
+    LocalEnv --> LocalDev[Local Development]
+    
+    style EnvTemplate fill:#e1f5ff
+    style Resolver fill:#fff9c4
+    style DockerEnv fill:#c8e6c9
+    style LocalEnv fill:#e8f5e9
 ```
 
 ### Build Logs

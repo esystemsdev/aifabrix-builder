@@ -38,8 +38,12 @@ jest.mock('chalk', () => {
 jest.mock('../../lib/utils/token-manager', () => ({
   getDeploymentAuth: jest.fn()
 }));
-jest.mock('../../lib/utils/api', () => ({
-  authenticatedApiCall: jest.fn()
+jest.mock('../../lib/api/pipeline.api', () => ({
+  deployExternalSystemViaPipeline: jest.fn(),
+  deployDatasourceViaPipeline: jest.fn(),
+  uploadApplicationViaPipeline: jest.fn(),
+  validateUploadViaPipeline: jest.fn(),
+  publishUploadViaPipeline: jest.fn()
 }));
 jest.mock('../../lib/config', () => ({
   getConfig: jest.fn()
@@ -67,7 +71,13 @@ jest.mock('../../lib/utils/paths', () => {
 });
 
 const { getDeploymentAuth } = require('../../lib/utils/token-manager');
-const { authenticatedApiCall } = require('../../lib/utils/api');
+const {
+  deployExternalSystemViaPipeline,
+  deployDatasourceViaPipeline,
+  uploadApplicationViaPipeline,
+  validateUploadViaPipeline,
+  publishUploadViaPipeline
+} = require('../../lib/api/pipeline.api');
 const { getConfig } = require('../../lib/config');
 const logger = require('../../lib/utils/logger');
 const { getDataplaneUrl } = require('../../lib/datasource-deploy');
@@ -323,11 +333,12 @@ describe('External System Deploy Module', () => {
     });
 
     it('should build external system successfully', async() => {
-      authenticatedApiCall
+      deployExternalSystemViaPipeline
         .mockResolvedValueOnce({
           success: true,
           data: { key: 'test-external-app' }
-        })
+        });
+      deployDatasourceViaPipeline
         .mockResolvedValueOnce({
           success: true,
           data: { key: 'test-external-app-entity1' }
@@ -342,24 +353,18 @@ describe('External System Deploy Module', () => {
         'dev',
         { type: 'bearer', token: 'test-token' }
       );
-      expect(authenticatedApiCall).toHaveBeenCalledTimes(2);
-      expect(authenticatedApiCall).toHaveBeenNthCalledWith(
-        1,
-        'http://dataplane:8080/api/v1/pipeline/deploy',
-        {
-          method: 'POST',
-          body: JSON.stringify(mockSystemJson)
-        },
-        'test-token'
+      expect(deployExternalSystemViaPipeline).toHaveBeenCalledTimes(1);
+      expect(deployExternalSystemViaPipeline).toHaveBeenCalledWith(
+        'http://dataplane:8080',
+        { type: 'bearer', token: 'test-token' },
+        mockSystemJson
       );
-      expect(authenticatedApiCall).toHaveBeenNthCalledWith(
-        2,
-        'http://dataplane:8080/api/v1/pipeline/test-external-app/deploy',
-        {
-          method: 'POST',
-          body: JSON.stringify(mockDatasourceJson)
-        },
-        'test-token'
+      expect(deployDatasourceViaPipeline).toHaveBeenCalledTimes(1);
+      expect(deployDatasourceViaPipeline).toHaveBeenCalledWith(
+        'http://dataplane:8080',
+        'test-external-app',
+        { type: 'bearer', token: 'test-token' },
+        mockDatasourceJson
       );
       expect(logger.log).toHaveBeenCalled();
     });
@@ -386,19 +391,21 @@ describe('External System Deploy Module', () => {
         return Promise.reject(new Error('File not found'));
       });
 
-      authenticatedApiCall
-        .mockResolvedValueOnce({ success: true, data: {} })
+      deployExternalSystemViaPipeline.mockResolvedValueOnce({ success: true, data: {} });
+      deployDatasourceViaPipeline
         .mockResolvedValueOnce({ success: true, data: {} })
         .mockResolvedValueOnce({ success: true, data: {} });
 
       const { buildExternalSystem } = require('../../lib/external-system-deploy');
       await buildExternalSystem(appName);
 
-      expect(authenticatedApiCall).toHaveBeenCalledTimes(3);
+      expect(deployExternalSystemViaPipeline).toHaveBeenCalledTimes(1);
+      expect(deployDatasourceViaPipeline).toHaveBeenCalledTimes(2);
     });
 
     it('should use custom controller URL from options', async() => {
-      authenticatedApiCall.mockResolvedValue({ success: true, data: {} });
+      deployExternalSystemViaPipeline.mockResolvedValue({ success: true, data: {} });
+      deployDatasourceViaPipeline.mockResolvedValue({ success: true, data: {} });
       getDataplaneUrl.mockResolvedValue('http://custom-dataplane:8080');
 
       const { buildExternalSystem } = require('../../lib/external-system-deploy');
@@ -410,15 +417,12 @@ describe('External System Deploy Module', () => {
         'dev',
         expect.any(Object)
       );
-      expect(authenticatedApiCall).toHaveBeenCalledWith(
-        expect.stringContaining('http://custom-dataplane:8080'),
-        expect.any(Object),
-        expect.any(String)
-      );
+      expect(deployExternalSystemViaPipeline).toHaveBeenCalled();
     });
 
     it('should use custom environment from options', async() => {
-      authenticatedApiCall.mockResolvedValue({ success: true, data: {} });
+      deployExternalSystemViaPipeline.mockResolvedValue({ success: true, data: {} });
+      deployDatasourceViaPipeline.mockResolvedValue({ success: true, data: {} });
 
       const { buildExternalSystem } = require('../../lib/external-system-deploy');
       await buildExternalSystem(appName, { environment: 'prod' });
@@ -446,7 +450,7 @@ describe('External System Deploy Module', () => {
     });
 
     it('should throw error if system deployment fails', async() => {
-      authenticatedApiCall.mockResolvedValueOnce({
+      deployExternalSystemViaPipeline.mockResolvedValueOnce({
         success: false,
         error: 'Deployment failed',
         formattedError: 'Formatted: Deployment failed'
@@ -459,12 +463,11 @@ describe('External System Deploy Module', () => {
     });
 
     it('should throw error if datasource deployment fails', async() => {
-      authenticatedApiCall
-        .mockResolvedValueOnce({ success: true, data: {} })
-        .mockResolvedValueOnce({
-          success: false,
-          error: 'Datasource deployment failed'
-        });
+      deployExternalSystemViaPipeline.mockResolvedValueOnce({ success: true, data: {} });
+      deployDatasourceViaPipeline.mockResolvedValueOnce({
+        success: false,
+        error: 'Datasource deployment failed'
+      });
 
       const { buildExternalSystem } = require('../../lib/external-system-deploy');
       await expect(buildExternalSystem(appName))
@@ -501,7 +504,8 @@ describe('External System Deploy Module', () => {
         }
       });
       getDataplaneUrl.mockResolvedValue('http://config-dataplane:8080');
-      authenticatedApiCall.mockResolvedValue({ success: true, data: {} });
+      deployExternalSystemViaPipeline.mockResolvedValue({ success: true, data: {} });
+      deployDatasourceViaPipeline.mockResolvedValue({ success: true, data: {} });
 
       const { buildExternalSystem } = require('../../lib/external-system-deploy');
       await buildExternalSystem(appName);
@@ -512,17 +516,14 @@ describe('External System Deploy Module', () => {
         'dev',
         expect.any(Object)
       );
-      expect(authenticatedApiCall).toHaveBeenCalledWith(
-        expect.stringContaining('http://config-dataplane:8080'),
-        expect.any(Object),
-        expect.any(String)
-      );
+      expect(deployExternalSystemViaPipeline).toHaveBeenCalled();
     });
 
     it('should use default controller URL if config is missing', async() => {
       getConfig.mockResolvedValue({});
       getDataplaneUrl.mockResolvedValue('http://default-dataplane:8080');
-      authenticatedApiCall.mockResolvedValue({ success: true, data: {} });
+      deployExternalSystemViaPipeline.mockResolvedValue({ success: true, data: {} });
+      deployDatasourceViaPipeline.mockResolvedValue({ success: true, data: {} });
 
       const { buildExternalSystem } = require('../../lib/external-system-deploy');
       await buildExternalSystem(appName);
@@ -533,11 +534,7 @@ describe('External System Deploy Module', () => {
         'dev',
         expect.any(Object)
       );
-      expect(authenticatedApiCall).toHaveBeenCalledWith(
-        expect.stringContaining('http://default-dataplane:8080'),
-        expect.any(Object),
-        expect.any(String)
-      );
+      expect(deployExternalSystemViaPipeline).toHaveBeenCalled();
     });
   });
 
@@ -591,30 +588,34 @@ describe('External System Deploy Module', () => {
         token: 'test-token'
       });
       getDataplaneUrl.mockResolvedValue('http://dataplane:8080');
+      generateExternalSystemApplicationSchema.mockResolvedValue({
+        version: '1.0.0',
+        application: { key: 'test-external-app', displayName: 'Test System', type: 'openapi' },
+        dataSources: [{ key: 'test-external-app-entity1', systemKey: 'test-external-app', entityKey: 'entity1' }]
+      });
     });
 
     it('should publish external system successfully', async() => {
-      authenticatedApiCall
-        .mockResolvedValueOnce({
-          success: true,
+      uploadApplicationViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              uploadId: 'upload-123'
-            }
+            uploadId: 'upload-123'
           }
-        })
-        .mockResolvedValueOnce({
-          success: true,
+        }
+      });
+      validateUploadViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              changes: []
-            }
+            changes: []
           }
-        })
-        .mockResolvedValueOnce({
-          success: true,
-          data: { key: 'test-external-app' }
-        });
+        }
+      });
+      publishUploadViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: { key: 'test-external-app' }
+      });
 
       const { deployExternalSystem } = require('../../lib/external-system-deploy');
       await deployExternalSystem(appName);
@@ -625,30 +626,24 @@ describe('External System Deploy Module', () => {
         'dev',
         { type: 'bearer', token: 'test-token' }
       );
-      expect(authenticatedApiCall).toHaveBeenCalledTimes(3);
-      expect(authenticatedApiCall).toHaveBeenNthCalledWith(
-        1,
-        'http://dataplane:8080/api/v1/pipeline/upload',
-        expect.objectContaining({
-          method: 'POST'
-        }),
-        'test-token'
+      expect(uploadApplicationViaPipeline).toHaveBeenCalledTimes(1);
+      expect(uploadApplicationViaPipeline).toHaveBeenCalledWith(
+        'http://dataplane:8080',
+        { type: 'bearer', token: 'test-token' },
+        expect.any(Object)
       );
-      expect(authenticatedApiCall).toHaveBeenNthCalledWith(
-        2,
-        'http://dataplane:8080/api/v1/pipeline/upload/upload-123/validate',
-        expect.objectContaining({
-          method: 'POST'
-        }),
-        'test-token'
+      expect(validateUploadViaPipeline).toHaveBeenCalledTimes(1);
+      expect(validateUploadViaPipeline).toHaveBeenCalledWith(
+        'http://dataplane:8080',
+        'upload-123',
+        { type: 'bearer', token: 'test-token' }
       );
-      expect(authenticatedApiCall).toHaveBeenNthCalledWith(
-        3,
-        expect.stringContaining('/api/v1/pipeline/upload/upload-123/publish'),
-        expect.objectContaining({
-          method: 'POST'
-        }),
-        'test-token'
+      expect(publishUploadViaPipeline).toHaveBeenCalledTimes(1);
+      expect(publishUploadViaPipeline).toHaveBeenCalledWith(
+        'http://dataplane:8080',
+        'upload-123',
+        { type: 'bearer', token: 'test-token' },
+        expect.any(Object)
       );
       expect(logger.log).toHaveBeenCalled();
     });
@@ -675,50 +670,50 @@ describe('External System Deploy Module', () => {
         return Promise.reject(new Error('File not found'));
       });
 
-      authenticatedApiCall
-        .mockResolvedValueOnce({
-          success: true,
+      uploadApplicationViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              uploadId: 'upload-123'
-            }
+            uploadId: 'upload-123'
           }
-        })
-        .mockResolvedValueOnce({
-          success: true,
+        }
+      });
+      validateUploadViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              changes: []
-            }
+            changes: []
           }
-        })
-        .mockResolvedValueOnce({ success: true, data: {} });
+        }
+      });
+      publishUploadViaPipeline.mockResolvedValueOnce({ success: true, data: {} });
 
       const { deployExternalSystem } = require('../../lib/external-system-deploy');
       await deployExternalSystem(appName);
 
-      expect(authenticatedApiCall).toHaveBeenCalledTimes(3);
+      expect(uploadApplicationViaPipeline).toHaveBeenCalledTimes(1);
+      expect(validateUploadViaPipeline).toHaveBeenCalledTimes(1);
+      expect(publishUploadViaPipeline).toHaveBeenCalledTimes(1);
     });
 
     it('should use custom controller URL from options', async() => {
-      authenticatedApiCall
-        .mockResolvedValueOnce({
-          success: true,
+      uploadApplicationViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              uploadId: 'upload-123'
-            }
+            uploadId: 'upload-123'
           }
-        })
-        .mockResolvedValueOnce({
-          success: true,
+        }
+      });
+      validateUploadViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              changes: []
-            }
+            changes: []
           }
-        })
-        .mockResolvedValueOnce({ success: true, data: {} });
+        }
+      });
+      publishUploadViaPipeline.mockResolvedValueOnce({ success: true, data: {} });
       getDataplaneUrl.mockResolvedValue('http://custom-dataplane:8080');
 
       const { deployExternalSystem } = require('../../lib/external-system-deploy');
@@ -730,32 +725,27 @@ describe('External System Deploy Module', () => {
         'dev',
         expect.any(Object)
       );
-      expect(authenticatedApiCall).toHaveBeenCalledWith(
-        expect.stringContaining('http://custom-dataplane:8080'),
-        expect.any(Object),
-        expect.any(String)
-      );
+      expect(uploadApplicationViaPipeline).toHaveBeenCalled();
     });
 
     it('should use custom environment from options', async() => {
-      authenticatedApiCall
-        .mockResolvedValueOnce({
-          success: true,
+      uploadApplicationViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              uploadId: 'upload-123'
-            }
+            uploadId: 'upload-123'
           }
-        })
-        .mockResolvedValueOnce({
-          success: true,
+        }
+      });
+      validateUploadViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              changes: []
-            }
+            changes: []
           }
-        })
-        .mockResolvedValueOnce({ success: true, data: {} });
+        }
+      });
+      publishUploadViaPipeline.mockResolvedValueOnce({ success: true, data: {} });
 
       const { deployExternalSystem } = require('../../lib/external-system-deploy');
       await deployExternalSystem(appName, { environment: 'prod' });
@@ -783,7 +773,15 @@ describe('External System Deploy Module', () => {
     });
 
     it('should throw error if system publish fails', async() => {
-      authenticatedApiCall.mockResolvedValueOnce({
+      uploadApplicationViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: { data: { uploadId: 'upload-123' } }
+      });
+      validateUploadViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: { data: { changes: [] } }
+      });
+      publishUploadViaPipeline.mockResolvedValueOnce({
         success: false,
         error: 'Publish failed',
         formattedError: 'Formatted: Publish failed'
@@ -796,12 +794,18 @@ describe('External System Deploy Module', () => {
     });
 
     it('should throw error if datasource publish fails', async() => {
-      authenticatedApiCall
-        .mockResolvedValueOnce({ success: true, data: {} })
-        .mockResolvedValueOnce({
-          success: false,
-          error: 'Datasource publish failed'
-        });
+      uploadApplicationViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: { data: { uploadId: 'upload-123' } }
+      });
+      validateUploadViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: { data: { changes: [] } }
+      });
+      publishUploadViaPipeline.mockResolvedValueOnce({
+        success: false,
+        error: 'Datasource publish failed'
+      });
 
       const { deployExternalSystem } = require('../../lib/external-system-deploy');
       await expect(deployExternalSystem(appName))
@@ -864,132 +868,108 @@ describe('External System Deploy Module', () => {
     });
 
     it('should deploy using application-level workflow successfully', async() => {
-      authenticatedApiCall
-        .mockResolvedValueOnce({
-          success: true,
+      uploadApplicationViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              uploadId: 'upload-123'
-            }
+            uploadId: 'upload-123'
           }
-        })
-        .mockResolvedValueOnce({
-          success: true,
+        }
+      });
+      validateUploadViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              changes: [
-                { type: 'new', entity: 'test-external-app' }
-              ],
-              summary: '1 new system, 1 new datasource'
-            }
+            changes: [
+              { type: 'new', entity: 'test-external-app' }
+            ],
+            summary: '1 new system, 1 new datasource'
           }
-        })
-        .mockResolvedValueOnce({
-          success: true,
+        }
+      });
+      publishUploadViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              systems: ['test-external-app'],
-              dataSources: ['test-external-app-entity1']
-            }
+            systems: ['test-external-app'],
+            dataSources: ['test-external-app-entity1']
           }
-        });
+        }
+      });
 
       const { deployExternalSystem } = require('../../lib/external-system-deploy');
       await deployExternalSystem(appName);
 
       expect(generateExternalSystemApplicationSchema).toHaveBeenCalledWith(appName);
-      expect(authenticatedApiCall).toHaveBeenCalledTimes(3);
-      expect(authenticatedApiCall).toHaveBeenNthCalledWith(
-        1,
-        'http://dataplane:8080/api/v1/pipeline/upload',
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify(mockApplicationSchema)
-        }),
-        'test-token'
-      );
-      expect(authenticatedApiCall).toHaveBeenNthCalledWith(
-        2,
-        'http://dataplane:8080/api/v1/pipeline/upload/upload-123/validate',
-        expect.objectContaining({ method: 'POST' }),
-        'test-token'
-      );
-      expect(authenticatedApiCall).toHaveBeenNthCalledWith(
-        3,
-        'http://dataplane:8080/api/v1/pipeline/upload/upload-123/publish?generateMcpContract=true',
-        expect.objectContaining({ method: 'POST' }),
-        'test-token'
-      );
+      expect(uploadApplicationViaPipeline).toHaveBeenCalledTimes(1);
+      expect(validateUploadViaPipeline).toHaveBeenCalledTimes(1);
+      expect(publishUploadViaPipeline).toHaveBeenCalledTimes(1);
     });
 
     it('should skip validation when skipValidation option is true', async() => {
-      authenticatedApiCall
-        .mockResolvedValueOnce({
-          success: true,
+      uploadApplicationViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              uploadId: 'upload-123'
-            }
+            uploadId: 'upload-123'
           }
-        })
-        .mockResolvedValueOnce({
-          success: true,
+        }
+      });
+      publishUploadViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              systems: ['test-external-app']
-            }
+            systems: ['test-external-app']
           }
-        });
+        }
+      });
 
       const { deployExternalSystem } = require('../../lib/external-system-deploy');
       await deployExternalSystem(appName, { skipValidation: true });
 
-      expect(authenticatedApiCall).toHaveBeenCalledTimes(2);
+      expect(uploadApplicationViaPipeline).toHaveBeenCalledTimes(1);
+      expect(publishUploadViaPipeline).toHaveBeenCalledTimes(1);
       // Should skip validate call
-      expect(authenticatedApiCall).not.toHaveBeenCalledWith(
-        expect.stringContaining('/validate'),
-        expect.any(Object),
-        expect.any(String)
-      );
+      expect(validateUploadViaPipeline).not.toHaveBeenCalled();
     });
 
     it('should disable MCP contract generation when option is false', async() => {
-      authenticatedApiCall
-        .mockResolvedValueOnce({
-          success: true,
+      uploadApplicationViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              uploadId: 'upload-123'
-            }
+            uploadId: 'upload-123'
           }
-        })
-        .mockResolvedValueOnce({
-          success: true,
+        }
+      });
+      validateUploadViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              changes: []
-            }
+            changes: []
           }
-        })
-        .mockResolvedValueOnce({
-          success: true,
-          data: {
-            data: {}
-          }
-        });
+        }
+      });
+      publishUploadViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
+          data: {}
+        }
+      });
 
       const { deployExternalSystem } = require('../../lib/external-system-deploy');
       await deployExternalSystem(appName, { generateMcpContract: false });
 
-      expect(authenticatedApiCall).toHaveBeenCalledWith(
-        expect.stringContaining('generateMcpContract=false'),
+      expect(publishUploadViaPipeline).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
         expect.any(Object),
-        expect.any(String)
+        expect.objectContaining({ generateMcpContract: false })
       );
     });
 
     it('should throw error when upload fails', async() => {
-      authenticatedApiCall.mockResolvedValueOnce({
+      uploadApplicationViaPipeline.mockResolvedValueOnce({
         success: false,
         error: 'Upload failed'
       });
@@ -1000,19 +980,18 @@ describe('External System Deploy Module', () => {
     });
 
     it('should throw error when validation fails', async() => {
-      authenticatedApiCall
-        .mockResolvedValueOnce({
-          success: true,
+      uploadApplicationViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              uploadId: 'upload-123'
-            }
+            uploadId: 'upload-123'
           }
-        })
-        .mockResolvedValueOnce({
-          success: false,
-          error: 'Validation failed'
-        });
+        }
+      });
+      validateUploadViaPipeline.mockResolvedValueOnce({
+        success: false,
+        error: 'Validation failed'
+      });
 
       const { deployExternalSystem } = require('../../lib/external-system-deploy');
       await expect(deployExternalSystem(appName))
@@ -1020,27 +999,26 @@ describe('External System Deploy Module', () => {
     });
 
     it('should throw error when publish fails', async() => {
-      authenticatedApiCall
-        .mockResolvedValueOnce({
-          success: true,
+      uploadApplicationViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              uploadId: 'upload-123'
-            }
+            uploadId: 'upload-123'
           }
-        })
-        .mockResolvedValueOnce({
-          success: true,
+        }
+      });
+      validateUploadViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              changes: []
-            }
+            changes: []
           }
-        })
-        .mockResolvedValueOnce({
-          success: false,
-          error: 'Publish failed'
-        });
+        }
+      });
+      publishUploadViaPipeline.mockResolvedValueOnce({
+        success: false,
+        error: 'Publish failed'
+      });
 
       const { deployExternalSystem } = require('../../lib/external-system-deploy');
       await expect(deployExternalSystem(appName))
@@ -1048,7 +1026,7 @@ describe('External System Deploy Module', () => {
     });
 
     it('should throw error when uploadId is missing', async() => {
-      authenticatedApiCall.mockResolvedValueOnce({
+      uploadApplicationViaPipeline.mockResolvedValueOnce({
         success: true,
         data: {
           data: {}

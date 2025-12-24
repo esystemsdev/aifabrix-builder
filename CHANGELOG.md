@@ -1,3 +1,59 @@
+## [2.20.0] - 2025-12-23
+
+### Added
+- **Centralized API Client Architecture**: New unified API client structure for all API interactions
+  - New `lib/api/` directory with centralized API client implementation
+  - Base API client class (`lib/api/index.js`) with authentication, error handling, and request/response processing
+  - Domain-specific API modules for organized API calls:
+    - `lib/api/auth.api.js` - Authentication API functions
+    - `lib/api/applications.api.js` - Application management API functions
+    - `lib/api/deployments.api.js` - Deployment API functions
+    - `lib/api/environments.api.js` - Environment management API functions
+    - `lib/api/pipeline.api.js` - Pipeline API functions
+  - Type definitions in `lib/api/types/` directory with JSDoc `@typedef` for all request/response types
+  - Consistent error handling and response formatting across all API calls
+  - Automatic token management and refresh for authenticated requests
+- **Comprehensive Error Path Testing**: Extensive test coverage for error scenarios
+  - New error path test suites for all major modules:
+    - `tests/lib/build-error-paths.test.js` - Build command error scenarios
+    - `tests/lib/cli-error-paths.test.js` - CLI error handling
+    - `tests/lib/commands/login-error-paths.test.js` - Login command error paths
+    - `tests/lib/deployer-error-paths.test.js` - Deployment error scenarios
+    - `tests/lib/external-system-test-error-paths.test.js` - External system test errors
+    - `tests/lib/generator-error-paths.test.js` - Generator error handling
+    - `tests/lib/push-error-paths.test.js` - Push command error scenarios
+    - `tests/lib/utils/device-code-error-paths.test.js` - Device code flow errors
+    - `tests/lib/utils/health-check-error-paths.test.js` - Health check errors
+  - `tests/lib/validate-display.test.js` - Validation display formatting tests
+  - Improved test coverage for edge cases and error conditions
+
+### Changed
+- **API Call Migration**: Migrated all direct HTTP calls to use centralized API client
+  - `lib/app-list.js` - Now uses centralized applications API
+  - `lib/app-rotate-secret.js` - Migrated to centralized API client
+  - `lib/commands/login.js` - Uses centralized auth API for authentication
+  - `lib/datasource-list.js` - Migrated to centralized API client
+  - `lib/deployer.js` - Refactored to use centralized deployments and pipeline APIs
+  - `lib/environment-deploy.js` - Uses centralized environments API
+  - `lib/external-system-deploy.js` - Migrated to centralized API client
+  - `lib/external-system-download.js` - Uses centralized API client
+  - `lib/external-system-test.js` - Migrated to centralized API client
+  - `lib/utils/app-register-api.js` - Updated to use centralized applications API
+- **API Client Structure**: Standardized API call patterns across all modules
+  - Consistent error handling with formatted error messages
+  - Unified authentication token management
+  - Standardized request/response processing
+  - Better separation of concerns between API calls and business logic
+
+### Technical
+- New centralized API client architecture with domain-specific modules
+- Comprehensive type definitions using JSDoc `@typedef` for all API request/response types
+- Extensive error path test coverage (2,000+ new test lines)
+- Improved code organization with clear separation between API layer and business logic
+- Enhanced testability through centralized API client with mockable interfaces
+- ISO 27001 compliant implementation maintained throughout
+- All API calls now use consistent error handling and response formatting
+
 ## [2.11.0] - 2025-12-22
 
 ### Changed

@@ -26,6 +26,20 @@ External systems are integrations that connect to third-party APIs and make thei
 - Creating web applications
 - Anything that needs a containerized runtime
 
+```mermaid
+flowchart LR
+    ExternalAPI[External API<br/>HubSpot/Salesforce/etc] --> ExternalSystem[External System<br/>Authentication & Configuration]
+    ExternalSystem --> Datasources[Datasources<br/>Field Mappings]
+    Datasources --> Dataplane[Dataplane<br/>Schema Publishing]
+    Dataplane --> AIModels[AI Models<br/>Query via MCP/OpenAPI]
+    
+    style ExternalAPI fill:#e1f5ff
+    style ExternalSystem fill:#fff9c4
+    style Datasources fill:#e8f5e9
+    style Dataplane fill:#c8e6c9
+    style AIModels fill:#f3e5f5
+```
+
 ---
 
 ## Quick Start: Create Your First External System
@@ -61,6 +75,26 @@ integration/
 
 All files are in the same folder for easy viewing and management.
 
+```mermaid
+graph TD
+    Create[aifabrix create hubspot<br/>--type external] --> Variables[variables.yaml<br/>App configuration<br/>externalIntegration block]
+    Create --> SystemJson[hubspot-deploy.json<br/>External system definition]
+    Create --> Datasource1[hubspot-deploy-company.json<br/>Companies datasource]
+    Create --> Datasource2[hubspot-deploy-contact.json<br/>Contacts datasource]
+    Create --> Datasource3[hubspot-deploy-deal.json<br/>Deals datasource]
+    Create --> EnvTemplate[env.template<br/>Environment variables]
+    Create --> Readme[README.md<br/>Documentation]
+    
+    Variables --> Deploy[Deploy Process]
+    SystemJson --> Deploy
+    Datasource1 --> Deploy
+    Datasource2 --> Deploy
+    Datasource3 --> Deploy
+    
+    style Create fill:#e1f5ff
+    style Deploy fill:#c8e6c9
+```
+
 ### Step 2: Configure Authentication
 
 Edit `integration/hubspot/hubspot-deploy.json` to configure OAuth2. Use standard environment variable references:
@@ -69,13 +103,13 @@ Edit `integration/hubspot/hubspot-deploy.json` to configure OAuth2. Use standard
 {
   "key": "hubspot",
   "displayName": "HubSpot CRM",
+  "description": "HubSpot CRM integration",
   "type": "openapi",
   "environment": {
     "baseUrl": "https://api.hubapi.com"
   },
   "authentication": {
     "type": "oauth2",
-    "mode": "oauth2",
     "oauth2": {
       "tokenUrl": "{{TOKENURL}}",
       "clientId": "{{CLIENTID}}",
@@ -174,6 +208,20 @@ Each datasource maps an external entity (company, contact, deal) to your datapla
 - Defines `accessFields` for ABAC (Attribute-Based Access Control) filtering
 - Configures OpenAPI operations to expose via REST API
 
+```mermaid
+flowchart LR
+    ExternalAPI[External API Response<br/>properties.name.value<br/>properties.domain.value] --> FieldMappings[Field Mappings<br/>Transformations<br/>trim, toLower, toUpper]
+    FieldMappings --> TransformedData[Transformed Data<br/>name: string<br/>domain: string<br/>country: string]
+    TransformedData --> DataplaneSchema[Dataplane Schema<br/>Normalized structure<br/>ABAC accessFields]
+    DataplaneSchema --> Query[Query via<br/>MCP/OpenAPI]
+    
+    style ExternalAPI fill:#e1f5ff
+    style FieldMappings fill:#fff9c4
+    style TransformedData fill:#e8f5e9
+    style DataplaneSchema fill:#c8e6c9
+    style Query fill:#f3e5f5
+```
+
 ### Step 4: Validate Configuration
 
 ```bash
@@ -208,10 +256,12 @@ aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environmen
 ```
 
 **What happens:**
-1. `aifabrix json` - Generates `hubspot-deploy.json` combining all configuration
-2. `aifabrix deploy` - Deploys via Miso Controller pipeline API
+1. `aifabrix json` - Generates application schema structure (combines system + datasources) for pipeline deployment
+2. `aifabrix deploy` - Uses the application schema to deploy via Miso Controller pipeline API
 3. System is registered in the dataplane
 4. Datasources are published and available for querying
+
+**Note:** The `aifabrix json` command generates an internal application schema structure used by the deployment pipeline. Individual JSON files (`hubspot-deploy.json`, `hubspot-deploy-company.json`, etc.) remain in your `integration/` folder and are referenced by the schema.
 
 ### Step 6: Verify Deployment
 
@@ -242,6 +292,7 @@ The external system JSON (`<app-name>-deploy.json`) defines the connection to th
 **Required fields:**
 - `key` - Unique identifier (lowercase, alphanumeric, hyphens)
 - `displayName` - Human-readable name
+- `description` - Description of the external system integration (required)
 - `type` - `openapi`, `mcp`, or `custom`
 - `authentication` - Auth configuration (see below)
 - `configuration` - Array of configurable variables (see Configuration section)
@@ -287,9 +338,8 @@ The `configuration` array defines variables that can be set via the Miso Control
     "validation": {
       "required": true,
       "minLength": 1,
-      "pattern": "^regex$",
-      "min": 1,
-      "max": 100
+      "maxLength": 100,
+      "pattern": "^regex$"
     }
   }
 }
@@ -441,7 +491,6 @@ Best for production integrations with user consent flows.
 {
   "authentication": {
     "type": "oauth2",
-    "mode": "oauth2",
     "oauth2": {
       "tokenUrl": "{{TOKENURL}}",
       "clientId": "{{CLIENTID}}",
@@ -489,7 +538,6 @@ Simpler for testing or private APIs.
 {
   "authentication": {
     "type": "apikey",
-    "mode": "apikey",
     "apikey": {
       "headerName": "X-API-Key",
       "key": "{{APIKEY}}"
@@ -521,7 +569,6 @@ For simple username/password authentication.
 {
   "authentication": {
     "type": "basic",
-    "mode": "basic",
     "basic": {
       "username": "{{USERNAME}}",
       "password": "{{PASSWORD}}"
@@ -545,6 +592,52 @@ For simple username/password authentication.
 ```
 
 **Note:** Standard variables (`USERNAME`, `PASSWORD`) don't need `portalInput`—they're managed by the dataplane credentials system.
+
+#### Azure AD (AAD)
+
+For Azure Active Directory authentication.
+
+```json
+{
+  "authentication": {
+    "type": "aad",
+    "aad": {
+      "tenantId": "{{TENANTID}}",
+      "clientId": "{{CLIENTID}}",
+      "clientSecret": "{{CLIENTSECRET}}",
+      "scope": "https://graph.microsoft.com/.default"
+    }
+  },
+  "configuration": [
+    {
+      "name": "TENANTID",
+      "value": "azure-tenantidKeyVault",
+      "location": "keyvault",
+      "required": true
+    },
+    {
+      "name": "CLIENTID",
+      "value": "azure-clientidKeyVault",
+      "location": "keyvault",
+      "required": true
+    },
+    {
+      "name": "CLIENTSECRET",
+      "value": "azure-clientsecretKeyVault",
+      "location": "keyvault",
+      "required": true
+    }
+  ]
+}
+```
+
+**Note:** Standard variables (`CLIENTID`, `CLIENTSECRET`) don't need `portalInput`—they're managed by the dataplane credentials system.
+
+**Setup steps:**
+1. Register Azure AD application in Azure Portal
+2. Get `tenantId`, `clientId`, and `clientSecret`
+3. Set values via Miso Controller or Dataplane portal interface
+4. Configure required API permissions and scopes
 
 ### Datasource Configuration
 
@@ -582,6 +675,8 @@ Each datasource maps one entity type from the external system.
   }
 }
 ```
+
+**Note:** Datasource files are named using the `entityKey` field: `<system-key>-deploy-<entity-key>.json`. For example, a datasource with `entityKey: "company"` and `systemKey: "hubspot"` creates the file `hubspot-deploy-company.json`.
 
 ### Field Mappings
 
@@ -677,6 +772,34 @@ Test payloads allow you to test field mappings and metadata schemas locally and 
 - Catch mapping errors early in development
 - Ensure consistent transformation results
 
+### Advanced Datasource Features
+
+The datasource schema supports additional advanced features beyond basic field mappings:
+
+**Execution Engine:**
+- `execution.engine` - Choose between `"cip"` (Composable Integration Pipeline, declarative) or `"python"` (custom handlers)
+- `execution.cip` - Define CIP operations with steps (fetch, paginate, map, filter, output)
+- `execution.python` - Reference Python entrypoint for custom logic
+
+**Capabilities:**
+- `capabilities` - Declare which operations are supported (`list`, `get`, `create`, `update`, `delete`)
+
+**Data Quality & Validation:**
+- `validation` - Advanced validation rules (repeating values, merge strategies)
+- `quality` - Data quality rules (reject conditions, validation operators)
+- `indexing` - Indexing and embedding strategy (embedding fields, unique keys, deduplication)
+
+**AI Context:**
+- `context` - Natural-language hints for AI agents (semantic tags, synonyms, natural language hints)
+
+**Document Storage:**
+- `documentStorage` - Vector storage configuration for document-based datasources
+
+**Sync Configuration:**
+- `sync` - Record synchronization rules (pull/push/bidirectional, schedule, batch size)
+
+These features are optional and can be added as needed. See the `external-datasource.schema.json` for complete schema definitions.
+
 ### OpenAPI Operations
 
 Configure which API endpoints to expose for each datasource.
@@ -761,12 +884,17 @@ Here's a complete HubSpot integration with companies, contacts, and deals.
 integration/
   hubspot/
     variables.yaml
-    hubspot-deploy.json
-    hubspot-deploy-company.json
-    hubspot-deploy-contact.json
-    hubspot-deploy-deal.json
+    hubspot-deploy.json                    # External system definition
+    hubspot-deploy-company.json            # Datasource: entityKey="company"
+    hubspot-deploy-contact.json           # Datasource: entityKey="contact"
+    hubspot-deploy-deal.json              # Datasource: entityKey="deal"
     env.template
 ```
+
+**File Naming Convention:**
+- System file: `<system-key>-deploy.json` (e.g., `hubspot-deploy.json`)
+- Datasource files: `<system-key>-deploy-<entity-key>.json` (e.g., `hubspot-deploy-company.json`)
+- The `entityKey` comes from the datasource's `entityKey` field in the JSON
 
 ### variables.yaml
 
@@ -802,7 +930,6 @@ externalIntegration:
   },
   "authentication": {
     "type": "oauth2",
-    "mode": "oauth2",
     "oauth2": {
       "tokenUrl": "{{TOKENURL}}",
       "clientId": "{{CLIENTID}}",
@@ -1052,8 +1179,9 @@ aifabrix json hubspot
 
 **What happens:**
 - Combines `variables.yaml` with all JSON files
-- Generates `application-schema.json` ready for deployment (for external systems)
-- Validates all configurations
+- Generates application schema structure (system + datasources) ready for deployment
+- Validates all configurations against schemas
+- The schema structure is used internally by `aifabrix deploy` command
 
 ### 4. Deploy to Controller
 

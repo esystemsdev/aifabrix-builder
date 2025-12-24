@@ -10,6 +10,20 @@ Get your AI Fabrix application running in 5 minutes.
 npm install -g @aifabrix/builder
 ```
 
+```mermaid
+flowchart TD
+    Install[Install CLI] --> Up[Start Infrastructure]
+    Up --> Create[Create App]
+    Create --> Config[Review Configuration]
+    Config --> Build[Build Image]
+    Build --> Run[Run Locally]
+    Run --> Register[Register Application]
+    Register --> Deploy[Deploy to Azure]
+    
+    style Install fill:#e1f5ff
+    style Deploy fill:#c8e6c9
+```
+
 ## Step 2: Start Infrastructure
 
 ```bash
@@ -47,6 +61,22 @@ aifabrix create myapp
 - `builder/<app>/rbac.yaml` - Roles & permissions (if authentication=yes)
 - `builder/<app>/aifabrix-deploy.json` - Deployment manifest
 - `builder/<app>/README.md` - Application documentation
+
+```mermaid
+graph TD
+    Create[aifabrix create myapp] --> Variables[variables.yaml<br/>App configuration]
+    Create --> EnvTemplate[env.template<br/>Environment variables]
+    Create --> Rbac[rbac.yaml<br/>Roles & permissions]
+    Create --> DeployJson[aifabrix-deploy.json<br/>Deployment manifest]
+    Create --> Readme[README.md<br/>Documentation]
+    
+    Variables --> Build[Build Process]
+    EnvTemplate --> Build
+    Rbac --> Build
+    
+    style Create fill:#e1f5ff
+    style Build fill:#fff9c4
+```
 
 **Pro tip:** Use flags to skip prompts:
 ```bash

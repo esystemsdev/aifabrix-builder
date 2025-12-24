@@ -19,6 +19,34 @@ aifabrix run myapp
 5. **Maps ports** - localhost → container
 6. **Mounts volumes** - For data persistence
 
+```mermaid
+graph TB
+    subgraph DockerNetwork[infra_aifabrix-network]
+        subgraph Infrastructure[Infrastructure]
+            Postgres[PostgreSQL<br/>postgres:5432]
+            Redis[Redis<br/>redis:6379]
+        end
+        
+        subgraph Applications[Applications]
+            YourApp[aifabrix-myapp<br/>Port 3000]
+            OtherApp[aifabrix-otherapp<br/>Port 3001]
+        end
+        
+        YourApp -->|DATABASE_URL| Postgres
+        YourApp -->|REDIS_URL| Redis
+        OtherApp -->|DATABASE_URL| Postgres
+        OtherApp -->|REDIS_URL| Redis
+        YourApp -.->|HTTP calls| OtherApp
+    end
+    
+    Localhost[localhost:3000] -->|Port mapping| YourApp
+    Localhost2[localhost:5432] -->|Port mapping| Postgres
+    
+    style Infrastructure fill:#e3f2fd
+    style Applications fill:#fff9c4
+    style Localhost fill:#e8f5e9
+```
+
 ### Output
 
 ```
@@ -131,6 +159,23 @@ psql -h localhost -U pgadmin -d myapp
 **Connect with GUI:**
 - pgAdmin: http://localhost:5050
 - DBeaver, DataGrip, etc. use `localhost:5432`
+
+```mermaid
+flowchart LR
+    subgraph Container[From Inside Container]
+        App[Your App] -->|postgres:5432<br/>Docker service name| PostgresContainer[PostgreSQL Container]
+    end
+    
+    subgraph Localhost[From Local Machine]
+        LocalApp[Your Local Tools] -->|localhost:5432<br/>Port mapping| PostgresLocal[PostgreSQL Container]
+    end
+    
+    PostgresContainer[PostgreSQL<br/>Same Container]
+    PostgresLocal[PostgreSQL<br/>Same Container]
+    
+    style Container fill:#e3f2fd
+    style Localhost fill:#fff9c4
+```
 
 ---
 

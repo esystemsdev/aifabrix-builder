@@ -15,11 +15,32 @@ const axios = require('axios');
 
 // Mock axios
 jest.mock('axios');
+jest.mock('../../lib/api/pipeline.api');
+jest.mock('../../lib/utils/token-manager');
+jest.mock('../../lib/utils/deployment-validation');
+
 const mockedAxios = axios;
+const { deployPipeline, getPipelineDeployment, validatePipeline } = require('../../lib/api/pipeline.api');
+const tokenManager = require('../../lib/utils/token-manager');
+const { validateEnvironmentKey, validateControllerUrl } = require('../../lib/utils/deployment-validation');
 
 describe('deployer', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Use fake timers for retry tests
+    jest.useFakeTimers();
+    // Mock validateEnvironmentKey by default (will be restored in specific test suites)
+    validateEnvironmentKey.mockImplementation((key) => key);
+    // Mock validateControllerUrl by default (will be restored in specific test suites)
+    validateControllerUrl.mockReturnValue('https://controller.example.com');
+    tokenManager.extractClientCredentials.mockResolvedValue({
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret'
+    });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   describe('createBearerTokenHeaders', () => {
@@ -113,6 +134,12 @@ describe('deployer', () => {
   });
 
   describe('validateEnvironmentKey', () => {
+    beforeEach(() => {
+      // Use real implementation for these tests
+      const realValidation = jest.requireActual('../../lib/utils/deployment-validation');
+      validateEnvironmentKey.mockImplementation(realValidation.validateEnvironmentKey);
+    });
+
     it('should accept valid environment keys', () => {
       const validKeys = ['dev', 'tst', 'pro', 'miso', 'DEV', 'TST', 'PRO'];
       validKeys.forEach(key => {
@@ -140,6 +167,12 @@ describe('deployer', () => {
   });
 
   describe('validateControllerUrl', () => {
+    beforeEach(() => {
+      // Use real implementation for these tests
+      const realValidation = jest.requireActual('../../lib/utils/deployment-validation');
+      validateControllerUrl.mockImplementation(realValidation.validateControllerUrl);
+    });
+
     it('should accept valid HTTPS URLs', () => {
       const validUrls = [
         'https://controller.example.com',
@@ -190,11 +223,12 @@ describe('deployer', () => {
       const validateToken = 'validate-token-123';
       const authConfig = { type: 'bearer', token: 'test-token-123', clientId: 'test-id', clientSecret: 'test-secret' };
 
-      mockedAxios.post.mockResolvedValue({
-        status: 200,
+      deployPipeline.mockResolvedValue({
+        success: true,
         data: {
-          success: true,
-          deploymentId: 'deploy-123'
+          data: {
+            deploymentId: 'deploy-123'
+          }
         }
       });
 
@@ -207,19 +241,20 @@ describe('deployer', () => {
       );
 
       expect(result).toBeDefined();
-      expect(result.success).toBe(true);
-      expect(mockedAxios.post).toHaveBeenCalled();
+      expect(result.deploymentId).toBe('deploy-123');
+      expect(deployPipeline).toHaveBeenCalled();
     });
 
     it('should send deployment request successfully with client credentials', async() => {
       const validateToken = 'validate-token-123';
       const authConfig = { type: 'credentials', clientId: 'test-id', clientSecret: 'test-secret' };
 
-      mockedAxios.post.mockResolvedValue({
-        status: 200,
+      deployPipeline.mockResolvedValue({
+        success: true,
         data: {
-          success: true,
-          deploymentId: 'deploy-123'
+          data: {
+            deploymentId: 'deploy-123'
+          }
         }
       });
 
@@ -232,17 +267,17 @@ describe('deployer', () => {
       );
 
       expect(result).toBeDefined();
-      expect(result.success).toBe(true);
-      expect(mockedAxios.post).toHaveBeenCalled();
+      expect(result.deploymentId).toBe('deploy-123');
+      expect(deployPipeline).toHaveBeenCalled();
     });
 
     it('should use environment-aware endpoint', async() => {
       const validateToken = 'validate-token-123';
       const authConfig = { type: 'bearer', token: 'test-token-456', clientId: 'test-id', clientSecret: 'test-secret' };
 
-      mockedAxios.post.mockResolvedValue({
-        status: 200,
-        data: { success: true, deploymentId: 'deploy-123' }
+      deployPipeline.mockResolvedValue({
+        success: true,
+        data: { data: { deploymentId: 'deploy-123' } }
       });
 
       await deployer.sendDeploymentRequest(
@@ -252,15 +287,15 @@ describe('deployer', () => {
         authConfig
       );
 
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://controller.example.com/api/v1/pipeline/tst/deploy',
-        { validateToken: validateToken, imageTag: 'latest' },
+      expect(deployPipeline).toHaveBeenCalledWith(
+        'https://controller.example.com',
+        'tst',
         expect.objectContaining({
-          headers: expect.objectContaining({
-            'x-client-id': 'test-id',
-            'x-client-secret': 'test-secret'
-          })
-        })
+          type: 'client-credentials',
+          clientId: 'test-id',
+          clientSecret: 'test-secret'
+        }),
+        { validateToken: validateToken, imageTag: 'latest' }
       );
     });
 
@@ -268,9 +303,9 @@ describe('deployer', () => {
       const validateToken = 'validate-token-123';
       const authConfig = { type: 'bearer', token: 'my-bearer-token', clientId: 'my-client-id', clientSecret: 'my-client-secret' };
 
-      mockedAxios.post.mockResolvedValue({
-        status: 200,
-        data: { success: true, deploymentId: 'deploy-123' }
+      deployPipeline.mockResolvedValue({
+        success: true,
+        data: { data: { deploymentId: 'deploy-123' } }
       });
 
       await deployer.sendDeploymentRequest(
@@ -280,21 +315,25 @@ describe('deployer', () => {
         authConfig
       );
 
-      const callArgs = mockedAxios.post.mock.calls[0];
-      const requestConfig = callArgs[2];
-      expect(requestConfig.headers['x-client-id']).toBe('my-client-id');
-      expect(requestConfig.headers['x-client-secret']).toBe('my-client-secret');
-      expect(requestConfig.headers['Content-Type']).toBe('application/json');
-      expect(requestConfig.headers['User-Agent']).toBe('aifabrix-builder/2.0.0');
+      expect(deployPipeline).toHaveBeenCalledWith(
+        'https://controller.example.com',
+        'dev',
+        expect.objectContaining({
+          type: 'client-credentials',
+          clientId: 'my-client-id',
+          clientSecret: 'my-client-secret'
+        }),
+        expect.any(Object)
+      );
     });
 
     it('should include client credentials authentication headers in request', async() => {
       const validateToken = 'validate-token-123';
       const authConfig = { type: 'credentials', clientId: 'my-client-id', clientSecret: 'my-client-secret' };
 
-      mockedAxios.post.mockResolvedValue({
-        status: 200,
-        data: { success: true, deploymentId: 'deploy-123' }
+      deployPipeline.mockResolvedValue({
+        success: true,
+        data: { data: { deploymentId: 'deploy-123' } }
       });
 
       await deployer.sendDeploymentRequest(
@@ -304,17 +343,25 @@ describe('deployer', () => {
         authConfig
       );
 
-      const callArgs = mockedAxios.post.mock.calls[0];
-      const requestConfig = callArgs[2];
-      expect(requestConfig.headers['x-client-id']).toBe('my-client-id');
-      expect(requestConfig.headers['x-client-secret']).toBe('my-client-secret');
-      expect(requestConfig.headers['Content-Type']).toBe('application/json');
-      expect(requestConfig.headers['User-Agent']).toBe('aifabrix-builder/2.0.0');
+      expect(deployPipeline).toHaveBeenCalledWith(
+        'https://controller.example.com',
+        'dev',
+        expect.objectContaining({
+          type: 'client-credentials',
+          clientId: 'my-client-id',
+          clientSecret: 'my-client-secret'
+        }),
+        expect.any(Object)
+      );
     });
 
     it('should validate environment key before sending request', async() => {
       const validateToken = 'validate-token-123';
       const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      // Use real implementation for this test
+      const realValidation = jest.requireActual('../../lib/utils/deployment-validation');
+      validateEnvironmentKey.mockImplementation(realValidation.validateEnvironmentKey);
 
       await expect(
         deployer.sendDeploymentRequest(
@@ -330,15 +377,20 @@ describe('deployer', () => {
       const validateToken = 'validate-token-123';
       const authConfig = { type: 'bearer', token: 'test-token-123', clientId: 'test-id', clientSecret: 'test-secret' };
 
-      mockedAxios.post
-        .mockRejectedValueOnce(new Error('Network error'))
-        .mockRejectedValueOnce(new Error('Network error'))
+      const error1 = new Error('Network error');
+      error1.status = 500;
+      const error2 = new Error('Network error');
+      error2.status = 500;
+
+      deployPipeline
+        .mockRejectedValueOnce(error1)
+        .mockRejectedValueOnce(error2)
         .mockResolvedValueOnce({
-          status: 200,
-          data: { success: true, deploymentId: 'deploy-123' }
+          success: true,
+          data: { data: { deploymentId: 'deploy-123' } }
         });
 
-      const result = await deployer.sendDeploymentRequest(
+      const resultPromise = deployer.sendDeploymentRequest(
         'https://controller.example.com',
         'dev',
         validateToken,
@@ -346,46 +398,80 @@ describe('deployer', () => {
         { timeout: 10000, maxRetries: 5 }
       );
 
-      expect(result.success).toBe(true);
-      expect(mockedAxios.post).toHaveBeenCalledTimes(3);
+      // Advance timers to skip retry delays
+      await jest.runAllTimersAsync();
+      await Promise.resolve();
+
+      const result = await resultPromise;
+
+      expect(result.deploymentId).toBe('deploy-123');
+      expect(deployPipeline).toHaveBeenCalledTimes(3);
     });
 
     it('should fail after max retries', async() => {
-      mockedAxios.post.mockRejectedValue(new Error('Always fails'));
+      const error = new Error('Always fails');
+      error.status = 500;
+      deployPipeline.mockRejectedValue(error);
 
       const validateToken = 'validate-token-123';
       const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
 
-      await expect(
-        deployer.sendDeploymentRequest('https://controller.example.com', 'dev', validateToken, authConfig, {
-          timeout: 1000,
-          maxRetries: 2
-        })
-      ).rejects.toThrow();
+      // Start the promise but don't await it yet
+      const resultPromise = deployer.sendDeploymentRequest('https://controller.example.com', 'dev', validateToken, authConfig, {
+        timeout: 100,
+        maxRetries: 2
+      });
+
+      // Let API call execute (first attempt fails)
+      await Promise.resolve();
+
+      // Advance timer for first retry delay (1000ms)
+      jest.advanceTimersByTime(1000);
+      await Promise.resolve();
+
+      // Let second API call execute (second attempt fails)
+      await Promise.resolve();
+
+      // Advance timer for second retry delay (2000ms)
+      jest.advanceTimersByTime(2000);
+      await Promise.resolve();
+
+      // Let final error be thrown
+      await Promise.resolve();
+
+      await expect(resultPromise).rejects.toThrow();
     });
 
     it('should handle 400 errors', async() => {
-      mockedAxios.post.mockResolvedValue({
+      deployPipeline.mockResolvedValue({
+        success: false,
         status: 400,
-        statusText: 'Bad Request',
+        formattedError: 'Invalid manifest',
+        error: 'Bad Request',
         data: { error: 'Invalid manifest' }
       });
 
       const validateToken = 'validate-token-123';
       const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
 
-      await expect(
-        deployer.sendDeploymentRequest('https://controller.example.com', 'dev', validateToken, authConfig)
-      ).rejects.toThrow();
+      const resultPromise = deployer.sendDeploymentRequest('https://controller.example.com', 'dev', validateToken, authConfig, {
+        timeout: 100,
+        maxRetries: 1
+      });
+
+      // Let API call complete
+      await Promise.resolve();
+
+      // 400 errors don't retry, so no need to advance timers
+      await expect(resultPromise).rejects.toThrow();
     });
   });
 
   describe('pollDeploymentStatus', () => {
     it('should poll deployment status successfully', async() => {
-      mockedAxios.get.mockResolvedValue({
-        status: 200,
+      getPipelineDeployment.mockResolvedValue({
+        success: true,
         data: {
-          success: true,
           data: {
             id: 'test-deploy-123',
             status: 'completed',
@@ -410,10 +496,9 @@ describe('deployer', () => {
     });
 
     it('should use environment-aware status endpoint', async() => {
-      mockedAxios.get.mockResolvedValue({
-        status: 200,
+      getPipelineDeployment.mockResolvedValue({
+        success: true,
         data: {
-          success: true,
           data: { id: 'test-123', status: 'completed' },
           timestamp: '2024-01-01T12:00:00Z'
         }
@@ -427,21 +512,21 @@ describe('deployer', () => {
         authConfig
       );
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        'https://controller.example.com/api/v1/pipeline/pro/deployments/test-123',
+      expect(getPipelineDeployment).toHaveBeenCalledWith(
+        'https://controller.example.com',
+        'pro',
+        'test-123',
         expect.objectContaining({
-          headers: expect.objectContaining({
-            'Authorization': 'Bearer test-token-456'
-          })
+          type: 'bearer',
+          token: 'test-token-456'
         })
       );
     });
 
     it('should include authentication headers in status polling', async() => {
-      mockedAxios.get.mockResolvedValue({
-        status: 200,
+      getPipelineDeployment.mockResolvedValue({
+        success: true,
         data: {
-          success: true,
           data: { id: 'test-123', status: 'completed' },
           timestamp: '2024-01-01T12:00:00Z'
         }
@@ -456,16 +541,21 @@ describe('deployer', () => {
         { interval: 10, maxAttempts: 1 }
       );
 
-      const callArgs = mockedAxios.get.mock.calls[0];
-      const requestConfig = callArgs[1];
-      expect(requestConfig.headers['Authorization']).toBe('Bearer poll-bearer-token');
+      expect(getPipelineDeployment).toHaveBeenCalledWith(
+        'https://controller.example.com',
+        'dev',
+        'test-123',
+        expect.objectContaining({
+          type: 'bearer',
+          token: 'poll-bearer-token'
+        })
+      );
     });
 
     it('should support client credentials in status polling', async() => {
-      mockedAxios.get.mockResolvedValue({
-        status: 200,
+      getPipelineDeployment.mockResolvedValue({
+        success: true,
         data: {
-          success: true,
           data: { id: 'test-123', status: 'completed' },
           timestamp: '2024-01-01T12:00:00Z'
         }
@@ -480,17 +570,22 @@ describe('deployer', () => {
         { interval: 10, maxAttempts: 1 }
       );
 
-      const callArgs = mockedAxios.get.mock.calls[0];
-      const requestConfig = callArgs[1];
-      expect(requestConfig.headers['x-client-id']).toBe('test-id');
-      expect(requestConfig.headers['x-client-secret']).toBe('test-secret');
+      expect(getPipelineDeployment).toHaveBeenCalledWith(
+        'https://controller.example.com',
+        'dev',
+        'test-123',
+        expect.objectContaining({
+          type: 'client-credentials',
+          clientId: 'test-id',
+          clientSecret: 'test-secret'
+        })
+      );
     });
 
     it('should handle completed deployments', async() => {
-      mockedAxios.get.mockResolvedValue({
-        status: 200,
+      getPipelineDeployment.mockResolvedValue({
+        success: true,
         data: {
-          success: true,
           data: {
             id: 'test-deploy-456',
             status: 'completed',
@@ -513,10 +608,9 @@ describe('deployer', () => {
     });
 
     it('should timeout when max attempts reached', async() => {
-      mockedAxios.get.mockResolvedValue({
-        status: 200,
+      getPipelineDeployment.mockResolvedValue({
+        success: true,
         data: {
-          success: true,
           data: {
             id: 'never-complete',
             status: 'pending',
@@ -527,24 +621,47 @@ describe('deployer', () => {
       });
 
       const authConfig = { type: 'bearer', token: 'test-token' };
-      await expect(
-        deployer.pollDeploymentStatus('never-complete', 'https://controller.example.com', 'dev', authConfig, {
-          interval: 50,
-          maxAttempts: 3
-        })
-      ).rejects.toThrow();
+      // Start the promise but don't await it yet
+      const resultPromise = deployer.pollDeploymentStatus('never-complete', 'https://controller.example.com', 'dev', authConfig, {
+        interval: 50,
+        maxAttempts: 3
+      });
+
+      // First poll (attempt 0)
+      await Promise.resolve();
+
+      // Advance timer for first interval (50ms)
+      jest.advanceTimersByTime(50);
+      await Promise.resolve();
+
+      // Second poll (attempt 1)
+      await Promise.resolve();
+
+      // Advance timer for second interval (50ms)
+      jest.advanceTimersByTime(50);
+      await Promise.resolve();
+
+      // Third poll (attempt 2) - last attempt before timeout
+      await Promise.resolve();
+
+      // After 3 attempts, it should throw timeout error
+      await Promise.resolve();
+
+      await expect(resultPromise).rejects.toThrow('Deployment timeout: Maximum polling attempts reached');
     });
 
     it('should handle 404 errors', async() => {
-      mockedAxios.get.mockRejectedValue({
-        response: { status: 404 },
-        message: 'Not found'
+      getPipelineDeployment.mockResolvedValue({
+        success: false,
+        status: 404,
+        formattedError: 'Deployment non-existent not found',
+        error: 'Not found'
       });
 
       const authConfig = { type: 'bearer', token: 'test-token' };
       await expect(
         deployer.pollDeploymentStatus('non-existent', 'https://controller.example.com', 'dev', authConfig)
-      ).rejects.toThrow();
+      ).rejects.toThrow('Deployment non-existent not found');
     });
   });
 
@@ -587,22 +704,25 @@ describe('deployer', () => {
       const authConfig = { type: 'bearer', token: 'test-token-123', clientId: 'test-id', clientSecret: 'test-secret' };
 
       // Mock validate endpoint
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 200,
+      validatePipeline.mockResolvedValueOnce({
+        success: true,
         data: {
-          valid: true,
-          validateToken: 'validate-token-123',
-          draftDeploymentId: 'draft-123'
+          data: {
+            valid: true,
+            validateToken: 'validate-token-123',
+            draftDeploymentId: 'draft-123'
+          }
         }
       });
 
       // Mock deploy endpoint
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 200,
+      deployPipeline.mockResolvedValueOnce({
+        success: true,
         data: {
-          success: true,
-          deploymentId: 'deploy-123',
-          deploymentUrl: 'https://app.example.com/test-app'
+          data: {
+            deploymentId: 'deploy-123',
+            deploymentUrl: 'https://app.example.com/test-app'
+          }
         }
       });
 
@@ -615,8 +735,9 @@ describe('deployer', () => {
       );
 
       expect(result).toBeDefined();
-      expect(result.success).toBe(true);
-      expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+      expect(result.deploymentId).toBe('deploy-123');
+      expect(validatePipeline).toHaveBeenCalled();
+      expect(deployPipeline).toHaveBeenCalled();
     });
 
     it('should deploy successfully with valid manifest using client credentials', async() => {
@@ -630,22 +751,25 @@ describe('deployer', () => {
       const authConfig = { type: 'credentials', clientId: 'test-id', clientSecret: 'test-secret' };
 
       // Mock validate endpoint
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 200,
+      validatePipeline.mockResolvedValueOnce({
+        success: true,
         data: {
-          valid: true,
-          validateToken: 'validate-token-123',
-          draftDeploymentId: 'draft-123'
+          data: {
+            valid: true,
+            validateToken: 'validate-token-123',
+            draftDeploymentId: 'draft-123'
+          }
         }
       });
 
       // Mock deploy endpoint
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 200,
+      deployPipeline.mockResolvedValueOnce({
+        success: true,
         data: {
-          success: true,
-          deploymentId: 'deploy-123',
-          deploymentUrl: 'https://app.example.com/test-app'
+          data: {
+            deploymentId: 'deploy-123',
+            deploymentUrl: 'https://app.example.com/test-app'
+          }
         }
       });
 
@@ -658,8 +782,9 @@ describe('deployer', () => {
       );
 
       expect(result).toBeDefined();
-      expect(result.success).toBe(true);
-      expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+      expect(result.deploymentId).toBe('deploy-123');
+      expect(validatePipeline).toHaveBeenCalled();
+      expect(deployPipeline).toHaveBeenCalled();
     });
 
     it('should use environment key in deployment endpoint', async() => {
@@ -671,18 +796,22 @@ describe('deployer', () => {
       const authConfig = { type: 'bearer', token: 'test-token-456', clientId: 'test-id', clientSecret: 'test-secret' };
 
       // Mock validate endpoint
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 200,
+      validatePipeline.mockResolvedValueOnce({
+        success: true,
         data: {
-          valid: true,
-          validateToken: 'validate-token-123'
+          data: {
+            valid: true,
+            validateToken: 'validate-token-123'
+          }
         }
       });
 
       // Mock deploy endpoint
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 200,
-        data: { success: true, deploymentId: 'deploy-123' }
+      deployPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
+          data: { deploymentId: 'deploy-123' }
+        }
       });
 
       await deployer.deployToController(
@@ -693,27 +822,33 @@ describe('deployer', () => {
         { poll: false }
       );
 
-      // Check that validate was called with correct endpoint
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://controller.example.com/api/v1/pipeline/tst/validate',
+      // Check that validate was called with correct environment
+      expect(validatePipeline).toHaveBeenCalledWith(
+        'https://controller.example.com',
+        'tst',
+        expect.any(Object),
         expect.objectContaining({
           applicationConfig: manifest
-        }),
-        expect.any(Object)
+        })
       );
 
       // Check that deploy was called with validateToken
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://controller.example.com/api/v1/pipeline/tst/deploy',
+      expect(deployPipeline).toHaveBeenCalledWith(
+        'https://controller.example.com',
+        'tst',
+        expect.any(Object),
         expect.objectContaining({
           validateToken: 'validate-token-123',
           imageTag: 'latest'
-        }),
-        expect.any(Object)
+        })
       );
     });
 
     it('should validate and normalize environment key', async() => {
+      // Use real implementation for this test to ensure normalization
+      const realValidation = jest.requireActual('../../lib/utils/deployment-validation');
+      validateEnvironmentKey.mockImplementation(realValidation.validateEnvironmentKey);
+
       const manifest = {
         key: 'test-app',
         image: 'test-app:latest'
@@ -721,18 +856,22 @@ describe('deployer', () => {
       const authConfig = { type: 'bearer', token: 'test-token-789', clientId: 'test-id', clientSecret: 'test-secret' };
 
       // Mock validate endpoint
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 200,
+      validatePipeline.mockResolvedValueOnce({
+        success: true,
         data: {
-          valid: true,
-          validateToken: 'validate-token-123'
+          data: {
+            valid: true,
+            validateToken: 'validate-token-123'
+          }
         }
       });
 
       // Mock deploy endpoint
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 200,
-        data: { success: true, deploymentId: 'deploy-123' }
+      deployPipeline.mockResolvedValueOnce({
+        success: true,
+        data: {
+          data: { deploymentId: 'deploy-123' }
+        }
       });
 
       await deployer.deployToController(
@@ -743,9 +882,10 @@ describe('deployer', () => {
         { poll: false }
       );
 
-      // Should normalize to lowercase - check validate endpoint
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://controller.example.com/api/v1/pipeline/dev/validate',
+      // Should normalize to lowercase - check validate endpoint was called with 'dev'
+      expect(validatePipeline).toHaveBeenCalledWith(
+        'https://controller.example.com',
+        'dev',
         expect.any(Object),
         expect.any(Object)
       );
@@ -769,6 +909,10 @@ describe('deployer', () => {
     });
 
     it('should reject HTTP URLs (except localhost)', async() => {
+      // Restore real implementation for this test
+      const realValidation = jest.requireActual('../../lib/utils/deployment-validation');
+      validateControllerUrl.mockImplementation(realValidation.validateControllerUrl);
+
       const manifest = { key: 'test-app', image: 'test-app:latest' };
       const authConfig = { type: 'bearer', token: 'test-token' };
 
@@ -861,6 +1005,548 @@ describe('deployer', () => {
       ).rejects.toThrow();
 
       expect(auditLogger.logDeploymentFailure).toHaveBeenCalled();
+    });
+  });
+
+  describe('validateDeployment', () => {
+    it('should validate deployment successfully', async() => {
+      const manifest = {
+        key: 'test-app',
+        displayName: 'Test App',
+        image: 'test-app:latest',
+        port: 3000
+      };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      validatePipeline.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            valid: true,
+            validateToken: 'validate-token-123',
+            draftDeploymentId: 'draft-123',
+            imageServer: 'myacr.azurecr.io',
+            imageUsername: 'user',
+            imagePassword: 'pass',
+            expiresAt: '2024-12-31T23:59:59Z'
+          }
+        }
+      });
+
+      const result = await deployer.validateDeployment(
+        'https://controller.example.com',
+        'dev',
+        manifest,
+        authConfig
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.validateToken).toBe('validate-token-123');
+      expect(result.draftDeploymentId).toBe('draft-123');
+      expect(validatePipeline).toHaveBeenCalled();
+    });
+
+    it('should handle validation response with nested data structure', async() => {
+      const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      validatePipeline.mockResolvedValue({
+        success: true,
+        data: {
+          valid: true,
+          validateToken: 'token-456'
+        }
+      });
+
+      const result = await deployer.validateDeployment(
+        'https://controller.example.com',
+        'dev',
+        manifest,
+        authConfig
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.validateToken).toBe('token-456');
+    });
+
+    it('should use custom repository URL when provided', async() => {
+      const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      validatePipeline.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            valid: true,
+            validateToken: 'token-789'
+          }
+        }
+      });
+
+      await deployer.validateDeployment(
+        'https://controller.example.com',
+        'dev',
+        manifest,
+        authConfig,
+        { repositoryUrl: 'https://github.com/custom/repo' }
+      );
+
+      expect(validatePipeline).toHaveBeenCalledWith(
+        'https://controller.example.com',
+        'dev',
+        expect.any(Object),
+        expect.objectContaining({
+          repositoryUrl: 'https://github.com/custom/repo'
+        })
+      );
+    });
+
+    it('should use default repository URL when not provided', async() => {
+      const manifest = { key: 'my-app', image: 'my-app:latest' };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      validatePipeline.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            valid: true,
+            validateToken: 'token-default'
+          }
+        }
+      });
+
+      await deployer.validateDeployment(
+        'https://controller.example.com',
+        'dev',
+        manifest,
+        authConfig
+      );
+
+      expect(validatePipeline).toHaveBeenCalledWith(
+        'https://controller.example.com',
+        'dev',
+        expect.any(Object),
+        expect.objectContaining({
+          repositoryUrl: 'https://github.com/aifabrix/my-app'
+        })
+      );
+    });
+
+    it('should retry on 500 errors', async() => {
+      const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      const error500 = new Error('Server error');
+      error500.status = 500;
+
+      validatePipeline
+        .mockRejectedValueOnce(error500)
+        .mockResolvedValueOnce({
+          success: true,
+          data: {
+            data: {
+              valid: true,
+              validateToken: 'token-retry'
+            }
+          }
+        });
+
+      const resultPromise = deployer.validateDeployment(
+        'https://controller.example.com',
+        'dev',
+        manifest,
+        authConfig,
+        { maxRetries: 3 }
+      );
+
+      // Run all pending timers and wait for promises to resolve
+      await jest.runAllTimersAsync();
+
+      const result = await resultPromise;
+
+      expect(result.validateToken).toBe('token-retry');
+      expect(validatePipeline).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not retry on 400 errors', async() => {
+      const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      validatePipeline.mockResolvedValue({
+        success: false,
+        status: 400,
+        formattedError: 'Invalid manifest',
+        error: 'Bad Request',
+        data: { error: 'Invalid manifest' }
+      });
+
+      await expect(
+        deployer.validateDeployment(
+          'https://controller.example.com',
+          'dev',
+          manifest,
+          authConfig,
+          { maxRetries: 3 }
+        )
+      ).rejects.toThrow('Validation request failed');
+
+      expect(validatePipeline).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw error when validation fails after max retries', async() => {
+      const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      const error500 = new Error('Server error');
+      error500.status = 500;
+      validatePipeline.mockRejectedValue(error500);
+
+      const resultPromise = deployer.validateDeployment(
+        'https://controller.example.com',
+        'dev',
+        manifest,
+        authConfig,
+        { maxRetries: 2 }
+      );
+
+      await Promise.resolve();
+      jest.advanceTimersByTime(1000);
+      await Promise.resolve();
+      jest.advanceTimersByTime(2000);
+      await Promise.resolve();
+
+      await expect(resultPromise).rejects.toThrow('Server error');
+      expect(validatePipeline).toHaveBeenCalledTimes(2);
+    });
+
+    it('should throw error when valid is false', async() => {
+      const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      validatePipeline.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            valid: false,
+            errors: ['Invalid configuration']
+          }
+        }
+      });
+
+      await expect(
+        deployer.validateDeployment(
+          'https://controller.example.com',
+          'dev',
+          manifest,
+          authConfig,
+          { maxRetries: 1 }
+        )
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('pollDeploymentStatus - terminal status handling', () => {
+    it('should return immediately for completed status', async() => {
+      getPipelineDeployment.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            id: 'deploy-123',
+            status: 'completed',
+            progress: 100
+          },
+          timestamp: '2024-01-01T12:00:00Z'
+        }
+      });
+
+      const authConfig = { type: 'bearer', token: 'test-token' };
+      const result = await deployer.pollDeploymentStatus(
+        'deploy-123',
+        'https://controller.example.com',
+        'dev',
+        authConfig,
+        { interval: 100, maxAttempts: 10 }
+      );
+
+      expect(result.status).toBe('completed');
+      expect(getPipelineDeployment).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return immediately for failed status', async() => {
+      getPipelineDeployment.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            id: 'deploy-123',
+            status: 'failed',
+            progress: 0
+          },
+          timestamp: '2024-01-01T12:00:00Z'
+        }
+      });
+
+      const authConfig = { type: 'bearer', token: 'test-token' };
+      const result = await deployer.pollDeploymentStatus(
+        'deploy-123',
+        'https://controller.example.com',
+        'dev',
+        authConfig,
+        { interval: 100, maxAttempts: 10 }
+      );
+
+      expect(result.status).toBe('failed');
+      expect(getPipelineDeployment).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return immediately for cancelled status', async() => {
+      getPipelineDeployment.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            id: 'deploy-123',
+            status: 'cancelled',
+            progress: 50
+          },
+          timestamp: '2024-01-01T12:00:00Z'
+        }
+      });
+
+      const authConfig = { type: 'bearer', token: 'test-token' };
+      const result = await deployer.pollDeploymentStatus(
+        'deploy-123',
+        'https://controller.example.com',
+        'dev',
+        authConfig,
+        { interval: 100, maxAttempts: 10 }
+      );
+
+      expect(result.status).toBe('cancelled');
+      expect(getPipelineDeployment).toHaveBeenCalledTimes(1);
+    });
+
+    it('should continue polling for non-terminal statuses', async() => {
+      getPipelineDeployment
+        .mockResolvedValueOnce({
+          success: true,
+          data: {
+            data: {
+              id: 'deploy-123',
+              status: 'pending',
+              progress: 25
+            },
+            timestamp: '2024-01-01T12:00:00Z'
+          }
+        })
+        .mockResolvedValueOnce({
+          success: true,
+          data: {
+            data: {
+              id: 'deploy-123',
+              status: 'completed',
+              progress: 100
+            },
+            timestamp: '2024-01-01T12:00:01Z'
+          }
+        });
+
+      const authConfig = { type: 'bearer', token: 'test-token' };
+      const resultPromise = deployer.pollDeploymentStatus(
+        'deploy-123',
+        'https://controller.example.com',
+        'dev',
+        authConfig,
+        { interval: 50, maxAttempts: 10 }
+      );
+
+      await Promise.resolve();
+      jest.advanceTimersByTime(50);
+      await Promise.resolve();
+
+      const result = await resultPromise;
+
+      expect(result.status).toBe('completed');
+      expect(getPipelineDeployment).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('deployToController - integration with sendDeployment and pollDeployment', () => {
+    it('should skip polling when poll option is false', async() => {
+      const manifest = {
+        key: 'test-app',
+        displayName: 'Test App',
+        image: 'test-app:latest',
+        port: 3000
+      };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      validatePipeline.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            valid: true,
+            validateToken: 'validate-token-123',
+            draftDeploymentId: 'draft-123'
+          }
+        }
+      });
+
+      deployPipeline.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            deploymentId: 'deploy-123',
+            deploymentUrl: 'https://app.example.com'
+          }
+        }
+      });
+
+      const auditLogger = require('../../lib/audit-logger');
+      jest.spyOn(auditLogger, 'logDeploymentSuccess').mockResolvedValue();
+
+      const result = await deployer.deployToController(
+        manifest,
+        'https://controller.example.com',
+        'dev',
+        authConfig,
+        { poll: false }
+      );
+
+      expect(result.deploymentId).toBe('deploy-123');
+      expect(getPipelineDeployment).not.toHaveBeenCalled();
+      expect(auditLogger.logDeploymentSuccess).toHaveBeenCalled();
+    });
+
+    it('should poll deployment status when poll option is true', async() => {
+      const manifest = {
+        key: 'test-app',
+        displayName: 'Test App',
+        image: 'test-app:latest',
+        port: 3000
+      };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      validatePipeline.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            valid: true,
+            validateToken: 'validate-token-123'
+          }
+        }
+      });
+
+      deployPipeline.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            deploymentId: 'deploy-123'
+          }
+        }
+      });
+
+      getPipelineDeployment.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            id: 'deploy-123',
+            status: 'completed',
+            progress: 100
+          },
+          timestamp: '2024-01-01T12:00:00Z'
+        }
+      });
+
+      const resultPromise = deployer.deployToController(
+        manifest,
+        'https://controller.example.com',
+        'dev',
+        authConfig,
+        {
+          poll: true,
+          pollInterval: 50,
+          pollMaxAttempts: 10
+        }
+      );
+
+      await Promise.resolve();
+      await Promise.resolve();
+      jest.advanceTimersByTime(50);
+      await Promise.resolve();
+
+      const result = await resultPromise;
+
+      expect(result.deploymentId).toBe('deploy-123');
+      expect(result.status.status).toBe('completed');
+      expect(getPipelineDeployment).toHaveBeenCalled();
+    });
+
+    it('should throw error when validation returns invalid result', async() => {
+      const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      validatePipeline.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            valid: false,
+            errors: ['Invalid configuration']
+          }
+        }
+      });
+
+      await expect(
+        deployer.deployToController(
+          manifest,
+          'https://controller.example.com',
+          'dev',
+          authConfig,
+          { maxRetries: 1, poll: false }
+        )
+      ).rejects.toThrow();
+    });
+
+    it('should use custom repository URL when provided', async() => {
+      const manifest = { key: 'test-app', image: 'test-app:latest' };
+      const authConfig = { type: 'bearer', token: 'test-token', clientId: 'test-id', clientSecret: 'test-secret' };
+
+      validatePipeline.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            valid: true,
+            validateToken: 'token-123'
+          }
+        }
+      });
+
+      deployPipeline.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            deploymentId: 'deploy-123'
+          }
+        }
+      });
+
+      await deployer.deployToController(
+        manifest,
+        'https://controller.example.com',
+        'dev',
+        authConfig,
+        {
+          repositoryUrl: 'https://github.com/custom/repo',
+          poll: false
+        }
+      );
+
+      expect(validatePipeline).toHaveBeenCalledWith(
+        'https://controller.example.com',
+        'dev',
+        expect.any(Object),
+        expect.objectContaining({
+          repositoryUrl: 'https://github.com/custom/repo'
+        })
+      );
     });
   });
 });

@@ -1262,11 +1262,16 @@ aifabrix deploy myapp --no-poll
 
 # Deploy to specific environment (updates root-level environment)
 aifabrix deploy myapp --environment pro
+
+# Deploy with explicit client credentials (overrides config)
+aifabrix deploy myapp --controller https://controller.aifabrix.ai --client-id my-client-id --client-secret my-secret
 ```
 
 **Flags:**
 - `-c, --controller <url>` - Controller URL (overrides variables.yaml)
 - `-e, --environment <env>` - Environment (miso, dev, tst, pro) - updates root-level environment in config.yaml if provided
+- `--client-id <id>` - Client ID (overrides config)
+- `--client-secret <secret>` - Client Secret (overrides config)
 - `--poll` - Poll for deployment status (default: true)
 - `--no-poll` - Do not poll for status
 
@@ -2222,8 +2227,15 @@ aifabrix resolve myapp --force
 ```
 This will automatically generate missing secret keys in the secrets file with placeholder values.
 
+**Skip validation after generating .env:**
+```bash
+aifabrix resolve myapp --skip-validation
+```
+This will generate the .env file without running validation checks afterward.
+
 **Flags:**
 - `-f, --force` - Generate missing secret keys in secrets file
+- `--skip-validation` - Skip file validation after generating .env
 
 **Creates:** `builder/myapp/.env`
 

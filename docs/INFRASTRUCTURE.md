@@ -31,6 +31,21 @@ When you run `aifabrix up`, you get **shared baseline services** that all your a
 - **Access:** http://localhost:8081
 - **Login:** admin / admin123
 
+```mermaid
+graph TB
+    subgraph Infrastructure[Infrastructure Services]
+        Postgres[PostgreSQL<br/>Port 5432<br/>pgvector extension]
+        Redis[Redis<br/>Port 6379<br/>Cache & Sessions]
+        pgAdmin[pgAdmin<br/>Port 5050<br/>Web UI]
+        RedisCommander[Redis Commander<br/>Port 8081<br/>Web UI]
+    end
+    
+    Infrastructure --> Apps[Your Applications]
+    
+    style Infrastructure fill:#e3f2fd
+    style Apps fill:#fff9c4
+```
+
 ---
 
 ## Commands
@@ -81,6 +96,28 @@ aifabrix down --volumes
 **Applications** = Start/stop as needed, specific purpose (Keycloak, Miso-Controller, your apps)
 
 You might not need Keycloak or Miso-Controller for basic development. Install them when you need them.
+
+```mermaid
+graph TB
+    subgraph Infrastructure[Infrastructure - Always Running]
+        Postgres[PostgreSQL]
+        Redis[Redis]
+        pgAdmin[pgAdmin]
+        RedisCommander[Redis Commander]
+    end
+    
+    subgraph Applications[Applications - Start/Stop as Needed]
+        Keycloak[Keycloak<br/>Authentication]
+        MisoController[Miso Controller<br/>Azure Deployment]
+        YourApp[Your App]
+        OtherApps[Other Apps]
+    end
+    
+    Applications --> Infrastructure
+    
+    style Infrastructure fill:#e3f2fd
+    style Applications fill:#fff9c4
+```
 
 ---
 

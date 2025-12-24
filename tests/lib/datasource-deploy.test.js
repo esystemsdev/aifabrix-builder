@@ -23,8 +23,11 @@ jest.mock('chalk', () => {
 jest.mock('../../lib/utils/token-manager', () => ({
   getDeploymentAuth: jest.fn()
 }));
-jest.mock('../../lib/utils/api', () => ({
-  authenticatedApiCall: jest.fn()
+jest.mock('../../lib/api/environments.api', () => ({
+  getEnvironmentApplication: jest.fn()
+}));
+jest.mock('../../lib/api/pipeline.api', () => ({
+  publishDatasourceViaPipeline: jest.fn()
 }));
 jest.mock('../../lib/utils/api-error-handler', () => ({
   formatApiError: jest.fn()
@@ -40,7 +43,8 @@ jest.mock('../../lib/datasource-validate', () => ({
 
 const fsSync = require('fs');
 const { getDeploymentAuth } = require('../../lib/utils/token-manager');
-const { authenticatedApiCall } = require('../../lib/utils/api');
+const { getEnvironmentApplication } = require('../../lib/api/environments.api');
+const { publishDatasourceViaPipeline } = require('../../lib/api/pipeline.api');
 const { formatApiError } = require('../../lib/utils/api-error-handler');
 const logger = require('../../lib/utils/logger');
 const { validateDatasourceFile } = require('../../lib/datasource-validate');
@@ -69,16 +73,17 @@ describe('Datasource Deploy Module', () => {
         }
       };
 
-      authenticatedApiCall.mockResolvedValue(mockResponse);
+      getEnvironmentApplication.mockResolvedValue(mockResponse);
 
       const { getDataplaneUrl } = require('../../lib/datasource-deploy');
       const result = await getDataplaneUrl(controllerUrl, appKey, environment, authConfig);
 
       expect(result).toBe('http://dataplane:8080');
-      expect(authenticatedApiCall).toHaveBeenCalledWith(
-        expect.stringContaining(`/api/v1/environments/${environment}/applications/${appKey}`),
-        {},
-        'test-token'
+      expect(getEnvironmentApplication).toHaveBeenCalledWith(
+        controllerUrl,
+        environment,
+        appKey,
+        authConfig
       );
     });
 
@@ -97,7 +102,7 @@ describe('Datasource Deploy Module', () => {
         }
       };
 
-      authenticatedApiCall.mockResolvedValue(mockResponse);
+      getEnvironmentApplication.mockResolvedValue(mockResponse);
 
       const { getDataplaneUrl } = require('../../lib/datasource-deploy');
       const result = await getDataplaneUrl('http://localhost:3010', 'myapp', 'dev', authConfig);
@@ -120,7 +125,7 @@ describe('Datasource Deploy Module', () => {
         }
       };
 
-      authenticatedApiCall.mockResolvedValue(mockResponse);
+      getEnvironmentApplication.mockResolvedValue(mockResponse);
 
       const { getDataplaneUrl } = require('../../lib/datasource-deploy');
       const result = await getDataplaneUrl('http://localhost:3010', 'myapp', 'dev', authConfig);
@@ -139,7 +144,7 @@ describe('Datasource Deploy Module', () => {
         data: {}
       };
 
-      authenticatedApiCall.mockResolvedValue(mockResponse);
+      getEnvironmentApplication.mockResolvedValue(mockResponse);
 
       const { getDataplaneUrl } = require('../../lib/datasource-deploy');
       await expect(getDataplaneUrl('http://localhost:3010', 'myapp', 'dev', authConfig))
@@ -157,7 +162,7 @@ describe('Datasource Deploy Module', () => {
         formattedError: 'API Error'
       };
 
-      authenticatedApiCall.mockResolvedValue(mockResponse);
+      getEnvironmentApplication.mockResolvedValue(mockResponse);
       formatApiError.mockReturnValue('API Error');
 
       const { getDataplaneUrl } = require('../../lib/datasource-deploy');
@@ -171,6 +176,8 @@ describe('Datasource Deploy Module', () => {
         username: 'user',
         password: 'pass'
       };
+
+      getEnvironmentApplication.mockRejectedValue(new Error('Bearer token authentication required'));
 
       const { getDataplaneUrl } = require('../../lib/datasource-deploy');
       await expect(getDataplaneUrl('http://localhost:3010', 'myapp', 'dev', authConfig))
@@ -206,19 +213,18 @@ describe('Datasource Deploy Module', () => {
         token: 'test-token'
       });
 
-      authenticatedApiCall
-        .mockResolvedValueOnce({
-          success: true,
+      getEnvironmentApplication.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              dataplaneUrl: 'http://dataplane:8080'
-            }
+            dataplaneUrl: 'http://dataplane:8080'
           }
-        })
-        .mockResolvedValueOnce({
-          success: true,
-          data: { success: true }
-        });
+        }
+      });
+      publishDatasourceViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: { success: true }
+      });
 
       const { deployDatasource } = require('../../lib/datasource-deploy');
       const result = await deployDatasource(appKey, filePath, options);
@@ -228,7 +234,7 @@ describe('Datasource Deploy Module', () => {
       expect(result.systemKey).toBe('hubspot');
       expect(result.environment).toBe('dev');
       expect(validateDatasourceFile).toHaveBeenCalledWith(filePath);
-      expect(authenticatedApiCall).toHaveBeenCalledTimes(2);
+      expect(publishDatasourceViaPipeline).toHaveBeenCalledTimes(1);
     });
 
     it('should throw error if appKey is missing', async() => {
@@ -323,19 +329,18 @@ describe('Datasource Deploy Module', () => {
         token: 'test-token'
       });
 
-      authenticatedApiCall
-        .mockResolvedValueOnce({
-          success: true,
+      getEnvironmentApplication.mockResolvedValueOnce({
+        success: true,
+        data: {
           data: {
-            data: {
-              dataplaneUrl: 'http://dataplane:8080'
-            }
+            dataplaneUrl: 'http://dataplane:8080'
           }
-        })
-        .mockResolvedValueOnce({
-          success: false,
-          formattedError: 'Deployment failed'
-        });
+        }
+      });
+      publishDatasourceViaPipeline.mockResolvedValueOnce({
+        success: false,
+        formattedError: 'Deployment failed'
+      });
 
       formatApiError.mockReturnValue('Deployment failed');
 
@@ -366,14 +371,7 @@ describe('Datasource Deploy Module', () => {
         password: 'pass'
       });
 
-      authenticatedApiCall.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            dataplaneUrl: 'http://dataplane:8080'
-          }
-        }
-      });
+      getEnvironmentApplication.mockRejectedValue(new Error('Bearer token authentication required'));
 
       const { deployDatasource } = require('../../lib/datasource-deploy');
       await expect(deployDatasource('myapp', '/path/to/file.json', {

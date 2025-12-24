@@ -47,6 +47,23 @@ lib/
 ├── templates.js        # Template rendering
 ├── secrets.js          # Secret resolution (kv://)
 ├── config.js           # Configuration management
+├── api/                # Centralized API client structure
+│   ├── index.js        # Main API client class
+│   ├── types/          # JSDoc type definitions
+│   │   ├── auth.types.js
+│   │   ├── applications.types.js
+│   │   ├── deployments.types.js
+│   │   ├── environments.types.js
+│   │   ├── datasources.types.js
+│   │   ├── external-systems.types.js
+│   │   └── pipeline.types.js
+│   ├── auth.api.js     # Authentication API functions
+│   ├── applications.api.js
+│   ├── deployments.api.js
+│   ├── environments.api.js
+│   ├── datasources.api.js
+│   ├── external-systems.api.js
+│   └── pipeline.api.js
 ├── utils/              # Utility functions
 └── schema/             # JSON schemas
 ```
@@ -139,6 +156,92 @@ if (!valid) {
   throw new Error(`Validation failed: ${errors.join(', ')}`);
 }
 ```
+
+### API Client Structure Pattern
+Use the centralized API client structure in `lib/api/` for all API calls. This provides typed interfaces, domain separation, and consistent error handling.
+
+**Structure**:
+- Base client (`lib/api/index.js`) - Main HTTP client with authentication and error handling
+- Type definitions (`lib/api/types/`) - JSDoc type definitions for request/response types
+- Domain modules (`lib/api/*.api.js`) - Domain-specific API functions
+
+**Type Definitions Pattern**:
+Use JSDoc `@typedef` for all request/response types in `lib/api/types/`:
+```javascript
+/**
+ * @fileoverview Authentication API type definitions
+ * @author AI Fabrix Team
+ * @version 2.0.0
+ */
+
+/**
+ * Token request payload
+ * @typedef {Object} TokenRequest
+ * @property {string} clientId - Client ID
+ * @property {string} clientSecret - Client secret
+ */
+
+/**
+ * Token response payload
+ * @typedef {Object} TokenResponse
+ * @property {boolean} success - Request success flag
+ * @property {string} token - Authentication token
+ * @property {number} expiresIn - Token expiration time in seconds
+ * @property {string} expiresAt - Token expiration timestamp
+ */
+```
+
+**API Module Pattern**:
+Each domain module exports typed API functions:
+```javascript
+/**
+ * @fileoverview Authentication API functions
+ * @author AI Fabrix Team
+ * @version 2.0.0
+ */
+
+const { ApiClient } = require('./index');
+const { TokenRequest, TokenResponse } = require('./types/auth.types');
+
+/**
+ * Get authentication token using client credentials
+ * @async
+ * @function getToken
+ * @param {string} clientId - Client ID
+ * @param {string} clientSecret - Client secret
+ * @param {string} controllerUrl - Controller base URL
+ * @returns {Promise<TokenResponse>} Token response with access token
+ * @throws {Error} If authentication fails
+ */
+async function getToken(clientId, clientSecret, controllerUrl) {
+  const client = new ApiClient(controllerUrl);
+  return await client.post('/api/v1/auth/token', {
+    headers: {
+      'x-client-id': clientId,
+      'x-client-secret': clientSecret
+    }
+  });
+}
+
+module.exports = { getToken };
+```
+
+**Usage Pattern**:
+Import and use domain-specific API modules:
+```javascript
+const { getToken } = require('../api/auth.api');
+const { registerApplication } = require('../api/applications.api');
+
+// Use typed API functions
+const tokenResponse = await getToken(clientId, clientSecret, controllerUrl);
+const appResponse = await registerApplication(controllerUrl, environment, data, token);
+```
+
+**Migration Strategy**:
+- New code should use `lib/api/` modules
+- Existing code can continue using `lib/utils/api.js` (backward compatible)
+- Gradually migrate modules to use centralized API client
+- Eventually deprecate direct usage of `lib/utils/api.js`
 
 ## Code Style
 
@@ -255,15 +358,18 @@ tests/
 ### Mock Patterns
 - Mock fs operations: `jest.mock('fs')` or `jest.mock('fs').promises`
 - Mock axios: `jest.mock('axios')` or use `makeApiCall` mock
+- Mock API client: `jest.mock('../lib/api')` or mock individual API modules
 - Mock child_process: `jest.mock('child_process')`
 - Mock templates: provide test templates in `tests/fixtures/`
 - Pattern:
 ```javascript
 jest.mock('fs');
 jest.mock('fs').promises;
+jest.mock('../lib/api/auth.api');
 
 const fs = require('fs');
 const fsp = require('fs').promises;
+const { getToken } = require('../lib/api/auth.api');
 
 describe('ModuleName', () => {
   beforeEach(() => {
@@ -272,12 +378,46 @@ describe('ModuleName', () => {
 
   it('should handle success case', async () => {
     fsp.readFile = jest.fn().resolves('content');
+    getToken = jest.fn().resolves({ success: true, token: 'test-token' });
     // Test implementation
   });
 
   it('should handle error case', async () => {
     fsp.readFile = jest.fn().rejects(new Error('File not found'));
+    getToken = jest.fn().resolves({ success: false, error: 'Auth failed' });
     // Test error handling
+  });
+});
+```
+
+### API Client Testing Pattern
+Test API modules by mocking the base client:
+```javascript
+jest.mock('../lib/api/index');
+
+const { ApiClient } = require('../lib/api/index');
+const { getToken } = require('../lib/api/auth.api');
+
+describe('auth.api', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should get token successfully', async () => {
+    const mockResponse = { success: true, token: 'test-token' };
+    ApiClient.prototype.post = jest.fn().resolves(mockResponse);
+    
+    const result = await getToken('client-id', 'secret', 'https://controller');
+    expect(result).toEqual(mockResponse);
+    expect(ApiClient.prototype.post).toHaveBeenCalledWith(
+      '/api/v1/auth/token',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'x-client-id': 'client-id',
+          'x-client-secret': 'secret'
+        })
+      })
+    );
   });
 });
 ```
@@ -585,6 +725,54 @@ const rendered = template(context);
 await fs.writeFile(outputPath, rendered, 'utf8');
 ```
 
+### API Client Usage
+Use the centralized API client for all API calls:
+```javascript
+const { getToken } = require('../api/auth.api');
+const { registerApplication } = require('../api/applications.api');
+
+// Typed API calls with automatic error handling
+try {
+  const tokenResponse = await getToken(clientId, clientSecret, controllerUrl);
+  if (!tokenResponse.success) {
+    throw new Error(tokenResponse.formattedError || 'Authentication failed');
+  }
+  
+  const appResponse = await registerApplication(
+    controllerUrl,
+    environment,
+    registrationData,
+    tokenResponse.token
+  );
+} catch (error) {
+  console.error(chalk.red(`Error: ${error.message}`));
+  throw error;
+}
+```
+
+### Type Definition Pattern
+Define request/response types using JSDoc `@typedef`:
+```javascript
+/**
+ * Application registration request
+ * @typedef {Object} RegisterApplicationRequest
+ * @property {string} appKey - Application key
+ * @property {string} name - Application name
+ * @property {string} [description] - Application description (optional)
+ * @property {string[]} [tags] - Application tags (optional)
+ */
+
+/**
+ * Application registration response
+ * @typedef {Object} RegisterApplicationResponse
+ * @property {boolean} success - Request success flag
+ * @property {Object} data - Response data
+ * @property {string} data.appKey - Registered application key
+ * @property {string} data.clientId - Generated client ID
+ * @property {string} data.clientSecret - Generated client secret
+ */
+```
+
 ## Quality Gates
 
 ### Mandatory Checks Before Commit
@@ -663,6 +851,9 @@ await fs.writeFile(outputPath, rendered, 'utf8');
 - ✅ Use path.join() for cross-platform paths
 - ✅ Validate YAML syntax before parsing
 - ✅ Never log secrets or sensitive data
+- ✅ Use centralized API client (`lib/api/`) for new API calls
+- ✅ Define request/response types using JSDoc `@typedef` in `lib/api/types/`
+- ✅ Use domain-specific API modules (`lib/api/*.api.js`) instead of direct `makeApiCall`
 
 ### Must Not Do (❌)
 - ❌ Never hardcode secrets, passwords, or tokens
@@ -674,6 +865,9 @@ await fs.writeFile(outputPath, rendered, 'utf8');
 - ❌ Never skip tests for new functionality
 - ❌ Never use `eval()` or `Function()` constructor
 - ❌ Never use raw paths (always use path.join)
+- ❌ Never make direct API calls using `makeApiCall` in new code (use `lib/api/` modules)
+- ❌ Never skip type definitions for API request/response types
+- ❌ Never log authentication tokens or secrets in API calls
 
 ---
 

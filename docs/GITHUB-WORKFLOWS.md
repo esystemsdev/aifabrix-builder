@@ -15,6 +15,31 @@ The AI Fabrix Builder can automatically generate GitHub Actions workflows for yo
 - **Pull Request Checks** - Code quality and convention validation
 - **Security Auditing** - Dependency vulnerability scanning
 
+```mermaid
+flowchart TD
+    Push[Push to Repository] --> CI[CI Pipeline<br/>ci.yaml]
+    PR[Pull Request] --> CI
+    
+    CI --> Lint[Lint Job<br/>ESLint checks]
+    CI --> Test[Test Job<br/>Jest with coverage]
+    CI --> Security[Security Job<br/>npm audit]
+    CI --> Build[Build Job<br/>Package building]
+    
+    Tag[Version Tag<br/>v1.0.0] --> Release[Release Pipeline<br/>release.yaml]
+    Release --> Validate[Validate Job]
+    Validate --> PublishNPM[Publish NPM<br/>Optional]
+    Validate --> CreateRelease[Create GitHub Release]
+    
+    PR --> PRChecks[PR Checks<br/>pr-checks.yaml]
+    PRChecks --> FileSize[File Size Validation]
+    PRChecks --> TODO[TODO Detection]
+    PRChecks --> CommitMsg[Commit Message Validation]
+    
+    style CI fill:#e1f5ff
+    style Release fill:#c8e6c9
+    style PRChecks fill:#fff9c4
+```
+
 ---
 
 ## Generating Workflows
@@ -143,6 +168,28 @@ aifabrix create myapp --github --github-steps npm
 ## Pipeline Deployment Setup
 
 Before using automated pipeline deployment in GitHub Actions, you must register your application.
+
+```mermaid
+flowchart TD
+    GitHub[GitHub Actions<br/>Workflow Triggered] --> Build[Build Docker Image]
+    Build --> Push[Push to ACR<br/>Azure Container Registry]
+    Push --> Deploy[Deploy via Controller<br/>Pipeline API]
+    Deploy --> Controller[Miso Controller]
+    Controller --> Azure[Azure Container Apps]
+    
+    subgraph Secrets[GitHub Secrets]
+        ControllerURL[MISO_CONTROLLER_URL<br/>Repository level]
+        ClientID[DEV_MISO_CLIENTID<br/>Environment level]
+        ClientSecret[DEV_MISO_CLIENTSECRET<br/>Environment level]
+    end
+    
+    Secrets --> Deploy
+    
+    style GitHub fill:#e1f5ff
+    style Azure fill:#c8e6c9
+    style Controller fill:#fff9c4
+    style Secrets fill:#ffebee
+```
 
 ### Prerequisites
 

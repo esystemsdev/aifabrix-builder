@@ -161,6 +161,10 @@ app:
 
       // Mock handleDeploymentErrors to throw the error it receives (for error tests)
       const deployer = require('../../lib/deployer');
+      // Ensure handleDeploymentErrors is a mock function
+      if (!deployer.handleDeploymentErrors || typeof deployer.handleDeploymentErrors.mockImplementation !== 'function') {
+        deployer.handleDeploymentErrors = jest.fn();
+      }
       deployer.handleDeploymentErrors.mockImplementation(async(error) => {
         throw error;
       });
@@ -900,6 +904,381 @@ image:
 
       await expect(appDeploy.pushApp('test-app', {}))
         .rejects.toThrow(/Invalid registry URL format/);
+    });
+
+    it('should authenticate with ACR when not authenticated in executePush', async() => {
+      jest.spyOn(require('../../lib/push'), 'checkLocalImageExists').mockResolvedValue(true);
+      jest.spyOn(require('../../lib/push'), 'checkAzureCLIInstalled').mockResolvedValue(true);
+      jest.spyOn(require('../../lib/push'), 'validateRegistryURL').mockReturnValue(true);
+      jest.spyOn(require('../../lib/push'), 'checkACRAuthentication').mockResolvedValue(false);
+      jest.spyOn(require('../../lib/push'), 'authenticateACR').mockResolvedValue();
+      jest.spyOn(require('../../lib/push'), 'tagImage').mockResolvedValue();
+      jest.spyOn(require('../../lib/push'), 'pushImage').mockResolvedValue();
+
+      await appDeploy.pushApp('test-app', {});
+
+      expect(require('../../lib/push').authenticateACR).toHaveBeenCalledWith('myacr.azurecr.io');
+    });
+
+    it('should handle multiple tags in executePush', async() => {
+      jest.spyOn(require('../../lib/push'), 'checkLocalImageExists').mockResolvedValue(true);
+      jest.spyOn(require('../../lib/push'), 'checkAzureCLIInstalled').mockResolvedValue(true);
+      jest.spyOn(require('../../lib/push'), 'validateRegistryURL').mockReturnValue(true);
+      jest.spyOn(require('../../lib/push'), 'checkACRAuthentication').mockResolvedValue(true);
+      jest.spyOn(require('../../lib/push'), 'tagImage').mockResolvedValue();
+      jest.spyOn(require('../../lib/push'), 'pushImage').mockResolvedValue();
+
+      await appDeploy.pushApp('test-app', { tag: 'v1.0.0,v1.0.1,v1.0.2' });
+
+      expect(require('../../lib/push').tagImage).toHaveBeenCalledTimes(3);
+      expect(require('../../lib/push').pushImage).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle tags with whitespace', async() => {
+      jest.spyOn(require('../../lib/push'), 'checkLocalImageExists').mockResolvedValue(true);
+      jest.spyOn(require('../../lib/push'), 'checkAzureCLIInstalled').mockResolvedValue(true);
+      jest.spyOn(require('../../lib/push'), 'validateRegistryURL').mockReturnValue(true);
+      jest.spyOn(require('../../lib/push'), 'checkACRAuthentication').mockResolvedValue(true);
+      jest.spyOn(require('../../lib/push'), 'tagImage').mockResolvedValue();
+      jest.spyOn(require('../../lib/push'), 'pushImage').mockResolvedValue();
+
+      await appDeploy.pushApp('test-app', { tag: 'v1.0.0, v1.0.1 , v1.0.2' });
+
+      expect(require('../../lib/push').tagImage).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('deployApp helper functions', () => {
+    beforeEach(() => {
+      fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app'), { recursive: true });
+    });
+
+    it('should handle validateAppDirectory with ENOENT error', async() => {
+      const deployer = require('../../lib/deployer');
+      deployer.handleDeploymentErrors = jest.fn().mockImplementation(async(error) => {
+        throw error;
+      });
+
+      await expect(appDeploy.deployApp('nonexistent-app', {
+        controller: 'https://controller.example.com'
+      })).rejects.toThrow('not found in builder/');
+    });
+
+    it('should handle validateAppDirectory with non-ENOENT error', async() => {
+      const deployer = require('../../lib/deployer');
+      deployer.handleDeploymentErrors = jest.fn().mockImplementation(async(error) => {
+        throw error;
+      });
+
+      fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app'), { recursive: true });
+      const accessSpy = jest.spyOn(fs, 'access').mockRejectedValue(new Error('EACCES: permission denied'));
+
+      await expect(appDeploy.deployApp('test-app', {
+        controller: 'https://controller.example.com'
+      })).rejects.toThrow('EACCES: permission denied');
+
+      accessSpy.mockRestore();
+    });
+
+    it('should handle loadVariablesFile error', async() => {
+      const deployer = require('../../lib/deployer');
+      deployer.handleDeploymentErrors = jest.fn().mockImplementation(async(error) => {
+        throw error;
+      });
+
+      fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app'), { recursive: true });
+      const readFileSpy = jest.spyOn(fs, 'readFile').mockImplementation((filePath) => {
+        if (filePath.toString().includes('variables.yaml')) {
+          return Promise.reject(new Error('EACCES: permission denied'));
+        }
+        return fsSync.promises.readFile(filePath);
+      });
+
+      await expect(appDeploy.deployApp('test-app', {
+        controller: 'https://controller.example.com'
+      })).rejects.toThrow('Failed to load configuration from variables.yaml');
+
+      readFileSpy.mockRestore();
+    });
+
+    it('should handle extractDeploymentConfig with options override', async() => {
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://yaml-controller.example.com',
+          environment: 'tst'
+        }
+      };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        yaml.dump(config)
+      );
+
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
+      await fs.writeFile(manifestPath, JSON.stringify({
+        key: 'test-app',
+        image: 'test:latest',
+        port: 3000
+      }));
+
+      const generator = require('../../lib/generator');
+      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
+
+      const configModule = require('../../lib/config');
+      configModule.getCurrentEnvironment.mockResolvedValue('pro');
+      configModule.setCurrentEnvironment.mockResolvedValue();
+
+      const tokenManager = require('../../lib/utils/token-manager');
+      tokenManager.getDeploymentAuth.mockResolvedValue({
+        type: 'bearer',
+        token: 'test-token',
+        controller: 'https://option-controller.example.com'
+      });
+
+      const deployer = require('../../lib/deployer');
+      deployer.deployToController.mockResolvedValue({ deploymentId: 'deploy-123' });
+
+      await appDeploy.deployApp('test-app', {
+        controller: 'https://option-controller.example.com',
+        environment: 'pro',
+        poll: false,
+        pollInterval: 10000,
+        pollMaxAttempts: 30
+      });
+
+      expect(deployer.deployToController).toHaveBeenCalledWith(
+        expect.any(Object),
+        'https://option-controller.example.com',
+        'pro',
+        expect.any(Object),
+        expect.objectContaining({
+          poll: false,
+          pollInterval: 10000,
+          pollMaxAttempts: 30
+        })
+      );
+    });
+
+    it('should handle validateDeploymentConfig missing controller URL', async() => {
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000
+        // No deployment.controllerUrl
+      };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        yaml.dump(config)
+      );
+
+      const deployer = require('../../lib/deployer');
+      deployer.handleDeploymentErrors = jest.fn().mockImplementation(async(error) => {
+        throw error;
+      });
+
+      await expect(appDeploy.deployApp('test-app', {}))
+        .rejects.toThrow('Controller URL is required');
+    });
+
+    it('should handle validateDeploymentConfig missing auth', async() => {
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://controller.example.com'
+        }
+      };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        yaml.dump(config)
+      );
+
+      const configModule = require('../../lib/config');
+      configModule.getCurrentEnvironment.mockResolvedValue('dev');
+      configModule.setCurrentEnvironment.mockResolvedValue();
+
+      const tokenManager = require('../../lib/utils/token-manager');
+      tokenManager.getDeploymentAuth.mockResolvedValue(null);
+
+      const deployer = require('../../lib/deployer');
+      deployer.handleDeploymentErrors = jest.fn().mockImplementation(async(error) => {
+        throw error;
+      });
+
+      await expect(appDeploy.deployApp('test-app', {}))
+        .rejects.toThrow('Failed to get authentication');
+    });
+
+    it('should handle generateAndValidateManifest error', async() => {
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://controller.example.com',
+          environment: 'dev'
+        }
+      };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        yaml.dump(config)
+      );
+
+      const configModule = require('../../lib/config');
+      configModule.getCurrentEnvironment.mockResolvedValue('dev');
+      configModule.setCurrentEnvironment.mockResolvedValue();
+
+      const tokenManager = require('../../lib/utils/token-manager');
+      tokenManager.getDeploymentAuth.mockResolvedValue({
+        type: 'bearer',
+        token: 'test-token',
+        controller: 'https://controller.example.com'
+      });
+
+      const generator = require('../../lib/generator');
+      jest.spyOn(generator, 'generateDeployJson').mockRejectedValue(
+        new Error('Schema validation failed')
+      );
+
+      const deployer = require('../../lib/deployer');
+      deployer.handleDeploymentErrors = jest.fn().mockImplementation(async(error) => {
+        throw error;
+      });
+
+      await expect(appDeploy.deployApp('test-app', {}))
+        .rejects.toThrow('Schema validation failed');
+    });
+
+    it('should handle displayDeploymentInfo with various manifest fields', async() => {
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://controller.example.com',
+          environment: 'dev'
+        }
+      };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        yaml.dump(config)
+      );
+
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
+      await fs.writeFile(manifestPath, JSON.stringify({
+        key: 'test-app',
+        displayName: 'Test Application',
+        image: 'myacr.azurecr.io/test-app:v1.0.0',
+        port: 8080
+      }));
+
+      const generator = require('../../lib/generator');
+      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
+
+      const configModule = require('../../lib/config');
+      configModule.getCurrentEnvironment.mockResolvedValue('dev');
+      configModule.setCurrentEnvironment.mockResolvedValue();
+
+      const tokenManager = require('../../lib/utils/token-manager');
+      tokenManager.getDeploymentAuth.mockResolvedValue({
+        type: 'bearer',
+        token: 'test-token',
+        controller: 'https://controller.example.com'
+      });
+
+      const deployer = require('../../lib/deployer');
+      deployer.deployToController.mockResolvedValue({ deploymentId: 'deploy-123' });
+
+      await appDeploy.deployApp('test-app', {});
+
+      expect(deployer.deployToController).toHaveBeenCalled();
+    });
+
+    it('should handle executeDeployment error', async() => {
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://controller.example.com',
+          environment: 'dev'
+        }
+      };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        yaml.dump(config)
+      );
+
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
+      await fs.writeFile(manifestPath, JSON.stringify({
+        key: 'test-app',
+        image: 'test:latest',
+        port: 3000
+      }));
+
+      const generator = require('../../lib/generator');
+      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
+
+      const configModule = require('../../lib/config');
+      configModule.getCurrentEnvironment.mockResolvedValue('dev');
+      configModule.setCurrentEnvironment.mockResolvedValue();
+
+      const tokenManager = require('../../lib/utils/token-manager');
+      tokenManager.getDeploymentAuth.mockResolvedValue({
+        type: 'bearer',
+        token: 'test-token',
+        controller: 'https://controller.example.com'
+      });
+
+      const deployer = require('../../lib/deployer');
+      deployer.deployToController.mockRejectedValue(new Error('Deployment failed'));
+
+      await expect(appDeploy.deployApp('test-app', {}))
+        .rejects.toThrow('Deployment failed');
+    });
+
+    it('should handle displayDeploymentResults with all fields', async() => {
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000,
+        deployment: {
+          controllerUrl: 'https://controller.example.com',
+          environment: 'dev'
+        }
+      };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        yaml.dump(config)
+      );
+
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
+      await fs.writeFile(manifestPath, JSON.stringify({
+        key: 'test-app',
+        image: 'test:latest',
+        port: 3000
+      }));
+
+      const generator = require('../../lib/generator');
+      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
+
+      const configModule = require('../../lib/config');
+      configModule.getCurrentEnvironment.mockResolvedValue('dev');
+      configModule.setCurrentEnvironment.mockResolvedValue();
+
+      const tokenManager = require('../../lib/utils/token-manager');
+      tokenManager.getDeploymentAuth.mockResolvedValue({
+        type: 'bearer',
+        token: 'test-token',
+        controller: 'https://controller.example.com'
+      });
+
+      const deployer = require('../../lib/deployer');
+      deployer.deployToController.mockResolvedValue({
+        deploymentId: 'deploy-123',
+        deploymentUrl: 'https://app.example.com',
+        status: { status: 'completed', progress: 100 }
+      });
+
+      await appDeploy.deployApp('test-app', {});
+
+      expect(deployer.deployToController).toHaveBeenCalled();
     });
   });
 });
