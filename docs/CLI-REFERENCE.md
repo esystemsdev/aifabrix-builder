@@ -24,6 +24,7 @@ Complete command reference with examples and troubleshooting.
   - [aifabrix app register](#aifabrix-app-register-appkey) - Register application and get pipeline credentials
   - [aifabrix app list](#aifabrix-app-list) - List applications in an environment
   - [aifabrix app rotate-secret](#aifabrix-app-rotate-secret) - Rotate pipeline ClientSecret
+  - [aifabrix app split-json](#aifabrix-app-split-json-app-name) - Split deployment JSON into component files
 
 ### Application Development
 - [aifabrix create](#aifabrix-create-app) - Create new application with configuration files
@@ -2274,6 +2275,67 @@ aifabrix json hubspot
 - **"Validation failed"** → Check configuration files for errors
 - **"Missing required fields"** → Complete variables.yaml
 - **"External system file not found"** → Ensure system/datasource JSON files exist in schemas/ directory
+
+---
+
+<a id="aifabrix-app-split-json-app-name"></a>
+## aifabrix app split-json <app-name>
+
+Split deployment JSON into component files.
+
+**What:** Performs the reverse operation of `aifabrix json`. Reads a deployment JSON file (`<app-name>-deploy.json`) and extracts its components into separate files: `env.template`, `variables.yaml`, `rbac.yml`, and `README.md`. This enables migration of existing deployment JSON files back to the component file structure.
+
+**When:** Migrating existing deployment JSON files to component-based structure, recovering component files from deployment JSON, or reverse-engineering deployment configurations.
+
+**Usage:**
+```bash
+# Split deployment JSON into component files (defaults to app directory)
+aifabrix app split-json myapp
+
+# Split to custom output directory
+aifabrix app split-json myapp --output /path/to/output
+
+# Split external system deployment JSON
+aifabrix app split-json hubspot
+```
+
+**Options:**
+- `-o, --output <dir>` - Output directory for component files (defaults to same directory as JSON file)
+
+**Process:**
+1. Locates `<app-name>-deploy.json` in the application directory
+2. Parses the deployment JSON structure
+3. Extracts `configuration` array → `env.template` (converts keyvault references back to `kv://` format)
+4. Extracts deployment metadata → `variables.yaml` (parses image reference, extracts app config, requirements, etc.)
+5. Extracts `roles` and `permissions` → `rbac.yml` (only if present)
+6. Generates `README.md` from deployment information
+
+**Output:**
+```text
+✓ Successfully split deployment JSON into component files:
+  • env.template: builder/myapp/env.template
+  • variables.yaml: builder/myapp/variables.yaml
+  • rbac.yml: builder/myapp/rbac.yml
+  • README.md: builder/myapp/README.md
+```
+
+**Generated Files:**
+- `env.template` - Environment variables template (from `configuration` array)
+- `variables.yaml` - Application configuration (from deployment JSON metadata)
+- `rbac.yml` - Roles and permissions (from `roles` and `permissions` arrays, only if present)
+- `README.md` - Application documentation (generated from deployment JSON)
+
+**Notes:**
+- The `deploymentKey` field is excluded from `variables.yaml` (it's generated, not configured)
+- Image references are parsed into `image.registry`, `image.name`, and `image.tag` components
+- Keyvault references (`location: "keyvault"`) are converted back to `kv://` format in `env.template`
+- Some information may be lost in reverse conversion (e.g., comments in original `env.template`)
+- The generated `variables.yaml` may not match the original exactly, but should be functionally equivalent
+
+**Issues:**
+- **"Deployment JSON file not found"** → Ensure `<app-name>-deploy.json` exists in the application directory
+- **"Invalid JSON syntax"** → Check that the deployment JSON file is valid JSON
+- **"Output directory creation failed"** → Check permissions for the output directory
 
 ---
 

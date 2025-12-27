@@ -1069,6 +1069,105 @@ describe('Login Command Module', () => {
       expect(pollDeviceCodeToken).toHaveBeenCalled();
     });
 
+    it('should handle undefined device code API response', async() => {
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'device',
+        environment: 'dev'
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue(undefined);
+
+      try {
+        await handleLogin(options);
+        expect(true).toBe(false); // Should not reach here
+      } catch (error) {
+        expect(error.message).toContain('process.exit(1)');
+      }
+
+      expect(logger.error).toHaveBeenCalledWith(
+        chalk.red('\n❌ Device code flow failed: Device code flow initiation returned no response')
+      );
+      expect(mockExit).toHaveBeenCalledWith(1);
+    });
+
+    it('should handle unsuccessful device code API response', async() => {
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'device',
+        environment: 'dev'
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        success: false,
+        error: 'Validation failed',
+        formattedError: '❌ Validation Error\nValidation failed'
+      });
+
+      try {
+        await handleLogin(options);
+        expect(true).toBe(false); // Should not reach here
+      } catch (error) {
+        expect(error.message).toContain('process.exit(1)');
+      }
+
+      expect(logger.error).toHaveBeenCalledWith(
+        chalk.red('\n❌ Device code flow failed:')
+      );
+      expect(logger.log).toHaveBeenCalledWith('❌ Validation Error\nValidation failed');
+      expect(mockExit).toHaveBeenCalledWith(1);
+    });
+
+    it('should handle device code API response without data', async() => {
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'device',
+        environment: 'dev'
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        success: true,
+        data: undefined
+      });
+
+      try {
+        await handleLogin(options);
+        expect(true).toBe(false); // Should not reach here
+      } catch (error) {
+        expect(error.message).toContain('process.exit(1)');
+      }
+
+      expect(logger.error).toHaveBeenCalledWith(
+        chalk.red('\n❌ Device code flow failed: Device code flow initiation returned no data')
+      );
+      expect(mockExit).toHaveBeenCalledWith(1);
+    });
+
+    it('should handle device code API response with error message but no formattedError', async() => {
+      const options = {
+        url: 'http://localhost:3000',
+        method: 'device',
+        environment: 'dev'
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        success: false,
+        error: 'API request failed'
+      });
+
+      try {
+        await handleLogin(options);
+        expect(true).toBe(false); // Should not reach here
+      } catch (error) {
+        expect(error.message).toContain('process.exit(1)');
+      }
+
+      expect(logger.error).toHaveBeenCalledWith(
+        chalk.red('\n❌ Device code flow failed: API request failed')
+      );
+      expect(mockExit).toHaveBeenCalledWith(1);
+    });
+
     it('should update spinner text during polling', async() => {
       const options = {
         url: 'http://localhost:3000',

@@ -202,6 +202,92 @@ PUBLIC_CONFIG=public-value`;
       expect(deployment.deploymentKey).toMatch(/^[a-f0-9]{64}$/);
     });
 
+    it('should merge portalInput from variables.yaml into deployment JSON', async() => {
+      const variablesWithPortalInput = {
+        ...mockVariables,
+        configuration: [
+          {
+            name: 'MISO_CLIENTID',
+            portalInput: {
+              field: 'password',
+              label: 'MISO Client ID',
+              placeholder: 'Enter your MISO client ID',
+              masked: true,
+              validation: {
+                required: true
+              }
+            }
+          },
+          {
+            name: 'API_KEY',
+            portalInput: {
+              field: 'select',
+              label: 'API Key Type',
+              placeholder: 'Select API key type',
+              options: ['development', 'production']
+            }
+          }
+        ]
+      };
+
+      const envTemplateWithVars = `MISO_CLIENTID=kv://miso-test-client-idKeyVault
+API_KEY=kv://api-keyKeyVault
+NODE_ENV=development
+PORT=3000
+DATABASE_URL=kv://postgres-urlKeyVault
+REDIS_URL=redis://localhost:6379`;
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (writtenFiles[filePath]) {
+          return writtenFiles[filePath];
+        }
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variablesWithPortalInput);
+        }
+        if (filePath.includes('env.template')) {
+          return envTemplateWithVars;
+        }
+        if (filePath.includes('rbac.yaml')) {
+          return yaml.dump(mockRbac);
+        }
+        return '';
+      });
+
+      const result = await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
+      const deployment = JSON.parse(writeCall[1]);
+
+      const misoClientIdConfig = deployment.configuration.find(c => c.name === 'MISO_CLIENTID');
+      expect(misoClientIdConfig).toBeDefined();
+      expect(misoClientIdConfig.portalInput).toEqual({
+        field: 'password',
+        label: 'MISO Client ID',
+        placeholder: 'Enter your MISO client ID',
+        masked: true,
+        validation: {
+          required: true
+        }
+      });
+
+      const apiKeyConfig = deployment.configuration.find(c => c.name === 'API_KEY');
+      expect(apiKeyConfig).toBeDefined();
+      expect(apiKeyConfig.portalInput).toEqual({
+        field: 'select',
+        label: 'API Key Type',
+        placeholder: 'Select API key type',
+        options: ['development', 'production']
+      });
+
+      // Variables without portalInput should not have it
+      const nodeEnvConfig = deployment.configuration.find(c => c.name === 'NODE_ENV');
+      expect(nodeEnvConfig).toBeDefined();
+      expect(nodeEnvConfig.portalInput).toBeUndefined();
+    });
+
     it('should handle missing rbac.yaml gracefully', async() => {
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('variables.yaml') ||
@@ -366,6 +452,373 @@ NORMAL_VAR=value`;
 
       const result = generator.parseEnvironmentVariables(template);
       expect(result).toEqual([]);
+    });
+
+    it('should merge portalInput from variables.yaml with env.template', () => {
+      const template = `MISO_CLIENTID=kv://miso-test-client-idKeyVault
+API_KEY=kv://api-keyKeyVault
+NORMAL_VAR=value`;
+
+      const variablesConfig = {
+        configuration: [
+          {
+            name: 'MISO_CLIENTID',
+            portalInput: {
+              field: 'password',
+              label: 'MISO Client ID',
+              placeholder: 'Enter your MISO client ID',
+              masked: true,
+              validation: {
+                required: true
+              }
+            }
+          },
+          {
+            name: 'API_KEY',
+            portalInput: {
+              field: 'text',
+              label: 'API Key',
+              placeholder: 'Enter API key',
+              validation: {
+                required: true,
+                pattern: '^[A-Z0-9-]+$'
+              }
+            }
+          }
+        ]
+      };
+
+      const result = generator.parseEnvironmentVariables(template, variablesConfig);
+
+      expect(result).toHaveLength(3);
+
+      const misoClientId = result.find(c => c.name === 'MISO_CLIENTID');
+      expect(misoClientId).toBeDefined();
+      expect(misoClientId.portalInput).toEqual({
+        field: 'password',
+        label: 'MISO Client ID',
+        placeholder: 'Enter your MISO client ID',
+        masked: true,
+        validation: {
+          required: true
+        }
+      });
+
+      const apiKey = result.find(c => c.name === 'API_KEY');
+      expect(apiKey).toBeDefined();
+      expect(apiKey.portalInput).toEqual({
+        field: 'text',
+        label: 'API Key',
+        placeholder: 'Enter API key',
+        validation: {
+          required: true,
+          pattern: '^[A-Z0-9-]+$'
+        }
+      });
+
+      const normalVar = result.find(c => c.name === 'NORMAL_VAR');
+      expect(normalVar).toBeDefined();
+      expect(normalVar.portalInput).toBeUndefined();
+    });
+
+    it('should handle variables without portalInput (backward compatibility)', () => {
+      const template = `MISO_CLIENTID=kv://miso-test-client-idKeyVault
+API_KEY=kv://api-keyKeyVault`;
+
+      const result = generator.parseEnvironmentVariables(template);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].portalInput).toBeUndefined();
+      expect(result[1].portalInput).toBeUndefined();
+    });
+
+    it('should handle empty configuration section', () => {
+      const template = 'MISO_CLIENTID=kv://miso-test-client-idKeyVault';
+
+      const variablesConfig = {
+        configuration: []
+      };
+
+      const result = generator.parseEnvironmentVariables(template, variablesConfig);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].portalInput).toBeUndefined();
+    });
+
+    it('should ignore portalInput for variables not in env.template', () => {
+      const template = 'MISO_CLIENTID=kv://miso-test-client-idKeyVault';
+
+      const variablesConfig = {
+        configuration: [
+          {
+            name: 'MISO_CLIENTID',
+            portalInput: {
+              field: 'password',
+              label: 'MISO Client ID'
+            }
+          },
+          {
+            name: 'NONEXISTENT_VAR',
+            portalInput: {
+              field: 'text',
+              label: 'Non-existent Variable'
+            }
+          }
+        ]
+      };
+
+      const result = generator.parseEnvironmentVariables(template, variablesConfig);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('MISO_CLIENTID');
+      expect(result[0].portalInput).toBeDefined();
+    });
+
+    it('should validate portalInput structure - missing field', () => {
+      const template = 'MISO_CLIENTID=kv://miso-test-client-idKeyVault';
+
+      const variablesConfig = {
+        configuration: [
+          {
+            name: 'MISO_CLIENTID',
+            portalInput: {
+              label: 'MISO Client ID'
+              // Missing field
+            }
+          }
+        ]
+      };
+
+      expect(() => {
+        generator.parseEnvironmentVariables(template, variablesConfig);
+      }).toThrow('Invalid portalInput for variable \'MISO_CLIENTID\': field is required and must be a string');
+    });
+
+    it('should validate portalInput structure - missing label', () => {
+      const template = 'MISO_CLIENTID=kv://miso-test-client-idKeyVault';
+
+      const variablesConfig = {
+        configuration: [
+          {
+            name: 'MISO_CLIENTID',
+            portalInput: {
+              field: 'password'
+              // Missing label
+            }
+          }
+        ]
+      };
+
+      expect(() => {
+        generator.parseEnvironmentVariables(template, variablesConfig);
+      }).toThrow('Invalid portalInput for variable \'MISO_CLIENTID\': label is required and must be a string');
+    });
+
+    it('should validate portalInput structure - invalid field type', () => {
+      const template = 'MISO_CLIENTID=kv://miso-test-client-idKeyVault';
+
+      const variablesConfig = {
+        configuration: [
+          {
+            name: 'MISO_CLIENTID',
+            portalInput: {
+              field: 'invalid-type',
+              label: 'MISO Client ID'
+            }
+          }
+        ]
+      };
+
+      expect(() => {
+        generator.parseEnvironmentVariables(template, variablesConfig);
+      }).toThrow('Invalid portalInput for variable \'MISO_CLIENTID\': field must be one of: password, text, textarea, select');
+    });
+
+    it('should validate portalInput structure - select field without options', () => {
+      const template = 'API_KEY_TYPE=kv://api-key-typeKeyVault';
+
+      const variablesConfig = {
+        configuration: [
+          {
+            name: 'API_KEY_TYPE',
+            portalInput: {
+              field: 'select',
+              label: 'API Key Type'
+              // Missing options
+            }
+          }
+        ]
+      };
+
+      expect(() => {
+        generator.parseEnvironmentVariables(template, variablesConfig);
+      }).toThrow('Invalid portalInput for variable \'API_KEY_TYPE\': select field requires a non-empty options array');
+    });
+
+    it('should validate portalInput structure - select field with empty options', () => {
+      const template = 'API_KEY_TYPE=kv://api-key-typeKeyVault';
+
+      const variablesConfig = {
+        configuration: [
+          {
+            name: 'API_KEY_TYPE',
+            portalInput: {
+              field: 'select',
+              label: 'API Key Type',
+              options: []
+            }
+          }
+        ]
+      };
+
+      expect(() => {
+        generator.parseEnvironmentVariables(template, variablesConfig);
+      }).toThrow('Invalid portalInput for variable \'API_KEY_TYPE\': select field requires a non-empty options array');
+    });
+
+    it('should validate portalInput structure - select field with options', () => {
+      const template = 'API_KEY_TYPE=kv://api-key-typeKeyVault';
+
+      const variablesConfig = {
+        configuration: [
+          {
+            name: 'API_KEY_TYPE',
+            portalInput: {
+              field: 'select',
+              label: 'API Key Type',
+              placeholder: 'Select API key type',
+              options: ['development', 'production', 'staging']
+            }
+          }
+        ]
+      };
+
+      const result = generator.parseEnvironmentVariables(template, variablesConfig);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].portalInput).toEqual({
+        field: 'select',
+        label: 'API Key Type',
+        placeholder: 'Select API key type',
+        options: ['development', 'production', 'staging']
+      });
+    });
+
+    it('should validate portalInput structure - invalid placeholder type', () => {
+      const template = 'MISO_CLIENTID=kv://miso-test-client-idKeyVault';
+
+      const variablesConfig = {
+        configuration: [
+          {
+            name: 'MISO_CLIENTID',
+            portalInput: {
+              field: 'password',
+              label: 'MISO Client ID',
+              placeholder: 123 // Invalid type
+            }
+          }
+        ]
+      };
+
+      expect(() => {
+        generator.parseEnvironmentVariables(template, variablesConfig);
+      }).toThrow('Invalid portalInput for variable \'MISO_CLIENTID\': placeholder must be a string');
+    });
+
+    it('should validate portalInput structure - invalid masked type', () => {
+      const template = 'MISO_CLIENTID=kv://miso-test-client-idKeyVault';
+
+      const variablesConfig = {
+        configuration: [
+          {
+            name: 'MISO_CLIENTID',
+            portalInput: {
+              field: 'password',
+              label: 'MISO Client ID',
+              masked: 'true' // Invalid type (string instead of boolean)
+            }
+          }
+        ]
+      };
+
+      expect(() => {
+        generator.parseEnvironmentVariables(template, variablesConfig);
+      }).toThrow('Invalid portalInput for variable \'MISO_CLIENTID\': masked must be a boolean');
+    });
+
+    it('should validate portalInput structure - options on non-select field', () => {
+      const template = 'API_KEY=kv://api-keyKeyVault';
+
+      const variablesConfig = {
+        configuration: [
+          {
+            name: 'API_KEY',
+            portalInput: {
+              field: 'text',
+              label: 'API Key',
+              options: ['option1', 'option2'] // Options not allowed for text field
+            }
+          }
+        ]
+      };
+
+      expect(() => {
+        generator.parseEnvironmentVariables(template, variablesConfig);
+      }).toThrow('Invalid portalInput for variable \'API_KEY\': options can only be used with select field type');
+    });
+
+    it('should handle textarea field type', () => {
+      const template = 'DESCRIPTION=kv://descriptionKeyVault';
+
+      const variablesConfig = {
+        configuration: [
+          {
+            name: 'DESCRIPTION',
+            portalInput: {
+              field: 'textarea',
+              label: 'Description',
+              placeholder: 'Enter description',
+              validation: {
+                minLength: 10,
+                maxLength: 500
+              }
+            }
+          }
+        ]
+      };
+
+      const result = generator.parseEnvironmentVariables(template, variablesConfig);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].portalInput).toEqual({
+        field: 'textarea',
+        label: 'Description',
+        placeholder: 'Enter description',
+        validation: {
+          minLength: 10,
+          maxLength: 500
+        }
+      });
+    });
+
+    it('should handle null variablesConfig (backward compatibility)', () => {
+      const template = 'MISO_CLIENTID=kv://miso-test-client-idKeyVault';
+
+      const result = generator.parseEnvironmentVariables(template, null);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].portalInput).toBeUndefined();
+    });
+
+    it('should handle variablesConfig without configuration section', () => {
+      const template = 'MISO_CLIENTID=kv://miso-test-client-idKeyVault';
+
+      const variablesConfig = {};
+
+      const result = generator.parseEnvironmentVariables(template, variablesConfig);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].portalInput).toBeUndefined();
     });
   });
 

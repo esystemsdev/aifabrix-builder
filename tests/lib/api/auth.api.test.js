@@ -95,11 +95,12 @@ describe('Auth API', () => {
   });
 
   describe('initiateDeviceCodeFlow', () => {
-    it('should initiate device code flow with environment in query', async() => {
+    it('should initiate device code flow with environment in query and scope in body', async() => {
       await authApi.initiateDeviceCodeFlow(controllerUrl, 'dev', 'openid profile');
 
       expect(mockClient.post).toHaveBeenCalledWith('/api/v1/auth/login', {
-        params: { environment: 'dev', scope: 'openid profile' }
+        params: { environment: 'dev' },
+        body: { scope: 'openid profile' }
       });
     });
 
@@ -114,9 +115,7 @@ describe('Auth API', () => {
     it('should initiate device code flow without environment', async() => {
       await authApi.initiateDeviceCodeFlow(controllerUrl);
 
-      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/auth/login', {
-        body: undefined
-      });
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/auth/login', {});
     });
 
     it('should initiate device code flow with scope in body', async() => {

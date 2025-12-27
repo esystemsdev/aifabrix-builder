@@ -1,3 +1,52 @@
+## [2.21.0] - 2025-12-27
+
+### Added
+- **PortalInput Support in variables.yaml**: New configuration section for portal UI customization
+  - Added `configuration` section to `variables.yaml` for defining `portalInput` settings
+  - PortalInput settings merge with environment variables parsed from `env.template` during deployment JSON generation
+  - Supports all portalInput field types: `text`, `password`, `textarea`, `select`
+  - Validates portalInput structure against application schema before merging
+  - Enables portal UI configuration for environment variables without modifying `env.template`
+  - Backward compatible: existing files without configuration section continue to work
+- **Deployment JSON Split Functionality**: Reverse operation to extract component files from deployment JSON
+  - New `splitDeployJson()` function in `lib/generator-split.js` to split deployment JSON into component files
+  - Extracts `env.template` from configuration array
+  - Extracts `variables.yaml` from deployment metadata
+  - Extracts `rbac.yml` from roles and permissions arrays
+  - Generates `README.md` from deployment JSON structure
+  - New CLI command: `aifabrix app split-json <app-name>` with optional `-o, --output <dir>` option
+  - Supports external systems with documented information loss limitations
+  - Comprehensive test coverage: 37 tests with 97.95% coverage
+- **HubSpot Integration Test Suite**: Comprehensive integration tests for HubSpot CRM integration
+  - New integration test suite: `tests/integration/hubspot/hubspot-integration.test.js` (1,009 lines)
+  - 103 comprehensive tests covering all aspects of HubSpot integration
+  - Tests file structure, JSON/YAML syntax validation, schema validations, field mapping validations
+  - Tests metadata schema validations, relationship validations, configuration consistency
+  - Tests deployment JSON generation and split operations for HubSpot external system
+  - Tests run in <0.5 seconds without requiring server connections, Docker, or network access
+  - Validates complete HubSpot integration workflow end-to-end
+
+### Changed
+- **Documentation Style Improvements**: Enhanced visual clarity and consistency across all documentation files
+  - Updated color styles in flowcharts and diagrams for improved readability and accessibility
+  - Applied consistent color scheme across `README.md`, `BUILDING.md`, `CONFIGURATION.md`, `DEPLOYING.md`, `EXTERNAL-SYSTEMS.md`, `GITHUB-WORKFLOWS.md`, `INFRASTRUCTURE.md`, `QUICK-START.md`, and `RUNNING.md`
+  - Improved contrast and visual hierarchy in documentation diagrams
+  - Enhanced accessibility of visual elements in documentation
+- **Environment Variable Parsing**: Enhanced to support portalInput merging
+  - `parseEnvironmentVariables()` function now accepts optional `variablesConfig` parameter
+  - Merges portalInput settings from `variables.yaml` with configuration parsed from `env.template`
+  - Validates portalInput structure before merging with clear error messages
+  - Maintains backward compatibility with existing `env.template` parsing
+
+### Technical
+- New `lib/generator-split.js` module (342 lines) for deployment JSON splitting functionality
+- New `validatePortalInput()` function in `lib/generator.js` for portalInput validation
+- Enhanced `parseEnvironmentVariables()` to support portalInput merging
+- Comprehensive test coverage: 20+ new portalInput tests, 37 split function tests, 103 HubSpot integration tests
+- Documentation cleanup and style standardization
+- Improved documentation maintainability with consistent styling
+- ISO 27001 compliant implementation maintained throughout
+
 ## [2.20.0] - 2025-12-23
 
 ### Added

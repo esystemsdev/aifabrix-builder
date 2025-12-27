@@ -246,6 +246,55 @@ describe('ApiClient', () => {
         'test-token'
       );
     });
+
+    it('should make POST request with query parameters', async() => {
+      const client = new ApiClient(baseUrl);
+      await client.post('/api/v1/test', { params: { key: 'value', env: 'dev' } });
+
+      expect(makeApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/test?key=value&env=dev`,
+        expect.objectContaining({
+          method: 'POST'
+        })
+      );
+    });
+
+    it('should make POST request with both params and body', async() => {
+      const client = new ApiClient(baseUrl);
+      const body = { data: 'test' };
+      await client.post('/api/v1/test', { params: { env: 'dev' }, body });
+
+      expect(makeApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/test?env=dev`,
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify(body)
+        })
+      );
+    });
+
+    it('should ignore undefined and null params', async() => {
+      const client = new ApiClient(baseUrl);
+      await client.post('/api/v1/test', { params: { key: 'value', nullKey: null, undefinedKey: undefined } });
+
+      expect(makeApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/test?key=value`,
+        expect.objectContaining({
+          method: 'POST'
+        })
+      );
+    });
+
+    it('should use authenticatedApiCall with params for bearer token', async() => {
+      const client = new ApiClient(baseUrl, { type: 'bearer', token: 'test-token' });
+      await client.post('/api/v1/test', { params: { env: 'dev' }, body: { test: 'data' } });
+
+      expect(authenticatedApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/test?env=dev`,
+        expect.objectContaining({ method: 'POST' }),
+        'test-token'
+      );
+    });
   });
 
   describe('patch', () => {

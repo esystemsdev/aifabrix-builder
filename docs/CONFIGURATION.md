@@ -16,6 +16,9 @@ flowchart LR
     Variables --> DeployJson[aifabrix-deploy.json<br/>Deployment manifest]
     Env --> Container[Docker Container]
     DeployJson --> Controller[Miso Controller]
+    DeployJson -.->|aifabrix app split-json| Variables
+    DeployJson -.->|aifabrix app split-json| EnvTemplate
+    DeployJson -.->|aifabrix app split-json| Rbac
     
     style Variables fill:#0062FF,color:#FFFFFF
     style Container fill:#10B981,color:#FFFFFF
@@ -399,6 +402,107 @@ builder/
 - `aifabrix datasource list` - Lists deployed datasources
 - `aifabrix datasource diff <file1> <file2>` - Compares datasource versions
 
+**configuration**  
+Portal UI configuration for environment variables. Defines `portalInput` settings that merge with variables parsed from `env.template`.  
+*Optional - enables portal UI configuration for environment variables*
+
+**configuration[].name**  
+Variable name (must match a variable in `env.template`)  
+Example: `MISO_CLIENTID`, `API_KEY`
+
+**configuration[].portalInput**  
+Portal input configuration for user-provided values in the portal UI
+
+**configuration[].portalInput.field**  
+Input field type (required)  
+Options: `password`, `text`, `textarea`, `select`  
+Example: `password` for sensitive values, `select` for predefined options
+
+**configuration[].portalInput.label**  
+Display label for the input field (required)  
+Example: `"MISO Client ID"`, `"API Key Type"`
+
+**configuration[].portalInput.placeholder**  
+Placeholder text for the input field (optional)  
+Example: `"Enter your MISO client ID"`, `"Select API key type"`
+
+**configuration[].portalInput.masked**  
+Whether to mask the input (for passwords) (optional)  
+Example: `true` for password fields
+
+**configuration[].portalInput.validation**  
+Validation rules (optional)  
+Properties:
+- `required` - Whether the value must be provided (boolean)
+- `minLength` - Minimum length (integer, minimum: 1)
+- `maxLength` - Maximum length (integer, minimum: 1)
+- `pattern` - Regex pattern for validation (string)
+
+**configuration[].portalInput.options**  
+Options array for `select` field type (required when `field` is `select`)  
+Example: `["development", "production", "staging"]`
+
+**Validation Rules:**
+- Variable name in `configuration` must match a variable name in `env.template`
+- `field` and `label` are required
+- `field` must be one of: `password`, `text`, `textarea`, `select`
+- If `field` is `select`, `options` array must be provided and non-empty
+- `options` can only be used with `select` field type
+- Merged configuration validates against `application-schema.json`
+
+**Example configuration section:**
+```yaml
+configuration:
+  - name: MISO_CLIENTID
+    portalInput:
+      field: password
+      label: MISO Client ID
+      placeholder: Enter your MISO client ID
+      masked: true
+      validation:
+        required: true
+  - name: API_KEY
+    portalInput:
+      field: text
+      label: API Key
+      placeholder: Enter API key
+      validation:
+        required: true
+        pattern: "^[A-Z0-9-]+$"
+  - name: API_KEY_TYPE
+    portalInput:
+      field: select
+      label: API Key Type
+      placeholder: Select API key type
+      options:
+        - development
+        - production
+        - staging
+      validation:
+        required: true
+  - name: DESCRIPTION
+    portalInput:
+      field: textarea
+      label: Description
+      placeholder: Enter description
+      validation:
+        minLength: 10
+        maxLength: 500
+```
+
+**How it works:**
+1. Variables are defined in `env.template` as usual (e.g., `MISO_CLIENTID=kv://miso-test-client-idKeyVault`)
+2. `configuration` section in `variables.yaml` maps variable names to `portalInput` settings
+3. During deployment JSON generation, `portalInput` from `variables.yaml` is merged with configuration parsed from `env.template`
+4. Variables without `portalInput` in `configuration` section work as before (backward compatible)
+5. Portal UI uses `portalInput` settings to render appropriate input fields for users
+
+**Backward Compatibility:**
+- Existing `variables.yaml` files without `configuration` section continue to work
+- `env.template` parsing remains unchanged
+- Only adds new functionality, doesn't break existing behavior
+- If `configuration` section is missing or empty, function behaves as before
+
 ```mermaid
 graph TD
     Variables[variables.yaml<br/>externalIntegration block] --> SchemaPath[schemaBasePath<br/>./schemas]
@@ -473,6 +577,26 @@ externalIntegration:
     - hubspot-deal.json
   autopublish: true
   version: 1.0.0
+
+configuration:
+  - name: MISO_CLIENTID
+    portalInput:
+      field: password
+      label: MISO Client ID
+      placeholder: Enter your MISO client ID
+      masked: true
+      validation:
+        required: true
+  - name: API_KEY
+    portalInput:
+      field: select
+      label: API Key Type
+      placeholder: Select API key type
+      options:
+        - development
+        - production
+      validation:
+        required: true
 ```
 
 **Health Check Response Formats:**
@@ -1235,7 +1359,7 @@ MISO_CLIENTSECRET=kv://miso-controller-client-secretKeyVault
 MISO_WEB_SERVER_URL=kv://miso-controller-web-server-url
 ```
 
-**Note:** 
+**Note:**
 - `MISO_CONTROLLER_URL` uses template format (`http://${MISO_HOST}:${MISO_PORT}`) which is resolved from `env-config.yaml` based on deployment context
 - Pipeline environment variables are only needed if you're using automated CI/CD deployments. Get ClientId and ClientSecret via `aifabrix app register`
 - `MISO_WEB_SERVER_URL` is automatically added when controller is enabled
@@ -1294,6 +1418,37 @@ requires:
   database: true
   redis: true  # Job queue
 ```
+
+---
+
+## Deployment JSON
+
+The deployment JSON file (`<app-name>-deploy.json`) is generated from component files using `aifabrix json <app>`.
+
+**Generation Flow:**
+```bash
+aifabrix json myapp
+# Combines variables.yaml + env.template + rbac.yaml → myapp-deploy.json
+```
+
+**Reverse Operation:**
+
+You can also split a deployment JSON file back into component files using `aifabrix app split-json`:
+
+```bash
+aifabrix app split-json myapp
+# Splits myapp-deploy.json → variables.yaml + env.template + rbac.yml + README.md
+```
+
+**When to use split-json:**
+- Migrating existing deployment JSON files to component-based structure
+- Recovering component files from deployment JSON
+- Reverse-engineering deployment configurations
+- Converting deployment JSON from external sources
+
+**Note:** Some information may be lost in reverse conversion (e.g., comments in original `env.template`). The generated `variables.yaml` may not match the original exactly, but should be functionally equivalent.
+
+**See also:** [CLI Reference - app split-json](CLI-REFERENCE.md#aifabrix-app-split-json-app-name)
 
 ---
 
