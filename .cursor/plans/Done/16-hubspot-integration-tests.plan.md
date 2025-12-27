@@ -31,7 +31,7 @@ Create test file: `tests/integration/hubspot/hubspot-integration.test.js`The tes
 9. **Access Fields Tests** - Validate access fields are properly defined
 10. **Configuration Consistency Tests** - Validate cross-file consistency
 11. **Deployment JSON Generation Tests** - Test `aifabrix json` command flow
-12. **Deployment JSON Split Tests** - Test `aifabrix app split-json` reverse operation
+12. **Deployment JSON Split Tests** - Test `aifabrix split-json` reverse operation
 
 ## Implementation Details
 
@@ -83,11 +83,11 @@ Test the forward operation where component files are combined into deployment JS
 - Verify output file structure matches expected format
 - Test with actual HubSpot integration files
 
-### Reverse Operation (`aifabrix app split-json`)
+### Reverse Operation (`aifabrix split-json`)
 
 Test the reverse operation where deployment JSON is split back into component files:**Test Cases:**
 
-1. **Split application-schema.json** - Verify `aifabrix app split-json hubspot` can process generated JSON
+1. **Split application-schema.json** - Verify `aifabrix split-json hubspot` can process generated JSON
 2. **Component File Generation** - Verify split generates:
 
 - `variables.yaml` (with externalIntegration block)
@@ -157,7 +157,7 @@ Test the reverse operation where deployment JSON is split back into component fi
 
 - Reference `docs/CLI-REFERENCE.md` sections:
 - `aifabrix json <app>` - Generation flow documentation
-- `aifabrix app split-json <app-name>` - Reverse operation documentation
+- `aifabrix split-json <app>` - Reverse operation documentation
 - Verify test descriptions match CLI reference documentation
 - Ensure test cases cover all documented behaviors
 

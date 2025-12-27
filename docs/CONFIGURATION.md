@@ -16,9 +16,9 @@ flowchart LR
     Variables --> DeployJson[aifabrix-deploy.json<br/>Deployment manifest]
     Env --> Container[Docker Container]
     DeployJson --> Controller[Miso Controller]
-    DeployJson -.->|aifabrix app split-json| Variables
-    DeployJson -.->|aifabrix app split-json| EnvTemplate
-    DeployJson -.->|aifabrix app split-json| Rbac
+    DeployJson -.->|aifabrix split-json| Variables
+    DeployJson -.->|aifabrix split-json| EnvTemplate
+    DeployJson -.->|aifabrix split-json| Rbac
     
     style Variables fill:#0062FF,color:#FFFFFF
     style Container fill:#10B981,color:#FFFFFF
@@ -1433,10 +1433,10 @@ aifabrix json myapp
 
 **Reverse Operation:**
 
-You can also split a deployment JSON file back into component files using `aifabrix app split-json`:
+You can also split a deployment JSON file back into component files using `aifabrix split-json`:
 
 ```bash
-aifabrix app split-json myapp
+aifabrix split-json myapp
 # Splits myapp-deploy.json → variables.yaml + env.template + rbac.yml + README.md
 ```
 
@@ -1448,7 +1448,7 @@ aifabrix app split-json myapp
 
 **Note:** Some information may be lost in reverse conversion (e.g., comments in original `env.template`). The generated `variables.yaml` may not match the original exactly, but should be functionally equivalent.
 
-**See also:** [CLI Reference - app split-json](CLI-REFERENCE.md#aifabrix-app-split-json-app-name)
+**See also:** [CLI Reference - split-json](CLI-REFERENCE.md#aifabrix-split-json-app)
 
 ---
 

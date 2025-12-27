@@ -24,7 +24,6 @@ Complete command reference with examples and troubleshooting.
   - [aifabrix app register](#aifabrix-app-register-appkey) - Register application and get pipeline credentials
   - [aifabrix app list](#aifabrix-app-list) - List applications in an environment
   - [aifabrix app rotate-secret](#aifabrix-app-rotate-secret) - Rotate pipeline ClientSecret
-  - [aifabrix app split-json](#aifabrix-app-split-json-app-name) - Split deployment JSON into component files
 
 ### Application Development
 - [aifabrix create](#aifabrix-create-app) - Create new application with configuration files
@@ -55,6 +54,7 @@ Complete command reference with examples and troubleshooting.
 ### Utilities
 - [aifabrix resolve](#aifabrix-resolve-app) - Generate `.env` file from template
 - [aifabrix json](#aifabrix-json-app) - Generate deployment JSON
+- [aifabrix split-json](#aifabrix-split-json-app) - Split deployment JSON into component files
 - [aifabrix genkey](#aifabrix-genkey-app) - Generate deployment key
 - [aifabrix secure](#aifabrix-secure) - Encrypt secrets in secrets.local.yaml files
 - [aifabrix secrets](#aifabrix-secrets) - Manage secrets in secrets files
@@ -2278,8 +2278,8 @@ aifabrix json hubspot
 
 ---
 
-<a id="aifabrix-app-split-json-app-name"></a>
-## aifabrix app split-json <app-name>
+<a id="aifabrix-split-json-app"></a>
+## aifabrix split-json <app>
 
 Split deployment JSON into component files.
 
@@ -2290,13 +2290,13 @@ Split deployment JSON into component files.
 **Usage:**
 ```bash
 # Split deployment JSON into component files (defaults to app directory)
-aifabrix app split-json myapp
+aifabrix split-json myapp
 
 # Split to custom output directory
-aifabrix app split-json myapp --output /path/to/output
+aifabrix split-json myapp --output /path/to/output
 
 # Split external system deployment JSON
-aifabrix app split-json hubspot
+aifabrix split-json hubspot
 ```
 
 **Options:**

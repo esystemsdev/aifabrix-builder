@@ -1,4 +1,4 @@
-## [2.21.0] - 2025-12-27
+## [2.21.1] - 2025-12-27
 
 ### Added
 - **PortalInput Support in variables.yaml**: New configuration section for portal UI customization
@@ -14,7 +14,7 @@
   - Extracts `variables.yaml` from deployment metadata
   - Extracts `rbac.yml` from roles and permissions arrays
   - Generates `README.md` from deployment JSON structure
-  - New CLI command: `aifabrix app split-json <app-name>` with optional `-o, --output <dir>` option
+  - New CLI command: `aifabrix split-json <app>` with optional `-o, --output <dir>` option
   - Supports external systems with documented information loss limitations
   - Comprehensive test coverage: 37 tests with 97.95% coverage
 - **HubSpot Integration Test Suite**: Comprehensive integration tests for HubSpot CRM integration

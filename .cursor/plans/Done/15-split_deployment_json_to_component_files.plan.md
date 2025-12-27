@@ -175,7 +175,7 @@ Use a simple template or reference `lib/app-readme.js` for consistency.
 **Location**: `lib/cli.js`Add a new command:
 
 ```javascript
-program.command('app split-json <app-name>')
+program.command('split-json <app>')
   .description('Split deployment JSON into component files (env.template, variables.yaml, rbac.yml, README.md)')
   .option('-o, --output <dir>', 'Output directory for component files')
   .action(async (appName, options) => {
@@ -248,7 +248,7 @@ New helper functions in generator.js:
 **Summary**: Create a reverse conversion function `splitDeployJson()` that splits a deployment JSON file (like `miso-controller-deploy.json`) back into component files: `env.template`, `variables.yaml`, `rbac.yml`, and `README.md`. This enables migration of existing deployment JSON files back to the component file structure.**Scope**:
 
 - Core module (`lib/generator.js`) - Add reverse conversion functions
-- Optional CLI command (`lib/cli.js`) - Add `app split-json` command
+- Optional CLI command (`lib/cli.js`) - Add `split-json` command (top-level, like `json`)
 - Testing (`tests/lib/generator-split.test.js`) - Comprehensive test coverage
 
 **Plan Type**: Development (Module feature addition with optional CLI command)**Key Components**:
@@ -335,7 +335,7 @@ The implementation is **complete and functional**. All core requirements have be
 - ✅ `extractRbacYaml()` function created
 - ✅ `parseImageReference()` function created
 - ✅ `generateReadmeFromDeployJson()` function created
-- ✅ CLI command `app split-json` added
+- ✅ CLI command `split-json` added (top-level command, like `json`)
 - ✅ Test suite created
 - ✅ Documentation added
 
@@ -357,7 +357,7 @@ The implementation is **complete and functional**. All core requirements have be
 
 ✅ **lib/cli.js** (661 lines) - Updated
 
-- CLI command `app split-json` added at line 343
+- CLI command `split-json` added as top-level command (like `json`)
 - Follows Commander.js pattern
 - Proper error handling with `handleCommandError`
 
@@ -506,7 +506,7 @@ The implementation is **complete and functional**. All core requirements have be
 
 ✅ **CLI Command**: COMPLETE
 
-- Command: `aifabrix app split-json <app-name>`
+- Command: `aifabrix split-json <app>` (top-level command, like `json`)
 - Option: `-o, --output <dir>`
 - Error handling: Proper try-catch with `handleCommandError`
 - User feedback: Colored output with chalk
