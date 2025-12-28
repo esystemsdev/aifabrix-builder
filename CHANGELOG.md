@@ -1,3 +1,23 @@
+## [2.22.1] - 2025-12-28
+
+### Fixed
+- **Force Flag Path Resolution Bug**: Fixed critical bug where `--force` flag generated random values for existing secrets
+  - Fixed path resolution mismatch between `generateMissingSecrets()` and `loadSecrets()` functions
+  - `loadUserSecrets()` now uses `paths.getAifabrixHome()` instead of `os.homedir()` directly to respect config.yaml `aifabrix-home` override
+  - `loadDefaultSecrets()` now uses `paths.getAifabrixHome()` for consistency
+  - `generateMissingSecrets()` fallback now uses `paths.getAifabrixHome()` instead of `os.homedir()`
+  - `generateEnvContent()` ensures path consistency between write and read operations
+  - Existing secrets are now preserved when using `--force` flag
+  - Path resolution is consistent between write and read operations throughout secret management
+
+### Technical
+- Updated `lib/utils/secrets-utils.js` to use `paths.getAifabrixHome()` for path resolution
+- Updated `lib/utils/secrets-generator.js` to use `paths.getAifabrixHome()` in fallback path resolution
+- Updated `lib/secrets.js` to ensure path consistency in `generateEnvContent()` function
+- Added missing `os` import in `lib/utils/secrets-generator.js` for backward compatibility
+- Comprehensive test coverage: Added 232+ lines of tests for path resolution consistency and force flag behavior
+- ISO 27001 compliant implementation maintained throughout
+
 ## [2.23.0] - 2025-12-28
 
 ### Added

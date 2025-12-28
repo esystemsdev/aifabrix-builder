@@ -21,10 +21,14 @@ jest.mock('../../../lib/utils/logger', () => ({
 }));
 
 const secretsGenerator = require('../../../lib/utils/secrets-generator');
+const pathsUtil = require('../../../lib/utils/paths');
 
 // Mock fs module
 jest.mock('fs');
 jest.mock('os');
+jest.mock('../../../lib/utils/paths', () => ({
+  getAifabrixHome: jest.fn()
+}));
 
 describe('Secrets Generator Module', () => {
   const mockHomeDir = '/home/test';
@@ -33,6 +37,8 @@ describe('Secrets Generator Module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     os.homedir.mockReturnValue(mockHomeDir);
+    // Default paths.getAifabrixHome() to return mockHomeDir/.aifabrix
+    pathsUtil.getAifabrixHome.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
   });
 
   describe('findMissingSecretKeys', () => {
@@ -396,8 +402,37 @@ describe('Secrets Generator Module', () => {
 
       await secretsGenerator.generateMissingSecrets(envTemplate);
 
+      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
       expect(fs.writeFileSync).toHaveBeenCalled();
       const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === defaultPath);
+      expect(writeCall).toBeDefined();
+    });
+
+    it('should respect config.yaml aifabrix-home override when path not provided', async() => {
+      const overrideHome = '/custom/aifabrix';
+      const overrideSecretsPath = path.join(overrideHome, 'secrets.yaml');
+      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+      const envTemplate = 'DATABASE_URL=kv://postgres-passwordKeyVault';
+      fs.existsSync.mockReturnValue(false);
+
+      await secretsGenerator.generateMissingSecrets(envTemplate);
+
+      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === overrideSecretsPath);
+      expect(writeCall).toBeDefined();
+    });
+
+    it('should use provided path and not use fallback', async() => {
+      const explicitPath = '/explicit/path/secrets.yaml';
+      const envTemplate = 'DATABASE_URL=kv://postgres-passwordKeyVault';
+      fs.existsSync.mockReturnValue(false);
+
+      await secretsGenerator.generateMissingSecrets(envTemplate, explicitPath);
+
+      expect(pathsUtil.getAifabrixHome).not.toHaveBeenCalled();
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      const writeCall = fs.writeFileSync.mock.calls.find(call => call[0] === explicitPath);
       expect(writeCall).toBeDefined();
     });
 

@@ -32,11 +32,15 @@ jest.mock('js-yaml', () => {
 // Mock fs and os modules
 jest.mock('fs');
 jest.mock('os');
+jest.mock('../../lib/utils/paths', () => ({
+  getAifabrixHome: jest.fn()
+}));
 
 const yaml = require('js-yaml');
 
 const secretsUtils = require('../../lib/utils/secrets-utils');
 const logger = require('../../lib/utils/logger');
+const pathsUtil = require('../../lib/utils/paths');
 
 describe('Secrets Utils Module', () => {
   const mockHomeDir = '/home/test';
@@ -46,6 +50,8 @@ describe('Secrets Utils Module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     os.homedir.mockReturnValue(mockHomeDir);
+    // Default paths.getAifabrixHome() to return mockHomeDir/.aifabrix
+    pathsUtil.getAifabrixHome.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
     // Reset yaml.load to use actual implementation by default
     const actualYaml = jest.requireActual('js-yaml');
     yaml.load.mockImplementation((content) => actualYaml.load(content));
@@ -129,8 +135,38 @@ describe('Secrets Utils Module', () => {
       const result = secretsUtils.loadUserSecrets();
 
       expect(result).toEqual({});
+      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
       expect(fs.existsSync).toHaveBeenCalledWith(mockUserSecretsPath);
       expect(fs.readFileSync).not.toHaveBeenCalled();
+    });
+
+    it('should respect config.yaml aifabrix-home override', () => {
+      const overrideHome = '/custom/aifabrix';
+      const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
+      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('test-key: "test-value"');
+      yaml.load.mockReturnValue({ 'test-key': 'test-value' });
+
+      const result = secretsUtils.loadUserSecrets();
+
+      expect(result).toEqual({ 'test-key': 'test-value' });
+      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+      expect(fs.existsSync).toHaveBeenCalledWith(overrideSecretsPath);
+      expect(fs.readFileSync).toHaveBeenCalledWith(overrideSecretsPath, 'utf8');
+    });
+
+    it('should fall back to default when override not set', () => {
+      pathsUtil.getAifabrixHome.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('test-key: "test-value"');
+      yaml.load.mockReturnValue({ 'test-key': 'test-value' });
+
+      const result = secretsUtils.loadUserSecrets();
+
+      expect(result).toEqual({ 'test-key': 'test-value' });
+      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+      expect(fs.existsSync).toHaveBeenCalledWith(mockUserSecretsPath);
     });
 
     it('should load secrets from user secrets file', () => {
@@ -390,8 +426,25 @@ describe('Secrets Utils Module', () => {
       const result = secretsUtils.loadDefaultSecrets();
 
       expect(result).toEqual({});
+      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
       expect(fs.existsSync).toHaveBeenCalledWith(mockDefaultSecretsPath);
       expect(fs.readFileSync).not.toHaveBeenCalled();
+    });
+
+    it('should respect config.yaml aifabrix-home override', () => {
+      const overrideHome = '/custom/aifabrix';
+      const overrideSecretsPath = path.join(overrideHome, 'secrets.yaml');
+      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('test-key: "test-value"');
+      yaml.load.mockReturnValue({ 'test-key': 'test-value' });
+
+      const result = secretsUtils.loadDefaultSecrets();
+
+      expect(result).toEqual({ 'test-key': 'test-value' });
+      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+      expect(fs.existsSync).toHaveBeenCalledWith(overrideSecretsPath);
+      expect(fs.readFileSync).toHaveBeenCalledWith(overrideSecretsPath, 'utf8');
     });
 
     it('should load secrets from default secrets file', () => {

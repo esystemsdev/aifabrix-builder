@@ -126,6 +126,9 @@ const localSecrets = require('../../lib/utils/local-secrets');
 // Mock fs module
 jest.mock('fs');
 jest.mock('os');
+jest.mock('../../lib/utils/paths', () => ({
+  getAifabrixHome: jest.fn()
+}));
 jest.mock('../../lib/utils/logger', () => ({
   log: jest.fn(),
   warn: jest.fn(),
@@ -141,6 +144,8 @@ describe('Secrets Module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     os.homedir.mockReturnValue(mockHomeDir);
+    const pathsUtil = require('../../lib/utils/paths');
+    pathsUtil.getAifabrixHome.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
 
     // Default mock for env-config.yaml used by loadEnvConfig
     fs.existsSync.mockImplementation((filePath) => {
@@ -1205,6 +1210,188 @@ environments:
       await secrets.generateEnvFile(appName, secretsPath, 'local', true);
 
       expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+    it('should not overwrite existing secrets when force flag is true', async() => {
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const existingSecrets = {
+        'secrets-encryptionKeyVault': 'existing-value-12345',
+        'postgres-passwordKeyVault': 'admin123'
+      };
+      let secretsFileContent = yaml.dump(existingSecrets);
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath && filePath.includes('env-config.yaml')) {
+          return true;
+        }
+        // Always return true for secretsPath to simulate file exists
+        if (filePath === secretsPath || (filePath && filePath.includes('secrets.local.yaml') && !filePath.includes('aifabrix-setup'))) {
+          return true;
+        }
+        return filePath && (filePath.includes('env.template') || filePath.includes('variables.yaml'));
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath && filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    DB_HOST: localhost
+    REDIS_HOST: localhost
+  docker:
+    DB_HOST: postgres
+    REDIS_HOST: redis
+`;
+        }
+        if (filePath && filePath.includes('env.template')) {
+          return 'ENCRYPTION_KEY=kv://secrets-encryptionKeyVault\nDATABASE_URL=kv://postgres-passwordKeyVault\nNEW_KEY=kv://new-secretKeyVault';
+        }
+        if (filePath === secretsPath || (filePath && filePath.includes('secrets.local.yaml') && !filePath.includes('aifabrix-setup'))) {
+          return secretsFileContent;
+        }
+        if (filePath && filePath.includes('variables.yaml')) {
+          return 'port: 3000';
+        }
+        return '';
+      });
+      let writtenSecrets = null;
+      fs.writeFileSync.mockImplementation((filePath, content) => {
+        if (filePath === secretsPath || (filePath && filePath.includes('secrets.local.yaml') && !filePath.includes('aifabrix-setup'))) {
+          writtenSecrets = yaml.load(content);
+          // Update the file content so subsequent reads return the updated secrets
+          secretsFileContent = content;
+        }
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'local', true);
+
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      expect(writtenSecrets).toBeDefined();
+      // Existing secret should be preserved
+      expect(writtenSecrets['secrets-encryptionKeyVault']).toBe('existing-value-12345');
+      expect(writtenSecrets['postgres-passwordKeyVault']).toBe('admin123');
+      // New secret should be generated
+      expect(writtenSecrets['new-secretKeyVault']).toBeDefined();
+    });
+
+    it('should use consistent path resolution for read and write operations', async() => {
+      const overrideHome = '/custom/aifabrix';
+      const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
+      const pathsUtil = require('../../lib/utils/paths');
+      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+      const existingSecrets = {
+        'postgres-passwordKeyVault': 'admin123'
+      };
+      let secretsFileContent = yaml.dump(existingSecrets);
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath && filePath.includes('env-config.yaml')) {
+          return true;
+        }
+        if (filePath === overrideSecretsPath || (filePath && filePath.includes('secrets.local.yaml') && !filePath.includes('aifabrix-setup'))) {
+          return true;
+        }
+        return filePath && (filePath.includes('env.template') || filePath.includes('variables.yaml'));
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath && filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    DB_HOST: localhost
+    REDIS_HOST: localhost
+  docker:
+    DB_HOST: postgres
+    REDIS_HOST: redis
+`;
+        }
+        if (filePath && filePath.includes('env.template')) {
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault\nNEW_KEY=kv://new-secretKeyVault';
+        }
+        if (filePath === overrideSecretsPath || (filePath && filePath.includes('secrets.local.yaml') && !filePath.includes('aifabrix-setup'))) {
+          return secretsFileContent;
+        }
+        if (filePath && filePath.includes('variables.yaml')) {
+          return 'port: 3000';
+        }
+        return '';
+      });
+      let writtenPath = null;
+      fs.writeFileSync.mockImplementation((filePath, content) => {
+        if (filePath === overrideSecretsPath || (filePath && filePath.includes('secrets.local.yaml') && !filePath.includes('aifabrix-setup'))) {
+          writtenPath = filePath;
+          secretsFileContent = content;
+        }
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'local', true);
+
+      // Verify that the same path was used for both read and write
+      expect(writtenPath).toBe(overrideSecretsPath);
+      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+    });
+
+    it('should use explicit path when provided', async() => {
+      const explicitPathRelative = '../../secrets.local.yaml';
+      const explicitPath = path.resolve(process.cwd(), explicitPathRelative);
+      const existingSecrets = {
+        'postgres-passwordKeyVault': 'admin123'
+      };
+      let secretsFileContent = yaml.dump(existingSecrets);
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath && filePath.includes('env-config.yaml')) {
+          return true;
+        }
+        // Resolve paths for comparison - handle both relative and absolute paths
+        const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve(filePath);
+        const resolvedExplicit = path.resolve(explicitPath);
+        if (resolvedPath === resolvedExplicit || filePath === explicitPath || filePath === explicitPathRelative) {
+          return true;
+        }
+        return filePath && (filePath.includes('env.template') || filePath.includes('variables.yaml'));
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath && filePath.includes('env-config.yaml')) {
+          return `
+environments:
+  local:
+    DB_HOST: localhost
+    REDIS_HOST: localhost
+  docker:
+    DB_HOST: postgres
+    REDIS_HOST: redis
+`;
+        }
+        // Resolve paths for comparison
+        const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve(filePath);
+        const resolvedExplicit = path.resolve(explicitPath);
+        if (filePath && filePath.includes('env.template')) {
+          // Include a missing secret so generateMissingSecrets will write
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault\nNEW_KEY=kv://new-secretKeyVault';
+        }
+        if (resolvedPath === resolvedExplicit || filePath === explicitPath || filePath === explicitPathRelative) {
+          return secretsFileContent;
+        }
+        if (filePath && filePath.includes('variables.yaml')) {
+          return 'port: 3000';
+        }
+        return '';
+      });
+      let writtenPath = null;
+      fs.writeFileSync.mockImplementation((filePath, content) => {
+        // Resolve paths for comparison - capture any path that matches
+        const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve(filePath);
+        const resolvedExplicit = path.resolve(explicitPath);
+        if (resolvedPath === resolvedExplicit || filePath === explicitPath || filePath === explicitPathRelative || filePath.includes('secrets.local.yaml')) {
+          writtenPath = filePath;
+          secretsFileContent = content;
+        }
+      });
+
+      await secrets.generateEnvFile(appName, explicitPathRelative, 'local', true);
+
+      // Verify that the explicit path was used (check both absolute and relative)
+      expect(writtenPath).toBeTruthy();
+      const resolvedWritten = path.resolve(writtenPath);
+      const resolvedExplicit = path.resolve(explicitPath);
+      expect(resolvedWritten).toBe(resolvedExplicit);
     });
 
     it('should handle envOutputPath when output directory does not exist', async() => {
@@ -2718,6 +2905,8 @@ environments:
 
       // Mock os.homedir
       os.homedir.mockReturnValue(mockHomeDir);
+      const pathsUtil = require('../../lib/utils/paths');
+      pathsUtil.getAifabrixHome.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
       config.getDeveloperId.mockResolvedValue(1);
 
       // Mock file system
