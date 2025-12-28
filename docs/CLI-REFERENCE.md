@@ -596,6 +596,9 @@ aifabrix app register myapp --environment dev
 
 # Register with overrides
 aifabrix app register myapp --environment dev --port 8080 --name "My Application"
+
+# Register with explicit controller URL
+aifabrix app register myapp --environment dev --controller https://controller.aifabrix.ai
 ```
 
 **Arguments:**
@@ -603,9 +606,41 @@ aifabrix app register myapp --environment dev --port 8080 --name "My Application
 
 **Options:**
 - `-e, --environment <env>` - Environment ID or key (required)
+- `-c, --controller <url>` - Controller URL (optional, overrides variables.yaml)
 - `-p, --port <port>` - Override application port
 - `-n, --name <name>` - Override display name
 - `-d, --description <desc>` - Override description
+
+**Controller URL Resolution:**
+
+The controller URL is determined in the following priority order:
+1. `--controller` flag (if provided)
+2. `variables.yaml` → `deployment.controllerUrl` (for app register)
+3. Device tokens in `~/.aifabrix/config.yaml` → `device` section
+
+**Examples:**
+```bash
+# Using --controller flag (highest priority)
+aifabrix app register myapp --environment dev --controller https://controller.aifabrix.ai
+
+# Using variables.yaml (if deployment.controllerUrl is set)
+aifabrix app register myapp --environment dev
+
+# Using device token from config.yaml (fallback)
+aifabrix app register myapp --environment dev
+```
+
+**Error Messages:**
+
+All error messages will show the controller URL that was used or attempted, helping with debugging:
+```yaml
+❌ Authentication Failed
+
+Controller URL: https://controller.aifabrix.ai
+
+Your authentication token is invalid or has expired.
+...
+```
 
 **Process:**
 1. Reads `builder/{appKey}/variables.yaml`
@@ -656,10 +691,28 @@ List applications in an environment.
 **Usage:**
 ```bash
 aifabrix app list --environment dev
+
+# List with explicit controller URL
+aifabrix app list --environment dev --controller https://controller.aifabrix.ai
 ```
 
 **Options:**
 - `-e, --environment <env>` - Environment ID or key (required)
+- `-c, --controller <url>` - Controller URL (optional, uses configured controller if not provided)
+
+**Controller URL Resolution:**
+
+The controller URL is determined in the following priority order:
+1. `--controller` flag (if provided)
+2. Device tokens in `~/.aifabrix/config.yaml` → `device` section
+
+**Error Messages:**
+
+Error messages include the controller URL for debugging:
+```yaml
+❌ Failed to list applications from controller: https://controller.aifabrix.ai
+Error: Network timeout
+```
 
 **Output:**
 ```yaml
@@ -684,6 +737,9 @@ Rotate pipeline ClientSecret for an application.
 **Usage:**
 ```bash
 aifabrix app rotate-secret myapp --environment dev
+
+# Rotate with explicit controller URL
+aifabrix app rotate-secret myapp --environment dev --controller https://controller.aifabrix.ai
 ```
 
 **Arguments:**
@@ -691,6 +747,19 @@ aifabrix app rotate-secret myapp --environment dev
 
 **Options:**
 - `-e, --environment <env>` - Environment ID or key (required)
+- `-c, --controller <url>` - Controller URL (optional, uses configured controller if not provided)
+
+**Controller URL Resolution:**
+
+Same as `app list` - see above.
+
+**Error Messages:**
+
+Error messages include the controller URL for debugging:
+```yaml
+❌ Failed to rotate secret via controller: https://controller.aifabrix.ai
+Error: Application not found
+```
 
 **Process:**
 1. Validates application key and environment
@@ -1138,7 +1207,7 @@ aifabrix environment deploy dev --controller https://controller.aifabrix.ai --sk
 **Differences from `aifabrix deploy <app>`:**
 
 | Aspect | `environment deploy <env>` | `deploy <app>` |
-|--------|---------------------------|----------------|
+| ------ | ------------------------- | -------------- |
 | **Target** | Environment (dev, tst, pro, miso) | Application |
 | **Purpose** | Set up environment infrastructure | Deploy application to environment |
 | **Prerequisites** | Controller access, authentication | Environment must exist, app must be built |
@@ -1346,7 +1415,7 @@ Use `aifabrix deploy <app> --poll` to monitor deployment status, or access the c
 
 Validate application or external integration file.
 
-**What:** Validates application configurations or external integration files (external-system.json, external-datasource.json) against their schemas. Supports both app name validation (including externalIntegration block) and direct file validation.
+**What:** Validates application configurations or external integration files (external-system.json, external-datasource.json) against their schemas. Supports both app name validation (including externalIntegration block and rbac.yaml for external systems) and direct file validation. For external systems, validates rbac.yaml if present and checks role references in permissions.
 
 **When:** Before deployment, when troubleshooting configuration issues, validating external integration schemas, or checking configuration changes.
 
@@ -1369,15 +1438,16 @@ aifabrix validate ./schemas/hubspot-deal.json
 1. Detects if input is app name or file path
 2. If app name:
    - Validates application configuration (variables.yaml)
+   - If external system, validates rbac.yaml (if present) and checks role references in permissions
    - If `externalIntegration` block exists in variables.yaml:
      - Resolves schema base path
      - Finds all external-system.json and external-datasource.json files
-     - Validates each file against its schema
+     - Validates each file against its schema (including roles/permissions validation)
    - Aggregates all validation results
 3. If file path:
    - Detects schema type (application, external-system, external-datasource)
    - Loads appropriate schema
-   - Validates file against schema
+   - Validates file against schema (for external-system, also validates role references in permissions)
 
 **Output (app validation with external files):**
 ```yaml
@@ -2252,9 +2322,9 @@ This will generate the .env file without running validation checks afterward.
 
 Generate deployment JSON.
 
-**What:** Creates `aifabrix-deploy.json` from variables.yaml, env.template, rbac.yaml for normal applications. For external type applications, generates `application-schema.json` by combining external-system.schema.json, external-datasource.schema.json, and actual system/datasource JSON files.
+**What:** Creates `aifabrix-deploy.json` from variables.yaml, env.template, rbac.yaml for normal applications. For external type applications, generates `<app-name>-deploy.json` by loading the system JSON file and merging rbac.yaml (if present) into it. Also generates `application-schema.json` by combining external-system.schema.json, external-datasource.schema.json, and actual system/datasource JSON files (with rbac.yaml merged).
 
-**When:** Previewing deployment configuration, debugging deployments. For external systems, before deploying to generate the combined application schema file.
+**When:** Previewing deployment configuration, debugging deployments. For external systems, before deploying to generate the combined application schema file. For external systems with RBAC, ensures roles/permissions from rbac.yaml are merged into the system JSON.
 
 **Example (normal app):**
 ```bash
@@ -2269,7 +2339,14 @@ aifabrix json hubspot
 
 **Creates:**
 - Normal apps: `builder/<app>/aifabrix-deploy.json`
-- External systems: `builder/<app>/application-schema.json` (combines schemas and JSON files)
+- External systems: `builder/<app>/<app-name>-deploy.json` (system JSON with rbac.yaml merged if present)
+- External systems: `builder/<app>/application-schema.json` (combines schemas and JSON files with rbac.yaml merged)
+
+**RBAC Support for External Systems:**
+- External systems can define roles and permissions in `rbac.yaml` (same format as regular apps)
+- When generating JSON, roles/permissions from rbac.yaml are merged into the system JSON
+- Priority: roles/permissions in system JSON > rbac.yaml (if both exist, prefer JSON)
+- Supports both `builder/` and `integration/` directories
 
 **Issues:**
 - **"Validation failed"** → Check configuration files for errors
@@ -2283,7 +2360,7 @@ aifabrix json hubspot
 
 Split deployment JSON into component files.
 
-**What:** Performs the reverse operation of `aifabrix json`. Reads a deployment JSON file (`<app-name>-deploy.json`) and extracts its components into separate files: `env.template`, `variables.yaml`, `rbac.yml`, and `README.md`. This enables migration of existing deployment JSON files back to the component file structure.
+**What:** Performs the reverse operation of `aifabrix json`. Reads a deployment JSON file (`<app-name>-deploy.json`) and extracts its components into separate files: `env.template`, `variables.yaml`, `rbac.yml`, and `README.md`. This enables migration of existing deployment JSON files back to the component file structure. For external systems, extracts roles/permissions from the system JSON into rbac.yml if present.
 
 **When:** Migrating existing deployment JSON files to component-based structure, recovering component files from deployment JSON, or reverse-engineering deployment configurations.
 

@@ -329,7 +329,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
       if (registerAction) {
         await registerAction('test-app', { environment: 'dev' });
-        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Not logged in'));
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('❌ Authentication Failed'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
@@ -521,7 +521,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
       if (listAction) {
         await listAction({ environment: 'dev' });
-        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Not logged in'));
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('❌ Authentication Failed'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });

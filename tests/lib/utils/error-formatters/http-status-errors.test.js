@@ -26,7 +26,7 @@ describe('HTTP Status Error Formatters', () => {
       const errorData = {};
       const result = httpStatusErrors.formatAuthenticationError(errorData);
       expect(result).toContain('❌ Authentication Failed');
-      expect(result).toContain('Invalid credentials or token expired');
+      expect(result).toContain('Your authentication token is invalid or has expired');
       expect(result).toContain('aifabrix login');
     });
 

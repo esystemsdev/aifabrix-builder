@@ -1,3 +1,76 @@
+## [2.23.0] - 2025-12-28
+
+### Added
+- **External System RBAC Support**: Adding full RBAC (roles and permissions) support for external systems
+  - External system schema updated to v1.1.0 with `roles` and `permissions` properties
+  - Support for `rbac.yaml` files in external system directories (`builder/` and `integration/`)
+  - RBAC validation for external systems matching regular application validation patterns
+  - Template generation with optional roles/permissions support in `external-system.json.hbs`
+  - JSON generation merges `rbac.yaml` into external system deployment JSON
+  - Split-JSON operations extract `rbac.yaml` from external system JSON with roles/permissions
+  - Backward compatible: external systems without `rbac.yaml` continue to work unchanged
+- **Controller Parameter Support for App Commands**: Added `--controller` option to all app management commands
+  - `app register` now accepts `-c, --controller <url>` option to override controller URL from variables.yaml
+  - `app list` now accepts `-c, --controller <url>` option to specify controller URL
+  - `app rotate-secret` now accepts `-c, --controller <url>` option to specify controller URL
+  - Controller URL resolution follows priority: `--controller` flag > `variables.yaml` > device tokens
+  - Enables explicit controller URL specification for CI/CD workflows and multi-controller environments
+- **Enhanced Error Messages with Controller URL Context**: All error messages now display the controller URL used or attempted
+  - Authentication errors prominently show which controller URL failed
+  - Network errors display which controller URL couldn't be reached
+  - API errors include controller URL context for better debugging
+  - Multiple controller URL attempts are shown when applicable
+  - Error messages guide users to all available resolution methods
+
+### Changed
+- **External System Schema**: Updated `lib/schema/external-system.schema.json` from v1.0.0 to v1.1.0
+  - Added `roles` property: array of role objects with `name`, `value`, `description`, optional `Groups`
+  - Added `permissions` property: array of permission objects with `name`, `roles` array, `description`
+  - Role `value` pattern: `^[a-z-]+$`
+  - Permission `name` pattern: `^[a-z0-9-:]+$`
+- **External System JSON Generation**: Enhanced `generateExternalSystemDeployJson()` to merge `rbac.yaml`
+  - Loads `rbac.yaml` from app directory (supports both `builder/` and `integration/` paths)
+  - Merges roles/permissions into system JSON before writing
+  - Priority: roles/permissions in system JSON > `rbac.yaml` (if both exist, prefer JSON)
+- **RBAC Validation**: Updated `validateRbac()` to support external systems
+  - Supports both `builder/` and `integration/` directories for external systems
+  - Uses `detectAppType()` utility to find correct app path
+  - Validates roles/permissions structure against updated schema
+- **External System Template**: Updated `templates/external-system/external-system.json.hbs`
+  - Added optional roles/permissions section using Handlebars conditionals
+  - Supports roles/permissions from template context
+  - Format matches schema structure with proper JSON formatting
+- **Error Handling Improvements**: Enhanced error formatters to display controller URL context
+  - Updated `formatAuthenticationError()` to show controller URL and attempted URLs
+  - Updated `formatServerError()`, `formatNotFoundError()`, `formatConflictError()`, and `formatGenericError()` to show controller URL
+  - Updated `formatNetworkError()` to prominently display controller URL
+  - Updated `formatApiError()` to accept and pass controller URL to all formatters
+- **Controller URL Resolution**: Improved controller URL resolution priority across app commands
+  - `app register`: `--controller` flag > `variables.yaml` → `deployment.controllerUrl` > device tokens
+  - `app list` / `app rotate-secret`: `--controller` flag > device tokens
+  - All commands track and display the actual controller URL used for better debugging
+
+### Technical
+- Schema updates: `lib/schema/external-system.schema.json` updated to v1.1.0 with roles/permissions
+- JSON generation: `lib/generator.js` enhanced to merge `rbac.yaml` into external system JSON
+- Validation: `lib/validator.js` and `lib/validate.js` updated to support external system RBAC validation
+- Template generation: `lib/external-system-generator.js` updated to support roles/permissions in templates
+- Split-JSON: `lib/generator-split.js` verified to work with external system JSON containing roles/permissions
+- Schema loader: `lib/utils/schema-loader.js` ensures updated schema is loaded and cached
+- Updated `lib/app-register.js` to use `options.controller` with proper priority resolution
+- Updated `lib/app-list.js` to use `options.controller` and include controller URL in error messages
+- Updated `lib/app-rotate-secret.js` to use `options.controller` and include controller URL in error messages
+- Updated `lib/utils/app-register-auth.js` to track attempted URLs and return controller URL
+- Updated `lib/utils/error-formatters/http-status-errors.js` to show controller URL in all error formatters
+- Updated `lib/utils/error-formatters/network-errors.js` to show controller URL prominently
+- Updated `lib/utils/api-error-handler.js` to accept and pass controller URL
+- Updated `lib/utils/app-register-api.js` to pass controller URL to error handlers
+- Updated `lib/utils/device-code.js` to enhance error handling for validation scenarios
+- Comprehensive test coverage: New test files for external system RBAC functionality
+- Documentation updates: `docs/CLI-REFERENCE.md`, `docs/EXTERNAL-SYSTEMS.md`, `docs/CONFIGURATION.md`
+- Updated test expectations to match new error message format with controller URL context
+- ISO 27001 compliant implementation maintained throughout
+
 ## [2.21.1] - 2025-12-27
 
 ### Added

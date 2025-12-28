@@ -32,6 +32,25 @@
     "serverUrl": "https://mcp.example.com",
     "toolPrefix": "{{systemKey}}"
   }{{/if}},
-  "tags": []
+  "tags": []{{#if roles}},
+  "roles": [
+    {{#each roles}}
+    {
+      "name": "{{name}}",
+      "value": "{{value}}",
+      "description": "{{description}}"{{#if Groups}},
+      "Groups": [{{#each Groups}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]{{/if}}{{#if permissions}},
+  "permissions": [
+    {{#each permissions}}
+    {
+      "name": "{{name}}",
+      "roles": [{{#each roles}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}],
+      "description": "{{description}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]{{/if}}
 }
 

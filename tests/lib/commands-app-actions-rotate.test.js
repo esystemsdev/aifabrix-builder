@@ -214,7 +214,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
-        expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Not logged in'));
+        expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Authentication Failed'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
@@ -344,7 +344,8 @@ describe('Application Commands - Rotate Secret Action', () => {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
-        expect(logger.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Invalid response: missing data'));
+        expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to rotate secret via controller'));
+        expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error: Invalid response: missing data'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
@@ -379,7 +380,8 @@ describe('Application Commands - Rotate Secret Action', () => {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
-        expect(logger.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Invalid response: missing or invalid credentials'));
+        expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to rotate secret via controller'));
+        expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error: Invalid response: missing or invalid credentials'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
@@ -416,7 +418,8 @@ describe('Application Commands - Rotate Secret Action', () => {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
-        expect(logger.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Invalid response: missing or invalid credentials'));
+        expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to rotate secret via controller'));
+        expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error: Invalid response: missing or invalid credentials'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
@@ -453,7 +456,8 @@ describe('Application Commands - Rotate Secret Action', () => {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
-        expect(logger.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Invalid response: missing or invalid credentials'));
+        expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to rotate secret via controller'));
+        expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error: Invalid response: missing or invalid credentials'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });

@@ -69,6 +69,7 @@ integration/
     hubspot-deploy-company.json      # Companies datasource
     hubspot-deploy-contact.json      # Contacts datasource
     hubspot-deploy-deal.json         # Deals datasource
+    rbac.yaml                        # RBAC roles and permissions (optional)
     env.template                     # Environment variables
     README.md                        # Documentation
 ```
@@ -374,15 +375,17 @@ The `configuration` array defines variables that can be set via the Miso Control
 
 External systems use standard variable names that are **automatically managed by the dataplane credentials system**. These variables do **not** require `portalInput` configuration—they are handled by the platform's credential management.
 
-| Variable Name | Description | Used For | Example |
-|--------------|-------------|----------|---------|
-| `{{CLIENTID}}` | OAuth2 Client ID | OAuth2 authentication | `{{CLIENTID}}` |
-| `{{CLIENTSECRET}}` | OAuth2 Client Secret | OAuth2 authentication | `{{CLIENTSECRET}}` |
-| `{{TOKENURL}}` | OAuth2 Token URL | OAuth2 token endpoint | `{{TOKENURL}}` |
-| `{{APIKEY}}` | API Key | API Key authentication | `{{APIKEY}}` |
-| `{{USERNAME}}` | Basic Auth Username | Basic authentication | `{{USERNAME}}`|
-| `{{PASSWORD}}` | Basic Auth Password | Basic authentication | `{{PASSWORD}}` |
-| `{{REDIRECT_URI}}` | OAuth2 Redirect URI | OAuth2 callback URL | `{{REDIRECT_URI}}` |
+<!-- markdownlint-disable MD060 -->
+| Variable Name      | Description              | Used For              | Example            |
+|-------------------|--------------------------|-----------------------|--------------------|
+| `{{CLIENTID}}`     | OAuth2 Client ID         | OAuth2 authentication | `{{CLIENTID}}`     |
+| `{{CLIENTSECRET}}` | OAuth2 Client Secret     | OAuth2 authentication | `{{CLIENTSECRET}}` |
+| `{{TOKENURL}}`     | OAuth2 Token URL         | OAuth2 token endpoint | `{{TOKENURL}}`     |
+| `{{APIKEY}}`       | API Key                  | API Key authentication| `{{APIKEY}}`       |
+| `{{USERNAME}}`     | Basic Auth Username      | Basic authentication | `{{USERNAME}}`     |
+| `{{PASSWORD}}`     | Basic Auth Password      | Basic authentication | `{{PASSWORD}}`     |
+| `{{REDIRECT_URI}}` | OAuth2 Redirect URI       | OAuth2 callback URL   | `{{REDIRECT_URI}}` |
+<!-- markdownlint-enable MD060 -->
 
 **Important:**
 - Standard variables are managed by the dataplane credentials system—no `portalInput` needed
@@ -639,6 +642,124 @@ For Azure Active Directory authentication.
 3. Set values via Miso Controller or Dataplane portal interface
 4. Configure required API permissions and scopes
 
+### RBAC Support (Roles and Permissions)
+
+External systems support RBAC (Role-Based Access Control) configuration via `rbac.yaml`, similar to regular applications. This allows you to define roles and permissions for your external system integration.
+
+**RBAC Configuration:**
+
+External systems can define roles and permissions in two ways:
+
+1. **In `rbac.yaml` file** (recommended for separation of concerns)
+2. **Directly in the system JSON file** (`<app-name>-deploy.json`)
+
+When generating deployment JSON with `aifabrix json`, roles/permissions from `rbac.yaml` are automatically merged into the system JSON. Priority: roles/permissions in system JSON > rbac.yaml (if both exist, prefer JSON).
+
+**Example `rbac.yaml`:**
+
+```yaml
+roles:
+  - name: HubSpot Admin
+    value: hubspot-admin
+    description: Full access to HubSpot integration
+    Groups:
+      - "hubspot-admins@company.com"
+  
+  - name: HubSpot User
+    value: hubspot-user
+    description: Read-only access to HubSpot data
+
+permissions:
+  - name: hubspot:read
+    roles:
+      - hubspot-user
+      - hubspot-admin
+    description: Read access to HubSpot data
+  
+  - name: hubspot:write
+    roles:
+      - hubspot-admin
+    description: Write access to HubSpot data
+  
+  - name: hubspot:admin
+    roles:
+      - hubspot-admin
+    description: Administrative access to HubSpot integration
+```
+
+**Example in System JSON:**
+
+```json
+{
+  "key": "hubspot",
+  "displayName": "HubSpot CRM",
+  "description": "HubSpot CRM integration",
+  "type": "openapi",
+  "roles": [
+    {
+      "name": "HubSpot Admin",
+      "value": "hubspot-admin",
+      "description": "Full access to HubSpot integration",
+      "Groups": ["hubspot-admins@company.com"]
+    },
+    {
+      "name": "HubSpot User",
+      "value": "hubspot-user",
+      "description": "Read-only access to HubSpot data"
+    }
+  ],
+  "permissions": [
+    {
+      "name": "hubspot:read",
+      "roles": ["hubspot-user", "hubspot-admin"],
+      "description": "Read access to HubSpot data"
+    },
+    {
+      "name": "hubspot:write",
+      "roles": ["hubspot-admin"],
+      "description": "Write access to HubSpot data"
+    }
+  ]
+}
+```
+
+**Role Requirements:**
+
+- `name` - Human-readable role name (required)
+- `value` - Role identifier used in JWT and ACL (required, pattern: `^[a-z-]+$`)
+- `description` - Role description (required)
+- `Groups` - Optional array of Azure AD groups mapped to this role
+
+**Permission Requirements:**
+
+- `name` - Permission identifier (required, pattern: `^[a-z0-9-:]+$`, e.g., `hubspot:read`, `documentstore:write`)
+- `roles` - Array of role values that have this permission (required, must reference existing roles)
+- `description` - Permission description (required)
+
+**Validation:**
+
+When validating external systems with `aifabrix validate`, the builder:
+- Validates `rbac.yaml` structure (if present)
+- Validates roles and permissions in system JSON (if present)
+- Checks that all role references in permissions exist in the roles array
+- Validates role value patterns (`^[a-z-]+$`)
+- Validates permission name patterns (`^[a-z0-9-:]+$`)
+
+**Usage:**
+
+```bash
+# Generate JSON with rbac.yaml merged
+aifabrix json hubspot
+
+# Validate including rbac.yaml
+aifabrix validate hubspot
+
+# Split JSON back to component files (extracts roles/permissions to rbac.yml)
+aifabrix split-json hubspot
+```
+
+**Note:** RBAC configuration is registered with miso-controller during deployment. Roles and permissions are used for access control when querying external system data via MCP/OpenAPI.
+
 ### Datasource Configuration
 
 Each datasource maps one entity type from the external system.
@@ -888,6 +1009,7 @@ integration/
     hubspot-deploy-company.json            # Datasource: entityKey="company"
     hubspot-deploy-contact.json           # Datasource: entityKey="contact"
     hubspot-deploy-deal.json              # Datasource: entityKey="deal"
+    rbac.yaml                              # RBAC roles and permissions (optional)
     env.template
 ```
 
@@ -1072,14 +1194,15 @@ aifabrix download hubspot --environment dev
 - Generates all development files (variables.yaml, JSON files, env.template, README.md)
 
 **File structure created:**
-```
+```yaml
 integration/
   hubspot/
-    variables.yaml                    # App configuration with externalIntegration block
+    variables.yaml                   # App configuration with externalIntegration block
     hubspot-deploy.json              # External system definition
     hubspot-deploy-company.json      # Companies datasource
     hubspot-deploy-contact.json      # Contacts datasource
     hubspot-deploy-deal.json         # Deals datasource
+    rbac.yaml                        # RBAC roles and permissions (optional)
     env.template                     # Environment variables template
     README.md                        # Documentation
 ```

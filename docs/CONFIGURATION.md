@@ -316,6 +316,56 @@ Example: `miso`, `dev`, `tst`, `pro`
 
 **Note:** Client credentials are no longer stored in variables.yaml. They are read from `~/.aifabrix/secrets.local.yaml` using pattern `<app-name>-client-idKeyVault` and `<app-name>-client-secretKeyVault`. Tokens are automatically retrieved or refreshed during deployment.
 
+## Controller URL Resolution
+
+The CLI resolves the controller URL using the following priority order:
+
+1. **Command-line flag** (`--controller`) - Highest priority, overrides all other sources
+2. **variables.yaml** (`deployment.controllerUrl`) - Used by `app register` and `deploy` commands
+3. **Device tokens** (`~/.aifabrix/config.yaml` → `device` section) - Fallback for all commands
+
+### Priority Order by Command
+
+**app register:**
+1. `--controller` flag
+2. `variables.yaml` → `deployment.controllerUrl`
+3. Device tokens in config.yaml
+
+**app list / app rotate-secret:**
+1. `--controller` flag
+2. Device tokens in config.yaml
+
+**deploy:**
+1. `--controller` flag
+2. `variables.yaml` → `deployment.controllerUrl`
+3. Device tokens in config.yaml
+
+### Error Messages and Controller URL
+
+All error messages include the controller URL that was used or attempted, making debugging easier:
+
+- **Authentication errors** show which controller URL failed authentication
+- **Network errors** show which controller URL couldn't be reached
+- **API errors** show which controller URL returned the error
+- **Multiple attempts** show all controller URLs that were tried
+
+### Examples
+
+```bash
+# Explicit controller URL (recommended for CI/CD)
+aifabrix app register myapp --environment dev --controller https://controller.aifabrix.ai
+
+# Using variables.yaml
+# Set in builder/myapp/variables.yaml:
+# deployment:
+#   controllerUrl: 'https://controller.aifabrix.ai'
+aifabrix app register myapp --environment dev
+
+# Using device token (after login)
+aifabrix login --method device --controller https://controller.aifabrix.ai --environment dev
+aifabrix app register myapp --environment dev
+```
+
 **Note:** The `deploymentKey` field is automatically generated during deployment and should not be manually set in variables.yaml. It is a SHA256 hash of the deployment manifest (excluding the deploymentKey field itself) and is used for change detection and validation.
 
 **externalIntegration**  
@@ -931,6 +981,15 @@ Your custom file will be merged with system defaults, allowing you to override v
 
 ## rbac.yaml
 
+Defines roles and permissions for your application. Used for access control and Azure AD group mapping. Supported for both regular applications and external systems.
+
+**For External Systems:**
+- External systems can define roles and permissions in `rbac.yaml` (same format as regular apps)
+- When generating JSON with `aifabrix json`, roles/permissions from `rbac.yaml` are merged into the system JSON
+- Priority: roles/permissions in system JSON > rbac.yaml (if both exist, prefer JSON)
+- Supports both `builder/` and `integration/` directories
+- Roles/permissions are registered with miso-controller during deployment
+
 Roles and permissions. Only created if `authentication: true` during `aifabrix create`.
 
 ### Structure
@@ -977,10 +1036,20 @@ Pattern: `resource:action` or `feature:action`
 
 ### Why rbac.yaml?
 
+**For Regular Applications:**
 - **Contract with miso-controller** - Defines what roles/permissions your app has
 - **Configuration-driven** - No need to hardcode roles in your application
 - **Audit trail** - miso-controller tracks all access decisions
 - **Centralized management** - Update roles without code changes
+- Separates RBAC configuration from application configuration
+- Makes roles/permissions easier to manage and version
+
+**For External Systems:**
+- External systems can define their own RBAC roles and permissions
+- Roles/permissions are registered with miso-controller during deployment
+- Supports Azure AD group mapping via `Groups` property
+- Can be defined in `rbac.yaml` or directly in system JSON (system JSON takes precedence when merged)
+- Validated during `aifabrix validate` command (checks role references in permissions)
 
 ---
 

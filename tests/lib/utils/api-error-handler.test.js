@@ -355,7 +355,7 @@ describe('API Error Handler', () => {
       const formatted = formatAuthenticationError(errorData);
 
       expect(formatted).toContain('Authentication Failed');
-      expect(formatted).toContain('Invalid credentials');
+      expect(formatted).toContain('Your authentication token is invalid or has expired');
     });
   });
 

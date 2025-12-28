@@ -7,7 +7,7 @@
     "key": "external-system-schema",
     "name": "External System Configuration Schema",
     "description": "JSON schema for validating ExternalSystem configuration files",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "type": "schema",
     "category": "integration",
     "author": "AI Fabrix Team",
@@ -27,6 +27,17 @@
     ],
     "dependencies": [],
     "changelog": [
+      {
+        "version": "1.1.0",
+        "date": "2025-12-01T00:00:00Z",
+        "changes": [
+          "Added RBAC roles and permissions support",
+          "RBAC roles/permissions are registered with miso-controller during deployment",
+          "Roles support Azure AD group mapping via Groups property",
+          "Permissions reference roles and are used for access control"
+        ],
+        "breaking": false
+      },
       {
         "version": "1.0.0",
         "date": "2024-01-01T00:00:00Z",
@@ -273,6 +284,86 @@
       "description": "Optional tags for search / filtering",
       "items": {
         "type": "string"
+      }
+    },
+    "roles": {
+      "type": "array",
+      "description": "External system roles for Azure AD group mapping",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "value",
+          "description"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Human-readable role name",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "value": {
+            "type": "string",
+            "description": "Role identifier (used in JWT and ACL)",
+            "pattern": "^[a-z-]+$"
+          },
+          "description": {
+            "type": "string",
+            "description": "Role description",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "Groups": {
+            "type": "array",
+            "description": "Azure AD groups mapped to this role",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "description": "External system permissions with role mappings for access control",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "roles",
+          "description"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Permission identifier (e.g., 'documentstore:read', 'flowise:dev:access')",
+            "pattern": "^[a-z0-9-:]+$",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "roles": {
+            "type": "array",
+            "description": "Roles that have this permission",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z-]+$",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "minItems": 1
+          },
+          "description": {
+            "type": "string",
+            "description": "Permission description",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "additionalProperties": false
       }
     }
   },

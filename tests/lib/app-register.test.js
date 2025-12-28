@@ -623,7 +623,7 @@ describe('App Register Module', () => {
 
       expect(process.exit).toHaveBeenCalledWith(1);
       expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('❌ Not logged in')
+        expect.stringContaining('❌ Authentication Failed')
       );
     });
 
