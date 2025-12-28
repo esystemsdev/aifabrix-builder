@@ -222,6 +222,7 @@ aifabrix run myapp
 ```
 
 **What happens:**
+- Creates database and user automatically (if app requires database)
 - Starts container as `aifabrix-myapp`
 - Connects to Postgres and Redis
 - Maps port for localhost access

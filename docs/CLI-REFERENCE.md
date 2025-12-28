@@ -989,10 +989,16 @@ aifabrix run myapp --debug
 3. Verifies infrastructure health
 4. Stops existing container if running
 5. Checks port availability
-6. Generates Docker Compose configuration
-7. Starts container with proper networking
-8. Waits for health check to pass
-9. Displays access URL
+6. Generates `.env` file from template (if needed)
+7. Generates Docker Compose configuration
+8. **Creates database and user** (if `requiresDatabase: true` in variables.yaml)
+   - Automatically creates database named after app key
+   - Creates database user with proper permissions
+   - Grants all privileges and sets schema ownership
+   - Idempotent: skips if database already exists
+9. Starts container with proper networking
+10. Waits for health check to pass
+11. Displays access URL
 
 **Access:** <http://localhost>:<port>
 

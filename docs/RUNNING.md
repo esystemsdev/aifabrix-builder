@@ -13,11 +13,13 @@ aifabrix run myapp
 ### What Happens
 
 1. **Checks infrastructure** - Postgres and Redis running?
-2. **Generates docker-compose** - Creates container configuration
-3. **Starts container** - Named `aifabrix-myapp`
-4. **Connects services** - Links to postgres and redis
-5. **Maps ports** - localhost → container
-6. **Mounts volumes** - For data persistence
+2. **Generates .env file** - Creates environment variables from template
+3. **Generates docker-compose** - Creates container configuration
+4. **Creates database** - Automatically creates database and user (if app requires database)
+5. **Starts container** - Named `aifabrix-myapp`
+6. **Connects services** - Links to postgres and redis
+7. **Maps ports** - localhost → container
+8. **Mounts volumes** - For data persistence
 
 ```mermaid
 graph TB
@@ -79,6 +81,87 @@ build:
 **Or override:**
 ```bash
 aifabrix run myapp --port 3002
+```
+
+---
+
+## Database Creation
+
+If your app has `requiresDatabase: true` in `variables.yaml`, `aifabrix run` automatically creates the database and user before starting your application.
+
+### What Gets Created
+
+- **Database** - Database name matches your app key (e.g., `myapp`)
+- **Database user** - User name follows pattern `{appKey}_user` (e.g., `myapp_user`)
+- **Privileges** - Full access to the database and schema
+- **Idempotent** - If database already exists, skips creation (safe to run multiple times)
+
+### How It Works
+
+The database initialization happens via a `db-init` service that runs before your app container starts. The process:
+
+1. Waits for PostgreSQL to be ready
+2. Checks if database already exists
+3. Creates database if it doesn't exist
+4. Creates database user with password from `.env` file
+5. Grants all privileges and sets schema ownership
+
+### Example Output
+
+When you run `aifabrix run myapp`, you'll see output like:
+
+```
+✓ Infrastructure is running
+✓ Starting myapp...
+Creating myapp database and user...
+Creating database "myapp"...
+Creating user "myapp_user"...
+Granting privileges...
+Database "myapp" created successfully!
+Database initialization complete!
+✓ Container aifabrix-myapp-db-init started
+✓ Container aifabrix-myapp started
+✓ App running at http://localhost:3000
+```
+
+### Configuration
+
+To enable automatic database creation, ensure your `builder/<app>/variables.yaml` includes:
+
+```yaml
+requires:
+  database: true
+```
+
+### Multiple Databases
+
+If your app requires multiple databases, configure them in `variables.yaml`:
+
+```yaml
+requires:
+  database: true
+databases:
+  - name: myapp_main
+  - name: myapp_analytics
+```
+
+Each database will be created automatically with its own user and permissions.
+
+### Troubleshooting Database Creation
+
+**Check db-init logs:**
+```bash
+docker logs aifabrix-myapp-db-init
+```
+
+**Verify database exists:**
+```bash
+docker exec aifabrix-postgres psql -U pgadmin -l | grep myapp
+```
+
+**Manually create database (if needed):**
+```bash
+docker exec aifabrix-postgres psql -U pgadmin -c "CREATE DATABASE myapp;"
 ```
 
 ---
@@ -372,17 +455,32 @@ aifabrix run myapp --port 3001
 
 ### "Can't connect to database"
 
-**Check DATABASE_URL:**
-```bash
-cat builder/myapp/.env | grep DATABASE_URL
-```
+**Note:** `aifabrix run` automatically creates the database if `requiresDatabase: true` is set in `variables.yaml`. If you're seeing connection errors:
 
-**Check database exists:**
-```bash
-docker exec aifabrix-postgres psql -U pgadmin -l
-```
+1. **Ensure database requirement is enabled:**
+   ```yaml
+   # In builder/myapp/variables.yaml
+   requires:
+     database: true
+   ```
 
-**Create database:**
+2. **Check that db-init service completed successfully:**
+   ```bash
+   docker logs aifabrix-myapp-db-init
+   ```
+   Look for "Database initialization complete!" message.
+
+3. **Check DATABASE_URL:**
+   ```bash
+   cat builder/myapp/.env | grep DATABASE_URL
+   ```
+
+4. **Verify database exists:**
+   ```bash
+   docker exec aifabrix-postgres psql -U pgadmin -l | grep myapp
+   ```
+
+**Manually create database (if automatic creation failed):**
 ```bash
 docker exec aifabrix-postgres psql -U pgadmin -c "CREATE DATABASE myapp;"
 ```
