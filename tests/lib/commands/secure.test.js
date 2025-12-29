@@ -46,6 +46,11 @@ jest.mock('../../../lib/config', () => ({
   getAifabrixSecretsPath: jest.fn()
 }));
 
+// Mock paths BEFORE requiring secure command
+jest.mock('../../../lib/utils/paths', () => ({
+  getAifabrixHome: jest.fn()
+}));
+
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -56,6 +61,7 @@ const { handleSecure } = require('../../../lib/commands/secure');
 const config = require('../../../lib/config');
 const { encryptSecret, isEncrypted } = require('../../../lib/utils/secrets-encryption');
 const logger = require('../../../lib/utils/logger');
+const pathsUtil = require('../../../lib/utils/paths');
 
 describe('secure command', () => {
   const mockHomeDir = '/home/test';
@@ -71,6 +77,7 @@ describe('secure command', () => {
     process.env.TERM = 'dumb';
 
     os.homedir.mockReturnValue(mockHomeDir);
+    pathsUtil.getAifabrixHome.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
     fs.existsSync.mockReturnValue(false);
     fs.readFileSync.mockReturnValue('');
     fs.writeFileSync.mockImplementation(() => {});
@@ -765,6 +772,44 @@ secret-token: my-secret-token
       expect(writtenContent).not.toContain('my-secret-token');
       expect(writtenContent).toMatch(/api-key: secure:\/\//);
       expect(writtenContent).toMatch(/secret-token: secure:\/\//);
+    });
+  });
+
+  describe('path resolution with aifabrix-home override', () => {
+    it('should respect config.yaml aifabrix-home override when finding user secrets file', async() => {
+      const overrideHome = '/custom/aifabrix';
+      const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
+      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+
+      const options = { secretsEncryption: validHexKey };
+      fs.existsSync.mockImplementation((filePath) => filePath === overrideSecretsPath);
+      fs.readFileSync.mockReturnValue(yaml.dump({ 'test-key': 'test-value' }));
+
+      await handleSecure(options);
+
+      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+      expect(fs.existsSync).toHaveBeenCalledWith(overrideSecretsPath);
+    });
+
+    it('should use paths.getAifabrixHome() instead of os.homedir()', async() => {
+      const overrideHome = '/workspace/.aifabrix';
+      const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
+      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+
+      const options = { secretsEncryption: validHexKey };
+      fs.existsSync.mockImplementation((filePath) => filePath === overrideSecretsPath);
+      fs.readFileSync.mockReturnValue(yaml.dump({ 'test-key': 'test-value' }));
+
+      await handleSecure(options);
+
+      // Verify paths.getAifabrixHome() was called
+      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+      // Verify it checked the override path, not the default os.homedir() path
+      expect(fs.existsSync).toHaveBeenCalledWith(overrideSecretsPath);
+      // Verify it did NOT use os.homedir() path
+      const defaultPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const existsCalls = fs.existsSync.mock.calls.map(call => call[0]);
+      expect(existsCalls).toContain(overrideSecretsPath);
     });
   });
 });

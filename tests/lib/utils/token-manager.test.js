@@ -15,6 +15,9 @@ const yaml = require('js-yaml');
 jest.mock('../../../lib/config');
 jest.mock('../../../lib/utils/api');
 jest.mock('../../../lib/utils/logger');
+jest.mock('../../../lib/utils/paths', () => ({
+  getAifabrixHome: jest.fn()
+}));
 
 const tokenManager = require('../../../lib/utils/token-manager');
 const config = require('../../../lib/config');
@@ -28,6 +31,9 @@ describe('Token Manager Module', () => {
     jest.clearAllMocks();
     // Mock os.homedir
     jest.spyOn(os, 'homedir').mockReturnValue(mockHomeDir);
+    // Mock paths.getAifabrixHome() to return default path
+    const pathsUtil = require('../../../lib/utils/paths');
+    pathsUtil.getAifabrixHome.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
   });
 
   describe('loadClientCredentials', () => {
@@ -102,6 +108,61 @@ describe('Token Manager Module', () => {
       const result = await tokenManager.loadClientCredentials('keycloak');
 
       expect(result).toBeNull();
+    });
+
+    it('should respect config.yaml aifabrix-home override', async() => {
+      const overrideHome = '/custom/aifabrix';
+      const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
+      const pathsUtil = require('../../../lib/utils/paths');
+      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      const result = await tokenManager.loadClientCredentials('keycloak');
+
+      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+      expect(fs.existsSync).toHaveBeenCalledWith(overrideSecretsPath);
+      expect(fs.readFileSync).toHaveBeenCalledWith(overrideSecretsPath, 'utf8');
+      expect(result).toEqual({
+        clientId: 'test-client-id',
+        clientSecret: 'test-client-secret'
+      });
+    });
+
+    it('should use paths.getAifabrixHome() instead of os.homedir()', async() => {
+      const overrideHome = '/workspace/.aifabrix';
+      const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
+      const pathsUtil = require('../../../lib/utils/paths');
+      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+
+      const mockSecrets = {
+        'keycloak-client-idKeyVault': 'test-client-id',
+        'keycloak-client-secretKeyVault': 'test-client-secret'
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
+
+      const result = await tokenManager.loadClientCredentials('keycloak');
+
+      // Verify paths.getAifabrixHome() was called
+      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+      // Verify it read from the override path, not the default os.homedir() path
+      expect(fs.existsSync).toHaveBeenCalledWith(overrideSecretsPath);
+      expect(fs.readFileSync).toHaveBeenCalledWith(overrideSecretsPath, 'utf8');
+      // Verify it did NOT use os.homedir() path
+      const defaultPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      expect(fs.existsSync).not.toHaveBeenCalledWith(defaultPath);
+      expect(result).toEqual({
+        clientId: 'test-client-id',
+        clientSecret: 'test-client-secret'
+      });
     });
 
     it('should return null when only clientId is missing', async() => {

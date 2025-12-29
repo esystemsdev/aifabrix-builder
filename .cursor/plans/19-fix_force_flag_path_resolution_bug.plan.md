@@ -41,6 +41,8 @@ function loadDefaultSecrets() {
 }
 ```
 
+
+
 ### 2. Fix generateMissingSecrets Path Resolution
 
 **File**: [`lib/utils/secrets-generator.js`](lib/utils/secrets-generator.js)Remove the fallback that uses `os.homedir()` directly. The function should always use the provided `secretsPath` parameter:
@@ -56,6 +58,8 @@ async function generateMissingSecrets(envTemplate, secretsPath) {
   // ... rest of function
 }
 ```
+
+
 
 ### 3. Ensure generateEnvContent Uses Correct Path
 
@@ -81,6 +85,8 @@ async function generateEnvContent(appName, secretsPath, environment = 'local', f
   // ... rest of function
 }
 ```
+
+
 
 ## Testing
 
@@ -216,17 +222,11 @@ Before marking this plan as complete, ensure:
 
 ## Plan Validation Report
 
-**Date**: 2025-01-27
-
-**Plan**: `.cursor/plans/19-fix_force_flag_path_resolution_bug.plan.md`
-
-**Status**: ✅ VALIDATED
+**Date**: 2025-01-27**Plan**: `.cursor/plans/19-fix_force_flag_path_resolution_bug.plan.md`**Status**: ✅ VALIDATED
 
 ### Plan Purpose
 
-**Summary**: Fix critical bug where `--force` flag generates random values for existing secrets due to path resolution mismatch between `generateMissingSecrets()` and `loadSecrets()`.
-
-**Scope**:
+**Summary**: Fix critical bug where `--force` flag generates random values for existing secrets due to path resolution mismatch between `generateMissingSecrets()` and `loadSecrets()`.**Scope**:
 
 - Secret management utilities (`lib/utils/secrets-utils.js`, `lib/utils/secrets-generator.js`)
 - Secret resolution (`lib/secrets.js`)
@@ -279,4 +279,3 @@ Before marking this plan as complete, ensure:
 - Solution addresses both write and read path resolution
 - Test plan covers all scenarios (existing secrets, path overrides, explicit paths)
 - Security considerations are properly addressed (no secret logging, ISO 27001 compliance)
-- Implementation order is logical and follows dependencies
