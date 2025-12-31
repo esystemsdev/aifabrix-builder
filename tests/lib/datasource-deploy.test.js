@@ -172,7 +172,7 @@ describe('Datasource Deploy Module', () => {
 
     it('should throw error for non-bearer authentication', async() => {
       const authConfig = {
-        type: 'credentials',
+        type: 'client-credentials',
         username: 'user',
         password: 'pass'
       };
@@ -366,7 +366,7 @@ describe('Datasource Deploy Module', () => {
       fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
 
       getDeploymentAuth.mockResolvedValue({
-        type: 'credentials',
+        type: 'client-credentials',
         username: 'user',
         password: 'pass'
       });

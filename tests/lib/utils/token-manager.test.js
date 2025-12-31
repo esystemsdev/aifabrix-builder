@@ -1064,7 +1064,7 @@ describe('Token Manager Module', () => {
 
       const result = await tokenManager.getDeploymentAuth(controllerUrl, environment, appName);
 
-      expect(result.type).toBe('credentials');
+      expect(result.type).toBe('client-credentials');
       expect(result.clientId).toBe('test-client-id');
       expect(result.clientSecret).toBe('test-client-secret');
       expect(result.controller).toBe(controllerUrl);
@@ -1099,7 +1099,7 @@ describe('Token Manager Module', () => {
 
       const result = await tokenManager.getDeploymentAuth(controllerUrl, environment, appName);
 
-      expect(result.type).toBe('credentials');
+      expect(result.type).toBe('client-credentials');
       expect(result.clientId).toBe('test-client-id');
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Client token unavailable'));
     });
@@ -1131,9 +1131,9 @@ describe('Token Manager Module', () => {
     const appKey = 'keycloak';
     const envKey = 'miso';
 
-    it('should return credentials when type is credentials and both provided', async() => {
+    it('should return credentials when type is client-credentials and both provided', async() => {
       const authConfig = {
-        type: 'credentials',
+        type: 'client-credentials',
         clientId: 'test-client-id',
         clientSecret: 'test-client-secret',
         controller: 'http://localhost:3010'
@@ -1145,9 +1145,9 @@ describe('Token Manager Module', () => {
       expect(result.clientSecret).toBe('test-client-secret');
     });
 
-    it('should throw error when credentials type but clientId missing', async() => {
+    it('should throw error when client-credentials type but clientId missing', async() => {
       const authConfig = {
-        type: 'credentials',
+        type: 'client-credentials',
         clientSecret: 'test-client-secret',
         controller: 'http://localhost:3010'
       };
@@ -1157,9 +1157,9 @@ describe('Token Manager Module', () => {
       ).rejects.toThrow('Client ID and Client Secret are required');
     });
 
-    it('should throw error when credentials type but clientSecret missing', async() => {
+    it('should throw error when client-credentials type but clientSecret missing', async() => {
       const authConfig = {
-        type: 'credentials',
+        type: 'client-credentials',
         clientId: 'test-client-id',
         controller: 'http://localhost:3010'
       };

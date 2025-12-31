@@ -117,8 +117,8 @@ describe('Authentication Headers Utilities', () => {
       expect(headers['Authorization']).toBe('Bearer test-token-123');
     });
 
-    it('should create client credentials headers when type is credentials', () => {
-      const authConfig = { type: 'credentials', clientId: 'test-id', clientSecret: 'test-secret' };
+    it('should create client credentials headers when type is client-credentials', () => {
+      const authConfig = { type: 'client-credentials', clientId: 'test-id', clientSecret: 'test-secret' };
       const headers = authHeaders.createAuthHeaders(authConfig);
       expect(headers['x-client-id']).toBe('test-id');
       expect(headers['x-client-secret']).toBe('test-secret');
@@ -162,26 +162,26 @@ describe('Authentication Headers Utilities', () => {
 
     it('should throw error when client credentials are missing', () => {
       expect(() => {
-        authHeaders.createAuthHeaders({ type: 'credentials' });
+        authHeaders.createAuthHeaders({ type: 'client-credentials' });
       }).toThrow('Client ID and Client Secret are required');
     });
 
     it('should throw error when client ID is missing in credentials', () => {
       expect(() => {
-        authHeaders.createAuthHeaders({ type: 'credentials', clientSecret: 'secret' });
+        authHeaders.createAuthHeaders({ type: 'client-credentials', clientSecret: 'secret' });
       }).toThrow('Client ID and Client Secret are required');
     });
 
     it('should throw error when client secret is missing in credentials', () => {
       expect(() => {
-        authHeaders.createAuthHeaders({ type: 'credentials', clientId: 'id' });
+        authHeaders.createAuthHeaders({ type: 'client-credentials', clientId: 'id' });
       }).toThrow('Client ID and Client Secret are required');
     });
 
     it('should throw error for invalid auth type', () => {
       expect(() => {
         authHeaders.createAuthHeaders({ type: 'invalid' });
-      }).toThrow('Invalid authentication type: invalid. Must be \'bearer\' or \'credentials\'');
+      }).toThrow('Invalid authentication type: invalid. Must be \'bearer\' or \'client-credentials\'');
     });
 
     it('should throw error for empty auth type', () => {
@@ -207,7 +207,7 @@ describe('Authentication Headers Utilities', () => {
       ];
 
       configs.forEach(config => {
-        const headers = authHeaders.createAuthHeaders({ type: 'credentials', ...config });
+        const headers = authHeaders.createAuthHeaders({ type: 'client-credentials', ...config });
         expect(headers['x-client-id']).toBe(config.clientId);
         expect(headers['x-client-secret']).toBe(config.clientSecret);
       });

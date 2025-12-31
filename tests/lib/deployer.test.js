@@ -95,8 +95,8 @@ describe('deployer', () => {
       expect(headers['Authorization']).toBe('Bearer test-token-123');
     });
 
-    it('should create client credentials headers when type is credentials', () => {
-      const authConfig = { type: 'credentials', clientId: 'test-id', clientSecret: 'test-secret' };
+    it('should create client credentials headers when type is client-credentials', () => {
+      const authConfig = { type: 'client-credentials', clientId: 'test-id', clientSecret: 'test-secret' };
       const headers = authHeaders.createAuthHeaders(authConfig);
       expect(headers['x-client-id']).toBe('test-id');
       expect(headers['x-client-secret']).toBe('test-secret');
@@ -122,7 +122,7 @@ describe('deployer', () => {
 
     it('should throw error when client credentials are missing', () => {
       expect(() => {
-        authHeaders.createAuthHeaders({ type: 'credentials' });
+        authHeaders.createAuthHeaders({ type: 'client-credentials' });
       }).toThrow('Client ID and Client Secret are required');
     });
 
@@ -247,7 +247,7 @@ describe('deployer', () => {
 
     it('should send deployment request successfully with client credentials', async() => {
       const validateToken = 'validate-token-123';
-      const authConfig = { type: 'credentials', clientId: 'test-id', clientSecret: 'test-secret' };
+      const authConfig = { type: 'client-credentials', clientId: 'test-id', clientSecret: 'test-secret' };
 
       deployPipeline.mockResolvedValue({
         success: true,
@@ -329,7 +329,7 @@ describe('deployer', () => {
 
     it('should include client credentials authentication headers in request', async() => {
       const validateToken = 'validate-token-123';
-      const authConfig = { type: 'credentials', clientId: 'my-client-id', clientSecret: 'my-client-secret' };
+      const authConfig = { type: 'client-credentials', clientId: 'my-client-id', clientSecret: 'my-client-secret' };
 
       deployPipeline.mockResolvedValue({
         success: true,
@@ -561,7 +561,7 @@ describe('deployer', () => {
         }
       });
 
-      const authConfig = { type: 'credentials', clientId: 'test-id', clientSecret: 'test-secret' };
+      const authConfig = { type: 'client-credentials', clientId: 'test-id', clientSecret: 'test-secret' };
       await deployer.pollDeploymentStatus(
         'test-123',
         'https://controller.example.com',
@@ -748,7 +748,7 @@ describe('deployer', () => {
         port: 3000,
         deploymentKey: 'abc123'
       };
-      const authConfig = { type: 'credentials', clientId: 'test-id', clientSecret: 'test-secret' };
+      const authConfig = { type: 'client-credentials', clientId: 'test-id', clientSecret: 'test-secret' };
 
       // Mock validate endpoint
       validatePipeline.mockResolvedValueOnce({
