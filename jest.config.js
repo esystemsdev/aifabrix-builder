@@ -24,6 +24,7 @@ module.exports = {
     'lcov',
     'html'
   ],
+  coverageProvider: 'v8',
   coverageThreshold: {
     global: {
       branches: 80,

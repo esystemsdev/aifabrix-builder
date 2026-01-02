@@ -1,4 +1,4 @@
-## [2.22.3] - 2026-01-02
+## [2.30.1] - 2026-01-02
 
 ### Changed
 - **Developer Configuration Command Structure**: Refactored `dev config` command to use command group structure
@@ -10,6 +10,45 @@
 ### Technical
 - Updated `lib/cli.js` to use command group pattern for developer commands
 - Improved code organization and maintainability
+- ISO 27001 compliant implementation maintained throughout
+
+## [2.30.0] - 2025-12-31
+
+### Added
+- **Logout Command**: New `aifabrix logout` command for clearing authentication tokens
+  - Clear all device tokens: `aifabrix logout`
+  - Clear device token for specific controller: `aifabrix logout --controller <url>`
+  - Clear all client tokens: `aifabrix logout` (when no specific options provided)
+  - Clear client tokens for specific environment: `aifabrix logout --environment <env>`
+  - Clear client token for specific app: `aifabrix logout --environment <env> --app <app>`
+  - Provides clear feedback on tokens cleared or not found
+  - Validates controller URL and environment key formats
+  - ISO 27001 compliant token clearing with proper error handling
+- **Enhanced Token Management**: Improved token management utilities in `lib/utils/config-tokens.js`
+  - New functions for clearing device tokens: `clearDeviceToken()`, `clearAllDeviceTokens()`
+  - New functions for clearing client tokens: `clearClientToken()`, `clearAllClientTokens()`, `clearClientTokensForEnvironment()`
+  - Controller URL normalization for consistent token storage and lookup
+  - Support for encrypted token storage and clearing
+  - Comprehensive token management with proper validation
+
+### Changed
+- **Token Management Architecture**: Enhanced token management system with granular control
+  - Token clearing operations now support selective clearing by controller, environment, or app
+  - Improved token storage structure in config.yaml for better organization
+  - Enhanced error handling and validation for token operations
+- **Documentation Updates**: Updated CLI reference documentation
+  - Added comprehensive logout command documentation
+  - Updated authentication flow documentation
+  - Enhanced examples for token management
+
+### Technical
+- New `lib/commands/logout.js` module (152 lines) for logout command implementation
+- Enhanced `lib/utils/config-tokens.js` with token clearing functions
+- Updated `lib/cli.js` to register logout command
+- Updated `lib/utils/auth-headers.js` for improved token handling
+- Updated `lib/utils/token-manager.js` for better token management integration
+- Comprehensive test coverage: New test files for logout command and token management
+- Updated existing tests for token management improvements
 - ISO 27001 compliant implementation maintained throughout
 
 ## [2.22.2] - 2025-12-29

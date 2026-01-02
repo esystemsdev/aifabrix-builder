@@ -10,6 +10,7 @@ Complete command reference with examples and troubleshooting.
 
 ### Authentication & Setup
 - [aifabrix login](#aifabrix-login) - Authenticate with Miso Controller
+- [aifabrix logout](#aifabrix-logout) - Clear authentication tokens
 - [aifabrix up](#aifabrix-up) - Start infrastructure (Postgres + Redis)
 - [aifabrix down](#aifabrix-down) - Stop infrastructure or an app
 - [aifabrix status](#aifabrix-status) - Show infrastructure service status
@@ -256,6 +257,140 @@ aifabrix login \
 After logging in, you can:
 - Register applications: `aifabrix app register`
 - Deploy applications: `aifabrix deploy`
+
+---
+
+## aifabrix logout
+
+Clear authentication tokens from config.yaml.
+
+**What:** Removes stored authentication tokens from `~/.aifabrix/config.yaml`. Supports clearing all tokens or specific tokens based on options (controller, environment, app). Preserves other configuration settings like `developer-id`, `environment`, `secrets-encryption`, etc.
+
+**When:** When you want to log out, switch accounts, or clear expired tokens.
+
+**Usage:**
+```bash
+# Clear all tokens (both device and client tokens)
+aifabrix logout
+
+# Clear device token for specific controller
+aifabrix logout --controller http://localhost:3000
+
+# Clear all client tokens for specific environment
+aifabrix logout --environment dev
+
+# Clear client token for specific app in environment
+aifabrix logout --environment dev --app myapp
+```
+
+**Options:**
+- `-c, --controller <url>` - Clear device tokens for specific controller (device tokens only)
+- `-e, --environment <env>` - Clear client tokens for specific environment (client tokens only)
+- `-a, --app <app>` - Clear client tokens for specific app (requires --environment, client tokens only)
+
+**Token Types:**
+
+1. **Device Tokens** (root level, keyed by controller URL)
+   - Stored at `config.device[controllerUrl]`
+   - Cleared with `--controller` option or when no options provided
+   - Universal per controller (not environment-specific)
+
+2. **Client Tokens** (per environment and app)
+   - Stored at `config.environments[env].clients[appName]`
+   - Cleared with `--environment` and/or `--app` options or when no options provided
+   - Environment and app-specific
+
+**Output (Clear All):**
+```yaml
+🔓 Clearing authentication tokens...
+
+✓ Cleared 2 device token(s)
+✓ Cleared 5 client token(s)
+
+✅ Successfully cleared tokens!
+Config file: ~/.aifabrix/config.yaml
+```
+
+**Output (Clear Specific Controller):**
+```yaml
+🔓 Clearing authentication tokens...
+
+✓ Cleared device token for controller: http://localhost:3000
+
+✅ Successfully cleared tokens!
+Config file: ~/.aifabrix/config.yaml
+```
+
+**Output (Clear Specific Environment):**
+```yaml
+🔓 Clearing authentication tokens...
+
+✓ Cleared 3 client token(s) for environment 'dev'
+
+✅ Successfully cleared tokens!
+Config file: ~/.aifabrix/config.yaml
+```
+
+**Output (No Tokens Found):**
+```yaml
+🔓 Clearing authentication tokens...
+
+  No device tokens found
+  No client tokens found
+
+⚠️  No tokens found to clear
+Config file: ~/.aifabrix/config.yaml
+```
+
+**What Gets Preserved:**
+
+The logout command only removes token-related entries. The following settings are preserved:
+- `developer-id` - Developer ID for port isolation
+- `environment` - Currently selected environment
+- `secrets-encryption` - Encryption key for token encryption
+- `aifabrix-secrets` - Default secrets file path
+- `aifabrix-home` - Base directory override
+- `aifabrix-env-config` - Custom environment config path
+- All other non-token configuration
+
+**Examples:**
+
+Clear all tokens:
+```bash
+aifabrix logout
+```
+
+Clear device token for specific controller:
+```bash
+aifabrix logout --controller https://controller.example.com
+```
+
+Clear all client tokens for environment:
+```bash
+aifabrix logout --environment dev
+```
+
+Clear specific app token:
+```bash
+aifabrix logout --environment dev --app myapp
+```
+
+**Validation:**
+
+- `--app` requires `--environment` option
+- Controller URL must be a valid HTTP or HTTPS URL
+- Environment key must contain only letters, numbers, hyphens, and underscores
+
+**Issues:**
+- **"--app requires --environment option"** → Provide `--environment` when using `--app`
+- **"Controller URL is required"** → Provide a valid controller URL
+- **"Controller URL must be a valid HTTP or HTTPS URL"** → Use format like `http://localhost:3000` or `https://controller.example.com`
+- **"Environment key must contain only letters, numbers, hyphens, and underscores"** → Use valid format (e.g., `dev`, `tst`, `pro`)
+
+**Next Steps:**
+After logging out, you can:
+- Log in again: `aifabrix login`
+- Switch to different controller/environment: `aifabrix login --controller <url> --environment <env>`
 
 ---
 
