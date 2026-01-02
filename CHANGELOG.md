@@ -1,3 +1,17 @@
+## [2.22.3] - 2026-01-02
+
+### Changed
+- **Developer Configuration Command Structure**: Refactored `dev config` command to use command group structure
+  - Changed from standalone command to subcommand under `dev` command group
+  - Improved command organization and consistency with other command groups
+  - Enhanced developer configuration display with better formatting and structure
+  - Maintains backward compatibility with existing functionality
+
+### Technical
+- Updated `lib/cli.js` to use command group pattern for developer commands
+- Improved code organization and maintainability
+- ISO 27001 compliant implementation maintained throughout
+
 ## [2.22.2] - 2025-12-29
 
 ### Fixed
