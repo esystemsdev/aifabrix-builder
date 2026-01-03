@@ -124,11 +124,54 @@ Dockerfiles use internal container ports (from `config.port` or `config.build?.c
   - Combined URLs (e.g., `REDIS_URL`) are constructed from host/port where present.
   - PortAddition applies to all ports: `port + (developer-id * 100)`.
 
+### Public Port Support (Docker Context)
+
+For docker context, the system automatically calculates `*_PUBLIC_PORT` variables for any `*_PORT` variable:
+
+- **Internal Ports (`*_PORT`)**: Remain unchanged for container-to-container communication
+  - Example: `MISO_PORT=3000` (always 3000, regardless of developer-id)
+- **Public Ports (`*_PUBLIC_PORT`)**: Calculated for host access when developer-id > 0
+  - Calculation: `*_PUBLIC_PORT = *_PORT + (developer-id * 100)`
+  - Example: `MISO_PUBLIC_PORT=3100` (for developer-id 1), `MISO_PUBLIC_PORT=3200` (for developer-id 2)
+  - Not calculated when developer-id is 0 (uses base ports)
+
+**Pattern applies automatically to all services:**
+- `MISO_PORT` → `MISO_PUBLIC_PORT`
+- `KEYCLOAK_PORT` → `KEYCLOAK_PUBLIC_PORT`
+- `DB_PORT` → `DB_PUBLIC_PORT`
+- `REDIS_PORT` → `REDIS_PUBLIC_PORT`
+- Any future service with `*_PORT` variable
+
+**Usage in env.template:**
+```bash
+# Internal port (container-to-container communication)
+MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}
+
+# Public port (host access) - available in docker context when developer-id > 0
+MISO_PUBLIC_URL=http://localhost:${MISO_PUBLIC_PORT}
+```
+
+**Manual Override:**
+If you manually set `*_PUBLIC_PORT` in your config, it will be preserved and not recalculated.
+
 For docker context (builder/.env):
-- `DB_HOST=postgres`, `DB_PORT=5432 + PortAddition`
-- `REDIS_HOST=redis`, `REDIS_PORT=6379 + PortAddition`
-- `REDIS_URL=redis://redis:{REDIS_PORT}`
-- `PORT=variables.port + PortAddition`
+- `DB_HOST=postgres`, `DB_PORT=5432` (internal, unchanged)
+- `DB_PUBLIC_PORT=5432 + PortAddition` (public, calculated when developer-id > 0)
+- `REDIS_HOST=redis`, `REDIS_PORT=6379` (internal, unchanged)
+- `REDIS_PUBLIC_PORT=6379 + PortAddition` (public, calculated when developer-id > 0)
+- `REDIS_URL=redis://redis:{REDIS_PORT}` (uses internal port)
+- `MISO_HOST=miso-controller`, `MISO_PORT=3000` (internal, unchanged)
+- `MISO_PUBLIC_PORT=3000 + PortAddition` (public, calculated when developer-id > 0)
+- `KEYCLOAK_HOST=keycloak`, `KEYCLOAK_PORT=8082` (internal, unchanged)
+- `KEYCLOAK_PUBLIC_PORT=8082 + PortAddition` (public, calculated when developer-id > 0)
+- `PORT=variables.port` (unchanged, internal container port)
+
+**Public Port Pattern (Docker Context):**
+- Any `*_PORT` variable automatically gets a corresponding `*_PUBLIC_PORT` calculated
+- Calculation: `*_PUBLIC_PORT = *_PORT + (developer-id * 100)` (only when developer-id > 0)
+- Internal `*_PORT` values remain unchanged for container-to-container communication
+- Public `*_PUBLIC_PORT` values are used for host access and Docker port mapping
+- Pattern applies to all services automatically (MISO, KEYCLOAK, DB, REDIS, etc.)
 
 For local context (apps/.env, generated when `build.envOutputPath` is set):
 - `DB_HOST=localhost` (or `aifabrix-localhost` override from config.yaml)
@@ -273,7 +316,7 @@ If you see container name conflicts:
 ### Infrastructure Ports by Developer ID
 
 | Service | Base Port | Dev ID 0 | Dev ID 1 | Dev ID 2 | Dev ID 3 |
-|---------|-----------|----------|----------|----------|----------|
+| ------- | --------- | -------- | -------- | -------- | -------- |
 | Postgres | 5432 | 5432 | 5532 | 5632 | 5732 |
 | Redis | 6379 | 6379 | 6479 | 6579 | 6679 |
 | pgAdmin | 5050 | 5050 | 5150 | 5250 | 5350 |
@@ -282,7 +325,7 @@ If you see container name conflicts:
 ### Application Ports by Developer ID
 
 | Base Port | Dev ID 0 | Dev ID 1 | Dev ID 2 | Dev ID 3 |
-|-----------|----------|----------|----------|----------|
+| --------- | -------- | -------- | -------- | -------- |
 | 3000 | 3000 | 3100 | 3200 | 3300 |
 | 3010 | 3010 | 3110 | 3210 | 3310 |
 | 3014 | 3014 | 3114 | 3214 | 3314 |
@@ -292,18 +335,28 @@ If you see container name conflicts:
 #### Docker Context (builder/.env)
 
 | Variable | Source | Dev ID 0 | Dev ID 1 | Dev ID 2 |
-|----------|--------|----------|----------|----------|
+| -------- | ------ | -------- | -------- | -------- |
 | `DB_HOST` | env-config.yaml | postgres | postgres | postgres |
-| `DB_PORT` | env-config.yaml + adjustment | 5432 | 5532 | 5632 |
+| `DB_PORT` | env-config.yaml (internal) | 5432 | 5432 | 5432 |
+| `DB_PUBLIC_PORT` | Calculated (public) | - | 5532 | 5632 |
 | `REDIS_HOST` | env-config.yaml | redis | redis | redis |
-| `REDIS_PORT` | env-config.yaml + adjustment | 6379 | 6479 | 6579 |
-| `REDIS_URL` | Constructed | redis://redis:6379 | redis://redis:6479 | redis://redis:6579 |
-| `PORT` | variables.yaml port | 3000 | 3000 | 3000 |
+| `REDIS_PORT` | env-config.yaml (internal) | 6379 | 6379 | 6379 |
+| `REDIS_PUBLIC_PORT` | Calculated (public) | - | 6479 | 6579 |
+| `REDIS_URL` | Constructed | redis://redis:6379 | redis://redis:6379 | redis://redis:6379 |
+| `MISO_HOST` | env-config.yaml | miso-controller | miso-controller | miso-controller |
+| `MISO_PORT` | env-config.yaml (internal) | 3000 | 3000 | 3000 |
+| `MISO_PUBLIC_PORT` | Calculated (public) | - | 3100 | 3200 |
+| `KEYCLOAK_HOST` | env-config.yaml | keycloak | keycloak | keycloak |
+| `KEYCLOAK_PORT` | env-config.yaml (internal) | 8082 | 8082 | 8082 |
+| `KEYCLOAK_PUBLIC_PORT` | Calculated (public) | - | 8182 | 8282 |
+| `PORT` | variables.yaml port (internal) | 3000 | 3000 | 3000 |
+
+**Note:** In docker context, `*_PORT` values are internal container ports (unchanged), while `*_PUBLIC_PORT` values are calculated for host access when developer-id > 0. The pattern applies automatically to all services with `*_PORT` variables.
 
 #### Local Context (apps/.env)
 
 | Variable | Source | Dev ID 0 | Dev ID 1 | Dev ID 2 |
-|----------|--------|----------|----------|----------|
+| -------- | ------ | -------- | -------- | -------- |
 | `DB_HOST` | env-config.yaml | localhost | localhost | localhost |
 | `DB_PORT` | env-config.yaml + adjustment | 5432 | 5532 | 5632 |
 | `REDIS_HOST` | env-config.yaml | localhost | localhost | localhost |
@@ -316,7 +369,7 @@ If you see container name conflicts:
 #### Scenario 1: All Sources Present
 
 | Source | Value | Final Port (Dev ID 1) |
-|--------|-------|----------------------|
+| ------ | ----- | --------------------- |
 | env-config.yaml → environments.local.PORT | 3000 | 3100 |
 | config.yaml → environments.local.PORT | 3010 | 3110 (overrides) |
 | variables.yaml → build.localPort | 3015 | 3115 (strongest) |
@@ -325,7 +378,7 @@ If you see container name conflicts:
 #### Scenario 2: Only variables.yaml Present
 
 | Source | Value | Final Port (Dev ID 1) |
-|--------|-------|----------------------|
+| ------ | ----- | --------------------- |
 | env-config.yaml → environments.local.PORT | (not set) | - |
 | config.yaml → environments.local.PORT | (not set) | - |
 | variables.yaml → build.localPort | 3010 | 3110 |
@@ -334,7 +387,7 @@ If you see container name conflicts:
 #### Scenario 3: Only variables.yaml port (no build.localPort)
 
 | Source | Value | Final Port (Dev ID 1) |
-|--------|-------|----------------------|
+| ------ | ----- | --------------------- |
 | env-config.yaml → environments.local.PORT | (not set) | - |
 | config.yaml → environments.local.PORT | (not set) | - |
 | variables.yaml → build.localPort | (not set) | - |
@@ -344,7 +397,7 @@ If you see container name conflicts:
 #### Scenario 4: Only env-config.yaml Present
 
 | Source | Value | Final Port (Dev ID 1) |
-|--------|-------|----------------------|
+| ------ | ----- | --------------------- |
 | env-config.yaml → environments.local.PORT | 3000 | 3100 |
 | config.yaml → environments.local.PORT | (not set) | - |
 | variables.yaml → build.localPort | (not set) | - |
@@ -356,7 +409,7 @@ If you see container name conflicts:
 #### DB_PORT Override Chain
 
 | Source | Value | Final Port (Dev ID 1) |
-|--------|-------|----------------------|
+| ------ | ----- | --------------------- |
 | env-config.yaml → environments.local.DB_PORT | 5432 | 5532 |
 | config.yaml → environments.local.DB_PORT | 5433 | 5533 (overrides) |
 | Result | | **5533** |
@@ -364,7 +417,7 @@ If you see container name conflicts:
 #### REDIS_PORT Override Chain
 
 | Source | Value | Final Port (Dev ID 1) |
-|--------|-------|----------------------|
+| ------ | ----- | --------------------- |
 | env-config.yaml → environments.local.REDIS_PORT | 6379 | 6479 |
 | config.yaml → environments.local.REDIS_PORT | 6380 | 6480 (overrides) |
 | Result | | **6480** |
@@ -374,7 +427,7 @@ If you see container name conflicts:
 #### Scenario: Secret with ${VAR} Reference
 
 | Template/Secret | Value | Interpolated (Dev ID 1) |
-|-----------------|-------|------------------------|
+| ---------------- | ----- | ----------------------- |
 | `KEYCLOAK_SERVER_URL=kv://keycloak-server-urlKeyVault` | `"http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}"` | `http://localhost:8082` |
 | `KC_PORT=${KEYCLOAK_PORT}` | (from env-config.yaml) | `8082` |
 | `DATABASE_URL=kv://db-urlKeyVault` | `"postgresql://user:pass@${DB_HOST}:${DB_PORT}/db"` | `postgresql://localhost:5532/db` |
@@ -382,7 +435,7 @@ If you see container name conflicts:
 ### Complete Example: Developer ID 1, Local Context
 
 | Variable | Source | Value |
-|----------|--------|-------|
+| -------- | ------ | ----- |
 | `PORT` | variables.yaml → build.localPort (3010) + adjustment | 3110 |
 | `DB_HOST` | env-config.yaml | localhost |
 | `DB_PORT` | env-config.yaml (5432) + adjustment | 5532 |

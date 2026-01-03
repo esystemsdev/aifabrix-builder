@@ -1441,6 +1441,82 @@ REDIS_PORT=\${REDIS_PORT}`;
         expect(result).toMatch(/^REDIS_PORT=6379$/m);
       });
     });
+
+    describe('Docker Context (Public Port Adjustment)', () => {
+      it('should generate public ports for developer ID 1', async() => {
+        const mockTemplateContent = `MISO_PORT=\${MISO_PORT}
+MISO_PUBLIC_PORT=\${MISO_PUBLIC_PORT}
+KEYCLOAK_PORT=\${KEYCLOAK_PORT}
+KEYCLOAK_PUBLIC_PORT=\${KEYCLOAK_PUBLIC_PORT}
+DB_PORT=\${DB_PORT}
+DB_PUBLIC_PORT=\${DB_PUBLIC_PORT}
+REDIS_PORT=\${REDIS_PORT}
+REDIS_PUBLIC_PORT=\${REDIS_PUBLIC_PORT}`;
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockTemplatePath) return mockTemplateContent;
+          return '';
+        });
+        fs.existsSync.mockReturnValue(true);
+        mockConfig.getDeveloperId.mockResolvedValue('1');
+
+        const { generateEnvContent } = require('../../../lib/secrets');
+        const result = await generateEnvContent(mockAppName, null, 'docker', false);
+
+        expect(result).toMatch(/^MISO_PORT=3000$/m);
+        expect(result).toMatch(/^MISO_PUBLIC_PORT=3100$/m);
+        expect(result).toMatch(/^KEYCLOAK_PORT=8082$/m);
+        expect(result).toMatch(/^KEYCLOAK_PUBLIC_PORT=8182$/m);
+        expect(result).toMatch(/^DB_PORT=5432$/m);
+        expect(result).toMatch(/^DB_PUBLIC_PORT=5532$/m);
+        expect(result).toMatch(/^REDIS_PORT=6379$/m);
+        expect(result).toMatch(/^REDIS_PUBLIC_PORT=6479$/m);
+      });
+
+      it('should generate public ports for developer ID 2', async() => {
+        const mockTemplateContent = `MISO_PORT=\${MISO_PORT}
+MISO_PUBLIC_PORT=\${MISO_PUBLIC_PORT}
+KEYCLOAK_PORT=\${KEYCLOAK_PORT}
+KEYCLOAK_PUBLIC_PORT=\${KEYCLOAK_PUBLIC_PORT}`;
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockTemplatePath) return mockTemplateContent;
+          return '';
+        });
+        fs.existsSync.mockReturnValue(true);
+        mockConfig.getDeveloperId.mockResolvedValue('2');
+
+        const { generateEnvContent } = require('../../../lib/secrets');
+        const result = await generateEnvContent(mockAppName, null, 'docker', false);
+
+        expect(result).toMatch(/^MISO_PORT=3000$/m);
+        expect(result).toMatch(/^MISO_PUBLIC_PORT=3200$/m);
+        expect(result).toMatch(/^KEYCLOAK_PORT=8082$/m);
+        expect(result).toMatch(/^KEYCLOAK_PUBLIC_PORT=8282$/m);
+      });
+
+      it('should not generate public ports for developer ID 0', async() => {
+        const mockTemplateContent = `MISO_PORT=\${MISO_PORT}
+MISO_PUBLIC_PORT=\${MISO_PUBLIC_PORT}`;
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockTemplatePath) return mockTemplateContent;
+          return '';
+        });
+        fs.existsSync.mockReturnValue(true);
+        mockConfig.getDeveloperId.mockResolvedValue('0');
+
+        const { generateEnvContent } = require('../../../lib/secrets');
+        const result = await generateEnvContent(mockAppName, null, 'docker', false);
+
+        expect(result).toMatch(/^MISO_PORT=3000$/m);
+        // When MISO_PUBLIC_PORT is undefined (dev-id 0), Handlebars outputs the literal variable name
+        // So we check that it's not a valid port number (3100, 3200, etc.)
+        expect(result).not.toMatch(/^MISO_PUBLIC_PORT=(3100|3200|3300|5532|6479|8182|8282)/m);
+        // The variable should either be undefined (literal ${MISO_PUBLIC_PORT}) or empty
+        expect(result).toMatch(/MISO_PUBLIC_PORT=\$\{MISO_PUBLIC_PORT\}/);
+      });
+    });
   });
 
   describe('processEnvVariables - Local .env Copy', () => {

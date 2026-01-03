@@ -948,22 +948,46 @@ Environment variables can use `${VAR}` syntax to reference values from `env-conf
 - `${PYTHONDONTWRITEBYTECODE}` - Resolves to `1` (both docker and local)
 - `${PYTHONIOENCODING}` - Resolves to `utf-8` (both docker and local)
 - `${MISO_HOST}` - Resolves to host from env-config.yaml based on context
-- `${MISO_PORT}` - Resolves to port from env-config.yaml based on context
-- `${DB_HOST}`, `${DB_PORT}`, `${REDIS_HOST}`, `${REDIS_PORT}` - Service host/port values
+- `${MISO_PORT}` - Resolves to port from env-config.yaml based on context (internal port in docker context)
+- `${MISO_PUBLIC_PORT}` - Resolves to public port in docker context (calculated as `MISO_PORT + developer-id * 100`, only when developer-id > 0)
+- `${DB_HOST}`, `${DB_PORT}`, `${DB_PUBLIC_PORT}` - Service host/port values (public ports available in docker context)
+- `${REDIS_HOST}`, `${REDIS_PORT}`, `${REDIS_PUBLIC_PORT}` - Service host/port values (public ports available in docker context)
+- `${KEYCLOAK_HOST}`, `${KEYCLOAK_PORT}`, `${KEYCLOAK_PUBLIC_PORT}` - Service host/port values (public ports available in docker context)
+
+**Public Port Pattern (Docker Context):**
+- Any `*_PORT` variable automatically gets a corresponding `*_PUBLIC_PORT` calculated
+- Calculation: `*_PUBLIC_PORT = *_PORT + (developer-id * 100)` (only when developer-id > 0)
+- Internal `*_PORT` values remain unchanged for container-to-container communication
+- Public `*_PUBLIC_PORT` values are used for host access and Docker port mapping
+- Pattern applies to all services automatically (MISO, KEYCLOAK, DB, REDIS, etc.)
 
 **Example:**
 ```bash
 # In env.template
 NODE_ENV=${NODE_ENV}
 MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}
+MISO_PUBLIC_URL=http://localhost:${MISO_PUBLIC_PORT}
 
-# Generated .env (docker context)
+# Generated .env (docker context, developer-id 1)
 NODE_ENV=production
-MISO_CONTROLLER_URL=http://controller.aifabrix.ai:443
+MISO_CONTROLLER_URL=http://miso-controller:3000  # Internal port (container-to-container)
+MISO_PUBLIC_URL=http://localhost:3100  # Public port (host access)
 
 # Generated .env (local context)
 NODE_ENV=development
-MISO_CONTROLLER_URL=http://localhost:3010
+MISO_CONTROLLER_URL=http://localhost:3110  # Adjusted by developer-id
+# MISO_PUBLIC_URL not available in local context (ports are already public)
+```
+
+**Public Port Usage:**
+```bash
+# In env.template (docker context)
+# Internal port for container-to-container communication
+MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}
+
+# Public port for host access (available when developer-id > 0)
+MISO_PUBLIC_URL=http://localhost:${MISO_PUBLIC_PORT}
+KEYCLOAK_PUBLIC_URL=http://localhost:${KEYCLOAK_PUBLIC_PORT}
 ```
 
 **Customization:**

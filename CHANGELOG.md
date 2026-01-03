@@ -1,3 +1,30 @@
+## [2.31.0] - 2026-01-03
+
+### Added
+- **Dynamic Public Port Support for Docker Context**: Automatic calculation of `*_PUBLIC_PORT` variables for all services
+  - Any `*_PORT` variable automatically gets a corresponding `*_PUBLIC_PORT` calculated in docker context
+  - Calculation: `*_PUBLIC_PORT = *_PORT + (developer-id * 100)` (only when developer-id > 0)
+  - Internal `*_PORT` values remain unchanged for container-to-container communication
+  - Public `*_PUBLIC_PORT` values enable developer-specific host access ports
+  - Pattern applies automatically to all services (MISO, KEYCLOAK, DB, REDIS, etc.)
+  - Example: `MISO_PORT=3000` (internal) → `MISO_PUBLIC_PORT=3100` (for developer-id 1)
+  - Manual override support: Manually set `*_PUBLIC_PORT` values are preserved (not recalculated)
+  - No public ports calculated when developer-id is 0 (uses base ports)
+
+### Changed
+- **Environment Variable Mapping**: Enhanced `lib/utils/env-map.js` to calculate public ports for docker context
+  - Added dynamic public port calculation after local context port adjustment
+  - Public ports only calculated for docker context when developer-id > 0
+  - Local context behavior unchanged (no public ports needed)
+
+### Technical
+- Updated `lib/utils/env-map.js` with public port calculation logic (dynamic pattern for all `*_PORT` variables)
+- Updated `lib/schema/env-config.yaml` with documentation comments explaining public port pattern
+- Comprehensive test coverage: New test file `tests/lib/utils/env-map.test.js` with 20+ test cases
+- Updated `tests/lib/utils/env-generation.test.js` with public port interpolation tests
+- Updated documentation: `docs/DEVELOPER-ISOLATION.md` and `docs/CONFIGURATION.md` with public port examples
+- ISO 27001 compliant implementation maintained throughout
+
 ## [2.30.1] - 2026-01-02
 
 ### Changed

@@ -1,16 +1,23 @@
 # Environment Configuration
 # Defines host values for different deployment contexts
+#
+# Public Port Support (Docker Context):
+# For docker context, any *_PORT variable automatically gets a corresponding *_PUBLIC_PORT
+# calculated as: *_PUBLIC_PORT = *_PORT + (developer-id * 100)
+# This enables developer-specific host access ports while maintaining internal container ports.
+# Example: MISO_PORT=3000 (internal) -> MISO_PUBLIC_PORT=3100 (for developer-id 1)
+# The pattern applies to all services (MISO, KEYCLOAK, DB, REDIS, etc.) automatically.
 
 environments:
   docker:
     DB_HOST: postgres
-    DB_PORT: 5432
+    DB_PORT: 5432  # Internal port (container-to-container). DB_PUBLIC_PORT calculated automatically.
     REDIS_HOST: redis
-    REDIS_PORT: 6379
+    REDIS_PORT: 6379  # Internal port (container-to-container). REDIS_PUBLIC_PORT calculated automatically.
     MISO_HOST: miso-controller
-    MISO_PORT: 3000
+    MISO_PORT: 3000  # Internal port (container-to-container). MISO_PUBLIC_PORT calculated automatically.
     KEYCLOAK_HOST: keycloak
-    KEYCLOAK_PORT: 8082
+    KEYCLOAK_PORT: 8082  # Internal port (container-to-container). KEYCLOAK_PUBLIC_PORT calculated automatically.
     NODE_ENV: production
     PYTHONUNBUFFERED: 1
     PYTHONDONTWRITEBYTECODE: 1

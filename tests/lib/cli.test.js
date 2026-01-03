@@ -2699,7 +2699,7 @@ describe('CLI Commands', () => {
         const handler = commandActions['dev config'];
         expect(handler).toBeDefined();
 
-        await handler('dev config', options);
+        await handler(options);
 
         expect(config.setDeveloperId).toHaveBeenCalledWith('1');
         expect(process.env.AIFABRIX_DEVELOPERID).toBe('1');
@@ -2739,7 +2739,7 @@ describe('CLI Commands', () => {
         const handler = commandActions['dev config'];
         expect(handler).toBeDefined();
 
-        await handler('dev config', options);
+        await handler(options);
 
         expect(config.setDeveloperId).toHaveBeenCalledWith('2');
         expect(devConfig.getDevPorts).toHaveBeenCalledWith(2);
@@ -2769,7 +2769,7 @@ describe('CLI Commands', () => {
         const handler = commandActions['dev config'];
         expect(handler).toBeDefined();
 
-        await handler('dev config', options);
+        await handler(options);
 
         // Should preserve the string "01" with leading zero
         expect(config.setDeveloperId).toHaveBeenCalledWith('01');
@@ -2809,7 +2809,7 @@ describe('CLI Commands', () => {
         const handler = commandActions['dev config'];
         expect(handler).toBeDefined();
 
-        await handler('dev config', options);
+        await handler(options);
 
         expect(config.getDeveloperId).toHaveBeenCalled();
         expect(config.setDeveloperId).not.toHaveBeenCalled();
@@ -2846,7 +2846,7 @@ describe('CLI Commands', () => {
         const handler = commandActions['dev config'];
         expect(handler).toBeDefined();
 
-        await handler('dev config', options);
+        await handler(options);
 
         expect(config.getDeveloperId).toHaveBeenCalled();
         expect(devConfig.getDevPorts).toHaveBeenCalledWith(1);
@@ -2881,7 +2881,7 @@ describe('CLI Commands', () => {
         const handler = commandActions['dev config'];
         expect(handler).toBeDefined();
 
-        await handler('dev config', options);
+        await handler(options);
 
         expect(config.setDeveloperId).toHaveBeenCalledWith('2');
         expect(devConfig.getDevPorts).toHaveBeenCalledWith(2);
@@ -2915,7 +2915,7 @@ describe('CLI Commands', () => {
         const handler = commandActions['dev config'];
         expect(handler).toBeDefined();
 
-        await handler('dev config', options);
+        await handler(options);
 
         expect(logger.log).toHaveBeenCalledWith('\nConfiguration:');
         expect(logger.log).toHaveBeenCalledWith('  aifabrix-home: /workspace/.aifabrix');
@@ -2933,7 +2933,7 @@ describe('CLI Commands', () => {
         const handler = commandActions['dev config'];
         expect(handler).toBeDefined();
 
-        await handler('dev config', options);
+        await handler(options);
 
         expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'dev config');
         expect(process.exit).toHaveBeenCalledWith(1);
@@ -2949,7 +2949,7 @@ describe('CLI Commands', () => {
         const handler = commandActions['dev config'];
         expect(handler).toBeDefined();
 
-        await handler('dev config', options);
+        await handler(options);
 
         expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'dev config');
         expect(process.exit).toHaveBeenCalledWith(1);
