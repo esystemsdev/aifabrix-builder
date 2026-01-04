@@ -16,7 +16,8 @@ module.exports = {
     'bin/**/*.js',
     '!**/node_modules/**',
     '!**/tests/**',
-    '!lib/infra.js'
+    '!lib/infra.js',
+    '!bin/aifabrix.js'
   ],
   coverageDirectory: 'coverage',
   coverageReporters: [

@@ -47,6 +47,13 @@ jest.mock('../../lib/utils/logger', () => ({
   info: jest.fn()
 }));
 
+// Mock package.json to avoid Jest JSON transform issues
+jest.mock('../../package.json', () => ({
+  name: '@aifabrix/builder',
+  version: '2.31.0',
+  description: 'AI Fabrix Local Fabric & Deployment SDK'
+}), { virtual: true });
+
 const aifabrix = require('../../bin/aifabrix');
 const logger = require('../../lib/utils/logger');
 

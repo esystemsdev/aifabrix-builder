@@ -9,7 +9,7 @@
   "scripts": {
     "test": "node scripts/test-wrapper.js",
     "test:watch": "jest --watch",
-    "test:ci": "jest --ci --coverage --watchAll=false",
+    "test:ci": "node scripts/test-ci-wrapper.js",
     "test:integration": "jest --config jest.config.integration.js --runInBand",
     "test:integration:python": "cross-env TEST_LANGUAGE=python jest --config jest.config.integration.js --runInBand",
     "test:integration:typescript": "cross-env TEST_LANGUAGE=typescript jest --config jest.config.integration.js --runInBand",
