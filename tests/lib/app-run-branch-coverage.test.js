@@ -12,15 +12,6 @@ const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
 
-jest.mock('child_process', () => {
-  const actualChildProcess = jest.requireActual('child_process');
-  const mockExecAsync = jest.fn();
-  return {
-    ...actualChildProcess,
-    exec: jest.fn()
-  };
-});
-
 jest.mock('../../lib/validator');
 jest.mock('../../lib/infra');
 jest.mock('../../lib/secrets');
@@ -28,12 +19,6 @@ jest.mock('../../lib/secrets');
 const validator = require('../../lib/validator');
 const infra = require('../../lib/infra');
 const secrets = require('../../lib/secrets');
-const appRun = require('../../lib/app-run');
-
-// Mock execAsync directly
-const { promisify } = require('util');
-const mockExec = require('child_process').exec;
-const execAsync = promisify(mockExec);
 
 describe('App-Run Branch Coverage Tests', () => {
   let tempDir;
@@ -65,16 +50,6 @@ describe('App-Run Branch Coverage Tests', () => {
   });
 
   describe('waitForHealthCheck - branch coverage', () => {
-    beforeEach(() => {
-      jest.clearAllMocks();
-      // Mock promisify to return our mock function
-      jest.spyOn(require('util'), 'promisify').mockReturnValue(jest.fn());
-    });
-
-    afterEach(() => {
-      jest.restoreAllMocks();
-    });
-
     it('should handle unhealthy container status branch', () => {
       // Test the branch logic: status === 'unhealthy'
       const status = 'unhealthy';
@@ -105,7 +80,7 @@ describe('App-Run Branch Coverage Tests', () => {
     });
   });
 
-  describe('runApp - branch coverage for lines 214-274', () => {
+  describe('runApp - branch coverage for port selection logic', () => {
     it('should use options.port when provided', async() => {
       const appName = 'test-app';
       const appPath = path.join(tempDir, 'builder', appName);
@@ -177,9 +152,10 @@ describe('App-Run Branch Coverage Tests', () => {
       );
 
       // Create .env file
-      fsSync.writeFileSync(path.join(appPath, '.env'), 'PORT=3000');
+      const envPath = path.join(appPath, '.env');
+      fsSync.writeFileSync(envPath, 'PORT=3000');
 
-      const envPath = path.join(process.cwd(), 'builder', appName, '.env');
+      // Verify file exists using the same path
       const envExists = fsSync.existsSync(envPath);
       expect(envExists).toBe(true);
 
