@@ -80,15 +80,15 @@ function parseTestResults(output) {
 function handleMergeError(output) {
   const passMatches = (output.match(/PASS\s+tests\/[^\n]+/g) || []).length;
   const failMatches = (output.match(/FAIL\s+tests\/[^\n]+/g) || []).length;
-  
+
   if (passMatches > 0 && failMatches === 0) {
     const suiteMatch = output.match(/Test Suites:\s+(\d+)\s+passed(?:,\s+(\d+)\s+failed)?,\s+(\d+)\s+total/);
     const testMatch = output.match(/Tests:\s+(?:(\d+)\s+failed(?:,\s+)?)?(?:(\d+)\s+skipped(?:,\s+)?)?(\d+)\s+passed(?:,\s+(\d+)\s+total)?/);
-    
+
     const suitesPassed = suiteMatch ? parseInt(suiteMatch[1], 10) : passMatches;
     const suitesTotal = suiteMatch ? parseInt(suiteMatch[3], 10) : passMatches;
     const testsPassed = testMatch ? parseInt(testMatch[3], 10) : 0;
-    
+
     // eslint-disable-next-line no-console
     console.log('\n' + '='.repeat(60));
     // eslint-disable-next-line no-console
