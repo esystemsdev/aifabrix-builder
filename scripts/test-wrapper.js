@@ -167,9 +167,10 @@ function handleJestErrors(output, parsedResults, hasExitError, hasCovError) {
 /**
  * Display test failure
  * @param {RegExpMatchArray|null} suiteMatch - Suite match result
+ * @param {boolean} hasJestError - Whether Jest had an exit/coverage error
  * @returns {void}
  */
-function displayFailure(suiteMatch) {
+function displayFailure(suiteMatch, hasJestError = false) {
   // eslint-disable-next-line no-console
   console.error('\n✗ Tests failed!');
   if (suiteMatch) {
@@ -177,7 +178,13 @@ function displayFailure(suiteMatch) {
     const passed = parseInt(suiteMatch[2] || suiteMatch[1], 10);
     const total = parseInt(suiteMatch[3], 10);
     // eslint-disable-next-line no-console
-    console.error(`Found ${passed} passed, ${failed} failed out of ${total} total`);
+    console.error(`Test Suites: ${failed} failed, ${passed} passed, ${total} total`);
+    if (hasJestError) {
+      // eslint-disable-next-line no-console
+      console.error('⚠️  Note: Jest also encountered an exit handler error (known Jest bug)');
+      // eslint-disable-next-line no-console
+      console.error('   However, tests had real failures, so build is failing.');
+    }
   }
 }
 
@@ -235,14 +242,14 @@ function processTestResults(testResult, parsedResults) {
     }
     // If no error or tests didn't pass, fail
     if (!hasExitErr && !hasCovErr || !allTestsPassed) {
-      displayFailure(suiteMatch);
+      displayFailure(suiteMatch, hasExitErr || hasCovErr);
       return 1;
     }
   }
 
   // If Jest exited successfully, check test results
   if (!allTestsPassed) {
-    displayFailure(suiteMatch);
+    displayFailure(suiteMatch, hasExitErr || hasCovErr);
     return 1;
   }
 
