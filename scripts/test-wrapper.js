@@ -53,7 +53,10 @@ function runCommand(command, args) {
  * @returns {boolean} True if error found
  */
 function hasExitHandlerError(output) {
-  return output.includes('_exitX(...).default') ||
+  return output.includes('_exit(...).default') ||
+         output.includes('_exit(...).default) is not a function') ||
+         output.includes('TypeError: (0 , _exit(...).default)') ||
+         output.includes('_exitX(...).default') ||
          output.includes('_exitX(...).default) is not a function') ||
          output.includes('TypeError: (0 , _exitX');
 }

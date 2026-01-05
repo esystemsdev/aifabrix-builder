@@ -11,36 +11,11 @@ module.exports = {
     '/tests/integration/',
     '\\\\tests\\\\integration\\\\'
   ],
-  collectCoverageFrom: [
-    'lib/**/*.js',
-    'bin/**/*.js',
-    '!**/node_modules/**',
-    '!**/tests/**',
-    '!lib/infra.js',
-    '!bin/aifabrix.js'
-  ],
-  coverageDirectory: 'coverage',
-  coverageReporters: [
-    'text',
-    'lcov',
-    'html'
-  ],
-  coverageProvider: 'v8',
-  coverageThreshold: {
-    global: {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80
-    }
-  },
+  // Coverage is disabled for normal tests - use test:coverage for coverage reports
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   // Normal test timeout (integration tests specify their own timeout)
   testTimeout: 30000, // 30 seconds for unit tests
   verbose: true,
   forceExit: true,
-  detectOpenHandles: true,
-  // Memory management to prevent OOM kills (especially with coverage)
-  maxWorkers: 2, // Limit total workers to prevent OOM kills
-  workerIdleMemoryLimit: '500MB' // Limit worker memory to prevent OOM kills
+  detectOpenHandles: true
 };

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "node scripts/test-wrapper.js",
-    "test:coverage": "jest --coverage --runInBand",
+    "test:coverage": "jest --config jest.config.coverage.js --coverage --runInBand",
     "test:watch": "jest --watch",
     "test:integration": "jest --config jest.config.integration.js --runInBand",
     "test:integration:python": "cross-env TEST_LANGUAGE=python jest --config jest.config.integration.js --runInBand",
