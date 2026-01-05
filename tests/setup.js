@@ -6,6 +6,35 @@
 // Preserve the original working directory to avoid ENOENT errors if tests change/remove CWD
 const ORIGINAL_CWD = process.cwd();
 
+// Set project root in global scope for use by getProjectRoot()
+// This ensures templates can be found even when tests change process.cwd()
+const path = require('path');
+const fs = require('fs');
+let PROJECT_ROOT = null;
+
+// Try to find project root by looking for package.json
+let currentDir = __dirname;
+for (let i = 0; i < 10; i++) {
+  const packageJsonPath = path.join(currentDir, 'package.json');
+  if (fs.existsSync(packageJsonPath)) {
+    PROJECT_ROOT = currentDir;
+    break;
+  }
+  const parentDir = path.dirname(currentDir);
+  if (parentDir === currentDir) {
+    break;
+  }
+  currentDir = parentDir;
+}
+
+// Fallback to __dirname relative path (tests/ -> project root)
+if (!PROJECT_ROOT) {
+  PROJECT_ROOT = path.resolve(__dirname, '..');
+}
+
+// Set in global scope
+global.PROJECT_ROOT = PROJECT_ROOT;
+
 // Global test timeout
 jest.setTimeout(30000);
 

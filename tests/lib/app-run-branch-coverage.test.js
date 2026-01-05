@@ -138,7 +138,10 @@ describe('App-Run Branch Coverage Tests', () => {
 
     it('should handle .env file already exists', async() => {
       const appName = 'test-app';
-      const appPath = path.join(tempDir, 'builder', appName);
+      // Use absolute path to avoid issues with process.cwd() changes
+      const appPath = path.resolve(tempDir, 'builder', appName);
+
+      // Ensure directory exists before proceeding
       fsSync.mkdirSync(appPath, { recursive: true });
 
       const variables = {
@@ -146,17 +149,22 @@ describe('App-Run Branch Coverage Tests', () => {
         build: { port: 3000 }
       };
 
-      fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
-        yaml.dump(variables)
-      );
+      const variablesPath = path.resolve(appPath, 'variables.yaml');
+      fsSync.writeFileSync(variablesPath, yaml.dump(variables));
 
-      // Create .env file
-      const envPath = path.join(appPath, '.env');
-      fsSync.writeFileSync(envPath, 'PORT=3000');
+      // Create .env file - use absolute path to avoid issues with process.cwd() changes
+      // Use real fs operations (not mocked) to ensure file is actually written
+      const envPath = path.resolve(appPath, '.env');
+      const realFs = jest.requireActual('fs');
+      realFs.writeFileSync(envPath, 'PORT=3000');
 
-      // Verify file exists using the same path
-      const envExists = fsSync.existsSync(envPath);
+      // Verify file exists and was written correctly
+      // Use real fs to read (not mocked) to ensure we get actual content
+      const envContent = realFs.readFileSync(envPath, 'utf8');
+      expect(envContent).toBe('PORT=3000');
+
+      // Also verify existsSync returns true using real fs
+      const envExists = realFs.existsSync(envPath);
       expect(envExists).toBe(true);
 
       // Should not call generateEnvFile when .env exists

@@ -220,7 +220,7 @@ aifabrix app register myapp --environment dev
 6. Shows setup instructions
 
 **Output:**
-```
+```yaml
 ✓ Application registered successfully!
 
 📋 Application Details:
@@ -243,7 +243,7 @@ aifabrix app register myapp --environment dev
      DEV_MISO_CLIENTSECRET = xyz-abc-123...
 ```
 
-**Important:** 
+**Important:**
 - For localhost deployments, credentials are automatically saved to `~/.aifabrix/secrets.local.yaml` and `env.template` is updated with `MISO_CLIENTID`, `MISO_CLIENTSECRET`, and `MISO_CONTROLLER_URL` entries.
 - For production deployments, credentials are displayed but not automatically saved. Copy them to GitHub Secrets manually.
 
@@ -256,7 +256,7 @@ aifabrix app register myapp --environment dev
 4. Add environment-level secrets (for dev environment):
    - **Name:** `DEV_MISO_CLIENTID` **Value:** `ctrl-dev-myapp`
    - **Name:** `DEV_MISO_CLIENTSECRET` **Value:** (from registration output)
-   
+
 **Note:** For other environments (staging/production), use `TST_` or `PRO_` prefixes.
 
 ### Step 4: Set Up Workflow
@@ -272,7 +272,7 @@ aifabrix app rotate-secret myapp --environment dev
 ```
 
 **Output:**
-```
+```yaml
 ⚠️  This will invalidate the old ClientSecret!
 
 ✓ Secret rotated successfully!
@@ -411,7 +411,7 @@ jobs:
 For NPM package publishing, add these secrets to your repository:
 
 1. **NPM_TOKEN** - NPM authentication token
-   - Generate at: https://www.npmjs.com/settings/tokens
+   - Generate at: <https://www.npmjs.com/settings/tokens>
    - Required scopes: `publish`, `read`
 
 ### Codecov Integration
@@ -419,7 +419,7 @@ For NPM package publishing, add these secrets to your repository:
 For coverage reporting:
 
 1. **CODECOV_TOKEN** - Codecov upload token (optional)
-   - Generate at: https://codecov.io/settings/tokens
+   - Generate at: <https://codecov.io/settings/tokens>
 
 ### AI Fabrix Pipeline Deployment
 

@@ -8,7 +8,7 @@ This project follows strict testing standards to ensure code quality, security, 
 
 All tests are organized in the `tests/` directory, mirroring the main code structure:
 
-```
+```yaml
 tests/
 ├── lib/                    # Tests for lib/ modules
 │   ├── app.test.js        # Application management tests
