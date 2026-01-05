@@ -52,14 +52,13 @@ describe('Application Module', () => {
 
     // Ensure global.PROJECT_ROOT is set (should be set by tests/setup.js)
     // This ensures templates can be found even when tests change process.cwd()
-    if (!global.PROJECT_ROOT) {
-      const projectRoot = path.resolve(__dirname, '..', '..');
-      global.PROJECT_ROOT = projectRoot;
-    }
+    // Use absolute path resolution to ensure it works in CI
+    const projectRoot = global.PROJECT_ROOT || path.resolve(__dirname, '..', '..');
+    global.PROJECT_ROOT = projectRoot;
 
     // Ensure README template exists in project root
-    const projectRoot = global.PROJECT_ROOT;
-    const readmeTemplatePath = path.join(projectRoot, 'templates', 'applications', 'README.md.hbs');
+    // Use absolute path to avoid issues with process.cwd() changes
+    const readmeTemplatePath = path.resolve(projectRoot, 'templates', 'applications', 'README.md.hbs');
     const readmeTemplateDir = path.dirname(readmeTemplatePath);
     if (!fsSync.existsSync(readmeTemplateDir)) {
       fsSync.mkdirSync(readmeTemplateDir, { recursive: true });
@@ -319,13 +318,20 @@ describe('Application Module', () => {
     });
 
     it('should detect Python projects', async() => {
-      const appPath = path.join(process.cwd(), 'test-app');
+      // Use a unique subdirectory to avoid conflicts with other files
+      const appPath = path.join(tempDir, 'python-test-app');
       await fs.mkdir(appPath, { recursive: true });
 
-      // Ensure no package.json exists (which would cause typescript detection)
+      // Ensure no package.json exists in this specific directory (which would cause typescript detection)
       const packageJsonPath = path.join(appPath, 'package.json');
       if (fsSync.existsSync(packageJsonPath)) {
         fsSync.unlinkSync(packageJsonPath);
+      }
+
+      // Also check parent directories - if package.json exists in tempDir, it might interfere
+      const tempDirPackageJson = path.join(tempDir, 'package.json');
+      if (fsSync.existsSync(tempDirPackageJson)) {
+        fsSync.unlinkSync(tempDirPackageJson);
       }
 
       await fs.writeFile(path.join(appPath, 'requirements.txt'), 'flask==2.0.0');

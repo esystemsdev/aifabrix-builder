@@ -138,11 +138,16 @@ describe('App-Run Branch Coverage Tests', () => {
 
     it('should handle .env file already exists', async() => {
       const appName = 'test-app';
+      // Get the real fs module directly, bypassing any mocks
+      const realFs = jest.requireActual('fs');
+
       // Use absolute path to avoid issues with process.cwd() changes
       const appPath = path.resolve(tempDir, 'builder', appName);
 
-      // Ensure directory exists before proceeding
-      fsSync.mkdirSync(appPath, { recursive: true });
+      // Ensure directory exists before proceeding - use realFs to ensure it's actually created
+      if (!realFs.existsSync(appPath)) {
+        realFs.mkdirSync(appPath, { recursive: true });
+      }
 
       const variables = {
         app: { key: appName, name: 'Test App' },
@@ -150,16 +155,13 @@ describe('App-Run Branch Coverage Tests', () => {
       };
 
       const variablesPath = path.resolve(appPath, 'variables.yaml');
-      fsSync.writeFileSync(variablesPath, yaml.dump(variables));
+      realFs.writeFileSync(variablesPath, yaml.dump(variables));
 
       // Create .env file - use absolute path to avoid issues with process.cwd() changes
       // Use real fs operations (not mocked) to ensure file is actually written
       const envPath = path.resolve(appPath, '.env');
 
-      // Get the real fs module directly, bypassing any mocks
-      const realFs = jest.requireActual('fs');
-
-      // Ensure the directory exists before writing
+      // Ensure the directory exists before writing (use realFs for consistency)
       const envDir = path.dirname(envPath);
       if (!realFs.existsSync(envDir)) {
         realFs.mkdirSync(envDir, { recursive: true });

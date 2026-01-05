@@ -73,9 +73,33 @@ describe('Compose Generator Module', () => {
     process.chdir(tempDir);
 
     // Ensure global.PROJECT_ROOT is set (should be set by tests/setup.js)
-    if (!global.PROJECT_ROOT) {
-      const projectRoot = path.resolve(__dirname, '..', '..');
-      global.PROJECT_ROOT = projectRoot;
+    // Use absolute path resolution to ensure it works in CI
+    const projectRoot = global.PROJECT_ROOT || path.resolve(__dirname, '..', '..');
+    global.PROJECT_ROOT = projectRoot;
+
+    // Ensure Docker Compose templates exist (needed for tests)
+    // Use absolute paths to avoid issues with process.cwd() changes
+    const typescriptTemplatePath = path.resolve(projectRoot, 'templates', 'typescript', 'docker-compose.hbs');
+    const pythonTemplatePath = path.resolve(projectRoot, 'templates', 'python', 'docker-compose.hbs');
+
+    // Ensure typescript template exists
+    const typescriptTemplateDir = path.dirname(typescriptTemplatePath);
+    if (!fsSync.existsSync(typescriptTemplateDir)) {
+      fsSync.mkdirSync(typescriptTemplateDir, { recursive: true });
+    }
+    if (!fsSync.existsSync(typescriptTemplatePath)) {
+      // Create a minimal Docker Compose template for typescript
+      fsSync.writeFileSync(typescriptTemplatePath, 'version: "3.8"\nservices:\n  app:\n    image: {{imageName}}\n    ports:\n      - "{{port}}:{{containerPort}}"');
+    }
+
+    // Ensure python template exists
+    const pythonTemplateDir = path.dirname(pythonTemplatePath);
+    if (!fsSync.existsSync(pythonTemplateDir)) {
+      fsSync.mkdirSync(pythonTemplateDir, { recursive: true });
+    }
+    if (!fsSync.existsSync(pythonTemplatePath)) {
+      // Create a minimal Docker Compose template for python
+      fsSync.writeFileSync(pythonTemplatePath, 'version: "3.8"\nservices:\n  app:\n    image: {{imageName}}\n    ports:\n      - "{{port}}:{{containerPort}}"');
     }
 
     // Create builder directory structure
