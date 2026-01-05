@@ -19,10 +19,14 @@ describe('Dockerfile Utils', () => {
   beforeEach(async() => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aifabrix-test-'));
     originalCwd = process.cwd();
+    // Change to temp directory for file path tests
+    // Note: loadDockerfileTemplate uses __dirname which is relative to the file,
+    // so it should work regardless of process.cwd()
     process.chdir(tempDir);
   });
 
   afterEach(async() => {
+    // Restore original cwd - this is important for Jest's module resolution
     process.chdir(originalCwd);
     await fs.rm(tempDir, { recursive: true, force: true });
   });
@@ -236,7 +240,7 @@ EXPOSE ${vars.port || 3000}`;
 
       const result = dockerfileUtils.checkProjectDockerfile(builderPath, 'test-app', buildConfig, contextPath, false);
 
-      expect(result).toBe(path.join(process.cwd(), 'builder', 'test-app', 'CustomDockerfile'));
+      expect(result).toBe(path.join(builderPath, 'CustomDockerfile'));
     });
 
     it('should return null if custom Dockerfile does not exist in either location', () => {

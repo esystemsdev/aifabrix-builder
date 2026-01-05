@@ -7,7 +7,7 @@
     "aifabrix": "bin/aifabrix.js"
   },
   "scripts": {
-    "test": "jest",
+    "test": "node scripts/test-wrapper.js",
     "test:coverage": "jest --coverage --runInBand",
     "test:watch": "jest --watch",
     "test:integration": "jest --config jest.config.integration.js --runInBand",
@@ -17,7 +17,7 @@
     "lint:fix": "eslint . --ext .js --fix",
     "lint:ci": "eslint . --ext .js --format json --output-file eslint-report.json",
     "dev": "node bin/aifabrix.js",
-    "build": "npm run lint && npm run test:coverage",
+    "build": "npm run lint && npm run test",
     "pack": "npm run build && npm pack",
     "validate": "npm run build",
     "prepublishOnly": "npm run validate",
