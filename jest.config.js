@@ -39,5 +39,8 @@ module.exports = {
   testTimeout: 30000, // 30 seconds for unit tests
   verbose: true,
   forceExit: true,
-  detectOpenHandles: true
+  detectOpenHandles: true,
+  // Memory management to prevent OOM kills (especially with coverage)
+  maxWorkers: 2, // Limit total workers to prevent OOM kills
+  workerIdleMemoryLimit: '500MB' // Limit worker memory to prevent OOM kills
 };

@@ -473,8 +473,7 @@ Add custom secrets for your application:
 {
   "scripts": {
     "build": "tsc",
-    "test": "jest",
-    "test:ci": "jest --ci --coverage --watchAll=false",
+    "test": "jest --coverage",
     "lint": "eslint . --ext .js"
   }
 }

@@ -7,9 +7,9 @@
     "aifabrix": "bin/aifabrix.js"
   },
   "scripts": {
-    "test": "node scripts/test-wrapper.js",
+    "test": "jest",
+    "test:coverage": "jest --coverage --runInBand",
     "test:watch": "jest --watch",
-    "test:ci": "node scripts/test-ci-wrapper.js",
     "test:integration": "jest --config jest.config.integration.js --runInBand",
     "test:integration:python": "cross-env TEST_LANGUAGE=python jest --config jest.config.integration.js --runInBand",
     "test:integration:typescript": "cross-env TEST_LANGUAGE=typescript jest --config jest.config.integration.js --runInBand",
@@ -17,10 +17,9 @@
     "lint:fix": "eslint . --ext .js --fix",
     "lint:ci": "eslint . --ext .js --format json --output-file eslint-report.json",
     "dev": "node bin/aifabrix.js",
-    "build": "npm run lint && npm run test:ci",
+    "build": "npm run lint && npm run test:coverage",
     "pack": "npm run build && npm pack",
     "validate": "npm run build",
-    "postinstall": "node scripts/patch-jest-exit.js",
     "prepublishOnly": "npm run validate",
     "precommit": "npm run lint:fix && npm run test"
   },

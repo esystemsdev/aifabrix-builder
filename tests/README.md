@@ -56,8 +56,11 @@ tests/
 
 ### Development
 ```bash
-# Run all tests with coverage
+# Run all tests
 npm test
+
+# Run tests with coverage
+npm run test:coverage
 
 # Run tests in watch mode
 npm run test:watch
@@ -68,13 +71,13 @@ npm test -- tests/lib/validator.test.js
 
 ### Continuous Integration
 ```bash
-# Run tests for CI (no watch mode)
-npm run test:ci
+# Run tests with coverage (for CI/build)
+npm run test:coverage
 
 # Run linting
 npm run lint
 
-# Run full validation (lint + test)
+# Run full validation (lint + test with coverage)
 npm run validate
 ```
 
