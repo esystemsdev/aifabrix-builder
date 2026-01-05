@@ -75,6 +75,14 @@ describe('Compose Generator Module', () => {
     // Create builder directory structure
     fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app'), { recursive: true });
 
+    // Override getDevDirectory mock to use tempDir instead of homedir
+    buildCopy.getDevDirectory.mockImplementation((appName, devId) => {
+      const idNum = typeof devId === 'string' ? parseInt(devId, 10) : devId;
+      return idNum === 0
+        ? path.join(tempDir, '.aifabrix', 'applications')
+        : path.join(tempDir, '.aifabrix', `applications-dev-${devId}`);
+    });
+
     // Create dev directory structure (where .env files are now expected)
     devDir = buildCopy.getDevDirectory('test-app', 1);
     fsSync.mkdirSync(devDir, { recursive: true });
@@ -565,6 +573,10 @@ describe('Compose Generator Module', () => {
     });
 
     it('should handle Python language', async() => {
+      // Ensure config.getDeveloperId returns 1 (matching devDir setup)
+      const configModule = require('../../lib/config');
+      configModule.getDeveloperId.mockResolvedValue(1);
+
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 
@@ -579,6 +591,10 @@ describe('Compose Generator Module', () => {
     });
 
     it('should handle config.build.language', async() => {
+      // Ensure config.getDeveloperId returns 1 (matching devDir setup)
+      const configModule = require('../../lib/config');
+      configModule.getDeveloperId.mockResolvedValue(1);
+
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 

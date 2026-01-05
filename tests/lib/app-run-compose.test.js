@@ -53,10 +53,26 @@ describe('app-run Docker Compose Generation', () => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-compose-test-'));
     originalCwd = process.cwd();
     process.chdir(tempDir);
+
+    // Mock os.homedir() to return temp directory
+    jest.spyOn(os, 'homedir').mockReturnValue(tempDir);
+
+    // Override getDevDirectory mock to use tempDir instead of homedir
+    const buildCopy = require('../../lib/utils/build-copy');
+    buildCopy.getDevDirectory.mockImplementation((appName, devId) => {
+      const idNum = typeof devId === 'string' ? parseInt(devId, 10) : devId;
+      return idNum === 0
+        ? path.join(tempDir, '.aifabrix', 'applications')
+        : path.join(tempDir, '.aifabrix', `applications-dev-${devId}`);
+    });
+
     jest.clearAllMocks();
   });
 
   afterEach(() => {
+    // Restore os.homedir mock
+    jest.restoreAllMocks();
+
     // Always restore cwd BEFORE cleanup to avoid uv_cwd errors
     try {
       process.chdir(originalCwd);

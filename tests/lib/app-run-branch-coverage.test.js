@@ -155,17 +155,24 @@ describe('App-Run Branch Coverage Tests', () => {
       // Create .env file - use absolute path to avoid issues with process.cwd() changes
       // Use real fs operations (not mocked) to ensure file is actually written
       const envPath = path.resolve(appPath, '.env');
+
+      // Get the real fs module directly, bypassing any mocks
       const realFs = jest.requireActual('fs');
-      realFs.writeFileSync(envPath, 'PORT=3000');
 
-      // Verify file exists and was written correctly
-      // Use real fs to read (not mocked) to ensure we get actual content
-      const envContent = realFs.readFileSync(envPath, 'utf8');
-      expect(envContent).toBe('PORT=3000');
+      // Write the file using real fs
+      realFs.writeFileSync(envPath, 'PORT=3000', 'utf8');
 
-      // Also verify existsSync returns true using real fs
+      // Verify file exists using real fs
       const envExists = realFs.existsSync(envPath);
       expect(envExists).toBe(true);
+
+      // Read the file content using real fs - this should work even if fs is mocked elsewhere
+      // Use a fresh require to ensure we get the actual module
+      const { readFileSync } = jest.requireActual('fs');
+      const envContent = readFileSync(envPath, 'utf8');
+
+      // The content should be the string we wrote
+      expect(envContent).toBe('PORT=3000');
 
       // Should not call generateEnvFile when .env exists
       const shouldGenerate = !envExists;

@@ -24,6 +24,9 @@ describe('Build Copy Utilities', () => {
     originalCwd = process.cwd();
     originalHomedir = os.homedir();
     process.chdir(tempDir);
+
+    // Mock os.homedir() to return temp directory to avoid writing to real home directory
+    jest.spyOn(os, 'homedir').mockReturnValue(tempDir);
   });
 
   describe('string developerId preservation', () => {
@@ -40,29 +43,19 @@ describe('Build Copy Utilities', () => {
       expect(fsSync.existsSync(builderPath)).toBe(true);
 
       const devDir = await buildCopy.copyBuilderToDevDirectory(appName, developerId);
-      const expectedPath = path.join(os.homedir(), '.aifabrix', 'applications-dev-01');
+      const expectedPath = path.join(tempDir, '.aifabrix', 'applications-dev-01');
       expect(devDir).toBe(expectedPath);
       expect(fsSync.existsSync(path.join(devDir, 'variables.yaml'))).toBe(true);
     });
   });
 
   afterEach(async() => {
-    // Clean up temporary directory
+    // Restore os.homedir mock
+    jest.restoreAllMocks();
+
+    // Clean up temporary directory (which now contains .aifabrix)
     process.chdir(originalCwd);
     await fs.rm(tempDir, { recursive: true, force: true });
-
-    // Clean up dev directories
-    const aifabrixDir = path.join(originalHomedir, '.aifabrix');
-    if (fsSync.existsSync(aifabrixDir)) {
-      const entries = await fs.readdir(aifabrixDir);
-      for (const entry of entries) {
-        // Clean up applications/ (dev 0) and applications-dev-{id}/ (dev > 0)
-        if (entry === 'applications' || entry.startsWith('applications-dev-')) {
-          const entryPath = path.join(aifabrixDir, entry);
-          await fs.rm(entryPath, { recursive: true, force: true });
-        }
-      }
-    }
   });
 
   describe('copyBuilderToDevDirectory', () => {
@@ -85,7 +78,7 @@ describe('Build Copy Utilities', () => {
       expect(devDir).toBeDefined();
       expect(fsSync.existsSync(devDir)).toBe(true);
       // Verify path is correct for dev > 0 (root of applications-dev-{id})
-      const expectedPath = path.join(os.homedir(), '.aifabrix', `applications-dev-${developerId}`);
+      const expectedPath = path.join(tempDir, '.aifabrix', `applications-dev-${developerId}`);
       expect(devDir).toBe(expectedPath);
 
       // Verify files were copied
@@ -118,7 +111,7 @@ describe('Build Copy Utilities', () => {
       expect(devDir).toBeDefined();
       expect(fsSync.existsSync(devDir)).toBe(true);
       // Verify path is correct for dev 0
-      const expectedPath = path.join(os.homedir(), '.aifabrix', 'applications');
+      const expectedPath = path.join(tempDir, '.aifabrix', 'applications');
       expect(devDir).toBe(expectedPath);
 
       // Verify files were copied directly to applications/
@@ -260,7 +253,7 @@ describe('Build Copy Utilities', () => {
 
       const devDir = buildCopy.getDevDirectory(appName, developerId);
 
-      const expectedPath = path.join(os.homedir(), '.aifabrix', `applications-dev-${developerId}`);
+      const expectedPath = path.join(tempDir, '.aifabrix', `applications-dev-${developerId}`);
       expect(devDir).toBe(expectedPath);
     });
 
@@ -270,7 +263,7 @@ describe('Build Copy Utilities', () => {
 
       const devDir = buildCopy.getDevDirectory(appName, developerId);
 
-      const expectedPath = path.join(os.homedir(), '.aifabrix', 'applications');
+      const expectedPath = path.join(tempDir, '.aifabrix', 'applications');
       expect(devDir).toBe(expectedPath);
     });
 
