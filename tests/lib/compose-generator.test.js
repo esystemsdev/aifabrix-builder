@@ -72,6 +72,12 @@ describe('Compose Generator Module', () => {
     originalCwd = process.cwd();
     process.chdir(tempDir);
 
+    // Ensure global.PROJECT_ROOT is set (should be set by tests/setup.js)
+    if (!global.PROJECT_ROOT) {
+      const projectRoot = path.resolve(__dirname, '..', '..');
+      global.PROJECT_ROOT = projectRoot;
+    }
+
     // Create builder directory structure
     fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app'), { recursive: true });
 

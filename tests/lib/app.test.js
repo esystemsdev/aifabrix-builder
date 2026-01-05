@@ -50,6 +50,25 @@ describe('Application Module', () => {
     originalCwd = process.cwd();
     process.chdir(tempDir);
 
+    // Ensure global.PROJECT_ROOT is set (should be set by tests/setup.js)
+    // This ensures templates can be found even when tests change process.cwd()
+    if (!global.PROJECT_ROOT) {
+      const projectRoot = path.resolve(__dirname, '..', '..');
+      global.PROJECT_ROOT = projectRoot;
+    }
+
+    // Ensure README template exists in project root
+    const projectRoot = global.PROJECT_ROOT;
+    const readmeTemplatePath = path.join(projectRoot, 'templates', 'applications', 'README.md.hbs');
+    const readmeTemplateDir = path.dirname(readmeTemplatePath);
+    if (!fsSync.existsSync(readmeTemplateDir)) {
+      fsSync.mkdirSync(readmeTemplateDir, { recursive: true });
+    }
+    if (!fsSync.existsSync(readmeTemplatePath)) {
+      // Create a minimal README template if it doesn't exist
+      fsSync.writeFileSync(readmeTemplatePath, '# {{displayName}}\n\n{{appName}} application.\n');
+    }
+
     // Mock inquirer prompts to return default values
     const inquirer = require('inquirer');
     inquirer.prompt.mockResolvedValue({
@@ -302,6 +321,13 @@ describe('Application Module', () => {
     it('should detect Python projects', async() => {
       const appPath = path.join(process.cwd(), 'test-app');
       await fs.mkdir(appPath, { recursive: true });
+
+      // Ensure no package.json exists (which would cause typescript detection)
+      const packageJsonPath = path.join(appPath, 'package.json');
+      if (fsSync.existsSync(packageJsonPath)) {
+        fsSync.unlinkSync(packageJsonPath);
+      }
+
       await fs.writeFile(path.join(appPath, 'requirements.txt'), 'flask==2.0.0');
 
       const result = app.detectLanguage(appPath);
@@ -559,12 +585,16 @@ app:
 
     it('should warn and return null on non-ENOENT error', async() => {
       const templateName = 'test-template';
-      const templateDir = path.join(process.cwd(), 'templates', 'applications', templateName);
+      // loadTemplateVariables uses __dirname/../templates/applications/
+      // __dirname in lib/utils/template-helpers.js is lib/utils/, so it goes to templates/applications/
+      // We need to use the actual project root, not tempDir
+      const projectRoot = global.PROJECT_ROOT || path.resolve(__dirname, '..', '..');
+      const templateDir = path.join(projectRoot, 'templates', 'applications', templateName);
       const templateFile = path.join(templateDir, 'variables.yaml');
       // Create a file that can be read but has invalid YAML syntax
       const invalidYaml = 'invalid: yaml: content: [';
 
-      // Create template directory and invalid file
+      // Create template directory and invalid file in actual project location
       fsSync.mkdirSync(templateDir, { recursive: true });
       fsSync.writeFileSync(templateFile, invalidYaml);
 
@@ -575,13 +605,18 @@ app:
         const result = await app.loadTemplateVariables(templateName);
         // YAML parsing errors should return null
         expect(result).toBeNull();
+        expect(warnSpy).toHaveBeenCalled();
       } finally {
         warnSpy.mockRestore();
         if (fsSync.existsSync(templateFile)) {
           fsSync.unlinkSync(templateFile);
         }
         if (fsSync.existsSync(templateDir)) {
-          fsSync.rmdirSync(templateDir);
+          try {
+            fsSync.rmdirSync(templateDir);
+          } catch (err) {
+            // Ignore errors if directory is not empty
+          }
         }
       }
     });

@@ -159,6 +159,12 @@ describe('App-Run Branch Coverage Tests', () => {
       // Get the real fs module directly, bypassing any mocks
       const realFs = jest.requireActual('fs');
 
+      // Ensure the directory exists before writing
+      const envDir = path.dirname(envPath);
+      if (!realFs.existsSync(envDir)) {
+        realFs.mkdirSync(envDir, { recursive: true });
+      }
+
       // Write the file using real fs
       realFs.writeFileSync(envPath, 'PORT=3000', 'utf8');
 
