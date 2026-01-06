@@ -251,9 +251,11 @@ describe('Compose Generator Module', () => {
     });
 
     it('should throw error when DB_PASSWORD is missing', async() => {
+      // Get the actual dev directory path that generateDockerCompose will use
+      const actualDevDir = buildCopy.getDevDirectory('test-app', 1);
       // Ensure devDir exists before writing .env file
-      fsSync.mkdirSync(devDir, { recursive: true });
-      const envPath = path.join(devDir, '.env');
+      fsSync.mkdirSync(actualDevDir, { recursive: true });
+      const envPath = path.join(actualDevDir, '.env');
       fsSync.writeFileSync(envPath, 'OTHER_VAR=value\n');
 
       const config = {
@@ -266,9 +268,11 @@ describe('Compose Generator Module', () => {
     });
 
     it('should throw error when DB_PASSWORD is empty', async() => {
+      // Get the actual dev directory path that generateDockerCompose will use
+      const actualDevDir = buildCopy.getDevDirectory('test-app', 1);
       // Ensure devDir exists before writing .env file
-      fsSync.mkdirSync(devDir, { recursive: true });
-      const envPath = path.join(devDir, '.env');
+      fsSync.mkdirSync(actualDevDir, { recursive: true });
+      const envPath = path.join(actualDevDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=\n');
 
       const config = {
@@ -281,9 +285,11 @@ describe('Compose Generator Module', () => {
     });
 
     it('should throw error when DB_0_PASSWORD is missing for multiple databases', async() => {
+      // Get the actual dev directory path that generateDockerCompose will use
+      const actualDevDir = buildCopy.getDevDirectory('test-app', 1);
       // Ensure devDir exists before writing .env file
-      fsSync.mkdirSync(devDir, { recursive: true });
-      const envPath = path.join(devDir, '.env');
+      fsSync.mkdirSync(actualDevDir, { recursive: true });
+      const envPath = path.join(actualDevDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_1_PASSWORD=pass2\n');
 
       const config = {
@@ -301,9 +307,11 @@ describe('Compose Generator Module', () => {
     });
 
     it('should throw error when DB_1_PASSWORD is missing for multiple databases', async() => {
+      // Get the actual dev directory path that generateDockerCompose will use
+      const actualDevDir = buildCopy.getDevDirectory('test-app', 1);
       // Ensure devDir exists before writing .env file
-      fsSync.mkdirSync(devDir, { recursive: true });
-      const envPath = path.join(devDir, '.env');
+      fsSync.mkdirSync(actualDevDir, { recursive: true });
+      const envPath = path.join(actualDevDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_0_PASSWORD=pass1\n');
 
       const config = {
@@ -323,9 +331,10 @@ describe('Compose Generator Module', () => {
 
   describe('readDatabasePasswords (via generateDockerCompose)', () => {
     it('should read DB_PASSWORD from .env file', async() => {
-      // Ensure devDir exists before writing .env file
-      fsSync.mkdirSync(devDir, { recursive: true });
-      const envPath = path.join(devDir, '.env');
+      // Get the actual dev directory path that generateDockerCompose will use
+      const actualDevDir = buildCopy.getDevDirectory('test-app', 1);
+      fsSync.mkdirSync(actualDevDir, { recursive: true });
+      const envPath = path.join(actualDevDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 
       const config = {
@@ -339,9 +348,10 @@ describe('Compose Generator Module', () => {
     });
 
     it('should read DB_0_PASSWORD from .env file', async() => {
-      // Ensure devDir exists before writing .env file
-      fsSync.mkdirSync(devDir, { recursive: true });
-      const envPath = path.join(devDir, '.env');
+      // Get the actual dev directory path that generateDockerCompose will use
+      const actualDevDir = buildCopy.getDevDirectory('test-app', 1);
+      fsSync.mkdirSync(actualDevDir, { recursive: true });
+      const envPath = path.join(actualDevDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_0_PASSWORD=secret123\n');
 
       const config = {
@@ -355,9 +365,10 @@ describe('Compose Generator Module', () => {
     });
 
     it('should handle file read errors', async() => {
-      // Ensure devDir exists before writing .env file
-      fsSync.mkdirSync(devDir, { recursive: true });
-      const envPath = path.join(devDir, '.env');
+      // Get the actual dev directory path that generateDockerCompose will use
+      const actualDevDir = buildCopy.getDevDirectory('test-app', 1);
+      fsSync.mkdirSync(actualDevDir, { recursive: true });
+      const envPath = path.join(actualDevDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 
       // Mock fs.promises.readFile to throw error
@@ -377,9 +388,10 @@ describe('Compose Generator Module', () => {
     });
 
     it('should parse .env file with comments and empty lines', async() => {
-      // Ensure devDir exists before writing .env file
-      fsSync.mkdirSync(devDir, { recursive: true });
-      const envPath = path.join(devDir, '.env');
+      // Get the actual dev directory path that generateDockerCompose will use
+      const actualDevDir = buildCopy.getDevDirectory('test-app', 1);
+      fsSync.mkdirSync(actualDevDir, { recursive: true });
+      const envPath = path.join(actualDevDir, '.env');
       fsSync.writeFileSync(envPath, '# Comment\n\nDB_PASSWORD=secret123\n\n# Another comment\n');
 
       const config = {
@@ -392,9 +404,10 @@ describe('Compose Generator Module', () => {
     });
 
     it('should handle .env file with invalid format (no equals sign)', async() => {
-      // Ensure devDir exists before writing .env file
-      fsSync.mkdirSync(devDir, { recursive: true });
-      const envPath = path.join(devDir, '.env');
+      // Get the actual dev directory path that generateDockerCompose will use
+      const actualDevDir = buildCopy.getDevDirectory('test-app', 1);
+      fsSync.mkdirSync(actualDevDir, { recursive: true });
+      const envPath = path.join(actualDevDir, '.env');
       fsSync.writeFileSync(envPath, 'INVALID_LINE_WITHOUT_EQUALS\nDB_PASSWORD=secret123\n');
 
       const config = {
