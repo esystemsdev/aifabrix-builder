@@ -198,6 +198,47 @@ describe('Compose Generator Module', () => {
   });
 
   describe('readDatabasePasswords error handling', () => {
+    // Mock file system to make template loading succeed without actual template files
+    // This allows us to test password logic without requiring templates in CI
+    let originalExistsSync;
+    let originalReadFileSync;
+
+    beforeEach(() => {
+      const projectRoot = global.PROJECT_ROOT || path.resolve(__dirname, '..', '..');
+      const typescriptTemplatePath = path.resolve(projectRoot, 'templates', 'typescript', 'docker-compose.hbs');
+      const pythonTemplatePath = path.resolve(projectRoot, 'templates', 'python', 'docker-compose.hbs');
+
+      // Save original functions
+      originalExistsSync = fsSync.existsSync;
+      originalReadFileSync = fsSync.readFileSync;
+
+      // Mock existsSync to return true for template paths
+      fsSync.existsSync = jest.fn((filePath) => {
+        if (filePath === typescriptTemplatePath || filePath === pythonTemplatePath) {
+          return true;
+        }
+        return originalExistsSync.call(fsSync, filePath);
+      });
+
+      // Mock readFileSync to return a simple template for template paths
+      fsSync.readFileSync = jest.fn((filePath, encoding) => {
+        if (filePath === typescriptTemplatePath || filePath === pythonTemplatePath) {
+          return 'version: "3.8"\nservices:\n  app:\n    image: {{imageName}}\n    ports:\n      - "{{port}}:{{containerPort}}"';
+        }
+        return originalReadFileSync.call(fsSync, filePath, encoding);
+      });
+    });
+
+    afterEach(() => {
+      // Restore original functions
+      if (originalExistsSync) {
+        fsSync.existsSync = originalExistsSync;
+      }
+      if (originalReadFileSync) {
+        fsSync.readFileSync = originalReadFileSync;
+      }
+    });
+
     it('should throw error when .env file does not exist', async() => {
       // Remove dev directory to simulate missing .env file
       if (fsSync.existsSync(devDir)) {
