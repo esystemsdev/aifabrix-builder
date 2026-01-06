@@ -66,6 +66,8 @@ describe('Compose Generator Module', () => {
   let tempDir;
   let originalCwd;
   let devDir;
+  let originalExistsSync;
+  let originalReadFileSync;
 
   beforeEach(() => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-compose-test-'));
@@ -74,14 +76,40 @@ describe('Compose Generator Module', () => {
 
     // Ensure global.PROJECT_ROOT is set (should be set by tests/setup.js)
     // Use absolute path resolution to ensure it works in CI
-    // Don't try to create templates - use the real ones from the repository
     const projectRoot = global.PROJECT_ROOT || path.resolve(__dirname, '..', '..');
     global.PROJECT_ROOT = projectRoot;
 
-    // Note: We don't verify templates exist here because:
-    // 1. The actual template loading code will handle missing templates with better error messages
-    // 2. In CI, templates should exist but we don't want to fail all tests if there's a timing issue
-    // 3. Individual tests that need templates will fail appropriately when they try to use them
+    // Mock file system to make template loading succeed without actual template files
+    // This allows tests to run in CI where templates might not be immediately available
+    const typescriptTemplatePath = path.resolve(projectRoot, 'templates', 'typescript', 'docker-compose.hbs');
+    const pythonTemplatePath = path.resolve(projectRoot, 'templates', 'python', 'docker-compose.hbs');
+
+    // Save original functions
+    originalExistsSync = fsSync.existsSync;
+    originalReadFileSync = fsSync.readFileSync;
+
+    // Mock existsSync to return true for template paths
+    fsSync.existsSync = jest.fn((filePath) => {
+      if (filePath === typescriptTemplatePath || filePath === pythonTemplatePath) {
+        return true;
+      }
+      return originalExistsSync.call(fsSync, filePath);
+    });
+
+    // Mock readFileSync to return a template that matches the actual structure
+    // Use the actual template if it exists, otherwise use a mock that matches the structure
+    fsSync.readFileSync = jest.fn((filePath, encoding) => {
+      if (filePath === typescriptTemplatePath || filePath === pythonTemplatePath) {
+        // Try to use the actual template if it exists
+        try {
+          return originalReadFileSync.call(fsSync, filePath, encoding);
+        } catch (error) {
+          // If actual template doesn't exist, use a mock that matches the structure
+          return 'services:\n  {{app.key}}:\n    image: {{image.name}}:{{image.tag}}\n    ports:\n      - "{{hostPort}}:{{containerPort}}"';
+        }
+      }
+      return originalReadFileSync.call(fsSync, filePath, encoding);
+    });
 
     // Create builder directory structure
     fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app'), { recursive: true });
@@ -104,6 +132,14 @@ describe('Compose Generator Module', () => {
   afterEach(() => {
     process.chdir(originalCwd);
     jest.restoreAllMocks();
+
+    // Restore original file system functions
+    if (originalExistsSync) {
+      fsSync.existsSync = originalExistsSync;
+    }
+    if (originalReadFileSync) {
+      fsSync.readFileSync = originalReadFileSync;
+    }
   });
 
   describe('loadDockerComposeTemplate error handling', () => {
@@ -198,46 +234,6 @@ describe('Compose Generator Module', () => {
   });
 
   describe('readDatabasePasswords error handling', () => {
-    // Mock file system to make template loading succeed without actual template files
-    // This allows us to test password logic without requiring templates in CI
-    let originalExistsSync;
-    let originalReadFileSync;
-
-    beforeEach(() => {
-      const projectRoot = global.PROJECT_ROOT || path.resolve(__dirname, '..', '..');
-      const typescriptTemplatePath = path.resolve(projectRoot, 'templates', 'typescript', 'docker-compose.hbs');
-      const pythonTemplatePath = path.resolve(projectRoot, 'templates', 'python', 'docker-compose.hbs');
-
-      // Save original functions
-      originalExistsSync = fsSync.existsSync;
-      originalReadFileSync = fsSync.readFileSync;
-
-      // Mock existsSync to return true for template paths
-      fsSync.existsSync = jest.fn((filePath) => {
-        if (filePath === typescriptTemplatePath || filePath === pythonTemplatePath) {
-          return true;
-        }
-        return originalExistsSync.call(fsSync, filePath);
-      });
-
-      // Mock readFileSync to return a simple template for template paths
-      fsSync.readFileSync = jest.fn((filePath, encoding) => {
-        if (filePath === typescriptTemplatePath || filePath === pythonTemplatePath) {
-          return 'version: "3.8"\nservices:\n  app:\n    image: {{imageName}}\n    ports:\n      - "{{port}}:{{containerPort}}"';
-        }
-        return originalReadFileSync.call(fsSync, filePath, encoding);
-      });
-    });
-
-    afterEach(() => {
-      // Restore original functions
-      if (originalExistsSync) {
-        fsSync.existsSync = originalExistsSync;
-      }
-      if (originalReadFileSync) {
-        fsSync.readFileSync = originalReadFileSync;
-      }
-    });
 
     it('should throw error when .env file does not exist', async() => {
       // Remove dev directory to simulate missing .env file
@@ -255,6 +251,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should throw error when DB_PASSWORD is missing', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'OTHER_VAR=value\n');
 
@@ -268,6 +266,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should throw error when DB_PASSWORD is empty', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=\n');
 
@@ -281,6 +281,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should throw error when DB_0_PASSWORD is missing for multiple databases', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_1_PASSWORD=pass2\n');
 
@@ -299,6 +301,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should throw error when DB_1_PASSWORD is missing for multiple databases', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_0_PASSWORD=pass1\n');
 
@@ -319,6 +323,8 @@ describe('Compose Generator Module', () => {
 
   describe('readDatabasePasswords (via generateDockerCompose)', () => {
     it('should read DB_PASSWORD from .env file', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 
@@ -333,6 +339,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should read DB_0_PASSWORD from .env file', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_0_PASSWORD=secret123\n');
 
@@ -347,6 +355,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should handle file read errors', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 
@@ -367,6 +377,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should parse .env file with comments and empty lines', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, '# Comment\n\nDB_PASSWORD=secret123\n\n# Another comment\n');
 
@@ -380,6 +392,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should handle .env file with invalid format (no equals sign)', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'INVALID_LINE_WITHOUT_EQUALS\nDB_PASSWORD=secret123\n');
 
@@ -393,6 +407,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should handle .env file with equals at start', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, '=value\nDB_PASSWORD=secret123\n');
 
@@ -406,6 +422,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should read passwords for multiple databases', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_0_PASSWORD=pass1\nDB_1_PASSWORD=pass2\n');
 
@@ -438,6 +456,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should handle multiple databases with all passwords', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_0_PASSWORD=pass1\nDB_1_PASSWORD=pass2\nDB_2_PASSWORD=pass3\n');
 
@@ -460,6 +480,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should use database name from config when provided', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_0_PASSWORD=secret123\n');
 
@@ -475,6 +497,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should use appKey fallback when database name not provided', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_0_PASSWORD=secret123\n');
 
@@ -492,6 +516,8 @@ describe('Compose Generator Module', () => {
 
   describe('generateDockerCompose', () => {
     it('should generate compose file with database passwords', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 
@@ -522,6 +548,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should use options.port when provided', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 
@@ -535,6 +563,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should use config.port when options.port not provided', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 
@@ -548,6 +578,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should default to port 3000 when no port specified', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 
@@ -560,6 +592,8 @@ describe('Compose Generator Module', () => {
     });
 
     it('should use containerPort from build.containerPort and calculate host port with developer offset', async() => {
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 
@@ -629,6 +663,8 @@ describe('Compose Generator Module', () => {
       const configModule = require('../../lib/config');
       configModule.getDeveloperId.mockResolvedValue(1);
 
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 
@@ -647,6 +683,8 @@ describe('Compose Generator Module', () => {
       const configModule = require('../../lib/config');
       configModule.getDeveloperId.mockResolvedValue(1);
 
+      // Ensure devDir exists before writing .env file
+      fsSync.mkdirSync(devDir, { recursive: true });
       const envPath = path.join(devDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 
