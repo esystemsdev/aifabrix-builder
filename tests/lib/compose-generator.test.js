@@ -74,32 +74,23 @@ describe('Compose Generator Module', () => {
 
     // Ensure global.PROJECT_ROOT is set (should be set by tests/setup.js)
     // Use absolute path resolution to ensure it works in CI
+    // Don't try to create templates - use the real ones from the repository
     const projectRoot = global.PROJECT_ROOT || path.resolve(__dirname, '..', '..');
     global.PROJECT_ROOT = projectRoot;
 
-    // Ensure Docker Compose templates exist (needed for tests)
-    // Use absolute paths to avoid issues with process.cwd() changes
+    // Verify templates exist (they should be in the repository)
+    // If they don't exist, the test will fail with a clear error message
     const typescriptTemplatePath = path.resolve(projectRoot, 'templates', 'typescript', 'docker-compose.hbs');
     const pythonTemplatePath = path.resolve(projectRoot, 'templates', 'python', 'docker-compose.hbs');
 
-    // Ensure typescript template exists
-    const typescriptTemplateDir = path.dirname(typescriptTemplatePath);
-    if (!fsSync.existsSync(typescriptTemplateDir)) {
-      fsSync.mkdirSync(typescriptTemplateDir, { recursive: true });
-    }
     if (!fsSync.existsSync(typescriptTemplatePath)) {
-      // Create a minimal Docker Compose template for typescript
-      fsSync.writeFileSync(typescriptTemplatePath, 'version: "3.8"\nservices:\n  app:\n    image: {{imageName}}\n    ports:\n      - "{{port}}:{{containerPort}}"');
+      throw new Error(`TypeScript Docker Compose template not found at ${typescriptTemplatePath}. ` +
+        `Project root: ${projectRoot}. Templates should exist in the repository.`);
     }
 
-    // Ensure python template exists
-    const pythonTemplateDir = path.dirname(pythonTemplatePath);
-    if (!fsSync.existsSync(pythonTemplateDir)) {
-      fsSync.mkdirSync(pythonTemplateDir, { recursive: true });
-    }
     if (!fsSync.existsSync(pythonTemplatePath)) {
-      // Create a minimal Docker Compose template for python
-      fsSync.writeFileSync(pythonTemplatePath, 'version: "3.8"\nservices:\n  app:\n    image: {{imageName}}\n    ports:\n      - "{{port}}:{{containerPort}}"');
+      throw new Error(`Python Docker Compose template not found at ${pythonTemplatePath}. ` +
+        `Project root: ${projectRoot}. Templates should exist in the repository.`);
     }
 
     // Create builder directory structure

@@ -32,6 +32,9 @@ if (!PROJECT_ROOT) {
   PROJECT_ROOT = path.resolve(__dirname, '..');
 }
 
+// Ensure PROJECT_ROOT is always an absolute path
+PROJECT_ROOT = path.resolve(PROJECT_ROOT);
+
 // Set in global scope
 global.PROJECT_ROOT = PROJECT_ROOT;
 

@@ -56,16 +56,12 @@ describe('Application Module', () => {
     const projectRoot = global.PROJECT_ROOT || path.resolve(__dirname, '..', '..');
     global.PROJECT_ROOT = projectRoot;
 
-    // Ensure README template exists in project root
+    // Verify README template exists (it should be in the repository)
     // Use absolute path to avoid issues with process.cwd() changes
     const readmeTemplatePath = path.resolve(projectRoot, 'templates', 'applications', 'README.md.hbs');
-    const readmeTemplateDir = path.dirname(readmeTemplatePath);
-    if (!fsSync.existsSync(readmeTemplateDir)) {
-      fsSync.mkdirSync(readmeTemplateDir, { recursive: true });
-    }
     if (!fsSync.existsSync(readmeTemplatePath)) {
-      // Create a minimal README template if it doesn't exist
-      fsSync.writeFileSync(readmeTemplatePath, '# {{displayName}}\n\n{{appName}} application.\n');
+      throw new Error(`README template not found at ${readmeTemplatePath}. ` +
+        `Project root: ${projectRoot}. Template should exist in the repository.`);
     }
 
     // Mock inquirer prompts to return default values
