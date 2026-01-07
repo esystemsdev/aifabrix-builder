@@ -2463,7 +2463,7 @@ This will generate the .env file without running validation checks afterward.
 
 Generate deployment JSON.
 
-**What:** Creates `aifabrix-deploy.json` from variables.yaml, env.template, rbac.yaml for normal applications. For external type applications, generates `<app-name>-deploy.json` by loading the system JSON file and merging rbac.yaml (if present) into it. Also generates `application-schema.json` by combining external-system.schema.json, external-datasource.schema.json, and actual system/datasource JSON files (with rbac.yaml merged).
+**What:** Creates `aifabrix-deploy.json` from variables.yaml, env.template, rbac.yaml for normal applications. For external type applications, generates `<app-name>-deploy.json` by loading the system JSON file and merging rbac.yaml (if present) into it. Also generates `application-schema.json` by combining external-system.schema.json, external-datasource.schema.json, and actual system/datasource JSON files (with rbac.yaml merged). **Note:** Only the first system from `externalIntegration.systems` array is included in the generated `application-schema.json`. All data sources from `externalIntegration.dataSources` array are included.
 
 **When:** Previewing deployment configuration, debugging deployments. For external systems, before deploying to generate the combined application schema file. For external systems with RBAC, ensures roles/permissions from rbac.yaml are merged into the system JSON.
 

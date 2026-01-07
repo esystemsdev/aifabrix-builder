@@ -7,7 +7,7 @@
     "aifabrix": "bin/aifabrix.js"
   },
   "scripts": {
-    "test": "node scripts/test-wrapper.js",
+    "test": "node tests/scripts/test-wrapper.js",
     "test:coverage": "jest --config jest.config.coverage.js --coverage --runInBand",
     "test:watch": "jest --watch",
     "test:integration": "jest --config jest.config.integration.js --runInBand",

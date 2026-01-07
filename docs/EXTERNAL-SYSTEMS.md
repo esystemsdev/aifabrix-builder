@@ -1038,6 +1038,8 @@ externalIntegration:
   version: 1.0.0
 ```
 
+**Important:** Only one system is supported per application. The `systems` array should contain a single entry. Only the first system in the array will be included in the generated `application-schema.json`. Multiple data sources are supported and all will be included.
+
 ### hubspot-deploy.json
 
 ```json
@@ -1269,11 +1271,13 @@ aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environmen
 ```
 
 **What happens:**
-1. Generates `application-schema.json` (combines system + all datasources)
+1. Generates `application-schema.json` (combines one system + all datasources)
 2. Uploads to dataplane via pipeline API
 3. Validates changes (optional, can skip with `--skip-validation`)
 4. Publishes atomically with rollback support
 5. System and datasources are deployed together
+
+**Note:** Only one system per application is supported. If multiple systems are listed in `variables.yaml`, only the first one is included in the generated `application-schema.json`.
 
 ## Deployment Workflow
 
@@ -1302,9 +1306,10 @@ aifabrix json hubspot
 
 **What happens:**
 - Combines `variables.yaml` with all JSON files
-- Generates application schema structure (system + datasources) ready for deployment
+- Generates application schema structure (one system + all datasources) ready for deployment
 - Validates all configurations against schemas
 - The schema structure is used internally by `aifabrix deploy` command
+- **Note:** Only the first system from `externalIntegration.systems` is included. All data sources from `externalIntegration.dataSources` are included.
 
 ### 4. Deploy to Controller
 

@@ -43,9 +43,13 @@ jest.mock('../../lib/utils/logger', () => ({
 jest.mock('../../lib/generator', () => ({
   generateDeployJson: jest.fn()
 }));
-jest.mock('../../lib/utils/paths', () => ({
-  detectAppType: jest.fn()
-}));
+jest.mock('../../lib/utils/paths', () => {
+  const actualPaths = jest.requireActual('../../lib/utils/paths');
+  return {
+    ...actualPaths,
+    detectAppType: jest.fn()
+  };
+});
 jest.mock('../../lib/utils/docker-build', () => ({
   executeDockerBuild: jest.fn().mockResolvedValue()
 }));

@@ -380,23 +380,24 @@ Example: `./schemas`, `/absolute/path/to/schemas`
 
 **externalIntegration.systems**  
 List of external-system JSON files to deploy via pipeline.  
+**Note:** Currently, only the first system in the array is included in the generated `application-schema.json`. Multiple systems are not supported in a single application deployment.  
 Example:
 ```yaml
 systems:
   - hubspot.json
-  - salesforce.json
 ```
-Optional - array of file names (must end with .json)
+Optional - array of file names (must end with .json). Only the first entry is used.
 
 **externalIntegration.dataSources**  
-List of external-datasource JSON files belonging to this app.  
+List of external-datasource JSON files belonging to this app. Multiple data sources are supported and all will be included in the generated `application-schema.json`.  
 Example:
 ```yaml
 dataSources:
   - hubspot-deal.json
-  - salesforce-contact.json
+  - hubspot-contact.json
+  - hubspot-company.json
 ```
-Optional - array of file names (must end with .json)
+Optional - array of file names (must end with .json). All entries are included.
 
 **externalIntegration.autopublish**  
 If true, pipeline automatically publishes ExternalSystems + ExternalDataSources to Dataplane after deployment.  
@@ -414,19 +415,25 @@ Example: `1.0.0`, `2.1.3`
 - All referenced files must exist at resolved paths
 - File paths in `systems` and `dataSources` arrays are resolved relative to `schemaBasePath`
 
+**Important Limitations:**
+- **Only one system per application:** The `systems` array should contain a single system file. Only the first entry is used when generating `application-schema.json`.
+- **Multiple data sources supported:** The `dataSources` array can contain multiple datasource files, and all will be included in the generated `application-schema.json`.
+
 **Example externalIntegration block:**
 ```yaml
 externalIntegration:
   schemaBasePath: ./schemas
   systems:
     - hubspot.json
-    - salesforce.json
   dataSources:
     - hubspot-deal.json
-    - salesforce-contact.json
+    - hubspot-contact.json
+    - hubspot-company.json
   autopublish: true
   version: 1.0.0
 ```
+
+**Note:** Only one system is supported per application. The `systems` array should contain a single entry. Multiple data sources can be included and will all be deployed.
 
 **File Structure:**
 ```yaml
@@ -434,10 +441,10 @@ builder/
   myapp/
     variables.yaml          # Contains externalIntegration block
     schemas/                # schemaBasePath
-      hubspot.json          # External system
-      salesforce.json       # External system
+      hubspot.json          # External system (only one system supported)
       hubspot-deal.json     # External datasource
-      salesforce-contact.json # External datasource
+      hubspot-contact.json  # External datasource
+      hubspot-company.json  # External datasource
 ```
 
 **Validation:**

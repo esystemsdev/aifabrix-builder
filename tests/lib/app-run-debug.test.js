@@ -159,12 +159,51 @@ describe('App-Run Debug Paths and Error Handling', () => {
     process.chdir(tempDir);
 
     // Setup default mocks
-    fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app'), { recursive: true });
-    const configPath = path.join(tempDir, 'builder', 'test-app', 'variables.yaml');
-    fsSync.writeFileSync(configPath, yaml.dump({
-      port: 3000,
-      language: 'typescript'
-    }));
+    // Create builder directory structure - use realFs to ensure it's actually created
+    const realFs = jest.requireActual('fs');
+    const builderDir = path.join(tempDir, 'builder', 'test-app');
+
+    // Create parent directories first, then target directory
+    const parentDir = path.dirname(builderDir);
+    try {
+      realFs.mkdirSync(parentDir, { recursive: true });
+    } catch (error) {
+      if (error.code !== 'EEXIST') {
+        throw new Error(`Failed to create parent directory: ${error.message}`);
+      }
+    }
+
+    // Now create target directory
+    try {
+      realFs.mkdirSync(builderDir, { recursive: true });
+    } catch (error) {
+      if (error.code !== 'EEXIST') {
+        throw new Error(`Failed to create builder directory: ${error.message}`);
+      }
+    }
+
+    // Verify directory exists using statSync for more reliable check
+    let dirExists = false;
+    try {
+      const dirStat = realFs.statSync(builderDir);
+      dirExists = dirStat.isDirectory();
+    } catch (statError) {
+      // Directory doesn't exist, try creating one more time
+      try {
+        realFs.mkdirSync(builderDir, { recursive: true });
+        const retryStat = realFs.statSync(builderDir);
+        dirExists = retryStat.isDirectory();
+      } catch (retryError) {
+        throw new Error(`Directory does not exist after creation attempts: ${builderDir}. Error: ${retryError.message}`);
+      }
+    }
+
+    if (!dirExists) {
+      throw new Error(`Directory exists but is not a directory: ${builderDir}`);
+    }
+
+    // Note: variables.yaml will be created in individual tests that need it
+    // This ensures the file is created fresh for each test and avoids timing issues
 
     // Create dev directory and .env file (where generateDockerCompose reads from)
     const devDir = path.join(os.homedir(), '.aifabrix', 'test-app-dev-1');
@@ -222,6 +261,62 @@ describe('App-Run Debug Paths and Error Handling', () => {
     // Developer ID: 0 = default infra, > 0 = developer-specific
     config.getDeveloperId.mockResolvedValue(1); // Integer, not string
   });
+
+  // Helper to ensure variables.yaml exists (needed for runApp tests)
+  // Uses same pattern as compose-generator tests that work in CI
+  const ensureVariablesYaml = () => {
+    const realFs = jest.requireActual('fs');
+    const builderDir = path.join(tempDir, 'builder', 'test-app');
+    const configPath = path.join(builderDir, 'variables.yaml');
+
+    // Check if file already exists
+    if (realFs.existsSync(configPath)) {
+      return; // File already exists, no need to create
+    }
+
+    // Ensure directory exists using statSync (more reliable)
+    let dirExists = false;
+    try {
+      const dirStat = realFs.statSync(builderDir);
+      dirExists = dirStat.isDirectory();
+    } catch (statError) {
+      // Directory doesn't exist, create it
+      try {
+        realFs.mkdirSync(builderDir, { recursive: true });
+        const retryStat = realFs.statSync(builderDir);
+        dirExists = retryStat.isDirectory();
+      } catch (retryError) {
+        throw new Error(`Directory does not exist after creation attempts: ${builderDir}. Error: ${retryError.message}`);
+      }
+    }
+
+    if (!dirExists) {
+      throw new Error(`Directory exists but is not a directory: ${builderDir}`);
+    }
+
+    // Create file
+    const configContent = yaml.dump({ port: 3000, language: 'typescript' });
+    try {
+      realFs.writeFileSync(configPath, configContent, 'utf8');
+    } catch (error) {
+      throw new Error(`Failed to write variables.yaml at ${configPath}: ${error.message} (code: ${error.code})`);
+    }
+
+    // Verify file exists
+    if (!realFs.existsSync(configPath)) {
+      throw new Error(`File does not exist after write: ${configPath}`);
+    }
+
+    // Verify file content
+    try {
+      const writtenContent = realFs.readFileSync(configPath, 'utf8');
+      if (writtenContent !== configContent) {
+        throw new Error(`File content mismatch. Expected length: ${configContent.length}, Got length: ${writtenContent.length}`);
+      }
+    } catch (readError) {
+      throw new Error(`File exists but cannot be read: ${configPath}. Error: ${readError.message}`);
+    }
+  };
 
   describe('checkImageExists with debug=true', () => {
     it('should log debug messages when debug is enabled and image exists', async() => {
@@ -285,6 +380,9 @@ describe('App-Run Debug Paths and Error Handling', () => {
     });
 
     it('should log debug messages throughout runApp when debug is enabled', async() => {
+      // Ensure variables.yaml exists (required by runApp)
+      ensureVariablesYaml();
+
       // Config mock is set up in beforeEach, so it should be available
       // checkPortAvailable is already mocked in beforeEach
       await appRun.runApp('test-app', { debug: true });
@@ -294,6 +392,9 @@ describe('App-Run Debug Paths and Error Handling', () => {
     });
 
     it('should log debug messages when container is already running', async() => {
+      // Ensure variables.yaml exists (required by runApp)
+      ensureVariablesYaml();
+
       // Ensure config mock returns correct integer value (1 = developer-specific)
       config.getDeveloperId.mockResolvedValue(1); // Integer, creates container name: aifabrix-dev1-test-app
 
@@ -319,6 +420,8 @@ describe('App-Run Debug Paths and Error Handling', () => {
     });
 
     it('should log debug error message when container start fails', async() => {
+      // Ensure variables.yaml exists (required by runApp)
+
       // Ensure config mock returns correct integer value (1 = developer-specific)
       config.getDeveloperId.mockResolvedValue(1); // Integer, creates container name: aifabrix-dev1-test-app
 
@@ -340,6 +443,8 @@ describe('App-Run Debug Paths and Error Handling', () => {
     });
 
     it('should log debug error message when runApp fails', async() => {
+      // Ensure variables.yaml exists (required by runApp)
+
       validator.validateApplication.mockRejectedValue(new Error('Validation failed'));
 
       await expect(appRun.runApp('test-app', { debug: true })).rejects.toThrow();
@@ -418,6 +523,9 @@ describe('App-Run Debug Paths and Error Handling', () => {
     });
 
     it('should log debug messages when starting container through runApp', async() => {
+      // Ensure variables.yaml exists (required by runApp)
+      ensureVariablesYaml();
+
       // Ensure config mock returns correct integer value (1 = developer-specific)
       config.getDeveloperId.mockResolvedValue(1); // Integer, creates container name: aifabrix-dev1-test-app
 
@@ -444,6 +552,9 @@ describe('App-Run Debug Paths and Error Handling', () => {
     });
 
     it('should log debug container status after start through runApp', async() => {
+      // Ensure variables.yaml exists (required by runApp)
+      ensureVariablesYaml();
+
       // Ensure config mock returns correct integer value (1 = developer-specific)
       config.getDeveloperId.mockResolvedValue(1); // Integer, creates container name: aifabrix-dev1-test-app
 
