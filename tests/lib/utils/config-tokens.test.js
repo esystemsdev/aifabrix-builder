@@ -25,14 +25,14 @@ describe('config-tokens', () => {
     decryptTokenValueFn = jest.fn((val) => Promise.resolve(val.replace('encrypted:', '')));
     isTokenEncryptedFn = jest.fn((val) => val && val.startsWith('encrypted:'));
 
-    tokenFunctions = createTokenManagementFunctions(
+    tokenFunctions = createTokenManagementFunctions({
       getConfigFn,
       saveConfigFn,
       getSecretsEncryptionKeyFn,
       encryptTokenValueFn,
       decryptTokenValueFn,
       isTokenEncryptedFn
-    );
+    });
   });
 
   describe('normalizeControllerUrl', () => {

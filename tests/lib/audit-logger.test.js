@@ -227,14 +227,14 @@ describe('Audit Logger Module', () => {
 
   describe('logApiCall', () => {
     it('should log successful API calls (line 264-329)', async() => {
-      await auditLogger.logApiCall(
-        'https://controller.example.com/api/v1/apps',
-        { method: 'GET' },
-        200,
-        150,
-        true,
-        {}
-      );
+      await auditLogger.logApiCall({
+        url: 'https://controller.example.com/api/v1/apps',
+        options: { method: 'GET' },
+        statusCode: 200,
+        duration: 150,
+        success: true,
+        errorInfo: {}
+      });
 
       expect(console.log).toHaveBeenCalled();
       const logCall = console.log.mock.calls[0][0];
@@ -247,19 +247,19 @@ describe('Audit Logger Module', () => {
     });
 
     it('should log failed API calls with error details', async() => {
-      await auditLogger.logApiCall(
-        'https://controller.example.com/api/v1/apps',
-        { method: 'POST' },
-        401,
-        200,
-        false,
-        {
+      await auditLogger.logApiCall({
+        url: 'https://controller.example.com/api/v1/apps',
+        options: { method: 'POST' },
+        statusCode: 401,
+        duration: 200,
+        success: false,
+        errorInfo: {
           errorType: 'authentication',
           errorMessage: 'Unauthorized',
           correlationId: 'corr-123',
           errorData: { code: 'AUTH_FAILED' }
         }
-      );
+      });
 
       expect(console.log).toHaveBeenCalled();
       const logCall = console.log.mock.calls[0][0];
@@ -272,14 +272,14 @@ describe('Audit Logger Module', () => {
     });
 
     it('should extract controller URL from full URL', async() => {
-      await auditLogger.logApiCall(
-        'https://controller.example.com:8080/api/v1/apps?filter=active',
-        { method: 'GET' },
-        200,
-        100,
-        true,
-        {}
-      );
+      await auditLogger.logApiCall({
+        url: 'https://controller.example.com:8080/api/v1/apps?filter=active',
+        options: { method: 'GET' },
+        statusCode: 200,
+        duration: 100,
+        success: true,
+        errorInfo: {}
+      });
 
       expect(console.log).toHaveBeenCalled();
       const logCall = console.log.mock.calls[0][0];
@@ -289,14 +289,14 @@ describe('Audit Logger Module', () => {
     });
 
     it('should handle invalid URLs gracefully', async() => {
-      await auditLogger.logApiCall(
-        'invalid-url',
-        { method: 'GET' },
-        200,
-        100,
-        true,
-        {}
-      );
+      await auditLogger.logApiCall({
+        url: 'invalid-url',
+        options: { method: 'GET' },
+        statusCode: 200,
+        duration: 100,
+        success: true,
+        errorInfo: {}
+      });
 
       expect(console.log).toHaveBeenCalled();
       const logCall = console.log.mock.calls[0][0];
@@ -306,14 +306,14 @@ describe('Audit Logger Module', () => {
 
     it('should extract path from URL using regex fallback', async() => {
       // This tests extractPathFromUrl fallback logic (line 328-329)
-      await auditLogger.logApiCall(
-        'https://example.com/api/v1/test',
-        { method: 'GET' },
-        200,
-        100,
-        true,
-        {}
-      );
+      await auditLogger.logApiCall({
+        url: 'https://example.com/api/v1/test',
+        options: { method: 'GET' },
+        statusCode: 200,
+        duration: 100,
+        success: true,
+        errorInfo: {}
+      });
 
       expect(console.log).toHaveBeenCalled();
       const logCall = console.log.mock.calls[0][0];

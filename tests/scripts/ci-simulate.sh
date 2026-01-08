@@ -98,6 +98,9 @@ echo ""
 # Step 4: Run tests
 echo -e "${YELLOW}[4/5] Running tests...${NC}"
 echo "  (This may take a few minutes...)"
+# Set CI_SIMULATION environment variable so tests know they're in CI
+export CI_SIMULATION=true
+export CI=true
 # Use a longer timeout for CI simulation (15 minutes to be safe)
 # Capture both stdout and stderr
 TEST_EXIT=0

@@ -12,13 +12,13 @@ const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
 
-jest.mock('../../lib/validator');
-jest.mock('../../lib/infra');
-jest.mock('../../lib/secrets');
+jest.mock('../../../lib/validator');
+jest.mock('../../../lib/infra');
+jest.mock('../../../lib/secrets');
 
-const validator = require('../../lib/validator');
-const infra = require('../../lib/infra');
-const secrets = require('../../lib/secrets');
+const validator = require('../../../lib/validator');
+const infra = require('../../../lib/infra');
+const secrets = require('../../../lib/secrets');
 
 describe('App-Run Branch Coverage Tests', () => {
   let tempDir;
@@ -167,17 +167,43 @@ describe('App-Run Branch Coverage Tests', () => {
         realFs.mkdirSync(envDir, { recursive: true });
       }
 
-      // Write the file using real fs
-      realFs.writeFileSync(envPath, 'PORT=3000', 'utf8');
+      // Write the file using real fs - ensure we use the actual fs module
+      const actualFs = jest.requireActual('fs');
+      actualFs.writeFileSync(envPath, 'PORT=3000', 'utf8');
 
-      // Verify file exists using real fs
-      const envExists = realFs.existsSync(envPath);
+      // Verify file exists using real fs - use statSync for more reliable check
+      let envExists = false;
+      try {
+        const stats = actualFs.statSync(envPath);
+        envExists = stats.isFile();
+      } catch (e) {
+        envExists = false;
+      }
+
+      // If statSync failed, try existsSync as fallback
+      if (!envExists) {
+        envExists = actualFs.existsSync(envPath);
+      }
+
       expect(envExists).toBe(true);
 
-      // Read the file content using real fs - this should work even if fs is mocked elsewhere
-      // Use a fresh require to ensure we get the actual module
-      const { readFileSync } = jest.requireActual('fs');
-      const envContent = readFileSync(envPath, 'utf8');
+      // Read the file content using the same fs instance
+      // Use try-catch to handle any edge cases where file might not be readable immediately
+      let envContent;
+      try {
+        // Ensure we're using the actual fs module, not a mocked version
+        const realFs = jest.requireActual('fs');
+        envContent = realFs.readFileSync(envPath, 'utf8');
+        // Trim whitespace in case there are any trailing newlines
+        envContent = envContent.trim();
+      } catch (readError) {
+        // If read fails, verify file exists one more time with detailed error
+        if (!actualFs.existsSync(envPath)) {
+          throw new Error(`File does not exist at ${envPath} after write. Error: ${readError.message}`);
+        }
+        // If file exists but read fails, rethrow the read error
+        throw readError;
+      }
 
       // The content should be the string we wrote
       expect(envContent).toBe('PORT=3000');

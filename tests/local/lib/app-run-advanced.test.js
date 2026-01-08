@@ -55,18 +55,18 @@ jest.mock('child_process', () => ({
   exec: jest.fn()
 }));
 
-jest.mock('../../lib/push', () => ({
+jest.mock('../../../lib/push', () => ({
   checkLocalImageExists: jest.fn()
 }));
 
 // Mock health-check module to prevent real HTTP calls
-jest.mock('../../lib/utils/health-check', () => ({
+jest.mock('../../../lib/utils/health-check', () => ({
   waitForHealthCheck: jest.fn().mockResolvedValue(true),
   checkHealthEndpoint: jest.fn().mockResolvedValue(true)
 }));
 
 // Mock config module to return developer ID 1
-jest.mock('../../lib/config', () => ({
+jest.mock('../../../lib/config', () => ({
   getDeveloperId: jest.fn().mockResolvedValue(1),
   setDeveloperId: jest.fn().mockResolvedValue(),
   getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }),
@@ -75,7 +75,7 @@ jest.mock('../../lib/config', () => ({
 }));
 
 // Mock build-copy module
-jest.mock('../../lib/utils/build-copy', () => {
+jest.mock('../../../lib/utils/build-copy', () => {
   const os = require('os');
   const path = require('path');
   return {
@@ -87,7 +87,7 @@ jest.mock('../../lib/utils/build-copy', () => {
   };
 });
 
-const appRun = require('../../lib/app-run');
+const appRun = require('../../../lib/app-run');
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const net = require('net');
@@ -95,8 +95,8 @@ const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
 const http = require('http');
-const healthCheck = require('../../lib/utils/health-check');
-const config = require('../../lib/config');
+const healthCheck = require('../../../lib/utils/health-check');
+const config = require('../../../lib/config');
 
 describe('Application Run Advanced Tests', () => {
   let tempDir;

@@ -337,6 +337,9 @@ describe('External System Display Helpers', () => {
             key: 'datasource1',
             skipped: false,
             success: true,
+            validationResults: {
+              isValid: true
+            },
             fieldMappingResults: {
               mappingCount: 5,
               accessFields: ['field1', 'field2', 'field3']
@@ -359,6 +362,9 @@ describe('External System Display Helpers', () => {
             key: 'datasource1',
             skipped: false,
             success: true,
+            validationResults: {
+              isValid: true
+            },
             fieldMappingResults: {
               mappingCount: 3
             }
@@ -379,6 +385,9 @@ describe('External System Display Helpers', () => {
             key: 'datasource1',
             skipped: false,
             success: true,
+            validationResults: {
+              isValid: true
+            },
             endpointTestResults: {
               endpointConfigured: true
             }
@@ -399,6 +408,9 @@ describe('External System Display Helpers', () => {
             key: 'datasource1',
             skipped: false,
             success: true,
+            validationResults: {
+              isValid: true
+            },
             endpointTestResults: {
               endpointConfigured: false
             }

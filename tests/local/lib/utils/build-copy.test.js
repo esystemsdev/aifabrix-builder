@@ -11,7 +11,7 @@ const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
 
-const buildCopy = require('../../../lib/utils/build-copy');
+const buildCopy = require('../../../../lib/utils/build-copy');
 
 describe('Build Copy Utilities', () => {
   let tempDir;

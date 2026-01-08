@@ -13,7 +13,7 @@ const os = require('os');
 const yaml = require('js-yaml');
 
 // Mock config and dev-config BEFORE requiring app-run (which requires secrets, which requires config)
-jest.mock('../../lib/config', () => ({
+jest.mock('../../../lib/config', () => ({
   getDeveloperId: jest.fn().mockResolvedValue(1),
   setDeveloperId: jest.fn().mockResolvedValue(),
   getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }),
@@ -23,7 +23,7 @@ jest.mock('../../lib/config', () => ({
   CONFIG_FILE: '/mock/config/dir/config.yaml'
 }));
 
-jest.mock('../../lib/utils/dev-config', () => ({
+jest.mock('../../../lib/utils/dev-config', () => ({
   getDevPorts: jest.fn((id) => ({
     app: 3000 + (id * 100),
     postgres: 5432 + (id * 100),
@@ -41,9 +41,9 @@ jest.mock('../../lib/utils/dev-config', () => ({
 }));
 
 // Mock secrets dependencies
-jest.mock('../../lib/utils/secrets-utils');
-jest.mock('../../lib/utils/secrets-path');
-jest.mock('../../lib/utils/secrets-generator');
+jest.mock('../../../lib/utils/secrets-utils');
+jest.mock('../../../lib/utils/secrets-path');
+jest.mock('../../../lib/utils/secrets-generator');
 
 // Mock child_process.exec
 jest.mock('child_process', () => {
@@ -54,19 +54,19 @@ jest.mock('child_process', () => {
   };
 });
 
-jest.mock('../../lib/validator');
-jest.mock('../../lib/infra');
-jest.mock('../../lib/utils/health-check', () => ({
+jest.mock('../../../lib/validator');
+jest.mock('../../../lib/infra');
+jest.mock('../../../lib/utils/health-check', () => ({
   waitForHealthCheck: jest.fn().mockResolvedValue(true),
   checkHealthEndpoint: jest.fn().mockResolvedValue(true),
   checkPortAvailable: jest.fn().mockResolvedValue(true),
   waitForDbInit: jest.fn().mockResolvedValue()
 }));
-jest.mock('../../lib/utils/compose-generator', () => ({
+jest.mock('../../../lib/utils/compose-generator', () => ({
   generateDockerCompose: jest.fn().mockResolvedValue('version: "3"\nservices:\n  test-app:\n    image: test-app'),
   getImageName: jest.fn().mockReturnValue('test-app')
 }));
-jest.mock('../../lib/utils/logger', () => ({
+jest.mock('../../../lib/utils/logger', () => ({
   log: jest.fn(),
   warn: jest.fn(),
   error: jest.fn(),
@@ -96,7 +96,7 @@ jest.mock('net', () => {
     })
   };
 });
-jest.mock('../../lib/secrets', () => ({
+jest.mock('../../../lib/secrets', () => ({
   generateEnvFile: jest.fn().mockResolvedValue('/path/to/.env'),
   loadSecrets: jest.fn().mockResolvedValue({}),
   resolveKvReferences: jest.fn().mockResolvedValue(''),
@@ -130,12 +130,12 @@ jest.mock('http', () => ({
   })
 }));
 
-const appRun = require('../../lib/app-run');
-const validator = require('../../lib/validator');
-const infra = require('../../lib/infra');
-const secrets = require('../../lib/secrets');
-const healthCheck = require('../../lib/utils/health-check');
-const composeGenerator = require('../../lib/utils/compose-generator');
+const appRun = require('../../../lib/app-run');
+const validator = require('../../../lib/validator');
+const infra = require('../../../lib/infra');
+const secrets = require('../../../lib/secrets');
+const healthCheck = require('../../../lib/utils/health-check');
+const composeGenerator = require('../../../lib/utils/compose-generator');
 
 describe('Application Run Module - Additional Coverage', () => {
   let tempDir;

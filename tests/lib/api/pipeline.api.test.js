@@ -151,7 +151,7 @@ describe('Pipeline API', () => {
     };
 
     it('should test datasource via dataplane pipeline endpoint', async() => {
-      await pipelineApi.testDatasourceViaPipeline(dataplaneUrl, systemKey, datasourceKey, authConfig, testData);
+      await pipelineApi.testDatasourceViaPipeline({ dataplaneUrl, systemKey, datasourceKey, authConfig, testData });
 
       expect(mockClient.post).toHaveBeenCalledWith(
         `/api/v1/pipeline/${systemKey}/${datasourceKey}/test`,
@@ -160,14 +160,14 @@ describe('Pipeline API', () => {
     });
 
     it('should use dataplane URL as base URL', async() => {
-      await pipelineApi.testDatasourceViaPipeline(dataplaneUrl, systemKey, datasourceKey, authConfig, testData);
+      await pipelineApi.testDatasourceViaPipeline({ dataplaneUrl, systemKey, datasourceKey, authConfig, testData });
 
       expect(mockApiClient).toHaveBeenCalledWith(dataplaneUrl, authConfig);
     });
 
     it('should pass timeout option when provided', async() => {
       const options = { timeout: 60000 };
-      await pipelineApi.testDatasourceViaPipeline(dataplaneUrl, systemKey, datasourceKey, authConfig, testData, options);
+      await pipelineApi.testDatasourceViaPipeline({ dataplaneUrl, systemKey, datasourceKey, authConfig, testData, options });
 
       expect(mockClient.post).toHaveBeenCalledWith(
         `/api/v1/pipeline/${systemKey}/${datasourceKey}/test`,
@@ -176,7 +176,7 @@ describe('Pipeline API', () => {
     });
 
     it('should return success response', async() => {
-      const response = await pipelineApi.testDatasourceViaPipeline(dataplaneUrl, systemKey, datasourceKey, authConfig, testData);
+      const response = await pipelineApi.testDatasourceViaPipeline({ dataplaneUrl, systemKey, datasourceKey, authConfig, testData });
 
       expect(response.success).toBe(true);
       expect(response.data).toBeDefined();
@@ -189,7 +189,7 @@ describe('Pipeline API', () => {
         formattedError: 'Test failed: Invalid payload'
       });
 
-      const response = await pipelineApi.testDatasourceViaPipeline(dataplaneUrl, systemKey, datasourceKey, authConfig, testData);
+      const response = await pipelineApi.testDatasourceViaPipeline({ dataplaneUrl, systemKey, datasourceKey, authConfig, testData });
 
       expect(response.success).toBe(false);
       expect(response.error).toBe('Test failed');

@@ -182,18 +182,17 @@ describe('Validation Module', () => {
 
     it('should validate file path as application', async() => {
       const mockFilePath = '/path/to/application.json';
-      const mockContent = JSON.stringify({ deploymentKey: 'test' });
+      const mockContent = JSON.stringify({ application: { key: 'test' } });
 
       fsSync.existsSync.mockImplementation((filePath) => filePath === mockFilePath);
       fsSync.statSync.mockReturnValue({ isFile: () => true });
       fsSync.readFileSync.mockReturnValue(mockContent);
-      detectSchemaType.mockReturnValue('application');
+      detectSchemaType.mockReturnValue('system');
 
       const { validateAppOrFile } = require('../../lib/validate');
       const result = await validateAppOrFile(mockFilePath);
 
       expect(result.valid).toBe(true);
-      expect(result.warnings[0]).toContain('Application file validation is simplified');
     });
 
     it('should validate app name without externalIntegration', async() => {

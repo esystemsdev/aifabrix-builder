@@ -196,6 +196,9 @@ describe('Health Check Utilities', () => {
           if (cmd.includes('docker inspect') && cmd.includes('State.ExitCode')) {
             return Promise.resolve({ stdout: '1\n', stderr: '' });
           }
+          if (cmd.includes('docker inspect') && cmd.includes('NetworkSettings.Ports')) {
+            return Promise.resolve({ stdout: '3000/tcp\n', stderr: '' });
+          }
           return Promise.resolve({ stdout: '', stderr: '' });
         });
 
@@ -467,29 +470,49 @@ describe('Health Check Utilities', () => {
       });
 
       it('should use default port when no ports found', async() => {
-        execAsync.mockImplementation((cmd) => {
-          if (cmd.includes('docker inspect') && cmd.includes('NetworkSettings.Ports')) {
-            return Promise.resolve({ stdout: '\n', stderr: '' });
+        // Use real timers for this test to avoid timing issues with fake timers
+        jest.useRealTimers();
+
+        const { exec } = require('child_process');
+        exec.mockImplementation((command, options, callback) => {
+          const cb = typeof options === 'function' ? options : callback;
+          // Mock db-init container check - return immediately (already completed)
+          if (command.includes('docker ps -a')) {
+            if (cb) setImmediate(() => cb(null, { stdout: 'aifabrix-test-app-db-init\n', stderr: '' }));
+          } else if (command.includes('docker inspect') && command.includes('State.Status')) {
+            if (cb) setImmediate(() => cb(null, { stdout: 'exited\n', stderr: '' }));
+          } else if (command.includes('docker inspect') && command.includes('State.ExitCode')) {
+            if (cb) setImmediate(() => cb(null, { stdout: '0\n', stderr: '' }));
+          } else if (command.includes('docker inspect') && command.includes('NetworkSettings.Ports')) {
+            // Mock port detection returning empty (newline only)
+            if (cb) setImmediate(() => cb(null, { stdout: '\n', stderr: '' }));
+          } else if (command.includes('docker ps --filter')) {
+            // Mock docker ps fallback returning empty
+            if (cb) setImmediate(() => cb(null, { stdout: '', stderr: '' }));
+          } else {
+            if (cb) setImmediate(() => cb(null, { stdout: '', stderr: '' }));
           }
-          return Promise.resolve({ stdout: '', stderr: '' });
         });
 
-        // Mock successful HTTP health check
+        // Mock successful HTTP health check - use setImmediate for real timers
         http.request.mockImplementation((options, callback) => {
           const mockResponse = {
             statusCode: 200,
             headers: {},
             on: jest.fn((event, handler) => {
+              // Use setImmediate for real timers to ensure handlers are called asynchronously
               if (event === 'data') {
-                handler(Buffer.from(JSON.stringify({ status: 'ok' })));
+                setImmediate(() => handler(Buffer.from(JSON.stringify({ status: 'ok' }))));
               }
               if (event === 'end') {
-                handler();
+                setImmediate(() => handler());
               }
             })
           };
-          // Call callback synchronously for testing with fake timers
-          if (callback) callback(mockResponse);
+          // Call callback asynchronously for real timers
+          if (callback) {
+            setImmediate(() => callback(mockResponse));
+          }
           return mockHttpRequest;
         });
 
@@ -504,6 +527,9 @@ describe('Health Check Utilities', () => {
           }),
           expect.any(Function)
         );
+
+        // Restore fake timers for other tests
+        jest.useFakeTimers();
       });
     });
 

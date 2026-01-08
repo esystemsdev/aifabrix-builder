@@ -163,15 +163,20 @@ describe('External System Test Error Paths', () => {
       const variablesContent = yaml.dump({
         externalIntegration: {
           systems: ['system.json'],
+          dataSources: ['datasource.json'],
           schemaBasePath: './'
         }
       });
       const systemJson = { key: 'test-system' };
+      const datasourceJson = { key: 'test-datasource', systemKey: 'test-system' };
 
       fs.existsSync.mockReturnValue(true);
       fsp.readFile.mockImplementation((path) => {
         if (path.includes('variables.yaml')) {
           return Promise.resolve(variablesContent);
+        }
+        if (path.includes('datasource.json')) {
+          return Promise.resolve(JSON.stringify(datasourceJson));
         }
         return Promise.resolve(JSON.stringify(systemJson));
       });

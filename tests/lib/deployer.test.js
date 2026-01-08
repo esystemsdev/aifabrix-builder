@@ -398,8 +398,14 @@ describe('deployer', () => {
         { timeout: 10000, maxRetries: 5 }
       );
 
-      // Advance timers to skip retry delays
+      // Let first API call execute
+      await Promise.resolve();
+
+      // Advance all timers to skip retry delays
       await jest.runAllTimersAsync();
+
+      // Let all promises resolve
+      await Promise.resolve();
       await Promise.resolve();
 
       const result = await resultPromise;
@@ -420,26 +426,23 @@ describe('deployer', () => {
       const resultPromise = deployer.sendDeploymentRequest('https://controller.example.com', 'dev', validateToken, authConfig, {
         timeout: 100,
         maxRetries: 2
-      });
+      }).catch(err => err); // Catch error to prevent unhandled rejection
 
       // Let API call execute (first attempt fails)
       await Promise.resolve();
 
-      // Advance timer for first retry delay (1000ms)
-      jest.advanceTimersByTime(1000);
+      // Advance all timers to skip retry delays
+      await jest.runAllTimersAsync();
+
+      // Let all promises resolve (need multiple resolves for retry loop)
+      await Promise.resolve();
+      await Promise.resolve();
       await Promise.resolve();
 
-      // Let second API call execute (second attempt fails)
-      await Promise.resolve();
-
-      // Advance timer for second retry delay (2000ms)
-      jest.advanceTimersByTime(2000);
-      await Promise.resolve();
-
-      // Let final error be thrown
-      await Promise.resolve();
-
-      await expect(resultPromise).rejects.toThrow();
+      const deploymentError = await resultPromise;
+      expect(deploymentError).toBeInstanceOf(Error);
+      expect(deploymentError.message).toContain('Deployment failed after 2 attempts');
+      expect(deployPipeline).toHaveBeenCalledTimes(2);
     });
 
     it('should handle 400 errors', async() => {
@@ -621,31 +624,17 @@ describe('deployer', () => {
       });
 
       const authConfig = { type: 'bearer', token: 'test-token' };
-      // Start the promise but don't await it yet
       const resultPromise = deployer.pollDeploymentStatus('never-complete', 'https://controller.example.com', 'dev', authConfig, {
         interval: 50,
         maxAttempts: 3
       });
 
-      // First poll (attempt 0)
-      await Promise.resolve();
-
-      // Advance timer for first interval (50ms)
-      jest.advanceTimersByTime(50);
-      await Promise.resolve();
-
-      // Second poll (attempt 1)
-      await Promise.resolve();
-
-      // Advance timer for second interval (50ms)
-      jest.advanceTimersByTime(50);
-      await Promise.resolve();
-
-      // Third poll (attempt 2) - last attempt before timeout
-      await Promise.resolve();
-
-      // After 3 attempts, it should throw timeout error
-      await Promise.resolve();
+      // Let promises resolve and advance timers incrementally
+      for (let i = 0; i < 10; i++) {
+        await Promise.resolve();
+        jest.advanceTimersByTime(100);
+        await Promise.resolve();
+      }
 
       await expect(resultPromise).rejects.toThrow('Deployment timeout: Maximum polling attempts reached');
     });
@@ -1159,8 +1148,15 @@ describe('deployer', () => {
         { maxRetries: 3 }
       );
 
-      // Run all pending timers and wait for promises to resolve
+      // Let first API call execute (attempt 1 fails)
+      await Promise.resolve();
+
+      // Advance all timers to skip retry delays
       await jest.runAllTimersAsync();
+
+      // Let all promises resolve
+      await Promise.resolve();
+      await Promise.resolve();
 
       const result = await resultPromise;
 
@@ -1207,15 +1203,22 @@ describe('deployer', () => {
         manifest,
         authConfig,
         { maxRetries: 2 }
-      );
+      ).catch(err => err); // Catch error to prevent unhandled rejection
 
-      await Promise.resolve();
-      jest.advanceTimersByTime(1000);
-      await Promise.resolve();
-      jest.advanceTimersByTime(2000);
+      // Let first API call execute (attempt 1 fails)
       await Promise.resolve();
 
-      await expect(resultPromise).rejects.toThrow('Server error');
+      // Advance all timers to skip retry delays
+      await jest.runAllTimersAsync();
+
+      // Let all promises resolve (need multiple resolves for retry loop)
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const error = await resultPromise;
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toContain('Server error');
       expect(validatePipeline).toHaveBeenCalledTimes(2);
     });
 
@@ -1359,7 +1362,12 @@ describe('deployer', () => {
       );
 
       await Promise.resolve();
-      jest.advanceTimersByTime(50);
+
+      // Advance all timers to skip polling delays
+      await jest.runAllTimersAsync();
+
+      // Let all promises resolve
+      await Promise.resolve();
       await Promise.resolve();
 
       const result = await resultPromise;
@@ -1470,7 +1478,12 @@ describe('deployer', () => {
 
       await Promise.resolve();
       await Promise.resolve();
-      jest.advanceTimersByTime(50);
+
+      // Advance all timers to skip polling delays
+      await jest.runAllTimersAsync();
+
+      // Let all promises resolve
+      await Promise.resolve();
       await Promise.resolve();
 
       const result = await resultPromise;

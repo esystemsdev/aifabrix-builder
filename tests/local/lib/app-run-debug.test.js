@@ -32,7 +32,7 @@ jest.mock('util', () => {
 // Mock config and devConfig BEFORE requiring app-run (which requires secrets, which requires config)
 // Developer ID: 0 = default infra, > 0 = developer-specific (adds dev{id} prefix)
 // Now we only call config.getDeveloperId() once at the start of runApp, then use config.developerId property
-jest.mock('../../lib/config', () => ({
+jest.mock('../../../lib/config', () => ({
   getDeveloperId: jest.fn().mockResolvedValue(1), // Returns integer: 1 for dev-specific, 0 for default
   setDeveloperId: jest.fn().mockResolvedValue(),
   getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }), // Config object with integer developer-id
@@ -42,7 +42,7 @@ jest.mock('../../lib/config', () => ({
   CONFIG_FILE: '/mock/config/dir/config.yaml'
 }));
 
-jest.mock('../../lib/utils/dev-config', () => {
+jest.mock('../../../lib/utils/dev-config', () => {
   const mockGetDevPorts = jest.fn((id) => ({
     app: 3000 + (id * 100),
     postgres: 5432 + (id * 100),
@@ -99,15 +99,15 @@ jest.mock('net', () => {
   return mockNet;
 });
 
-jest.mock('../../lib/validator');
-jest.mock('../../lib/infra');
+jest.mock('../../../lib/validator');
+jest.mock('../../../lib/infra');
 // Mock secrets dependencies first
-jest.mock('../../lib/utils/secrets-utils');
-jest.mock('../../lib/utils/secrets-path');
-jest.mock('../../lib/utils/secrets-generator');
+jest.mock('../../../lib/utils/secrets-utils');
+jest.mock('../../../lib/utils/secrets-path');
+jest.mock('../../../lib/utils/secrets-generator');
 // Mock secrets - must be after config and dev-config mocks
 // Using factory function to prevent loading actual secrets.js which requires config
-jest.mock('../../lib/secrets', () => {
+jest.mock('../../../lib/secrets', () => {
   // Don't require actual secrets.js here - it would load config
   return {
     generateEnvFile: jest.fn().mockResolvedValue('/path/to/.env'),
@@ -119,9 +119,9 @@ jest.mock('../../lib/secrets', () => {
     createDefaultSecrets: jest.fn().mockResolvedValue()
   };
 });
-jest.mock('../../lib/utils/health-check');
-jest.mock('../../lib/utils/compose-generator');
-jest.mock('../../lib/utils/build-copy', () => {
+jest.mock('../../../lib/utils/health-check');
+jest.mock('../../../lib/utils/compose-generator');
+jest.mock('../../../lib/utils/build-copy', () => {
   const os = require('os');
   const path = require('path');
   return {
@@ -132,18 +132,18 @@ jest.mock('../../lib/utils/build-copy', () => {
     devDirectoryExists: jest.fn().mockReturnValue(true)
   };
 });
-jest.mock('../../lib/utils/logger');
+jest.mock('../../../lib/utils/logger');
 
-const validator = require('../../lib/validator');
-const infra = require('../../lib/infra');
-const secrets = require('../../lib/secrets');
-const healthCheck = require('../../lib/utils/health-check');
-const composeGenerator = require('../../lib/utils/compose-generator');
-const logger = require('../../lib/utils/logger');
+const validator = require('../../../lib/validator');
+const infra = require('../../../lib/infra');
+const secrets = require('../../../lib/secrets');
+const healthCheck = require('../../../lib/utils/health-check');
+const composeGenerator = require('../../../lib/utils/compose-generator');
+const logger = require('../../../lib/utils/logger');
 
 // Require config and app-run - mocks are already set up via jest.mock()
-const config = require('../../lib/config');
-const appRun = require('../../lib/app-run');
+const config = require('../../../lib/config');
+const appRun = require('../../../lib/app-run');
 const { promisify } = require('util');
 
 // Get the mock execAsync function
@@ -156,7 +156,68 @@ describe('App-Run Debug Paths and Error Handling', () => {
   beforeEach(() => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));
     originalCwd = process.cwd();
+    // Change to temp directory - this is where test files will be created
     process.chdir(tempDir);
+
+    // Clear project root cache to ensure we get correct root in CI simulation
+    const { clearProjectRootCache, getProjectRoot } = require('../../../lib/utils/paths');
+    clearProjectRootCache();
+
+    // Ensure templates exist in project root (for CI simulation)
+    // Some code paths might access templates indirectly
+    const projectRoot = getProjectRoot();
+    const typescriptTemplateDir = path.join(projectRoot, 'templates', 'typescript');
+    const pythonTemplateDir = path.join(projectRoot, 'templates', 'python');
+    const typescriptTemplatePath = path.join(typescriptTemplateDir, 'Dockerfile.hbs');
+    const pythonTemplatePath = path.join(pythonTemplateDir, 'Dockerfile.hbs');
+
+    // Create templates directories if they don't exist
+    if (!fsSync.existsSync(typescriptTemplateDir)) {
+      const templatesParent = path.dirname(typescriptTemplateDir);
+      if (!fsSync.existsSync(templatesParent)) {
+        fsSync.mkdirSync(templatesParent, { recursive: true });
+      }
+      fsSync.mkdirSync(typescriptTemplateDir, { recursive: true });
+    }
+    if (!fsSync.existsSync(pythonTemplateDir)) {
+      const templatesParent = path.dirname(pythonTemplateDir);
+      if (!fsSync.existsSync(templatesParent)) {
+        fsSync.mkdirSync(templatesParent, { recursive: true });
+      }
+      fsSync.mkdirSync(pythonTemplateDir, { recursive: true });
+    }
+
+    // Create minimal template files if they don't exist
+    if (!fsSync.existsSync(typescriptTemplatePath)) {
+      const templateContent = `FROM node:20-alpine
+WORKDIR /app
+COPY {{appSourcePath}}package*.json ./
+RUN npm install && npm cache clean --force
+COPY {{appSourcePath}} .
+EXPOSE {{port}}
+{{#if healthCheck}}
+HEALTHCHECK --interval={{healthCheck.interval}}s CMD curl -f http://localhost:{{port}}{{healthCheck.path}} || exit 1
+{{/if}}
+{{#if startupCommand}}
+CMD {{startupCommand}}
+{{/if}}`;
+      fsSync.writeFileSync(typescriptTemplatePath, templateContent, 'utf8');
+    }
+    if (!fsSync.existsSync(pythonTemplatePath)) {
+      const templateContent = `FROM python:3.11-alpine
+WORKDIR /app
+COPY {{appSourcePath}}requirements*.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY {{appSourcePath}} .
+EXPOSE {{port}}
+{{#if healthCheck}}
+HEALTHCHECK --interval={{healthCheck.interval}}s CMD curl -f http://localhost:{{port}}{{healthCheck.path}} || exit 1
+{{/if}}
+{{#if startupCommand}}
+CMD {{startupCommand}}
+{{/if}}`;
+      fsSync.writeFileSync(pythonTemplatePath, templateContent, 'utf8');
+    }
 
     // Setup default mocks
     // Create builder directory structure - use realFs to ensure it's actually created
@@ -266,7 +327,8 @@ describe('App-Run Debug Paths and Error Handling', () => {
   // Uses same pattern as compose-generator tests that work in CI
   const ensureVariablesYaml = () => {
     const realFs = jest.requireActual('fs');
-    const builderDir = path.join(tempDir, 'builder', 'test-app');
+    // Use absolute path from the start to avoid issues with process.cwd() changes
+    const builderDir = path.resolve(tempDir, 'builder', 'test-app');
     const configPath = path.join(builderDir, 'variables.yaml');
 
     // Check if file already exists
@@ -274,42 +336,79 @@ describe('App-Run Debug Paths and Error Handling', () => {
       return; // File already exists, no need to create
     }
 
-    // Ensure directory exists using statSync (more reliable)
-    let dirExists = false;
+    // Ensure directory exists - create recursively with explicit parent creation
+    const absoluteBuilderDir = builderDir;
     try {
-      const dirStat = realFs.statSync(builderDir);
-      dirExists = dirStat.isDirectory();
-    } catch (statError) {
-      // Directory doesn't exist, create it
-      try {
-        realFs.mkdirSync(builderDir, { recursive: true });
-        const retryStat = realFs.statSync(builderDir);
-        dirExists = retryStat.isDirectory();
-      } catch (retryError) {
-        throw new Error(`Directory does not exist after creation attempts: ${builderDir}. Error: ${retryError.message}`);
+      // Ensure parent directory exists first
+      const parentDir = path.dirname(absoluteBuilderDir);
+      if (!realFs.existsSync(parentDir)) {
+        try {
+          realFs.mkdirSync(parentDir, { recursive: true, mode: 0o755 });
+        } catch (parentError) {
+          throw new Error(`Failed to create parent directory ${parentDir}: ${parentError.message}`);
+        }
+        // Verify parent was created
+        if (!realFs.existsSync(parentDir)) {
+          throw new Error(`Parent directory was not created: ${parentDir}`);
+        }
       }
+      // Create directory recursively - mkdirSync with recursive:true creates all parent directories
+      if (!realFs.existsSync(absoluteBuilderDir)) {
+        try {
+          realFs.mkdirSync(absoluteBuilderDir, { recursive: true, mode: 0o755 });
+        } catch (mkdirError) {
+          throw new Error(`Failed to create directory ${absoluteBuilderDir}: ${mkdirError.message} (code: ${mkdirError.code || 'N/A'})`);
+        }
+      }
+      // Verify it exists and is a directory
+      if (!realFs.existsSync(absoluteBuilderDir)) {
+        throw new Error(`Builder directory was not created: ${absoluteBuilderDir}`);
+      }
+      const dirStat = realFs.statSync(absoluteBuilderDir);
+      if (!dirStat.isDirectory()) {
+        throw new Error(`Path exists but is not a directory: ${absoluteBuilderDir}`);
+      }
+    } catch (mkdirError) {
+      // Re-throw with more context, but preserve original error message
+      if (mkdirError.message && (mkdirError.message.includes('Builder directory was not created') || mkdirError.message.includes('Path exists but is not a directory') || mkdirError.message.includes('Failed to create'))) {
+        throw mkdirError;
+      }
+      throw new Error(`Failed to create directory ${absoluteBuilderDir}: ${mkdirError.message}`);
     }
 
-    if (!dirExists) {
-      throw new Error(`Directory exists but is not a directory: ${builderDir}`);
-    }
+    // Use absolute path for config file
+    const absoluteConfigPath = configPath;
 
-    // Create file
+    // Create file - simple synchronous write
     const configContent = yaml.dump({ port: 3000, language: 'typescript' });
     try {
-      realFs.writeFileSync(configPath, configContent, 'utf8');
-    } catch (error) {
-      throw new Error(`Failed to write variables.yaml at ${configPath}: ${error.message} (code: ${error.code})`);
+      // Write file synchronously - this is the most reliable method
+      realFs.writeFileSync(absoluteConfigPath, configContent, 'utf8');
+    } catch (writeError) {
+      throw new Error(`Failed to write variables.yaml at ${absoluteConfigPath}: ${writeError.message} (code: ${writeError.code})`);
     }
 
-    // Verify file exists
-    if (!realFs.existsSync(configPath)) {
-      throw new Error(`File does not exist after write: ${configPath}`);
+    // Verify file exists immediately after write
+    if (!realFs.existsSync(absoluteConfigPath)) {
+      // If file doesn't exist, check if parent directory is correct
+      const parentDir = path.dirname(absoluteConfigPath);
+      const parentExists = realFs.existsSync(parentDir);
+      throw new Error(`File does not exist after write: ${absoluteConfigPath}. Parent dir exists: ${parentExists}, Parent: ${parentDir}`);
+    }
+
+    // Verify file is readable
+    try {
+      const writtenContent = realFs.readFileSync(absoluteConfigPath, 'utf8');
+      if (writtenContent !== configContent) {
+        throw new Error(`File content mismatch. Expected length: ${configContent.length}, Got length: ${writtenContent.length}`);
+      }
+    } catch (readError) {
+      throw new Error(`File exists but cannot be read: ${absoluteConfigPath}. Error: ${readError.message}`);
     }
 
     // Verify file content
     try {
-      const writtenContent = realFs.readFileSync(configPath, 'utf8');
+      const writtenContent = realFs.readFileSync(absoluteConfigPath, 'utf8');
       if (writtenContent !== configContent) {
         throw new Error(`File content mismatch. Expected length: ${configContent.length}, Got length: ${writtenContent.length}`);
       }

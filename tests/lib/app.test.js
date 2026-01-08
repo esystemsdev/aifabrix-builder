@@ -538,17 +538,31 @@ app:
   describe('loadTemplateVariables', () => {
     it('should load template variables.yaml successfully', async() => {
       const templateName = 'test-template';
-      // loadTemplateVariables uses __dirname/../templates/applications/
-      // __dirname in lib/app.js is lib/, so it goes to templates/applications/
-      // We need to use the actual project root, not tempDir
-      const projectRoot = path.resolve(__dirname, '..', '..');
-      const templateDir = path.join(projectRoot, 'templates', 'applications', templateName);
+      // Use temp directory to avoid writing to real templates
+      const templateDir = path.join(tempDir, 'templates', 'applications', templateName);
       const templateFile = path.join(templateDir, 'variables.yaml');
       const templateContent = 'app:\n  key: test\nport: 3000';
 
-      // Create template directory and file in actual project location
+      // Create template directory and file in temp location
       fsSync.mkdirSync(templateDir, { recursive: true });
       fsSync.writeFileSync(templateFile, templateContent);
+
+      // Mock fs.readFile to redirect template path reads to tempDir
+      const fsp = require('fs').promises;
+      const originalReadFile = fsp.readFile;
+      const readFileSpy = jest.spyOn(fsp, 'readFile').mockImplementation((filePath, ...args) => {
+        // If reading from templates/applications, redirect to tempDir
+        const normalizedPath = path.resolve(filePath);
+        const projectRoot = path.resolve(__dirname, '..', '..');
+        const realTemplatesPath = path.join(projectRoot, 'templates', 'applications');
+        if (normalizedPath.startsWith(realTemplatesPath)) {
+          // Redirect to tempDir
+          const relativePath = path.relative(realTemplatesPath, normalizedPath);
+          const tempPath = path.join(tempDir, 'templates', 'applications', relativePath);
+          return originalReadFile.call(fsp, tempPath, ...args);
+        }
+        return originalReadFile.call(fsp, filePath, ...args);
+      });
 
       try {
         const result = await app.loadTemplateVariables(templateName);
@@ -561,15 +575,16 @@ app:
           expect(result.port).toBe(3000);
         }
       } finally {
+        readFileSpy.mockRestore();
         // Clean up
         if (fsSync.existsSync(templateFile)) {
           fsSync.unlinkSync(templateFile);
         }
         if (fsSync.existsSync(templateDir)) {
           try {
-            fsSync.rmdirSync(templateDir);
+            fsSync.rmSync(templateDir, { recursive: true, force: true });
           } catch (err) {
-            // Ignore errors if directory is not empty
+            // Ignore errors
           }
         }
       }
@@ -587,18 +602,32 @@ app:
 
     it('should warn and return null on non-ENOENT error', async() => {
       const templateName = 'test-template';
-      // loadTemplateVariables uses __dirname/../templates/applications/
-      // __dirname in lib/utils/template-helpers.js is lib/utils/, so it goes to templates/applications/
-      // We need to use the actual project root, not tempDir
-      const projectRoot = global.PROJECT_ROOT || path.resolve(__dirname, '..', '..');
-      const templateDir = path.join(projectRoot, 'templates', 'applications', templateName);
+      // Use temp directory to avoid writing to real templates
+      const templateDir = path.join(tempDir, 'templates', 'applications', templateName);
       const templateFile = path.join(templateDir, 'variables.yaml');
       // Create a file that can be read but has invalid YAML syntax
       const invalidYaml = 'invalid: yaml: content: [';
 
-      // Create template directory and invalid file in actual project location
+      // Create template directory and invalid file in temp location
       fsSync.mkdirSync(templateDir, { recursive: true });
       fsSync.writeFileSync(templateFile, invalidYaml);
+
+      // Mock fs.readFile to redirect template path reads to tempDir
+      const fsp = require('fs').promises;
+      const originalReadFile = fsp.readFile;
+      const readFileSpy = jest.spyOn(fsp, 'readFile').mockImplementation((filePath, ...args) => {
+        // If reading from templates/applications, redirect to tempDir
+        const normalizedPath = path.resolve(filePath);
+        const projectRoot = path.resolve(__dirname, '..', '..');
+        const realTemplatesPath = path.join(projectRoot, 'templates', 'applications');
+        if (normalizedPath.startsWith(realTemplatesPath)) {
+          // Redirect to tempDir
+          const relativePath = path.relative(realTemplatesPath, normalizedPath);
+          const tempPath = path.join(tempDir, 'templates', 'applications', relativePath);
+          return originalReadFile.call(fsp, tempPath, ...args);
+        }
+        return originalReadFile.call(fsp, filePath, ...args);
+      });
 
       const loggerModule = require('../../lib/utils/logger');
       const warnSpy = jest.spyOn(loggerModule, 'warn');
@@ -610,14 +639,15 @@ app:
         expect(warnSpy).toHaveBeenCalled();
       } finally {
         warnSpy.mockRestore();
+        readFileSpy.mockRestore();
         if (fsSync.existsSync(templateFile)) {
           fsSync.unlinkSync(templateFile);
         }
         if (fsSync.existsSync(templateDir)) {
           try {
-            fsSync.rmdirSync(templateDir);
+            fsSync.rmSync(templateDir, { recursive: true, force: true });
           } catch (err) {
-            // Ignore errors if directory is not empty
+            // Ignore errors
           }
         }
       }

@@ -38,8 +38,142 @@ PROJECT_ROOT = path.resolve(PROJECT_ROOT);
 // Set in global scope
 global.PROJECT_ROOT = PROJECT_ROOT;
 
+// PERMANENT FIX: Add global guard to prevent writes to real template files
+// This guard is active for ALL tests and prevents ANY writes to templates directory
+const realTemplatesPath = path.resolve(PROJECT_ROOT, 'templates');
+const realTypescriptTemplate = path.resolve(PROJECT_ROOT, 'templates', 'typescript', 'Dockerfile.hbs');
+const realPythonTemplate = path.resolve(PROJECT_ROOT, 'templates', 'python', 'Dockerfile.hbs');
+
+// PERMANENT FIX: Guard fs.writeFileSync globally to prevent writes to real template files
+// This guard blocks ALL writes to template files in development
+// In CI, templates can be created if they don't exist (handled below)
+const originalWriteFileSync = fs.writeFileSync;
+const isCIEnv = process.env.CI === 'true' || process.env.CI_SIMULATION === 'true';
+
+// Store flag to allow setup.js to create templates in CI (only during setup)
+let allowSetupTemplateCreation = false;
+
+fs.writeFileSync = function(filePath, ...args) {
+  const normalizedPath = path.isAbsolute(filePath)
+    ? path.resolve(filePath)
+    : path.resolve(process.cwd(), filePath);
+
+  // PERMANENT GUARD: Block writes to node_modules directory (applies in ALL environments)
+  // This prevents accidental corruption of dependencies (e.g., exit/lib/exit.js)
+  const nodeModulesPath = path.resolve(PROJECT_ROOT, 'node_modules');
+  if (normalizedPath.startsWith(nodeModulesPath)) {
+    throw new Error(`GLOBAL GUARD: Attempted to write to node_modules: ${normalizedPath}. Tests must NEVER modify node_modules files.`);
+  }
+
+  // In CI environment, always allow writes to templates (they're in copied location)
+  if (isCIEnv) {
+    return originalWriteFileSync.call(fs, filePath, ...args);
+  }
+
+  // In development, block writes to real template files
+  // Check if writing to the exact real template file paths
+  if (normalizedPath === realTypescriptTemplate || normalizedPath === realPythonTemplate) {
+    if (!allowSetupTemplateCreation) {
+      throw new Error(`GLOBAL GUARD: Attempted to write to real template file: ${normalizedPath}. Tests must NEVER modify real templates.`);
+    }
+  }
+
+  // Block writes to templates directory in development (but allow temp directories)
+  if (normalizedPath.startsWith(realTemplatesPath)) {
+    // Allow writes to temp directories (common temp prefixes)
+    const isTempPath = normalizedPath.includes('/tmp/') ||
+                       normalizedPath.includes('\\temp\\') ||
+                       normalizedPath.startsWith('/var/folders/') ||
+                       normalizedPath.includes('aifabrix-test-');
+
+    if (!isTempPath) {
+      throw new Error(`GLOBAL GUARD: Attempted to write to real templates directory: ${normalizedPath}. Tests must NEVER modify real templates.`);
+    }
+  }
+
+  return originalWriteFileSync.call(fs, filePath, ...args);
+};
+
+// PERMANENT FIX: NEVER write to real template files in development
+// Templates should exist and should NEVER be modified by tests
+// Only create templates in CI simulation environments where they might not exist
+try {
+  const templatesExist = fs.existsSync(realTypescriptTemplate) && fs.existsSync(realPythonTemplate);
+
+  // PERMANENT GUARD: In development (non-CI), NEVER write to templates
+  // If templates exist, they should NEVER be overwritten
+  if (!isCIEnv && templatesExist) {
+    // Templates exist in development - do nothing, never write to them
+    // This is the normal case - templates should already exist
+  } else if (!isCIEnv && !templatesExist) {
+    // Templates don't exist in development - warn but don't create
+    // Developer should have templates already
+    console.warn('Warning: Template files not found. Tests may fail. Templates should exist in project.');
+  } else if (isCIEnv && !templatesExist) {
+    // Only in CI: create templates if they don't exist
+    // Temporarily allow template creation for setup.js only
+    allowSetupTemplateCreation = true;
+
+    try {
+      const typescriptTemplateDir = path.join(PROJECT_ROOT, 'templates', 'typescript');
+      const pythonTemplateDir = path.join(PROJECT_ROOT, 'templates', 'python');
+
+      // Create directories if needed
+      if (!fs.existsSync(typescriptTemplateDir)) {
+        fs.mkdirSync(typescriptTemplateDir, { recursive: true });
+      }
+      if (!fs.existsSync(pythonTemplateDir)) {
+        fs.mkdirSync(pythonTemplateDir, { recursive: true });
+      }
+
+      // Create templates only if they don't exist
+      if (!fs.existsSync(realTypescriptTemplate)) {
+        const templateContent = `FROM node:20-alpine
+WORKDIR /app
+COPY {{appSourcePath}}package*.json ./
+RUN npm install && npm cache clean --force
+COPY {{appSourcePath}} .
+EXPOSE {{port}}
+{{#if healthCheck}}
+HEALTHCHECK --interval={{healthCheck.interval}}s CMD curl -f http://localhost:{{port}}{{healthCheck.path}} || exit 1
+{{/if}}
+{{#if startupCommand}}
+CMD {{startupCommand}}
+{{/if}}`;
+        fs.writeFileSync(realTypescriptTemplate, templateContent, 'utf8');
+      }
+      if (!fs.existsSync(realPythonTemplate)) {
+        const templateContent = `FROM python:3.11-alpine
+WORKDIR /app
+COPY {{appSourcePath}}requirements*.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY {{appSourcePath}} .
+EXPOSE {{port}}
+{{#if healthCheck}}
+HEALTHCHECK --interval={{healthCheck.interval}}s CMD curl -f http://localhost:{{port}}{{healthCheck.path}} || exit 1
+{{/if}}
+{{#if startupCommand}}
+CMD {{startupCommand}}
+{{/if}}`;
+        fs.writeFileSync(realPythonTemplate, templateContent, 'utf8');
+      }
+    } finally {
+      // Always disable template creation after setup
+      allowSetupTemplateCreation = false;
+    }
+  }
+  // If templates exist in CI, do nothing - never overwrite
+} catch (error) {
+  // Always disable template creation on error
+  allowSetupTemplateCreation = false;
+  // If template creation fails, log but don't fail tests
+  if (process.env.NODE_ENV !== 'test' || !error.message.includes('ENOENT')) {
+    console.warn('Warning: Could not ensure templates exist in setup:', error.message);
+  }
+}
+
 // Global test timeout
-jest.setTimeout(30000);
+jest.setTimeout(5000); // Should be < 0.5s with proper mocking
 
 // Mock console methods to reduce noise in tests
 global.console = {
