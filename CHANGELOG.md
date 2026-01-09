@@ -1,3 +1,21 @@
+## [2.31.1] - 2026-01-08
+
+### Fixed
+- **App Rotate Secret Response Format Handling**: Fixed credential extraction to handle multiple API response formats
+  - Added support for both wrapped format (`response.data.data.credentials`) and direct format (`response.data.credentials`)
+  - Enhanced response validation with better error messages and debugging output
+  - Improved credential validation with dedicated `isValidCredentials()` function
+  - Refactored authentication token handling with extracted helper functions (`getTokenFromUrl()`, `validateAuthToken()`)
+  - Better error context and logging for troubleshooting authentication and credential extraction failures
+  - Updated `lib/app-rotate-secret.js` with improved response format handling and error handling
+
+### Technical
+- **Test Refactoring**: Improved app-run branch coverage tests to use real filesystem operations
+  - Ensured the 'fs' module is not mocked for specific tests requiring actual filesystem interactions, improving test accuracy
+  - Updated comments for clarity on the use of real filesystem methods when creating and verifying .env files
+  - Simplified file existence checks and read operations to enhance reliability and maintainability of the tests
+  - Updated `tests/local/lib/app-run-branch-coverage.test.js` with real filesystem operations
+
 ## [2.31.0] - 2026-01-03
 
 ### Added

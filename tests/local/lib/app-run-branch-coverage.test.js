@@ -143,7 +143,7 @@ describe('App-Run Branch Coverage Tests', () => {
       const appName = 'test-app';
       // Get real fs module to ensure we're not affected by global mocks
       const realFs = jest.requireActual('fs');
-      
+
       // Use absolute path to avoid issues with process.cwd() changes
       const appPath = path.resolve(tempDir, 'builder', appName);
 
