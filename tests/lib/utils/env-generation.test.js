@@ -1516,6 +1516,67 @@ MISO_PUBLIC_PORT=\${MISO_PUBLIC_PORT}`;
         // The variable should either be undefined (literal ${MISO_PUBLIC_PORT}) or empty
         expect(result).toMatch(/MISO_PUBLIC_PORT=\$\{MISO_PUBLIC_PORT\}/);
       });
+
+      it('should recalculate MISO_PUBLIC_PORT with developer-id offset when manually set in env-config.yaml (bug reproduction)', async() => {
+        // This test reproduces the bug where MISO_PUBLIC_PORT is set to 3000 in env-config.yaml
+        // but should be recalculated to 3100 for developer-id 01
+        const mockTemplateContent = `MISO_WEB_SERVER_URL=http://localhost:\${MISO_PUBLIC_PORT}
+MISO_PORT=\${MISO_PORT}
+MISO_PUBLIC_PORT=\${MISO_PUBLIC_PORT}`;
+
+        // Mock env-config.yaml with MISO_PUBLIC_PORT already set to 3000
+        const mockEnvConfigWithPublicPort = {
+          environments: {
+            docker: {
+              DB_HOST: 'postgres',
+              DB_PORT: '5432',
+              REDIS_HOST: 'redis',
+              REDIS_PORT: '6379',
+              MISO_HOST: 'miso-controller',
+              MISO_PORT: '3000',
+              MISO_PUBLIC_PORT: '3000', // This is the bug - should be recalculated to 3100
+              KEYCLOAK_HOST: 'keycloak',
+              KEYCLOAK_PORT: '8082'
+            }
+          }
+        };
+
+        // Temporarily override the mock to return config with MISO_PUBLIC_PORT set
+        const { loadEnvConfig } = require('../../../lib/utils/env-config-loader');
+        const originalMock = loadEnvConfig.getMockImplementation();
+        loadEnvConfig.mockResolvedValue(mockEnvConfigWithPublicPort);
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockTemplatePath) return mockTemplateContent;
+          if (filePath && filePath.includes('env-config.yaml')) {
+            return yaml.dump(mockEnvConfigWithPublicPort);
+          }
+          return '';
+        });
+        fs.existsSync.mockImplementation((filePath) => {
+          if (filePath === mockTemplatePath) return true;
+          if (filePath && filePath.includes('env-config.yaml')) return true;
+          return false;
+        });
+        mockConfig.getDeveloperId.mockResolvedValue('01'); // Developer ID 01
+
+        const { generateEnvContent } = require('../../../lib/secrets');
+        const result = await generateEnvContent(mockAppName, null, 'docker', false);
+
+        // Bug: Currently returns http://localhost:3000 (wrong)
+        // Expected: http://localhost:3100 (3000 + 1*100)
+        // This test will fail until the bug is fixed
+        expect(result).toMatch(/^MISO_WEB_SERVER_URL=http:\/\/localhost:3100$/m);
+        expect(result).toMatch(/^MISO_PORT=3000$/m);
+        expect(result).toMatch(/^MISO_PUBLIC_PORT=3100$/m);
+
+        // Restore original mock
+        if (originalMock) {
+          loadEnvConfig.mockImplementation(originalMock);
+        } else {
+          loadEnvConfig.mockResolvedValue(mockEnvConfig);
+        }
+      });
     });
   });
 
