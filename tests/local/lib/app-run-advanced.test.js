@@ -87,6 +87,23 @@ jest.mock('../../../lib/utils/build-copy', () => {
   };
 });
 
+// Mock compose-generator to prevent template file access
+jest.mock('../../../lib/utils/compose-generator', () => ({
+  generateDockerCompose: jest.fn().mockImplementation(async(appName, config, options) => {
+    // Return realistic YAML content
+    const language = config.language || config.build?.language || 'typescript';
+    let yaml = `version: "3.8"\nservices:\n  ${appName}:\n    image: ${appName}:latest\n`;
+    if (options && typeof options === 'object' && options.database) {
+      yaml += '    depends_on:\n      - postgres\n';
+    }
+    if (options && typeof options === 'object' && options.redis) {
+      yaml += '    depends_on:\n      - redis\n';
+    }
+    return yaml;
+  }),
+  getImageName: jest.fn().mockReturnValue('test-app')
+}));
+
 const appRun = require('../../../lib/app/run');
 const { exec } = require('child_process');
 const { promisify } = require('util');

@@ -144,13 +144,11 @@ describe('App-Run Branch Coverage Tests', () => {
       // Get real fs module to ensure we're not affected by global mocks
       const realFs = jest.requireActual('fs');
 
-      // Since process.cwd() is set to tempDir in beforeEach, use relative paths
-      const appPath = path.join('builder', appName);
+      // Use absolute paths to avoid path resolution issues
+      const appPath = path.join(tempDir, 'builder', appName);
 
       // Ensure directory exists before proceeding
-      if (!realFs.existsSync(appPath)) {
-        realFs.mkdirSync(appPath, { recursive: true });
-      }
+      realFs.mkdirSync(appPath, { recursive: true });
 
       const variables = {
         app: { key: appName, name: 'Test App' },

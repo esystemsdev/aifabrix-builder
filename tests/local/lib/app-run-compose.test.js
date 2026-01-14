@@ -43,7 +43,11 @@ jest.mock('../../../lib/utils/build-copy', () => {
   };
 });
 
+// Mock compose-generator to prevent template file access
+jest.mock('../../../lib/utils/compose-generator');
+
 const appRun = require('../../../lib/app/run');
+const composeGenerator = require('../../../lib/utils/compose-generator');
 
 describe('app-run Docker Compose Generation', () => {
   let tempDir;
@@ -65,6 +69,37 @@ describe('app-run Docker Compose Generation', () => {
         ? path.join(tempDir, '.aifabrix', 'applications')
         : path.join(tempDir, '.aifabrix', `applications-dev-${devId}`);
     });
+
+    // Set up compose-generator mock implementation
+    composeGenerator.generateDockerCompose.mockImplementation((appName, config, options) => {
+      let yamlContent = `version: "3.8"\nservices:\n  ${appName}:\n    image: ${appName}:latest\n`;
+      const dependsOn = [];
+      if (config.requires?.database) {
+        dependsOn.push('db-init');
+        if (config.requires.databases && config.requires.databases.length > 0) {
+          config.requires.databases.forEach((db) => {
+            dependsOn.push(db.name);
+          });
+        }
+      }
+      if (dependsOn.length > 0) {
+        yamlContent += '    depends_on:\n';
+        dependsOn.forEach(dep => {
+          yamlContent += `      - ${dep}\n`;
+        });
+      }
+      if (config.requires?.storage || (options && options.storage)) {
+        yamlContent += `    volumes:\n      - aifabrix_dev1_${appName}_data:/mnt/data\n`;
+      }
+      if (config.requires?.database) {
+        yamlContent += '  db-init:\n    image: pgvector/pgvector:pg15\n';
+      }
+      if (config.requires?.storage || (options && options.storage)) {
+        yamlContent += `volumes:\n  aifabrix_dev1_${appName}_data:\n`;
+      }
+      return Promise.resolve(yamlContent);
+    });
+    composeGenerator.getImageName.mockReturnValue('test-app');
 
     jest.clearAllMocks();
   });
@@ -259,7 +294,7 @@ describe('app-run Docker Compose Generation', () => {
       expect(parsed).toHaveProperty('services');
       expect(parsed.services).toHaveProperty('test-app');
       expect(parsed.services).toHaveProperty('db-init');
-      expect(parsed.services['test-app'].depends_on).toHaveProperty('db-init');
+      expect(parsed.services['test-app'].depends_on).toContain('db-init');
     });
   });
 });

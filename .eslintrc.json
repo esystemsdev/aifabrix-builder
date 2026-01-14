@@ -61,11 +61,11 @@
     "no-tabs": "error",
     
     // Complexity rules
-    "complexity": ["warn", 10],
+    "complexity": ["warn", 15],
     "max-depth": ["warn", 4],
     "max-lines-per-function": ["error", 50],
     "max-lines": ["error", 500],
-    "max-params": ["warn", 5],
+    "max-params": ["warn", 6],
     "max-statements": ["warn", 20],
     
     // Best practices

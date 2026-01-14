@@ -193,17 +193,23 @@ describe('Application Run Module - Additional Coverage', () => {
 
     it('should handle validation failures', async() => {
       const appName = 'test-app';
-      const appPath = path.join(tempDir, 'builder', appName);
+      const appPath = path.join('builder', appName);
       fsSync.mkdirSync(appPath, { recursive: true });
 
+      const configPath = path.join(appPath, 'variables.yaml');
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        configPath,
         yaml.dump({ app: { key: appName, name: 'Test App' }, build: { port: 3000 } })
       );
 
+      // Verify file exists
+      expect(fsSync.existsSync(configPath)).toBe(true);
+
       validator.validateApplication.mockResolvedValueOnce({
         valid: false,
-        variables: { errors: ['Invalid port'], warnings: [] }
+        variables: { errors: ['Invalid port'], warnings: [] },
+        rbac: { errors: [], warnings: [] },
+        env: { errors: [], warnings: [] }
       });
 
       await expect(appRun.runApp(appName, {})).rejects.toThrow('Configuration validation failed');
@@ -211,12 +217,13 @@ describe('Application Run Module - Additional Coverage', () => {
 
     it('should handle missing Docker image', async() => {
       const appName = 'test-app';
-      const appPath = path.join(tempDir, 'builder', appName);
+      const appPath = path.join('builder', appName);
       fsSync.mkdirSync(appPath, { recursive: true });
 
       const testPort = 50000 + Math.floor(Math.random() * 10000);
+      const configPath = path.join(appPath, 'variables.yaml');
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        configPath,
         yaml.dump({
           app: { key: appName, name: 'Test App' },
           port: testPort,
@@ -224,7 +231,15 @@ describe('Application Run Module - Additional Coverage', () => {
         })
       );
 
-      validator.validateApplication.mockResolvedValueOnce({ valid: true, variables: { errors: [] } });
+      // Verify file exists
+      expect(fsSync.existsSync(configPath)).toBe(true);
+
+      validator.validateApplication.mockResolvedValueOnce({
+        valid: true,
+        variables: { errors: [], warnings: [] },
+        rbac: { errors: [], warnings: [] },
+        env: { errors: [], warnings: [] }
+      });
       infra.checkInfraHealth.mockResolvedValueOnce({ postgres: 'healthy', redis: 'healthy' });
 
       const { exec } = require('child_process');
