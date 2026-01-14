@@ -1,6 +1,6 @@
 # Building Your App
 
-← [Back to Quick Start](QUICK-START.md)
+← [Back to Quick Start](quick-start.md)
 
 How the build process works and how to customize it.
 

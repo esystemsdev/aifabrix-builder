@@ -1,6 +1,6 @@
 # Developer Isolation
 
-← [Back to Quick Start](QUICK-START.md)
+← [Back to Quick Start](quick-start.md)
 
 ## Overview
 

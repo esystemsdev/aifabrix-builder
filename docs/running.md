@@ -1,6 +1,6 @@
 # Running Your App Locally
 
-← [Back to Quick Start](QUICK-START.md)
+← [Back to Quick Start](quick-start.md)
 
 How to run your application in Docker for local development.
 

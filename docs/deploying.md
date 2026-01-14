@@ -1,6 +1,6 @@
 # Deploying Applications
 
-← [Back to Quick Start](QUICK-START.md)
+← [Back to Quick Start](quick-start.md)
 
 Deploy your application via [Azure Marketplace](https://azuremarketplace.microsoft.com/) or Miso Controller. Enterprise versions deploy to Azure Container Apps, while open source versions deploy to local Docker instances.
 
@@ -10,7 +10,7 @@ Before deploying:
 
 1. **Miso Controller**
    - Running instance (or URL)
-   - See [Install Miso Controller](INFRASTRUCTURE.md#install-miso-controller)
+   - See [Install Miso Controller](infrastructure.md#install-miso-controller)
 
 2. **Built Image**
    ```bash
@@ -38,7 +38,7 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
 
 ### Method 2: Automated CI/CD Deployment
 
-For automated deployments using the Pipeline API, see [GitHub Workflows Guide](GITHUB-WORKFLOWS.md#pipeline-deployment-integration) for detailed workflow examples.
+For automated deployments using the Pipeline API, see [GitHub Workflows Guide](github-workflows.md#pipeline-deployment-integration) for detailed workflow examples.
 
 The deploy command uses Bearer token authentication. Tokens are automatically retrieved or refreshed from config.yaml, or obtained using credentials from secrets.local.yaml if needed.
 
@@ -422,7 +422,7 @@ Updates credentials display. Copy the new credentials to `DEV_MISO_CLIENTSECRET`
 
 ### GitHub Actions Workflow
 
-For automated CI/CD deployments, see [GitHub Workflows Guide](GITHUB-WORKFLOWS.md#integration-with-ai-fabrix) for detailed workflow examples.
+For automated CI/CD deployments, see [GitHub Workflows Guide](github-workflows.md#integration-with-ai-fabrix) for detailed workflow examples.
 
 **Basic workflow setup:**
 1. Register application: `aifabrix app register myapp --environment dev`

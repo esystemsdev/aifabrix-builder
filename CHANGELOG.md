@@ -40,7 +40,7 @@
 - Updated `lib/schema/env-config.yaml` with documentation comments explaining public port pattern
 - Comprehensive test coverage: New test file `tests/lib/utils/env-map.test.js` with 20+ test cases
 - Updated `tests/lib/utils/env-generation.test.js` with public port interpolation tests
-- Updated documentation: `docs/DEVELOPER-ISOLATION.md` and `docs/CONFIGURATION.md` with public port examples
+- Updated documentation: `docs/developer-isolation.md` and `docs/configuration.md` with public port examples
 - ISO 27001 compliant implementation maintained throughout
 
 ## [2.30.1] - 2026-01-02
@@ -206,7 +206,7 @@
 - Updated `lib/utils/app-register-api.js` to pass controller URL to error handlers
 - Updated `lib/utils/device-code.js` to enhance error handling for validation scenarios
 - Comprehensive test coverage: New test files for external system RBAC functionality
-- Documentation updates: `docs/CLI-REFERENCE.md`, `docs/EXTERNAL-SYSTEMS.md`, `docs/CONFIGURATION.md`
+- Documentation updates: `docs/cli-reference.md`, `docs/external-systems.md`, `docs/configuration.md`
 - Updated test expectations to match new error message format with controller URL context
 - ISO 27001 compliant implementation maintained throughout
 
@@ -411,7 +411,7 @@
   - Generates comprehensive validation reports in `.cursor/plans/` with `-VALIDATION-REPORT.md` suffix
   - Command documentation in `.cursor/commands/validate-implementation.md`
 - **External Systems Documentation**: New comprehensive guide for external system integration
-  - New `docs/EXTERNAL-SYSTEMS.md` documentation file
+  - New `docs/external-systems.md` documentation file
   - Complete guide for creating and deploying external systems
   - Integration examples and best practices
   - Step-by-step instructions for HubSpot and other third-party API integrations
@@ -428,9 +428,9 @@
   - Updated CLI commands to better support external system handling
   - Improved schema validation for external systems and datasources
 - **Documentation Updates**: Updated multiple documentation files
-  - Updated `docs/BUILDING.md` with external system build information
-  - Updated `docs/CLI-REFERENCE.md` with new command references
-  - Updated `docs/QUICK-START.md` with external system quick start guide
+  - Updated `docs/building.md` with external system build information
+  - Updated `docs/cli-reference.md` with new command references
+  - Updated `docs/quick-start.md` with external system quick start guide
 - **Code Quality**: Enhanced validation and error handling
   - Improved CLI utilities for better error formatting
   - Enhanced schema resolver for external system files
@@ -784,12 +784,12 @@
   - Added `getAifabrixEnvConfigPath()` for loading user env-config files
   - Enhanced token storage with expiration tracking for device and client tokens
 - **Documentation Updates**
-  - Updated `docs/BUILDING.md` with environment generation details
-  - Updated `docs/CONFIGURATION.md` with env-config system documentation
-  - Updated `docs/DEVELOPER-ISOLATION.md` with port handling clarifications
-  - Updated `docs/CLI-REFERENCE.md` with `down` command documentation
-  - Updated `docs/DEPLOYING.md` with token management and authentication details
-  - Updated `docs/INFRASTRUCTURE.md`, `docs/RUNNING.md`, `docs/GITHUB-WORKFLOWS.md`, and `docs/QUICK-START.md`
+  - Updated `docs/building.md` with environment generation details
+  - Updated `docs/configuration.md` with env-config system documentation
+  - Updated `docs/developer-isolation.md` with port handling clarifications
+  - Updated `docs/cli-reference.md` with `down` command documentation
+  - Updated `docs/deploying.md` with token management and authentication details
+  - Updated `docs/infrastructure.md`, `docs/running.md`, `docs/github-workflows.md`, and `docs/quick-start.md`
 - **Test Suite Updates**
   - Expanded and updated tests across `tests/lib/*.test.js` modules
   - Updated `tests/lib/utils/*.test.js` with new utility test coverage
@@ -1039,7 +1039,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Clear progress messages for each step (validation, deployment, polling)
 
 ### Documentation
-- **Developer Isolation Guide**: New `docs/DEVELOPER-ISOLATION.md`
+- **Developer Isolation Guide**: New `docs/developer-isolation.md`
   - Explains developer isolation concept and benefits
   - Port calculation examples for different developer IDs
   - Configuration instructions and usage examples

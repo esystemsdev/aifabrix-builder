@@ -129,8 +129,8 @@ aifabrix datasource validate hubspot-company --environment dev
 
 ## Documentation
 
-- [External Systems Guide](../../docs/EXTERNAL-SYSTEMS.md) - Complete guide with examples
-- [CLI Reference](../../docs/CLI-REFERENCE.md) - All commands
+- [External Systems Guide](../../docs/external-systems.md) - Complete guide with examples
+- [CLI Reference](../../docs/cli-reference.md) - All commands
 - [Configuration Reference](../../docs/CONFIGURATION.md) - Config file details
 
 

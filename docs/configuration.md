@@ -1,6 +1,6 @@
 # Configuration Reference
 
-← [Back to Quick Start](QUICK-START.md)
+← [Back to Quick Start](quick-start.md)
 
 Simple reference for all configuration files.
 
@@ -935,7 +935,7 @@ Plaintext secrets continue to work if no encryption key is configured. The syste
 - **"Invalid encryption key format"**: Key must be 32 bytes (64 hex chars or 44 base64 chars)
 - **"No secrets files found"**: Create `~/.aifabrix/secrets.local.yaml` or configure `aifabrix-secrets` in `config.yaml`
 
-For more details, see [aifabrix secure](CLI-REFERENCE.md#aifabrix-secure) command documentation.
+For more details, see [aifabrix secure](cli-reference.md#aifabrix-secure) command documentation.
 
 ### Environment-Specific Variable Interpolation
 
@@ -1548,7 +1548,7 @@ aifabrix split-json myapp
 
 **Note:** Some information may be lost in reverse conversion (e.g., comments in original `env.template`). The generated `variables.yaml` may not match the original exactly, but should be functionally equivalent.
 
-**See also:** [CLI Reference - split-json](CLI-REFERENCE.md#aifabrix-split-json-app)
+**See also:** [CLI Reference - split-json](cli-reference.md#aifabrix-split-json-app)
 
 ---
 

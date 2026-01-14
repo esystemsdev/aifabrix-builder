@@ -1,6 +1,6 @@
 # External Systems Guide
 
-← [Back to Quick Start](QUICK-START.md)
+← [Back to Quick Start](quick-start.md)
 
 Connect your AI Fabrix Dataplane to third-party APIs like HubSpot, Salesforce, or any REST API. External systems don't require Docker containers—they're pure integrations that sync data and expose it via MCP/OpenAPI.
 
@@ -44,7 +44,15 @@ flowchart LR
 
 ## Quick Start: Create Your First External System
 
-Let's create a HubSpot integration step by step.
+**New to external systems?** Try the interactive wizard:
+
+```bash
+aifabrix wizard
+```
+
+The wizard guides you through creating external systems with AI-powered configuration generation. See the [Wizard Guide](wizard.md) for details.
+
+**Prefer manual creation?** Follow the steps below to create a HubSpot integration manually.
 
 ### Step 1: Create the External System
 
@@ -1513,10 +1521,10 @@ Use defaults for optional fields:
 
 ## Next Steps
 
-- [Configuration Reference](CONFIGURATION.md#external-integration) - Detailed config options
-- [CLI Reference](CLI-REFERENCE.md) - All commands for external systems
+- [Configuration Reference](configuration.md#external-integration) - Detailed config options
+- [CLI Reference](cli-reference.md) - All commands for external systems
 - [Pipeline Deployment](.cursor/plans/pipeline.md) - Advanced deployment options
-- [Field Mappings Guide](CONFIGURATION.md#field-mappings) - Advanced mapping patterns
+- [Field Mappings Guide](configuration.md#field-mappings) - Advanced mapping patterns
 
 ---
 

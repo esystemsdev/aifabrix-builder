@@ -1,6 +1,6 @@
 # Infrastructure Guide
 
-← [Back to Quick Start](QUICK-START.md)
+← [Back to Quick Start](quick-start.md)
 
 ## What is Infrastructure?
 

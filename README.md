@@ -23,7 +23,7 @@ aifabrix down myapp
 # aifabrix down myapp --volumes
 ```
 
-→ [Full Guide](docs/QUICK-START.md) | [CLI Commands](docs/CLI-REFERENCE.md)
+→ [Full Guide](docs/quick-start.md) | [CLI Commands](docs/cli-reference.md)
 
 ## What You Get
 
@@ -48,17 +48,17 @@ aifabrix build miso-controller
 aifabrix run miso-controller
 ```
 
-→ [Infrastructure Guide](docs/INFRASTRUCTURE.md)
+→ [Infrastructure Guide](docs/infrastructure.md)
 
 ## Documentation
 
-- [Quick Start](docs/QUICK-START.md) - Get running in 5 minutes
-- [Infrastructure](docs/INFRASTRUCTURE.md) - What runs and why
-- [Configuration](docs/CONFIGURATION.md) - Config file reference
-- [Building](docs/BUILDING.md) - Build process explained
-- [Running](docs/RUNNING.md) - Run apps locally
-- [Deploying](docs/DEPLOYING.md) - Deploy to Azure
-- [CLI Reference](docs/CLI-REFERENCE.md) - All commands
+- [Quick Start](docs/quick-start.md) - Get running in 5 minutes
+- [Infrastructure](docs/infrastructure.md) - What runs and why
+- [Configuration](docs/configuration.md) - Config file reference
+- [Building](docs/building.md) - Build process explained
+- [Running](docs/running.md) - Run apps locally
+- [Deploying](docs/deploying.md) - Deploy to Azure
+- [CLI Reference](docs/cli-reference.md) - All commands
 
 ## How It Works
 

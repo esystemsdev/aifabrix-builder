@@ -1,6 +1,6 @@
 # CLI Reference
 
-← [Back to Quick Start](QUICK-START.md)
+← [Back to Quick Start](quick-start.md)
 
 Complete command reference with examples and troubleshooting.
 
@@ -43,6 +43,7 @@ Complete command reference with examples and troubleshooting.
 - [aifabrix diff](#aifabrix-diff-file1-file2) - Compare two configuration files
 
 ### External Integration
+- [aifabrix wizard](#aifabrix-wizard) - Interactive wizard for creating external systems
 - [aifabrix download](#aifabrix-download-system-key) - Download external system from dataplane
 - [aifabrix test](#aifabrix-test-app) - Run unit tests for external system (local validation)
 - [aifabrix test-integration](#aifabrix-test-integration-app) - Run integration tests via dataplane pipeline API
@@ -707,7 +708,7 @@ After setting developer ID:
 - Check status: `aifabrix status` (shows developer-specific ports)
 
 **See Also:**
-- [Developer Isolation Guide](DEVELOPER-ISOLATION.md) - Complete guide to developer isolation features
+- [Developer Isolation Guide](developer-isolation.md) - Complete guide to developer isolation features
 
 ---
 
@@ -974,7 +975,7 @@ Prompts for: system key, display name, description, system type (openapi/mcp/cus
 **Complete HubSpot example:**
 See `integration/hubspot/` for a complete HubSpot integration with companies, contacts, and deals datasources. Includes OAuth2 authentication, field mappings, and OpenAPI operations.
 
-→ [External Systems Guide](EXTERNAL-SYSTEMS.md) - Complete guide with step-by-step instructions
+→ [External Systems Guide](external-systems.md) - Complete guide with step-by-step instructions
 
 **Flags:**
 - `-p, --port <port>` - Application port (default: 3000, not used for external type)
@@ -1008,7 +1009,7 @@ When using `--type external`, the command creates an external system integration
 - All files are in the same folder for easy viewing and management
 - External systems use the pipeline API for deployment via Miso Controller
 
-→ [External Systems Guide](EXTERNAL-SYSTEMS.md) - Complete guide with HubSpot example
+→ [External Systems Guide](external-systems.md) - Complete guide with HubSpot example
 
 **Environment File Conversion:**
 - Automatically detects existing `.env` file in current directory
@@ -1750,6 +1751,77 @@ After comparing:
 ---
 
 <a id="aifabrix-download-system-key"></a>
+## aifabrix wizard
+
+Interactive wizard for creating external systems.
+
+**What:** Provides an interactive guided workflow for creating external system integrations. The wizard acts as a thin wrapper around the dataplane wizard API - all wizard logic (parsing, type detection, AI generation, validation) is handled by the dataplane server.
+
+**When:** Use when creating new external systems or adding datasources to existing systems. The wizard helps you:
+- Create new external systems from OpenAPI specifications
+- Add datasources to existing systems
+- Generate configurations automatically using AI
+- Validate configurations before deployment
+
+**Usage:**
+```bash
+# Interactive wizard (will prompt for app name)
+aifabrix wizard
+
+# Wizard with app name
+aifabrix wizard --app my-integration
+
+# Wizard with controller and environment
+aifabrix wizard --app my-integration --controller https://controller.example.com --environment dev
+
+# Wizard with direct dataplane URL
+aifabrix wizard --app my-integration --dataplane https://dataplane.example.com
+```
+
+**Options:**
+- `-a, --app <app>` - Application name (if not provided, will prompt)
+- `-c, --controller <url>` - Controller URL
+- `-e, --environment <env>` - Environment (dev, tst, pro), default: dev
+- `--dataplane <url>` - Dataplane URL (overrides controller lookup)
+
+**Wizard Flow:**
+1. **Mode Selection** - Create new system or add datasource
+2. **Source Selection** - OpenAPI file/URL, MCP server, or known platform
+3. **Parse OpenAPI** - Parse specification (if applicable)
+4. **Detect Type** - Automatically detect API type and category
+5. **User Preferences** - Configure intent and features (MCP, ABAC, RBAC)
+6. **Generate Config** - AI-powered configuration generation
+7. **Review & Validate** - Review and optionally edit configurations
+8. **Save Files** - Save all files to `integration/<app-name>/`
+
+**Files Created:**
+- `variables.yaml` - Application variables and external integration configuration
+- `<systemKey>-deploy.json` - System configuration
+- `<systemKey>-deploy-*.json` - Datasource configurations
+- `env.template` - Environment variable template
+- `README.md` - Documentation
+- `application-schema.json` - Single deployment file
+
+**Examples:**
+```bash
+# Create HubSpot integration via wizard
+aifabrix wizard --app hubspot-integration
+# Select: Known platform > HubSpot
+
+# Create from OpenAPI file
+aifabrix wizard --app my-api
+# Select: OpenAPI file > Provide path
+
+# Use wizard when creating external system
+aifabrix create my-integration --type external --wizard
+```
+
+**See Also:**
+- [Wizard Guide](wizard.md) - Detailed wizard documentation
+- [External Systems Guide](external-systems.md) - Manual external system creation
+
+---
+
 ## aifabrix download <system-key>
 
 Download external system from dataplane to local development structure.
@@ -2926,7 +2998,7 @@ Set these keys in `~/.aifabrix/config.yaml`:
   - Example: `aifabrix-secrets: "/path/to/secrets.yaml"`
 - developer-id: Developer ID for port isolation (default: 0)
   - Example: `developer-id: 1` (sets ports to basePort + 100)
-  - See [Developer Isolation](DEVELOPER-ISOLATION.md) for details
+  - See [Developer Isolation](developer-isolation.md) for details
 
 ---
 
@@ -2964,10 +3036,10 @@ aifabrix doctor
 ```
 
 **Documentation:**
-- [Quick Start](QUICK-START.md)
-- [Infrastructure](INFRASTRUCTURE.md)
-- [Configuration](CONFIGURATION.md)
-- [Building](BUILDING.md)
-- [Running](RUNNING.md)
-- [Deploying](DEPLOYING.md)
-- [Developer Isolation](DEVELOPER-ISOLATION.md)
+- [Quick Start](quick-start.md)
+- [Infrastructure](infrastructure.md)
+- [Configuration](configuration.md)
+- [Building](building.md)
+- [Running](running.md)
+- [Deploying](deploying.md)
+- [Developer Isolation](developer-isolation.md)

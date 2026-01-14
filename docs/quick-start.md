@@ -36,7 +36,7 @@ aifabrix up
 
 **First time?** Docker downloads images (takes 2-3 minutes).
 
-→ [What is Infrastructure?](INFRASTRUCTURE.md)
+→ [What is Infrastructure?](infrastructure.md)
 
 ## Step 3: Create Your App
 
@@ -114,7 +114,7 @@ Prompts for: system key, display name, description, system type (openapi/mcp/cus
 
 **Note:** External systems don't require Docker images, ports, or build configuration. They use the pipeline API for deployment via Miso Controller.
 
-→ [External Systems Guide](EXTERNAL-SYSTEMS.md) - Complete guide with HubSpot example
+→ [External Systems Guide](external-systems.md) - Complete guide with HubSpot example
 
 ## Step 4: Review Configuration
 
@@ -164,7 +164,7 @@ DATABASE_PORT=5432
 
 **Have existing .env?** Copy variables here. The SDK converts them to templates.
 
-→ [Configuration Reference](CONFIGURATION.md)
+→ [Configuration Reference](configuration.md)
 
 ### GitHub Actions Workflows (Optional)
 
@@ -191,7 +191,7 @@ If you used `--github`, you'll also have:
 - `NPM_TOKEN` - For publishing packages
 - `CODECOV_TOKEN` - For coverage reporting
 
-→ [GitHub Workflows Guide](GITHUB-WORKFLOWS.md)
+→ [GitHub Workflows Guide](github-workflows.md)
 
 ## Step 5: Build
 
@@ -213,7 +213,7 @@ Place it in your app root - the SDK will use it.
 aifabrix build myapp --force-template
 ```
 
-→ [Building Details](BUILDING.md)
+→ [Building Details](building.md)
 
 ## Step 6: Run
 
@@ -240,7 +240,7 @@ docker logs aifabrix-myapp -f
 docker stop aifabrix-myapp
 ```
 
-→ [Running Details](RUNNING.md)
+→ [Running Details](running.md)
 
 ## Step 7: Register Application
 
@@ -275,9 +275,9 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
    - `MISO_CLIENTSECRET` - From registration
    - `MISO_CONTROLLER_URL` - Controller URL
 
-2. **Set up GitHub Actions workflow** (see [GitHub Workflows Guide](GITHUB-WORKFLOWS.md))
+2. **Set up GitHub Actions workflow** (see [GitHub Workflows Guide](github-workflows.md))
 
-→ [Deployment Guide](DEPLOYING.md)
+→ [Deployment Guide](deploying.md)
 
 ---
 
@@ -315,23 +315,23 @@ integration/
 
 All files are in the same folder for easy viewing and management.
 
-→ [Complete External Systems Guide](EXTERNAL-SYSTEMS.md) - Step-by-step guide with HubSpot example, field mappings, authentication setup, and troubleshooting
+→ [Complete External Systems Guide](external-systems.md) - Step-by-step guide with HubSpot example, field mappings, authentication setup, and troubleshooting
 
 ---
 
 ## Next Steps
 
 ### Learn More
-- [All CLI Commands](CLI-REFERENCE.md) - Complete command reference
-- [Configuration](CONFIGURATION.md) - Detailed config file docs
-- [Building](BUILDING.md) - Custom Dockerfiles and templates
-- [Running](RUNNING.md) - Local development workflow
-- [GitHub Workflows](GITHUB-WORKFLOWS.md) - CI/CD automation setup
-- [Developer Isolation](DEVELOPER-ISOLATION.md) - Run multiple developers on the same machine
+- [All CLI Commands](cli-reference.md) - Complete command reference
+- [Configuration](configuration.md) - Detailed config file docs
+- [Building](building.md) - Custom Dockerfiles and templates
+- [Running](running.md) - Local development workflow
+- [GitHub Workflows](github-workflows.md) - CI/CD automation setup
+- [Developer Isolation](developer-isolation.md) - Run multiple developers on the same machine
 
 ### Install Platform Apps
-- [Keycloak](INFRASTRUCTURE.md#install-keycloak) - Authentication and user management
-- [Miso Controller](INFRASTRUCTURE.md#install-miso-controller) - Azure deployment
+- [Keycloak](infrastructure.md#install-keycloak) - Authentication and user management
+- [Miso Controller](infrastructure.md#install-miso-controller) - Azure deployment
 
 ### Common Tasks
 
@@ -378,7 +378,7 @@ aifabrix doctor
 
 **"Port 5432 already in use"**  
 → Stop other Postgres: `docker stop <container>`  
-→ Or use [Developer Isolation](DEVELOPER-ISOLATION.md) to avoid port conflicts
+→ Or use [Developer Isolation](developer-isolation.md) to avoid port conflicts
 
 **"Infrastructure not running"**  
 → `aifabrix up`
@@ -396,4 +396,4 @@ aifabrix doctor
 → Verify NPM token has publish permissions  
 → Review workflow logs in GitHub Actions tab
 
-→ [More Help](CLI-REFERENCE.md)
+→ [More Help](cli-reference.md)
