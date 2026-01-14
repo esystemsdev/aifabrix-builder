@@ -13,7 +13,7 @@ const os = require('os');
 const yaml = require('js-yaml');
 
 // Mock config and dev-config BEFORE requiring app-run (which requires secrets, which requires config)
-jest.mock('../../../lib/config', () => ({
+jest.mock('../../../lib/core/config', () => ({
   getDeveloperId: jest.fn().mockResolvedValue(1),
   setDeveloperId: jest.fn().mockResolvedValue(),
   getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }),
@@ -54,8 +54,8 @@ jest.mock('child_process', () => {
   };
 });
 
-jest.mock('../../../lib/validator');
-jest.mock('../../../lib/infra');
+jest.mock('../../../lib/validation/validator');
+jest.mock('../../../lib/infrastructure');
 jest.mock('../../../lib/utils/health-check', () => ({
   waitForHealthCheck: jest.fn().mockResolvedValue(true),
   checkHealthEndpoint: jest.fn().mockResolvedValue(true),
@@ -96,7 +96,7 @@ jest.mock('net', () => {
     })
   };
 });
-jest.mock('../../../lib/secrets', () => ({
+jest.mock('../../../lib/core/secrets', () => ({
   generateEnvFile: jest.fn().mockResolvedValue('/path/to/.env'),
   loadSecrets: jest.fn().mockResolvedValue({}),
   resolveKvReferences: jest.fn().mockResolvedValue(''),
@@ -130,10 +130,10 @@ jest.mock('http', () => ({
   })
 }));
 
-const appRun = require('../../../lib/app-run');
-const validator = require('../../../lib/validator');
-const infra = require('../../../lib/infra');
-const secrets = require('../../../lib/secrets');
+const appRun = require('../../../lib/app/run');
+const validator = require('../../../lib/validation/validator');
+const infra = require('../../../lib/infrastructure');
+const secrets = require('../../../lib/core/secrets');
 const healthCheck = require('../../../lib/utils/health-check');
 const composeGenerator = require('../../../lib/utils/compose-generator');
 

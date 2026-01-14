@@ -8,12 +8,12 @@
 
 // Mock all dependencies before requiring wizard
 jest.mock('../../../lib/utils/logger');
-jest.mock('../../../lib/config');
+jest.mock('../../../lib/core/config');
 jest.mock('../../../lib/utils/token-manager');
-jest.mock('../../../lib/datasource-deploy');
+jest.mock('../../../lib/datasource/deploy');
 jest.mock('../../../lib/api/wizard.api');
-jest.mock('../../../lib/wizard-prompts');
-jest.mock('../../../lib/wizard-generator');
+jest.mock('../../../lib/generator/wizard-prompts');
+jest.mock('../../../lib/generator/wizard');
 jest.mock('inquirer');
 jest.mock('ora', () => {
   const mockSpinner = {
@@ -46,12 +46,12 @@ jest.mock('fs', () => ({
 
 const { handleWizard } = require('../../../lib/commands/wizard');
 const logger = require('../../../lib/utils/logger');
-const config = require('../../../lib/config');
+const config = require('../../../lib/core/config');
 const tokenManager = require('../../../lib/utils/token-manager');
-const datasourceDeploy = require('../../../lib/datasource-deploy');
+const datasourceDeploy = require('../../../lib/datasource/deploy');
 const wizardApi = require('../../../lib/api/wizard.api');
-const wizardPrompts = require('../../../lib/wizard-prompts');
-const wizardGenerator = require('../../../lib/wizard-generator');
+const wizardPrompts = require('../../../lib/generator/wizard-prompts');
+const wizardGenerator = require('../../../lib/generator/wizard');
 const inquirer = require('inquirer');
 
 describe('Wizard Command Handler', () => {

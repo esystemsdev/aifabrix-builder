@@ -16,25 +16,25 @@ jest.mock('inquirer', () => ({
   prompt: jest.fn()
 }));
 
-jest.mock('../../../lib/template-validator', () => ({
+jest.mock('../../../lib/validation/template', () => ({
   validateTemplate: jest.fn().mockResolvedValue(true),
   copyTemplateFiles: jest.fn().mockResolvedValue([]),
   copyAppFiles: jest.fn().mockResolvedValue([]),
   listAvailableTemplates: jest.fn().mockResolvedValue([])
 }));
 
-jest.mock('../../../lib/app-config');
-jest.mock('../../../lib/app-prompts');
-jest.mock('../../../lib/env-reader');
-jest.mock('../../../lib/github-generator');
+jest.mock('../../../lib/app/config');
+jest.mock('../../../lib/app/prompts');
+jest.mock('../../../lib/core/env-reader');
+jest.mock('../../../lib/generator/github');
 jest.mock('../../../lib/utils/template-helpers');
 
 const app = require('../../../lib/app');
-const templateValidator = require('../../../lib/template-validator');
-const appConfig = require('../../../lib/app-config');
-const appPrompts = require('../../../lib/app-prompts');
-const envReader = require('../../../lib/env-reader');
-const githubGenerator = require('../../../lib/github-generator');
+const templateValidator = require('../../../lib/validation/template');
+const appConfig = require('../../../lib/app/config');
+const appPrompts = require('../../../lib/app/prompts');
+const envReader = require('../../../lib/core/env-reader');
+const githubGenerator = require('../../../lib/generator/github');
 const templateHelpers = require('../../../lib/utils/template-helpers');
 
 describe('App Module - Uncovered Code Paths', () => {

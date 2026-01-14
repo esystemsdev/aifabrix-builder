@@ -13,13 +13,13 @@ const os = require('os');
 const yaml = require('js-yaml');
 
 // Mock dependencies
-jest.mock('../../lib/config');
+jest.mock('../../lib/core/config');
 jest.mock('../../lib/utils/api');
 jest.mock('../../lib/app', () => ({
   createApp: jest.fn()
 }));
 
-const { getConfig } = require('../../lib/config');
+const { getConfig } = require('../../lib/core/config');
 const { authenticatedApiCall } = require('../../lib/utils/api');
 const { createApp } = require('../../lib/app');
 const { setupAppCommands } = require('../../lib/commands/app');

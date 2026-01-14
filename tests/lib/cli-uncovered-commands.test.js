@@ -11,15 +11,15 @@ jest.mock('../../lib/app', () => ({
   deployApp: jest.fn()
 }));
 
-jest.mock('../../lib/environment-deploy', () => ({
+jest.mock('../../lib/deployment/environment', () => ({
   deployEnvironment: jest.fn()
 }));
 
-jest.mock('../../lib/validator', () => ({
+jest.mock('../../lib/validation/validator', () => ({
   checkEnvironment: jest.fn()
 }));
 
-jest.mock('../../lib/infra', () => ({
+jest.mock('../../lib/infrastructure', () => ({
   checkInfraHealth: jest.fn()
 }));
 
@@ -28,21 +28,21 @@ jest.mock('../../lib/generator', () => ({
   generateDeployJson: jest.fn()
 }));
 
-jest.mock('../../lib/validate', () => ({
+jest.mock('../../lib/validation/validate', () => ({
   validateAppOrFile: jest.fn(),
   displayValidationResults: jest.fn()
 }));
 
-jest.mock('../../lib/diff', () => ({
+jest.mock('../../lib/core/diff', () => ({
   compareFiles: jest.fn(),
   formatDiffOutput: jest.fn()
 }));
 
-jest.mock('../../lib/external-system-download', () => ({
+jest.mock('../../lib/external-system/download', () => ({
   downloadExternalSystem: jest.fn()
 }));
 
-jest.mock('../../lib/external-system-test', () => ({
+jest.mock('../../lib/external-system/test', () => ({
   testExternalSystem: jest.fn(),
   testExternalSystemIntegration: jest.fn(),
   displayTestResults: jest.fn(),
@@ -73,14 +73,14 @@ jest.mock('../../lib/commands/secrets-set', () => ({
 
 const fs = require('fs');
 const app = require('../../lib/app');
-const environmentDeploy = require('../../lib/environment-deploy');
-const validator = require('../../lib/validator');
-const infra = require('../../lib/infra');
+const environmentDeploy = require('../../lib/deployment/environment');
+const validator = require('../../lib/validation/validator');
+const infra = require('../../lib/infrastructure');
 const generator = require('../../lib/generator');
-const validate = require('../../lib/validate');
-const diff = require('../../lib/diff');
-const download = require('../../lib/external-system-download');
-const test = require('../../lib/external-system-test');
+const validate = require('../../lib/validation/validate');
+const diff = require('../../lib/core/diff');
+const download = require('../../lib/external-system/download');
+const test = require('../../lib/external-system/test');
 const cliUtils = require('../../lib/utils/cli-utils');
 const logger = require('../../lib/utils/logger');
 const { handleSecure } = require('../../lib/commands/secure');
@@ -146,7 +146,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(envKey, options) => {
         try {
-          const environmentDeploy = require('../../lib/environment-deploy');
+          const environmentDeploy = require('../../lib/deployment/environment');
           await environmentDeploy.deployEnvironment(envKey, options);
         } catch (error) {
           cliUtils.handleCommandError(error, 'environment deploy');
@@ -165,7 +165,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(envKey, options) => {
         try {
-          const environmentDeploy = require('../../lib/environment-deploy');
+          const environmentDeploy = require('../../lib/deployment/environment');
           await environmentDeploy.deployEnvironment(envKey, options);
         } catch (error) {
           cliUtils.handleCommandError(error, 'environment deploy');
@@ -187,7 +187,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(envKey, options) => {
         try {
-          const environmentDeploy = require('../../lib/environment-deploy');
+          const environmentDeploy = require('../../lib/deployment/environment');
           await environmentDeploy.deployEnvironment(envKey, options);
         } catch (error) {
           cliUtils.handleCommandError(error, 'environment deploy');
@@ -491,7 +491,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(appOrFile) => {
         try {
-          const validate = require('../../lib/validate');
+          const validate = require('../../lib/validation/validate');
           const result = await validate.validateAppOrFile(appOrFile);
           validate.displayValidationResults(result);
           if (!result.valid) {
@@ -515,7 +515,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(appOrFile) => {
         try {
-          const validate = require('../../lib/validate');
+          const validate = require('../../lib/validation/validate');
           const result = await validate.validateAppOrFile(appOrFile);
           validate.displayValidationResults(result);
           if (!result.valid) {
@@ -537,7 +537,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(appOrFile) => {
         try {
-          const validate = require('../../lib/validate');
+          const validate = require('../../lib/validation/validate');
           const result = await validate.validateAppOrFile(appOrFile);
           validate.displayValidationResults(result);
           if (!result.valid) {
@@ -562,7 +562,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(file1, file2) => {
         try {
-          const diff = require('../../lib/diff');
+          const diff = require('../../lib/core/diff');
           const result = await diff.compareFiles(file1, file2);
           diff.formatDiffOutput(result);
           if (!result.identical) {
@@ -586,7 +586,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(file1, file2) => {
         try {
-          const diff = require('../../lib/diff');
+          const diff = require('../../lib/core/diff');
           const result = await diff.compareFiles(file1, file2);
           diff.formatDiffOutput(result);
           if (!result.identical) {
@@ -608,7 +608,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(file1, file2) => {
         try {
-          const diff = require('../../lib/diff');
+          const diff = require('../../lib/core/diff');
           const result = await diff.compareFiles(file1, file2);
           diff.formatDiffOutput(result);
           if (!result.identical) {
@@ -706,7 +706,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(systemKey, options) => {
         try {
-          const download = require('../../lib/external-system-download');
+          const download = require('../../lib/external-system/download');
           await download.downloadExternalSystem(systemKey, options);
         } catch (error) {
           cliUtils.handleCommandError(error, 'download');
@@ -725,7 +725,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(systemKey, options) => {
         try {
-          const download = require('../../lib/external-system-download');
+          const download = require('../../lib/external-system/download');
           await download.downloadExternalSystem(systemKey, options);
         } catch (error) {
           cliUtils.handleCommandError(error, 'download');
@@ -746,7 +746,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(appName, options) => {
         try {
-          const test = require('../../lib/external-system-test');
+          const test = require('../../lib/external-system/test');
           const results = await test.testExternalSystem(appName, options);
           test.displayTestResults(results, options.verbose);
           if (!results.valid) {
@@ -770,7 +770,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(appName, options) => {
         try {
-          const test = require('../../lib/external-system-test');
+          const test = require('../../lib/external-system/test');
           const results = await test.testExternalSystem(appName, options);
           test.displayTestResults(results, options.verbose);
           if (!results.valid) {
@@ -792,7 +792,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(appName, options) => {
         try {
-          const test = require('../../lib/external-system-test');
+          const test = require('../../lib/external-system/test');
           const results = await test.testExternalSystem(appName, options);
           test.displayTestResults(results, options.verbose);
           if (!results.valid) {
@@ -817,7 +817,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(appName, options) => {
         try {
-          const test = require('../../lib/external-system-test');
+          const test = require('../../lib/external-system/test');
           const results = await test.testExternalSystemIntegration(appName, options);
           test.displayIntegrationTestResults(results, options.verbose);
           if (!results.success) {
@@ -841,7 +841,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(appName, options) => {
         try {
-          const test = require('../../lib/external-system-test');
+          const test = require('../../lib/external-system/test');
           const results = await test.testExternalSystemIntegration(appName, options);
           test.displayIntegrationTestResults(results, options.verbose);
           if (!results.success) {
@@ -863,7 +863,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       const handler = async(appName, options) => {
         try {
-          const test = require('../../lib/external-system-test');
+          const test = require('../../lib/external-system/test');
           const results = await test.testExternalSystemIntegration(appName, options);
           test.displayIntegrationTestResults(results, options.verbose);
           if (!results.success) {

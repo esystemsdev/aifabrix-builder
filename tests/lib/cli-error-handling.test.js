@@ -60,11 +60,11 @@ jest.mock('ora', () => {
 });
 
 // Mock the lib modules
-jest.mock('../../lib/secrets');
+jest.mock('../../lib/core/secrets');
 jest.mock('../../lib/generator');
-jest.mock('../../lib/key-generator');
-jest.mock('../../lib/validator');
-jest.mock('../../lib/infra');
+jest.mock('../../lib/core/key-generator');
+jest.mock('../../lib/validation/validator');
+jest.mock('../../lib/infrastructure');
 jest.mock('../../lib/app');
 jest.mock('../../lib/build');
 

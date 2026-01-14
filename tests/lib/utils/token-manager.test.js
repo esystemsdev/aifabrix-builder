@@ -12,7 +12,7 @@ const os = require('os');
 const yaml = require('js-yaml');
 
 // Mock dependencies
-jest.mock('../../../lib/config');
+jest.mock('../../../lib/core/config');
 jest.mock('../../../lib/utils/api');
 jest.mock('../../../lib/utils/logger');
 jest.mock('../../../lib/utils/paths', () => ({
@@ -20,7 +20,7 @@ jest.mock('../../../lib/utils/paths', () => ({
 }));
 
 const tokenManager = require('../../../lib/utils/token-manager');
-const config = require('../../../lib/config');
+const config = require('../../../lib/core/config');
 const api = require('../../../lib/utils/api');
 
 describe('Token Manager Module', () => {

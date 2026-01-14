@@ -22,24 +22,24 @@ jest.mock('../../../lib/utils/logger', () => ({
   warn: jest.fn(),
   error: jest.fn()
 }));
-jest.mock('../../../lib/datasource-validate', () => ({
+jest.mock('../../../lib/datasource/validate', () => ({
   validateDatasourceFile: jest.fn()
 }));
-jest.mock('../../../lib/datasource-list', () => ({
+jest.mock('../../../lib/datasource/list', () => ({
   listDatasources: jest.fn()
 }));
-jest.mock('../../../lib/datasource-diff', () => ({
+jest.mock('../../../lib/datasource/diff', () => ({
   compareDatasources: jest.fn()
 }));
-jest.mock('../../../lib/datasource-deploy', () => ({
+jest.mock('../../../lib/datasource/deploy', () => ({
   deployDatasource: jest.fn()
 }));
 
 const logger = require('../../../lib/utils/logger');
-const { validateDatasourceFile } = require('../../../lib/datasource-validate');
-const { listDatasources } = require('../../../lib/datasource-list');
-const { compareDatasources } = require('../../../lib/datasource-diff');
-const { deployDatasource } = require('../../../lib/datasource-deploy');
+const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+const { listDatasources } = require('../../../lib/datasource/list');
+const { compareDatasources } = require('../../../lib/datasource/diff');
+const { deployDatasource } = require('../../../lib/datasource/deploy');
 
 describe('Datasource Commands Module', () => {
   let program;

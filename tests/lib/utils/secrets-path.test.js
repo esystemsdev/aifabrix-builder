@@ -12,7 +12,7 @@ const os = require('os');
 const yaml = require('js-yaml');
 
 // Mock config BEFORE requiring secrets-path
-jest.mock('../../../lib/config', () => ({
+jest.mock('../../../lib/core/config', () => ({
   getAifabrixSecretsPath: jest.fn().mockResolvedValue(null)
 }));
 
@@ -31,7 +31,7 @@ describe('Secrets Path Module', () => {
     os.homedir.mockReturnValue(mockHomeDir);
     process.cwd = jest.fn().mockReturnValue(mockCwd);
     // Reset canonical path mock before each test to avoid leakage
-    const config = require('../../../lib/config');
+    const config = require('../../../lib/core/config');
     if (config.getAifabrixSecretsPath && typeof config.getAifabrixSecretsPath.mockResolvedValue === 'function') {
       config.getAifabrixSecretsPath.mockResolvedValue(null);
     }
@@ -72,7 +72,7 @@ describe('Secrets Path Module', () => {
     });
 
     it('should use canonical aifabrix-secrets absolute path when build.secrets not set', async() => {
-      const config = require('../../../lib/config');
+      const config = require('../../../lib/core/config');
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       const canonicalPath = '/abs/canonical/secrets.yaml';
       config.getAifabrixSecretsPath.mockResolvedValue(canonicalPath);
@@ -86,7 +86,7 @@ describe('Secrets Path Module', () => {
     });
 
     it('should resolve relative canonical aifabrix-secrets path against cwd', async() => {
-      const config = require('../../../lib/config');
+      const config = require('../../../lib/core/config');
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       const relativeCanonical = './relative/secrets.yaml';
       const resolvedCanonical = path.resolve(mockCwd, relativeCanonical);
@@ -118,7 +118,7 @@ describe('Secrets Path Module', () => {
       const buildSecretsPath = '/custom/secrets.yaml';
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
 
-      const config = require('../../../lib/config');
+      const config = require('../../../lib/core/config');
       config.getAifabrixSecretsPath.mockResolvedValue(buildSecretsPath);
 
       const result = await secretsPath.getActualSecretsPath(undefined, appName);
@@ -132,7 +132,7 @@ describe('Secrets Path Module', () => {
       const appName = 'test-app';
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
 
-      const config = require('../../../lib/config');
+      const config = require('../../../lib/core/config');
       config.getAifabrixSecretsPath.mockResolvedValue(null);
 
       const result = await secretsPath.getActualSecretsPath(undefined, appName);

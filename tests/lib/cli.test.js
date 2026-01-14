@@ -91,32 +91,32 @@ jest.mock('ora', () => {
 });
 
 // Mock the lib modules
-jest.mock('../../lib/secrets');
+jest.mock('../../lib/core/secrets');
 jest.mock('../../lib/generator');
-jest.mock('../../lib/key-generator');
-jest.mock('../../lib/validator');
-jest.mock('../../lib/validate');
-jest.mock('../../lib/infra');
+jest.mock('../../lib/core/key-generator');
+jest.mock('../../lib/validation/validator');
+jest.mock('../../lib/validation/validate');
+jest.mock('../../lib/infrastructure');
 jest.mock('../../lib/app');
 jest.mock('../../lib/build');
 jest.mock('../../lib/utils/cli-utils');
 jest.mock('../../lib/utils/logger');
 jest.mock('../../lib/commands/login');
-jest.mock('../../lib/config');
+jest.mock('../../lib/core/config');
 jest.mock('../../lib/utils/dev-config');
 
 const chalk = require('chalk');
-const secrets = require('../../lib/secrets');
+const secrets = require('../../lib/core/secrets');
 const generator = require('../../lib/generator');
-const keyGenerator = require('../../lib/key-generator');
-const validator = require('../../lib/validator');
-const validate = require('../../lib/validate');
-const infra = require('../../lib/infra');
+const keyGenerator = require('../../lib/core/key-generator');
+const validator = require('../../lib/validation/validator');
+const validate = require('../../lib/validation/validate');
+const infra = require('../../lib/infrastructure');
 const app = require('../../lib/app');
 const cliUtils = require('../../lib/utils/cli-utils');
 const logger = require('../../lib/utils/logger');
 const { handleLogin } = require('../../lib/commands/login');
-const config = require('../../lib/config');
+const config = require('../../lib/core/config');
 const devConfig = require('../../lib/utils/dev-config');
 
 describe('CLI Commands', () => {
@@ -1953,15 +1953,15 @@ describe('CLI Commands', () => {
       Object.assign(logger, freshLogger);
 
       // Re-require other mocked modules that CLI depends on
-      const freshKeyGenerator = require('../../lib/key-generator');
+      const freshKeyGenerator = require('../../lib/core/key-generator');
       const freshApp = require('../../lib/app');
-      const freshSecrets = require('../../lib/secrets');
+      const freshSecrets = require('../../lib/core/secrets');
       const freshGenerator = require('../../lib/generator');
-      const freshValidator = require('../../lib/validator');
-      const freshInfra = require('../../lib/infra');
+      const freshValidator = require('../../lib/validation/validator');
+      const freshInfra = require('../../lib/infrastructure');
       const freshCliUtils = require('../../lib/utils/cli-utils');
       const freshHandleLoginModule = require('../../lib/commands/login');
-      const freshConfig = require('../../lib/config');
+      const freshConfig = require('../../lib/core/config');
       const freshDevConfig = require('../../lib/utils/dev-config');
 
       // Update outer scope references

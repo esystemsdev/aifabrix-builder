@@ -14,7 +14,7 @@ const fs = require('fs');
 jest.mock('fs');
 
 // Mock config BEFORE requiring module
-jest.mock('../../../lib/config', () => ({
+jest.mock('../../../lib/core/config', () => ({
   getSecretsPath: jest.fn().mockResolvedValue(null),
   getDeveloperId: jest.fn().mockResolvedValue('2') // dev-id 2 => +200
 }));

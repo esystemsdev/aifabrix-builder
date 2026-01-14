@@ -6,13 +6,13 @@
  * @version 2.0.0
  */
 
-jest.mock('../../lib/infra');
+jest.mock('../../lib/infrastructure');
 jest.mock('../../lib/app');
 jest.mock('../../lib/generator');
-jest.mock('../../lib/validator');
-jest.mock('../../lib/key-generator');
+jest.mock('../../lib/validation/validator');
+jest.mock('../../lib/core/key-generator');
 // Mock config BEFORE secrets to ensure config mock is available when secrets.js loads
-jest.mock('../../lib/config', () => {
+jest.mock('../../lib/core/config', () => {
   const mockGetDeveloperId = jest.fn().mockResolvedValue(1);
   const mockSetDeveloperId = jest.fn().mockResolvedValue();
   const mockGetConfig = jest.fn().mockResolvedValue({ 'developer-id': 1, environment: 'dev', environments: {} });
@@ -64,7 +64,7 @@ jest.mock('../../lib/utils/secrets-path');
 jest.mock('../../lib/utils/secrets-generator');
 // Mock secrets - must be after config and dev-config mocks
 // Using factory function to prevent loading actual secrets.js which requires config
-jest.mock('../../lib/secrets', () => {
+jest.mock('../../lib/core/secrets', () => {
   // Don't require actual secrets.js here - it would load config
   return {
     generateEnvFile: jest.fn().mockResolvedValue('/path/to/.env'),
@@ -81,13 +81,13 @@ jest.mock('../../lib/utils/token-manager');
 jest.mock('inquirer');
 jest.mock('child_process');
 
-const infra = require('../../lib/infra');
+const infra = require('../../lib/infrastructure');
 const app = require('../../lib/app');
-const secrets = require('../../lib/secrets');
+const secrets = require('../../lib/core/secrets');
 const generator = require('../../lib/generator');
-const validator = require('../../lib/validator');
-const keyGenerator = require('../../lib/key-generator');
-const config = require('../../lib/config');
+const validator = require('../../lib/validation/validator');
+const keyGenerator = require('../../lib/core/key-generator');
+const config = require('../../lib/core/config');
 const { makeApiCall } = require('../../lib/utils/api');
 const tokenManager = require('../../lib/utils/token-manager');
 const inquirer = require('inquirer');
@@ -102,7 +102,7 @@ describe('CLI Comprehensive Tests', () => {
     jest.clearAllMocks();
 
     // Reset config mock to ensure it's working
-    const config = require('../../lib/config');
+    const config = require('../../lib/core/config');
     config.getDeveloperId.mockClear();
     config.getDeveloperId.mockResolvedValue(1);
     config.getConfig.mockClear();

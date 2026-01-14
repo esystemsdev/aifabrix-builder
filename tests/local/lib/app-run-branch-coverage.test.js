@@ -15,13 +15,13 @@ const yaml = require('js-yaml');
 // Ensure fs is not mocked for this test file - we need real filesystem operations
 jest.dontMock('fs');
 
-jest.mock('../../../lib/validator');
-jest.mock('../../../lib/infra');
-jest.mock('../../../lib/secrets');
+jest.mock('../../../lib/validation/validator');
+jest.mock('../../../lib/infrastructure');
+jest.mock('../../../lib/core/secrets');
 
-const validator = require('../../../lib/validator');
-const infra = require('../../../lib/infra');
-const secrets = require('../../../lib/secrets');
+const validator = require('../../../lib/validation/validator');
+const infra = require('../../../lib/infrastructure');
+const secrets = require('../../../lib/core/secrets');
 
 describe('App-Run Branch Coverage Tests', () => {
   let tempDir;

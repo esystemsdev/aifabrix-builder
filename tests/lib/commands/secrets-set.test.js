@@ -29,7 +29,7 @@ jest.mock('../../../lib/utils/logger', () => ({
 }));
 
 // Mock config BEFORE requiring secrets-set command
-jest.mock('../../../lib/config', () => ({
+jest.mock('../../../lib/core/config', () => ({
   getAifabrixSecretsPath: jest.fn()
 }));
 
@@ -44,7 +44,7 @@ const os = require('os');
 const yaml = require('js-yaml');
 
 const { handleSecretsSet } = require('../../../lib/commands/secrets-set');
-const config = require('../../../lib/config');
+const config = require('../../../lib/core/config');
 const logger = require('../../../lib/utils/logger');
 const pathsUtil = require('../../../lib/utils/paths');
 

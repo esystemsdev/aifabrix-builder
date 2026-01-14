@@ -10,7 +10,7 @@ const inquirer = require('inquirer');
 const chalk = require('chalk');
 const ora = require('ora');
 const { handleLogin } = require('../../lib/commands/login');
-const config = require('../../lib/config');
+const config = require('../../lib/core/config');
 const { makeApiCall, pollDeviceCodeToken, displayDeviceCodeInfo } = require('../../lib/utils/api');
 const { initiateDeviceCodeFlow, getToken } = require('../../lib/api/auth.api');
 const tokenManager = require('../../lib/utils/token-manager');
@@ -19,7 +19,7 @@ const logger = require('../../lib/utils/logger');
 // Mock modules
 jest.mock('inquirer');
 jest.mock('ora');
-jest.mock('../../lib/config');
+jest.mock('../../lib/core/config');
 jest.mock('../../lib/utils/api');
 jest.mock('../../lib/api/auth.api');
 jest.mock('../../lib/utils/token-manager');

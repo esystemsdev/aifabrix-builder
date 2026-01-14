@@ -25,7 +25,7 @@ jest.mock('fs', () => {
   };
 });
 
-jest.mock('../../lib/config');
+jest.mock('../../lib/core/config');
 jest.mock('../../lib/utils/api');
 jest.mock('../../lib/utils/token-manager');
 jest.mock('../../lib/utils/local-secrets', () => ({
@@ -35,7 +35,7 @@ jest.mock('../../lib/utils/local-secrets', () => ({
 jest.mock('../../lib/utils/env-template', () => ({
   updateEnvTemplate: jest.fn().mockResolvedValue()
 }));
-jest.mock('../../lib/secrets', () => ({
+jest.mock('../../lib/core/secrets', () => ({
   generateEnvFile: jest.fn().mockResolvedValue('/path/to/.env')
 }));
 jest.mock('../../lib/utils/logger', () => ({
@@ -44,11 +44,11 @@ jest.mock('../../lib/utils/logger', () => ({
   error: jest.fn()
 }));
 
-const { getConfig } = require('../../lib/config');
+const { getConfig } = require('../../lib/core/config');
 const { authenticatedApiCall } = require('../../lib/utils/api');
 const tokenManager = require('../../lib/utils/token-manager');
 const localSecrets = require('../../lib/utils/local-secrets');
-const secrets = require('../../lib/secrets');
+const secrets = require('../../lib/core/secrets');
 const logger = require('../../lib/utils/logger');
 const { setupAppCommands } = require('../../lib/commands/app');
 

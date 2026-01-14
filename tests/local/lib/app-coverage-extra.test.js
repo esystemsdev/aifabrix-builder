@@ -14,8 +14,8 @@ const yaml = require('js-yaml');
 const app = require('../../../lib/app');
 
 jest.mock('inquirer');
-jest.mock('../../../lib/github-generator');
-jest.mock('../../../lib/env-reader', () => {
+jest.mock('../../../lib/generator/github');
+jest.mock('../../../lib/core/env-reader', () => {
   const mockGenerateEnvTemplate = jest.fn();
   return {
     readExistingEnv: jest.fn(),
@@ -24,8 +24,8 @@ jest.mock('../../../lib/env-reader', () => {
 });
 
 const inquirer = require('inquirer');
-const githubGenerator = require('../../../lib/github-generator');
-const envReader = require('../../../lib/env-reader');
+const githubGenerator = require('../../../lib/generator/github');
+const envReader = require('../../../lib/core/env-reader');
 
 describe('Application Module - Additional Coverage', () => {
   let tempDir;

@@ -7,10 +7,10 @@
  */
 
 // Mock validator module
-jest.mock('../../lib/validator');
+jest.mock('../../lib/validation/validator');
 
 // Mock audit logger module
-jest.mock('../../lib/audit-logger', () => ({
+jest.mock('../../lib/core/audit-logger', () => ({
   logApiCall: jest.fn().mockResolvedValue()
 }));
 

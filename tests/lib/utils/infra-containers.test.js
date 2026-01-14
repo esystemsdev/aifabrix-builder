@@ -13,11 +13,11 @@ jest.mock('util', () => ({
 }));
 
 // Mock config module
-jest.mock('../../../lib/config', () => ({
+jest.mock('../../../lib/core/config', () => ({
   getDeveloperId: jest.fn()
 }));
 
-const config = require('../../../lib/config');
+const config = require('../../../lib/core/config');
 const { findContainer, checkServiceWithHealthCheck, checkServiceWithoutHealthCheck } = require('../../../lib/utils/infra-containers');
 
 describe('Infrastructure Container Utilities', () => {

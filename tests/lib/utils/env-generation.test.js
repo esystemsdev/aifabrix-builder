@@ -35,7 +35,7 @@ const mockConfig = {
   CONFIG_FILE: '/mock/config/dir/config.yaml'
 };
 
-jest.mock('../../../lib/config', () => mockConfig);
+jest.mock('../../../lib/core/config', () => mockConfig);
 
 // Mock dev-config
 jest.mock('../../../lib/utils/dev-config', () => ({
@@ -153,7 +153,7 @@ jest.mock('../../../lib/utils/env-endpoints', () => ({
     }
     // Apply developer-id adjustment only for local context
     if (context === 'local') {
-      const config = require('../../../lib/config');
+      const config = require('../../../lib/core/config');
       const devId = await config.getDeveloperId();
       let devIdNum = 0;
       if (devId !== null && devId !== undefined) {
@@ -219,7 +219,7 @@ jest.mock('../../../lib/utils/logger', () => ({
   log: jest.fn()
 }));
 
-const { generateEnvContent } = require('../../../lib/secrets');
+const { generateEnvContent } = require('../../../lib/core/secrets');
 const { adjustLocalEnvPortsInContent } = require('../../../lib/utils/secrets-helpers');
 const { buildEnvVarMap } = require('../../../lib/utils/env-map');
 const { processEnvVariables } = require('../../../lib/utils/env-copy');
@@ -1360,7 +1360,7 @@ MISO_PORT=\${MISO_PORT}`;
 
         mockConfig.getDeveloperId.mockResolvedValue('1');
 
-        const { generateEnvContent } = require('../../../lib/secrets');
+        const { generateEnvContent } = require('../../../lib/core/secrets');
         const result = await generateEnvContent(mockAppName, null, 'local', false);
 
         // Verify PORT uses build.localPort + adjustment: 3010 + 100 = 3110
@@ -1403,7 +1403,7 @@ REDIS_PORT=\${REDIS_PORT}`;
 
         mockConfig.getDeveloperId.mockResolvedValue('2');
 
-        const { generateEnvContent } = require('../../../lib/secrets');
+        const { generateEnvContent } = require('../../../lib/core/secrets');
         const result = await generateEnvContent(mockAppName, null, 'local', false);
 
         // Verify PORT: 3010 + 200 = 3210
@@ -1432,7 +1432,7 @@ REDIS_PORT=\${REDIS_PORT}`;
 
         mockConfig.getDeveloperId.mockResolvedValue('1');
 
-        const { generateEnvContent } = require('../../../lib/secrets');
+        const { generateEnvContent } = require('../../../lib/core/secrets');
         const result = await generateEnvContent(mockAppName, null, 'docker', false);
 
         // Verify DB_PORT: 5432 (no adjustment for docker)
@@ -1460,7 +1460,7 @@ REDIS_PUBLIC_PORT=\${REDIS_PUBLIC_PORT}`;
         fs.existsSync.mockReturnValue(true);
         mockConfig.getDeveloperId.mockResolvedValue('1');
 
-        const { generateEnvContent } = require('../../../lib/secrets');
+        const { generateEnvContent } = require('../../../lib/core/secrets');
         const result = await generateEnvContent(mockAppName, null, 'docker', false);
 
         expect(result).toMatch(/^MISO_PORT=3000$/m);
@@ -1486,7 +1486,7 @@ KEYCLOAK_PUBLIC_PORT=\${KEYCLOAK_PUBLIC_PORT}`;
         fs.existsSync.mockReturnValue(true);
         mockConfig.getDeveloperId.mockResolvedValue('2');
 
-        const { generateEnvContent } = require('../../../lib/secrets');
+        const { generateEnvContent } = require('../../../lib/core/secrets');
         const result = await generateEnvContent(mockAppName, null, 'docker', false);
 
         expect(result).toMatch(/^MISO_PORT=3000$/m);
@@ -1506,7 +1506,7 @@ MISO_PUBLIC_PORT=\${MISO_PUBLIC_PORT}`;
         fs.existsSync.mockReturnValue(true);
         mockConfig.getDeveloperId.mockResolvedValue('0');
 
-        const { generateEnvContent } = require('../../../lib/secrets');
+        const { generateEnvContent } = require('../../../lib/core/secrets');
         const result = await generateEnvContent(mockAppName, null, 'docker', false);
 
         expect(result).toMatch(/^MISO_PORT=3000$/m);
@@ -1560,7 +1560,7 @@ MISO_PUBLIC_PORT=\${MISO_PUBLIC_PORT}`;
         });
         mockConfig.getDeveloperId.mockResolvedValue('01'); // Developer ID 01
 
-        const { generateEnvContent } = require('../../../lib/secrets');
+        const { generateEnvContent } = require('../../../lib/core/secrets');
         const result = await generateEnvContent(mockAppName, null, 'docker', false);
 
         // Bug: Currently returns http://localhost:3000 (wrong)

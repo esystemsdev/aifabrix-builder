@@ -7,7 +7,7 @@
  */
 
 const app = require('../../lib/app');
-const infra = require('../../lib/infra');
+const infra = require('../../lib/infrastructure');
 const cli = require('../../lib/cli');
 
 jest.mock('../../lib/app', () => ({
@@ -18,12 +18,12 @@ jest.mock('../../lib/app', () => ({
   deployApp: jest.fn()
 }));
 
-jest.mock('../../lib/infra', () => ({
+jest.mock('../../lib/infrastructure', () => ({
   startInfra: jest.fn(),
   stopInfra: jest.fn()
 }));
 
-jest.mock('../../lib/deployer', () => ({
+jest.mock('../../lib/deployment/deployer', () => ({
   deployApplication: jest.fn()
 }));
 

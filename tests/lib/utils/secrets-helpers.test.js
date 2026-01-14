@@ -15,7 +15,7 @@ const yaml = require('js-yaml');
 jest.mock('fs');
 
 // Mock config BEFORE requiring module
-jest.mock('../../../lib/config', () => ({
+jest.mock('../../../lib/core/config', () => ({
   getSecretsPath: jest.fn().mockResolvedValue(null)
 }));
 
@@ -58,7 +58,7 @@ describe('formatMissingSecretsFileInfo', () => {
 });
 
 describe('applyCanonicalSecretsOverride', () => {
-  const config = require('../../../lib/config');
+  const config = require('../../../lib/core/config');
 
   beforeEach(() => {
     jest.clearAllMocks();

@@ -39,7 +39,7 @@ jest.mock('../../../lib/utils/logger', () => ({
 }));
 
 // Mock config BEFORE requiring secure command
-jest.mock('../../../lib/config', () => ({
+jest.mock('../../../lib/core/config', () => ({
   getSecretsEncryptionKey: jest.fn(),
   setSecretsEncryptionKey: jest.fn(),
   getSecretsPath: jest.fn(),
@@ -58,7 +58,7 @@ const yaml = require('js-yaml');
 const inquirer = require('inquirer');
 
 const { handleSecure } = require('../../../lib/commands/secure');
-const config = require('../../../lib/config');
+const config = require('../../../lib/core/config');
 const { encryptSecret, isEncrypted } = require('../../../lib/utils/secrets-encryption');
 const logger = require('../../../lib/utils/logger');
 const pathsUtil = require('../../../lib/utils/paths');

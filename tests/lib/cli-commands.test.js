@@ -18,13 +18,13 @@ jest.mock('../../lib/app', () => ({
   deployApp: jest.fn()
 }));
 
-jest.mock('../../lib/infra', () => ({
+jest.mock('../../lib/infrastructure', () => ({
   startInfra: jest.fn(),
   stopInfra: jest.fn(),
   checkInfraHealth: jest.fn()
 }));
 
-jest.mock('../../lib/validator', () => ({
+jest.mock('../../lib/validation/validator', () => ({
   checkEnvironment: jest.fn()
 }));
 

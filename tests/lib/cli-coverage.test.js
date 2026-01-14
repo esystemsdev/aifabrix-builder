@@ -7,12 +7,12 @@
  */
 
 const app = require('../../lib/app');
-const validator = require('../../lib/validator');
+const validator = require('../../lib/validation/validator');
 const cli = require('../../lib/cli');
-const infra = require('../../lib/infra');
-const secrets = require('../../lib/secrets');
+const infra = require('../../lib/infrastructure');
+const secrets = require('../../lib/core/secrets');
 const generator = require('../../lib/generator');
-const keyGenerator = require('../../lib/key-generator');
+const keyGenerator = require('../../lib/core/key-generator');
 
 // Mock dependencies
 jest.mock('../../lib/app', () => ({
@@ -23,7 +23,7 @@ jest.mock('../../lib/app', () => ({
   deployApp: jest.fn()
 }));
 
-jest.mock('../../lib/infra', () => ({
+jest.mock('../../lib/infrastructure', () => ({
   startInfra: jest.fn(),
   stopInfra: jest.fn(),
   stopInfraWithVolumes: jest.fn(),
@@ -32,11 +32,11 @@ jest.mock('../../lib/infra', () => ({
   restartService: jest.fn()
 }));
 
-jest.mock('../../lib/validator', () => ({
+jest.mock('../../lib/validation/validator', () => ({
   checkEnvironment: jest.fn()
 }));
 
-jest.mock('../../lib/secrets', () => ({
+jest.mock('../../lib/core/secrets', () => ({
   generateEnvFile: jest.fn()
 }));
 
@@ -44,7 +44,7 @@ jest.mock('../../lib/generator', () => ({
   generateDeployJsonWithValidation: jest.fn()
 }));
 
-jest.mock('../../lib/key-generator', () => ({
+jest.mock('../../lib/core/key-generator', () => ({
   generateDeploymentKey: jest.fn()
 }));
 

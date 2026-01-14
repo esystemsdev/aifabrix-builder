@@ -16,12 +16,12 @@ const path = require('path');
 jest.mock('fs');
 
 // Mock config module
-jest.mock('../../../lib/config', () => ({
+jest.mock('../../../lib/core/config', () => ({
   CONFIG_FILE: '/mock/home/.aifabrix/config.yaml'
 }));
 
 const { updateContainerPortInEnvFile } = require('../../../lib/utils/env-ports');
-const config = require('../../../lib/config');
+const config = require('../../../lib/core/config');
 
 describe('Environment Port Utilities', () => {
   const envPath = path.join(process.cwd(), 'builder', 'testapp', '.env');

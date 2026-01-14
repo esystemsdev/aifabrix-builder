@@ -55,7 +55,7 @@ jest.mock('child_process', () => ({
   exec: jest.fn()
 }));
 
-jest.mock('../../../lib/push', () => ({
+jest.mock('../../../lib/deployment/push', () => ({
   checkLocalImageExists: jest.fn()
 }));
 
@@ -66,7 +66,7 @@ jest.mock('../../../lib/utils/health-check', () => ({
 }));
 
 // Mock config module to return developer ID 1
-jest.mock('../../../lib/config', () => ({
+jest.mock('../../../lib/core/config', () => ({
   getDeveloperId: jest.fn().mockResolvedValue(1),
   setDeveloperId: jest.fn().mockResolvedValue(),
   getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }),
@@ -87,7 +87,7 @@ jest.mock('../../../lib/utils/build-copy', () => {
   };
 });
 
-const appRun = require('../../../lib/app-run');
+const appRun = require('../../../lib/app/run');
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const net = require('net');
@@ -96,7 +96,7 @@ const path = require('path');
 const os = require('os');
 const http = require('http');
 const healthCheck = require('../../../lib/utils/health-check');
-const config = require('../../../lib/config');
+const config = require('../../../lib/core/config');
 
 describe('Application Run Advanced Tests', () => {
   let tempDir;

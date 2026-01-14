@@ -20,7 +20,7 @@ jest.mock('../../../lib/utils/paths', () => {
   };
 });
 
-const templateValidator = require('../../../lib/template-validator');
+const templateValidator = require('../../../lib/validation/template');
 
 describe('Template Validator Module', () => {
   let tempDir;

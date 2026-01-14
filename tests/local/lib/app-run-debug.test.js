@@ -32,7 +32,7 @@ jest.mock('util', () => {
 // Mock config and devConfig BEFORE requiring app-run (which requires secrets, which requires config)
 // Developer ID: 0 = default infra, > 0 = developer-specific (adds dev{id} prefix)
 // Now we only call config.getDeveloperId() once at the start of runApp, then use config.developerId property
-jest.mock('../../../lib/config', () => ({
+jest.mock('../../../lib/core/config', () => ({
   getDeveloperId: jest.fn().mockResolvedValue(1), // Returns integer: 1 for dev-specific, 0 for default
   setDeveloperId: jest.fn().mockResolvedValue(),
   getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }), // Config object with integer developer-id
@@ -99,15 +99,15 @@ jest.mock('net', () => {
   return mockNet;
 });
 
-jest.mock('../../../lib/validator');
-jest.mock('../../../lib/infra');
+jest.mock('../../../lib/validation/validator');
+jest.mock('../../../lib/infrastructure');
 // Mock secrets dependencies first
 jest.mock('../../../lib/utils/secrets-utils');
 jest.mock('../../../lib/utils/secrets-path');
 jest.mock('../../../lib/utils/secrets-generator');
 // Mock secrets - must be after config and dev-config mocks
 // Using factory function to prevent loading actual secrets.js which requires config
-jest.mock('../../../lib/secrets', () => {
+jest.mock('../../../lib/core/secrets', () => {
   // Don't require actual secrets.js here - it would load config
   return {
     generateEnvFile: jest.fn().mockResolvedValue('/path/to/.env'),
@@ -134,16 +134,16 @@ jest.mock('../../../lib/utils/build-copy', () => {
 });
 jest.mock('../../../lib/utils/logger');
 
-const validator = require('../../../lib/validator');
-const infra = require('../../../lib/infra');
-const secrets = require('../../../lib/secrets');
+const validator = require('../../../lib/validation/validator');
+const infra = require('../../../lib/infrastructure');
+const secrets = require('../../../lib/core/secrets');
 const healthCheck = require('../../../lib/utils/health-check');
 const composeGenerator = require('../../../lib/utils/compose-generator');
 const logger = require('../../../lib/utils/logger');
 
 // Require config and app-run - mocks are already set up via jest.mock()
-const config = require('../../../lib/config');
-const appRun = require('../../../lib/app-run');
+const config = require('../../../lib/core/config');
+const appRun = require('../../../lib/app/run');
 const { promisify } = require('util');
 
 // Get the mock execAsync function

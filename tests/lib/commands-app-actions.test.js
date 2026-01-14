@@ -26,7 +26,7 @@ jest.mock('fs', () => {
   };
 });
 
-jest.mock('../../lib/config');
+jest.mock('../../lib/core/config');
 jest.mock('../../lib/utils/api');
 jest.mock('../../lib/utils/token-manager');
 jest.mock('../../lib/api/environments.api');
@@ -34,7 +34,7 @@ jest.mock('../../lib/app', () => ({
   createApp: jest.fn()
 }));
 
-const { getConfig } = require('../../lib/config');
+const { getConfig } = require('../../lib/core/config');
 const { authenticatedApiCall } = require('../../lib/utils/api');
 const tokenManager = require('../../lib/utils/token-manager');
 const { listEnvironmentApplications } = require('../../lib/api/environments.api');

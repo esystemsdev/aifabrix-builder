@@ -6,7 +6,7 @@
  * @version 2.0.0
  */
 
-jest.mock('../../../lib/audit-logger', () => ({
+jest.mock('../../../lib/core/audit-logger', () => ({
   logDeploymentFailure: jest.fn().mockResolvedValue(),
   maskSensitiveData: jest.fn((msg) => msg)
 }));
@@ -16,7 +16,7 @@ jest.mock('../../../lib/utils/api-error-handler', () => ({
 }));
 
 const { handleDeploymentError, handleDeploymentErrors } = require('../../../lib/utils/deployment-errors');
-const auditLogger = require('../../../lib/audit-logger');
+const auditLogger = require('../../../lib/core/audit-logger');
 const { parseErrorResponse } = require('../../../lib/utils/api-error-handler');
 
 describe('deployment-errors', () => {

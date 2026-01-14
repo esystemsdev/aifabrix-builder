@@ -12,7 +12,7 @@ const path = require('path');
 const os = require('os');
 
 // Mock config and devConfig
-jest.mock('../../lib/config', () => {
+jest.mock('../../lib/core/config', () => {
   const mockGetDeveloperId = jest.fn().mockResolvedValue(1);
   const mockSetDeveloperId = jest.fn().mockResolvedValue();
   const mockGetConfig = jest.fn().mockResolvedValue({ 'developer-id': 1 });
@@ -253,7 +253,7 @@ describe('Compose Generator Module', () => {
       // Use jest.requireActual to get the real fs module, bypassing all mocks
       const realFs = jest.requireActual('fs');
 
-      const configModule = require('../../lib/config');
+      const configModule = require('../../lib/core/config');
       const devId = await configModule.getDeveloperId();
       const actualDevDir = buildCopy.getDevDirectory(appName, devId);
 
@@ -419,7 +419,7 @@ describe('Compose Generator Module', () => {
   describe('readDatabasePasswords (via generateDockerCompose)', () => {
     // Helper to get and ensure dev directory exists using the same devId as generateDockerCompose
     const getAndEnsureDevDir = async(appName = 'test-app') => {
-      const configModule = require('../../lib/config');
+      const configModule = require('../../lib/core/config');
       const devId = await configModule.getDeveloperId();
       const dir = buildCopy.getDevDirectory(appName, devId);
       fsSync.mkdirSync(dir, { recursive: true });
@@ -621,7 +621,7 @@ describe('Compose Generator Module', () => {
   describe('generateDockerCompose', () => {
     // Helper to get and ensure dev directory exists using the same devId as generateDockerCompose
     const getAndEnsureDevDir = async(appName = 'test-app') => {
-      const configModule = require('../../lib/config');
+      const configModule = require('../../lib/core/config');
       const devId = await configModule.getDeveloperId();
       const dir = buildCopy.getDevDirectory(appName, devId);
       fsSync.mkdirSync(dir, { recursive: true });
@@ -711,7 +711,7 @@ describe('Compose Generator Module', () => {
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 
       // Mock developer ID 1
-      const configModule = require('../../lib/config');
+      const configModule = require('../../lib/core/config');
       configModule.getDeveloperId.mockResolvedValue(1);
 
       // Config similar to Keycloak: port 8082, containerPort 8080
@@ -745,7 +745,7 @@ describe('Compose Generator Module', () => {
       fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
 
       // Mock developer ID 0
-      const configModule = require('../../lib/config');
+      const configModule = require('../../lib/core/config');
       configModule.getDeveloperId.mockResolvedValue(0);
 
       // Config similar to Keycloak: port 8082, containerPort 8080
@@ -773,7 +773,7 @@ describe('Compose Generator Module', () => {
 
     it('should handle Python language', async() => {
       // Ensure config.getDeveloperId returns 1 (matching devDir setup)
-      const configModule = require('../../lib/config');
+      const configModule = require('../../lib/core/config');
       configModule.getDeveloperId.mockResolvedValue(1);
 
       // Get the actual dev directory path that generateDockerCompose will use
@@ -793,7 +793,7 @@ describe('Compose Generator Module', () => {
 
     it('should handle config.build.language', async() => {
       // Ensure config.getDeveloperId returns 1 (matching devDir setup)
-      const configModule = require('../../lib/config');
+      const configModule = require('../../lib/core/config');
       configModule.getDeveloperId.mockResolvedValue(1);
 
       // Get the actual dev directory path that generateDockerCompose will use

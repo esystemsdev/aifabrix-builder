@@ -7,20 +7,20 @@
  */
 
 jest.mock('../../lib/app');
-jest.mock('../../lib/infra');
-jest.mock('../../lib/config');
-jest.mock('../../lib/secrets');
+jest.mock('../../lib/infrastructure');
+jest.mock('../../lib/core/config');
+jest.mock('../../lib/core/secrets');
 jest.mock('../../lib/generator');
-jest.mock('../../lib/validator');
-jest.mock('../../lib/key-generator');
+jest.mock('../../lib/validation/validator');
+jest.mock('../../lib/core/key-generator');
 jest.mock('../../lib/utils/api');
 
 const app = require('../../lib/app');
-const infra = require('../../lib/infra');
-const secrets = require('../../lib/secrets');
+const infra = require('../../lib/infrastructure');
+const secrets = require('../../lib/core/secrets');
 const generator = require('../../lib/generator');
-const validator = require('../../lib/validator');
-const keyGenerator = require('../../lib/key-generator');
+const validator = require('../../lib/validation/validator');
+const keyGenerator = require('../../lib/core/key-generator');
 const { makeApiCall } = require('../../lib/utils/api');
 const { setupCommands, validateCommand, handleCommandError } = require('../../lib/cli');
 

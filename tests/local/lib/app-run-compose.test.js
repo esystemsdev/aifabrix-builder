@@ -9,10 +9,10 @@ const os = require('os');
 const yaml = require('js-yaml');
 
 // Mock dependencies
-jest.mock('../../../lib/infra');
-jest.mock('../../../lib/secrets');
-jest.mock('../../../lib/validator');
-jest.mock('../../../lib/config', () => ({
+jest.mock('../../../lib/infrastructure');
+jest.mock('../../../lib/core/secrets');
+jest.mock('../../../lib/validation/validator');
+jest.mock('../../../lib/core/config', () => ({
   getDeveloperId: jest.fn().mockResolvedValue(1),
   setDeveloperId: jest.fn().mockResolvedValue(),
   getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }),
@@ -43,7 +43,7 @@ jest.mock('../../../lib/utils/build-copy', () => {
   };
 });
 
-const appRun = require('../../../lib/app-run');
+const appRun = require('../../../lib/app/run');
 
 describe('app-run Docker Compose Generation', () => {
   let tempDir;

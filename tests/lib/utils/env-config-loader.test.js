@@ -10,9 +10,9 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 const { loadEnvConfig } = require('../../../lib/utils/env-config-loader');
-const config = require('../../../lib/config');
+const config = require('../../../lib/core/config');
 
-jest.mock('../../../lib/config');
+jest.mock('../../../lib/core/config');
 jest.mock('fs');
 
 describe('Environment Config Loader Module', () => {

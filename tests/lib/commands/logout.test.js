@@ -29,7 +29,7 @@ jest.mock('../../../lib/utils/logger', () => ({
 }));
 
 // Mock config BEFORE requiring logout command
-jest.mock('../../../lib/config', () => ({
+jest.mock('../../../lib/core/config', () => ({
   clearDeviceToken: jest.fn(),
   clearAllDeviceTokens: jest.fn(),
   clearClientToken: jest.fn(),
@@ -48,7 +48,7 @@ jest.mock('../../../lib/config', () => ({
 const os = require('os');
 const path = require('path');
 const { handleLogout } = require('../../../lib/commands/logout');
-const config = require('../../../lib/config');
+const config = require('../../../lib/core/config');
 const logger = require('../../../lib/utils/logger');
 
 describe('logout command', () => {
