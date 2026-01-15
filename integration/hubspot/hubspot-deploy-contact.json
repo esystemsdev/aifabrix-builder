@@ -3,7 +3,7 @@
   "displayName": "HubSpot Contact",
   "description": "HubSpot contacts datasource with field mappings for CRM contact data",
   "systemKey": "hubspot",
-  "entityKey": "contact",
+  "entityType": "contact",
   "resourceType": "contact",
   "enabled": true,
   "version": "1.0.0",
@@ -110,84 +110,87 @@
     "required": ["id", "properties"]
   },
   "fieldMappings": {
-    "accessFields": ["email", "country"],
-    "fields": {
+    "dimensions": {
+      "email": "metadata.email",
+      "country": "metadata.country"
+    },
+    "attributes": {
       "id": {
         "expression": "{{id}}",
         "type": "string",
         "description": "Unique contact identifier",
-        "required": true
+        "indexed": true
       },
       "firstName": {
         "expression": "{{properties.firstname.value}} | trim",
         "type": "string",
         "description": "First name",
-        "required": false
+        "indexed": false
       },
       "lastName": {
         "expression": "{{properties.lastname.value}} | trim",
         "type": "string",
         "description": "Last name",
-        "required": false
+        "indexed": false
       },
       "email": {
         "expression": "{{properties.email.value}} | toLower | trim",
         "type": "string",
         "description": "Email address for ABAC filtering",
-        "required": false
+        "indexed": false
       },
       "phone": {
         "expression": "{{properties.phone.value}} | trim",
         "type": "string",
         "description": "Phone number",
-        "required": false
+        "indexed": false
       },
       "company": {
         "expression": "{{properties.company.value}} | trim",
         "type": "string",
         "description": "Associated company name",
-        "required": false
+        "indexed": false
       },
       "jobTitle": {
         "expression": "{{properties.jobtitle.value}} | trim",
         "type": "string",
         "description": "Job title",
-        "required": false
+        "indexed": false
       },
       "address": {
         "expression": "{{properties.address.value}} | trim",
         "type": "string",
         "description": "Street address",
-        "required": false
+        "indexed": false
       },
       "city": {
         "expression": "{{properties.city.value}} | trim",
         "type": "string",
         "description": "City name",
-        "required": false
+        "indexed": false
       },
       "country": {
         "expression": "{{properties.country.value}} | toUpper | trim",
         "type": "string",
         "description": "Country code for ABAC filtering",
-        "required": false
+        "indexed": false
       },
       "createdAt": {
         "expression": "{{properties.createdate.value}}",
         "type": "string",
         "description": "Creation timestamp",
-        "required": false
+        "indexed": false
       },
       "updatedAt": {
         "expression": "{{properties.hs_lastmodifieddate.value}}",
         "type": "string",
         "description": "Last modification timestamp",
-        "required": false
+        "indexed": false
       }
     }
   },
   "exposed": {
-    "fields": ["id", "firstName", "lastName", "email", "phone", "company", "jobTitle", "address", "city", "country", "createdAt", "updatedAt"],
+    "attributes": ["id", "firstName", "lastName", "email", "phone", "company", "jobTitle", "address", "city", "country", "createdAt", "updatedAt"],
     "description": "Exposed fields for HubSpot contacts"
   },
   "openapi": {

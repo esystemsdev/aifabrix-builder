@@ -91,6 +91,18 @@ describe('Compose Generator Module', () => {
     originalExistsSync = fsSync.existsSync;
     originalReadFileSync = fsSync.readFileSync;
 
+    // Ensure fs.promises.readFile uses real implementation for .env files
+    // This is needed because compose-generator uses fs.promises.readFile
+    // We need to ensure the fs module that compose-generator uses has the real promises
+    const realFsPromises = jest.requireActual('fs').promises;
+    const fsModule = require('fs');
+    if (!fsModule.promises) {
+      fsModule.promises = realFsPromises;
+    } else {
+      // Ensure readFile uses real implementation
+      fsModule.promises.readFile = realFsPromises.readFile;
+    }
+
     // Mock existsSync to return true for template paths
     fsSync.existsSync = jest.fn((filePath) => {
       if (filePath === typescriptTemplatePath || filePath === pythonTemplatePath) {

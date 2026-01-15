@@ -80,7 +80,7 @@ describe('External System Generator Module', () => {
   "displayName": "{{datasourceDisplayName}}",
   "description": "{{datasourceDescription}}",
   "systemKey": "{{systemKey}}",
-  "entityKey": "{{entityKey}}",
+  "entityType": "{{entityType}}",
   "resourceType": "{{resourceType}}",
   "enabled": true
 }`;
@@ -182,7 +182,7 @@ describe('External System Generator Module', () => {
       const datasourceKey = 'test-system-entity1';
       const config = {
         systemKey: 'test-system',
-        entityKey: 'entity1',
+        entityType: 'entity1',
         resourceType: 'document',
         systemType: 'openapi',
         datasourceDisplayName: 'Test Entity',
@@ -228,7 +228,7 @@ describe('External System Generator Module', () => {
       expect(parsed.resourceType).toBe('document');
     });
 
-    it('should extract entityKey from datasourceKey if not provided', async() => {
+    it('should extract entityType from datasourceKey if not provided', async() => {
       const datasourceKey = 'test-system-customer';
       const config = {
         systemKey: 'test-system'
@@ -244,7 +244,7 @@ describe('External System Generator Module', () => {
       const writeCall = fsPromises.writeFile.mock.calls[0];
       const writtenContent = writeCall[1];
       const parsed = JSON.parse(writtenContent);
-      expect(parsed.entityKey).toBe('customer');
+      expect(parsed.entityType).toBe('customer');
     });
 
     it('should format datasource display name from key', async() => {

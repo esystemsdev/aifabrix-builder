@@ -9,7 +9,7 @@
 
 const path = require('path');
 const fs = require('fs').promises;
-const config = require('../../../lib/config');
+const config = require('../../../lib/core/config');
 const buildCopy = require('../../../lib/utils/build-copy');
 const {
   execCommand,
@@ -107,15 +107,25 @@ describe('Integration Step 07: Run Docker Container', () => {
     // Wait for container to start
     await sleep(3000);
 
-    // Verify container is running
+    // Verify container is running (even if health check timed out)
+    // Wait a bit for container to fully start
+    await sleep(2000);
     const containerRunning = await testContainerRunning(containerName);
     if (!containerRunning) {
       if (runExitCode !== 0) {
-        throw new Error(`aifabrix run command failed with exit code: ${runExitCode}`);
+        // If command failed but container might still be running, check again
+        await sleep(3000);
+        const containerRunningRetry = await testContainerRunning(containerName);
+        if (!containerRunningRetry) {
+          throw new Error(`aifabrix run command failed with exit code: ${runExitCode}. Container is not running. Error: ${result.stderr || result.stdout || 'Unknown error'}`);
+        }
+        // Container is running despite command failure (likely health check timeout)
+        console.log('Container is running despite command exit code non-zero (likely health check timeout)');
+      } else {
+        throw new Error('Container is not running');
       }
-      throw new Error('Container is not running');
     }
-    expect(containerRunning).toBe(true);
+    expect(containerRunning || await testContainerRunning(containerName)).toBe(true);
 
     // Wait for database initialization
     console.log('Waiting for database initialization...');

@@ -99,7 +99,7 @@ describe('External System Download Module', () => {
     entityKey: 'company',
     resourceType: 'customer',
     fieldMappings: {
-      accessFields: ['country'],
+      dimensions: ['country'],
       fields: {
         country: {
           expression: '{{properties.country.value}} | toUpper | trim',
@@ -116,7 +116,7 @@ describe('External System Download Module', () => {
     entityKey: 'contact',
     resourceType: 'contact',
     fieldMappings: {
-      accessFields: ['email'],
+      dimensions: ['email'],
       fields: {
         email: {
           expression: '{{properties.email.value}} | trim',

@@ -6,9 +6,15 @@
  * @version 2.0.0
  */
 
-const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
+
+// Mock fs to use real implementation to override any other mocks
+jest.mock('fs', () => {
+  return jest.requireActual('fs');
+});
+
+const fsSync = require('fs');
 const fs = require('fs').promises;
 const dockerfileUtils = require('../../../lib/utils/dockerfile-utils');
 

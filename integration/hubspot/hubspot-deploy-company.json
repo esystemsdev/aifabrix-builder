@@ -3,7 +3,7 @@
   "displayName": "HubSpot Company",
   "description": "HubSpot companies datasource with field mappings for CRM company data",
   "systemKey": "hubspot",
-  "entityKey": "company",
+  "entityType": "company",
   "resourceType": "customer",
   "enabled": true,
   "version": "1.0.0",
@@ -94,72 +94,75 @@
     "required": ["id", "properties"]
   },
   "fieldMappings": {
-    "accessFields": ["country", "domain"],
-    "fields": {
+    "dimensions": {
+      "country": "metadata.country",
+      "domain": "metadata.domain"
+    },
+    "attributes": {
       "id": {
         "expression": "{{id}}",
         "type": "string",
         "description": "Unique company identifier",
-        "required": true
+        "indexed": true
       },
       "name": {
         "expression": "{{properties.name.value}} | trim",
         "type": "string",
         "description": "Company name",
-        "required": false
+        "indexed": false
       },
       "domain": {
         "expression": "{{properties.domain.value}} | toLower | trim",
         "type": "string",
         "description": "Company domain for ABAC filtering",
-        "required": false
+        "indexed": false
       },
       "country": {
         "expression": "{{properties.country.value}} | toUpper | trim",
         "type": "string",
         "description": "Country code for ABAC filtering",
-        "required": false
+        "indexed": false
       },
       "city": {
         "expression": "{{properties.city.value}} | trim",
         "type": "string",
         "description": "City name",
-        "required": false
+        "indexed": false
       },
       "industry": {
         "expression": "{{properties.industry.value}} | trim",
         "type": "string",
         "description": "Industry classification",
-        "required": false
+        "indexed": false
       },
       "website": {
         "expression": "{{properties.website.value}} | trim",
         "type": "string",
         "description": "Company website URL",
-        "required": false
+        "indexed": false
       },
       "phone": {
         "expression": "{{properties.phone.value}} | trim",
         "type": "string",
         "description": "Phone number",
-        "required": false
+        "indexed": false
       },
       "createdAt": {
         "expression": "{{properties.createdate.value}}",
         "type": "string",
         "description": "Creation timestamp",
-        "required": false
+        "indexed": false
       },
       "updatedAt": {
         "expression": "{{properties.hs_lastmodifieddate.value}}",
         "type": "string",
         "description": "Last modification timestamp",
-        "required": false
+        "indexed": false
       }
     }
   },
   "exposed": {
-    "fields": ["id", "name", "domain", "country", "city", "industry", "website", "phone", "createdAt", "updatedAt"],
+    "attributes": ["id", "name", "domain", "country", "city", "industry", "website", "phone", "createdAt", "updatedAt"],
     "description": "Exposed fields for HubSpot companies"
   },
   "openapi": {

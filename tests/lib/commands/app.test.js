@@ -51,9 +51,64 @@ jest.mock('fs', () => {
 const logger = require('../../../lib/utils/logger');
 const { updateEnvTemplate } = require('../../../lib/utils/env-template');
 
+// Mock app modules
+jest.mock('../../../lib/app/list', () => ({
+  listApplications: jest.fn()
+}));
+
+jest.mock('../../../lib/app/register', () => ({
+  registerApplication: jest.fn()
+}));
+
+jest.mock('../../../lib/app/rotate-secret', () => ({
+  rotateSecret: jest.fn()
+}));
+
+const { listApplications } = require('../../../lib/app/list');
+const { registerApplication } = require('../../../lib/app/register');
+const { rotateSecret } = require('../../../lib/app/rotate-secret');
+const { setupAppCommands } = require('../../../lib/commands/app');
+
 describe('App Commands Module', () => {
+  let program;
+
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Create a mock Commander program with proper chaining
+    const createCommandGroup = () => {
+      const group = {
+        command: jest.fn(),
+        description: jest.fn().mockReturnThis(),
+        action: jest.fn().mockReturnThis(),
+        requiredOption: jest.fn().mockReturnThis(),
+        option: jest.fn().mockReturnThis()
+      };
+      // Make command return a new subcommand for chaining
+      group.command.mockImplementation((name) => {
+        const subCommand = createCommandGroup();
+        group._subCommands = group._subCommands || [];
+        group._subCommands.push({ name, command: subCommand });
+        return subCommand;
+      });
+      return group;
+    };
+
+    const appGroup = createCommandGroup();
+    program = {
+      command: jest.fn((name) => {
+        if (name === 'app') {
+          program._appGroup = appGroup;
+          return appGroup;
+        }
+        return createCommandGroup();
+      }),
+      description: jest.fn().mockReturnThis(),
+      action: jest.fn().mockReturnThis(),
+      requiredOption: jest.fn().mockReturnThis(),
+      option: jest.fn().mockReturnThis(),
+      _appGroup: appGroup
+    };
   });
 
   describe('updateEnvTemplate', () => {
@@ -117,6 +172,198 @@ describe('App Commands Module', () => {
       await updateEnvTemplate(appKey, clientIdKey, clientSecretKey, controllerUrl);
 
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Could not update env.template'));
+    });
+  });
+
+  describe('setupAppCommands', () => {
+    it('should setup app command group', () => {
+      setupAppCommands(program);
+
+      expect(program.command).toHaveBeenCalledWith('app');
+      expect(program._appGroup.description).toHaveBeenCalledWith('Manage applications');
+    });
+
+    it('should setup register command', () => {
+      setupAppCommands(program);
+
+      const appGroup = program._appGroup;
+      const registerCommand = appGroup._subCommands?.find(c => c.name === 'register <appKey>');
+      expect(registerCommand).toBeDefined();
+      expect(registerCommand.command.description).toHaveBeenCalledWith('Register application and get pipeline credentials');
+      expect(registerCommand.command.requiredOption).toHaveBeenCalledWith('-e, --environment <env>', 'Environment ID or key');
+      expect(registerCommand.command.option).toHaveBeenCalledWith('-c, --controller <url>', 'Controller URL (overrides variables.yaml)');
+      expect(registerCommand.command.option).toHaveBeenCalledWith('-p, --port <port>', 'Application port (default: from variables.yaml)');
+      expect(registerCommand.command.option).toHaveBeenCalledWith('-n, --name <name>', 'Override display name');
+      expect(registerCommand.command.option).toHaveBeenCalledWith('-d, --description <desc>', 'Override description');
+    });
+
+    it('should setup list command', () => {
+      setupAppCommands(program);
+
+      const appGroup = program._appGroup;
+      const listCommand = appGroup._subCommands?.find(c => c.name === 'list');
+      expect(listCommand).toBeDefined();
+      expect(listCommand.command.description).toHaveBeenCalledWith('List applications');
+      expect(listCommand.command.requiredOption).toHaveBeenCalledWith('-e, --environment <env>', 'Environment ID or key');
+      expect(listCommand.command.option).toHaveBeenCalledWith('-c, --controller <url>', 'Controller URL (optional, uses configured controller if not provided)');
+    });
+
+    it('should setup rotate-secret command', () => {
+      setupAppCommands(program);
+
+      const appGroup = program._appGroup;
+      const rotateCommand = appGroup._subCommands?.find(c => c.name === 'rotate-secret <appKey>');
+      expect(rotateCommand).toBeDefined();
+      expect(rotateCommand.command.description).toHaveBeenCalledWith('Rotate pipeline ClientSecret for an application');
+      expect(rotateCommand.command.requiredOption).toHaveBeenCalledWith('-e, --environment <env>', 'Environment ID or key');
+      expect(rotateCommand.command.option).toHaveBeenCalledWith('-c, --controller <url>', 'Controller URL (optional, uses configured controller if not provided)');
+    });
+
+    describe('register command action', () => {
+      it('should call registerApplication with correct parameters', async() => {
+        jest.spyOn(process, 'exit').mockImplementation(() => {});
+
+        registerApplication.mockResolvedValue();
+
+        setupAppCommands(program);
+
+        const appGroup = program._appGroup;
+        const registerCommand = appGroup._subCommands?.find(c => c.name === 'register <appKey>');
+        if (registerCommand) {
+          const actionCall = registerCommand.command.action.mock.calls[0];
+          if (actionCall && typeof actionCall[0] === 'function') {
+            const options = {
+              environment: 'dev',
+              controller: 'http://localhost:3000',
+              port: '3000',
+              name: 'Test App',
+              description: 'Test Description'
+            };
+            await actionCall[0]('test-app', options);
+
+            expect(registerApplication).toHaveBeenCalledWith('test-app', options);
+            expect(process.exit).not.toHaveBeenCalled();
+          }
+        }
+      });
+
+      it('should handle registration errors', async() => {
+        jest.spyOn(process, 'exit').mockImplementation(() => {});
+
+        const error = new Error('Registration failed');
+        registerApplication.mockRejectedValue(error);
+
+        setupAppCommands(program);
+
+        const appGroup = program._appGroup;
+        const registerCommand = appGroup._subCommands?.find(c => c.name === 'register <appKey>');
+        if (registerCommand) {
+          const actionCall = registerCommand.command.action.mock.calls[0];
+          if (actionCall && typeof actionCall[0] === 'function') {
+            const options = { environment: 'dev' };
+            await actionCall[0]('test-app', options);
+
+            expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('❌ Registration failed:'), 'Registration failed');
+            expect(process.exit).toHaveBeenCalledWith(1);
+          }
+        }
+      });
+    });
+
+    describe('list command action', () => {
+      it('should call listApplications with correct parameters', async() => {
+        jest.spyOn(process, 'exit').mockImplementation(() => {});
+
+        listApplications.mockResolvedValue();
+
+        setupAppCommands(program);
+
+        const appGroup = program._appGroup;
+        const listCommand = appGroup._subCommands?.find(c => c.name === 'list');
+        if (listCommand) {
+          const actionCall = listCommand.command.action.mock.calls[0];
+          if (actionCall && typeof actionCall[0] === 'function') {
+            const options = {
+              environment: 'dev',
+              controller: 'http://localhost:3000'
+            };
+            await actionCall[0](options);
+
+            expect(listApplications).toHaveBeenCalledWith(options);
+            expect(process.exit).not.toHaveBeenCalled();
+          }
+        }
+      });
+
+      it('should handle list errors', async() => {
+        jest.spyOn(process, 'exit').mockImplementation(() => {});
+
+        const error = new Error('List failed');
+        listApplications.mockRejectedValue(error);
+
+        setupAppCommands(program);
+
+        const appGroup = program._appGroup;
+        const listCommand = appGroup._subCommands?.find(c => c.name === 'list');
+        if (listCommand) {
+          const actionCall = listCommand.command.action.mock.calls[0];
+          if (actionCall && typeof actionCall[0] === 'function') {
+            const options = { environment: 'dev' };
+            await actionCall[0](options);
+
+            expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('❌ Failed to list applications:'), 'List failed');
+            expect(process.exit).toHaveBeenCalledWith(1);
+          }
+        }
+      });
+    });
+
+    describe('rotate-secret command action', () => {
+      it('should call rotateSecret with correct parameters', async() => {
+        jest.spyOn(process, 'exit').mockImplementation(() => {});
+
+        rotateSecret.mockResolvedValue();
+
+        setupAppCommands(program);
+
+        const appGroup = program._appGroup;
+        const rotateCommand = appGroup._subCommands?.find(c => c.name === 'rotate-secret <appKey>');
+        if (rotateCommand) {
+          const actionCall = rotateCommand.command.action.mock.calls[0];
+          if (actionCall && typeof actionCall[0] === 'function') {
+            const options = {
+              environment: 'dev',
+              controller: 'http://localhost:3000'
+            };
+            await actionCall[0]('test-app', options);
+
+            expect(rotateSecret).toHaveBeenCalledWith('test-app', options);
+            expect(process.exit).not.toHaveBeenCalled();
+          }
+        }
+      });
+
+      it('should handle rotation errors', async() => {
+        jest.spyOn(process, 'exit').mockImplementation(() => {});
+
+        const error = new Error('Rotation failed');
+        rotateSecret.mockRejectedValue(error);
+
+        setupAppCommands(program);
+
+        const appGroup = program._appGroup;
+        const rotateCommand = appGroup._subCommands?.find(c => c.name === 'rotate-secret <appKey>');
+        if (rotateCommand) {
+          const actionCall = rotateCommand.command.action.mock.calls[0];
+          if (actionCall && typeof actionCall[0] === 'function') {
+            const options = { environment: 'dev' };
+            await actionCall[0]('test-app', options);
+
+            expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('❌ Rotation failed:'), 'Rotation failed');
+            expect(process.exit).toHaveBeenCalledWith(1);
+          }
+        }
+      });
     });
   });
 

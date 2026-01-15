@@ -59,6 +59,22 @@ describe('Applications API', () => {
         params: options
       });
     });
+
+    it('should list applications with all options', async() => {
+      const options = { page: 1, pageSize: 10, sort: 'name', filter: 'active', search: 'test' };
+      await applicationsApi.listApplications(controllerUrl, authConfig, options);
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/applications', {
+        params: options
+      });
+    });
+
+    it('should handle listApplications errors', async() => {
+      const error = new Error('List applications failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(applicationsApi.listApplications(controllerUrl, authConfig)).rejects.toThrow('List applications failed');
+    });
   });
 
   describe('createApplication', () => {
@@ -74,6 +90,33 @@ describe('Applications API', () => {
         body: applicationData
       });
     });
+
+    it('should create application with all fields', async() => {
+      const applicationData = {
+        key: 'test-app',
+        displayName: 'Test App',
+        description: 'Test description',
+        url: 'https://example.com',
+        configuration: { key: 'value' }
+      };
+      await applicationsApi.createApplication(controllerUrl, authConfig, applicationData);
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/applications', {
+        body: applicationData
+      });
+    });
+
+    it('should handle createApplication errors', async() => {
+      const applicationData = {
+        key: 'test-app',
+        displayName: 'Test App',
+        configuration: {}
+      };
+      const error = new Error('Create application failed');
+      mockClient.post.mockRejectedValue(error);
+
+      await expect(applicationsApi.createApplication(controllerUrl, authConfig, applicationData)).rejects.toThrow('Create application failed');
+    });
   });
 
   describe('getApplication', () => {
@@ -81,6 +124,13 @@ describe('Applications API', () => {
       await applicationsApi.getApplication(controllerUrl, 'test-app', authConfig);
 
       expect(mockClient.get).toHaveBeenCalledWith('/api/v1/applications/test-app');
+    });
+
+    it('should handle getApplication errors', async() => {
+      const error = new Error('Get application failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(applicationsApi.getApplication(controllerUrl, 'test-app', authConfig)).rejects.toThrow('Get application failed');
     });
   });
 
@@ -93,6 +143,29 @@ describe('Applications API', () => {
         body: updateData
       });
     });
+
+    it('should update application with all fields', async() => {
+      const updateData = {
+        displayName: 'Updated Name',
+        description: 'Updated description',
+        url: 'https://updated.com',
+        configuration: { key: 'value' },
+        status: 'active'
+      };
+      await applicationsApi.updateApplication(controllerUrl, 'test-app', authConfig, updateData);
+
+      expect(mockClient.patch).toHaveBeenCalledWith('/api/v1/applications/test-app', {
+        body: updateData
+      });
+    });
+
+    it('should handle updateApplication errors', async() => {
+      const updateData = { displayName: 'Updated Name' };
+      const error = new Error('Update application failed');
+      mockClient.patch.mockRejectedValue(error);
+
+      await expect(applicationsApi.updateApplication(controllerUrl, 'test-app', authConfig, updateData)).rejects.toThrow('Update application failed');
+    });
   });
 
   describe('deleteApplication', () => {
@@ -101,13 +174,22 @@ describe('Applications API', () => {
 
       expect(mockClient.delete).toHaveBeenCalledWith('/api/v1/applications/test-app');
     });
+
+    it('should handle deleteApplication errors', async() => {
+      const error = new Error('Delete application failed');
+      mockClient.delete.mockRejectedValue(error);
+
+      await expect(applicationsApi.deleteApplication(controllerUrl, 'test-app', authConfig)).rejects.toThrow('Delete application failed');
+    });
   });
 
   describe('registerApplication', () => {
     it('should register application in environment', async() => {
       const envKey = 'dev';
       const registrationData = {
-        appKey: 'test-app',
+        key: 'test-app',
+        displayName: 'Test App',
+        type: 'container',
         configuration: {}
       };
       await applicationsApi.registerApplication(controllerUrl, envKey, authConfig, registrationData);
@@ -116,6 +198,39 @@ describe('Applications API', () => {
         `/api/v1/environments/${envKey}/applications/register`,
         { body: registrationData }
       );
+    });
+
+    it('should register application with all fields', async() => {
+      const envKey = 'dev';
+      const registrationData = {
+        key: 'test-app',
+        displayName: 'Test App',
+        type: 'container',
+        description: 'Test description',
+        registryMode: 'acr',
+        port: 3000,
+        image: 'test-image:latest',
+        externalIntegration: { type: 'webhook' }
+      };
+      await applicationsApi.registerApplication(controllerUrl, envKey, authConfig, registrationData);
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        `/api/v1/environments/${envKey}/applications/register`,
+        { body: registrationData }
+      );
+    });
+
+    it('should handle registerApplication errors', async() => {
+      const envKey = 'dev';
+      const registrationData = {
+        key: 'test-app',
+        displayName: 'Test App',
+        type: 'container'
+      };
+      const error = new Error('Register application failed');
+      mockClient.post.mockRejectedValue(error);
+
+      await expect(applicationsApi.registerApplication(controllerUrl, envKey, authConfig, registrationData)).rejects.toThrow('Register application failed');
     });
   });
 
@@ -137,6 +252,15 @@ describe('Applications API', () => {
         `/api/v1/environments/${envKey}/applications/${appKey}/rotate-secret`
       );
       expect(result).toEqual(response);
+    });
+
+    it('should handle rotateApplicationSecret errors', async() => {
+      const envKey = 'dev';
+      const appKey = 'test-app';
+      const error = new Error('Rotate secret failed');
+      mockClient.post.mockRejectedValue(error);
+
+      await expect(applicationsApi.rotateApplicationSecret(controllerUrl, envKey, appKey, authConfig)).rejects.toThrow('Rotate secret failed');
     });
   });
 });

@@ -342,15 +342,15 @@ describe('External System Display Helpers', () => {
             },
             fieldMappingResults: {
               mappingCount: 5,
-              accessFields: ['field1', 'field2', 'field3']
+              dimensions: { field1: 'metadata.field1', field2: 'metadata.field2', field3: 'metadata.field3' }
             }
           }
         ]
       };
 
       displayIntegrationTestResults(results, true);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Field mappings: 5 fields'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Access fields: field1, field2, field3'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Field mappings: 5 attributes'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Dimensions: field1, field2, field3'));
     });
 
     it('should display verbose field mapping results without access fields', () => {
@@ -373,7 +373,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, true);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Field mappings: 3 fields'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Field mappings: 3 attributes'));
     });
 
     it('should display verbose endpoint test results when configured', () => {
@@ -438,7 +438,7 @@ describe('External System Display Helpers', () => {
             },
             fieldMappingResults: {
               mappingCount: 10,
-              accessFields: ['field1']
+              dimensions: { field1: 'metadata.field1' }
             },
             endpointTestResults: {
               endpointConfigured: true
@@ -449,7 +449,7 @@ describe('External System Display Helpers', () => {
 
       displayIntegrationTestResults(results, true);
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Validation: ✓ Valid'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Field mappings: 10 fields'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Field mappings: 10 attributes'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Endpoint: ✓ Configured'));
     });
   });

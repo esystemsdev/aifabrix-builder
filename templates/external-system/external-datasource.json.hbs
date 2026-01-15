@@ -3,7 +3,7 @@
   "displayName": "{{datasourceDisplayName}}",
   "description": "{{datasourceDescription}}",
   "systemKey": "{{systemKey}}",
-  "entityKey": "{{entityKey}}",
+  "entityType": "{{entityType}}",
   "resourceType": "{{resourceType}}",
   "enabled": true,
   "version": "1.0.0",
@@ -12,41 +12,60 @@
     "properties": {}
   },
   "fieldMappings": {
-    "accessFields": ["id", "name"],
-    "fields": {
+    "dimensions": {
+      {{#if dimensions}}
+      {{#each dimensions}}
+      "{{@key}}": "{{this}}"{{#unless @last}},{{/unless}}
+      {{/each}}
+      {{else}}
+      "country": "metadata.country",
+      "department": "metadata.department"
+      {{/if}}
+    },
+    "attributes": {
+      {{#if attributes}}
+      {{#each attributes}}
+      "{{@key}}": {
+        {{#each this}}
+        "{{@key}}": {{#if (eq @key "indexed")}}{{this}}{{else}}"{{this}}"{{/if}}{{#unless @last}},{{/unless}}
+        {{/each}}
+      }{{#unless @last}},{{/unless}}
+      {{/each}}
+      {{else}}
       "id": {
         "expression": "{{raw.id}}",
         "type": "string",
         "description": "Unique identifier",
-        "required": true
+        "indexed": true
       },
       "name": {
         "expression": "{{raw.name}}",
         "type": "string",
         "description": "Display name",
-        "required": true
+        "indexed": false
       }
+      {{/if}}
     }
   },
   "exposed": {
-    "fields": ["id", "name"],
-    "description": "Exposed fields for {{datasourceDisplayName}}"
+    "attributes": ["id", "name"],
+    "description": "Exposed attributes for {{datasourceDisplayName}}"
   }{{#if (eq systemType "openapi")}},
   "openapi": {
     "enabled": true,
     "documentKey": "{{systemKey}}-api",
     "baseUrl": "https://api.example.com",
-    "resourcePath": "/{{entityKey}}",
+    "resourcePath": "/{{entityType}}",
     "operations": {
       "list": {
-        "operationId": "list{{entityKey}}",
+        "operationId": "list{{entityType}}",
         "method": "GET",
-        "path": "/{{entityKey}}"
+        "path": "/{{entityType}}"
       },
       "get": {
-        "operationId": "get{{entityKey}}",
+        "operationId": "get{{entityType}}",
         "method": "GET",
-        "path": "/{{entityKey}}/{id}"
+        "path": "/{{entityType}}/{id}"
       }
     },
     "autoRbac": true

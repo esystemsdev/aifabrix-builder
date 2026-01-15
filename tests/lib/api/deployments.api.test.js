@@ -65,6 +65,17 @@ describe('Deployments API', () => {
         { body: deployData }
       );
     });
+
+    it('should handle deployApplication errors', async() => {
+      const deployData = {
+        applicationKey: 'test-app',
+        image: 'test-image:latest'
+      };
+      const error = new Error('Deploy application failed');
+      mockClient.post.mockRejectedValue(error);
+
+      await expect(deploymentsApi.deployApplication(controllerUrl, envKey, authConfig, deployData)).rejects.toThrow('Deploy application failed');
+    });
   });
 
   describe('deployEnvironment', () => {
@@ -84,6 +95,41 @@ describe('Deployments API', () => {
         `/api/v1/environments/${envKey}/deploy`,
         { body: deployData }
       );
+    });
+
+    it('should deploy environment with dryRun', async() => {
+      const deployData = {
+        environmentConfig: {
+          key: 'dev',
+          environment: 'dev',
+          preset: 'm',
+          serviceName: 'test-service',
+          location: 'eastus'
+        },
+        dryRun: true
+      };
+      await deploymentsApi.deployEnvironment(controllerUrl, envKey, authConfig, deployData);
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        `/api/v1/environments/${envKey}/deploy`,
+        { body: deployData }
+      );
+    });
+
+    it('should handle deployEnvironment errors', async() => {
+      const deployData = {
+        environmentConfig: {
+          key: 'dev',
+          environment: 'dev',
+          preset: 'm',
+          serviceName: 'test-service',
+          location: 'eastus'
+        }
+      };
+      const error = new Error('Deploy environment failed');
+      mockClient.post.mockRejectedValue(error);
+
+      await expect(deploymentsApi.deployEnvironment(controllerUrl, envKey, authConfig, deployData)).rejects.toThrow('Deploy environment failed');
     });
   });
 
@@ -106,6 +152,31 @@ describe('Deployments API', () => {
         { params: options }
       );
     });
+
+    it('should list deployments with all options', async() => {
+      const options = {
+        page: 1,
+        pageSize: 10,
+        sort: 'created',
+        filter: 'active',
+        search: 'test',
+        status: 'completed',
+        deploymentType: 'application'
+      };
+      await deploymentsApi.listDeployments(controllerUrl, envKey, authConfig, options);
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        `/api/v1/environments/${envKey}/deployments`,
+        { params: options }
+      );
+    });
+
+    it('should handle listDeployments errors', async() => {
+      const error = new Error('List deployments failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(deploymentsApi.listDeployments(controllerUrl, envKey, authConfig)).rejects.toThrow('List deployments failed');
+    });
   });
 
   describe('getDeployment', () => {
@@ -116,6 +187,14 @@ describe('Deployments API', () => {
       expect(mockClient.get).toHaveBeenCalledWith(
         `/api/v1/environments/${envKey}/deployments/${deploymentId}`
       );
+    });
+
+    it('should handle getDeployment errors', async() => {
+      const deploymentId = 'deployment-123';
+      const error = new Error('Get deployment failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(deploymentsApi.getDeployment(controllerUrl, envKey, deploymentId, authConfig)).rejects.toThrow('Get deployment failed');
     });
   });
 
@@ -139,6 +218,14 @@ describe('Deployments API', () => {
         `/api/v1/environments/${envKey}/deployments/${deploymentId}/logs`,
         { params: options }
       );
+    });
+
+    it('should handle getDeploymentLogs errors', async() => {
+      const deploymentId = 'deployment-123';
+      const error = new Error('Get deployment logs failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(deploymentsApi.getDeploymentLogs(controllerUrl, envKey, deploymentId, authConfig)).rejects.toThrow('Get deployment logs failed');
     });
   });
 });

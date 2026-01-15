@@ -9,6 +9,7 @@
 
 const path = require('path');
 const fs = require('fs').promises;
+const config = require('../../../lib/core/config');
 const {
   execCommand,
   testAppExists,
@@ -25,7 +26,14 @@ describe('Integration Step 09: Validate Health Check and Database Connection', (
   const language = process.env.TEST_LANGUAGE || 'python';
   const appName = getLanguageAppName(language);
   const port = getLanguagePort(language);
-  const containerName = `aifabrix-${appName}`;
+
+  // Calculate container name based on developer ID (same as step-07)
+  let containerName;
+  beforeAll(async() => {
+    const developerId = await config.getDeveloperId();
+    const devIdNum = typeof developerId === 'string' ? parseInt(developerId, 10) : developerId;
+    containerName = devIdNum === 0 ? `aifabrix-${appName}` : `aifabrix-dev${developerId}-${appName}`;
+  });
 
   it('should validate health check endpoint and database connection', async() => {
     // Check container is running

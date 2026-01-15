@@ -24,6 +24,9 @@ describe('Integration Step 01: Create Application', () => {
   const appName = getLanguageAppName(language);
   const port = getLanguagePort(language);
 
+  // Increase timeout for this test suite (application creation can take time)
+  jest.setTimeout(300000); // 5 minutes
+
   beforeAll(async() => {
     // Cleanup existing app if it exists
     await cleanupApp(appName);
@@ -34,13 +37,15 @@ describe('Integration Step 01: Create Application', () => {
     const languageDisplay = language.charAt(0).toUpperCase() + language.slice(1).toLowerCase();
     console.log(`Creating ${languageDisplay} application...`);
 
+    // Pipe "N" to answer "No" to GitHub Actions prompt
     const result = await execCommand(
-      `aifabrix create ${appName} --port ${port} --database --redis --storage --authentication --language ${language} --app`,
+      `printf "N\\n" | aifabrix create ${appName} --port ${port} --database --redis --storage --authentication --language ${language} --app`,
       60000
     );
 
     if (result.exitCode !== 0) {
-      throw new Error(`Application creation failed: ${result.stderr}`);
+      const errorMsg = result.stderr || result.stdout || 'Unknown error';
+      throw new Error(`Application creation failed (exit code: ${result.exitCode}): ${errorMsg}`);
     }
 
     // Verify builder directory

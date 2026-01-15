@@ -6,10 +6,16 @@
  * @version 2.0.0
  */
 
-const fs = require('fs').promises;
-const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
+
+// Mock fs to use real implementation to override any other mocks
+jest.mock('fs', () => {
+  return jest.requireActual('fs');
+});
+
+const fs = require('fs').promises;
+const fsSync = require('fs');
 
 // Mock paths module before requiring template-validator
 jest.mock('../../../lib/utils/paths', () => {
@@ -78,60 +84,34 @@ describe('Template Validator Module', () => {
 
   describe('validateTemplate', () => {
     it('should validate existing template with files', async() => {
-      // Use the actual templates directory from the project
-      const projectTemplatesDir = path.join(projectRoot, 'templates', 'applications');
-
-      // Check if miso-controller template exists, otherwise create a test one
+      // Use temp directory for templates to avoid writing to real project templates
+      const tempTemplatesDir = path.join(tempDir, 'templates', 'applications');
       const templateName = 'miso-controller';
-      const templatePath = path.join(projectTemplatesDir, templateName);
+      const templatePath = path.join(tempTemplatesDir, templateName);
 
-      // Ensure templates directory exists - create with explicit parent
-      if (!fsSync.existsSync(projectTemplatesDir)) {
-        const templatesParent = path.dirname(projectTemplatesDir);
-        if (!fsSync.existsSync(templatesParent)) {
-          fsSync.mkdirSync(templatesParent, { recursive: true });
-        }
-        fsSync.mkdirSync(projectTemplatesDir, { recursive: true });
+      // Mock getProjectRoot to return tempDir
+      pathsModule.getProjectRoot.mockReturnValue(tempDir);
+
+      // Create templates directory structure in temp
+      if (!fsSync.existsSync(tempTemplatesDir)) {
+        fsSync.mkdirSync(tempTemplatesDir, { recursive: true });
       }
 
+      // Create test template in temp directory
       if (!fsSync.existsSync(templatePath)) {
-        // Create a test template in project templates directory
-        // Ensure parent directory exists first
-        const parentDir = path.dirname(templatePath);
-        if (!fsSync.existsSync(parentDir)) {
-          fsSync.mkdirSync(parentDir, { recursive: true });
-        }
         fsSync.mkdirSync(templatePath, { recursive: true });
         const testFile = path.join(templatePath, 'test.yaml');
-        try {
-          // Verify directory exists before writing
-          if (!fsSync.existsSync(templatePath)) {
-            throw new Error(`Template directory does not exist: ${templatePath}`);
-          }
-          fsSync.writeFileSync(testFile, 'test content', 'utf8');
-          // Immediately verify file exists
-          if (!fsSync.existsSync(testFile)) {
-            throw new Error(`File was not created immediately after writeFileSync: ${testFile}`);
-          }
-        } catch (writeError) {
-          throw new Error(`Failed to write test file at ${testFile}: ${writeError.message} (code: ${writeError.code || 'N/A'})`);
-        }
+        fsSync.writeFileSync(testFile, 'test content', 'utf8');
       }
 
-      // Verify template was created/exists before testing
-      if (!fsSync.existsSync(templatePath)) {
-        throw new Error(`Template directory was not created at ${templatePath}`);
-      }
-
-      // Verify template has at least one file
+      // Verify template exists and has files - use statSync for reliable check
+      expect(fsSync.statSync(templatePath).isDirectory()).toBe(true);
       const files = fsSync.readdirSync(templatePath);
       const hasFiles = files.some(file => {
         const filePath = path.join(templatePath, file);
         return fsSync.statSync(filePath).isFile() && !file.startsWith('.');
       });
-      if (!hasFiles) {
-        throw new Error(`Template directory exists but has no files: ${templatePath}`);
-      }
+      expect(hasFiles).toBe(true);
 
       // Should pass if template exists
       await expect(templateValidator.validateTemplate(templateName)).resolves.toBe(true);
@@ -145,21 +125,16 @@ describe('Template Validator Module', () => {
     });
 
     it('should throw error if template folder is empty', async() => {
-      // Create empty template directory in project templates/applications
-      const projectTemplatesDir = path.join(projectRoot, 'templates', 'applications');
-      // Ensure parent directory exists
-      if (!fsSync.existsSync(projectTemplatesDir)) {
-        const templatesParent = path.dirname(projectTemplatesDir);
-        if (!fsSync.existsSync(templatesParent)) {
-          fsSync.mkdirSync(templatesParent, { recursive: true });
-        }
-        fsSync.mkdirSync(projectTemplatesDir, { recursive: true });
-      }
-      const emptyTemplatePath = path.join(projectTemplatesDir, 'test-empty');
-      // Ensure parent exists
-      const emptyParent = path.dirname(emptyTemplatePath);
-      if (!fsSync.existsSync(emptyParent)) {
-        fsSync.mkdirSync(emptyParent, { recursive: true });
+      // Use temp directory for templates to avoid writing to real project templates
+      const tempTemplatesDir = path.join(tempDir, 'templates', 'applications');
+      const emptyTemplatePath = path.join(tempTemplatesDir, 'test-empty');
+
+      // Mock getProjectRoot to return tempDir
+      pathsModule.getProjectRoot.mockReturnValue(tempDir);
+
+      // Create empty template directory in temp
+      if (!fsSync.existsSync(tempTemplatesDir)) {
+        fsSync.mkdirSync(tempTemplatesDir, { recursive: true });
       }
       fsSync.mkdirSync(emptyTemplatePath, { recursive: true });
 
@@ -194,8 +169,8 @@ describe('Template Validator Module', () => {
       fsSync.writeFileSync(path.join(hiddenTemplatePath, '.hidden'), 'hidden', 'utf8');
       fsSync.writeFileSync(path.join(hiddenTemplatePath, 'visible.yaml'), 'visible', 'utf8');
 
-      // Verify files exist
-      expect(fsSync.existsSync(path.join(hiddenTemplatePath, 'visible.yaml'))).toBe(true);
+      // Verify files exist - use statSync for reliable check
+      expect(fsSync.statSync(path.join(hiddenTemplatePath, 'visible.yaml')).isFile()).toBe(true);
 
       try {
         // Should pass because visible file exists
@@ -239,16 +214,16 @@ describe('Template Validator Module', () => {
       }
       fsSync.mkdirSync(appPath, { recursive: true });
 
-      // Verify files exist
-      expect(fsSync.existsSync(path.join(testTemplatePath, 'variables.yaml'))).toBe(true);
-      expect(fsSync.existsSync(path.join(testTemplatePath, 'env.template'))).toBe(true);
+      // Verify files exist - use statSync for reliable check
+      expect(fsSync.statSync(path.join(testTemplatePath, 'variables.yaml')).isFile()).toBe(true);
+      expect(fsSync.statSync(path.join(testTemplatePath, 'env.template')).isFile()).toBe(true);
 
       try {
         const copiedFiles = await templateValidator.copyTemplateFiles('test-copy', appPath);
 
         expect(copiedFiles.length).toBe(2);
-        expect(fsSync.existsSync(path.join(appPath, 'variables.yaml'))).toBe(true);
-        expect(fsSync.existsSync(path.join(appPath, 'env.template'))).toBe(true);
+        expect(fsSync.statSync(path.join(appPath, 'variables.yaml')).isFile()).toBe(true);
+        expect(fsSync.statSync(path.join(appPath, 'env.template')).isFile()).toBe(true);
       } finally {
         pathsModule.getProjectRoot.mockClear();
         // Clean up
@@ -285,16 +260,16 @@ describe('Template Validator Module', () => {
         fsSync.mkdirSync(appParent, { recursive: true });
       }
 
-      // Verify files exist
-      expect(fsSync.existsSync(path.join(testTemplatePath, 'variables.yaml'))).toBe(true);
-      expect(fsSync.existsSync(path.join(testTemplatePath, 'config', 'settings.yaml'))).toBe(true);
+      // Verify files exist - use statSync for reliable check
+      expect(fsSync.statSync(path.join(testTemplatePath, 'variables.yaml')).isFile()).toBe(true);
+      expect(fsSync.statSync(path.join(testTemplatePath, 'config', 'settings.yaml')).isFile()).toBe(true);
 
       try {
         const copiedFiles = await templateValidator.copyTemplateFiles('test-subdir', appPath);
 
         expect(copiedFiles.length).toBeGreaterThanOrEqual(2);
-        expect(fsSync.existsSync(path.join(appPath, 'variables.yaml'))).toBe(true);
-        expect(fsSync.existsSync(path.join(appPath, 'config', 'settings.yaml'))).toBe(true);
+        expect(fsSync.statSync(path.join(appPath, 'variables.yaml')).isFile()).toBe(true);
+        expect(fsSync.statSync(path.join(appPath, 'config', 'settings.yaml')).isFile()).toBe(true);
       } finally {
         pathsModule.getProjectRoot.mockClear();
         // Clean up
@@ -338,8 +313,8 @@ describe('Template Validator Module', () => {
         const copiedFiles = await templateValidator.copyTemplateFiles('test-hidden-copy', appPath);
 
         expect(copiedFiles.length).toBe(1);
-        expect(fsSync.existsSync(path.join(appPath, 'visible.yaml'))).toBe(true);
-        expect(fsSync.existsSync(path.join(appPath, '.hidden'))).toBe(false);
+        expect(fsSync.statSync(path.join(appPath, 'visible.yaml')).isFile()).toBe(true);
+        expect(() => fsSync.statSync(path.join(appPath, '.hidden'))).toThrow();
       } finally {
         pathsModule.getProjectRoot.mockClear();
         // Clean up
@@ -413,8 +388,7 @@ describe('Template Validator Module', () => {
       const templatePath = path.join(tempTemplatesDir, 'test-file');
       fsSync.writeFileSync(templatePath, 'not a directory', 'utf8');
 
-      // Verify file exists (not a directory)
-      expect(fsSync.existsSync(templatePath)).toBe(true);
+      // Verify file exists (not a directory) - use statSync for reliable check
       expect(fsSync.statSync(templatePath).isFile()).toBe(true);
 
       try {
@@ -465,8 +439,7 @@ describe('Template Validator Module', () => {
       fsSync.writeFileSync(languageTemplatePath, 'not a directory', 'utf8');
       const appPath = path.join(tempDir, 'builder', 'test-app');
 
-      // Verify file exists (not a directory)
-      expect(fsSync.existsSync(languageTemplatePath)).toBe(true);
+      // Verify file exists (not a directory) - use statSync for reliable check
       expect(fsSync.statSync(languageTemplatePath).isFile()).toBe(true);
 
       try {
@@ -591,20 +564,21 @@ describe('Template Validator Module', () => {
     });
 
     it('should exclude directories without files', async() => {
-      // Use getProjectRoot to find templates (works in CI simulation)
-      const { getProjectRoot } = require('../../../lib/utils/paths');
-      const projectRoot = getProjectRoot();
-      const emptyTemplatePath = path.join(projectRoot, 'templates', 'applications', 'empty-template-test');
+      // Use temp directory for templates to avoid writing to real project templates
+      const tempTemplatesDir = path.join(tempDir, 'templates', 'applications');
+      const emptyTemplatePath = path.join(tempTemplatesDir, 'empty-template-test');
+
+      // Mock getProjectRoot to return tempDir
+      pathsModule.getProjectRoot.mockReturnValue(tempDir);
+
+      // Create empty template directory in temp
+      if (!fsSync.existsSync(tempTemplatesDir)) {
+        fsSync.mkdirSync(tempTemplatesDir, { recursive: true });
+      }
       fsSync.mkdirSync(emptyTemplatePath, { recursive: true });
 
-      try {
-        const templates = await templateValidator.listAvailableTemplates();
-        expect(templates).not.toContain('empty-template-test');
-      } finally {
-        if (fsSync.existsSync(emptyTemplatePath)) {
-          fsSync.rmSync(emptyTemplatePath, { recursive: true, force: true });
-        }
-      }
+      const templates = await templateValidator.listAvailableTemplates();
+      expect(templates).not.toContain('empty-template-test');
     });
   });
 });

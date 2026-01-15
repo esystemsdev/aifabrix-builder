@@ -6,11 +6,17 @@
  * @version 2.0.0
  */
 
-const fs = require('fs').promises;
-const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
+
+// Mock fs to use real implementation to override any other mocks
+jest.mock('fs', () => {
+  return jest.requireActual('fs');
+});
+
+const fs = require('fs').promises;
+const fsSync = require('fs');
 
 // Mock config and dev-config BEFORE requiring app-run (which requires secrets, which requires config)
 jest.mock('../../../lib/core/config', () => ({
@@ -193,17 +199,18 @@ describe('Application Run Module - Additional Coverage', () => {
 
     it('should handle validation failures', async() => {
       const appName = 'test-app';
-      const appPath = path.join('builder', appName);
+      const appPath = path.join(tempDir, 'builder', appName);
       fsSync.mkdirSync(appPath, { recursive: true });
 
       const configPath = path.join(appPath, 'variables.yaml');
-      fsSync.writeFileSync(
-        configPath,
-        yaml.dump({ app: { key: appName, name: 'Test App' }, build: { port: 3000 } })
-      );
+      const configContent = yaml.dump({ app: { key: appName, name: 'Test App' }, build: { port: 3000 } });
+      fsSync.writeFileSync(configPath, configContent, 'utf8');
 
-      // Verify file exists
-      expect(fsSync.existsSync(configPath)).toBe(true);
+      // Verify file exists and was written correctly - use statSync for reliable check
+      expect(fsSync.statSync(configPath).isFile()).toBe(true);
+      const writtenContent = fsSync.readFileSync(configPath, 'utf8');
+      expect(writtenContent).toBeTruthy();
+      expect(writtenContent).toContain('test-app');
 
       validator.validateApplication.mockResolvedValueOnce({
         valid: false,
@@ -217,22 +224,23 @@ describe('Application Run Module - Additional Coverage', () => {
 
     it('should handle missing Docker image', async() => {
       const appName = 'test-app';
-      const appPath = path.join('builder', appName);
+      const appPath = path.join(tempDir, 'builder', appName);
       fsSync.mkdirSync(appPath, { recursive: true });
 
       const testPort = 50000 + Math.floor(Math.random() * 10000);
       const configPath = path.join(appPath, 'variables.yaml');
-      fsSync.writeFileSync(
-        configPath,
-        yaml.dump({
-          app: { key: appName, name: 'Test App' },
-          port: testPort,
-          build: { localPort: testPort }
-        })
-      );
+      const configContent = yaml.dump({
+        app: { key: appName, name: 'Test App' },
+        port: testPort,
+        build: { localPort: testPort }
+      });
+      fsSync.writeFileSync(configPath, configContent, 'utf8');
 
-      // Verify file exists
-      expect(fsSync.existsSync(configPath)).toBe(true);
+      // Verify file exists and was written correctly - use statSync for reliable check
+      expect(fsSync.statSync(configPath).isFile()).toBe(true);
+      const writtenContent = fsSync.readFileSync(configPath, 'utf8');
+      expect(writtenContent).toBeTruthy();
+      expect(writtenContent).toContain('test-app');
 
       validator.validateApplication.mockResolvedValueOnce({
         valid: true,

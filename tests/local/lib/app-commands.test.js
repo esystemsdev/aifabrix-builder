@@ -6,11 +6,17 @@
  * @version 2.0.0
  */
 
-const fs = require('fs').promises;
-const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
+
+// Mock fs to use real implementation to override any other mocks
+jest.mock('fs', () => {
+  return jest.requireActual('fs');
+});
+
+const fs = require('fs').promises;
+const fsSync = require('fs');
 
 // Mock dependencies
 jest.mock('../../../lib/core/config');
@@ -154,18 +160,29 @@ describe('App Commands', () => {
 
       // Create app directory with variables.yaml
       const appDir = path.join(tempDir, 'builder', appName);
+      // Ensure parent directory exists
+      const builderDir = path.dirname(appDir);
+      fsSync.mkdirSync(builderDir, { recursive: true });
       fsSync.mkdirSync(appDir, { recursive: true });
 
-      const variablesYaml = `
-app:
-  key: ${appName}
-  name: Test App
-  description: A test application
-build:
-  language: typescript
-  port: 3000
-`;
-      await fs.writeFile(path.join(appDir, 'variables.yaml'), variablesYaml);
+      const variablesData = {
+        app: {
+          key: appName,
+          name: 'Test App',
+          description: 'A test application'
+        },
+        build: {
+          language: 'typescript',
+          port: 3000
+        }
+      };
+      const variablesYaml = yaml.dump(variablesData);
+      const variablesPath = path.join(appDir, 'variables.yaml');
+      // Use synchronous write to ensure file is created
+      fsSync.writeFileSync(variablesPath, variablesYaml, 'utf-8');
+
+      // Verify file was written before reading
+      expect(fsSync.statSync(variablesPath).isFile()).toBe(true);
 
       // Mock API response
       authenticatedApiCall.mockResolvedValue({
@@ -184,12 +201,16 @@ build:
       });
 
       // Test that variables.yaml is read correctly
-      const variablesContent = await fs.readFile(path.join(appDir, 'variables.yaml'), 'utf-8');
-      const variables = yaml.load(variablesContent);
+      const variablesContent = await fs.readFile(variablesPath, 'utf-8');
+      const loadedVariables = yaml.load(variablesContent);
 
-      expect(variables.app.key).toBe(appName);
-      expect(variables.app.name).toBe('Test App');
-      expect(variables.build.language).toBe('typescript');
+      // Verify YAML was loaded correctly
+      expect(loadedVariables).toBeDefined();
+      expect(loadedVariables).not.toBeNull();
+      expect(loadedVariables.app).toBeDefined();
+      expect(loadedVariables.app.key).toBe(appName);
+      expect(loadedVariables.app.name).toBe('Test App');
+      expect(loadedVariables.build.language).toBe('typescript');
     });
 
     it('should create minimal config if variables.yaml is missing', async() => {

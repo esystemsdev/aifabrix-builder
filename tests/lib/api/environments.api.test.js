@@ -57,6 +57,22 @@ describe('Environments API', () => {
         params: options
       });
     });
+
+    it('should list environments with all options', async() => {
+      const options = { page: 1, pageSize: 10, sort: 'key', filter: 'active', search: 'dev', environment: 'dev', status: 'active' };
+      await environmentsApi.listEnvironments(controllerUrl, authConfig, options);
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/environments', {
+        params: options
+      });
+    });
+
+    it('should handle listEnvironments errors', async() => {
+      const error = new Error('List environments failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(environmentsApi.listEnvironments(controllerUrl, authConfig)).rejects.toThrow('List environments failed');
+    });
   });
 
   describe('createEnvironment', () => {
@@ -72,6 +88,18 @@ describe('Environments API', () => {
         body: environmentData
       });
     });
+
+    it('should handle createEnvironment errors', async() => {
+      const environmentData = {
+        key: 'dev',
+        environment: 'dev',
+        configuration: {}
+      };
+      const error = new Error('Create environment failed');
+      mockClient.post.mockRejectedValue(error);
+
+      await expect(environmentsApi.createEnvironment(controllerUrl, authConfig, environmentData)).rejects.toThrow('Create environment failed');
+    });
   });
 
   describe('getEnvironment', () => {
@@ -79,6 +107,13 @@ describe('Environments API', () => {
       await environmentsApi.getEnvironment(controllerUrl, envKey, authConfig);
 
       expect(mockClient.get).toHaveBeenCalledWith(`/api/v1/environments/${envKey}`);
+    });
+
+    it('should handle getEnvironment errors', async() => {
+      const error = new Error('Get environment failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(environmentsApi.getEnvironment(controllerUrl, envKey, authConfig)).rejects.toThrow('Get environment failed');
     });
   });
 
@@ -91,6 +126,14 @@ describe('Environments API', () => {
         body: updateData
       });
     });
+
+    it('should handle updateEnvironment errors', async() => {
+      const updateData = { configuration: { preset: 'l' } };
+      const error = new Error('Update environment failed');
+      mockClient.patch.mockRejectedValue(error);
+
+      await expect(environmentsApi.updateEnvironment(controllerUrl, envKey, authConfig, updateData)).rejects.toThrow('Update environment failed');
+    });
   });
 
   describe('getEnvironmentStatus', () => {
@@ -98,6 +141,13 @@ describe('Environments API', () => {
       await environmentsApi.getEnvironmentStatus(controllerUrl, envKey, authConfig);
 
       expect(mockClient.get).toHaveBeenCalledWith(`/api/v1/environments/${envKey}/status`);
+    });
+
+    it('should handle getEnvironmentStatus errors', async() => {
+      const error = new Error('Get environment status failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(environmentsApi.getEnvironmentStatus(controllerUrl, envKey, authConfig)).rejects.toThrow('Get environment status failed');
     });
   });
 
@@ -120,6 +170,13 @@ describe('Environments API', () => {
         { params: options }
       );
     });
+
+    it('should handle listEnvironmentDeployments errors', async() => {
+      const error = new Error('List environment deployments failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(environmentsApi.listEnvironmentDeployments(controllerUrl, envKey, authConfig)).rejects.toThrow('List environment deployments failed');
+    });
   });
 
   describe('listEnvironmentRoles', () => {
@@ -127,6 +184,13 @@ describe('Environments API', () => {
       await environmentsApi.listEnvironmentRoles(controllerUrl, envKey, authConfig);
 
       expect(mockClient.get).toHaveBeenCalledWith(`/api/v1/environments/${envKey}/roles`);
+    });
+
+    it('should handle listEnvironmentRoles errors', async() => {
+      const error = new Error('List environment roles failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(environmentsApi.listEnvironmentRoles(controllerUrl, envKey, authConfig)).rejects.toThrow('List environment roles failed');
     });
   });
 
@@ -139,6 +203,14 @@ describe('Environments API', () => {
         `/api/v1/environments/${envKey}/roles/role-value/groups`,
         { body: { groups } }
       );
+    });
+
+    it('should handle updateRoleGroups errors', async() => {
+      const groups = ['group1', 'group2'];
+      const error = new Error('Update role groups failed');
+      mockClient.patch.mockRejectedValue(error);
+
+      await expect(environmentsApi.updateRoleGroups(controllerUrl, envKey, 'role-value', authConfig, groups)).rejects.toThrow('Update role groups failed');
     });
   });
 
@@ -161,6 +233,23 @@ describe('Environments API', () => {
         { params: options }
       );
     });
+
+    it('should list applications with all options', async() => {
+      const options = { page: 1, pageSize: 10, sort: 'key', filter: 'active', status: 'active' };
+      await environmentsApi.listEnvironmentApplications(controllerUrl, envKey, authConfig, options);
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        `/api/v1/environments/${envKey}/applications`,
+        { params: options }
+      );
+    });
+
+    it('should handle listEnvironmentApplications errors', async() => {
+      const error = new Error('List environment applications failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(environmentsApi.listEnvironmentApplications(controllerUrl, envKey, authConfig)).rejects.toThrow('List environment applications failed');
+    });
   });
 
   describe('getEnvironmentApplication', () => {
@@ -178,6 +267,14 @@ describe('Environments API', () => {
       await environmentsApi.getEnvironmentApplication(controllerUrl, envKey, appKey, authConfig);
 
       expect(mockApiClient).toHaveBeenCalledWith(controllerUrl, authConfig);
+    });
+
+    it('should handle getEnvironmentApplication errors', async() => {
+      const appKey = 'test-app';
+      const error = new Error('Get environment application failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(environmentsApi.getEnvironmentApplication(controllerUrl, envKey, appKey, authConfig)).rejects.toThrow('Get environment application failed');
     });
   });
 
@@ -205,6 +302,23 @@ describe('Environments API', () => {
       await environmentsApi.listEnvironmentDatasources(controllerUrl, envKey, authConfig);
 
       expect(mockApiClient).toHaveBeenCalledWith(controllerUrl, authConfig);
+    });
+
+    it('should list datasources with all options', async() => {
+      const options = { page: 1, pageSize: 20, sort: 'key', filter: 'active' };
+      await environmentsApi.listEnvironmentDatasources(controllerUrl, envKey, authConfig, options);
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        `/api/v1/environments/${envKey}/datasources`,
+        { params: options }
+      );
+    });
+
+    it('should handle listEnvironmentDatasources errors', async() => {
+      const error = new Error('List environment datasources failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(environmentsApi.listEnvironmentDatasources(controllerUrl, envKey, authConfig)).rejects.toThrow('List environment datasources failed');
     });
   });
 });

@@ -163,61 +163,10 @@ describe('App-Run Debug Paths and Error Handling', () => {
     const { clearProjectRootCache, getProjectRoot } = require('../../../lib/utils/paths');
     clearProjectRootCache();
 
-    // Ensure templates exist in project root (for CI simulation)
-    // Some code paths might access templates indirectly
-    const projectRoot = getProjectRoot();
-    const typescriptTemplateDir = path.join(projectRoot, 'templates', 'typescript');
-    const pythonTemplateDir = path.join(projectRoot, 'templates', 'python');
-    const typescriptTemplatePath = path.join(typescriptTemplateDir, 'Dockerfile.hbs');
-    const pythonTemplatePath = path.join(pythonTemplateDir, 'Dockerfile.hbs');
-
-    // Create templates directories if they don't exist
-    if (!fsSync.existsSync(typescriptTemplateDir)) {
-      const templatesParent = path.dirname(typescriptTemplateDir);
-      if (!fsSync.existsSync(templatesParent)) {
-        fsSync.mkdirSync(templatesParent, { recursive: true });
-      }
-      fsSync.mkdirSync(typescriptTemplateDir, { recursive: true });
-    }
-    if (!fsSync.existsSync(pythonTemplateDir)) {
-      const templatesParent = path.dirname(pythonTemplateDir);
-      if (!fsSync.existsSync(templatesParent)) {
-        fsSync.mkdirSync(templatesParent, { recursive: true });
-      }
-      fsSync.mkdirSync(pythonTemplateDir, { recursive: true });
-    }
-
-    // Create minimal template files if they don't exist
-    if (!fsSync.existsSync(typescriptTemplatePath)) {
-      const templateContent = `FROM node:20-alpine
-WORKDIR /app
-COPY {{appSourcePath}}package*.json ./
-RUN npm install && npm cache clean --force
-COPY {{appSourcePath}} .
-EXPOSE {{port}}
-{{#if healthCheck}}
-HEALTHCHECK --interval={{healthCheck.interval}}s CMD curl -f http://localhost:{{port}}{{healthCheck.path}} || exit 1
-{{/if}}
-{{#if startupCommand}}
-CMD {{startupCommand}}
-{{/if}}`;
-      fsSync.writeFileSync(typescriptTemplatePath, templateContent, 'utf8');
-    }
-    if (!fsSync.existsSync(pythonTemplatePath)) {
-      const templateContent = `FROM python:3.11-alpine
-WORKDIR /app
-COPY {{appSourcePath}}requirements*.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-COPY {{appSourcePath}} .
-EXPOSE {{port}}
-{{#if healthCheck}}
-HEALTHCHECK --interval={{healthCheck.interval}}s CMD curl -f http://localhost:{{port}}{{healthCheck.path}} || exit 1
-{{/if}}
-{{#if startupCommand}}
-CMD {{startupCommand}}
-{{/if}}`;
-      fsSync.writeFileSync(pythonTemplatePath, templateContent, 'utf8');
-    }
+    // Templates should already exist in the project
+    // In CI, setup.js will create them if needed
+    // In development, templates should exist and we should never write to them
+    // Skip template creation - rely on existing templates or CI setup
 
     // Setup default mocks
     // Create builder directory structure - use realFs to ensure it's actually created
@@ -339,34 +288,24 @@ CMD {{startupCommand}}
     // Ensure directory exists - create recursively with explicit parent creation
     const absoluteBuilderDir = builderDir;
     try {
-      // Ensure parent directory exists first
-      const parentDir = path.dirname(absoluteBuilderDir);
-      if (!realFs.existsSync(parentDir)) {
-        try {
-          realFs.mkdirSync(parentDir, { recursive: true, mode: 0o755 });
-        } catch (parentError) {
-          throw new Error(`Failed to create parent directory ${parentDir}: ${parentError.message}`);
-        }
-        // Verify parent was created
-        if (!realFs.existsSync(parentDir)) {
-          throw new Error(`Parent directory was not created: ${parentDir}`);
-        }
-      }
       // Create directory recursively - mkdirSync with recursive:true creates all parent directories
-      if (!realFs.existsSync(absoluteBuilderDir)) {
-        try {
-          realFs.mkdirSync(absoluteBuilderDir, { recursive: true, mode: 0o755 });
-        } catch (mkdirError) {
+      // This is the most reliable way to ensure all parent directories exist
+      try {
+        realFs.mkdirSync(absoluteBuilderDir, { recursive: true, mode: 0o755 });
+      } catch (mkdirError) {
+        // If directory already exists, that's fine
+        if (mkdirError.code !== 'EEXIST') {
           throw new Error(`Failed to create directory ${absoluteBuilderDir}: ${mkdirError.message} (code: ${mkdirError.code || 'N/A'})`);
         }
       }
-      // Verify it exists and is a directory
-      if (!realFs.existsSync(absoluteBuilderDir)) {
-        throw new Error(`Builder directory was not created: ${absoluteBuilderDir}`);
-      }
-      const dirStat = realFs.statSync(absoluteBuilderDir);
-      if (!dirStat.isDirectory()) {
-        throw new Error(`Path exists but is not a directory: ${absoluteBuilderDir}`);
+      // Verify it exists and is a directory - use statSync which throws if it doesn't exist
+      try {
+        const dirStat = realFs.statSync(absoluteBuilderDir);
+        if (!dirStat.isDirectory()) {
+          throw new Error(`Path exists but is not a directory: ${absoluteBuilderDir}`);
+        }
+      } catch (statError) {
+        throw new Error(`Builder directory was not created: ${absoluteBuilderDir} (${statError.message})`);
       }
     } catch (mkdirError) {
       // Re-throw with more context, but preserve original error message

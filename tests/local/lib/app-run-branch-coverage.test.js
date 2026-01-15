@@ -6,13 +6,18 @@
  * @version 2.0.0
  */
 
-const fs = require('fs').promises;
-const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
 
+// Mock fs to use real implementation to override any other mocks
 // Ensure fs is not mocked for this test file - we need real filesystem operations
+jest.mock('fs', () => {
+  return jest.requireActual('fs');
+});
+
+const fs = require('fs').promises;
+const fsSync = require('fs');
 jest.dontMock('fs');
 
 jest.mock('../../../lib/validation/validator');
@@ -145,7 +150,7 @@ describe('App-Run Branch Coverage Tests', () => {
       const realFs = jest.requireActual('fs');
 
       // Use absolute paths to avoid path resolution issues
-      const appPath = path.join(tempDir, 'builder', appName);
+      const appPath = path.resolve(tempDir, 'builder', appName);
 
       // Ensure directory exists before proceeding
       realFs.mkdirSync(appPath, { recursive: true });
@@ -155,28 +160,24 @@ describe('App-Run Branch Coverage Tests', () => {
         build: { port: 3000 }
       };
 
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.resolve(appPath, 'variables.yaml');
       realFs.writeFileSync(variablesPath, yaml.dump(variables));
 
       // Create .env file
-      const envPath = path.join(appPath, '.env');
+      const envPath = path.resolve(appPath, '.env');
 
       // Write the file using real fs module
       realFs.writeFileSync(envPath, 'PORT=3000', 'utf8');
 
-      // Verify file exists immediately (writeFileSync is synchronous)
-      const fileExists = realFs.existsSync(envPath);
-      expect(fileExists).toBe(true);
-
-      // Read the file content
+      // Verify file exists by reading it directly (most reliable method)
+      // If readFileSync succeeds, the file exists
       const envContent = realFs.readFileSync(envPath, 'utf8').trim();
 
       // The content should be the string we wrote
       expect(envContent).toBe('PORT=3000');
 
-      // Should not call generateEnvFile when .env exists
-      const shouldGenerate = !realFs.existsSync(envPath);
-      expect(shouldGenerate).toBe(false);
+      // Verify file still exists by checking it's a file
+      expect(realFs.statSync(envPath).isFile()).toBe(true);
     });
 
     it('should handle cleanup error in finally block', async() => {

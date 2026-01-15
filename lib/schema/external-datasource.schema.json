@@ -2,12 +2,12 @@
    "$schema":"https://json-schema.org/draft/2020-12/schema",
    "$id":"https://raw.githubusercontent.com/esystemsdev/aifabrix-builder/refs/heads/main/lib/schema/external-datasource.schema.json",
    "title":"External Data Source",
-   "description":"Configuration for AI Fabrix ExternalDataSource entities. Includes metadata schema, ABAC access fields, transformation mappings, OpenAPI/MCP exposure, execution logic, and sync behavior.",
+   "description":"Configuration for AI Fabrix ExternalDataSource entities. Includes metadata schema, data dimensions, transformation mappings, OpenAPI/MCP exposure, execution logic, and sync behavior.",
    "metadata":{
       "key":"external-datasource-schema",
       "name":"External Data Source Configuration Schema",
       "description":"JSON schema for validating ExternalDataSource configuration files",
-      "version":"1.1.0",
+      "version":"2.0.0",
       "type":"schema",
       "category":"integration",
       "author":"AI Fabrix Team",
@@ -15,7 +15,7 @@
       "updatedAt":"2025-01-01T00:00:00Z",
       "compatibility":{
          "minVersion":"1.0.0",
-         "maxVersion":"2.0.0",
+         "maxVersion":"3.0.0",
          "deprecated":false
       },
       "tags":[
@@ -57,6 +57,29 @@
                "Added data quality rules, indexing, and AI context hints"
             ],
             "breaking":false
+         },
+         {
+            "version":"1.2.0",
+            "date":"2026-01-07T00:00:00Z",
+            "changes":[
+               "Added config.abac section with crossSystemSql and crossSystemJson properties",
+               "Added support for unified filter model (JSON and SQL formats) in ABAC cross-system configuration",
+               "Updated CIP filter expression to support both SQL and JSON formats"
+            ],
+            "breaking":false
+         },
+         {
+            "version":"2.0.0",
+            "date":"2026-01-12T00:00:00Z",
+            "changes":[
+               "BREAKING: Renamed fieldMappings.accessFields (array) to fieldMappings.dimensions (object)",
+               "BREAKING: Renamed fieldMappings.fields to fieldMappings.attributes",
+               "BREAKING: Renamed entityKey to entityType",
+               "BREAKING: Renamed exposed.fields to exposed.attributes",
+               "Added indexed property to attribute definitions for database index creation",
+               "Updated descriptions to reflect dimension-first data model approach"
+            ],
+            "breaking":true
          }
       ]
    },
@@ -65,7 +88,8 @@
       "key",
       "displayName",
       "systemKey",
-      "entityKey",
+      "entityType",
+      "resourceType",
       "fieldMappings"
    ],
    "properties":{
@@ -91,21 +115,16 @@
          "pattern":"^[a-z0-9-]+$",
          "description":"Must match ExternalSystem.key"
       },
-      "entityKey":{
+      "entityType":{
          "type":"string",
-         "pattern":"^[a-z0-9-]+$"
+         "pattern":"^[a-z0-9-]+$",
+         "description":"Entity type identifier in external system. Used to determine which type schema to validate against for type-specific configurations (e.g., documentStorage). Examples: 'document' (maps to type/document-storage.json), 'vector' (maps to type/vector-store.json). Required field."
       },
       "resourceType":{
          "type":"string",
-         "enum":[
-            "customer",
-            "contact",
-            "person",
-            "document",
-            "deal"
-         ],
+         "pattern":"^[a-z0-9-]+$",
          "default":"document",
-         "description":"Resource type for the datasource. Maps to database ResourceType enum."
+         "description":"Resource type for the datasource. Represents business entity classification. Common values: customer, contact, person, document, deal, record. Any lowercase alphanumeric string with hyphens is allowed."
       },
       "version":{
          "type":"string",
@@ -119,25 +138,24 @@
       },
       "fieldMappings":{
          "type":"object",
-         "description":"Transformation rules and ABAC accessFields. Replaces older flat mapping schema.",
+         "description":"Transformation rules and data dimensions. Maps canonical dimensions to system attributes.",
          "required":[
-            "accessFields",
-            "fields"
+            "dimensions",
+            "attributes"
          ],
          "properties":{
-            "accessFields":{
-               "type":"array",
-               "description":"Normalized fields used in ABAC engine (must exist in 'fields').",
-               "items":{
-                  "type":"string",
-                  "pattern":"^[a-zA-Z0-9_]+$"
-               },
-               "minItems":1,
-               "uniqueItems":true
-            },
-            "fields":{
+            "dimensions":{
                "type":"object",
-               "description":"Key = normalized field name. Value = transformation expression + type.",
+               "description":"Data dimensions mapping. Key = dimension key (from Dimension Catalog), Value = attribute path (e.g., 'metadata.department').",
+               "additionalProperties":{
+                  "type":"string",
+                  "pattern":"^[a-zA-Z0-9_.]+$"
+               },
+               "minProperties":0
+            },
+            "attributes":{
+               "type":"object",
+               "description":"Key = normalized attribute name. Value = transformation expression + type.",
                "additionalProperties":{
                   "type":"object",
                   "required":[
@@ -160,6 +178,11 @@
                            "array",
                            "object"
                         ]
+                     },
+                     "indexed":{
+                        "type":"boolean",
+                        "default":false,
+                        "description":"If true, creates database index for fast search/filtering. Dimensions are automatically indexed."
                      },
                      "description":{
                         "type":"string",
@@ -210,9 +233,9 @@
          "type":"object",
          "description":"Defines which normalized fields are exposed through MCP/OpenAPI. Ensures ISO27001-safe output and predictable AI model behavior.",
          "properties":{
-            "fields":{
+            "attributes":{
                "type":"array",
-               "description":"List of normalized fields (from fieldMappings.fields keys) that the MCP/OpenAPI layers will return.",
+               "description":"List of normalized attributes (from fieldMappings.attributes keys) that the MCP/OpenAPI layers will return.",
                "items":{
                   "type":"string",
                   "pattern":"^[a-zA-Z0-9_]+$"
@@ -270,7 +293,7 @@
             }
          },
          "required":[
-            "fields"
+            "attributes"
          ],
          "additionalProperties":false
       },
@@ -584,112 +607,42 @@
       },
       "documentStorage":{
          "type":"object",
-         "description":"Document storage configuration (optional, enables vector storage)",
+         "description":"Document storage configuration (optional, enables vector storage). The type schema used for validation is determined by the entityType field (e.g., entityType='document' maps to type/document-storage.json, entityType='vector' maps to type/vector-store.json). This enables multiple datasources with documentStorage in the same system, each potentially using different type schemas based on their entityType.",
          "properties":{
             "enabled":{
                "type":"boolean",
                "default":true
             },
-            "flowiseInstanceId":{
-               "type":"string"
-            },
             "twoPhaseSync":{
                "type":"boolean",
-               "default":true
+               "default":true,
+               "description":"Enable two-phase sync pattern. When true: validates metadata first (quality rules, comparison with DocumentRecords), then fetches binaries via CIP for changed/new documents. When false: fetches binaries directly without metadata validation phase (single-phase sync). Note: Files are never synced back to external systems (one-way sync only: external → dataplane)."
             },
-            "binaryOperation":{
+            "binaryOperationRef":{
+               "type":"string",
+               "default":"get",
+               "description":"CIP operation name for binary document retrieval. Must exist in execution.cip.operations. Defaults to 'get' operation."
+            },
+            "responseType":{
+               "type":"string",
+               "enum":[
+                  "binary",
+                  "base64",
+                  "json"
+               ],
+               "default":"binary",
+               "description":"Expected response type from CIP operation. 'binary' for raw binary data, 'base64' for base64-encoded data, 'json' for JSON response with binary field."
+            },
+            "binaryField":{
+               "type":"string",
+               "description":"Field name containing binary data if responseType is 'json' or 'base64'. Required when responseType is not 'binary'."
+            },
+            "parameterMapping":{
                "type":"object",
-               "description":"Configuration for binary document retrieval. Supports CIP operations or direct HTTP/OpenAPI.",
-               "oneOf":[
-                  {
-                     "required":[
-                        "cipOperationRef",
-                        "responseType"
-                     ],
-                     "properties":{
-                        "cipOperationRef":{
-                           "type":"string",
-                           "description":"Reference to CIP operation (e.g., 'get' or custom operation name)"
-                        },
-                        "responseType":{
-                           "type":"string",
-                           "enum":[
-                              "binary",
-                              "base64",
-                              "json"
-                           ],
-                           "default":"binary"
-                        },
-                        "binaryField":{
-                           "type":"string"
-                        },
-                        "parameterMapping":{
-                           "type":"object",
-                           "additionalProperties":{
-                              "type":"string"
-                           }
-                        }
-                     },
-                     "additionalProperties":false
-                  },
-                  {
-                     "required":[
-                        "path",
-                        "responseType"
-                     ],
-                     "properties":{
-                        "operationId":{
-                           "type":"string"
-                        },
-                        "method":{
-                           "type":"string",
-                           "enum":[
-                              "GET",
-                              "POST",
-                              "PUT"
-                           ],
-                           "default":"GET"
-                        },
-                        "path":{
-                           "type":"string"
-                        },
-                        "queryParameters":{
-                           "type":"object",
-                           "additionalProperties":{
-                              "type":"string"
-                           }
-                        },
-                        "headers":{
-                           "type":"object",
-                           "additionalProperties":{
-                              "type":"string"
-                           }
-                        },
-                        "requestBody":{
-                           "type":"object"
-                        },
-                        "responseType":{
-                           "type":"string",
-                           "enum":[
-                              "binary",
-                              "base64",
-                              "json"
-                           ],
-                           "default":"binary"
-                        },
-                        "binaryField":{
-                           "type":"string"
-                        },
-                        "parameterMapping":{
-                           "type":"object",
-                           "additionalProperties":{
-                              "type":"string"
-                           }
-                        }
-                     },
-                     "additionalProperties":false
-                  }
-               ]
+               "additionalProperties":{
+                  "type":"string"
+               },
+               "description":"Map metadata record fields to CIP operation parameters. Example: {\"fileId\": \"{{key}}\", \"downloadUrl\": \"{{metadata.downloadUrl}}\"}"
             },
             "processing":{
                "type":"object",
@@ -715,8 +668,7 @@
             }
          },
          "required":[
-            "flowiseInstanceId",
-            "binaryOperation"
+            "enabled"
          ],
          "additionalProperties":false
       },
@@ -847,6 +799,53 @@
             }
          },
          "additionalProperties":false
+      },
+      "config":{
+         "type":"object",
+         "description":"Additional configuration for this datasource, including ABAC settings, MCP contracts, and other metadata.",
+         "properties":{
+            "abac":{
+               "type":"object",
+               "description":"Attribute-Based Access Control (ABAC) configuration for this datasource.",
+               "properties":{
+                  "dimensions":{
+                     "type":"object",
+                     "description":"Data dimensions mapping. Key = dimension key (from Dimension Catalog), Value = attribute path. Overrides fieldMappings.dimensions if specified.",
+                     "additionalProperties":{
+                        "type":"string",
+                        "pattern":"^[a-zA-Z0-9_.]+$"
+                     }
+                  },
+                  "crossSystemSql":{
+                     "type":"string",
+                     "description":"Cross-system ABAC filter expression in SQL format (advanced, for developers). Example: 'hubspot-companies.country = user.country AND hubspot-companies.revenue >= 1000000'"
+                  },
+                  "crossSystemJson":{
+                     "type":"object",
+                     "description":"Cross-system ABAC filter expression in JSON format (simple, for UI). Example: {'hubspot-companies.country': {'eq': 'user.country'}, 'hubspot-companies.revenue': {'gte': 1000000}}",
+                     "additionalProperties":{
+                        "type":"object",
+                        "properties":{
+                           "eq":{"type":["string","number","boolean"]},
+                           "ne":{"type":["string","number","boolean"]},
+                           "gt":{"type":["string","number"]},
+                           "lt":{"type":["string","number"]},
+                           "gte":{"type":["string","number"]},
+                           "lte":{"type":["string","number"]},
+                           "in":{"type":"array"},
+                           "nin":{"type":"array"},
+                           "contains":{"type":"string"},
+                           "like":{"type":"string"},
+                           "isNull":{"type":"null"},
+                           "isNotNull":{"type":"null"}
+                        }
+                     }
+                  }
+               },
+               "additionalProperties":false
+            }
+         },
+         "additionalProperties":true
       }
    },
    "$defs":{
@@ -1173,7 +1172,7 @@
                   "useFieldMappings":{
                      "type":"boolean",
                      "default":true,
-                     "description":"If true, apply the datasource.fieldMappings.fields expressions; no inline mapping needed."
+                     "description":"If true, apply the datasource.fieldMappings.attributes expressions; no inline mapping needed."
                   },
                   "inline":{
                      "type":"object",
@@ -1200,15 +1199,27 @@
          "properties":{
             "filter":{
                "type":"object",
-               "description":"Filter mapped records before output. ABAC is applied automatically based on fieldMappings.accessFields.",
+               "description":"Filter mapped records before output. Dimension enforcement is applied automatically based on fieldMappings.dimensions.",
                "properties":{
                   "enforceAbac":{
                      "type":"boolean",
                      "default":true
                   },
                   "expression":{
-                     "type":"string",
-                     "description":"Optional additional filter expression (e.g. '@.status == \"active\"')."
+                     "oneOf":[
+                        {
+                           "type":"string",
+                           "description":"SQL filter expression (e.g., 'status = \"active\" AND revenue >= 1000000')"
+                        },
+                        {
+                           "type":"object",
+                           "description":"JSON filter expression (e.g., {'status': {'eq': 'active'}, 'revenue': {'gte': 1000000}})",
+                           "additionalProperties":{
+                              "type":"object"
+                           }
+                        }
+                     ],
+                     "description":"Optional additional filter expression. Supports both SQL and JSON formats."
                   }
                },
                "additionalProperties":false

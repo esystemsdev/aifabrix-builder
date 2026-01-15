@@ -6,10 +6,16 @@
  * @version 2.0.0
  */
 
-const fs = require('fs').promises;
-const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
+
+// Mock fs to use real implementation to override any other mocks
+jest.mock('fs', () => {
+  return jest.requireActual('fs');
+});
+
+const fs = require('fs').promises;
+const fsSync = require('fs');
 const appReadme = require('../../../lib/app/readme');
 
 describe('Application README Module', () => {
@@ -198,7 +204,7 @@ describe('Application README Module', () => {
 
   describe('generateReadmeMdFile', () => {
     it('should create README.md file when it does not exist', async() => {
-      const appPath = path.join(tempDir, 'test-app');
+      const appPath = path.resolve(tempDir, 'test-app');
       await fs.mkdir(appPath, { recursive: true });
 
       const appName = 'test-app';
@@ -209,9 +215,9 @@ describe('Application README Module', () => {
 
       await appReadme.generateReadmeMdFile(appPath, appName, config);
 
-      const readmePath = path.join(appPath, 'README.md');
-      const exists = await fs.access(readmePath).then(() => true).catch(() => false);
-      expect(exists).toBe(true);
+      const readmePath = path.resolve(appPath, 'README.md');
+      // Use statSync for reliable file existence check
+      expect(fsSync.statSync(readmePath).isFile()).toBe(true);
 
       const content = await fs.readFile(readmePath, 'utf8');
       expect(content).toContain('# Test App Builder');
@@ -239,7 +245,7 @@ describe('Application README Module', () => {
     });
 
     it('should handle errors gracefully', async() => {
-      const appPath = path.join(tempDir, 'test-app');
+      const appPath = path.resolve(tempDir, 'test-app');
       // Don't create directory to trigger error
 
       const appName = 'test-app';
@@ -253,7 +259,7 @@ describe('Application README Module', () => {
     });
 
     it('should generate README with all services enabled', async() => {
-      const appPath = path.join(tempDir, 'test-app');
+      const appPath = path.resolve(tempDir, 'test-app');
       await fs.mkdir(appPath, { recursive: true });
 
       const appName = 'test-app';
@@ -277,7 +283,7 @@ describe('Application README Module', () => {
     });
 
     it('should generate README with no services enabled', async() => {
-      const appPath = path.join(tempDir, 'test-app');
+      const appPath = path.resolve(tempDir, 'test-app');
       await fs.mkdir(appPath, { recursive: true });
 
       const appName = 'test-app';

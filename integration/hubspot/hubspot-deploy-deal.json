@@ -3,7 +3,7 @@
   "displayName": "HubSpot Deal",
   "description": "HubSpot deals datasource with field mappings for CRM deal data",
   "systemKey": "hubspot",
-  "entityKey": "deal",
+  "entityType": "deal",
   "resourceType": "deal",
   "enabled": true,
   "version": "1.0.0",
@@ -131,84 +131,87 @@
     "required": ["id", "properties"]
   },
   "fieldMappings": {
-    "accessFields": ["stage", "pipeline"],
-    "fields": {
+    "dimensions": {
+      "stage": "metadata.stage",
+      "pipeline": "metadata.pipeline"
+    },
+    "attributes": {
       "id": {
         "expression": "{{id}}",
         "type": "string",
         "description": "Unique deal identifier",
-        "required": true
+        "indexed": true
       },
       "dealName": {
         "expression": "{{properties.dealname.value}} | trim",
         "type": "string",
         "description": "Deal name",
-        "required": false
+        "indexed": false
       },
       "amount": {
         "expression": "{{properties.amount.value}}",
         "type": "string",
         "description": "Deal amount",
-        "required": false
+        "indexed": false
       },
       "currency": {
         "expression": "{{properties.deal_currency_code.value}} | toUpper | trim",
         "type": "string",
         "description": "Currency code",
-        "required": false
+        "indexed": false
       },
       "stage": {
         "expression": "{{properties.dealstage.value}} | trim",
         "type": "string",
         "description": "Deal stage for ABAC filtering",
-        "required": false
+        "indexed": false
       },
       "pipeline": {
         "expression": "{{properties.pipeline.value}} | trim",
         "type": "string",
         "description": "Pipeline name for ABAC filtering",
-        "required": false
+        "indexed": false
       },
       "closeDate": {
         "expression": "{{properties.closedate.value}}",
         "type": "string",
         "description": "Expected close date",
-        "required": false
+        "indexed": false
       },
       "dealType": {
         "expression": "{{properties.dealtype.value}} | trim",
         "type": "string",
         "description": "Deal type",
-        "required": false
+        "indexed": false
       },
       "associatedCompany": {
-        "expression": "{{associations.companies.results[0].id}}",
+        "expression": "record_ref:customer",
         "type": "string",
-        "description": "Associated company ID",
-        "required": false
+        "description": "Associated company reference (record reference)",
+        "indexed": false
       },
       "associatedContacts": {
         "expression": "{{associations.contacts.results}}",
         "type": "array",
         "description": "Array of associated contact IDs",
-        "required": false
+        "indexed": false
       },
       "createdAt": {
         "expression": "{{properties.createdate.value}}",
         "type": "string",
         "description": "Creation timestamp",
-        "required": false
+        "indexed": false
       },
       "updatedAt": {
         "expression": "{{properties.hs_lastmodifieddate.value}}",
         "type": "string",
         "description": "Last modification timestamp",
-        "required": false
+        "indexed": false
       }
     }
   },
   "exposed": {
-    "fields": ["id", "dealName", "amount", "currency", "stage", "pipeline", "closeDate", "dealType", "associatedCompany", "associatedContacts", "createdAt", "updatedAt"],
+    "attributes": ["id", "dealName", "amount", "currency", "stage", "pipeline", "closeDate", "dealType", "associatedCompany", "associatedContacts", "createdAt", "updatedAt"],
     "description": "Exposed fields for HubSpot deals"
   },
   "openapi": {

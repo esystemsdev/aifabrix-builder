@@ -6,10 +6,16 @@
  * @version 2.0.0
  */
 
-const fs = require('fs').promises;
-const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
+
+// Mock fs to use real implementation to override any other mocks
+jest.mock('fs', () => {
+  return jest.requireActual('fs');
+});
+
+const fs = require('fs').promises;
+const fsSync = require('fs');
 
 const buildCopy = require('../../../../lib/utils/build-copy');
 
@@ -33,19 +39,23 @@ describe('Build Copy Utilities', () => {
     it('should preserve developerId "01" in target directory', async() => {
       const appName = 'test-app';
       const developerId = '01';
-      // Use absolute path to avoid issues with process.cwd() changes
-      const builderPath = path.resolve(tempDir, 'builder', appName);
-
-      await fs.mkdir(builderPath, { recursive: true });
+      // Use path.join with process.cwd() to match getBuilderPath behavior
+      const builderPath = path.join(process.cwd(), 'builder', appName);
+      // Ensure parent directory exists
+      const builderParent = path.dirname(builderPath);
+      fsSync.mkdirSync(builderParent, { recursive: true });
+      fsSync.mkdirSync(builderPath, { recursive: true });
       await fs.writeFile(path.join(builderPath, 'variables.yaml'), 'test: value');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
-      expect(fsSync.existsSync(builderPath)).toBe(true);
+      // Use statSync for reliable check
+      const dirStats = fsSync.statSync(builderPath);
+      expect(dirStats.isDirectory()).toBe(true);
 
       const devDir = await buildCopy.copyBuilderToDevDirectory(appName, developerId);
       const expectedPath = path.join(tempDir, '.aifabrix', 'applications-dev-01');
       expect(devDir).toBe(expectedPath);
-      expect(fsSync.existsSync(path.join(devDir, 'variables.yaml'))).toBe(true);
+      expect(fsSync.statSync(path.join(devDir, 'variables.yaml')).isFile()).toBe(true);
     });
   });
 
@@ -62,16 +72,19 @@ describe('Build Copy Utilities', () => {
     it('should copy builder directory to developer-specific directory for dev > 0', async() => {
       const appName = 'test-app';
       const developerId = 1;
-      // Use absolute path to avoid issues with process.cwd() changes
-      const builderPath = path.resolve(tempDir, 'builder', appName);
-
-      // Create builder directory with files
-      await fs.mkdir(builderPath, { recursive: true });
+      // Use path.join with process.cwd() to match getBuilderPath behavior
+      const builderPath = path.join(process.cwd(), 'builder', appName);
+      // Ensure parent directory exists
+      const builderParent = path.dirname(builderPath);
+      fsSync.mkdirSync(builderParent, { recursive: true });
+      // Create builder directory with files (use sync to ensure it's created)
+      fsSync.mkdirSync(builderPath, { recursive: true });
       await fs.writeFile(path.join(builderPath, 'variables.yaml'), 'test: value');
       await fs.writeFile(path.join(builderPath, 'Dockerfile'), 'FROM node:18');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
-      expect(fsSync.existsSync(builderPath)).toBe(true);
+      // Use statSync for reliable check
+      expect(fsSync.statSync(builderPath).isDirectory()).toBe(true);
 
       const devDir = await buildCopy.copyBuilderToDevDirectory(appName, developerId);
 
@@ -84,8 +97,8 @@ describe('Build Copy Utilities', () => {
       // Verify files were copied
       const variablesPath = path.join(devDir, 'variables.yaml');
       const dockerfilePath = path.join(devDir, 'Dockerfile');
-      expect(fsSync.existsSync(variablesPath)).toBe(true);
-      expect(fsSync.existsSync(dockerfilePath)).toBe(true);
+      expect(fsSync.statSync(variablesPath).isFile()).toBe(true);
+      expect(fsSync.statSync(dockerfilePath).isFile()).toBe(true);
 
       // Verify file contents
       const variablesContent = await fs.readFile(variablesPath, 'utf8');
@@ -95,16 +108,19 @@ describe('Build Copy Utilities', () => {
     it('should copy builder directory to applications/ for developer ID 0', async() => {
       const appName = 'test-app';
       const developerId = 0;
-      // Use absolute path to avoid issues with process.cwd() changes
-      const builderPath = path.resolve(tempDir, 'builder', appName);
-
-      // Create builder directory with files
-      await fs.mkdir(builderPath, { recursive: true });
+      // Use path.join with process.cwd() to match getBuilderPath behavior
+      const builderPath = path.join(process.cwd(), 'builder', appName);
+      // Ensure parent directory exists
+      const builderParent = path.dirname(builderPath);
+      fsSync.mkdirSync(builderParent, { recursive: true });
+      // Create builder directory with files (use sync to ensure it's created)
+      fsSync.mkdirSync(builderPath, { recursive: true });
       await fs.writeFile(path.join(builderPath, 'variables.yaml'), 'test: value');
       await fs.writeFile(path.join(builderPath, 'Dockerfile'), 'FROM node:18');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
-      expect(fsSync.existsSync(builderPath)).toBe(true);
+      // Use statSync for reliable check
+      expect(fsSync.statSync(builderPath).isDirectory()).toBe(true);
 
       const devDir = await buildCopy.copyBuilderToDevDirectory(appName, developerId);
 
@@ -117,8 +133,8 @@ describe('Build Copy Utilities', () => {
       // Verify files were copied directly to applications/
       const variablesPath = path.join(devDir, 'variables.yaml');
       const dockerfilePath = path.join(devDir, 'Dockerfile');
-      expect(fsSync.existsSync(variablesPath)).toBe(true);
-      expect(fsSync.existsSync(dockerfilePath)).toBe(true);
+      expect(fsSync.statSync(variablesPath).isFile()).toBe(true);
+      expect(fsSync.statSync(dockerfilePath).isFile()).toBe(true);
 
       // Verify file contents
       const variablesContent = await fs.readFile(variablesPath, 'utf8');
@@ -137,76 +153,87 @@ describe('Build Copy Utilities', () => {
     it('should copy nested directories recursively', async() => {
       const appName = 'test-app';
       const developerId = 1;
-      // Use absolute path to avoid issues with process.cwd() changes
-      const builderPath = path.resolve(tempDir, 'builder', appName);
-
+      // Use path.join with process.cwd() to match getBuilderPath behavior
+      const builderPath = path.join(process.cwd(), 'builder', appName);
+      // Ensure parent directory exists
+      const builderParent = path.dirname(builderPath);
+      fsSync.mkdirSync(builderParent, { recursive: true });
       // Create builder directory with nested structure
-      await fs.mkdir(path.join(builderPath, 'config'), { recursive: true });
-      await fs.mkdir(path.join(builderPath, 'scripts'), { recursive: true });
+      fsSync.mkdirSync(builderPath, { recursive: true });
+      fsSync.mkdirSync(path.join(builderPath, 'config'), { recursive: true });
+      fsSync.mkdirSync(path.join(builderPath, 'scripts'), { recursive: true });
       await fs.writeFile(path.join(builderPath, 'variables.yaml'), 'test: value');
       await fs.writeFile(path.join(builderPath, 'config', 'app.yaml'), 'app: config');
       await fs.writeFile(path.join(builderPath, 'scripts', 'start.sh'), '#!/bin/bash');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
-      expect(fsSync.existsSync(builderPath)).toBe(true);
+      // Use statSync for reliable check
+      const dirStats = fsSync.statSync(builderPath);
+      expect(dirStats.isDirectory()).toBe(true);
 
       const devDir = await buildCopy.copyBuilderToDevDirectory(appName, developerId);
 
       // Verify nested directories were copied
-      expect(fsSync.existsSync(path.join(devDir, 'config'))).toBe(true);
-      expect(fsSync.existsSync(path.join(devDir, 'scripts'))).toBe(true);
-      expect(fsSync.existsSync(path.join(devDir, 'config', 'app.yaml'))).toBe(true);
-      expect(fsSync.existsSync(path.join(devDir, 'scripts', 'start.sh'))).toBe(true);
+      expect(fsSync.statSync(path.join(devDir, 'config')).isDirectory()).toBe(true);
+      expect(fsSync.statSync(path.join(devDir, 'scripts')).isDirectory()).toBe(true);
+      expect(fsSync.statSync(path.join(devDir, 'config', 'app.yaml')).isFile()).toBe(true);
+      expect(fsSync.statSync(path.join(devDir, 'scripts', 'start.sh')).isFile()).toBe(true);
     });
 
     it('should skip hidden files and directories except .env and .gitignore', async() => {
       const appName = 'test-app';
       const developerId = 1;
-      // Use absolute path to avoid issues with process.cwd() changes
-      const builderPath = path.resolve(tempDir, 'builder', appName);
-
+      // Use path.join with process.cwd() to match getBuilderPath behavior
+      const builderPath = path.join(process.cwd(), 'builder', appName);
+      // Ensure parent directory exists
+      const builderParent = path.dirname(builderPath);
+      fsSync.mkdirSync(builderParent, { recursive: true });
       // Create builder directory with various files
-      await fs.mkdir(builderPath, { recursive: true });
+      fsSync.mkdirSync(builderPath, { recursive: true });
       await fs.writeFile(path.join(builderPath, 'variables.yaml'), 'test: value');
       await fs.writeFile(path.join(builderPath, '.env'), 'ENV_VAR=value');
       await fs.writeFile(path.join(builderPath, '.gitignore'), 'node_modules/');
       await fs.writeFile(path.join(builderPath, '.hidden-file'), 'should be skipped');
       await fs.writeFile(path.join(builderPath, '.another-hidden'), 'should be skipped');
-      await fs.mkdir(path.join(builderPath, '.hidden-dir'), { recursive: true });
+      fsSync.mkdirSync(path.join(builderPath, '.hidden-dir'), { recursive: true });
       await fs.writeFile(path.join(builderPath, '.hidden-dir', 'file.txt'), 'should be skipped');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
-      expect(fsSync.existsSync(builderPath)).toBe(true);
+      // Use statSync for reliable check
+      const dirStats = fsSync.statSync(builderPath);
+      expect(dirStats.isDirectory()).toBe(true);
 
       const devDir = await buildCopy.copyBuilderToDevDirectory(appName, developerId);
 
       // Verify .env and .gitignore were copied
-      expect(fsSync.existsSync(path.join(devDir, '.env'))).toBe(true);
-      expect(fsSync.existsSync(path.join(devDir, '.gitignore'))).toBe(true);
+      expect(fsSync.statSync(path.join(devDir, '.env')).isFile()).toBe(true);
+      expect(fsSync.statSync(path.join(devDir, '.gitignore')).isFile()).toBe(true);
 
       // Verify hidden files and directories were skipped
-      expect(fsSync.existsSync(path.join(devDir, '.hidden-file'))).toBe(false);
-      expect(fsSync.existsSync(path.join(devDir, '.another-hidden'))).toBe(false);
-      expect(fsSync.existsSync(path.join(devDir, '.hidden-dir'))).toBe(false);
+      expect(() => fsSync.statSync(path.join(devDir, '.hidden-file'))).toThrow();
+      expect(() => fsSync.statSync(path.join(devDir, '.another-hidden'))).toThrow();
+      expect(() => fsSync.statSync(path.join(devDir, '.hidden-dir'))).toThrow();
     });
 
     it('should handle multiple developer IDs', async() => {
       const appName = 'test-app';
-      // Use absolute path to avoid issues with process.cwd() changes
-      const builderPath = path.resolve(tempDir, 'builder', appName);
+      // Use path.join with process.cwd() to match getBuilderPath behavior
+      const builderPath = path.join(process.cwd(), 'builder', appName);
 
-      await fs.mkdir(builderPath, { recursive: true });
+      fsSync.mkdirSync(builderPath, { recursive: true });
       await fs.writeFile(path.join(builderPath, 'variables.yaml'), 'test: value');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
-      expect(fsSync.existsSync(builderPath)).toBe(true);
+      // Use statSync for reliable check
+      const dirStats = fsSync.statSync(builderPath);
+      expect(dirStats.isDirectory()).toBe(true);
 
       const devDir1 = await buildCopy.copyBuilderToDevDirectory(appName, 1);
       const devDir2 = await buildCopy.copyBuilderToDevDirectory(appName, 2);
 
       expect(devDir1).not.toBe(devDir2);
-      expect(fsSync.existsSync(devDir1)).toBe(true);
-      expect(fsSync.existsSync(devDir2)).toBe(true);
+      expect(fsSync.statSync(devDir1).isDirectory()).toBe(true);
+      expect(fsSync.statSync(devDir2).isDirectory()).toBe(true);
       // Verify paths are correct
       expect(devDir1).toContain('applications-dev-1');
       expect(devDir2).toContain('applications-dev-2');
@@ -215,26 +242,30 @@ describe('Build Copy Utilities', () => {
     it('should copy files and directories in the same directory', async() => {
       const appName = 'test-app';
       const developerId = 1;
-      // Use absolute path to avoid issues with process.cwd() changes
-      const builderPath = path.resolve(tempDir, 'builder', appName);
-
+      // Use path.join with process.cwd() to match getBuilderPath behavior
+      const builderPath = path.join(process.cwd(), 'builder', appName);
+      // Ensure parent directory exists
+      const builderParent = path.dirname(builderPath);
+      fsSync.mkdirSync(builderParent, { recursive: true });
       // Create a directory with both files and subdirectories
-      await fs.mkdir(builderPath, { recursive: true });
-      await fs.mkdir(path.join(builderPath, 'subdir'), { recursive: true });
+      fsSync.mkdirSync(builderPath, { recursive: true });
+      fsSync.mkdirSync(path.join(builderPath, 'subdir'), { recursive: true });
       await fs.writeFile(path.join(builderPath, 'file1.txt'), 'content1');
       await fs.writeFile(path.join(builderPath, 'file2.txt'), 'content2');
       await fs.writeFile(path.join(builderPath, 'subdir', 'file3.txt'), 'content3');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
-      expect(fsSync.existsSync(builderPath)).toBe(true);
+      // Use statSync for reliable check
+      const dirStats = fsSync.statSync(builderPath);
+      expect(dirStats.isDirectory()).toBe(true);
 
       const devDir = await buildCopy.copyBuilderToDevDirectory(appName, developerId);
 
       // Verify both files and directories were copied
-      expect(fsSync.existsSync(path.join(devDir, 'file1.txt'))).toBe(true);
-      expect(fsSync.existsSync(path.join(devDir, 'file2.txt'))).toBe(true);
-      expect(fsSync.existsSync(path.join(devDir, 'subdir'))).toBe(true);
-      expect(fsSync.existsSync(path.join(devDir, 'subdir', 'file3.txt'))).toBe(true);
+      expect(fsSync.statSync(path.join(devDir, 'file1.txt')).isFile()).toBe(true);
+      expect(fsSync.statSync(path.join(devDir, 'file2.txt')).isFile()).toBe(true);
+      expect(fsSync.statSync(path.join(devDir, 'subdir')).isDirectory()).toBe(true);
+      expect(fsSync.statSync(path.join(devDir, 'subdir', 'file3.txt')).isFile()).toBe(true);
 
       // Verify file contents
       const content1 = await fs.readFile(path.join(devDir, 'file1.txt'), 'utf8');
@@ -290,15 +321,17 @@ describe('Build Copy Utilities', () => {
     it('should return true when directory exists', async() => {
       const appName = 'test-app';
       const developerId = 1;
-      // Use absolute path to avoid issues with process.cwd() changes
-      const builderPath = path.resolve(tempDir, 'builder', appName);
+      // Use path.join with process.cwd() to match getBuilderPath behavior
+      const builderPath = path.join(process.cwd(), 'builder', appName);
 
       // Create builder directory and copy it
-      await fs.mkdir(builderPath, { recursive: true });
+      fsSync.mkdirSync(builderPath, { recursive: true });
       await fs.writeFile(path.join(builderPath, 'variables.yaml'), 'test: value');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
-      expect(fsSync.existsSync(builderPath)).toBe(true);
+      // Use statSync for reliable check
+      const dirStats = fsSync.statSync(builderPath);
+      expect(dirStats.isDirectory()).toBe(true);
 
       await buildCopy.copyBuilderToDevDirectory(appName, developerId);
 
@@ -311,15 +344,17 @@ describe('Build Copy Utilities', () => {
       const appName = 'test-app';
       const developerId1 = 1;
       const developerId2 = 2;
-      // Use absolute path to avoid issues with process.cwd() changes
-      const builderPath = path.resolve(tempDir, 'builder', appName);
+      // Use path.join with process.cwd() to match getBuilderPath behavior
+      const builderPath = path.join(process.cwd(), 'builder', appName);
 
       // Create builder directory and copy for developer 1
-      await fs.mkdir(builderPath, { recursive: true });
+      fsSync.mkdirSync(builderPath, { recursive: true });
       await fs.writeFile(path.join(builderPath, 'variables.yaml'), 'test: value');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
-      expect(fsSync.existsSync(builderPath)).toBe(true);
+      // Use statSync for reliable check
+      const dirStats = fsSync.statSync(builderPath);
+      expect(dirStats.isDirectory()).toBe(true);
 
       await buildCopy.copyBuilderToDevDirectory(appName, developerId1);
 

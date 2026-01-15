@@ -6,10 +6,16 @@
  * @version 2.0.0
  */
 
-const fs = require('fs').promises;
-const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
+
+// Mock fs to use real implementation to override any other mocks
+jest.mock('fs', () => {
+  return jest.requireActual('fs');
+});
+
+const fs = require('fs').promises;
+const fsSync = require('fs');
 const envReader = require('../../../lib/core/env-reader');
 
 describe('Environment Reader Module', () => {
@@ -36,11 +42,16 @@ PORT=3000
 DATABASE_URL=postgres://localhost:5432/test
 API_KEY=abc123def456
 `;
-      await fs.writeFile('.env', envContent);
+      const envPath = path.join(process.cwd(), '.env');
+      await fs.writeFile(envPath, envContent, 'utf8');
+
+      // Verify file exists before calling readExistingEnv - use statSync for reliable check
+      expect(fsSync.statSync(envPath).isFile()).toBe(true);
 
       const result = await envReader.readExistingEnv(process.cwd());
 
       expect(result).toBeDefined();
+      expect(result).not.toBeNull();
       expect(result.NODE_ENV).toBe('development');
       expect(result.PORT).toBe('3000');
       expect(result.DATABASE_URL).toBe('postgres://localhost:5432/test');
@@ -68,10 +79,15 @@ PORT=3000
 
 DATABASE_URL=postgres://localhost:5432/test
 `;
-      await fs.writeFile('.env', envContent);
+      const envPath = path.join(process.cwd(), '.env');
+      await fs.writeFile(envPath, envContent, 'utf8');
+
+      // Verify file exists before calling readExistingEnv - use statSync for reliable check
+      expect(fsSync.statSync(envPath).isFile()).toBe(true);
 
       const result = await envReader.readExistingEnv(process.cwd());
 
+      expect(result).not.toBeNull();
       expect(result.NODE_ENV).toBe('development');
       expect(result.PORT).toBe('3000');
       expect(result.DATABASE_URL).toBe('postgres://localhost:5432/test');
@@ -252,6 +268,183 @@ DATABASE_URL="postgres://localhost:5432/test"
     });
   });
 
+  describe('parseEnvContent', () => {
+    it('should parse env content correctly', () => {
+      const content = 'KEY1=value1\nKEY2=value2\nKEY3=value3';
+      const result = envReader.parseEnvContent(content);
+
+      expect(result.KEY1).toBe('value1');
+      expect(result.KEY2).toBe('value2');
+      expect(result.KEY3).toBe('value3');
+    });
+
+    it('should handle lines without equals sign', () => {
+      const content = 'KEY1=value1\nINVALID_LINE\nKEY2=value2';
+      const result = envReader.parseEnvContent(content);
+
+      expect(result.KEY1).toBe('value1');
+      expect(result.KEY2).toBe('value2');
+      expect(result.INVALID_LINE).toBeUndefined();
+    });
+
+    it('should handle values with spaces', () => {
+      const content = 'KEY1=value with spaces\nKEY2=  value with leading spaces  ';
+      const result = envReader.parseEnvContent(content);
+
+      expect(result.KEY1).toBe('value with spaces');
+      expect(result.KEY2).toBe('value with leading spaces');
+    });
+
+    it('should handle empty values', () => {
+      const content = 'KEY1=\nKEY2=value2';
+      const result = envReader.parseEnvContent(content);
+
+      expect(result.KEY1).toBe('');
+      expect(result.KEY2).toBe('value2');
+    });
+
+    it('should handle mixed quotes', () => {
+      const content = 'KEY1="double quoted"\nKEY2=\'single quoted\'';
+      const result = envReader.parseEnvContent(content);
+
+      expect(result.KEY1).toBe('double quoted');
+      expect(result.KEY2).toBe('single quoted');
+    });
+
+    it('should handle unclosed quotes', () => {
+      const content = 'KEY1="unclosed quote\nKEY2=normal';
+      const result = envReader.parseEnvContent(content);
+
+      expect(result.KEY2).toBe('normal');
+      // Unclosed quote should still be processed
+      expect(result.KEY1).toBeDefined();
+    });
+  });
+
+  describe('readExistingEnv error handling', () => {
+    it('should throw error for non-ENOENT errors', async() => {
+      // Mock fs.access to throw a non-ENOENT error
+      const originalAccess = fs.access;
+      fs.access = jest.fn().mockRejectedValue(new Error('Permission denied'));
+
+      await expect(envReader.readExistingEnv(process.cwd()))
+        .rejects.toThrow('Failed to read .env file: Permission denied');
+
+      fs.access = originalAccess;
+    });
+  });
+
+  describe('detectSensitiveValue edge cases', () => {
+    it('should detect case-insensitive sensitive keys', () => {
+      expect(envReader.detectSensitiveValue('password', 'value')).toBe(true);
+      expect(envReader.detectSensitiveValue('PASSWORD', 'value')).toBe(true);
+      expect(envReader.detectSensitiveValue('Password', 'value')).toBe(true);
+      expect(envReader.detectSensitiveValue('API_KEY', 'value')).toBe(true);
+      expect(envReader.detectSensitiveValue('api-key', 'value')).toBe(true);
+    });
+
+    it('should detect JWT tokens', () => {
+      const jwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      expect(envReader.detectSensitiveValue('TOKEN', jwt)).toBe(true);
+    });
+
+    it('should detect base64 encoded strings', () => {
+      const base64 = 'SGVsbG8gV29ybGQ='.repeat(5); // Long base64
+      expect(envReader.detectSensitiveValue('DATA', base64)).toBe(true);
+    });
+
+    it('should not detect short hex strings', () => {
+      expect(envReader.detectSensitiveValue('SHORT', 'abc123')).toBe(false);
+    });
+  });
+
+  describe('convertToEnvTemplate edge cases', () => {
+    it('should handle special characters in key names', () => {
+      const existingEnv = {
+        'API_KEY_SPECIAL': 'value',
+        'DATABASE-PASSWORD': 'secret'
+      };
+
+      const result = envReader.convertToEnvTemplate(existingEnv, {});
+
+      expect(result['API_KEY_SPECIAL']).toBe('kv://api-key-special');
+      expect(result['DATABASE-PASSWORD']).toBe('kv://database-password');
+    });
+
+    it('should preserve required vars when converting', () => {
+      const existingEnv = {
+        'CUSTOM_VAR': 'value'
+      };
+      const requiredVars = {
+        'REQUIRED_VAR': 'required-value'
+      };
+
+      const result = envReader.convertToEnvTemplate(existingEnv, requiredVars);
+
+      expect(result.REQUIRED_VAR).toBe('required-value');
+      expect(result.CUSTOM_VAR).toBe('value');
+    });
+  });
+
+  describe('generateSecretsFromEnv edge cases', () => {
+    it('should handle keys with special characters', () => {
+      const envVars = {
+        'API-KEY': 'secret-value',
+        'DATABASE_PASSWORD': 'password-value'
+      };
+
+      const result = envReader.generateSecretsFromEnv(envVars);
+
+      expect(result['api-key']).toBe('secret-value');
+      expect(result['database-password']).toBe('password-value');
+    });
+
+    it('should handle mixed case keys', () => {
+      const envVars = {
+        'ApiKey': 'secret-value',
+        'DATABASE_PASSWORD': 'password-value'
+      };
+
+      const result = envReader.generateSecretsFromEnv(envVars);
+
+      expect(result['api-key']).toBe('secret-value');
+      expect(result['database-password']).toBe('password-value');
+    });
+  });
+
+  describe('validateEnvKey edge cases', () => {
+    it('should handle underscore-only keys', () => {
+      expect(envReader.validateEnvKey('_')).toBe(false);
+      expect(envReader.validateEnvKey('__')).toBe(false);
+    });
+
+    it('should handle keys starting with underscore', () => {
+      expect(envReader.validateEnvKey('_KEY')).toBe(false);
+    });
+
+    it('should handle keys with numbers', () => {
+      expect(envReader.validateEnvKey('KEY1')).toBe(true);
+      expect(envReader.validateEnvKey('KEY_123')).toBe(true);
+    });
+  });
+
+  describe('sanitizeEnvValue edge cases', () => {
+    it('should handle multiple injection characters', () => {
+      const input = 'value;\r\n;rm -rf /';
+      const result = envReader.sanitizeEnvValue(input);
+      expect(result).toBe('valuerm -rf /');
+    });
+
+    it('should handle empty string', () => {
+      expect(envReader.sanitizeEnvValue('')).toBe('');
+    });
+
+    it('should preserve normal special characters', () => {
+      expect(envReader.sanitizeEnvValue('value@example.com')).toBe('value@example.com');
+      expect(envReader.sanitizeEnvValue('value#hash')).toBe('value#hash');
+    });
+  });
+
   describe('generateEnvTemplate', () => {
     it('should generate template with existing environment conversion', async() => {
       const config = {
@@ -299,6 +492,32 @@ DATABASE_URL="postgres://localhost:5432/test"
       expect(result.warnings).toHaveLength(2);
       expect(result.warnings[0]).toContain('Invalid environment variable name: invalid-key');
       expect(result.warnings[1]).toContain('Sanitized value for PORT');
+    });
+
+    it('should handle empty existing environment', async() => {
+      const config = {
+        port: 3000,
+        appName: 'test-app'
+      };
+
+      const result = await envReader.generateEnvTemplate(config, {});
+
+      expect(result.template).toBeDefined();
+      expect(result.secrets).toEqual({});
+      expect(result.warnings).toEqual([]);
+    });
+
+    it('should handle empty existing environment without errors', async() => {
+      const config = {
+        port: 3000,
+        appName: 'test-app'
+      };
+
+      const result = await envReader.generateEnvTemplate(config, {});
+
+      expect(result.template).toBeDefined();
+      expect(result.secrets).toEqual({});
+      expect(result.warnings).toEqual([]);
     });
   });
 });

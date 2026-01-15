@@ -10,6 +10,7 @@ const fs = require('fs').promises;
 const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
+const yaml = require('js-yaml');
 const app = require('../../../lib/app');
 
 // Mock inquirer
@@ -130,7 +131,12 @@ describe('Application Module Coverage', () => {
       // Create required files
       const appPath = path.join('builder', 'test-app');
       await fs.mkdir(appPath, { recursive: true });
-      await fs.writeFile(path.join(appPath, 'variables.yaml'), 'app:\n  key: test-app');
+      // Ensure variables.yaml exists with proper structure
+      const variablesContent = yaml.dump({
+        app: { key: 'test-app' },
+        image: { name: 'test-app' }
+      });
+      await fs.writeFile(path.join(appPath, 'variables.yaml'), variablesContent);
 
       await expect(app.pushApp('test-app', {}))
         .rejects.toThrow('Registry URL is required');
@@ -140,7 +146,12 @@ describe('Application Module Coverage', () => {
       // Create required files
       const appPath = path.join('builder', 'test-app');
       await fs.mkdir(appPath, { recursive: true });
-      await fs.writeFile(path.join(appPath, 'variables.yaml'), 'app:\n  key: test-app');
+      // Ensure variables.yaml exists with proper structure
+      const variablesContent = yaml.dump({
+        app: { key: 'test-app' },
+        image: { name: 'test-app' }
+      });
+      await fs.writeFile(path.join(appPath, 'variables.yaml'), variablesContent);
 
       // The validation checks ACR URL format before checking the image
       await expect(app.pushApp('test-app', { registry: 'invalid.com' }))
@@ -151,7 +162,12 @@ describe('Application Module Coverage', () => {
       // Create required files first
       const appPath = path.join('builder', 'test-app');
       await fs.mkdir(appPath, { recursive: true });
-      await fs.writeFile(path.join(appPath, 'variables.yaml'), 'app:\n  key: test-app');
+      // Ensure variables.yaml exists with proper structure
+      const variablesContent = yaml.dump({
+        app: { key: 'test-app' },
+        image: { name: 'test-app', registry: 'myacr.azurecr.io' }
+      });
+      await fs.writeFile(path.join(appPath, 'variables.yaml'), variablesContent);
 
       const pushUtils = require('../../../lib/deployment/push');
       jest.spyOn(pushUtils, 'checkLocalImageExists').mockResolvedValue(false);
@@ -164,7 +180,12 @@ describe('Application Module Coverage', () => {
       // Create required files first
       const appPath = path.join('builder', 'test-app');
       await fs.mkdir(appPath, { recursive: true });
-      await fs.writeFile(path.join(appPath, 'variables.yaml'), 'app:\n  key: test-app');
+      // Ensure variables.yaml exists with proper structure
+      const variablesContent = yaml.dump({
+        app: { key: 'test-app' },
+        image: { name: 'test-app', registry: 'myacr.azurecr.io' }
+      });
+      await fs.writeFile(path.join(appPath, 'variables.yaml'), variablesContent);
 
       const pushUtils = require('../../../lib/deployment/push');
       jest.spyOn(pushUtils, 'checkLocalImageExists').mockResolvedValue(true);

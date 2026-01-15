@@ -207,6 +207,53 @@ describe('ApiClient', () => {
         expect.any(Object)
       );
     });
+
+    it('should use authenticatedApiCall for client-token', async() => {
+      const client = new ApiClient(baseUrl, { type: 'client-token', token: 'client-token' });
+      await client.get('/api/v1/test');
+
+      expect(authenticatedApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/test`,
+        expect.objectContaining({ method: 'GET' }),
+        'client-token'
+      );
+    });
+
+    it('should handle GET request errors', async() => {
+      const client = new ApiClient(baseUrl);
+      const error = new Error('GET request failed');
+      makeApiCall.mockRejectedValue(error);
+
+      await expect(client.get('/api/v1/test')).rejects.toThrow('GET request failed');
+    });
+
+    it('should handle authenticated GET request errors', async() => {
+      const client = new ApiClient(baseUrl, { type: 'bearer', token: 'test-token' });
+      const error = new Error('Authenticated GET failed');
+      authenticatedApiCall.mockRejectedValue(error);
+
+      await expect(client.get('/api/v1/test')).rejects.toThrow('Authenticated GET failed');
+    });
+
+    it('should handle GET with query params and client-credentials auth', async() => {
+      const client = new ApiClient(baseUrl, {
+        type: 'client-credentials',
+        clientId: 'client-id',
+        clientSecret: 'client-secret'
+      });
+      await client.get('/api/v1/test', { params: { page: 1 } });
+
+      expect(makeApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/test?page=1`,
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            'x-client-id': 'client-id',
+            'x-client-secret': 'client-secret'
+          })
+        })
+      );
+    });
   });
 
   describe('post', () => {
@@ -295,6 +342,33 @@ describe('ApiClient', () => {
         'test-token'
       );
     });
+
+    it('should use authenticatedApiCall for client-token', async() => {
+      const client = new ApiClient(baseUrl, { type: 'client-token', token: 'client-token' });
+      await client.post('/api/v1/test', { body: { test: 'data' } });
+
+      expect(authenticatedApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/test`,
+        expect.objectContaining({ method: 'POST' }),
+        'client-token'
+      );
+    });
+
+    it('should handle POST request errors', async() => {
+      const client = new ApiClient(baseUrl);
+      const error = new Error('POST request failed');
+      makeApiCall.mockRejectedValue(error);
+
+      await expect(client.post('/api/v1/test', { body: { test: 'data' } })).rejects.toThrow('POST request failed');
+    });
+
+    it('should handle authenticated POST request errors', async() => {
+      const client = new ApiClient(baseUrl, { type: 'bearer', token: 'test-token' });
+      const error = new Error('Authenticated POST failed');
+      authenticatedApiCall.mockRejectedValue(error);
+
+      await expect(client.post('/api/v1/test', { body: { test: 'data' } })).rejects.toThrow('Authenticated POST failed');
+    });
   });
 
   describe('patch', () => {
@@ -345,6 +419,22 @@ describe('ApiClient', () => {
       );
       expect(makeApiCall.mock.calls[0][1].body).toBeUndefined();
     });
+
+    it('should handle PATCH request errors', async() => {
+      const client = new ApiClient(baseUrl);
+      const error = new Error('PATCH request failed');
+      makeApiCall.mockRejectedValue(error);
+
+      await expect(client.patch('/api/v1/test', { body: { update: 'data' } })).rejects.toThrow('PATCH request failed');
+    });
+
+    it('should handle authenticated PATCH request errors', async() => {
+      const client = new ApiClient(baseUrl, { type: 'bearer', token: 'test-token' });
+      const error = new Error('Authenticated PATCH failed');
+      authenticatedApiCall.mockRejectedValue(error);
+
+      await expect(client.patch('/api/v1/test', { body: { update: 'data' } })).rejects.toThrow('Authenticated PATCH failed');
+    });
   });
 
   describe('put', () => {
@@ -360,6 +450,76 @@ describe('ApiClient', () => {
         })
       );
     });
+
+    it('should make PUT request without body', async() => {
+      const client = new ApiClient(baseUrl);
+      await client.put('/api/v1/test');
+
+      expect(makeApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/test`,
+        expect.objectContaining({
+          method: 'PUT'
+        })
+      );
+      expect(makeApiCall.mock.calls[0][1].body).toBeUndefined();
+    });
+
+    it('should use authenticatedApiCall for bearer token', async() => {
+      const client = new ApiClient(baseUrl, { type: 'bearer', token: 'test-token' });
+      await client.put('/api/v1/test', { body: { data: 'value' } });
+
+      expect(authenticatedApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/test`,
+        expect.objectContaining({ method: 'PUT' }),
+        'test-token'
+      );
+    });
+
+    it('should use authenticatedApiCall for client-token', async() => {
+      const client = new ApiClient(baseUrl, { type: 'client-token', token: 'client-token' });
+      await client.put('/api/v1/test', { body: { data: 'value' } });
+
+      expect(authenticatedApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/test`,
+        expect.objectContaining({ method: 'PUT' }),
+        'client-token'
+      );
+    });
+
+    it('should include custom headers in PUT request', async() => {
+      const client = new ApiClient(baseUrl);
+      await client.put('/api/v1/test', {
+        body: { data: 'value' },
+        headers: { 'X-Custom': 'custom-value' }
+      });
+
+      expect(makeApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/test`,
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            'X-Custom': 'custom-value'
+          })
+        })
+      );
+    });
+
+    it('should handle PUT request errors', async() => {
+      const client = new ApiClient(baseUrl);
+      const error = new Error('PUT request failed');
+      makeApiCall.mockRejectedValue(error);
+
+      await expect(client.put('/api/v1/test', { body: { data: 'value' } })).rejects.toThrow('PUT request failed');
+    });
+
+    it('should handle authenticated PUT request errors', async() => {
+      const client = new ApiClient(baseUrl, { type: 'bearer', token: 'test-token' });
+      const error = new Error('Authenticated PUT failed');
+      authenticatedApiCall.mockRejectedValue(error);
+
+      await expect(client.put('/api/v1/test', { body: { data: 'value' } })).rejects.toThrow('Authenticated PUT failed');
+    });
   });
 
   describe('delete', () => {
@@ -373,6 +533,62 @@ describe('ApiClient', () => {
           method: 'DELETE'
         })
       );
+    });
+
+    it('should use authenticatedApiCall for bearer token', async() => {
+      const client = new ApiClient(baseUrl, { type: 'bearer', token: 'test-token' });
+      await client.delete('/api/v1/test');
+
+      expect(authenticatedApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/test`,
+        expect.objectContaining({ method: 'DELETE' }),
+        'test-token'
+      );
+    });
+
+    it('should use authenticatedApiCall for client-token', async() => {
+      const client = new ApiClient(baseUrl, { type: 'client-token', token: 'client-token' });
+      await client.delete('/api/v1/test');
+
+      expect(authenticatedApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/test`,
+        expect.objectContaining({ method: 'DELETE' }),
+        'client-token'
+      );
+    });
+
+    it('should include custom headers in DELETE request', async() => {
+      const client = new ApiClient(baseUrl);
+      await client.delete('/api/v1/test', {
+        headers: { 'X-Custom': 'custom-value' }
+      });
+
+      expect(makeApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/test`,
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            'X-Custom': 'custom-value'
+          })
+        })
+      );
+    });
+
+    it('should handle DELETE request errors', async() => {
+      const client = new ApiClient(baseUrl);
+      const error = new Error('DELETE request failed');
+      makeApiCall.mockRejectedValue(error);
+
+      await expect(client.delete('/api/v1/test')).rejects.toThrow('DELETE request failed');
+    });
+
+    it('should handle authenticated DELETE request errors', async() => {
+      const client = new ApiClient(baseUrl, { type: 'bearer', token: 'test-token' });
+      const error = new Error('Authenticated DELETE failed');
+      authenticatedApiCall.mockRejectedValue(error);
+
+      await expect(client.delete('/api/v1/test')).rejects.toThrow('Authenticated DELETE failed');
     });
   });
 });

@@ -100,11 +100,13 @@ describe('External System Test Module', () => {
     key: 'hubspot-companies-get',
     displayName: 'GET /crm/v3/objects/companies',
     systemKey: 'hubspot',
-    entityKey: 'company',
+    entityType: 'company',
     resourceType: 'customer',
     fieldMappings: {
-      accessFields: ['country'],
-      fields: {
+      dimensions: {
+        country: 'metadata.country'
+      },
+      attributes: {
         country: {
           expression: '{{properties.country.value}} | toUpper | trim',
           type: 'string'
@@ -221,7 +223,10 @@ describe('External System Test Module', () => {
       const invalidDatasource = {
         ...mockDatasource,
         fieldMappings: {
-          fields: {
+          dimensions: {
+            country: 'metadata.country'
+          },
+          attributes: {
             country: {
               type: 'string'
               // Missing expression
@@ -238,7 +243,10 @@ describe('External System Test Module', () => {
       const datasourceWithMissingPath = {
         ...mockDatasource,
         fieldMappings: {
-          fields: {
+          dimensions: {
+            country: 'metadata.country'
+          },
+          attributes: {
             missing: {
               expression: '{{properties.missing.field}} | trim',
               type: 'string'
@@ -370,7 +378,7 @@ describe('External System Test Module', () => {
             },
             fieldMappingResults: {
               mappingCount: 2,
-              accessFields: ['country']
+              dimensions: { country: 'metadata.country' }
             },
             endpointTestResults: {
               endpointConfigured: false

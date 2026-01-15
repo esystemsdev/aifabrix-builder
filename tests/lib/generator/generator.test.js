@@ -2192,11 +2192,13 @@ NORMAL_VAR=value456`;
       key: 'hubspot-companies-get',
       displayName: 'HubSpot Companies',
       systemKey: 'hubspot',
-      entityKey: 'company',
+      entityType: 'company',
       resourceType: 'customer',
       fieldMappings: {
-        accessFields: ['country'],
-        fields: {
+        dimensions: {
+          country: 'metadata.country'
+        },
+        attributes: {
           country: {
             expression: '{{properties.country.value}} | toUpper',
             type: 'string'
@@ -2209,11 +2211,13 @@ NORMAL_VAR=value456`;
       key: 'hubspot-contacts-get',
       displayName: 'HubSpot Contacts',
       systemKey: 'hubspot',
-      entityKey: 'contact',
+      entityType: 'contact',
       resourceType: 'contact',
       fieldMappings: {
-        accessFields: ['email'],
-        fields: {
+        dimensions: {
+          email: 'metadata.email'
+        },
+        attributes: {
           email: {
             expression: '{{properties.email.value}} | trim',
             type: 'string'

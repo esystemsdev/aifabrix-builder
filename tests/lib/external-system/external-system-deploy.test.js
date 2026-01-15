@@ -300,7 +300,7 @@ describe('External System Deploy Module', () => {
       systemKey: 'test-external-app',
       entityKey: 'entity1',
       fieldMappings: {
-        accessFields: ['id', 'name'],
+        dimensions: ['id', 'name'],
         fields: {
           id: {
             expression: '{{raw.id}}',
@@ -582,7 +582,7 @@ describe('External System Deploy Module', () => {
       systemKey: 'test-external-app',
       entityKey: 'entity1',
       fieldMappings: {
-        accessFields: ['id', 'name'],
+        dimensions: ['id', 'name'],
         fields: {
           id: {
             expression: '{{raw.id}}',
@@ -947,7 +947,7 @@ describe('External System Deploy Module', () => {
       systemKey: 'test-external-app',
       entityKey: 'entity1',
       fieldMappings: {
-        accessFields: ['id', 'name'],
+        dimensions: ['id', 'name'],
         fields: {
           id: {
             expression: '{{raw.id}}',

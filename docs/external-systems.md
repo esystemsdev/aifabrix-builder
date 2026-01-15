@@ -179,22 +179,28 @@ Each datasource maps an external entity (company, contact, deal) to your datapla
 {
   "key": "hubspot-company",
   "systemKey": "hubspot",
-  "entityKey": "company",
+  "entityType": "company",
   "resourceType": "customer",
   "fieldMappings": {
-    "accessFields": ["country", "domain"],
-    "fields": {
+    "dimensions": {
+      "country": "metadata.country",
+      "domain": "metadata.domain"
+    },
+    "attributes": {
       "name": {
         "expression": "{{properties.name.value}} | trim",
-        "type": "string"
+        "type": "string",
+        "indexed": false
       },
       "domain": {
         "expression": "{{properties.domain.value}} | toLower | trim",
-        "type": "string"
+        "type": "string",
+        "indexed": false
       },
       "country": {
         "expression": "{{properties.country.value}} | toUpper | trim",
-        "type": "string"
+        "type": "string",
+        "indexed": true
       }
     }
   },
@@ -214,14 +220,14 @@ Each datasource maps an external entity (company, contact, deal) to your datapla
 **What this does:**
 - Maps HubSpot's nested `properties.name.value` structure to a flat `name` field
 - Applies transformations: `trim`, `toLower`, `toUpper`
-- Defines `accessFields` for ABAC (Attribute-Based Access Control) filtering
+- Defines `dimensions` for ABAC (Attribute-Based Access Control) filtering using dimensions-first model
 - Configures OpenAPI operations to expose via REST API
 
 ```mermaid
 flowchart LR
     ExternalAPI[External API Response<br/>properties.name.value<br/>properties.domain.value] --> FieldMappings[Field Mappings<br/>Transformations<br/>trim, toLower, toUpper]
     FieldMappings --> TransformedData[Transformed Data<br/>name: string<br/>domain: string<br/>country: string]
-    TransformedData --> DataplaneSchema[Dataplane Schema<br/>Normalized structure<br/>ABAC accessFields]
+    TransformedData --> DataplaneSchema[Dataplane Schema<br/>Normalized structure<br/>ABAC dimensions]
     DataplaneSchema --> Query[Query via<br/>MCP/OpenAPI]
     
     style ExternalAPI fill:#0062FF,color:#FFFFFF
@@ -775,12 +781,19 @@ Each datasource maps one entity type from the external system.
 **Required fields:**
 - `key` - Unique datasource identifier
 - `systemKey` - Must match external system `key`
-- `entityKey` - Entity identifier in external system
-- `fieldMappings` - Field transformation rules
+- `entityType` - Entity identifier in external system (pattern: `^[a-z0-9-]+$`). Used to determine which type schema to validate against for type-specific configurations (e.g., `documentStorage`). Examples: `"documentStorage"` (maps to `type/document-storage.json`), `"vectorStore"` (maps to `type/vector-store.json`)
+- `resourceType` - Resource type classification (pattern: `^[a-z0-9-]+$`, e.g., "customer", "contact", "deal")
+- `fieldMappings` - Field transformation rules with dimensions and attributes
 
-**Resource types:**
+**Resource types (common values):**
 - `customer` - Company/organization data
 - `contact` - Person/contact data
+- `deal` - Business deal/opportunity data
+- `document` - Document/file data
+- `person` - Individual person data
+- `record` - Generic record data
+
+**Note:** `resourceType` is a free-form string matching the pattern `^[a-z0-9-]+$`. Any valid lowercase alphanumeric string with hyphens is allowed.
 - `person` - Individual person data
 - `document` - Document/file data
 - `deal` - Deal/opportunity data
@@ -791,21 +804,49 @@ Each datasource maps one entity type from the external system.
   "key": "hubspot-company",
   "displayName": "HubSpot Company",
   "systemKey": "hubspot",
-  "entityKey": "company",
+  "entityType": "company",
   "resourceType": "customer",
   "fieldMappings": {
-    "accessFields": ["country"],
-    "fields": {
+    "dimensions": {
+      "country": "metadata.country"
+    },
+    "attributes": {
       "name": {
         "expression": "{{properties.name.value}} | trim",
-        "type": "string"
+        "type": "string",
+        "indexed": false
       }
     }
   }
 }
 ```
 
-**Note:** Datasource files are named using the `entityKey` field: `<system-key>-deploy-<entity-key>.json`. For example, a datasource with `entityKey: "company"` and `systemKey: "hubspot"` creates the file `hubspot-deploy-company.json`.
+**Note:** Datasource files are named using the `entityType` field: `<system-key>-deploy-<entity-type>.json`. For example, a datasource with `entityType: "company"` and `systemKey: "hubspot"` creates the file `hubspot-deploy-company.json`.
+
+#### Entity Type and Type Schema Mapping
+
+The `entityType` field determines which type schema to validate against for type-specific configurations (e.g., `documentStorage`):
+
+- **documentStorage**: When `entityType="documentStorage"` (or similar), validates against `type/document-storage.json`
+- **vectorStore**: When `entityType="vectorStore"` (or similar), validates against `type/vector-store.json`
+
+This enables multiple datasources with `documentStorage` in the same system, each potentially using different type schemas based on their `entityType`.
+
+**Example:**
+```json
+{
+  "key": "hubspot-documents",
+  "entityType": "documentStorage",
+  "resourceType": "document",
+  "systemKey": "hubspot",
+  "documentStorage": {
+    "enabled": true,
+    "binaryOperationRef": "get"
+  }
+}
+```
+
+In this example, `entityType="documentStorage"` causes `documentStorage` to validate against `type/document-storage.json`.
 
 ### Field Mappings
 
@@ -848,8 +889,76 @@ Map to flat structure:
 }
 ```
 
-**Access fields:**
-Fields listed in `accessFields` are used for ABAC (Attribute-Based Access Control) filtering. These should be fields that identify data ownership or access scope (e.g., `country`, `domain`, `organization`).
+**Dimensions:**
+Dimensions are used for ABAC (Attribute-Based Access Control) filtering using the dimensions-first model. The `dimensions` object maps dimension keys (from the Dimension Catalog) to attribute paths (e.g., `metadata.country`, `metadata.domain`). Dimensions are automatically indexed for efficient filtering.
+
+**Example:**
+```json
+{
+  "fieldMappings": {
+    "dimensions": {
+      "country": "metadata.country",
+      "department": "metadata.department",
+      "organization": "metadata.organization"
+    },
+    "attributes": {
+      "country": {
+        "expression": "{{properties.country.value}} | toUpper",
+        "type": "string",
+        "indexed": false
+      }
+    }
+  }
+}
+```
+
+Dimensions should identify data ownership or access scope (e.g., `country`, `domain`, `organization`).
+
+**Indexed attributes:**
+The `indexed` property in attribute definitions controls whether a database index is created for that attribute. Set `indexed: true` for attributes that are frequently used in queries or filters. Dimensions are automatically indexed (no `indexed` property needed).
+
+**Example:**
+```json
+{
+  "fieldMappings": {
+    "attributes": {
+      "id": {
+        "expression": "{{id}}",
+        "type": "string",
+        "indexed": true
+      },
+      "name": {
+        "expression": "{{properties.name.value}} | trim",
+        "type": "string",
+        "indexed": false
+      }
+    }
+  }
+}
+```
+
+**Record references (Plan 211):**
+Use the `record_ref:` prefix in expressions to create typed relationships between records across datasources. This creates foreign key relationships in the dataplane.
+
+**Example:**
+```json
+{
+  "fieldMappings": {
+    "attributes": {
+      "customerId": {
+        "expression": "record_ref:customer",
+        "type": "string"
+      },
+      "dealId": {
+        "expression": "record_ref:deal",
+        "type": "string"
+      }
+    }
+  }
+}
+```
+
+The `record_ref:` prefix must be followed by a valid entity type (pattern: `^[a-z0-9-]+$`).
 
 ### Test Payloads
 
@@ -859,16 +968,21 @@ Test payloads allow you to test field mappings and metadata schemas locally and 
 {
   "key": "hubspot-company",
   "systemKey": "hubspot",
-  "entityKey": "company",
+  "entityType": "company",
   "fieldMappings": {
-    "fields": {
+    "dimensions": {
+      "country": "metadata.country"
+    },
+    "attributes": {
       "name": {
         "expression": "{{properties.name.value}} | trim",
-        "type": "string"
+        "type": "string",
+        "indexed": false
       },
       "country": {
         "expression": "{{properties.country.value}} | toUpper | trim",
-        "type": "string"
+        "type": "string",
+        "indexed": false
       }
     }
   },
@@ -922,7 +1036,7 @@ The datasource schema supports additional advanced features beyond basic field m
 - `context` - Natural-language hints for AI agents (semantic tags, synonyms, natural language hints)
 
 **Document Storage:**
-- `documentStorage` - Vector storage configuration for document-based datasources
+- `documentStorage` - Vector storage configuration for document-based datasources. The type schema used for validation is determined by the `entityType` field (e.g., `entityType="document"` maps to `type/document-storage.json`)
 
 **Sync Configuration:**
 - `sync` - Record synchronization rules (pull/push/bidirectional, schedule, batch size)
@@ -977,14 +1091,14 @@ Configure which API endpoints to expose for each datasource.
 - `operations` - Maps CRUD operations to API endpoints
 - `autoRbac: true` - Auto-generates RBAC permissions (`hubspot.company.list`, `hubspot.company.get`, etc.)
 
-### Exposed Fields
+### Exposed Attributes
 
-Control which fields are exposed via MCP/OpenAPI.
+Control which attributes are exposed via MCP/OpenAPI.
 
 ```json
 {
   "exposed": {
-    "fields": ["id", "name", "email"],
+    "attributes": ["id", "name", "email"],
     "omit": ["internalId", "secret"],
     "readonly": ["createdAt"],
     "groups": {
@@ -996,9 +1110,9 @@ Control which fields are exposed via MCP/OpenAPI.
 ```
 
 **What this does:**
-- `fields` - List of fields to expose (default: all fields)
-- `omit` - Fields to never expose (overrides `fields`)
-- `readonly` - Fields that can't be modified
+- `attributes` - List of attributes to expose (default: all attributes)
+- `omit` - Attributes to never expose (overrides `attributes`)
+- `readonly` - Attributes that can't be modified
 - `groups` - Logical groupings for different use cases
 
 ---
@@ -1014,17 +1128,17 @@ integration/
   hubspot/
     variables.yaml
     hubspot-deploy.json                    # External system definition
-    hubspot-deploy-company.json            # Datasource: entityKey="company"
-    hubspot-deploy-contact.json           # Datasource: entityKey="contact"
-    hubspot-deploy-deal.json              # Datasource: entityKey="deal"
+    hubspot-deploy-company.json            # Datasource: entityType="company"
+    hubspot-deploy-contact.json           # Datasource: entityType="contact"
+    hubspot-deploy-deal.json              # Datasource: entityType="deal"
     rbac.yaml                              # RBAC roles and permissions (optional)
     env.template
 ```
 
 **File Naming Convention:**
 - System file: `<system-key>-deploy.json` (e.g., `hubspot-deploy.json`)
-- Datasource files: `<system-key>-deploy-<entity-key>.json` (e.g., `hubspot-deploy-company.json`)
-- The `entityKey` comes from the datasource's `entityKey` field in the JSON
+- Datasource files: `<system-key>-deploy-<entity-type>.json` (e.g., `hubspot-deploy-company.json`)
+- The `entityType` comes from the datasource's `entityType` field in the JSON
 
 ### variables.yaml
 
@@ -1423,15 +1537,19 @@ aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environmen
 
 ### Pattern 1: Nested Properties (HubSpot-style)
 
-Many APIs use nested property structures. Map them to flat fields:
+Many APIs use nested property structures. Map them to flat attributes:
 
 ```json
 {
   "fieldMappings": {
-    "fields": {
+    "dimensions": {
+      "country": "metadata.country"
+    },
+    "attributes": {
       "name": {
         "expression": "{{properties.name.value}} | trim",
-        "type": "string"
+        "type": "string",
+        "indexed": false
       }
     }
   }

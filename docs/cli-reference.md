@@ -2104,7 +2104,7 @@ aifabrix test-integration hubspot --environment dev --timeout 60000
 
 **Response Handling:**
 - Parses `validationResults` (isValid, errors, warnings, normalizedMetadata)
-- Parses `fieldMappingResults` (accessFields, mappedFields, mappingCount)
+- Parses `fieldMappingResults` (dimensions, mappedFields, mappingCount)
 - Parses `endpointTestResults` (endpointConfigured, connectivity status)
 
 **Output (success):**

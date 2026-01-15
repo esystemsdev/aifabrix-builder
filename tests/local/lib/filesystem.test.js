@@ -6,11 +6,17 @@
  * @version 2.0.0
  */
 
-const fs = require('fs').promises;
-const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
+
+// Mock fs to use real implementation to override any other mocks
+jest.mock('fs', () => {
+  return jest.requireActual('fs');
+});
+
+const fs = require('fs').promises;
+const fsSync = require('fs');
 
 describe('File System Operations', () => {
   let tempDir;
@@ -36,8 +42,7 @@ describe('File System Operations', () => {
 
       await fs.mkdir(appPath, { recursive: true });
 
-      const exists = await fs.access(appPath).then(() => true).catch(() => false);
-      expect(exists).toBe(true);
+      expect(fsSync.statSync(appPath).isDirectory()).toBe(true);
     });
 
     it('should create nested directories', async() => {
@@ -45,8 +50,7 @@ describe('File System Operations', () => {
 
       await fs.mkdir(nestedPath, { recursive: true });
 
-      const exists = await fs.access(nestedPath).then(() => true).catch(() => false);
-      expect(exists).toBe(true);
+      expect(fsSync.statSync(nestedPath).isDirectory()).toBe(true);
     });
 
     it('should handle directory already existing', async() => {
@@ -71,8 +75,7 @@ describe('File System Operations', () => {
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, yaml.dump(config));
 
-      const exists = await fs.access(filePath).then(() => true).catch(() => false);
-      expect(exists).toBe(true);
+      expect(fsSync.statSync(filePath).isFile()).toBe(true);
 
       const content = await fs.readFile(filePath, 'utf8');
       const loaded = yaml.load(content);
@@ -123,8 +126,7 @@ describe('File System Operations', () => {
       }
 
       for (const file of files) {
-        const exists = await fs.access(path.join(appPath, file.name)).then(() => true).catch(() => false);
-        expect(exists).toBe(true);
+        expect(fsSync.statSync(path.join(appPath, file.name)).isFile()).toBe(true);
       }
     });
   });
@@ -180,15 +182,13 @@ NODE_ENV=production`;
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, 'test');
 
-      const exists = await fs.access(filePath).then(() => true).catch(() => false);
-      expect(exists).toBe(true);
+      expect(fsSync.statSync(filePath).isFile()).toBe(true);
     });
 
     it('should check if file does not exist', async() => {
       const filePath = path.join('builder', 'nonexistent.yaml');
 
-      const exists = await fs.access(filePath).then(() => true).catch(() => false);
-      expect(exists).toBe(false);
+      expect(() => fsSync.statSync(filePath)).toThrow();
     });
 
     it('should check multiple files exist', async() => {
@@ -202,8 +202,7 @@ NODE_ENV=production`;
       }
 
       for (const filename of files) {
-        const exists = await fs.access(path.join(appPath, filename)).then(() => true).catch(() => false);
-        expect(exists).toBe(true);
+        expect(fsSync.statSync(path.join(appPath, filename)).isFile()).toBe(true);
       }
     });
   });
@@ -262,13 +261,11 @@ NODE_ENV=production`;
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, 'test');
 
-      let exists = await fs.access(filePath).then(() => true).catch(() => false);
-      expect(exists).toBe(true);
+      expect(fsSync.statSync(filePath).isFile()).toBe(true);
 
       await fs.unlink(filePath);
 
-      exists = await fs.access(filePath).then(() => true).catch(() => false);
-      expect(exists).toBe(false);
+      expect(() => fsSync.statSync(filePath)).toThrow();
     });
 
     it('should handle deleting non-existent file', async() => {
@@ -283,13 +280,11 @@ NODE_ENV=production`;
 
       await fs.mkdir(dirPath, { recursive: true });
 
-      let exists = await fs.access(dirPath).then(() => true).catch(() => false);
-      expect(exists).toBe(true);
+      expect(fsSync.statSync(dirPath).isDirectory()).toBe(true);
 
       await fs.rm(dirPath, { recursive: true });
 
-      exists = await fs.access(dirPath).then(() => true).catch(() => false);
-      expect(exists).toBe(false);
+      expect(() => fsSync.statSync(dirPath)).toThrow();
     });
   });
 

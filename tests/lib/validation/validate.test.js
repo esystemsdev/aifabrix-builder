@@ -428,6 +428,214 @@ describe('Validation Module', () => {
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/path/to/file.json'));
     });
+
+    it('should display warnings in validation results', () => {
+      const { displayValidationResults } = require('../../../lib/validation/validate');
+      const result = {
+        valid: true,
+        warnings: ['Warning 1', 'Warning 2']
+      };
+
+      displayValidationResults(result);
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Warnings'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Warning 1'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Warning 2'));
+    });
+
+    it('should display RBAC validation results', () => {
+      const { displayValidationResults } = require('../../../lib/validation/validate');
+      const result = {
+        valid: true,
+        rbac: {
+          valid: true,
+          errors: [],
+          warnings: []
+        }
+      };
+
+      displayValidationResults(result);
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('RBAC Configuration'));
+    });
+
+    it('should display RBAC errors when invalid', () => {
+      const { displayValidationResults } = require('../../../lib/validation/validate');
+      const result = {
+        valid: false,
+        rbac: {
+          valid: false,
+          errors: ['RBAC error 1', 'RBAC error 2'],
+          warnings: []
+        }
+      };
+
+      displayValidationResults(result);
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('RBAC error 1'));
+    });
+  });
+
+  describe('validateExternalFile edge cases', () => {
+    it('should validate role references in system files', async() => {
+      const mockFilePath = '/path/to/system.json';
+      const mockContent = JSON.stringify({
+        key: 'test',
+        displayName: 'Test',
+        roles: [
+          { value: 'role1', name: 'Role 1' },
+          { value: 'role2', name: 'Role 2' }
+        ],
+        permissions: [
+          { name: 'perm1', roles: ['role1'] },
+          { name: 'perm2', roles: ['role2', 'role3'] } // role3 doesn't exist
+        ]
+      });
+      const mockValidate = jest.fn().mockReturnValue(true);
+
+      fsSync.existsSync.mockImplementation((filePath) => filePath === mockFilePath);
+      fsSync.readFileSync.mockReturnValue(mockContent);
+      loadExternalSystemSchema.mockReturnValue(mockValidate);
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile(mockFilePath, 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('role3'))).toBe(true);
+    });
+
+    it('should handle permissions without roles array', async() => {
+      const mockFilePath = '/path/to/system.json';
+      const mockContent = JSON.stringify({
+        key: 'test',
+        displayName: 'Test',
+        roles: [{ value: 'role1', name: 'Role 1' }],
+        permissions: [
+          { name: 'perm1' } // No roles property
+        ]
+      });
+      const mockValidate = jest.fn().mockReturnValue(true);
+
+      fsSync.existsSync.mockImplementation((filePath) => filePath === mockFilePath);
+      fsSync.readFileSync.mockReturnValue(mockContent);
+      loadExternalSystemSchema.mockReturnValue(mockValidate);
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile(mockFilePath, 'system');
+
+      expect(result.valid).toBe(true);
+    });
+
+    it('should handle system files without permissions', async() => {
+      const mockFilePath = '/path/to/system.json';
+      const mockContent = JSON.stringify({
+        key: 'test',
+        displayName: 'Test'
+        // No permissions
+      });
+      const mockValidate = jest.fn().mockReturnValue(true);
+
+      fsSync.existsSync.mockImplementation((filePath) => filePath === mockFilePath);
+      fsSync.readFileSync.mockReturnValue(mockContent);
+      loadExternalSystemSchema.mockReturnValue(mockValidate);
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile(mockFilePath, 'system');
+
+      expect(result.valid).toBe(true);
+    });
+
+    it('should normalize external-system type to system', async() => {
+      const mockFilePath = '/path/to/system.json';
+      const mockContent = JSON.stringify({ key: 'test', displayName: 'Test' });
+      const mockValidate = jest.fn().mockReturnValue(true);
+
+      fsSync.existsSync.mockImplementation((filePath) => filePath === mockFilePath);
+      fsSync.readFileSync.mockReturnValue(mockContent);
+      loadExternalSystemSchema.mockReturnValue(mockValidate);
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile(mockFilePath, 'external-system');
+
+      expect(result.type).toBe('external-system');
+      expect(mockValidate).toHaveBeenCalled();
+    });
+
+    it('should normalize external-datasource type to datasource', async() => {
+      const mockFilePath = '/path/to/datasource.json';
+      const mockContent = JSON.stringify({ key: 'test', systemKey: 'hubspot' });
+      const mockValidate = jest.fn().mockReturnValue(true);
+
+      fsSync.existsSync.mockImplementation((filePath) => filePath === mockFilePath);
+      fsSync.readFileSync.mockReturnValue(mockContent);
+      loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile(mockFilePath, 'external-datasource');
+
+      expect(result.type).toBe('external-datasource');
+      expect(mockValidate).toHaveBeenCalled();
+    });
+  });
+
+  describe('validateExternalFilesForApp', () => {
+    it('should validate multiple external files', async() => {
+      const appName = 'myapp';
+      const mockFiles = [
+        { path: '/path/to/system1.json', type: 'system', fileName: 'system1.json' },
+        { path: '/path/to/system2.json', type: 'system', fileName: 'system2.json' }
+      ];
+
+      resolveExternalFiles.mockResolvedValue(mockFiles);
+      fsSync.existsSync.mockReturnValue(true);
+      fsSync.readFileSync.mockReturnValue(JSON.stringify({ key: 'test', displayName: 'Test' }));
+
+      const mockValidate = jest.fn().mockReturnValue(true);
+      loadExternalSystemSchema.mockReturnValue(mockValidate);
+
+      const { validateExternalFilesForApp } = require('../../../lib/validation/validate');
+      const result = await validateExternalFilesForApp(appName);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].file).toBe('system1.json');
+      expect(result[1].file).toBe('system2.json');
+    });
+
+    it('should handle empty external files array', async() => {
+      const appName = 'myapp';
+      resolveExternalFiles.mockResolvedValue([]);
+
+      const { validateExternalFilesForApp } = require('../../../lib/validation/validate');
+      const result = await validateExternalFilesForApp(appName);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('validateFilePath', () => {
+    it('should validate file path and detect type', async() => {
+      const mockFilePath = '/path/to/system.json';
+      const mockContent = JSON.stringify({ key: 'test', displayName: 'Test' });
+      const mockValidate = jest.fn().mockReturnValue(true);
+
+      fsSync.existsSync.mockReturnValue(true);
+      fsSync.readFileSync.mockReturnValue(mockContent);
+      detectSchemaType.mockReturnValue('system');
+      loadExternalSystemSchema.mockReturnValue(mockValidate);
+
+      const { validateFilePath } = require('../../../lib/validation/validate');
+      const result = await validateFilePath(mockFilePath);
+
+      expect(result.valid).toBe(true);
+      expect(detectSchemaType).toHaveBeenCalledWith(mockFilePath, mockContent);
+    });
+
+    it('should throw error if file path does not exist', async() => {
+      fsSync.existsSync.mockReturnValue(false);
+
+      const { validateFilePath } = require('../../../lib/validation/validate');
+      await expect(validateFilePath('/nonexistent.json')).rejects.toThrow('File not found');
+    });
   });
 });
 

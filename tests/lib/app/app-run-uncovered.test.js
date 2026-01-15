@@ -275,10 +275,11 @@ describe('App-Run Uncovered Code Paths', () => {
         app: { key: appName, name: 'Test App' }
       };
 
-      fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
-        yaml.dump(variables)
-      );
+      const configPath = path.join(appPath, 'variables.yaml');
+      fsSync.writeFileSync(configPath, yaml.dump(variables), 'utf8');
+
+      // Verify file exists
+      expect(fsSync.existsSync(configPath)).toBe(true);
 
       validator.validateApplication.mockResolvedValueOnce({
         valid: false,
@@ -299,10 +300,11 @@ describe('App-Run Uncovered Code Paths', () => {
         app: { key: appName, name: 'Test App' }
       };
 
-      fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
-        yaml.dump(variables)
-      );
+      const configPath = path.join(appPath, 'variables.yaml');
+      fsSync.writeFileSync(configPath, yaml.dump(variables), 'utf8');
+
+      // Verify file exists
+      expect(fsSync.existsSync(configPath)).toBe(true);
 
       validator.validateApplication.mockResolvedValueOnce({
         valid: false,

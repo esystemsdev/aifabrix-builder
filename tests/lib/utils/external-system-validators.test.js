@@ -43,8 +43,10 @@ describe('External System Validators', () => {
   describe('validateFieldMappings', () => {
     const mockDatasource = {
       fieldMappings: {
-        accessFields: ['country'],
-        fields: {
+        dimensions: {
+          country: 'metadata.country'
+        },
+        attributes: {
           country: {
             expression: '{{properties.country.value}} | toUpper | trim',
             type: 'string'
@@ -81,7 +83,10 @@ describe('External System Validators', () => {
       const invalidDatasource = {
         ...mockDatasource,
         fieldMappings: {
-          fields: {
+          dimensions: {
+            country: 'metadata.country'
+          },
+          attributes: {
             country: {
               type: 'string'
               // Missing expression
@@ -98,7 +103,10 @@ describe('External System Validators', () => {
       const datasourceWithMissingPath = {
         ...mockDatasource,
         fieldMappings: {
-          fields: {
+          dimensions: {
+            country: 'metadata.country'
+          },
+          attributes: {
             missing: {
               expression: '{{properties.missing.field}} | trim',
               type: 'string'

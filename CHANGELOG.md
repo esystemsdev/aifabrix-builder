@@ -1,3 +1,77 @@
+## [2.32.0] - 2026-01-14
+
+### Added
+- **External System Wizard CLI Integration**: New interactive `aifabrix wizard` command for creating external systems
+  - Interactive guided workflow for creating external systems from OpenAPI specifications
+  - Support for multiple source types: OpenAPI file/URL, MCP server, known platforms
+  - Automatic API type detection and configuration generation via dataplane wizard API
+  - AI-powered configuration generation with validation
+  - File upload support for OpenAPI specifications
+  - Progress indicators for long-running operations (parsing, generating, validating)
+  - Integration with `aifabrix create --type external --wizard` command
+  - Creates complete file structure: `variables.yaml`, system JSON, datasource JSONs, `env.template`, `README.md`, `application-schema.json`
+  - Comprehensive wizard documentation in `docs/wizard.md`
+- **Wizard API Client Module**: New API client for dataplane wizard endpoints
+  - `lib/api/wizard.api.js` with typed API functions for wizard operations
+  - `lib/api/types/wizard.types.js` with JSDoc type definitions for all wizard request/response types
+  - Support for mode selection, source selection, OpenAPI parsing, type detection, config generation, and validation
+  - MCP connection testing support
+- **Wizard File Generator**: New file generation module for wizard-created configurations
+  - `lib/generator/wizard.js` for generating files from dataplane-generated configurations
+  - `lib/generator/wizard-prompts.js` for interactive prompts throughout wizard flow
+  - File upload utility `lib/utils/file-upload.js` for handling multipart/form-data uploads
+
+### Changed
+- **Architecture Reorganization**: Complete reorganization of `lib/` directory into domain-specific folders
+  - Files organized into logical subfolders: `app/`, `build/`, `deployment/`, `external-system/`, `datasource/`, `generator/`, `validation/`, `infrastructure/`, `core/`
+  - Improved code organization and maintainability
+  - Test structure mirrors new source structure in `tests/lib/`
+  - All import paths updated across codebase
+  - Backward compatibility maintained (all exports remain the same)
+- **Datasource Schema Updates**: Updated to dimensions-first access model (Plans 210, 211, 212)
+  - `dimensions` (array) → `dimensions` (object mapping dimension keys to attribute paths)
+  - `fields` → `attributes` with `indexed` property support
+  - `resourceType` (free-form string pattern: `^[a-z0-9-]+$`)
+  - `entityKey` → `entityType`
+  - `exposed.fields` → `exposed.attributes`
+  - Support for `record_ref:` prefix in field mapping expressions for cross-datasource record references
+  - Updated generators, validators, templates, and integration examples to use new format
+  - Updated JSDoc type definitions in `lib/api/types/datasources.types.js`
+- **Documentation File Naming**: All documentation files renamed from uppercase to lowercase
+  - `docs/CLI-REFERENCE.md` → `docs/cli-reference.md`
+  - `docs/EXTERNAL-SYSTEMS.md` → `docs/external-systems.md`
+  - `docs/QUICK-START.md` → `docs/quick-start.md`
+  - `docs/CONFIGURATION.md` → `docs/configuration.md`
+  - `docs/DEPLOYING.md` → `docs/deploying.md`
+  - `docs/BUILDING.md` → `docs/building.md`
+  - `docs/RUNNING.md` → `docs/running.md`
+  - `docs/INFRASTRUCTURE.md` → `docs/infrastructure.md`
+  - `docs/GITHUB-WORKFLOWS.md` → `docs/github-workflows.md`
+  - `docs/DEVELOPER-ISOLATION.md` → `docs/developer-isolation.md`
+  - All internal documentation links updated to use lowercase filenames
+
+### Technical
+- **Code Quality Refactoring**: Continued improvements to code quality and maintainability
+  - Helper function extraction for complex functions
+  - Parameter object conversions for functions with many parameters
+  - Statement count and complexity reductions
+  - Improved error handling and validation patterns
+- **Test Structure**: Test files reorganized to mirror new source structure
+  - All test imports updated to match new module locations
+  - Brittle tests moved to `tests/local/` directory (excluded from CI)
+  - CI tests passing (127 test suites)
+- **Schema Validation**: Enhanced validation for new datasource schema format
+  - Updated `lib/utils/external-system-validators.js` to validate dimensions and attributes
+  - Support for `record_ref:` expression validation
+  - Backward compatibility support for reading old format during migration
+- **Template Updates**: Updated Handlebars templates for new schema format
+  - `templates/external-system/external-datasource.json.hbs` updated to generate dimensions-first format
+  - Integration examples updated: `integration/hubspot/*.json` files use new format
+- **Import Path Updates**: All `require()` statements updated to use new folder structure
+  - Cross-references updated across all modules
+  - Wizard-related imports properly routed to new locations
+  - ISO 27001 compliant implementation maintained throughout
+
 ## [2.31.1] - 2026-01-08
 
 ### Fixed
