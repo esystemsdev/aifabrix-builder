@@ -38,6 +38,10 @@ build/
 out/
 builder/
 apps/
+# Exception: lib/build/package.json is needed for Jest module resolution in CI
+# Must un-ignore the directory first, then the file
+!lib/build/
+!lib/build/package.json
 
 # Package tarballs
 *.tgz
