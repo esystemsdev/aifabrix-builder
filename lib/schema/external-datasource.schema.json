@@ -12,7 +12,7 @@
       "category":"integration",
       "author":"AI Fabrix Team",
       "createdAt":"2024-01-01T00:00:00Z",
-      "updatedAt":"2025-01-01T00:00:00Z",
+      "updatedAt":"2026-01-18T00:00:00Z",
       "compatibility":{
          "minVersion":"1.0.0",
          "maxVersion":"3.0.0",
@@ -70,7 +70,7 @@
          },
          {
             "version":"2.0.0",
-            "date":"2026-01-12T00:00:00Z",
+            "date":"2026-01-18T00:00:00Z",
             "changes":[
                "BREAKING: Renamed fieldMappings.accessFields (array) to fieldMappings.dimensions (object)",
                "BREAKING: Renamed fieldMappings.fields to fieldMappings.attributes",
@@ -1024,7 +1024,10 @@
                      "type":"string",
                      "enum":[
                         "GET",
-                        "POST"
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE"
                      ],
                      "description":"Explicit HTTP method when source='http'."
                   },
@@ -1045,8 +1048,15 @@
                      }
                   },
                   "bodyTemplate":{
-                     "description":"Optional static request body or template for POST/PUT fetches.",
+                     "description":"Optional static request body or template for POST/PUT/PATCH fetches.",
                      "type":["object","string","null"]
+                  },
+                  "headers":{
+                     "type":"object",
+                     "description":"Optional HTTP headers for the request.",
+                     "additionalProperties":{
+                        "type":"string"
+                     }
                   }
                },
                "allOf":[
