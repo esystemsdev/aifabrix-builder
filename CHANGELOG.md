@@ -1,3 +1,12 @@
+## [2.32.2] - 2026-01-18
+
+### Changed
+- **External Datasource Schema Updates**: Minor enhancements to external datasource schema
+  - Updated schema metadata timestamp to 2026-01-18
+  - Updated description to reflect dimension-first data model approach (replaced "ABAC access fields" with "data dimensions")
+  - Enhanced HTTP method support in OpenAPI operations configuration
+  - Schema version updated to 2.0.0 in `lib/schema/external-datasource.schema.json` (internal schema version)
+
 ## [2.32.1] - 2026-01-17
 
 ### Changed
