@@ -131,7 +131,31 @@ describe('App Register Module', () => {
     if (!app.createApp) {
       app.createApp = jest.fn();
     }
-    app.createApp.mockResolvedValue();
+    // Make createApp actually create variables.yaml file when called
+    app.createApp.mockImplementation(async(appName, options) => {
+      const { detectAppType } = require('../../../lib/utils/paths');
+      const appTypeResult = await detectAppType(appName);
+      const appPath = appTypeResult.appPath;
+
+      // Ensure directory exists
+      if (!fsSync.existsSync(appPath)) {
+        fsSync.mkdirSync(appPath, { recursive: true });
+      }
+
+      // Create minimal variables.yaml
+      const variables = {
+        app: {
+          key: appName,
+          name: appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-/g, ' ')
+        },
+        build: {
+          language: options?.language || 'typescript',
+          port: options?.port || 3000
+        }
+      };
+      const variablesPath = path.join(appPath, 'variables.yaml');
+      fsSync.writeFileSync(variablesPath, yaml.dump(variables), 'utf8');
+    });
   });
 
   afterEach(async() => {

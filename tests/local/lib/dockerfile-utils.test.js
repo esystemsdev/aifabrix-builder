@@ -9,13 +9,12 @@
 const path = require('path');
 const os = require('os');
 
-// Mock fs to use real implementation to override any other mocks
-jest.mock('fs', () => {
-  return jest.requireActual('fs');
-});
+// Ensure fs is not mocked - use jest.unmock to prevent mocking
+jest.unmock('fs');
 
-const fsSync = require('fs');
+// Use real fs implementation - use regular require after unmocking
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const dockerfileUtils = require('../../../lib/utils/dockerfile-utils');
 
 jest.mock('../../../lib/utils/paths', () => {
@@ -34,7 +33,7 @@ describe('Dockerfile Utils', () => {
   let realProjectRoot;
 
   beforeEach(async() => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aifabrix-test-'));
+    tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));
     originalCwd = process.cwd();
 
     // Get real project root and set up mock
@@ -48,12 +47,20 @@ describe('Dockerfile Utils', () => {
     // Create templates in tempDir for template loading tests
     const typescriptTemplateDir = path.join(tempDir, 'templates', 'typescript');
     const pythonTemplateDir = path.join(tempDir, 'templates', 'python');
-    await fs.mkdir(typescriptTemplateDir, { recursive: true });
-    await fs.mkdir(pythonTemplateDir, { recursive: true });
+    fsSync.mkdirSync(typescriptTemplateDir, { recursive: true });
+    fsSync.mkdirSync(pythonTemplateDir, { recursive: true });
 
-    // Create minimal templates
-    await fs.writeFile(path.join(typescriptTemplateDir, 'Dockerfile.hbs'), 'FROM node:20-alpine\nWORKDIR /app\nEXPOSE {{port}}');
-    await fs.writeFile(path.join(pythonTemplateDir, 'Dockerfile.hbs'), 'FROM python:3.11-alpine\nWORKDIR /app\nEXPOSE {{port}}');
+    // Create minimal templates using sync operations for reliability
+    const tsTemplatePath = path.join(typescriptTemplateDir, 'Dockerfile.hbs');
+    const pyTemplatePath = path.join(pythonTemplateDir, 'Dockerfile.hbs');
+    fsSync.writeFileSync(tsTemplatePath, 'FROM node:20-alpine\nWORKDIR /app\nEXPOSE {{port}}', 'utf8');
+    fsSync.writeFileSync(pyTemplatePath, 'FROM python:3.11-alpine\nWORKDIR /app\nEXPOSE {{port}}', 'utf8');
+
+    // Verify templates were created
+    expect(fsSync.existsSync(tsTemplatePath)).toBe(true);
+    expect(fsSync.existsSync(pyTemplatePath)).toBe(true);
+    expect(fsSync.statSync(tsTemplatePath).isFile()).toBe(true);
+    expect(fsSync.statSync(pyTemplatePath).isFile()).toBe(true);
 
     // Change to temp directory for file path tests
     process.chdir(tempDir);
@@ -63,16 +70,28 @@ describe('Dockerfile Utils', () => {
     // Restore original cwd - this is important for Jest's module resolution
     process.chdir(originalCwd);
     pathsModule.getProjectRoot.mockClear();
-    await fs.rm(tempDir, { recursive: true, force: true });
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
   });
 
   describe('loadDockerfileTemplate', () => {
     it('should load TypeScript Dockerfile template', () => {
+      // Verify mock is set correctly
+      expect(pathsModule.getProjectRoot()).toBe(tempDir);
+      // Verify template exists
+      const templatePath = path.join(tempDir, 'templates', 'typescript', 'Dockerfile.hbs');
+      expect(fsSync.existsSync(templatePath)).toBe(true);
+
       const template = dockerfileUtils.loadDockerfileTemplate('typescript');
       expect(template).toBeInstanceOf(Function);
     });
 
     it('should load Python Dockerfile template', () => {
+      // Verify mock is set correctly
+      expect(pathsModule.getProjectRoot()).toBe(tempDir);
+      // Verify template exists
+      const templatePath = path.join(tempDir, 'templates', 'python', 'Dockerfile.hbs');
+      expect(fsSync.existsSync(templatePath)).toBe(true);
+
       const template = dockerfileUtils.loadDockerfileTemplate('python');
       expect(template).toBeInstanceOf(Function);
     });
@@ -205,8 +224,8 @@ EXPOSE ${vars.port || 3000}`;
   describe('checkTemplateDockerfile', () => {
     it('should return Dockerfile path if exists and forceTemplate is false', async() => {
       const builderPath = path.resolve(tempDir, 'builder', 'test-app');
-      await fs.mkdir(builderPath, { recursive: true });
-      await fs.writeFile(path.join(builderPath, 'Dockerfile'), 'FROM node:18');
+      fsSync.mkdirSync(builderPath, { recursive: true });
+      fsSync.writeFileSync(path.join(builderPath, 'Dockerfile'), 'FROM node:18', 'utf8');
 
       const result = dockerfileUtils.checkTemplateDockerfile(builderPath, 'test-app', false);
 
@@ -223,8 +242,8 @@ EXPOSE ${vars.port || 3000}`;
 
     it('should return null if forceTemplate is true even if Dockerfile exists', async() => {
       const builderPath = path.resolve(tempDir, 'builder', 'test-app');
-      await fs.mkdir(builderPath, { recursive: true });
-      await fs.writeFile(path.join(builderPath, 'Dockerfile'), 'FROM node:18');
+      fsSync.mkdirSync(builderPath, { recursive: true });
+      fsSync.writeFileSync(path.join(builderPath, 'Dockerfile'), 'FROM node:18', 'utf8');
 
       const result = dockerfileUtils.checkTemplateDockerfile(builderPath, 'test-app', true);
 
@@ -258,7 +277,7 @@ EXPOSE ${vars.port || 3000}`;
       const buildConfig = { dockerfile: 'CustomDockerfile' };
       const contextPath = path.resolve(tempDir);
 
-      await fs.writeFile(path.join(contextPath, 'CustomDockerfile'), 'FROM node:18');
+      fsSync.writeFileSync(path.join(contextPath, 'CustomDockerfile'), 'FROM node:18', 'utf8');
 
       const result = dockerfileUtils.checkProjectDockerfile(builderPath, 'test-app', buildConfig, contextPath, false);
 
@@ -270,8 +289,8 @@ EXPOSE ${vars.port || 3000}`;
       const buildConfig = { dockerfile: 'CustomDockerfile' };
       const contextPath = path.resolve(tempDir, 'somewhere', 'else');
 
-      await fs.mkdir(builderPath, { recursive: true });
-      await fs.writeFile(path.join(builderPath, 'CustomDockerfile'), 'FROM node:18');
+      fsSync.mkdirSync(builderPath, { recursive: true });
+      fsSync.writeFileSync(path.join(builderPath, 'CustomDockerfile'), 'FROM node:18', 'utf8');
 
       const result = dockerfileUtils.checkProjectDockerfile(builderPath, 'test-app', buildConfig, contextPath, false);
 
@@ -294,9 +313,9 @@ EXPOSE ${vars.port || 3000}`;
       const contextPath = path.resolve(tempDir);
 
       // Create Dockerfile in both locations
-      await fs.writeFile(path.join(contextPath, 'CustomDockerfile'), 'FROM node:18 # context');
-      await fs.mkdir(builderPath, { recursive: true });
-      await fs.writeFile(path.join(builderPath, 'CustomDockerfile'), 'FROM node:18 # builder');
+      fsSync.writeFileSync(path.join(contextPath, 'CustomDockerfile'), 'FROM node:18 # context', 'utf8');
+      fsSync.mkdirSync(builderPath, { recursive: true });
+      fsSync.writeFileSync(path.join(builderPath, 'CustomDockerfile'), 'FROM node:18 # builder', 'utf8');
 
       const result = dockerfileUtils.checkProjectDockerfile(builderPath, 'test-app', buildConfig, contextPath, false);
 

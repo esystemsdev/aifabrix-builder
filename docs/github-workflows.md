@@ -290,7 +290,7 @@ aifabrix app rotate-secret myapp --environment dev
 
 This displays new credentials. Then update `DEV_MISO_CLIENTSECRET` in GitHub Secrets.
 
-→ [See CLI Reference for `app register` command](cli-reference.md#app-register)
+→ [See CLI Reference for `app register` command](commands/application-management.md#aifabrix-app-register-appkey)
 
 ---
 

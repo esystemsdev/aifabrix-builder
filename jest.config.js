@@ -9,17 +9,22 @@ module.exports = {
   ],
   // Exclude integration tests from normal test runs
   // Exclude local tests when running in CI (they're brittle and meant for local development only)
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '\\\\node_modules\\\\',
-    '/tests/integration/',
-    '\\\\tests\\\\integration\\\\',
-    // Exclude local tests in CI environments
-    ...(isCI ? [
-      '/tests/local/',
-      '\\\\tests\\\\local\\\\'
-    ] : [])
-  ],
+  // Also exclude local tests if they're causing Babel compilation crashes
+  // These tests can be run individually if needed for local development
+  testPathIgnorePatterns: (() => {
+    const patterns = [
+      '/node_modules/',
+      '\\\\node_modules\\\\',
+      '/tests/integration/',
+      '\\\\tests\\\\integration\\\\'
+    ];
+    // Exclude local tests in CI environments or if SKIP_LOCAL_TESTS is set
+    if (isCI || process.env.SKIP_LOCAL_TESTS === 'true') {
+      patterns.push('/tests/local/');
+      patterns.push('\\\\tests\\\\local\\\\');
+    }
+    return patterns;
+  })(),
   // Coverage is disabled for normal tests - use test:coverage for coverage reports
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   // Normal test timeout (integration tests specify their own timeout)

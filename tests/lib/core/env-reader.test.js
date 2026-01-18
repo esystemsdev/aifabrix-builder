@@ -14,8 +14,9 @@ jest.mock('fs', () => {
   return jest.requireActual('fs');
 });
 
-const fs = require('fs').promises;
-const fsSync = require('fs');
+// Use real fs implementation - use jest.requireActual to bypass any global mocks
+const fs = jest.requireActual('fs').promises;
+const fsSync = jest.requireActual('fs');
 const envReader = require('../../../lib/core/env-reader');
 
 describe('Environment Reader Module', () => {
@@ -43,10 +44,11 @@ DATABASE_URL=postgres://localhost:5432/test
 API_KEY=abc123def456
 `;
       const envPath = path.join(process.cwd(), '.env');
-      await fs.writeFile(envPath, envContent, 'utf8');
+      fsSync.writeFileSync(envPath, envContent, 'utf8');
 
-      // Verify file exists before calling readExistingEnv - use statSync for reliable check
-      expect(fsSync.statSync(envPath).isFile()).toBe(true);
+      // writeFileSync will throw if it fails, so file should exist
+      const stats = fsSync.statSync(envPath);
+      expect(stats.isFile()).toBe(true);
 
       const result = await envReader.readExistingEnv(process.cwd());
 
@@ -64,7 +66,11 @@ API_KEY=abc123def456
     });
 
     it('should handle empty .env file', async() => {
-      await fs.writeFile('.env', '');
+      const envPath = path.join(process.cwd(), '.env');
+      fsSync.writeFileSync(envPath, '', 'utf8');
+      // writeFileSync will throw if it fails, so file should exist
+      const stats = fsSync.statSync(envPath);
+      expect(stats.isFile()).toBe(true);
       const result = await envReader.readExistingEnv(process.cwd());
       expect(result).toEqual({});
     });
@@ -80,10 +86,11 @@ PORT=3000
 DATABASE_URL=postgres://localhost:5432/test
 `;
       const envPath = path.join(process.cwd(), '.env');
-      await fs.writeFile(envPath, envContent, 'utf8');
+      fsSync.writeFileSync(envPath, envContent, 'utf8');
 
-      // Verify file exists before calling readExistingEnv - use statSync for reliable check
-      expect(fsSync.statSync(envPath).isFile()).toBe(true);
+      // writeFileSync will throw if it fails, so file should exist
+      const stats = fsSync.statSync(envPath);
+      expect(stats.isFile()).toBe(true);
 
       const result = await envReader.readExistingEnv(process.cwd());
 
@@ -100,7 +107,11 @@ NODE_ENV="development"
 PORT='3000'
 DATABASE_URL="postgres://localhost:5432/test"
 `;
-      await fs.writeFile('.env', envContent);
+      const envPath = path.join(process.cwd(), '.env');
+      fsSync.writeFileSync(envPath, envContent, 'utf8');
+      // writeFileSync will throw if it fails, so file should exist
+      const stats = fsSync.statSync(envPath);
+      expect(stats.isFile()).toBe(true);
 
       const result = await envReader.readExistingEnv(process.cwd());
 

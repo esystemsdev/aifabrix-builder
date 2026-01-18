@@ -1,3 +1,13 @@
+## [2.32.1] - 2026-01-17
+
+### Changed
+- **External System Schema Validation**: Enhanced endpoint validation patterns
+  - Added pattern validation for endpoint paths (must start with `/`) to prevent path traversal attacks
+  - Added pattern validation for endpoint type identifiers (`^[a-z0-9-]+$`) for consistency
+  - Added pattern validation for router module paths (`^[a-z0-9_.]+$`) for Python module format
+  - Updated schema version to 1.3.0 in `lib/schema/external-system.schema.json`
+  - Improved descriptions for endpoint properties to clarify format requirements
+
 ## [2.32.0] - 2026-01-14
 
 ### Added

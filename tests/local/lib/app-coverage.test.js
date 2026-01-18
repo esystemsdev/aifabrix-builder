@@ -6,6 +6,10 @@
  * @version 2.0.0
  */
 
+// Ensure fs is not mocked - use jest.unmock to prevent mocking
+jest.unmock('fs');
+
+// Use real fs implementation - use regular require after unmocking
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const path = require('path');
@@ -129,14 +133,21 @@ describe('Application Module Coverage', () => {
   describe('pushApp error paths', () => {
     it('should handle missing registry', async() => {
       // Create required files
-      const appPath = path.join('builder', 'test-app');
-      await fs.mkdir(appPath, { recursive: true });
+      const appPath = path.join(process.cwd(), 'builder', 'test-app');
+      // Ensure parent directory exists
+      fsSync.mkdirSync(path.dirname(appPath), { recursive: true });
+      fsSync.mkdirSync(appPath, { recursive: true });
       // Ensure variables.yaml exists with proper structure
+      const variablesPath = path.join(appPath, 'variables.yaml');
       const variablesContent = yaml.dump({
         app: { key: 'test-app' },
         image: { name: 'test-app' }
       });
-      await fs.writeFile(path.join(appPath, 'variables.yaml'), variablesContent);
+      fsSync.writeFileSync(variablesPath, variablesContent, 'utf8');
+
+      // Verify file exists - use statSync for reliable check
+      expect(() => fsSync.statSync(variablesPath).isFile()).not.toThrow();
+      expect(fsSync.statSync(variablesPath).isFile()).toBe(true);
 
       await expect(app.pushApp('test-app', {}))
         .rejects.toThrow('Registry URL is required');
@@ -144,14 +155,21 @@ describe('Application Module Coverage', () => {
 
     it('should handle invalid registry URL', async() => {
       // Create required files
-      const appPath = path.join('builder', 'test-app');
-      await fs.mkdir(appPath, { recursive: true });
+      const appPath = path.join(process.cwd(), 'builder', 'test-app');
+      // Ensure parent directory exists
+      fsSync.mkdirSync(path.dirname(appPath), { recursive: true });
+      fsSync.mkdirSync(appPath, { recursive: true });
       // Ensure variables.yaml exists with proper structure
+      const variablesPath = path.join(appPath, 'variables.yaml');
       const variablesContent = yaml.dump({
         app: { key: 'test-app' },
         image: { name: 'test-app' }
       });
-      await fs.writeFile(path.join(appPath, 'variables.yaml'), variablesContent);
+      fsSync.writeFileSync(variablesPath, variablesContent, 'utf8');
+
+      // Verify file exists - use statSync for reliable check
+      expect(() => fsSync.statSync(variablesPath).isFile()).not.toThrow();
+      expect(fsSync.statSync(variablesPath).isFile()).toBe(true);
 
       // The validation checks ACR URL format before checking the image
       await expect(app.pushApp('test-app', { registry: 'invalid.com' }))
@@ -160,14 +178,21 @@ describe('Application Module Coverage', () => {
 
     it('should handle missing local image', async() => {
       // Create required files first
-      const appPath = path.join('builder', 'test-app');
-      await fs.mkdir(appPath, { recursive: true });
+      const appPath = path.join(process.cwd(), 'builder', 'test-app');
+      // Ensure parent directory exists
+      fsSync.mkdirSync(path.dirname(appPath), { recursive: true });
+      fsSync.mkdirSync(appPath, { recursive: true });
       // Ensure variables.yaml exists with proper structure
+      const variablesPath = path.join(appPath, 'variables.yaml');
       const variablesContent = yaml.dump({
         app: { key: 'test-app' },
         image: { name: 'test-app', registry: 'myacr.azurecr.io' }
       });
-      await fs.writeFile(path.join(appPath, 'variables.yaml'), variablesContent);
+      fsSync.writeFileSync(variablesPath, variablesContent, 'utf8');
+
+      // Verify file exists - use statSync for reliable check
+      expect(() => fsSync.statSync(variablesPath).isFile()).not.toThrow();
+      expect(fsSync.statSync(variablesPath).isFile()).toBe(true);
 
       const pushUtils = require('../../../lib/deployment/push');
       jest.spyOn(pushUtils, 'checkLocalImageExists').mockResolvedValue(false);
@@ -178,14 +203,25 @@ describe('Application Module Coverage', () => {
 
     it('should handle missing Azure CLI', async() => {
       // Create required files first
-      const appPath = path.join('builder', 'test-app');
-      await fs.mkdir(appPath, { recursive: true });
+      const appPath = path.join(process.cwd(), 'builder', 'test-app');
+      // Ensure parent directory exists
+      const builderDir = path.dirname(appPath);
+      fsSync.mkdirSync(builderDir, { recursive: true });
+      fsSync.mkdirSync(appPath, { recursive: true });
       // Ensure variables.yaml exists with proper structure
+      const variablesPath = path.join(appPath, 'variables.yaml');
       const variablesContent = yaml.dump({
         app: { key: 'test-app' },
         image: { name: 'test-app', registry: 'myacr.azurecr.io' }
       });
-      await fs.writeFile(path.join(appPath, 'variables.yaml'), variablesContent);
+      fsSync.writeFileSync(variablesPath, variablesContent, 'utf8');
+
+      // Verify file exists and was written correctly
+      expect(fsSync.existsSync(variablesPath)).toBe(true);
+      expect(fsSync.statSync(variablesPath).isFile()).toBe(true);
+      const writtenContent = fsSync.readFileSync(variablesPath, 'utf8');
+      expect(writtenContent).toBeTruthy();
+      expect(writtenContent.length).toBeGreaterThan(0);
 
       const pushUtils = require('../../../lib/deployment/push');
       jest.spyOn(pushUtils, 'checkLocalImageExists').mockResolvedValue(true);

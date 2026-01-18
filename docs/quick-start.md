@@ -322,7 +322,7 @@ All files are in the same folder for easy viewing and management.
 ## Next Steps
 
 ### Learn More
-- [All CLI Commands](cli-reference.md) - Complete command reference
+- [All CLI Commands](commands/README.md) - Complete command reference
 - [Configuration](configuration.md) - Detailed config file docs
 - [Building](building.md) - Custom Dockerfiles and templates
 - [Running](running.md) - Local development workflow
@@ -396,4 +396,4 @@ aifabrix doctor
 → Verify NPM token has publish permissions  
 → Review workflow logs in GitHub Actions tab
 
-→ [More Help](cli-reference.md)
+→ [More Help](commands/README.md)

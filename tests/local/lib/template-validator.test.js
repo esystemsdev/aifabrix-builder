@@ -84,28 +84,30 @@ describe('Template Validator Module', () => {
 
   describe('validateTemplate', () => {
     it('should validate existing template with files', async() => {
+      // Mock getProjectRoot to return tempDir BEFORE creating directories
+      pathsModule.getProjectRoot.mockReturnValue(tempDir);
+
       // Use temp directory for templates to avoid writing to real project templates
       const tempTemplatesDir = path.join(tempDir, 'templates', 'applications');
       const templateName = 'miso-controller';
       const templatePath = path.join(tempTemplatesDir, templateName);
 
-      // Mock getProjectRoot to return tempDir
-      pathsModule.getProjectRoot.mockReturnValue(tempDir);
-
       // Create templates directory structure in temp
-      if (!fsSync.existsSync(tempTemplatesDir)) {
-        fsSync.mkdirSync(tempTemplatesDir, { recursive: true });
-      }
+      fsSync.mkdirSync(tempTemplatesDir, { recursive: true });
+      expect(fsSync.existsSync(tempTemplatesDir)).toBe(true);
 
       // Create test template in temp directory
-      if (!fsSync.existsSync(templatePath)) {
-        fsSync.mkdirSync(templatePath, { recursive: true });
-        const testFile = path.join(templatePath, 'test.yaml');
-        fsSync.writeFileSync(testFile, 'test content', 'utf8');
-      }
+      fsSync.mkdirSync(templatePath, { recursive: true });
+      const testFile = path.join(templatePath, 'test.yaml');
+      fsSync.writeFileSync(testFile, 'test content', 'utf8');
 
       // Verify template exists and has files - use statSync for reliable check
+      expect(fsSync.existsSync(templatePath)).toBe(true);
       expect(fsSync.statSync(templatePath).isDirectory()).toBe(true);
+      expect(fsSync.existsSync(testFile)).toBe(true);
+
+      // Verify getProjectRoot returns tempDir
+      expect(pathsModule.getProjectRoot()).toBe(tempDir);
       const files = fsSync.readdirSync(templatePath);
       const hasFiles = files.some(file => {
         const filePath = path.join(templatePath, file);
@@ -133,10 +135,10 @@ describe('Template Validator Module', () => {
       pathsModule.getProjectRoot.mockReturnValue(tempDir);
 
       // Create empty template directory in temp
-      if (!fsSync.existsSync(tempTemplatesDir)) {
-        fsSync.mkdirSync(tempTemplatesDir, { recursive: true });
-      }
+      fsSync.mkdirSync(tempTemplatesDir, { recursive: true });
+      expect(fsSync.existsSync(tempTemplatesDir)).toBe(true);
       fsSync.mkdirSync(emptyTemplatePath, { recursive: true });
+      expect(fsSync.existsSync(emptyTemplatePath)).toBe(true);
 
       try {
         await expect(templateValidator.validateTemplate('test-empty'))
@@ -157,19 +159,14 @@ describe('Template Validator Module', () => {
       // Create template with hidden file only in tempDir
       const tempTemplatesDir = path.join(tempDir, 'templates', 'applications');
       // Ensure parent directory exists
-      if (!fsSync.existsSync(tempTemplatesDir)) {
-        const templatesParent = path.dirname(tempTemplatesDir);
-        if (!fsSync.existsSync(templatesParent)) {
-          fsSync.mkdirSync(templatesParent, { recursive: true });
-        }
-        fsSync.mkdirSync(tempTemplatesDir, { recursive: true });
-      }
+      fsSync.mkdirSync(tempTemplatesDir, { recursive: true });
       const hiddenTemplatePath = path.join(tempTemplatesDir, 'test-hidden');
       fsSync.mkdirSync(hiddenTemplatePath, { recursive: true });
       fsSync.writeFileSync(path.join(hiddenTemplatePath, '.hidden'), 'hidden', 'utf8');
       fsSync.writeFileSync(path.join(hiddenTemplatePath, 'visible.yaml'), 'visible', 'utf8');
 
       // Verify files exist - use statSync for reliable check
+      expect(fsSync.existsSync(path.join(hiddenTemplatePath, 'visible.yaml'))).toBe(true);
       expect(fsSync.statSync(path.join(hiddenTemplatePath, 'visible.yaml')).isFile()).toBe(true);
 
       try {
@@ -215,6 +212,8 @@ describe('Template Validator Module', () => {
       fsSync.mkdirSync(appPath, { recursive: true });
 
       // Verify files exist - use statSync for reliable check
+      expect(fsSync.existsSync(path.join(testTemplatePath, 'variables.yaml'))).toBe(true);
+      expect(fsSync.existsSync(path.join(testTemplatePath, 'env.template'))).toBe(true);
       expect(fsSync.statSync(path.join(testTemplatePath, 'variables.yaml')).isFile()).toBe(true);
       expect(fsSync.statSync(path.join(testTemplatePath, 'env.template')).isFile()).toBe(true);
 
@@ -261,6 +260,8 @@ describe('Template Validator Module', () => {
       }
 
       // Verify files exist - use statSync for reliable check
+      expect(fsSync.existsSync(path.join(testTemplatePath, 'variables.yaml'))).toBe(true);
+      expect(fsSync.existsSync(path.join(testTemplatePath, 'config', 'settings.yaml'))).toBe(true);
       expect(fsSync.statSync(path.join(testTemplatePath, 'variables.yaml')).isFile()).toBe(true);
       expect(fsSync.statSync(path.join(testTemplatePath, 'config', 'settings.yaml')).isFile()).toBe(true);
 
@@ -287,13 +288,7 @@ describe('Template Validator Module', () => {
       // Create a test template with hidden file in tempDir
       const tempTemplatesDir = path.join(tempDir, 'templates', 'applications');
       // Ensure parent directory exists
-      if (!fsSync.existsSync(tempTemplatesDir)) {
-        const templatesParent = path.dirname(tempTemplatesDir);
-        if (!fsSync.existsSync(templatesParent)) {
-          fsSync.mkdirSync(templatesParent, { recursive: true });
-        }
-        fsSync.mkdirSync(tempTemplatesDir, { recursive: true });
-      }
+      fsSync.mkdirSync(tempTemplatesDir, { recursive: true });
       const testTemplatePath = path.join(tempTemplatesDir, 'test-hidden-copy');
       const appPath = path.join(tempDir, 'builder', 'test-app');
 
@@ -301,13 +296,11 @@ describe('Template Validator Module', () => {
       fsSync.writeFileSync(path.join(testTemplatePath, '.hidden'), 'hidden', 'utf8');
       fsSync.writeFileSync(path.join(testTemplatePath, 'visible.yaml'), 'visible', 'utf8');
       // Ensure app directory parent exists
-      const appParent = path.dirname(appPath);
-      if (!fsSync.existsSync(appParent)) {
-        fsSync.mkdirSync(appParent, { recursive: true });
-      }
+      fsSync.mkdirSync(path.dirname(appPath), { recursive: true });
 
       // Verify files exist
       expect(fsSync.existsSync(path.join(testTemplatePath, 'visible.yaml'))).toBe(true);
+      expect(fsSync.statSync(path.join(testTemplatePath, 'visible.yaml')).isFile()).toBe(true);
 
       try {
         const copiedFiles = await templateValidator.copyTemplateFiles('test-hidden-copy', appPath);
@@ -389,6 +382,7 @@ describe('Template Validator Module', () => {
       fsSync.writeFileSync(templatePath, 'not a directory', 'utf8');
 
       // Verify file exists (not a directory) - use statSync for reliable check
+      expect(fsSync.existsSync(templatePath)).toBe(true);
       expect(fsSync.statSync(templatePath).isFile()).toBe(true);
 
       try {
@@ -440,6 +434,7 @@ describe('Template Validator Module', () => {
       const appPath = path.join(tempDir, 'builder', 'test-app');
 
       // Verify file exists (not a directory) - use statSync for reliable check
+      expect(fsSync.existsSync(languageTemplatePath)).toBe(true);
       expect(fsSync.statSync(languageTemplatePath).isFile()).toBe(true);
 
       try {

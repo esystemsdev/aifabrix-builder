@@ -10,13 +10,23 @@ const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
 
-// Mock fs to use real implementation to override any other mocks
-jest.mock('fs', () => {
-  return jest.requireActual('fs');
-});
+// Ensure fs is not mocked - use jest.unmock to prevent mocking
+jest.unmock('fs');
 
+// Use real fs implementation - use regular require after unmocking
+// This ensures all file operations use the real filesystem
 const fs = require('fs').promises;
 const fsSync = require('fs');
+
+// Helper function to check if file exists (more reliable than existsSync)
+function fileExists(filePath) {
+  try {
+    fsSync.statSync(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 describe('File System Operations', () => {
   let tempDir;
@@ -71,25 +81,38 @@ describe('File System Operations', () => {
         build: { language: 'typescript' }
       };
 
-      const filePath = path.join('builder', 'test-app', 'variables.yaml');
-      await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, yaml.dump(config));
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'variables.yaml');
+      const dirPath = path.dirname(filePath);
+      fsSync.mkdirSync(dirPath, { recursive: true });
+      const yamlContent = yaml.dump(config);
+      fsSync.writeFileSync(filePath, yamlContent, 'utf8');
 
-      expect(fsSync.statSync(filePath).isFile()).toBe(true);
+      // Verify file was written - use statSync for more reliable check
+      try {
+        const stats = fsSync.statSync(filePath);
+        expect(stats.isFile()).toBe(true);
+      } catch (error) {
+        throw new Error(`File not found at ${filePath}: ${error.message}`);
+      }
 
-      const content = await fs.readFile(filePath, 'utf8');
+      const content = fsSync.readFileSync(filePath, 'utf8');
+      expect(content).toBeTruthy();
+      expect(content.length).toBeGreaterThan(0);
       const loaded = yaml.load(content);
+      expect(loaded).toBeDefined();
+      expect(loaded.app).toBeDefined();
       expect(loaded.app.key).toBe('test-app');
     });
 
     it('should write .env file', async() => {
       const envContent = 'DATABASE_URL=postgresql://localhost:5432/test\nREDIS_URL=redis://localhost:6379';
 
-      const filePath = path.join('builder', 'test-app', '.env');
-      await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, envContent);
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', '.env');
+      fsSync.mkdirSync(path.dirname(filePath), { recursive: true });
+      fsSync.writeFileSync(filePath, envContent, 'utf8');
 
-      const content = await fs.readFile(filePath, 'utf8');
+      expect(fileExists(filePath)).toBe(true);
+      const content = fsSync.readFileSync(filePath, 'utf8');
       expect(content).toContain('DATABASE_URL');
       expect(content).toContain('REDIS_URL');
     });
@@ -102,18 +125,19 @@ describe('File System Operations', () => {
         ]
       };
 
-      const filePath = path.join('builder', 'test-app', 'rbac.yaml');
-      await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, yaml.dump(rbacConfig));
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'rbac.yaml');
+      fsSync.mkdirSync(path.dirname(filePath), { recursive: true });
+      fsSync.writeFileSync(filePath, yaml.dump(rbacConfig), 'utf8');
 
-      const content = await fs.readFile(filePath, 'utf8');
+      expect(fileExists(filePath)).toBe(true);
+      const content = fsSync.readFileSync(filePath, 'utf8');
       const loaded = yaml.load(content);
       expect(loaded.roles).toHaveLength(2);
     });
 
     it('should write multiple files to application directory', async() => {
-      const appPath = path.join('builder', 'test-app');
-      await fs.mkdir(appPath, { recursive: true });
+      const appPath = path.join(process.cwd(), 'builder', 'test-app');
+      fsSync.mkdirSync(appPath, { recursive: true });
 
       const files = [
         { name: 'variables.yaml', content: yaml.dump({ app: { key: 'test-app' } }) },
@@ -122,11 +146,15 @@ describe('File System Operations', () => {
       ];
 
       for (const file of files) {
-        await fs.writeFile(path.join(appPath, file.name), file.content);
+        const filePath = path.join(appPath, file.name);
+        fsSync.writeFileSync(filePath, file.content, 'utf8');
+        expect(fileExists(filePath)).toBe(true);
       }
 
       for (const file of files) {
-        expect(fsSync.statSync(path.join(appPath, file.name)).isFile()).toBe(true);
+        const filePath = path.join(appPath, file.name);
+        expect(fileExists(filePath)).toBe(true);
+        expect(fsSync.statSync(filePath).isFile()).toBe(true);
       }
     });
   });
@@ -138,20 +166,27 @@ describe('File System Operations', () => {
         port: 3000
       };
 
-      const filePath = path.join('builder', 'test-app', 'variables.yaml');
-      await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, yaml.dump(config));
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'variables.yaml');
+      fsSync.mkdirSync(path.dirname(filePath), { recursive: true });
+      fsSync.writeFileSync(filePath, yaml.dump(config), 'utf8');
 
-      const content = await fs.readFile(filePath, 'utf8');
+      expect(fileExists(filePath)).toBe(true);
+      const content = fsSync.readFileSync(filePath, 'utf8');
       const loaded = yaml.load(content);
 
+      expect(loaded).toBeDefined();
+      expect(loaded.app).toBeDefined();
       expect(loaded.app.key).toBe('test-app');
       expect(loaded.app.name).toBe('Test App');
       expect(loaded.port).toBe(3000);
     });
 
     it('should handle reading non-existent file', async() => {
-      const filePath = path.join('builder', 'nonexistent.yaml');
+      const filePath = path.join(process.cwd(), 'builder', 'nonexistent.yaml');
+
+      // Ensure directory exists but file doesn't
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      expect(fileExists(filePath)).toBe(false);
 
       await expect(fs.readFile(filePath, 'utf8'))
         .rejects.toThrow();
@@ -163,11 +198,12 @@ REDIS_URL=redis://localhost:6379
 PORT=3000
 NODE_ENV=production`;
 
-      const filePath = path.join('builder', 'test-app', '.env');
-      await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, envContent);
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', '.env');
+      fsSync.mkdirSync(path.dirname(filePath), { recursive: true });
+      fsSync.writeFileSync(filePath, envContent, 'utf8');
 
-      const content = await fs.readFile(filePath, 'utf8');
+      expect(fileExists(filePath)).toBe(true);
+      const content = fsSync.readFileSync(filePath, 'utf8');
       const lines = content.split('\n');
 
       expect(lines.length).toBeGreaterThanOrEqual(4);
@@ -178,10 +214,11 @@ NODE_ENV=production`;
 
   describe('File Existence Checks', () => {
     it('should check if file exists', async() => {
-      const filePath = path.join('builder', 'test-app', 'variables.yaml');
-      await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, 'test');
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'variables.yaml');
+      fsSync.mkdirSync(path.dirname(filePath), { recursive: true });
+      fsSync.writeFileSync(filePath, 'test', 'utf8');
 
+      expect(fsSync.existsSync(filePath)).toBe(true);
       expect(fsSync.statSync(filePath).isFile()).toBe(true);
     });
 
@@ -192,17 +229,21 @@ NODE_ENV=production`;
     });
 
     it('should check multiple files exist', async() => {
-      const appPath = path.join('builder', 'test-app');
-      await fs.mkdir(appPath, { recursive: true });
+      const appPath = path.join(process.cwd(), 'builder', 'test-app');
+      fsSync.mkdirSync(appPath, { recursive: true });
 
       const files = ['variables.yaml', 'rbac.yaml', 'env.template'];
 
       for (const filename of files) {
-        await fs.writeFile(path.join(appPath, filename), 'test');
+        const filePath = path.join(appPath, filename);
+        fsSync.writeFileSync(filePath, 'test', 'utf8');
+        expect(fileExists(filePath)).toBe(true);
       }
 
       for (const filename of files) {
-        expect(fsSync.statSync(path.join(appPath, filename)).isFile()).toBe(true);
+        const filePath = path.join(appPath, filename);
+        expect(fileExists(filePath)).toBe(true);
+        expect(fsSync.statSync(filePath).isFile()).toBe(true);
       }
     });
   });
@@ -215,10 +256,11 @@ NODE_ENV=production`;
         services: { database: true, redis: true }
       };
 
-      const filePath = path.join('builder', 'test-app', 'variables.yaml');
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'variables.yaml');
       await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, yaml.dump(config));
+      await fs.writeFile(filePath, yaml.dump(config), 'utf8');
 
+      expect(fsSync.existsSync(filePath)).toBe(true);
       const content = await fs.readFile(filePath, 'utf8');
       const loaded = yaml.load(content);
 
@@ -228,10 +270,11 @@ NODE_ENV=production`;
     it('should handle invalid YAML gracefully', async() => {
       const invalidYaml = 'app:\n  key: test-app\n  name: Test App\n invalid: [';
 
-      const filePath = path.join('builder', 'test-app', 'variables.yaml');
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'variables.yaml');
       await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, invalidYaml);
+      await fs.writeFile(filePath, invalidYaml, 'utf8');
 
+      expect(fsSync.existsSync(filePath)).toBe(true);
       const content = await fs.readFile(filePath, 'utf8');
 
       expect(() => yaml.load(content)).toThrow();
@@ -243,10 +286,11 @@ NODE_ENV=production`;
         port: 3000
       };
 
-      const filePath = path.join('builder', 'test-app', 'variables.yaml');
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'variables.yaml');
       await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, yaml.dump(config));
+      await fs.writeFile(filePath, yaml.dump(config), 'utf8');
 
+      expect(fsSync.existsSync(filePath)).toBe(true);
       const content = await fs.readFile(filePath, 'utf8');
 
       expect(content).toContain('app:');
@@ -257,14 +301,16 @@ NODE_ENV=production`;
 
   describe('File Cleanup Operations', () => {
     it('should delete file', async() => {
-      const filePath = path.join('builder', 'test-app', 'temp.yaml');
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'temp.yaml');
       await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, 'test');
+      await fs.writeFile(filePath, 'test', 'utf8');
 
+      expect(fsSync.existsSync(filePath)).toBe(true);
       expect(fsSync.statSync(filePath).isFile()).toBe(true);
 
       await fs.unlink(filePath);
 
+      expect(fileExists(filePath)).toBe(false);
       expect(() => fsSync.statSync(filePath)).toThrow();
     });
 

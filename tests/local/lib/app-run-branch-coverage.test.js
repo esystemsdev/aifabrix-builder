@@ -160,8 +160,13 @@ describe('App-Run Branch Coverage Tests', () => {
         build: { port: 3000 }
       };
 
+      // Ensure app directory exists
+      if (!realFs.existsSync(appPath)) {
+        realFs.mkdirSync(appPath, { recursive: true });
+      }
+
       const variablesPath = path.resolve(appPath, 'variables.yaml');
-      realFs.writeFileSync(variablesPath, yaml.dump(variables));
+      realFs.writeFileSync(variablesPath, yaml.dump(variables), 'utf8');
 
       // Create .env file
       const envPath = path.resolve(appPath, '.env');
@@ -169,12 +174,18 @@ describe('App-Run Branch Coverage Tests', () => {
       // Write the file using real fs module
       realFs.writeFileSync(envPath, 'PORT=3000', 'utf8');
 
+      // Verify file exists before reading
+      expect(() => realFs.statSync(envPath).isFile()).not.toThrow();
+      expect(realFs.statSync(envPath).isFile()).toBe(true);
+
       // Verify file exists by reading it directly (most reliable method)
       // If readFileSync succeeds, the file exists
-      const envContent = realFs.readFileSync(envPath, 'utf8').trim();
+      const envContent = realFs.readFileSync(envPath, 'utf8');
+      expect(envContent).toBeDefined();
+      const trimmedContent = envContent.trim();
 
       // The content should be the string we wrote
-      expect(envContent).toBe('PORT=3000');
+      expect(trimmedContent).toBe('PORT=3000');
 
       // Verify file still exists by checking it's a file
       expect(realFs.statSync(envPath).isFile()).toBe(true);

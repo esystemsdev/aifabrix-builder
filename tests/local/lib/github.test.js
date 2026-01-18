@@ -9,11 +9,10 @@
 const path = require('path');
 const os = require('os');
 
-// Mock fs to use real implementation to override any other mocks
-jest.mock('fs', () => {
-  return jest.requireActual('fs');
-});
+// Ensure fs is not mocked - use jest.unmock to prevent mocking
+jest.unmock('fs');
 
+// Use real fs implementation - use regular require after unmocking
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const githubGenerator = require('../../../lib/generator/github');
@@ -308,6 +307,10 @@ describe('GitHub Generator Module', () => {
         appName: 'test-app',
         language: 'typescript'
       };
+
+      // Verify template file doesn't exist
+      const templatePath = path.join(__dirname, '..', '..', '..', 'templates', 'github', 'nonexistent-template-that-does-not-exist.hbs');
+      expect(() => fsSync.statSync(templatePath)).toThrow();
 
       // The function should throw an error when template doesn't exist
       await expect(

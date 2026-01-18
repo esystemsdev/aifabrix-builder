@@ -94,8 +94,10 @@ The wizard saves all files to `integration/<app-name>/`:
 - `<systemKey>-deploy.json` - System configuration
 - `<systemKey>-deploy-*.json` - Datasource configurations
 - `env.template` - Environment variable template
-- `README.md` - Documentation
+- `README.md` - Documentation (AI-generated from dataplane when available)
 - `application-schema.json` - Single deployment file
+- `deploy.sh` - Bash deployment script
+- `deploy.ps1` - PowerShell deployment script
 
 ## Source Types
 
@@ -173,15 +175,21 @@ Validation errors are displayed before saving files.
 
 The wizard creates the following file structure:
 
-```
+```yaml
 integration/<app-name>/
 ├── variables.yaml              # Application variables and external integration config
 ├── <systemKey>-deploy.json     # System configuration
 ├── <systemKey>-deploy-*.json   # Datasource configurations
 ├── env.template                # Environment variable template
-├── README.md                   # Documentation
-└── application-schema.json     # Single deployment file
+├── README.md                   # Documentation (AI-generated from dataplane when available)
+├── application-schema.json     # Single deployment file
+├── deploy.sh                   # Bash deployment script
+└── deploy.ps1                  # PowerShell deployment script
 ```
+
+### README.md Generation
+
+The wizard attempts to fetch AI-generated README.md content from the dataplane's deployment-docs API. If the API is available and returns content, that content is used. Otherwise, a basic README.md is generated with essential information about the integration.
 
 ## Environment Variables
 
@@ -196,7 +204,42 @@ Update these values in your secrets store before deployment.
 
 ## Deployment
 
-After the wizard completes, deploy your external system:
+After the wizard completes, you can deploy your external system using the generated deployment scripts or the CLI directly.
+
+### Using Deployment Scripts
+
+The wizard generates deployment scripts for both Unix-like systems (Bash) and Windows (PowerShell):
+
+**Bash (Linux/macOS):**
+```bash
+cd integration/<app-name>
+./deploy.sh
+```
+
+**PowerShell (Windows):**
+```powershell
+cd integration\<app-name>
+.\deploy.ps1
+```
+
+**Environment Variables:**
+- `ENVIRONMENT` - Environment key (default: dev)
+- `CONTROLLER` - Controller URL (default: http://localhost:3000)
+- `RUN_TESTS` - Set to "true" to run integration tests after deployment
+
+**Example:**
+```bash
+ENVIRONMENT=prod CONTROLLER=https://controller.example.com ./deploy.sh
+```
+
+The deployment scripts will:
+1. Validate all JSON configuration files
+2. Deploy all datasources to the specified environment
+3. Optionally run integration tests if `RUN_TESTS=true`
+
+### Using CLI Directly
+
+You can also deploy using the CLI directly:
 
 ```bash
 aifabrix deploy <app-name>
@@ -274,7 +317,7 @@ aifabrix wizard --app my-integration --dataplane https://dataplane.example.com
 ## Reference
 
 - [External Systems Documentation](external-systems.md) - Manual external system creation
-- [CLI Reference](cli-reference.md) - All CLI commands
+- [CLI Reference](commands/external-integration.md) - All CLI commands
 - [Configuration Guide](configuration.md) - Configuration file formats
 
 ## Dataplane Wizard API

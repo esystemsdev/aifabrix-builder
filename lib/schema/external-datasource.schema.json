@@ -117,8 +117,8 @@
       },
       "entityType":{
          "type":"string",
-         "pattern":"^[a-z0-9-]+$",
-         "description":"Entity type identifier in external system. Used to determine which type schema to validate against for type-specific configurations (e.g., documentStorage). Examples: 'document' (maps to type/document-storage.json), 'vector' (maps to type/vector-store.json). Required field."
+         "enum":["document-storage","documentStorage","vector-store","vectorStore","record-storage","recordStorage","message-service","messageService","none"],
+         "description":"Entity type identifier. Defines storage semantics and behavior: 'document-storage' or 'documentStorage' (creates document storage service with vector-storage), 'vector-store' or 'vectorStore' (external vector storage system), 'record-storage' or 'recordStorage' (creates record-based system with metadata sync and access rights), 'message-service' or 'messageService' (message service for notifications - Slack, Teams, Email), 'none' (uses external system data directly or connects other data sources). Required field. Supports both camelCase and kebab-case formats for backward compatibility."
       },
       "resourceType":{
          "type":"string",
@@ -607,7 +607,7 @@
       },
       "documentStorage":{
          "type":"object",
-         "description":"Document storage configuration (optional, enables vector storage). The type schema used for validation is determined by the entityType field (e.g., entityType='document' maps to type/document-storage.json, entityType='vector' maps to type/vector-store.json). This enables multiple datasources with documentStorage in the same system, each potentially using different type schemas based on their entityType.",
+         "description":"Document storage configuration (optional, enables vector storage). Validated against type/document-storage.json schema.",
          "properties":{
             "enabled":{
                "type":"boolean",
@@ -1294,4 +1294,5 @@
       }
    },
    "additionalProperties":false
-}
+ }
+ 

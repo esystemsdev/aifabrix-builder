@@ -277,6 +277,10 @@ describe('App-Run Debug Paths and Error Handling', () => {
   const ensureVariablesYaml = () => {
     const realFs = jest.requireActual('fs');
     // Use absolute path from the start to avoid issues with process.cwd() changes
+    // Ensure tempDir is defined and use it directly
+    if (!tempDir) {
+      throw new Error('tempDir is not defined. This function must be called within a test context.');
+    }
     const builderDir = path.resolve(tempDir, 'builder', 'test-app');
     const configPath = path.join(builderDir, 'variables.yaml');
 
@@ -285,34 +289,22 @@ describe('App-Run Debug Paths and Error Handling', () => {
       return; // File already exists, no need to create
     }
 
-    // Ensure directory exists - create recursively with explicit parent creation
-    const absoluteBuilderDir = builderDir;
-    try {
-      // Create directory recursively - mkdirSync with recursive:true creates all parent directories
-      // This is the most reliable way to ensure all parent directories exist
-      try {
-        realFs.mkdirSync(absoluteBuilderDir, { recursive: true, mode: 0o755 });
-      } catch (mkdirError) {
-        // If directory already exists, that's fine
-        if (mkdirError.code !== 'EEXIST') {
-          throw new Error(`Failed to create directory ${absoluteBuilderDir}: ${mkdirError.message} (code: ${mkdirError.code || 'N/A'})`);
-        }
-      }
-      // Verify it exists and is a directory - use statSync which throws if it doesn't exist
-      try {
-        const dirStat = realFs.statSync(absoluteBuilderDir);
-        if (!dirStat.isDirectory()) {
-          throw new Error(`Path exists but is not a directory: ${absoluteBuilderDir}`);
-        }
-      } catch (statError) {
-        throw new Error(`Builder directory was not created: ${absoluteBuilderDir} (${statError.message})`);
-      }
-    } catch (mkdirError) {
-      // Re-throw with more context, but preserve original error message
-      if (mkdirError.message && (mkdirError.message.includes('Builder directory was not created') || mkdirError.message.includes('Path exists but is not a directory') || mkdirError.message.includes('Failed to create'))) {
-        throw mkdirError;
-      }
-      throw new Error(`Failed to create directory ${absoluteBuilderDir}: ${mkdirError.message}`);
+    // Ensure parent directory exists first
+    const builderParent = path.dirname(builderDir);
+    if (!realFs.existsSync(builderParent)) {
+      realFs.mkdirSync(builderParent, { recursive: true });
+    }
+
+    // Ensure directory exists - create recursively
+    realFs.mkdirSync(builderDir, { recursive: true });
+
+    // Verify it exists and is a directory
+    if (!realFs.existsSync(builderDir)) {
+      throw new Error(`Builder directory was not created: ${builderDir}`);
+    }
+    const dirStat = realFs.statSync(builderDir);
+    if (!dirStat.isDirectory()) {
+      throw new Error(`Path exists but is not a directory: ${builderDir}`);
     }
 
     // Use absolute path for config file

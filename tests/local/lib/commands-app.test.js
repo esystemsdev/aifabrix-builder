@@ -10,11 +10,10 @@ const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
 
-// Mock fs to use real implementation to override any other mocks
-jest.mock('fs', () => {
-  return jest.requireActual('fs');
-});
+// Ensure fs is not mocked - use jest.unmock to prevent mocking
+jest.unmock('fs');
 
+// Use real fs implementation - use regular require after unmocking
 const fs = require('fs').promises;
 const fsSync = require('fs');
 
@@ -100,20 +99,27 @@ describe('Application Commands Module', () => {
         }
       });
 
-      const variablesContent = await fs.readFile(variablesPath, 'utf-8');
+      // Verify file exists before reading
+      expect(() => fsSync.statSync(variablesPath).isFile()).not.toThrow();
+      expect(fsSync.statSync(variablesPath).isFile()).toBe(true);
+
+      // Use sync read to ensure we get the actual file content
+      const variablesContent = fsSync.readFileSync(variablesPath, 'utf-8');
+      expect(variablesContent).toBeTruthy();
+      expect(variablesContent.length).toBeGreaterThan(0);
+
       const loadedVariables = yaml.load(variablesContent);
 
       // Verify YAML was loaded correctly
       expect(loadedVariables).toBeDefined();
       expect(loadedVariables).not.toBeNull();
-      if (loadedVariables && loadedVariables.app) {
-        expect(loadedVariables.app.key).toBe(appKey);
-        expect(loadedVariables.app.name).toBe('Test App');
-        expect(loadedVariables.build.language).toBe('typescript');
-      } else {
-        // If YAML structure is different, at least verify it loaded something
-        expect(Object.keys(loadedVariables || {})).toContain('app');
-      }
+      expect(typeof loadedVariables).toBe('object');
+      expect(loadedVariables.app).toBeDefined();
+      expect(loadedVariables.app).not.toBeNull();
+      expect(loadedVariables.app.key).toBe(appKey);
+      expect(loadedVariables.app.name).toBe('Test App');
+      expect(loadedVariables.build).toBeDefined();
+      expect(loadedVariables.build.language).toBe('typescript');
     });
 
     it('should handle missing variables.yaml by creating app', async() => {
@@ -306,21 +312,28 @@ describe('Application Commands Module', () => {
       const stats = fsSync.statSync(variablesPath);
       expect(stats.isFile()).toBe(true);
 
-      const variablesContent = await fs.readFile(variablesPath, 'utf-8');
+      // Verify file exists before reading
+      expect(() => fsSync.statSync(variablesPath).isFile()).not.toThrow();
+      expect(fsSync.statSync(variablesPath).isFile()).toBe(true);
+
+      // Use sync read to ensure we get the actual file content
+      const variablesContent = fsSync.readFileSync(variablesPath, 'utf-8');
+      expect(variablesContent).toBeTruthy();
+      expect(variablesContent.length).toBeGreaterThan(0);
+
       const loaded = yaml.load(variablesContent);
 
       // Verify YAML was loaded correctly
       expect(loaded).toBeDefined();
       expect(loaded).not.toBeNull();
-      if (loaded && loaded.app) {
-        expect(loaded.app.key).toBe(appKey);
-        expect(loaded.app.name).toBe('Test App');
-        expect(loaded.build.language).toBe('typescript');
-        expect(loaded.build.port).toBe(3000);
-      } else {
-        // If YAML structure is different, at least verify it loaded something
-        expect(Object.keys(loaded || {})).toContain('app');
-      }
+      expect(typeof loaded).toBe('object');
+      expect(loaded.app).toBeDefined();
+      expect(loaded.app).not.toBeNull();
+      expect(loaded.app.key).toBe(appKey);
+      expect(loaded.app.name).toBe('Test App');
+      expect(loaded.build).toBeDefined();
+      expect(loaded.build.language).toBe('typescript');
+      expect(loaded.build.port).toBe(3000);
     });
   });
 });

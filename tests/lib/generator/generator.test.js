@@ -2192,7 +2192,7 @@ NORMAL_VAR=value456`;
       key: 'hubspot-companies-get',
       displayName: 'HubSpot Companies',
       systemKey: 'hubspot',
-      entityType: 'company',
+      entityType: 'recordStorage',
       resourceType: 'customer',
       fieldMappings: {
         dimensions: {
@@ -2211,7 +2211,7 @@ NORMAL_VAR=value456`;
       key: 'hubspot-contacts-get',
       displayName: 'HubSpot Contacts',
       systemKey: 'hubspot',
-      entityType: 'contact',
+      entityType: 'recordStorage',
       resourceType: 'contact',
       fieldMappings: {
         dimensions: {

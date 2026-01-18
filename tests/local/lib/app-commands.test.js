@@ -10,11 +10,10 @@ const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
 
-// Mock fs to use real implementation to override any other mocks
-jest.mock('fs', () => {
-  return jest.requireActual('fs');
-});
+// Ensure fs is not mocked - use jest.unmock to prevent mocking
+jest.unmock('fs');
 
+// Use real fs implementation - use regular require after unmocking
 const fs = require('fs').promises;
 const fsSync = require('fs');
 
@@ -159,11 +158,22 @@ describe('App Commands', () => {
       const environment = 'dev';
 
       // Create app directory with variables.yaml
+      // Use tempDir directly instead of process.cwd() for reliability
       const appDir = path.join(tempDir, 'builder', appName);
-      // Ensure parent directory exists
-      const builderDir = path.dirname(appDir);
-      fsSync.mkdirSync(builderDir, { recursive: true });
-      fsSync.mkdirSync(appDir, { recursive: true });
+      // Ensure parent directory exists (builder directory is created in beforeEach)
+      try {
+        fsSync.mkdirSync(appDir, { recursive: true });
+      } catch (error) {
+        throw new Error(`Failed to create directories: ${error.message}, appDir: ${appDir}, tempDir: ${tempDir}, cwd: ${process.cwd()}`);
+      }
+
+      // Verify directory was created
+      try {
+        const stats = fsSync.statSync(appDir);
+        expect(stats.isDirectory()).toBe(true);
+      } catch (error) {
+        throw new Error(`Directory not created at ${appDir}, current dir: ${process.cwd()}, error: ${error.message}`);
+      }
 
       const variablesData = {
         app: {
@@ -181,8 +191,12 @@ describe('App Commands', () => {
       // Use synchronous write to ensure file is created
       fsSync.writeFileSync(variablesPath, variablesYaml, 'utf-8');
 
-      // Verify file was written before reading
-      expect(fsSync.statSync(variablesPath).isFile()).toBe(true);
+      // Verify file was written before reading - use a more reliable check
+      if (!fsSync.existsSync(variablesPath)) {
+        throw new Error(`File not created at ${variablesPath}, current dir: ${process.cwd()}, appDir: ${appDir}, tempDir: ${tempDir}`);
+      }
+      const stats = fsSync.statSync(variablesPath);
+      expect(stats.isFile()).toBe(true);
 
       // Mock API response
       authenticatedApiCall.mockResolvedValue({

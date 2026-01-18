@@ -1640,7 +1640,7 @@ Use defaults for optional fields:
 ## Next Steps
 
 - [Configuration Reference](configuration.md#external-integration) - Detailed config options
-- [CLI Reference](cli-reference.md) - All commands for external systems
+- [CLI Reference](commands/external-integration.md) - All commands for external systems
 - [Pipeline Deployment](.cursor/plans/pipeline.md) - Advanced deployment options
 - [Field Mappings Guide](configuration.md#field-mappings) - Advanced mapping patterns
 

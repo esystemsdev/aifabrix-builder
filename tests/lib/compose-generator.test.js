@@ -316,12 +316,23 @@ describe('Compose Generator Module', () => {
 
       const envPath = path.join(absoluteDir, '.env');
 
-      // Double-check directory exists right before writing
-      if (!realFs.existsSync(absoluteDir)) {
-        // Last attempt to create directory
-        realFs.mkdirSync(absoluteDir, { recursive: true });
-        if (!realFs.existsSync(absoluteDir)) {
-          throw new Error(`Directory does not exist before writing file: ${absoluteDir}`);
+      // Double-check directory exists right before writing using statSync for more reliable check
+      try {
+        const finalStat = realFs.statSync(absoluteDir);
+        if (!finalStat.isDirectory()) {
+          throw new Error(`Path exists but is not a directory: ${absoluteDir}`);
+        }
+      } catch (statError) {
+        // Directory doesn't exist, try creating one more time
+        try {
+          realFs.mkdirSync(absoluteDir, { recursive: true });
+          // Verify with statSync
+          const verifyStat = realFs.statSync(absoluteDir);
+          if (!verifyStat.isDirectory()) {
+            throw new Error(`Directory does not exist before writing file: ${absoluteDir}`);
+          }
+        } catch (createError) {
+          throw new Error(`Directory does not exist before writing file: ${absoluteDir}. Creation error: ${createError.message}`);
         }
       }
 

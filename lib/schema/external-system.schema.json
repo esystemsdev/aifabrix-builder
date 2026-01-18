@@ -365,6 +365,48 @@
         },
         "additionalProperties": false
       }
+    },
+    "endpoints": {
+      "type": "array",
+      "description": "API endpoint configurations for this external system. Used for dynamic endpoint registration at application startup.",
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "path"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Endpoint type identifier (e.g., 'commands', 'events', 'notifications')",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "path": {
+            "type": "string",
+            "description": "URL path for this endpoint (e.g., '/commands', '/events')",
+            "pattern": "^/[a-z0-9/-]*$"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the endpoint"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Whether this endpoint should be registered (defaults to true)",
+            "default": true
+          },
+          "router": {
+            "type": "string",
+            "description": "Custom router module path override (defaults to auto-discovery based on naming convention)"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "endpointsActive": {
+      "type": "boolean",
+      "description": "Master switch for all endpoints in this system. If false, no endpoints are registered regardless of individual endpoint active flags.",
+      "default": true
     }
   },
   "additionalProperties": false

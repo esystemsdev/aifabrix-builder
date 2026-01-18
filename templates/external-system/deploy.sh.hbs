@@ -1,0 +1,34 @@
+#!/bin/bash
+# Deploy {{systemKey}} external system and datasources using aifabrix CLI
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENVIRONMENT="${ENVIRONMENT:-dev}"
+CONTROLLER="${CONTROLLER:-http://localhost:3000}"
+
+echo "🔍 Validating {{systemKey}} configuration files..."
+{{#each allJsonFiles}}
+aifabrix validate "${SCRIPT_DIR}/{{this}}" || exit 1
+{{/each}}
+
+echo "✅ Validation passed"
+
+echo "🚀 Deploying {{systemKey}} external system and datasources..."
+echo "   Environment: ${ENVIRONMENT}"
+echo "   Controller: ${CONTROLLER}"
+
+# Deploy datasources
+{{#each datasourceFileNames}}
+aifabrix datasource deploy {{../systemKey}} "${SCRIPT_DIR}/{{this}}" \
+  --environment "${ENVIRONMENT}" --controller "${CONTROLLER}" || exit 1
+{{/each}}
+
+echo "✅ Deployment complete"
+
+# Optional: Run tests
+if [ "${RUN_TESTS:-false}" = "true" ]; then
+  echo "🧪 Running integration tests..."
+  aifabrix test-integration {{systemKey}} --environment "${ENVIRONMENT}" --controller "${CONTROLLER}"
+fi
+

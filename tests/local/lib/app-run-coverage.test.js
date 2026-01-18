@@ -199,18 +199,36 @@ describe('Application Run Module - Additional Coverage', () => {
 
     it('should handle validation failures', async() => {
       const appName = 'test-app';
-      const appPath = path.join(tempDir, 'builder', appName);
+      // Ensure parent directory exists
+      const builderDir = path.join(tempDir, 'builder');
+      fsSync.mkdirSync(builderDir, { recursive: true });
+      const appPath = path.join(builderDir, appName);
       fsSync.mkdirSync(appPath, { recursive: true });
 
       const configPath = path.join(appPath, 'variables.yaml');
-      const configContent = yaml.dump({ app: { key: appName, name: 'Test App' }, build: { port: 3000 } });
+      const configData = { app: { key: appName, name: 'Test App' }, build: { port: 3000 } };
+      const configContent = yaml.dump(configData);
+
+      // Verify directory exists before writing
+      expect(() => fsSync.statSync(appPath).isDirectory()).not.toThrow();
+      expect(fsSync.statSync(appPath).isDirectory()).toBe(true);
+
       fsSync.writeFileSync(configPath, configContent, 'utf8');
 
       // Verify file exists and was written correctly - use statSync for reliable check
+      expect(() => fsSync.statSync(configPath).isFile()).not.toThrow();
       expect(fsSync.statSync(configPath).isFile()).toBe(true);
       const writtenContent = fsSync.readFileSync(configPath, 'utf8');
       expect(writtenContent).toBeTruthy();
-      expect(writtenContent).toContain('test-app');
+      expect(writtenContent.length).toBeGreaterThan(0);
+      // Verify YAML content contains app key
+      const parsedContent = yaml.load(writtenContent);
+      expect(parsedContent).toBeDefined();
+      if (!parsedContent || !parsedContent.app) {
+        throw new Error(`YAML parsing failed. Content: ${writtenContent}, Parsed: ${JSON.stringify(parsedContent)}`);
+      }
+      expect(parsedContent.app).toBeDefined();
+      expect(parsedContent.app.key).toBe('test-app');
 
       validator.validateApplication.mockResolvedValueOnce({
         valid: false,
@@ -224,23 +242,41 @@ describe('Application Run Module - Additional Coverage', () => {
 
     it('should handle missing Docker image', async() => {
       const appName = 'test-app';
-      const appPath = path.join(tempDir, 'builder', appName);
+      // Ensure parent directory exists
+      const builderDir = path.join(tempDir, 'builder');
+      fsSync.mkdirSync(builderDir, { recursive: true });
+      const appPath = path.join(builderDir, appName);
       fsSync.mkdirSync(appPath, { recursive: true });
 
       const testPort = 50000 + Math.floor(Math.random() * 10000);
       const configPath = path.join(appPath, 'variables.yaml');
-      const configContent = yaml.dump({
+      const configData = {
         app: { key: appName, name: 'Test App' },
         port: testPort,
         build: { localPort: testPort }
-      });
+      };
+      const configContent = yaml.dump(configData);
+
+      // Verify directory exists before writing
+      expect(() => fsSync.statSync(appPath).isDirectory()).not.toThrow();
+      expect(fsSync.statSync(appPath).isDirectory()).toBe(true);
+
       fsSync.writeFileSync(configPath, configContent, 'utf8');
 
       // Verify file exists and was written correctly - use statSync for reliable check
+      expect(() => fsSync.statSync(configPath).isFile()).not.toThrow();
       expect(fsSync.statSync(configPath).isFile()).toBe(true);
       const writtenContent = fsSync.readFileSync(configPath, 'utf8');
       expect(writtenContent).toBeTruthy();
-      expect(writtenContent).toContain('test-app');
+      expect(writtenContent.length).toBeGreaterThan(0);
+      // Verify YAML content contains app key
+      const parsedContent = yaml.load(writtenContent);
+      expect(parsedContent).toBeDefined();
+      if (!parsedContent || !parsedContent.app) {
+        throw new Error(`YAML parsing failed. Content: ${writtenContent}, Parsed: ${JSON.stringify(parsedContent)}`);
+      }
+      expect(parsedContent.app).toBeDefined();
+      expect(parsedContent.app.key).toBe('test-app');
 
       validator.validateApplication.mockResolvedValueOnce({
         valid: true,

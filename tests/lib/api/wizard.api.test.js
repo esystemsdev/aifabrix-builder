@@ -204,6 +204,42 @@ describe('Wizard API', () => {
     });
   });
 
+  describe('getDeploymentDocs', () => {
+    it('should get deployment documentation', async() => {
+      const systemKey = 'hubspot';
+      const mockResponse = {
+        success: true,
+        data: {
+          systemKey: 'hubspot',
+          content: '# HubSpot Deployment\n\nThis is the deployment documentation.',
+          contentType: 'text/markdown'
+        }
+      };
+      mockClient.get.mockResolvedValue(mockResponse);
+
+      const result = await wizardApi.getDeploymentDocs(dataplaneUrl, authConfig, systemKey);
+
+      expect(mockApiClient).toHaveBeenCalledWith(dataplaneUrl, authConfig);
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/wizard/deployment-docs/hubspot');
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle errors when getting deployment docs', async() => {
+      const systemKey = 'hubspot';
+      const errorResponse = {
+        success: false,
+        error: 'System not found',
+        formattedError: 'System hubspot not found'
+      };
+      mockClient.get.mockResolvedValue(errorResponse);
+
+      const result = await wizardApi.getDeploymentDocs(dataplaneUrl, authConfig, systemKey);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('System not found');
+    });
+  });
+
   describe('error handling', () => {
     it('should propagate API errors', async() => {
       const errorResponse = {

@@ -6,8 +6,9 @@
  * @version 2.0.0
  */
 
-const fs = require('fs').promises;
-const fsSync = require('fs');
+// Use real fs implementation - use jest.requireActual to bypass any global mocks
+const fs = jest.requireActual('fs').promises;
+const fsSync = jest.requireActual('fs');
 const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
@@ -269,6 +270,8 @@ describe('App-Run Uncovered Code Paths', () => {
     it('should handle validation errors with rbac.yaml errors', async() => {
       const appName = 'test-app';
       const appPath = path.join(tempDir, 'builder', appName);
+      // Ensure parent directory exists
+      fsSync.mkdirSync(path.dirname(appPath), { recursive: true });
       fsSync.mkdirSync(appPath, { recursive: true });
 
       const variables = {
@@ -276,10 +279,14 @@ describe('App-Run Uncovered Code Paths', () => {
       };
 
       const configPath = path.join(appPath, 'variables.yaml');
-      fsSync.writeFileSync(configPath, yaml.dump(variables), 'utf8');
+      const configContent = yaml.dump(variables);
+      fsSync.writeFileSync(configPath, configContent, 'utf8');
 
-      // Verify file exists
+      // Verify file exists and was written correctly
       expect(fsSync.existsSync(configPath)).toBe(true);
+      expect(fsSync.statSync(configPath).isFile()).toBe(true);
+      const writtenContent = fsSync.readFileSync(configPath, 'utf8');
+      expect(writtenContent).toBe(configContent);
 
       validator.validateApplication.mockResolvedValueOnce({
         valid: false,
@@ -294,6 +301,8 @@ describe('App-Run Uncovered Code Paths', () => {
     it('should handle validation errors with env.template errors', async() => {
       const appName = 'test-app';
       const appPath = path.join(tempDir, 'builder', appName);
+      // Ensure parent directory exists
+      fsSync.mkdirSync(path.dirname(appPath), { recursive: true });
       fsSync.mkdirSync(appPath, { recursive: true });
 
       const variables = {
@@ -301,10 +310,14 @@ describe('App-Run Uncovered Code Paths', () => {
       };
 
       const configPath = path.join(appPath, 'variables.yaml');
-      fsSync.writeFileSync(configPath, yaml.dump(variables), 'utf8');
+      const configContent = yaml.dump(variables);
+      fsSync.writeFileSync(configPath, configContent, 'utf8');
 
-      // Verify file exists
+      // Verify file exists and was written correctly
       expect(fsSync.existsSync(configPath)).toBe(true);
+      expect(fsSync.statSync(configPath).isFile()).toBe(true);
+      const writtenContent = fsSync.readFileSync(configPath, 'utf8');
+      expect(writtenContent).toBe(configContent);
 
       validator.validateApplication.mockResolvedValueOnce({
         valid: false,
@@ -319,16 +332,19 @@ describe('App-Run Uncovered Code Paths', () => {
     it('should handle validation failed with no specific errors', async() => {
       const appName = 'test-app';
       const appPath = path.join(tempDir, 'builder', appName);
+      // Ensure parent directory exists
+      fsSync.mkdirSync(path.dirname(appPath), { recursive: true });
       fsSync.mkdirSync(appPath, { recursive: true });
 
       const variables = {
         app: { key: appName, name: 'Test App' }
       };
 
-      fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
-        yaml.dump(variables)
-      );
+      const configPath = path.join(appPath, 'variables.yaml');
+      fsSync.writeFileSync(configPath, yaml.dump(variables), 'utf8');
+
+      // Verify file exists
+      expect(fsSync.existsSync(configPath)).toBe(true);
 
       validator.validateApplication.mockResolvedValueOnce({
         valid: false,
@@ -380,6 +396,8 @@ describe('App-Run Uncovered Code Paths', () => {
     it('should handle unhealthy infrastructure services', async() => {
       const appName = 'test-app';
       const appPath = path.join(tempDir, 'builder', appName);
+      // Ensure parent directory exists
+      fsSync.mkdirSync(path.dirname(appPath), { recursive: true });
       fsSync.mkdirSync(appPath, { recursive: true });
 
       const variables = {
@@ -387,10 +405,12 @@ describe('App-Run Uncovered Code Paths', () => {
         build: { port: 3000 }
       };
 
-      fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
-        yaml.dump(variables)
-      );
+      const configPath = path.join(appPath, 'variables.yaml');
+      fsSync.writeFileSync(configPath, yaml.dump(variables), 'utf8');
+
+      // Verify file exists
+      expect(fsSync.existsSync(configPath)).toBe(true);
+      expect(fsSync.statSync(configPath).isFile()).toBe(true);
 
       // Mock exec for docker images check
       exec.mockImplementation((command, callback) => {
@@ -901,6 +921,8 @@ describe('App-Run Uncovered Code Paths', () => {
     it('should handle error with proper error message wrapping', async() => {
       const appName = 'test-app';
       const appPath = path.join(tempDir, 'builder', appName);
+      // Ensure parent directory exists
+      fsSync.mkdirSync(path.dirname(appPath), { recursive: true });
       fsSync.mkdirSync(appPath, { recursive: true });
 
       const variables = {
@@ -908,10 +930,12 @@ describe('App-Run Uncovered Code Paths', () => {
         build: { port: 3000 }
       };
 
-      fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
-        yaml.dump(variables)
-      );
+      const configPath = path.join(appPath, 'variables.yaml');
+      fsSync.writeFileSync(configPath, yaml.dump(variables), 'utf8');
+
+      // Verify file exists
+      expect(fsSync.existsSync(configPath)).toBe(true);
+      expect(fsSync.statSync(configPath).isFile()).toBe(true);
 
       validator.validateApplication.mockRejectedValueOnce(new Error('Validation error'));
 
