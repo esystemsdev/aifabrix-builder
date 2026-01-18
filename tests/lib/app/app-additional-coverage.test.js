@@ -18,7 +18,7 @@ jest.mock('inquirer');
 jest.mock('../../../lib/generator/github');
 jest.mock('../../../lib/core/env-reader');
 jest.mock('../../../lib/core/templates');
-jest.mock('../../../lib/build');
+jest.mock('../../../lib/build/index');
 jest.mock('../../../lib/app/run');
 jest.mock('../../../lib/deployment/push');
 jest.mock('../../../lib/app/deploy');
@@ -27,7 +27,7 @@ const inquirer = require('inquirer');
 const githubGenerator = require('../../../lib/generator/github');
 const envReader = require('../../../lib/core/env-reader');
 const templates = require('../../../lib/core/templates');
-const build = require('../../../lib/build');
+const build = require('../../../lib/build/index');
 const appRun = require('../../../lib/app/run');
 
 describe('App.js Additional Coverage Tests', () => {

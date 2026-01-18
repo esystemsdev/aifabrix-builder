@@ -40,7 +40,7 @@ jest.mock('../../../lib/validation/validator', () => ({
 const path = require('path');
 const logger = require('../../../lib/utils/logger');
 const dockerfileUtils = require('../../../lib/utils/dockerfile-utils');
-const { loadVariablesYaml } = require('../../../lib/build');
+const { loadVariablesYaml } = require('../../../lib/build/index');
 const validator = require('../../../lib/validation/validator');
 const {
   determineDockerfile,

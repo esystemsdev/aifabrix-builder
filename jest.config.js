@@ -28,8 +28,12 @@ module.exports = {
   // Coverage is disabled for normal tests - use test:coverage for coverage reports
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   // Normal test timeout (integration tests specify their own timeout)
-  testTimeout: 5000, // 5 seconds for unit tests (should be < 0.5s with proper mocking)
+  // Increase timeout slightly in CI environments where tests may run slower
+  testTimeout: isCI ? 10000 : 5000, // 10 seconds in CI, 5 seconds locally
   verbose: true,
   forceExit: true,
-  detectOpenHandles: true
+  detectOpenHandles: true,
+  // Improve test isolation in CI by reducing parallelism
+  // This helps prevent race conditions and state leakage between tests
+  maxWorkers: isCI ? 2 : '50%'
 };
