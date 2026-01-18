@@ -14,13 +14,13 @@ const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
 const app = require('../../../lib/app');
-const build = require('../../../lib/build/index');
+const build = require('../../../lib/build');
 const appRun = require('../../../lib/app/run');
 const pushUtils = require('../../../lib/deployment/push');
 const appDeploy = require('../../../lib/app/deploy');
 
 // Mock dependencies
-jest.mock('../../../lib/build/index');
+jest.mock('../../../lib/build');
 jest.mock('../../../lib/app/run');
 jest.mock('../../../lib/deployment/push');
 jest.mock('../../../lib/app/deploy');

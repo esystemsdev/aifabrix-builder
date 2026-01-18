@@ -98,7 +98,7 @@ jest.mock('../../lib/validation/validator');
 jest.mock('../../lib/validation/validate');
 jest.mock('../../lib/infrastructure');
 jest.mock('../../lib/app');
-jest.mock('../../lib/build/index');
+jest.mock('../../lib/build');
 jest.mock('../../lib/utils/cli-utils');
 jest.mock('../../lib/utils/logger');
 jest.mock('../../lib/commands/login');

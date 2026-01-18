@@ -66,7 +66,7 @@ jest.mock('../../lib/core/key-generator');
 jest.mock('../../lib/validation/validator');
 jest.mock('../../lib/infrastructure');
 jest.mock('../../lib/app');
-jest.mock('../../lib/build/index');
+jest.mock('../../lib/build');
 
 describe('CLI Error Handling', () => {
   beforeEach(() => {
