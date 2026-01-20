@@ -46,6 +46,8 @@ describe('app-list', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(process, 'exit').mockImplementation(() => {});
+    // Default mock for normalizeControllerUrl - just return the input
+    normalizeControllerUrl.mockImplementation((url) => url);
   });
 
   afterEach(() => {
@@ -64,6 +66,7 @@ describe('app-list', () => {
           }
         }
       });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
       getOrRefreshDeviceToken.mockResolvedValue({
         token: 'test-token',
         controller: 'http://localhost:3000'
@@ -83,7 +86,7 @@ describe('app-list', () => {
 
       await listApplications({ environment: 'dev' });
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Applications in dev environment'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Applications in dev environment (http://localhost:3000)'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('app1'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('app2'));
     });
@@ -96,6 +99,7 @@ describe('app-list', () => {
           }
         }
       });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
       getOrRefreshDeviceToken.mockResolvedValue({
         token: 'test-token',
         controller: 'http://localhost:3000'
@@ -111,7 +115,7 @@ describe('app-list', () => {
 
       await listApplications({ environment: 'dev' });
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Applications in dev environment'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Applications in dev environment (http://localhost:3000)'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('app1'));
     });
 
@@ -123,6 +127,7 @@ describe('app-list', () => {
           }
         }
       });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
       getOrRefreshDeviceToken.mockResolvedValue({
         token: 'test-token',
         controller: 'http://localhost:3000'
@@ -141,7 +146,7 @@ describe('app-list', () => {
 
       await listApplications({ environment: 'dev' });
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Applications in dev environment'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Applications in dev environment (http://localhost:3000)'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('app1'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('app2'));
     });
@@ -154,6 +159,7 @@ describe('app-list', () => {
           }
         }
       });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
       getOrRefreshDeviceToken.mockResolvedValue({
         token: 'test-token',
         controller: 'http://localhost:3000'
@@ -174,7 +180,7 @@ describe('app-list', () => {
 
       await listApplications({ environment: 'dev' });
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Applications in dev environment'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Applications in dev environment (http://localhost:3000)'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('app1'));
     });
 
@@ -186,6 +192,7 @@ describe('app-list', () => {
           }
         }
       });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
       getOrRefreshDeviceToken.mockResolvedValue({
         token: 'test-token',
         controller: 'http://localhost:3000'
@@ -215,6 +222,7 @@ describe('app-list', () => {
           }
         }
       });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
       getOrRefreshDeviceToken.mockResolvedValue({
         token: 'test-token',
         controller: 'http://localhost:3000'
@@ -227,7 +235,7 @@ describe('app-list', () => {
 
       await listApplications({ environment: 'dev' });
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Applications in dev environment'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Applications in dev environment (http://localhost:3000)'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('No applications found'));
     });
 
@@ -239,6 +247,7 @@ describe('app-list', () => {
           }
         }
       });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
       getOrRefreshDeviceToken.mockResolvedValue({
         token: 'test-token',
         controller: 'http://localhost:3000'
@@ -284,6 +293,7 @@ describe('app-list', () => {
           }
         }
       });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
       getOrRefreshDeviceToken.mockResolvedValue({
         token: 'test-token',
         controller: 'http://localhost:3000'
@@ -313,6 +323,7 @@ describe('app-list', () => {
           }
         }
       });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
       getOrRefreshDeviceToken.mockResolvedValue({
         token: 'test-token',
         controller: 'http://localhost:3000'
@@ -325,7 +336,7 @@ describe('app-list', () => {
 
       await listApplications({ environment: null });
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Applications in miso environment'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Applications in miso environment (http://localhost:3000)'));
     });
 
     it('should handle applications without status', async() => {
@@ -336,6 +347,7 @@ describe('app-list', () => {
           }
         }
       });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
       getOrRefreshDeviceToken.mockResolvedValue({
         token: 'test-token',
         controller: 'http://localhost:3000'
@@ -388,6 +400,29 @@ describe('app-list', () => {
       );
     });
 
+    it('should error when controller URL provided but no token exists', async() => {
+      getConfig.mockResolvedValue({
+        device: {
+          'http://localhost:3000': {
+            token: 'test-token'
+          }
+        }
+      });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3110');
+      getOrRefreshDeviceToken.mockResolvedValue(null); // No token for provided URL
+
+      await listApplications({
+        environment: 'dev',
+        controller: 'http://localhost:3110'
+      });
+
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('No authentication token found for controller: http://localhost:3110'));
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Please login to this controller using: aifabrix login'));
+      expect(process.exit).toHaveBeenCalledWith(1);
+      // Should NOT try to use other controllers
+      expect(listEnvironmentApplications).not.toHaveBeenCalled();
+    });
+
     it('should use device token from config when no controller URL provided', async() => {
       getConfig.mockResolvedValue({
         device: {
@@ -421,7 +456,8 @@ describe('app-list', () => {
           }
         }
       });
-      normalizeControllerUrl.mockReturnValue((url) => url);
+      // normalizeControllerUrl should return the input as is for each URL
+      normalizeControllerUrl.mockImplementation((url) => url);
       getOrRefreshDeviceToken
         .mockResolvedValueOnce(null) // First URL fails
         .mockResolvedValueOnce({
@@ -444,16 +480,13 @@ describe('app-list', () => {
         device: {}
       });
       normalizeControllerUrl.mockReturnValue('http://localhost:3000');
+      // When getOrRefreshDeviceToken throws, the error propagates up
       getOrRefreshDeviceToken.mockRejectedValue(new Error('Authentication failed'));
 
-      await listApplications({
+      await expect(listApplications({
         environment: 'dev',
         controller: 'http://localhost:3000'
-      });
-
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to authenticate with controller'));
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Authentication failed'));
-      expect(process.exit).toHaveBeenCalledWith(1);
+      })).rejects.toThrow('Authentication failed');
     });
 
     it('should handle no authentication available', async() => {
@@ -482,6 +515,7 @@ describe('app-list', () => {
           }
         }
       });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
       getOrRefreshDeviceToken.mockResolvedValue({
         token: 'test-token',
         controller: 'http://localhost:3000'
@@ -508,6 +542,7 @@ describe('app-list', () => {
           }
         }
       });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
       getOrRefreshDeviceToken.mockResolvedValue({
         token: 'test-token',
         controller: 'http://localhost:3000'
@@ -534,6 +569,7 @@ describe('app-list', () => {
           }
         }
       });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
       getOrRefreshDeviceToken.mockResolvedValue({
         token: 'test-token',
         controller: 'http://localhost:3000'
@@ -556,6 +592,7 @@ describe('app-list', () => {
           }
         }
       });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
       getOrRefreshDeviceToken.mockResolvedValue({
         token: 'test-token',
         controller: 'http://localhost:3000'

@@ -714,7 +714,7 @@ permissions:
       "name": "HubSpot Admin",
       "value": "hubspot-admin",
       "description": "Full access to HubSpot integration",
-      "Groups": ["hubspot-admins@company.com"]
+      "groups": ["hubspot-admins@company.com"]
     },
     {
       "name": "HubSpot User",

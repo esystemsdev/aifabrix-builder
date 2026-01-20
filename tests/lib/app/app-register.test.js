@@ -719,7 +719,7 @@ describe('App Register Module', () => {
         expect.objectContaining({
           body: expect.stringContaining('"displayName":"Override Name"')
         }),
-        'test-token-123'
+        expect.objectContaining({ token: 'test-token-123' })
       );
     });
 
@@ -753,7 +753,7 @@ describe('App Register Module', () => {
         expect.objectContaining({
           body: expect.stringContaining('"description":"Override Description"')
         }),
-        'test-token-123'
+        expect.objectContaining({ token: 'test-token-123' })
       );
     });
 

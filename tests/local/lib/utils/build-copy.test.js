@@ -14,15 +14,23 @@ jest.unmock('fs');
 
 // Use real fs implementation - use regular require after unmocking
 // This ensures all file operations use the real filesystem
-const fs = require('fs').promises;
-const fsSync = require('fs');
+const fs = jest.requireActual('fs').promises;
+const fsSync = jest.requireActual('fs');
 
-const buildCopy = require('../../../../lib/utils/build-copy');
+// Variable for module to be loaded after reset
+let buildCopy;
 
 describe('Build Copy Utilities', () => {
   let tempDir;
   let originalCwd;
   let originalHomedir;
+
+  beforeAll(() => {
+    // Reset modules and re-require to get fresh module with real fs
+    jest.resetModules();
+    jest.unmock('fs');
+    buildCopy = require('../../../../lib/utils/build-copy');
+  });
 
   beforeEach(() => {
     // Create temporary directory for each test

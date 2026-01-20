@@ -80,7 +80,7 @@ describe('External System Generator RBAC Support', () => {
       "name": "{{name}}",
       "value": "{{value}}",
       "description": "{{description}}"{{#if Groups}},
-      "Groups": [{{#each Groups}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
+      "groups": [{{#each Groups}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
     }{{#unless @last}},{{/unless}}
     {{/each}}
   ]{{/if}}{{#if permissions}},
@@ -106,7 +106,22 @@ describe('External System Generator RBAC Support', () => {
       // Verify the generated JSON contains roles and permissions
       const writtenContent = fs.promises.writeFile.mock.calls[0][1];
       const parsed = JSON.parse(writtenContent);
-      expect(parsed.roles).toEqual(config.roles);
+
+      // The template outputs 'groups' (lowercase) for the groups array
+      // while the config uses 'Groups' (uppercase) as the input key
+      const expectedRoles = config.roles.map(role => {
+        const expected = {
+          name: role.name,
+          value: role.value,
+          description: role.description
+        };
+        // Template converts Groups -> groups in output
+        if (role.Groups) {
+          expected.groups = role.Groups;
+        }
+        return expected;
+      });
+      expect(parsed.roles).toEqual(expectedRoles);
       expect(parsed.permissions).toEqual(config.permissions);
     });
 
@@ -136,7 +151,7 @@ describe('External System Generator RBAC Support', () => {
       "name": "{{name}}",
       "value": "{{value}}",
       "description": "{{description}}"{{#if Groups}},
-      "Groups": [{{#each Groups}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
+      "groups": [{{#each Groups}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
     }{{#unless @last}},{{/unless}}
     {{/each}}
   ]{{/if}}{{#if permissions}},
@@ -207,7 +222,7 @@ describe('External System Generator RBAC Support', () => {
       "name": "{{name}}",
       "value": "{{value}}",
       "description": "{{description}}"{{#if Groups}},
-      "Groups": [{{#each Groups}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
+      "groups": [{{#each Groups}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
     }{{#unless @last}},{{/unless}}
     {{/each}}
   ]{{/if}}{{#if permissions}},
@@ -265,7 +280,7 @@ describe('External System Generator RBAC Support', () => {
       "name": "{{name}}",
       "value": "{{value}}",
       "description": "{{description}}"{{#if Groups}},
-      "Groups": [{{#each Groups}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
+      "roups": [{{#each Groups}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
     }{{#unless @last}},{{/unless}}
     {{/each}}
   ]{{/if}}{{#if permissions}},

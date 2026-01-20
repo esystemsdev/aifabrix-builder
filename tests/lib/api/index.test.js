@@ -180,7 +180,7 @@ describe('ApiClient', () => {
       expect(authenticatedApiCall).toHaveBeenCalledWith(
         `${baseUrl}/api/v1/test`,
         expect.objectContaining({ method: 'GET' }),
-        'test-token'
+        expect.objectContaining({ type: 'bearer', token: 'test-token' })
       );
     });
 
@@ -215,7 +215,7 @@ describe('ApiClient', () => {
       expect(authenticatedApiCall).toHaveBeenCalledWith(
         `${baseUrl}/api/v1/test`,
         expect.objectContaining({ method: 'GET' }),
-        'client-token'
+        expect.objectContaining({ type: 'client-token', token: 'client-token' })
       );
     });
 
@@ -290,7 +290,7 @@ describe('ApiClient', () => {
       expect(authenticatedApiCall).toHaveBeenCalledWith(
         `${baseUrl}/api/v1/test`,
         expect.objectContaining({ method: 'POST' }),
-        'test-token'
+        expect.objectContaining({ type: 'bearer', token: 'test-token' })
       );
     });
 
@@ -339,7 +339,7 @@ describe('ApiClient', () => {
       expect(authenticatedApiCall).toHaveBeenCalledWith(
         `${baseUrl}/api/v1/test?env=dev`,
         expect.objectContaining({ method: 'POST' }),
-        'test-token'
+        expect.objectContaining({ type: 'bearer', token: 'test-token' })
       );
     });
 
@@ -350,7 +350,7 @@ describe('ApiClient', () => {
       expect(authenticatedApiCall).toHaveBeenCalledWith(
         `${baseUrl}/api/v1/test`,
         expect.objectContaining({ method: 'POST' }),
-        'client-token'
+        expect.objectContaining({ type: 'client-token', token: 'client-token' })
       );
     });
 
@@ -392,7 +392,7 @@ describe('ApiClient', () => {
       expect(authenticatedApiCall).toHaveBeenCalledWith(
         `${baseUrl}/api/v1/test`,
         expect.objectContaining({ method: 'PATCH' }),
-        'test-token'
+        expect.objectContaining({ type: 'bearer', token: 'test-token' })
       );
     });
 
@@ -403,7 +403,7 @@ describe('ApiClient', () => {
       expect(authenticatedApiCall).toHaveBeenCalledWith(
         `${baseUrl}/api/v1/test`,
         expect.objectContaining({ method: 'PATCH' }),
-        'client-token'
+        expect.objectContaining({ type: 'client-token', token: 'client-token' })
       );
     });
 
@@ -471,7 +471,7 @@ describe('ApiClient', () => {
       expect(authenticatedApiCall).toHaveBeenCalledWith(
         `${baseUrl}/api/v1/test`,
         expect.objectContaining({ method: 'PUT' }),
-        'test-token'
+        expect.objectContaining({ type: 'bearer', token: 'test-token' })
       );
     });
 
@@ -482,7 +482,7 @@ describe('ApiClient', () => {
       expect(authenticatedApiCall).toHaveBeenCalledWith(
         `${baseUrl}/api/v1/test`,
         expect.objectContaining({ method: 'PUT' }),
-        'client-token'
+        expect.objectContaining({ type: 'client-token', token: 'client-token' })
       );
     });
 
@@ -542,7 +542,7 @@ describe('ApiClient', () => {
       expect(authenticatedApiCall).toHaveBeenCalledWith(
         `${baseUrl}/api/v1/test`,
         expect.objectContaining({ method: 'DELETE' }),
-        'test-token'
+        expect.objectContaining({ type: 'bearer', token: 'test-token' })
       );
     });
 
@@ -553,7 +553,7 @@ describe('ApiClient', () => {
       expect(authenticatedApiCall).toHaveBeenCalledWith(
         `${baseUrl}/api/v1/test`,
         expect.objectContaining({ method: 'DELETE' }),
-        'client-token'
+        expect.objectContaining({ type: 'client-token', token: 'client-token' })
       );
     });
 

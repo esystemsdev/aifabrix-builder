@@ -41,6 +41,67 @@ Ports are calculated using the formula: `basePort + (developer-id * 100)`
 - pgAdmin: 5350
 - Redis Commander: 8381
 
+## Controller URL Calculation
+
+The default controller URL is automatically calculated based on developer ID using the app port formula: `http://localhost:${3000 + (developerId * 100)}`
+
+### Controller URL Examples
+
+**Developer ID 0** (default):
+- Controller URL: `http://localhost:3000`
+
+**Developer ID 1**:
+- Controller URL: `http://localhost:3100`
+
+**Developer ID 2**:
+- Controller URL: `http://localhost:3200`
+
+**Developer ID 3**:
+- Controller URL: `http://localhost:3300`
+
+### Controller URL Resolution Priority
+
+All commands that accept `--controller` option resolve the controller URL using the following priority:
+
+1. **Explicit option** (`--controller` flag) - Highest priority
+2. **Config file** (`config.deployment?.controllerUrl` from variables.yaml)
+3. **Developer ID-based default** - `http://localhost:${3000 + (developerId * 100)}`
+
+### Usage in Commands
+
+When you run commands without specifying `--controller`, the CLI automatically uses the developer ID-based default:
+
+```bash
+# Developer ID 0: uses http://localhost:3000
+aifabrix login
+
+# Developer ID 1: uses http://localhost:3100
+aifabrix login
+
+# Developer ID 2: uses http://localhost:3200
+aifabrix login
+
+# Explicit controller URL overrides developer ID-based default
+aifabrix login --controller https://controller.aifabrix.ai
+```
+
+### Checking Controller URL
+
+You can check which controller URL is being used with the `auth status` command:
+
+```bash
+# Shows controller URL based on developer ID
+aifabrix auth status
+
+# Example output:
+# 🔐 Authentication Status
+# 
+# Controller: http://localhost:3100
+# Environment: dev
+```
+
+This ensures each developer automatically connects to their own controller instance when running locally, preventing conflicts and making it clear which controller is being used.
+
 ## Configuration
 
 ### Setting Developer ID

@@ -397,7 +397,7 @@ describe('External System Test Module', () => {
       expect(authenticatedApiCall).toHaveBeenCalledWith(
         expect.stringContaining('/api/v1/pipeline/hubspot/'),
         expect.any(Object),
-        'test-token'
+        expect.objectContaining({ token: 'test-token' })
       );
     });
 
@@ -464,7 +464,7 @@ describe('External System Test Module', () => {
         expect.objectContaining({
           body: expect.stringContaining('custom')
         }),
-        expect.any(String)
+        expect.objectContaining({ token: 'test-token' })
       );
     });
 

@@ -7,31 +7,21 @@
  */
 
 const path = require('path');
-const os = require('os');
 
-// Mock fs to use real implementation to override any other mocks
-jest.mock('fs', () => {
-  return jest.requireActual('fs');
-});
+// Mock fs module
+jest.mock('fs', () => ({
+  promises: {
+    access: jest.fn(),
+    readFile: jest.fn()
+  }
+}));
 
-// Use real fs implementation - use jest.requireActual to bypass any global mocks
-const fs = jest.requireActual('fs').promises;
-const fsSync = jest.requireActual('fs');
+const fs = require('fs');
 const envReader = require('../../../lib/core/env-reader');
 
 describe('Environment Reader Module', () => {
-  let tempDir;
-  let originalCwd;
-
   beforeEach(() => {
-    tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-env-test-'));
-    originalCwd = process.cwd();
-    process.chdir(tempDir);
-  });
-
-  afterEach(async() => {
-    process.chdir(originalCwd);
-    await fs.rm(tempDir, { recursive: true, force: true });
+    jest.clearAllMocks();
   });
 
   describe('readExistingEnv', () => {
@@ -43,15 +33,13 @@ PORT=3000
 DATABASE_URL=postgres://localhost:5432/test
 API_KEY=abc123def456
 `;
-      const envPath = path.join(process.cwd(), '.env');
-      fsSync.writeFileSync(envPath, envContent, 'utf8');
+      fs.promises.access.mockResolvedValue(undefined);
+      fs.promises.readFile.mockResolvedValue(envContent);
 
-      // writeFileSync will throw if it fails, so file should exist
-      const stats = fsSync.statSync(envPath);
-      expect(stats.isFile()).toBe(true);
+      const result = await envReader.readExistingEnv('/test/app');
 
-      const result = await envReader.readExistingEnv(process.cwd());
-
+      expect(fs.promises.access).toHaveBeenCalledWith(path.join('/test/app', '.env'));
+      expect(fs.promises.readFile).toHaveBeenCalledWith(path.join('/test/app', '.env'), 'utf8');
       expect(result).toBeDefined();
       expect(result).not.toBeNull();
       expect(result.NODE_ENV).toBe('development');
@@ -61,17 +49,19 @@ API_KEY=abc123def456
     });
 
     it('should return null when .env file does not exist', async() => {
-      const result = await envReader.readExistingEnv(process.cwd());
+      const error = new Error('ENOENT');
+      error.code = 'ENOENT';
+      fs.promises.access.mockRejectedValue(error);
+
+      const result = await envReader.readExistingEnv('/test/app');
       expect(result).toBeNull();
     });
 
     it('should handle empty .env file', async() => {
-      const envPath = path.join(process.cwd(), '.env');
-      fsSync.writeFileSync(envPath, '', 'utf8');
-      // writeFileSync will throw if it fails, so file should exist
-      const stats = fsSync.statSync(envPath);
-      expect(stats.isFile()).toBe(true);
-      const result = await envReader.readExistingEnv(process.cwd());
+      fs.promises.access.mockResolvedValue(undefined);
+      fs.promises.readFile.mockResolvedValue('');
+
+      const result = await envReader.readExistingEnv('/test/app');
       expect(result).toEqual({});
     });
 
@@ -85,14 +75,10 @@ PORT=3000
 
 DATABASE_URL=postgres://localhost:5432/test
 `;
-      const envPath = path.join(process.cwd(), '.env');
-      fsSync.writeFileSync(envPath, envContent, 'utf8');
+      fs.promises.access.mockResolvedValue(undefined);
+      fs.promises.readFile.mockResolvedValue(envContent);
 
-      // writeFileSync will throw if it fails, so file should exist
-      const stats = fsSync.statSync(envPath);
-      expect(stats.isFile()).toBe(true);
-
-      const result = await envReader.readExistingEnv(process.cwd());
+      const result = await envReader.readExistingEnv('/test/app');
 
       expect(result).not.toBeNull();
       expect(result.NODE_ENV).toBe('development');
@@ -107,13 +93,10 @@ NODE_ENV="development"
 PORT='3000'
 DATABASE_URL="postgres://localhost:5432/test"
 `;
-      const envPath = path.join(process.cwd(), '.env');
-      fsSync.writeFileSync(envPath, envContent, 'utf8');
-      // writeFileSync will throw if it fails, so file should exist
-      const stats = fsSync.statSync(envPath);
-      expect(stats.isFile()).toBe(true);
+      fs.promises.access.mockResolvedValue(undefined);
+      fs.promises.readFile.mockResolvedValue(envContent);
 
-      const result = await envReader.readExistingEnv(process.cwd());
+      const result = await envReader.readExistingEnv('/test/app');
 
       expect(result.NODE_ENV).toBe('development');
       expect(result.PORT).toBe('3000');
@@ -335,13 +318,10 @@ DATABASE_URL="postgres://localhost:5432/test"
   describe('readExistingEnv error handling', () => {
     it('should throw error for non-ENOENT errors', async() => {
       // Mock fs.access to throw a non-ENOENT error
-      const originalAccess = fs.access;
-      fs.access = jest.fn().mockRejectedValue(new Error('Permission denied'));
+      fs.promises.access.mockRejectedValue(new Error('Permission denied'));
 
-      await expect(envReader.readExistingEnv(process.cwd()))
+      await expect(envReader.readExistingEnv('/test/app'))
         .rejects.toThrow('Failed to read .env file: Permission denied');
-
-      fs.access = originalAccess;
     });
   });
 

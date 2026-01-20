@@ -1244,5 +1244,55 @@ describe('Token Manager Module', () => {
       ).rejects.toThrow('Invalid authentication type');
     });
   });
+
+  describe('getDeviceOnlyAuth', () => {
+    const controllerUrl = 'http://localhost:3010';
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should return bearer auth config when device token is available', async() => {
+      // Mock getDeviceToken to return valid token info
+      config.getDeviceToken.mockResolvedValue({
+        token: 'device-token-123',
+        refreshToken: 'refresh-token-123',
+        controller: controllerUrl,
+        expiresAt: new Date(Date.now() + 3600000).toISOString() // 1 hour from now
+      });
+      // Mock shouldRefreshToken to return false (token is still valid)
+      config.shouldRefreshToken.mockReturnValue(false);
+
+      const result = await tokenManager.getDeviceOnlyAuth(controllerUrl);
+
+      expect(result).toEqual({
+        type: 'bearer',
+        token: 'device-token-123',
+        controller: controllerUrl
+      });
+    });
+
+    it('should throw error when device token is not available', async() => {
+      config.getDeviceToken.mockResolvedValue(null);
+
+      await expect(
+        tokenManager.getDeviceOnlyAuth(controllerUrl)
+      ).rejects.toThrow('Device token authentication required. Run "aifabrix login" to authenticate.');
+    });
+
+    it('should throw error when getOrRefreshDeviceToken returns null', async() => {
+      // Token exists but refresh is needed and fails (returns null)
+      config.getDeviceToken.mockResolvedValue({
+        token: 'old-token',
+        controller: controllerUrl,
+        expiresAt: new Date(Date.now() - 1000).toISOString() // Expired
+      });
+      config.shouldRefreshToken.mockReturnValue(true);
+
+      await expect(
+        tokenManager.getDeviceOnlyAuth(controllerUrl)
+      ).rejects.toThrow('Device token authentication required. Run "aifabrix login" to authenticate.');
+    });
+  });
 });
 

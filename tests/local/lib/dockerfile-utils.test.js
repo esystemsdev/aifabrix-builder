@@ -13,8 +13,8 @@ const os = require('os');
 jest.unmock('fs');
 
 // Use real fs implementation - use regular require after unmocking
-const fs = require('fs').promises;
-const fsSync = require('fs');
+const fs = jest.requireActual('fs').promises;
+const fsSync = jest.requireActual('fs');
 const dockerfileUtils = require('../../../lib/utils/dockerfile-utils');
 
 jest.mock('../../../lib/utils/paths', () => {

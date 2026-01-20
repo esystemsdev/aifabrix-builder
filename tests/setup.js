@@ -48,47 +48,61 @@ const realPythonTemplate = path.resolve(PROJECT_ROOT, 'templates', 'python', 'Do
 // This guard blocks ALL writes to template files in development
 // In CI, templates can be created if they don't exist (handled below)
 const originalWriteFileSync = fs.writeFileSync;
+const originalMkdirSync = fs.mkdirSync;
+const originalExistsSync = fs.existsSync;
 const isCIEnv = process.env.CI === 'true' || process.env.CI_SIMULATION === 'true';
 
 // Store flag to allow setup.js to create templates in CI (only during setup)
 let allowSetupTemplateCreation = false;
+
+// Helper to check if path is protected (not a temp directory)
+function isProtectedPath(normalizedPath) {
+  // Allow writes to temp directories (common temp prefixes)
+  const isTempPath = normalizedPath.includes('/tmp/') ||
+                     normalizedPath.includes('\\temp\\') ||
+                     normalizedPath.startsWith('/var/folders/') ||
+                     normalizedPath.includes('aifabrix-test-') ||
+                     normalizedPath.includes('aifabrix-') ||
+                     process.cwd().includes('/tmp/');
+
+  if (isTempPath) {
+    return false;
+  }
+
+  // Check if writing to node_modules
+  const nodeModulesPath = path.resolve(PROJECT_ROOT, 'node_modules');
+  if (normalizedPath.startsWith(nodeModulesPath)) {
+    return true;
+  }
+
+  // In CI environment, allow writes to templates
+  if (isCIEnv) {
+    return false;
+  }
+
+  // Check if writing to real template files
+  if (normalizedPath === realTypescriptTemplate || normalizedPath === realPythonTemplate) {
+    return !allowSetupTemplateCreation;
+  }
+
+  // Check if writing to templates directory
+  if (normalizedPath.startsWith(realTemplatesPath)) {
+    return true;
+  }
+
+  return false;
+}
 
 fs.writeFileSync = function(filePath, ...args) {
   const normalizedPath = path.isAbsolute(filePath)
     ? path.resolve(filePath)
     : path.resolve(process.cwd(), filePath);
 
-  // PERMANENT GUARD: Block writes to node_modules directory (applies in ALL environments)
-  // This prevents accidental corruption of dependencies (e.g., exit/lib/exit.js)
-  const nodeModulesPath = path.resolve(PROJECT_ROOT, 'node_modules');
-  if (normalizedPath.startsWith(nodeModulesPath)) {
-    throw new Error(`GLOBAL GUARD: Attempted to write to node_modules: ${normalizedPath}. Tests must NEVER modify node_modules files.`);
-  }
-
-  // In CI environment, always allow writes to templates (they're in copied location)
-  if (isCIEnv) {
-    return originalWriteFileSync.call(fs, filePath, ...args);
-  }
-
-  // In development, block writes to real template files
-  // Check if writing to the exact real template file paths
-  if (normalizedPath === realTypescriptTemplate || normalizedPath === realPythonTemplate) {
-    if (!allowSetupTemplateCreation) {
-      throw new Error(`GLOBAL GUARD: Attempted to write to real template file: ${normalizedPath}. Tests must NEVER modify real templates.`);
+  if (isProtectedPath(normalizedPath)) {
+    if (normalizedPath.startsWith(path.resolve(PROJECT_ROOT, 'node_modules'))) {
+      throw new Error(`GLOBAL GUARD: Attempted to write to node_modules: ${normalizedPath}. Tests must NEVER modify node_modules files.`);
     }
-  }
-
-  // Block writes to templates directory in development (but allow temp directories)
-  if (normalizedPath.startsWith(realTemplatesPath)) {
-    // Allow writes to temp directories (common temp prefixes)
-    const isTempPath = normalizedPath.includes('/tmp/') ||
-                       normalizedPath.includes('\\temp\\') ||
-                       normalizedPath.startsWith('/var/folders/') ||
-                       normalizedPath.includes('aifabrix-test-');
-
-    if (!isTempPath) {
-      throw new Error(`GLOBAL GUARD: Attempted to write to real templates directory: ${normalizedPath}. Tests must NEVER modify real templates.`);
-    }
+    throw new Error(`GLOBAL GUARD: Attempted to write to protected path: ${normalizedPath}. Tests must NEVER modify real templates.`);
   }
 
   return originalWriteFileSync.call(fs, filePath, ...args);

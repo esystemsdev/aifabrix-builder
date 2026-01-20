@@ -12,6 +12,12 @@ jest.mock('inquirer', () => ({
   prompt: jest.fn()
 }));
 
+// Mock controller-url module to provide consistent default URL for tests
+jest.mock('../../../lib/utils/controller-url', () => ({
+  getDefaultControllerUrl: jest.fn().mockResolvedValue('http://localhost:3000'),
+  resolveControllerUrl: jest.fn().mockResolvedValue('http://localhost:3000')
+}));
+
 const { promptForOptions } = require('../../../lib/app/prompts');
 
 describe('Application Prompts Module', () => {

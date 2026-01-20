@@ -6,8 +6,8 @@
  * @version 2.0.0
  */
 
-const fs = require('fs').promises;
-const fsSync = require('fs');
+const fs = jest.requireActual('fs').promises;
+const fsSync = jest.requireActual('fs');
 const path = require('path');
 const os = require('os');
 const app = require('../../../lib/app');

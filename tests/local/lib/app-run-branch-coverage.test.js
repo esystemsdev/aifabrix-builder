@@ -10,27 +10,38 @@ const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
 
-// Mock fs to use real implementation to override any other mocks
 // Ensure fs is not mocked for this test file - we need real filesystem operations
-jest.mock('fs', () => {
-  return jest.requireActual('fs');
-});
+jest.unmock('fs');
 
-const fs = require('fs').promises;
-const fsSync = require('fs');
-jest.dontMock('fs');
+// Use real fs module directly after unmocking
+const fs = jest.requireActual('fs').promises;
+const fsSync = jest.requireActual('fs');
 
 jest.mock('../../../lib/validation/validator');
 jest.mock('../../../lib/infrastructure');
 jest.mock('../../../lib/core/secrets');
 
-const validator = require('../../../lib/validation/validator');
-const infra = require('../../../lib/infrastructure');
-const secrets = require('../../../lib/core/secrets');
+// Variables for modules to be loaded after reset
+let validator;
+let infra;
+let secrets;
 
 describe('App-Run Branch Coverage Tests', () => {
   let tempDir;
   let originalCwd;
+
+  beforeAll(() => {
+    // Reset modules and re-require to get fresh modules with real fs
+    jest.resetModules();
+    jest.unmock('fs');
+    // Re-apply mocks after reset
+    jest.mock('../../../lib/validation/validator');
+    jest.mock('../../../lib/infrastructure');
+    jest.mock('../../../lib/core/secrets');
+    validator = require('../../../lib/validation/validator');
+    infra = require('../../../lib/infrastructure');
+    secrets = require('../../../lib/core/secrets');
+  });
 
   beforeEach(() => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));

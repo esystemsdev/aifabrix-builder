@@ -108,7 +108,7 @@ const appRun = require('../../../lib/app/run');
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const net = require('net');
-const fsSync = require('fs');
+const fsSync = jest.requireActual('fs');
 const path = require('path');
 const os = require('os');
 const http = require('http');
@@ -179,7 +179,7 @@ describe('Application Run Advanced Tests', () => {
   afterEach(async() => {
     process.chdir(originalCwd);
     // Clean up dev directories
-    const fs = require('fs').promises;
+    const fs = jest.requireActual('fs').promises;
     const aifabrixDir = path.join(os.homedir(), '.aifabrix');
     if (fsSync.existsSync(aifabrixDir)) {
       const entries = await fs.readdir(aifabrixDir).catch(() => []);

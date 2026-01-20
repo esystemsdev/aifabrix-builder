@@ -9,7 +9,8 @@
 // Mock ApiClient before requiring wizard.api
 const mockClient = {
   get: jest.fn(),
-  post: jest.fn()
+  post: jest.fn(),
+  patch: jest.fn()
 };
 
 const mockApiClient = jest.fn().mockImplementation((baseUrl, authConfig) => {
@@ -17,7 +18,8 @@ const mockApiClient = jest.fn().mockImplementation((baseUrl, authConfig) => {
     baseUrl,
     authConfig,
     get: mockClient.get,
-    post: mockClient.post
+    post: mockClient.post,
+    patch: mockClient.patch
   };
 });
 
@@ -43,46 +45,45 @@ describe('Wizard API', () => {
     mockUploadFile.mockResolvedValue({ success: true, data: {} });
   });
 
-  describe('selectMode', () => {
-    it('should select wizard mode', async() => {
-      const result = await wizardApi.selectMode(dataplaneUrl, authConfig, 'create-system');
+  describe('createWizardSession', () => {
+    it('should create wizard session', async() => {
+      const result = await wizardApi.createWizardSession(dataplaneUrl, authConfig, 'create-system');
 
       expect(mockApiClient).toHaveBeenCalledWith(dataplaneUrl, authConfig);
-      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/mode-selection', {
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/sessions', {
         body: { mode: 'create-system' }
       });
       expect(result.success).toBe(true);
     });
 
-    it('should handle add-datasource mode', async() => {
-      await wizardApi.selectMode(dataplaneUrl, authConfig, 'add-datasource');
+    it('should handle add-datasource mode with systemId', async() => {
+      await wizardApi.createWizardSession(dataplaneUrl, authConfig, 'add-datasource', 'system-123');
 
-      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/mode-selection', {
-        body: { mode: 'add-datasource' }
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/sessions', {
+        body: { mode: 'add-datasource', systemId: 'system-123' }
       });
     });
   });
 
-  describe('selectSource', () => {
-    it('should select source type with source data', async() => {
-      await wizardApi.selectSource(dataplaneUrl, authConfig, 'openapi-file', '/path/to/file.yaml');
+  describe('getWizardSession', () => {
+    it('should get wizard session', async() => {
+      mockClient.get.mockResolvedValue({ success: true, data: { sessionId: 'session-123' } });
+      const result = await wizardApi.getWizardSession(dataplaneUrl, 'session-123', authConfig);
 
-      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/source-selection', {
-        body: {
-          sourceType: 'openapi-file',
-          sourceData: '/path/to/file.yaml'
-        }
-      });
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/wizard/sessions/session-123');
+      expect(result.success).toBe(true);
     });
+  });
 
-    it('should select source type without source data', async() => {
-      await wizardApi.selectSource(dataplaneUrl, authConfig, 'known-platform');
+  describe('updateWizardSession', () => {
+    it('should update wizard session', async() => {
+      mockClient.patch.mockResolvedValue({ success: true, data: {} });
+      const updateData = { currentStep: 1, selectedType: 'rest-api' };
 
-      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/source-selection', {
-        body: {
-          sourceType: 'known-platform',
-          sourceData: undefined
-        }
+      await wizardApi.updateWizardSession(dataplaneUrl, 'session-123', authConfig, updateData);
+
+      expect(mockClient.patch).toHaveBeenCalledWith('/api/v1/wizard/sessions/session-123', {
+        body: updateData
       });
     });
   });
@@ -249,7 +250,7 @@ describe('Wizard API', () => {
       };
       mockClient.post.mockResolvedValue(errorResponse);
 
-      const result = await wizardApi.selectMode(dataplaneUrl, authConfig, 'create-system');
+      const result = await wizardApi.createWizardSession(dataplaneUrl, authConfig, 'create-system');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('API error');

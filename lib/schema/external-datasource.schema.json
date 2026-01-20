@@ -3,21 +3,21 @@
    "$id":"https://raw.githubusercontent.com/esystemsdev/aifabrix-builder/refs/heads/main/lib/schema/external-datasource.schema.json",
    "title":"External Data Source",
    "description":"Configuration for AI Fabrix ExternalDataSource entities. Includes metadata schema, data dimensions, transformation mappings, OpenAPI/MCP exposure, execution logic, and sync behavior.",
-   "metadata":{
-      "key":"external-datasource-schema",
-      "name":"External Data Source Configuration Schema",
-      "description":"JSON schema for validating ExternalDataSource configuration files",
-      "version":"2.0.0",
-      "type":"schema",
-      "category":"integration",
-      "author":"AI Fabrix Team",
-      "createdAt":"2024-01-01T00:00:00Z",
-      "updatedAt":"2026-01-18T00:00:00Z",
-      "compatibility":{
-         "minVersion":"1.0.0",
-         "maxVersion":"3.0.0",
-         "deprecated":false
-      },
+      "metadata":{
+         "key":"external-datasource-schema",
+         "name":"External Data Source Configuration Schema",
+         "description":"JSON schema for validating ExternalDataSource configuration files",
+         "version":"2.1.0",
+         "type":"schema",
+         "category":"integration",
+         "author":"AI Fabrix Team",
+         "createdAt":"2024-01-01T00:00:00Z",
+         "updatedAt":"2026-01-19T00:00:00Z",
+         "compatibility":{
+            "minVersion":"1.0.0",
+            "maxVersion":"3.0.0",
+            "deprecated":false
+         },
       "tags":[
          "schema",
          "external-datasource",
@@ -80,6 +80,17 @@
                "Updated descriptions to reflect dimension-first data model approach"
             ],
             "breaking":true
+         },
+         {
+            "version":"2.1.0",
+            "date":"2026-01-19T00:00:00Z",
+            "changes":[
+               "Added error semantics (onError object) to all CIP step types with error classification, retry, compensation, and failPipeline",
+               "Added idempotency configuration to CIP definition for execution-level replay guarantees",
+               "Added lineage configuration to field mappings for field-level explainability and compliance",
+               "Added contract versioning configuration to datasource root for CI/CD safety and agent stability"
+            ],
+            "breaking":false
          }
       ]
    },
@@ -223,6 +234,9 @@
                            }
                         },
                         "additionalProperties":false
+                     },
+                     "lineage":{
+                        "$ref":"#/$defs/fieldMappingLineage"
                      }
                   }
                }
@@ -846,6 +860,9 @@
             }
          },
          "additionalProperties":true
+      },
+      "contract":{
+         "$ref":"#/$defs/contractConfig"
       }
    },
    "$defs":{
@@ -931,6 +948,9 @@
                   }
                },
                "additionalProperties":false
+            },
+            "idempotency":{
+               "$ref":"#/$defs/idempotencyConfig"
             }
          },
          "additionalProperties":false
@@ -1103,6 +1123,14 @@
             },
             "lineage":{
                "$ref":"#/$defs/cipLineage"
+            },
+            "stepId":{
+               "type":"string",
+               "pattern":"^[a-z0-9-_]+$",
+               "description":"Unique identifier for this step within the operation"
+            },
+            "onError":{
+               "$ref":"#/$defs/cipOnErrorConfig"
             }
          },
          "additionalProperties":false
@@ -1160,6 +1188,14 @@
             },
             "lineage":{
                "$ref":"#/$defs/cipLineage"
+            },
+            "stepId":{
+               "type":"string",
+               "pattern":"^[a-z0-9-_]+$",
+               "description":"Unique identifier for this step within the operation"
+            },
+            "onError":{
+               "$ref":"#/$defs/cipOnErrorConfig"
             }
          },
          "additionalProperties":false
@@ -1197,6 +1233,14 @@
             },
             "lineage":{
                "$ref":"#/$defs/cipLineage"
+            },
+            "stepId":{
+               "type":"string",
+               "pattern":"^[a-z0-9-_]+$",
+               "description":"Unique identifier for this step within the operation"
+            },
+            "onError":{
+               "$ref":"#/$defs/cipOnErrorConfig"
             }
          },
          "additionalProperties":false
@@ -1236,6 +1280,14 @@
             },
             "lineage":{
                "$ref":"#/$defs/cipLineage"
+            },
+            "stepId":{
+               "type":"string",
+               "pattern":"^[a-z0-9-_]+$",
+               "description":"Unique identifier for this step within the operation"
+            },
+            "onError":{
+               "$ref":"#/$defs/cipOnErrorConfig"
             }
          },
          "additionalProperties":false
@@ -1272,6 +1324,14 @@
             },
             "lineage":{
                "$ref":"#/$defs/cipLineage"
+            },
+            "stepId":{
+               "type":"string",
+               "pattern":"^[a-z0-9-_]+$",
+               "description":"Unique identifier for this step within the operation"
+            },
+            "onError":{
+               "$ref":"#/$defs/cipOnErrorConfig"
             }
          },
          "additionalProperties":false
@@ -1298,6 +1358,232 @@
             },
             "lineage":{
                "$ref":"#/$defs/cipLineage"
+            },
+            "stepId":{
+               "type":"string",
+               "pattern":"^[a-z0-9-_]+$",
+               "description":"Unique identifier for this step within the operation"
+            },
+            "onError":{
+               "$ref":"#/$defs/cipOnErrorConfig"
+            }
+         },
+         "additionalProperties":false
+      },
+      "cipRetryConfig":{
+         "type":"object",
+         "description":"Retry configuration for error handling.",
+         "properties":{
+            "attempts":{
+               "type":"integer",
+               "minimum":1,
+               "maximum":10,
+               "default":3,
+               "description":"Maximum number of retry attempts"
+            },
+            "backoff":{
+               "type":"string",
+               "enum":["exponential","linear","fixed"],
+               "default":"exponential",
+               "description":"Backoff strategy: exponential (2^attempt), linear (attempt * base), fixed (constant)"
+            },
+            "maxDelaySeconds":{
+               "type":"number",
+               "minimum":1.0,
+               "maximum":300.0,
+               "default":60.0,
+               "description":"Maximum delay between retries in seconds"
+            }
+         },
+         "additionalProperties":false
+      },
+      "cipCompensationConfig":{
+         "type":"object",
+         "description":"Compensation (rollback) configuration for error handling.",
+         "properties":{
+            "enabled":{
+               "type":"boolean",
+               "default":false,
+               "description":"Whether compensation is enabled"
+            },
+            "stepRef":{
+               "type":"string",
+               "pattern":"^[a-z0-9-_]+$",
+               "description":"Reference to a previously executed step by stepId to execute as compensation"
+            }
+         },
+         "additionalProperties":false
+      },
+      "cipOnErrorConfig":{
+         "type":"object",
+         "description":"Enhanced error handling configuration for CIP steps.",
+         "required":["class"],
+         "properties":{
+            "class":{
+               "type":"string",
+               "enum":["transient","permanent","validation","auth"],
+               "description":"Error classification: transient (retryable), permanent (non-retryable), validation (data validation failure), auth (authentication/authorization failure)"
+            },
+            "retry":{
+               "$ref":"#/$defs/cipRetryConfig",
+               "description":"Retry configuration (only applies when class='transient')"
+            },
+            "compensate":{
+               "$ref":"#/$defs/cipCompensationConfig",
+               "description":"Compensation (rollback) configuration"
+            },
+            "failPipeline":{
+               "type":"boolean",
+               "default":true,
+               "description":"Whether step failure should fail the entire pipeline (false allows partial success)"
+            }
+         },
+         "additionalProperties":false
+      },
+      "idempotencyConfig":{
+         "type":"object",
+         "description":"Idempotency configuration for CIP execution.",
+         "required":["key"],
+         "properties":{
+            "key":{
+               "type":"string",
+               "description":"Idempotency key template. Supports variables: {{actor.userId}}, {{raw.requestId}}, {{correlationId}}, {{execution.operation}}, {{execution.datasourceId}}"
+            },
+            "scope":{
+               "type":"string",
+               "enum":["datasource","system"],
+               "default":"datasource",
+               "description":"Idempotency scope: datasource (same key within datasource) or system (same key across all datasources)"
+            },
+            "ttlSeconds":{
+               "type":"integer",
+               "minimum":1,
+               "maximum":604800,
+               "default":86400,
+               "description":"Time to live for idempotency records in seconds (default: 86400 = 24 hours)"
+            },
+            "enforcement":{
+               "type":"string",
+               "enum":["strict","best-effort"],
+               "default":"strict",
+               "description":"Enforcement mode: strict (return previous result, no execution) or best-effort (warn + continue)"
+            }
+         },
+         "additionalProperties":false
+      },
+      "transformationRule":{
+         "type":"object",
+         "description":"Transformation rule applied to a field.",
+         "required":["type"],
+         "properties":{
+            "type":{
+               "type":"string",
+               "description":"Type of transformation: 'mapping', 'function', 'filter', 'aggregate'"
+            },
+            "function":{
+               "type":"string",
+               "description":"Function name (e.g., 'mapStatus', 'toLower', 'trim')"
+            },
+            "rule":{
+               "type":"string",
+               "description":"Human-readable rule description (e.g., 'open → OPEN, closed → CLOSED')"
+            }
+         },
+         "additionalProperties":false
+      },
+      "fieldMappingLineage":{
+         "type":"object",
+         "description":"Lineage metadata for a field mapping.",
+         "required":["sourceFields"],
+         "properties":{
+            "sourceFields":{
+               "type":"array",
+               "minItems":1,
+               "items":{
+                  "type":"string"
+               },
+               "description":"Source field paths that contribute to this mapped field (e.g., ['raw.fields.state'])"
+            },
+            "transformations":{
+               "type":"array",
+               "items":{
+                  "$ref":"#/$defs/transformationRule"
+               },
+               "description":"List of transformations applied to source fields"
+            },
+            "confidence":{
+               "type":"number",
+               "minimum":0.0,
+               "maximum":1.0,
+               "default":1.0,
+               "description":"Confidence score for this mapping (0.0-1.0). Default: 1.0 for deterministic transformations."
+            }
+         },
+         "additionalProperties":false
+      },
+      "compatibilityConfig":{
+         "type":"object",
+         "description":"Compatibility configuration for contract versioning.",
+         "properties":{
+            "backwardCompatible":{
+               "type":"boolean",
+               "default":true,
+               "description":"Whether this version is backward compatible with previous versions"
+            },
+            "breakingChanges":{
+               "type":"array",
+               "items":{
+                  "type":"string"
+               },
+               "description":"List of breaking change types: removeField, changeType, changeSemantics"
+            }
+         },
+         "additionalProperties":false
+      },
+      "deprecationConfig":{
+         "type":"object",
+         "description":"Deprecation configuration for contract versioning.",
+         "properties":{
+            "sunsetDate":{
+               "type":"string",
+               "pattern":"^\\d{4}-\\d{2}-\\d{2}$",
+               "description":"Date when this contract version will be sunset (YYYY-MM-DD)"
+            },
+            "replacedBy":{
+               "type":"string",
+               "description":"Contract name/version that replaces this deprecated version"
+            }
+         },
+         "additionalProperties":false
+      },
+      "contractConfig":{
+         "type":"object",
+         "description":"Contract versioning configuration for datasource.",
+         "required":["name","version"],
+         "properties":{
+            "name":{
+               "type":"string",
+               "pattern":"^[a-z0-9.-]+$",
+               "description":"Contract identifier (e.g., 'jira.issue', separate from datasource key)"
+            },
+            "version":{
+               "type":"string",
+               "pattern":"^[0-9]+\\.[0-9]+\\.[0-9]+$",
+               "description":"Semantic version of the contract (e.g., '2.1.0')"
+            },
+            "status":{
+               "type":"string",
+               "enum":["stable","deprecated","experimental"],
+               "default":"stable",
+               "description":"Contract status: stable (production-ready), deprecated (being phased out), experimental (testing)"
+            },
+            "compatibility":{
+               "$ref":"#/$defs/compatibilityConfig",
+               "description":"Compatibility information for this contract version"
+            },
+            "deprecation":{
+               "$ref":"#/$defs/deprecationConfig",
+               "description":"Deprecation information if status is 'deprecated'"
             }
          },
          "additionalProperties":false

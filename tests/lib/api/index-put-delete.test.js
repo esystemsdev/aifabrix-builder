@@ -61,7 +61,7 @@ describe('ApiClient PUT and DELETE Methods', () => {
           }),
           body: JSON.stringify(options.body)
         }),
-        token
+        expect.objectContaining({ type: 'bearer', token })
       );
       expect(makeApiCall).not.toHaveBeenCalled();
     });
@@ -83,7 +83,7 @@ describe('ApiClient PUT and DELETE Methods', () => {
           }),
           body: JSON.stringify(options.body)
         }),
-        token
+        expect.objectContaining({ type: 'client-token', token })
       );
       expect(makeApiCall).not.toHaveBeenCalled();
     });
@@ -163,7 +163,7 @@ describe('ApiClient PUT and DELETE Methods', () => {
             'Content-Type': 'application/json'
           })
         }),
-        token
+        expect.objectContaining({ type: 'bearer', token })
       );
       expect(makeApiCall).not.toHaveBeenCalled();
     });
@@ -183,7 +183,7 @@ describe('ApiClient PUT and DELETE Methods', () => {
             'Content-Type': 'application/json'
           })
         }),
-        token
+        expect.objectContaining({ type: 'client-token', token })
       );
       expect(makeApiCall).not.toHaveBeenCalled();
     });

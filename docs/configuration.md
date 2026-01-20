@@ -322,7 +322,12 @@ The CLI resolves the controller URL using the following priority order:
 
 1. **Command-line flag** (`--controller`) - Highest priority, overrides all other sources
 2. **variables.yaml** (`deployment.controllerUrl`) - Used by `app register` and `deploy` commands
-3. **Device tokens** (`~/.aifabrix/config.yaml` → `device` section) - Fallback for all commands
+3. **Developer ID-based default** - Calculated as `http://localhost:${3000 + (developerId * 100)}`
+   - Developer ID 0: `http://localhost:3000`
+   - Developer ID 1: `http://localhost:3100`
+   - Developer ID 2: `http://localhost:3200`
+   - etc.
+4. **Device tokens** (`~/.aifabrix/config.yaml` → `device` section) - Legacy fallback (deprecated in favor of developer ID-based default)
 
 ### Priority Order by Command
 
@@ -1153,7 +1158,7 @@ Device code flow tokens, keyed by controller URL (universal per controller, not 
 - `device.\<controller-url\>.token` - Device access token (encrypted if encryption key is set)  
 - `device.\<controller-url\>.refreshToken` - Refresh token for automatic token renewal (encrypted if encryption key is set)  
 - `device.\<controller-url\>.expiresAt` - Token expiration timestamp (ISO 8601)  
-- **Offline Tokens**: When `--offline` flag is used during login, refresh tokens with `offline_access` scope don't expire
+- **Offline Tokens (Default)**: By default, `offline_access` scope is included, providing refresh tokens that don't expire. Use `--online` flag to exclude this scope for session-based tokens.
 
 **environments**  
 Per-environment client token storage
@@ -1170,11 +1175,11 @@ Client credentials token for app in environment
 - **Token Encryption** - Tokens are automatically encrypted at rest if `secrets-encryption` key is set in config.yaml (uses AES-256-GCM)
 - **Automatic Migration** - Plain-text tokens are automatically encrypted on first read if encryption key is available
 - **Automatic token refresh** - Tokens are automatically refreshed when expired (device tokens use refresh tokens, client tokens use credentials from secrets.local.yaml)
-- **Offline Tokens** - Device flow supports `offline_access` scope via `--offline` flag, providing long-lived refresh tokens that don't expire
+- **Offline Tokens (Default)** - Device flow includes `offline_access` scope by default, providing long-lived refresh tokens that don't expire. Use `--online` flag to exclude this scope.
 - **Environment selection** - Root-level `environment` indicates current environment
 - **Device tokens** - Stored at root level, keyed by controller URL (universal per controller, not per environment)
 - **Client tokens** - Stored per environment and app, automatically refreshed using credentials from secrets.local.yaml
-- **Refresh tokens** - Device tokens include refresh tokens for automatic renewal on 401 errors
+- **Refresh tokens** - Device tokens include refresh tokens for automatic renewal on 401 errors (unless `--online` was used during login)
 
 ### Developer directories and generation flow
 

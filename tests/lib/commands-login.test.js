@@ -15,6 +15,8 @@ const { makeApiCall, pollDeviceCodeToken, displayDeviceCodeInfo } = require('../
 const { initiateDeviceCodeFlow, getToken } = require('../../lib/api/auth.api');
 const tokenManager = require('../../lib/utils/token-manager');
 const logger = require('../../lib/utils/logger');
+const devConfig = require('../../lib/utils/dev-config');
+const envMap = require('../../lib/utils/env-map');
 
 // Mock modules
 jest.mock('inquirer');
@@ -24,6 +26,8 @@ jest.mock('../../lib/utils/api');
 jest.mock('../../lib/api/auth.api');
 jest.mock('../../lib/utils/token-manager');
 jest.mock('../../lib/utils/logger');
+jest.mock('../../lib/utils/dev-config');
+jest.mock('../../lib/utils/env-map');
 
 describe('Login Command Module', () => {
   let mockExit;
@@ -44,6 +48,23 @@ describe('Login Command Module', () => {
 
     // Setup default token-manager mocks
     tokenManager.loadClientCredentials.mockResolvedValue(null);
+
+    // Setup default developer ID mocks (default to 0)
+    envMap.getDeveloperIdNumber.mockResolvedValue(0);
+    devConfig.getDevPorts.mockImplementation((id) => {
+      const basePorts = { app: 3000, postgres: 5432, redis: 6379, pgadmin: 5050, redisCommander: 8081 };
+      if (id === 0) {
+        return { ...basePorts };
+      }
+      const offset = id * 100;
+      return {
+        app: basePorts.app + offset,
+        postgres: basePorts.postgres + offset,
+        redis: basePorts.redis + offset,
+        pgadmin: basePorts.pgadmin + offset,
+        redisCommander: basePorts.redisCommander + offset
+      };
+    });
   });
 
   afterEach(() => {
@@ -92,10 +113,10 @@ describe('Login Command Module', () => {
         throw error;
       }
 
-      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email');
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email offline_access');
     });
 
-    it('should pass default scope when no scope options provided', async() => {
+    it('should pass default scope with offline_access when no scope options provided', async() => {
       const options = {
         url: 'http://localhost:3000',
         method: 'device',
@@ -132,15 +153,15 @@ describe('Login Command Module', () => {
         throw error;
       }
 
-      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email');
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email offline_access');
     });
 
-    it('should add offline_access scope when --offline flag is used', async() => {
+    it('should exclude offline_access scope when --online flag is used', async() => {
       const options = {
         url: 'http://localhost:3000',
         method: 'device',
         environment: 'dev',
-        offline: true
+        online: true
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
@@ -173,10 +194,10 @@ describe('Login Command Module', () => {
         throw error;
       }
 
-      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email offline_access');
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email');
     });
 
-    it('should use custom scope when --scope option is provided', async() => {
+    it('should use custom scope and add offline_access when --scope option is provided without offline_access', async() => {
       const options = {
         url: 'http://localhost:3000',
         method: 'device',
@@ -214,16 +235,16 @@ describe('Login Command Module', () => {
         throw error;
       }
 
-      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email custom_scope');
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email custom_scope offline_access');
     });
 
-    it('should add offline_access to custom scope when both --scope and --offline are used', async() => {
+    it('should remove offline_access from custom scope when both --scope and --online are used', async() => {
       const options = {
         url: 'http://localhost:3000',
         method: 'device',
         environment: 'dev',
-        scope: 'openid profile',
-        offline: true
+        scope: 'openid profile offline_access',
+        online: true
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
@@ -256,16 +277,15 @@ describe('Login Command Module', () => {
         throw error;
       }
 
-      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile offline_access');
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile');
     });
 
-    it('should not duplicate offline_access if already in custom scope', async() => {
+    it('should not duplicate offline_access if already in custom scope (default behavior)', async() => {
       const options = {
         url: 'http://localhost:3000',
         method: 'device',
         environment: 'dev',
-        scope: 'openid profile offline_access',
-        offline: true
+        scope: 'openid profile offline_access'
       };
 
       initiateDeviceCodeFlow.mockResolvedValue({
@@ -302,12 +322,12 @@ describe('Login Command Module', () => {
       expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile offline_access');
     });
 
-    it('should show warning when --offline or --scope used with credentials method', async() => {
+    it('should show warning when --online or --scope used with credentials method', async() => {
       const options = {
         url: 'http://localhost:3000',
         method: 'credentials',
         app: 'myapp',
-        offline: true
+        online: true
       };
 
       tokenManager.loadClientCredentials.mockResolvedValue({
@@ -332,7 +352,7 @@ describe('Login Command Module', () => {
         throw error;
       }
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Warning: --offline and --scope options are only available for device flow'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Warning: --online and --scope options are only available for device flow'));
     });
 
     it('should reject invalid environment key format', async() => {
@@ -404,7 +424,7 @@ describe('Login Command Module', () => {
         throw error;
       }
 
-      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev-env_test', 'openid profile email');
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev-env_test', 'openid profile email offline_access');
     });
   });
 
@@ -1441,6 +1461,272 @@ describe('Login Command Module', () => {
       expect(logger.log).toHaveBeenCalledWith(chalk.gray('Environment: dev'));
       expect(logger.log).toHaveBeenCalledWith(chalk.gray('App: test-app'));
       expect(logger.log).toHaveBeenCalledWith(chalk.gray('Token stored securely in ~/.aifabrix/config.yaml\n'));
+    });
+  });
+
+  describe('getDefaultControllerUrl - Developer ID-based URL calculation', () => {
+    it('should use port 3000 for developer ID 0', async() => {
+      envMap.getDeveloperIdNumber.mockResolvedValue(0);
+      devConfig.getDevPorts.mockReturnValue({ app: 3000 });
+
+      const options = {
+        method: 'device',
+        environment: 'dev'
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
+      });
+
+      pollDeviceCodeToken.mockResolvedValue({
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-456',
+        expires_in: 3600
+      });
+
+      displayDeviceCodeInfo.mockImplementation(() => {});
+
+      try {
+        await handleLogin(options);
+      } catch (error) {
+        if (error.message.includes('process.exit')) {
+          return;
+        }
+        throw error;
+      }
+
+      expect(envMap.getDeveloperIdNumber).toHaveBeenCalledWith(null);
+      expect(devConfig.getDevPorts).toHaveBeenCalledWith(0);
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email offline_access');
+      expect(logger.log).toHaveBeenCalledWith(chalk.gray('Controller URL: http://localhost:3000'));
+    });
+
+    it('should use port 3100 for developer ID 1', async() => {
+      envMap.getDeveloperIdNumber.mockResolvedValue(1);
+      devConfig.getDevPorts.mockReturnValue({ app: 3100 });
+
+      const options = {
+        method: 'device',
+        environment: 'dev',
+        online: true  // Use online mode to test without offline_access
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
+      });
+
+      pollDeviceCodeToken.mockResolvedValue({
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-456',
+        expires_in: 3600
+      });
+
+      displayDeviceCodeInfo.mockImplementation(() => {});
+
+      try {
+        await handleLogin(options);
+      } catch (error) {
+        if (error.message.includes('process.exit')) {
+          return;
+        }
+        throw error;
+      }
+
+      expect(envMap.getDeveloperIdNumber).toHaveBeenCalledWith(null);
+      expect(devConfig.getDevPorts).toHaveBeenCalledWith(1);
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3100', 'dev', 'openid profile email');
+      expect(logger.log).toHaveBeenCalledWith(chalk.gray('Controller URL: http://localhost:3100'));
+    });
+
+    it('should use port 3200 for developer ID 2', async() => {
+      envMap.getDeveloperIdNumber.mockResolvedValue(2);
+      devConfig.getDevPorts.mockReturnValue({ app: 3200 });
+
+      const options = {
+        method: 'device',
+        environment: 'dev'
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
+      });
+
+      pollDeviceCodeToken.mockResolvedValue({
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-456',
+        expires_in: 3600
+      });
+
+      displayDeviceCodeInfo.mockImplementation(() => {});
+
+      try {
+        await handleLogin(options);
+      } catch (error) {
+        if (error.message.includes('process.exit')) {
+          return;
+        }
+        throw error;
+      }
+
+      expect(envMap.getDeveloperIdNumber).toHaveBeenCalledWith(null);
+      expect(devConfig.getDevPorts).toHaveBeenCalledWith(2);
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3200', 'dev', 'openid profile email offline_access');
+      expect(logger.log).toHaveBeenCalledWith(chalk.gray('Controller URL: http://localhost:3200'));
+    });
+
+    it('should use port 3100 for developer ID "01" (parsed as 1)', async() => {
+      envMap.getDeveloperIdNumber.mockResolvedValue(1);
+      devConfig.getDevPorts.mockReturnValue({ app: 3100 });
+
+      const options = {
+        method: 'device',
+        environment: 'miso'
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
+      });
+
+      pollDeviceCodeToken.mockResolvedValue({
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-456',
+        expires_in: 3600
+      });
+
+      displayDeviceCodeInfo.mockImplementation(() => {});
+
+      try {
+        await handleLogin(options);
+      } catch (error) {
+        if (error.message.includes('process.exit')) {
+          return;
+        }
+        throw error;
+      }
+
+      expect(envMap.getDeveloperIdNumber).toHaveBeenCalledWith(null);
+      expect(devConfig.getDevPorts).toHaveBeenCalledWith(1);
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3100', 'miso', 'openid profile email offline_access');
+      expect(logger.log).toHaveBeenCalledWith(chalk.gray('Controller URL: http://localhost:3100'));
+    });
+
+    it('should use explicit controller URL when provided, ignoring developer ID', async() => {
+      envMap.getDeveloperIdNumber.mockResolvedValue(1);
+      devConfig.getDevPorts.mockReturnValue({ app: 3100 });
+
+      const options = {
+        controller: 'http://custom-controller:5000',
+        method: 'device',
+        environment: 'dev'
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
+      });
+
+      pollDeviceCodeToken.mockResolvedValue({
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-456',
+        expires_in: 3600
+      });
+
+      displayDeviceCodeInfo.mockImplementation(() => {});
+
+      try {
+        await handleLogin(options);
+      } catch (error) {
+        if (error.message.includes('process.exit')) {
+          return;
+        }
+        throw error;
+      }
+
+      // Should not call getDeveloperIdNumber when controller is explicitly provided
+      expect(envMap.getDeveloperIdNumber).not.toHaveBeenCalled();
+      expect(devConfig.getDevPorts).not.toHaveBeenCalled();
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://custom-controller:5000', 'dev', 'openid profile email offline_access');
+      expect(logger.log).toHaveBeenCalledWith(chalk.gray('Controller URL: http://custom-controller:5000'));
+    });
+
+    it('should use port 3300 for developer ID 3', async() => {
+      envMap.getDeveloperIdNumber.mockResolvedValue(3);
+      devConfig.getDevPorts.mockReturnValue({ app: 3300 });
+
+      const options = {
+        method: 'credentials',
+        app: 'test-app',
+        clientId: 'test-id',
+        clientSecret: 'test-secret',
+        environment: 'dev'
+      };
+
+      getToken.mockResolvedValue({
+        success: true,
+        data: {
+          token: 'test-token',
+          expiresIn: 3600,
+          expiresAt: new Date(Date.now() + 3600000).toISOString()
+        }
+      });
+
+      try {
+        await handleLogin(options);
+      } catch (error) {
+        if (error.message.includes('process.exit')) {
+          return;
+        }
+        throw error;
+      }
+
+      expect(envMap.getDeveloperIdNumber).toHaveBeenCalledWith(null);
+      expect(devConfig.getDevPorts).toHaveBeenCalledWith(3);
+      expect(getToken).toHaveBeenCalledWith('test-id', 'test-secret', 'http://localhost:3300');
+      expect(logger.log).toHaveBeenCalledWith(chalk.gray('Controller URL: http://localhost:3300'));
     });
   });
 });

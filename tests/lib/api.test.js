@@ -16,7 +16,8 @@ jest.mock('../../lib/core/audit-logger', () => ({
 
 // Mock token-manager module
 jest.mock('../../lib/utils/token-manager', () => ({
-  getOrRefreshDeviceToken: jest.fn()
+  getOrRefreshDeviceToken: jest.fn(),
+  forceRefreshDeviceToken: jest.fn()
 }));
 
 // CRITICAL: Ensure fetch is mocked before requiring the module
@@ -29,7 +30,7 @@ if (!global.fetch || typeof global.fetch.mockResolvedValue !== 'function') {
 jest.setTimeout(30000);
 
 const { makeApiCall, authenticatedApiCall, initiateDeviceCodeFlow, pollDeviceCodeToken, displayDeviceCodeInfo } = require('../../lib/utils/api');
-const { getOrRefreshDeviceToken } = require('../../lib/utils/token-manager');
+const { getOrRefreshDeviceToken, forceRefreshDeviceToken } = require('../../lib/utils/token-manager');
 
 describe('API Utilities', () => {
   beforeEach(() => {
@@ -292,7 +293,7 @@ describe('API Utilities', () => {
       });
 
       // Mock successful token refresh
-      getOrRefreshDeviceToken.mockResolvedValue({
+      forceRefreshDeviceToken.mockResolvedValue({
         token: 'refreshed-token-123',
         controller: 'https://api.example.com'
       });
@@ -301,7 +302,7 @@ describe('API Utilities', () => {
 
       expect(result.success).toBe(true);
       expect(result.data).toEqual({ id: 1 });
-      expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
+      expect(forceRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
       expect(global.fetch).toHaveBeenCalledTimes(2);
 
       // Verify second call uses refreshed token
@@ -318,7 +319,7 @@ describe('API Utilities', () => {
       });
 
       // Mock failed token refresh
-      getOrRefreshDeviceToken.mockResolvedValue(null);
+      forceRefreshDeviceToken.mockResolvedValue(null);
 
       const result = await authenticatedApiCall('https://api.example.com/api/v1/test', {}, 'old-token');
 
@@ -326,7 +327,7 @@ describe('API Utilities', () => {
       expect(result.status).toBe(401);
       expect(result.error).toContain('Authentication failed');
       expect(result.error).toContain('Please login again using: aifabrix login');
-      expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
+      expect(forceRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
       // Should only call fetch once (no retry when refresh fails)
       expect(global.fetch).toHaveBeenCalledTimes(1);
     });
@@ -340,7 +341,7 @@ describe('API Utilities', () => {
       });
 
       // Mock token refresh throwing error
-      getOrRefreshDeviceToken.mockRejectedValue(new Error('Refresh failed'));
+      forceRefreshDeviceToken.mockRejectedValue(new Error('Refresh failed'));
 
       const result = await authenticatedApiCall('https://api.example.com/api/v1/test', {}, 'old-token');
 
@@ -349,7 +350,7 @@ describe('API Utilities', () => {
       expect(result.error).toContain('Authentication failed');
       expect(result.error).toContain('Refresh failed');
       expect(result.error).toContain('Please login again using: aifabrix login');
-      expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
+      expect(forceRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
       // Should only call fetch once (no retry when refresh throws)
       expect(global.fetch).toHaveBeenCalledTimes(1);
     });
@@ -368,7 +369,7 @@ describe('API Utilities', () => {
         text: jest.fn().mockResolvedValue(JSON.stringify({ error: 'Token expired' }))
       });
 
-      getOrRefreshDeviceToken.mockResolvedValue(null);
+      forceRefreshDeviceToken.mockResolvedValue(null);
 
       // Use a URL that will cause URL parsing to fail but regex can match
       // Note: The URL constructor will throw, so extractControllerUrl will use regex fallback
@@ -379,7 +380,7 @@ describe('API Utilities', () => {
       expect(result.success).toBe(false);
       expect(result.status).toBe(401);
       // Should extract controller URL using regex fallback
-      expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
+      expect(forceRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
 
       // Restore URL
       global.URL = originalURL;
@@ -399,7 +400,7 @@ describe('API Utilities', () => {
         text: jest.fn().mockResolvedValue(JSON.stringify({ error: 'Token expired' }))
       });
 
-      getOrRefreshDeviceToken.mockResolvedValue(null);
+      forceRefreshDeviceToken.mockResolvedValue(null);
 
       // Use a URL that doesn't match the regex pattern
       const invalidUrl = 'not-a-valid-url';
@@ -409,7 +410,7 @@ describe('API Utilities', () => {
       expect(result.success).toBe(false);
       expect(result.status).toBe(401);
       // Should use original URL when regex fails
-      expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('not-a-valid-url');
+      expect(forceRefreshDeviceToken).toHaveBeenCalledWith('not-a-valid-url');
 
       // Restore URL
       global.URL = originalURL;

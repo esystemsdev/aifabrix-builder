@@ -15,8 +15,8 @@ jest.mock('fs', () => {
   return jest.requireActual('fs');
 });
 
-const fs = require('fs').promises;
-const fsSync = require('fs');
+const fs = jest.requireActual('fs').promises;
+const fsSync = jest.requireActual('fs');
 
 // Mock config and dev-config BEFORE requiring app-run (which requires secrets, which requires config)
 jest.mock('../../../lib/core/config', () => ({

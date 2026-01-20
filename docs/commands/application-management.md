@@ -145,12 +145,30 @@ Error: Network timeout
 ```
 
 **Output:**
-```yaml
-📱 Applications:
 
-✓ ctrl-dev-myapp    - My App (active)
-✗ ctrl-dev-otherapp - Other App (inactive)
+When applications are found:
+```yaml
+📱 Applications in dev environment (https://controller.aifabrix.ai):
+
+✓ myapp - My Application (active) (URL: https://myapp.example.com, Port: 8080)
+✗ otherapp - Other Application (inactive) (URL: https://otherapp.example.com)
+✓ anotherapp - Another Application (running) (Port: 3000)
 ```
+
+When no applications are found:
+```yaml
+📱 Applications in dev environment (https://controller.aifabrix.ai):
+
+  No applications found in this environment.
+```
+
+**Output Format:**
+- **✓** indicates pipeline is active, **✗** indicates pipeline is inactive
+- Application key is displayed in cyan
+- Application display name follows the key
+- Status is shown in parentheses (active, inactive, running, unknown, etc.)
+- URL and Port are shown in blue if available (format: `(URL: {url}, Port: {port})`)
+- Environment name is included in the header
 
 **Issues:**
 - **"Not logged in"** → Run `aifabrix login` first

@@ -15,8 +15,8 @@ jest.unmock('fs');
 
 // Use real fs implementation - use regular require after unmocking
 // This ensures all file operations use the real filesystem
-const fs = require('fs').promises;
-const fsSync = require('fs');
+const fs = jest.requireActual('fs').promises;
+const fsSync = jest.requireActual('fs');
 
 // Helper function to check if file exists (more reliable than existsSync)
 function fileExists(filePath) {

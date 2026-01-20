@@ -187,7 +187,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         expect(authenticatedApiCall).toHaveBeenCalledWith(
           'http://localhost:3000/api/v1/environments/dev/applications/test-app/rotate-secret',
           expect.objectContaining({ method: 'POST' }),
-          'test-token'
+          expect.objectContaining({ token: 'test-token' })
         );
         expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Secret rotated successfully!'));
         // Verify that saveLocalSecret is called (always saves now)

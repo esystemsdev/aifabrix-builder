@@ -23,7 +23,8 @@ jest.mock('../../../lib/utils/device-code', () => ({
 }));
 
 jest.mock('../../../lib/utils/token-manager', () => ({
-  getOrRefreshDeviceToken: jest.fn()
+  getOrRefreshDeviceToken: jest.fn(),
+  forceRefreshDeviceToken: jest.fn()
 }));
 
 // Mock global fetch
@@ -31,7 +32,7 @@ global.fetch = jest.fn();
 
 const { parseErrorResponse } = require('../../../lib/utils/api-error-handler');
 const auditLogger = require('../../../lib/core/audit-logger');
-const { getOrRefreshDeviceToken } = require('../../../lib/utils/token-manager');
+const { getOrRefreshDeviceToken, forceRefreshDeviceToken } = require('../../../lib/utils/token-manager');
 const {
   makeApiCall,
   authenticatedApiCall,
@@ -253,12 +254,12 @@ describe('API Utilities Module', () => {
         formatted: 'Unauthorized'
       });
 
-      getOrRefreshDeviceToken.mockResolvedValue({ token: 'refreshed-token' });
+      forceRefreshDeviceToken.mockResolvedValue({ token: 'refreshed-token' });
       jest.spyOn(Date, 'now').mockReturnValueOnce(1000).mockReturnValueOnce(2000).mockReturnValueOnce(3000).mockReturnValueOnce(4000);
 
       const result = await authenticatedApiCall('https://api.example.com/test', {}, 'token123');
 
-      expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
+      expect(forceRefreshDeviceToken).toHaveBeenCalledWith('https://api.example.com');
       expect(result.success).toBe(true);
       expect(result.data).toEqual({ data: 'success' });
     });
@@ -279,7 +280,7 @@ describe('API Utilities Module', () => {
         formatted: 'Unauthorized'
       });
 
-      getOrRefreshDeviceToken.mockResolvedValue(null);
+      forceRefreshDeviceToken.mockResolvedValue(null);
       jest.spyOn(Date, 'now').mockReturnValueOnce(1000).mockReturnValueOnce(2000);
 
       const result = await authenticatedApiCall('https://api.example.com/test', {}, 'token123');
@@ -305,7 +306,7 @@ describe('API Utilities Module', () => {
         formatted: 'Unauthorized'
       });
 
-      getOrRefreshDeviceToken.mockRejectedValue(new Error('Refresh failed'));
+      forceRefreshDeviceToken.mockRejectedValue(new Error('Refresh failed'));
       jest.spyOn(Date, 'now').mockReturnValueOnce(1000).mockReturnValueOnce(2000);
 
       const result = await authenticatedApiCall('https://api.example.com/test', {}, 'token123');

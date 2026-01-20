@@ -13,9 +13,9 @@ const yaml = require('js-yaml');
 // Ensure fs is not mocked - use jest.unmock to prevent mocking
 jest.unmock('fs');
 
-// Use real fs implementation - use regular require after unmocking
-const fs = require('fs').promises;
-const fsSync = require('fs');
+// Use real fs implementation directly from requireActual
+const fs = jest.requireActual('fs').promises;
+const fsSync = jest.requireActual('fs');
 
 // Mock dependencies
 jest.mock('../../../lib/core/config');
@@ -24,14 +24,31 @@ jest.mock('../../../lib/app', () => ({
   createApp: jest.fn()
 }));
 
-const { getConfig } = require('../../../lib/core/config');
-const { authenticatedApiCall } = require('../../../lib/utils/api');
-const { createApp } = require('../../../lib/app');
-const { setupAppCommands } = require('../../../lib/commands/app');
+// Variables for modules to be loaded after reset
+let getConfig;
+let authenticatedApiCall;
+let createApp;
+let setupAppCommands;
 
 describe('Application Commands Module', () => {
   let tempDir;
   let originalCwd;
+
+  beforeAll(() => {
+    // Reset modules and re-require to get fresh modules with real fs
+    jest.resetModules();
+    jest.unmock('fs');
+    // Re-apply mocks after reset
+    jest.mock('../../../lib/core/config');
+    jest.mock('../../../lib/utils/api');
+    jest.mock('../../../lib/app', () => ({
+      createApp: jest.fn()
+    }));
+    getConfig = require('../../../lib/core/config').getConfig;
+    authenticatedApiCall = require('../../../lib/utils/api').authenticatedApiCall;
+    createApp = require('../../../lib/app').createApp;
+    setupAppCommands = require('../../../lib/commands/app').setupAppCommands;
+  });
 
   beforeEach(() => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));

@@ -18,6 +18,20 @@ jest.mock('../../../lib/datasource/deploy', () => ({
   getDataplaneUrl: jest.fn()
 }));
 
+// Mock controller-url to return consistent default URL
+jest.mock('../../../lib/utils/controller-url', () => ({
+  getDefaultControllerUrl: jest.fn().mockResolvedValue('http://localhost:3000'),
+  resolveControllerUrl: jest.fn().mockImplementation(async(options, config) => {
+    if (options?.controller || options?.url) {
+      return (options.controller || options.url).replace(/\/$/, '');
+    }
+    if (config?.deployment?.controllerUrl) {
+      return config.deployment.controllerUrl.replace(/\/$/, '');
+    }
+    return 'http://localhost:3000';
+  })
+}));
+
 const { setupIntegrationTestAuth } = require('../../../lib/external-system/test-auth');
 
 describe('External System Test Authentication Module', () => {

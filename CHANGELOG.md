@@ -1,3 +1,39 @@
+## [2.32.3] - 2026-01-19
+
+### Added
+- **Auth Status Command**: New `aifabrix auth status` command to display authentication status
+  - Shows current token validity and expiration
+  - Displays controller URL being used
+  - Uses `getAuthUser` API for reliable token validation
+  - Added `status` command alias for quick access
+- **Controller URL Utility Module**: New shared utility for controller URL resolution
+  - `lib/utils/controller-url.js` with `getDefaultControllerUrl()` and `resolveControllerUrl()` functions
+  - Developer ID-based default calculation: `http://localhost:${3000 + (developerId * 100)}`
+  - Consistent fallback chain: explicit option → config → developer ID default
+
+### Changed
+- **Controller URL Display**: Enhanced visibility of controller URLs across all commands
+  - `app list` shows controller URL in output
+  - `app rotate-secret` shows controller URL in success message
+  - `app register` displays controller URL in registration success
+  - External system commands (`deploy`, `download`, `test-auth`) show controller URL
+- **Wizard Command Improvements**: Refactored to use shared controller URL utility
+- **External Datasource Schema Updates**: Enhanced schema to version 2.1.0
+  - Added error semantics (`onError` object) to all CIP step types with error classification, retry, compensation, and `failPipeline`
+  - Added idempotency configuration to CIP definition for execution-level replay guarantees
+  - Added lineage configuration to field mappings for field-level explainability and compliance
+  - Added contract versioning configuration to datasource root for CI/CD safety and agent stability
+  - Added `stepId` property to CIP step types for unique step identification
+
+### Technical
+- Updated `lib/commands/login.js` to use `getDefaultControllerUrl()`
+- Updated `lib/commands/wizard.js` to use `resolveControllerUrl()`
+- Updated `lib/external-system/*.js` modules to use `resolveControllerUrl()`
+- Updated `lib/app/prompts.js` to calculate default port dynamically based on developer ID
+- New test files: `tests/lib/utils/controller-url.test.js`, `tests/lib/commands/auth-status.test.js`
+- Updated documentation: `docs/commands/authentication.md`, `docs/configuration.md`, `docs/developer-isolation.md`
+- ISO 27001 compliant implementation maintained throughout
+
 ## [2.32.2] - 2026-01-18
 
 ### Changed

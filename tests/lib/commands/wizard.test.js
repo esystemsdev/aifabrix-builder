@@ -63,7 +63,8 @@ describe('Wizard Command Handler', () => {
 
   const mockAuthConfig = {
     type: 'bearer',
-    token: 'test-token'
+    token: 'test-token',
+    controller: 'https://controller.example.com'
   };
 
   const mockDataplaneUrl = 'https://dataplane.example.com';
@@ -90,14 +91,21 @@ describe('Wizard Command Handler', () => {
     config.getConfig.mockResolvedValue({
       deployment: { controllerUrl: 'https://controller.example.com' }
     });
-    tokenManager.getDeploymentAuth.mockResolvedValue(mockAuthConfig);
+    // Wizard uses getDeviceOnlyAuth (device-only authentication)
+    tokenManager.getDeviceOnlyAuth.mockResolvedValue(mockAuthConfig);
     datasourceDeploy.getDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
     fs.access.mockRejectedValue({ code: 'ENOENT' }); // Directory doesn't exist
     fs.mkdir.mockResolvedValue(undefined);
 
     // Wizard API mocks
-    wizardApi.selectMode.mockResolvedValue({ success: true, data: { mode: 'create-system' } });
-    wizardApi.selectSource.mockResolvedValue({ success: true, data: { sourceType: 'openapi-file' } });
+    wizardApi.createWizardSession.mockResolvedValue({
+      success: true,
+      data: { data: { sessionId: 'session-123' } }
+    });
+    wizardApi.updateWizardSession.mockResolvedValue({
+      success: true,
+      data: { data: { sessionId: 'session-123' } }
+    });
     wizardApi.parseOpenApi.mockResolvedValue({
       success: true,
       data: { spec: { openapi: '3.0.0' } }
@@ -158,7 +166,7 @@ describe('Wizard Command Handler', () => {
 
       expect(wizardPrompts.promptForAppName).not.toHaveBeenCalled();
       expect(wizardPrompts.promptForMode).toHaveBeenCalled();
-      expect(wizardApi.selectMode).toHaveBeenCalled();
+      expect(wizardApi.createWizardSession).toHaveBeenCalled();
       expect(wizardApi.generateConfig).toHaveBeenCalled();
       expect(wizardApi.validateWizardConfig).toHaveBeenCalled();
       expect(wizardGenerator.generateWizardFiles).toHaveBeenCalled();
@@ -192,7 +200,7 @@ describe('Wizard Command Handler', () => {
       await handleWizard(mockOptions);
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Wizard cancelled'));
-      expect(wizardApi.selectMode).not.toHaveBeenCalled();
+      expect(wizardApi.createWizardSession).not.toHaveBeenCalled();
     });
 
     it('should handle openapi-file source type', async() => {
@@ -320,16 +328,16 @@ describe('Wizard Command Handler', () => {
 
   describe('error handling', () => {
     it('should handle mode selection failure', async() => {
-      wizardApi.selectMode.mockResolvedValue({
+      wizardApi.createWizardSession.mockResolvedValue({
         success: false,
         error: 'Mode selection failed'
       });
 
-      await expect(handleWizard(mockOptions)).rejects.toThrow('Mode selection failed');
+      await expect(handleWizard(mockOptions)).rejects.toThrow('Failed to create wizard session');
     });
 
     it('should handle source selection failure', async() => {
-      wizardApi.selectSource.mockResolvedValue({
+      wizardApi.updateWizardSession.mockResolvedValue({
         success: false,
         error: 'Source selection failed'
       });
@@ -368,10 +376,12 @@ describe('Wizard Command Handler', () => {
       await expect(handleWizard(mockOptions)).rejects.toThrow('System configuration not found');
     });
 
-    it('should handle authentication errors', async() => {
-      tokenManager.getDeploymentAuth.mockRejectedValue(new Error('Authentication required'));
+    it('should handle authentication errors when device token not available', async() => {
+      tokenManager.getDeviceOnlyAuth.mockRejectedValue(
+        new Error('Device token authentication required. Run "aifabrix login" to authenticate.')
+      );
 
-      await expect(handleWizard(mockOptions)).rejects.toThrow('Authentication required');
+      await expect(handleWizard(mockOptions)).rejects.toThrow('Device token authentication required');
     });
 
     it('should handle dataplane URL retrieval errors', async() => {
@@ -397,7 +407,7 @@ describe('Wizard Command Handler', () => {
       await handleWizard(optionsWithDataplane);
 
       expect(datasourceDeploy.getDataplaneUrl).not.toHaveBeenCalled();
-      expect(tokenManager.getDeploymentAuth).toHaveBeenCalled();
+      expect(tokenManager.getDeviceOnlyAuth).toHaveBeenCalled();
     });
 
     it('should get dataplane URL from controller if not provided', async() => {
@@ -405,9 +415,20 @@ describe('Wizard Command Handler', () => {
 
       expect(datasourceDeploy.getDataplaneUrl).toHaveBeenCalledWith(
         mockOptions.controller,
-        mockOptions.app,
+        'dataplane',
         mockOptions.environment,
-        mockAuthConfig
+        expect.objectContaining({ type: 'bearer', token: mockAuthConfig.token })
+      );
+    });
+
+    it('should require device token authentication (not client credentials)', async() => {
+      // Wizard only accepts device token auth, not client credentials
+      tokenManager.getDeviceOnlyAuth.mockRejectedValue(
+        new Error('Device token authentication required. Run "aifabrix login" to authenticate.')
+      );
+
+      await expect(handleWizard(mockOptions)).rejects.toThrow(
+        'Device token authentication required. Run "aifabrix login" to authenticate.'
       );
     });
   });

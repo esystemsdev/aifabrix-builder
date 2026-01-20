@@ -12,14 +12,23 @@ const os = require('os');
 // Ensure fs is not mocked - use jest.unmock to prevent mocking
 jest.unmock('fs');
 
-// Use real fs implementation - use regular require after unmocking
-const fs = require('fs').promises;
-const fsSync = require('fs');
-const appReadme = require('../../../lib/app/readme');
+// Use real fs implementation
+const fs = jest.requireActual('fs').promises;
+const fsSync = jest.requireActual('fs');
+
+// Variables for modules to be loaded after reset
+let appReadme;
 
 describe('Application README Module', () => {
   let tempDir;
   let originalCwd;
+
+  beforeAll(() => {
+    // Reset modules and re-require to get fresh module with real fs
+    jest.resetModules();
+    jest.unmock('fs');
+    appReadme = require('../../../lib/app/readme');
+  });
 
   beforeEach(() => {
     // Create temporary directory for tests

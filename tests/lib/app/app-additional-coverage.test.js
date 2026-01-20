@@ -22,6 +22,9 @@ jest.mock('../../../lib/build');
 jest.mock('../../../lib/app/run');
 jest.mock('../../../lib/deployment/push');
 jest.mock('../../../lib/app/deploy');
+jest.mock('../../../lib/utils/controller-url', () => ({
+  getDefaultControllerUrl: jest.fn().mockResolvedValue('http://localhost:3000')
+}));
 
 const inquirer = require('inquirer');
 const githubGenerator = require('../../../lib/generator/github');
@@ -176,8 +179,9 @@ describe('App.js Additional Coverage Tests', () => {
           const whenResultFalse = controllerUrlQuestion.when({ controller: false });
           expect(whenResultFalse).toBe(false);
 
-          // Check default value
-          expect(controllerUrlQuestion.default).toBe('http://test-controller:3000');
+          // Check default value (may vary based on developer ID, so check it contains the host)
+          expect(controllerUrlQuestion.default).toContain('test-controller');
+          expect(controllerUrlQuestion.default).toMatch(/^http:\/\/test-controller:\d+$/);
         }
 
         return Promise.resolve({
@@ -212,7 +216,8 @@ describe('App.js Additional Coverage Tests', () => {
       inquirer.prompt.mockImplementationOnce((questions) => {
         const controllerUrlQuestion = questions.find(q => q.name === 'controllerUrl');
         if (controllerUrlQuestion) {
-          expect(controllerUrlQuestion.default).toBe('http://custom-host:3000');
+          expect(controllerUrlQuestion.default).toContain('custom-host');
+          expect(controllerUrlQuestion.default).toMatch(/^http:\/\/custom-host:\d+$/);
         }
         return Promise.resolve({
           port: '3000',
@@ -236,7 +241,8 @@ describe('App.js Additional Coverage Tests', () => {
       inquirer.prompt.mockImplementationOnce((questions) => {
         const controllerUrlQuestion = questions.find(q => q.name === 'controllerUrl');
         if (controllerUrlQuestion) {
-          expect(controllerUrlQuestion.default).toBe('http://localhost:3000');
+          expect(controllerUrlQuestion.default).toContain('localhost');
+          expect(controllerUrlQuestion.default).toMatch(/^http:\/\/localhost:\d+$/);
         }
         return Promise.resolve({
           port: '3000',

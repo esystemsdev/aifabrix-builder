@@ -92,17 +92,45 @@ describe('Error Formatter Module', () => {
       expect(result).toBe('Field "name": Must be at most 50 characters');
     });
 
-    it('should format pattern error', () => {
+    it('should format pattern error with value and pattern description', () => {
       const error = {
-        instancePath: '/email',
+        instancePath: '/permissions/0/name',
         keyword: 'pattern',
-        params: {},
+        params: { pattern: '^[a-z0-9-:]+$' },
+        data: 'invalid.value',
         message: 'Invalid format'
       };
 
       const result = formatSingleError(error);
 
-      expect(result).toBe('Field "email": Invalid format');
+      expect(result).toBe('Field "permissions/0/name": Invalid value "invalid.value" - lowercase letters, numbers, hyphens, and colons only (e.g., "entity:action")');
+    });
+
+    it('should format pattern error with unknown pattern', () => {
+      const error = {
+        instancePath: '/email',
+        keyword: 'pattern',
+        params: { pattern: '^[a-z]+@[a-z]+\\.[a-z]+$' },
+        data: 'bad-email',
+        message: 'Invalid format'
+      };
+
+      const result = formatSingleError(error);
+
+      expect(result).toBe('Field "email": Invalid value "bad-email" - must match pattern: ^[a-z]+@[a-z]+\\.[a-z]+$');
+    });
+
+    it('should format pattern error without data value', () => {
+      const error = {
+        instancePath: '/key',
+        keyword: 'pattern',
+        params: { pattern: '^[a-z0-9-]+$' },
+        message: 'Invalid format'
+      };
+
+      const result = formatSingleError(error);
+
+      expect(result).toBe('Field "key": Invalid value value - lowercase letters, numbers, and hyphens only');
     });
 
     it('should format enum error', () => {

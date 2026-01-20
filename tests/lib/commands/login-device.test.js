@@ -132,7 +132,7 @@ describe('Login Device Code Flow Module', () => {
   });
 
   describe('handleDeviceCodeLogin', () => {
-    it('should successfully complete device code flow', async() => {
+    it('should successfully complete device code flow with offline_access by default', async() => {
       const mockDate = new Date('2024-01-01T00:00:00Z');
       const mockNow = mockDate.getTime();
       jest.spyOn(Date, 'now').mockReturnValue(mockNow);
@@ -157,7 +157,7 @@ describe('Login Device Code Flow Module', () => {
       const result = await handleDeviceCodeLogin('http://localhost:3000', 'dev');
 
       expect(result).toEqual({ token: 'test-token', environment: 'dev' });
-      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email');
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email offline_access');
       expect(displayDeviceCodeInfo).toHaveBeenCalledWith('USER-CODE', 'http://localhost:3000/verify', logger, chalk);
       expect(saveDeviceToken).toHaveBeenCalled();
       expect(setCurrentEnvironment).toHaveBeenCalledWith('dev');
@@ -196,7 +196,7 @@ describe('Login Device Code Flow Module', () => {
       jest.restoreAllMocks();
     });
 
-    it('should build scope with offline_access when offline option is true', async() => {
+    it('should exclude offline_access scope when online option is true', async() => {
       const mockDate = new Date('2024-01-01T00:00:00Z');
       const mockNow = mockDate.getTime();
       jest.spyOn(Date, 'now').mockReturnValue(mockNow);
@@ -220,13 +220,12 @@ describe('Login Device Code Flow Module', () => {
 
       await handleDeviceCodeLogin('http://localhost:3000', 'dev', true);
 
-      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email offline_access');
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Requesting offline token'));
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email');
 
       jest.restoreAllMocks();
     });
 
-    it('should use custom scope when provided', async() => {
+    it('should add offline_access to custom scope when custom scope provided without offline_access', async() => {
       const mockDate = new Date('2024-01-01T00:00:00Z');
       const mockNow = mockDate.getTime();
       jest.spyOn(Date, 'now').mockReturnValue(mockNow);
@@ -250,41 +249,12 @@ describe('Login Device Code Flow Module', () => {
 
       await handleDeviceCodeLogin('http://localhost:3000', 'dev', false, 'custom scope');
 
-      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'custom scope');
-
-      jest.restoreAllMocks();
-    });
-
-    it('should add offline_access to custom scope if offline is true', async() => {
-      const mockDate = new Date('2024-01-01T00:00:00Z');
-      const mockNow = mockDate.getTime();
-      jest.spyOn(Date, 'now').mockReturnValue(mockNow);
-
-      initiateDeviceCodeFlow.mockResolvedValue({
-        success: true,
-        data: {
-          deviceCode: 'device-code-123',
-          userCode: 'USER-CODE',
-          verificationUri: 'http://localhost:3000/verify',
-          expiresIn: 600,
-          interval: 5
-        }
-      });
-
-      pollDeviceCodeToken.mockResolvedValue({
-        access_token: 'test-token',
-        refresh_token: 'refresh-token',
-        expires_in: 3600
-      });
-
-      await handleDeviceCodeLogin('http://localhost:3000', 'dev', true, 'custom scope');
-
       expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'custom scope offline_access');
 
       jest.restoreAllMocks();
     });
 
-    it('should not add offline_access if already in custom scope', async() => {
+    it('should remove offline_access from custom scope if online is true', async() => {
       const mockDate = new Date('2024-01-01T00:00:00Z');
       const mockNow = mockDate.getTime();
       jest.spyOn(Date, 'now').mockReturnValue(mockNow);
@@ -307,6 +277,35 @@ describe('Login Device Code Flow Module', () => {
       });
 
       await handleDeviceCodeLogin('http://localhost:3000', 'dev', true, 'custom scope offline_access');
+
+      expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'custom scope');
+
+      jest.restoreAllMocks();
+    });
+
+    it('should not duplicate offline_access if already in custom scope (default behavior)', async() => {
+      const mockDate = new Date('2024-01-01T00:00:00Z');
+      const mockNow = mockDate.getTime();
+      jest.spyOn(Date, 'now').mockReturnValue(mockNow);
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        success: true,
+        data: {
+          deviceCode: 'device-code-123',
+          userCode: 'USER-CODE',
+          verificationUri: 'http://localhost:3000/verify',
+          expiresIn: 600,
+          interval: 5
+        }
+      });
+
+      pollDeviceCodeToken.mockResolvedValue({
+        access_token: 'test-token',
+        refresh_token: 'refresh-token',
+        expires_in: 3600
+      });
+
+      await handleDeviceCodeLogin('http://localhost:3000', 'dev', false, 'custom scope offline_access');
 
       expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'custom scope offline_access');
 
@@ -378,7 +377,7 @@ describe('Login Device Code Flow Module', () => {
         expires_in: 3600
       });
 
-      await handleDeviceCodeLogin('http://localhost:3000', 'dev');
+      await handleDeviceCodeLogin('http://localhost:3000', 'dev', true); // Use online mode
 
       expect(pollDeviceCodeToken).toHaveBeenCalledWith(
         'http://localhost:3000',

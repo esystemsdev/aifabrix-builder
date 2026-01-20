@@ -583,7 +583,7 @@
             "minLength": 1,
             "maxLength": 500
           },
-          "Groups": {
+          "groups": {
             "type": "array",
             "description": "Azure AD groups mapped to this role",
             "items": {

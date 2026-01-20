@@ -318,7 +318,7 @@ describe('External System Download Module', () => {
       expect(authenticatedApiCall).toHaveBeenCalledWith(
         expect.stringContaining('/api/v1/external/systems/hubspot/config'),
         expect.objectContaining({ method: 'GET' }),
-        'test-token'
+        expect.objectContaining({ token: 'test-token' })
       );
       expect(fsPromises.mkdir).toHaveBeenCalled();
       expect(fsPromises.writeFile).toHaveBeenCalled();

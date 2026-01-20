@@ -3,7 +3,7 @@
  * @fileoverview Tests for docker-compose.yaml generation
  */
 
-const fsSync = require('fs');
+const fsSync = jest.requireActual('fs');
 const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');

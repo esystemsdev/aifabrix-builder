@@ -39,7 +39,7 @@
       "name": "{{name}}",
       "value": "{{value}}",
       "description": "{{description}}"{{#if Groups}},
-      "Groups": [{{#each Groups}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
+      "groups": [{{#each Groups}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
     }{{#unless @last}},{{/unless}}
     {{/each}}
   ]{{/if}}{{#if permissions}},

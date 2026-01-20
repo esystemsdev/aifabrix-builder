@@ -9,13 +9,10 @@
 const path = require('path');
 const os = require('os');
 
-// Mock fs to use real implementation to override any other mocks
-jest.mock('fs', () => {
-  return jest.requireActual('fs');
-});
-
-const fs = require('fs').promises;
-const fsSync = require('fs');
+// Helper function to get real fs module at runtime
+// This ensures we always get the actual fs, not a mocked version
+const getRealFs = () => jest.requireActual('fs');
+const getRealFsPromises = () => jest.requireActual('fs').promises;
 
 // Mock paths module before requiring template-validator
 jest.mock('../../../lib/utils/paths', () => {
@@ -26,20 +23,42 @@ jest.mock('../../../lib/utils/paths', () => {
   };
 });
 
-const templateValidator = require('../../../lib/validation/template');
+// Variable for modules to be loaded after reset
+let templateValidator;
+let pathsModule;
 
 describe('Template Validator Module', () => {
   let tempDir;
   let originalCwd;
   let projectRoot;
-  let pathsModule;
+  let fsSync;
+  let fs;
+
+  beforeAll(() => {
+    // Get real fs modules
+    fsSync = getRealFs();
+    fs = getRealFsPromises();
+    // Reset modules and re-require to get fresh module with real fs
+    jest.resetModules();
+    jest.unmock('fs');
+    // Re-apply the paths mock after reset
+    jest.mock('../../../lib/utils/paths', () => {
+      const actualPaths = jest.requireActual('../../../lib/utils/paths');
+      return {
+        ...actualPaths,
+        getProjectRoot: jest.fn()
+      };
+    });
+    pathsModule = require('../../../lib/utils/paths');
+    templateValidator = require('../../../lib/validation/template');
+  });
 
   beforeEach(() => {
+    // Re-acquire fs in case it was affected by other tests
+    fsSync = getRealFs();
+    fs = getRealFsPromises();
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-template-test-'));
     originalCwd = process.cwd();
-
-    // Get paths module (already mocked at top level)
-    pathsModule = require('../../../lib/utils/paths');
 
     // Clear project root cache to ensure we get the correct root
     // This is important in CI simulation where project is copied

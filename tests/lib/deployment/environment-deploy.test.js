@@ -197,7 +197,7 @@ describe('Environment Deployment Module', () => {
           method: 'POST',
           body: expect.stringContaining(envKey)
         }),
-        mockToken.token
+        expect.objectContaining({ token: mockToken.token })
       );
     });
 
