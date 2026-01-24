@@ -27,6 +27,7 @@ describe('Auth Status Command Module', () => {
     logger.log.mockImplementation(() => {});
     config.getConfig.mockResolvedValue({ environments: {} });
     config.getCurrentEnvironment.mockResolvedValue('dev');
+    config.resolveEnvironment = jest.fn().mockResolvedValue('dev');
     config.getSecretsEncryptionKey.mockResolvedValue(null);
     controllerUrl.resolveControllerUrl.mockResolvedValue('http://localhost:3000');
   });
@@ -53,7 +54,7 @@ describe('Auth Status Command Module', () => {
 
       await handleAuthStatus({});
 
-      expect(controllerUrl.resolveControllerUrl).toHaveBeenCalledWith({}, { environments: {} });
+      expect(controllerUrl.resolveControllerUrl).toHaveBeenCalledWith();
       expect(tokenManager.getOrRefreshDeviceToken).toHaveBeenCalledWith('http://localhost:3000');
       expect(authApi.getAuthUser).toHaveBeenCalledWith(
         'http://localhost:3000',
@@ -117,23 +118,21 @@ describe('Auth Status Command Module', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('myapp'));
     });
 
-    it('should use explicit controller URL from options', async() => {
+    it('should use controller URL from config', async() => {
       controllerUrl.resolveControllerUrl.mockResolvedValue('https://custom.controller.com');
       tokenManager.getOrRefreshDeviceToken.mockResolvedValue(null);
       const mockConfig = { environments: {} };
       config.getConfig.mockResolvedValue(mockConfig);
 
-      await handleAuthStatus({ controller: 'https://custom.controller.com' });
+      await handleAuthStatus({});
 
-      expect(controllerUrl.resolveControllerUrl).toHaveBeenCalledWith(
-        { controller: 'https://custom.controller.com' },
-        mockConfig
-      );
+      expect(controllerUrl.resolveControllerUrl).toHaveBeenCalledWith();
       expect(tokenManager.getOrRefreshDeviceToken).toHaveBeenCalledWith('https://custom.controller.com');
     });
 
-    it('should use explicit environment from options', async() => {
+    it('should use environment from config', async() => {
       tokenManager.getOrRefreshDeviceToken.mockResolvedValue(null);
+      config.resolveEnvironment = jest.fn().mockResolvedValue('prod');
       config.getConfig.mockResolvedValue({
         environments: {
           prod: {
@@ -154,8 +153,9 @@ describe('Auth Status Command Module', () => {
         data: { authenticated: true }
       });
 
-      await handleAuthStatus({ environment: 'prod' });
+      await handleAuthStatus({});
 
+      expect(config.resolveEnvironment).toHaveBeenCalledWith();
       expect(authApi.getAuthUser).toHaveBeenCalledWith(
         'http://localhost:3000',
         { type: 'bearer', token: 'client-token-123' }

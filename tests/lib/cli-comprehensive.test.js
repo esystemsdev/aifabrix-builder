@@ -20,6 +20,8 @@ jest.mock('../../lib/core/config', () => {
   const mockClearConfig = jest.fn().mockResolvedValue();
   const mockGetCurrentEnvironment = jest.fn().mockResolvedValue('dev');
   const mockSetCurrentEnvironment = jest.fn().mockResolvedValue();
+  const mockSetControllerUrl = jest.fn().mockResolvedValue();
+  const mockGetControllerUrl = jest.fn().mockResolvedValue(null);
   const mockSaveClientToken = jest.fn().mockResolvedValue();
   const mockSaveDeviceToken = jest.fn().mockResolvedValue();
 
@@ -31,6 +33,8 @@ jest.mock('../../lib/core/config', () => {
     clearConfig: mockClearConfig,
     getCurrentEnvironment: mockGetCurrentEnvironment,
     setCurrentEnvironment: mockSetCurrentEnvironment,
+    setControllerUrl: mockSetControllerUrl,
+    getControllerUrl: mockGetControllerUrl,
     saveClientToken: mockSaveClientToken,
     saveDeviceToken: mockSaveDeviceToken,
     CONFIG_DIR: '/mock/config/dir',
@@ -77,6 +81,9 @@ jest.mock('../../lib/core/secrets', () => {
   };
 });
 jest.mock('../../lib/utils/api');
+jest.mock('../../lib/api/auth.api', () => ({
+  getToken: jest.fn()
+}));
 jest.mock('../../lib/utils/token-manager');
 jest.mock('inquirer');
 jest.mock('child_process');
@@ -111,6 +118,10 @@ describe('CLI Comprehensive Tests', () => {
     config.getCurrentEnvironment.mockResolvedValue('dev');
     config.setCurrentEnvironment.mockClear();
     config.setCurrentEnvironment.mockResolvedValue();
+    config.setControllerUrl.mockClear();
+    config.setControllerUrl.mockResolvedValue();
+    config.getControllerUrl.mockClear();
+    config.getControllerUrl.mockResolvedValue(null);
     config.saveClientToken.mockClear();
     config.saveClientToken.mockResolvedValue();
     config.saveDeviceToken.mockClear();
@@ -188,7 +199,8 @@ describe('CLI Comprehensive Tests', () => {
     });
 
     it('should handle credentials login with flags (CI/CD)', async() => {
-      makeApiCall.mockResolvedValue({
+      const { getToken } = require('../../lib/api/auth.api');
+      getToken.mockResolvedValue({
         success: true,
         data: {
           token: 'test-token-123',
@@ -200,10 +212,11 @@ describe('CLI Comprehensive Tests', () => {
       config.setCurrentEnvironment.mockResolvedValue();
       config.saveClientToken.mockResolvedValue();
       tokenManager.loadClientCredentials.mockResolvedValue(null);
+      const controllerUrl = require('../../lib/utils/controller-url');
+      controllerUrl.getDefaultControllerUrl = jest.fn().mockResolvedValue('http://localhost:3000');
 
       const action = commandActions.login;
       await action({
-        controller: 'http://localhost:3000',
         method: 'credentials',
         app: 'test-app',
         clientId: 'test-client-id',
@@ -211,16 +224,10 @@ describe('CLI Comprehensive Tests', () => {
         environment: 'dev'
       });
 
-      expect(makeApiCall).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/auth/token',
-        expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-client-id': 'test-client-id',
-            'x-client-secret': 'test-secret'
-          }
-        })
+      expect(getToken).toHaveBeenCalledWith(
+        'test-client-id',
+        'test-secret',
+        expect.stringContaining('localhost:3100')
       );
       expect(config.setCurrentEnvironment).toHaveBeenCalledWith('dev');
       expect(config.saveClientToken).toHaveBeenCalled();
@@ -248,14 +255,25 @@ describe('CLI Comprehensive Tests', () => {
       config.saveClientToken.mockResolvedValue();
       tokenManager.loadClientCredentials.mockResolvedValue(null);
 
+      const { getToken } = require('../../lib/api/auth.api');
+      getToken.mockResolvedValue({
+        success: true,
+        data: {
+          token: 'test-token-123',
+          expiresIn: 3600,
+          expiresAt: new Date(Date.now() + 3600000).toISOString()
+        }
+      });
+      const controllerUrl = require('../../lib/utils/controller-url');
+      controllerUrl.getDefaultControllerUrl = jest.fn().mockResolvedValue('http://localhost:3000');
+
       const action = commandActions.login;
       await action({
-        controller: 'http://localhost:3000',
         app: 'test-app'
       });
 
       expect(inquirer.prompt).toHaveBeenCalled();
-      expect(makeApiCall).toHaveBeenCalled();
+      expect(getToken).toHaveBeenCalled();
       expect(config.saveClientToken).toHaveBeenCalled();
     });
 
@@ -267,9 +285,10 @@ describe('CLI Comprehensive Tests', () => {
           clientSecret: 'test-secret'
         });
 
-      makeApiCall.mockResolvedValue({
+      const { getToken } = require('../../lib/api/auth.api');
+      getToken.mockResolvedValue({
         success: false,
-        error: 'Invalid credentials'
+        formattedError: 'Invalid credentials'
       });
 
       config.getCurrentEnvironment.mockResolvedValue('dev');
@@ -312,7 +331,7 @@ describe('CLI Comprehensive Tests', () => {
       const action = commandActions.up;
       await action({});
 
-      expect(infra.startInfra).toHaveBeenCalledWith(null);
+      expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: false });
     });
 
     it('should handle infrastructure start errors', async() => {

@@ -22,6 +22,10 @@ jest.mock('../../../lib/build');
 jest.mock('../../../lib/app/run');
 jest.mock('../../../lib/deployment/push');
 jest.mock('../../../lib/app/deploy');
+jest.mock('../../../lib/app/readme', () => ({
+  generateReadmeMdFile: jest.fn().mockResolvedValue(),
+  generateReadmeMd: jest.fn().mockReturnValue('# Test README\n')
+}));
 
 const inquirer = require('inquirer');
 const githubGenerator = require('../../../lib/generator/github');

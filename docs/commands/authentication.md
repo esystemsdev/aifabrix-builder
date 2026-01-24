@@ -10,7 +10,7 @@ Commands for authenticating with Miso Controller and managing authentication tok
 
 Authenticate with Miso Controller.
 
-**What:** Logs in to the controller and stores authentication token for subsequent operations. Supports multiple tokens per environment (device login tokens vs client credentials tokens).
+**What:** Logs in to the controller and stores authentication token for subsequent operations. **Saves `controller` and `environment` to `~/.aifabrix/config.yaml`** so deploy, wizard, datasource, and other commands use them by default. Supports multiple tokens per environment (device login tokens vs client credentials tokens).
 
 **When:** First time using the CLI, when token expires, or when switching controllers/environments.
 
@@ -20,7 +20,7 @@ Authenticate with Miso Controller.
 aifabrix login
 
 # Login with custom controller URL (overrides developer ID-based default)
-aifabrix login --controller https://controller.aifabrix.ai
+aifabrix login --controller https://controller.aifabrix.dev
 
 # Login with developer ID-based default (automatic)
 # Developer ID 0: uses http://localhost:3000
@@ -230,36 +230,17 @@ Display authentication status for the current controller and environment.
 
 **Usage:**
 ```bash
-# Check status with defaults (developer ID-based controller URL, current environment)
+# Check status (uses controller and environment from config.yaml)
 aifabrix auth status
-
-# Check status with explicit controller URL
-aifabrix auth status --controller https://controller.aifabrix.ai
-
-# Check status with explicit environment
-aifabrix auth status --environment dev
-
-# Check status with both controller and environment
-aifabrix auth status --controller http://localhost:3100 --environment miso
-
-# Alias: status command
-aifabrix status
 ```
 
-**Options:**
-- `-c, --controller <url>` - Check status for specific controller (uses developer ID-based default if not provided)
-  - Developer ID 0: `http://localhost:3000` (default)
-  - Developer ID 1: `http://localhost:3100`
-  - Developer ID 2: `http://localhost:3200`
-  - etc.
-- `-e, --environment <env>` - Check status for specific environment (uses current environment from config if not provided)
+Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). There are no `--controller` or `--environment` options.
 
 **Controller URL Resolution:**
 
-The controller URL is resolved using the same priority as other commands:
-1. `--controller` flag (explicit option)
-2. `config.deployment?.controllerUrl` (from config)
-3. Developer ID-based default (`http://localhost:${3000 + (developerId * 100)}`)
+1. `config.controller` (from `~/.aifabrix/config.yaml`)
+2. Device tokens in config
+3. Developer ID–based default (`http://localhost:${3000 + (developerId * 100)}`)
 
 **Token Types Checked:**
 
@@ -333,24 +314,8 @@ Error: Token expired
 
 **Examples:**
 
-Check status with defaults:
 ```bash
 aifabrix auth status
-```
-
-Check status for specific controller:
-```bash
-aifabrix auth status --controller https://controller.aifabrix.ai
-```
-
-Check status for specific environment:
-```bash
-aifabrix auth status --environment prod
-```
-
-Use alias:
-```bash
-aifabrix status
 ```
 
 **When to Use:**
@@ -372,6 +337,52 @@ After checking status:
 - If not authenticated: Run `aifabrix login`
 - If token expired: Run `aifabrix login` to refresh
 - If authenticated: Proceed with other commands (register, deploy, etc.)
+
+---
+
+## aifabrix auth config
+
+Set the default controller URL or environment in `config.yaml`. Use when you are already logged in and want to switch the active controller or environment without logging in again.
+
+**What:** Updates `config.controller` or `config.environment` in `~/.aifabrix/config.yaml` with validation. Requires an existing device token for the target controller.
+
+**When:** After login, to point all commands at a different controller or environment.
+
+**Usage:**
+```bash
+# Set default controller URL (must be logged in for that controller)
+aifabrix auth config --set-controller https://controller.aifabrix.dev
+
+# Set default environment (must be logged in for current controller)
+aifabrix auth config --set-environment dev
+
+# Verify
+aifabrix auth status
+```
+
+**Options:**
+- `--set-controller <url>` – Set default controller. URL is validated; command checks that a device token exists for that controller.
+- `--set-environment <env>` – Set default environment. Valid values: `miso`, `dev`, `tst`, `pro`, or custom (letters, numbers, hyphens, underscores). Requires being logged in to the current controller.
+
+**Validation:**
+- **--set-controller:** URL must be valid HTTP/HTTPS; you must have a device token for that controller (from `aifabrix login`).
+- **--set-environment:** Environment format must be valid; you must be logged in to the controller in `config.controller`.
+
+**Examples:**
+```bash
+# Switch to production controller (after logging in to it)
+aifabrix login --controller https://prod.controller.aifabrix.dev --environment pro
+aifabrix auth config --set-controller https://prod.controller.aifabrix.dev
+aifabrix auth config --set-environment pro
+
+# Use config for subsequent commands
+aifabrix deploy myapp
+```
+
+**Issues:**
+- **"Not logged in to controller"** → Run `aifabrix login --controller <url>` for that controller first.
+- **"Invalid URL"** → Use a valid `http://` or `https://` URL.
+- **"Invalid environment"** → Use `miso`, `dev`, `tst`, `pro`, or a custom key (letters, numbers, hyphens, underscores).
 
 ---
 

@@ -1,0 +1,5 @@
+appName: hubspot-test-negative-dimension-array
+mode: create-system
+source:
+  type: known-platform
+  platform: hubspot

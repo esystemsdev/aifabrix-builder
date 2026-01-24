@@ -42,7 +42,7 @@ describe('External System Generator RBAC Support', () => {
             name: 'External Admin',
             value: 'external-admin',
             description: 'Admin access',
-            Groups: ['admins@company.com']
+            groups: ['admins@company.com']
           },
           {
             name: 'External User',

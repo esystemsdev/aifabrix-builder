@@ -258,6 +258,101 @@ describe('Compose Generator Module', () => {
     });
   });
 
+  describe('Traefik configuration helpers', () => {
+    it('should derive base path from pattern', () => {
+      expect(composeGenerator.derivePathFromPattern('/api/*')).toBe('/api');
+      expect(composeGenerator.derivePathFromPattern('/api/v1/*')).toBe('/api/v1');
+      expect(composeGenerator.derivePathFromPattern('/api')).toBe('/api');
+      expect(composeGenerator.derivePathFromPattern('/')).toBe('/');
+      expect(composeGenerator.derivePathFromPattern(null)).toBe('/');
+    });
+
+    it('should build developer username with padding', () => {
+      expect(composeGenerator.buildDevUsername(0)).toBe('dev');
+      expect(composeGenerator.buildDevUsername(1)).toBe('dev01');
+      expect(composeGenerator.buildDevUsername('2')).toBe('dev02');
+      expect(composeGenerator.buildDevUsername('12')).toBe('dev12');
+    });
+
+    it('should build Traefik config with host interpolation', () => {
+      const config = {
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.aifabrix.dev',
+          pattern: '/api/*',
+          tls: false
+        }
+      };
+
+      const result = composeGenerator.buildTraefikConfig(config, '1');
+      expect(result).toEqual({
+        enabled: true,
+        host: 'dev01.aifabrix.dev',
+        path: '/api',
+        tls: false,
+        certStore: null
+      });
+    });
+
+    it('should build Traefik config with certStore for wildcard certificates', () => {
+      const config = {
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.aifabrix.dev',
+          pattern: '/api/*',
+          tls: true,
+          certStore: 'wildcard'
+        }
+      };
+
+      const result = composeGenerator.buildTraefikConfig(config, '1');
+      expect(result).toEqual({
+        enabled: true,
+        host: 'dev01.aifabrix.dev',
+        path: '/api',
+        tls: true,
+        certStore: 'wildcard'
+      });
+    });
+
+    it('should build Traefik config without certStore when not provided', () => {
+      const config = {
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.aifabrix.dev',
+          pattern: '/api/*',
+          tls: true
+        }
+      };
+
+      const result = composeGenerator.buildTraefikConfig(config, '1');
+      expect(result).toEqual({
+        enabled: true,
+        host: 'dev01.aifabrix.dev',
+        path: '/api',
+        tls: true,
+        certStore: null
+      });
+    });
+
+    it('should return disabled Traefik config when not enabled', () => {
+      const result = composeGenerator.buildTraefikConfig({}, '1');
+      expect(result).toEqual({ enabled: false });
+    });
+
+    it('should throw when enabled without host', () => {
+      const config = {
+        frontDoorRouting: {
+          enabled: true,
+          pattern: '/api/*'
+        }
+      };
+
+      expect(() => composeGenerator.buildTraefikConfig(config, '1'))
+        .toThrow('frontDoorRouting.host is required when frontDoorRouting.enabled is true');
+    });
+  });
+
   describe('readDatabasePasswords error handling', () => {
     // Helper to ensure .env file is created correctly
     // Uses realFs (via jest.requireActual) to bypass any mocks
@@ -832,6 +927,85 @@ describe('Compose Generator Module', () => {
 
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
       expect(result).toBeDefined();
+    });
+
+    it('should include Traefik labels when frontDoorRouting enabled', async() => {
+      const configModule = require('../../lib/core/config');
+      configModule.getDeveloperId.mockResolvedValue(1);
+
+      const actualDevDir = await getAndEnsureDevDir('test-app');
+      const envPath = path.join(actualDevDir, '.env');
+      fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+      const config = {
+        port: 3000,
+        requires: { database: true },
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.aifabrix.dev',
+          pattern: '/api/*',
+          tls: true
+        }
+      };
+
+      const result = await composeGenerator.generateDockerCompose('test-app', config, {});
+      expect(result).toContain('traefik.enable=true');
+      expect(result).toContain('Host(`dev01.aifabrix.dev`)');
+      expect(result).toContain('PathPrefix(`/api`)');
+      expect(result).toContain('traefik.http.routers.test-app.entrypoints=websecure');
+      expect(result).toContain('BASE_PATH=/api');
+      expect(result).toContain('X_FORWARDED_PREFIX=/api');
+    });
+
+    it('should include certStore label when certStore is provided', async() => {
+      const configModule = require('../../lib/core/config');
+      configModule.getDeveloperId.mockResolvedValue(1);
+
+      const actualDevDir = await getAndEnsureDevDir('test-app');
+      const envPath = path.join(actualDevDir, '.env');
+      fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+      const config = {
+        port: 3000,
+        requires: { database: true },
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.aifabrix.dev',
+          pattern: '/api/*',
+          tls: true,
+          certStore: 'wildcard'
+        }
+      };
+
+      const result = await composeGenerator.generateDockerCompose('test-app', config, {});
+      expect(result).toContain('traefik.enable=true');
+      expect(result).toContain('traefik.http.routers.test-app.entrypoints=websecure');
+      expect(result).toContain('traefik.http.routers.test-app.tls.certstore=wildcard');
+      expect(result).not.toContain('traefik.http.routers.test-app.tls.certstore=null');
+    });
+
+    it('should not include certStore label when certStore is not provided', async() => {
+      const configModule = require('../../lib/core/config');
+      configModule.getDeveloperId.mockResolvedValue(1);
+
+      const actualDevDir = await getAndEnsureDevDir('test-app');
+      const envPath = path.join(actualDevDir, '.env');
+      fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+      const config = {
+        port: 3000,
+        requires: { database: true },
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.aifabrix.dev',
+          pattern: '/api/*',
+          tls: true
+        }
+      };
+
+      const result = await composeGenerator.generateDockerCompose('test-app', config, {});
+      expect(result).toContain('traefik.http.routers.test-app.entrypoints=websecure');
+      expect(result).not.toContain('traefik.http.routers.test-app.tls.certstore');
     });
   });
 });

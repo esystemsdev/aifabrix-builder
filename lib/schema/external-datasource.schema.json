@@ -176,8 +176,8 @@
                   "properties":{
                      "expression":{
                         "type":"string",
-                        "description":"Pipe-based DSL expression: '{{raw.path}} | toLower | trim'.",
-                        "pattern":"^\\s*\\{\\{[^}]+\\}\\}(\\s*\\|\\s*[a-zA-Z0-9_]+(\\([^)]*\\))?)*\\s*$"
+                        "description":"Pipe-based DSL expression: '{{raw.path}} | toLower | trim' or record reference: 'record_ref:customer'.",
+                        "pattern":"^\\s*((\\{\\{[^}]+\\}\\}(\\s*\\|\\s*[a-zA-Z0-9_]+(\\([^)]*\\))?)*)|(record_ref:[a-z0-9-]+))\\s*$"
                      },
                      "type":{
                         "type":"string",

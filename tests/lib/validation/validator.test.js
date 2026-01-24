@@ -175,6 +175,45 @@ port: 99999`);
 
       await expect(validator.validateVariables(appName)).rejects.toThrow('Invalid YAML syntax in variables.yaml');
     });
+
+    it('should return error when frontDoorRouting enabled without host', async() => {
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(`key: testapp
+displayName: Test App
+description: A test application
+type: webapp
+image: testapp:latest
+registryMode: public
+port: 3000
+frontDoorRouting:
+  enabled: true
+  pattern: /api/*`);
+
+      const result = await validator.validateVariables(appName);
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('frontDoorRouting.host is required when frontDoorRouting.enabled is true');
+    });
+
+    it('should return error when frontDoorRouting pattern is invalid', async() => {
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(`key: testapp
+displayName: Test App
+description: A test application
+type: webapp
+image: testapp:latest
+registryMode: public
+port: 3000
+frontDoorRouting:
+  enabled: true
+  host: dev01.aifabrix.dev
+  pattern: api/*`);
+
+      const result = await validator.validateVariables(appName);
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('frontDoorRouting.pattern must start with "/"');
+    });
   });
 
   describe('validateRbac', () => {

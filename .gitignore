@@ -45,3 +45,7 @@ apps/
 
 # Package tarballs
 *.tgz
+
+# Integration files
+integration/my-hubspot/
+integration/hubspot-test-*/

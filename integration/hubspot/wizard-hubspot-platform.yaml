@@ -1,0 +1,8 @@
+appName: hubspot-test-platform
+mode: create-system
+source:
+  type: known-platform
+  platform: hubspot
+preferences:
+  intent: "HubSpot CRM integration"
+  fieldOnboardingLevel: standard

@@ -3,7 +3,7 @@
   "displayName": "HubSpot Company",
   "description": "HubSpot companies datasource with field mappings for CRM company data",
   "systemKey": "hubspot",
-  "entityType": "company",
+  "entityType": "record-storage",
   "resourceType": "customer",
   "enabled": true,
   "version": "1.0.0",

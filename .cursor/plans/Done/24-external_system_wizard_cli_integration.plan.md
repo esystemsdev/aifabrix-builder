@@ -80,18 +80,46 @@ Before marking this plan as complete, ensure:
 The wizard follows this flow:
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
 flowchart TD
-    Start[User runs: aifabrix wizard] --> Mode[Select Mode:<br/>create-system or add-datasource]
-    Mode --> Source[Select Source Type:<br/>OpenAPI file/URL, MCP server, known platform]
-    Source --> Parse[Parse OpenAPI Spec]
-    Parse --> Detect[Detect API Type]
-    Detect --> Generate[Generate Config via AI]
-    Generate --> Validate[Validate Configuration]
-    Validate --> Save[Save Files:<br/>variables.yaml, system JSON, datasource JSONs]
-    Save --> Deploy[Ready for Deployment<br/>via application-schema.json]
-    
-    style Start fill:#0062FF,color:#FFFFFF
-    style Deploy fill:#10B981,color:#FFFFFF
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+
+%% =======================
+%% Flow
+%% =======================
+Start[User runs: aifabrix wizard]:::primary --> Mode[Select Mode:<br/>create-system or add-datasource]:::base
+Mode --> Source[Select Source Type:<br/>OpenAPI file/URL, MCP server, known platform]:::base
+Source --> Parse[Parse OpenAPI Spec]:::base
+Parse --> Detect[Detect API Type]:::base
+Detect --> Generate[Generate Config via AI]:::base
+Generate --> Validate[Validate Configuration]:::base
+Validate --> Save[Save Files:<br/>variables.yaml, system JSON, datasource JSONs]:::base
+Save --> Deploy[Ready for Deployment<br/>via application-schema.json]:::primary
 ```
 
 

@@ -457,20 +457,20 @@
     },
     "frontDoorRouting": {
       "type": "object",
-      "description": "Front Door routing configuration",
+      "description": "Front Door routing configuration for Azure deployments and Traefik ingress for local development",
       "properties": {
         "pattern": {
           "type": "string",
-          "description": "URL pattern for routing (e.g., '/app/*')",
+          "description": "URL pattern for routing (e.g., '/app/*', '/api/v1/*'). Used for both Front Door and Traefik path routing",
           "pattern": "^/.+"
         },
         "requiresRuleSet": {
           "type": "boolean",
-          "description": "Whether URL rewriting rule set is required"
+          "description": "Whether URL rewriting rule set is required (Azure Front Door only)"
         },
         "ruleSetConditions": {
           "type": "array",
-          "description": "Rule set conditions for URL rewriting",
+          "description": "Rule set conditions for URL rewriting (Azure Front Door only)",
           "items": {
             "type": "object",
             "properties": {
@@ -490,6 +490,25 @@
               }
             }
           }
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable Traefik ingress labels for local development (docker-compose)"
+        },
+        "host": {
+          "type": "string",
+          "description": "Hostname for Traefik routing. Supports ${DEV_USERNAME} variable interpolation (e.g., '${DEV_USERNAME}.aifabrix.dev'). Required if enabled is true.",
+          "pattern": "^[a-z0-9.$\\{\\}-]+$"
+        },
+        "tls": {
+          "type": "boolean",
+          "description": "Enable TLS/HTTPS for Traefik (local development)",
+          "default": true
+        },
+        "certStore": {
+          "type": "string",
+          "description": "Certificate store name for wildcard certificates. Optional - only needed when using a pre-configured certificate store in Traefik.",
+          "pattern": "^[a-z0-9-]+$"
         }
       },
       "additionalProperties": false

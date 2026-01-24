@@ -19,6 +19,10 @@ jest.mock('../../../lib/deployment/deployer');
 jest.mock('../../../lib/generator');
 jest.mock('../../../lib/utils/token-manager');
 jest.mock('../../../lib/core/config');
+jest.mock('../../../lib/utils/controller-url');
+jest.mock('../../../lib/external-system/deploy', () => ({
+  deployExternalSystem: jest.fn()
+}));
 
 describe('Application Deploy Module', () => {
   let tempDir;
@@ -33,6 +37,7 @@ describe('Application Deploy Module', () => {
     const configModule = require('../../../lib/core/config');
     configModule.getCurrentEnvironment.mockResolvedValue('dev');
     configModule.setCurrentEnvironment.mockResolvedValue();
+    configModule.resolveEnvironment = jest.fn().mockResolvedValue('dev');
 
     const tokenManager = require('../../../lib/utils/token-manager');
     tokenManager.getDeploymentAuth.mockResolvedValue({
@@ -40,6 +45,10 @@ describe('Application Deploy Module', () => {
       token: 'default-test-token',
       controller: 'https://controller.example.com'
     });
+
+    const controllerUrl = require('../../../lib/utils/controller-url');
+    // New signature: resolveControllerUrl() - no parameters, uses config
+    controllerUrl.resolveControllerUrl.mockResolvedValue('http://localhost:3000');
 
     // Clear all mocks to prevent leakage between tests
     jest.clearAllMocks();
@@ -187,6 +196,32 @@ app:
         .rejects.toThrow('App name is required');
     });
 
+    it('should route external apps to external system deployment', async() => {
+      const integrationPath = path.join(tempDir, 'integration', 'external-app');
+      fsSync.mkdirSync(integrationPath, { recursive: true });
+
+      const variablesYaml = `
+app:
+  key: external-app
+  name: External App
+  type: external
+`;
+      fsSync.writeFileSync(path.join(integrationPath, 'variables.yaml'), variablesYaml);
+
+      const externalDeploy = require('../../../lib/external-system/deploy');
+      externalDeploy.deployExternalSystem.mockResolvedValue();
+
+      const result = await appDeploy.deployApp('external-app', {
+        controller: 'https://controller.example.com',
+        environment: 'dev'
+      });
+
+      expect(externalDeploy.deployExternalSystem).toHaveBeenCalledWith('external-app', expect.any(Object));
+      const deployer = require('../../../lib/deployment/deployer');
+      expect(deployer.deployToController).not.toHaveBeenCalled();
+      expect(result).toEqual({ success: true, type: 'external' });
+    });
+
     it('should error when controller URL is missing', async() => {
       // Create variables.yaml without deployment config
       const config = { app: { key: 'test-app', name: 'Test App' }, port: 3000 };
@@ -195,6 +230,10 @@ app:
         yaml.dump(config)
       );
 
+      // Override mock to return null when no controller URL is provided
+      const controllerUrl = require('../../../lib/utils/controller-url');
+      controllerUrl.resolveControllerUrl.mockResolvedValue(null);
+
       await expect(appDeploy.deployApp('test-app', {}))
         .rejects.toThrow('Controller URL is required');
     });
@@ -202,10 +241,7 @@ app:
     it('should error when token cannot be retrieved', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -221,14 +257,10 @@ app:
         .rejects.toThrow('Failed to get authentication');
     });
 
-    it('should load deployment configuration from variables.yaml', async() => {
+    it('should use current environment from config when not specified in options', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com',
-          environment: 'tst'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -247,8 +279,10 @@ app:
       jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
 
       const configModule = require('../../../lib/core/config');
-      configModule.getCurrentEnvironment.mockResolvedValue('tst');
-      configModule.setCurrentEnvironment.mockResolvedValue();
+      configModule.resolveEnvironment = jest.fn().mockResolvedValue('tst');
+
+      const controllerUrl = require('../../../lib/utils/controller-url');
+      controllerUrl.resolveControllerUrl.mockResolvedValue('https://controller.example.com');
 
       const tokenManager = require('../../../lib/utils/token-manager');
       tokenManager.getDeploymentAuth.mockResolvedValue({
@@ -262,6 +296,7 @@ app:
 
       await appDeploy.deployApp('test-app', {});
 
+      expect(configModule.resolveEnvironment).toHaveBeenCalled();
       expect(tokenManager.getDeploymentAuth).toHaveBeenCalledWith(
         'https://controller.example.com',
         'tst',
@@ -283,11 +318,7 @@ app:
     it('should use current environment from config when not specified', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com'
-          // No environment specified
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -305,8 +336,10 @@ app:
       jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
 
       const configModule = require('../../../lib/core/config');
-      configModule.getCurrentEnvironment.mockResolvedValue('dev');
-      configModule.setCurrentEnvironment.mockResolvedValue();
+      configModule.resolveEnvironment = jest.fn().mockResolvedValue('dev');
+
+      const controllerUrl = require('../../../lib/utils/controller-url');
+      controllerUrl.resolveControllerUrl.mockResolvedValue('https://controller.example.com');
 
       const tokenManager = require('../../../lib/utils/token-manager');
       tokenManager.getDeploymentAuth.mockResolvedValue({
@@ -320,7 +353,7 @@ app:
 
       await appDeploy.deployApp('test-app', {});
 
-      expect(configModule.getCurrentEnvironment).toHaveBeenCalled();
+      expect(configModule.resolveEnvironment).toHaveBeenCalled();
       expect(tokenManager.getDeploymentAuth).toHaveBeenCalledWith(
         'https://controller.example.com',
         'dev',
@@ -339,14 +372,10 @@ app:
       );
     });
 
-    it('should allow options to override variables.yaml configuration', async() => {
+    it('should allow options to override default configuration', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://yaml-controller.example.com',
-          environment: 'tst'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -364,8 +393,7 @@ app:
       jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
 
       const configModule = require('../../../lib/core/config');
-      configModule.getCurrentEnvironment.mockResolvedValue('pro');
-      configModule.setCurrentEnvironment.mockResolvedValue();
+      configModule.resolveEnvironment = jest.fn().mockResolvedValue('pro');
 
       const tokenManager = require('../../../lib/utils/token-manager');
       tokenManager.getDeploymentAuth.mockResolvedValue({
@@ -382,14 +410,17 @@ app:
         environment: 'pro'
       });
 
-      expect(configModule.setCurrentEnvironment).toHaveBeenCalledWith('pro');
+      // Controller/environment flags are no longer supported for public commands.
+      // Controller/environment are resolved from config via resolveControllerUrl()/resolveEnvironment().
+      expect(configModule.resolveEnvironment).toHaveBeenCalled();
       expect(tokenManager.getDeploymentAuth).toHaveBeenCalledWith(
-        'https://option-controller.example.com',
+        'http://localhost:3000',
         'pro',
         'test-app'
       );
       expect(deployer.deployToController).toHaveBeenCalledWith(
         expect.any(Object),
+        // deploy uses the controller URL returned by getDeploymentAuth
         'https://option-controller.example.com',
         'pro',
         expect.objectContaining({
@@ -444,11 +475,7 @@ app:
     it('should error when token is missing after retrieval', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com',
-          environment: 'dev'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -485,11 +512,7 @@ app:
     it('should error when controller URL is missing after token retrieval', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com',
-          environment: 'dev'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -527,11 +550,7 @@ app:
       // Setup app directory with deployment config
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com',
-          environment: 'dev'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -562,11 +581,7 @@ app:
       // Setup app directory with deployment config
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com',
-          environment: 'dev'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -608,11 +623,7 @@ app:
       // Setup app directory with deployment config
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com',
-          environment: 'dev'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -656,11 +667,7 @@ app:
     it('should display deployment URL when present', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com',
-          environment: 'dev'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -703,11 +710,7 @@ app:
     it('should display deployment status when completed', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com',
-          environment: 'dev'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -750,11 +753,7 @@ app:
     it('should display deployment status when failed', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com',
-          environment: 'dev'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -797,11 +796,7 @@ app:
     it('should display deployment status when in progress', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com',
-          environment: 'dev'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -1004,11 +999,7 @@ image:
     it('should handle extractDeploymentConfig with options override', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://yaml-controller.example.com',
-          environment: 'tst'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -1028,6 +1019,7 @@ image:
       const configModule = require('../../../lib/core/config');
       configModule.getCurrentEnvironment.mockResolvedValue('pro');
       configModule.setCurrentEnvironment.mockResolvedValue();
+      configModule.resolveEnvironment = jest.fn().mockResolvedValue('pro');
 
       const tokenManager = require('../../../lib/utils/token-manager');
       tokenManager.getDeploymentAuth.mockResolvedValue({
@@ -1035,6 +1027,9 @@ image:
         token: 'test-token',
         controller: 'https://option-controller.example.com'
       });
+
+      const controllerUrl = require('../../../lib/utils/controller-url');
+      controllerUrl.resolveControllerUrl.mockResolvedValue('https://option-controller.example.com');
 
       const deployer = require('../../../lib/deployment/deployer');
       deployer.deployToController.mockResolvedValue({ deploymentId: 'deploy-123' });
@@ -1060,6 +1055,57 @@ image:
       );
     });
 
+    it('should use controller URL from config when no explicit option', async() => {
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000
+        // No deployment.controllerUrl
+      };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        yaml.dump(config)
+      );
+
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
+      await fs.writeFile(manifestPath, JSON.stringify({
+        key: 'test-app',
+        image: 'test:latest',
+        port: 3000
+      }));
+
+      const generator = require('../../../lib/generator');
+      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
+
+      const configModule = require('../../../lib/core/config');
+      configModule.resolveEnvironment = jest.fn().mockResolvedValue('dev');
+
+      const tokenManager = require('../../../lib/utils/token-manager');
+      tokenManager.getDeploymentAuth.mockResolvedValue({
+        type: 'bearer',
+        token: 'test-token',
+        controller: 'https://config.controller.com'
+      });
+
+      const controllerUrl = require('../../../lib/utils/controller-url');
+      // Mock resolveControllerUrl to return controller from config
+      controllerUrl.resolveControllerUrl.mockResolvedValue('https://config.controller.com');
+
+      const deployer = require('../../../lib/deployment/deployer');
+      deployer.deployToController.mockResolvedValue({ deploymentId: 'deploy-123' });
+
+      await appDeploy.deployApp('test-app', {});
+
+      expect(controllerUrl.resolveControllerUrl).toHaveBeenCalledWith();
+      expect(configModule.resolveEnvironment).toHaveBeenCalledWith();
+      expect(deployer.deployToController).toHaveBeenCalledWith(
+        expect.any(Object),
+        'https://config.controller.com',
+        'dev',
+        expect.any(Object),
+        expect.any(Object)
+      );
+    });
+
     it('should handle validateDeploymentConfig missing controller URL', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
@@ -1070,6 +1116,10 @@ image:
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
         yaml.dump(config)
       );
+
+      const controllerUrl = require('../../../lib/utils/controller-url');
+      // Mock resolveControllerUrl to return null to test validation path
+      controllerUrl.resolveControllerUrl.mockResolvedValue(null);
 
       const deployer = require('../../../lib/deployment/deployer');
       deployer.handleDeploymentErrors = jest.fn().mockImplementation(async(error) => {
@@ -1083,10 +1133,7 @@ image:
     it('should handle validateDeploymentConfig missing auth', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -1112,11 +1159,7 @@ image:
     it('should handle generateAndValidateManifest error', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com',
-          environment: 'dev'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -1151,11 +1194,7 @@ image:
     it('should handle displayDeploymentInfo with various manifest fields', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com',
-          environment: 'dev'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -1195,11 +1234,7 @@ image:
     it('should handle executeDeployment error', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com',
-          environment: 'dev'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
@@ -1237,11 +1272,7 @@ image:
     it('should handle displayDeploymentResults with all fields', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com',
-          environment: 'dev'
-        }
+        port: 3000
       };
       await fs.writeFile(
         path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),

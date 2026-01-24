@@ -1,0 +1,4 @@
+mode: create-system
+source:
+  type: known-platform
+  platform: hubspot

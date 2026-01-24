@@ -4,6 +4,8 @@
 
 **Note:** The CLI reference has been reorganized into concept-based files for better navigation. All command documentation is now available in the [Commands Index](commands/README.md).
 
+**Alias:** You can use `aifx` instead of `aifabrix` in any command (e.g. `aifx up`, `aifx create myapp`).
+
 ---
 
 ## New Structure
@@ -54,6 +56,7 @@ For backward compatibility, anchor links from the old structure are preserved. I
 - `#aifabrix-diff-file1-file2` → [Validation Commands](commands/validation.md#aifabrix-diff-file1-file2)
 - `#aifabrix-wizard` → [External Integration Commands](commands/external-integration.md#aifabrix-wizard)
 - `#aifabrix-download-system-key` → [External Integration Commands](commands/external-integration.md#aifabrix-download-system-key)
+- `#aifabrix-delete-system-key` → [External Integration Commands](commands/external-integration.md#aifabrix-delete-system-key)
 - `#aifabrix-test-app` → [External Integration Commands](commands/external-integration.md#aifabrix-test-app)
 - `#aifabrix-test-integration-app` → [External Integration Commands](commands/external-integration.md#aifabrix-test-integration-app)
 - `#aifabrix-datasource` → [External Integration Commands](commands/external-integration.md#aifabrix-datasource)

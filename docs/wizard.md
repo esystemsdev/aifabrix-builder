@@ -9,8 +9,11 @@ The wizard helps you:
 - Add datasources to existing systems
 - Generate configurations automatically using AI
 - Validate configurations before deployment
+- Support headless mode via `--config wizard.yaml` for automated/non-interactive deployments
 
 ## Quick Start
+
+### Interactive Mode
 
 Run the wizard command:
 
@@ -18,10 +21,10 @@ Run the wizard command:
 aifabrix wizard
 ```
 
-Or with options:
+Or with options (uses controller and environment from `config.yaml`):
 
 ```bash
-aifabrix wizard --app my-integration --controller https://controller.example.com --environment dev
+aifabrix wizard --app my-integration
 ```
 
 You can also use the wizard when creating an external system:
@@ -30,74 +33,211 @@ You can also use the wizard when creating an external system:
 aifabrix create my-integration --type external --wizard
 ```
 
+### Headless Mode (Non-Interactive)
+
+For automated deployments, use a configuration file:
+
+```bash
+aifabrix wizard --config wizard.yaml
+```
+
+This mode skips all prompts and uses values from the configuration file.
+
 ## Wizard Workflow
 
-The wizard follows these steps:
+The wizard follows the dataplane API workflow:
 
-### Step 1: Mode Selection
+```yaml
+Step 1: Create Session        POST /api/v1/wizard/sessions
+Step 2: Parse OpenAPI         POST /api/v1/wizard/parse-openapi
+Step 3: Credential Selection  POST /api/v1/wizard/credential-selection (optional)
+Step 4: Detect Type           POST /api/v1/wizard/detect-type
+Step 5: Generate Config       POST /api/v1/wizard/generate-config
+Step 6: Validate              POST /api/v1/wizard/validate
+Step 7: Save Files            Local file generation
+```
 
-Choose what you want to do:
+### Step 1: Create Session
+
+Creates a wizard session with the selected mode:
 - **Create a new external system** - Start from scratch
 - **Add datasource to existing system** - Add to an existing integration
 
-### Step 2: Source Selection
+For add-datasource mode, provide the existing system ID or key.
 
-Select your source type:
+### Step 2: Parse OpenAPI
+
+Select your source type and parse the OpenAPI specification:
 - **OpenAPI file** - Local OpenAPI specification file
 - **OpenAPI URL** - Remote OpenAPI specification URL
 - **MCP server** - Model Context Protocol server
 - **Known platform** - Pre-configured platform (HubSpot, Salesforce, etc.)
 
-### Step 3: Parse OpenAPI (if applicable)
+### Step 3: Credential Selection (Optional)
 
-If you selected an OpenAPI file or URL, the wizard will:
-- Parse the OpenAPI specification
-- Extract API endpoints and schemas
-- Prepare the specification for type detection
+Configure credentials for the external system:
+- **Create** - Create a new credential
+- **Select** - Use an existing credential
+- **Skip** - Configure credentials later
 
-### Step 4: Detect API Type (optional)
+### Step 4: Detect API Type
 
 The wizard automatically detects:
-- API type (REST, GraphQL, RPC, etc.)
-- API category (CRM, support, sales, etc.)
-- Confidence scores for detection
+- API type (record-based, document-storage, etc.)
+- Confidence scores for each detected type
+- Recommended type based on analysis
 
-### Step 5: User Preferences
+**Detected Types**: `record-based` (CRUD operations), `document-storage` (file/folder operations), `sharepoint` (SharePoint-specific), `teams-meetings` (Teams/Graph API patterns), `crm`, `project-management`, `communication`, `e-commerce`, `calendar`, `email`, `help-desk`, `accounting`, `hr`, `custom`.
 
-Configure your preferences:
-- **User intent** - Sales-focused, support-focused, marketing-focused, or general
-- **MCP** - Enable Model Context Protocol
-- **ABAC** - Enable Attribute-Based Access Control
-- **RBAC** - Enable Role-Based Access Control
+### Step 5: Generate Configuration
 
-### Step 6: Generate Configuration
+The wizard uses AI to generate configurations based on:
+- OpenAPI specification structure
+- Detected API type
+- User intent (any descriptive text)
+- User preferences (MCP, ABAC, RBAC)
+- Field onboarding level (full/standard/minimal)
 
-The wizard uses AI to generate:
-- External system configuration
-- Datasource configurations
-- Authentication settings
-- API endpoint mappings
+**Important**: The `intent` parameter accepts any descriptive text (e.g., "sales-focused CRM integration", "customer management system"). It's not limited to specific enum values.
 
-This step may take 10-30 seconds.
+### Step 6: Validate Configuration
 
-### Step 7: Review & Validate
+Validates all generated configurations against:
+- External system schema
+- External datasource schema
+- Application schema
 
-Review the generated configuration:
-- View system and datasource configurations
-- Edit configurations manually if needed
-- Validate configurations against schemas
+Returns validation errors and warnings.
 
-### Step 8: Save Files
+**See Also:** [Validation Commands](../commands/validation.md) - Complete validation documentation including schema details and validation principles.
+
+### Step 7: Save Files
 
 The wizard saves all files to `integration/<app-name>/`:
 - `variables.yaml` - Application variables and external integration configuration
-- `<systemKey>-deploy.json` - System configuration
-- `<systemKey>-deploy-*.json` - Datasource configurations
+- `<systemKey>-system.json` - System configuration
+- `<systemKey>-datasource-*.json` - Datasource configurations
 - `env.template` - Environment variable template
 - `README.md` - Documentation (AI-generated from dataplane when available)
-- `application-schema.json` - Single deployment file
+- `<systemKey>-deploy.json` - Single deployment file
 - `deploy.sh` - Bash deployment script
 - `deploy.ps1` - PowerShell deployment script
+
+## Headless Mode Configuration (wizard.yaml)
+
+For automated deployments, create a `wizard.yaml` configuration file:
+
+```yaml
+# wizard.yaml - Headless configuration for external system wizard
+
+# Required: Application name (lowercase alphanumeric with hyphens/underscores)
+appName: my-integration
+
+# Required: Wizard mode
+mode: create-system  # 'create-system' | 'add-datasource'
+
+# Required when mode='add-datasource'
+# systemIdOrKey: existing-system-key
+
+# Required: Source configuration
+source:
+  type: openapi-file  # 'openapi-file' | 'openapi-url' | 'mcp-server' | 'known-platform'
+  
+  # For openapi-file:
+  filePath: ./path/to/openapi.yaml
+  
+  # For openapi-url:
+  # url: https://api.example.com/openapi.json
+  
+  # For mcp-server:
+  # serverUrl: https://mcp.example.com
+  # token: ${MCP_TOKEN}  # Supports environment variable references
+  
+  # For known-platform:
+  # platform: hubspot  # 'hubspot' | 'salesforce' | 'zendesk' | 'slack' | 'microsoft365'
+
+# Optional: Credential configuration
+credential:
+  action: skip  # 'create' | 'select' | 'skip'
+  # For action='select':
+  # credentialIdOrKey: my-credential
+  # For action='create':
+  # config:
+  #   key: my-oauth
+  #   displayName: My OAuth
+  #   type: OAUTH2
+  #   config: {}
+
+# Optional: Generation preferences
+preferences:
+  intent: "sales-focused CRM integration"  # Any descriptive text
+  fieldOnboardingLevel: full               # 'full' | 'standard' | 'minimal'
+  enableOpenAPIGeneration: true            # boolean
+  enableMCP: false                         # Enable Model Context Protocol
+  enableABAC: false                        # Enable Attribute-Based Access Control
+  enableRBAC: false                        # Enable Role-Based Access Control
+
+# Optional: Override deployment settings
+deployment:
+  controller: https://controller.example.com
+  environment: dev
+  dataplane: https://dataplane.example.com  # Override dataplane lookup
+```
+
+### Environment Variable Support
+
+The wizard.yaml supports environment variable references using `${VAR_NAME}` syntax:
+
+```yaml
+source:
+  type: mcp-server
+  serverUrl: https://mcp.example.com
+  token: ${MCP_SERVER_TOKEN}
+```
+
+Environment variables are resolved at runtime. Missing variables will cause validation to fail.
+
+### Headless Mode Examples
+
+**Create from OpenAPI File:**
+
+```yaml
+appName: my-api
+mode: create-system
+source:
+  type: openapi-file
+  filePath: ./specs/openapi.yaml
+preferences:
+  intent: "REST API integration"
+  fieldOnboardingLevel: full
+```
+
+**Create HubSpot Integration:**
+
+```yaml
+appName: hubspot-integration
+mode: create-system
+source:
+  type: known-platform
+  platform: hubspot
+preferences:
+  intent: "CRM integration for sales team"
+  enableABAC: true
+```
+
+**Add Datasource to Existing System:**
+
+```yaml
+appName: existing-system-contacts
+mode: add-datasource
+systemIdOrKey: existing-system
+source:
+  type: openapi-url
+  url: https://api.example.com/contacts/openapi.json
+preferences:
+  intent: "Contact management"
+  fieldOnboardingLevel: standard
+```
 
 ## Source Types
 
@@ -106,8 +246,11 @@ The wizard saves all files to `integration/<app-name>/`:
 Provide a local path to an OpenAPI specification file (YAML or JSON):
 
 ```bash
-# The wizard will prompt for the file path
+# Interactive: The wizard will prompt for the file path
 aifabrix wizard
+
+# Headless
+aifabrix wizard --config wizard.yaml
 ```
 
 The file will be uploaded to the dataplane for parsing.
@@ -117,7 +260,7 @@ The file will be uploaded to the dataplane for parsing.
 Provide a URL to an OpenAPI specification:
 
 ```bash
-# The wizard will prompt for the URL
+# Interactive: The wizard will prompt for the URL
 aifabrix wizard
 ```
 
@@ -128,9 +271,7 @@ The dataplane will fetch and parse the specification.
 Connect to a Model Context Protocol server:
 
 ```bash
-# The wizard will prompt for:
-# - MCP server URL
-# - Authentication token
+# Interactive: The wizard will prompt for server URL and token
 aifabrix wizard
 ```
 
@@ -161,6 +302,14 @@ Generated configurations include:
 - API endpoint mappings
 - Datasource definitions
 - Entity relationships
+- Field mappings with ABAC dimensions
+- CIP pipeline definitions
+
+### Field Onboarding Levels
+
+- **full** - All fields mapped and indexed
+- **standard** - Core and important fields only
+- **minimal** - Essential fields only
 
 ## Validation
 
@@ -171,6 +320,8 @@ All configurations are validated against:
 
 Validation errors are displayed before saving files.
 
+**See Also:** [Validation Commands](../commands/validation.md) - Complete validation documentation including schema architecture, validation flow, and troubleshooting.
+
 ## File Structure
 
 The wizard creates the following file structure:
@@ -178,11 +329,11 @@ The wizard creates the following file structure:
 ```yaml
 integration/<app-name>/
 ├── variables.yaml              # Application variables and external integration config
-├── <systemKey>-deploy.json     # System configuration
-├── <systemKey>-deploy-*.json   # Datasource configurations
+├── <systemKey>-system.json     # System configuration
+├── <systemKey>-datasource-*.json   # Datasource configurations
 ├── env.template                # Environment variable template
 ├── README.md                   # Documentation (AI-generated from dataplane when available)
-├── application-schema.json     # Single deployment file
+├── <systemKey>-deploy.json     # Single deployment file
 ├── deploy.sh                   # Bash deployment script
 └── deploy.ps1                  # PowerShell deployment script
 ```
@@ -224,7 +375,7 @@ cd integration\<app-name>
 
 **Environment Variables:**
 - `ENVIRONMENT` - Environment key (default: dev)
-- `CONTROLLER` - Controller URL (default: http://localhost:3000)
+- `CONTROLLER` - Controller URL (default: <http://localhost:3000>)
 - `RUN_TESTS` - Set to "true" to run integration tests after deployment
 
 **Example:**
@@ -286,12 +437,22 @@ If AI generation fails:
 
 If validation fails:
 - Review the error messages
-- Edit the configuration manually in Step 7
-- Re-validate before saving
+- Edit the configuration manually in Step 7 (interactive mode)
+- Fix the wizard.yaml and re-run (headless mode)
+
+For detailed validation information, see [Validation Commands](../commands/validation.md).
+
+### Headless Mode Validation Failed
+
+If wizard.yaml validation fails:
+- Check for missing required fields
+- Verify enum values are correct
+- Ensure file paths exist (for openapi-file type)
+- Check environment variables are defined (for ${VAR} references)
 
 ## Examples
 
-### Create HubSpot Integration
+### Create HubSpot Integration (Interactive)
 
 ```bash
 aifabrix wizard --app hubspot-integration
@@ -299,7 +460,7 @@ aifabrix wizard --app hubspot-integration
 # Follow the prompts
 ```
 
-### Create from OpenAPI File
+### Create from OpenAPI File (Interactive)
 
 ```bash
 aifabrix wizard --app my-api
@@ -308,10 +469,12 @@ aifabrix wizard --app my-api
 # Follow the prompts
 ```
 
-### Create with Custom Dataplane
+### Headless Mode (CI/CD Pipeline)
 
 ```bash
-aifabrix wizard --app my-integration --dataplane https://dataplane.example.com
+# Create wizard.yaml in your repo (can include deployment.controller, deployment.environment, deployment.dataplane to override config)
+# Run in CI/CD (uses config or wizard.yaml deployment overrides)
+aifabrix wizard --config wizard.yaml
 ```
 
 ## Reference
@@ -322,14 +485,25 @@ aifabrix wizard --app my-integration --dataplane https://dataplane.example.com
 
 ## Dataplane Wizard API
 
-The wizard uses the dataplane wizard API endpoints:
-- `POST /api/v1/wizard/mode-selection` - Select wizard mode
-- `POST /api/v1/wizard/source-selection` - Select source type
-- `POST /api/v1/wizard/parse-openapi` - Parse OpenAPI file
-- `POST /api/v1/wizard/detect-type` - Detect API type
-- `POST /api/v1/wizard/generate-config` - Generate configuration
-- `POST /api/v1/wizard/validate` - Validate configuration
-- `POST /api/v1/wizard/test-mcp-connection` - Test MCP connection
+The wizard uses the following dataplane wizard API endpoints:
+
+| Endpoint | Description |
+| ---------- | ----------- |
+| `POST /api/v1/wizard/sessions` | Create wizard session |
+| `GET /api/v1/wizard/sessions/{id}` | Get session state |
+| `PUT /api/v1/wizard/sessions/{id}` | Update session |
+| `DELETE /api/v1/wizard/sessions/{id}` | Delete session |
+| `GET /api/v1/wizard/sessions/{id}/progress` | Get session progress |
+| `POST /api/v1/wizard/parse-openapi` | Parse OpenAPI file/URL |
+| `POST /api/v1/wizard/credential-selection` | Credential selection |
+| `POST /api/v1/wizard/detect-type` | Detect API type |
+| `POST /api/v1/wizard/generate-config` | Generate configuration |
+| `POST /api/v1/wizard/generate-config-stream` | Generate config (streaming) |
+| `POST /api/v1/wizard/validate` | Validate configuration |
+| `GET /api/v1/wizard/sessions/{id}/validate` | Validate all steps |
+| `POST /api/v1/wizard/sessions/{id}/validate-step` | Validate specific step |
+| `GET /api/v1/wizard/preview/{id}` | Get configuration preview |
+| `POST /api/v1/wizard/test-mcp-connection` | Test MCP connection |
+| `GET /api/v1/wizard/deployment-docs/{key}` | Get deployment docs |
 
 For detailed API documentation, see the dataplane API documentation.
-

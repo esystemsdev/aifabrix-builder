@@ -22,44 +22,173 @@ aifabrix run myapp
 8. **Mounts volumes** - For data persistence
 
 ```mermaid
-graph TB
-    subgraph DockerNetwork["infra_aifabrix-network"]
-        
-        subgraph Infrastructure["Infrastructure"]
-            InfraNote["Stateful · Always running"]
-            Postgres[(PostgreSQL<br/>postgres:5432)]
-            Redis[(Redis<br/>redis:6379)]
-        end
-        
-        subgraph Applications["Applications"]
-            AppNote["Start / Stop · Scale"]
-            YourApp[aifabrix-myapp<br/>Port 3000]
-            OtherApp[aifabrix-otherapp<br/>Port 3001]
-        end
-        
-        YourApp -->|DATABASE_URL| Postgres
-        YourApp -->|REDIS_URL| Redis
-        OtherApp -->|DATABASE_URL| Postgres
-        OtherApp -->|REDIS_URL| Redis
-        YourApp -.->|HTTP calls| OtherApp
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "subGraphTitleColor": "#64748B",
+    "subGraphTitleFontWeight": "500",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
+flowchart TB
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+classDef note fill:#FFFFFF,color:#64748B,stroke:#E2E8F0,stroke-width:1.5px,stroke-dasharray:4 4;
+
+%% =======================
+%% Docker Network
+%% =======================
+subgraph DockerNetwork["infra_aifabrix-network"]
+    direction TB
+    
+    %% =======================
+    %% Infrastructure
+    %% =======================
+    subgraph Infrastructure["Infrastructure"]
+        direction TB
+        InfraNote["Stateful · Always running"]:::note
+        Postgres[(PostgreSQL<br/>postgres:5432)]:::base
+        Redis[(Redis<br/>redis:6379)]:::base
     end
     
-    LocalhostApp[localhost:3000] -->|Port mapping| YourApp
-    LocalhostDb[localhost:5432] -->|Port mapping| Postgres
+    %% =======================
+    %% Applications
+    %% =======================
+    subgraph Applications["Applications"]
+        direction TB
+        AppNote["Start / Stop · Scale"]:::note
+        YourApp[aifabrix-myapp<br/>Port 3000]:::base
+        OtherApp[aifabrix-otherapp<br/>Port 3001]:::base
+    end
     
-    style DockerNetwork fill:#FFFFFF,stroke:#E5E7EB,stroke-width:2px
-    style Infrastructure fill:#F9FAFB,stroke:#E5E7EB,stroke-width:2px
-    style Applications fill:#E5E7EB,stroke:#6B7280,stroke-width:2px
-    style InfraNote fill:#FFFFFF,stroke:#CCCCCC,stroke-dasharray: 3 3
-    style AppNote fill:#FFFFFF,stroke:#CCCCCC,stroke-dasharray: 3 3
-    style LocalhostApp fill:#10B981,color:#FFFFFF
-    style LocalhostDb fill:#10B981,color:#FFFFFF
+    %% =======================
+    %% Internal Connections
+    %% =======================
+    YourApp -->|DATABASE_URL| Postgres
+    YourApp -->|REDIS_URL| Redis
+    OtherApp -->|DATABASE_URL| Postgres
+    OtherApp -->|REDIS_URL| Redis
+    YourApp -.->|HTTP calls| OtherApp
+end
 
+%% =======================
+%% External Connections
+%% =======================
+LocalhostApp[localhost:3000]:::primary -->|Port mapping| YourApp
+LocalhostDb[localhost:5432]:::primary -->|Port mapping| Postgres
+```
+
+## Traefik Routing (Optional)
+
+When `frontDoorRouting.enabled` is set to `true` in your `variables.yaml`, the builder automatically generates Traefik labels for reverse proxy routing.
+
+### Configuration
+
+Add to your `variables.yaml`:
+
+```yaml
+frontDoorRouting:
+  enabled: true
+  host: ${DEV_USERNAME}.aifabrix.dev
+  pattern: /api/*
+  tls: true
+```
+
+### Accessing Your App
+
+Once running, your app will be accessible via:
+- **Traefik hostname**: `dev01.aifabrix.dev/api` (for developer-id 1)
+- **Direct port**: `http://localhost:3000` (still works)
+
+### Requirements
+
+- Traefik must be running and connected to the same Docker network (`infra-aifabrix-network` or `infra-dev{N}-aifabrix-network`)
+- Traefik must be configured to listen on ports 80 (HTTP) and/or 443 (HTTPS)
+- DNS or `/etc/hosts` entry pointing `${DEV_USERNAME}.aifabrix.dev` to `localhost` (for local development)
+
+### Example Traefik Setup
+
+If you don't have Traefik running, start infrastructure with Traefik:
+
+```bash
+# Start infrastructure including Traefik
+aifabrix up --traefik
+```
+
+**Note:** The builder generates Traefik labels automatically - you just need Traefik running.
+
+### Wildcard Certificate Setup
+
+If you have a wildcard certificate and want to use it:
+
+```yaml
+# In your variables.yaml
+frontDoorRouting:
+  enabled: true
+  host: ${DEV_USERNAME}.aifabrix.dev
+  pattern: /api/*
+  tls: true
+  certStore: wildcard  # Use your certificate store name
+```
+
+Configure Traefik with the certificate store:
+
+```bash
+export TRAEFIK_CERT_STORE=wildcard
+export TRAEFIK_CERT_FILE=/path/to/wildcard.crt
+export TRAEFIK_KEY_FILE=/path/to/wildcard.key
+```
+
+Then start infrastructure with Traefik:
+
+```bash
+aifabrix up --traefik
+```
+
+If you run Traefik separately, use this configuration:
+
+```yaml
+traefik:
+  image: traefik:v3.6
+  command:
+    - "--providers.docker=true"
+    - "--providers.docker.exposedbydefault=false"
+    - "--entrypoints.web.address=:80"
+    - "--entrypoints.websecure.address=:443"
+    - "--certificatesstores.wildcard.defaultcertificate.certfile=/certs/wildcard.crt"
+    - "--certificatesstores.wildcard.defaultcertificate.keyfile=/certs/wildcard.key"
+  ports:
+    - "80:80"
+    - "443:443"
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - ./certs:/certs  # Mount your wildcard certificate files
+  networks:
+    - infra-aifabrix-network
 ```
 
 ### Output
 
-```
+```yaml
 ✓ Infrastructure is running
 ✓ Starting myapp...
 ✓ Container aifabrix-myapp started
@@ -70,7 +199,7 @@ graph TB
 
 ## Accessing Your App
 
-**URL:** http://localhost:<localPort>
+**URL:** <http://localhost>:<localPort>
 
 **localPort from variables.yaml:**
 ```yaml
@@ -110,7 +239,7 @@ The database initialization happens via a `db-init` service that runs before you
 
 When you run `aifabrix run myapp`, you'll see output like:
 
-```
+```yaml
 ✓ Infrastructure is running
 ✓ Starting myapp...
 Creating myapp database and user...
@@ -219,7 +348,7 @@ docker restart aifabrix-myapp
 Your app connects to Postgres automatically.
 
 ### From Inside Container (your app)
-```
+```yaml
 Host: postgres
 Port: 5432
 User: pgadmin
@@ -234,7 +363,7 @@ DATABASE_HOST=postgres
 ```
 
 ### From Your Local Machine
-```
+```yaml
 Host: localhost
 Port: 5432
 User: pgadmin
@@ -248,28 +377,63 @@ psql -h localhost -U pgadmin -d myapp
 ```
 
 **Connect with GUI:**
-- pgAdmin: http://localhost:5050
+- pgAdmin: <http://localhost:5050>
 - DBeaver, DataGrip, etc. use `localhost:5432`
 
 ```mermaid
-flowchart LR
-    subgraph Container["Inside Container"]
-        ContainerNote["Docker network resolution"]
-        App["Your App"] -->|postgres:5432<br/>Docker service name| PostgresContainer["PostgreSQL"]
-    end
-    
-    subgraph Localhost["Local Machine"]
-        LocalNote["Host access via port mapping"]
-        LocalApp["Local tools"] -->|localhost:5432<br/>Port mapping| PostgresLocal["PostgreSQL"]
-    end
-    
-    PostgresContainer --- PostgresLocal
-    
-    style Container fill:#F9FAFB,stroke:#E5E7EB,stroke-width:2px
-    style Localhost fill:#E5E7EB,stroke:#6B7280,stroke-width:2px
-    style ContainerNote fill:#FFFFFF,stroke:#CCCCCC,stroke-dasharray: 3 3
-    style LocalNote fill:#FFFFFF,stroke:#CCCCCC,stroke-dasharray: 3 3
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "subGraphTitleColor": "#64748B",
+    "subGraphTitleFontWeight": "500",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
 
+flowchart LR
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef note fill:#FFFFFF,color:#64748B,stroke:#E2E8F0,stroke-width:1.5px,stroke-dasharray:4 4;
+
+%% =======================
+%% Container
+%% =======================
+subgraph Container["Inside Container"]
+    direction TB
+    ContainerNote["Docker network resolution"]:::note
+    App["Your App"]:::base -->|postgres:5432<br/>Docker service name| PostgresContainer["PostgreSQL"]:::base
+end
+
+%% =======================
+%% Localhost
+%% =======================
+subgraph Localhost["Local Machine"]
+    direction TB
+    LocalNote["Host access via port mapping"]:::note
+    LocalApp["Local tools"]:::base -->|localhost:5432<br/>Port mapping| PostgresLocal["PostgreSQL"]:::base
+end
+
+%% =======================
+%% Connection
+%% =======================
+PostgresContainer --- PostgresLocal
 ```
 
 ---
@@ -279,7 +443,7 @@ flowchart LR
 Your app connects to Redis automatically.
 
 ### From Inside Container
-```
+```yaml
 Host: redis
 Port: 6379
 ```
@@ -290,7 +454,7 @@ REDIS_URL=redis://redis:6379
 ```
 
 ### From Your Local Machine
-```
+```yaml
 Host: localhost
 Port: 6379
 ```
@@ -301,7 +465,7 @@ redis-cli -h localhost -p 6379
 ```
 
 **Connect with GUI:**
-- Redis Commander: http://localhost:8081
+- Redis Commander: <http://localhost:8081>
 
 ---
 
@@ -310,7 +474,8 @@ redis-cli -h localhost -p 6379
 If `requires.storage: true`, your app gets `/mnt/data` volume.
 
 ### Inside Container
-```
+
+```yaml
 Path: /mnt/data
 ```
 

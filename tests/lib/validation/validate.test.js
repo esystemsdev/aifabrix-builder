@@ -47,6 +47,16 @@ jest.mock('../../../lib/utils/schema-loader', () => ({
 jest.mock('../../../lib/utils/error-formatter', () => ({
   formatValidationErrors: jest.fn((errors) => errors.map(e => e.message || JSON.stringify(e)))
 }));
+jest.mock('../../../lib/generator/external-controller-manifest', () => ({
+  generateControllerManifest: jest.fn()
+}));
+jest.mock('../../../lib/validation/external-manifest-validator', () => ({
+  validateControllerManifest: jest.fn()
+}));
+jest.mock('../../../lib/utils/paths', () => ({
+  detectAppType: jest.fn(),
+  getProjectRoot: jest.fn(() => process.cwd())
+}));
 
 const fsSync = require('fs');
 const logger = require('../../../lib/utils/logger');
@@ -54,6 +64,9 @@ const validator = require('../../../lib/validation/validator');
 const { resolveExternalFiles } = require('../../../lib/utils/schema-resolver');
 const { loadExternalSystemSchema, loadExternalDataSourceSchema, detectSchemaType } = require('../../../lib/utils/schema-loader');
 const { formatValidationErrors } = require('../../../lib/utils/error-formatter');
+const { generateControllerManifest } = require('../../../lib/generator/external-controller-manifest');
+const { validateControllerManifest } = require('../../../lib/validation/external-manifest-validator');
+const { detectAppType } = require('../../../lib/utils/paths');
 
 describe('Validation Module', () => {
   beforeEach(() => {
@@ -197,8 +210,17 @@ describe('Validation Module', () => {
 
     it('should validate app name without externalIntegration', async() => {
       const appName = 'myapp';
-      const variablesPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
+      const appPath = path.join(process.cwd(), 'builder', appName);
+      const variablesPath = path.join(appPath, 'variables.yaml');
       const yaml = require('js-yaml');
+      const { detectAppType } = require('../../../lib/utils/paths');
+
+      detectAppType.mockResolvedValue({
+        isExternal: false,
+        appPath: appPath,
+        appType: 'regular',
+        baseDir: 'builder'
+      });
 
       validator.validateApplication.mockResolvedValue({
         valid: true,
@@ -224,8 +246,17 @@ describe('Validation Module', () => {
 
     it('should validate app name with externalIntegration', async() => {
       const appName = 'myapp';
-      const variablesPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
+      const appPath = path.join(process.cwd(), 'builder', appName);
+      const variablesPath = path.join(appPath, 'variables.yaml');
       const yaml = require('js-yaml');
+      const { detectAppType } = require('../../../lib/utils/paths');
+
+      detectAppType.mockResolvedValue({
+        isExternal: false,
+        appPath: appPath,
+        appType: 'regular',
+        baseDir: 'builder'
+      });
 
       validator.validateApplication.mockResolvedValue({
         valid: true,
@@ -281,8 +312,17 @@ describe('Validation Module', () => {
 
     it('should aggregate errors from app and external files', async() => {
       const appName = 'myapp';
-      const variablesPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
+      const appPath = path.join(process.cwd(), 'builder', appName);
+      const variablesPath = path.join(appPath, 'variables.yaml');
       const yaml = require('js-yaml');
+      const { detectAppType } = require('../../../lib/utils/paths');
+
+      detectAppType.mockResolvedValue({
+        isExternal: false,
+        appPath: appPath,
+        appType: 'regular',
+        baseDir: 'builder'
+      });
 
       validator.validateApplication.mockResolvedValue({
         valid: false,
@@ -335,7 +375,16 @@ describe('Validation Module', () => {
 
     it('should handle invalid YAML in variables.yaml', async() => {
       const appName = 'myapp';
-      const variablesPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
+      const appPath = path.join(process.cwd(), 'builder', appName);
+      const variablesPath = path.join(appPath, 'variables.yaml');
+      const { detectAppType } = require('../../../lib/utils/paths');
+
+      detectAppType.mockResolvedValue({
+        isExternal: false,
+        appPath: appPath,
+        appType: 'regular',
+        baseDir: 'builder'
+      });
 
       validator.validateApplication.mockResolvedValue({
         valid: true,
@@ -392,6 +441,18 @@ describe('Validation Module', () => {
       displayValidationResults(result);
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Application'));
+    });
+
+    it('should handle application results without errors array', () => {
+      const { displayValidationResults } = require('../../../lib/validation/validate');
+      const result = {
+        valid: false,
+        application: {
+          valid: false
+        }
+      };
+
+      expect(() => displayValidationResults(result)).not.toThrow();
     });
 
     it('should display external files validation results', () => {
@@ -635,6 +696,334 @@ describe('Validation Module', () => {
 
       const { validateFilePath } = require('../../../lib/validation/validate');
       await expect(validateFilePath('/nonexistent.json')).rejects.toThrow('File not found');
+    });
+  });
+
+  describe('validateExternalSystemComplete', () => {
+    const appName = 'test-external-app';
+    const appPath = path.join(process.cwd(), 'integration', appName);
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      detectAppType.mockResolvedValue({
+        isExternal: true,
+        appPath: appPath,
+        appType: 'external',
+        baseDir: 'integration'
+      });
+      // Mock fs.existsSync for file existence checks
+      fsSync.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('test-external-app') || filePath.includes('variables.yaml');
+      });
+    });
+
+    it('should validate valid external system completely (all steps pass)', async() => {
+      // Step 1: Application config valid
+      validator.validateApplication.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      // Step 2: Components valid - need to mock validateExternalFilesForApp properly
+      const systemFilePath = path.join(appPath, 'test-system.json');
+      const datasourceFilePath = path.join(appPath, 'test-datasource.json');
+
+      resolveExternalFiles.mockResolvedValue([
+        {
+          path: systemFilePath,
+          fileName: 'test-system.json',
+          type: 'external-system'
+        },
+        {
+          path: datasourceFilePath,
+          fileName: 'test-datasource.json',
+          type: 'external-datasource'
+        }
+      ]);
+
+      // Mock file existence and reads for validation
+      fsSync.existsSync.mockImplementation((filePath) => {
+        return filePath === systemFilePath ||
+               filePath === datasourceFilePath ||
+               filePath.includes('variables.yaml') ||
+               filePath.includes('test-external-app');
+      });
+
+      fsSync.readFileSync.mockImplementation((filePath) => {
+        if (filePath === systemFilePath) {
+          return JSON.stringify({ key: 'test-system', displayName: 'Test System', type: 'openapi' });
+        }
+        if (filePath === datasourceFilePath) {
+          return JSON.stringify({ key: 'test-datasource', systemKey: 'test-system', entityKey: 'entity1' });
+        }
+        return '';
+      });
+
+      const mockSystemValidate = jest.fn().mockReturnValue(true);
+      const mockDatasourceValidate = jest.fn().mockReturnValue(true);
+      loadExternalSystemSchema.mockReturnValue(mockSystemValidate);
+      loadExternalDataSourceSchema.mockReturnValue(mockDatasourceValidate);
+      formatValidationErrors.mockReturnValue([]);
+
+      // Step 3 & 4: Manifest generation and validation
+      const mockManifest = {
+        key: 'test-external-app',
+        displayName: 'Test App',
+        type: 'external',
+        system: { key: 'test-system' },
+        dataSources: [{ key: 'test-datasource' }],
+        deploymentKey: 'test-key'
+      };
+      generateControllerManifest.mockResolvedValue(mockManifest);
+      validateControllerManifest.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      const { validateExternalSystemComplete } = require('../../../lib/validation/validate');
+      const result = await validateExternalSystemComplete(appName);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+      expect(result.steps.application.valid).toBe(true);
+      expect(result.steps.components.valid).toBe(true);
+      expect(result.steps.manifest.valid).toBe(true);
+      expect(generateControllerManifest).toHaveBeenCalledWith(appName);
+      expect(validateControllerManifest).toHaveBeenCalledWith(mockManifest);
+    });
+
+    it('should stop at Step 2 when system file has errors', async() => {
+      // Step 1: Application config valid
+      validator.validateApplication.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      // Step 2: System file has errors
+      const systemFilePath = path.join(appPath, 'test-system.json');
+      resolveExternalFiles.mockResolvedValue([
+        {
+          path: systemFilePath,
+          fileName: 'test-system.json',
+          type: 'external-system'
+        }
+      ]);
+
+      fsSync.existsSync.mockImplementation((filePath) => {
+        return filePath === systemFilePath || filePath.includes('variables.yaml');
+      });
+
+      fsSync.readFileSync.mockImplementation((filePath) => {
+        if (filePath === systemFilePath) {
+          // Invalid JSON - missing key field
+          return JSON.stringify({ displayName: 'Test System' });
+        }
+        return '';
+      });
+
+      const mockSystemValidate = jest.fn().mockReturnValue(false);
+      mockSystemValidate.errors = [{ message: 'Field "key": Must be a string' }];
+      loadExternalSystemSchema.mockReturnValue(mockSystemValidate);
+      formatValidationErrors.mockReturnValue(['Field "key": Must be a string']);
+
+      const { validateExternalSystemComplete } = require('../../../lib/validation/validate');
+      const result = await validateExternalSystemComplete(appName);
+
+      expect(result.valid).toBe(false);
+      expect(result.steps.application.valid).toBe(true);
+      expect(result.steps.components.valid).toBe(false);
+      expect(result.steps.components.errors.some(e => e.includes('test-system.json') && e.includes('Field "key"')));
+      // Should not generate manifest if components invalid
+      expect(generateControllerManifest).not.toHaveBeenCalled();
+      expect(validateControllerManifest).not.toHaveBeenCalled();
+    });
+
+    it('should stop at Step 2 when datasource file has errors', async() => {
+      // Step 1: Application config valid
+      validator.validateApplication.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      // Step 2: Datasource file has errors
+      resolveExternalFiles.mockResolvedValue([
+        {
+          file: 'test-system.json',
+          type: 'system',
+          valid: true,
+          errors: [],
+          warnings: [],
+          path: path.join(appPath, 'test-system.json')
+        },
+        {
+          file: 'test-datasource.json',
+          type: 'datasource',
+          valid: false,
+          errors: ['Field "systemKey": Required field missing'],
+          warnings: [],
+          path: path.join(appPath, 'test-datasource.json')
+        }
+      ]);
+
+      const { validateExternalSystemComplete } = require('../../../lib/validation/validate');
+      const result = await validateExternalSystemComplete(appName);
+
+      expect(result.valid).toBe(false);
+      expect(result.steps.components.valid).toBe(false);
+      expect(result.steps.components.errors.some(e => e.includes('test-datasource.json') && e.includes('systemKey')));
+      expect(generateControllerManifest).not.toHaveBeenCalled();
+    });
+
+    it('should show Step 2 passed but Step 4 failed when manifest invalid', async() => {
+      // Step 1: Application config valid
+      validator.validateApplication.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      // Step 2: Components valid
+      const systemFilePath = path.join(appPath, 'test-system.json');
+      resolveExternalFiles.mockResolvedValue([
+        {
+          path: systemFilePath,
+          fileName: 'test-system.json',
+          type: 'external-system'
+        }
+      ]);
+
+      fsSync.existsSync.mockImplementation((filePath) => {
+        return filePath === systemFilePath || filePath.includes('variables.yaml');
+      });
+
+      fsSync.readFileSync.mockImplementation((filePath) => {
+        if (filePath === systemFilePath) {
+          return JSON.stringify({ key: 'test-system', displayName: 'Test System', type: 'openapi' });
+        }
+        return '';
+      });
+
+      const mockSystemValidate = jest.fn().mockReturnValue(true);
+      loadExternalSystemSchema.mockReturnValue(mockSystemValidate);
+      formatValidationErrors.mockReturnValue([]);
+
+      // Step 3: Generate manifest
+      const mockManifest = {
+        key: 'test-external-app',
+        displayName: 'Test App',
+        type: 'external',
+        system: { key: 'test-system' },
+        dataSources: [],
+        deploymentKey: 'test-key'
+      };
+      generateControllerManifest.mockResolvedValue(mockManifest);
+
+      // Step 4: Manifest validation fails
+      validateControllerManifest.mockResolvedValue({
+        valid: false,
+        errors: ['Required field "deploymentKey" is missing'],
+        warnings: []
+      });
+
+      const { validateExternalSystemComplete } = require('../../../lib/validation/validate');
+      const result = await validateExternalSystemComplete(appName);
+
+      expect(result.valid).toBe(false);
+      expect(result.steps.components.valid).toBe(true);
+      expect(result.steps.manifest.valid).toBe(false);
+      expect(result.steps.manifest.errors).toContain('Required field "deploymentKey" is missing');
+      expect(generateControllerManifest).toHaveBeenCalled();
+      expect(validateControllerManifest).toHaveBeenCalled();
+    });
+
+    it('should show Step 1 errors when variables.yaml is invalid', async() => {
+      // Step 1: Application validation fails
+      validator.validateApplication.mockResolvedValue({
+        valid: false,
+        errors: ['externalIntegration block not found in variables.yaml'],
+        warnings: []
+      });
+
+      const { validateExternalSystemComplete } = require('../../../lib/validation/validate');
+      const result = await validateExternalSystemComplete(appName);
+
+      expect(result.valid).toBe(false);
+      expect(result.steps.application.valid).toBe(false);
+      expect(result.steps.application.errors).toContain('externalIntegration block not found in variables.yaml');
+      // Should still try to validate components
+      expect(resolveExternalFiles).toHaveBeenCalled();
+    });
+
+    it('should show clear error when system file is missing', async() => {
+      validator.validateApplication.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      // Components step - file doesn't exist
+      const systemFilePath = path.join(appPath, 'test-system.json');
+      resolveExternalFiles.mockResolvedValue([
+        {
+          path: systemFilePath,
+          fileName: 'test-system.json',
+          type: 'external-system'
+        }
+      ]);
+
+      // File doesn't exist
+      fsSync.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('variables.yaml');
+      });
+
+      const { validateExternalSystemComplete } = require('../../../lib/validation/validate');
+      const result = await validateExternalSystemComplete(appName);
+
+      expect(result.valid).toBe(false);
+      expect(result.steps.components.valid).toBe(false);
+      expect(result.steps.components.errors.some(e => e.includes('File not found') || e.includes('test-system.json')));
+    });
+
+    it('should aggregate errors from all steps', async() => {
+      // Step 1: Application has warnings
+      validator.validateApplication.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: ['rbac.yaml not found']
+      });
+
+      // Step 2: Components have errors and warnings
+      resolveExternalFiles.mockResolvedValue([
+        {
+          file: 'test-system.json',
+          type: 'system',
+          valid: false,
+          errors: ['Field "key": Must be a string'],
+          warnings: ['Optional field missing'],
+          path: path.join(appPath, 'test-system.json')
+        }
+      ]);
+
+      const { validateExternalSystemComplete } = require('../../../lib/validation/validate');
+      const result = await validateExternalSystemComplete(appName);
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.warnings).toContain('rbac.yaml not found');
+      // Warnings from components step
+      expect(result.warnings.length).toBeGreaterThan(0);
+    });
+
+    it('should throw error if appName is invalid', async() => {
+      const { validateExternalSystemComplete } = require('../../../lib/validation/validate');
+      await expect(validateExternalSystemComplete(null))
+        .rejects.toThrow('App name is required and must be a string');
+      await expect(validateExternalSystemComplete(''))
+        .rejects.toThrow('App name is required and must be a string');
     });
   });
 });

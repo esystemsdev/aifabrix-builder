@@ -9,10 +9,11 @@ This integration connects to HubSpot CRM API and exposes companies, contacts, an
 ## Files
 
 - `variables.yaml` - Application configuration with externalIntegration block
-- `hubspot-deploy.json` - External system definition with OAuth2 authentication
-- `hubspot-deploy-company.json` - Companies datasource with field mappings
-- `hubspot-deploy-contact.json` - Contacts datasource with field mappings
-- `hubspot-deploy-deal.json` - Deals datasource with field mappings
+- `hubspot-system.json` - External system definition with OAuth2 authentication
+- `hubspot-datasource-company.json` - Companies datasource with field mappings
+- `hubspot-datasource-contact.json` - Contacts datasource with field mappings
+- `hubspot-datasource-deal.json` - Deals datasource with field mappings
+- `hubspot-deploy.json` - Deployment manifest (generated)
 - `env.template` - Environment variables template with kv:// references
 
 ## Setup
@@ -57,9 +58,9 @@ aifabrix app register hubspot --environment dev
 aifabrix deploy hubspot --controller http://localhost:3100 --environment dev
 
 # Or deploy individual datasources for testing
-aifabrix datasource deploy hubspot-company --environment dev --file integration/hubspot/hubspot-deploy-company.json
-aifabrix datasource deploy hubspot-contact --environment dev --file integration/hubspot/hubspot-deploy-contact.json
-aifabrix datasource deploy hubspot-deal --environment dev --file integration/hubspot/hubspot-deploy-deal.json
+aifabrix datasource deploy hubspot-company --environment dev --file integration/hubspot/hubspot-datasource-company.json
+aifabrix datasource deploy hubspot-contact --environment dev --file integration/hubspot/hubspot-datasource-contact.json
+aifabrix datasource deploy hubspot-deal --environment dev --file integration/hubspot/hubspot-datasource-deal.json
 ```
 
 ## Field Mappings

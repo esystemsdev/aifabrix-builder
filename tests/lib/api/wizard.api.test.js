@@ -10,7 +10,8 @@
 const mockClient = {
   get: jest.fn(),
   post: jest.fn(),
-  patch: jest.fn()
+  put: jest.fn(),
+  delete: jest.fn()
 };
 
 const mockApiClient = jest.fn().mockImplementation((baseUrl, authConfig) => {
@@ -19,7 +20,8 @@ const mockApiClient = jest.fn().mockImplementation((baseUrl, authConfig) => {
     authConfig,
     get: mockClient.get,
     post: mockClient.post,
-    patch: mockClient.patch
+    put: mockClient.put,
+    delete: mockClient.delete
   };
 });
 
@@ -42,6 +44,9 @@ describe('Wizard API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockClient.post.mockResolvedValue({ success: true, data: {} });
+    mockClient.get.mockResolvedValue({ success: true, data: {} });
+    mockClient.put.mockResolvedValue({ success: true, data: {} });
+    mockClient.delete.mockResolvedValue({ success: true, data: {} });
     mockUploadFile.mockResolvedValue({ success: true, data: {} });
   });
 
@@ -56,11 +61,11 @@ describe('Wizard API', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should handle add-datasource mode with systemId', async() => {
+    it('should handle add-datasource mode with systemIdOrKey', async() => {
       await wizardApi.createWizardSession(dataplaneUrl, authConfig, 'add-datasource', 'system-123');
 
       expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/sessions', {
-        body: { mode: 'add-datasource', systemId: 'system-123' }
+        body: { mode: 'add-datasource', systemIdOrKey: 'system-123' }
       });
     });
   });
@@ -77,21 +82,46 @@ describe('Wizard API', () => {
 
   describe('updateWizardSession', () => {
     it('should update wizard session', async() => {
-      mockClient.patch.mockResolvedValue({ success: true, data: {} });
+      mockClient.put.mockResolvedValue({ success: true, data: {} });
       const updateData = { currentStep: 1, selectedType: 'rest-api' };
 
       await wizardApi.updateWizardSession(dataplaneUrl, 'session-123', authConfig, updateData);
 
-      expect(mockClient.patch).toHaveBeenCalledWith('/api/v1/wizard/sessions/session-123', {
+      expect(mockClient.put).toHaveBeenCalledWith('/api/v1/wizard/sessions/session-123', {
         body: updateData
       });
+    });
+  });
+
+  describe('deleteWizardSession', () => {
+    it('should delete wizard session', async() => {
+      mockClient.delete.mockResolvedValue({ success: true });
+      const result = await wizardApi.deleteWizardSession(dataplaneUrl, 'session-123', authConfig);
+
+      expect(mockApiClient).toHaveBeenCalledWith(dataplaneUrl, authConfig);
+      expect(mockClient.delete).toHaveBeenCalledWith('/api/v1/wizard/sessions/session-123');
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('getWizardProgress', () => {
+    it('should get wizard session progress', async() => {
+      const mockProgress = {
+        success: true,
+        data: { currentStep: 3, totalSteps: 7, canProceed: true }
+      };
+      mockClient.get.mockResolvedValue(mockProgress);
+      const result = await wizardApi.getWizardProgress(dataplaneUrl, 'session-123', authConfig);
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/wizard/sessions/session-123/progress');
+      expect(result.data.currentStep).toBe(3);
     });
   });
 
   describe('parseOpenApi', () => {
     it('should parse OpenAPI file using file upload', async() => {
       const filePath = '/path/to/openapi.yaml';
-      await wizardApi.parseOpenApi(dataplaneUrl, authConfig, filePath);
+      await wizardApi.parseOpenApi(dataplaneUrl, authConfig, filePath, false);
 
       expect(mockUploadFile).toHaveBeenCalledWith(
         'https://dataplane.example.com/api/v1/wizard/parse-openapi',
@@ -101,9 +131,18 @@ describe('Wizard API', () => {
       );
     });
 
+    it('should parse OpenAPI from URL', async() => {
+      const url = 'https://api.example.com/openapi.json';
+      await wizardApi.parseOpenApi(dataplaneUrl, authConfig, url, true);
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        `/api/v1/wizard/parse-openapi?url=${encodeURIComponent(url)}`
+      );
+    });
+
     it('should handle dataplane URL with trailing slash', async() => {
       const urlWithSlash = 'https://dataplane.example.com/';
-      await wizardApi.parseOpenApi(urlWithSlash, authConfig, '/path/to/file.yaml');
+      await wizardApi.parseOpenApi(urlWithSlash, authConfig, '/path/to/file.yaml', false);
 
       expect(mockUploadFile).toHaveBeenCalledWith(
         'https://dataplane.example.com/api/v1/wizard/parse-openapi',
@@ -114,13 +153,53 @@ describe('Wizard API', () => {
     });
   });
 
+  describe('credentialSelection', () => {
+    it('should select existing credential', async() => {
+      const selectionData = {
+        action: 'select',
+        credentialIdOrKey: 'my-credential'
+      };
+      await wizardApi.credentialSelection(dataplaneUrl, authConfig, selectionData);
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/credential-selection', {
+        body: selectionData
+      });
+    });
+
+    it('should create new credential', async() => {
+      const selectionData = {
+        action: 'create',
+        credentialConfig: {
+          key: 'new-credential',
+          displayName: 'New Credential',
+          type: 'OAUTH2',
+          config: { clientId: 'test' }
+        }
+      };
+      await wizardApi.credentialSelection(dataplaneUrl, authConfig, selectionData);
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/credential-selection', {
+        body: selectionData
+      });
+    });
+
+    it('should skip credential selection', async() => {
+      const selectionData = { action: 'skip' };
+      await wizardApi.credentialSelection(dataplaneUrl, authConfig, selectionData);
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/credential-selection', {
+        body: { action: 'skip' }
+      });
+    });
+  });
+
   describe('detectType', () => {
     it('should detect API type from OpenAPI spec', async() => {
-      const openApiSpec = { openapi: '3.0.0', info: { title: 'Test API' } };
-      await wizardApi.detectType(dataplaneUrl, authConfig, openApiSpec);
+      const openapiSpec = { openapi: '3.0.0', info: { title: 'Test API' } };
+      await wizardApi.detectType(dataplaneUrl, authConfig, openapiSpec);
 
       expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/detect-type', {
-        body: { openApiSpec }
+        body: { openapiSpec }
       });
     });
   });
@@ -128,11 +207,13 @@ describe('Wizard API', () => {
   describe('generateConfig', () => {
     it('should generate configuration with all options', async() => {
       const config = {
+        openapiSpec: { openapi: '3.0.0' },
+        detectedType: 'record-based',
+        intent: 'sales-focused CRM integration',
         mode: 'create-system',
-        sourceType: 'openapi-file',
-        openApiSpec: { openapi: '3.0.0' },
-        userIntent: 'sales-focused',
-        preferences: { mcp: true, abac: false, rbac: true }
+        fieldOnboardingLevel: 'full',
+        enableOpenAPIGeneration: true,
+        userPreferences: { enableMCP: true, enableABAC: false, enableRBAC: true }
       };
 
       await wizardApi.generateConfig(dataplaneUrl, authConfig, config);
@@ -142,15 +223,36 @@ describe('Wizard API', () => {
       });
     });
 
-    it('should generate configuration with minimal options', async() => {
+    it('should generate configuration for add-datasource mode', async() => {
       const config = {
-        mode: 'create-system',
-        sourceType: 'known-platform'
+        openapiSpec: { openapi: '3.0.0' },
+        detectedType: 'record-based',
+        intent: 'contact management',
+        mode: 'add-datasource',
+        systemIdOrKey: 'existing-system',
+        credentialIdOrKey: 'existing-credential'
       };
 
       await wizardApi.generateConfig(dataplaneUrl, authConfig, config);
 
       expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/generate-config', {
+        body: config
+      });
+    });
+  });
+
+  describe('generateConfigStream', () => {
+    it('should generate configuration via streaming endpoint', async() => {
+      const config = {
+        openapiSpec: { openapi: '3.0.0' },
+        detectedType: 'record-based',
+        intent: 'sales-focused CRM integration',
+        mode: 'create-system'
+      };
+
+      await wizardApi.generateConfigStream(dataplaneUrl, authConfig, config);
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/generate-config-stream', {
         body: config
       });
     });
@@ -159,6 +261,20 @@ describe('Wizard API', () => {
   describe('validateWizardConfig', () => {
     it('should validate system and datasource configs', async() => {
       const systemConfig = { key: 'test-system', displayName: 'Test System' };
+      const datasourceConfig = { key: 'ds1', systemKey: 'test-system' };
+
+      await wizardApi.validateWizardConfig(dataplaneUrl, authConfig, systemConfig, datasourceConfig);
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/validate', {
+        body: {
+          systemConfig,
+          datasourceConfig
+        }
+      });
+    });
+
+    it('should validate with array of datasource configs', async() => {
+      const systemConfig = { key: 'test-system' };
       const datasourceConfigs = [
         { key: 'ds1', systemKey: 'test-system' },
         { key: 'ds2', systemKey: 'test-system' }
@@ -169,23 +285,58 @@ describe('Wizard API', () => {
       expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/validate', {
         body: {
           systemConfig,
-          datasourceConfigs
+          datasourceConfig: datasourceConfigs
         }
       });
     });
+  });
 
-    it('should validate with empty datasource configs', async() => {
-      const systemConfig = { key: 'test-system' };
-      const datasourceConfigs = [];
+  describe('validateAllSteps', () => {
+    it('should validate all completed wizard steps', async() => {
+      const mockValidation = {
+        success: true,
+        data: { isValid: true, errors: [], warnings: [] }
+      };
+      mockClient.get.mockResolvedValue(mockValidation);
 
-      await wizardApi.validateWizardConfig(dataplaneUrl, authConfig, systemConfig, datasourceConfigs);
+      const result = await wizardApi.validateAllSteps(dataplaneUrl, 'session-123', authConfig);
 
-      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/validate', {
-        body: {
-          systemConfig,
-          datasourceConfigs: []
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/wizard/sessions/session-123/validate');
+      expect(result.data.isValid).toBe(true);
+    });
+  });
+
+  describe('validateStep', () => {
+    it('should validate specific wizard step', async() => {
+      const mockValidation = {
+        success: true,
+        data: { step: 3, isValid: true, canProceed: true }
+      };
+      mockClient.post.mockResolvedValue(mockValidation);
+
+      const result = await wizardApi.validateStep(dataplaneUrl, 'session-123', authConfig, 3);
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/sessions/session-123/validate-step?step=3');
+      expect(result.data.step).toBe(3);
+    });
+  });
+
+  describe('getPreview', () => {
+    it('should get configuration preview', async() => {
+      const mockPreview = {
+        success: true,
+        data: {
+          systemConfig: { key: 'test-system' },
+          datasourceConfig: { key: 'test-ds' },
+          systemSummary: { key: 'test-system', endpointCount: 10 }
         }
-      });
+      };
+      mockClient.get.mockResolvedValue(mockPreview);
+
+      const result = await wizardApi.getPreview(dataplaneUrl, 'session-123', authConfig);
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/wizard/preview/session-123');
+      expect(result.data.systemSummary.endpointCount).toBe(10);
     });
   });
 
@@ -263,11 +414,10 @@ describe('Wizard API', () => {
       };
       mockUploadFile.mockResolvedValue(errorResponse);
 
-      const result = await wizardApi.parseOpenApi(dataplaneUrl, authConfig, '/path/to/file.yaml');
+      const result = await wizardApi.parseOpenApi(dataplaneUrl, authConfig, '/path/to/file.yaml', false);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('File upload failed');
     });
   });
 });
-

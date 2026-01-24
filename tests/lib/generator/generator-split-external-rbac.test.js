@@ -48,7 +48,7 @@ describe('External System RBAC Split-JSON', () => {
             name: 'External Admin',
             value: 'external-admin',
             description: 'Admin access',
-            Groups: ['admins@company.com']
+            groups: ['admins@company.com']
           },
           {
             name: 'External User',
@@ -199,7 +199,7 @@ describe('External System RBAC Split-JSON', () => {
       expect(writtenRbac.roles).toBeUndefined();
     });
 
-    it('should preserve Azure AD Groups in extracted roles', async() => {
+    it('should preserve Azure AD groups in extracted roles', async() => {
       const deployJsonPath = path.join(process.cwd(), 'integration', 'testexternal', 'testexternal-deploy.json');
       const outputDir = path.join(process.cwd(), 'integration', 'testexternal');
 
@@ -214,7 +214,7 @@ describe('External System RBAC Split-JSON', () => {
             name: 'External Admin',
             value: 'external-admin',
             description: 'Admin access',
-            Groups: ['admins@company.com', 'super-admins@company.com']
+            groups: ['admins@company.com', 'super-admins@company.com']
           }
         ],
         permissions: [
@@ -236,11 +236,11 @@ describe('External System RBAC Split-JSON', () => {
 
       expect(result.rbac).toBeDefined();
 
-      // Verify Groups are preserved
+      // Verify groups are preserved
       const writeCalls = fs.promises.writeFile.mock.calls;
       const rbacWriteCall = writeCalls.find(call => call[0].includes('rbac.yml'));
       const writtenRbac = yaml.load(rbacWriteCall[1]);
-      expect(writtenRbac.roles[0].Groups).toEqual(['admins@company.com', 'super-admins@company.com']);
+      expect(writtenRbac.roles[0].groups).toEqual(['admins@company.com', 'super-admins@company.com']);
     });
   });
 });

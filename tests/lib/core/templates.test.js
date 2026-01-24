@@ -258,7 +258,7 @@ describe('Templates Module', () => {
       const result = templates.generateEnvTemplate(config);
 
       expect(result).toContain('# MISO Controller Configuration');
-      expect(result).toContain('MISO_CONTROLLER_URL=https://controller.aifabrix.ai');
+      expect(result).toContain('MISO_CONTROLLER_URL=https://controller.aifabrix.dev');
       expect(result).toContain('MISO_ENVIRONMENT=dev');
       expect(result).toContain('MISO_CLIENTID=kv://miso-controller-client-idKeyVault');
       expect(result).toContain('MISO_CLIENTSECRET=kv://miso-controller-client-secretKeyVault');

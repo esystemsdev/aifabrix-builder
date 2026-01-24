@@ -27,6 +27,7 @@ const {
   loadDeveloperId,
   getCurrentEnvironment,
   setCurrentEnvironment,
+  resolveEnvironment,
   isTokenExpired,
   shouldRefreshToken,
   getDeviceToken,
@@ -689,20 +690,56 @@ describe('Config Module', () => {
     });
   });
 
-  describe('setCurrentEnvironment', () => {
-    it('should update root-level environment', async() => {
+  describe('resolveEnvironment', () => {
+    it('should return environment from config', async() => {
       const mockConfig = {
+        environment: 'tst',
         'developer-id': 0,
-        environment: 'dev',
-        environments: {}
+        environments: {},
+        device: {}
       };
       const yaml = require('js-yaml');
       fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
-      fsPromises.writeFile.mockResolvedValue();
-      fsPromises.open.mockResolvedValue({ sync: jest.fn().mockResolvedValue(), close: jest.fn().mockResolvedValue() });
+
+      const result = await resolveEnvironment();
+
+      expect(result).toBe('tst');
+    });
+
+    it('should return default dev if environment not set', async() => {
+      const mockConfig = {
+        'developer-id': 0,
+        environments: {},
+        device: {}
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      const result = await resolveEnvironment();
+
+      expect(result).toBe('dev');
+    });
+  });
+
+  describe('setCurrentEnvironment', () => {
+    it('should update root-level environment', async() => {
+      const mockConfig = {
+        environment: 'dev',
+        dataplane: 'https://dataplane.example.com',
+        'developer-id': 0,
+        environments: {},
+        device: {}
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+      fsPromises.mkdir.mockResolvedValue(undefined);
+      fsPromises.writeFile.mockResolvedValue(undefined);
+      const mockFd = { sync: jest.fn().mockResolvedValue(), close: jest.fn().mockResolvedValue() };
+      fsPromises.open.mockResolvedValue(mockFd);
 
       await setCurrentEnvironment('miso');
 
+      // Verify environment was set
       expect(fsPromises.writeFile).toHaveBeenCalled();
       const writtenContent = fsPromises.writeFile.mock.calls[0][1];
       const writtenConfig = yaml.load(writtenContent);

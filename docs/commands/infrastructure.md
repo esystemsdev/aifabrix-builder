@@ -21,17 +21,25 @@ aifabrix up
 
 # Set developer ID and start infrastructure (developer-specific ports)
 aifabrix up --developer 1
+
+# Start infrastructure with Traefik reverse proxy (saves to config for future runs)
+aifabrix up --traefik
+
+# Exclude Traefik and save to config
+aifabrix up --no-traefik
 ```
 
 **Options:**
 - `-d, --developer <id>` - Set developer ID and start infrastructure with developer-specific ports. Developer ID must be a non-negative integer (0 = default infra, 1+ = developer-specific). When provided, sets the developer ID in `~/.aifabrix/config.yaml` and starts infrastructure with isolated ports.
+- `--traefik` - Include Traefik reverse proxy and save `traefik: true` to `~/.aifabrix/config.yaml` (used for this run and when neither flag is passed).
+- `--no-traefik` - Exclude Traefik and save `traefik: false` to config. When neither `--traefik` nor `--no-traefik` is passed, the value is read from config.
 
 **Port Calculation:**
 Ports are calculated using: `basePort + (developer-id * 100)`
 
-- **Developer ID 0** (default): App=3000, Postgres=5432, Redis=6379, pgAdmin=5050, Redis Commander=8081
-- **Developer ID 1**: App=3100, Postgres=5532, Redis=6479, pgAdmin=5150, Redis Commander=8181
-- **Developer ID 2**: App=3200, Postgres=5632, Redis=6579, pgAdmin=5250, Redis Commander=8281
+- **Developer ID 0** (default): App=3000, Postgres=5432, Redis=6379, pgAdmin=5050, Redis Commander=8081, Traefik HTTP=80, HTTPS=443
+- **Developer ID 1**: App=3100, Postgres=5532, Redis=6479, pgAdmin=5150, Redis Commander=8181, Traefik HTTP=180, HTTPS=543
+- **Developer ID 2**: App=3200, Postgres=5632, Redis=6579, pgAdmin=5250, Redis Commander=8281, Traefik HTTP=280, HTTPS=643
 
 **Output (default):**
 ```yaml
@@ -55,6 +63,12 @@ Ports are calculated using: `basePort + (developer-id * 100)`
   pgAdmin: http://localhost:5150
   Redis Commander: http://localhost:8181
 ```
+
+**Traefik Certificate Configuration (Optional):**
+Set environment variables before running `aifabrix up --traefik`:
+- `TRAEFIK_CERT_STORE` - Certificate store name (e.g., `wildcard`)
+- `TRAEFIK_CERT_FILE` - Absolute path to certificate file
+- `TRAEFIK_KEY_FILE` - Absolute path to private key file
 
 **Developer Isolation:**
 When using `--developer`, each developer gets:
@@ -142,6 +156,11 @@ aifabrix status
    Status: running
    Port: 8081
    URL: http://localhost:8081
+
+✅ traefik:
+   Status: running
+   Port: 80/443
+   URL: http://localhost:80, https://localhost:443
 ```
 
 **Issues:**
@@ -173,6 +192,7 @@ aifabrix restart redis
 - `redis` - Redis cache
 - `pgadmin` - pgAdmin web UI
 - `redis-commander` - Redis Commander web UI
+- `traefik` - Traefik reverse proxy (when started with `--traefik`)
 
 **Output:**
 ```yaml

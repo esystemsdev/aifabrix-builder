@@ -1,0 +1,234 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/esystemsdev/aifabrix-builder/refs/heads/main/lib/schema/wizard-config.schema.json",
+  "title": "AI Fabrix Wizard Configuration Schema",
+  "description": "Schema for validating wizard.yaml configuration files for headless external system creation",
+  "type": "object",
+  "required": ["appName", "mode", "source"],
+  "properties": {
+    "appName": {
+      "type": "string",
+      "description": "Application name (must be lowercase alphanumeric with hyphens and underscores)",
+      "pattern": "^[a-z0-9-_]+$",
+      "minLength": 1,
+      "maxLength": 50
+    },
+    "mode": {
+      "type": "string",
+      "description": "Wizard mode",
+      "enum": ["create-system", "add-datasource"]
+    },
+    "systemIdOrKey": {
+      "type": "string",
+      "description": "Existing system ID or key (required when mode='add-datasource')",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 1,
+      "maxLength": 50
+    },
+    "source": {
+      "type": "object",
+      "description": "Source configuration for the wizard",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Source type",
+          "enum": ["openapi-file", "openapi-url", "mcp-server", "known-platform"]
+        },
+        "filePath": {
+          "type": "string",
+          "description": "Path to OpenAPI file (for openapi-file type)",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "description": "OpenAPI URL (for openapi-url type)",
+          "pattern": "^https?://.*$"
+        },
+        "serverUrl": {
+          "type": "string",
+          "description": "MCP server URL (for mcp-server type)",
+          "pattern": "^https?://.*$"
+        },
+        "token": {
+          "type": "string",
+          "description": "MCP server authentication token (supports ${ENV_VAR} syntax)",
+          "minLength": 1
+        },
+        "platform": {
+          "type": "string",
+          "description": "Known platform identifier (for known-platform type)",
+          "enum": ["hubspot", "salesforce", "zendesk", "slack", "microsoft365"]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "type": { "const": "openapi-file" } }
+          },
+          "then": {
+            "required": ["filePath"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "openapi-url" } }
+          },
+          "then": {
+            "required": ["url"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "mcp-server" } }
+          },
+          "then": {
+            "required": ["serverUrl", "token"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "known-platform" } }
+          },
+          "then": {
+            "required": ["platform"]
+          }
+        }
+      ]
+    },
+    "credential": {
+      "type": "object",
+      "description": "Credential configuration for the wizard (optional)",
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Credential action",
+          "enum": ["create", "select", "skip"]
+        },
+        "credentialIdOrKey": {
+          "type": "string",
+          "description": "Credential ID or key (required when action='select')",
+          "minLength": 1
+        },
+        "config": {
+          "type": "object",
+          "description": "Credential configuration (required when action='create')",
+          "properties": {
+            "key": {
+              "type": "string",
+              "description": "Credential key",
+              "pattern": "^[a-z0-9-]+$",
+              "minLength": 1
+            },
+            "displayName": {
+              "type": "string",
+              "description": "Credential display name",
+              "minLength": 1
+            },
+            "type": {
+              "type": "string",
+              "description": "Credential type",
+              "enum": ["OAUTH2", "API_KEY", "BASIC", "BEARER"]
+            },
+            "config": {
+              "type": "object",
+              "description": "Credential-specific configuration",
+              "additionalProperties": true
+            }
+          },
+          "required": ["key", "displayName", "type"]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "action": { "const": "select" } }
+          },
+          "then": {
+            "required": ["credentialIdOrKey"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "action": { "const": "create" } }
+          },
+          "then": {
+            "required": ["config"]
+          }
+        }
+      ]
+    },
+    "preferences": {
+      "type": "object",
+      "description": "Generation preferences",
+      "properties": {
+        "intent": {
+          "type": "string",
+          "description": "User intent (any descriptive text, e.g., 'sales-focused CRM integration')",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "fieldOnboardingLevel": {
+          "type": "string",
+          "description": "Field onboarding level",
+          "enum": ["full", "standard", "minimal"],
+          "default": "full"
+        },
+        "enableOpenAPIGeneration": {
+          "type": "boolean",
+          "description": "Enable OpenAPI operation generation",
+          "default": true
+        },
+        "enableMCP": {
+          "type": "boolean",
+          "description": "Enable Model Context Protocol",
+          "default": false
+        },
+        "enableABAC": {
+          "type": "boolean",
+          "description": "Enable Attribute-Based Access Control",
+          "default": false
+        },
+        "enableRBAC": {
+          "type": "boolean",
+          "description": "Enable Role-Based Access Control",
+          "default": false
+        }
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "description": "Deployment settings (optional overrides)",
+      "properties": {
+        "controller": {
+          "type": "string",
+          "description": "Controller URL",
+          "pattern": "^https?://.*$"
+        },
+        "environment": {
+          "type": "string",
+          "description": "Environment key",
+          "enum": ["dev", "tst", "pro", "miso"],
+          "default": "dev"
+        },
+        "dataplane": {
+          "type": "string",
+          "description": "Dataplane URL (overrides controller lookup)",
+          "pattern": "^https?://.*$"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "mode": { "const": "add-datasource" } }
+      },
+      "then": {
+        "required": ["systemIdOrKey"]
+      }
+    }
+  ],
+  "additionalProperties": false
+}

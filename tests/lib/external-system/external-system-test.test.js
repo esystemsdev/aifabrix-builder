@@ -43,7 +43,11 @@ jest.mock('../../../lib/utils/api', () => ({
   authenticatedApiCall: jest.fn()
 }));
 jest.mock('../../../lib/core/config', () => ({
-  getConfig: jest.fn()
+  getConfig: jest.fn(),
+  resolveEnvironment: jest.fn().mockResolvedValue('dev')
+}));
+jest.mock('../../../lib/utils/controller-url', () => ({
+  resolveControllerUrl: jest.fn().mockResolvedValue('http://localhost:3000')
 }));
 jest.mock('../../../lib/utils/logger', () => ({
   log: jest.fn(),
@@ -358,11 +362,11 @@ describe('External System Test Module', () => {
         type: 'bearer',
         token: 'test-token'
       });
-      getConfig.mockResolvedValue({
-        deployment: {
-          controllerUrl: 'http://localhost:3000'
-        }
-      });
+      getConfig.mockResolvedValue({});
+      const configModule = require('../../../lib/core/config');
+      configModule.resolveEnvironment = jest.fn().mockResolvedValue('dev');
+      const controllerUrl = require('../../../lib/utils/controller-url');
+      controllerUrl.resolveControllerUrl = jest.fn().mockResolvedValue('http://localhost:3000');
     });
 
     it('should run integration tests successfully', async() => {
@@ -390,7 +394,7 @@ describe('External System Test Module', () => {
       authenticatedApiCall.mockResolvedValue(mockTestResponse);
 
       const { testExternalSystemIntegration } = require('../../../lib/external-system/test');
-      const results = await testExternalSystemIntegration(appName, { environment: 'dev' });
+      const results = await testExternalSystemIntegration(appName, {});
 
       expect(results.success).toBe(true);
       expect(results.datasourceResults.length).toBeGreaterThan(0);
@@ -419,7 +423,7 @@ describe('External System Test Module', () => {
       authenticatedApiCall.mockResolvedValue(mockTestResponse);
 
       const { testExternalSystemIntegration } = require('../../../lib/external-system/test');
-      const results = await testExternalSystemIntegration(appName, { environment: 'dev' });
+      const results = await testExternalSystemIntegration(appName, {});
 
       expect(results.success).toBe(false);
     });
@@ -455,7 +459,6 @@ describe('External System Test Module', () => {
 
       const { testExternalSystemIntegration } = require('../../../lib/external-system/test');
       await testExternalSystemIntegration(appName, {
-        environment: 'dev',
         payload: 'custom-payload.json'
       });
 
@@ -487,7 +490,7 @@ describe('External System Test Module', () => {
       });
 
       const { testExternalSystemIntegration } = require('../../../lib/external-system/test');
-      const results = await testExternalSystemIntegration(appName, { environment: 'dev' });
+      const results = await testExternalSystemIntegration(appName, {});
 
       const skipped = results.datasourceResults.find(r => r.skipped);
       expect(skipped).toBeDefined();

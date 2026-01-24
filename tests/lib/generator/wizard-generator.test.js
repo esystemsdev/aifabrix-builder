@@ -10,6 +10,8 @@ jest.mock('fs', () => {
   const actualFs = jest.requireActual('fs');
   return {
     ...actualFs,
+    existsSync: jest.fn(),
+    readFileSync: jest.fn(),
     promises: {
       mkdir: jest.fn(),
       writeFile: jest.fn(),
@@ -32,11 +34,16 @@ jest.mock('../../../lib/utils/logger', () => ({
 }));
 
 const mockGenerateExternalSystemApplicationSchema = jest.fn();
+const mockLoadSystemFile = jest.fn();
+const mockLoadDatasourceFiles = jest.fn();
 jest.mock('../../../lib/generator/external', () => ({
-  generateExternalSystemApplicationSchema: mockGenerateExternalSystemApplicationSchema
+  generateExternalSystemApplicationSchema: mockGenerateExternalSystemApplicationSchema,
+  loadSystemFile: mockLoadSystemFile,
+  loadDatasourceFiles: mockLoadDatasourceFiles
 }));
 
 const fsPromises = require('fs').promises;
+const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 const wizardGenerator = require('../../../lib/generator/wizard');
@@ -66,14 +73,59 @@ describe('Wizard Generator', () => {
     dataSources: datasourceConfigs
   };
 
+  // Track written files and their content across test lifecycle
+  const writtenFiles = new Map(); // Map<path, content>
+
   beforeEach(() => {
     jest.clearAllMocks();
+    writtenFiles.clear(); // Clear written files for each test
     jest.spyOn(process, 'cwd').mockReturnValue('/workspace');
     fsPromises.mkdir.mockResolvedValue(undefined);
-    fsPromises.writeFile.mockResolvedValue(undefined);
+
+    // Track written files and their content for existsSync/readFileSync mocks
+    fsPromises.writeFile.mockImplementation((filePath, content) => {
+      const normalizedPath = String(filePath || '').replace(/\\/g, '/');
+      writtenFiles.set(normalizedPath, content);
+      return Promise.resolve(undefined);
+    });
+
     // Default mock for readFile - can be overridden in specific tests
     fsPromises.readFile.mockResolvedValue('existing: content');
     mockGenerateExternalSystemApplicationSchema.mockResolvedValue(mockApplicationSchema);
+    // Mock loadSystemFile and loadDatasourceFiles for generateControllerManifest
+    mockLoadSystemFile.mockResolvedValue({
+      key: appName,
+      displayName: 'Test App',
+      authentication: { type: 'apikey' }
+    });
+    mockLoadDatasourceFiles.mockResolvedValue(datasourceConfigs);
+
+    // Mock existsSync to return true for template files and written files
+    fs.existsSync.mockImplementation((filePath) => {
+      const normalizedPath = String(filePath || '').replace(/\\/g, '/');
+      if (normalizedPath.includes('templates/external-system/README.md.hbs')) {
+        return true;
+      }
+      // Return true for files that have been written
+      if (writtenFiles.has(normalizedPath)) {
+        return true;
+      }
+      return false;
+    });
+
+    // Mock readFileSync to return content for written files and templates
+    fs.readFileSync.mockImplementation((filePath) => {
+      const normalizedPath = String(filePath || '').replace(/\\/g, '/');
+      if (normalizedPath.includes('templates/external-system/README.md.hbs')) {
+        // Return the actual template content
+        return '# {{displayName}}\n\n{{description}}\n\n## System Information\n\n- **System Key**: `{{systemKey}}`\n- **System Type**: `{{systemType}}`\n- **Datasources**: {{datasourceCount}}\n\n## Files\n\n- `variables.yaml` - Application configuration with externalIntegration block\n- `{{systemKey}}-deploy.json` - External system definition\n{{#each datasources}}\n- `{{fileName}}` - Datasource: {{displayName}}\n{{/each}}\n- `env.template` - Environment variables template\n- `application-schema.json` - Combined system + datasources for deployment\n\n## Quick Start\n\n### 1. Create External System\n\n```bash\naifabrix create {{appName}} --type external\n```\n\n### 2. Configure Authentication and Datasources\n\nEdit configuration files in `integration/{{appName}}/`:\n\n- Update authentication in `{{systemKey}}-deploy.json`\n- Configure field mappings in datasource JSON files\n\n### 3. Validate Configuration\n\n```bash\naifabrix validate {{appName}} --type external\n```\n\n### 4. Generate Deployment JSON\n\n```bash\naifabrix json {{appName}} --type external\n```\n\n### 5. Deploy to Dataplane\n\n```bash\naifabrix deploy {{appName}} --controller <url> --environment dev\n```\n\n## Testing\n\n### Unit Tests (Local Validation)\n\n```bash\naifabrix test {{appName}}\n```\n\n### Integration Tests (Via Dataplane)\n\n```bash\naifabrix test-integration {{appName}} --environment dev\n```\n\n## Deployment\n\nDeploy to dataplane via miso-controller:\n\n```bash\naifabrix deploy {{appName}} --controller <url> --environment dev\n```\n\n## Troubleshooting\n\n- **Validation errors**: Run `aifabrix validate {{appName}} --type external` to check configuration\n- **Deployment issues**: Check controller URL and authentication\n- **File not found**: Ensure you\'re in the project root directory\n';
+      }
+      // For written files, return the actual content that was written
+      if (writtenFiles.has(normalizedPath)) {
+        return writtenFiles.get(normalizedPath);
+      }
+      throw new Error(`File not found: ${filePath}`);
+    });
   });
 
   afterEach(() => {
@@ -96,29 +148,37 @@ describe('Wizard Generator', () => {
       );
       expect(fsPromises.writeFile).toHaveBeenCalled();
       expect(result.appPath).toBe(path.join('/workspace', 'integration', appName));
-      expect(result.systemFilePath).toContain(`${systemKey}-deploy.json`);
+      // appName takes priority over systemKey for file naming
+      // System file uses -system.json naming convention
+      expect(result.systemFilePath).toContain(`${appName}-system.json`);
     });
 
-    it('should write system JSON file', async() => {
+    it('should write system JSON file with appName as key and displayName', async() => {
       await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, {});
+      // appName takes priority for file naming
+      // System file uses -system.json naming convention
       const systemFileCall = fsPromises.writeFile.mock.calls.find(call =>
-        call[0].includes(`${systemKey}-deploy.json`)
+        call[0].includes(`${appName}-system.json`)
       );
       expect(systemFileCall).toBeDefined();
       const writtenContent = JSON.parse(systemFileCall[1]);
-      expect(writtenContent.key).toBe(systemKey);
-      expect(writtenContent.displayName).toBe(systemConfig.displayName);
+      // Key and displayName should be generated from appName
+      expect(writtenContent.key).toBe(appName);
+      // displayName is generated from appName: "test-app" -> "Test App"
+      expect(writtenContent.displayName).toBe('Test App');
     });
 
-    it('should write datasource JSON files', async() => {
+    it('should write datasource JSON files with appName prefix', async() => {
       await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, {});
+      // appName takes priority for file naming
+      // Datasource files use -datasource- naming convention
       const datasourceFileCalls = fsPromises.writeFile.mock.calls.filter(call =>
-        call[0].includes(`${systemKey}-deploy-`) && call[0].endsWith('.json')
+        call[0].includes(`${appName}-datasource-`) && call[0].endsWith('.json')
       );
       expect(datasourceFileCalls.length).toBe(datasourceConfigs.length);
     });
 
-    it('should generate variables.yaml', async() => {
+    it('should generate variables.yaml with appName-based system file', async() => {
       await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, {});
       const variablesCall = fsPromises.writeFile.mock.calls.find(call =>
         call[0].includes('variables.yaml')
@@ -126,7 +186,9 @@ describe('Wizard Generator', () => {
       expect(variablesCall).toBeDefined();
       const writtenYaml = yaml.load(variablesCall[1]);
       expect(writtenYaml.externalIntegration).toBeDefined();
-      expect(writtenYaml.externalIntegration.systems).toContain(`${systemKey}-deploy.json`);
+      // appName takes priority for file naming
+      // System file uses -system.json naming convention
+      expect(writtenYaml.externalIntegration.systems).toContain(`${appName}-system.json`);
     });
 
     it('should generate env.template with authentication variables', async() => {
@@ -140,26 +202,32 @@ describe('Wizard Generator', () => {
       expect(templateContent).toContain('kv://secrets');
     });
 
-    it('should generate README.md', async() => {
+    it('should generate README.md with appName-based displayName', async() => {
       await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, {});
       const readmeCall = fsPromises.writeFile.mock.calls.find(call =>
         call[0].includes('README.md')
       );
       expect(readmeCall).toBeDefined();
       const readmeContent = readmeCall[1];
-      expect(readmeContent).toContain(systemConfig.displayName);
+      // displayName is generated from appName: "test-app" -> "Test App"
+      expect(readmeContent).toContain('Test App');
       expect(readmeContent).toContain('aifabrix deploy');
     });
 
-    it('should generate application-schema.json', async() => {
+    it('should generate deployment manifest', async() => {
       await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, {});
-      expect(mockGenerateExternalSystemApplicationSchema).toHaveBeenCalledWith(appName);
-      const schemaCall = fsPromises.writeFile.mock.calls.find(call =>
-        call[0].includes('application-schema.json')
+      // Deployment manifest is generated via generateControllerManifest
+      expect(mockLoadSystemFile).toHaveBeenCalled();
+      expect(mockLoadDatasourceFiles).toHaveBeenCalled();
+      // Check for deployment manifest file (<appName>-deploy.json)
+      const deployManifestCall = fsPromises.writeFile.mock.calls.find(call =>
+        call[0].includes(`${appName}-deploy.json`)
       );
-      expect(schemaCall).toBeDefined();
-      const writtenSchema = JSON.parse(schemaCall[1]);
-      expect(writtenSchema.application).toBeDefined();
+      expect(deployManifestCall).toBeDefined();
+      const writtenManifest = JSON.parse(deployManifestCall[1]);
+      expect(writtenManifest.key).toBe(appName);
+      expect(writtenManifest.type).toBe('external');
+      expect(writtenManifest.system).toBeDefined();
     });
 
     it('should handle empty datasource configs', async() => {

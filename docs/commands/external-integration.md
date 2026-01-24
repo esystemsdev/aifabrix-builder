@@ -18,6 +18,8 @@ Interactive wizard for creating external systems.
 - Generate configurations automatically using AI
 - Validate configurations before deployment
 
+This command uses the active `controller` and `environment` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is always discovered from the controller.
+
 **Usage:**
 ```bash
 # Interactive wizard (will prompt for app name)
@@ -26,18 +28,12 @@ aifabrix wizard
 # Wizard with app name
 aifabrix wizard --app my-integration
 
-# Wizard with controller and environment
-aifabrix wizard --app my-integration --controller https://controller.example.com --environment dev
-
-# Wizard with direct dataplane URL
-aifabrix wizard --app my-integration --dataplane https://dataplane.example.com
+# Uses controller/environment from config.yaml
+aifabrix wizard --app my-integration
 ```
 
 **Options:**
 - `-a, --app <app>` - Application name (if not provided, will prompt)
-- `-c, --controller <url>` - Controller URL
-- `-e, --environment <env>` - Environment (dev, tst, pro), default: dev
-- `--dataplane <url>` - Dataplane URL (overrides controller lookup)
 
 **Wizard Flow:**
 1. **Mode Selection** - Create new system or add datasource
@@ -51,11 +47,11 @@ aifabrix wizard --app my-integration --dataplane https://dataplane.example.com
 
 **Files Created:**
 - `variables.yaml` - Application variables and external integration configuration
-- `<systemKey>-deploy.json` - System configuration
-- `<systemKey>-deploy-*.json` - Datasource configurations
+- `<systemKey>-system.json` - System configuration
+- `<systemKey>-datasource-*.json` - Datasource configurations
 - `env.template` - Environment variable template
 - `README.md` - Documentation
-- `application-schema.json` - Single deployment file
+- `<systemKey>-deploy.json` - Deployment manifest (generated)
 
 **Examples:**
 ```bash
@@ -74,6 +70,7 @@ aifabrix create my-integration --type external --wizard
 **See Also:**
 - [Wizard Guide](../wizard.md) - Detailed wizard documentation
 - [External Systems Guide](../external-systems.md) - Manual external system creation
+- [Validation Commands](validation.md) - Configuration validation documentation
 
 ---
 
@@ -87,26 +84,23 @@ Download external system from dataplane to local development structure.
 
 **Usage:**
 ```bash
-# Download external system from dataplane
-aifabrix download hubspot --environment dev
-
-# Download with custom controller URL
-aifabrix download hubspot --environment dev --controller https://controller.aifabrix.ai
+# Download external system from dataplane (uses controller and environment from config.yaml)
+aifabrix download hubspot
 
 # Dry run to see what would be downloaded
-aifabrix download hubspot --environment dev --dry-run
+aifabrix download hubspot --dry-run
 ```
 
 **Arguments:**
 - `<system-key>` - External system key (identifier)
 
 **Options:**
-- `-e, --environment <env>` - Environment (dev, tst, pro) (default: dev)
-- `-c, --controller <url>` - Controller URL (optional, uses configured controller if not provided)
 - `--dry-run` - Show what would be downloaded without actually downloading
 
+Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`).
+
 **Prerequisites:**
-- Must be logged in: `aifabrix login --method device --environment <env>`
+- Must be logged in: `aifabrix login`
 - System must exist in the dataplane
 
 **Process:**
@@ -116,11 +110,14 @@ aifabrix download hubspot --environment dev --dry-run
 4. Validates downloaded data against schemas
 5. Creates `integration/<system-key>/` folder structure
 6. Generates development files:
+   - `<system-key>-deploy.json` - Deployment manifest (single file with inline system + datasources)
    - `variables.yaml` - Application configuration with externalIntegration block
-   - `<system-key>-deploy.json` - External system definition
-   - `<system-key>-deploy-<entity>.json` - Datasource files (one per entity)
    - `env.template` - Environment variables template
    - `README.md` - Documentation with setup instructions
+
+**Note:** The downloaded `<system-key>-deploy.json` can be split into component files using `aifabrix split-json <system-key>`, which creates:
+   - `<system-key>-system.json` - External system definition
+   - `<system-key>-datasource-<datasource-key>.json` - Datasource files (one per datasource)
 
 **Output:**
 ```yaml
@@ -129,7 +126,7 @@ aifabrix download hubspot --environment dev --dry-run
 🔐 Getting authentication...
 ✓ Authentication successful
 🌐 Getting dataplane URL from controller...
-✓ Dataplane URL: https://dataplane.aifabrix.ai
+✓ Dataplane URL: https://dataplane.aifabrix.dev
 
 📥 Downloading system configuration...
 ✓ System configuration downloaded
@@ -137,13 +134,14 @@ aifabrix download hubspot --environment dev --dry-run
 ✓ Downloaded 3 datasource(s)
 
 📝 Generating development files...
-✓ Created integration/hubspot/variables.yaml
 ✓ Created integration/hubspot/hubspot-deploy.json
-✓ Created integration/hubspot/hubspot-deploy-company.json
-✓ Created integration/hubspot/hubspot-deploy-contact.json
-✓ Created integration/hubspot/hubspot-deploy-deal.json
+✓ Created integration/hubspot/variables.yaml
 ✓ Created integration/hubspot/env.template
 ✓ Created integration/hubspot/README.md
+
+💡 Tip: Split the deployment manifest into component files:
+   aifabrix split-json hubspot
+   # Creates: hubspot-system.json, hubspot-datasource-*.json
 
 ✅ External system downloaded successfully!
    Location: integration/hubspot/
@@ -153,17 +151,18 @@ aifabrix download hubspot --environment dev --dry-run
 ```text
 integration/
   <system-key>/
+    <system-key>-deploy.json          # Deployment manifest (downloaded, can be split)
     variables.yaml                    # App configuration with externalIntegration block
-    <system-key>-deploy.json         # External system definition
-    <system-key>-deploy-<entity1>.json  # Datasource 1
-    <system-key>-deploy-<entity2>.json  # Datasource 2
+    <system-key>-system.json         # External system definition
+    <system-key>-datasource-<datasource-key1>.json  # Datasource 1
+    <system-key>-datasource-<datasource-key2>.json  # Datasource 2
     env.template                     # Environment variables template
     README.md                        # Documentation
 ```
 
 **Issues:**
 - **"System key is required"** → Provide system key as argument
-- **"Not logged in"** → Run `aifabrix login --method device --environment <env>` first
+- **"Not logged in"** → Run `aifabrix login` first
 - **"System not found"** → Check system key exists in the dataplane
 - **"Failed to download system"** → Check dataplane URL, authentication, and network connection
 - **"Partial download failed"** → Some datasources may have failed; check error messages
@@ -175,6 +174,127 @@ After downloading:
 - Run unit tests: `aifabrix test <system-key>`
 - Run integration tests: `aifabrix test-integration <system-key>`
 - Deploy changes: `aifabrix deploy <system-key>`
+
+---
+
+<a id="aifabrix-delete-system-key"></a>
+## aifabrix delete <system-key>
+
+Delete external system from dataplane (also deletes all associated datasources).
+
+**What:** Permanently removes an external system and all its associated datasources from the dataplane. This operation cannot be undone. The command prompts for confirmation before deletion unless `--yes` or `--force` is provided.
+
+**When:** Removing external systems that are no longer needed, cleaning up test systems, or removing deprecated integrations.
+
+This command uses the active `controller` and `environment` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is always discovered from the controller.
+
+**Usage:**
+```bash
+# Delete external system with confirmation prompt
+aifabrix delete hubspot --type external
+
+# Delete without confirmation prompt (for automation)
+aifabrix delete hubspot --type external --yes
+```
+
+**Arguments:**
+- `<system-key>` - External system key (identifier)
+
+**Options:**
+- `--type <type>` - Application type (must be `external` for this command)
+- `--yes` - Skip confirmation prompt
+- `--force` - Skip confirmation prompt (alias for `--yes`)
+
+**Prerequisites:**
+- Must be logged in: `aifabrix login`
+- System must exist in the dataplane
+
+**Process:**
+1. Gets dataplane URL from controller
+2. Fetches external system configuration to list associated datasources
+3. Displays warning with list of datasources that will be deleted
+4. Prompts for confirmation (unless `--yes` or `--force` is provided)
+5. Calls dataplane API: `DELETE /api/v1/external/systems/{systemKey}`
+6. Displays success message
+
+**Output (with confirmation):**
+```yaml
+📥 Deleting external system: hubspot
+
+🔐 Getting authentication...
+✓ Authentication successful
+🌐 Getting dataplane URL from controller...
+✓ Dataplane URL: https://dataplane.aifabrix.dev
+
+⚠️  Warning: Deleting external system 'hubspot' will also delete all associated datasources:
+ - hubspot-company
+ - hubspot-contact
+ - hubspot-deal
+
+Are you sure you want to delete external system 'hubspot'? (yes/no): yes
+
+🗑️  Deleting external system...
+✓ External system 'hubspot' deleted successfully
+✓ All associated datasources have been removed
+```
+
+**Output (with --yes flag):**
+```yaml
+📥 Deleting external system: hubspot
+
+🔐 Getting authentication...
+✓ Authentication successful
+🌐 Getting dataplane URL from controller...
+✓ Dataplane URL: https://dataplane.aifabrix.dev
+
+⚠️  Warning: Deleting external system 'hubspot' will also delete all associated datasources:
+ - hubspot-company
+ - hubspot-contact
+ - hubspot-deal
+
+🗑️  Deleting external system...
+✓ External system 'hubspot' deleted successfully
+✓ All associated datasources have been removed
+```
+
+**Output (cancelled):**
+```yaml
+📥 Deleting external system: hubspot
+
+🔐 Getting authentication...
+✓ Authentication successful
+🌐 Getting dataplane URL from controller...
+✓ Dataplane URL: https://dataplane.aifabrix.dev
+
+⚠️  Warning: Deleting external system 'hubspot' will also delete all associated datasources:
+ - hubspot-company
+ - hubspot-contact
+ - hubspot-deal
+
+Are you sure you want to delete external system 'hubspot'? (yes/no): no
+Deletion cancelled.
+```
+
+**What Gets Deleted:**
+- External system configuration
+- All associated datasources
+- System metadata and configuration
+
+**Note:** This operation is permanent and cannot be undone. If you need to restore a deleted system, you must recreate it from scratch.
+
+**Issues:**
+- **"System key is required"** → Provide system key as argument
+- **"Delete command for external systems requires --type external"** → Add `--type external` flag
+- **"Not logged in"** → Run `aifabrix login` first
+- **"External system 'hubspot' not found"** → Check system key exists in the dataplane
+- **"Failed to delete external system"** → Check dataplane URL, authentication, and network connection
+- **"Authentication required"** → Run `aifabrix login` or `aifabrix app register` first
+
+**Next Steps:**
+After deletion:
+- System and datasources are permanently removed from dataplane
+- Local files in `integration/<system-key>/` are not deleted (preserved for reference)
+- To recreate: Use `aifabrix create <system-key> --type external` or `aifabrix wizard`
 
 ---
 
@@ -229,15 +349,17 @@ aifabrix test hubspot --verbose
 - Required fields presence
 - Relationship validation (systemKey, entityKey)
 
+**See Also:** [Validation Commands](validation.md) - Complete validation documentation including schema details, validation flow, and error formatting.
+
 **Output (success):**
 ```yaml
 🧪 Running unit tests for 'hubspot'...
 
 ✓ Application configuration is valid
-✓ System configuration is valid (hubspot-deploy.json)
-✓ Datasource configuration is valid (hubspot-deploy-company.json)
-✓ Datasource configuration is valid (hubspot-deploy-contact.json)
-✓ Datasource configuration is valid (hubspot-deploy-deal.json)
+✓ System configuration is valid (hubspot-system.json)
+✓ Datasource configuration is valid (hubspot-datasource-company.json)
+✓ Datasource configuration is valid (hubspot-datasource-contact.json)
+✓ Datasource configuration is valid (hubspot-datasource-deal.json)
 
 Field Mapping Tests:
   ✓ hubspot-company: All field mappings valid
@@ -257,8 +379,8 @@ Metadata Schema Tests:
 🧪 Running unit tests for 'hubspot'...
 
 ✓ Application configuration is valid
-✓ System configuration is valid (hubspot-deploy.json)
-✗ Datasource configuration has errors (hubspot-deploy-company.json):
+✓ System configuration is valid (hubspot-system.json)
+✗ Datasource configuration has errors (hubspot-datasource-company.json):
   • Field mapping expression invalid: '{{properties.name.value | trim' (missing closing brace)
   • Metadata schema validation failed: Field 'country' not found in test payload
 
@@ -309,26 +431,30 @@ After unit tests:
 
 Run integration tests via dataplane pipeline API.
 
-**What:** Tests external system configuration by calling the dataplane pipeline test API. Validates field mappings, metadata schemas, and endpoint connectivity using real API calls. Requires dataplane access and authentication.
+**What:** Tests external system configuration by calling the dataplane pipeline test API. Validates field mappings, metadata schemas, and endpoint connectivity using real API calls. Requires dataplane access and authentication. Includes online validation of ABAC dimensions against the Dimension Catalog.
 
 **When:** After unit tests pass, validating against real dataplane, or testing endpoint connectivity before deployment.
+
+**See Also:** [Validation Commands](validation.md) - Complete validation documentation including online ABAC dimension validation.
+
+This command uses the active `controller` and `environment` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is always discovered from the controller.
 
 **Usage:**
 ```bash
 # Test entire external system
-aifabrix test-integration hubspot --environment dev
+aifabrix test-integration hubspot
 
 # Test specific datasource only
-aifabrix test-integration hubspot --environment dev --datasource hubspot-company
+aifabrix test-integration hubspot --datasource hubspot-company
 
 # Use custom test payload file
-aifabrix test-integration hubspot --environment dev --payload ./test-payload.json
+aifabrix test-integration hubspot --payload ./test-payload.json
 
 # Verbose output with detailed results
-aifabrix test-integration hubspot --environment dev --verbose
+aifabrix test-integration hubspot --verbose
 
 # Custom timeout
-aifabrix test-integration hubspot --environment dev --timeout 60000
+aifabrix test-integration hubspot --timeout 60000
 ```
 
 **Arguments:**
@@ -337,13 +463,11 @@ aifabrix test-integration hubspot --environment dev --timeout 60000
 **Options:**
 - `-d, --datasource <key>` - Test specific datasource only
 - `-p, --payload <file>` - Path to custom test payload file (overrides datasource testPayload)
-- `-e, --environment <env>` - Environment (dev, tst, pro) (default: dev)
-- `-c, --controller <url>` - Controller URL (optional)
 - `-v, --verbose` - Show detailed test output
 - `--timeout <ms>` - Request timeout in milliseconds (default: 30000)
 
 **Prerequisites:**
-- Must be logged in: `aifabrix login --method device --environment <env>`
+- Must be logged in: `aifabrix login`
 - Dataplane must be accessible
 - System must exist in dataplane (or be ready for testing)
 
@@ -369,7 +493,7 @@ aifabrix test-integration hubspot --environment dev --timeout 60000
 🔐 Getting authentication...
 ✓ Authentication successful
 🌐 Getting dataplane URL from controller...
-✓ Dataplane URL: https://dataplane.aifabrix.ai
+✓ Dataplane URL: https://dataplane.aifabrix.dev
 
 Testing datasource: hubspot-company
   ✓ Validation: passed
@@ -399,7 +523,7 @@ Testing datasource: hubspot-deal
 🔐 Getting authentication...
 ✓ Authentication successful
 🌐 Getting dataplane URL from controller...
-✓ Dataplane URL: https://dataplane.aifabrix.ai
+✓ Dataplane URL: https://dataplane.aifabrix.dev
 
 Testing datasource: hubspot-company
   ✗ Validation: failed
@@ -424,9 +548,8 @@ The command includes automatic retry logic for transient API failures:
 
 **Issues:**
 - **"App name is required"** → Provide application name as argument
-- **"Not logged in"** → Run `aifabrix login --method device --environment <env>` first
-- **"Environment is required"** → Provide `--environment` flag (dev/tst/pro)
-- **"Dataplane URL not found"** → Check controller configuration and network connection
+- **"Not logged in"** → Run `aifabrix login` first
+- **"Dataplane URL not found"** → Check controller configuration and that the controller can provide a dataplane URL
 - **"Test payload not found"** → Add `testPayload` to datasource configuration or use `--payload` flag
 - **"API call failed"** → Check dataplane URL, authentication, and network connection
 - **"Request timeout"** → Increase timeout with `--timeout` flag or check network connection
@@ -472,6 +595,8 @@ Validate external datasource JSON file.
 
 **When:** Before deploying datasource, troubleshooting configuration issues, or validating schema changes.
 
+**See Also:** [Validation Commands](validation.md) - Complete validation documentation including schema architecture and validation principles.
+
 **Usage:**
 ```bash
 # Validate datasource file
@@ -516,6 +641,8 @@ After validation:
 - Use `aifabrix datasource diff` to compare versions
 - Deploy validated datasource: `aifabrix datasource deploy <app> <file>`
 
+**See Also:** [Validation Commands](validation.md) - Complete validation documentation including schema details and validation flow.
+
 ---
 
 <a id="aifabrix-datasource-list"></a>
@@ -527,20 +654,20 @@ List datasources from environment.
 
 **When:** Viewing available datasources, checking datasource status, or auditing environment configuration.
 
+This command uses the active `controller` and `environment` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is always discovered from the controller.
+
 **Usage:**
 ```bash
-# List datasources in environment
-aifabrix datasource list --environment dev
+# List datasources in environment (uses config.environment)
+aifabrix datasource list
 
-# List datasources in production
-aifabrix datasource list --environment pro
+# Switch environment first if needed
+aifabrix auth config --set-environment pro
+aifabrix datasource list
 ```
 
-**Options:**
-- `-e, --environment <env>` - Environment ID or key (required)
-
 **Prerequisites:**
-- Must be logged in: `aifabrix login --method device --environment <env>`
+- Must be logged in: `aifabrix login`
 
 **Process:**
 1. Gets authentication token from config
@@ -564,8 +691,8 @@ No datasources found in environment: dev
 ```
 
 **Issues:**
-- **"Not logged in"** → Run `aifabrix login --method device --environment <env>` first
-- **"Environment is required"** → Provide `--environment` flag (miso/dev/tst/pro)
+- **"Not logged in"** → Run `aifabrix login` first
+- **"Environment is required"** → Run `aifabrix login` or `aifabrix auth config --set-environment <env>`
 - **"Failed to list datasources"** → Check controller URL and network connection
 - **"Invalid API response format"** → Controller API may have changed; check API version
 
@@ -673,24 +800,20 @@ Deploy datasource to dataplane.
 
 **When:** Deploying new datasource, updating existing datasource, or pushing datasource configuration changes to dataplane.
 
+This command uses the active `controller` and `environment` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is always discovered from the controller.
+
 **Usage:**
 ```bash
 # Deploy datasource to dataplane
-aifabrix datasource deploy myapp ./schemas/hubspot-deal.json \
-  --controller https://controller.aifabrix.ai \
-  --environment dev
+aifabrix datasource deploy myapp ./schemas/hubspot-deal.json
 ```
 
 **Arguments:**
 - `<myapp>` - Application key
 - `<file>` - Path to datasource JSON file
 
-**Options:**
-- `--controller <url>` - Controller URL (required)
-- `-e, --environment <env>` - Environment (miso, dev, tst, pro) (required)
-
 **Prerequisites:**
-- Application must be registered: `aifabrix app register <myapp> --environment <env>`
+- Application must be registered: `aifabrix app register <myapp>`
 - Must be logged in or have credentials in secrets.local.yaml
 - Datasource file must be valid
 
@@ -699,7 +822,7 @@ aifabrix datasource deploy myapp ./schemas/hubspot-deal.json \
 2. Loads datasource configuration
 3. Extracts systemKey from configuration
 4. Gets authentication (device token or client credentials)
-5. Gets dataplane URL from controller API
+5. Gets dataplane URL from controller
 6. Publishes datasource to dataplane:
    - POST to `http://<dataplane-url>/api/v1/pipeline/{systemKey}/publish`
    - Sends datasource configuration as request body
@@ -714,7 +837,7 @@ aifabrix datasource deploy myapp ./schemas/hubspot-deal.json \
 🔐 Getting authentication...
 ✓ Authentication successful
 🌐 Getting dataplane URL from controller...
-✓ Dataplane URL: https://dataplane.aifabrix.ai
+✓ Dataplane URL: https://dataplane.aifabrix.dev
 
 🚀 Publishing datasource to dataplane...
 
@@ -728,19 +851,19 @@ Environment: dev
 **Issues:**
 - **"Application key is required"** → Provide application key as first argument
 - **"File path is required"** → Provide path to datasource file
-- **"Controller URL is required"** → Provide `--controller` flag
-- **"Environment is required"** → Provide `-e, --environment` flag
+- **"Controller URL is required"** → Run `aifabrix login` or `aifabrix auth config --set-controller <url>`
+- **"Environment is required"** → Run `aifabrix login` or `aifabrix auth config --set-environment <env>`
 - **"File not found"** → Check datasource file path is correct
 - **"Datasource validation failed"** → Fix validation errors in datasource file
 - **"systemKey is required"** → Add systemKey field to datasource configuration
 - **"Not logged in"** → Run `aifabrix login` first
 - **"Failed to get application from controller"** → Check application is registered and controller URL is correct
-- **"Dataplane URL not found"** → Application may not have dataplane configured
+- **"Dataplane URL not found"** → Controller could not provide dataplane URL; check controller and network
 - **"Deployment failed"** → Check dataplane URL, authentication, and network connection
 
 **Next Steps:**
 After deployment:
-- Verify datasource: `aifabrix datasource list --environment <env>`
+- Verify datasource: `aifabrix datasource list`
 - Check datasource status in controller dashboard
 - Monitor dataplane for datasource activity
 

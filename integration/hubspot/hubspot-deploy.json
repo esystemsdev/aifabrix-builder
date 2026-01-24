@@ -1,99 +1,850 @@
 {
   "key": "hubspot",
-  "displayName": "HubSpot CRM",
-  "description": "HubSpot CRM integration with OpenAPI support for companies, contacts, and deals",
-  "type": "openapi",
-  "enabled": true,
-  "environment": {
-    "baseUrl": "https://api.hubapi.com"
+  "displayName": "HubSpot CRM Integration",
+  "description": "HubSpot CRM external system integration with companies, contacts, and deals",
+  "type": "external",
+  "externalIntegration": {
+    "schemaBasePath": "./",
+    "systems": [
+      "hubspot-system.json"
+    ],
+    "dataSources": [
+      "hubspot-datasource-company.json",
+      "hubspot-datasource-contact.json",
+      "hubspot-datasource-deal.json"
+    ],
+    "autopublish": true,
+    "version": "1.0.0"
   },
-  "authentication": {
-    "type": "oauth2",
-    "mode": "oauth2",
-    "oauth2": {
-      "tokenUrl": "{{TOKENURL}}",
-      "clientId": "{{CLIENTID}}",
-      "clientSecret": "{{CLIENTSECRET}}",
-      "scopes": [
-        "crm.objects.companies.read",
-        "crm.objects.companies.write",
-        "crm.objects.contacts.read",
-        "crm.objects.contacts.write",
-        "crm.objects.deals.read",
-        "crm.objects.deals.write"
-      ]
-    }
-  },
-  "configuration": [
-    {
-      "name": "CLIENTID",
-      "value": "hubspot-clientidKeyVault",
-      "location": "keyvault",
-      "required": true
+  "system": {
+    "key": "hubspot",
+    "displayName": "HubSpot CRM",
+    "description": "HubSpot CRM integration with OpenAPI support for companies, contacts, and deals",
+    "type": "openapi",
+    "enabled": true,
+    "environment": {
+      "baseUrl": "https://api.hubapi.com"
     },
-    {
-      "name": "CLIENTSECRET",
-      "value": "hubspot-clientsecretKeyVault",
-      "location": "keyvault",
-      "required": true
+    "authentication": {
+      "type": "oauth2",
+      "mode": "oauth2",
+      "oauth2": {
+        "tokenUrl": "{{TOKENURL}}",
+        "clientId": "{{CLIENTID}}",
+        "clientSecret": "{{CLIENTSECRET}}",
+        "scopes": [
+          "crm.objects.companies.read",
+          "crm.objects.companies.write",
+          "crm.objects.contacts.read",
+          "crm.objects.contacts.write",
+          "crm.objects.deals.read",
+          "crm.objects.deals.write"
+        ]
+      }
     },
-    {
-      "name": "TOKENURL",
-      "value": "https://api.hubapi.com/oauth/v1/token",
-      "location": "variable",
-      "required": true
-    },
-    {
-      "name": "REDIRECT_URI",
-      "value": "hubspot-redirect-uriKeyVault",
-      "location": "keyvault",
-      "required": false
-    },
-    {
-      "name": "HUBSPOT_API_VERSION",
-      "value": "v3",
-      "location": "variable",
-      "required": false,
-      "portalInput": {
-        "field": "select",
-        "label": "HubSpot API Version",
-        "placeholder": "Select API version",
-        "options": [
-          "v1",
-          "v2",
-          "v3"
-        ],
-        "validation": {
-          "required": false
+    "configuration": [
+      {
+        "name": "CLIENTID",
+        "value": "hubspot-clientidKeyVault",
+        "location": "keyvault",
+        "required": true
+      },
+      {
+        "name": "CLIENTSECRET",
+        "value": "hubspot-clientsecretKeyVault",
+        "location": "keyvault",
+        "required": true
+      },
+      {
+        "name": "TOKENURL",
+        "value": "https://api.hubapi.com/oauth/v1/token",
+        "location": "variable",
+        "required": true
+      },
+      {
+        "name": "REDIRECT_URI",
+        "value": "hubspot-redirect-uriKeyVault",
+        "location": "keyvault",
+        "required": false
+      },
+      {
+        "name": "HUBSPOT_API_VERSION",
+        "value": "v3",
+        "location": "variable",
+        "required": false,
+        "portalInput": {
+          "field": "select",
+          "label": "HubSpot API Version",
+          "placeholder": "Select API version",
+          "options": [
+            "v1",
+            "v2",
+            "v3"
+          ],
+          "validation": {
+            "required": false
+          }
         }
+      },
+      {
+        "name": "MAX_PAGE_SIZE",
+        "value": "100",
+        "location": "variable",
+        "required": false,
+        "portalInput": {
+          "field": "text",
+          "label": "Maximum Page Size",
+          "placeholder": "100",
+          "validation": {
+            "required": false,
+            "pattern": "^[0-9]+$",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        }
+      }
+    ],
+    "openapi": {
+      "documentKey": "hubspot-v3",
+      "autoDiscoverEntities": false
+    },
+    "tags": [
+      "crm",
+      "sales",
+      "marketing",
+      "hubspot"
+    ]
+  },
+  "dataSources": [
+    {
+      "key": "hubspot-company",
+      "displayName": "HubSpot Company",
+      "description": "HubSpot companies datasource with field mappings for CRM company data",
+      "systemKey": "hubspot",
+      "entityType": "record-storage",
+      "resourceType": "customer",
+      "enabled": true,
+      "version": "1.0.0",
+      "metadataSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "domain": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "country": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "city": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "industry": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "website": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "phone": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "createdate": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "hs_lastmodifieddate": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "id",
+          "properties"
+        ]
+      },
+      "fieldMappings": {
+        "dimensions": {
+          "country": "metadata.country",
+          "domain": "metadata.domain"
+        },
+        "attributes": {
+          "id": {
+            "expression": "{{id}}",
+            "type": "string",
+            "description": "Unique company identifier",
+            "indexed": true
+          },
+          "name": {
+            "expression": "{{properties.name.value}} | trim",
+            "type": "string",
+            "description": "Company name",
+            "indexed": false
+          },
+          "domain": {
+            "expression": "{{properties.domain.value}} | toLower | trim",
+            "type": "string",
+            "description": "Company domain for ABAC filtering",
+            "indexed": false
+          },
+          "country": {
+            "expression": "{{properties.country.value}} | toUpper | trim",
+            "type": "string",
+            "description": "Country code for ABAC filtering",
+            "indexed": false
+          },
+          "city": {
+            "expression": "{{properties.city.value}} | trim",
+            "type": "string",
+            "description": "City name",
+            "indexed": false
+          },
+          "industry": {
+            "expression": "{{properties.industry.value}} | trim",
+            "type": "string",
+            "description": "Industry classification",
+            "indexed": false
+          },
+          "website": {
+            "expression": "{{properties.website.value}} | trim",
+            "type": "string",
+            "description": "Company website URL",
+            "indexed": false
+          },
+          "phone": {
+            "expression": "{{properties.phone.value}} | trim",
+            "type": "string",
+            "description": "Phone number",
+            "indexed": false
+          },
+          "createdAt": {
+            "expression": "{{properties.createdate.value}}",
+            "type": "string",
+            "description": "Creation timestamp",
+            "indexed": false
+          },
+          "updatedAt": {
+            "expression": "{{properties.hs_lastmodifieddate.value}}",
+            "type": "string",
+            "description": "Last modification timestamp",
+            "indexed": false
+          }
+        }
+      },
+      "exposed": {
+        "attributes": [
+          "id",
+          "name",
+          "domain",
+          "country",
+          "city",
+          "industry",
+          "website",
+          "phone",
+          "createdAt",
+          "updatedAt"
+        ],
+        "description": "Exposed fields for HubSpot companies"
+      },
+      "openapi": {
+        "enabled": true,
+        "documentKey": "hubspot-v3",
+        "baseUrl": "https://api.hubapi.com",
+        "operations": {
+          "list": {
+            "operationId": "getCompanies",
+            "method": "GET",
+            "path": "/crm/v3/objects/companies"
+          },
+          "get": {
+            "operationId": "getCompany",
+            "method": "GET",
+            "path": "/crm/v3/objects/companies/{companyId}"
+          },
+          "create": {
+            "operationId": "createCompany",
+            "method": "POST",
+            "path": "/crm/v3/objects/companies"
+          },
+          "update": {
+            "operationId": "updateCompany",
+            "method": "PATCH",
+            "path": "/crm/v3/objects/companies/{companyId}"
+          },
+          "delete": {
+            "operationId": "deleteCompany",
+            "method": "DELETE",
+            "path": "/crm/v3/objects/companies/{companyId}"
+          }
+        },
+        "autoRbac": true
       }
     },
     {
-      "name": "MAX_PAGE_SIZE",
-      "value": "100",
-      "location": "variable",
-      "required": false,
-      "portalInput": {
-        "field": "text",
-        "label": "Maximum Page Size",
-        "placeholder": "100",
-        "validation": {
-          "required": false,
-          "pattern": "^[0-9]+$",
-          "min": 1,
-          "max": 1000
+      "key": "hubspot-contact",
+      "displayName": "HubSpot Contact",
+      "description": "HubSpot contacts datasource with field mappings for CRM contact data",
+      "systemKey": "hubspot",
+      "entityType": "record-storage",
+      "resourceType": "contact",
+      "enabled": true,
+      "version": "1.0.0",
+      "metadataSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "firstname": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "lastname": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "email": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "phone": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "company": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "jobtitle": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "address": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "city": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "country": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "createdate": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "hs_lastmodifieddate": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "id",
+          "properties"
+        ]
+      },
+      "fieldMappings": {
+        "dimensions": {
+          "email": "metadata.email",
+          "country": "metadata.country"
+        },
+        "attributes": {
+          "id": {
+            "expression": "{{id}}",
+            "type": "string",
+            "description": "Unique contact identifier",
+            "indexed": true
+          },
+          "firstName": {
+            "expression": "{{properties.firstname.value}} | trim",
+            "type": "string",
+            "description": "First name",
+            "indexed": false
+          },
+          "lastName": {
+            "expression": "{{properties.lastname.value}} | trim",
+            "type": "string",
+            "description": "Last name",
+            "indexed": false
+          },
+          "email": {
+            "expression": "{{properties.email.value}} | toLower | trim",
+            "type": "string",
+            "description": "Email address for ABAC filtering",
+            "indexed": false
+          },
+          "phone": {
+            "expression": "{{properties.phone.value}} | trim",
+            "type": "string",
+            "description": "Phone number",
+            "indexed": false
+          },
+          "company": {
+            "expression": "{{properties.company.value}} | trim",
+            "type": "string",
+            "description": "Associated company name",
+            "indexed": false
+          },
+          "jobTitle": {
+            "expression": "{{properties.jobtitle.value}} | trim",
+            "type": "string",
+            "description": "Job title",
+            "indexed": false
+          },
+          "address": {
+            "expression": "{{properties.address.value}} | trim",
+            "type": "string",
+            "description": "Street address",
+            "indexed": false
+          },
+          "city": {
+            "expression": "{{properties.city.value}} | trim",
+            "type": "string",
+            "description": "City name",
+            "indexed": false
+          },
+          "country": {
+            "expression": "{{properties.country.value}} | toUpper | trim",
+            "type": "string",
+            "description": "Country code for ABAC filtering",
+            "indexed": false
+          },
+          "createdAt": {
+            "expression": "{{properties.createdate.value}}",
+            "type": "string",
+            "description": "Creation timestamp",
+            "indexed": false
+          },
+          "updatedAt": {
+            "expression": "{{properties.hs_lastmodifieddate.value}}",
+            "type": "string",
+            "description": "Last modification timestamp",
+            "indexed": false
+          }
         }
+      },
+      "exposed": {
+        "attributes": [
+          "id",
+          "firstName",
+          "lastName",
+          "email",
+          "phone",
+          "company",
+          "jobTitle",
+          "address",
+          "city",
+          "country",
+          "createdAt",
+          "updatedAt"
+        ],
+        "description": "Exposed fields for HubSpot contacts"
+      },
+      "openapi": {
+        "enabled": true,
+        "documentKey": "hubspot-v3",
+        "baseUrl": "https://api.hubapi.com",
+        "operations": {
+          "list": {
+            "operationId": "getContacts",
+            "method": "GET",
+            "path": "/crm/v3/objects/contacts"
+          },
+          "get": {
+            "operationId": "getContact",
+            "method": "GET",
+            "path": "/crm/v3/objects/contacts/{contactId}"
+          },
+          "create": {
+            "operationId": "createContact",
+            "method": "POST",
+            "path": "/crm/v3/objects/contacts"
+          },
+          "update": {
+            "operationId": "updateContact",
+            "method": "PATCH",
+            "path": "/crm/v3/objects/contacts/{contactId}"
+          },
+          "delete": {
+            "operationId": "deleteContact",
+            "method": "DELETE",
+            "path": "/crm/v3/objects/contacts/{contactId}"
+          }
+        },
+        "autoRbac": true
+      }
+    },
+    {
+      "key": "hubspot-deal",
+      "displayName": "HubSpot Deal",
+      "description": "HubSpot deals datasource with field mappings for CRM deal data",
+      "systemKey": "hubspot",
+      "entityType": "record-storage",
+      "resourceType": "deal",
+      "enabled": true,
+      "version": "1.0.0",
+      "metadataSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "dealname": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "amount": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "deal_currency_code": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "dealstage": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "pipeline": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "closedate": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "dealtype": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "createdate": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "hs_lastmodifieddate": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "associations": {
+            "type": "object",
+            "properties": {
+              "companies": {
+                "type": "object",
+                "properties": {
+                  "results": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "contacts": {
+                "type": "object",
+                "properties": {
+                  "results": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "id",
+          "properties"
+        ]
+      },
+      "fieldMappings": {
+        "dimensions": {
+          "stage": "metadata.stage",
+          "pipeline": "metadata.pipeline"
+        },
+        "attributes": {
+          "id": {
+            "expression": "{{id}}",
+            "type": "string",
+            "description": "Unique deal identifier",
+            "indexed": true
+          },
+          "dealName": {
+            "expression": "{{properties.dealname.value}} | trim",
+            "type": "string",
+            "description": "Deal name",
+            "indexed": false
+          },
+          "amount": {
+            "expression": "{{properties.amount.value}}",
+            "type": "string",
+            "description": "Deal amount",
+            "indexed": false
+          },
+          "currency": {
+            "expression": "{{properties.deal_currency_code.value}} | toUpper | trim",
+            "type": "string",
+            "description": "Currency code",
+            "indexed": false
+          },
+          "stage": {
+            "expression": "{{properties.dealstage.value}} | trim",
+            "type": "string",
+            "description": "Deal stage for ABAC filtering",
+            "indexed": false
+          },
+          "pipeline": {
+            "expression": "{{properties.pipeline.value}} | trim",
+            "type": "string",
+            "description": "Pipeline name for ABAC filtering",
+            "indexed": false
+          },
+          "closeDate": {
+            "expression": "{{properties.closedate.value}}",
+            "type": "string",
+            "description": "Expected close date",
+            "indexed": false
+          },
+          "dealType": {
+            "expression": "{{properties.dealtype.value}} | trim",
+            "type": "string",
+            "description": "Deal type",
+            "indexed": false
+          },
+          "associatedCompany": {
+            "expression": "record_ref:customer",
+            "type": "string",
+            "description": "Associated company reference (record reference)",
+            "indexed": false
+          },
+          "associatedContacts": {
+            "expression": "{{associations.contacts.results}}",
+            "type": "array",
+            "description": "Array of associated contact IDs",
+            "indexed": false
+          },
+          "createdAt": {
+            "expression": "{{properties.createdate.value}}",
+            "type": "string",
+            "description": "Creation timestamp",
+            "indexed": false
+          },
+          "updatedAt": {
+            "expression": "{{properties.hs_lastmodifieddate.value}}",
+            "type": "string",
+            "description": "Last modification timestamp",
+            "indexed": false
+          }
+        }
+      },
+      "exposed": {
+        "attributes": [
+          "id",
+          "dealName",
+          "amount",
+          "currency",
+          "stage",
+          "pipeline",
+          "closeDate",
+          "dealType",
+          "associatedCompany",
+          "associatedContacts",
+          "createdAt",
+          "updatedAt"
+        ],
+        "description": "Exposed fields for HubSpot deals"
+      },
+      "openapi": {
+        "enabled": true,
+        "documentKey": "hubspot-v3",
+        "baseUrl": "https://api.hubapi.com",
+        "operations": {
+          "list": {
+            "operationId": "getDeals",
+            "method": "GET",
+            "path": "/crm/v3/objects/deals"
+          },
+          "get": {
+            "operationId": "getDeal",
+            "method": "GET",
+            "path": "/crm/v3/objects/deals/{dealId}"
+          },
+          "create": {
+            "operationId": "createDeal",
+            "method": "POST",
+            "path": "/crm/v3/objects/deals"
+          },
+          "update": {
+            "operationId": "updateDeal",
+            "method": "PATCH",
+            "path": "/crm/v3/objects/deals/{dealId}"
+          },
+          "delete": {
+            "operationId": "deleteDeal",
+            "method": "DELETE",
+            "path": "/crm/v3/objects/deals/{dealId}"
+          }
+        },
+        "autoRbac": true
       }
     }
   ],
-  "openapi": {
-    "documentKey": "hubspot-v3",
-    "autoDiscoverEntities": false
-  },
-  "tags": [
-    "crm",
-    "sales",
-    "marketing",
-    "hubspot"
-  ]
+  "requiresDatabase": false,
+  "requiresRedis": false,
+  "requiresStorage": false,
+  "deploymentKey": "9b5209bed2ef1eccb04fa83be73a74cf3a9c84d5d2580a95028d34fdb8db78a8"
 }

@@ -47,13 +47,16 @@ describe('Infrastructure Status Module', () => {
         postgres: 5432,
         redis: 6379,
         pgadmin: 5050,
-        redisCommander: 8081
+        redisCommander: 8081,
+        traefikHttp: 80,
+        traefikHttps: 443
       });
       containerUtils.findContainer
         .mockResolvedValueOnce('aifabrix-postgres')
         .mockResolvedValueOnce('aifabrix-redis')
         .mockResolvedValueOnce('aifabrix-pgadmin')
-        .mockResolvedValueOnce('aifabrix-redis-commander');
+        .mockResolvedValueOnce('aifabrix-redis-commander')
+        .mockResolvedValueOnce('aifabrix-traefik');
       exec.mockImplementation((command, callback) => {
         callback(null, { stdout: 'running' });
       });
@@ -64,6 +67,7 @@ describe('Infrastructure Status Module', () => {
       expect(result).toHaveProperty('redis');
       expect(result).toHaveProperty('pgadmin');
       expect(result).toHaveProperty('redis-commander');
+      expect(result).toHaveProperty('traefik');
       expect(result.postgres.status).toBe('running');
       expect(result.postgres.port).toBe(5432);
       expect(result.postgres.url).toBe('localhost:5432');
@@ -75,7 +79,9 @@ describe('Infrastructure Status Module', () => {
         postgres: 5432,
         redis: 6379,
         pgadmin: 5050,
-        redisCommander: 8081
+        redisCommander: 8081,
+        traefikHttp: 80,
+        traefikHttps: 443
       });
       containerUtils.findContainer.mockResolvedValue(null);
 
@@ -92,7 +98,9 @@ describe('Infrastructure Status Module', () => {
         postgres: 5432,
         redis: 6379,
         pgadmin: 5050,
-        redisCommander: 8081
+        redisCommander: 8081,
+        traefikHttp: 80,
+        traefikHttps: 443
       });
       containerUtils.findContainer.mockResolvedValue('aifabrix-postgres');
       exec.mockImplementation((command, callback) => {
@@ -110,7 +118,9 @@ describe('Infrastructure Status Module', () => {
         postgres: 5432,
         redis: 6379,
         pgadmin: 5050,
-        redisCommander: 8081
+        redisCommander: 8081,
+        traefikHttp: 80,
+        traefikHttps: 443
       });
       containerUtils.findContainer.mockResolvedValue('aifabrix-postgres');
       exec.mockImplementation((command, callback) => {
@@ -128,7 +138,9 @@ describe('Infrastructure Status Module', () => {
         postgres: 5532,
         redis: 6479,
         pgadmin: 5150,
-        redisCommander: 8181
+        redisCommander: 8181,
+        traefikHttp: 180,
+        traefikHttps: 543
       });
       containerUtils.findContainer.mockResolvedValue(null);
 
@@ -138,6 +150,7 @@ describe('Infrastructure Status Module', () => {
       expect(result.redis.port).toBe(6479);
       expect(result.pgadmin.port).toBe(5150);
       expect(result['redis-commander'].port).toBe(8181);
+      expect(result.traefik.port).toBe('180/543');
     });
 
     it('should handle non-numeric developer ID', async() => {
@@ -146,7 +159,9 @@ describe('Infrastructure Status Module', () => {
         postgres: 5432,
         redis: 6379,
         pgadmin: 5050,
-        redisCommander: 8081
+        redisCommander: 8081,
+        traefikHttp: 80,
+        traefikHttps: 443
       });
       containerUtils.findContainer.mockResolvedValue(null);
 

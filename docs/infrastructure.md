@@ -22,46 +22,89 @@ When you run `aifabrix up`, you get **shared baseline services** that all your a
 ### pgAdmin (port 5050) - Optional
 - Web UI for database management
 - Create/edit databases, run SQL queries
-- **Access:** http://localhost:5050
-- **Login:** admin@aifabrix.ai / admin123
+- **Access:** <http://localhost:5050>
+- **Login:** <admin@aifabrix.dev> / admin123
 
 ### Redis Commander (port 8081) - Optional
 - Web UI for Redis management  
 - View keys, monitor performance
-- **Access:** http://localhost:8081
+- **Access:** <http://localhost:8081>
 - **Login:** admin / admin123
 
+### Traefik (ports 80/443) - Optional
+- Reverse proxy for local routing (matches Front Door routing config)
+- **Access:** <http://localhost:80>, <https://localhost:443>
+
 ```mermaid
- graph TB
-    subgraph Infrastructure["Infrastructure"]
-        InfraNote["Stateful · Always running"]
-        Postgres[(PostgreSQL)]
-        Redis[(Redis)]
-    end
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "subGraphTitleColor": "#64748B",
+    "subGraphTitleFontWeight": "500",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
 
-    subgraph OpsTools["Operations Tools"]
-        OpsNote["On-demand / Admin only"]
-        pgAdmin[pgAdmin]
-        RedisCommander[Redis Commander]
-    end
+flowchart TB
 
-    subgraph Applications["Applications"]
-        AppNote["Start / Stop · Scale"]
-        Keycloak[Keycloak<br/>Identity & Access]
-        MisoController[Miso Controller<br/>Deployment & Governance]
-        YourApp[Customer Application]
-        OtherApps[Other Applications]
-    end
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef note fill:#FFFFFF,color:#64748B,stroke:#E2E8F0,stroke-width:1.5px,stroke-dasharray:4 4;
 
-    Applications --> Infrastructure
-    OpsTools --> Infrastructure
+%% =======================
+%% Infrastructure
+%% =======================
+subgraph Infrastructure["Infrastructure"]
+    direction TB
+    InfraNote["Stateful · Always running"]:::note
+    Postgres[(PostgreSQL)]:::base
+    Redis[(Redis)]:::base
+    Traefik[Traefik]:::base
+end
 
-    style Infrastructure fill:#F9FAFB,stroke:#E5E7EB,stroke-width:2px
-    style Applications fill:#E5E7EB,stroke:#6B7280,stroke-width:2px
-    style OpsTools fill:#F9FAFB,stroke:#E5E7EB,stroke-width:2px
-    style InfraNote fill:#ffffff,stroke:#cccccc,stroke-dasharray: 3 3
-    style OpsNote fill:#ffffff,stroke:#cccccc,stroke-dasharray: 3 3
-    style AppNote fill:#ffffff,stroke:#cccccc,stroke-dasharray: 3 3
+%% =======================
+%% Operations Tools
+%% =======================
+subgraph OpsTools["Operations Tools"]
+    direction TB
+    OpsNote["On-demand / Admin only"]:::note
+    pgAdmin[pgAdmin]:::base
+    RedisCommander[Redis Commander]:::base
+end
+
+%% =======================
+%% Applications
+%% =======================
+subgraph Applications["Applications"]
+    direction TB
+    AppNote["Start / Stop · Scale"]:::note
+    Keycloak[Keycloak<br/>Identity & Access]:::base
+    MisoController[Miso Controller<br/>Deployment & Governance]:::base
+    YourApp[Customer Application]:::base
+    OtherApps[Other Applications]:::base
+end
+
+%% =======================
+%% Flow
+%% =======================
+Applications --> Infrastructure
+OpsTools --> Infrastructure
 ```
 
 ---
@@ -71,6 +114,11 @@ When you run `aifabrix up`, you get **shared baseline services** that all your a
 ### Start Infrastructure
 ```bash
 aifabrix up
+```
+
+Start with Traefik:
+```bash
+aifabrix up --traefik
 ```
 
 **First time?** Docker downloads images (2-3 minutes).
@@ -116,30 +164,66 @@ aifabrix down --volumes
 You might not need Keycloak or Miso-Controller for basic development. Install them when you need them.
 
 ```mermaid
-graph TB
-    subgraph Infrastructure["Infrastructure"]
-        InfraNote["Stateful · Always running"]
-        Postgres[(PostgreSQL)]
-        Redis[(Redis)]
-        pgAdmin[pgAdmin]
-        RedisCommander[Redis Commander]
-    end
-    
-    subgraph Applications["Applications"]
-        AppNote["Start / Stop · Scale"]
-        Keycloak[Keycloak<br/>Authentication]
-        MisoController[Miso Controller<br/>Azure Deployment]
-        YourApp[Your App]
-        OtherApps[Other Apps]
-    end
-    
-    Applications --> Infrastructure
-    
-    style Infrastructure fill:#F9FAFB,stroke:#E5E7EB,stroke-width:2px
-    style Applications fill:#E5E7EB,stroke:#6B7280,stroke-width:2px
-    style InfraNote fill:#FFFFFF,stroke:#CCCCCC,stroke-dasharray: 3 3
-    style AppNote fill:#FFFFFF,stroke:#CCCCCC,stroke-dasharray: 3 3
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "subGraphTitleColor": "#64748B",
+    "subGraphTitleFontWeight": "500",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
 
+flowchart TB
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef note fill:#FFFFFF,color:#64748B,stroke:#E2E8F0,stroke-width:1.5px,stroke-dasharray:4 4;
+
+%% =======================
+%% Infrastructure
+%% =======================
+subgraph Infrastructure["Infrastructure"]
+    direction TB
+    InfraNote["Stateful · Always running"]:::note
+    Postgres[(PostgreSQL)]:::base
+    Redis[(Redis)]:::base
+    Traefik[Traefik]:::base
+    pgAdmin[pgAdmin]:::base
+    RedisCommander[Redis Commander]:::base
+end
+
+%% =======================
+%% Applications
+%% =======================
+subgraph Applications["Applications"]
+    direction TB
+    AppNote["Start / Stop · Scale"]:::note
+    Keycloak[Keycloak<br/>Authentication]:::base
+    MisoController[Miso Controller<br/>Azure Deployment]:::base
+    YourApp[Your App]:::base
+    OtherApps[Other Apps]:::base
+end
+
+%% =======================
+%% Flow
+%% =======================
+Applications --> Infrastructure
 ```
 
 ---
@@ -164,7 +248,7 @@ aifabrix run keycloak
 ```
 
 ### 4. Access
-**URL:** http://localhost:8082
+**URL:** <http://localhost:8082>
 
 **Admin login:** admin / admin123
 
@@ -196,7 +280,7 @@ aifabrix run miso-controller
 ```
 
 ### 4. Access
-**URL:** http://localhost:3000
+**URL:** <http://localhost:3000>
 
 **What You Get**
 - Deploy to Azure Container Apps

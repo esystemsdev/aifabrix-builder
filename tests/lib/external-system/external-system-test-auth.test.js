@@ -21,15 +21,11 @@ jest.mock('../../../lib/datasource/deploy', () => ({
 // Mock controller-url to return consistent default URL
 jest.mock('../../../lib/utils/controller-url', () => ({
   getDefaultControllerUrl: jest.fn().mockResolvedValue('http://localhost:3000'),
-  resolveControllerUrl: jest.fn().mockImplementation(async(options, config) => {
-    if (options?.controller || options?.url) {
-      return (options.controller || options.url).replace(/\/$/, '');
-    }
-    if (config?.deployment?.controllerUrl) {
-      return config.deployment.controllerUrl.replace(/\/$/, '');
-    }
-    return 'http://localhost:3000';
-  })
+  resolveControllerUrl: jest.fn().mockResolvedValue('http://localhost:3000')
+}));
+
+jest.mock('../../../lib/core/config', () => ({
+  resolveEnvironment: jest.fn().mockResolvedValue('dev')
 }));
 
 const { setupIntegrationTestAuth } = require('../../../lib/external-system/test-auth');
@@ -62,8 +58,15 @@ describe('External System Test Authentication Module', () => {
       getDeploymentAuth.mockResolvedValue(mockAuthConfig);
       getDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
 
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      const { resolveEnvironment } = require('../../../lib/core/config');
+      resolveControllerUrl.mockResolvedValueOnce('https://controller.example.com');
+      resolveEnvironment.mockResolvedValueOnce('dev');
+
       const result = await setupIntegrationTestAuth(appName, options, config);
 
+      expect(resolveControllerUrl).toHaveBeenCalledWith();
+      expect(resolveEnvironment).toHaveBeenCalledWith();
       expect(getDeploymentAuth).toHaveBeenCalledWith(
         'https://controller.example.com',
         'dev',
@@ -100,6 +103,9 @@ describe('External System Test Authentication Module', () => {
       getDeploymentAuth.mockResolvedValue(mockAuthConfig);
       getDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
 
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      resolveControllerUrl.mockResolvedValueOnce('https://controller.example.com');
+
       await setupIntegrationTestAuth(appName, options, config);
 
       expect(getDeploymentAuth).toHaveBeenCalledWith(
@@ -109,17 +115,15 @@ describe('External System Test Authentication Module', () => {
       );
     });
 
-    it('should use controller from options when provided', async() => {
+    it('should use controller and environment from config', async() => {
       const appName = 'hubspot';
-      const options = {
-        environment: 'tst',
-        controller: 'https://custom-controller.example.com'
-      };
-      const config = {
-        deployment: {
-          controllerUrl: 'https://default-controller.example.com'
-        }
-      };
+      const options = {};
+      const config = {};
+
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      const { resolveEnvironment } = require('../../../lib/core/config');
+      resolveControllerUrl.mockResolvedValueOnce('https://custom-controller.example.com');
+      resolveEnvironment.mockResolvedValueOnce('tst');
 
       const mockAuthConfig = {
         token: 'test-token'
@@ -131,6 +135,8 @@ describe('External System Test Authentication Module', () => {
 
       await setupIntegrationTestAuth(appName, options, config);
 
+      expect(resolveControllerUrl).toHaveBeenCalledWith();
+      expect(resolveEnvironment).toHaveBeenCalledWith();
       expect(getDeploymentAuth).toHaveBeenCalledWith(
         'https://custom-controller.example.com',
         'tst',
@@ -144,16 +150,15 @@ describe('External System Test Authentication Module', () => {
       );
     });
 
-    it('should use controller from config when not in options', async() => {
+    it('should use controller and environment from config', async() => {
       const appName = 'hubspot';
-      const options = {
-        environment: 'pro'
-      };
-      const config = {
-        deployment: {
-          controllerUrl: 'https://config-controller.example.com'
-        }
-      };
+      const options = {};
+      const config = {};
+
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      const { resolveEnvironment } = require('../../../lib/core/config');
+      resolveControllerUrl.mockResolvedValueOnce('https://config-controller.example.com');
+      resolveEnvironment.mockResolvedValueOnce('pro');
 
       const mockAuthConfig = {
         token: 'test-token'
@@ -165,6 +170,8 @@ describe('External System Test Authentication Module', () => {
 
       await setupIntegrationTestAuth(appName, options, config);
 
+      expect(resolveControllerUrl).toHaveBeenCalledWith();
+      expect(resolveEnvironment).toHaveBeenCalledWith();
       expect(getDeploymentAuth).toHaveBeenCalledWith(
         'https://config-controller.example.com',
         'pro',
@@ -180,10 +187,13 @@ describe('External System Test Authentication Module', () => {
 
     it('should use default controller URL when not provided', async() => {
       const appName = 'hubspot';
-      const options = {
-        environment: 'dev'
-      };
+      const options = {};
       const config = {};
+
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      const { resolveEnvironment } = require('../../../lib/core/config');
+      resolveControllerUrl.mockResolvedValueOnce('http://localhost:3000');
+      resolveEnvironment.mockResolvedValueOnce('dev');
 
       const mockAuthConfig = {
         token: 'test-token'
@@ -194,6 +204,9 @@ describe('External System Test Authentication Module', () => {
       getDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
 
       await setupIntegrationTestAuth(appName, options, config);
+
+      expect(resolveControllerUrl).toHaveBeenCalledWith();
+      expect(resolveEnvironment).toHaveBeenCalledWith();
 
       expect(getDeploymentAuth).toHaveBeenCalledWith(
         'http://localhost:3000',
@@ -210,15 +223,13 @@ describe('External System Test Authentication Module', () => {
 
     it('should throw error when authentication is missing', async() => {
       const appName = 'hubspot';
-      const options = {
-        environment: 'dev',
-        controller: 'https://controller.example.com'
-      };
-      const config = {
-        deployment: {
-          controllerUrl: 'https://controller.example.com'
-        }
-      };
+      const options = {};
+      const config = {};
+
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      const { resolveEnvironment } = require('../../../lib/core/config');
+      resolveControllerUrl.mockResolvedValueOnce('https://controller.example.com');
+      resolveEnvironment.mockResolvedValueOnce('dev');
 
       const mockAuthConfig = {};
 
@@ -231,15 +242,13 @@ describe('External System Test Authentication Module', () => {
 
     it('should accept authConfig with clientId instead of token', async() => {
       const appName = 'hubspot';
-      const options = {
-        environment: 'dev',
-        controller: 'https://controller.example.com'
-      };
-      const config = {
-        deployment: {
-          controllerUrl: 'https://controller.example.com'
-        }
-      };
+      const options = {};
+      const config = {};
+
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      const { resolveEnvironment } = require('../../../lib/core/config');
+      resolveControllerUrl.mockResolvedValueOnce('https://controller.example.com');
+      resolveEnvironment.mockResolvedValueOnce('dev');
 
       const mockAuthConfig = {
         clientId: 'test-client-id',
@@ -260,15 +269,13 @@ describe('External System Test Authentication Module', () => {
 
     it('should pass authConfig to getDataplaneUrl', async() => {
       const appName = 'hubspot';
-      const options = {
-        environment: 'dev',
-        controller: 'https://controller.example.com'
-      };
-      const config = {
-        deployment: {
-          controllerUrl: 'https://controller.example.com'
-        }
-      };
+      const options = {};
+      const config = {};
+
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      const { resolveEnvironment } = require('../../../lib/core/config');
+      resolveControllerUrl.mockResolvedValueOnce('https://controller.example.com');
+      resolveEnvironment.mockResolvedValueOnce('dev');
 
       const mockAuthConfig = {
         token: 'test-token',
@@ -293,16 +300,14 @@ describe('External System Test Authentication Module', () => {
       const appName = 'hubspot';
       const environments = ['dev', 'tst', 'pro'];
 
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      const { resolveEnvironment } = require('../../../lib/core/config');
+      resolveControllerUrl.mockResolvedValue('https://controller.example.com');
+
       for (const environment of environments) {
-        const options = {
-          environment,
-          controller: 'https://controller.example.com'
-        };
-        const config = {
-          deployment: {
-            controllerUrl: 'https://controller.example.com'
-          }
-        };
+        const options = {};
+        const config = {};
+        resolveEnvironment.mockResolvedValueOnce(environment);
 
         const mockAuthConfig = {
           token: 'test-token'
@@ -324,15 +329,13 @@ describe('External System Test Authentication Module', () => {
 
     it('should handle getDeploymentAuth errors', async() => {
       const appName = 'hubspot';
-      const options = {
-        environment: 'dev',
-        controller: 'https://controller.example.com'
-      };
-      const config = {
-        deployment: {
-          controllerUrl: 'https://controller.example.com'
-        }
-      };
+      const options = {};
+      const config = {};
+
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      const { resolveEnvironment } = require('../../../lib/core/config');
+      resolveControllerUrl.mockResolvedValueOnce('https://controller.example.com');
+      resolveEnvironment.mockResolvedValueOnce('dev');
 
       const error = new Error('Authentication failed');
       getDeploymentAuth.mockRejectedValue(error);
@@ -344,15 +347,13 @@ describe('External System Test Authentication Module', () => {
 
     it('should handle getDataplaneUrl errors', async() => {
       const appName = 'hubspot';
-      const options = {
-        environment: 'dev',
-        controller: 'https://controller.example.com'
-      };
-      const config = {
-        deployment: {
-          controllerUrl: 'https://controller.example.com'
-        }
-      };
+      const options = {};
+      const config = {};
+
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      const { resolveEnvironment } = require('../../../lib/core/config');
+      resolveControllerUrl.mockResolvedValueOnce('https://controller.example.com');
+      resolveEnvironment.mockResolvedValueOnce('dev');
 
       const mockAuthConfig = {
         token: 'test-token'

@@ -69,15 +69,43 @@ aifabrix run miso-controller
 5. **Deploy** - Push to ACR and deploy via controller
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
 flowchart TD
-    Install[Install CLI] --> Up[Start Infrastructure]
-    Up --> Create[Create App]
-    Create --> Build[Build Image]
-    Build --> Run[Run Locally]
-    Run --> Deploy[Deploy to Azure]
-    
-    style Install fill:#0062FF,color:#FFFFFF
-    style Deploy fill:#10B981,color:#FFFFFF
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+
+%% =======================
+%% Flow
+%% =======================
+Install[Install CLI]:::primary --> Up[Start Infrastructure]:::base
+Up --> Create[Create App]:::base
+Create --> Build[Build Image]:::base
+Build --> Run[Run Locally]:::base
+Run --> Deploy[Deploy to Azure]:::primary
 ```
 
 ## Requirements

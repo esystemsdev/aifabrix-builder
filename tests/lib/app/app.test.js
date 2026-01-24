@@ -505,7 +505,7 @@ app:
   describe('deployApp', () => {
     it('should deploy application via Miso Controller', async() => {
       const appName = 'test-app';
-      const options = { controller: 'https://controller.aifabrix.ai', environment: 'production' };
+      const options = { controller: 'https://controller.aifabrix.dev', environment: 'production' };
 
       // Mock the deploy function
       jest.spyOn(app, 'deployApp').mockResolvedValue();
@@ -515,7 +515,7 @@ app:
 
     it('should handle deployment failures', async() => {
       const appName = 'test-app';
-      const options = { controller: 'https://controller.aifabrix.ai' };
+      const options = { controller: 'https://controller.aifabrix.dev' };
 
       // Mock the deploy function to throw error
       jest.spyOn(app, 'deployApp').mockRejectedValue(new Error('Deployment failed'));
@@ -526,7 +526,7 @@ app:
 
     it('should monitor deployment status', async() => {
       const appName = 'test-app';
-      const options = { controller: 'https://controller.aifabrix.ai' };
+      const options = { controller: 'https://controller.aifabrix.dev' };
 
       // Mock the deploy function
       jest.spyOn(app, 'deployApp').mockResolvedValue();

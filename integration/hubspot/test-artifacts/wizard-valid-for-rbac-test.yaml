@@ -1,0 +1,5 @@
+appName: hubspot-test-negative-rbac-missing-role
+mode: create-system
+source:
+  type: known-platform
+  platform: hubspot

@@ -249,12 +249,27 @@ function runCommand(command, args) {
  * @returns {Object} Parsed results
  */
 function parseTestResults(output) {
-  // Find the last occurrence of test summary (before any errors)
+  // Find the last "Ran all test suites" line - everything after this is cleanup/crash output
+  const ranAllIndex = output.lastIndexOf('Ran all test suites');
+  // Also find error indicators
   const errorIndex = Math.max(
     output.indexOf('TypeError:'),
-    output.indexOf('Error:')
+    output.indexOf('Error:'),
+    output.indexOf('Aborted (core dumped)')
   );
-  const searchOutput = errorIndex > 0 ? output.substring(0, errorIndex) : output;
+
+  // Use the earlier of the two as our cutoff point
+  // If "Ran all test suites" appears, use that; otherwise use error index
+  let cutoffIndex = ranAllIndex > 0 ? ranAllIndex : (errorIndex > 0 ? errorIndex : output.length);
+
+  // But if error appears before "Ran all test suites", it's a real error
+  if (errorIndex > 0 && errorIndex < ranAllIndex) {
+    cutoffIndex = errorIndex;
+  }
+
+  const searchOutput = cutoffIndex > 0 && cutoffIndex < output.length
+    ? output.substring(0, cutoffIndex)
+    : output;
 
   // Try multiple patterns to catch test results
   const suiteMatch = searchOutput.match(/Test Suites: (?:(\d+) failed, )?(\d+) passed, (\d+) total/) ||
@@ -344,8 +359,13 @@ function handleJestErrors(output, parsedResults, hasExitError, hasCovError) {
  */
 function extractFailedTests(output) {
   const failedTests = [];
-  // Look for "FAIL" lines followed by test file paths
-  const failMatches = output.match(/FAIL\s+(tests\/[^\s\n]+)/g);
+
+  // Find the last "Ran all test suites" line - everything after this is cleanup/crash output
+  const ranAllIndex = output.lastIndexOf('Ran all test suites');
+  const searchOutput = ranAllIndex > 0 ? output.substring(0, ranAllIndex) : output;
+
+  // Look for "FAIL" lines followed by test file paths (only before "Ran all test suites")
+  const failMatches = searchOutput.match(/FAIL\s+(tests\/[^\s\n]+)/g);
   if (failMatches) {
     failMatches.forEach(match => {
       const testPath = match.replace(/^FAIL\s+/, '');
@@ -402,18 +422,27 @@ function displayFailure(suiteMatch, hasJestError = false, jestOutput = '', parse
   }
 
   // Extract and display failed test names
+  // Only show failures if they occurred BEFORE "Ran all test suites" (real failures)
+  // Failures after that are Jest crash artifacts
   if (jestOutput) {
-    const failedTests = extractFailedTests(jestOutput);
-    if (failedTests.length > 0) {
-      // eslint-disable-next-line no-console
-      console.error('\nFailed test suites:');
-      failedTests.forEach(test => {
+    const ranAllIndex = jestOutput.lastIndexOf('Ran all test suites');
+    const hasRealFailures = ranAllIndex > 0
+      ? jestOutput.substring(0, ranAllIndex).includes('FAIL')
+      : jestOutput.includes('FAIL');
+
+    if (hasRealFailures) {
+      const failedTests = extractFailedTests(jestOutput);
+      if (failedTests.length > 0) {
         // eslint-disable-next-line no-console
-        console.error(`  ✗ ${test}`);
-      });
-    } else if (failed > 0) {
-      // eslint-disable-next-line no-console
-      console.error('\n⚠️  Warning: Failed tests detected but could not extract test names from output.');
+        console.error('\nFailed test suites:');
+        failedTests.forEach(test => {
+          // eslint-disable-next-line no-console
+          console.error(`  ✗ ${test}`);
+        });
+      } else if (failed > 0) {
+        // eslint-disable-next-line no-console
+        console.error('\n⚠️  Warning: Failed tests detected but could not extract test names from output.');
+      }
     }
   }
 

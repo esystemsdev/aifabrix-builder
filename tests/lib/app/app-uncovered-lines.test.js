@@ -30,6 +30,11 @@ jest.mock('../../../lib/generator/github', () => ({
   generateGithubWorkflows: jest.fn()
 }));
 
+jest.mock('../../../lib/app/readme', () => ({
+  generateReadmeMdFile: jest.fn().mockResolvedValue(),
+  generateReadmeMd: jest.fn().mockReturnValue('# Test README\n')
+}));
+
 const app = require('../../../lib/app');
 const inquirer = require('inquirer');
 const envReader = require('../../../lib/core/env-reader');

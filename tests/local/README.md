@@ -40,6 +40,8 @@ npm test -- tests/local/lib/template-validator.test.js
 - `app-coverage-extra.test.js` - Extra coverage tests
 - `app-run-branch-coverage.test.js` - Branch coverage tests
 - `utils/build-copy.test.js` - Build copy utility tests
+- `lib/external-system/download-helpers.test.js` - External system download helpers tests
+- `lib/validation/external-manifest-validator.test.js` - External manifest validator tests with complex mocking
 
 ## CI Exclusion
 

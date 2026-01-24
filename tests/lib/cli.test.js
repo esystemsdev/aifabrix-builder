@@ -1315,10 +1315,10 @@ describe('CLI Commands', () => {
 
         generator.generateDeployJsonWithValidation.mockResolvedValue(mockResult);
 
-        // Simulate the command handler action from cli.js line 239-258
-        const action = async(appName) => {
+        // Simulate the command handler action from cli.js line 571-592
+        const action = async(appName, options) => {
           try {
-            const result = await generator.generateDeployJsonWithValidation(appName);
+            const result = await generator.generateDeployJsonWithValidation(appName, options);
             if (result.success) {
               logger.log(`✓ Generated deployment JSON: ${result.path}`);
 
@@ -1337,8 +1337,8 @@ describe('CLI Commands', () => {
           }
         };
 
-        await action(appName);
-        expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
+        await action(appName, {});
+        expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName, {});
         expect(logger.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
         expect(process.exit).not.toHaveBeenCalled();
       });
@@ -2160,7 +2160,7 @@ describe('CLI Commands', () => {
 
         await handler(appName);
 
-        expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
+        expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName, undefined);
         expect(logger.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
         expect(logger.log).toHaveBeenCalledWith('\n⚠️  Warnings:');
         expect(logger.log).toHaveBeenCalledWith('   • Warning 1');
@@ -2188,7 +2188,7 @@ describe('CLI Commands', () => {
 
         await handler(appName);
 
-        expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
+        expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName, undefined);
         expect(logger.log).toHaveBeenCalledWith('❌ Validation failed:');
         expect(logger.log).toHaveBeenCalledWith('   • Error 1');
         expect(logger.log).toHaveBeenCalledWith('   • Error 2');
@@ -2234,7 +2234,7 @@ describe('CLI Commands', () => {
 
         await handler(appName);
 
-        expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
+        expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName, undefined);
         expect(logger.log).toHaveBeenCalledWith('❌ Validation failed:');
         expect(process.exit).toHaveBeenCalledWith(1);
       });
@@ -2258,9 +2258,9 @@ describe('CLI Commands', () => {
         const handler = commandActions['json <app>'];
         expect(handler).toBeDefined();
 
-        await handler(appName);
+        await handler(appName, {});
 
-        expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
+        expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName, {});
         expect(logger.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
         expect(logger.log).not.toHaveBeenCalledWith('\n⚠️  Warnings:');
       });
@@ -2513,8 +2513,13 @@ describe('CLI Commands', () => {
     });
 
     describe('up command with developer option', () => {
+      beforeEach(() => {
+        config.getConfig.mockResolvedValue({});
+      });
+
       it('should execute up command with developer option via setupCommands', async() => {
         setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
 
         const options = { developer: '1' };
         config.setDeveloperId.mockResolvedValue();
@@ -2529,7 +2534,7 @@ describe('CLI Commands', () => {
         expect(config.setDeveloperId).toHaveBeenCalledWith(1);
         expect(process.env.AIFABRIX_DEVELOPERID).toBe('1');
         expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Developer ID set to 1'));
-        expect(infra.startInfra).toHaveBeenCalledWith(1);
+        expect(infra.startInfra).toHaveBeenCalledWith(1, { traefik: false });
       });
 
       it('should handle up command with invalid developer ID via setupCommands', async() => {
@@ -2566,6 +2571,7 @@ describe('CLI Commands', () => {
 
       it('should execute up command without developer option via setupCommands', async() => {
         setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
 
         const options = {};
         infra.startInfra.mockResolvedValue();
@@ -2576,7 +2582,47 @@ describe('CLI Commands', () => {
         await handler(options);
 
         expect(config.setDeveloperId).not.toHaveBeenCalled();
-        expect(infra.startInfra).toHaveBeenCalledWith(null);
+        expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: false });
+      });
+
+      it('should execute up with --traefik, persist to config, and start with traefik', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
+        config.saveConfig.mockResolvedValue();
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up'];
+        await handler({ traefik: true });
+
+        expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ traefik: true }));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Traefik enabled and saved to config'));
+        expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: true });
+      });
+
+      it('should execute up with --no-traefik, persist to config, and start without traefik', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({ traefik: true });
+        config.saveConfig.mockResolvedValue();
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up'];
+        await handler({ traefik: false }); // --no-traefik sets options.traefik to false
+
+        expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ traefik: false }));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Traefik disabled and saved to config'));
+        expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: false });
+      });
+
+      it('should execute up reading traefik from config when flags omitted', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({ traefik: true });
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up'];
+        await handler({});
+
+        expect(config.saveConfig).not.toHaveBeenCalled();
+        expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: true });
       });
 
       it('should handle up command error via setupCommands', async() => {

@@ -61,28 +61,27 @@ The default controller URL is automatically calculated based on developer ID usi
 
 ### Controller URL Resolution Priority
 
-All commands that accept `--controller` option resolve the controller URL using the following priority:
+For deploy, wizard, datasource, and other non-auth commands, the controller URL is resolved as (no `--controller` flag):
 
-1. **Explicit option** (`--controller` flag) - Highest priority
-2. **Config file** (`config.deployment?.controllerUrl` from variables.yaml)
-3. **Developer ID-based default** - `http://localhost:${3000 + (developerId * 100)}`
+1. **config.controller** (`~/.aifabrix/config.yaml`) – set by `aifabrix login` or `aifabrix auth config --set-controller`
+2. **Device tokens** in config
+3. **Developer ID–based default** – `http://localhost:${3000 + (developerId * 100)}`
+
+**Login**, **auth config**, and **logout** accept `--controller` to target a specific URL. **auth status** uses controller and environment from config only.
 
 ### Usage in Commands
 
-When you run commands without specifying `--controller`, the CLI automatically uses the developer ID-based default:
-
 ```bash
-# Developer ID 0: uses http://localhost:3000
+# Login saves controller and environment to config (developer ID gives the default when omitted)
 aifabrix login
+# Developer ID 0: default http://localhost:3000
+# Developer ID 1: default http://localhost:3100
 
-# Developer ID 1: uses http://localhost:3100
-aifabrix login
+# Or set controller explicitly (saved to config)
+aifabrix login --controller https://controller.aifabrix.dev
 
-# Developer ID 2: uses http://localhost:3200
-aifabrix login
-
-# Explicit controller URL overrides developer ID-based default
-aifabrix login --controller https://controller.aifabrix.ai
+# Deploy, wizard, etc. use controller and environment from config
+aifabrix deploy myapp
 ```
 
 ### Checking Controller URL
@@ -154,6 +153,27 @@ Applications use:
 - **Host ports**: Developer-specific (e.g., 3100 for dev 1)
 - **Container ports**: Unchanged from `variables.yaml` (e.g., 3000)
 - **Network**: Developer-specific network
+
+### Developer-Specific Domains
+
+When using `frontDoorRouting` with Traefik, the `${DEV_USERNAME}` variable automatically resolves to developer-specific hostnames:
+
+- Developer ID 0: `dev.aifabrix.dev`
+- Developer ID 1: `dev01.aifabrix.dev`
+- Developer ID 2: `dev02.aifabrix.dev`
+
+Example configuration:
+
+```yaml
+frontDoorRouting:
+  enabled: true
+  host: ${DEV_USERNAME}.aifabrix.dev
+  pattern: /api/*
+  tls: true
+  certStore: wildcard  # Optional: for wildcard certificates
+```
+
+This ensures each developer gets their own domain for testing, avoiding conflicts when multiple developers run apps locally. When using wildcard certificates, specify the `certStore` name that matches your Traefik certificate store configuration.
 
 ### Port Mapping
 

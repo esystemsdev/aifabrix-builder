@@ -18,11 +18,11 @@ npm install -g @aifabrix/builder
 # Check your environment
 aifabrix doctor
 
-# Login to controller (offline tokens are default)
+# Login to controller (offline tokens are default; sets controller and environment in config)
 aifabrix login --method device --environment dev --controller http://localhost:3000
 
-# Register your application (gets you credentials automatically)
-aifabrix app register {{appName}} --environment dev
+# Register your application (gets you credentials; uses controller and environment from config)
+aifabrix app register {{appName}}
 ```
 
 ### 3. Build & Run Locally
@@ -38,7 +38,7 @@ aifabrix resolve {{appName}}
 aifabrix run {{appName}}
 ```
 
-**Access your app:** http://localhost:{{port}}
+**Access your app:** http://localhost:{{localPort}}
 
 **View logs:**
 ```bash
@@ -60,8 +60,8 @@ aifabrix build {{appName}} --tag v1.0.0
 # Push to registry
 aifabrix push {{appName}} --registry {{registry}} --tag "v1.0.0,latest"
 
-# Deploy to miso-controller
-aifabrix deploy {{appName}} --controller https://controller.aifabrix.ai --environment dev
+# Deploy (controller and environment from config; set via aifabrix login or aifabrix auth config)
+aifabrix deploy {{appName}}
 ```
 
 ---
@@ -74,7 +74,7 @@ After registering your app, you automatically get credentials in your secret fil
 
 **Rotate credentials if needed:**
 ```bash
-aifabrix app rotate-secret {{appName}} --environment dev
+aifabrix app rotate-secret {{appName}}
 ```
 
 ---
@@ -95,12 +95,12 @@ aifabrix resolve {{appName}}                      # Generate .env file
 aifabrix json {{appName}}                         # Preview deployment JSON
 aifabrix genkey {{appName}}                       # Generate deployment key
 aifabrix push {{appName}} --registry {{registry}} # Push to ACR
-aifabrix deploy {{appName}} --controller <url>    # Deploy to Azure
+aifabrix deploy {{appName}}                       # Deploy (controller/env from config)
 
 # Management
-aifabrix app register {{appName}} --environment dev
-aifabrix app list --environment dev
-aifabrix app rotate-secret {{appName}} --environment dev
+aifabrix app register {{appName}}
+aifabrix app list
+aifabrix app rotate-secret {{appName}}
 
 # Utilities
 aifabrix doctor                                   # Check environment
@@ -119,7 +119,7 @@ aifabrix build {{appName}} --language typescript  # Override language detection
 ### Run Options
 
 ```bash
-aifabrix run {{appName}} --port {{port}}          # Custom port
+aifabrix run {{appName}} --port {{localPort}}   # Override local port
 aifabrix run {{appName}} --debug                  # Debug output
 ```
 
@@ -133,8 +133,8 @@ aifabrix push {{appName}} --registry {{registry}} --tag "v1.0.0,latest,stable"
 ### Deploy Options
 
 ```bash
-aifabrix deploy {{appName}} --controller <url> --environment dev
-aifabrix deploy {{appName}} --controller <url> --environment dev --no-poll
+aifabrix deploy {{appName}}                       # Uses controller and environment from config
+aifabrix deploy {{appName}} --no-poll             # Deploy without polling for status
 ```
 
 ### Login Methods
@@ -159,13 +159,15 @@ aifabrix-home: "/custom/path"
 aifabrix-secrets: "/path/to/secrets.yaml"
 ```
 
+Controller URL and environment (for `deploy`, `app register`, etc.) are set via `aifabrix login` or `aifabrix auth config --set-controller <url> --set-environment <env>`.
+
 ---
 
 ## Troubleshooting
 
 - **"Docker not running"** → Start Docker Desktop
 - **"Not logged in"** → Run `aifabrix login` first
-- **"Port already in use"** → Use `--port` flag or change `build.localPort` in `variables.yaml` (default: {{port}})
+- **"Port already in use"** → Use `aifabrix run {{appName}} --port <port>` or set `build.localPort` in `variables.yaml` (default: {{localPort}})
 - **"Authentication failed"** → Run `aifabrix login` again
 - **"Build fails"** → Check Docker is running and `aifabrix-secrets` in `config.yaml` is configured correctly
 - **"Can't connect"** → Verify infrastructure is running{{#if hasDatabase}} and PostgreSQL is accessible{{/if}}
@@ -203,4 +205,4 @@ aifabrix genkey {{appName}}
 
 ---
 
-**Application**: {{appName}} | **Port**: {{port}} | **Registry**: {{registry}} | **Image**: {{imageName}}:latest
+**Application**: {{appName}} | **Port**: {{localPort}} | **Registry**: {{registry}} | **Image**: {{imageName}}:latest

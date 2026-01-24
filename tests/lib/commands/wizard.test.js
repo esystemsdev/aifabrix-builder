@@ -11,6 +11,8 @@ jest.mock('../../../lib/utils/logger');
 jest.mock('../../../lib/core/config');
 jest.mock('../../../lib/utils/token-manager');
 jest.mock('../../../lib/datasource/deploy');
+jest.mock('../../../lib/commands/wizard-dataplane');
+jest.mock('../../../lib/utils/controller-url');
 jest.mock('../../../lib/api/wizard.api');
 jest.mock('../../../lib/generator/wizard-prompts');
 jest.mock('../../../lib/generator/wizard');
@@ -34,7 +36,6 @@ jest.mock('chalk', () => {
 });
 
 const fs = require('fs').promises;
-const path = require('path');
 
 // Mock fs.promises
 jest.mock('fs', () => ({
@@ -49,6 +50,8 @@ const logger = require('../../../lib/utils/logger');
 const config = require('../../../lib/core/config');
 const tokenManager = require('../../../lib/utils/token-manager');
 const datasourceDeploy = require('../../../lib/datasource/deploy');
+const wizardDataplane = require('../../../lib/commands/wizard-dataplane');
+const controllerUrl = require('../../../lib/utils/controller-url');
 const wizardApi = require('../../../lib/api/wizard.api');
 const wizardPrompts = require('../../../lib/generator/wizard-prompts');
 const wizardGenerator = require('../../../lib/generator/wizard');
@@ -56,9 +59,7 @@ const inquirer = require('inquirer');
 
 describe('Wizard Command Handler', () => {
   const mockOptions = {
-    app: 'test-app',
-    controller: 'https://controller.example.com',
-    environment: 'dev'
+    app: 'test-app'
   };
 
   const mockAuthConfig = {
@@ -88,12 +89,13 @@ describe('Wizard Command Handler', () => {
     jest.clearAllMocks();
 
     // Default mocks
-    config.getConfig.mockResolvedValue({
-      deployment: { controllerUrl: 'https://controller.example.com' }
-    });
-    // Wizard uses getDeviceOnlyAuth (device-only authentication)
+    config.getConfig.mockResolvedValue({});
+    config.resolveEnvironment = jest.fn().mockResolvedValue('dev');
+    controllerUrl.resolveControllerUrl.mockResolvedValue('https://controller.example.com');
+    // Wizard uses device-only auth for new external systems
     tokenManager.getDeviceOnlyAuth.mockResolvedValue(mockAuthConfig);
-    datasourceDeploy.getDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
+    const dataplaneResolver = require('../../../lib/utils/dataplane-resolver');
+    jest.spyOn(dataplaneResolver, 'resolveDataplaneUrl').mockResolvedValue(mockDataplaneUrl);
     fs.access.mockRejectedValue({ code: 'ENOENT' }); // Directory doesn't exist
     fs.mkdir.mockResolvedValue(undefined);
 
@@ -126,10 +128,19 @@ describe('Wizard Command Handler', () => {
       success: true,
       data: { valid: true, errors: [], warnings: [] }
     });
+    wizardApi.testMcpConnection.mockResolvedValue({
+      success: true,
+      data: { connected: true }
+    });
+    wizardApi.credentialSelection.mockResolvedValue({
+      success: true,
+      data: { credentialIdOrKey: null }
+    });
 
     // Wizard prompts mocks
     wizardPrompts.promptForAppName.mockResolvedValue('test-app');
     wizardPrompts.promptForMode.mockResolvedValue('create-system');
+    wizardPrompts.promptForSystemIdOrKey.mockResolvedValue('system-123');
     wizardPrompts.promptForSourceType.mockResolvedValue('openapi-file');
     wizardPrompts.promptForOpenApiFile.mockResolvedValue('/path/to/openapi.yaml');
     wizardPrompts.promptForOpenApiUrl.mockResolvedValue('https://api.example.com/openapi.yaml');
@@ -220,7 +231,8 @@ describe('Wizard Command Handler', () => {
       await handleWizard(mockOptions);
 
       expect(wizardPrompts.promptForOpenApiUrl).toHaveBeenCalled();
-      expect(wizardApi.parseOpenApi).not.toHaveBeenCalled();
+      // parseOpenApi is called for URLs too (with isUrl=true)
+      expect(wizardApi.parseOpenApi).toHaveBeenCalled();
     });
 
     it('should handle mcp-server source type', async() => {
@@ -265,7 +277,22 @@ describe('Wizard Command Handler', () => {
         mockDataplaneUrl,
         mockAuthConfig,
         mockSystemConfig,
-        mockDatasourceConfigs
+        mockDatasourceConfigs[0]
+      );
+    });
+
+    it('should prompt for systemIdOrKey in add-datasource mode', async() => {
+      wizardPrompts.promptForMode.mockResolvedValue('add-datasource');
+      wizardPrompts.promptForSystemIdOrKey.mockResolvedValue('system-abc');
+
+      await handleWizard(mockOptions);
+
+      expect(wizardPrompts.promptForSystemIdOrKey).toHaveBeenCalled();
+      expect(wizardApi.createWizardSession).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        'add-datasource',
+        'system-abc'
       );
     });
 
@@ -285,7 +312,7 @@ describe('Wizard Command Handler', () => {
         mockDataplaneUrl,
         mockAuthConfig,
         editedSystemConfig,
-        editedDatasourceConfigs
+        editedDatasourceConfigs[0]
       );
     });
 
@@ -376,16 +403,20 @@ describe('Wizard Command Handler', () => {
       await expect(handleWizard(mockOptions)).rejects.toThrow('System configuration not found');
     });
 
-    it('should handle authentication errors when device token not available', async() => {
+    it('should handle authentication errors when auth not available', async() => {
       tokenManager.getDeviceOnlyAuth.mockRejectedValue(
         new Error('Device token authentication required. Run "aifabrix login" to authenticate.')
       );
+      tokenManager.getDeploymentAuth.mockRejectedValue(
+        new Error('Deployment auth also failed')
+      );
 
-      await expect(handleWizard(mockOptions)).rejects.toThrow('Device token authentication required');
+      await expect(handleWizard(mockOptions)).rejects.toThrow('Authentication failed: Device token authentication required');
     });
 
     it('should handle dataplane URL retrieval errors', async() => {
-      datasourceDeploy.getDataplaneUrl.mockRejectedValue(new Error('Dataplane URL not found'));
+      const dataplaneResolver = require('../../../lib/utils/dataplane-resolver');
+      jest.spyOn(dataplaneResolver, 'resolveDataplaneUrl').mockRejectedValue(new Error('Dataplane URL not found'));
 
       await expect(handleWizard(mockOptions)).rejects.toThrow('Dataplane URL not found');
     });
@@ -398,37 +429,28 @@ describe('Wizard Command Handler', () => {
   });
 
   describe('setupDataplaneAndAuth', () => {
-    it('should use provided dataplane URL if available', async() => {
-      const optionsWithDataplane = {
-        ...mockOptions,
-        dataplane: 'https://custom-dataplane.example.com'
-      };
-
-      await handleWizard(optionsWithDataplane);
-
-      expect(datasourceDeploy.getDataplaneUrl).not.toHaveBeenCalled();
-      expect(tokenManager.getDeviceOnlyAuth).toHaveBeenCalled();
-    });
 
     it('should get dataplane URL from controller if not provided', async() => {
       await handleWizard(mockOptions);
 
-      expect(datasourceDeploy.getDataplaneUrl).toHaveBeenCalledWith(
-        mockOptions.controller,
-        'dataplane',
-        mockOptions.environment,
+      const dataplaneResolver = require('../../../lib/utils/dataplane-resolver');
+      expect(dataplaneResolver.resolveDataplaneUrl).toHaveBeenCalledWith(
+        'https://controller.example.com',
+        'dev',
         expect.objectContaining({ type: 'bearer', token: mockAuthConfig.token })
       );
     });
 
-    it('should require device token authentication (not client credentials)', async() => {
-      // Wizard only accepts device token auth, not client credentials
+    it('should surface authentication failures from device auth', async() => {
       tokenManager.getDeviceOnlyAuth.mockRejectedValue(
         new Error('Device token authentication required. Run "aifabrix login" to authenticate.')
       );
+      tokenManager.getDeploymentAuth.mockRejectedValue(
+        new Error('Deployment auth also failed')
+      );
 
       await expect(handleWizard(mockOptions)).rejects.toThrow(
-        'Device token authentication required. Run "aifabrix login" to authenticate.'
+        'Authentication failed: Device token authentication required. Run "aifabrix login" to authenticate.'
       );
     });
   });

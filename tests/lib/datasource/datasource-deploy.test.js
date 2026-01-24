@@ -40,6 +40,19 @@ jest.mock('../../../lib/utils/logger', () => ({
 jest.mock('../../../lib/datasource/validate', () => ({
   validateDatasourceFile: jest.fn()
 }));
+jest.mock('../../../lib/utils/controller-url', () => ({
+  resolveControllerUrl: jest.fn().mockResolvedValue('http://localhost:3010')
+}));
+jest.mock('../../../lib/core/config', () => ({
+  resolveEnvironment: jest.fn().mockResolvedValue('dev'),
+  getDataplaneUrl: jest.fn().mockResolvedValue(null)
+}));
+jest.mock('../../../lib/utils/dataplane-resolver', () => ({
+  resolveDataplaneUrl: jest.fn().mockResolvedValue('http://dataplane:8080')
+}));
+jest.mock('../../../lib/utils/command-header', () => ({
+  displayCommandHeader: jest.fn()
+}));
 
 const fsSync = require('fs');
 const { getDeploymentAuth } = require('../../../lib/utils/token-manager');
@@ -148,7 +161,29 @@ describe('Datasource Deploy Module', () => {
 
       const { getDataplaneUrl } = require('../../../lib/datasource/deploy');
       await expect(getDataplaneUrl('http://localhost:3010', 'myapp', 'dev', authConfig))
-        .rejects.toThrow('Dataplane URL not found');
+        .rejects.toThrow('Dataplane URL not found in application configuration');
+    });
+
+    it('should require dataplane flag for external systems', async() => {
+      const authConfig = {
+        type: 'bearer',
+        token: 'test-token'
+      };
+
+      const mockResponse = {
+        success: true,
+        data: {
+          configuration: {
+            type: 'external'
+          }
+        }
+      };
+
+      getEnvironmentApplication.mockResolvedValue(mockResponse);
+
+      const { getDataplaneUrl } = require('../../../lib/datasource/deploy');
+      await expect(getDataplaneUrl('http://localhost:3010', 'myapp', 'dev', authConfig))
+        .rejects.toThrow('Provide --dataplane <url>');
     });
 
     it('should throw error if API call fails', async() => {
@@ -189,10 +224,7 @@ describe('Datasource Deploy Module', () => {
     it('should deploy datasource successfully', async() => {
       const appKey = 'myapp';
       const filePath = '/path/to/datasource.json';
-      const options = {
-        controller: 'http://localhost:3010',
-        environment: 'dev'
-      };
+      const options = {};
 
       const datasourceConfig = {
         key: 'test-datasource',
@@ -249,16 +281,55 @@ describe('Datasource Deploy Module', () => {
         .rejects.toThrow('File path is required');
     });
 
-    it('should throw error if controller is missing', async() => {
-      const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', { environment: 'dev' }))
-        .rejects.toThrow('Controller URL is required');
-    });
+    it('should use controller and environment from config', async() => {
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      const { resolveEnvironment } = require('../../../lib/core/config');
+      resolveControllerUrl.mockResolvedValueOnce('http://localhost:3010');
+      resolveEnvironment.mockResolvedValueOnce('dev');
 
-    it('should throw error if environment is missing', async() => {
+      const appKey = 'myapp';
+      const filePath = '/path/to/datasource.json';
+      const datasourceConfig = {
+        key: 'test-datasource',
+        systemKey: 'hubspot',
+        displayName: 'Test Datasource'
+      };
+
+      validateDatasourceFile.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
+
+      getDeploymentAuth.mockResolvedValue({
+        type: 'bearer',
+        token: 'test-token'
+      });
+
+      const dataplaneResolver = require('../../../lib/utils/dataplane-resolver');
+      jest.spyOn(dataplaneResolver, 'resolveDataplaneUrl').mockResolvedValue('http://dataplane:8080');
+
+      getEnvironmentApplication.mockResolvedValueOnce({
+        success: true,
+        data: {
+          data: {
+            dataplaneUrl: 'http://dataplane:8080'
+          }
+        }
+      });
+      publishDatasourceViaPipeline.mockResolvedValueOnce({
+        success: true,
+        data: { success: true }
+      });
+
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', { controller: 'http://localhost:3010' }))
-        .rejects.toThrow('Environment is required');
+      const result = await deployDatasource(appKey, filePath, {});
+
+      expect(resolveControllerUrl).toHaveBeenCalledWith();
+      expect(resolveEnvironment).toHaveBeenCalledWith();
+      expect(result.success).toBe(true);
     });
 
     it('should throw error if validation fails', async() => {
@@ -269,10 +340,7 @@ describe('Datasource Deploy Module', () => {
       });
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', {
-        controller: 'http://localhost:3010',
-        environment: 'dev'
-      })).rejects.toThrow('Datasource file validation failed');
+      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Datasource file validation failed');
     });
 
     it('should throw error if systemKey is missing', async() => {
@@ -288,10 +356,7 @@ describe('Datasource Deploy Module', () => {
       }));
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', {
-        controller: 'http://localhost:3010',
-        environment: 'dev'
-      })).rejects.toThrow('systemKey is required');
+      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('systemKey is required');
     });
 
     it('should throw error if datasource file is invalid JSON', async() => {
@@ -304,10 +369,7 @@ describe('Datasource Deploy Module', () => {
       fsSync.readFileSync.mockReturnValue('invalid json {');
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', {
-        controller: 'http://localhost:3010',
-        environment: 'dev'
-      })).rejects.toThrow('Failed to parse datasource file');
+      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Failed to parse datasource file');
     });
 
     it('should throw error if dataplane deployment fails', async() => {
@@ -345,10 +407,7 @@ describe('Datasource Deploy Module', () => {
       formatApiError.mockReturnValue('Deployment failed');
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', {
-        controller: 'http://localhost:3010',
-        environment: 'dev'
-      })).rejects.toThrow('Dataplane publish failed');
+      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Dataplane publish failed');
     });
 
     it('should throw error for non-bearer authentication in deployment', async() => {
@@ -373,11 +432,11 @@ describe('Datasource Deploy Module', () => {
 
       getEnvironmentApplication.mockRejectedValue(new Error('Bearer token authentication required'));
 
+      const dataplaneResolver = require('../../../lib/utils/dataplane-resolver');
+      dataplaneResolver.resolveDataplaneUrl.mockRejectedValueOnce(new Error('Bearer token authentication required'));
+
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', {
-        controller: 'http://localhost:3010',
-        environment: 'dev'
-      })).rejects.toThrow('Bearer token authentication required');
+      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Bearer token authentication required');
     });
   });
 });

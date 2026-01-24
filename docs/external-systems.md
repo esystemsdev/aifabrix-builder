@@ -27,17 +27,43 @@ External systems are integrations that connect to third-party APIs and make thei
 - Anything that needs a containerized runtime
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
 flowchart LR
-    ExternalAPI[External API<br/>HubSpot/Salesforce/etc] --> ExternalSystem[External System<br/>Authentication & Configuration]
-    ExternalSystem --> Datasources[Datasources<br/>Field Mappings]
-    Datasources --> Dataplane[Dataplane<br/>Schema Publishing]
-    Dataplane --> AIModels[AI Models<br/>Query via MCP/OpenAPI]
-    
-    style ExternalAPI fill:#0062FF,color:#FFFFFF
-    style ExternalSystem fill:#3B82F6,color:#FFFFFF
-    style Datasources fill:#10B981,color:#FFFFFF
-    style Dataplane fill:#10B981,color:#FFFFFF
-    style AIModels fill:#F59E0B,color:#FFFFFF
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef medium fill:#1E3A8A,color:#ffffff,stroke-width:0px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+
+%% =======================
+%% Flow
+%% =======================
+ExternalAPI[External API<br/>HubSpot/Salesforce/etc]:::primary --> ExternalSystem[External System<br/>Authentication & Configuration]:::medium
+ExternalSystem --> Datasources[Datasources<br/>Field Mappings]:::base
+Datasources --> Dataplane[Dataplane<br/>Schema Publishing]:::base
+Dataplane --> AIModels[AI Models<br/>Query via MCP/OpenAPI]:::base
 ```
 
 ---
@@ -73,10 +99,11 @@ aifabrix create hubspot --type external
 integration/
   hubspot/
     variables.yaml                    # App configuration
-    hubspot-deploy.json              # External system definition
-    hubspot-deploy-company.json      # Companies datasource
-    hubspot-deploy-contact.json      # Contacts datasource
-    hubspot-deploy-deal.json         # Deals datasource
+    hubspot-system.json              # External system definition
+    hubspot-datasource-company.json  # Companies datasource
+    hubspot-datasource-contact.json  # Contacts datasource
+    hubspot-datasource-deal.json     # Deals datasource
+    hubspot-deploy.json              # Deployment manifest (generated)
     rbac.yaml                        # RBAC roles and permissions (optional)
     env.template                     # Environment variables
     README.md                        # Documentation
@@ -85,28 +112,58 @@ integration/
 All files are in the same folder for easy viewing and management.
 
 ```mermaid
-graph TD
-    Create[aifabrix create hubspot<br/>--type external] --> Variables[variables.yaml<br/>App configuration<br/>externalIntegration block]
-    Create --> SystemJson[hubspot-deploy.json<br/>External system definition]
-    Create --> Datasource1[hubspot-deploy-company.json<br/>Companies datasource]
-    Create --> Datasource2[hubspot-deploy-contact.json<br/>Contacts datasource]
-    Create --> Datasource3[hubspot-deploy-deal.json<br/>Deals datasource]
-    Create --> EnvTemplate[env.template<br/>Environment variables]
-    Create --> Readme[README.md<br/>Documentation]
-    
-    Variables --> Deploy[Deploy Process]
-    SystemJson --> Deploy
-    Datasource1 --> Deploy
-    Datasource2 --> Deploy
-    Datasource3 --> Deploy
-    
-    style Create fill:#0062FF,color:#FFFFFF
-    style Deploy fill:#10B981,color:#FFFFFF
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
+flowchart TD
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef medium fill:#1E3A8A,color:#ffffff,stroke-width:0px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+
+%% =======================
+%% Flow
+%% =======================
+Create[aifabrix create hubspot<br/>--type external]:::primary --> Variables[variables.yaml<br/>App configuration<br/>externalIntegration block]:::base
+Create --> SystemJson[hubspot-system.json<br/>External system definition]:::base
+Create --> Datasource1[hubspot-datasource-company.json<br/>Companies datasource]:::base
+Create --> Datasource2[hubspot-datasource-contact.json<br/>Contacts datasource]:::base
+Create --> Datasource3[hubspot-datasource-deal.json<br/>Deals datasource]:::base
+Create --> DeployManifest[hubspot-deploy.json<br/>Deployment manifest]:::base
+Create --> EnvTemplate[env.template<br/>Environment variables]:::base
+Create --> Readme[README.md<br/>Documentation]:::base
+
+Variables --> Deploy[Deploy Process]:::base
+SystemJson --> Deploy
+Datasource1 --> Deploy
+Datasource2 --> Deploy
+Datasource3 --> Deploy
 ```
 
 ### Step 2: Configure Authentication
 
-Edit `integration/hubspot/hubspot-deploy.json` to configure OAuth2. Use standard environment variable references:
+Edit `integration/hubspot/hubspot-system.json` to configure OAuth2. Use standard environment variable references:
 
 ```json
 {
@@ -173,7 +230,7 @@ Edit `integration/hubspot/hubspot-deploy.json` to configure OAuth2. Use standard
 
 Each datasource maps an external entity (company, contact, deal) to your dataplane. Edit the datasource JSON files to configure field mappings.
 
-**Example: `hubspot-deploy-company.json`**
+**Example: `hubspot-datasource-company.json`**
 
 ```json
 {
@@ -224,28 +281,56 @@ Each datasource maps an external entity (company, contact, deal) to your datapla
 - Configures OpenAPI operations to expose via REST API
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
 flowchart LR
-    ExternalAPI[External API Response<br/>properties.name.value<br/>properties.domain.value] --> FieldMappings[Field Mappings<br/>Transformations<br/>trim, toLower, toUpper]
-    FieldMappings --> TransformedData[Transformed Data<br/>name: string<br/>domain: string<br/>country: string]
-    TransformedData --> DataplaneSchema[Dataplane Schema<br/>Normalized structure<br/>ABAC dimensions]
-    DataplaneSchema --> Query[Query via<br/>MCP/OpenAPI]
-    
-    style ExternalAPI fill:#0062FF,color:#FFFFFF
-    style FieldMappings fill:#3B82F6,color:#FFFFFF
-    style TransformedData fill:#10B981,color:#FFFFFF
-    style DataplaneSchema fill:#10B981,color:#FFFFFF
-    style Query fill:#F59E0B,color:#FFFFFF
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef medium fill:#1E3A8A,color:#ffffff,stroke-width:0px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+
+%% =======================
+%% Flow
+%% =======================
+ExternalAPI[External API Response<br/>properties.name.value<br/>properties.domain.value]:::primary --> FieldMappings[Field Mappings<br/>Transformations<br/>trim, toLower, toUpper]:::medium
+FieldMappings --> TransformedData[Transformed Data<br/>name: string<br/>domain: string<br/>country: string]:::base
+TransformedData --> DataplaneSchema[Dataplane Schema<br/>Normalized structure<br/>ABAC dimensions]:::base
+DataplaneSchema --> Query[Query via<br/>MCP/OpenAPI]:::base
 ```
 
 ### Step 4: Validate Configuration
 
 ```bash
 # Validate entire integration
-aifabrix validate hubspot
+aifabrix validate hubspot --type external
 
 # Validate individual files
-aifabrix validate integration/hubspot/hubspot-deploy.json
-aifabrix validate integration/hubspot/hubspot-deploy-company.json
+aifabrix validate integration/hubspot/hubspot-system.json
+aifabrix validate integration/hubspot/hubspot-datasource-company.json
+aifabrix validate integration/hubspot/hubspot-datasource-contact.json
+aifabrix validate integration/hubspot/hubspot-datasource-deal.json
 ```
 
 **What happens:**
@@ -254,38 +339,37 @@ aifabrix validate integration/hubspot/hubspot-deploy-company.json
 - Verifies required fields are present
 - Checks field mapping expressions are valid
 
+> **Note:** For some external integrations, `aifabrix validate <app>` may fail. If that happens, validate the individual files and see [Known Issues](#known-issues).
+
 ### Step 5: Deploy
 
 ```bash
 # Login to controller
-aifabrix login --controller https://controller.aifabrix.ai --method device --environment dev
-
-# Register application (if not already registered)
-aifabrix app register hubspot --environment dev
-
-# Generate deployment JSON
-aifabrix json hubspot
+aifabrix login --controller https://controller.aifabrix.dev --method device --environment dev
 
 # Deploy to controller
-aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environment dev
+aifabrix deploy hubspot
 ```
 
 **What happens:**
-1. `aifabrix json` - Generates application schema structure (combines system + datasources) for pipeline deployment
-2. `aifabrix deploy` - Uses the application schema to deploy via Miso Controller pipeline API
-3. System is registered in the dataplane
-4. Datasources are published and available for querying
+1. `aifabrix validate` - Validates components and generates full deployment manifest
+2. `aifabrix json` - Generates `<systemKey>-deploy.json` deployment manifest (combines system + datasources) for pipeline deployment
+3. `aifabrix deploy` - Uses the deployment manifest to deploy via Miso Controller pipeline API (same as regular apps)
+4. System is registered in the dataplane
+5. Datasources are published and available for querying
 
-**Note:** The `aifabrix json` command generates an internal application schema structure used by the deployment pipeline. Individual JSON files (`hubspot-deploy.json`, `hubspot-deploy-company.json`, etc.) remain in your `integration/` folder and are referenced by the schema.
+**Note:** The `aifabrix json` command generates `<systemKey>-deploy.json` deployment manifest. Individual component files (`hubspot-system.json`, `hubspot-datasource-company.json`, etc.) remain in your `integration/` folder and are referenced in `variables.yaml`.
+
+> **Known issue:** External system deployment via `aifabrix deploy` may fail if the controller requires a Docker image. See [Known Issues](#known-issues) for the `internal: true` workaround.
 
 ### Step 6: Verify Deployment
 
 ```bash
 # List all datasources
-aifabrix datasource list --environment dev
+aifabrix datasource list
 
 # Validate deployed datasource
-aifabrix datasource validate hubspot-company --environment dev
+aifabrix datasource validate hubspot-company
 ```
 
 **Expected output:**
@@ -302,7 +386,7 @@ aifabrix datasource validate hubspot-company --environment dev
 
 ### External System Configuration
 
-The external system JSON (`<app-name>-deploy.json`) defines the connection to the third-party API.
+The external system JSON (`<systemKey>-system.json`) defines the connection to the third-party API.
 
 **Required fields:**
 - `key` - Unique identifier (lowercase, alphanumeric, hyphens)
@@ -371,7 +455,7 @@ The `configuration` array defines variables that can be set via the Miso Control
   - `placeholder` - Placeholder text
   - `masked` - Whether to mask the input (for passwords/secrets)
   - `options` - Array of options for `select` field type
-  - `validation` - Validation rules (required, minLength, pattern, min, max, etc.)
+  - `validation` - Validation rules (required, minLength, maxLength, pattern, etc.)
 
 **Important distinctions:**
 - **Standard variables** (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`, `APIKEY`, `USERNAME`, `PASSWORD`, `REDIRECT_URI`) are managed by the dataplane credentials system—**do not include `portalInput`**
@@ -468,8 +552,8 @@ For **custom variables** (non-standard), you can use `portalInput` to configure 
         "validation": {
           "required": false,
           "pattern": "^[0-9]+$",
-          "min": 1,
-          "max": 1000
+          "minLength": 1,
+          "maxLength": 1000
         }
       }
     },
@@ -665,7 +749,7 @@ External systems support RBAC (Role-Based Access Control) configuration via `rba
 External systems can define roles and permissions in two ways:
 
 1. **In `rbac.yaml` file** (recommended for separation of concerns)
-2. **Directly in the system JSON file** (`<app-name>-deploy.json`)
+2. **Directly in the system JSON file** (`<systemKey>-system.json`)
 
 When generating deployment JSON with `aifabrix json`, roles/permissions from `rbac.yaml` are automatically merged into the system JSON. Priority: roles/permissions in system JSON > rbac.yaml (if both exist, prefer JSON).
 
@@ -676,7 +760,7 @@ roles:
   - name: HubSpot Admin
     value: hubspot-admin
     description: Full access to HubSpot integration
-    Groups:
+    groups:
       - "hubspot-admins@company.com"
   
   - name: HubSpot User
@@ -821,7 +905,7 @@ Each datasource maps one entity type from the external system.
 }
 ```
 
-**Note:** Datasource files are named using the `entityType` field: `<system-key>-deploy-<entity-type>.json`. For example, a datasource with `entityType: "company"` and `systemKey: "hubspot"` creates the file `hubspot-deploy-company.json`.
+**Note:** Datasource files are named using the datasource key: `<system-key>-datasource-<datasource-key>.json`. For example, a datasource with `key: "hubspot-company"` and `systemKey: "hubspot"` creates the file `hubspot-datasource-company.json`.
 
 #### Entity Type and Type Schema Mapping
 
@@ -1127,17 +1211,19 @@ Here's a complete HubSpot integration with companies, contacts, and deals.
 integration/
   hubspot/
     variables.yaml
-    hubspot-deploy.json                    # External system definition
-    hubspot-deploy-company.json            # Datasource: entityType="company"
-    hubspot-deploy-contact.json           # Datasource: entityType="contact"
-    hubspot-deploy-deal.json              # Datasource: entityType="deal"
+    hubspot-system.json                    # External system definition
+    hubspot-datasource-company.json        # Datasource: key="hubspot-company"
+    hubspot-datasource-contact.json         # Datasource: key="hubspot-contact"
+    hubspot-datasource-deal.json            # Datasource: key="hubspot-deal"
+    hubspot-deploy.json                     # Deployment manifest (generated)
     rbac.yaml                              # RBAC roles and permissions (optional)
     env.template
 ```
 
 **File Naming Convention:**
-- System file: `<system-key>-deploy.json` (e.g., `hubspot-deploy.json`)
-- Datasource files: `<system-key>-deploy-<entity-type>.json` (e.g., `hubspot-deploy-company.json`)
+- System file: `<system-key>-system.json` (e.g., `hubspot-system.json`)
+- Datasource files: `<system-key>-datasource-<datasource-key>.json` (e.g., `hubspot-datasource-company.json`)
+- Deployment manifest: `<system-key>-deploy.json` (e.g., `hubspot-deploy.json`) - generated by `aifabrix json`
 - The `entityType` comes from the datasource's `entityType` field in the JSON
 
 ### variables.yaml
@@ -1151,18 +1237,18 @@ app:
 externalIntegration:
   schemaBasePath: ./
   systems:
-    - hubspot-deploy.json
+    - hubspot-system.json
   dataSources:
-    - hubspot-deploy-company.json
-    - hubspot-deploy-contact.json
-    - hubspot-deploy-deal.json
+    - hubspot-datasource-company.json
+    - hubspot-datasource-contact.json
+    - hubspot-datasource-deal.json
   autopublish: true
   version: 1.0.0
 ```
 
-**Important:** Only one system is supported per application. The `systems` array should contain a single entry. Only the first system in the array will be included in the generated `application-schema.json`. Multiple data sources are supported and all will be included.
+**Important:** Only one system is supported per application. The `systems` array should contain a single entry. Only the first system in the array will be included in the generated `<systemKey>-deploy.json`. Multiple data sources are supported and all will be included.
 
-### hubspot-deploy.json
+### hubspot-system.json
 
 ```json
 {
@@ -1242,8 +1328,8 @@ externalIntegration:
         "validation": {
           "required": false,
           "pattern": "^[0-9]+$",
-          "min": 1,
-          "max": 1000
+          "minLength": 1,
+          "maxLength": 1000
         }
       }
     }
@@ -1263,9 +1349,9 @@ externalIntegration:
 - Standard variables are set via the dataplane credentials interface
 - Custom variables with `portalInput` get UI fields for user configuration
 
-### hubspot-deploy-company.json
+### hubspot-datasource-company.json
 
-See the complete example in `integration/hubspot/hubspot-deploy-company.json` for:
+See the complete example in `integration/hubspot/hubspot-datasource-company.json` for:
 - Full metadata schema for HubSpot company properties
 - Field mappings with transformations
 - OpenAPI operations configuration
@@ -1308,7 +1394,7 @@ Download an existing external system from the dataplane to your local developmen
 
 ```bash
 # Download external system
-aifabrix download hubspot --environment dev
+aifabrix download hubspot
 ```
 
 **What happens:**
@@ -1322,10 +1408,11 @@ aifabrix download hubspot --environment dev
 integration/
   hubspot/
     variables.yaml                   # App configuration with externalIntegration block
-    hubspot-deploy.json              # External system definition
-    hubspot-deploy-company.json      # Companies datasource
-    hubspot-deploy-contact.json      # Contacts datasource
-    hubspot-deploy-deal.json         # Deals datasource
+    hubspot-system.json              # External system definition
+    hubspot-datasource-company.json  # Companies datasource
+    hubspot-datasource-contact.json  # Contacts datasource
+    hubspot-datasource-deal.json     # Deals datasource
+    hubspot-deploy.json              # Deployment manifest (generated)
     rbac.yaml                        # RBAC roles and permissions (optional)
     env.template                     # Environment variables template
     README.md                        # Documentation
@@ -1368,13 +1455,13 @@ Test your configuration against the real dataplane pipeline API:
 
 ```bash
 # Test entire system
-aifabrix test-integration hubspot --environment dev
+aifabrix test-integration hubspot
 
 # Test specific datasource
-aifabrix test-integration hubspot --environment dev --datasource hubspot-company
+aifabrix test-integration hubspot --datasource hubspot-company
 
 # Use custom test payload
-aifabrix test-integration hubspot --environment dev --payload ./test-payload.json
+aifabrix test-integration hubspot --payload ./test-payload.json
 ```
 
 **What happens:**
@@ -1389,17 +1476,17 @@ aifabrix test-integration hubspot --environment dev --payload ./test-payload.jso
 Deploy using the application-level workflow:
 
 ```bash
-aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environment dev
+aifabrix deploy hubspot
 ```
 
 **What happens:**
-1. Generates `application-schema.json` (combines one system + all datasources)
+1. Generates `<systemKey>-deploy.json` (combines one system + all datasources)
 2. Uploads to dataplane via pipeline API
 3. Validates changes (optional, can skip with `--skip-validation`)
 4. Publishes atomically with rollback support
 5. System and datasources are deployed together
 
-**Note:** Only one system per application is supported. If multiple systems are listed in `variables.yaml`, only the first one is included in the generated `application-schema.json`.
+**Note:** Only one system per application is supported. If multiple systems are listed in `variables.yaml`, only the first one is included in the generated `<systemKey>-deploy.json`.
 
 ## Deployment Workflow
 
@@ -1436,11 +1523,11 @@ aifabrix json hubspot
 ### 4. Deploy to Controller
 
 ```bash
-aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environment dev
+aifabrix deploy hubspot
 ```
 
 **What happens:**
-1. Generates `application-schema.json` (if not already generated)
+1. Generates `<systemKey>-deploy.json` (if not already generated)
 2. Uses application-level deployment workflow:
    - Upload: `POST /api/v1/pipeline/upload`
    - Validate: `POST /api/v1/pipeline/upload/{uploadId}/validate` (optional, can skip with `--skip-validation`)
@@ -1462,7 +1549,7 @@ You can deploy and test individual datasources:
 
 ```bash
 # Deploy a single datasource
-aifabrix datasource deploy hubspot-company --environment dev --file integration/hubspot/hubspot-deploy-company.json
+aifabrix datasource deploy hubspot hubspot-datasource-company.json
 
 # This is useful for:
 # - Testing individual datasources
@@ -1474,10 +1561,10 @@ aifabrix datasource deploy hubspot-company --environment dev --file integration/
 
 ```bash
 # List all datasources
-aifabrix datasource list --environment dev
+aifabrix datasource list
 
 # Validate specific datasource
-aifabrix datasource validate hubspot-company --environment dev
+aifabrix datasource validate hubspot-company
 
 # Query via MCP
 # (Use MCP client to query hubspot.company.list, etc.)
@@ -1493,7 +1580,7 @@ Here's a complete workflow for developing an external system:
 
 ```bash
 # 1. Download external system from dataplane
-aifabrix download hubspot --environment dev
+aifabrix download hubspot
 
 # 2. Edit configuration files in integration/hubspot/
 #    - Update field mappings
@@ -1504,10 +1591,10 @@ aifabrix download hubspot --environment dev
 aifabrix test hubspot
 
 # 4. Run integration tests (via dataplane pipeline API)
-aifabrix test-integration hubspot --environment dev
+aifabrix test-integration hubspot
 
 # 5. Deploy back to dataplane (via application-level workflow)
-aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environment dev
+aifabrix deploy hubspot
 ```
 
 ### Create New System from Scratch
@@ -1525,10 +1612,10 @@ aifabrix create hubspot --type external
 aifabrix test hubspot
 
 # 4. Run integration tests
-aifabrix test-integration hubspot --environment dev
+aifabrix test-integration hubspot
 
 # 5. Deploy to dataplane
-aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environment dev
+aifabrix deploy hubspot
 ```
 
 ---
@@ -1624,6 +1711,21 @@ Use defaults for optional fields:
 → Verify authentication with controller
 → Review deployment logs in controller UI
 
+**"Application deployment requires image"**
+→ External systems do not use Docker images
+→ Use `internal: true` in `variables.yaml` for automatic deployment
+→ See [Known Issues](#known-issues)
+
+**"Dataplane URL not found in application configuration"**
+→ External systems do not have their own dataplane URL
+→ Dataplane URL is always discovered from the controller; ensure the controller is set via `aifabrix login` or `aifabrix auth config --set-controller`
+→ See [Known Issues](#known-issues)
+
+**"Cannot read properties of undefined (reading 'forEach')"**
+→ Validation may crash for external integrations
+→ Validate individual files as a workaround
+→ See [Known Issues](#known-issues)
+
 **"Datasource not appearing"**
 → Check `autopublish: true` in `variables.yaml`
 → Verify datasource JSON files are listed in `dataSources`
@@ -1634,6 +1736,45 @@ Use defaults for optional fields:
 → Check `baseUrl` matches external API
 → Ensure `operationId` matches OpenAPI spec
 → Verify authentication is configured correctly
+
+---
+
+## Known Issues
+
+### External System Deployment via `aifabrix deploy`
+**Issue:** The `aifabrix deploy` command currently expects a Docker image, which external systems do not have.
+
+**Workaround:** Use `internal: true` in `variables.yaml` to enable auto-deployment on dataplane restart:
+
+```yaml
+externalIntegration:
+  internal: true  # Deploy on dataplane startup
+  autopublish: true
+  schemaBasePath: ./
+  systems:
+    - hubspot-system.json
+  dataSources:
+    - hubspot-datasource-company.json
+```
+
+Then restart the dataplane to pick up the new integration.
+
+### Datasource Deploy for External Systems
+Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is discovered from the controller.
+
+```bash
+aifabrix datasource deploy hubspot integration/hubspot/hubspot-datasource-company.json
+```
+
+### Validate Command for External Systems
+**Issue:** `aifabrix validate <app>` can fail for external integrations.
+
+**Workaround:** Validate individual files instead:
+
+```bash
+aifabrix validate integration/hubspot/hubspot-system.json
+aifabrix validate integration/hubspot/hubspot-datasource-company.json
+```
 
 ---
 
@@ -1650,12 +1791,28 @@ Use defaults for optional fields:
 
 **Download external system:**
 ```bash
-aifabrix download <system-key> --environment <env>
+aifabrix download <system-key>
+```
+
+**Delete external system:**
+```bash
+aifabrix delete <system-key> --type external
+
+# Skip confirmation prompt
+aifabrix delete <system-key> --type external --yes
 ```
 
 **Create external system:**
 ```bash
-aifabrix create <app> --type external
+aifabrix create <app> --type external [--wizard]
+
+# Non-interactive example
+aifabrix create hubspot --type external \
+  --display-name "HubSpot CRM" \
+  --description "HubSpot CRM integration" \
+  --system-type openapi \
+  --auth-type oauth2 \
+  --datasources 2
 ```
 
 **Validate configuration:**
@@ -1671,7 +1828,7 @@ aifabrix test <app> [--datasource <key>] [--verbose]
 
 **Integration test (via dataplane):**
 ```bash
-aifabrix test-integration <app> --environment <env> [--datasource <key>] [--payload <file>]
+aifabrix test-integration <app> [--datasource <key>] [--payload <file>]
 ```
 
 **Generate deployment JSON:**
@@ -1681,22 +1838,22 @@ aifabrix json <app>
 
 **Deploy to controller:**
 ```bash
-aifabrix deploy <app> --controller <url> --environment <env> [--skip-validation]
+aifabrix deploy <app> [--skip-validation]
 ```
 
-**Deploy individual datasource:**
+**Deploy individual datasource:** (uses controller and environment from config; dataplane is discovered from the controller)
 ```bash
-aifabrix datasource deploy <datasource-key> --environment <env> --file <path-to-datasource-json>
+aifabrix datasource deploy <app-key> <datasource-file>
 ```
 
 **List datasources:**
 ```bash
-aifabrix datasource list --environment <env>
+aifabrix datasource list
 ```
 
 **Validate datasource:**
 ```bash
-aifabrix datasource validate <datasource-key> --environment <env>
+aifabrix datasource validate <datasource-key>
 ```
 
 

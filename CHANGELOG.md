@@ -1,3 +1,282 @@
+## [2.35.0] - 2026-01-23
+
+### Added
+- **CLI alias `aifx`**: `aifx` is available as a shortcut for `aifabrix` in all commands (e.g. `aifx up`, `aifx create myapp`). Documented in [Quick Start](docs/quick-start.md) and [CLI Reference](docs/cli-reference.md).
+- **`aifabrix up --no-traefik`**: Exclude Traefik and persist `traefik: false` to `~/.aifabrix/config.yaml`. When neither `--traefik` nor `--no-traefik` is passed, the value is read from config.
+- **Centralized Port Resolution**: Single source of truth for resolving application port from `variables.yaml`
+  - `lib/utils/port-resolver.js` with `getContainerPort`, `getLocalPort`, `getContainerPortFromPath`, `getLocalPortFromPath`
+  - Container port: `build.containerPort` → `port` → default 3000
+  - Local port: `build.localPort` (if > 0) → `port` → default 3000
+  - `tests/lib/utils/port-resolver.test.js` for port-resolver module
+- **Unified External System Validation Flow**: Complete validation system for external systems
+  - New `validateExternalSystemComplete()` function that validates components + full deployment manifest
+  - Step-by-step validation: Application config → Individual components → Full manifest generation → Manifest validation
+  - Enhanced validation display with step-by-step results (Application, External Integration Files, Dimensions, RBAC, Deployment Manifest)
+  - Validates system files against `external-system.schema.json`
+  - Validates datasource files against `external-datasource.schema.json`
+  - Validates full deployment manifest against `application-schema.json`
+  - Comprehensive error aggregation across all validation steps
+- **Controller-Compatible Manifest Generator**: New manifest generation for external systems
+  - `lib/generator/external-controller-manifest.js` - Generates controller deployment format
+  - Inline system and dataSources format (self-contained deployment manifest)
+  - Generates `<systemKey>-deploy.json` with controller-compatible structure
+  - Includes deploymentKey generation from complete manifest JSON
+- **External Manifest Validator**: New validator for full deployment manifests
+  - `lib/validation/external-manifest-validator.js` - Validates controller manifest structure
+  - Validates inline system against external-system schema
+  - Validates each datasource against external-datasource schema
+  - Schema validation using AJV with proper error formatting
+- **Simplified Authentication Configuration**: Streamlined authentication and configuration management
+  - Controller URL and environment stored in root-level `config.yaml` after login (dataplane is **not** stored; it is always discovered from the controller)
+  - New `auth config` commands for managing configuration values:
+    - `aifabrix auth config --set-controller <url>` - Set default controller URL with validation
+    - `aifabrix auth config --set-environment <env>` - Set default environment with validation
+  - Command header display utility showing active controller/environment at top of commands
+  - Dataplane health check utility extracted and made reusable across codebase
+  - Dataplane URL always discovered from the controller (never stored in config)
+- **Configuration Management Functions**: New core configuration functions in `lib/core/config.js`
+  - `setControllerUrl(controllerUrl)` - Save controller URL to config
+  - `getControllerUrl()` - Get controller URL from config
+  - `setCurrentEnvironment(environment)` - Set environment in config
+- **Validation Helpers**: New authentication configuration validation utilities
+  - `lib/utils/auth-config-validator.js` - URL validation, environment validation, login checking
+  - `lib/utils/dataplane-health.js` - Dataplane health check utility (extracted from integration tests)
+  - `lib/utils/dataplane-resolver.js` - Dataplane URL resolution with config priority
+  - `lib/utils/command-header.js` - Command header display utility
+
+### Changed
+- **`aifabrix up --traefik`**: Description updated to "Include Traefik reverse proxy and save to config". Both `--traefik` and `--no-traefik` persist to `config.yaml`; when omitted, `traefik` is read from config.
+- **Infrastructure and configuration docs**: Documented `--traefik` / `--no-traefik` persistence and config fallback.
+- **Centralized Port Resolution (refactor)**: All port reads from `variables.yaml` now use `lib/utils/port-resolver.js`
+  - `app register` uses `variables.port` and `build.containerPort` (and `--port` override); `build.port` no longer used
+  - `env-ports.updateContainerPortInEnvFile` uses `build.localPort` when set
+  - Refactored: `app-register-config`, `dockerfile`, `env-copy`, `secrets-helpers`, `lib/core/secrets`, `env-ports`, `compose-generator`, `variable-transformer`, `builders`, `secrets-utils`
+  - `getContainerPortFromVariables` in `lib/core/secrets.js` removed; `getPortFromVariablesFile` delegates to `getLocalPortFromPath`
+- **File Naming Standardization**: Consistent file naming pattern for external systems
+  - **Deployment Manifest**: `application-schema.json` → `<systemKey>-deploy.json` (e.g., `my-hubspot-deploy.json`)
+    - Contains full deployment manifest with inline system + dataSources
+    - This is what gets deployed to controller
+  - **System File**: `<systemKey>-deploy.json` (system) → `<systemKey>-system.json` (e.g., `my-hubspot-system.json`)
+    - Contains external system configuration
+    - Referenced in variables.yaml
+  - **Datasource Files**: `<systemKey>-deploy-<entityType>.json` → `<systemKey>-datasource-<dataSourceKey>.json` (e.g., `my-hubspot-datasource-record-storage.json`)
+    - Contains datasource configuration
+    - Referenced in variables.yaml
+  - Updated all generators, validators, and file resolvers to use new naming convention
+  - Updated wizard to generate files with new names
+  - Migration support: Code handles both old and new names during transition
+- **Unified Validation Command**: Enhanced `aifabrix validate <app> --type external` command
+  - Now validates complete external system workflow (components + full manifest)
+  - Shows step-by-step validation results with clear error grouping
+  - Enhanced display format with Dimensions (ABAC), RBAC Configuration, and Deployment Manifest sections
+  - Improved error messages with file context and validation step information
+- **Simplified Deployment Flow**: External systems now use unified controller pipeline
+  - **Removed**: All direct dataplane API calls (~200 lines of code removed)
+  - **Removed**: `buildExternalSystem()`, `deploySystem()`, `deployAllDatasources()`, `deploySingleDatasource()` functions
+  - **Removed**: `getDataplaneUrlForDeployment()`, `discoverDataplaneUrl()` usage
+  - **Added**: Pre-deployment validation (same validation as `validate` command)
+  - **Added**: Unified deployment via `deployToController()` (same as regular apps)
+  - External systems now deploy exactly like regular apps - unified code path
+  - Deployment flow: Validate → Generate manifest → Deploy via controller → Controller routes to dataplane
+- **JSON Generation Command**: Updated `aifabrix json <app> --type external` command
+  - Now generates `<systemKey>-deploy.json` with controller format (not dataplane format)
+  - Format: `{key, displayName, type: "external", system, dataSources, deploymentKey}`
+  - Consistent with deployment-ready format
+- **Datasource List Command**: Fixed `aifabrix datasource list` command (uses environment from config)
+  - Fixed API endpoint handling and response format parsing
+  - Improved error messages with controller URL context
+  - Enhanced authentication flow for datasource listing
+- **Validation Display**: Enhanced validation output formatting
+  - Step-by-step results display (Application, External Integration Files, Dimensions, RBAC, Deployment Manifest)
+  - Color-coded validation status (✓, ✗, ⚠️)
+  - Grouped errors by validation step for better clarity
+  - Warnings section for non-critical issues (missing rbac.yaml, no dimensions, etc.)
+- **Removed All Configuration Flags**: Simplified command interface by removing all configuration flags
+  - **Removed**: All `--controller <url>` flags from all commands
+  - **Removed**: All `--environment <env>` flags from all commands
+  - **Removed**: All `--dataplane <url>` flags from all commands
+  - Commands now use `config.yaml` values only (set via `aifabrix login` or `aifabrix auth config`)
+  - Simplified command usage - no need to specify controller/environment/dataplane on every command
+- **Login Commands Enhanced**: Login commands now save configuration automatically
+  - `aifabrix login` - Saves controller URL and environment to `config.yaml` after successful login
+  - `aifabrix login --device` - Saves controller URL to `config.yaml` after device code authentication
+  - `aifabrix login --credentials` - Saves controller URL to `config.yaml` after credentials authentication
+  - Environment already saved via existing `setCurrentEnvironment()` function
+- **Simplified Resolution Priority**: Streamlined configuration resolution logic
+  - **Controller URL**: `config.controller` → device tokens lookup → developer ID-based default
+  - **Environment**: `config.environment` → default: `'dev'`
+  - **Dataplane URL**: Always discovered from the controller when needed (never stored in config)
+  - Removed all flag-based resolution (no `options.controller`, `options.environment`, `options.dataplane`)
+  - Removed `variables.yaml` → `deployment.controllerUrl` lookup
+- **Updated All Commands**: All commands now use config defaults only
+  - `wizard`, `deploy`, `datasource deploy`, `download`, `delete`, `test-integration`, `environment deploy`
+  - All commands use `resolveControllerUrl()`, `resolveEnvironment()`, `resolveDataplaneUrl()` from config
+  - Removed all `options.controller`, `options.environment`, `options.dataplane` usage
+  - Commands display active configuration via command header utility
+- **Controller URL Resolution**: Simplified `lib/utils/controller-url.js`
+  - Updated `resolveControllerUrl()` - Removed all flag/options support
+  - Removed `variables.yaml` → `deployment.controllerUrl` lookup code
+  - Uses only: `config.controller` → device tokens → developer default
+  - Added `getControllerFromConfig()` helper function
+
+### Removed
+- **variables.yaml Controller URL Support**: Removed `variables.yaml` → `deployment.controllerUrl` usage for CLI controller resolution
+  - **Removed**: All `variables.yaml` → `deployment.controllerUrl` lookup code
+  - **Removed**: Support for `config.deployment?.controllerUrl` references
+  - Controller URL must now be set via `config.yaml` (saved during login or via `auth config`)
+
+### Technical
+- New modules: `lib/generator/external-controller-manifest.js`, `lib/validation/external-manifest-validator.js`, `lib/commands/auth-config.js`, `lib/utils/auth-config-validator.js`, `lib/utils/dataplane-resolver.js`, `lib/utils/dataplane-health.js`, `lib/utils/command-header.js`, `lib/utils/port-resolver.js`
+- Centralized port resolution: `lib/utils/port-resolver.js`; refactored `app-register-config`, `dockerfile`, `env-copy`, `secrets-helpers`, `lib/core/secrets`, `env-ports`, `compose-generator`, `variable-transformer`, `lib/generator/builders`, `secrets-utils` to use it; `tests/lib/utils/port-resolver.test.js`
+- Updated modules: `lib/generator/wizard.js`, `lib/generator/external.js`, `lib/generator/external-schema-utils.js`, `lib/generator/index.js`
+- Updated validation: `lib/validation/validate.js`, `lib/validation/validate-display.js`
+- Updated file resolution: `lib/utils/schema-resolver.js`, `lib/external-system/deploy-helpers.js`
+- Simplified deployment: `lib/external-system/deploy.js` (removed ~200 lines of dataplane code)
+- Fixed datasource list: `lib/datasource/list.js`, `lib/api/environments.api.js`
+- Updated core config: `lib/core/config.js` - Added controller URL storage (dataplane is not stored; discovered from controller)
+- Updated controller resolution: `lib/utils/controller-url.js` - Removed flag support, removed variables.yaml lookup
+- Updated login commands: `lib/commands/login.js`, `lib/commands/login-device.js`, `lib/commands/login-credentials.js` - Save controller URL
+- Updated CLI: `lib/cli.js` - Removed all `--controller`, `--environment`, `--dataplane` flags from all commands
+- Updated all command handlers: `wizard`, `datasource`, `deploy`, `external-system`, `deployment` - Use config defaults only
+- Comprehensive test coverage: New tests for validation flow, deployment validation, file naming changes, auth config commands, config storage, dataplane resolution, validation helpers
+- Updated all command tests: Removed flag tests, added config-based tests
+- Updated integration tests: HubSpot integration examples use new file naming
+- Updated documentation: 14 documentation files updated with new file names and validation display format, all command documentation files updated (removed flags, added config.yaml usage)
+- Configuration docs: `docs/configuration.md` - Updated with new config structure and resolution priority
+- Authentication docs: `docs/commands/authentication.md` - Added auth config commands documentation
+- Code simplification: Removed complex dataplane deployment logic, using unified controller pipeline
+- ISO 27001 compliant implementation maintained throughout
+
+## [2.34.0] - 2026-01-21
+
+### Added
+- **Delete External System Command**: New `aifabrix delete <system-key> --type external` command
+  - Deletes external system from dataplane including all associated datasources
+  - Interactive confirmation prompt with datasource warnings
+  - Supports `--yes`/`--force` flags to skip confirmation for automation
+  - Requires `-e, --environment <env>` and `-c, --controller <url>` options
+  - Proper authentication and dataplane URL resolution
+  - Comprehensive error handling with user-friendly messages
+- **External System README Template**: New dedicated template for external systems
+  - `templates/external-system/README.md.hbs` with external system-specific documentation
+  - Auto-generated README includes external system workflow (create, validate, deploy)
+  - No Docker build/run commands (external systems are config-only)
+  - References to external system files (variables.yaml, system JSON, datasource JSONs)
+  - Testing and deployment commands specific to external systems
+  - Template used in: `lib/utils/external-readme.js`, `lib/generator/external-schema-utils.js`, `lib/external-system/download-helpers.js`, `lib/generator/wizard.js`, `lib/app/readme.js`
+- **External System Type Flag**: New `--type external` flag for validate and json commands
+  - `aifabrix validate <app> --type external` - Only checks `integration/` folder
+  - `aifabrix json <app> --type external` - Generates `application-schema.json` for external systems
+  - When flag not set, checks `builder/` folder first, then `integration/` folder (existing behavior)
+  - Uses `detectAppType(appName, options)` for forced type detection
+
+### Changed
+- **Validation Error Messages**: Improved error messages for schema validation errors
+  - `formatAdditionalPropertiesError` function in `lib/utils/error-formatter.js`
+  - Error messages now show invalid properties, allowed properties, and examples
+  - Special handling for `portalInput.validation` errors with example format
+  - Example: "Invalid property: 'min' (not allowed). Allowed properties: minLength, maxLength, pattern, required"
+- **HubSpot Integration Example**: Fixed validation error in `integration/hubspot/hubspot-deploy.json`
+  - Changed `min`/`max` to `minLength`/`maxLength` in `portalInput.validation` (lines 83-84)
+  - Validation now passes successfully against schema requirements
+- **External System JSON Generation**: Fixed `json` command for external systems
+  - `generateDeployJson` now calls `generateExternalSystemApplicationSchema` for external systems
+  - Correctly generates `application-schema.json` file for deployment
+  - `generateDeployJsonWithValidation` handles external systems properly
+- **Documentation Validation**: All external system documentation validated and verified
+  - `docs/quick-start.md` - All examples use `--type external` flag correctly
+  - `docs/external-systems.md` - Step 2 (Authentication) and Step 3 (Datasources) examples verified
+  - All JSON examples use correct schema properties (`minLength`/`maxLength`, not `min`/`max`)
+
+### Technical
+- New module: `lib/external-system/delete.js` (153 lines) for delete command implementation
+- New template: `templates/external-system/README.md.hbs` for external system README generation
+- Updated `lib/cli.js` with `--type external` flags for validate and json commands, plus delete command (lines 568-570, 637-639, 816-834)
+- Updated `lib/validation/validate.js` to handle `--type external` flag via `detectAppType`
+- Updated `lib/generator/index.js` to handle `--type external` flag and generate application-schema.json
+- Updated `lib/utils/error-formatter.js` with `formatAdditionalPropertiesError` function (lines 68-85)
+- Updated `integration/hubspot/test.js` with `testDownloadAndSplit` function for complete workflow testing
+- New test file: `tests/lib/external-system/external-system-delete.test.js` for delete command tests
+- All 3918 tests passing across 170 test suites
+- ISO 27001 compliant implementation maintained throughout
+
+## [2.33.0] - 2026-01-21
+
+### Added
+- **Traefik Infrastructure Support**: New `--traefik` flag for `aifabrix up` command
+  - Automatically includes Traefik reverse proxy service in infrastructure setup
+  - Supports wildcard certificate configuration via environment variables (`TRAEFIK_CERT_STORE`, `TRAEFIK_CERT_FILE`, `TRAEFIK_KEY_FILE`)
+  - Works seamlessly with developer isolation (separate Traefik instances per developer ID)
+  - Traefik connects to the same Docker network as other infrastructure services
+  - Certificate validation ensures files exist before starting services
+  - New infrastructure modules: `lib/infrastructure/compose.js`, `lib/infrastructure/services.js`, `lib/infrastructure/helpers.js`
+- **Automatic Traefik Label Generation**: Builder now generates Traefik labels automatically from `frontDoorRouting` configuration
+  - Docker Compose files automatically include Traefik labels when `frontDoorRouting.enabled` is true
+  - Uses same `frontDoorRouting` configuration for both Azure Front Door (production) and Traefik (local development)
+  - Supports `${DEV_USERNAME}` variable interpolation in host field for developer-specific domains
+  - Automatic path prefix stripping middleware when path is not root (`/`)
+  - Environment variables (`BASE_PATH`, `X_FORWARDED_PREFIX`) automatically added for path-based routing
+  - TLS/HTTPS support via `frontDoorRouting.tls` configuration
+  - Enhanced `frontDoorRouting` schema with optional Traefik fields (`enabled`, `host`, `tls`)
+- **Wizard Headless Mode**: Non-interactive wizard execution via YAML configuration files
+  - New `--config wizard.yaml` option for `aifabrix wizard` command
+  - Supports environment variable interpolation (`${VAR_NAME}` syntax) in configuration files
+  - Path traversal protection for file paths in configuration
+  - Schema validation via `lib/schema/wizard-config.schema.json`
+  - Config validator module: `lib/validation/wizard-config-validator.js`
+  - Headless handler: `lib/commands/wizard-headless.js`
+- **Wizard API Enhancements**: Additional wizard API functions for complete workflow support
+  - `deleteWizardSession` - DELETE /api/v1/wizard/sessions/{sessionId}
+  - `getWizardProgress` - GET /api/v1/wizard/sessions/{sessionId}/progress
+  - `credentialSelection` - POST /api/v1/wizard/credential-selection
+  - `validateAllSteps` - GET /api/v1/wizard/sessions/{sessionId}/validate
+  - `validateStep` - POST /api/v1/wizard/sessions/{sessionId}/validate-step
+  - `getPreview` - GET /api/v1/wizard/preview/{sessionId}
+  - `generateConfigStream` - POST /api/v1/wizard/generate-config-stream
+- **Wizard Configuration Normalizer**: New utility for normalizing wizard configurations
+  - `lib/commands/wizard-config-normalizer.js` for consistent config format handling
+  - Supports environment variable resolution and path validation
+- **HubSpot Integration Test Suite**: Comprehensive end-to-end testing for external system wizard
+  - New integration test suite: `integration/hubspot/test.js` (1,078 lines)
+  - Test artifacts for various wizard scenarios (valid/invalid inputs, error cases)
+  - HubSpot platform configuration examples
+  - E2E test configuration files
+
+### Changed
+- **Infrastructure Module Refactoring**: Improved code organization and maintainability
+  - Split large infrastructure module into focused modules (`compose.js`, `services.js`, `helpers.js`)
+  - Enhanced compose file generation with Traefik support
+  - Improved service management and container operations
+- **Compose Generator Enhancements**: Enhanced Docker Compose generation with Traefik label support
+  - `buildTraefikConfig()` function extracts Traefik configuration from `frontDoorRouting`
+  - Automatic Traefik label generation in docker-compose templates
+  - Developer username resolution for host field (`${DEV_USERNAME}` interpolation)
+  - Path extraction and prefix stripping middleware generation
+- **Wizard API Fixes**: Fixed API parameter misalignments
+  - `createWizardSession`: Fixed parameter name from `systemId` to `systemIdOrKey`
+  - `detectType`: Fixed body property name from `openApiSpec` to `openapiSpec`
+  - `generateConfig`: Added support for all parameters (openapiSpec, detectedType, intent, mode, systemIdOrKey, credentialIdOrKey, fieldOnboardingLevel, enableOpenAPIGeneration, userPreferences)
+- **Infrastructure Status Display**: Enhanced status command to show Traefik service
+  - Traefik service appears in infrastructure status output
+  - Port information for Traefik HTTP (80) and HTTPS (443) displayed
+  - Developer-specific port calculation for Traefik services
+- **Developer Configuration**: Extended with Traefik port support
+  - `getDevPorts()` now includes `traefikHttp` and `traefikHttps` port calculations
+  - Traefik ports follow developer isolation pattern
+
+### Technical
+- New infrastructure modules: `lib/infrastructure/compose.js`, `lib/infrastructure/services.js`, `lib/infrastructure/helpers.js`
+- Enhanced compose generator: `lib/utils/compose-generator.js` with Traefik label generation
+- Wizard headless mode: `lib/commands/wizard-headless.js`, `lib/commands/wizard-config-normalizer.js`
+- Wizard config validator: `lib/validation/wizard-config-validator.js`
+- Wizard config schema: `lib/schema/wizard-config.schema.json`
+- Updated infrastructure template: `templates/infra/compose.yaml.hbs` with conditional Traefik service
+- Updated docker-compose templates: `templates/typescript/docker-compose.hbs`, `templates/python/docker-compose.hbs` with Traefik labels
+- Enhanced wizard API: `lib/api/wizard.api.js` with additional API functions
+- Comprehensive test coverage: New test files for infrastructure compose, wizard headless mode, and wizard config validation
+- Updated documentation: `docs/commands/infrastructure.md`, `docs/running.md`, `docs/infrastructure.md`, `docs/wizard.md` with Traefik and wizard enhancements
+- ISO 27001 compliant implementation maintained throughout
+
 ## [2.32.3] - 2026-01-19
 
 ### Added

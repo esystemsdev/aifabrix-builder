@@ -48,9 +48,11 @@ describe('Application Display Module', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('System Key: test-system'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('1. Edit external system JSON files'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('2. Run: aifabrix app register'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('3. Run: aifabrix build'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('2. Run: aifabrix validate'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('--type external'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('3. Run: aifabrix login'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('4. Run: aifabrix deploy'));
+      expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('aifabrix build'));
     });
 
     it('should use appName when systemKey is not provided', () => {
@@ -87,6 +89,9 @@ describe('Application Display Module', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Authentication enabled'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Environment converted'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('aifabrix up'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('aifabrix build'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('aifabrix run'));
     });
 
     it('should display webapp success message without optional features', () => {

@@ -1,13 +1,15 @@
 {
   "name": "@aifabrix/builder",
-  "version": "2.32.3",
+  "version": "2.33.0",
   "description": "AI Fabrix Local Fabric & Deployment SDK",
   "main": "lib/index.js",
   "bin": {
-    "aifabrix": "bin/aifabrix.js"
+    "aifabrix": "bin/aifabrix.js",
+    "aifx": "bin/aifabrix.js"
   },
   "scripts": {
     "test": "node tests/scripts/test-wrapper.js",
+    "test:ci": "bash tests/scripts/ci-simulate.sh",
     "test:coverage": "jest --config jest.config.coverage.js --coverage --runInBand",
     "test:coverage:nyc": "nyc --reporter=text --reporter=lcov --reporter=html jest --config jest.config.coverage.js --runInBand",
     "test:watch": "jest --watch",

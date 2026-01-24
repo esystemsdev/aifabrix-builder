@@ -1,0 +1,5 @@
+appName: hubspot-test-negative-mode
+mode: invalid-mode
+source:
+  type: known-platform
+  platform: hubspot

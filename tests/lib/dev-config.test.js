@@ -18,7 +18,9 @@ describe('Dev Config Module', () => {
         postgres: 5532,
         redis: 6479,
         pgadmin: 5150,
-        redisCommander: 8181
+        redisCommander: 8181,
+        traefikHttp: 180,
+        traefikHttps: 543
       });
     });
 
@@ -30,7 +32,9 @@ describe('Dev Config Module', () => {
         postgres: 5632,
         redis: 6579,
         pgadmin: 5250,
-        redisCommander: 8281
+        redisCommander: 8281,
+        traefikHttp: 280,
+        traefikHttps: 643
       });
     });
 
@@ -42,7 +46,9 @@ describe('Dev Config Module', () => {
         postgres: 5932,
         redis: 6879,
         pgadmin: 5550,
-        redisCommander: 8581
+        redisCommander: 8581,
+        traefikHttp: 580,
+        traefikHttps: 943
       });
     });
 
@@ -54,7 +60,9 @@ describe('Dev Config Module', () => {
         postgres: 6432,
         redis: 7379,
         pgadmin: 6050,
-        redisCommander: 9081
+        redisCommander: 9081,
+        traefikHttp: 1080,
+        traefikHttps: 1443
       });
     });
 
@@ -87,7 +95,9 @@ describe('Dev Config Module', () => {
         postgres: 15432,
         redis: 16379,
         pgadmin: 15050,
-        redisCommander: 18081
+        redisCommander: 18081,
+        traefikHttp: 10080,
+        traefikHttps: 10443
       });
     });
   });
@@ -101,7 +111,9 @@ describe('Dev Config Module', () => {
         postgres: 5432,
         redis: 6379,
         pgadmin: 5050,
-        redisCommander: 8081
+        redisCommander: 8081,
+        traefikHttp: 80,
+        traefikHttps: 443
       });
     });
 
@@ -123,6 +135,8 @@ describe('Dev Config Module', () => {
       expect(basePorts.redis).toBe(6379);
       expect(basePorts.pgadmin).toBe(5050);
       expect(basePorts.redisCommander).toBe(8081);
+      expect(basePorts.traefikHttp).toBe(80);
+      expect(basePorts.traefikHttps).toBe(443);
     });
   });
 });

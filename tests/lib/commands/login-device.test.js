@@ -51,7 +51,8 @@ jest.mock('../../../lib/utils/api', () => ({
 
 jest.mock('../../../lib/core/config', () => ({
   setCurrentEnvironment: jest.fn(),
-  saveDeviceToken: jest.fn()
+  saveDeviceToken: jest.fn(),
+  setControllerUrl: jest.fn()
 }));
 
 const logger = require('../../../lib/utils/logger');
@@ -60,7 +61,7 @@ const ora = require('ora');
 const chalk = require('chalk');
 const { initiateDeviceCodeFlow } = require('../../../lib/api/auth.api');
 const { pollDeviceCodeToken, displayDeviceCodeInfo } = require('../../../lib/utils/api');
-const { setCurrentEnvironment, saveDeviceToken } = require('../../../lib/core/config');
+const { setCurrentEnvironment, saveDeviceToken, setControllerUrl } = require('../../../lib/core/config');
 const {
   handleDeviceCodeLogin,
   getEnvironmentKey,
@@ -160,6 +161,7 @@ describe('Login Device Code Flow Module', () => {
       expect(initiateDeviceCodeFlow).toHaveBeenCalledWith('http://localhost:3000', 'dev', 'openid profile email offline_access');
       expect(displayDeviceCodeInfo).toHaveBeenCalledWith('USER-CODE', 'http://localhost:3000/verify', logger, chalk);
       expect(saveDeviceToken).toHaveBeenCalled();
+      expect(setControllerUrl).toHaveBeenCalledWith('http://localhost:3000');
       expect(setCurrentEnvironment).toHaveBeenCalledWith('dev');
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Successfully logged in!'));
 

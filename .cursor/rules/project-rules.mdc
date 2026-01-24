@@ -24,6 +24,8 @@ Technologies:
 
 ## Architecture Patterns
 
+> **Visual Documentation**: When documenting architecture, workflows, or command flows, use the canonical Mermaid diagram templates from [flows-and-visuals.md](flows-and-visuals.md). These templates ensure consistent styling and accurate representation of Builder architecture.
+
 ### Module Structure
 - All modules use CommonJS (`require`/`module.exports`)
 - Main entry point: `bin/aifabrix.js`
@@ -506,6 +508,12 @@ function resolveSecret(key) {
 - Document error conditions
 - Add examples in comments for complex methods
 - Document security considerations
+- **Visual Documentation**: Use canonical Mermaid diagram templates from [flows-and-visuals.md](flows-and-visuals.md) for architecture diagrams and workflow visualizations
+  - Use Template 1 for overall Builder architecture
+  - Use Template 2 for application creation flows
+  - Use Template 3 for development lifecycle workflows
+  - Use Template 4 for wizard/external system flows
+  - Follow strict styling guidelines (colors, fonts, spacing) defined in flows-and-visuals.md
 
 ### Code Comments
 - Use JSDoc format for function documentation

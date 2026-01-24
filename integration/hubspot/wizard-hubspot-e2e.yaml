@@ -1,0 +1,16 @@
+appName: hubspot-test-e2e
+mode: create-system
+source:
+  type: openapi-file
+  filePath: /workspace/aifabrix-builder/integration/hubspot/companies.json
+credential:
+  action: skip
+preferences:
+  intent: "HubSpot CRM integration for companies entity"
+  fieldOnboardingLevel: full
+  enableOpenAPIGeneration: true
+  enableABAC: true
+  enableRBAC: false
+deployment:
+  controller: http://localhost:3110
+  environment: miso

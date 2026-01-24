@@ -78,8 +78,9 @@ See `integration/hubspot/` for a complete HubSpot integration with companies, co
 **External Type (`--type external`):**
 When using `--type external`, the command creates an external system integration in `integration/<app>/`:
 - `integration/<app>/variables.yaml` - App configuration with `app.type: "external"` and `externalIntegration` block
-- `integration/<app>/<app-name>-deploy.json` - External system JSON
-- `integration/<app>/<app-name>-deploy-<datasource-key>.json` - Datasource JSON files (all in same folder)
+- `integration/<app>/<systemKey>-system.json` - External system configuration
+- `integration/<app>/<systemKey>-datasource-<datasource-key>.json` - Datasource JSON files (all in same folder)
+- `integration/<app>/<systemKey>-deploy.json` - Deployment manifest (generated)
 - `integration/<app>/env.template` - Environment variables template
 - `integration/<app>/README.md` - Application documentation
 - All files are in the same folder for easy viewing and management
@@ -113,7 +114,7 @@ When using `--type external`, the command creates an external system integration
 
 Build Docker image.
 
-**What:** Detects language, generates/uses Dockerfile, builds image, creates `.env`. For external type applications, generates `application-schema.json` file only (does not build Docker images or deploy).
+**What:** Detects language, generates/uses Dockerfile, builds image, creates `.env`. For external type applications, generates `<systemKey>-deploy.json` file only (does not build Docker images or deploy).
 
 **When:** After code changes, first build, when Dockerfile needs regeneration. For external systems, when ready to generate the application schema file for deployment.
 
@@ -125,7 +126,7 @@ aifabrix build myapp
 **Example (external system):**
 ```bash
 aifabrix build hubspot
-# For external type, this generates application-schema.json only (no Docker build, no deployment)
+# For external type, this generates <systemKey>-deploy.json only (no Docker build, no deployment)
 ```
 
 **Override language:**

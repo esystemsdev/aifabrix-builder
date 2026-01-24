@@ -19,7 +19,8 @@ jest.mock('chalk', () => {
   return mockChalk;
 });
 jest.mock('../../../lib/core/config', () => ({
-  getConfig: jest.fn()
+  getConfig: jest.fn(),
+  resolveEnvironment: jest.fn()
 }));
 jest.mock('../../../lib/utils/token-manager', () => ({
   getOrRefreshDeviceToken: jest.fn()
@@ -36,7 +37,7 @@ jest.mock('../../../lib/utils/logger', () => ({
   error: jest.fn()
 }));
 
-const { getConfig } = require('../../../lib/core/config');
+const { getConfig, resolveEnvironment } = require('../../../lib/core/config');
 const { getOrRefreshDeviceToken } = require('../../../lib/utils/token-manager');
 const { listEnvironmentDatasources } = require('../../../lib/api/environments.api');
 const { formatApiError } = require('../../../lib/utils/api-error-handler');
@@ -206,12 +207,14 @@ describe('Datasource List Module', () => {
       };
 
       getConfig.mockResolvedValue(mockConfig);
+      resolveEnvironment.mockResolvedValue('dev');
       getOrRefreshDeviceToken.mockResolvedValue(mockToken);
       listEnvironmentDatasources.mockResolvedValue(mockResponse);
 
       const { listDatasources } = require('../../../lib/datasource/list');
-      await listDatasources({ environment: 'dev' });
+      await listDatasources({});
 
+      expect(resolveEnvironment).toHaveBeenCalled();
       expect(listEnvironmentDatasources).toHaveBeenCalledWith(
         'http://localhost:3010',
         'dev',
@@ -222,9 +225,10 @@ describe('Datasource List Module', () => {
 
     it('should exit with error if not logged in', async() => {
       getConfig.mockResolvedValue({});
+      resolveEnvironment.mockResolvedValue('dev');
 
       const { listDatasources } = require('../../../lib/datasource/list');
-      await listDatasources({ environment: 'dev' });
+      await listDatasources({});
 
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Not logged in'));
       expect(process.exit).toHaveBeenCalledWith(1);
@@ -247,12 +251,13 @@ describe('Datasource List Module', () => {
       };
 
       getConfig.mockResolvedValue(mockConfig);
+      resolveEnvironment.mockResolvedValue('dev');
       getOrRefreshDeviceToken.mockResolvedValue(mockToken);
       listEnvironmentDatasources.mockResolvedValue(mockResponse);
       formatApiError.mockReturnValue('API Error');
 
       const { listDatasources } = require('../../../lib/datasource/list');
-      await listDatasources({ environment: 'dev' });
+      await listDatasources({});
 
       expect(logger.error).toHaveBeenCalled();
       expect(process.exit).toHaveBeenCalledWith(1);
@@ -275,12 +280,14 @@ describe('Datasource List Module', () => {
       };
 
       getConfig.mockResolvedValue(mockConfig);
+      resolveEnvironment.mockResolvedValue('dev');
       getOrRefreshDeviceToken.mockResolvedValue(mockToken);
       listEnvironmentDatasources.mockResolvedValue(mockResponse);
 
       const { listDatasources } = require('../../../lib/datasource/list');
-      await listDatasources({ environment: 'dev' });
+      await listDatasources({});
 
+      expect(resolveEnvironment).toHaveBeenCalled();
       expect(listEnvironmentDatasources).toHaveBeenCalled();
     });
   });

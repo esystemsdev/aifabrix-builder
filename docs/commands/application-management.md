@@ -19,46 +19,27 @@ Register application and get pipeline credentials.
 
 **When:** First time setting up automated deployments, before adding GitHub Actions workflows.
 
+This command uses the active `controller` and `environment` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`).
+
 **Usage:**
 ```bash
-# Register application in development environment
-aifabrix app register myapp --environment dev
+# Register application (uses controller and environment from config)
+aifabrix app register myapp
 
 # Register with overrides
-aifabrix app register myapp --environment dev --port 8080 --name "My Application"
-
-# Register with explicit controller URL
-aifabrix app register myapp --environment dev --controller https://controller.aifabrix.ai
+aifabrix app register myapp --port 8080 --name "My Application"
 ```
 
 **Arguments:**
 - `<appKey>` - Application key (identifier)
 
 **Options:**
-- `-e, --environment <env>` - Environment ID or key (required)
-- `-c, --controller <url>` - Controller URL (optional, overrides variables.yaml)
-- `-p, --port <port>` - Override application port
+- `-p, --port <port>` - Override application port (container/Docker image port; used as base for URL when no `--url`)
+- `-u, --url <url>` - Application URL. If omitted: `app.url`, `deployment.dataplaneUrl`, or `deployment.appUrl` in variables.yaml; else `http://localhost:{build.localPort or port}`. For a **localhost** controller, both the **port** sent to the controller and the fallback URL use the **developer-ID–adjusted Docker/exposed port** (base + developerId×100), e.g. developer 01 with base 3001 → port `3101`, URL `http://localhost:3101`. For non-localhost, `port` is the container port from variables (or `--port`).
 - `-n, --name <name>` - Override display name
 - `-d, --description <desc>` - Override description
 
-**Controller URL Resolution:**
-
-The controller URL is determined in the following priority order:
-1. `--controller` flag (if provided)
-2. `variables.yaml` → `deployment.controllerUrl` (for app register)
-3. Device tokens in `~/.aifabrix/config.yaml` → `device` section
-
-**Examples:**
-```bash
-# Using --controller flag (highest priority)
-aifabrix app register myapp --environment dev --controller https://controller.aifabrix.ai
-
-# Using variables.yaml (if deployment.controllerUrl is set)
-aifabrix app register myapp --environment dev
-
-# Using device token from config.yaml (fallback)
-aifabrix app register myapp --environment dev
-```
+**Controller URL Resolution:** `config.controller` → device tokens → developer ID–based default (see [Configuration](configuration.md)).
 
 **Error Messages:**
 
@@ -66,7 +47,7 @@ All error messages will show the controller URL that was used or attempted, help
 ```yaml
 ❌ Authentication Failed
 
-Controller URL: https://controller.aifabrix.ai
+Controller URL: https://controller.aifabrix.dev
 
 Your authentication token is invalid or has expired.
 ...
@@ -118,29 +99,20 @@ List applications in an environment.
 
 **What:** Displays all registered applications for a specific environment.
 
+This command uses the active `controller` and `environment` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`).
+
 **Usage:**
 ```bash
-aifabrix app list --environment dev
-
-# List with explicit controller URL
-aifabrix app list --environment dev --controller https://controller.aifabrix.ai
+aifabrix app list
 ```
 
-**Options:**
-- `-e, --environment <env>` - Environment ID or key (required)
-- `-c, --controller <url>` - Controller URL (optional, uses configured controller if not provided)
-
-**Controller URL Resolution:**
-
-The controller URL is determined in the following priority order:
-1. `--controller` flag (if provided)
-2. Device tokens in `~/.aifabrix/config.yaml` → `device` section
+**Controller URL Resolution:** `config.controller` → device tokens → developer ID–based default (see [Configuration](configuration.md)).
 
 **Error Messages:**
 
 Error messages include the controller URL for debugging:
 ```yaml
-❌ Failed to list applications from controller: https://controller.aifabrix.ai
+❌ Failed to list applications from controller: https://controller.aifabrix.dev
 Error: Network timeout
 ```
 
@@ -148,7 +120,7 @@ Error: Network timeout
 
 When applications are found:
 ```yaml
-📱 Applications in dev environment (https://controller.aifabrix.ai):
+📱 Applications in dev environment (https://controller.aifabrix.dev):
 
 ✓ myapp - My Application (active) (URL: https://myapp.example.com, Port: 8080)
 ✗ otherapp - Other Application (inactive) (URL: https://otherapp.example.com)
@@ -157,7 +129,7 @@ When applications are found:
 
 When no applications are found:
 ```yaml
-📱 Applications in dev environment (https://controller.aifabrix.ai):
+📱 Applications in dev environment (https://controller.aifabrix.dev):
 
   No applications found in this environment.
 ```
@@ -182,30 +154,23 @@ Rotate pipeline ClientSecret for an application.
 
 **What:** Generates a new ClientSecret, invalidating the old one. Updates `env.template` and regenerates `.env` file with new credentials (for localhost scenarios). Use when credentials are compromised or need rotation.
 
+This command uses the active `controller` and `environment` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`).
+
 **Usage:**
 ```bash
-aifabrix app rotate-secret myapp --environment dev
-
-# Rotate with explicit controller URL
-aifabrix app rotate-secret myapp --environment dev --controller https://controller.aifabrix.ai
+aifabrix app rotate-secret myapp
 ```
 
 **Arguments:**
 - `<appKey>` - Application key (required, positional)
 
-**Options:**
-- `-e, --environment <env>` - Environment ID or key (required)
-- `-c, --controller <url>` - Controller URL (optional, uses configured controller if not provided)
-
-**Controller URL Resolution:**
-
-Same as `app list` - see above.
+**Controller URL Resolution:** Same as `app list` (see [Configuration](configuration.md)).
 
 **Error Messages:**
 
 Error messages include the controller URL for debugging:
 ```yaml
-❌ Failed to rotate secret via controller: https://controller.aifabrix.ai
+❌ Failed to rotate secret via controller: https://controller.aifabrix.dev
 Error: Application not found
 ```
 
@@ -237,6 +202,6 @@ Error: Application not found
 
 **Issues:**
 - **"Not logged in"** → Run `aifabrix login` first
-- **"Environment is required"** → Provide `--environment` flag (miso/dev/tst/pro)
+- **"Environment is required"** → Run `aifabrix login` or `aifabrix auth config --set-environment <env>`
 - **"Rotation failed"** → Check application key and permissions
 

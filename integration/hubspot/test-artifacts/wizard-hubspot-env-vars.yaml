@@ -1,0 +1,9 @@
+appName: hubspot-test-env-vars
+mode: create-system
+source:
+  type: openapi-file
+  filePath: /workspace/aifabrix-builder/integration/hubspot/companies.json
+deployment:
+  controller: ${CONTROLLER_URL}
+  dataplane: ${DATAPLANE_URL}
+  environment: miso

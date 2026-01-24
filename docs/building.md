@@ -30,23 +30,51 @@ aifabrix build myapp
      - App port gets developer-id adjustment; infra ports use base + developer-id adjustment
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
 flowchart TD
-    Start[aifabrix build myapp] --> LoadConfig[Load variables.yaml]
-    LoadConfig --> DetectLang[Detect Language]
-    DetectLang --> FindDockerfile{Find Dockerfile?}
-    FindDockerfile -->|Found| UseExisting[Use Existing Dockerfile]
-    FindDockerfile -->|Not Found| GenerateDockerfile[Generate from Template]
-    UseExisting --> BuildImage[Build Docker Image]
-    GenerateDockerfile --> BuildImage
-    BuildImage --> TagImage[Tag Image<br/>myapp-devID:tag]
-    TagImage --> GenerateEnv[Generate .env Files]
-    GenerateEnv --> DockerEnv[Docker .env<br/>builder/myapp/.env]
-    GenerateEnv --> LocalEnv[Local .env<br/>envOutputPath if configured]
-    DockerEnv --> Complete[Build Complete]
-    LocalEnv --> Complete
-    
-    style Start fill:#0062FF,color:#FFFFFF
-    style Complete fill:#10B981,color:#FFFFFF
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+
+%% =======================
+%% Flow
+%% =======================
+Start[aifabrix build myapp]:::primary --> LoadConfig[Load variables.yaml]:::base
+LoadConfig --> DetectLang[Detect Language]:::base
+DetectLang --> FindDockerfile{Find Dockerfile?}
+FindDockerfile -->|Found| UseExisting[Use Existing Dockerfile]:::base
+FindDockerfile -->|Not Found| GenerateDockerfile[Generate from Template]:::base
+UseExisting --> BuildImage[Build Docker Image]:::base
+GenerateDockerfile --> BuildImage
+BuildImage --> TagImage[Tag Image<br/>myapp-devID:tag]:::base
+TagImage --> GenerateEnv[Generate .env Files]:::base
+GenerateEnv --> DockerEnv[Docker .env<br/>builder/myapp/.env]:::base
+GenerateEnv --> LocalEnv[Local .env<br/>envOutputPath if configured]:::base
+DockerEnv --> Complete[Build Complete]:::base
+LocalEnv --> Complete
 ```
 
 ### Output
@@ -85,22 +113,50 @@ build:
 ```
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
 flowchart TD
-    Start[Build Process] --> CheckPackage{Check package.json?}
-    CheckPackage -->|Found| TypeScript[TypeScript/Node.js<br/>Node 20 Alpine]
-    CheckPackage -->|Not Found| CheckRequirements{Check requirements.txt<br/>or pyproject.toml?}
-    CheckRequirements -->|Found| Python[Python<br/>Python 3.11 Alpine]
-    CheckRequirements -->|Not Found| UseConfig{Use variables.yaml<br/>build.language?}
-    UseConfig -->|typescript| TypeScript
-    UseConfig -->|python| Python
-    UseConfig -->|Not Set| Error[Error: Cannot detect language]
-    
-    TypeScript --> Dockerfile[Generate Dockerfile]
-    Python --> Dockerfile
-    
-    style TypeScript fill:#3B82F6,color:#FFFFFF
-    style Python fill:#3B82F6,color:#FFFFFF
-    style Error fill:#EF4444,color:#FFFFFF
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef medium fill:#1E3A8A,color:#ffffff,stroke-width:0px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+
+%% =======================
+%% Flow
+%% =======================
+Start[Build Process]:::base --> CheckPackage{Check package.json?}
+CheckPackage -->|Found| TypeScript[TypeScript/Node.js<br/>Node 20 Alpine]:::medium
+CheckPackage -->|Not Found| CheckRequirements{Check requirements.txt<br/>or pyproject.toml?}
+CheckRequirements -->|Found| Python[Python<br/>Python 3.11 Alpine]:::medium
+CheckRequirements -->|Not Found| UseConfig{Use variables.yaml<br/>build.language?}
+UseConfig -->|typescript| TypeScript
+UseConfig -->|python| Python
+UseConfig -->|Not Set| Error[Error: Cannot detect language]:::base
+
+TypeScript --> Dockerfile[Generate Dockerfile]:::base
+Python --> Dockerfile
 ```
 
 ---
@@ -287,21 +343,48 @@ cat apps/myapp/.env  # If envOutputPath points here
 ```
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
 flowchart LR
-    EnvTemplate[env.template<br/>Template variables] --> Resolver[Secret Resolver]
-    Secrets[secrets.yaml<br/>kv:// references] --> Resolver
-    EnvConfig[env-config.yaml<br/>Template values] --> Resolver
-    
-    Resolver --> DockerEnv[Docker .env<br/>builder/myapp/.env<br/>Docker service names<br/>Container ports]
-    Resolver --> LocalEnv[Local .env<br/>envOutputPath<br/>localhost hosts<br/>Local ports]
-    
-    DockerEnv --> DockerContainer[Docker Container]
-    LocalEnv --> LocalDev[Local Development]
-    
-    style EnvTemplate fill:#0062FF,color:#FFFFFF
-    style Resolver fill:#3B82F6,color:#FFFFFF
-    style DockerEnv fill:#10B981,color:#FFFFFF
-    style LocalEnv fill:#10B981,color:#FFFFFF
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef medium fill:#1E3A8A,color:#ffffff,stroke-width:0px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+
+%% =======================
+%% Flow
+%% =======================
+EnvTemplate[env.template<br/>Template variables]:::primary --> Resolver[Secret Resolver]:::medium
+Secrets[secrets.yaml<br/>kv:// references]:::base --> Resolver
+EnvConfig[env-config.yaml<br/>Template values]:::base --> Resolver
+
+Resolver --> DockerEnv[Docker .env<br/>builder/myapp/.env<br/>Docker service names<br/>Container ports]:::base
+Resolver --> LocalEnv[Local .env<br/>envOutputPath<br/>localhost hosts<br/>Local ports]:::base
+
+DockerEnv --> DockerContainer[Docker Container]:::base
+LocalEnv --> LocalDev[Local Development]:::base
 ```
 
 ### Build Logs

@@ -6,13 +6,15 @@
  * @version 2.0.0
  */
 
-const { getDefaultControllerUrl, resolveControllerUrl } = require('../../../lib/utils/controller-url');
+const { getDefaultControllerUrl, getControllerUrlFromLoggedInUser, resolveControllerUrl, getControllerFromConfig } = require('../../../lib/utils/controller-url');
 const envMap = require('../../../lib/utils/env-map');
 const devConfig = require('../../../lib/utils/dev-config');
+const config = require('../../../lib/core/config');
 
 // Mock modules
 jest.mock('../../../lib/utils/env-map');
 jest.mock('../../../lib/utils/dev-config');
+jest.mock('../../../lib/core/config');
 
 describe('Controller URL Utility', () => {
   beforeEach(() => {
@@ -54,76 +56,129 @@ describe('Controller URL Utility', () => {
     });
   });
 
-  describe('resolveControllerUrl', () => {
-    it('should return explicit controller option (priority 1)', async() => {
-      const options = { controller: 'https://custom.controller.com' };
-      const config = { deployment: { controllerUrl: 'https://config.controller.com' } };
+  describe('getControllerFromConfig', () => {
+    it('should return controller URL from config', async() => {
+      config.getControllerUrl = jest.fn().mockResolvedValue('https://config.controller.com');
 
-      const url = await resolveControllerUrl(options, config);
-
-      expect(url).toBe('https://custom.controller.com');
-      expect(envMap.getDeveloperIdNumber).not.toHaveBeenCalled();
-    });
-
-    it('should return config controller URL (priority 2)', async() => {
-      const options = {};
-      const config = { deployment: { controllerUrl: 'https://config.controller.com' } };
-
-      const url = await resolveControllerUrl(options, config);
+      const url = await getControllerFromConfig();
 
       expect(url).toBe('https://config.controller.com');
-      expect(envMap.getDeveloperIdNumber).not.toHaveBeenCalled();
+      expect(config.getControllerUrl).toHaveBeenCalled();
     });
 
-    it('should return developer ID-based default (priority 3)', async() => {
-      const options = {};
-      const config = {};
+    it('should return null if controller URL not in config', async() => {
+      config.getControllerUrl = jest.fn().mockResolvedValue(null);
 
+      const url = await getControllerFromConfig();
+
+      expect(url).toBeNull();
+    });
+  });
+
+  describe('resolveControllerUrl', () => {
+    it('should return controller URL from config (priority 1)', async() => {
+      config.getControllerUrl = jest.fn().mockResolvedValue('https://config.controller.com');
+
+      const url = await resolveControllerUrl();
+
+      expect(url).toBe('https://config.controller.com');
+      expect(config.getControllerUrl).toHaveBeenCalled();
+    });
+
+    it('should return logged-in user controller URL (priority 2) when config not set', async() => {
+      config.getControllerUrl = jest.fn().mockResolvedValue(null);
+      config.getConfig.mockResolvedValue({
+        device: {
+          'https://logged-in.controller.com': {
+            token: 'encrypted-token',
+            refreshToken: 'refresh-token',
+            expiresAt: '2024-12-31T23:59:59.000Z'
+          }
+        }
+      });
+
+      const url = await resolveControllerUrl();
+
+      expect(url).toBe('https://logged-in.controller.com');
+    });
+
+    it('should return developer ID-based default (priority 3) when no config or logged-in user', async() => {
+      config.getControllerUrl = jest.fn().mockResolvedValue(null);
+      config.getConfig.mockResolvedValue({ device: {} });
       envMap.getDeveloperIdNumber.mockResolvedValue(1);
       devConfig.getDevPorts.mockReturnValue({ app: 3100 });
 
-      const url = await resolveControllerUrl(options, config);
+      const url = await resolveControllerUrl();
 
       expect(url).toBe('http://localhost:3100');
       expect(envMap.getDeveloperIdNumber).toHaveBeenCalledWith(null);
       expect(devConfig.getDevPorts).toHaveBeenCalledWith(1);
     });
 
-    it('should remove trailing slashes from explicit option', async() => {
-      const options = { controller: 'https://custom.controller.com/' };
-      const config = {};
-
-      const url = await resolveControllerUrl(options, config);
-
-      expect(url).toBe('https://custom.controller.com');
-    });
-
     it('should remove trailing slashes from config URL', async() => {
-      const options = {};
-      const config = { deployment: { controllerUrl: 'https://config.controller.com/' } };
+      config.getControllerUrl = jest.fn().mockResolvedValue('https://config.controller.com/');
 
-      const url = await resolveControllerUrl(options, config);
-
-      expect(url).toBe('https://config.controller.com');
-    });
-
-    it('should handle null options', async() => {
-      const config = { deployment: { controllerUrl: 'https://config.controller.com' } };
-
-      const url = await resolveControllerUrl(null, config);
+      const url = await resolveControllerUrl();
 
       expect(url).toBe('https://config.controller.com');
     });
+  });
 
-    it('should handle undefined config', async() => {
-      const options = {};
+  describe('getControllerUrlFromLoggedInUser', () => {
+    it('should return controller URL from logged-in device tokens', async() => {
+      config.getConfig.mockResolvedValue({
+        device: {
+          'https://logged-in.controller.com': {
+            token: 'encrypted-token',
+            refreshToken: 'refresh-token',
+            expiresAt: '2024-12-31T23:59:59.000Z'
+          }
+        }
+      });
 
-      envMap.getDeveloperIdNumber.mockResolvedValue(0);
-      devConfig.getDevPorts.mockReturnValue({ app: 3000 });
+      const url = await getControllerUrlFromLoggedInUser();
 
-      const url = await resolveControllerUrl(options, undefined);
+      expect(url).toBe('https://logged-in.controller.com');
+    });
 
-      expect(url).toBe('http://localhost:3000');
+    it('should return null when no device tokens exist', async() => {
+      config.getConfig.mockResolvedValue({ device: {} });
+
+      const url = await getControllerUrlFromLoggedInUser();
+
+      expect(url).toBeNull();
+    });
+
+    it('should return null when device config is missing', async() => {
+      config.getConfig.mockResolvedValue({});
+
+      const url = await getControllerUrlFromLoggedInUser();
+
+      expect(url).toBeNull();
+    });
+
+    it('should normalize controller URL', async() => {
+      config.getConfig.mockResolvedValue({
+        device: {
+          'https://logged-in.controller.com/': {
+            token: 'encrypted-token',
+            refreshToken: 'refresh-token',
+            expiresAt: '2024-12-31T23:59:59.000Z'
+          }
+        }
+      });
+
+      const url = await getControllerUrlFromLoggedInUser();
+
+      expect(url).toBe('https://logged-in.controller.com');
+    });
+
+    it('should handle config read errors gracefully', async() => {
+      config.getConfig.mockRejectedValue(new Error('Config file not found'));
+
+      const url = await getControllerUrlFromLoggedInUser();
+
+      expect(url).toBeNull();
     });
   });
 });

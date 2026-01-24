@@ -1,0 +1,5 @@
+appName: hubspot-test-negative-openapi
+mode: create-system
+source:
+  type: openapi-file
+  filePath: /tmp/does-not-exist.json

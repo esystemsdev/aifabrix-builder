@@ -400,8 +400,10 @@ describe('App Register Config Module', () => {
         appType: 'webapp',
         registryMode: 'external',
         port: 3000,
+        localPort: 3000,
         image: 'test-image:latest',
-        language: 'typescript'
+        language: 'typescript',
+        url: null
       });
     });
 

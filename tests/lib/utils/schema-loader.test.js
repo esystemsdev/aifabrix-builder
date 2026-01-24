@@ -182,7 +182,7 @@ describe('Schema Loader Utilities', () => {
   describe('detectSchemaType', () => {
     it('should detect external-system from $id', () => {
       const content = JSON.stringify({
-        $id: 'https://aifabrix.ai/schemas/external-system.schema.json'
+        $id: 'https://aifabrix.dev/schemas/external-system.schema.json'
       });
       const filePath = '/path/to/file.json';
 
@@ -197,7 +197,7 @@ describe('Schema Loader Utilities', () => {
 
     it('should detect external-datasource from $id', () => {
       const content = JSON.stringify({
-        $id: 'https://aifabrix.ai/schemas/external-datasource.schema.json'
+        $id: 'https://aifabrix.dev/schemas/external-datasource.schema.json'
       });
       const filePath = '/path/to/file.json';
 
@@ -283,7 +283,7 @@ describe('Schema Loader Utilities', () => {
 
     it('should use provided content instead of reading file', () => {
       const content = JSON.stringify({
-        $id: 'https://aifabrix.ai/schemas/external-system.schema.json'
+        $id: 'https://aifabrix.dev/schemas/external-system.schema.json'
       });
 
       const { detectSchemaType } = require('../../../lib/utils/schema-loader');

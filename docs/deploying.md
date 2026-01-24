@@ -18,7 +18,7 @@ Before deploying:
    ```
 
 3. **Registered Application**
-   - Run `aifabrix app register myapp --environment dev` to get pipeline credentials
+   - Run `aifabrix app register myapp` to get pipeline credentials
    - Credentials are displayed (not automatically saved)
    - Copy credentials to GitHub Secrets for CI/CD
 
@@ -33,7 +33,7 @@ Before deploying:
 aifabrix push myapp --registry myacr.azurecr.io --tag v1.0.0
 
 # Deploy via controller
-aifabrix deploy myapp --controller https://controller.aifabrix.ai
+aifabrix deploy myapp
 ```
 
 ### Method 2: Automated CI/CD Deployment
@@ -43,24 +43,57 @@ For automated deployments using the Pipeline API, see [GitHub Workflows Guide](g
 The deploy command uses Bearer token authentication. Tokens are automatically retrieved or refreshed from config.yaml, or obtained using credentials from secrets.local.yaml if needed.
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "subGraphTitleColor": "#64748B",
+    "subGraphTitleFontWeight": "500",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
 flowchart LR
-    Local[Local Development] --> Build[Build Image]
-    Build --> Push[Push to ACR<br/>myacr.azurecr.io]
-    Push --> Deploy[Deploy via Controller]
-    Deploy --> Controller[Miso Controller]
-    Controller --> Azure[Azure Container Apps]
-    
-    subgraph CICD[CI/CD Pipeline]
-        GitHub[GitHub Actions] --> BuildCI[Build]
-        BuildCI --> PushCI[Push to ACR]
-        PushCI --> DeployCI[Deploy via Controller]
-        DeployCI --> Controller
-    end
-    
-    style Local fill:#0062FF,color:#FFFFFF
-    style Azure fill:#10B981,color:#FFFFFF
-    style Controller fill:#3B82F6,color:#FFFFFF
-    style CICD fill:#E5E7EB,stroke:#6B7280,stroke-width:2px
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef medium fill:#1E3A8A,color:#ffffff,stroke-width:0px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+
+%% =======================
+%% Local Flow
+%% =======================
+Local[Local Development]:::primary --> Build[Build Image]:::base
+Build --> Push[Push to ACR<br/>myacr.azurecr.io]:::base
+Push --> Deploy[Deploy via Controller]:::base
+Deploy --> Controller[Miso Controller]:::medium
+Controller --> Azure[Azure Container Apps]:::base
+
+%% =======================
+%% CI/CD Pipeline
+%% =======================
+subgraph CICD["CI/CD Pipeline"]
+    direction TB
+    GitHub[GitHub Actions]:::base --> BuildCI[Build]:::base
+    BuildCI --> PushCI[Push to ACR]:::base
+    PushCI --> DeployCI[Deploy via Controller]:::base
+    DeployCI --> Controller
+end
 ```
 
 ---
@@ -125,7 +158,8 @@ Before deploying applications, ensure the environment is set up:
 
 ```bash
 # Deploy/setup the environment (dev, tst, pro, miso)
-aifabrix environment deploy dev --controller https://controller.aifabrix.ai
+# Uses controller and environment from config (set via aifabrix login or aifabrix auth config)
+aifabrix environment deploy dev
 ```
 
 ### What Happens
@@ -150,12 +184,12 @@ aifabrix environment deploy dev --controller https://controller.aifabrix.ai
 ### Output
 
 ```yaml
-📋 Deploying environment 'dev' to https://controller.aifabrix.ai...
+📋 Deploying environment 'dev' to https://controller.aifabrix.dev...
 ✓ Environment validated
 ✓ Authentication successful
 
 🚀 Deploying environment infrastructure...
-📤 Sending deployment request to https://controller.aifabrix.ai/api/v1/environments/dev/deploy...
+📤 Sending deployment request to https://controller.aifabrix.dev/api/v1/environments/dev/deploy...
 ⏳ Polling deployment status (5000ms intervals)...
 
 ✅ Environment deployed successfully
@@ -172,7 +206,7 @@ aifabrix environment deploy dev --controller https://controller.aifabrix.ai
 ## Step 3: Deploy Application via Controller
 
 ```bash
-aifabrix deploy myapp --controller https://controller.aifabrix.ai
+aifabrix deploy myapp
 ```
 
 ### What Happens
@@ -210,27 +244,55 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai
    - Sets up RBAC and permissions
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
 flowchart TD
-    Start[aifabrix deploy myapp] --> ValidateEnv[Validate Environment Exists]
-    ValidateEnv --> GetToken{Get/Refresh Token}
-    GetToken -->|Token Missing| ReadCreds[Read Credentials<br/>secrets.local.yaml]
-    ReadCreds --> Login[Login API]
-    Login --> SaveToken[Save Token to config.yaml]
-    GetToken -->|Token Valid| GenerateManifest[Generate Deployment Manifest]
-    SaveToken --> GenerateManifest
-    
-    GenerateManifest --> LoadConfig[Load Config Files<br/>variables.yaml<br/>env.template<br/>rbac.yaml]
-    LoadConfig --> ParseEnv[Parse Environment Variables]
-    ParseEnv --> BuildManifest[Build JSON Manifest]
-    BuildManifest --> GenKey[Generate Deployment Key<br/>SHA256 hash]
-    GenKey --> ValidateManifest[Validate Manifest]
-    ValidateManifest --> SendController[Send to Controller<br/>POST /api/v1/pipeline/env/deploy]
-    SendController --> ControllerProcess[Controller Processes]
-    ControllerProcess --> DeployAzure[Deploy to Azure Container Apps]
-    
-    style Start fill:#0062FF,color:#FFFFFF
-    style DeployAzure fill:#10B981,color:#FFFFFF
-    style ControllerProcess fill:#3B82F6,color:#FFFFFF
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef medium fill:#1E3A8A,color:#ffffff,stroke-width:0px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+
+%% =======================
+%% Flow
+%% =======================
+Start[aifabrix deploy myapp]:::primary --> ValidateEnv[Validate Environment Exists]:::base
+ValidateEnv --> GetToken{Get/Refresh Token}
+GetToken -->|Token Missing| ReadCreds[Read Credentials<br/>secrets.local.yaml]:::base
+ReadCreds --> Login[Login API]:::base
+Login --> SaveToken[Save Token to config.yaml]:::base
+GetToken -->|Token Valid| GenerateManifest[Generate Deployment Manifest]:::base
+SaveToken --> GenerateManifest
+
+GenerateManifest --> LoadConfig[Load Config Files<br/>variables.yaml<br/>env.template<br/>rbac.yaml]:::base
+LoadConfig --> ParseEnv[Parse Environment Variables]:::base
+ParseEnv --> BuildManifest[Build JSON Manifest]:::base
+BuildManifest --> GenKey[Generate Deployment Key<br/>SHA256 hash]:::base
+GenKey --> ValidateManifest[Validate Manifest]:::base
+ValidateManifest --> SendController[Send to Controller<br/>POST /api/v1/pipeline/env/deploy]:::medium
+SendController --> ControllerProcess[Controller Processes]:::base
+ControllerProcess --> DeployAzure[Deploy to Azure Container Apps]:::base
 ```
 
 ### Output
@@ -240,7 +302,7 @@ flowchart TD
 ✓ Deployment key: a1b2c3d4...
 ✓ Sending to controller...
 ✓ Deployment started
-✓ Status: https://controller.aifabrix.ai/deployments/12345
+✓ Status: https://controller.aifabrix.dev/deployments/12345
 ```
 
 ---
@@ -330,7 +392,7 @@ Before deploying via pipeline API, you must register your application to get Cli
 
 **For credentials-based login (recommended for deployments):**
 ```bash
-aifabrix login --controller https://controller.aifabrix.ai --method credentials --app myapp --environment dev
+aifabrix login --controller https://controller.aifabrix.dev --method credentials --app myapp --environment dev
 ```
 
 This reads credentials from `~/.aifabrix/secrets.local.yaml` using pattern:
@@ -339,7 +401,7 @@ This reads credentials from `~/.aifabrix/secrets.local.yaml` using pattern:
 
 **For device code flow (initial setup):**
 ```bash
-aifabrix login --controller https://controller.aifabrix.ai --method device --environment dev
+aifabrix login --controller https://controller.aifabrix.dev --method device --environment dev
 ```
 
 This authenticates you via Keycloak OIDC device code flow.
@@ -347,7 +409,7 @@ This authenticates you via Keycloak OIDC device code flow.
 ### Step 2: Register Application
 
 ```bash
-aifabrix app register myapp --environment dev
+aifabrix app register myapp
 ```
 
 **Output:**
@@ -367,7 +429,7 @@ aifabrix app register myapp --environment dev
 
 📝 Add to GitHub Secrets:
    Repository level:
-     MISO_CONTROLLER_URL = https://controller.aifabrix.ai
+     MISO_CONTROLLER_URL = https://controller.aifabrix.dev
    
    Environment level (dev):
      DEV_MISO_CLIENTID = ctrl-dev-myapp
@@ -384,7 +446,7 @@ aifabrix app register myapp --environment dev
 
 1. Go to repository Settings → Secrets and variables → Actions
 2. Add repository-level secret:
-   - `MISO_CONTROLLER_URL` - Controller URL (e.g., `https://controller.aifabrix.ai`)
+   - `MISO_CONTROLLER_URL` - Controller URL (e.g., `https://controller.aifabrix.dev`)
 3. Add environment-level secrets (for dev):
    - `DEV_MISO_CLIENTID` - From registration output
    - `DEV_MISO_CLIENTSECRET` - From registration output
@@ -396,7 +458,7 @@ aifabrix app register myapp --environment dev
 To rotate your ClientSecret (use when credentials are compromised or need rotation):
 
 ```bash
-aifabrix app rotate-secret myapp --environment dev
+aifabrix app rotate-secret myapp
 ```
 
 **Output:**
@@ -425,7 +487,7 @@ Updates credentials display. Copy the new credentials to `DEV_MISO_CLIENTSECRET`
 For automated CI/CD deployments, see [GitHub Workflows Guide](github-workflows.md#integration-with-ai-fabrix) for detailed workflow examples.
 
 **Basic workflow setup:**
-1. Register application: `aifabrix app register myapp --environment dev`
+1. Register application: `aifabrix app register myapp`
 2. Add secrets in GitHub repository settings (see [Application Registration](#application-registration))
 3. Create workflow file in `.github/workflows/deploy.yaml`
 4. Push code to trigger deployment
@@ -440,7 +502,8 @@ deploy:
     - npm install -g @aifabrix/builder
     - aifabrix build myapp
     - aifabrix push myapp --registry $ACR_REGISTRY --tag $CI_COMMIT_SHA
-    - aifabrix deploy myapp --controller $CONTROLLER_URL
+    - aifabrix login --controller $CONTROLLER_URL --method credentials --app myapp --environment $ENV
+    - aifabrix deploy myapp
   only:
     - main
 ```
@@ -472,10 +535,14 @@ steps:
     displayName: 'Push to ACR'
   
   - script: |
-      aifabrix deploy myapp \
-        --controller $(CONTROLLER_URL)
+      aifabrix login --controller $(CONTROLLER_URL) --method credentials --app myapp --environment $(ENV)
+    displayName: 'Login to Controller'
+  
+  - script: aifabrix deploy myapp
     displayName: 'Deploy to Azure'
 ```
+
+**Note:** Login sets controller and environment in config; deploy uses those values. Ensure `CONTROLLER_URL`, `ENV`, and credentials (in secrets or variables) are configured.
 
 ---
 
@@ -483,23 +550,23 @@ steps:
 
 ### Development
 ```bash
-aifabrix deploy myapp \
-  --controller https://dev-controller.aifabrix.ai \
-  --environment dev
+aifabrix auth config --set-controller https://dev-controller.aifabrix.dev
+aifabrix auth config --set-environment dev
+aifabrix deploy myapp
 ```
 
 ### Staging
 ```bash
-aifabrix deploy myapp \
-  --controller https://staging-controller.aifabrix.ai \
-  --environment tst
+aifabrix auth config --set-controller https://staging-controller.aifabrix.dev
+aifabrix auth config --set-environment tst
+aifabrix deploy myapp
 ```
 
 ### Production
 ```bash
-aifabrix deploy myapp \
-  --controller https://controller.aifabrix.ai \
-  --environment pro
+aifabrix auth config --set-controller https://controller.aifabrix.dev
+aifabrix auth config --set-environment pro
+aifabrix deploy myapp
 ```
 
 ---
@@ -513,7 +580,7 @@ aifabrix deploy myapp \
 aifabrix push myapp --registry myacr.azurecr.io --tag v0.9.0
 
 # Deploy it
-aifabrix deploy myapp --controller https://controller.aifabrix.ai
+aifabrix deploy myapp
 ```
 
 Controller deploys the image tag specified in variables.yaml:
@@ -534,10 +601,10 @@ image:
 **Current approach:**
 ```bash
 # Deploy with status polling
-aifabrix deploy myapp --controller https://controller.aifabrix.ai --poll
+aifabrix deploy myapp --poll
 
 # Or check status via controller dashboard
-# Visit: https://controller.aifabrix.ai/deployments
+# Visit: https://controller.aifabrix.dev/deployments
 ```
 
 ---
@@ -602,17 +669,17 @@ aifabrix genkey myapp
 **Check authentication:**
 ```bash
 # For credentials login (reads from secrets.local.yaml)
-aifabrix login --controller https://controller.aifabrix.ai --method credentials --app myapp --environment dev
+aifabrix login --controller https://controller.aifabrix.dev --method credentials --app myapp --environment dev
 
 # For device code flow
-aifabrix login --controller https://controller.aifabrix.ai --method device --environment dev
+aifabrix login --controller https://controller.aifabrix.dev --method device --environment dev
 ```
 
 Token is stored in `~/.aifabrix/config.yaml` and auto-refreshes on subsequent commands.
 
 **Check network:**
 ```bash
-ping controller.aifabrix.ai
+ping controller.aifabrix.dev
 ```
 
 ### "Authentication failed" or "Failed to get authentication token"
@@ -629,12 +696,12 @@ Should show:
 
 **Login to refresh token:**
 ```bash
-aifabrix login --controller https://controller.aifabrix.ai --method credentials --app myapp --environment dev
+aifabrix login --controller https://controller.aifabrix.dev --method credentials --app myapp --environment dev
 ```
 
 **Verify registration:**
 ```bash
-aifabrix app register myapp --environment dev
+aifabrix app register myapp
 ```
 
 **Check credentials in GitHub Secrets (for CI/CD):**
@@ -693,7 +760,7 @@ aifabrix run myapp
 
 # Then deploy
 aifabrix push myapp --registry myacr.azurecr.io
-aifabrix deploy myapp --controller https://controller.aifabrix.ai
+aifabrix deploy myapp
 ```
 
 ### Secrets Management
@@ -763,25 +830,53 @@ The `aifabrix deploy` command performs the following steps:
    - Terminal states: completed, failed, cancelled
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
 flowchart TD
-    Variables[variables.yaml<br/>App metadata] --> Load[Load Configuration Files]
-    EnvTemplate[env.template<br/>Environment variables] --> Load
-    Rbac[rbac.yaml<br/>Roles & permissions] --> Load
-    
-    Load --> Parse[Parse Environment Variables<br/>Convert kv:// references]
-    Parse --> Build[Build Deployment Manifest<br/>Merge all configuration]
-    Build --> GenKey[Generate Deployment Key<br/>SHA256 hash of manifest]
-    GenKey --> Validate[Validate Manifest<br/>Required fields<br/>Structure checks]
-    Validate --> Send[Send to Controller<br/>POST /api/v1/pipeline/env/deploy]
-    
-    Send --> Poll{Poll Status?}
-    Poll -->|Yes| PollStatus[Poll Deployment Status<br/>Every 5 seconds]
-    PollStatus --> Complete[Deployment Complete]
-    Poll -->|No| Complete
-    
-    style Variables fill:#0062FF,color:#FFFFFF
-    style Complete fill:#10B981,color:#FFFFFF
-    style Send fill:#3B82F6,color:#FFFFFF
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef medium fill:#1E3A8A,color:#ffffff,stroke-width:0px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+
+%% =======================
+%% Flow
+%% =======================
+Variables[variables.yaml<br/>App metadata]:::primary --> Load[Load Configuration Files]:::base
+EnvTemplate[env.template<br/>Environment variables]:::base --> Load
+Rbac[rbac.yaml<br/>Roles & permissions]:::base --> Load
+
+Load --> Parse[Parse Environment Variables<br/>Convert kv:// references]:::base
+Parse --> Build[Build Deployment Manifest<br/>Merge all configuration]:::base
+Build --> GenKey[Generate Deployment Key<br/>SHA256 hash of manifest]:::base
+GenKey --> Validate[Validate Manifest<br/>Required fields<br/>Structure checks]:::base
+Validate --> Send[Send to Controller<br/>POST /api/v1/pipeline/env/deploy]:::medium
+
+Send --> Poll{Poll Status?}
+Poll -->|Yes| PollStatus[Poll Deployment Status<br/>Every 5 seconds]:::base
+PollStatus --> Complete[Deployment Complete]:::base
+Poll -->|No| Complete
 ```
 
 ### Security Features
@@ -812,35 +907,67 @@ flowchart TD
 - **Error Sanitization**: No internal paths or secrets exposed in error messages
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "subGraphTitleColor": "#64748B",
+    "subGraphTitleFontWeight": "500",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
 flowchart TD
-    subgraph AuthMethods[Authentication Methods]
-        DeviceToken[Device Token<br/>Interactive CLI<br/>User-level audit]
-        ClientToken[Client Token<br/>Application-level<br/>Auto-refresh]
-        ClientCreds[Client Credentials<br/>CI/CD pipelines<br/>Application-level audit]
-    end
-    
-    Deploy[aifabrix deploy] --> CheckDevice{Device Token<br/>Available?}
-    CheckDevice -->|Yes| UseDevice[Use Device Token<br/>Bearer token]
-    CheckDevice -->|No| CheckClient{Client Token<br/>Available?}
-    CheckClient -->|Yes| UseClient[Use Client Token<br/>Bearer token]
-    CheckClient -->|No| UseCreds[Use Client Credentials<br/>x-client-id<br/>x-client-secret]
-    
-    UseDevice --> Controller[Miso Controller]
-    UseClient --> Controller
-    UseCreds --> Controller
-    
-    style AuthMethods fill:#E5E7EB,stroke:#6B7280,stroke-width:2px
-    style DeviceToken fill:#0062FF,color:#FFFFFF
-    style ClientToken fill:#3B82F6,color:#FFFFFF
-    style ClientCreds fill:#6B7280,color:#FFFFFF
-    style Controller fill:#10B981,color:#FFFFFF
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef medium fill:#1E3A8A,color:#ffffff,stroke-width:0px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+
+%% =======================
+%% Authentication Methods
+%% =======================
+subgraph AuthMethods["Authentication Methods"]
+    direction TB
+    DeviceToken[Device Token<br/>Interactive CLI<br/>User-level audit]:::primary
+    ClientToken[Client Token<br/>Application-level<br/>Auto-refresh]:::medium
+    ClientCreds[Client Credentials<br/>CI/CD pipelines<br/>Application-level audit]:::base
+end
+
+%% =======================
+%% Flow
+%% =======================
+Deploy[aifabrix deploy]:::base --> CheckDevice{Device Token<br/>Available?}
+CheckDevice -->|Yes| UseDevice[Use Device Token<br/>Bearer token]:::base
+CheckDevice -->|No| CheckClient{Client Token<br/>Available?}
+CheckClient -->|Yes| UseClient[Use Client Token<br/>Bearer token]:::base
+CheckClient -->|No| UseCreds[Use Client Credentials<br/>x-client-id<br/>x-client-secret]:::base
+
+UseDevice --> Controller[Miso Controller]:::base
+UseClient --> Controller
+UseCreds --> Controller
 ```
 
 ### API Endpoints
 
 **Deploy Endpoint:**
 ```yaml
-POST https://controller.aifabrix.ai/api/v1/pipeline/{env}/deploy
+POST https://controller.aifabrix.dev/api/v1/pipeline/{env}/deploy
 Content-Type: application/json
 
 # Option 1: Bearer token (device token) - for user-level audit
@@ -865,7 +992,7 @@ Body:
 
 **Status Endpoint:**
 ```yaml
-GET https://controller.aifabrix.ai/api/v1/environments/{env}/deployments/{deploymentId}
+GET https://controller.aifabrix.dev/api/v1/environments/{env}/deployments/{deploymentId}
 
 # Option 1: Bearer token (device token)
 Headers:
@@ -880,7 +1007,7 @@ Response: {
   "deploymentId": "deploy-123",
   "status": "completed",
   "progress": 100,
-  "deploymentUrl": "https://myapp.aifabrix.ai"
+  "deploymentUrl": "https://myapp.aifabrix.dev"
 }
 ```
 
@@ -925,7 +1052,7 @@ All deployment operations are logged with ISO 27001 compliant audit entries:
   "metadata": {
     "action": "deploy",
     "appName": "myapp",
-    "controllerUrl": "https://controller.aifabrix.ai",
+    "controllerUrl": "https://controller.aifabrix.dev",
     "environment": "dev"
   }
 }

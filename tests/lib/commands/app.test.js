@@ -190,11 +190,10 @@ describe('App Commands Module', () => {
       const registerCommand = appGroup._subCommands?.find(c => c.name === 'register <appKey>');
       expect(registerCommand).toBeDefined();
       expect(registerCommand.command.description).toHaveBeenCalledWith('Register application and get pipeline credentials');
-      expect(registerCommand.command.requiredOption).toHaveBeenCalledWith('-e, --environment <env>', 'Environment ID or key');
-      expect(registerCommand.command.option).toHaveBeenCalledWith('-c, --controller <url>', 'Controller URL (overrides variables.yaml)');
       expect(registerCommand.command.option).toHaveBeenCalledWith('-p, --port <port>', 'Application port (default: from variables.yaml)');
       expect(registerCommand.command.option).toHaveBeenCalledWith('-n, --name <name>', 'Override display name');
       expect(registerCommand.command.option).toHaveBeenCalledWith('-d, --description <desc>', 'Override description');
+      expect(registerCommand.command.requiredOption).not.toHaveBeenCalled();
     });
 
     it('should setup list command', () => {
@@ -204,8 +203,8 @@ describe('App Commands Module', () => {
       const listCommand = appGroup._subCommands?.find(c => c.name === 'list');
       expect(listCommand).toBeDefined();
       expect(listCommand.command.description).toHaveBeenCalledWith('List applications');
-      expect(listCommand.command.requiredOption).toHaveBeenCalledWith('-e, --environment <env>', 'Environment ID or key');
-      expect(listCommand.command.option).toHaveBeenCalledWith('-c, --controller <url>', 'Controller URL (optional, uses configured controller if not provided)');
+      expect(listCommand.command.requiredOption).not.toHaveBeenCalled();
+      expect(listCommand.command.option).not.toHaveBeenCalled();
     });
 
     it('should setup rotate-secret command', () => {
@@ -215,8 +214,8 @@ describe('App Commands Module', () => {
       const rotateCommand = appGroup._subCommands?.find(c => c.name === 'rotate-secret <appKey>');
       expect(rotateCommand).toBeDefined();
       expect(rotateCommand.command.description).toHaveBeenCalledWith('Rotate pipeline ClientSecret for an application');
-      expect(rotateCommand.command.requiredOption).toHaveBeenCalledWith('-e, --environment <env>', 'Environment ID or key');
-      expect(rotateCommand.command.option).toHaveBeenCalledWith('-c, --controller <url>', 'Controller URL (optional, uses configured controller if not provided)');
+      expect(rotateCommand.command.requiredOption).not.toHaveBeenCalled();
+      expect(rotateCommand.command.option).not.toHaveBeenCalled();
     });
 
     describe('register command action', () => {

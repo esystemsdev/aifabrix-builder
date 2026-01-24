@@ -33,8 +33,8 @@ docker stop aifabrix-myapp
 aifabrix build myapp
 aifabrix push myapp --registry myacr.azurecr.io --tag v1.0.0
 
-# Deploy
-aifabrix deploy myapp --controller https://controller.aifabrix.ai
+# Deploy (uses controller and environment from config)
+aifabrix deploy myapp
 ```
 
 ### Troubleshooting

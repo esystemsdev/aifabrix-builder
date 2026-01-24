@@ -69,7 +69,7 @@ describe('API Utilities Module', () => {
 
       const result = await makeApiCall('https://api.example.com/test');
 
-      expect(global.fetch).toHaveBeenCalledWith('https://api.example.com/test', {});
+      expect(global.fetch).toHaveBeenCalledWith('https://api.example.com/test', expect.objectContaining({ signal: expect.any(Object) }));
       expect(result.success).toBe(true);
       expect(result.data).toEqual({ data: 'test' });
       expect(result.status).toBe(200);
@@ -192,7 +192,7 @@ describe('API Utilities Module', () => {
 
       await makeApiCall('https://api.example.com/test', options);
 
-      expect(global.fetch).toHaveBeenCalledWith('https://api.example.com/test', options);
+      expect(global.fetch).toHaveBeenCalledWith('https://api.example.com/test', expect.objectContaining(options));
     });
   });
 

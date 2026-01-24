@@ -102,41 +102,43 @@ Deploy/setup environment in Miso Controller.
 
 **When:** Setting up a new environment for the first time, provisioning environment infrastructure, updating environment-level configuration, or before deploying applications to an environment. This should be done before deploying applications.
 
+This command uses the active `controller` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`).
+
 **Example:**
 ```bash
 # Deploy development environment
-aifabrix environment deploy dev --controller https://controller.aifabrix.ai
+aifabrix environment deploy dev
 
 # Deploy testing environment
-aifabrix environment deploy tst --controller https://controller.aifabrix.ai
+aifabrix environment deploy tst
 
 # Deploy production environment
-aifabrix environment deploy pro --controller https://controller.aifabrix.ai
+aifabrix environment deploy pro
 
 # Deploy miso environment
-aifabrix environment deploy miso --controller https://controller.aifabrix.ai
+aifabrix environment deploy miso
 
 # Using alias
-aifabrix env deploy dev --controller https://controller.aifabrix.ai
+aifabrix env deploy dev
 
 # Without status polling
-aifabrix environment deploy dev --controller https://controller.aifabrix.ai --no-poll
+aifabrix environment deploy dev --no-poll
 ```
 
 **Output:**
 ```yaml
-📋 Deploying environment 'dev' to https://controller.aifabrix.ai...
+📋 Deploying environment 'dev' to https://controller.aifabrix.dev...
 ✓ Environment validated
 ✓ Authentication successful
 
 🚀 Deploying environment infrastructure...
-📤 Sending deployment request to https://controller.aifabrix.ai/api/v1/environments/dev/deploy...
+📤 Sending deployment request to https://controller.aifabrix.dev/api/v1/environments/dev/deploy...
 ⏳ Polling deployment status (5000ms intervals)...
 
 ✅ Environment deployed successfully
    Environment: dev
    Status: ✅ ready
-   URL: https://controller.aifabrix.ai/environments/dev
+   URL: https://controller.aifabrix.dev/environments/dev
    
 ✓ Environment is ready for application deployments
 ```
@@ -144,8 +146,8 @@ aifabrix environment deploy dev --controller https://controller.aifabrix.ai --no
 **Configuration:**
 
 The environment deploy command requires:
-- Controller URL (via `--controller` flag)
-- Valid environment key (miso, dev, tst, pro)
+- Controller URL from `config.controller` (set via `aifabrix login` or `aifabrix auth config --set-controller`)
+- Valid environment key (miso, dev, tst, pro) as the command argument
 - Authentication token (device token, obtained via `aifabrix login`)
 
 **Authentication:**
@@ -161,17 +163,16 @@ The environment deploy command automatically:
 **Advanced options:**
 ```bash
 # Without status polling
-aifabrix environment deploy dev --controller https://controller.aifabrix.ai --no-poll
+aifabrix environment deploy dev --no-poll
 
 # With environment configuration file
-aifabrix environment deploy dev --controller https://controller.aifabrix.ai --config ./env-config.yaml
+aifabrix environment deploy dev --config ./env-config.yaml
 
 # Skip validation checks
-aifabrix environment deploy dev --controller https://controller.aifabrix.ai --skip-validation
+aifabrix environment deploy dev --skip-validation
 ```
 
 **Flags:**
-- `-c, --controller <url>` - Controller URL (required)
 - `--config <file>` - Environment configuration file (optional, for custom environment setup)
 - `--skip-validation` - Skip environment validation checks
 - `--poll` - Poll for deployment status (default: true)
@@ -231,19 +232,21 @@ The typical deployment workflow:
 
 1. **Deploy Environment** (first)
    ```bash
-   aifabrix environment deploy dev --controller https://controller.aifabrix.ai
+   aifabrix environment deploy dev
    ```
 
 2. **Deploy Applications** (second)
    ```bash
-   aifabrix deploy myapp --controller https://controller.aifabrix.ai --environment dev
+   aifabrix deploy myapp
    ```
+
+   Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`).
 
 **Issues:**
 - **"Environment key is required"** → Provide environment key as argument (miso, dev, tst, pro)
 - **"Invalid environment key"** → Environment must be one of: miso, dev, tst, pro
-- **"Controller URL is required"** → Provide `--controller` flag with HTTPS URL
-- **"Controller URL must use HTTPS"** → Use `https://` protocol
+- **"Controller URL is required"** → Run `aifabrix login` or `aifabrix auth config --set-controller <url>`
+- **"Controller URL must use HTTPS"** → Use `https://` when setting controller
 - **"Failed to get authentication token"** → Run `aifabrix login` first to get device token
 - **"Authentication failed"** → Token may be expired, run `aifabrix login` again
 - **"Environment already exists"** → Environment may already be deployed, check controller dashboard
@@ -260,20 +263,23 @@ The typical deployment workflow:
 
 Deploy to Azure via Miso Controller.
 
-**What:** Generates deployment manifest from variables.yaml, env.template, and rbac.yaml. Automatically retrieves or refreshes authentication token, validates configuration, and sends to Miso Controller API for Azure deployment. Polls deployment status by default to track progress. For external type applications, uses the same normal deployment flow with `application-schema.json` (generated by `aifabrix json` or `aifabrix build`).
+**What:** Generates deployment manifest from variables.yaml, env.template, and rbac.yaml. Automatically retrieves or refreshes authentication token, validates configuration, and sends to Miso Controller API for Azure deployment. Polls deployment status by default to track progress. For external type applications, uses the same normal deployment flow with `<systemKey>-deploy.json` (generated by `aifabrix json` or `aifabrix build`).
 
-**When:** Deploying to Azure after pushing images to ACR. For external systems, after generating `application-schema.json` with `aifabrix json` or `aifabrix build`.
+**When:** Deploying to Azure after pushing images to ACR. For external systems, after generating `<systemKey>-deploy.json` with `aifabrix json` or `aifabrix build`.
+
+This command uses the active `controller` and `environment` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`).
 
 **Example:**
 ```bash
-# Basic deployment (uses current environment from config.yaml and token from login)
-aifabrix deploy myapp --controller https://controller.aifabrix.ai
+# Basic deployment (uses controller and environment from config)
+aifabrix deploy myapp
 
-# Deploy to specific environment (updates root-level environment in config.yaml)
-aifabrix deploy myapp --controller https://controller.aifabrix.ai --environment miso
+# Switch environment first if needed
+aifabrix auth config --set-environment pro
+aifabrix deploy myapp
 
-# External system deployment (uses application-schema.json, deploys via normal controller flow)
-aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environment dev
+# External system deployment (uses <systemKey>-deploy.json)
+aifabrix deploy hubspot
 ```
 
 **Output:**
@@ -285,24 +291,18 @@ aifabrix deploy hubspot --controller https://controller.aifabrix.ai --environmen
    Image: myacr.azurecr.io/myapp:latest
    Port: 3000
 
-🚀 Deploying to https://controller.aifabrix.ai (environment: miso)...
-📤 Sending deployment request to https://controller.aifabrix.ai/api/v1/pipeline/miso/deploy...
+🚀 Deploying to https://controller.aifabrix.dev (environment: miso)...
+📤 Sending deployment request to https://controller.aifabrix.dev/api/v1/pipeline/miso/deploy...
 ⏳ Polling deployment status (5000ms intervals)...
 
 ✅ Deployment initiated successfully
-   URL: https://myapp.aifabrix.ai
+   URL: https://myapp.aifabrix.dev
    Deployment ID: deploy-abc123
    Status: ✅ completed
 ```
 
-**Configuration in variables.yaml (recommended):**
-```yaml
-deployment:
-  controllerUrl: 'https://controller.aifabrix.ai'
-  environment: 'dev'  # Optional, uses root-level environment from config.yaml if not specified
-```
-
-Then simply run:
+**Configuration:**  
+Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). Then run:
 ```bash
 aifabrix deploy myapp
 ```
@@ -310,10 +310,9 @@ aifabrix deploy myapp
 **Authentication:**
 
 The deploy command automatically:
-1. Gets current environment from root-level `environment` in `~/.aifabrix/config.yaml`
-2. Updates root-level environment if `--environment` is provided
-3. Retrieves client token from config.yaml for current environment + app
-4. If token missing or expired:
+1. Gets controller and environment from `~/.aifabrix/config.yaml`
+2. Retrieves client token from config.yaml for current environment + app
+3. If token missing or expired:
    - Reads clientId/secret from `~/.aifabrix/secrets.local.yaml` using pattern:
      - `<app-name>-client-idKeyVault` for client ID
      - `<app-name>-client-secretKeyVault` for client secret
@@ -326,16 +325,15 @@ The deploy command automatically:
 # Without status polling
 aifabrix deploy myapp --no-poll
 
-# Deploy to specific environment (updates root-level environment)
-aifabrix deploy myapp --environment pro
+# Deploy to specific environment: set it first, then deploy
+aifabrix auth config --set-environment pro
+aifabrix deploy myapp
 
 # Deploy with explicit client credentials (overrides config)
-aifabrix deploy myapp --controller https://controller.aifabrix.ai --client-id my-client-id --client-secret my-secret
+aifabrix deploy myapp --client-id my-client-id --client-secret my-secret
 ```
 
 **Flags:**
-- `-c, --controller <url>` - Controller URL (overrides variables.yaml)
-- `-e, --environment <env>` - Environment (miso, dev, tst, pro) - updates root-level environment in config.yaml if provided
 - `--client-id <id>` - Client ID (overrides config)
 - `--client-secret <secret>` - Client Secret (overrides config)
 - `--poll` - Poll for deployment status (default: true)
@@ -344,16 +342,15 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai --client-id my
 **Process:**
 1. Validates app name format
 2. Loads variables.yaml from `builder/<app>/`
-3. Updates root-level environment in config.yaml if `--environment` provided
-4. Gets current environment from root-level config.yaml
-5. Retrieves or refreshes client token for environment + app
-6. Loads env.template and parses environment variables
-7. Loads rbac.yaml for roles and permissions
-8. Generates deployment manifest
-9. Validates manifest (checks required fields, format)
-10. Sends deployment request to controller API with Bearer token authentication
-11. Polls deployment status (if enabled)
-12. Displays deployment results
+3. Gets controller and environment from config.yaml
+4. Retrieves or refreshes client token for environment + app
+5. Loads env.template and parses environment variables
+6. Loads rbac.yaml for roles and permissions
+7. Generates deployment manifest
+8. Validates manifest (checks required fields, format)
+9. Sends deployment request to controller API with Bearer token authentication
+10. Polls deployment status (if enabled)
+11. Displays deployment results
 
 **Generated Manifest Format:**
 ```json
@@ -378,8 +375,8 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai --client-id my
 **Issues:**
 - **"App name is required"** → Provide app name as argument
 - **"Application not found in builder/"** → Run `aifabrix create <app>` first
-- **"Controller URL is required"** → Provide `--controller` flag with HTTPS URL
-- **"Controller URL must use HTTPS"** → Use `https://` protocol
+- **"Controller URL is required"** → Run `aifabrix login` or `aifabrix auth config --set-controller <url>`
+- **"Controller URL must use HTTPS"** → Use `https://` when setting controller
 - **"Failed to get authentication token"** → Run `aifabrix login --method credentials --app <app>` first, or ensure credentials are in `~/.aifabrix/secrets.local.yaml` as `<app-name>-client-idKeyVault` and `<app-name>-client-secretKeyVault`
 - **"Client credentials not found for app"** → Add credentials to `~/.aifabrix/secrets.local.yaml` or run `aifabrix login` first
 - **"Validation failed"** → Check `aifabrix-deploy.json` for missing required fields
@@ -402,5 +399,5 @@ aifabrix deploy myapp --controller https://controller.aifabrix.ai --client-id my
 - View deployment logs
 
 **Workaround:**
-Use `aifabrix deploy <app> --poll` to monitor deployment status, or access the controller dashboard at `https://controller.aifabrix.ai/deployments`.
+Use `aifabrix deploy <app> --poll` to monitor deployment status, or access the controller dashboard at `https://controller.aifabrix.dev/deployments`.
 

@@ -1,0 +1,5 @@
+appName: hubspot-test-negative-rbac-invalid-yaml
+mode: create-system
+source:
+  type: known-platform
+  platform: hubspot

@@ -7,6 +7,9 @@
  */
 
 jest.mock('../../../lib/core/config');
+jest.mock('../../../lib/utils/controller-url', () => ({
+  resolveControllerUrl: jest.fn().mockResolvedValue('http://localhost:3000')
+}));
 jest.mock('../../../lib/utils/token-manager');
 jest.mock('../../../lib/api/environments.api');
 jest.mock('../../../lib/utils/api-error-handler');
@@ -30,7 +33,8 @@ jest.mock('chalk', () => {
   return mockChalk;
 });
 
-const { getConfig, normalizeControllerUrl } = require('../../../lib/core/config');
+const config = require('../../../lib/core/config');
+const { getConfig, normalizeControllerUrl } = config;
 const { getOrRefreshDeviceToken } = require('../../../lib/utils/token-manager');
 const { listEnvironmentApplications } = require('../../../lib/api/environments.api');
 const { formatApiError } = require('../../../lib/utils/api-error-handler');
@@ -45,6 +49,7 @@ const { listApplications } = require('../../../lib/app/list');
 describe('app-list', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (config.resolveEnvironment || (config.resolveEnvironment = jest.fn())).mockResolvedValue('dev');
     jest.spyOn(process, 'exit').mockImplementation(() => {});
     // Default mock for normalizeControllerUrl - just return the input
     normalizeControllerUrl.mockImplementation((url) => url);
@@ -336,7 +341,8 @@ describe('app-list', () => {
 
       await listApplications({ environment: null });
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Applications in miso environment (http://localhost:3000)'));
+      // When options.environment is null, resolveEnvironment() is used (mocked as 'dev')
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Applications in dev environment (http://localhost:3000)'));
     });
 
     it('should handle applications without status', async() => {
@@ -447,23 +453,17 @@ describe('app-list', () => {
       expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('http://localhost:3000');
     });
 
-    it('should try multiple device tokens when first fails', async() => {
+    it('should call getOrRefreshDeviceToken when controller from resolveControllerUrl', async() => {
       getConfig.mockResolvedValue({
         device: {
-          'http://localhost:3000': {},
-          'http://localhost:3001': {
-            token: 'test-token'
-          }
+          'http://localhost:3000': { token: 'test-token' }
         }
       });
-      // normalizeControllerUrl should return the input as is for each URL
-      normalizeControllerUrl.mockImplementation((url) => url);
-      getOrRefreshDeviceToken
-        .mockResolvedValueOnce(null) // First URL fails
-        .mockResolvedValueOnce({
-          token: 'test-token',
-          controller: 'http://localhost:3001'
-        });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
+      getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'test-token',
+        controller: 'http://localhost:3000'
+      });
 
       listEnvironmentApplications.mockResolvedValue({
         success: true,
@@ -472,15 +472,13 @@ describe('app-list', () => {
 
       await listApplications({ environment: 'dev' });
 
-      expect(getOrRefreshDeviceToken).toHaveBeenCalledTimes(2);
+      expect(getOrRefreshDeviceToken).toHaveBeenCalledTimes(1);
+      expect(getOrRefreshDeviceToken).toHaveBeenCalledWith('http://localhost:3000');
     });
 
     it('should handle controller URL authentication failure', async() => {
-      getConfig.mockResolvedValue({
-        device: {}
-      });
+      getConfig.mockResolvedValue({ device: {} });
       normalizeControllerUrl.mockReturnValue('http://localhost:3000');
-      // When getOrRefreshDeviceToken throws, the error propagates up
       getOrRefreshDeviceToken.mockRejectedValue(new Error('Authentication failed'));
 
       await expect(listApplications({
@@ -490,18 +488,13 @@ describe('app-list', () => {
     });
 
     it('should handle no authentication available', async() => {
-      getConfig.mockResolvedValue({
-        device: {}
-      });
-      formatAuthenticationError.mockReturnValue('No valid authentication found');
+      getConfig.mockResolvedValue({ device: {} });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
+      getOrRefreshDeviceToken.mockResolvedValue(undefined);
 
       await listApplications({ environment: 'dev' });
 
-      expect(formatAuthenticationError).toHaveBeenCalledWith({
-        controllerUrl: undefined,
-        message: 'No valid authentication found'
-      });
-      expect(logger.error).toHaveBeenCalledWith('No valid authentication found');
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('No authentication token found'));
       expect(process.exit).toHaveBeenCalledWith(1);
     });
   });

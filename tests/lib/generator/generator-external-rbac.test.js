@@ -119,8 +119,9 @@ describe('External System RBAC Support', () => {
 
       expect(fs.promises.writeFile).toHaveBeenCalled();
       const writtenContent = JSON.parse(fs.promises.writeFile.mock.calls[0][1]);
-      expect(writtenContent.roles).toEqual(rbacYaml.roles);
-      expect(writtenContent.permissions).toEqual(rbacYaml.permissions);
+      // Controller manifest structure: roles/permissions are in system object
+      expect(writtenContent.system.roles).toEqual(rbacYaml.roles);
+      expect(writtenContent.system.permissions).toEqual(rbacYaml.permissions);
     });
 
     it('should prefer system JSON roles/permissions over rbac.yaml', async() => {
@@ -205,8 +206,9 @@ describe('External System RBAC Support', () => {
       expect(fs.promises.writeFile).toHaveBeenCalled();
       const writtenContent = JSON.parse(fs.promises.writeFile.mock.calls[0][1]);
       // Should keep system JSON roles/permissions (priority)
-      expect(writtenContent.roles).toEqual(systemJson.roles);
-      expect(writtenContent.permissions).toEqual(systemJson.permissions);
+      // Controller manifest structure: roles/permissions are in system object
+      expect(writtenContent.system.roles).toEqual(systemJson.roles);
+      expect(writtenContent.system.permissions).toEqual(systemJson.permissions);
     });
 
     it('should handle missing rbac.yaml gracefully', async() => {
@@ -255,8 +257,9 @@ describe('External System RBAC Support', () => {
 
       expect(fs.promises.writeFile).toHaveBeenCalled();
       const writtenContent = JSON.parse(fs.promises.writeFile.mock.calls[0][1]);
-      expect(writtenContent.roles).toBeUndefined();
-      expect(writtenContent.permissions).toBeUndefined();
+      // Controller manifest structure: roles/permissions are in system object
+      expect(writtenContent.system.roles).toBeUndefined();
+      expect(writtenContent.system.permissions).toBeUndefined();
     });
 
     it('should merge rbac.yaml when system JSON has empty roles/permissions arrays', async() => {
@@ -329,8 +332,9 @@ describe('External System RBAC Support', () => {
       expect(fs.promises.writeFile).toHaveBeenCalled();
       const writtenContent = JSON.parse(fs.promises.writeFile.mock.calls[0][1]);
       // Should merge from rbac.yaml when arrays are empty
-      expect(writtenContent.roles).toEqual(rbacYaml.roles);
-      expect(writtenContent.permissions).toEqual(rbacYaml.permissions);
+      // Controller manifest structure: roles/permissions are in system object
+      expect(writtenContent.system.roles).toEqual(rbacYaml.roles);
+      expect(writtenContent.system.permissions).toEqual(rbacYaml.permissions);
     });
   });
 });

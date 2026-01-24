@@ -16,28 +16,56 @@ The AI Fabrix Builder can automatically generate GitHub Actions workflows for yo
 - **Security Auditing** - Dependency vulnerability scanning
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
 flowchart TD
-    Push[Push to Repository] --> CI[CI Pipeline<br/>ci.yaml]
-    PR[Pull Request] --> CI
-    
-    CI --> Lint[Lint Job<br/>ESLint checks]
-    CI --> Test[Test Job<br/>Jest with coverage]
-    CI --> Security[Security Job<br/>npm audit]
-    CI --> Build[Build Job<br/>Package building]
-    
-    Tag[Version Tag<br/>v1.0.0] --> Release[Release Pipeline<br/>release.yaml]
-    Release --> Validate[Validate Job]
-    Validate --> PublishNPM[Publish NPM<br/>Optional]
-    Validate --> CreateRelease[Create GitHub Release]
-    
-    PR --> PRChecks[PR Checks<br/>pr-checks.yaml]
-    PRChecks --> FileSize[File Size Validation]
-    PRChecks --> TODO[TODO Detection]
-    PRChecks --> CommitMsg[Commit Message Validation]
-    
-    style CI fill:#0062FF,color:#FFFFFF
-    style Release fill:#10B981,color:#FFFFFF
-    style PRChecks fill:#3B82F6,color:#FFFFFF
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef medium fill:#1E3A8A,color:#ffffff,stroke-width:0px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+
+%% =======================
+%% Flow
+%% =======================
+Push[Push to Repository]:::base --> CI[CI Pipeline<br/>ci.yaml]:::primary
+PR[Pull Request]:::base --> CI
+
+CI --> Lint[Lint Job<br/>ESLint checks]:::base
+CI --> Test[Test Job<br/>Jest with coverage]:::base
+CI --> Security[Security Job<br/>npm audit]:::base
+CI --> Build[Build Job<br/>Package building]:::base
+
+Tag[Version Tag<br/>v1.0.0]:::base --> Release[Release Pipeline<br/>release.yaml]:::base
+Release --> Validate[Validate Job]:::base
+Validate --> PublishNPM[Publish NPM<br/>Optional]:::base
+Validate --> CreateRelease[Create GitHub Release]:::base
+
+PR --> PRChecks[PR Checks<br/>pr-checks.yaml]:::medium
+PRChecks --> FileSize[File Size Validation]:::base
+PRChecks --> TODO[TODO Detection]:::base
+PRChecks --> CommitMsg[Commit Message Validation]:::base
 ```
 
 ---
@@ -170,25 +198,59 @@ aifabrix create myapp --github --github-steps npm
 Before using automated pipeline deployment in GitHub Actions, you must register your application.
 
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "subGraphTitleColor": "#64748B",
+    "subGraphTitleFontWeight": "500",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
 flowchart TD
-    GitHub[GitHub Actions<br/>Workflow Triggered] --> Build[Build Docker Image]
-    Build --> Push[Push to ACR<br/>Azure Container Registry]
-    Push --> Deploy[Deploy via Controller<br/>Pipeline API]
-    Deploy --> Controller[Miso Controller]
-    Controller --> Azure[Azure Container Apps]
-    
-    subgraph Secrets[GitHub Secrets]
-        ControllerURL[MISO_CONTROLLER_URL<br/>Repository level]
-        ClientID[DEV_MISO_CLIENTID<br/>Environment level]
-        ClientSecret[DEV_MISO_CLIENTSECRET<br/>Environment level]
-    end
-    
-    Secrets --> Deploy
-    
-    style GitHub fill:#0062FF,color:#FFFFFF
-    style Azure fill:#10B981,color:#FFFFFF
-    style Controller fill:#3B82F6,color:#FFFFFF
-    style Secrets fill:#E5E7EB,stroke:#6B7280,stroke-width:2px
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef medium fill:#1E3A8A,color:#ffffff,stroke-width:0px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+classDef note fill:#FFFFFF,color:#64748B,stroke:#E2E8F0,stroke-width:1.5px,stroke-dasharray:4 4;
+
+%% =======================
+%% Flow
+%% =======================
+GitHub[GitHub Actions<br/>Workflow Triggered]:::primary --> Build[Build Docker Image]:::base
+Build --> Push[Push to ACR<br/>Azure Container Registry]:::base
+Push --> Deploy[Deploy via Controller<br/>Pipeline API]:::base
+Deploy --> Controller[Miso Controller]:::medium
+Controller --> Azure[Azure Container Apps]:::base
+
+%% =======================
+%% Secrets
+%% =======================
+subgraph Secrets["GitHub Secrets"]
+    direction TB
+    ControllerURL[MISO_CONTROLLER_URL<br/>Repository level]:::note
+    ClientID[DEV_MISO_CLIENTID<br/>Environment level]:::note
+    ClientSecret[DEV_MISO_CLIENTSECRET<br/>Environment level]:::note
+end
+
+Secrets --> Deploy
 ```
 
 ### Prerequisites
@@ -200,7 +262,7 @@ flowchart TD
 ### Step 1: Login to Controller
 
 ```bash
-aifabrix login --controller https://controller.aifabrix.ai
+aifabrix login --controller https://controller.aifabrix.dev
 ```
 
 This authenticates you via Keycloak OIDC flow.
@@ -208,7 +270,7 @@ This authenticates you via Keycloak OIDC flow.
 ### Step 2: Register Application
 
 ```bash
-aifabrix app register myapp --environment dev
+aifabrix app register myapp
 ```
 
 **What happens:**
@@ -236,7 +298,7 @@ aifabrix app register myapp --environment dev
 
 📝 Add to GitHub Secrets:
    Repository level:
-     MISO_CONTROLLER_URL = https://controller.aifabrix.ai
+     MISO_CONTROLLER_URL = https://controller.aifabrix.dev
    
    Environment level (dev):
      DEV_MISO_CLIENTID = ctrl-dev-myapp
@@ -252,7 +314,7 @@ aifabrix app register myapp --environment dev
 1. Go to repository → Settings → Secrets and variables → Actions
 2. Click "New repository secret"
 3. Add repository-level secret:
-   - **Name:** `MISO_CONTROLLER_URL` **Value:** `https://controller.aifabrix.ai`
+   - **Name:** `MISO_CONTROLLER_URL` **Value:** `https://controller.aifabrix.dev`
 4. Add environment-level secrets (for dev environment):
    - **Name:** `DEV_MISO_CLIENTID` **Value:** `ctrl-dev-myapp`
    - **Name:** `DEV_MISO_CLIENTSECRET` **Value:** (from registration output)
@@ -268,7 +330,7 @@ Create `.github/workflows/deploy.yaml` with pipeline API calls (see [Integration
 To rotate your ClientSecret (expires after 90 days):
 
 ```bash
-aifabrix app rotate-secret myapp --environment dev
+aifabrix app rotate-secret myapp
 ```
 
 **Output:**
@@ -426,7 +488,7 @@ For coverage reporting:
 For automated deployment via pipeline API:
 
 **Repository level:**
-1. **MISO_CONTROLLER_URL** - Controller API endpoint (e.g., `https://controller.aifabrix.ai`)
+1. **MISO_CONTROLLER_URL** - Controller API endpoint (e.g., `https://controller.aifabrix.dev`)
 
 **Environment level (dev/staging/production):**
 2. **DEV_MISO_CLIENTID** - Pipeline ClientId from application registration
@@ -435,10 +497,10 @@ For automated deployment via pipeline API:
 **Getting Pipeline Credentials:**
 ```bash
 # Login to controller
-aifabrix login --controller https://controller.aifabrix.ai
+aifabrix login --controller https://controller.aifabrix.dev
 
 # Register application
-aifabrix app register myapp --environment dev
+aifabrix app register myapp
 
 # Credentials saved to ~/.aifabrix/secrets-dev.yaml
 # Copy them to GitHub Secrets!
@@ -832,7 +894,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Deploy to {{this}}
-        run: aifabrix deploy {{appName}} --environment {{this}}
+        run: aifabrix auth config --set-environment {{this}} && aifabrix deploy {{appName}}
   {{/each}}
 ```
 

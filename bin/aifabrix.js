@@ -15,9 +15,8 @@
 
 const { Command } = require('commander');
 const cli = require('../lib/cli');
-const { setupAppCommands } = require('../lib/commands/app');
-const { setupDatasourceCommands } = require('../lib/commands/datasource');
 const logger = require('../lib/utils/logger');
+const { buildCategorizedHelp } = require('../lib/utils/help-builder');
 const packageJson = require('../package.json');
 
 /**
@@ -31,14 +30,13 @@ function initializeCLI() {
     .version(packageJson.version)
     .description('AI Fabrix Local Fabric & Deployment SDK');
 
-  // Delegate command setup to lib/cli.js
+  // Delegate command setup to lib/cli.js (order matches help categories for consistency)
   cli.setupCommands(program);
 
-  // Add application management commands
-  setupAppCommands(program);
-
-  // Add datasource management commands
-  setupDatasourceCommands(program);
+  // Use categorized help for a more user-friendly command list
+  program.helpInformation = function() {
+    return buildCategorizedHelp(program);
+  };
 
   // Parse command line arguments
   program.parse();

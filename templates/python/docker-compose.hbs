@@ -6,6 +6,32 @@ services:
   {{app.key}}:
     image: {{image.name}}:{{image.tag}}
     container_name: {{containerName}}
+    {{#if traefik.enabled}}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{{app.key}}.rule=Host(`{{traefik.host}}`) && PathPrefix(`{{traefik.path}}`)"
+      {{#if traefik.tls}}
+      - "traefik.http.routers.{{app.key}}.entrypoints=websecure"
+      - "traefik.http.routers.{{app.key}}.tls=true"
+      {{#if traefik.certStore}}
+      - "traefik.http.routers.{{app.key}}.tls.certstore={{traefik.certStore}}"
+      {{/if}}
+      {{else}}
+      - "traefik.http.routers.{{app.key}}.entrypoints=web"
+      {{/if}}
+      - "traefik.http.services.{{app.key}}.loadbalancer.server.port={{containerPort}}"
+      {{#unless (eq traefik.path "/")}}
+      - "traefik.http.middlewares.{{app.key}}-stripprefix.stripprefix.prefixes={{traefik.path}}"
+      - "traefik.http.routers.{{app.key}}.middlewares={{app.key}}-stripprefix"
+      {{/unless}}
+    {{/if}}
+    {{#if traefik.enabled}}
+    {{#unless (eq traefik.path "/")}}
+    environment:
+      - BASE_PATH={{traefik.path}}
+      - X_FORWARDED_PREFIX={{traefik.path}}
+    {{/unless}}
+    {{/if}}
     env_file:
       - {{envFile}}
     ports:

@@ -96,6 +96,41 @@ services:
     networks:
       - {{networkName}}
 
+{{#if traefik.enabled}}
+  # Traefik Reverse Proxy
+  traefik:
+    image: traefik:v3.6
+    container_name: {{#if (eq devId 0)}}aifabrix-traefik{{else}}aifabrix-dev{{devId}}-traefik{{/if}}
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network={{networkName}}"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+{{#if traefik.certStore}}
+{{#if traefik.certFile}}
+      - "--certificatesstores.{{traefik.certStore}}.defaultcertificate.certfile={{traefik.certFile}}"
+{{/if}}
+{{#if traefik.keyFile}}
+      - "--certificatesstores.{{traefik.certStore}}.defaultcertificate.keyfile={{traefik.keyFile}}"
+{{/if}}
+{{/if}}
+    ports:
+      - "{{traefikHttpPort}}:80"
+      - "{{traefikHttpsPort}}:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+{{#if traefik.certFile}}
+      - {{traefik.certFile}}:{{traefik.certFile}}:ro
+{{/if}}
+{{#if traefik.keyFile}}
+      - {{traefik.keyFile}}:{{traefik.keyFile}}:ro
+{{/if}}
+    networks:
+      - {{networkName}}
+    restart: unless-stopped
+{{/if}}
+
 volumes:
   {{#if (eq devId 0)}}postgres_data{{else}}dev{{devId}}_postgres_data{{/if}}:
     name: {{#if (eq devId 0)}}infra_postgres_data{{else}}infra_dev{{devId}}_postgres_data{{/if}}

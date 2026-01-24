@@ -67,7 +67,7 @@ describe('API Utilities', () => {
       expect(result.success).toBe(true);
       expect(result.data).toEqual(mockData);
       expect(result.status).toBe(200);
-      expect(global.fetch).toHaveBeenCalledWith('https://api.example.com/test', {});
+      expect(global.fetch).toHaveBeenCalledWith('https://api.example.com/test', expect.objectContaining({ signal: expect.any(Object) }));
     });
 
     it('should make successful API call and return text', async() => {
@@ -171,7 +171,7 @@ describe('API Utilities', () => {
 
       await makeApiCall('https://api.example.com/test', options);
 
-      expect(global.fetch).toHaveBeenCalledWith('https://api.example.com/test', options);
+      expect(global.fetch).toHaveBeenCalledWith('https://api.example.com/test', expect.objectContaining(options));
     });
   });
 

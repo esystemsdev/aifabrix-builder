@@ -7,11 +7,11 @@ app:
 externalIntegration:
   schemaBasePath: ./
   systems:
-    - hubspot-deploy.json
+    - hubspot-system.json
   dataSources:
-    - hubspot-deploy-company.json
-    - hubspot-deploy-contact.json
-    - hubspot-deploy-deal.json
+    - hubspot-datasource-company.json
+    - hubspot-datasource-contact.json
+    - hubspot-datasource-deal.json
   autopublish: true
   version: 1.0.0
 

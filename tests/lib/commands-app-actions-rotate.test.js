@@ -26,6 +26,9 @@ jest.mock('fs', () => {
 });
 
 jest.mock('../../lib/core/config');
+jest.mock('../../lib/utils/controller-url', () => ({
+  resolveControllerUrl: jest.fn().mockResolvedValue('http://localhost:3000')
+}));
 jest.mock('../../lib/utils/api');
 jest.mock('../../lib/utils/token-manager');
 jest.mock('../../lib/utils/local-secrets', () => ({
@@ -44,7 +47,8 @@ jest.mock('../../lib/utils/logger', () => ({
   error: jest.fn()
 }));
 
-const { getConfig } = require('../../lib/core/config');
+const config = require('../../lib/core/config');
+const { getConfig } = config;
 const { authenticatedApiCall } = require('../../lib/utils/api');
 const tokenManager = require('../../lib/utils/token-manager');
 const localSecrets = require('../../lib/utils/local-secrets');
@@ -85,6 +89,7 @@ describe('Application Commands - Rotate Secret Action', () => {
     fsSync.mkdirSync(path.join(tempDir, 'builder'), { recursive: true });
 
     jest.clearAllMocks();
+    (config.resolveEnvironment || (config.resolveEnvironment = jest.fn())).mockResolvedValue('dev');
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
     jest.spyOn(process, 'exit').mockImplementation(() => {});
@@ -219,7 +224,8 @@ describe('Application Commands - Rotate Secret Action', () => {
       }
     });
 
-    it('should handle missing environment', async() => {
+    it('should handle missing environment when resolveEnvironment returns empty', async() => {
+      (config.resolveEnvironment || (config.resolveEnvironment = jest.fn())).mockResolvedValue('');
       getConfig.mockResolvedValue({
         'developer-id': 0,
         environment: 'dev',
@@ -238,9 +244,7 @@ describe('Application Commands - Rotate Secret Action', () => {
       });
 
       if (rotateSecretAction) {
-        await rotateSecretAction('test-app', {
-          environment: ''
-        });
+        await rotateSecretAction('test-app', {});
         expect(logger.error).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Environment is required'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }

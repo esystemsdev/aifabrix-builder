@@ -54,7 +54,8 @@ describe('Datasource Commands Module', () => {
         command: jest.fn(),
         description: jest.fn().mockReturnThis(),
         action: jest.fn().mockReturnThis(),
-        requiredOption: jest.fn().mockReturnThis()
+        requiredOption: jest.fn().mockReturnThis(),
+        option: jest.fn().mockReturnThis()
       };
       // Make command return a new subcommand for chaining
       group.command.mockImplementation((name) => {
@@ -78,6 +79,7 @@ describe('Datasource Commands Module', () => {
       description: jest.fn().mockReturnThis(),
       action: jest.fn().mockReturnThis(),
       requiredOption: jest.fn().mockReturnThis(),
+      option: jest.fn().mockReturnThis(),
       _datasourceGroup: datasourceGroup
     };
 
@@ -109,11 +111,10 @@ describe('Datasource Commands Module', () => {
       expect(program.command).toHaveBeenCalledWith('datasource');
       const datasourceGroup = program._datasourceGroup;
       expect(datasourceGroup.command).toHaveBeenCalledWith('list');
-      // Check that the subcommand's description and requiredOption were called
+      // Check that the subcommand's description was called (no flags)
       const listCommand = datasourceGroup._subCommands?.find(c => c.name === 'list');
       expect(listCommand).toBeDefined();
-      expect(listCommand.command.description).toHaveBeenCalledWith('List datasources from environment');
-      expect(listCommand.command.requiredOption).toHaveBeenCalledWith('-e, --environment <env>', 'Environment ID or key');
+      expect(listCommand.command.description).toHaveBeenCalledWith('List datasources from environment (uses environment from config.yaml)');
     });
 
     it('should register diff command', () => {
@@ -134,12 +135,10 @@ describe('Datasource Commands Module', () => {
       expect(program.command).toHaveBeenCalledWith('datasource');
       const datasourceGroup = program._datasourceGroup;
       expect(datasourceGroup.command).toHaveBeenCalledWith('deploy <myapp> <file>');
-      // Check that the subcommand's description and requiredOptions were called
+      // Check that the subcommand's description was called (no flags)
       const deployCommand = datasourceGroup._subCommands?.find(c => c.name === 'deploy <myapp> <file>');
       expect(deployCommand).toBeDefined();
       expect(deployCommand.command.description).toHaveBeenCalledWith('Deploy datasource to dataplane');
-      expect(deployCommand.command.requiredOption).toHaveBeenCalledWith('--controller <url>', 'Controller URL');
-      expect(deployCommand.command.requiredOption).toHaveBeenCalledWith('-e, --environment <env>', 'Environment (miso, dev, tst, pro)');
     });
   });
 
@@ -231,9 +230,9 @@ describe('Datasource Commands Module', () => {
       if (listCommand) {
         const actionCall = listCommand.command.action.mock.calls[0];
         if (actionCall && typeof actionCall[0] === 'function') {
-          await actionCall[0]({ environment: 'dev' });
+          await actionCall[0]();
 
-          expect(listDatasources).toHaveBeenCalledWith({ environment: 'dev' });
+          expect(listDatasources).toHaveBeenCalledWith({});
         }
       }
     });
@@ -251,7 +250,7 @@ describe('Datasource Commands Module', () => {
       if (listCommand) {
         const actionCall = listCommand.command.action.mock.calls[0];
         if (actionCall && typeof actionCall[0] === 'function') {
-          await actionCall[0]({ environment: 'dev' });
+          await actionCall[0]();
 
           expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to list datasources'), expect.anything());
           expect(process.exit).toHaveBeenCalledWith(1);

@@ -84,19 +84,15 @@ describe('Generator Error Paths', () => {
     });
 
     it('should throw error when externalIntegration block is missing', async() => {
-      envReader.loadVariables.mockReturnValue({
-        parsed: { name: 'test' }
-      });
+      const yaml = require('js-yaml');
       fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(yaml.dump({ app: { type: 'external' } }));
 
-      await expect(
-        generator.generateDeployJson(appName)
-      ).rejects.toThrow('externalIntegration block not found in variables.yaml');
+      await expect(generator.generateDeployJson(appName))
+        .rejects.toThrow('externalIntegration block not found in variables.yaml');
     });
 
     it('should throw error when system file does not exist', async() => {
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      const systemFilePath = path.join(appPath, 'system.json');
       const yaml = require('js-yaml');
       const variablesContent = yaml.dump({
         externalIntegration: {
@@ -104,37 +100,36 @@ describe('Generator Error Paths', () => {
           schemaBasePath: './'
         }
       });
-      fs.existsSync.mockImplementation((filePath) => {
-        return filePath === variablesPath; // variables.yaml exists, but system.json doesn't
-      });
+      fs.existsSync.mockImplementation((filePath) => filePath === variablesPath);
       fs.readFileSync.mockReturnValue(variablesContent);
 
-      await expect(
-        generator.generateDeployJson(appName)
-      ).rejects.toThrow('External system file not found');
+      await expect(generator.generateDeployJson(appName))
+        .rejects.toThrow('System file not found');
     });
 
     it('should throw error when system file contains invalid JSON', async() => {
-      envReader.loadVariables.mockReturnValue({
-        parsed: {
-          externalIntegration: {
-            systems: ['system.json'],
-            schemaBasePath: './'
-          }
-        }
-      });
+      const yaml = require('js-yaml');
       fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(yaml.dump({
+        externalIntegration: {
+          systems: ['system.json'],
+          schemaBasePath: './'
+        }
+      }));
       fs.promises.readFile.mockResolvedValue('invalid json content');
 
-      await expect(
-        generator.generateDeployJson(appName)
-      ).rejects.toThrow();
+      await expect(generator.generateDeployJson(appName))
+        .rejects.toThrow();
     });
 
     it('should throw error when file write fails', async() => {
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      const systemFilePath = path.join(appPath, 'system.json');
-      const mockSystemJson = { key: 'test-system', name: 'Test System' };
+      const mockSystemJson = {
+        key: 'test-system',
+        displayName: 'Test System',
+        description: 'Test external system',
+        type: 'openapi',
+        authentication: { type: 'apikey' }
+      };
       const yaml = require('js-yaml');
       const variablesContent = yaml.dump({
         externalIntegration: {
@@ -149,9 +144,8 @@ describe('Generator Error Paths', () => {
       fs.promises.readFile.mockResolvedValue(JSON.stringify(mockSystemJson));
       fs.promises.writeFile.mockRejectedValue(new Error('Write failed'));
 
-      await expect(
-        generator.generateDeployJson(appName)
-      ).rejects.toThrow('Write failed');
+      await expect(generator.generateDeployJson(appName))
+        .rejects.toThrow('Write failed');
     });
   });
 

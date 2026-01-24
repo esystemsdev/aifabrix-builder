@@ -31,6 +31,10 @@ jest.mock('../../../lib/core/config', () => ({
   getConfig: jest.fn()
 }));
 
+jest.mock('../../../lib/utils/controller-url', () => ({
+  resolveControllerUrl: jest.fn()
+}));
+
 jest.mock('../../../lib/utils/deployment-validation', () => ({
   validateControllerUrl: jest.fn((url) => url),
   validateEnvironmentKey: jest.fn((key) => key)
@@ -54,6 +58,7 @@ jest.mock('../../../lib/core/audit-logger', () => ({
 
 const logger = require('../../../lib/utils/logger');
 const config = require('../../../lib/core/config');
+const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
 const { validateControllerUrl, validateEnvironmentKey } = require('../../../lib/utils/deployment-validation');
 const { getOrRefreshDeviceToken } = require('../../../lib/utils/token-manager');
 const { authenticatedApiCall } = require('../../../lib/utils/api');
@@ -64,6 +69,7 @@ const { deployEnvironment } = require('../../../lib/deployment/environment');
 describe('Environment Deployment Module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resolveControllerUrl.mockResolvedValue('http://localhost:3000');
     jest.spyOn(process, 'exit').mockImplementation(() => {});
   });
 
@@ -102,10 +108,7 @@ describe('Environment Deployment Module', () => {
         .mockResolvedValueOnce(mockDeploymentResponse) // Initial deployment
         .mockResolvedValue(mockStatusResponse); // Polling responses
 
-      const deployPromise = deployEnvironment(envKey, {
-        controller: controllerUrl,
-        poll: true
-      });
+      const deployPromise = deployEnvironment(envKey, { poll: true });
 
       // Process initial deployment
       await Promise.resolve();
@@ -150,10 +153,7 @@ describe('Environment Deployment Module', () => {
       getOrRefreshDeviceToken.mockResolvedValue(mockToken);
       authenticatedApiCall.mockResolvedValue(mockDeploymentResponse);
 
-      const result = await deployEnvironment(envKey, {
-        controller: controllerUrl,
-        noPoll: true
-      });
+      const result = await deployEnvironment(envKey, { noPoll: true });
 
       expect(result).toMatchObject({
         success: true,
@@ -182,7 +182,6 @@ describe('Environment Deployment Module', () => {
       authenticatedApiCall.mockResolvedValue(mockDeploymentResponse);
 
       const result = await deployEnvironment(envKey, {
-        controller: controllerUrl,
         config: '/path/to/config.yaml',
         noPoll: true
       });
@@ -220,7 +219,6 @@ describe('Environment Deployment Module', () => {
       authenticatedApiCall.mockResolvedValue(mockDeploymentResponse);
 
       await deployEnvironment(envKey, {
-        controller: controllerUrl,
         skipValidation: true,
         noPoll: true
       });
@@ -231,36 +229,31 @@ describe('Environment Deployment Module', () => {
     });
 
     it('should throw error when envKey is missing', async() => {
-      await expect(deployEnvironment('', { controller: 'http://localhost:3000' }))
+      await expect(deployEnvironment('', {}))
         .rejects.toThrow('Environment key is required');
     });
 
     it('should throw error when envKey is not a string', async() => {
-      await expect(deployEnvironment(null, { controller: 'http://localhost:3000' }))
+      await expect(deployEnvironment(null, {}))
         .rejects.toThrow('Environment key is required');
     });
 
     it('should throw error when controller URL is missing', async() => {
+      resolveControllerUrl.mockResolvedValue(null);
       await expect(deployEnvironment('dev', {}))
-        .rejects.toThrow('Controller URL is required');
+        .rejects.toThrow('Controller URL is required. Run "aifabrix login" to set the controller URL in config.yaml');
     });
 
     it('should throw error when device token is not available', async() => {
       getOrRefreshDeviceToken.mockResolvedValue(null);
 
-      await expect(deployEnvironment('dev', {
-        controller: 'http://localhost:3000',
-        noPoll: true
-      })).rejects.toThrow('Device token is required');
+      await expect(deployEnvironment('dev', { noPoll: true })).rejects.toThrow('Device token is required');
     });
 
     it('should throw error when device token has no token property', async() => {
       getOrRefreshDeviceToken.mockResolvedValue({ controller: 'http://localhost:3000' });
 
-      await expect(deployEnvironment('dev', {
-        controller: 'http://localhost:3000',
-        noPoll: true
-      })).rejects.toThrow('Device token is required');
+      await expect(deployEnvironment('dev', { noPoll: true })).rejects.toThrow('Device token is required');
     });
 
     it('should handle deployment API failure', async() => {
@@ -281,10 +274,7 @@ describe('Environment Deployment Module', () => {
       getOrRefreshDeviceToken.mockResolvedValue(mockToken);
       authenticatedApiCall.mockResolvedValue(mockErrorResponse);
 
-      await expect(deployEnvironment(envKey, {
-        controller: controllerUrl,
-        noPoll: true
-      })).rejects.toThrow('Deployment failed');
+      await expect(deployEnvironment(envKey, { noPoll: true })).rejects.toThrow('Deployment failed');
 
       expect(handleDeploymentErrors).toHaveBeenCalled();
     });
@@ -318,10 +308,7 @@ describe('Environment Deployment Module', () => {
         .mockResolvedValueOnce(mockDeploymentResponse)
         .mockResolvedValue(mockStatusResponse); // Always pending
 
-      const deployPromise = deployEnvironment(envKey, {
-        controller: controllerUrl,
-        poll: true
-      }).catch(err => err); // Catch error to prevent unhandled rejection
+      const deployPromise = deployEnvironment(envKey, { poll: true }).catch(err => err); // Catch error to prevent unhandled rejection
 
       // Process initial deployment
       await Promise.resolve();
@@ -367,10 +354,7 @@ describe('Environment Deployment Module', () => {
         .mockResolvedValueOnce(mockDeploymentResponse)
         .mockResolvedValue(mockFailedStatusResponse);
 
-      const deployPromise = deployEnvironment(envKey, {
-        controller: controllerUrl,
-        poll: true
-      }).catch(err => err); // Catch error to prevent unhandled rejection
+      const deployPromise = deployEnvironment(envKey, { poll: true }).catch(err => err); // Catch error to prevent unhandled rejection
 
       // Process initial deployment
       await Promise.resolve();
@@ -416,10 +400,7 @@ describe('Environment Deployment Module', () => {
         .mockResolvedValueOnce(mockDeploymentResponse)
         .mockResolvedValue(mockErrorStatusResponse);
 
-      const deployPromise = deployEnvironment(envKey, {
-        controller: controllerUrl,
-        poll: true
-      }).catch(err => err); // Catch error to prevent unhandled rejection
+      const deployPromise = deployEnvironment(envKey, { poll: true }).catch(err => err); // Catch error to prevent unhandled rejection
 
       // Process initial deployment
       await Promise.resolve();
@@ -465,10 +446,7 @@ describe('Environment Deployment Module', () => {
         .mockResolvedValueOnce(mockDeploymentResponse)
         .mockResolvedValue(mockCompletedStatusResponse);
 
-      const deployPromise = deployEnvironment(envKey, {
-        controller: controllerUrl,
-        poll: true
-      });
+      const deployPromise = deployEnvironment(envKey, { poll: true });
 
       // Process initial deployment
       await Promise.resolve();
@@ -514,10 +492,7 @@ describe('Environment Deployment Module', () => {
         .mockRejectedValueOnce(new Error('Network error'))
         .mockResolvedValue(mockStatusResponse); // Subsequent calls succeed but pending
 
-      const deployPromise = deployEnvironment(envKey, {
-        controller: controllerUrl,
-        poll: true
-      }).catch(err => err); // Catch error to prevent unhandled rejection
+      const deployPromise = deployEnvironment(envKey, { poll: true }).catch(err => err); // Catch error to prevent unhandled rejection
 
       // Process initial deployment
       await Promise.resolve();
@@ -535,7 +510,7 @@ describe('Environment Deployment Module', () => {
       expect(error.message).toContain('Environment deployment timeout');
     });
 
-    it('should use controller-url option alias', async() => {
+    it('should validate controller URL from config', async() => {
       const envKey = 'dev';
       const controllerUrl = 'http://localhost:3000';
       const mockToken = {
@@ -550,13 +525,11 @@ describe('Environment Deployment Module', () => {
         }
       };
 
+      resolveControllerUrl.mockResolvedValue(controllerUrl);
       getOrRefreshDeviceToken.mockResolvedValue(mockToken);
       authenticatedApiCall.mockResolvedValue(mockDeploymentResponse);
 
-      await deployEnvironment(envKey, {
-        'controller-url': controllerUrl,
-        noPoll: true
-      });
+      await deployEnvironment(envKey, { noPoll: true });
 
       expect(validateControllerUrl).toHaveBeenCalledWith(controllerUrl);
     });
@@ -580,10 +553,7 @@ describe('Environment Deployment Module', () => {
       getOrRefreshDeviceToken.mockResolvedValue(mockToken);
       authenticatedApiCall.mockResolvedValue(mockDeploymentResponse);
 
-      await deployEnvironment(envKey, {
-        controller: controllerUrl,
-        noPoll: true
-      });
+      await deployEnvironment(envKey, { noPoll: true });
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Environment deployed successfully'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining(envKey));
@@ -607,10 +577,7 @@ describe('Environment Deployment Module', () => {
       getOrRefreshDeviceToken.mockResolvedValue(mockToken);
       authenticatedApiCall.mockResolvedValue(mockDeploymentResponse);
 
-      const result = await deployEnvironment(envKey, {
-        controller: controllerUrl,
-        noPoll: true
-      });
+      const result = await deployEnvironment(envKey, { noPoll: true });
 
       expect(result).toMatchObject({
         success: true,

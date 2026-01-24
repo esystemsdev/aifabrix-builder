@@ -14,6 +14,9 @@ const yaml = require('js-yaml');
 
 // Mock dependencies
 jest.mock('../../../lib/core/config');
+jest.mock('../../../lib/utils/controller-url', () => ({
+  resolveControllerUrl: jest.fn().mockResolvedValue('http://localhost:3000')
+}));
 jest.mock('../../../lib/utils/api');
 jest.mock('../../../lib/utils/api-error-handler');
 jest.mock('../../../lib/utils/logger', () => ({
@@ -71,6 +74,10 @@ describe('App Register Module', () => {
       },
       environments: {}
     });
+    config.resolveEnvironment = config.resolveEnvironment || jest.fn();
+    config.resolveEnvironment.mockResolvedValue('dev');
+    config.getDeveloperId = config.getDeveloperId || jest.fn();
+    config.getDeveloperId.mockResolvedValue('0');
 
     tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
       token: 'test-token-123',
@@ -122,6 +129,7 @@ describe('App Register Module', () => {
     jest.clearAllMocks();
 
     // Re-setup mocks after clearing
+    config.getDeveloperId.mockResolvedValue('0');
     localSecrets.isLocalhost.mockReturnValue(true);
     localSecrets.saveLocalSecret.mockResolvedValue();
     envTemplate.updateEnvTemplate.mockResolvedValue();
@@ -304,14 +312,9 @@ describe('App Register Module', () => {
       fsSync.mkdirSync(appDir, { recursive: true });
 
       const variables = {
-        app: {
-          key: 'test-app',
-          name: 'Test App'
-        },
-        build: {
-          language: 'typescript',
-          port: 70000 // Invalid port > 65535
-        }
+        app: { key: 'test-app', name: 'Test App' },
+        build: { language: 'typescript' },
+        port: 70000 // Invalid port > 65535
       };
       fsSync.writeFileSync(
         path.join(appDir, 'variables.yaml'),
@@ -332,14 +335,9 @@ describe('App Register Module', () => {
       fsSync.mkdirSync(appDir, { recursive: true });
 
       const variables = {
-        app: {
-          key: 'test-app',
-          name: 'Test App'
-        },
-        build: {
-          language: 'typescript',
-          port: -1 // Invalid port < 1
-        }
+        app: { key: 'test-app', name: 'Test App' },
+        build: { language: 'typescript' },
+        port: -1 // Invalid port < 1
       };
       fsSync.writeFileSync(
         path.join(appDir, 'variables.yaml'),
@@ -364,14 +362,9 @@ describe('App Register Module', () => {
       fsSync.mkdirSync(appDir, { recursive: true });
 
       const variables = {
-        app: {
-          key: 'test-app',
-          name: 'Test App'
-        },
-        build: {
-          language: 'typescript',
-          port: 3000.5 // Non-integer port
-        }
+        app: { key: 'test-app', name: 'Test App' },
+        build: { language: 'typescript' },
+        port: 3000.5 // Non-integer port
       };
       fsSync.writeFileSync(
         path.join(appDir, 'variables.yaml'),
@@ -763,14 +756,9 @@ describe('App Register Module', () => {
       fsSync.mkdirSync(appDir, { recursive: true });
 
       const variables = {
-        app: {
-          key: 'test-app',
-          name: 'Test App'
-        },
-        build: {
-          language: 'typescript',
-          port: 8080
-        }
+        app: { key: 'test-app', name: 'Test App' },
+        build: { language: 'typescript' },
+        port: 8080
       };
       fsSync.writeFileSync(
         path.join(appDir, 'variables.yaml'),
@@ -782,6 +770,32 @@ describe('App Register Module', () => {
       const callArgs = api.authenticatedApiCall.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
       expect(body.port).toBe(8080);
+    });
+
+    it('should use developer-ID-adjusted Docker port and URL for localhost (dataplane)', async() => {
+      const appKey = 'dataplane';
+      const appDir = path.join(tempDir, 'builder', appKey);
+      fsSync.mkdirSync(appDir, { recursive: true });
+
+      const variables = {
+        app: { key: 'dataplane', name: 'Dataplane' },
+        build: { language: 'typescript' },
+        port: 3001
+      };
+      fsSync.writeFileSync(
+        path.join(appDir, 'variables.yaml'),
+        yaml.dump(variables)
+      );
+
+      config.getDeveloperId.mockResolvedValue('1');
+      localSecrets.isLocalhost.mockReturnValue(true);
+
+      await appRegister.registerApplication(appKey, { environment: 'dev' });
+
+      const callArgs = api.authenticatedApiCall.mock.calls[0];
+      const body = JSON.parse(callArgs[1].body);
+      expect(body.port).toBe(3101);
+      expect(body.url).toBe('http://localhost:3101');
     });
 
     it('should validate app.key schema - empty string fails', async() => {
@@ -1104,14 +1118,9 @@ describe('App Register Module', () => {
 
       // Test minimum port (1)
       const variablesMin = {
-        app: {
-          key: 'test-app',
-          name: 'Test App'
-        },
-        build: {
-          language: 'typescript',
-          port: 1 // Minimum valid port
-        }
+        app: { key: 'test-app', name: 'Test App' },
+        build: { language: 'typescript' },
+        port: 1 // Minimum valid port
       };
       fsSync.writeFileSync(
         path.join(appDir, 'variables.yaml'),
@@ -1127,14 +1136,9 @@ describe('App Register Module', () => {
 
       // Test maximum port (65535)
       const variablesMax = {
-        app: {
-          key: 'test-app',
-          name: 'Test App'
-        },
-        build: {
-          language: 'typescript',
-          port: 65535 // Maximum valid port
-        }
+        app: { key: 'test-app', name: 'Test App' },
+        build: { language: 'typescript' },
+        port: 65535 // Maximum valid port
       };
       fsSync.writeFileSync(
         path.join(appDir, 'variables.yaml'),
@@ -1278,19 +1282,10 @@ describe('App Register Module', () => {
       const appDir = path.join(tempDir, 'builder', appKey);
       fsSync.mkdirSync(appDir, { recursive: true });
 
-      // Port below minimum (0) - extractAppConfiguration will use default 3000 if port is falsy
-      // So we need to test with a port that's explicitly invalid but not falsy
-      // Actually, port 0 is falsy, so extractAppConfiguration will use default 3000
-      // To test invalid port validation, we need a port that's truthy but invalid
       const variables = {
-        app: {
-          key: 'test-app',
-          name: 'Test App'
-        },
-        build: {
-          language: 'typescript',
-          port: -1 // Invalid: below minimum 1, but truthy so won't use default
-        }
+        app: { key: 'test-app', name: 'Test App' },
+        build: { language: 'typescript' },
+        port: -1 // Invalid: below minimum 1
       };
       fsSync.writeFileSync(
         path.join(appDir, 'variables.yaml'),

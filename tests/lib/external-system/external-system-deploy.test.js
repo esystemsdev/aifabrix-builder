@@ -39,821 +39,208 @@ jest.mock('chalk', () => {
 jest.mock('../../../lib/utils/token-manager', () => ({
   getDeploymentAuth: jest.fn()
 }));
-jest.mock('../../../lib/api/pipeline.api', () => ({
-  deployExternalSystemViaPipeline: jest.fn(),
-  deployDatasourceViaPipeline: jest.fn(),
-  uploadApplicationViaPipeline: jest.fn(),
-  validateUploadViaPipeline: jest.fn(),
-  publishUploadViaPipeline: jest.fn()
-}));
 jest.mock('../../../lib/core/config', () => ({
-  getConfig: jest.fn()
+  getConfig: jest.fn(),
+  resolveEnvironment: jest.fn().mockResolvedValue('dev')
+}));
+jest.mock('../../../lib/utils/controller-url', () => ({
+  resolveControllerUrl: jest.fn().mockResolvedValue('http://localhost:3000')
 }));
 jest.mock('../../../lib/utils/logger', () => ({
   log: jest.fn(),
   warn: jest.fn(),
   error: jest.fn()
 }));
-jest.mock('../../../lib/datasource/deploy', () => ({
-  getDataplaneUrl: jest.fn()
+jest.mock('../../../lib/validation/validate', () => ({
+  validateExternalSystemComplete: jest.fn()
 }));
-jest.mock('../../../lib/generator/external', () => ({
-  generateExternalSystemApplicationSchema: jest.fn()
+jest.mock('../../../lib/validation/validate-display', () => ({
+  displayValidationResults: jest.fn()
 }));
-
-// Mock paths module to return integration folder for external apps
-jest.mock('../../../lib/utils/paths', () => {
-  const actualPaths = jest.requireActual('../../../lib/utils/paths');
-  return {
-    ...actualPaths,
-    detectAppType: jest.fn(),
-    getDeployJsonPath: jest.fn()
-  };
-});
+jest.mock('../../../lib/generator/external-controller-manifest', () => ({
+  generateControllerManifest: jest.fn()
+}));
+jest.mock('../../../lib/deployment/deployer', () => ({
+  deployToController: jest.fn()
+}));
 
 const { getDeploymentAuth } = require('../../../lib/utils/token-manager');
-const {
-  deployExternalSystemViaPipeline,
-  deployDatasourceViaPipeline,
-  uploadApplicationViaPipeline,
-  validateUploadViaPipeline,
-  publishUploadViaPipeline
-} = require('../../../lib/api/pipeline.api');
 const { getConfig } = require('../../../lib/core/config');
 const logger = require('../../../lib/utils/logger');
-const { getDataplaneUrl } = require('../../../lib/datasource/deploy');
-const { detectAppType, getDeployJsonPath } = require('../../../lib/utils/paths');
-const { generateExternalSystemApplicationSchema } = require('../../../lib/generator/external');
+const { validateExternalSystemComplete } = require('../../../lib/validation/validate');
+const { displayValidationResults } = require('../../../lib/validation/validate-display');
+const { generateControllerManifest } = require('../../../lib/generator/external-controller-manifest');
+const { deployToController } = require('../../../lib/deployment/deployer');
 
 describe('External System Deploy Module', () => {
   const appName = 'test-external-app';
   const appPath = path.join(process.cwd(), 'integration', appName);
   const variablesPath = path.join(appPath, 'variables.yaml');
-  // Files are now in same folder (not schemas/ subfolder)
-  const systemFile = path.join(appPath, 'test-external-app-deploy.json');
-  const datasourceFile1 = path.join(appPath, 'test-external-app-deploy-entity1.json');
-  const datasourceFile2 = path.join(appPath, 'test-external-app-deploy-entity2.json');
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    // Reset getDataplaneUrl mock to default value
-    getDataplaneUrl.mockResolvedValue('http://dataplane:8080');
-    // Setup detectAppType mock to return integration folder
-    detectAppType.mockResolvedValue({
-      isExternal: true,
-      appPath: appPath,
-      appType: 'external',
-      baseDir: 'integration'
-    });
-    // Setup getDeployJsonPath mock to return the system file path
-    getDeployJsonPath.mockImplementation((appName, appType, preferNew) => {
-      return systemFile;
-    });
-    // Setup default existsSync mock - return true for system and datasource files
-    fs.existsSync.mockImplementation((filePath) => {
-      return filePath === systemFile ||
-             filePath === datasourceFile1 ||
-             filePath === datasourceFile2 ||
-             filePath.includes('test-external-app-deploy.json') ||
-             filePath.includes('test-external-app-deploy-entity');
-    });
-  });
-
-  describe('validateExternalSystemFiles', () => {
-    it('should validate external system files successfully', async() => {
-      const mockVariables = {
-        externalIntegration: {
-          schemaBasePath: './',
-          systems: ['test-external-app-deploy.json'],
-          dataSources: ['test-external-app-deploy-entity1.json', 'test-external-app-deploy-entity2.json']
-        }
-      };
-
-      fsPromises.readFile = jest.fn().mockResolvedValue(yaml.dump(mockVariables));
-      fsPromises.access = jest.fn().mockResolvedValue(undefined);
-      // Mock existsSync - return true for the system file (newSystemPath check)
-      // The code will use existsSync first, then fall back to fs.access if false
-      fs.existsSync.mockImplementation((filePath) => {
-        // Return true for the system file path (newSystemPath from getDeployJsonPath)
-        if (filePath === systemFile) {
-          return true;
-        }
-        // Return false for datasources so code uses fs.access
-        return false;
-      });
-
-      const { validateExternalSystemFiles } = require('../../../lib/external-system/deploy');
-      const result = await validateExternalSystemFiles(appName);
-
-      expect(result.systemFiles).toHaveLength(1);
-      expect(result.systemFiles[0]).toBe(systemFile);
-      expect(result.datasourceFiles).toHaveLength(2);
-      // systemKey is extracted from filename (removes -deploy suffix)
-      expect(result.systemKey).toBe('test-external-app');
-      // System file uses existsSync (returns true), so no fs.access call for it
-      // Datasources use fs.access - 2 datasources = 2 calls (or 4 if fallback is tried)
-      // Since datasourcePath exists, each datasource makes 1 call = 2 total
-      expect(fsPromises.access).toHaveBeenCalledTimes(2);
-    });
-
-    it('should validate with custom schemaBasePath', async() => {
-      const customSchemasPath = path.join(process.cwd(), 'integration', appName, 'custom-schemas');
-      const customSystemFile = path.join(customSchemasPath, 'test-system.json');
-      const mockVariables = {
-        externalIntegration: {
-          schemaBasePath: './custom-schemas',
-          systems: ['test-system.json'],
-          dataSources: []
-        }
-      };
-
-      fsPromises.readFile = jest.fn().mockResolvedValue(yaml.dump(mockVariables));
-      fsPromises.access = jest.fn().mockResolvedValue(undefined);
-      // For custom schemaBasePath, newSystemPath should not exist, so it falls back to custom path
-      fs.existsSync.mockImplementation((filePath) => {
-        // Return false for newSystemPath so it uses custom schema path
-        return filePath === customSystemFile;
-      });
-
-      const { validateExternalSystemFiles } = require('../../../lib/external-system/deploy');
-      const result = await validateExternalSystemFiles(appName);
-
-      expect(result.systemFiles[0]).toBe(customSystemFile);
-    });
-
-    it('should throw error if externalIntegration block is missing', async() => {
-      const mockVariables = {
-        app: { key: appName }
-      };
-
-      fsPromises.readFile = jest.fn().mockResolvedValue(yaml.dump(mockVariables));
-
-      const { validateExternalSystemFiles } = require('../../../lib/external-system/deploy');
-      await expect(validateExternalSystemFiles(appName))
-        .rejects.toThrow('externalIntegration block not found in variables.yaml');
-    });
-
-    it('should throw error if systems array is missing', async() => {
-      const mockVariables = {
-        externalIntegration: {
-          schemaBasePath: './schemas'
-        }
-      };
-
-      fsPromises.readFile = jest.fn().mockResolvedValue(yaml.dump(mockVariables));
-
-      const { validateExternalSystemFiles } = require('../../../lib/external-system/deploy');
-      await expect(validateExternalSystemFiles(appName))
-        .rejects.toThrow('No external system files specified in externalIntegration.systems');
-    });
-
-    it('should throw error if systems array is empty', async() => {
-      const mockVariables = {
-        externalIntegration: {
-          schemaBasePath: './schemas',
-          systems: []
-        }
-      };
-
-      fsPromises.readFile = jest.fn().mockResolvedValue(yaml.dump(mockVariables));
-
-      const { validateExternalSystemFiles } = require('../../../lib/external-system/deploy');
-      await expect(validateExternalSystemFiles(appName))
-        .rejects.toThrow('No external system files specified in externalIntegration.systems');
-    });
-
-    it('should throw error if system file does not exist', async() => {
-      const mockVariables = {
-        externalIntegration: {
-          schemaBasePath: './schemas',
-          systems: ['nonexistent.json']
-        }
-      };
-
-      fsPromises.readFile = jest.fn().mockResolvedValue(yaml.dump(mockVariables));
-      fsPromises.access = jest.fn().mockRejectedValue(new Error('ENOENT'));
-      // Make sure newSystemPath doesn't exist so it tries the fallback
-      fs.existsSync.mockReturnValue(false);
-
-      const { validateExternalSystemFiles } = require('../../../lib/external-system/deploy');
-      await expect(validateExternalSystemFiles(appName))
-        .rejects.toThrow('External system file not found');
-    });
-
-    it('should throw error if datasource file does not exist', async() => {
-      const mockVariables = {
-        externalIntegration: {
-          schemaBasePath: './schemas',
-          systems: ['test-system.json'],
-          dataSources: ['nonexistent.json']
-        }
-      };
-
-      fsPromises.readFile = jest.fn().mockResolvedValue(yaml.dump(mockVariables));
-      // System file exists via existsSync, so no access call for it
-      // Datasource file fails on both datasourcePath and fallbackPath
-      fsPromises.access = jest.fn()
-        .mockRejectedValueOnce(new Error('ENOENT')) // datasourcePath fails
-        .mockRejectedValueOnce(new Error('ENOENT')); // fallbackPath also fails
-      // System file exists via existsSync
-      fs.existsSync.mockReturnValue(true);
-
-      const { validateExternalSystemFiles } = require('../../../lib/external-system/deploy');
-      await expect(validateExternalSystemFiles(appName))
-        .rejects.toThrow('External datasource file not found');
-    });
-
-    it('should handle empty datasources array', async() => {
-      const mockVariables = {
-        externalIntegration: {
-          schemaBasePath: './schemas',
-          systems: ['test-system.json'],
-          dataSources: []
-        }
-      };
-
-      fsPromises.readFile = jest.fn().mockResolvedValue(yaml.dump(mockVariables));
-      fsPromises.access = jest.fn().mockResolvedValue(undefined);
-
-      const { validateExternalSystemFiles } = require('../../../lib/external-system/deploy');
-      const result = await validateExternalSystemFiles(appName);
-
-      expect(result.datasourceFiles).toHaveLength(0);
-    });
-  });
-
-  describe('buildExternalSystem', () => {
-    const mockSystemJson = {
+  const mockManifest = {
+    key: 'test-external-app',
+    displayName: 'Test System',
+    description: 'Test System Description',
+    type: 'external',
+    system: {
       key: 'test-external-app',
       displayName: 'Test System',
-      description: 'Test System Description',
       type: 'openapi',
       authentication: {
         type: 'apikey',
         apiKey: 'test-key'
       }
-    };
-
-    const mockDatasourceJson = {
-      key: 'test-external-app-entity1',
-      displayName: 'Test Entity 1',
-      systemKey: 'test-external-app',
-      entityKey: 'entity1',
-      fieldMappings: {
-        dimensions: ['id', 'name'],
-        fields: {
-          id: {
-            expression: '{{raw.id}}',
-            type: 'string'
-          },
-          name: {
-            expression: '{{raw.name}}',
-            type: 'string'
-          }
-        }
+    },
+    dataSources: [
+      {
+        key: 'test-external-app-entity1',
+        systemKey: 'test-external-app',
+        entityKey: 'entity1'
       }
-    };
+    ],
+    deploymentKey: 'test-deployment-key'
+  };
 
-    beforeEach(() => {
-      const mockVariables = {
-        externalIntegration: {
-          schemaBasePath: './',
-          systems: ['test-external-app-deploy.json'],
-          dataSources: ['test-external-app-deploy-entity1.json']
-        }
-      };
-
-      fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
-        // Match variables.yaml path (may be resolved differently)
-        const normalizedPath = path.resolve(filePath);
-        const normalizedVariablesPath = path.resolve(variablesPath);
-        if (normalizedPath === normalizedVariablesPath || filePath === variablesPath || filePath.endsWith('variables.yaml')) {
-          return Promise.resolve(yaml.dump(mockVariables));
-        }
-        if (filePath === systemFile) {
-          return Promise.resolve(JSON.stringify(mockSystemJson));
-        }
-        if (filePath === datasourceFile1) {
-          return Promise.resolve(JSON.stringify(mockDatasourceJson));
-        }
-        return Promise.reject(new Error('File not found'));
-      });
-
-      fsPromises.access = jest.fn().mockResolvedValue(undefined);
-      // Setup existsSync for validateExternalSystemFiles - system file exists
-      fs.existsSync.mockImplementation((filePath) => {
-        return filePath === systemFile;
-      });
-      getConfig.mockResolvedValue({
-        deployment: {
-          controllerUrl: 'http://localhost:3000'
-        }
-      });
-      getDeploymentAuth.mockResolvedValue({
-        type: 'bearer',
-        token: 'test-token'
-      });
+  beforeEach(() => {
+    jest.clearAllMocks();
+    getConfig.mockResolvedValue({
+      deployment: {
+        controllerUrl: 'http://localhost:3000'
+      }
     });
-
-    it('should build external system successfully', async() => {
-      deployExternalSystemViaPipeline
-        .mockResolvedValueOnce({
-          success: true,
-          data: { key: 'test-external-app' }
-        });
-      deployDatasourceViaPipeline
-        .mockResolvedValueOnce({
-          success: true,
-          data: { key: 'test-external-app-entity1' }
-        });
-
-      const { buildExternalSystem } = require('../../../lib/external-system/deploy');
-      await buildExternalSystem(appName);
-
-      expect(getDataplaneUrl).toHaveBeenCalledWith(
-        'http://localhost:3000',
-        appName,
-        'dev',
-        { type: 'bearer', token: 'test-token' }
-      );
-      expect(deployExternalSystemViaPipeline).toHaveBeenCalledTimes(1);
-      expect(deployExternalSystemViaPipeline).toHaveBeenCalledWith(
-        'http://dataplane:8080',
-        { type: 'bearer', token: 'test-token' },
-        mockSystemJson
-      );
-      expect(deployDatasourceViaPipeline).toHaveBeenCalledTimes(1);
-      expect(deployDatasourceViaPipeline).toHaveBeenCalledWith(
-        'http://dataplane:8080',
-        'test-external-app',
-        { type: 'bearer', token: 'test-token' },
-        mockDatasourceJson
-      );
-      expect(logger.log).toHaveBeenCalled();
+    getDeploymentAuth.mockResolvedValue({
+      type: 'bearer',
+      token: 'test-token'
     });
-
-    it('should build external system with multiple datasources', async() => {
-      const mockVariables = {
-        externalIntegration: {
-          schemaBasePath: './',
-          systems: ['test-external-app-deploy.json'],
-          dataSources: ['test-external-app-deploy-entity1.json', 'test-external-app-deploy-entity2.json']
-        }
-      };
-
-      fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
-        // Match variables.yaml path (may be resolved differently)
-        const normalizedPath = path.resolve(filePath);
-        const normalizedVariablesPath = path.resolve(variablesPath);
-        if (normalizedPath === normalizedVariablesPath || filePath === variablesPath || filePath.endsWith('variables.yaml')) {
-          return Promise.resolve(yaml.dump(mockVariables));
-        }
-        if (filePath === systemFile) {
-          return Promise.resolve(JSON.stringify(mockSystemJson));
-        }
-        if (filePath === datasourceFile1 || filePath === datasourceFile2) {
-          return Promise.resolve(JSON.stringify(mockDatasourceJson));
-        }
-        return Promise.reject(new Error('File not found'));
-      });
-
-      deployExternalSystemViaPipeline.mockResolvedValueOnce({ success: true, data: {} });
-      deployDatasourceViaPipeline
-        .mockResolvedValueOnce({ success: true, data: {} })
-        .mockResolvedValueOnce({ success: true, data: {} });
-
-      const { buildExternalSystem } = require('../../../lib/external-system/deploy');
-      await buildExternalSystem(appName);
-
-      expect(deployExternalSystemViaPipeline).toHaveBeenCalledTimes(1);
-      expect(deployDatasourceViaPipeline).toHaveBeenCalledTimes(2);
+    validateExternalSystemComplete.mockResolvedValue({
+      valid: true,
+      errors: [],
+      warnings: []
     });
-
-    it('should use custom controller URL from options', async() => {
-      deployExternalSystemViaPipeline.mockResolvedValue({ success: true, data: {} });
-      deployDatasourceViaPipeline.mockResolvedValue({ success: true, data: {} });
-      getDataplaneUrl.mockResolvedValue('http://custom-dataplane:8080');
-
-      const { buildExternalSystem } = require('../../../lib/external-system/deploy');
-      await buildExternalSystem(appName, { controller: 'http://custom-controller:3000' });
-
-      expect(getDataplaneUrl).toHaveBeenCalledWith(
-        'http://custom-controller:3000',
-        appName,
-        'dev',
-        expect.any(Object)
-      );
-      expect(deployExternalSystemViaPipeline).toHaveBeenCalled();
-    });
-
-    it('should use custom environment from options', async() => {
-      deployExternalSystemViaPipeline.mockResolvedValue({ success: true, data: {} });
-      deployDatasourceViaPipeline.mockResolvedValue({ success: true, data: {} });
-
-      const { buildExternalSystem } = require('../../../lib/external-system/deploy');
-      await buildExternalSystem(appName, { environment: 'prod' });
-
-      expect(getDeploymentAuth).toHaveBeenCalledWith(
-        expect.any(String),
-        'prod',
-        appName
-      );
-      expect(getDataplaneUrl).toHaveBeenCalledWith(
-        expect.any(String),
-        appName,
-        'prod',
-        expect.any(Object)
-      );
-    });
-
-    it('should throw error if authentication is missing', async() => {
-      getDeploymentAuth.mockResolvedValue({});
-
-      const { buildExternalSystem } = require('../../../lib/external-system/deploy');
-      await expect(buildExternalSystem(appName))
-        .rejects.toThrow('Authentication required');
-      expect(getDataplaneUrl).not.toHaveBeenCalled();
-    });
-
-    it('should throw error if system deployment fails', async() => {
-      deployExternalSystemViaPipeline.mockResolvedValueOnce({
-        success: false,
-        error: 'Deployment failed',
-        formattedError: 'Formatted: Deployment failed'
-      });
-
-      const { buildExternalSystem } = require('../../../lib/external-system/deploy');
-      await expect(buildExternalSystem(appName))
-        .rejects.toThrow('Failed to build external system');
-      expect(getDataplaneUrl).toHaveBeenCalled();
-    });
-
-    it('should throw error if datasource deployment fails', async() => {
-      deployExternalSystemViaPipeline.mockResolvedValueOnce({ success: true, data: {} });
-      deployDatasourceViaPipeline.mockResolvedValueOnce({
-        success: false,
-        error: 'Datasource deployment failed'
-      });
-
-      const { buildExternalSystem } = require('../../../lib/external-system/deploy');
-      await expect(buildExternalSystem(appName))
-        .rejects.toThrow('Failed to build external system');
-      expect(getDataplaneUrl).toHaveBeenCalled();
-    });
-
-    it('should throw error if system file is invalid JSON', async() => {
-      fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
-        if (filePath === variablesPath) {
-          return Promise.resolve(yaml.dump({
-            externalIntegration: {
-              schemaBasePath: './schemas',
-              systems: ['test-system.json'],
-              dataSources: []
-            }
-          }));
-        }
-        if (filePath === systemFile) {
-          return Promise.resolve('invalid json {');
-        }
-        return Promise.reject(new Error('File not found'));
-      });
-
-      const { buildExternalSystem } = require('../../../lib/external-system/deploy');
-      await expect(buildExternalSystem(appName))
-        .rejects.toThrow('Failed to build external system');
-    });
-
-    it('should use default controller URL from config', async() => {
-      getConfig.mockResolvedValue({
-        deployment: {
-          controllerUrl: 'http://config-controller:3000'
-        }
-      });
-      getDataplaneUrl.mockResolvedValue('http://config-dataplane:8080');
-      deployExternalSystemViaPipeline.mockResolvedValue({ success: true, data: {} });
-      deployDatasourceViaPipeline.mockResolvedValue({ success: true, data: {} });
-
-      const { buildExternalSystem } = require('../../../lib/external-system/deploy');
-      await buildExternalSystem(appName);
-
-      expect(getDataplaneUrl).toHaveBeenCalledWith(
-        'http://config-controller:3000',
-        appName,
-        'dev',
-        expect.any(Object)
-      );
-      expect(deployExternalSystemViaPipeline).toHaveBeenCalled();
-    });
-
-    it('should use default controller URL if config is missing', async() => {
-      getConfig.mockResolvedValue({});
-      getDataplaneUrl.mockResolvedValue('http://default-dataplane:8080');
-      deployExternalSystemViaPipeline.mockResolvedValue({ success: true, data: {} });
-      deployDatasourceViaPipeline.mockResolvedValue({ success: true, data: {} });
-
-      const { buildExternalSystem } = require('../../../lib/external-system/deploy');
-      await buildExternalSystem(appName);
-
-      expect(getDataplaneUrl).toHaveBeenCalledWith(
-        'http://localhost:3000',
-        appName,
-        'dev',
-        expect.any(Object)
-      );
-      expect(deployExternalSystemViaPipeline).toHaveBeenCalled();
+    generateControllerManifest.mockResolvedValue(mockManifest);
+    deployToController.mockResolvedValue({
+      success: true,
+      data: { key: 'test-external-app' }
     });
   });
 
   describe('deployExternalSystem', () => {
-    const mockSystemJson = {
-      key: 'test-external-app',
-      displayName: 'Test System',
-      description: 'Test System Description',
-      type: 'openapi',
-      authentication: {
-        type: 'apikey',
-        apiKey: 'test-key'
-      }
-    };
-
-    const mockDatasourceJson = {
-      key: 'test-external-app-entity1',
-      displayName: 'Test Entity 1',
-      systemKey: 'test-external-app',
-      entityKey: 'entity1',
-      fieldMappings: {
-        dimensions: ['id', 'name'],
-        fields: {
-          id: {
-            expression: '{{raw.id}}',
-            type: 'string'
-          },
-          name: {
-            expression: '{{raw.name}}',
-            type: 'string'
-          }
-        }
-      }
-    };
-
-    beforeEach(() => {
-      const mockVariables = {
-        externalIntegration: {
-          schemaBasePath: './',
-          systems: ['test-external-app-deploy.json'],
-          dataSources: ['test-external-app-deploy-entity1.json']
-        }
-      };
-
-      fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
-        // Match variables.yaml path (may be resolved differently)
-        const normalizedPath = path.resolve(filePath);
-        const normalizedVariablesPath = path.resolve(variablesPath);
-        if (normalizedPath === normalizedVariablesPath || filePath === variablesPath || filePath.endsWith('variables.yaml')) {
-          return Promise.resolve(yaml.dump(mockVariables));
-        }
-        if (filePath === systemFile) {
-          return Promise.resolve(JSON.stringify(mockSystemJson));
-        }
-        if (filePath === datasourceFile1) {
-          return Promise.resolve(JSON.stringify(mockDatasourceJson));
-        }
-        return Promise.reject(new Error('File not found'));
-      });
-
-      fsPromises.access = jest.fn().mockResolvedValue(undefined);
-      // Setup existsSync for validateExternalSystemFiles - system file exists
-      fs.existsSync.mockImplementation((filePath) => {
-        // Match variables.yaml path (may be resolved differently)
-        const normalizedPath = path.resolve(filePath);
-        const normalizedVariablesPath = path.resolve(variablesPath);
-        if (normalizedPath === normalizedVariablesPath || filePath === variablesPath || filePath.endsWith('variables.yaml')) {
-          return true;
-        }
-        // Match system and datasource files
-        if (filePath === systemFile || path.resolve(filePath) === path.resolve(systemFile)) {
-          return true;
-        }
-        if (filePath === datasourceFile1 || path.resolve(filePath) === path.resolve(datasourceFile1)) {
-          return true;
-        }
-        if (filePath === datasourceFile2 || path.resolve(filePath) === path.resolve(datasourceFile2)) {
-          return true;
-        }
-        return false;
-      });
-      // Setup readFileSync for loadVariables and loadSystemFile (used by generateExternalSystemApplicationSchema)
-      fs.readFileSync.mockImplementation((filePath) => {
-        // Match variables.yaml path (may be resolved differently)
-        const normalizedPath = path.resolve(filePath);
-        const normalizedVariablesPath = path.resolve(variablesPath);
-        if (normalizedPath === normalizedVariablesPath || filePath === variablesPath || filePath.endsWith('variables.yaml') || filePath.includes('variables.yaml')) {
-          return yaml.dump(mockVariables);
-        }
-        // Match system and datasource files - check by full path, normalized path, or filename
-        const normalizedSystemFile = path.resolve(systemFile);
-        const normalizedDatasourceFile1 = path.resolve(datasourceFile1);
-        const normalizedDatasourceFile2 = path.resolve(datasourceFile2);
-        if (normalizedPath === normalizedSystemFile || filePath === systemFile ||
-            filePath.endsWith('test-external-app-deploy.json') || filePath.includes('test-external-app-deploy.json')) {
-          return JSON.stringify(mockSystemJson);
-        }
-        if (normalizedPath === normalizedDatasourceFile1 || filePath === datasourceFile1 ||
-            filePath.endsWith('test-external-app-deploy-entity1.json') || filePath.includes('test-external-app-deploy-entity1.json')) {
-          return JSON.stringify(mockDatasourceJson);
-        }
-        if (normalizedPath === normalizedDatasourceFile2 || filePath === datasourceFile2 ||
-            filePath.endsWith('test-external-app-deploy-entity2.json') || filePath.includes('test-external-app-deploy-entity2.json')) {
-          return JSON.stringify(mockDatasourceJson);
-        }
-        throw new Error(`File not found: ${filePath}`);
-      });
-      getConfig.mockResolvedValue({
-        deployment: {
-          controllerUrl: 'http://localhost:3000'
-        }
-      });
-      getDeploymentAuth.mockResolvedValue({
-        type: 'bearer',
-        token: 'test-token'
-      });
-      getDataplaneUrl.mockResolvedValue('http://dataplane:8080');
-      generateExternalSystemApplicationSchema.mockResolvedValue({
-        version: '1.0.0',
-        application: { key: 'test-external-app', displayName: 'Test System', type: 'openapi' },
-        dataSources: [{ key: 'test-external-app-entity1', systemKey: 'test-external-app', entityKey: 'entity1' }]
-      });
-    });
-
-    it('should publish external system successfully', async() => {
-      uploadApplicationViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            uploadId: 'upload-123'
-          }
-        }
-      });
-      validateUploadViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            changes: []
-          }
-        }
-      });
-      publishUploadViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: { key: 'test-external-app' }
-      });
-
+    it('should deploy external system successfully', async() => {
       const { deployExternalSystem } = require('../../../lib/external-system/deploy');
-      await deployExternalSystem(appName);
+      const result = await deployExternalSystem(appName);
 
-      expect(getDataplaneUrl).toHaveBeenCalledWith(
+      expect(validateExternalSystemComplete).toHaveBeenCalledWith(appName);
+      expect(generateControllerManifest).toHaveBeenCalledWith(appName);
+      expect(getDeploymentAuth).toHaveBeenCalledWith(
         'http://localhost:3000',
-        appName,
         'dev',
-        { type: 'bearer', token: 'test-token' }
+        appName
       );
-      expect(uploadApplicationViaPipeline).toHaveBeenCalledTimes(1);
-      expect(uploadApplicationViaPipeline).toHaveBeenCalledWith(
-        'http://dataplane:8080',
+      expect(deployToController).toHaveBeenCalledWith(
+        mockManifest,
+        'http://localhost:3000',
+        'dev',
         { type: 'bearer', token: 'test-token' },
         expect.any(Object)
       );
-      expect(validateUploadViaPipeline).toHaveBeenCalledTimes(1);
-      expect(validateUploadViaPipeline).toHaveBeenCalledWith(
-        'http://dataplane:8080',
-        'upload-123',
-        { type: 'bearer', token: 'test-token' }
-      );
-      expect(publishUploadViaPipeline).toHaveBeenCalledTimes(1);
-      expect(publishUploadViaPipeline).toHaveBeenCalledWith(
-        'http://dataplane:8080',
-        'upload-123',
-        { type: 'bearer', token: 'test-token' },
-        expect.any(Object)
-      );
+      expect(result.success).toBe(true);
       expect(logger.log).toHaveBeenCalled();
     });
 
-    it('should publish external system with multiple datasources', async() => {
-      const mockVariables = {
-        externalIntegration: {
-          schemaBasePath: './',
-          systems: ['test-external-app-deploy.json'],
-          dataSources: ['test-external-app-deploy-entity1.json', 'test-external-app-deploy-entity2.json']
-        }
-      };
-
-      fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
-        // Match variables.yaml path (may be resolved differently)
-        const normalizedPath = path.resolve(filePath);
-        const normalizedVariablesPath = path.resolve(variablesPath);
-        if (normalizedPath === normalizedVariablesPath || filePath === variablesPath || filePath.endsWith('variables.yaml')) {
-          return Promise.resolve(yaml.dump(mockVariables));
-        }
-        if (filePath === systemFile) {
-          return Promise.resolve(JSON.stringify(mockSystemJson));
-        }
-        if (filePath === datasourceFile1 || filePath === datasourceFile2) {
-          return Promise.resolve(JSON.stringify(mockDatasourceJson));
-        }
-        return Promise.reject(new Error('File not found'));
-      });
-
-      uploadApplicationViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            uploadId: 'upload-123'
-          }
-        }
-      });
-      validateUploadViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            changes: []
-          }
-        }
-      });
-      publishUploadViaPipeline.mockResolvedValueOnce({ success: true, data: {} });
+    it('should use controller URL from config', async() => {
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      resolveControllerUrl.mockResolvedValueOnce('http://custom-controller:3000');
 
       const { deployExternalSystem } = require('../../../lib/external-system/deploy');
-      await deployExternalSystem(appName);
+      await deployExternalSystem(appName, {});
 
-      expect(uploadApplicationViaPipeline).toHaveBeenCalledTimes(1);
-      expect(validateUploadViaPipeline).toHaveBeenCalledTimes(1);
-      expect(publishUploadViaPipeline).toHaveBeenCalledTimes(1);
-    });
-
-    it('should use custom controller URL from options', async() => {
-      uploadApplicationViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            uploadId: 'upload-123'
-          }
-        }
-      });
-      validateUploadViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            changes: []
-          }
-        }
-      });
-      publishUploadViaPipeline.mockResolvedValueOnce({ success: true, data: {} });
-      getDataplaneUrl.mockResolvedValue('http://custom-dataplane:8080');
-
-      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
-      await deployExternalSystem(appName, { controller: 'http://custom-controller:3000' });
-
-      expect(getDataplaneUrl).toHaveBeenCalledWith(
+      expect(resolveControllerUrl).toHaveBeenCalledWith();
+      expect(getDeploymentAuth).toHaveBeenCalledWith(
         'http://custom-controller:3000',
-        appName,
         'dev',
+        appName
+      );
+      expect(deployToController).toHaveBeenCalledWith(
+        expect.any(Object),
+        'http://custom-controller:3000',
+        'dev',
+        expect.any(Object),
         expect.any(Object)
       );
-      expect(uploadApplicationViaPipeline).toHaveBeenCalled();
     });
 
-    it('should use custom environment from options', async() => {
-      uploadApplicationViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            uploadId: 'upload-123'
-          }
-        }
-      });
-      validateUploadViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            changes: []
-          }
-        }
-      });
-      publishUploadViaPipeline.mockResolvedValueOnce({ success: true, data: {} });
+    it('should use environment from config', async() => {
+      const { resolveEnvironment } = require('../../../lib/core/config');
+      resolveEnvironment.mockResolvedValueOnce('prod');
 
       const { deployExternalSystem } = require('../../../lib/external-system/deploy');
-      await deployExternalSystem(appName, { environment: 'prod' });
+      await deployExternalSystem(appName, {});
 
+      expect(resolveEnvironment).toHaveBeenCalledWith();
       expect(getDeploymentAuth).toHaveBeenCalledWith(
         expect.any(String),
         'prod',
         appName
       );
-      expect(getDataplaneUrl).toHaveBeenCalledWith(
+      expect(deployToController).toHaveBeenCalledWith(
+        expect.any(Object),
         expect.any(String),
-        appName,
         'prod',
+        expect.any(Object),
         expect.any(Object)
       );
+    });
+
+    it('should pass polling options to deployer', async() => {
+      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
+      await deployExternalSystem(appName, {
+        poll: true,
+        pollInterval: 5000,
+        pollMaxAttempts: 10
+      });
+
+      expect(deployToController).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(String),
+        expect.any(String),
+        expect.any(Object),
+        expect.objectContaining({
+          poll: true,
+          pollInterval: 5000,
+          pollMaxAttempts: 10
+        })
+      );
+    });
+
+    it('should use 500ms default pollInterval for external systems', async() => {
+      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
+      await deployExternalSystem(appName, {});
+
+      expect(deployToController).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(String),
+        expect.any(String),
+        expect.any(Object),
+        expect.objectContaining({
+          pollInterval: 500
+        })
+      );
+    });
+
+    it('should throw error if validation fails', async() => {
+      validateExternalSystemComplete.mockResolvedValue({
+        valid: false,
+        errors: ['Validation error'],
+        warnings: []
+      });
+
+      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
+      await expect(deployExternalSystem(appName))
+        .rejects.toThrow('Failed to deploy external system: Validation failed. Fix errors before deploying.');
+
+      expect(displayValidationResults).toHaveBeenCalled();
+      expect(generateControllerManifest).not.toHaveBeenCalled();
+      expect(deployToController).not.toHaveBeenCalled();
     });
 
     it('should throw error if authentication is missing', async() => {
@@ -861,404 +248,162 @@ describe('External System Deploy Module', () => {
 
       const { deployExternalSystem } = require('../../../lib/external-system/deploy');
       await expect(deployExternalSystem(appName))
-        .rejects.toThrow('Authentication required');
-      expect(getDataplaneUrl).not.toHaveBeenCalled();
+        .rejects.toThrow('Failed to deploy external system: Authentication required');
+
+      expect(validateExternalSystemComplete).toHaveBeenCalled();
+      expect(generateControllerManifest).toHaveBeenCalled();
+      expect(deployToController).not.toHaveBeenCalled();
     });
 
-    it('should throw error if system publish fails', async() => {
-      uploadApplicationViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: { data: { uploadId: 'upload-123' } }
-      });
-      validateUploadViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: { data: { changes: [] } }
-      });
-      publishUploadViaPipeline.mockResolvedValueOnce({
-        success: false,
-        error: 'Publish failed',
-        formattedError: 'Formatted: Publish failed'
-      });
+    it('should throw error if manifest generation fails', async() => {
+      generateControllerManifest.mockRejectedValue(new Error('Manifest generation failed'));
 
       const { deployExternalSystem } = require('../../../lib/external-system/deploy');
       await expect(deployExternalSystem(appName))
-        .rejects.toThrow('Failed to deploy external system');
-      expect(getDataplaneUrl).toHaveBeenCalled();
+        .rejects.toThrow('Failed to deploy external system: Manifest generation failed');
+
+      expect(validateExternalSystemComplete).toHaveBeenCalled();
+      expect(deployToController).not.toHaveBeenCalled();
     });
 
-    it('should throw error if datasource publish fails', async() => {
-      uploadApplicationViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: { data: { uploadId: 'upload-123' } }
-      });
-      validateUploadViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: { data: { changes: [] } }
-      });
-      publishUploadViaPipeline.mockResolvedValueOnce({
-        success: false,
-        error: 'Datasource publish failed'
-      });
+    it('should throw error if deployment fails', async() => {
+      deployToController.mockRejectedValue(new Error('Deployment failed'));
 
       const { deployExternalSystem } = require('../../../lib/external-system/deploy');
       await expect(deployExternalSystem(appName))
-        .rejects.toThrow('Failed to deploy external system');
-      expect(getDataplaneUrl).toHaveBeenCalled();
+        .rejects.toThrow('Failed to deploy external system: Deployment failed');
+
+      expect(validateExternalSystemComplete).toHaveBeenCalled();
+      expect(generateControllerManifest).toHaveBeenCalled();
+      expect(deployToController).toHaveBeenCalled();
     });
 
-    it('should throw error if system file is invalid JSON', async() => {
-      fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
-        if (filePath === variablesPath) {
-          return Promise.resolve(yaml.dump({
-            externalIntegration: {
-              schemaBasePath: './schemas',
-              systems: ['test-system.json'],
-              dataSources: []
-            }
-          }));
-        }
-        if (filePath === systemFile) {
-          return Promise.resolve('invalid json {');
-        }
-        return Promise.reject(new Error('File not found'));
-      });
-
-      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
-      await expect(deployExternalSystem(appName))
-        .rejects.toThrow('Failed to deploy external system');
-    });
-  });
-
-  describe('deployExternalSystem (Application-Level Workflow)', () => {
-    const mockSystemJson = {
-      key: 'test-external-app',
-      displayName: 'Test System',
-      description: 'Test System Description',
-      type: 'openapi',
-      authentication: {
-        type: 'apikey',
-        apiKey: 'test-key'
-      }
-    };
-
-    const mockDatasourceJson = {
-      key: 'test-external-app-entity1',
-      displayName: 'Test Entity 1',
-      systemKey: 'test-external-app',
-      entityKey: 'entity1',
-      fieldMappings: {
-        dimensions: ['id', 'name'],
-        fields: {
-          id: {
-            expression: '{{raw.id}}',
-            type: 'string'
-          },
-          name: {
-            expression: '{{raw.name}}',
-            type: 'string'
-          }
-        }
-      }
-    };
-
-    const mockApplicationSchema = {
-      version: '1.0.0',
-      application: {
-        key: 'test-external-app',
-        displayName: 'Test System',
-        type: 'openapi'
-      },
-      dataSources: [
-        {
-          key: 'test-external-app-entity1',
-          systemKey: 'test-external-app',
-          entityKey: 'entity1'
-        }
-      ]
-    };
-
-    beforeEach(() => {
-      const mockVariables = {
-        externalIntegration: {
-          schemaBasePath: './',
-          systems: ['test-external-app-deploy.json'],
-          dataSources: ['test-external-app-deploy-entity1.json']
-        }
-      };
-
-      fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
-        // Match variables.yaml path (may be resolved differently)
-        const normalizedPath = path.resolve(filePath);
-        const normalizedVariablesPath = path.resolve(variablesPath);
-        if (normalizedPath === normalizedVariablesPath || filePath === variablesPath || filePath.endsWith('variables.yaml') || filePath.includes('variables.yaml')) {
-          return Promise.resolve(yaml.dump(mockVariables));
-        }
-        // Match system and datasource files - check by full path, normalized path, or filename
-        const normalizedSystemFile = path.resolve(systemFile);
-        const normalizedDatasourceFile1 = path.resolve(datasourceFile1);
-        const normalizedDatasourceFile2 = path.resolve(datasourceFile2);
-        if (normalizedPath === normalizedSystemFile || filePath === systemFile ||
-            filePath.endsWith('test-external-app-deploy.json') || filePath.includes('test-external-app-deploy.json')) {
-          return Promise.resolve(JSON.stringify(mockSystemJson));
-        }
-        if (normalizedPath === normalizedDatasourceFile1 || filePath === datasourceFile1 ||
-            filePath.endsWith('test-external-app-deploy-entity1.json') || filePath.includes('test-external-app-deploy-entity1.json')) {
-          return Promise.resolve(JSON.stringify(mockDatasourceJson));
-        }
-        if (normalizedPath === normalizedDatasourceFile2 || filePath === datasourceFile2 ||
-            filePath.endsWith('test-external-app-deploy-entity2.json') || filePath.includes('test-external-app-deploy-entity2.json')) {
-          return Promise.resolve(JSON.stringify(mockDatasourceJson));
-        }
-        return Promise.reject(new Error(`File not found: ${filePath}`));
-      });
-      fsPromises.access = jest.fn().mockResolvedValue(undefined);
-      fs.existsSync.mockImplementation((filePath) => {
-        // Match variables.yaml path (may be resolved differently)
-        const normalizedPath = path.resolve(filePath);
-        const normalizedVariablesPath = path.resolve(variablesPath);
-        if (normalizedPath === normalizedVariablesPath || filePath === variablesPath || filePath.endsWith('variables.yaml') || filePath.includes('variables.yaml')) {
-          return true;
-        }
-        // Match system and datasource files (handle path resolution)
-        const normalizedSystemFile = path.resolve(systemFile);
-        const normalizedDatasourceFile1 = path.resolve(datasourceFile1);
-        const normalizedDatasourceFile2 = path.resolve(datasourceFile2);
-        // Check system file - match by full path, normalized path, or filename
-        if (normalizedPath === normalizedSystemFile || filePath === systemFile ||
-            filePath.endsWith('test-external-app-deploy.json') || filePath.includes('test-external-app-deploy.json')) {
-          return true;
-        }
-        // Check datasource files
-        if (normalizedPath === normalizedDatasourceFile1 || filePath === datasourceFile1 ||
-            filePath.endsWith('test-external-app-deploy-entity1.json') || filePath.includes('test-external-app-deploy-entity1.json')) {
-          return true;
-        }
-        if (normalizedPath === normalizedDatasourceFile2 || filePath === datasourceFile2 ||
-            filePath.endsWith('test-external-app-deploy-entity2.json') || filePath.includes('test-external-app-deploy-entity2.json')) {
-          return true;
-        }
-        return false;
-      });
-      // Setup readFileSync for loadVariables and loadSystemFile (used by generateExternalSystemApplicationSchema)
-      fs.readFileSync.mockImplementation((filePath) => {
-        // Match variables.yaml path (may be resolved differently)
-        const normalizedPath = path.resolve(filePath);
-        const normalizedVariablesPath = path.resolve(variablesPath);
-        if (normalizedPath === normalizedVariablesPath || filePath === variablesPath || filePath.endsWith('variables.yaml') || filePath.includes('variables.yaml')) {
-          return yaml.dump(mockVariables);
-        }
-        // Match system and datasource files - check by full path, normalized path, or filename
-        const normalizedSystemFile = path.resolve(systemFile);
-        const normalizedDatasourceFile1 = path.resolve(datasourceFile1);
-        const normalizedDatasourceFile2 = path.resolve(datasourceFile2);
-        if (normalizedPath === normalizedSystemFile || filePath === systemFile ||
-            filePath.endsWith('test-external-app-deploy.json') || filePath.includes('test-external-app-deploy.json')) {
-          return JSON.stringify(mockSystemJson);
-        }
-        if (normalizedPath === normalizedDatasourceFile1 || filePath === datasourceFile1 ||
-            filePath.endsWith('test-external-app-deploy-entity1.json') || filePath.includes('test-external-app-deploy-entity1.json')) {
-          return JSON.stringify(mockDatasourceJson);
-        }
-        if (normalizedPath === normalizedDatasourceFile2 || filePath === datasourceFile2 ||
-            filePath.endsWith('test-external-app-deploy-entity2.json') || filePath.includes('test-external-app-deploy-entity2.json')) {
-          return JSON.stringify(mockDatasourceJson);
-        }
-        throw new Error(`File not found: ${filePath}`);
-      });
-
-      generateExternalSystemApplicationSchema.mockResolvedValue(mockApplicationSchema);
-      getDataplaneUrl.mockResolvedValue('http://dataplane:8080');
-      getDeploymentAuth.mockResolvedValue({
-        type: 'bearer',
-        token: 'test-token'
-      });
-      getConfig.mockResolvedValue({
-        deployment: {
-          controllerUrl: 'http://localhost:3000'
-        }
-      });
-    });
-
-    it('should deploy using application-level workflow successfully', async() => {
-      uploadApplicationViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            uploadId: 'upload-123'
-          }
-        }
-      });
-      validateUploadViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            changes: [
-              { type: 'new', entity: 'test-external-app' }
-            ],
-            summary: '1 new system, 1 new datasource'
-          }
-        }
-      });
-      publishUploadViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            systems: ['test-external-app'],
-            dataSources: ['test-external-app-entity1']
-          }
-        }
-      });
+    it('should use default controller URL from config', async() => {
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      resolveControllerUrl.mockResolvedValueOnce('http://config-controller:3000');
 
       const { deployExternalSystem } = require('../../../lib/external-system/deploy');
       await deployExternalSystem(appName);
 
-      expect(generateExternalSystemApplicationSchema).toHaveBeenCalledWith(appName);
-      expect(uploadApplicationViaPipeline).toHaveBeenCalledTimes(1);
-      expect(validateUploadViaPipeline).toHaveBeenCalledTimes(1);
-      expect(publishUploadViaPipeline).toHaveBeenCalledTimes(1);
-    });
-
-    it('should skip validation when skipValidation option is true', async() => {
-      uploadApplicationViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            uploadId: 'upload-123'
-          }
-        }
-      });
-      publishUploadViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            systems: ['test-external-app']
-          }
-        }
-      });
-
-      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
-      await deployExternalSystem(appName, { skipValidation: true });
-
-      expect(uploadApplicationViaPipeline).toHaveBeenCalledTimes(1);
-      expect(publishUploadViaPipeline).toHaveBeenCalledTimes(1);
-      // Should skip validate call
-      expect(validateUploadViaPipeline).not.toHaveBeenCalled();
-    });
-
-    it('should disable MCP contract generation when option is false', async() => {
-      uploadApplicationViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            uploadId: 'upload-123'
-          }
-        }
-      });
-      validateUploadViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            changes: []
-          }
-        }
-      });
-      publishUploadViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {}
-        }
-      });
-
-      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
-      await deployExternalSystem(appName, { generateMcpContract: false });
-
-      expect(publishUploadViaPipeline).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
+      expect(getDeploymentAuth).toHaveBeenCalledWith(
+        'http://config-controller:3000',
+        'dev',
+        appName
+      );
+      expect(deployToController).toHaveBeenCalledWith(
         expect.any(Object),
-        expect.objectContaining({ generateMcpContract: false })
+        'http://config-controller:3000',
+        'dev',
+        expect.any(Object),
+        expect.any(Object)
       );
     });
 
-    it('should throw error when upload fails', async() => {
-      uploadApplicationViaPipeline.mockResolvedValueOnce({
-        success: false,
-        error: 'Upload failed'
-      });
+    it('should use default controller URL if config is missing', async() => {
+      getConfig.mockResolvedValue({});
 
       const { deployExternalSystem } = require('../../../lib/external-system/deploy');
-      await expect(deployExternalSystem(appName))
-        .rejects.toThrow('Failed to deploy external system');
-    });
+      await deployExternalSystem(appName);
 
-    it('should throw error when validation fails', async() => {
-      uploadApplicationViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            uploadId: 'upload-123'
-          }
-        }
-      });
-      validateUploadViaPipeline.mockResolvedValueOnce({
-        success: false,
-        error: 'Validation failed'
-      });
-
-      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
-      await expect(deployExternalSystem(appName))
-        .rejects.toThrow('Failed to deploy external system');
-    });
-
-    it('should throw error when publish fails', async() => {
-      uploadApplicationViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            uploadId: 'upload-123'
-          }
-        }
-      });
-      validateUploadViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            changes: []
-          }
-        }
-      });
-      publishUploadViaPipeline.mockResolvedValueOnce({
-        success: false,
-        error: 'Publish failed'
-      });
-
-      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
-      await expect(deployExternalSystem(appName))
-        .rejects.toThrow('Failed to deploy external system');
-    });
-
-    it('should throw error when uploadId is missing', async() => {
-      uploadApplicationViaPipeline.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {}
-        }
-      });
-
-      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
-      await expect(deployExternalSystem(appName))
-        .rejects.toThrow('Failed to deploy external system');
-    });
-
-    it('should throw error when generateExternalSystemApplicationSchema fails', async() => {
-      generateExternalSystemApplicationSchema.mockRejectedValue(
-        new Error('Schema generation failed')
+      expect(getDeploymentAuth).toHaveBeenCalledWith(
+        'http://localhost:3000',
+        'dev',
+        appName
       );
+      expect(deployToController).toHaveBeenCalledWith(
+        expect.any(Object),
+        'http://localhost:3000',
+        'dev',
+        expect.any(Object),
+        expect.any(Object)
+      );
+    });
+
+    it('should handle validation errors with display', async() => {
+      validateExternalSystemComplete.mockResolvedValue({
+        valid: false,
+        errors: ['Error 1', 'Error 2'],
+        warnings: ['Warning 1'],
+        steps: {
+          application: { valid: false, errors: ['Error 1'] },
+          components: { valid: false, errors: ['Error 2'] },
+          manifest: { valid: true, errors: [] }
+        }
+      });
 
       const { deployExternalSystem } = require('../../../lib/external-system/deploy');
       await expect(deployExternalSystem(appName))
-        .rejects.toThrow('Failed to deploy external system');
+        .rejects.toThrow('Failed to deploy external system: Validation failed. Fix errors before deploying.');
+
+      expect(displayValidationResults).toHaveBeenCalledWith({
+        valid: false,
+        errors: ['Error 1', 'Error 2'],
+        warnings: ['Warning 1'],
+        steps: expect.any(Object)
+      });
+    });
+
+    it('should prevent deployment when components have errors', async() => {
+      validateExternalSystemComplete.mockResolvedValue({
+        valid: false,
+        errors: ['System file validation failed'],
+        warnings: [],
+        steps: {
+          application: { valid: true, errors: [] },
+          components: { valid: false, errors: ['System file validation failed'] },
+          manifest: { valid: false, errors: [] }
+        }
+      });
+
+      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
+      await expect(deployExternalSystem(appName))
+        .rejects.toThrow('Failed to deploy external system: Validation failed. Fix errors before deploying.');
+
+      expect(displayValidationResults).toHaveBeenCalled();
+      expect(generateControllerManifest).not.toHaveBeenCalled();
+      expect(deployToController).not.toHaveBeenCalled();
+    });
+
+    it('should prevent deployment when manifest validation fails', async() => {
+      validateExternalSystemComplete.mockResolvedValue({
+        valid: false,
+        errors: ['Manifest validation failed'],
+        warnings: [],
+        steps: {
+          application: { valid: true, errors: [] },
+          components: { valid: true, errors: [] },
+          manifest: { valid: false, errors: ['Manifest validation failed'] }
+        }
+      });
+
+      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
+      await expect(deployExternalSystem(appName))
+        .rejects.toThrow('Failed to deploy external system: Validation failed. Fix errors before deploying.');
+
+      expect(displayValidationResults).toHaveBeenCalled();
+      expect(generateControllerManifest).not.toHaveBeenCalled();
+      expect(deployToController).not.toHaveBeenCalled();
+    });
+
+    it('should show same validation output as validate command', async() => {
+      const validationResult = {
+        valid: false,
+        errors: ['Component error'],
+        warnings: ['Warning message'],
+        steps: {
+          application: { valid: true, errors: [], warnings: [] },
+          components: { valid: false, errors: ['Component error'], warnings: [] },
+          manifest: { valid: false, errors: [], warnings: [] }
+        }
+      };
+      validateExternalSystemComplete.mockResolvedValue(validationResult);
+
+      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
+      await expect(deployExternalSystem(appName))
+        .rejects.toThrow('Failed to deploy external system: Validation failed. Fix errors before deploying.');
+
+      // Should display validation results exactly as validate command would
+      expect(displayValidationResults).toHaveBeenCalledWith(validationResult);
     });
   });
 });
-
