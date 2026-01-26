@@ -35,10 +35,10 @@ Complete command reference organized by concept with examples and troubleshootin
   - `aifabrix dockerfile` - Generate Dockerfile for an application
 
 ### Deployment
-- [Deployment Commands](deployment.md) - Azure deployment
+- [Deployment Commands](deployment.md) - Deploy via Controller (Azure or local Docker)
   - `aifabrix push` - Push image to Azure Container Registry
   - `aifabrix environment deploy` - Deploy/setup environment in Miso Controller
-  - `aifabrix deploy` - Deploy to Azure via Miso Controller
+  - `aifabrix deploy` - Deploy via Miso Controller (Azure Container Apps or local Docker)
   - `aifabrix deployments` - List deployments for an environment
 
 ### Validation & Comparison

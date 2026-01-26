@@ -56,3 +56,47 @@ jobs:
           body: Release {{appName}} ${{ github.ref }}
           draft: false
           prerelease: false
+
+  deploy:
+    name: Deploy to AI Fabrix
+    runs-on: ubuntu-latest
+    needs: create-release
+    # Note: This workflow deploys to ACR (Azure Container Registry) and Azure
+    # For local deployment, use 'aifabrix deploy {{appName}}' directly from your machine
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install AI Fabrix Builder
+        run: npm install -g @aifabrix/builder
+      
+      - name: Authenticate with Controller
+        run: |
+          set -e
+          aifabrix login \
+            --method credentials \
+            --app {{appName}} \
+            --client-id ${{ secrets.PRO_MISO_CLIENTID }} \
+            --client-secret ${{ secrets.PRO_MISO_CLIENTSECRET }} \
+            --controller ${{ secrets.MISO_CONTROLLER_URL }} \
+            --environment pro
+      
+      - name: Validate Application Manifest
+        run: |
+          set -e
+          aifabrix validate {{appName}}
+      
+      - name: Build Docker Image
+        run: |
+          set -e
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          aifabrix build {{appName}} --tag $TAG_VERSION
+      
+      - name: Deploy Application
+        run: |
+          set -e
+          aifabrix deploy {{appName}}

@@ -704,23 +704,19 @@ EOF
 
 Use the Pipeline API for automated deployments with proper authentication.
 
-**Note:** The `/api/v1/pipeline/dev/validate` endpoint returns a **one-time use token** (`validateToken`) that expires after deployment. This is designed for CI/CD pipeline flows only - there's no standalone `aifabrix validate` CLI command because the token is only valid during a single deployment sequence.
+**Note:** The `aifabrix validate` command validates application configurations locally before deployment. It checks `variables.yaml`, `env.template`, and `rbac.yaml` files for syntax errors and schema compliance. This helps catch configuration errors early, before building Docker images, saving time in CI/CD pipelines.
 
-**Response from validate endpoint:**
-```json
-{
-  "valid": true,
-  "validateToken": "eyJhbGciOiJSUzI1NiIs...",               // One-time use token for this deployment
-  "imageServer": "myacr.azurecr.io",                        // Registry server (ACR, Docker Hub, GitHub, etc.)
-  "imageUsername": "00000000-0000-0000-0000-000000000000",  // Registry username
-  "imagePassword": "password123...",                        // Registry password
-  "expiresAt": "2024-01-01T12:00:00Z",
-  "draftDeploymentId": "draft-123",
-  "errors": []
-}
-```
+For automated deployments, use the CLI-based workflow (see examples above) which includes:
+1. `aifabrix login` - Authenticate with controller
+2. `aifabrix validate` - Validate configuration before building
+3. `aifabrix build` - Build Docker image
+4. `aifabrix deploy` - Deploy to ACR/Azure
 
-Use the Pipeline API for automated deployments:
+The CLI commands handle all the complexity internally, including manifest generation, validation, registry push, and deployment.
+
+Use the AI Fabrix Builder CLI for automated deployments:
+
+**⚠️ Important:** Automatic deployment via GitHub Actions deploys images to **ACR (Azure Container Registry) and Azure** - this is **NOT for local deployment**. For local deployment, use the builder CLI tool directly (`aifabrix deploy` from your local machine).
 
 ```yaml
 # .github/workflows/deploy.yaml
@@ -736,56 +732,60 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Build Image
-        run: |
-          docker build -t myapp:${{ github.sha }} .
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
       
-      - name: Validate and Get Registry Credentials
-        id: validate
-        run: |
-          RESPONSE=$(curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/dev/validate" \
-            -H "x-client-id: ${{ secrets.DEV_MISO_CLIENTID }}" \
-            -H "x-client-secret: ${{ secrets.DEV_MISO_CLIENTSECRET }}" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "clientId": "${{ secrets.DEV_MISO_CLIENTID }}",
-              "repositoryUrl": "${{ github.server_url }}/${{ github.repository }}",
-              "applicationConfig": $(cat application.json)
-            }')
-          echo "validateToken=$(echo $RESPONSE | jq -r '.validateToken')" >> $GITHUB_OUTPUT
-          echo "imageServer=$(echo $RESPONSE | jq -r '.imageServer')" >> $GITHUB_OUTPUT
-          echo "imageUsername=$(echo $RESPONSE | jq -r '.imageUsername')" >> $GITHUB_OUTPUT
-          echo "imagePassword=$(echo $RESPONSE | jq -r '.imagePassword')" >> $GITHUB_OUTPUT
+      - name: Install AI Fabrix Builder
+        run: npm install -g @aifabrix/builder
       
-      - name: Push to Registry
+      - name: Authenticate with Controller
         run: |
-          echo ${{ steps.validate.outputs.imagePassword }} | docker login ${{ steps.validate.outputs.imageServer }} -u ${{ steps.validate.outputs.imageUsername }} --password-stdin
-          docker tag myapp:${{ github.sha }} ${{ steps.validate.outputs.imageServer }}/myapp:${{ github.sha }}
-          docker push ${{ steps.validate.outputs.imageServer }}/myapp:${{ github.sha }}
+          aifabrix login \
+            --method credentials \
+            --app myapp \
+            --client-id ${{ secrets.DEV_MISO_CLIENTID }} \
+            --client-secret ${{ secrets.DEV_MISO_CLIENTSECRET }} \
+            --controller ${{ secrets.MISO_CONTROLLER_URL }} \
+            --environment dev
+      
+      - name: Validate Application Manifest
+        run: |
+          set -e
+          aifabrix validate myapp
+      
+      - name: Build Docker Image
+        run: |
+          set -e
+          aifabrix build myapp --tag ${{ github.sha }}
       
       - name: Deploy Application
         run: |
-          # Option 1: Use Bearer token (device token) for user-level audit tracking
-          # Preferred for interactive CLI usage - provides user-level audit logs
-          # curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/dev/deploy" \
-          #   -H "Authorization: Bearer ${{ secrets.DEVICE_TOKEN }}" \
-          #   -H "Content-Type: application/json" \
-          #   -d '{
-          #     "validateToken": "${{ steps.validate.outputs.validateToken }}",
-          #     "imageTag": "${{ github.sha }}"
-          #   }'
-          
-          # Option 2: Use client credentials (x-client-id/x-client-secret) for application-level authentication
-          # Preferred for CI/CD pipelines - provides application-level audit logs
-          curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/dev/deploy" \
-            -H "Content-Type: application/json" \
-            -H "x-client-id: ${{ secrets.DEV_MISO_CLIENTID }}" \
-            -H "x-client-secret: ${{ secrets.DEV_MISO_CLIENTSECRET }}" \
-            -d '{
-              "validateToken": "${{ steps.validate.outputs.validateToken }}",
-              "imageTag": "${{ github.sha }}"
-            }'
+          set -e
+          aifabrix deploy myapp
 ```
+
+**Workflow Steps Explained:**
+
+1. **Setup Node.js**: Configures Node.js environment for the runner
+2. **Install AI Fabrix Builder**: Installs the `@aifabrix/builder` CLI package globally
+3. **Authenticate with Controller**: Uses `aifabrix login` to authenticate and store credentials in `~/.aifabrix/config.yaml` on the runner
+4. **Validate Application Manifest**: Validates `variables.yaml`, `env.template`, and `rbac.yaml` before building (catches configuration errors early, saving time)
+5. **Build Docker Image**: Builds the Docker image with proper tagging using the commit SHA
+6. **Deploy Application**: Deploys to ACR/Azure using stored authentication from login (no credentials needed in deploy step)
+
+**Authentication Flow:**
+
+- `aifabrix login` stores controller URL, environment, and credentials in `~/.aifabrix/config.yaml`
+- `aifabrix deploy` automatically reads from config (no need to pass `--client-id`/`--client-secret`)
+- Config persists during workflow run, isolated per runner
+
+**Error Handling:**
+
+- `set -e` enables fail-fast behavior (stops on first error)
+- CLI commands exit with non-zero codes on failure
+- Clear, actionable error messages are provided by the CLI
 
 ### Environment-Specific Deployments
 
@@ -805,37 +805,91 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Build and Deploy
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install AI Fabrix Builder
+        run: npm install -g @aifabrix/builder
+      
+      - name: Authenticate with Controller
         run: |
-          docker build -t myapp:${{ github.sha }} .
-          
-          # Get environment-specific credentials
-          # Note: Both authentication methods are supported:
-          # - Bearer token (Authorization header) for user-level audit
-          # - Client credentials (x-client-id/x-client-secret headers) for application-level audit
-          RESPONSE=$(curl -X POST "${{ secrets.MISO_CONTROLLER_URL }}/api/v1/pipeline/dev/validate" \
-            -H "x-client-id: ${{ secrets.DEV_MISO_CLIENTID }}" \
-            -H "x-client-secret: ${{ secrets.DEV_MISO_CLIENTSECRET }}" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "clientId": "${{ secrets.DEV_MISO_CLIENTID }}",
-              "repositoryUrl": "${{ github.server_url }}/${{ github.repository }}",
-              "applicationConfig": $(cat application.json)
-            }')
-          
-          # Push and deploy...
-          # (same as above)
+          set -e
+          # Determine environment from branch
+          ENV=${{ github.ref == 'refs/heads/main' && 'pro' || 'dev' }}
+          aifabrix login \
+            --method credentials \
+            --app myapp \
+            --client-id ${{ secrets[format('{0}_MISO_CLIENTID', github.ref == 'refs/heads/main' && 'PRO' || 'DEV')] }} \
+            --client-secret ${{ secrets[format('{0}_MISO_CLIENTSECRET', github.ref == 'refs/heads/main' && 'PRO' || 'DEV')] }} \
+            --controller ${{ secrets.MISO_CONTROLLER_URL }} \
+            --environment $ENV
+      
+      - name: Validate Application Manifest
+        run: |
+          set -e
+          aifabrix validate myapp
+      
+      - name: Build Docker Image
+        run: |
+          set -e
+          aifabrix build myapp --tag ${{ github.sha }}
+      
+      - name: Deploy Application
+        run: |
+          set -e
+          aifabrix deploy myapp
 ```
 
-**Important notes about the validate endpoint:**
+**Environment-Specific Secrets:**
 
-1. **One-time use token**: The `validateToken` expires after a single deployment is completed. It cannot be reused.
+For environment-specific deployments, use GitHub environment secrets:
+- **Development**: `DEV_MISO_CLIENTID`, `DEV_MISO_CLIENTSECRET`
+- **Staging/Test**: `TST_MISO_CLIENTID`, `TST_MISO_CLIENTSECRET`
+- **Production**: `PRO_MISO_CLIENTID`, `PRO_MISO_CLIENTSECRET`
 
-2. **Generic registry support**: The `imageServer`, `imageUsername`, and `imagePassword` fields work with any container registry (Azure Container Registry, Docker Hub, GitHub Container Registry, etc.).
+The workflow automatically selects the correct environment and secrets based on the branch.
 
-3. **CI/CD only**: The validate endpoint is designed for automated pipeline use. For local CLI deployments, use `aifabrix deploy` which handles everything automatically.
+**Required GitHub Secrets:**
 
-4. **No standalone CLI**: There's no `aifabrix validate` command because the validate token is consumed during the deployment workflow.
+**Repository level:**
+- `MISO_CONTROLLER_URL` - Controller base URL
+
+**Environment level (dev/tst/pro):**
+- `{ENV}_MISO_CLIENTID` - Client ID from `aifabrix app register` (e.g., `DEV_MISO_CLIENTID`, `TST_MISO_CLIENTID`, `PRO_MISO_CLIENTID`)
+- `{ENV}_MISO_CLIENTSECRET` - Client Secret from `aifabrix app register` (e.g., `DEV_MISO_CLIENTSECRET`, `TST_MISO_CLIENTSECRET`, `PRO_MISO_CLIENTSECRET`)
+
+**Optional:**
+- `APP_NAME` - Application name (or hardcode in workflow)
+
+**Deployment Types:**
+
+### Automatic Deployment (GitHub Actions)
+
+- **Purpose**: Deploy images to **ACR (Azure Container Registry) and Azure**
+- **Use Case**: CI/CD pipelines, production deployments
+- **Location**: GitHub Actions workflows (`.github/workflows/`)
+- **Process**: Build → Push to ACR → Deploy to Azure via Miso Controller
+- **NOT for**: Local development or testing
+
+### Local Deployment (CLI Tool)
+
+- **Purpose**: Deploy to local infrastructure or test environments
+- **Use Case**: Local development, testing, debugging
+- **Location**: Run `aifabrix deploy` directly from your machine
+- **Process**: Uses local Docker images, deploys to local or configured environments
+- **Use**: `aifabrix deploy myapp` from your local terminal
+
+**Why Validate Before Build:**
+
+The `aifabrix validate` step runs **before** the build step to catch configuration errors early. This saves time by:
+- Validating `variables.yaml` syntax and schema compliance
+- Checking `env.template` for proper secret references
+- Validating `rbac.yaml` for external systems
+- Catching errors before spending time building Docker images
+
+If validation fails, the workflow stops immediately with clear error messages, preventing unnecessary build steps.
 
 ---
 

@@ -61,10 +61,13 @@ const { publishDatasourceViaPipeline } = require('../../../lib/api/pipeline.api'
 const { formatApiError } = require('../../../lib/utils/api-error-handler');
 const logger = require('../../../lib/utils/logger');
 const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
 
 describe('Datasource Deploy Module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset resolveDataplaneUrl to default mock value
+    resolveDataplaneUrl.mockResolvedValue('http://dataplane:8080');
   });
 
   describe('getDataplaneUrl', () => {
@@ -242,17 +245,11 @@ describe('Datasource Deploy Module', () => {
 
       getDeploymentAuth.mockResolvedValue({
         type: 'bearer',
-        token: 'test-token'
+        token: 'test-token',
+        controller: 'http://localhost:3010'
       });
 
-      getEnvironmentApplication.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            dataplaneUrl: 'http://dataplane:8080'
-          }
-        }
-      });
+      resolveDataplaneUrl.mockResolvedValue('http://dataplane:8080');
       publishDatasourceViaPipeline.mockResolvedValueOnce({
         success: true,
         data: { success: true }
@@ -266,6 +263,14 @@ describe('Datasource Deploy Module', () => {
       expect(result.systemKey).toBe('hubspot');
       expect(result.environment).toBe('dev');
       expect(validateDatasourceFile).toHaveBeenCalledWith(filePath);
+      expect(resolveDataplaneUrl).toHaveBeenCalledWith(
+        'http://localhost:3010',
+        'dev',
+        expect.objectContaining({
+          type: 'bearer',
+          token: 'test-token'
+        })
+      );
       expect(publishDatasourceViaPipeline).toHaveBeenCalledTimes(1);
     });
 
@@ -305,20 +310,11 @@ describe('Datasource Deploy Module', () => {
 
       getDeploymentAuth.mockResolvedValue({
         type: 'bearer',
-        token: 'test-token'
+        token: 'test-token',
+        controller: 'http://localhost:3010'
       });
 
-      const dataplaneResolver = require('../../../lib/utils/dataplane-resolver');
-      jest.spyOn(dataplaneResolver, 'resolveDataplaneUrl').mockResolvedValue('http://dataplane:8080');
-
-      getEnvironmentApplication.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            dataplaneUrl: 'http://dataplane:8080'
-          }
-        }
-      });
+      resolveDataplaneUrl.mockResolvedValue('http://dataplane:8080');
       publishDatasourceViaPipeline.mockResolvedValueOnce({
         success: true,
         data: { success: true }
@@ -329,6 +325,14 @@ describe('Datasource Deploy Module', () => {
 
       expect(resolveControllerUrl).toHaveBeenCalledWith();
       expect(resolveEnvironment).toHaveBeenCalledWith();
+      expect(resolveDataplaneUrl).toHaveBeenCalledWith(
+        'http://localhost:3010',
+        'dev',
+        expect.objectContaining({
+          type: 'bearer',
+          token: 'test-token'
+        })
+      );
       expect(result.success).toBe(true);
     });
 
@@ -388,26 +392,24 @@ describe('Datasource Deploy Module', () => {
 
       getDeploymentAuth.mockResolvedValue({
         type: 'bearer',
-        token: 'test-token'
+        token: 'test-token',
+        controller: 'http://localhost:3010'
       });
 
-      getEnvironmentApplication.mockResolvedValueOnce({
-        success: true,
-        data: {
-          data: {
-            dataplaneUrl: 'http://dataplane:8080'
-          }
-        }
-      });
+      resolveDataplaneUrl.mockResolvedValue('http://dataplane:8080');
       publishDatasourceViaPipeline.mockResolvedValueOnce({
         success: false,
-        formattedError: 'Deployment failed'
+        formattedError: 'Deployment failed',
+        errorData: {
+          endpointUrl: 'http://dataplane:8080/api/v1/external/hubspot/datasources'
+        }
       });
 
       formatApiError.mockReturnValue('Deployment failed');
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
       await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Dataplane publish failed');
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Endpoint URL:'));
     });
 
     it('should throw error for non-bearer authentication in deployment', async() => {
@@ -427,16 +429,142 @@ describe('Datasource Deploy Module', () => {
       getDeploymentAuth.mockResolvedValue({
         type: 'client-credentials',
         username: 'user',
-        password: 'pass'
+        password: 'pass',
+        controller: 'http://localhost:3010'
       });
 
-      getEnvironmentApplication.mockRejectedValue(new Error('Bearer token authentication required'));
-
-      const dataplaneResolver = require('../../../lib/utils/dataplane-resolver');
-      dataplaneResolver.resolveDataplaneUrl.mockRejectedValueOnce(new Error('Bearer token authentication required'));
+      resolveDataplaneUrl.mockRejectedValueOnce(new Error('Bearer token authentication required'));
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
       await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Bearer token authentication required');
+      // logger.error is called with multiple arguments: chalk.red('❌ Failed to resolve dataplane URL:'), error.message
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('should throw error if dataplane URL resolution fails', async() => {
+      const datasourceConfig = {
+        key: 'test-datasource',
+        systemKey: 'hubspot'
+      };
+
+      validateDatasourceFile.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
+
+      getDeploymentAuth.mockResolvedValue({
+        type: 'bearer',
+        token: 'test-token',
+        controller: 'http://localhost:3010'
+      });
+
+      resolveDataplaneUrl.mockRejectedValueOnce(new Error('Dataplane URL not found'));
+
+      const { deployDatasource } = require('../../../lib/datasource/deploy');
+      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Dataplane URL not found');
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('should throw error if dataplane URL is empty', async() => {
+      const datasourceConfig = {
+        key: 'test-datasource',
+        systemKey: 'hubspot'
+      };
+
+      validateDatasourceFile.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
+
+      getDeploymentAuth.mockResolvedValue({
+        type: 'bearer',
+        token: 'test-token',
+        controller: 'http://localhost:3010'
+      });
+
+      resolveDataplaneUrl.mockResolvedValue('');
+
+      const { deployDatasource } = require('../../../lib/datasource/deploy');
+      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Dataplane URL is empty');
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Dataplane URL is empty'));
+    });
+
+    it('should display endpoint URL in error when publish fails', async() => {
+      const datasourceConfig = {
+        key: 'test-datasource',
+        systemKey: 'hubspot'
+      };
+
+      validateDatasourceFile.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
+
+      getDeploymentAuth.mockResolvedValue({
+        type: 'bearer',
+        token: 'test-token',
+        controller: 'http://localhost:3010'
+      });
+
+      resolveDataplaneUrl.mockResolvedValue('http://dataplane:8080');
+      publishDatasourceViaPipeline.mockResolvedValueOnce({
+        success: false,
+        formattedError: 'Network timeout',
+        errorData: {
+          endpointUrl: 'http://dataplane:8080/api/v1/external/hubspot/datasources'
+        }
+      });
+
+      formatApiError.mockReturnValue('Network timeout');
+
+      const { deployDatasource } = require('../../../lib/datasource/deploy');
+      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Dataplane publish failed');
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Endpoint URL:'));
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('http://dataplane:8080/api/v1/external/hubspot/datasources'));
+    });
+
+    it('should display dataplane URL and system key when endpoint URL not available', async() => {
+      const datasourceConfig = {
+        key: 'test-datasource',
+        systemKey: 'hubspot'
+      };
+
+      validateDatasourceFile.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
+
+      getDeploymentAuth.mockResolvedValue({
+        type: 'bearer',
+        token: 'test-token',
+        controller: 'http://localhost:3010'
+      });
+
+      resolveDataplaneUrl.mockResolvedValue('http://dataplane:8080');
+      publishDatasourceViaPipeline.mockResolvedValueOnce({
+        success: false,
+        formattedError: 'Network timeout',
+        errorData: {}
+      });
+
+      formatApiError.mockReturnValue('Network timeout');
+
+      const { deployDatasource } = require('../../../lib/datasource/deploy');
+      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Dataplane publish failed');
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Dataplane URL:'));
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('System Key:'));
     });
   });
 });

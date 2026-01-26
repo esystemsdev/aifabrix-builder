@@ -2,7 +2,11 @@
 
 ← [Back to Quick Start](quick-start.md)
 
-Deploy your application via [Azure Marketplace](https://azuremarketplace.microsoft.com/) or Miso Controller. Enterprise versions deploy to Azure Container Apps, while open source versions deploy to local Docker instances.
+Deploy your application via [Azure Marketplace](https://azuremarketplace.microsoft.com/) or Miso Controller. The **Miso Controller** handles the actual deployment execution:
+- **Azure deployments:** Controller deploys to Azure Container Apps (for production/cloud environments)
+- **Local Docker deployments:** Controller runs the application in Docker containers locally (for localhost/development environments)
+
+The builder CLI generates the deployment manifest and sends it to the controller; the controller determines the deployment target based on the deployment type and executes accordingly.
 
 ## Prerequisites
 
@@ -38,7 +42,7 @@ aifabrix deploy myapp
 
 ### Method 2: Automated CI/CD Deployment
 
-For automated deployments using the Pipeline API, see [GitHub Workflows Guide](github-workflows.md#pipeline-deployment-integration) for detailed workflow examples.
+For automated deployments using the AI Fabrix Builder CLI, see [GitHub Workflows Guide](github-workflows.md#integration-with-ai-fabrix) for detailed workflow examples using `aifabrix login`, `aifabrix validate`, `aifabrix build`, and `aifabrix deploy` commands.
 
 The deploy command uses Bearer token authentication. Tokens are automatically retrieved or refreshed from config.yaml, or obtained using credentials from secrets.local.yaml if needed.
 
@@ -82,7 +86,8 @@ Local[Local Development]:::primary --> Build[Build Image]:::base
 Build --> Push[Push to ACR<br/>myacr.azurecr.io]:::base
 Push --> Deploy[Deploy via Controller]:::base
 Deploy --> Controller[Miso Controller]:::medium
-Controller --> Azure[Azure Container Apps]:::base
+Controller --> Azure[Azure Container Apps<br/>Production]:::base
+Controller --> Docker[Local Docker<br/>Development]:::base
 
 %% =======================
 %% CI/CD Pipeline
@@ -342,7 +347,9 @@ Key changes when `variables.yaml` changes. This is intentional - it means:
 
 ## Deployment Manifest
 
-The `aifabrix-deploy.json` file sent to controller.
+The `aifabrix-deploy.json` file sent to controller. The controller uses this manifest to:
+- **Azure deployments:** Deploy to Azure Container Apps with the specified configuration
+- **Local Docker deployments:** Run Docker containers locally with parameters extracted from the manifest
 
 ### View Your Manifest
 

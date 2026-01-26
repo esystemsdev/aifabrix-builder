@@ -194,6 +194,108 @@ describe('API Utilities Module', () => {
 
       expect(global.fetch).toHaveBeenCalledWith('https://api.example.com/test', expect.objectContaining(options));
     });
+
+    it('should validate URL before making request - empty string', async() => {
+      parseErrorResponse.mockReturnValue({
+        type: 'network',
+        message: 'API endpoint URL cannot be empty. Please provide a valid URL.',
+        data: {},
+        formatted: 'API endpoint URL cannot be empty. Please provide a valid URL.'
+      });
+      jest.spyOn(Date, 'now').mockReturnValue(1000);
+
+      const result = await makeApiCall('');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('cannot be empty');
+      expect(result.network).toBe(true);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should validate URL before making request - null', async() => {
+      parseErrorResponse.mockReturnValue({
+        type: 'network',
+        message: 'API endpoint URL is required and must be a string',
+        data: {},
+        formatted: 'API endpoint URL is required and must be a string'
+      });
+      jest.spyOn(Date, 'now').mockReturnValue(1000);
+
+      const result = await makeApiCall(null);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('is required');
+      expect(result.network).toBe(true);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should validate URL before making request - undefined', async() => {
+      parseErrorResponse.mockReturnValue({
+        type: 'network',
+        message: 'API endpoint URL is required and must be a string',
+        data: {},
+        formatted: 'API endpoint URL is required and must be a string'
+      });
+      jest.spyOn(Date, 'now').mockReturnValue(1000);
+
+      const result = await makeApiCall(undefined);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('is required');
+      expect(result.network).toBe(true);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should validate URL before making request - whitespace only', async() => {
+      parseErrorResponse.mockReturnValue({
+        type: 'network',
+        message: 'API endpoint URL cannot be empty. Please provide a valid URL.',
+        data: {},
+        formatted: 'API endpoint URL cannot be empty. Please provide a valid URL.'
+      });
+      jest.spyOn(Date, 'now').mockReturnValue(1000);
+
+      const result = await makeApiCall('   ');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('cannot be empty');
+      expect(result.network).toBe(true);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should validate URL before making request - invalid pattern "undefined"', async() => {
+      parseErrorResponse.mockReturnValue({
+        type: 'network',
+        message: 'API endpoint URL is invalid: "undefined". Please provide a valid URL.',
+        data: {},
+        formatted: 'API endpoint URL is invalid: "undefined". Please provide a valid URL.'
+      });
+      jest.spyOn(Date, 'now').mockReturnValue(1000);
+
+      const result = await makeApiCall('undefined');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('is invalid');
+      expect(result.network).toBe(true);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should validate URL before making request - missing protocol', async() => {
+      parseErrorResponse.mockReturnValue({
+        type: 'network',
+        message: 'API endpoint URL must be a valid HTTP/HTTPS URL',
+        data: {},
+        formatted: 'API endpoint URL must be a valid HTTP/HTTPS URL'
+      });
+      jest.spyOn(Date, 'now').mockReturnValue(1000);
+
+      const result = await makeApiCall('example.com');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('must be a valid HTTP/HTTPS URL');
+      expect(result.network).toBe(true);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
   });
 
   describe('authenticatedApiCall', () => {

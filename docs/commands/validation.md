@@ -444,6 +444,7 @@ Validation errors are formatted to be clear and actionable:
 - **"schemaBasePath not found"** → Add schemaBasePath to externalIntegration block
 - **"File not found: <path>"** → Check that external system/datasource files exist at specified paths
 - **"Unknown schema type"** → File must be application, external-system, or external-datasource JSON
+- **"Dataplane configuration not found"** → The dataplane must be set up and configured before deploying external systems. Ensure the dataplane URL is available from the controller. Run `aifabrix login` to authenticate and verify controller access.
 
 **Next Steps:**
 After validation:
@@ -531,6 +532,8 @@ Step 3: Deployment Manifest
 ```
 
 ### Example 4: Validation Error with Schema Reference
+
+**Prerequisites:** Before deploying external systems, ensure the dataplane is set up and configured. The dataplane URL must be available from the controller. If you see "Dataplane configuration not found" errors, set up the dataplane first.
 
 When using inline `system` or `dataSources` in deployment manifests, validation checks both the application schema and the referenced schemas:
 

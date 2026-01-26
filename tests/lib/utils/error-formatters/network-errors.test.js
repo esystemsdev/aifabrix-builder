@@ -47,7 +47,7 @@ describe('Network Error Formatters Module', () => {
 
       expect(result).toContain('Network Error');
       expect(result).toContain('Request timed out');
-      expect(result).toContain('The controller may be overloaded');
+      expect(result).toContain('The endpoint may not exist, the controller may be overloaded, or there may be a network issue');
     });
 
     it('should format generic network error', () => {
@@ -148,7 +148,7 @@ describe('Network Error Formatters Module', () => {
       const result = formatNetworkError(errorMessage, errorData);
 
       expect(result).toContain('Request timed out');
-      expect(result).toContain('The controller may be overloaded');
+      expect(result).toContain('The endpoint may not exist, the controller may be overloaded, or there may be a network issue');
     });
   });
 });

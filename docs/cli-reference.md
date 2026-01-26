@@ -21,7 +21,7 @@ The CLI reference is now organized by concept in the `commands/` folder:
 - **[Developer Isolation Commands](commands/developer-isolation.md)** - Port isolation
 - **[Application Management Commands](commands/application-management.md)** - Application registration
 - **[Application Development Commands](commands/application-development.md)** - Local development
-- **[Deployment Commands](commands/deployment.md)** - Azure deployment
+- **[Deployment Commands](commands/deployment.md)** - Deploy via Controller (Azure or local Docker)
 - **[Validation Commands](commands/validation.md)** - Configuration validation
 - **[External Integration Commands](commands/external-integration.md)** - External system integration
 - **[Utility Commands](commands/utilities.md)** - Configuration and secret management
@@ -84,7 +84,7 @@ For backward compatibility, anchor links from the old structure are preserved. I
 - [Authentication](commands/authentication.md) - Login to Miso Controller
 - [Infrastructure](commands/infrastructure.md) - Start local infrastructure
 - [Application Development](commands/application-development.md) - Create and run apps
-- [Deployment](commands/deployment.md) - Deploy to Azure
+- [Deployment](commands/deployment.md) - Deploy via Controller (Azure or local Docker)
 
 **Reference:**
 - [Command Reference](commands/reference.md) - Workflows, options, exit codes, configuration

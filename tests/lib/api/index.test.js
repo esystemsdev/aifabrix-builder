@@ -60,6 +60,23 @@ describe('ApiClient', () => {
         new ApiClient(undefined);
       }).toThrow('baseUrl is required and must be a string');
     });
+
+    it('should throw error if baseUrl is empty string', () => {
+      expect(() => {
+        new ApiClient('');
+      }).toThrow('baseUrl cannot be empty. Please provide a valid URL.');
+    });
+
+    it('should throw error if baseUrl is whitespace only', () => {
+      expect(() => {
+        new ApiClient('   ');
+      }).toThrow('baseUrl cannot be empty. Please provide a valid URL.');
+    });
+
+    it('should trim and validate baseUrl', () => {
+      const client = new ApiClient('  https://api.example.com  ');
+      expect(client.baseUrl).toBe('https://api.example.com');
+    });
   });
 
   describe('_buildUrl', () => {

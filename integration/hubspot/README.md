@@ -52,15 +52,15 @@ aifabrix validate hubspot
 aifabrix login --controller http://localhost:3100 --method device --environment dev
 
 # Register application
-aifabrix app register hubspot --environment dev
+aifabrix app register hubspot
 
 # Deploy entire system
-aifabrix deploy hubspot --controller http://localhost:3100 --environment dev
+aifabrix deploy hubspot
 
 # Or deploy individual datasources for testing
-aifabrix datasource deploy hubspot-company --environment dev --file integration/hubspot/hubspot-datasource-company.json
-aifabrix datasource deploy hubspot-contact --environment dev --file integration/hubspot/hubspot-datasource-contact.json
-aifabrix datasource deploy hubspot-deal --environment dev --file integration/hubspot/hubspot-datasource-deal.json
+aifabrix datasource deploy hubspot-company --file integration/hubspot/hubspot-datasource-company.json
+aifabrix datasource deploy hubspot-contact --file integration/hubspot/hubspot-datasource-contact.json
+aifabrix datasource deploy hubspot-deal --file integration/hubspot/hubspot-datasource-deal.json
 ```
 
 ## Field Mappings
@@ -122,10 +122,10 @@ RBAC permissions are auto-generated: `hubspot.company.list`, `hubspot.company.ge
 
 ```bash
 # List datasources
-aifabrix datasource list --environment dev
+aifabrix datasource list
 
 # Validate specific datasource
-aifabrix datasource validate hubspot-company --environment dev
+aifabrix datasource validate hubspot-company
 ```
 
 ## Documentation

@@ -1,3 +1,39 @@
+## [2.33.1] - 2026-01-26
+
+### Fixed
+- **API Client URL Validation**: Enhanced base URL validation in API client constructor
+  - Improved null/undefined handling for baseUrl parameter
+  - Added URL trimming and empty string validation
+  - Better error messages for invalid or empty URLs
+- **Datasource List Command Error Handling**: Improved error handling and user feedback
+  - Enhanced dataplane URL resolution with proper error messages
+  - Added dataplane URL validation and empty URL checks
+  - Improved error display with endpoint URL context
+  - Better handling of controller URL validation
+  - Enhanced datasource listing display with dataplane URL in header
+- **Datasource Deploy Command Error Handling**: Enhanced error messages and validation
+  - Improved dataplane URL resolution error handling with actionable messages
+  - Added dataplane URL validation before deployment
+  - Enhanced error display with endpoint URL and system key context
+  - Better debugging information in error responses
+
+### Changed
+- **GitHub Workflow Templates**: Updated CI and release workflow templates
+  - Enhanced GitHub Actions workflows for better CI/CD integration
+  - Improved release workflow configuration
+- **Documentation Updates**: Updated command documentation
+  - Enhanced datasource command documentation
+  - Updated deployment and validation command docs
+  - Improved GitHub workflows documentation
+
+### Technical
+- Enhanced API client: `lib/api/index.js` with improved URL validation
+- Improved datasource commands: `lib/datasource/list.js`, `lib/datasource/deploy.js` with better error handling
+- Enhanced API utilities: `lib/utils/api.js` with improved error formatting
+- Updated network error formatters: `lib/utils/error-formatters/network-errors.js`
+- Comprehensive test coverage: Updated test files for datasource commands and API client
+- Updated GitHub workflow templates: `templates/github/ci.yaml.hbs`, `templates/github/release.yaml.hbs`
+
 ## [2.35.0] - 2026-01-23
 
 ### Added
