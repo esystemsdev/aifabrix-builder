@@ -126,9 +126,13 @@ const localSecrets = require('../../../lib/utils/local-secrets');
 // Mock fs module
 jest.mock('fs');
 jest.mock('os');
-jest.mock('../../../lib/utils/paths', () => ({
-  getAifabrixHome: jest.fn()
-}));
+jest.mock('../../../lib/utils/paths', () => {
+  const pathMod = require('path');
+  return {
+    getAifabrixHome: jest.fn(),
+    getBuilderPath: jest.fn((appName) => pathMod.join(process.cwd(), 'builder', appName))
+  };
+});
 jest.mock('../../../lib/utils/logger', () => ({
   log: jest.fn(),
   warn: jest.fn(),
@@ -701,6 +705,26 @@ environments:
 
         // DB_PORT should NOT be adjusted for docker
         expect(result).toContain('DATABASE_URL=postgresql://user:pass@postgres:5432/db');
+      });
+
+      it('should interpolate ${KEYCLOAK_PUBLIC_PORT} in secret value for docker context with developer-id 6', async() => {
+        fs.readFileSync.mockReturnValue(`
+environments:
+  docker:
+    KEYCLOAK_PORT: 8082
+  local:
+    KEYCLOAK_HOST: localhost
+`);
+        config.getDeveloperId.mockResolvedValue(6);
+        const mockSecrets = {
+          'keycloak-public-server-urlKeyVault': 'http://localhost:${KEYCLOAK_PUBLIC_PORT}'
+        };
+        const template = 'KEYCLOAK_PUBLIC_SERVER_URL=kv://keycloak-public-server-urlKeyVault';
+
+        const result = await secrets.resolveKvReferences(template, mockSecrets, 'docker');
+
+        // KEYCLOAK_PUBLIC_PORT = 8082 + 6*100 = 8682
+        expect(result).toContain('KEYCLOAK_PUBLIC_SERVER_URL=http://localhost:8682');
       });
     });
 
@@ -1598,6 +1622,54 @@ environments:
     });
   });
 
+  describe('generateEnvFile - newly resolved content wins over existing .env', () => {
+    const appName = 'miso-controller';
+    const builderEnvPath = path.join(process.cwd(), 'builder', appName, '.env');
+
+    it('should use newly resolved secret values over existing .env so project secrets take effect', async() => {
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === builderEnvPath || (String(filePath).includes('builder') && String(filePath).endsWith('.env'))) {
+          return true;
+        }
+        if (filePath.includes('env.template') || filePath.includes('secrets.yaml') || filePath.includes('variables.yaml') || filePath.includes('env-config')) {
+          return true;
+        }
+        return false;
+      });
+      const existingEnv = 'JWT_SECRET=existing-jwt-secret-keep\nPORT=3000\nREDIS_PASSWORD=existing-redis\nEXTRA_VAR=keep-this';
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === builderEnvPath || (String(filePath).includes('builder') && String(filePath).endsWith('.env'))) {
+          return existingEnv;
+        }
+        if (filePath.includes('env.template')) {
+          return 'JWT_SECRET=kv://jwt-secretKeyVault\nPORT=3000\nREDIS_PASSWORD=kv://redis-passwordKeyVault';
+        }
+        if (filePath.includes('secrets.yaml') || filePath.includes('secrets.local.yaml')) {
+          return 'jwt-secretKeyVault: "newly-generated-jwt"\nredis-passwordKeyVault: "newly-generated-redis"';
+        }
+        if (filePath.includes('variables.yaml')) {
+          return 'port: 3000';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return 'environments:\n  docker: {}\n  local: {}';
+        }
+        return '';
+      });
+
+      await secrets.generateEnvFile(appName, undefined, 'docker');
+
+      const writeCalls = fs.writeFileSync.mock.calls;
+      const envWrite = writeCalls.find(call => String(call[0]).endsWith('.env'));
+      expect(envWrite).toBeDefined();
+      const written = envWrite[1];
+      expect(written).toContain('JWT_SECRET=newly-generated-jwt');
+      expect(written).toContain('REDIS_PASSWORD=newly-generated-redis');
+      expect(written).toContain('EXTRA_VAR=keep-this');
+      expect(written).not.toContain('existing-jwt-secret-keep');
+      expect(written).not.toContain('existing-redis');
+    });
+  });
+
   describe('generateEnvFile - port resolution for docker environment', () => {
     const appName = 'miso-controller';
     const builderPath = path.join(process.cwd(), 'builder', appName);
@@ -2060,11 +2132,11 @@ environments:
       expect(result).toEqual(canonicalSecrets);
     });
 
-    it('should not override user/build secrets with canonical aifabrix-secrets (fallback only)', async() => {
+    it('when config has aifabrix-secrets, local (user) file is strongest and overrides project for same key', async() => {
       const configMock = require('../../../lib/core/config');
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       const canonicalPath = path.join(process.cwd(), 'canonical', 'secrets.yaml');
-      const userSecrets = { 'myapp-client-idKeyVault': 'user-client-id' };
+      const userSecrets = { 'myapp-client-idKeyVault': 'user-client-id', 'user-only-key': 'from-user' };
       const canonicalSecrets = { 'myapp-client-idKeyVault': 'canonical-client-id', 'extra-secret': 'extra' };
 
       configMock.getSecretsPath.mockResolvedValue(canonicalPath);
@@ -2082,10 +2154,10 @@ environments:
       });
 
       const result = await secrets.loadSecrets(undefined, 'myapp');
-      // User value should win for overlapping keys
+      // Local (user) wins for overlapping keys
       expect(result['myapp-client-idKeyVault']).toBe('user-client-id');
-      // Canonical-only keys should be added as fallback
       expect(result['extra-secret']).toBe('extra');
+      expect(result['user-only-key']).toBe('from-user');
     });
 
     it('should ignore canonical aifabrix-secrets when invalid or non-object', async() => {
@@ -2148,6 +2220,56 @@ environments:
 
       expect(result).toEqual(userSecrets);
       expect(fs.readFileSync).toHaveBeenCalledWith(userSecretsPath, 'utf8');
+    });
+
+    it('validates cascade order: when config has aifabrix-secrets, local file is strongest; project fills missing keys', async() => {
+      const configMock = require('../../../lib/core/config');
+      const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const canonicalPath = path.join(process.cwd(), 'canonical', 'secrets.local.yaml');
+      const userSecrets = { 'shared-key': 'user-wins', 'user-only': 'from-user' };
+      const systemSecrets = { 'shared-key': 'system-value', 'system-only': 'from-system' };
+
+      configMock.getSecretsPath.mockResolvedValue(canonicalPath);
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === userSecretsPath || filePath === canonicalPath;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) return yaml.dump(userSecrets);
+        if (filePath === canonicalPath) return yaml.dump(systemSecrets);
+        return '';
+      });
+
+      const result = await secrets.loadSecrets(undefined, 'myapp');
+
+      expect(result['shared-key']).toBe('user-wins');
+      expect(result['user-only']).toBe('from-user');
+      expect(result['system-only']).toBe('from-system');
+    });
+
+    it('when key is only in project file (not in local), project value is used', async() => {
+      const configMock = require('../../../lib/core/config');
+      const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const canonicalPath = path.join(process.cwd(), 'canonical', 'secrets.local.yaml');
+      const userSecrets = { 'only-in-local': 'local-value' };
+      const projectSecrets = {
+        'only-in-local': 'ignored-if-same-key',
+        'keycloak-public-server-urlKeyVault': 'http://localhost:${KEYCLOAK_PUBLIC_PORT}'
+      };
+
+      configMock.getSecretsPath.mockResolvedValue(canonicalPath);
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === userSecretsPath || filePath === canonicalPath;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) return yaml.dump(userSecrets);
+        if (filePath === canonicalPath) return yaml.dump(projectSecrets);
+        return '';
+      });
+
+      const result = await secrets.loadSecrets(undefined, 'myapp');
+
+      expect(result['only-in-local']).toBe('local-value');
+      expect(result['keycloak-public-server-urlKeyVault']).toBe('http://localhost:${KEYCLOAK_PUBLIC_PORT}');
     });
 
     it.skip('should fallback to build.secrets when value missing in user file (removed - use config.yaml aifabrix-secrets)', async() => {

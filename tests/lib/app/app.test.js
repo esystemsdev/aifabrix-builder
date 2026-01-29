@@ -52,8 +52,8 @@ describe('Application Module', () => {
 
     // Ensure global.PROJECT_ROOT is set (should be set by tests/setup.js)
     // This ensures templates can be found even when tests change process.cwd()
-    // Use absolute path resolution to ensure it works in CI
-    const projectRoot = global.PROJECT_ROOT || path.resolve(__dirname, '..', '..');
+    // Use absolute path resolution to ensure it works in CI (from tests/lib/app, '..','..','..' = project root)
+    const projectRoot = global.PROJECT_ROOT || path.resolve(__dirname, '..', '..', '..');
     global.PROJECT_ROOT = projectRoot;
 
     // Verify README template exists (it should be in the repository)

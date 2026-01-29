@@ -161,6 +161,13 @@ jest.mock('../../../lib/core/secrets', () => {
   };
 });
 jest.mock('../../../lib/utils/health-check');
+jest.mock('../../../lib/utils/paths', () => {
+  const actual = jest.requireActual('../../../lib/utils/paths');
+  return {
+    ...actual,
+    getBuilderPath: jest.fn()
+  };
+});
 jest.mock('../../../lib/utils/compose-generator', () => {
   // Import the mocked config to ensure it's used
   const config = require('../../../lib/core/config');
@@ -171,6 +178,7 @@ jest.mock('../../../lib/utils/compose-generator', () => {
 });
 
 const validator = require('../../../lib/validation/validator');
+const pathsUtil = require('../../../lib/utils/paths');
 const infra = require('../../../lib/infrastructure');
 const secrets = require('../../../lib/core/secrets');
 const healthCheck = require('../../../lib/utils/health-check');
@@ -218,6 +226,9 @@ describe('App-Run Uncovered Code Paths', () => {
     // Mock process.cwd to return consistent value
     jest.spyOn(process, 'cwd').mockReturnValue(tempDir);
     jest.spyOn(process, 'chdir').mockImplementation(() => {});
+
+    // Default getBuilderPath: builder dir under tempDir (override in specific tests)
+    pathsUtil.getBuilderPath.mockImplementation((appName) => path.join(tempDir, 'builder', appName));
 
     // Mock os.homedir() to return temp directory
     jest.spyOn(os, 'homedir').mockReturnValue(tempDir);
@@ -284,6 +295,8 @@ describe('App-Run Uncovered Code Paths', () => {
 
       // Mock process.cwd to return the builder app path (inside builder directory)
       process.cwd.mockReturnValue(appPath);
+      // Mock getBuilderPath to return same path so checkBuilderDirectory detects "running from inside builder"
+      pathsUtil.getBuilderPath.mockReturnValue(appPath);
 
       // Mock fs to return appropriate values
       fsSync.existsSync.mockReturnValue(true);

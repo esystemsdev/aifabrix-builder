@@ -14,6 +14,8 @@ Complete command reference organized by concept with examples and troubleshootin
   - `aifabrix logout` - Clear authentication tokens
 - [Infrastructure Commands](infrastructure.md) - Local infrastructure management
   - `aifabrix up` - Start infrastructure (Postgres + Redis)
+  - `aifabrix up-miso` - Install Keycloak + Miso Controller from images (no build)
+  - `aifabrix up-dataplane` - Register/rotate, run, and deploy dataplane in dev
   - `aifabrix down` - Stop infrastructure or an app
   - `aifabrix status` - Show infrastructure service status
   - `aifabrix restart` - Restart infrastructure service

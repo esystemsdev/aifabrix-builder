@@ -52,7 +52,7 @@ describe('Run .env generation', () => {
   it('uses docker environment when generating .env during run prepare', async() => {
     const appConfig = { port: 3000 };
     await prepareEnvironment('myapp', appConfig, {});
-    expect(secrets.generateEnvFile).toHaveBeenCalledWith('myapp', null, 'docker');
+    expect(secrets.generateEnvFile).toHaveBeenCalledWith('myapp', null, 'docker', false, false);
   });
 });
 

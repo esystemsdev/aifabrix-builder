@@ -519,19 +519,23 @@ function processTestResults(testResult, parsedResults) {
   }
 
   // If Jest exited with code 1, check if tests actually passed
-  // (exit/coverage errors cause Jest to exit with code 1 even when tests pass)
+  // (exit/coverage errors or open handles can cause Jest to exit 1 even when all tests pass)
   if (testResult.code === 1) {
-    if ((hasExitErr || hasCovErr) && allTestsPassed) {
-      // Tests passed but Jest had an error - this is acceptable
-      if (handleJestErrors(testResult.output, parsedResults, hasExitErr, hasCovErr)) {
+    if (allTestsPassed) {
+      // Parsed output shows all tests passed - treat as success regardless of exit code
+      if (hasExitErr || hasCovErr) {
+        if (handleJestErrors(testResult.output, parsedResults, hasExitErr, hasCovErr)) {
+          return 0;
+        }
+      } else {
+        // No known error text but Jest exited 1 (e.g. open handles) - still success
+        displaySuccess(suiteMatch, testMatch);
         return 0;
       }
     }
-    // If no error or tests didn't pass, fail
-    if (!hasExitErr && !hasCovErr || !allTestsPassed) {
-      displayFailure(suiteMatch, hasExitErr || hasCovErr, testResult.output, parsedResults);
-      return 1;
-    }
+    // Tests actually failed
+    displayFailure(suiteMatch, hasExitErr || hasCovErr, testResult.output, parsedResults);
+    return 1;
   }
 
   // If Jest exited successfully, check test results

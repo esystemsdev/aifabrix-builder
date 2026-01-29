@@ -151,6 +151,59 @@ aifabrix down --volumes
 
 ---
 
+## Quick install: up-miso
+
+Install Keycloak and Miso Controller **from images** (no build). Use when you have pre-built images and want a fast platform setup for testing.
+
+**Prerequisites:** Infrastructure must be up (`aifabrix up`).
+
+```bash
+aifabrix up-miso
+```
+
+**What happens:**
+- Ensures `builder/keycloak` and `builder/miso-controller` exist (from templates if missing)
+- Sets URL secrets for Keycloak and Miso Controller (ports from developer ID)
+- Resolves env with auto-generated secrets (force) so no manual secret setup is needed for testing
+- Runs Keycloak, then Miso Controller (no build step)
+
+**Options:**
+- `-r, --registry <url>` - Override registry for both apps (e.g. `myacr.azurecr.io`)
+- `--registry-mode <mode>` - Override registry mode (`acr` or `external`)
+- `-i, --image <key>=<value>` - Override image (e.g. `keycloak=myreg/keycloak:v1`, `miso-controller=myreg/miso:v1`); can be repeated
+
+**After up-miso:** Run onboarding and register Keycloak from the miso-controller repo if needed.
+
+→ [Infrastructure Commands](commands/infrastructure.md#aifabrix-up-miso) for full reference.
+
+---
+
+## Up Dataplane (dev)
+
+Register (or rotate if already registered), run locally, and deploy the **dataplane** app in the **dev** environment. Use when developing against the dataplane or testing pipeline in dev.
+
+**Prerequisites:** Logged in (`aifabrix login`), environment set to `dev` (`aifabrix auth config --set-environment dev`).
+
+```bash
+aifabrix login --environment dev
+aifabrix up-dataplane
+```
+
+**What happens:**
+- Ensures `builder/dataplane` exists (from template if missing)
+- If dataplane is already registered in the environment → rotates secret; otherwise → registers the app
+- Runs dataplane locally (`aifabrix run dataplane`) — until controller supports auto deployment, this step is required
+- Deploys dataplane via Miso Controller
+
+**Options:**
+- `-r, --registry <url>` - Override registry for dataplane image
+- `--registry-mode <mode>` - Override registry mode (`acr` or `external`)
+- `-i, --image <ref>` - Override dataplane image reference (e.g. `myreg/dataplane:latest`)
+
+→ [Infrastructure Commands](commands/infrastructure.md#aifabrix-up-dataplane) for full reference.
+
+---
+
 ## Optional Platform Applications
 
 **Keycloak and Miso-Controller are NOT infrastructure** - they are regular applications you install and run like your own apps.

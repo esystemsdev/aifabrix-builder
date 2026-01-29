@@ -36,6 +36,13 @@ aifabrix down myapp
 
 Want authentication or deployment controller?
 
+**Quick install from images (no build):**
+```bash
+aifabrix up              # Start Postgres + Redis first
+aifabrix up-miso         # Install Keycloak + Miso Controller from images (auto-generated secrets for testing)
+```
+
+**Or create and build from templates:**
 ```bash
 # Keycloak for authentication
 aifabrix create keycloak --port 8082 --database --template keycloak
@@ -46,6 +53,12 @@ aifabrix run keycloak
 aifabrix create miso-controller --port 3000 --database --redis --template miso-controller
 aifabrix build miso-controller
 aifabrix run miso-controller
+```
+
+**Dataplane in dev (after login):**
+```bash
+aifabrix login --environment dev
+aifabrix up-dataplane    # Register or rotate, run, and deploy dataplane in dev
 ```
 
 → [Infrastructure Guide](docs/infrastructure.md)

@@ -340,6 +340,8 @@ aifabrix app register myapp
 
 To switch controller or environment later: `aifabrix auth config --set-controller <url>` or `aifabrix auth config --set-environment <env>`.
 
+**Dataplane in dev:** To register and run the dataplane app in dev in one step (register or rotate, run locally, then deploy), use `aifabrix up-dataplane`. Requires login and environment set to `dev`. See [Up Dataplane (dev)](infrastructure.md#up-dataplane-dev).
+
 ## Step 8: Deploy to Azure
 
 ### Manual Deployment
@@ -418,8 +420,10 @@ All files are in the same folder for easy viewing and management.
 - [Developer Isolation](developer-isolation.md) - Run multiple developers on the same machine
 
 ### Install Platform Apps
-- [Keycloak](infrastructure.md#install-keycloak) - Authentication and user management
-- [Miso Controller](infrastructure.md#install-miso-controller) - Azure deployment
+- [Quick install: up-miso](infrastructure.md#quick-install-up-miso) - Keycloak + Miso Controller from images (no build)
+- [Keycloak](infrastructure.md#install-keycloak) - Authentication and user management (create/build/run)
+- [Miso Controller](infrastructure.md#install-miso-controller) - Azure deployment (create/build/run)
+- [Up Dataplane (dev)](infrastructure.md#up-dataplane-dev) - Register, run, and deploy dataplane in dev
 
 ### Common Tasks
 

@@ -1386,12 +1386,12 @@ describe('Config Module', () => {
         throw new Error('Decryption failed');
       });
 
-      // Should return original value on error
-      const result = await decryptTokenValue('secure://encrypted');
-      expect(result).toBe('secure://encrypted');
+      // Should throw when encrypted value cannot be decrypted (never return encrypted string to callers)
+      await expect(decryptTokenValue('secure://encrypted'))
+        .rejects.toThrow(/Could not decrypt stored token/);
     });
 
-    it('should return original value when decryption returns undefined', async() => {
+    it('should throw when decryption returns undefined for encrypted value', async() => {
       const mockConfig = {
         'developer-id': 0,
         environment: 'dev',
@@ -1404,12 +1404,12 @@ describe('Config Module', () => {
       tokenEncryption.isTokenEncrypted.mockReturnValue(true);
       tokenEncryption.decryptToken.mockReturnValue(undefined);
 
-      // Should return original value when decryption returns undefined
-      const result = await decryptTokenValue('secure://encrypted');
-      expect(result).toBe('secure://encrypted');
+      // Should throw when decryption returns undefined (never pass encrypted value to callers)
+      await expect(decryptTokenValue('secure://encrypted'))
+        .rejects.toThrow(/Could not decrypt stored token/);
     });
 
-    it('should return original value when decryption returns null', async() => {
+    it('should throw when decryption returns null for encrypted value', async() => {
       const mockConfig = {
         'developer-id': 0,
         environment: 'dev',
@@ -1422,9 +1422,9 @@ describe('Config Module', () => {
       tokenEncryption.isTokenEncrypted.mockReturnValue(true);
       tokenEncryption.decryptToken.mockReturnValue(null);
 
-      // Should return original value when decryption returns null
-      const result = await decryptTokenValue('secure://encrypted');
-      expect(result).toBe('secure://encrypted');
+      // Should throw when decryption returns null (never pass encrypted value to callers)
+      await expect(decryptTokenValue('secure://encrypted'))
+        .rejects.toThrow(/Could not decrypt stored token/);
     });
   });
 

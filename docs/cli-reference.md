@@ -36,6 +36,8 @@ For backward compatibility, anchor links from the old structure are preserved. I
 - `#aifabrix-login` → [Authentication Commands](commands/authentication.md#aifabrix-login)
 - `#aifabrix-logout` → [Authentication Commands](commands/authentication.md#aifabrix-logout)
 - `#aifabrix-up` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-up)
+- `#aifabrix-up-miso` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-up-miso)
+- `#aifabrix-up-dataplane` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-up-dataplane)
 - `#aifabrix-down` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-down)
 - `#aifabrix-status` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-status)
 - `#aifabrix-restart-service` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-restart-service)

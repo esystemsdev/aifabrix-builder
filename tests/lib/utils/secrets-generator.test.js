@@ -123,6 +123,14 @@ describe('Secrets Generator Module', () => {
       expect(result).toBe('my_app_name_pass123');
     });
 
+    it('should generate miso_pass123 for miso-controller database password to match infra init script', () => {
+      const key = 'databases-miso-controller-0-passwordKeyVault';
+
+      const result = secretsGenerator.generateSecretValue(key);
+
+      expect(result).toBe('miso_pass123');
+    });
+
     it('should generate random password for generic password key', () => {
       const key = 'some-password-key';
 
@@ -149,6 +157,14 @@ describe('Secrets Generator Module', () => {
       const result = secretsGenerator.generateSecretValue(key);
 
       expect(result).toBe('postgresql://my_app_name_user:my_app_name_pass123@${DB_HOST}:${DB_PORT}/my_app_name');
+    });
+
+    it('should generate miso_user/miso db URL for miso-controller to match infra init script', () => {
+      const key = 'databases-miso-controller-0-urlKeyVault';
+
+      const result = secretsGenerator.generateSecretValue(key);
+
+      expect(result).toBe('postgresql://miso_user:miso_pass123@${DB_HOST}:${DB_PORT}/miso');
     });
 
     it('should return empty string for URL keys that are not database URLs', () => {

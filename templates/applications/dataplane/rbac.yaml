@@ -1,0 +1,283 @@
+# AI Fabrix Dataplane - RBAC Configuration
+# Roles and permissions for this application
+#
+# Note: Environment access is managed by MisoClient, not by per-environment roles.
+# MisoClient validates environment access automatically based on user/application permissions.
+
+roles:
+  - name: "AI Fabrix Platform Admin"
+    value: "aifabrix-platform-admin"
+    description: "Full platform infrastructure management and enterprise controller access"
+    groups: ["AI-Fabrix-Platform-Admins"]
+
+  - name: "AI Fabrix Security Admin"
+    value: "aifabrix-security-admin"
+    description: "Security and compliance management for enterprise controller"
+    groups: ["AI-Fabrix-Security-Admins"]
+
+  - name: "AI Fabrix Deployment Admin"
+    value: "aifabrix-deployment-admin"
+    description: "Application deployment orchestration and environment management"
+    groups: ["AI-Fabrix-Deployment-Admins"]
+
+  - name: "AI Fabrix Compliance Admin"
+    value: "aifabrix-compliance-admin"
+    description: "ISO 27001 compliance monitoring and audit management"
+    groups: ["AI-Fabrix-Compliance-Admins"]
+
+  - name: "AI Fabrix Developer"
+    value: "aifabrix-developer"
+    description: "Developer access to deploy applications via GitHub Actions"
+    groups: ["AI-Fabrix-Developers"]
+
+  - name: "AI Fabrix Observer"
+    value: "aifabrix-observer"
+    description: "Read-only access to monitoring, logs, and compliance reports"
+    groups: ["AI-Fabrix-Observers"]
+
+permissions:
+  # Credential management
+  - name: "credential:create"
+    roles: ["aifabrix-platform-admin"]
+    description: "Create credentials"
+  
+  - name: "credential:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-compliance-admin", "aifabrix-observer"]
+    description: "Read credentials"
+  
+  - name: "credential:update"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin"]
+    description: "Update credentials"
+  
+  - name: "credential:delete"
+    roles: ["aifabrix-platform-admin"]
+    description: "Delete credentials"
+  
+  # External data source management
+  - name: "external-data-source:create"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Create external data sources"
+  
+  - name: "external-data-source:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
+    description: "Read external data sources"
+  
+  - name: "external-data-source:update"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Update external data sources"
+  
+  - name: "external-data-source:delete"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Delete external data sources"
+  
+  - name: "external-data-source:sync"
+    roles: ["aifabrix-platform-admin", "aifabrix-deployment-admin", "aifabrix-developer"]
+    description: "Sync external data sources"
+  
+  # External system management
+  - name: "external-system:create"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Create external systems"
+  
+  - name: "external-system:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
+    description: "Read external systems"
+  
+  - name: "external-system:update"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Update external systems"
+  
+  - name: "external-system:delete"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Delete external systems"
+  
+  # Document storage management
+  - name: "document-storage:create"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Create document storage"
+  
+  - name: "document-storage:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
+    description: "Read document storage"
+  
+  - name: "document-storage:update"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Update document storage"
+  
+  - name: "document-storage:delete"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Delete document storage"
+  
+  - name: "document-storage:process"
+    roles: ["aifabrix-platform-admin", "aifabrix-deployment-admin", "aifabrix-developer"]
+    description: "Process documents"
+  
+  # Integration template management
+  - name: "integration-template:create"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Create integration templates"
+  
+  - name: "integration-template:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
+    description: "Read integration templates"
+  
+  - name: "integration-template:update"
+    roles: ["aifabrix-platform-admin", "aifabrix-deployment-admin", "aifabrix-developer"]
+    description: "Update integration templates"
+  
+  - name: "integration-template:delete"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Delete integration templates"
+  
+  # Generic dataplane operations
+  - name: "dataplane:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
+    description: "Read dataplane data"
+  
+  - name: "dataplane:write"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Write dataplane data"
+  
+  - name: "dataplane:delete"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Delete dataplane data"
+  
+  - name: "dataplane:process"
+    roles: ["aifabrix-platform-admin", "aifabrix-deployment-admin", "aifabrix-developer"]
+    description: "Process dataplane operations"
+  
+  # External data source publishing
+  - name: "external-data-source:publish"
+    roles: ["aifabrix-platform-admin", "aifabrix-deployment-admin", "aifabrix-developer"]
+    description: "Publish external data sources"
+  
+  # External system publishing
+  - name: "external-system:publish"
+    roles: ["aifabrix-platform-admin", "aifabrix-deployment-admin", "aifabrix-developer"]
+    description: "Publish external systems"
+  
+  # Document record management
+  - name: "document-record:create"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Create document records"
+  
+  - name: "document-record:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
+    description: "Read document records"
+  
+  - name: "document-record:update"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Update document records"
+  
+  - name: "document-record:delete"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Delete document records"
+  
+  - name: "document-record:write"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Write document records"
+  
+  - name: "document-record:validate"
+    roles: ["aifabrix-platform-admin", "aifabrix-deployment-admin", "aifabrix-developer"]
+    description: "Validate document records"
+  
+  - name: "document-record:approve"
+    roles: ["aifabrix-platform-admin", "aifabrix-compliance-admin"]
+    description: "Approve document records"
+  
+  # External record management
+  - name: "external-record:create"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Create external records"
+  
+  - name: "external-record:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
+    description: "Read external records"
+  
+  - name: "external-record:update"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Update external records"
+  
+  - name: "external-record:delete"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Delete external records"
+  
+  # External data access grant management
+  - name: "external-data-access-grant:create"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Create external data access grants"
+  
+  - name: "external-data-access-grant:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
+    description: "Read external data access grants"
+  
+  - name: "external-data-access-grant:update"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Update external data access grants"
+  
+  - name: "external-data-access-grant:delete"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Delete external data access grants"
+  
+  # User and group management
+  - name: "user:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-compliance-admin", "aifabrix-observer"]
+    description: "Read user information"
+  
+  - name: "group:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-compliance-admin", "aifabrix-observer"]
+    description: "Read group information"
+  
+  # OpenAPI file management
+  - name: "openapi-file:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
+    description: "Read OpenAPI files"
+  
+  - name: "openapi-file:update"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Update OpenAPI files"
+  
+  - name: "openapi-file:delete"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Delete OpenAPI files"
+  
+  # External data source write operations
+  - name: "external-data-source:write"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Write external data source data"
+  
+  # Record relation management
+  - name: "record-relation:create"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Create record relations"
+  
+  - name: "record-relation:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
+    description: "Read record relations"
+  
+  - name: "record-relation:delete"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Delete record relations"
+  
+  # Audit operations
+  - name: "audit:read"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-compliance-admin", "aifabrix-observer"]
+    description: "Read audit logs and execution history"
+  
+  # Search operations
+  - name: "document:search"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
+    description: "Search documents"
+  
+  - name: "record:search"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
+    description: "Search records"
+  
+  # IDE simulation operations
+  - name: "dataplane:abac-simulate"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-developer"]
+    description: "Simulate ABAC policy evaluation in IDE"
+  
+  - name: "dataplane:rbac-simulate"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-developer"]
+    description: "Simulate RBAC policy evaluation in IDE"

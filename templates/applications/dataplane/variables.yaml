@@ -1,0 +1,140 @@
+# Application Metadata
+app:
+  key: dataplane
+  displayName: "AI Fabrix Dataplane"
+  description: "Python microservice for AI processing and bulk operations. Handles document processing, external data management, and Flowise integration with MisoClient SDK authentication."
+  type: webapp
+  language: python  # Explicitly specify Python language
+
+# Image Configuration
+image:
+  name: aifabrix/dataplane
+  registry: devflowiseacr.azurecr.io
+  registryMode: acr
+
+# Port Configuration
+port: 3001
+
+# Azure Requirements
+requires:
+  database: true
+  databases:
+    - name: dataplane          # Main database - configuration only
+    - name: dataplane-vector   # Vector and document store: chunks, embeddings, vector indexes (pgvector)
+    - name: dataplane-logs     # Logs database - execution, audit, ABAC traces
+    - name: dataplane-records  # Records database - external records storage
+  redis: true
+  storage: true
+
+# Health Check
+healthCheck:
+  path: /health
+  interval: 30
+  probePath: /health
+  probeRequestType: GET
+  probeProtocol: Https
+  probeIntervalInSeconds: 120
+
+# Authentication
+authentication:
+  type: azure
+  enableSSO: true
+  requiredRoles: ["aifabrix-user"]
+  endpoints:
+    local: "https://dataplane.aifabrix.ai/auth/callback"
+
+# Build Configuration
+build:
+  context: ../..                # Relative to builder/dataplane/ config location (goes to app root)
+  dockerfile: builder/dataplane/Dockerfile
+  envOutputPath: ../../.env     # Copy to repo root for local dev
+  localPort: 3011               # Port for local development (different from Docker port)
+
+# =============================================================================
+# Portal Input Configuration (Deployment Wizard)
+# =============================================================================
+# Variables defined in env.template with sensible defaults.
+# portalInput allows admin to override before deployment.
+#
+# NOT included (auto-configured):
+# - Database URLs, Redis → auto-generated during Azure install
+# - MISO_*, KEYCLOAK_* → auto-generated during Azure install  
+# - AI params (OPENAI_*, AZURE_OPENAI_*) → from controller config
+# - ENVIRONMENT → set by deployment target
+
+configuration:
+  # -------------------------------------------------------------------------
+  # Operations & Debugging
+  # -------------------------------------------------------------------------
+  - name: LOG_LEVEL
+    portalInput:
+      field: select
+      label: "Log Level"
+      options:
+        - DEBUG
+        - INFO
+        - WARNING
+        - ERROR
+
+  - name: ABAC_AUDIT_DETAIL_LEVEL
+    portalInput:
+      field: select
+      label: "ABAC Audit Detail Level"
+      options:
+        - summary
+        - detailed
+
+  - name: RBAC_AUDIT_DETAIL_LEVEL
+    portalInput:
+      field: select
+      label: "RBAC Audit Detail Level"
+      options:
+        - summary
+        - detailed
+        - explain
+
+  # -------------------------------------------------------------------------
+  # CIP Execution - Resource Limits
+  # -------------------------------------------------------------------------
+  # Tune based on customer data volumes and external API characteristics
+
+  - name: CIP_EXECUTION_MAX_RECORDS
+    portalInput:
+      field: text
+      label: "Max Records per CIP Execution"
+      placeholder: "100000"
+
+  - name: CIP_EXECUTION_MAX_RESPONSE_SIZE_MB
+    portalInput:
+      field: text
+      label: "Max Response Size (MB)"
+      placeholder: "100.0"
+
+  - name: CIP_EXECUTION_OPERATION_TIMEOUT
+    portalInput:
+      field: text
+      label: "Operation Timeout (seconds)"
+      placeholder: "300.0"
+
+  - name: CIP_EXECUTION_HTTP_TIMEOUT
+    portalInput:
+      field: text
+      label: "HTTP Request Timeout (seconds)"
+      placeholder: "30.0"
+
+  # -------------------------------------------------------------------------
+  # CIP Execution - Rate Limiting
+  # -------------------------------------------------------------------------
+  # Tune to match external API rate limits
+
+  - name: CIP_EXECUTION_RATE_LIMIT_REQUESTS_PER_SECOND
+    portalInput:
+      field: text
+      label: "Rate Limit (requests/second)"
+      placeholder: "10.0"
+
+  - name: CIP_EXECUTION_RATE_LIMIT_BURST_SIZE
+    portalInput:
+      field: text
+      label: "Rate Limit Burst Size"
+      placeholder: "20"

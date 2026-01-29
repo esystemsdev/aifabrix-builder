@@ -85,6 +85,70 @@ When using `--developer`, each developer gets:
 
 ---
 
+<a id="aifabrix-up-miso"></a>
+## aifabrix up-miso
+
+Install Keycloak and Miso Controller from images (no build).
+
+**What:** Ensures builder app dirs from templates, sets URL secrets, resolves with auto-generated secrets (force), then runs Keycloak and Miso Controller. No build step; uses existing Docker images (local or from registry).
+
+**When:** Fast platform setup for testing when you have Keycloak and Miso Controller images. Infra must already be up.
+
+**Usage:**
+```bash
+# Install from local/default images (variables.yaml)
+aifabrix up-miso
+
+# Override registry for both apps
+aifabrix up-miso --registry myacr.azurecr.io
+
+# Override images per app
+aifabrix up-miso --image keycloak=myreg/keycloak:v1 --image miso-controller=myreg/miso:v1
+```
+
+**Options:**
+- `-r, --registry <url>` - Override registry for both apps (e.g. `myacr.azurecr.io`)
+- `--registry-mode <mode>` - Override registry mode (`acr` or `external`)
+- `-i, --image <key>=<value>` - Override image (e.g. `keycloak=reg/k:v1`, `miso-controller=reg/m:v1`); can be repeated
+
+**Issues:**
+- **"Infrastructure is not up"** → Run `aifabrix up` first
+- After success, run onboarding and register Keycloak from the miso-controller repo if needed
+
+---
+
+<a id="aifabrix-up-dataplane"></a>
+## aifabrix up-dataplane
+
+Register or rotate, run locally, and deploy the dataplane app in dev.
+
+**What:** If dataplane is already registered in the environment, rotates the app secret; otherwise registers the app. Then runs dataplane locally and deploys via Miso Controller. Requires login and environment `dev`.
+
+**When:** Setting up or refreshing dataplane in dev for pipeline development or testing.
+
+**Usage:**
+```bash
+# Login and set environment to dev first
+aifabrix login --environment dev
+
+# Register/rotate, run, deploy dataplane
+aifabrix up-dataplane
+
+# With image override
+aifabrix up-dataplane --image myreg/dataplane:latest
+```
+
+**Options:**
+- `-r, --registry <url>` - Override registry for dataplane image
+- `--registry-mode <mode>` - Override registry mode (`acr` or `external`)
+- `-i, --image <ref>` - Override dataplane image reference
+
+**Issues:**
+- **"Login required"** → Run `aifabrix login` first
+- **"Dataplane is only supported in dev environment"** → Run `aifabrix auth config --set-environment dev`
+
+---
+
 ## aifabrix down
 
 Stop infrastructure or a specific application.

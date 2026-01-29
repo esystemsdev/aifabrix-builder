@@ -278,3 +278,77 @@ permissions:
         'aifabrix-observer'
       ]
     description: 'View dashboard summaries and aggregates'
+
+  # Dimension Management
+  - name: 'dimensions:read'
+    roles:
+      [
+        'aifabrix-platform-admin',
+        'aifabrix-security-admin',
+        'aifabrix-deployment-admin',
+        'aifabrix-developer',
+        'aifabrix-observer'
+      ]
+    description: 'View dimensions and dimension values'
+
+  - name: 'dimensions:create'
+    roles: ['aifabrix-platform-admin', 'aifabrix-security-admin', 'aifabrix-deployment-admin']
+    description: 'Create dimensions and dimension values'
+
+  - name: 'dimensions:update'
+    roles: ['aifabrix-platform-admin', 'aifabrix-security-admin', 'aifabrix-deployment-admin']
+    description: 'Update dimensions and dimension values'
+
+  - name: 'dimensions:delete'
+    roles: ['aifabrix-platform-admin', 'aifabrix-security-admin']
+    description: 'Delete dimensions and dimension values'
+
+  # Token Delegation
+  - name: 'delegation:link'
+    roles:
+      [
+        'aifabrix-platform-admin',
+        'aifabrix-security-admin',
+        'aifabrix-deployment-admin',
+        'aifabrix-developer'
+      ]
+    description: 'Link OAuth providers for token delegation'
+
+  - name: 'delegation:mint'
+    roles:
+      [
+        'aifabrix-platform-admin',
+        'aifabrix-security-admin',
+        'aifabrix-deployment-admin',
+        'aifabrix-developer'
+      ]
+    description: 'Mint delegated OAuth tokens for external API calls'
+
+  - name: 'delegation:read'
+    roles:
+      [
+        'aifabrix-platform-admin',
+        'aifabrix-security-admin',
+        'aifabrix-deployment-admin',
+        'aifabrix-developer',
+        'aifabrix-observer'
+      ]
+    description: 'View delegated OAuth credentials'
+
+  - name: 'delegation:delete'
+    roles:
+      [
+        'aifabrix-platform-admin',
+        'aifabrix-security-admin',
+        'aifabrix-deployment-admin',
+        'aifabrix-developer'
+      ]
+    description: 'Revoke delegated OAuth credentials'
+
+  - name: 'delegation:admin:read'
+    roles: ['aifabrix-platform-admin', 'aifabrix-security-admin']
+    description: 'Administrative read access to all delegated credentials'
+
+  - name: 'delegation:admin:delete'
+    roles: ['aifabrix-platform-admin', 'aifabrix-security-admin']
+    description: 'Administrative delete access to all delegated credentials'

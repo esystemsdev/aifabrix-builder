@@ -513,6 +513,7 @@ DB_PORT=\${DB_PORT}`;
         os.homedir.mockReturnValue(mockHomeDir);
 
         fs.existsSync.mockImplementation((filePath) => {
+          if (filePath === mockConfig.CONFIG_FILE) return true;
           if (filePath === configYamlPath) return true;
           if (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix')) return true;
           if (filePath && filePath.includes('env-config.yaml')) return true;
@@ -520,6 +521,7 @@ DB_PORT=\${DB_PORT}`;
         });
 
         fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockConfig.CONFIG_FILE) return yaml.dump(configYaml);
           if (filePath === configYamlPath) return yaml.dump(configYaml);
           if (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix')) return yaml.dump(configYaml);
           if (filePath && filePath.includes('env-config.yaml')) return yaml.dump(mockEnvConfig);
@@ -541,6 +543,7 @@ DB_PORT=\${DB_PORT}`;
         os.homedir.mockReturnValue(mockHomeDir);
 
         fs.existsSync.mockImplementation((filePath) => {
+          if (filePath === mockConfig.CONFIG_FILE) return true;
           if (filePath === configYamlPath) return true;
           if (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix')) return true;
           if (filePath && filePath.includes('env-config.yaml')) return true;
@@ -548,6 +551,7 @@ DB_PORT=\${DB_PORT}`;
         });
 
         fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockConfig.CONFIG_FILE) return yaml.dump(configYaml);
           if (filePath === configYamlPath) return yaml.dump(configYaml);
           if (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix')) return yaml.dump(configYaml);
           if (filePath && filePath.includes('env-config.yaml')) return yaml.dump(mockEnvConfig);
@@ -731,6 +735,7 @@ DB_PORT=\${DB_PORT}`;
         os.homedir.mockReturnValue(mockHomeDir);
 
         fs.existsSync.mockImplementation((filePath) => {
+          if (filePath === mockConfig.CONFIG_FILE) return true;
           if (filePath === configYamlPath) return true;
           if (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix')) return true;
           if (filePath && filePath.includes('env-config.yaml')) return true;
@@ -738,6 +743,7 @@ DB_PORT=\${DB_PORT}`;
         });
 
         fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockConfig.CONFIG_FILE) return yaml.dump(configYaml);
           if (filePath === configYamlPath) return yaml.dump(configYaml);
           if (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix')) return yaml.dump(configYaml);
           if (filePath && filePath.includes('env-config.yaml')) return yaml.dump(mockEnvConfig);
@@ -1007,12 +1013,14 @@ DB_PORT=\${DB_PORT}`;
         os.homedir.mockReturnValue(mockHomeDir);
 
         fs.existsSync.mockImplementation((filePath) => {
+          if (filePath === mockConfig.CONFIG_FILE) return true;
           if (filePath === configYamlPath || (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix'))) return true;
           if (filePath && filePath.includes('env-config.yaml')) return true;
           return false;
         });
 
         fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockConfig.CONFIG_FILE) return yaml.dump(configYaml);
           if (filePath === configYamlPath || (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix'))) {
             return yaml.dump(configYaml);
           }
@@ -1048,12 +1056,14 @@ DB_PORT=\${DB_PORT}`;
         os.homedir.mockReturnValue(mockHomeDir);
 
         fs.existsSync.mockImplementation((filePath) => {
+          if (filePath === mockConfig.CONFIG_FILE) return true;
           if (filePath === configYamlPath || (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix'))) return true;
           if (filePath && filePath.includes('env-config.yaml')) return true;
           return false;
         });
 
         fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockConfig.CONFIG_FILE) return yaml.dump(configYaml);
           if (filePath === configYamlPath || (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix'))) {
             return yaml.dump(configYaml);
           }
@@ -1119,7 +1129,7 @@ DB_PORT=\${DB_PORT}`;
         os.homedir.mockReturnValue(mockHomeDir);
 
         fs.existsSync.mockImplementation((filePath) => {
-          // Match exact path or any config.yaml in .aifabrix directory
+          if (filePath === mockConfig.CONFIG_FILE) return true;
           if (filePath === configYamlPath) return true;
           if (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix')) return true;
           if (filePath && filePath.includes('env-config.yaml')) return true;
@@ -1127,7 +1137,7 @@ DB_PORT=\${DB_PORT}`;
         });
 
         fs.readFileSync.mockImplementation((filePath) => {
-          // Match exact path or any config.yaml in .aifabrix directory
+          if (filePath === mockConfig.CONFIG_FILE) return yaml.dump(configYaml);
           if (filePath === configYamlPath) return yaml.dump(configYaml);
           if (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix')) return yaml.dump(configYaml);
           if (filePath && filePath.includes('env-config.yaml')) return yaml.dump(mockEnvConfig);
@@ -1154,7 +1164,7 @@ DB_PORT=\${DB_PORT}`;
         os.homedir.mockReturnValue(mockHomeDir);
 
         fs.existsSync.mockImplementation((filePath) => {
-          // Match exact path or any config.yaml in .aifabrix directory
+          if (filePath === mockConfig.CONFIG_FILE) return true;
           if (filePath === configYamlPath) return true;
           if (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix')) return true;
           if (filePath && filePath.includes('env-config.yaml')) return true;
@@ -1162,7 +1172,7 @@ DB_PORT=\${DB_PORT}`;
         });
 
         fs.readFileSync.mockImplementation((filePath) => {
-          // Match exact path or any config.yaml in .aifabrix directory
+          if (filePath === mockConfig.CONFIG_FILE) return yaml.dump(configYaml);
           if (filePath === configYamlPath) return yaml.dump(configYaml);
           if (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix')) return yaml.dump(configYaml);
           if (filePath && filePath.includes('env-config.yaml')) return yaml.dump(mockEnvConfig);
@@ -1187,7 +1197,7 @@ DB_PORT=\${DB_PORT}`;
         os.homedir.mockReturnValue(mockHomeDir);
 
         fs.existsSync.mockImplementation((filePath) => {
-          // Match exact path or any config.yaml in .aifabrix directory
+          if (filePath === mockConfig.CONFIG_FILE) return true;
           if (filePath === configYamlPath) return true;
           if (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix')) return true;
           if (filePath && filePath.includes('env-config.yaml')) return true;
@@ -1195,7 +1205,7 @@ DB_PORT=\${DB_PORT}`;
         });
 
         fs.readFileSync.mockImplementation((filePath) => {
-          // Match exact path or any config.yaml in .aifabrix directory
+          if (filePath === mockConfig.CONFIG_FILE) return yaml.dump(configYaml);
           if (filePath === configYamlPath) return yaml.dump(configYaml);
           if (filePath && filePath.includes('config.yaml') && filePath.includes('.aifabrix')) return yaml.dump(configYaml);
           if (filePath && filePath.includes('env-config.yaml')) return yaml.dump(mockEnvConfig);
