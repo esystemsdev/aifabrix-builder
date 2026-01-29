@@ -86,7 +86,8 @@ const mockEnvConfig = {
 };
 
 jest.mock('../../../lib/utils/env-config-loader', () => ({
-  loadEnvConfig: jest.fn().mockResolvedValue(mockEnvConfig)
+  loadEnvConfig: jest.fn().mockResolvedValue(mockEnvConfig),
+  loadSchemaEnvConfig: jest.fn().mockReturnValue(mockEnvConfig)
 }));
 
 // Mock env-endpoints
