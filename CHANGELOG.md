@@ -1,3 +1,11 @@
+## [2.33.4] - 2026-01-29
+
+### Fixed
+- **Docker public port calculation**: `*_PUBLIC_PORT` now uses base ports from env-config when available so the value is always base + devId×100 (e.g. KEYCLOAK_PUBLIC_PORT = 8082 + 600 = 8682 for dev 6), instead of using overridden port values
+
+### Technical
+- **env-map**: `calculateDockerPublicPorts` now accepts optional `baseVars` from env-config for canonical public port calculation
+
 ## [2.33.3] - 2026-01-29
 
 ### Added
