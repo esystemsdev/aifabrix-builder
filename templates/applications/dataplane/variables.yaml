@@ -7,8 +7,11 @@ app:
   language: python  # Explicitly specify Python language
 
 # Image Configuration
+# Set tag to match your build (e.g. aifabrix build dataplane -t v1.0.0 then tag: v1.0.0)
+# Registry is required so the controller can pull the image (avoids "docker: not found" on the controller host).
 image:
   name: aifabrix/dataplane
+  tag: latest
   registry: devflowiseacr.azurecr.io
   registryMode: acr
 

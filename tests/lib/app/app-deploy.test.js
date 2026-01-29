@@ -271,7 +271,7 @@ app:
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 
@@ -328,7 +328,7 @@ app:
       const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 
@@ -385,7 +385,7 @@ app:
       const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 
@@ -486,7 +486,7 @@ app:
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 
@@ -523,7 +523,7 @@ app:
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 
@@ -593,7 +593,7 @@ app:
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 
@@ -635,7 +635,7 @@ app:
       await fs.writeFile(manifestPath2, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 
@@ -678,7 +678,7 @@ app:
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 
@@ -721,7 +721,7 @@ app:
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 
@@ -764,7 +764,7 @@ app:
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 
@@ -807,7 +807,7 @@ app:
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
         displayName: 'Test App',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 
@@ -1009,7 +1009,7 @@ image:
       const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 
@@ -1069,7 +1069,7 @@ image:
       const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 
@@ -1191,6 +1191,21 @@ image:
         .rejects.toThrow('Schema validation failed');
     });
 
+    it('should throw when manifest image has no registry (not pullable)', () => {
+      const { validateImageIsPullable } = appDeploy;
+      expect(() => validateImageIsPullable('dataplane:latest', 'dataplane'))
+        .toThrow('Deployed image must be pullable');
+      const err = (() => {
+        try {
+          validateImageIsPullable('myapp:latest', 'myapp');
+        } catch (e) {
+          return e;
+        }
+      })();
+      expect(err.message).toContain('builder/myapp/variables.yaml');
+      expect(err.message).toContain('<registry>/myapp:<tag>');
+    });
+
     it('should handle displayDeploymentInfo with various manifest fields', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
@@ -1244,7 +1259,7 @@ image:
       const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 
@@ -1282,7 +1297,7 @@ image:
       const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
       await fs.writeFile(manifestPath, JSON.stringify({
         key: 'test-app',
-        image: 'test:latest',
+        image: 'myreg.azurecr.io/test-app:latest',
         port: 3000
       }));
 

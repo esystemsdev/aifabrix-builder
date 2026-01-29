@@ -1,3 +1,26 @@
+## [2.33.3] - 2026-01-29
+
+### Added
+- **`aifabrix up-miso`**: New command to bring up Miso Controller locally with Docker
+- **`aifabrix up-dataplane`**: New command to bring up Dataplane locally with Docker
+- **Up commands shared logic**: `lib/commands/up-common.js` for shared options and behavior
+- **Dataplane application template**: New template set under `templates/applications/dataplane/` (Dockerfile, env.template, rbac.yaml, variables.yaml, README)
+- **Secrets Docker env**: `lib/core/secrets-docker-env.js` for resolving secrets into Docker env format
+- **Image reference parser**: `lib/utils/parse-image-ref.js` for parsing image references
+- **Keycloak and Miso Controller READMEs**: Application-specific READMEs for keycloak and miso-controller templates
+
+### Changed
+- **Documentation**: Updated README, CLI reference, commands README, infrastructure docs, quick start
+- **App deploy/register/run-helpers**: Updates for compatibility with up-miso and up-dataplane flows
+- **Infrastructure**: Helpers and compose generator updates; `templates/infra/compose.yaml.hbs` changes
+- **Secrets and config**: Core secrets, config, secrets-generator, secrets-helpers, env-config schema
+- **Templates**: Keycloak and Miso Controller Dockerfiles, variables, env.template, rbac; removed miso-controller test.yaml
+
+### Technical
+- New tests: `up-common.test.js`, `up-dataplane.test.js`, `up-miso.test.js`
+- Updated tests for config, secrets, app run-helpers, secrets-generator, env-generation
+- Updated test wrapper script
+
 ## [2.33.1] - 2026-01-26
 
 ### Fixed
