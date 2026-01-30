@@ -13,6 +13,9 @@ const tokenManager = require('../../../lib/utils/token-manager');
 const authApi = require('../../../lib/api/auth.api');
 const controllerUrl = require('../../../lib/utils/controller-url');
 const logger = require('../../../lib/utils/logger');
+const wizardDataplane = require('../../../lib/commands/wizard-dataplane');
+const datasourceDeploy = require('../../../lib/datasource/deploy');
+const dataplaneHealth = require('../../../lib/utils/dataplane-health');
 
 // Mock modules
 jest.mock('../../../lib/core/config');
@@ -20,6 +23,9 @@ jest.mock('../../../lib/utils/token-manager');
 jest.mock('../../../lib/api/auth.api');
 jest.mock('../../../lib/utils/controller-url');
 jest.mock('../../../lib/utils/logger');
+jest.mock('../../../lib/commands/wizard-dataplane');
+jest.mock('../../../lib/datasource/deploy');
+jest.mock('../../../lib/utils/dataplane-health');
 
 describe('Auth Status Command Module', () => {
   beforeEach(() => {
@@ -30,6 +36,9 @@ describe('Auth Status Command Module', () => {
     config.resolveEnvironment = jest.fn().mockResolvedValue('dev');
     config.getSecretsEncryptionKey.mockResolvedValue(null);
     controllerUrl.resolveControllerUrl.mockResolvedValue('http://localhost:3000');
+    wizardDataplane.findDataplaneServiceAppKey.mockResolvedValue('dataplane');
+    datasourceDeploy.getDataplaneUrl.mockResolvedValue('http://localhost:3611');
+    dataplaneHealth.checkDataplaneHealth.mockResolvedValue(true);
   });
 
   describe('handleAuthStatus', () => {
@@ -64,6 +73,8 @@ describe('Auth Status Command Module', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Controller:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Status:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Authenticated'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Dataplane:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Connected'));
     });
 
     it('should display not authenticated status when no token found', async() => {
@@ -191,6 +202,41 @@ describe('Auth Status Command Module', () => {
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Not authenticated'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Network error'));
+    });
+
+    it('should display dataplane not reachable when health check fails', async() => {
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'device-token-123',
+        controller: 'http://localhost:3000'
+      });
+      authApi.getAuthUser.mockResolvedValue({
+        success: true,
+        data: { authenticated: true }
+      });
+      dataplaneHealth.checkDataplaneHealth.mockResolvedValue(false);
+
+      await handleAuthStatus({});
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Dataplane:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Not reachable'));
+    });
+
+    it('should display dataplane not discovered when URL resolution fails', async() => {
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'device-token-123',
+        controller: 'http://localhost:3000'
+      });
+      authApi.getAuthUser.mockResolvedValue({
+        success: true,
+        data: { authenticated: true }
+      });
+      wizardDataplane.findDataplaneServiceAppKey.mockResolvedValue(null);
+      datasourceDeploy.getDataplaneUrl.mockRejectedValue(new Error('Not found'));
+
+      await handleAuthStatus({});
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Dataplane:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Not discovered'));
     });
   });
 });

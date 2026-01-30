@@ -38,6 +38,29 @@ describe('HTTP Status Error Formatters', () => {
       const result = httpStatusErrors.formatAuthenticationError(errorData);
       expect(result).toContain('Correlation ID: corr-123');
     });
+
+    it('should include permission details when API returns required/missing permissions', () => {
+      const errorData = {
+        message: 'Invalid token or insufficient permissions',
+        required: { permissions: ['wizard:session:create'] },
+        missing: { permissions: ['wizard:session:create'] }
+      };
+      const result = httpStatusErrors.formatAuthenticationError(errorData);
+      expect(result).toContain('❌ Authentication Failed');
+      expect(result).toContain('Invalid token or insufficient permissions');
+      expect(result).toContain('Missing permissions:');
+      expect(result).toContain('- wizard:session:create');
+      expect(result).toContain('Required permissions:');
+      expect(result).toContain('aifabrix login');
+    });
+
+    it('should not add permission section when no permission data in error', () => {
+      const errorData = { message: 'Unauthorized' };
+      const result = httpStatusErrors.formatAuthenticationError(errorData);
+      expect(result).toContain('❌ Authentication Failed');
+      expect(result).not.toContain('Missing permissions:');
+      expect(result).not.toContain('Required permissions:');
+    });
   });
 
   describe('formatServerError', () => {

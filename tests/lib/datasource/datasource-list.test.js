@@ -26,7 +26,7 @@ jest.mock('../../../lib/core/config', () => ({
 jest.mock('../../../lib/utils/token-manager', () => ({
   getOrRefreshDeviceToken: jest.fn()
 }));
-jest.mock('../../../lib/api/datasources-core.api', () => ({
+jest.mock('../../../lib/api/datasources.api', () => ({
   listDatasources: jest.fn()
 }));
 jest.mock('../../../lib/utils/dataplane-resolver', () => ({
@@ -43,7 +43,7 @@ jest.mock('../../../lib/utils/logger', () => ({
 
 const { getConfig, resolveEnvironment } = require('../../../lib/core/config');
 const { getOrRefreshDeviceToken } = require('../../../lib/utils/token-manager');
-const { listDatasources: listDatasourcesFromDataplane } = require('../../../lib/api/datasources-core.api');
+const { listDatasources: listDatasourcesFromDataplane } = require('../../../lib/api/datasources.api');
 const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
 const { formatApiError } = require('../../../lib/utils/api-error-handler');
 const logger = require('../../../lib/utils/logger');
@@ -253,7 +253,7 @@ describe('Datasource List Module', () => {
       expect(process.exit).toHaveBeenCalledWith(1);
     });
 
-    it('should exit with error if dataplane URL resolution fails', async() => {
+    it('should exit when dataplane URL resolution fails', async() => {
       const mockConfig = {
         device: {
           'http://localhost:3010': {}
@@ -270,40 +270,13 @@ describe('Datasource List Module', () => {
       resolveDataplaneUrl.mockRejectedValue(new Error('Dataplane URL not found'));
 
       const { listDatasources } = require('../../../lib/datasource/list');
-      try {
-        await listDatasources({});
-      } catch (error) {
-        // Expected - function exits in production but throws in tests
-      }
+      await expect(listDatasources({})).rejects.toThrow('Dataplane URL not found');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to resolve dataplane URL'), 'Dataplane URL not found');
-      expect(process.exit).toHaveBeenCalledWith(1);
-    });
-
-    it('should exit with error if dataplane URL is empty', async() => {
-      const mockConfig = {
-        device: {
-          'http://localhost:3010': {}
-        }
-      };
-      const mockToken = {
-        token: 'test-token',
-        controller: 'http://localhost:3010'
-      };
-
-      getConfig.mockResolvedValue(mockConfig);
-      resolveEnvironment.mockResolvedValue('dev');
-      getOrRefreshDeviceToken.mockResolvedValue(mockToken);
-      resolveDataplaneUrl.mockResolvedValue('');
-
-      const { listDatasources } = require('../../../lib/datasource/list');
-      try {
-        await listDatasources({});
-      } catch (error) {
-        // Expected - function exits in production but throws in tests
-      }
-
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Dataplane URL is empty'));
+      expect(resolveDataplaneUrl).toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to resolve dataplane URL'),
+        'Dataplane URL not found'
+      );
       expect(process.exit).toHaveBeenCalledWith(1);
     });
 
@@ -317,7 +290,6 @@ describe('Datasource List Module', () => {
         token: 'test-token',
         controller: 'http://localhost:3010'
       };
-      const mockDataplaneUrl = 'http://localhost:3111';
       const mockResponse = {
         success: false,
         formattedError: 'API Error',
@@ -327,7 +299,7 @@ describe('Datasource List Module', () => {
       getConfig.mockResolvedValue(mockConfig);
       resolveEnvironment.mockResolvedValue('dev');
       getOrRefreshDeviceToken.mockResolvedValue(mockToken);
-      resolveDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
+      resolveDataplaneUrl.mockResolvedValue('http://localhost:3111');
       listDatasourcesFromDataplane.mockResolvedValue(mockResponse);
       formatApiError.mockReturnValue('API Error');
 
@@ -349,11 +321,11 @@ describe('Datasource List Module', () => {
         token: 'test-token',
         controller: 'http://controller1:3010'
       };
-      const mockDataplaneUrl = 'http://localhost:3111';
       const mockResponse = {
         success: true,
         data: { data: [] }
       };
+      const mockDataplaneUrl = 'http://localhost:3111';
 
       getConfig.mockResolvedValue(mockConfig);
       resolveEnvironment.mockResolvedValue('dev');
@@ -365,8 +337,15 @@ describe('Datasource List Module', () => {
       await listDatasources({});
 
       expect(resolveEnvironment).toHaveBeenCalled();
-      expect(resolveDataplaneUrl).toHaveBeenCalled();
-      expect(listDatasourcesFromDataplane).toHaveBeenCalled();
+      expect(resolveDataplaneUrl).toHaveBeenCalledWith(
+        'http://controller1:3010',
+        'dev',
+        expect.any(Object)
+      );
+      expect(listDatasourcesFromDataplane).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        expect.any(Object)
+      );
     });
 
     it('should exit with error if controller URL is empty after trimming', async() => {

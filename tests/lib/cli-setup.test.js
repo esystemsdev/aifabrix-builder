@@ -40,6 +40,7 @@ describe('CLI Setup Tests', () => {
         alias: jest.fn().mockReturnThis(),
         description: jest.fn().mockReturnThis(),
         option: jest.fn().mockReturnThis(),
+        addHelpText: jest.fn().mockReturnThis(),
         action: jest.fn().mockReturnThis(),
         allowUnknownOption: jest.fn().mockReturnThis()
       };

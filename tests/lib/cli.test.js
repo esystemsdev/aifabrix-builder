@@ -1877,6 +1877,7 @@ describe('CLI Commands', () => {
           const mockCommand = {
             description: jest.fn().mockReturnThis(),
             option: jest.fn().mockReturnThis(),
+            addHelpText: jest.fn().mockReturnThis(),
             action: function(action) {
               commandActions[cmdName] = action;
               return this;
@@ -1916,6 +1917,7 @@ describe('CLI Commands', () => {
           const mockCommand = {
             description: jest.fn().mockReturnThis(),
             option: jest.fn().mockReturnThis(),
+            addHelpText: jest.fn().mockReturnThis(),
             action: function(action) {
               commandActions[cmdName] = action;
               return this;

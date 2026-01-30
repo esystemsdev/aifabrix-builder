@@ -92,8 +92,8 @@ describe('Wizard Command Handler', () => {
     config.getConfig.mockResolvedValue({});
     config.resolveEnvironment = jest.fn().mockResolvedValue('dev');
     controllerUrl.resolveControllerUrl.mockResolvedValue('https://controller.example.com');
-    // Wizard uses device-only auth for new external systems
-    tokenManager.getDeviceOnlyAuth.mockResolvedValue(mockAuthConfig);
+    // Wizard uses getDeploymentAuth (device, then client token, then client credentials)
+    tokenManager.getDeploymentAuth.mockResolvedValue(mockAuthConfig);
     const dataplaneResolver = require('../../../lib/utils/dataplane-resolver');
     jest.spyOn(dataplaneResolver, 'resolveDataplaneUrl').mockResolvedValue(mockDataplaneUrl);
     fs.access.mockRejectedValue({ code: 'ENOENT' }); // Directory doesn't exist
@@ -404,14 +404,11 @@ describe('Wizard Command Handler', () => {
     });
 
     it('should handle authentication errors when auth not available', async() => {
-      tokenManager.getDeviceOnlyAuth.mockRejectedValue(
-        new Error('Device token authentication required. Run "aifabrix login" to authenticate.')
-      );
       tokenManager.getDeploymentAuth.mockRejectedValue(
-        new Error('Deployment auth also failed')
+        new Error('No authentication method available. Run \'aifabrix login\' for device token.')
       );
 
-      await expect(handleWizard(mockOptions)).rejects.toThrow('Authentication failed: Device token authentication required');
+      await expect(handleWizard(mockOptions)).rejects.toThrow('Authentication failed: No authentication method available');
     });
 
     it('should handle dataplane URL retrieval errors', async() => {
@@ -441,16 +438,13 @@ describe('Wizard Command Handler', () => {
       );
     });
 
-    it('should surface authentication failures from device auth', async() => {
-      tokenManager.getDeviceOnlyAuth.mockRejectedValue(
-        new Error('Device token authentication required. Run "aifabrix login" to authenticate.')
-      );
+    it('should surface authentication failures from getDeploymentAuth', async() => {
       tokenManager.getDeploymentAuth.mockRejectedValue(
-        new Error('Deployment auth also failed')
+        new Error('No authentication method available. Run \'aifabrix login\' for device token.')
       );
 
       await expect(handleWizard(mockOptions)).rejects.toThrow(
-        'Authentication failed: Device token authentication required. Run "aifabrix login" to authenticate.'
+        'Authentication failed: No authentication method available. Run \'aifabrix login\' for device token.'
       );
     });
   });

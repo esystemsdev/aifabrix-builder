@@ -15,7 +15,12 @@ jest.mock('chalk', () => {
   return mockChalk;
 });
 
-const { formatPermissionError } = require('../../../../lib/utils/error-formatters/permission-errors');
+const {
+  formatPermissionError,
+  getPermissionDetailLines,
+  extractMissingPermissions,
+  extractRequiredPermissions
+} = require('../../../../lib/utils/error-formatters/permission-errors');
 
 describe('Permission Error Formatters Module', () => {
   describe('formatPermissionError', () => {
@@ -183,6 +188,43 @@ describe('Permission Error Formatters Module', () => {
       expect(result).toContain('- admin:app');
       expect(result).toContain('Request: DELETE /api/v1/applications/test-app');
       expect(result).toContain('Correlation ID: corr-456');
+    });
+  });
+
+  describe('getPermissionDetailLines', () => {
+    it('should return lines for missing and required permissions', () => {
+      const errorData = {
+        missing: { permissions: ['read:app'] },
+        required: { permissions: ['admin:app'] }
+      };
+      const lines = getPermissionDetailLines(errorData);
+      expect(lines.some(l => l.includes('Missing permissions:'))).toBe(true);
+      expect(lines.some(l => l.includes('- read:app'))).toBe(true);
+      expect(lines.some(l => l.includes('Required permissions:'))).toBe(true);
+      expect(lines.some(l => l.includes('- admin:app'))).toBe(true);
+    });
+
+    it('should return empty array when no permission data', () => {
+      expect(getPermissionDetailLines({})).toEqual([]);
+      expect(getPermissionDetailLines({ detail: 'Forbidden' })).toEqual([]);
+    });
+  });
+
+  describe('extractMissingPermissions', () => {
+    it('should extract from data.missing.permissions', () => {
+      const errorData = { data: { missing: { permissions: ['p1'] } } };
+      expect(extractMissingPermissions(errorData)).toEqual(['p1']);
+    });
+  });
+
+  describe('extractRequiredPermissions', () => {
+    it('should extract from permissions array', () => {
+      const errorData = { permissions: ['wizard:session:create'] };
+      expect(extractRequiredPermissions(errorData)).toEqual(['wizard:session:create']);
+    });
+    it('should extract from data.required.permissions', () => {
+      const errorData = { data: { required: { permissions: ['p2'] } } };
+      expect(extractRequiredPermissions(errorData)).toEqual(['p2']);
     });
   });
 });

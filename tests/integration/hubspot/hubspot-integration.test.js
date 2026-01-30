@@ -28,10 +28,10 @@ describe('HubSpot Integration Tests', () => {
   const appName = 'hubspot';
   const integrationPath = path.join(process.cwd(), 'integration', appName);
   const variablesPath = path.join(integrationPath, 'variables.yaml');
-  const systemFilePath = path.join(integrationPath, 'hubspot-deploy.json');
-  const companyFilePath = path.join(integrationPath, 'hubspot-deploy-company.json');
-  const contactFilePath = path.join(integrationPath, 'hubspot-deploy-contact.json');
-  const dealFilePath = path.join(integrationPath, 'hubspot-deploy-deal.json');
+  const systemFilePath = path.join(integrationPath, 'hubspot-system.json');
+  const companyFilePath = path.join(integrationPath, 'hubspot-datasource-company.json');
+  const contactFilePath = path.join(integrationPath, 'hubspot-datasource-contact.json');
+  const dealFilePath = path.join(integrationPath, 'hubspot-datasource-deal.json');
   const envTemplatePath = path.join(integrationPath, 'env.template');
 
   let variables;
@@ -140,19 +140,19 @@ describe('HubSpot Integration Tests', () => {
       expect(fs.existsSync(variablesPath)).toBe(true);
     });
 
-    it('should have hubspot-deploy.json system file', () => {
+    it('should have hubspot-system.json system file', () => {
       expect(fs.existsSync(systemFilePath)).toBe(true);
     });
 
-    it('should have hubspot-deploy-company.json datasource file', () => {
+    it('should have hubspot-datasource-company.json datasource file', () => {
       expect(fs.existsSync(companyFilePath)).toBe(true);
     });
 
-    it('should have hubspot-deploy-contact.json datasource file', () => {
+    it('should have hubspot-datasource-contact.json datasource file', () => {
       expect(fs.existsSync(contactFilePath)).toBe(true);
     });
 
-    it('should have hubspot-deploy-deal.json datasource file', () => {
+    it('should have hubspot-datasource-deal.json datasource file', () => {
       expect(fs.existsSync(dealFilePath)).toBe(true);
     });
 
@@ -183,19 +183,19 @@ describe('HubSpot Integration Tests', () => {
       expect(variables.externalIntegration.schemaBasePath).toBe('./');
     });
 
-    it('should have systems array with hubspot-deploy.json', () => {
+    it('should have systems array with hubspot-system.json', () => {
       expect(variables.externalIntegration.systems).toBeDefined();
       expect(Array.isArray(variables.externalIntegration.systems)).toBe(true);
-      expect(variables.externalIntegration.systems).toContain('hubspot-deploy.json');
+      expect(variables.externalIntegration.systems).toContain('hubspot-system.json');
     });
 
     it('should have dataSources array with all three datasources', () => {
       expect(variables.externalIntegration.dataSources).toBeDefined();
       expect(Array.isArray(variables.externalIntegration.dataSources)).toBe(true);
       expect(variables.externalIntegration.dataSources.length).toBe(3);
-      expect(variables.externalIntegration.dataSources).toContain('hubspot-deploy-company.json');
-      expect(variables.externalIntegration.dataSources).toContain('hubspot-deploy-contact.json');
-      expect(variables.externalIntegration.dataSources).toContain('hubspot-deploy-deal.json');
+      expect(variables.externalIntegration.dataSources).toContain('hubspot-datasource-company.json');
+      expect(variables.externalIntegration.dataSources).toContain('hubspot-datasource-contact.json');
+      expect(variables.externalIntegration.dataSources).toContain('hubspot-datasource-deal.json');
     });
 
     it('should have autopublish flag', () => {
@@ -216,7 +216,7 @@ describe('HubSpot Integration Tests', () => {
       systemValidator = loadExternalSystemSchema();
     });
 
-    it('should parse hubspot-deploy.json as valid JSON', () => {
+    it('should parse hubspot-system.json as valid JSON', () => {
       expect(systemJson).toBeDefined();
       expect(typeof systemJson).toBe('object');
     });
@@ -280,7 +280,7 @@ describe('HubSpot Integration Tests', () => {
 
     // Test each datasource individually to avoid closure issues
     describe('company datasource', () => {
-      it('should parse hubspot-deploy-company.json as valid JSON', () => {
+      it('should parse hubspot-datasource-company.json as valid JSON', () => {
         expect(companyJson).toBeDefined();
         expect(typeof companyJson).toBe('object');
       });
@@ -301,8 +301,8 @@ describe('HubSpot Integration Tests', () => {
         expect(companyJson.displayName).toBeDefined();
         expect(companyJson.description).toBeDefined();
         expect(companyJson.systemKey).toBe('hubspot');
-        expect(companyJson.entityType).toBe('company');
-        expect(companyJson.resourceType).toBeDefined();
+        expect(companyJson.entityType).toBe('record-storage');
+        expect(companyJson.resourceType).toBe('customer');
         expect(companyJson.enabled).toBe(true);
         expect(companyJson.version).toBeDefined();
       });
@@ -337,7 +337,7 @@ describe('HubSpot Integration Tests', () => {
     });
 
     describe('contact datasource', () => {
-      it('should parse hubspot-deploy-contact.json as valid JSON', () => {
+      it('should parse hubspot-datasource-contact.json as valid JSON', () => {
         expect(contactJson).toBeDefined();
         expect(typeof contactJson).toBe('object');
       });
@@ -358,10 +358,8 @@ describe('HubSpot Integration Tests', () => {
         expect(contactJson.displayName).toBeDefined();
         expect(contactJson.description).toBeDefined();
         expect(contactJson.systemKey).toBe('hubspot');
-        expect(contactJson.entityType).toBe('contact');
-        if (contactJson.resourceType) {
-          expect(contactJson.resourceType).toBeDefined();
-        }
+        expect(contactJson.entityType).toBe('record-storage');
+        expect(contactJson.resourceType).toBe('contact');
         expect(contactJson.enabled).toBe(true);
         expect(contactJson.version).toBeDefined();
       });
@@ -396,7 +394,7 @@ describe('HubSpot Integration Tests', () => {
     });
 
     describe('deal datasource', () => {
-      it('should parse hubspot-deploy-deal.json as valid JSON', () => {
+      it('should parse hubspot-datasource-deal.json as valid JSON', () => {
         expect(dealJson).toBeDefined();
         expect(typeof dealJson).toBe('object');
       });
@@ -417,10 +415,8 @@ describe('HubSpot Integration Tests', () => {
         expect(dealJson.displayName).toBeDefined();
         expect(dealJson.description).toBeDefined();
         expect(dealJson.systemKey).toBe('hubspot');
-        expect(dealJson.entityType).toBe('deal');
-        if (dealJson.resourceType) {
-          expect(dealJson.resourceType).toBeDefined();
-        }
+        expect(dealJson.entityType).toBe('record-storage');
+        expect(dealJson.resourceType).toBe('deal');
         expect(dealJson.enabled).toBe(true);
         expect(dealJson.version).toBeDefined();
       });
@@ -669,10 +665,13 @@ describe('HubSpot Integration Tests', () => {
       expect(dealJson.systemKey).toBe('hubspot');
     });
 
-    it('should have correct entityType values', () => {
-      expect(companyJson.entityType).toBe('company');
-      expect(contactJson.entityType).toBe('contact');
-      expect(dealJson.entityType).toBe('deal');
+    it('should have correct entityType and resourceType values', () => {
+      expect(companyJson.entityType).toBe('record-storage');
+      expect(companyJson.resourceType).toBe('customer');
+      expect(contactJson.entityType).toBe('record-storage');
+      expect(contactJson.resourceType).toBe('contact');
+      expect(dealJson.entityType).toBe('record-storage');
+      expect(dealJson.resourceType).toBe('deal');
     });
 
     it('should have correct resourceType values', () => {
@@ -688,7 +687,7 @@ describe('HubSpot Integration Tests', () => {
 
     it('should have matching system key in variables.yaml', () => {
       const systemFile = variables.externalIntegration.systems[0];
-      expect(systemFile).toBe('hubspot-deploy.json');
+      expect(systemFile).toBe('hubspot-system.json');
       expect(systemJson.key).toBe('hubspot');
     });
   });
@@ -930,9 +929,9 @@ describe('HubSpot Integration Tests', () => {
 
     it('should have all datasources referenced in variables.yaml', () => {
       const referencedDataSources = variables.externalIntegration.dataSources;
-      expect(referencedDataSources).toContain('hubspot-deploy-company.json');
-      expect(referencedDataSources).toContain('hubspot-deploy-contact.json');
-      expect(referencedDataSources).toContain('hubspot-deploy-deal.json');
+      expect(referencedDataSources).toContain('hubspot-datasource-company.json');
+      expect(referencedDataSources).toContain('hubspot-datasource-contact.json');
+      expect(referencedDataSources).toContain('hubspot-datasource-deal.json');
     });
   });
 
@@ -972,7 +971,7 @@ describe('HubSpot Integration Tests', () => {
 
     it('should reference system file correctly', () => {
       const systemFile = variables.externalIntegration.systems[0];
-      expect(systemFile).toBe('hubspot-deploy.json');
+      expect(systemFile).toBe('hubspot-system.json');
       expect(fs.existsSync(path.join(integrationPath, systemFile))).toBe(true);
     });
 

@@ -35,6 +35,7 @@ describe('CLI Additional Coverage Tests', () => {
         description: jest.fn().mockReturnThis(),
         option: jest.fn().mockReturnThis(),
         requiredOption: jest.fn().mockReturnThis(),
+        addHelpText: jest.fn().mockReturnThis(),
         action: jest.fn().mockReturnThis(),
         alias: jest.fn().mockReturnThis(),
         argument: jest.fn().mockReturnThis(),

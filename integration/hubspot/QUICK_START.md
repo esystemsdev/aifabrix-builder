@@ -15,9 +15,9 @@ This guide shows you how to create a new HubSpot integration using the wizard, t
 
 3. **Environment Variables** (optional):
    ```bash
-   export CONTROLLER_URL=http://localhost:3110
+   export CONTROLLER_URL=http://localhost:3010
    export ENVIRONMENT=miso
-   export DATAPLANE_URL=http://localhost:3200  # Optional, will be auto-discovered
+   export DATAPLANE_URL=http://localhost:3011  # Optional, will be auto-discovered
    ```
 
 ## Step 1: Create HubSpot Integration

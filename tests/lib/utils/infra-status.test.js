@@ -71,6 +71,7 @@ describe('Infrastructure Status Module', () => {
       expect(result.postgres.status).toBe('running');
       expect(result.postgres.port).toBe(5432);
       expect(result.postgres.url).toBe('localhost:5432');
+      expect(containerUtils.findContainer).toHaveBeenNthCalledWith(1, 'postgres', '0', { strict: true });
     });
 
     it('should return not running status when container is not found', async() => {
@@ -150,7 +151,7 @@ describe('Infrastructure Status Module', () => {
       expect(result.redis.port).toBe(6479);
       expect(result.pgadmin.port).toBe(5150);
       expect(result['redis-commander'].port).toBe(8181);
-      expect(result.traefik.port).toBe('180/543');
+      expect(result.traefik.port).toBe('180, 543');
     });
 
     it('should handle non-numeric developer ID', async() => {
@@ -327,6 +328,23 @@ describe('Infrastructure Status Module', () => {
       const result = await getAppStatus();
 
       expect(result[0].url).toBe('http://localhost:3100');
+    });
+
+    it('should exclude init/helper containers (e.g. keycloak-db-init) from running applications', async() => {
+      config.getDeveloperId.mockResolvedValue('0');
+      exec.mockImplementation((command, callback) => {
+        const output = [
+          'aifabrix-keycloak\t0.0.0.0:8082->8080/tcp\tUp 5 minutes',
+          'aifabrix-keycloak-db-init\t5432/tcp\tUp 5 minutes'
+        ].join('\n');
+        callback(null, { stdout: output });
+      });
+
+      const result = await getAppStatus();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('keycloak');
+      expect(result.map(a => a.name)).not.toContain('keycloak-db-init');
     });
   });
 });

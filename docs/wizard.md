@@ -412,6 +412,21 @@ Or register your application:
 aifabrix app register <app-name>
 ```
 
+### Invalid token or insufficient permissions
+
+When the dataplane returns 401 or 403, the CLI shows:
+
+- The error message from the API
+- **Permission details** when the API includes them in the response (e.g. `required.permissions`, `missing.permissions`)
+
+If you see "Invalid token or insufficient permissions", check:
+
+- That you are logged in: `aifabrix auth status`
+- That the dataplane accepts your token (device token is validated by the controller; some dataplanes require client credentials)
+- When the API returns permission details, the CLI displays **Missing permissions** and **Required permissions** so you can see exactly which permissions the endpoint needs (as documented in the dataplane OpenAPI spec)
+
+To use client credentials, add entries to `~/.aifabrix/secrets.local.yaml` as `<app>-client-idKeyVault` and `<app>-client-secretKeyVault`, or contact your administrator.
+
 ### Dataplane URL Not Found
 
 If the wizard cannot find the dataplane URL:

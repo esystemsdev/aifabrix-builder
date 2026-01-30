@@ -1,3 +1,21 @@
+## [2.33.6] - 2026-01-30
+
+### Fixed
+- **Error formatters**: Improved HTTP status and permission error formatting and user-facing messages
+- **Auth status**: Enhanced auth-status command behavior and output
+- **Wizard**: Wizard and wizard-core improvements and robustness
+- **up-miso**: Refinements to up-miso command and options
+- **Datasource list**: Datasource list command and error handling updates
+- **Infra status**: Infra status and infra-containers behavior and messaging
+- **App run/register**: Run-helpers, run, and app-register-auth updates for consistency
+
+### Changed
+- **CLI**: CLI option and help updates
+- **Documentation**: Wizard docs and Hubspot QUICK_START updates
+
+### Technical
+- **Tests**: Auth-status, wizard, wizard-core, up-miso, datasource list, error formatters, infra-status, and CLI test updates
+
 ## [2.33.5] - 2026-01-29
 
 ### Fixed

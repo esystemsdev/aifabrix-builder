@@ -184,6 +184,19 @@ describe('Wizard Core Functions', () => {
       await expect(wizardCore.handleModeSelection(mockDataplaneUrl, mockAuthConfig))
         .rejects.toThrow('Failed to create wizard session');
     });
+
+    it('should show clear message when dataplane returns 401 (token valid for controller)', async() => {
+      wizardApi.createWizardSession.mockResolvedValue({
+        success: false,
+        status: 401,
+        error: 'Invalid token or insufficient permissions',
+        errorData: { message: 'Invalid token or insufficient permissions' }
+      });
+      const err = await wizardCore.handleModeSelection(mockDataplaneUrl, mockAuthConfig).catch(e => e);
+      expect(err).toBeInstanceOf(Error);
+      expect(err.message).toContain('Your token is valid for the controller');
+      expect(err.message).toContain('rejected the request');
+    });
   });
 
   describe('handleSourceSelection', () => {
@@ -736,7 +749,7 @@ describe('Wizard Core Functions', () => {
     });
 
     it('should setup dataplane and auth successfully', async() => {
-      tokenManager.getDeviceOnlyAuth.mockResolvedValue(mockAuthConfig);
+      tokenManager.getDeploymentAuth.mockResolvedValue(mockAuthConfig);
       const dataplaneResolver = require('../../../lib/utils/dataplane-resolver');
       jest.spyOn(dataplaneResolver, 'resolveDataplaneUrl').mockResolvedValue(mockDataplaneUrl);
 
@@ -746,7 +759,11 @@ describe('Wizard Core Functions', () => {
       expect(result.authConfig).toEqual(mockAuthConfig);
       expect(config.resolveEnvironment).toHaveBeenCalled();
       expect(controllerUrl.resolveControllerUrl).toHaveBeenCalledWith();
-      expect(tokenManager.getDeviceOnlyAuth).toHaveBeenCalledWith('https://controller.example.com');
+      expect(tokenManager.getDeploymentAuth).toHaveBeenCalledWith(
+        'https://controller.example.com',
+        'dev',
+        'test-app'
+      );
       expect(dataplaneResolver.resolveDataplaneUrl).toHaveBeenCalledWith(
         'https://controller.example.com',
         'dev',
@@ -755,38 +772,23 @@ describe('Wizard Core Functions', () => {
     });
 
     it('should throw error when authentication fails', async() => {
-      tokenManager.getDeviceOnlyAuth.mockRejectedValue(new Error('Device auth failed'));
       tokenManager.getDeploymentAuth.mockRejectedValue(new Error('Deployment auth failed'));
       await expect(wizardCore.setupDataplaneAndAuth(mockOptions, 'test-app'))
         .rejects.toThrow('Authentication failed');
-      expect(tokenManager.getDeviceOnlyAuth).toHaveBeenCalled();
-      expect(tokenManager.getDeploymentAuth).toHaveBeenCalled();
-    });
-
-    it('should throw error when dataplane URL lookup fails', async() => {
-      tokenManager.getDeviceOnlyAuth.mockResolvedValue(mockAuthConfig);
-      const dataplaneResolver = require('../../../lib/utils/dataplane-resolver');
-      jest.spyOn(dataplaneResolver, 'resolveDataplaneUrl').mockRejectedValue(new Error('Dataplane not found'));
-      await expect(wizardCore.setupDataplaneAndAuth(mockOptions, 'test-app'))
-        .rejects.toThrow('Dataplane not found');
-      expect(tokenManager.getDeviceOnlyAuth).toHaveBeenCalled();
-      expect(dataplaneResolver.resolveDataplaneUrl).toHaveBeenCalled();
-    });
-
-    it('should fallback to getDeploymentAuth when getDeviceOnlyAuth fails', async() => {
-      tokenManager.getDeviceOnlyAuth.mockRejectedValue(new Error('Device auth failed'));
-      tokenManager.getDeploymentAuth.mockResolvedValue(mockAuthConfig);
-      const dataplaneResolver = require('../../../lib/utils/dataplane-resolver');
-      jest.spyOn(dataplaneResolver, 'resolveDataplaneUrl').mockResolvedValue(mockDataplaneUrl);
-      const result = await wizardCore.setupDataplaneAndAuth(mockOptions, 'test-app');
-      expect(result.dataplaneUrl).toBe(mockDataplaneUrl);
-      expect(result.authConfig).toEqual(mockAuthConfig);
-      expect(tokenManager.getDeviceOnlyAuth).toHaveBeenCalled();
       expect(tokenManager.getDeploymentAuth).toHaveBeenCalledWith(
         'https://controller.example.com',
         'dev',
         'test-app'
       );
+    });
+
+    it('should throw error when dataplane URL lookup fails', async() => {
+      tokenManager.getDeploymentAuth.mockResolvedValue(mockAuthConfig);
+      const dataplaneResolver = require('../../../lib/utils/dataplane-resolver');
+      jest.spyOn(dataplaneResolver, 'resolveDataplaneUrl').mockRejectedValue(new Error('Dataplane not found'));
+      await expect(wizardCore.setupDataplaneAndAuth(mockOptions, 'test-app'))
+        .rejects.toThrow('Dataplane not found');
+      expect(tokenManager.getDeploymentAuth).toHaveBeenCalled();
       expect(dataplaneResolver.resolveDataplaneUrl).toHaveBeenCalled();
     });
   });
