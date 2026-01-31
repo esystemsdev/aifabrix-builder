@@ -118,6 +118,39 @@ describe('Wizard API', () => {
     });
   });
 
+  describe('getWizardPlatforms', () => {
+    it('should return platforms array when API returns platforms', async() => {
+      const platforms = [{ key: 'hubspot', displayName: 'HubSpot' }, { key: 'salesforce' }];
+      mockClient.get.mockResolvedValue({ data: { platforms } });
+      const result = await wizardApi.getWizardPlatforms(dataplaneUrl, authConfig);
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/wizard/platforms');
+      expect(result).toEqual(platforms);
+    });
+
+    it('should return empty array on 404 or API error', async() => {
+      mockClient.get.mockRejectedValue(new Error('Not Found'));
+      const result = await wizardApi.getWizardPlatforms(dataplaneUrl, authConfig);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array when response has no platforms', async() => {
+      mockClient.get.mockResolvedValue({ data: {} });
+      const result = await wizardApi.getWizardPlatforms(dataplaneUrl, authConfig);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should accept response.platforms at top level', async() => {
+      const platforms = [{ key: 'zendesk' }];
+      mockClient.get.mockResolvedValue({ platforms });
+      const result = await wizardApi.getWizardPlatforms(dataplaneUrl, authConfig);
+
+      expect(result).toEqual(platforms);
+    });
+  });
+
   describe('parseOpenApi', () => {
     it('should parse OpenAPI file using file upload', async() => {
       const filePath = '/path/to/openapi.yaml';

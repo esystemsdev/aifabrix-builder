@@ -13,8 +13,11 @@ jest.mock('../../../lib/utils/logger', () => ({
   info: jest.fn()
 }));
 
+const mockFsPromises = { mkdir: jest.fn(), appendFile: jest.fn() };
+jest.mock('fs', () => ({ promises: mockFsPromises }));
+
 const logger = require('../../../lib/utils/logger');
-const { validateCommand, handleCommandError } = require('../../../lib/utils/cli-utils');
+const { validateCommand, handleCommandError, appendWizardError } = require('../../../lib/utils/cli-utils');
 
 describe('CLI Utils Module', () => {
   beforeEach(() => {
@@ -219,6 +222,81 @@ describe('CLI Utils Module', () => {
       handleCommandError(error, 'any-command');
 
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('doctor'));
+    });
+
+    it('should log wizardResumeMessage when present on error', () => {
+      const error = new Error('Wizard failed');
+      error.wizardResumeMessage = 'To resume: aifabrix wizard myapp';
+
+      handleCommandError(error, 'wizard');
+
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in wizard command'));
+      expect(logger.log).toHaveBeenCalledWith('To resume: aifabrix wizard myapp');
+    });
+  });
+
+  describe('appendWizardError', () => {
+    beforeEach(() => {
+      mockFsPromises.mkdir.mockResolvedValue();
+      mockFsPromises.appendFile.mockResolvedValue();
+    });
+
+    it('should append error message to integration/<appKey>/error.log', async() => {
+      await appendWizardError('myapp', new Error('Test error'));
+
+      expect(mockFsPromises.mkdir).toHaveBeenCalledWith(
+        expect.stringMatching(/integration[\\/]myapp$/),
+        { recursive: true }
+      );
+      expect(mockFsPromises.appendFile).toHaveBeenCalledWith(
+        expect.stringMatching(/integration[\\/]myapp[\\/]error\.log$/),
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}T.* Test error\n$/),
+        'utf8'
+      );
+    });
+
+    it('should write stripped error.formatted to error.log when formatted is longer than message', async() => {
+      const err = new Error('Short');
+      err.formatted = '\x1b[31mLong validation message with details and field list\x1b[0m';
+
+      await appendWizardError('myapp', err);
+
+      const written = mockFsPromises.appendFile.mock.calls[0][1];
+      expect(written).toContain('Long validation message with details and field list');
+      expect(written).not.toContain('\x1b[');
+    });
+
+    it('should write error.message when error.formatted is absent', async() => {
+      await appendWizardError('myapp', new Error('Only message'));
+
+      const written = mockFsPromises.appendFile.mock.calls[0][1];
+      expect(written).toContain('Only message');
+    });
+
+    it('should write error.message when error.formatted is shorter than message', async() => {
+      const err = new Error('Long error message here');
+      err.formatted = '\x1b[31mShort\x1b[0m';
+
+      await appendWizardError('myapp', err);
+
+      const written = mockFsPromises.appendFile.mock.calls[0][1];
+      expect(written).toContain('Long error message here');
+    });
+
+    it('should no-op when appKey is empty or invalid', async() => {
+      await appendWizardError('', new Error('x'));
+      await appendWizardError('UPPERCASE', new Error('x'));
+
+      expect(mockFsPromises.mkdir).not.toHaveBeenCalled();
+      expect(mockFsPromises.appendFile).not.toHaveBeenCalled();
+    });
+
+    it('should not throw when fs fails', async() => {
+      mockFsPromises.mkdir.mockRejectedValue(new Error('Permission denied'));
+
+      await appendWizardError('myapp', new Error('x'));
+
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Could not write wizard error.log'));
     });
   });
 });

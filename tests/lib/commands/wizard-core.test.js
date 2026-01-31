@@ -15,6 +15,10 @@ jest.mock('../../../lib/commands/wizard-dataplane');
 jest.mock('../../../lib/utils/controller-url');
 jest.mock('../../../lib/api/wizard.api');
 jest.mock('../../../lib/generator/wizard');
+const mockPromptForCredentialIdOrKeyRetry = jest.fn();
+jest.mock('../../../lib/generator/wizard-prompts', () => ({
+  promptForCredentialIdOrKeyRetry: (...args) => mockPromptForCredentialIdOrKeyRetry(...args)
+}));
 jest.mock('inquirer');
 jest.mock('ora', () => {
   const mockSpinner = {
@@ -447,6 +451,99 @@ describe('Wizard Core Functions', () => {
       );
       expect(result).toBeNull();
     });
+
+    it('should skip credential when select fails and user chooses skip on retry', async() => {
+      wizardApi.credentialSelection.mockResolvedValue({
+        success: false,
+        error: 'Credential not found'
+      });
+      mockPromptForCredentialIdOrKeyRetry.mockResolvedValue({ skip: true });
+      const configCredential = {
+        action: 'select',
+        credentialIdOrKey: 'missing-cred'
+      };
+      const result = await wizardCore.handleCredentialSelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        configCredential,
+        { allowRetry: true }
+      );
+      expect(result).toBeNull();
+      expect(mockPromptForCredentialIdOrKeyRetry).toHaveBeenCalledWith('Credential not found');
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Skipping credential selection'));
+    });
+
+    it('should retry with new credential when select fails and user enters new id on retry', async() => {
+      wizardApi.credentialSelection
+        .mockResolvedValueOnce({ success: false, error: 'Credential not found' })
+        .mockResolvedValueOnce({ success: true, data: { credentialIdOrKey: 'retry-cred' } });
+      mockPromptForCredentialIdOrKeyRetry.mockResolvedValue({ skip: false, credentialIdOrKey: 'retry-cred' });
+      const configCredential = {
+        action: 'select',
+        credentialIdOrKey: 'missing-cred'
+      };
+      const result = await wizardCore.handleCredentialSelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        configCredential,
+        { allowRetry: true }
+      );
+      expect(result).toBe('retry-cred');
+      expect(wizardApi.credentialSelection).toHaveBeenCalledTimes(2);
+    });
+
+    it('should skip when credentialSelection throws and user chooses skip on retry', async() => {
+      wizardApi.credentialSelection.mockRejectedValue(new Error('Network error'));
+      mockPromptForCredentialIdOrKeyRetry.mockResolvedValue({ skip: true });
+      const configCredential = {
+        action: 'select',
+        credentialIdOrKey: 'some-cred'
+      };
+      const result = await wizardCore.handleCredentialSelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        configCredential,
+        { allowRetry: true }
+      );
+      expect(result).toBeNull();
+      expect(mockPromptForCredentialIdOrKeyRetry).toHaveBeenCalledWith('Network error');
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Skipping credential selection'));
+    });
+
+    it('should retry with new credential when credentialSelection throws and user enters new id on retry', async() => {
+      wizardApi.credentialSelection
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce({ success: true, data: { credentialIdOrKey: 'retry-cred' } });
+      mockPromptForCredentialIdOrKeyRetry.mockResolvedValue({ skip: false, credentialIdOrKey: 'retry-cred' });
+      const configCredential = {
+        action: 'select',
+        credentialIdOrKey: 'some-cred'
+      };
+      const result = await wizardCore.handleCredentialSelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        configCredential,
+        { allowRetry: true }
+      );
+      expect(result).toBe('retry-cred');
+      expect(wizardApi.credentialSelection).toHaveBeenCalledTimes(2);
+    });
+
+    it('should return null when credentialSelection throws and action is create (no retry)', async() => {
+      wizardApi.credentialSelection.mockRejectedValue(new Error('Network error'));
+      const configCredential = {
+        action: 'create',
+        config: { key: 'new-cred', type: 'OAUTH2' }
+      };
+      const result = await wizardCore.handleCredentialSelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        configCredential
+      );
+      expect(result).toBeNull();
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Credential selection failed'));
+      expect(mockPromptForCredentialIdOrKeyRetry).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleTypeDetection', () => {
@@ -486,6 +583,17 @@ describe('Wizard Core Functions', () => {
         mockOpenApiSpec
       );
       expect(result).toBeNull();
+    });
+
+    it('should return null when detectType throws', async() => {
+      wizardApi.detectType.mockRejectedValue(new Error('Network error'));
+      const result = await wizardCore.handleTypeDetection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        mockOpenApiSpec
+      );
+      expect(result).toBeNull();
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Type detection failed'));
     });
   });
 
@@ -590,6 +698,102 @@ describe('Wizard Core Functions', () => {
           detectedType: { recommendedType: 'record-based' }
         }
       )).rejects.toThrow('Configuration generation failed');
+    });
+
+    it('should throw with validation details and formatted when generation fails with errorData', async() => {
+      wizardApi.generateConfig.mockResolvedValue({
+        success: false,
+        error: 'Request validation failed',
+        errorData: {
+          detail: 'Request validation failed',
+          errors: [
+            { field: 'body.openapiSpec', message: 'Required' },
+            { path: 'intent', msg: 'Invalid value' }
+          ]
+        },
+        formattedError: '\x1b[31mValidation Error\x1b[0m\nRequest validation failed'
+      });
+      let thrown;
+      try {
+        await wizardCore.handleConfigurationGeneration(
+          mockDataplaneUrl,
+          mockAuthConfig,
+          {
+            mode: 'create-system',
+            openapiSpec: mockOpenApiSpec,
+            detectedType: { recommendedType: 'record-based' }
+          }
+        );
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeDefined();
+      expect(thrown.message).toContain('Configuration generation failed');
+      expect(thrown.message).toContain('Validation errors:');
+      expect(thrown.message).toContain('body.openapiSpec: Required');
+      expect(thrown.message).toContain('intent: Invalid value');
+      expect(thrown.formatted).toBe('\x1b[31mValidation Error\x1b[0m\nRequest validation failed');
+    });
+
+    it('should throw with configuration.errors in message when generation fails with errorData.configuration.errors (array)', async() => {
+      wizardApi.generateConfig.mockResolvedValue({
+        success: false,
+        error: 'Validation failed',
+        errorData: {
+          detail: 'Invalid config',
+          configuration: {
+            errors: [
+              { field: 'systemKey', message: 'Must be alphanumeric' }
+            ]
+          }
+        }
+      });
+      let thrown;
+      try {
+        await wizardCore.handleConfigurationGeneration(
+          mockDataplaneUrl,
+          mockAuthConfig,
+          {
+            mode: 'create-system',
+            openapiSpec: mockOpenApiSpec,
+            detectedType: { recommendedType: 'record-based' }
+          }
+        );
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeDefined();
+      expect(thrown.message).toContain('Configuration errors:');
+      expect(thrown.message).toContain('systemKey: Must be alphanumeric');
+    });
+
+    it('should throw with configuration.errors in message when generation fails with errorData.configuration.errors (object)', async() => {
+      wizardApi.generateConfig.mockResolvedValue({
+        success: false,
+        error: 'Validation failed',
+        errorData: {
+          configuration: {
+            errors: { systemKey: 'Invalid', name: 'Required' }
+          }
+        }
+      });
+      let thrown;
+      try {
+        await wizardCore.handleConfigurationGeneration(
+          mockDataplaneUrl,
+          mockAuthConfig,
+          {
+            mode: 'create-system',
+            openapiSpec: mockOpenApiSpec,
+            detectedType: { recommendedType: 'record-based' }
+          }
+        );
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeDefined();
+      expect(thrown.message).toContain('configuration.systemKey: Invalid');
+      expect(thrown.message).toContain('configuration.name: Required');
     });
 
     it('should handle single datasourceConfig response', async() => {
@@ -725,6 +929,28 @@ describe('Wizard Core Functions', () => {
         'test-system',
         { aiGeneratedReadme: null }
       );
+    });
+
+    it('should continue with null aiGeneratedReadme when getDeploymentDocs throws', async() => {
+      wizardApi.getDeploymentDocs.mockRejectedValue(new Error('Network error'));
+      wizardGenerator.generateWizardFiles.mockResolvedValue(mockGeneratedFiles);
+      const result = await wizardCore.handleFileSaving(
+        'test-app',
+        mockSystemConfig,
+        mockDatasourceConfigs,
+        'test-system',
+        mockDataplaneUrl,
+        mockAuthConfig
+      );
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Could not fetch AI-generated README'));
+      expect(wizardGenerator.generateWizardFiles).toHaveBeenCalledWith(
+        'test-app',
+        mockSystemConfig,
+        mockDatasourceConfigs,
+        'test-system',
+        { aiGeneratedReadme: null }
+      );
+      expect(result).toEqual(mockGeneratedFiles);
     });
 
     it('should throw error when file generation fails', async() => {

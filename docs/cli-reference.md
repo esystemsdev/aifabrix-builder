@@ -43,6 +43,7 @@ For backward compatibility, anchor links from the old structure are preserved. I
 - `#aifabrix-restart-service` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-restart-service)
 - `#aifabrix-doctor` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-doctor)
 - `#aifabrix-dev-config` → [Developer Isolation Commands](commands/developer-isolation.md#aifabrix-dev-config)
+- `#aifabrix-show-appkey` → [Application Management Commands](commands/application-management.md#aifabrix-show-appkey)
 - `#aifabrix-app-register-appkey` → [Application Management Commands](commands/application-management.md#aifabrix-app-register-appkey)
 - `#aifabrix-app-list` → [Application Management Commands](commands/application-management.md#aifabrix-app-list)
 - `#aifabrix-app-rotate-secret` → [Application Management Commands](commands/application-management.md#aifabrix-app-rotate-secret)

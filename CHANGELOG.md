@@ -1,3 +1,17 @@
+## [2.36.0] - 2026-01-31
+
+### Added
+- **`aifabrix show <appKey>`**: New top-level command to display app info; default (offline) loads from builder/ or integration/ (variables.yaml); `--online` fetches from controller; `--json` for machine output; clear Source label (offline/online); roles, permissions, authentication, portal input configs, databases; for external type online, External system (dataplane) section with dataSources and OpenAPI
+- **Wizard improvements**: `wizard [appName]` positional; mode-first flow (Create new | Add datasource); load/save `integration/<appKey>/wizard.yaml`; known platforms from dataplane (`getWizardPlatforms`); add-datasource validation via `getExternalSystem`; credential step selection (`promptForCredentialAction`); error.log helper (`appendWizardError`) and resume instructions; removed "Edit configuration manually" from review step
+
+### Changed
+- **Wizard**: Flow reorder (Step 1 = mode), config path resolution; documentation (wizard.md, cli-reference, external-integration)
+- **Documentation**: application-management.md (show command), wizard.md (flow, wizard.yaml, error.log, resume)
+
+### Technical
+- New modules: lib/app/show.js, lib/app/show-display.js; lib/commands/wizard-helpers.js, wizard-core-helpers.js; getWizardPlatforms in wizard.api.js; appendWizardError in cli-utils; writeWizardConfig in wizard-config-validator
+- Tests: show.test.js, show-display.test.js; wizard-core, wizard-headless, wizard-helpers, cli-utils
+
 ## [2.33.6] - 2026-01-30
 
 ### Fixed

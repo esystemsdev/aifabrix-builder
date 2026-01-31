@@ -1,6 +1,6 @@
 {
   "name": "@aifabrix/builder",
-  "version": "2.33.6",
+  "version": "2.36.0",
   "description": "AI Fabrix Local Fabric & Deployment SDK",
   "main": "lib/index.js",
   "bin": {
@@ -10,7 +10,7 @@
   "scripts": {
     "test": "node tests/scripts/test-wrapper.js",
     "test:ci": "bash tests/scripts/ci-simulate.sh",
-    "test:coverage": "jest --config jest.config.coverage.js --coverage --runInBand",
+    "test:coverage": "cross-env RUN_COVERAGE=1 node tests/scripts/test-wrapper.js",
     "test:coverage:nyc": "nyc --reporter=text --reporter=lcov --reporter=html jest --config jest.config.coverage.js --runInBand",
     "test:watch": "jest --watch",
     "test:integration": "jest --config jest.config.integration.js --runInBand",

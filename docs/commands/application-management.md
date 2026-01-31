@@ -6,6 +6,43 @@ Application management commands for registering and managing applications with t
 
 ---
 
+<a id="aifabrix-show-appkey"></a>
+## aifabrix show <appKey>
+
+Show application info from local builder/ or integration/ folder (offline) or from the controller (with `--online`).
+
+**What:** By default loads and displays app info from the local **builder/** or **integration/** folder (offline). With `--online` it fetches application data from the controller. Output clearly indicates whether the source is offline or online. Does not run schema validation — use `aifabrix validate` for that.
+
+**When:** To inspect application key, type, roles, permissions, authentication, portal input configurations, and databases; or to compare local config with what is on the controller.
+
+**Usage:**
+```bash
+# Offline: show from local builder/ or integration/ (variables.yaml)
+aifabrix show myapp
+
+# Online: fetch from controller (requires login)
+aifabrix show myapp --online
+
+# JSON output (for scripting)
+aifabrix show myapp --json
+aifabrix show myapp --online --json
+```
+
+**Arguments:**
+- `<appKey>` - Application key (e.g. app name or external system key)
+
+**Options:**
+- `--online` - Fetch application data from the controller (requires `aifabrix login`)
+- `--json` - Output a single JSON object to stdout
+
+**Output:**
+- **Offline:** First line is `Source: offline (builder/myapp/variables.yaml)` or the actual path (e.g. `integration/myapp/variables.yaml`). Then Application (key, display name, description, type, deployment, image, registry, port, health, build), Roles, Permissions, Authentication, Portal input configurations, Databases. For type **external**, also shows External integration (schemaBasePath, systems, dataSources) and a hint to run with `--online` for dataplane data.
+- **Online:** First line is `Source: online (https://controller.example.com)`. Then application details from the controller API; for type **external**, a section **External system (dataplane)** with system key, display name, type, status, dataSources, application summary, and OpenAPI files/endpoints when available.
+
+**Exit codes:** `0` on success; `1` if variables.yaml not found or invalid YAML (offline), or on auth failure / 404 / API error (online).
+
+---
+
 ## aifabrix app
 
 Application management commands for registering and managing applications with the Miso Controller.

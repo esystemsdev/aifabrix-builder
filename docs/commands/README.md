@@ -25,6 +25,7 @@ Complete command reference organized by concept with examples and troubleshootin
 
 ### Application Management
 - [Application Management Commands](application-management.md) - Application registration and management
+  - `aifabrix show` - Show app info from local builder/integration (offline) or controller (--online)
   - `aifabrix app register` - Register application and get pipeline credentials
   - `aifabrix app list` - List applications in an environment
   - `aifabrix app rotate-secret` - Rotate pipeline ClientSecret
@@ -50,7 +51,7 @@ Complete command reference organized by concept with examples and troubleshootin
 
 ### External Integration
 - [External Integration Commands](external-integration.md) - External system integration
-  - `aifabrix wizard` - Interactive wizard for creating external systems
+  - `aifabrix wizard [appName]` - Interactive wizard (mode first; loads/saves integration/<appName>/wizard.yaml)
   - `aifabrix download` - Download external system from dataplane
   - `aifabrix test` - Run unit tests for external system (local validation)
   - `aifabrix test-integration` - Run integration tests via dataplane pipeline API

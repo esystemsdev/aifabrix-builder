@@ -37,11 +37,12 @@ jest.mock('chalk', () => {
 
 const fs = require('fs').promises;
 
-// Mock fs.promises
+// Mock fs.promises (writeFile used by writeWizardConfig in wizard-config-validator)
 jest.mock('fs', () => ({
   promises: {
     access: jest.fn(),
-    mkdir: jest.fn()
+    mkdir: jest.fn(),
+    writeFile: jest.fn().mockResolvedValue(undefined)
   }
 }));
 
@@ -157,6 +158,9 @@ describe('Wizard Command Handler', () => {
     });
     wizardPrompts.promptForConfigReview.mockResolvedValue({
       action: 'accept'
+    });
+    wizardPrompts.promptForCredentialAction.mockResolvedValue({
+      action: 'skip'
     });
 
     // Wizard generator mock

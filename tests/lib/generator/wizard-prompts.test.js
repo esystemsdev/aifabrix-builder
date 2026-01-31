@@ -128,18 +128,12 @@ describe('Wizard Prompts', () => {
       expect(result.action).toBe('accept');
     });
 
-    it('should prompt for config review with edit', async() => {
+    it('should prompt for config review with cancel', async() => {
       const systemConfig = { key: 'test-system' };
       const datasourceConfigs = [{ key: 'ds1' }];
-      const editedConfig = JSON.stringify({
-        systemConfig: { key: 'edited-system' },
-        datasourceConfigs: [{ key: 'edited-ds1' }]
-      });
-      inquirer.prompt.mockResolvedValue({ action: 'edit', editedConfig });
+      inquirer.prompt.mockResolvedValue({ action: 'cancel' });
       const result = await wizardPrompts.promptForConfigReview(systemConfig, datasourceConfigs);
-      expect(result.action).toBe('edit');
-      expect(result.systemConfig).toBeDefined();
-      expect(result.datasourceConfigs).toBeDefined();
+      expect(result.action).toBe('cancel');
     });
   });
 

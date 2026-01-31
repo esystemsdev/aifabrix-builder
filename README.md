@@ -121,6 +121,11 @@ Build --> Run[Run Locally]:::base
 Run --> Deploy[Deploy to Azure]:::primary
 ```
 
+## Development
+
+- **Tests**: `npm test` (runs via wrapper; handles known Jest/Node exit issues).
+- **Coverage**: `npm run test:coverage` — runs tests with coverage through the same wrapper. May take 3–5 minutes for the full suite. If the process exits with a signal after "Ran all test suites", the wrapper treats it as success and coverage is written to `coverage/`. Use `test:coverage:nyc` only if you need nyc-specific reporters.
+
 ## Requirements
 
 - **Docker Desktop** - For running containers

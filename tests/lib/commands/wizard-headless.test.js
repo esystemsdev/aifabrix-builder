@@ -102,7 +102,8 @@ describe('Wizard Headless Mode Handler', () => {
       expect(wizardCore.handleCredentialSelection).toHaveBeenCalledWith(
         mockDataplaneUrl,
         mockAuthConfig,
-        mockWizardConfig.credential
+        mockWizardConfig.credential,
+        { allowRetry: false }
       );
       expect(wizardCore.handleTypeDetection).toHaveBeenCalled();
       expect(wizardCore.handleConfigurationGeneration).toHaveBeenCalledWith(
@@ -212,7 +213,8 @@ describe('Wizard Headless Mode Handler', () => {
       expect(wizardCore.handleCredentialSelection).toHaveBeenCalledWith(
         mockDataplaneUrl,
         mockAuthConfig,
-        configWithCredential.credential
+        configWithCredential.credential,
+        { allowRetry: false }
       );
       expect(wizardCore.handleConfigurationGeneration).toHaveBeenCalledWith(
         expect.anything(),

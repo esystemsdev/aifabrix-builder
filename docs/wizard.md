@@ -9,23 +9,35 @@ The wizard helps you:
 - Add datasources to existing systems
 - Generate configurations automatically using AI
 - Validate configurations before deployment
-- Support headless mode via `--config wizard.yaml` for automated/non-interactive deployments
+- Support headless mode via `--config <file>` or `--silent` (with app name and existing `wizard.yaml`) for automated/non-interactive runs
 
 ## Quick Start
 
+### Command options
+
+| Option | Description |
+|--------|-------------|
+| `[appName]` or `-a, --app <app>` | Application/integration key. When set, the wizard uses `integration/<appName>/wizard.yaml` for load/save and `error.log`. |
+| `--config <file>` | Run headless using the given wizard config file (any path). Skips all prompts. |
+| `--silent` | Run headless using **only** `integration/<appName>/wizard.yaml` (requires app name). No prompts; file must exist and be valid. |
+
 ### Interactive Mode
 
-Run the wizard command:
+Run the wizard command (mode is asked first, then app name or system for add-datasource):
 
 ```bash
 aifabrix wizard
 ```
 
-Or with options (uses controller and environment from `config.yaml`):
+Or with an app name (loads `integration/<appName>/wizard.yaml` if present; saves state and errors there):
 
 ```bash
-aifabrix wizard --app my-integration
+aifabrix wizard my-integration
+# or
+aifabrix wizard -a my-integration
 ```
+
+If `integration/<appName>/wizard.yaml` exists and is valid, the wizard shows a short summary and asks **Run with saved config?** — choose **Yes** to run headless with that config, or **No** to be told to edit the file and run `aifabrix wizard <appName>` again.
 
 You can also use the wizard when creating an external system:
 
@@ -35,50 +47,69 @@ aifabrix create my-integration --type external --wizard
 
 ### Headless Mode (Non-Interactive)
 
-For automated deployments, use a configuration file:
+For automated deployments you can run without prompts in two ways:
+
+**1. Config file (any path):**
 
 ```bash
 aifabrix wizard --config wizard.yaml
 ```
 
-This mode skips all prompts and uses values from the configuration file.
+This mode skips all prompts and uses values from the specified configuration file.
+
+**2. Silent mode (app-based wizard.yaml):**
+
+```bash
+aifabrix wizard my-integration --silent
+```
+
+This runs headless using **only** `integration/my-integration/wizard.yaml`. No prompts are shown. The file must exist and be valid; otherwise the command fails with a clear error. Use this in CI/CD when the app folder already has a complete `wizard.yaml`.
+
+### Config Path and Resume
+
+- When you provide an app name (e.g. `aifabrix wizard my-integration`), the wizard uses the folder `integration/my-integration/` for:
+  - **wizard.yaml** – Loaded at start if it exists. If valid, a summary is shown and you are asked **Run with saved config?** (Yes = run headless with that config; No = exit with a message to edit the file and run again). Saved on success or on error (partial state).
+  - **error.log** – Errors are appended here (timestamp + message; validation details from the API are included when available; no secrets).
+- To resume after an error: run `aifabrix wizard <appKey>` again. The CLI will show: `To resume: aifabrix wizard <appKey>` and `See integration/<appKey>/error.log for details.`
 
 ## Wizard Workflow
 
-The wizard follows the dataplane API workflow:
+The wizard asks **mode first** (before app name or dataplane), then creates a session and follows the dataplane API workflow:
 
 ```yaml
-Step 1: Create Session        POST /api/v1/wizard/sessions
-Step 2: Parse OpenAPI         POST /api/v1/wizard/parse-openapi
-Step 3: Credential Selection  POST /api/v1/wizard/credential-selection (optional)
-Step 4: Detect Type           POST /api/v1/wizard/detect-type
-Step 5: Generate Config       POST /api/v1/wizard/generate-config
-Step 6: Validate              POST /api/v1/wizard/validate
-Step 7: Save Files            Local file generation
+Step 1: Mode → Create session   "Create new" → app name; "Add datasource" → system ID/key (validated on dataplane)
+Step 2: Source                  OpenAPI file/URL, MCP server, or Known platform (from dataplane when available)
+Step 3: Credential              Skip | Create new | Use existing (optional)
+Step 4: Detect Type             POST /api/v1/wizard/detect-type
+Step 5: Generate Config         POST /api/v1/wizard/generate-config
+Step 6: Review & Validate       Accept and save, or Cancel
+Step 7: Save Files              Local file generation; wizard.yaml written to integration/<appKey>/
 ```
 
-### Step 1: Create Session
+### Step 1: Mode and Create Session
 
-Creates a wizard session with the selected mode:
-- **Create a new external system** - Start from scratch
-- **Add datasource to existing system** - Add to an existing integration
+The first question is: **What would you like to do?**
+- **Create a new external system** – You are then prompted for application name (or it is taken from `aifabrix wizard <appName>`). The folder `integration/<appKey>/` is created and used for wizard.yaml and error.log.
+- **Add datasource to existing system** – You are prompted for the existing system ID or key. The builder validates that the system exists on the dataplane (and re-prompts if not). The integration folder is derived from the system key.
 
-For add-datasource mode, provide the existing system ID or key.
+After that, a wizard session is created via `POST /api/v1/wizard/sessions`.
 
-### Step 2: Parse OpenAPI
+### Step 2: Source Selection
 
-Select your source type and parse the OpenAPI specification:
-- **OpenAPI file** - Local OpenAPI specification file
-- **OpenAPI URL** - Remote OpenAPI specification URL
-- **MCP server** - Model Context Protocol server
-- **Known platform** - Pre-configured platform (HubSpot, Salesforce, etc.)
+Select your source type; then the wizard parses OpenAPI or tests the connection as needed:
+- **OpenAPI file** – Local OpenAPI specification file
+- **OpenAPI URL** – Remote OpenAPI specification URL
+- **MCP server** – Model Context Protocol server
+- **Known platform** – Pre-configured platform. When the dataplane exposes `GET /api/v1/wizard/platforms`, the list of platforms is fetched from the dataplane; otherwise a default list (e.g. HubSpot, Salesforce) is used. If the endpoint is missing or returns an empty list, the "Known platform" choice is hidden.
 
 ### Step 3: Credential Selection (Optional)
 
 Configure credentials for the external system:
-- **Create** - Create a new credential
-- **Select** - Use an existing credential
-- **Skip** - Configure credentials later
+- **Skip** – No credentials yet; you can add them later in `env.template` or via the dataplane. Choose this if you don't have test credentials.
+- **Create** – Create a new credential on the dataplane
+- **Use existing** – Enter a credential ID or key that exists on the dataplane
+
+**Validation:** The dataplane validates credentials when you choose "Use existing" (POST `/api/v1/wizard/credential-selection`). If the credential is not found or invalid, the wizard re-prompts for another ID/key or lets you leave the field empty to skip.
 
 ### Step 4: Detect API Type
 
@@ -109,11 +140,13 @@ Validates all generated configurations against:
 
 Returns validation errors and warnings.
 
-**See Also:** [Validation Commands](../commands/validation.md) - Complete validation documentation including schema details and validation principles.
+**See Also:** [Validation Commands](commands/validation.md) - Complete validation documentation including schema details and validation principles.
 
 ### Step 7: Save Files
 
-The wizard saves all files to `integration/<app-name>/`:
+The wizard saves all files to `integration/<appKey>/`:
+- `wizard.yaml` - Saved wizard state (loaded on resume; saved on success or on error as partial state)
+- `error.log` - Errors appended here (timestamp + message; validation details when the API returns them)
 - `variables.yaml` - Application variables and external integration configuration
 - `<systemKey>-system.json` - System configuration
 - `<systemKey>-datasource-*.json` - Datasource configurations
@@ -125,7 +158,9 @@ The wizard saves all files to `integration/<app-name>/`:
 
 ## Headless Mode Configuration (wizard.yaml)
 
-For automated deployments, create a `wizard.yaml` configuration file:
+For automated deployments, use a `wizard.yaml` file. When running interactively with an app name (e.g. `aifabrix wizard my-integration`), the wizard reads and writes `integration/my-integration/wizard.yaml` for load/save and resume.
+
+Example location: `integration/<appKey>/wizard.yaml`
 
 ```yaml
 # wizard.yaml - Headless configuration for external system wizard
@@ -320,14 +355,16 @@ All configurations are validated against:
 
 Validation errors are displayed before saving files.
 
-**See Also:** [Validation Commands](../commands/validation.md) - Complete validation documentation including schema architecture, validation flow, and troubleshooting.
+**See Also:** [Validation Commands](commands/validation.md) - Complete validation documentation including schema architecture, validation flow, and troubleshooting.
 
 ## File Structure
 
 The wizard creates the following file structure:
 
 ```yaml
-integration/<app-name>/
+integration/<appKey>/
+├── wizard.yaml                 # Saved wizard state (load/save and resume)
+├── error.log                   # Errors appended (timestamp + message; validation details when available)
 ├── variables.yaml              # Application variables and external integration config
 ├── <systemKey>-system.json     # System configuration
 ├── <systemKey>-datasource-*.json   # Datasource configurations
@@ -363,13 +400,13 @@ The wizard generates deployment scripts for both Unix-like systems (Bash) and Wi
 
 **Bash (Linux/macOS):**
 ```bash
-cd integration/<app-name>
+cd integration/<appKey>
 ./deploy.sh
 ```
 
 **PowerShell (Windows):**
 ```powershell
-cd integration\<app-name>
+cd integration\<appKey>
 .\deploy.ps1
 ```
 
@@ -393,7 +430,7 @@ The deployment scripts will:
 You can also deploy using the CLI directly:
 
 ```bash
-aifabrix deploy <app-name>
+aifabrix deploy <appKey>
 ```
 
 ## Troubleshooting
@@ -409,7 +446,7 @@ aifabrix login
 Or register your application:
 
 ```bash
-aifabrix app register <app-name>
+aifabrix app register <appKey>
 ```
 
 ### Invalid token or insufficient permissions
@@ -443,7 +480,8 @@ If OpenAPI parsing fails:
 
 ### Configuration Generation Failed
 
-If AI generation fails:
+If AI generation fails (e.g. "Request validation failed"):
+- The CLI shows validation details when the dataplane returns them (field-level errors, configuration errors). The same details are written to `integration/<appKey>/error.log` (plain text, no ANSI codes) so you can inspect exactly which fields failed.
 - Check your dataplane connection
 - Verify authentication is working
 - Try again (generation may timeout on large specifications)
@@ -451,11 +489,10 @@ If AI generation fails:
 ### Validation Errors
 
 If validation fails:
-- Review the error messages
-- Edit the configuration manually in Step 7 (interactive mode)
-- Fix the wizard.yaml and re-run (headless mode)
+- Review the error messages (and `integration/<appKey>/error.log` for full validation details when the API returns them)
+- Fix the configuration: edit `integration/<appKey>/wizard.yaml` and run `aifabrix wizard <appKey>` again, or re-run the wizard interactively from step 1
 
-For detailed validation information, see [Validation Commands](../commands/validation.md).
+For detailed validation information, see [Validation Commands](commands/validation.md).
 
 ### Headless Mode Validation Failed
 
@@ -487,10 +524,14 @@ aifabrix wizard --app my-api
 ### Headless Mode (CI/CD Pipeline)
 
 ```bash
-# Create wizard.yaml in your repo (can include deployment.controller, deployment.environment, deployment.dataplane to override config)
-# Run in CI/CD (uses config or wizard.yaml deployment overrides)
+# Option 1: Config file (any path)
 aifabrix wizard --config wizard.yaml
+
+# Option 2: Silent mode (uses integration/<app>/wizard.yaml; no prompts)
+aifabrix wizard my-integration --silent
 ```
+
+Create `wizard.yaml` in your repo (or under `integration/<app>/wizard.yaml` for silent mode). You can include `deployment.controller`, `deployment.environment`, and `deployment.dataplane` to override config.
 
 ## Reference
 
@@ -520,5 +561,6 @@ The wizard uses the following dataplane wizard API endpoints:
 | `GET /api/v1/wizard/preview/{id}` | Get configuration preview |
 | `POST /api/v1/wizard/test-mcp-connection` | Test MCP connection |
 | `GET /api/v1/wizard/deployment-docs/{key}` | Get deployment docs |
+| `GET /api/v1/wizard/platforms` | Get known platforms (optional; empty/404 hides "Known platform" in Step 2) |
 
 For detailed API documentation, see the dataplane API documentation.

@@ -10,11 +10,11 @@ Commands for creating, testing, and managing external system integrations.
 
 Interactive wizard for creating external systems.
 
-**What:** Provides an interactive guided workflow for creating external system integrations. The wizard acts as a thin wrapper around the dataplane wizard API - all wizard logic (parsing, type detection, AI generation, validation) is handled by the dataplane server.
+**What:** Provides an interactive guided workflow for creating external system integrations. The first step is **mode** (Create new external system | Add datasource to existing system); then app name or system ID/key, then source, credential, and the rest. The wizard acts as a thin wrapper around the dataplane wizard API.
 
 **When:** Use when creating new external systems or adding datasources to existing systems. The wizard helps you:
 - Create new external systems from OpenAPI specifications
-- Add datasources to existing systems
+- Add datasources to existing systems (system ID/key is validated on the dataplane)
 - Generate configurations automatically using AI
 - Validate configurations before deployment
 
@@ -22,15 +22,19 @@ This command uses the active `controller` and `environment` from `config.yaml` (
 
 **Usage:**
 ```bash
-# Interactive wizard (will prompt for app name)
+# Interactive wizard (mode first, then prompts)
 aifabrix wizard
 
-# Wizard with app name
-aifabrix wizard --app my-integration
+# Wizard for an app (loads/saves integration/<appName>/wizard.yaml and error.log)
+aifabrix wizard my-integration
+# or
+aifabrix wizard -a my-integration
 
-# Uses controller/environment from config.yaml
-aifabrix wizard --app my-integration
+# Headless from a config file
+aifabrix wizard --config path/to/wizard.yaml
 ```
+
+**Resume:** After an error, if an app key is known, state is saved to `integration/<appKey>/wizard.yaml` and the error is appended to `integration/<appKey>/error.log`. Run `aifabrix wizard <appKey>` to resume.
 
 **Options:**
 - `-a, --app <app>` - Application name (if not provided, will prompt)

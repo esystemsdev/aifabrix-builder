@@ -218,3 +218,83 @@ flowchart LR
 - Add a brief note in command help that up-miso is intended for testing and uses auto-generated secrets when missing.  
 - Consider integration test that runs up-miso with mocked infra/run (optional).
 
+---
+
+## Implementation Validation Report
+
+**Date**: 2026-01-30  
+**Plan**: .cursor/plans/42-up-miso_and_up-dataplane_commands.plan.md  
+**Status**: COMPLETE
+
+### Executive Summary
+
+Implementation of the `up-miso` and `up-dataplane` commands is complete. All required files exist, CLI registration is in place, shared helpers and image-override support are implemented, and unit tests exist and pass. Format, lint, and test all pass. One minor deviation: up-miso uses `generateEnvFile(..., force: false)` (preserves existing .env) instead of plan’s `force: true`; command help notes testing use.
+
+### Task Completion
+
+- The plan does not use checkbox-style tasks (`- [ ]` / `- [x]`). Requirements were validated against the plan’s sections (up-miso flow, up-dataplane flow, implementation notes).
+- **Requirements coverage**: All described flows and code changes are implemented.
+
+### File Existence Validation
+
+
+| File                                          | Status                                                            |
+| --------------------------------------------- | ----------------------------------------------------------------- |
+| lib/commands/up-miso.js                       | Exists (143 lines)                                                |
+| lib/commands/up-dataplane.js                  | Exists (109 lines)                                                |
+| lib/commands/up-common.js                     | Exists (72 lines)                                                 |
+| lib/cli.js (up-miso, up-dataplane registered) | Registered with options                                           |
+| lib/app/run.js, run path                      | Image overrides via options passed to run                         |
+| lib/utils/compose-generator.js                | buildImageConfig(imageOverride), options.image/imageOverride used |
+| lib/app/deploy.js                             | imageOverride / options.image supported                           |
+| lib/app/register.js                           | imageOverride / options.image supported                           |
+| lib/infrastructure (checkInfraHealth)         | checkInfraHealth(undefined, { strict: true }) used in up-miso     |
+| lib/validation/template.js copyTemplateFiles  | Used via ensureAppFromTemplate in up-common                       |
+| tests/lib/commands/up-miso.test.js            | Exists                                                            |
+| tests/lib/commands/up-dataplane.test.js       | Exists                                                            |
+| tests/lib/commands/up-common.test.js          | Exists                                                            |
+
+
+### Test Coverage
+
+- **Unit tests**: Present for `up-miso`, `up-dataplane`, and `up-common` (parseImageOptions, buildDataplaneImageRef, ensureAppFromTemplate, handleUpMiso, handleUpDataplane; infra/auth/config/secrets/run/register/deploy mocked).
+- **Test layout**: Mirrors `lib/commands/` under `tests/lib/commands/`.
+- **Run**: All tests pass (178 suites, 3984 tests; up-miso, up-dataplane, up-common suites included).
+
+### Code Quality Validation
+
+- **Format**: `npm run lint:fix` — PASSED (exit 0).
+- **Lint**: `npm run lint` — PASSED (0 errors, 0 warnings).
+- **Tests**: `npm test` — PASSED (all tests pass).
+
+### Cursor Rules Compliance
+
+- **CLI command pattern**: Commander.js; options; try/catch; handleCommandError; chalk via logger.
+- **Error handling**: try-catch; clear messages (“Infrastructure is not up”, “Login required”, “Dataplane is only supported in dev”).
+- **JSDoc**: Public functions in up-miso, up-dataplane, up-common have JSDoc.
+- **File/function size**: up-miso 143, up-dataplane 109, up-common 72 lines (all ≤500); functions within size limits.
+- **Module pattern**: CommonJS; named exports.
+- **Security**: No hardcoded secrets; secrets via saveLocalSecret / generateEnvFile; no secrets in logs.
+- **Shared helper**: “Ensure app from template” in `lib/commands/up-common.js` (ensureAppFromTemplate), used by both commands.
+- **Image overrides**: Run path uses options.image in compose-generator; register/deploy use imageOverride/options.image.
+
+### Implementation Completeness
+
+- **up-miso**: Infra check → ensure keycloak, miso-controller, dataplane from template → set URL secrets → resolve (generateEnvFile, no force) → run keycloak, miso-controller, dataplane with image/registry overrides. CLI: --registry, --registry-mode, --image key=value (repeatable).
+- **up-dataplane**: Auth check → environment === dev → ensure dataplane from template → register or rotate → deploy with image/registry overrides. CLI: --registry, --registry-mode, --image.
+- **Register/deploy overrides**: register.js and deploy.js accept imageOverride/options.image; up-dataplane passes them.
+
+### Issues and Recommendations
+
+1. **Resolve force flag**: Plan specified `generateEnvFile(..., force: true)` for auto-generate; implementation uses `force: false` (preserves existing .env). Acceptable if intentional for non-destructive default; for “testing only, auto-generate missing” the resolve command’s `--force` or generateEnvFile with force=true can be used. Command help already notes testing use.
+2. **Optional**: Add integration test that runs up-miso with mocked infra/run (as in plan recommendations).
+
+### Final Validation Checklist
+
+- All described tasks/requirements implemented
+- All mentioned files exist and are implemented
+- Tests exist for up-miso, up-dataplane, up-common and pass
+- Format and lint pass
+- Cursor rules compliance verified
+- Implementation complete
+
