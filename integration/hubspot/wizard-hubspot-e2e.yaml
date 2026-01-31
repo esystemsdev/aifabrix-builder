@@ -13,4 +13,4 @@ preferences:
   enableRBAC: false
 deployment:
   controller: http://localhost:3110
-  environment: miso
+  environment: dev
