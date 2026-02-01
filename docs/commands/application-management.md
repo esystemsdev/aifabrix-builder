@@ -36,16 +36,48 @@ aifabrix show myapp --online --json
 - `--json` - Output a single JSON object to stdout
 
 **Output:**
-- **Offline:** First line is `Source: offline (builder/myapp/variables.yaml)` or the actual path (e.g. `integration/myapp/variables.yaml`). Then Application (key, display name, description, type, deployment, image, registry, port, health, build), Roles, Permissions, Authentication, Portal input configurations, Databases. For type **external**, also shows External integration (schemaBasePath, systems, dataSources) and a hint to run with `--online` for dataplane data.
-- **Online:** First line is `Source: online (https://controller.example.com)`. Then application details from the controller API; for type **external**, a section **External system (dataplane)** with system key, display name, type, status, dataSources, application summary, and OpenAPI files/endpoints when available.
+- **Offline:** First line is `Source: offline (builder/myapp/variables.yaml)` or the actual path (e.g. `integration/myapp/variables.yaml`). Then Application (key, display name, description, type, deployment, image, registry, port, health, build), Roles, Permissions, Authentication, Portal input configurations, Databases. For type **external**, also shows External integration (schemaBasePath, systems, dataSources) and a hint to run `aifabrix show <appKey> --online` or `aifabrix app show <appKey>` for dataplane data.
+- **Online:** First line is `Source: online (https://controller.example.com)`. Then application details from the controller API; for type **external**, a section **External system (dataplane)** with system key, display name, type, status, dataSources, application summary, OpenAPI files/endpoints when available, and **Service links** when the system has OpenAPI or MCP: REST OpenAPI docs URL (`/api/v1/rest/{systemKey}/docs`) and MCP docs URL per dataSource (`/api/v1/mcp/{systemKey}/{resourceType}/docs`).
 
 **Exit codes:** `0` on success; `1` if variables.yaml not found or invalid YAML (offline), or on auth failure / 404 / API error (online).
+
+**See also:** To show application data from the controller only (online), you can use [aifabrix app show \<appKey\>](#aifabrix-app-show-appkey), which is equivalent to `aifabrix show <appKey> --online`.
 
 ---
 
 ## aifabrix app
 
 Application management commands for registering and managing applications with the Miso Controller.
+
+<a id="aifabrix-app-show-appkey"></a>
+### aifabrix app show <appKey>
+
+Show application from the controller (online). Same as `aifabrix show <appKey> --online`.
+
+**What:** Fetches and displays application data from the controller. Use this when you want to see the registered app and, for **external** type, dataplane details (External system section, dataSources, OpenAPI/MCP links) without using the top-level `show` command with `--online`.
+
+**When:** To inspect what is on the controller for an app (e.g. `dataplane`); to see external system data as on the dataplane.
+
+**Usage:**
+```bash
+# Show application from controller (requires login)
+aifabrix app show dataplane
+
+# JSON output (for scripting)
+aifabrix app show dataplane --json
+```
+
+**Arguments:**
+- `<appKey>` - Application key (e.g. `dataplane`, or any registered app key)
+
+**Options:**
+- `--json` - Output a single JSON object to stdout
+
+**Output:** Same as [aifabrix show \<appKey\>](#aifabrix-show-appkey) with `--online`: source line `Source: online (controller URL)`, Application details, and for type **external** the **External system (dataplane)** section with dataSources and service links.
+
+**Exit codes:** `0` on success; `1` on auth failure, 404, or API error (requires `aifabrix login`).
+
+---
 
 <a id="aifabrix-app-register-appkey"></a>
 ### aifabrix app register <appKey>

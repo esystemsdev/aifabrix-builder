@@ -128,9 +128,56 @@ aifabrix datasource list
 aifabrix datasource validate hubspot-company
 ```
 
+## Wizard E2E tests and use case coverage
+
+The script `integration/hubspot/test.js` runs end-to-end wizard and validation tests. It covers all wizard use cases from [Wizard Guide](../../docs/wizard.md):
+
+| Use case | Test ID | Description |
+|----------|---------|-------------|
+| **Headless config (wizard.yaml)** | | |
+| Required `appName` | 2.1 | Rejects config missing `appName` |
+| Valid `appName` pattern (lowercase, hyphens/underscores) | 2.2 | Rejects uppercase in app name |
+| Required `mode` | 2.5 | Rejects invalid `mode` enum |
+| Required `source` block | 2.3 | Rejects config without `source` |
+| Valid `source.type` | 2.4 | Rejects invalid source type |
+| `openapi-file` requires `filePath` | 2.7 | Rejects missing/non-existent OpenAPI file |
+| `openapi-url` requires `url` | 2.8 | Rejects `openapi-url` without `url` |
+| `known-platform` requires `platform` | 2.6 | Rejects known-platform without `platform` |
+| **Mode: add-datasource** | | |
+| `systemIdOrKey` required when mode=add-datasource | 2.9 | Rejects add-datasource without systemIdOrKey |
+| **Credential** | | |
+| `credential.action=select` requires `credentialIdOrKey` | 2.10 | Rejects select without credentialIdOrKey |
+| `credential.action=create` requires `config` | 2.11 | Rejects create without config |
+| **Positive flows** | | |
+| Full wizard with OpenAPI file | 1.1 | Complete flow with local OpenAPI file |
+| Wizard with known platform | 1.2 | Flow using known-platform (e.g. HubSpot) |
+| Wizard with env var substitution in deployment | 1.6 | `${CONTROLLER_URL}`, `${DATAPLANE_URL}` in wizard.yaml |
+| Real credential creation (real-data) | 1.3 | Credential create with real OAuth2 (optional env) |
+| **Post-wizard validation (external system)** | | |
+| RBAC: permissions reference existing roles | 2.12 | Rejects permission referencing non-existent role |
+| RBAC: rbac.yaml valid YAML and structure | 2.13 | Rejects invalid YAML in rbac.yaml |
+| Datasource: dimensions required in fieldMappings | 2.14 | Rejects missing dimensions |
+| Datasource: dimension key pattern | 2.15 | Rejects invalid dimension key |
+| Datasource: attribute path pattern | 2.16 | Rejects invalid attribute path |
+| Datasource: dimensions must be object | 2.17 | Rejects dimensions as array |
+
+**Run tests:**
+
+```bash
+# All tests (positive may skip if dataplane/controller unavailable)
+node integration/hubspot/test.js
+
+# Negative only (no dataplane required)
+node integration/hubspot/test.js --type negative
+
+# Specific test
+node integration/hubspot/test.js --test "2.1,2.2"
+```
+
 ## Documentation
 
 - [External Systems Guide](../../docs/external-systems.md) - Complete guide with examples
+- [Wizard Guide](../../docs/wizard.md) - Wizard workflow and headless config
 - [CLI Reference](../../docs/cli-reference.md) - All commands
 - [Configuration Reference](../../docs/CONFIGURATION.md) - Config file details
 

@@ -1,3 +1,14 @@
+## [2.36.1] - 2026-02-01
+
+### Changed
+- **HubSpot integration**: Removed deprecated wizard configuration from wizard.yaml; updated wizard-hubspot-e2e.yaml
+
+### Fixed
+- **Lint**: integration/hubspot/test-dataplane-down.js — removed unused CONTROLLER_URL, added JSDoc return description for cleanupTempConfig
+
+### Technical
+- Deleted integration/test-hubspot/wizard.yaml
+
 ## [2.36.0] - 2026-01-31
 
 ### Added

@@ -18,19 +18,14 @@ const yaml = require('js-yaml');
 const chalk = require('chalk');
 const { getDeploymentAuth } = require('../../lib/utils/token-manager');
 const { discoverDataplaneUrl } = require('../../lib/commands/wizard-dataplane');
+const { resolveControllerUrl } = require('../../lib/utils/controller-url');
+const { resolveEnvironment } = require('../../lib/core/config');
 
 const execFileAsync = promisify(execFile);
 
-const DEFAULT_CONTROLLER_URL = process.env.CONTROLLER_URL || 'http://localhost:3110';
-const DEFAULT_ENVIRONMENT = process.env.ENVIRONMENT || 'miso';
-const DEFAULT_DATAPLANE_URL = process.env.DATAPLANE_URL || '';
-const DEFAULT_OPENAPI_FILE = process.env.HUBSPOT_OPENAPI_FILE ||
-  '/workspace/aifabrix-dataplane/data/hubspot/openapi/companies.json';
-const LOCAL_ENV_PATH = path.join(process.cwd(), 'integration', 'hubspot', '.env');
-const DEFAULT_ENV_PATH = process.env.HUBSPOT_ENV_PATH ||
-  (fsSync.existsSync(LOCAL_ENV_PATH) ? LOCAL_ENV_PATH : '/workspace/aifabrix-dataplane/data/hubspot/.env');
-
+/** Single source for test config: integration/hubspot/.env */
 const HUBSPOT_DIR = path.join(process.cwd(), 'integration', 'hubspot');
+const LOCAL_ENV_PATH = path.join(HUBSPOT_DIR, '.env');
 const ARTIFACT_DIR = path.join(HUBSPOT_DIR, 'test-artifacts');
 const MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
 const COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
@@ -271,9 +266,52 @@ async function loadEnvFile(envPath, options) {
       process.env[key] = value;
     }
   }
+  // Map common .env keys so tests and wizard use credentials from integration/hubspot/.env
+  if (process.env.CLIENTID && process.env.HUBSPOT_CLIENT_ID === undefined) {
+    process.env.HUBSPOT_CLIENT_ID = process.env.CLIENTID;
+  }
+  if (process.env.CLIENTSECRET && process.env.HUBSPOT_CLIENT_SECRET === undefined) {
+    process.env.HUBSPOT_CLIENT_SECRET = process.env.CLIENTSECRET;
+  }
   if (options.verbose) {
     logInfo(`Loaded env vars from: ${envPath}`);
   }
+}
+
+/**
+ * Load test config (controller, environment, dataplane, openapi file).
+ * Reads integration/hubspot/.env; missing CONTROLLER_URL/ENVIRONMENT fall back to
+ * the same resolution as the CLI (aifx auth status) so tests use the same controller.
+ * @async
+ * @function loadTestConfigFromEnv
+ * @returns {Promise<Object>} Context with controllerUrl, environment, dataplaneUrl, openapiFile
+ */
+async function loadTestConfigFromEnv() {
+  const defaults = {
+    DATAPLANE_URL: '',
+    HUBSPOT_OPENAPI_FILE: path.join(HUBSPOT_DIR, 'companies.json')
+  };
+  let parsed = {};
+  try {
+    if (fsSync.existsSync(LOCAL_ENV_PATH)) {
+      const content = await fs.readFile(LOCAL_ENV_PATH, 'utf8');
+      parsed = parseEnvFile(content);
+    }
+  } catch (error) {
+    logWarn(`Could not read ${LOCAL_ENV_PATH}: ${error.message}`);
+  }
+  const controllerUrl = parsed.CONTROLLER_URL
+    ? parsed.CONTROLLER_URL.trim()
+    : await resolveControllerUrl();
+  const environment = parsed.ENVIRONMENT
+    ? parsed.ENVIRONMENT.trim()
+    : await resolveEnvironment();
+  return {
+    controllerUrl,
+    environment,
+    dataplaneUrl: parsed.DATAPLANE_URL || defaults.DATAPLANE_URL,
+    openapiFile: parsed.HUBSPOT_OPENAPI_FILE || defaults.HUBSPOT_OPENAPI_FILE
+  };
 }
 
 /**
@@ -392,7 +430,8 @@ async function validateAuth(context, options) {
     throw new Error('Authentication check failed. Run: node bin/aifabrix.js login --controller <url> --method device');
   }
   const output = `${result.stdout}\n${result.stderr}`;
-  if (output.includes('Not authenticated') || output.includes('✗')) {
+  // Only treat "Not authenticated" as failure; "✗ Not reachable" (dataplane) is not auth failure
+  if (output.includes('Not authenticated')) {
     throw new Error('Not authenticated. Run: node bin/aifabrix.js login --controller <url> --method device');
   }
   logSuccess('Authentication validated.');
@@ -1216,7 +1255,7 @@ async function corruptSystemFileWithInvalidRole(appPath) {
  * @returns {Promise<void>} Resolves when file is corrupted
  */
 async function corruptRbacFile(appPath) {
-  const rbacPath = path.join(appPath, 'rbac.yml');
+  const rbacPath = path.join(appPath, 'rbac.yaml');
   await fs.writeFile(rbacPath, 'invalid: yaml: syntax: [', 'utf8');
 }
 
@@ -1339,7 +1378,7 @@ function buildNegativeRbacTestCases(context) {
         const appName = 'hubspot-test-negative-rbac-invalid-yaml';
         const appPath = await createSystemForNegativeTest(appName, 'wizard-valid-for-rbac-yaml-test', context, options);
         await corruptRbacFile(appPath);
-        await runValidationExpectFailure(appName, context, options, 'schema must be object or boolean');
+        await runValidationExpectFailure(appName, context, options, 'Invalid YAML syntax in rbac.yaml');
         await cleanupAppArtifacts(appName, options);
       }
     }
@@ -1485,13 +1524,8 @@ async function main() {
     return;
   }
   await ensureDir(ARTIFACT_DIR);
-  await loadEnvFile(DEFAULT_ENV_PATH, args);
-  const context = {
-    controllerUrl: DEFAULT_CONTROLLER_URL,
-    environment: DEFAULT_ENVIRONMENT,
-    dataplaneUrl: DEFAULT_DATAPLANE_URL,
-    openapiFile: DEFAULT_OPENAPI_FILE
-  };
+  await loadEnvFile(LOCAL_ENV_PATH, args);
+  const context = await loadTestConfigFromEnv();
   setupTestContext(context);
   await validateAuth(context, args);
   const testCases = buildTestCases(context).filter(testCase => (

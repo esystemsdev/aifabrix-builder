@@ -6,4 +6,4 @@ source:
 deployment:
   controller: ${CONTROLLER_URL}
   dataplane: ${DATAPLANE_URL}
-  environment: miso
+  environment: dev

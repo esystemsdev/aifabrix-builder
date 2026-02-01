@@ -117,7 +117,6 @@ describe('Application Configuration Module', () => {
       expect(envTemplateContent).toContain('CLIENTID=kv://test-external-clientidKeyVault');
       expect(envTemplateContent).toContain('CLIENTSECRET=kv://test-external-clientsecretKeyVault');
       expect(envTemplateContent).toContain('TOKENURL=https://api.example.com/oauth/token');
-      expect(envTemplateContent).toContain('REDIRECT_URI=kv://test-external-redirect-uriKeyVault');
     });
 
     it('should generate env.template for external system with API Key auth', async() => {

@@ -62,12 +62,6 @@
         "required": true
       },
       {
-        "name": "REDIRECT_URI",
-        "value": "hubspot-redirect-uriKeyVault",
-        "location": "keyvault",
-        "required": false
-      },
-      {
         "name": "HUBSPOT_API_VERSION",
         "value": "v3",
         "location": "variable",

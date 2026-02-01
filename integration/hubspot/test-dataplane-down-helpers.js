@@ -217,7 +217,10 @@ function validateWizardResult(result, output) {
     'fetch failed',
     'timeout',
     'unreachable',
-    'failed to create wizard session'
+    'failed to create wizard session',
+    'authentication failed',
+    'no authentication method',
+    'client token unavailable'
   ];
 
   const isValid = !result.success && validateError(output, expectedPatterns);

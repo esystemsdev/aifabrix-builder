@@ -44,7 +44,7 @@ aifabrix wizard --config path/to/wizard.yaml
 2. **Source Selection** - OpenAPI file/URL, MCP server, or known platform
 3. **Parse OpenAPI** - Parse specification (if applicable)
 4. **Detect Type** - Automatically detect API type and category
-5. **User Preferences** - Configure intent and features (MCP, ABAC, RBAC)
+5. **User Preferences** - Field onboarding level (full \| standard \| minimal), intent, and features (MCP, ABAC, RBAC). Saved in `wizard.yaml` under `preferences.fieldOnboardingLevel` and sent in the request body to `generate-config` / `generate-config-stream`.
 6. **Generate Config** - AI-powered configuration generation
 7. **Review & Validate** - Review and optionally edit configurations
 8. **Save Files** - Save all files to `integration/<app-name>/`

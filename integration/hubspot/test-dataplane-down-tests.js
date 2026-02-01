@@ -65,13 +65,7 @@ async function testWizard() {
       'bin/aifabrix.js',
       'wizard',
       '--config',
-      configPath,
-      '--controller',
-      CONTROLLER_URL,
-      '--environment',
-      ENVIRONMENT,
-      '--dataplane',
-      INVALID_DATAPLANE_URL
+      configPath
     ];
 
     const result = await runCommand('node', args);
@@ -107,11 +101,7 @@ async function testDownload() {
   const args = [
     'bin/aifabrix.js',
     'download',
-    'non-existent-system-that-should-fail',
-    '--environment',
-    ENVIRONMENT,
-    '--controller',
-    CONTROLLER_URL
+    'non-existent-system-that-should-fail'
   ];
 
   const result = await runCommand('node', args);
@@ -155,10 +145,6 @@ async function testDelete() {
     'non-existent-system-that-should-fail',
     '--type',
     'external',
-    '--environment',
-    ENVIRONMENT,
-    '--controller',
-    CONTROLLER_URL,
     '--yes'
   ];
 
@@ -219,13 +205,7 @@ function buildDatasourceDeployArgs(datasourcePath) {
     'datasource',
     'deploy',
     'test-app',
-    datasourcePath,
-    '--environment',
-    ENVIRONMENT,
-    '--controller',
-    CONTROLLER_URL,
-    '--dataplane',
-    INVALID_DATAPLANE_URL
+    datasourcePath
   ];
 }
 
@@ -321,11 +301,7 @@ async function testIntegration() {
   const args = [
     'bin/aifabrix.js',
     'test-integration',
-    testApp,
-    '--environment',
-    ENVIRONMENT,
-    '--controller',
-    CONTROLLER_URL
+    testApp
   ];
 
   const result = await runCommand('node', args);
@@ -372,11 +348,7 @@ async function testDataplaneDiscovery() {
   const args = [
     'bin/aifabrix.js',
     'download',
-    'non-existent-system-for-discovery-test',
-    '--environment',
-    ENVIRONMENT,
-    '--controller',
-    CONTROLLER_URL
+    'non-existent-system-for-discovery-test'
   ];
 
   const result = await runCommand('node', args);

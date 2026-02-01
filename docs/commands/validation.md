@@ -21,7 +21,7 @@ The validation system validates:
 - **Application configurations** (`variables.yaml`) - Main application settings
 - **External system files** (`*-system.json`) - External integration system definitions
 - **External datasource files** (`*-datasource-*.json`) - Datasource configurations
-- **Wizard configurations** (`wizard.yaml`) - Wizard setup files (see [Wizard Guide](../wizard.md))
+- **Wizard configurations** (`wizard.yaml`) - Wizard setup files; includes `preferences.fieldOnboardingLevel` (full \| standard \| minimal) and intent, MCP/ABAC/RBAC (see [Wizard Guide](../wizard.md))
 - **Deployment manifests** - Generated deployment configurations
 - **ABAC dimensions** - Dimension keys and mappings (validated online during deployment)
 

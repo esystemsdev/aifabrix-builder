@@ -81,7 +81,7 @@ Step 1: Mode → Create session   "Create new" → app name; "Add datasource" �
 Step 2: Source                  OpenAPI file/URL, MCP server, or Known platform (from dataplane when available)
 Step 3: Credential              Skip | Create new | Use existing (optional)
 Step 4: Detect Type             POST /api/v1/wizard/detect-type
-Step 5: Generate Config         POST /api/v1/wizard/generate-config
+Step 5: User Preferences       Field onboarding level (full|standard|minimal), intent, MCP/ABAC/RBAC → POST /api/v1/wizard/generate-config or generate-config-stream (body: fieldOnboardingLevel, intent, etc.)
 Step 6: Review & Validate       Accept and save, or Cancel
 Step 7: Save Files              Local file generation; wizard.yaml written to integration/<appKey>/
 ```
@@ -120,9 +120,19 @@ The wizard automatically detects:
 
 **Detected Types**: `record-based` (CRUD operations), `document-storage` (file/folder operations), `sharepoint` (SharePoint-specific), `teams-meetings` (Teams/Graph API patterns), `crm`, `project-management`, `communication`, `e-commerce`, `calendar`, `email`, `help-desk`, `accounting`, `hr`, `custom`.
 
-### Step 5: Generate Configuration
+### Step 5: User Preferences & Generate Configuration
 
-The wizard uses AI to generate configurations based on:
+**User preferences (Step 5):**
+- **Field onboarding level** – String, default: `"full"`. Enum: `full` \| `standard` \| `minimal`.
+  - **full** – All fields mapped and indexed
+  - **standard** – Core and important fields only
+  - **minimal** – Essential fields only
+- User intent (any descriptive text)
+- MCP, ABAC, RBAC toggles
+
+The value is saved in `wizard.yaml` under `preferences.fieldOnboardingLevel` and sent in the REST request body when calling `POST /api/v1/wizard/generate-config` or `POST /api/v1/wizard/generate-config-stream` as `fieldOnboardingLevel` (e.g. `fieldOnboardingLevel: "full"`).
+
+The wizard then uses AI to generate configurations based on:
 - OpenAPI specification structure
 - Detected API type
 - User intent (any descriptive text)
@@ -553,8 +563,8 @@ The wizard uses the following dataplane wizard API endpoints:
 | `POST /api/v1/wizard/parse-openapi` | Parse OpenAPI file/URL |
 | `POST /api/v1/wizard/credential-selection` | Credential selection |
 | `POST /api/v1/wizard/detect-type` | Detect API type |
-| `POST /api/v1/wizard/generate-config` | Generate configuration |
-| `POST /api/v1/wizard/generate-config-stream` | Generate config (streaming) |
+| `POST /api/v1/wizard/generate-config` | Generate configuration (body: openapiSpec, detectedType, intent, mode, fieldOnboardingLevel, userPreferences, etc.) |
+| `POST /api/v1/wizard/generate-config-stream` | Generate config (streaming; same body including fieldOnboardingLevel) |
 | `POST /api/v1/wizard/validate` | Validate configuration |
 | `GET /api/v1/wizard/sessions/{id}/validate` | Validate all steps |
 | `POST /api/v1/wizard/sessions/{id}/validate-step` | Validate specific step |

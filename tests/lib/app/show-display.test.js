@@ -309,6 +309,11 @@ describe('lib/app/show-display.js', () => {
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Application (from dataplane)'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('OpenAPI files: 1'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('OpenAPI endpoints: 2'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Service links:'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('REST OpenAPI:'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/api/v1/rest/hubspot/docs'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('MCP contacts:'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/api/v1/mcp/hubspot/contacts/docs'));
   });
 
   it('should use application.roles and application.permissions when summary level missing', () => {
@@ -362,6 +367,33 @@ describe('lib/app/show-display.js', () => {
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🛡️ Permissions'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('• write'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('roles: [admin]'));
+  });
+
+  it('should not display Service links when externalSystem has no OpenAPI and no dataSources', () => {
+    const summary = {
+      source: 'online',
+      controllerUrl: 'http://localhost:3000',
+      appKey: 'hubspot',
+      application: { key: 'hubspot', type: 'external' },
+      roles: [],
+      permissions: [],
+      portalInputConfigurations: [],
+      databases: [],
+      externalSystem: {
+        dataplaneUrl: 'http://dataplane:4000',
+        systemKey: 'hubspot',
+        displayName: 'HubSpot',
+        type: 'custom',
+        status: 'draft',
+        dataSources: [],
+        application: {},
+        openapiFiles: [],
+        openapiEndpoints: []
+      }
+    };
+    display(summary);
+    const logCalls = logger.log.mock.calls.map((c) => c[0]);
+    expect(logCalls.some((s) => String(s).includes('Service links:'))).toBe(false);
   });
 
   it('should display externalSystem with more than 3 openAPI endpoints (ellipsis)', () => {

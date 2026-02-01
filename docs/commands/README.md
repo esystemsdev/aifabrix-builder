@@ -26,6 +26,7 @@ Complete command reference organized by concept with examples and troubleshootin
 ### Application Management
 - [Application Management Commands](application-management.md) - Application registration and management
   - `aifabrix show` - Show app info from local builder/integration (offline) or controller (--online)
+  - `aifabrix app show <appKey>` - Show application from controller (online; same as show --online)
   - `aifabrix app register` - Register application and get pipeline credentials
   - `aifabrix app list` - List applications in an environment
   - `aifabrix app rotate-secret` - Rotate pipeline ClientSecret

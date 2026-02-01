@@ -11,6 +11,9 @@
  */
 'use strict';
 
+const fs = require('fs').promises;
+const path = require('path');
+const os = require('os');
 const {
   logInfo,
   logSuccess,
@@ -27,8 +30,50 @@ const {
 } = require('./test-dataplane-down-tests');
 
 const INVALID_DATAPLANE_URL = 'http://localhost:9999';
-const CONTROLLER_URL = process.env.CONTROLLER_URL || 'http://localhost:3110';
 const ENVIRONMENT = process.env.ENVIRONMENT || 'miso';
+
+/** Path to temp config used so CLI uses invalid controller URL and fails with connection error */
+let tempConfigPath = null;
+let originalAifabrixConfig = null;
+
+/**
+ * Create temp config pointing controller to invalid URL so commands fail with connection error
+ * @async
+ * @returns {Promise<string>} Path to temp config file
+ */
+async function createTempConfig() {
+  const dir = path.join(os.tmpdir(), `aifabrix-dataplane-down-${Date.now()}`);
+  await fs.mkdir(dir, { recursive: true });
+  const configPath = path.join(dir, 'config.yaml');
+  const content = `controller: "${INVALID_DATAPLANE_URL}"
+environment: "${ENVIRONMENT}"
+`;
+  await fs.writeFile(configPath, content, 'utf8');
+  return configPath;
+}
+
+/**
+ * Restore AIFABRIX_CONFIG and remove temp config
+ * @async
+ * @returns {Promise<void>} Resolves when cleanup is complete
+ */
+async function cleanupTempConfig() {
+  if (originalAifabrixConfig !== undefined) {
+    if (originalAifabrixConfig === null) {
+      delete process.env.AIFABRIX_CONFIG;
+    } else {
+      process.env.AIFABRIX_CONFIG = originalAifabrixConfig;
+    }
+  }
+  if (tempConfigPath) {
+    try {
+      await fs.rm(path.dirname(tempConfigPath), { recursive: true, force: true }).catch(() => {});
+    } catch {
+      // Ignore cleanup errors
+    }
+    tempConfigPath = null;
+  }
+}
 
 /**
  * Displays failed test details
@@ -137,17 +182,24 @@ async function main() {
   logInfo('='.repeat(60));
   logInfo('Dataplane Down Error Handling Test Suite');
   logInfo('='.repeat(60));
-  logInfo(`Invalid Dataplane URL: ${INVALID_DATAPLANE_URL}`);
-  logInfo(`Controller URL: ${CONTROLLER_URL}`);
+  logInfo(`Invalid Controller URL (used for all commands): ${INVALID_DATAPLANE_URL}`);
   logInfo(`Environment: ${ENVIRONMENT}`);
   logInfo('='.repeat(60));
 
-  const results = await runTests();
-  displaySummary(results);
+  try {
+    tempConfigPath = await createTempConfig();
+    originalAifabrixConfig = process.env.AIFABRIX_CONFIG || null;
+    process.env.AIFABRIX_CONFIG = tempConfigPath;
 
-  const failed = results.filter(r => !r.success).length;
-  if (failed > 0) {
-    process.exitCode = 1;
+    const results = await runTests();
+    displaySummary(results);
+
+    const failed = results.filter(r => !r.success).length;
+    if (failed > 0) {
+      process.exitCode = 1;
+    }
+  } finally {
+    await cleanupTempConfig();
   }
 }
 

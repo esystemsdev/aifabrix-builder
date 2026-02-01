@@ -458,7 +458,7 @@ The `configuration` array defines variables that can be set via the Miso Control
   - `validation` - Validation rules (required, minLength, maxLength, pattern, etc.)
 
 **Important distinctions:**
-- **Standard variables** (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`, `APIKEY`, `USERNAME`, `PASSWORD`, `REDIRECT_URI`) are managed by the dataplane credentials system—**do not include `portalInput`**
+- **Standard variables** (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`, `APIKEY`, `USERNAME`, `PASSWORD`) are managed by the dataplane credentials system—**do not include `portalInput`**. Redirect URI for OAuth2 is managed by the dataplane and does not need to be configured in the integration.
 - **Custom variables** (any other variable name) can use `portalInput` to configure UI fields in the portal interface
 
 **How it works:**
@@ -482,8 +482,9 @@ External systems use standard variable names that are **automatically managed by
 | `{{APIKEY}}`       | API Key                  | API Key authentication| `{{APIKEY}}`       |
 | `{{USERNAME}}`     | Basic Auth Username      | Basic authentication | `{{USERNAME}}`     |
 | `{{PASSWORD}}`     | Basic Auth Password      | Basic authentication | `{{PASSWORD}}`     |
-| `{{REDIRECT_URI}}` | OAuth2 Redirect URI       | OAuth2 callback URL   | `{{REDIRECT_URI}}` |
 <!-- markdownlint-enable MD060 -->
+
+OAuth2 redirect URI is managed by the dataplane credentials system and is not configured as a variable in the integration.
 
 **Important:**
 - Standard variables are managed by the dataplane credentials system—no `portalInput` needed
@@ -628,7 +629,7 @@ Best for production integrations with user consent flows.
 1. Register OAuth2 app in external system (HubSpot, Salesforce, etc.)
 2. Get `clientId` and `clientSecret`
 3. Set values via Miso Controller or Dataplane portal interface
-4. Configure redirect URI in external system
+4. Redirect URI is managed by the dataplane—configure the dataplane callback URL in the external system's OAuth2 app settings
 5. Add required scopes to `scopes` array
 
 #### API Key
@@ -1296,12 +1297,6 @@ externalIntegration:
       "required": true
     },
     {
-      "name": "REDIRECT_URI",
-      "value": "hubspot-redirect-uriKeyVault",
-      "location": "keyvault",
-      "required": false
-    },
-    {
       "name": "HUBSPOT_API_VERSION",
       "value": "v3",
       "location": "variable",
@@ -1343,7 +1338,7 @@ externalIntegration:
 ```
 
 **Key points:**
-- **Standard variables** (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`, `REDIRECT_URI`) are managed by the dataplane credentials system—no `portalInput` needed
+- **Standard variables** (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`) are managed by the dataplane credentials system—no `portalInput` needed
 - **Custom variables** (`HUBSPOT_API_VERSION`, `MAX_PAGE_SIZE`) use `portalInput` to configure UI fields in the portal interface
 - Values are stored in Key Vault automatically by the platform
 - Standard variables are set via the dataplane credentials interface
@@ -1367,7 +1362,6 @@ See the complete example in `integration/hubspot/hubspot-datasource-company.json
 CLIENTID=kv://hubspot-clientidKeyVault
 CLIENTSECRET=kv://hubspot-clientsecretKeyVault
 TOKENURL=https://api.hubapi.com/oauth/v1/token
-REDIRECT_URI=kv://hubspot-redirect-uriKeyVault
 ```
 
 **Setup:**
