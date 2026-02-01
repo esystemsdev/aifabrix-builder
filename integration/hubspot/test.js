@@ -728,7 +728,7 @@ async function runCommandWithErrorHandling(command, args, options, appName) {
     const errorOutput = `${result.stdout}\n${result.stderr}`;
     if (appName && (errorOutput.includes('not found') ||
         (errorOutput.includes('External system') && errorOutput.includes('not found')))) {
-      logWarn(`System ${appName} not deployed, skipping download test`);
+      logInfo(`System ${appName} not deployed on dataplane; download step omitted (optional).`);
       return { skipped: true };
     }
     throw new Error(`${command} failed: ${result.stderr || result.stdout}`);

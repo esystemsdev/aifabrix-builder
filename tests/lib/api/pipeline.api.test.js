@@ -51,6 +51,46 @@ describe('Pipeline API', () => {
         { body: validationData }
       );
     });
+
+    it('should send controller-spec validate body (clientId, clientSecret, repositoryUrl, applicationConfig)', async() => {
+      const validationData = {
+        clientId: 'app-client-id',
+        clientSecret: 'app-client-secret',
+        repositoryUrl: 'https://github.com/org/repo',
+        applicationConfig: {
+          key: 'myapp',
+          displayName: 'My App',
+          type: 'webapp',
+          image: 'myregistry.azurecr.io/myapp:v1',
+          registryMode: 'acr',
+          port: 3000
+        }
+      };
+      mockClient.post.mockResolvedValue({
+        success: true,
+        data: {
+          valid: true,
+          deploymentType: 'azure',
+          validateToken: 'hex-string-one-time-token',
+          draftDeploymentId: 'cuid-of-draft-deployment',
+          imageServer: 'myregistry.azurecr.io',
+          imageUsername: 'optional',
+          imagePassword: 'optional',
+          expiresAt: '2024-12-31T23:59:59Z'
+        }
+      });
+
+      const result = await pipelineApi.validatePipeline(controllerUrl, envKey, authConfig, validationData);
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        `/api/v1/pipeline/${envKey}/validate`,
+        { body: validationData }
+      );
+      expect(result.success).toBe(true);
+      expect(result.data.valid).toBe(true);
+      expect(result.data.validateToken).toBe('hex-string-one-time-token');
+      expect(result.data.draftDeploymentId).toBe('cuid-of-draft-deployment');
+    });
   });
 
   describe('deployPipeline', () => {
@@ -66,6 +106,28 @@ describe('Pipeline API', () => {
         { body: deployData }
       );
     });
+
+    it('should send controller-spec deploy body (validateToken, imageTag) and accept 202 response', async() => {
+      const deployData = {
+        validateToken: 'hex-string-from-validate-response',
+        imageTag: 'v1.0.0'
+      };
+      mockClient.post.mockResolvedValue({
+        success: true,
+        data: { deploymentId: 'deploy-123', status: 'deploying' },
+        status: 202
+      });
+
+      const result = await pipelineApi.deployPipeline(controllerUrl, envKey, authConfig, deployData);
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        `/api/v1/pipeline/${envKey}/deploy`,
+        { body: deployData }
+      );
+      expect(result.success).toBe(true);
+      expect(result.data.deploymentId).toBe('deploy-123');
+      expect(result.data.status).toBe('deploying');
+    });
   });
 
   describe('getPipelineDeployment', () => {
@@ -76,6 +138,36 @@ describe('Pipeline API', () => {
       expect(mockClient.get).toHaveBeenCalledWith(
         `/api/v1/pipeline/${envKey}/deployments/${deploymentId}`
       );
+    });
+
+    it('should return controller-spec status shape (id, status, progress, message, error, startedAt, completedAt, deploymentUrl, healthCheckUrl)', async() => {
+      const deploymentId = 'deploy-123';
+      mockClient.get.mockResolvedValue({
+        success: true,
+        data: {
+          id: deploymentId,
+          status: 'completed',
+          progress: 100,
+          message: 'Deployment completed',
+          error: null,
+          startedAt: '2024-01-01T12:00:00Z',
+          completedAt: '2024-01-01T12:05:00Z',
+          deploymentUrl: 'https://app.example.com/myapp',
+          healthCheckUrl: 'https://app.example.com/myapp/health'
+        }
+      });
+
+      const result = await pipelineApi.getPipelineDeployment(controllerUrl, envKey, deploymentId, authConfig);
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        `/api/v1/pipeline/${envKey}/deployments/${deploymentId}`
+      );
+      expect(result.success).toBe(true);
+      expect(result.data.id).toBe(deploymentId);
+      expect(result.data.status).toBe('completed');
+      expect(result.data.progress).toBe(100);
+      expect(result.data.deploymentUrl).toBeDefined();
+      expect(result.data.healthCheckUrl).toBeDefined();
     });
   });
 
@@ -290,19 +382,11 @@ describe('Pipeline API', () => {
     const dataplaneUrl = 'https://dataplane.example.com';
     const uploadId = 'upload-123';
 
-    it('should publish upload via dataplane pipeline endpoint with default MCP contract', async() => {
+    it('should publish upload via dataplane pipeline endpoint (no query; MCP from upload config)', async() => {
       await pipelineApi.publishUploadViaPipeline(dataplaneUrl, uploadId, authConfig);
 
       expect(mockClient.post).toHaveBeenCalledWith(
-        `/api/v1/pipeline/upload/${uploadId}/publish?generateMcpContract=true`
-      );
-    });
-
-    it('should publish upload with MCP contract disabled', async() => {
-      await pipelineApi.publishUploadViaPipeline(dataplaneUrl, uploadId, authConfig, { generateMcpContract: false });
-
-      expect(mockClient.post).toHaveBeenCalledWith(
-        `/api/v1/pipeline/upload/${uploadId}/publish?generateMcpContract=false`
+        `/api/v1/pipeline/upload/${uploadId}/publish`
       );
     });
 
@@ -310,6 +394,41 @@ describe('Pipeline API', () => {
       await pipelineApi.publishUploadViaPipeline(dataplaneUrl, uploadId, authConfig);
 
       expect(mockApiClient).toHaveBeenCalledWith(dataplaneUrl, authConfig);
+    });
+  });
+
+  describe('publishSystemViaPipeline', () => {
+    const dataplaneUrl = 'https://dataplane.example.com';
+    const systemConfig = {
+      key: 'test-system',
+      displayName: 'Test System',
+      description: 'Test',
+      type: 'openapi',
+      authentication: { type: 'none' },
+      generateMcpContract: true
+    };
+
+    it('should publish one external system via POST /api/v1/pipeline/publish', async() => {
+      await pipelineApi.publishSystemViaPipeline(dataplaneUrl, authConfig, systemConfig);
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/api/v1/pipeline/publish',
+        { body: systemConfig }
+      );
+    });
+
+    it('should pass generateMcpContract and generateOpenApiContract in body only', async() => {
+      const configWithContracts = {
+        ...systemConfig,
+        generateMcpContract: false,
+        generateOpenApiContract: true
+      };
+      await pipelineApi.publishSystemViaPipeline(dataplaneUrl, authConfig, configWithContracts);
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/api/v1/pipeline/publish',
+        { body: configWithContracts }
+      );
     });
   });
 });

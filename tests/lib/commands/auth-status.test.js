@@ -238,5 +238,22 @@ describe('Auth Status Command Module', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Dataplane:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Not discovered'));
     });
+
+    it('should display Controller and Dataplane Open API docs URLs when authenticated', async() => {
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'device-token-123',
+        controller: 'http://localhost:3000'
+      });
+      authApi.getAuthUser.mockResolvedValue({
+        success: true,
+        data: { authenticated: true, user: { email: 'u@e.com' } }
+      });
+      dataplaneHealth.checkDataplaneHealth.mockResolvedValue(true);
+
+      await handleAuthStatus({});
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('http://localhost:3000/api/docs'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('http://localhost:3611/api/docs'));
+    });
   });
 });

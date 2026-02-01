@@ -1105,14 +1105,12 @@ describe('Token Manager Module', () => {
         'keycloak-client-secretKeyVault': 'test-client-secret'
       }));
 
-      const logger = require('../../../lib/utils/logger');
-      logger.warn.mockImplementation(() => {});
-
       const result = await tokenManager.getDeploymentAuth(controllerUrl, environment, appName);
 
       expect(result.type).toBe('client-credentials');
       expect(result.clientId).toBe('test-client-id');
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Client token unavailable'));
+      expect(result.clientSecret).toBe('test-client-secret');
+      expect(result.controller).toBe(controllerUrl);
     });
 
     it('should throw error when controllerUrl is invalid', async() => {

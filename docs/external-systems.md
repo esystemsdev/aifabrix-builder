@@ -1521,21 +1521,19 @@ aifabrix deploy hubspot
 ```
 
 **What happens:**
-1. Generates `<systemKey>-deploy.json` (if not already generated)
-2. Uses application-level deployment workflow:
-   - Upload: `POST /api/v1/pipeline/upload`
-   - Validate: `POST /api/v1/pipeline/upload/{uploadId}/validate` (optional, can skip with `--skip-validation`)
-   - Publish: `POST /api/v1/pipeline/upload/{uploadId}/publish?generateMcpContract=true`
-3. External system and datasources are deployed atomically
+1. Generates controller manifest (if not already generated) via `aifabrix json` internally
+2. Uses the same controller pipeline as regular apps:
+   - Validate: `POST /api/v1/pipeline/{envKey}/validate` (controller)
+   - Deploy: `POST /api/v1/pipeline/{envKey}/deploy` (controller)
+3. External system and datasources are deployed via the controller
 4. Field mappings are compiled
 5. OpenAPI operations are registered
 6. System is ready for querying
 
-**Application-Level Workflow Benefits:**
-- Atomic deployment (all or nothing)
-- Rollback support
-- Change validation before publishing
-- Better error handling
+**Controller pipeline benefits:**
+- Same workflow as application deployment (validate then deploy)
+- Validation before deploy; deployment uses a one-time validate token
+- Optional polling for deployment status
 
 ### 5. Deploy Individual Datasources (Optional)
 

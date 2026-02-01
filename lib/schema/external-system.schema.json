@@ -7,7 +7,7 @@
     "key": "external-system-schema",
     "name": "External System Configuration Schema",
     "description": "JSON schema for validating ExternalSystem configuration files",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "type": "schema",
     "category": "integration",
     "author": "AI Fabrix Team",
@@ -27,6 +27,15 @@
     ],
     "dependencies": [],
     "changelog": [
+      {
+        "version": "1.2.0",
+        "date": "2025-02-01T00:00:00Z",
+        "changes": [
+          "Added generateMcpContract (boolean, default true): config-only control for MCP contract generation on publish",
+          "Added generateOpenApiContract (boolean, default true): reserved for future use"
+        ],
+        "breaking": false
+      },
       {
         "version": "1.1.0",
         "date": "2025-12-01T00:00:00Z",
@@ -406,6 +415,20 @@
     "endpointsActive": {
       "type": "boolean",
       "description": "Master switch for all endpoints in this system. If false, no endpoints are registered regardless of individual endpoint active flags.",
+      "default": true
+    },
+    "credentialIdOrKey": {
+      "type": "string",
+      "description": "Credential identifier (ID or key) to use for authenticating with this external system."
+    },
+    "generateMcpContract": {
+      "type": "boolean",
+      "description": "Whether to generate MCP contract on publish. Config only (no query parameter); default true when absent.",
+      "default": true
+    },
+    "generateOpenApiContract": {
+      "type": "boolean",
+      "description": "Reserved: whether to generate or expose OpenAPI contract on publish. Not yet implemented.",
       "default": true
     }
   },

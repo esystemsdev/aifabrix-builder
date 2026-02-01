@@ -259,11 +259,12 @@ Controller and environment come from `config.yaml` (set via `aifabrix login` or 
 🔐 Authentication Status
 
 Controller: http://localhost:3100
-Environment: dev
+  Environment: dev
 
-Status: ✓ Authenticated
-Token Type: Device Token
-Expires: 2024-01-15T10:30:00Z
+  Open API docs: http://localhost:3100/api/docs
+  Status: ✓ Authenticated
+  Token Type: Device Token
+  Expires: 2024-01-15T10:30:00Z
 
 User Information:
   Email: user@example.com
@@ -271,17 +272,41 @@ User Information:
   ID: user-123
 ```
 
+**Controller and Dataplane Open API documentation:** The command shows Open API documentation URLs when available: **Controller** at `<controller-url>/api/docs` and **Dataplane** at `<dataplane-url>/api/docs` (when the dataplane is discovered for the current environment). Use these URLs in a browser to explore the API.
+
+**Output (Authenticated with Dataplane discovered):**
+```yaml
+🔐 Authentication Status
+
+Controller: http://localhost:3100
+  Environment: dev
+  Open API docs: http://localhost:3100/api/docs
+  
+  Status: ✓ Authenticated
+  Token Type: Device Token
+  Expires: 2024-01-15T10:30:00Z
+
+User Information:
+  Email: user@example.com
+
+Dataplane: http://localhost:3001
+  Open API docs: http://localhost:3001/api/docs
+
+  Status: ✓ Connected
+```
+
 **Output (Authenticated with Client Token):**
 ```yaml
 🔐 Authentication Status
 
 Controller: http://localhost:3000
-Environment: dev
+  Environment: dev
+  Open API docs: http://localhost:3000/api/docs
 
-Status: ✓ Authenticated
-Token Type: Client Token
-Application: myapp
-Expires: 2024-01-15T10:30:00Z
+  Status: ✓ Authenticated
+  Token Type: Client Token
+  Application: myapp
+  Expires: 2024-01-15T10:30:00Z
 
 User Information:
   Email: app@example.com
@@ -292,10 +317,11 @@ User Information:
 🔐 Authentication Status
 
 Controller: http://localhost:3000
-Environment: dev
+  Environment: dev
+  Open API docs: http://localhost:3000/api/docs
 
-Status: ✗ Not authenticated
-Token Type: None
+  Status: ✗ Not authenticated
+  Token Type: None
 
 💡 Run "aifabrix login" to authenticate
 ```
@@ -305,10 +331,11 @@ Token Type: None
 🔐 Authentication Status
 
 Controller: http://localhost:3000
-Environment: dev
+  Environment: dev
 
-Status: ✗ Not authenticated
-Token Type: Device Token
+  Open API docs: http://localhost:3000/api/docs
+  Status: ✗ Not authenticated
+  Token Type: Device Token
 Error: Token expired
 ```
 

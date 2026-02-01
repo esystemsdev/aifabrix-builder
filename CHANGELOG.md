@@ -1,3 +1,16 @@
+## [2.36.2] - 2026-02-01
+
+### Changed
+- **Pipeline API**: Pipeline API validation and error handling improvements
+- **Auth status**: Auth-status command behavior and output refinements
+- **App list**: App list command updates
+- **Token manager**: Token manager utility adjustments
+- **External system schema**: Schema updates for external-system validation
+- **Documentation**: application-management, authentication, external-systems docs
+
+### Technical
+- Tests: pipeline.api, app-list, auth-status, token-manager
+
 ## [2.36.1] - 2026-02-01
 
 ### Changed

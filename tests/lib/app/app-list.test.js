@@ -288,6 +288,7 @@ describe('app-list', () => {
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ app1'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✗ app2'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('To show details for an app: aifabrix app show <appKey>'));
     });
 
     it('should display applications without pipeline configuration', async() => {

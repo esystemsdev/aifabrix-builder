@@ -194,6 +194,7 @@ When applications are found:
 ✓ myapp - My Application (active) (URL: https://myapp.example.com, Port: 8080)
 ✗ otherapp - Other Application (inactive) (URL: https://otherapp.example.com)
 ✓ anotherapp - Another Application (running) (Port: 3000)
+  To show details for an app: aifabrix app show <appKey>
 ```
 
 When no applications are found:
@@ -210,6 +211,7 @@ When no applications are found:
 - Status is shown in parentheses (active, inactive, running, unknown, etc.)
 - URL and Port are shown in blue if available (format: `(URL: {url}, Port: {port})`)
 - Environment name is included in the header
+- A hint line shows how to view details: `aifabrix app show <appKey>`
 
 **Issues:**
 - **"Not logged in"** → Run `aifabrix login` first
