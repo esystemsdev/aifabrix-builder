@@ -177,7 +177,7 @@ After downloading:
 - Review configuration files in `integration/<system-key>/`
 - Run unit tests: `aifabrix test <system-key>`
 - Run integration tests: `aifabrix test-integration <system-key>`
-- Deploy changes: `aifabrix deploy <system-key>`
+- Deploy changes: `aifabrix deploy <system-key> --type external` (deploys from `integration/<system-key>/`; no app register needed)
 
 ---
 

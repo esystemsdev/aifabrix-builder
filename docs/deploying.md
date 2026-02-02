@@ -12,8 +12,8 @@ The builder CLI generates the deployment manifest and sends it to the controller
 
 Flow for external systems (OpenAPI, MCP, etc.): **Local (dev)** → **Controller** → **Dataplane**.
 
-- **Local (dev):** You define external systems and datasources in `integration/<app>/` (system JSON, datasource JSON). You validate and deploy from the CLI.
-- **Controller:** The CLI sends deployment to the Miso Controller (`aifabrix deploy <app>` or datasource deploy). The controller orchestrates deployment; it does not deploy directly to the dataplane from the CLI for app-level deploy.
+- **Local (dev):** You define external systems and datasources in `integration/<app>/` (system JSON, datasource JSON). You validate and deploy from the CLI. Use `aifabrix deploy <app> --type external` to deploy from `integration/<app>/` (no app register needed; controller creates and deploys automatically).
+- **Controller:** The CLI sends deployment to the Miso Controller (`aifabrix deploy <app>` or `aifabrix deploy <app> --type external` for external systems, or datasource deploy). The controller orchestrates deployment; it does not deploy directly to the dataplane from the CLI for app-level deploy.
 - **Dataplane:** The controller deploys to the dataplane (or target environment). External systems and datasources are configured on the controller and published to the dataplane. Pipeline and schema publishing run after deployment when `autopublish` is true.
 
 So: **Deploy to Controller** means the CLI sends the deployment to the Miso Controller, which then deploys to the dataplane (or target environment). The controller orchestrates; you do not deploy directly to the dataplane from the CLI for app-level deploy.
@@ -80,7 +80,7 @@ The deploy command uses Bearer token authentication. Tokens are automatically re
   }
 }}%%
 
-flowchart LR
+flowchart TD
 
 %% =======================
 %% Styles

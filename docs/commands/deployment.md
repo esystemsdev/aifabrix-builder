@@ -282,7 +282,10 @@ aifabrix deploy myapp
 aifabrix auth config --set-environment pro
 aifabrix deploy myapp
 
-# External system deployment (uses <systemKey>-deploy.json)
+# External system deployment from integration/<app> (no app register needed)
+aifabrix deploy test-e2e-hubspot --type external
+
+# External system (auto-detected when integration/<app>/variables.yaml has app.type: external)
 aifabrix deploy hubspot
 ```
 
@@ -362,14 +365,17 @@ aifabrix deploy myapp --client-id my-client-id --client-secret my-secret
 ```
 
 **Flags:**
+- `--type <type>` - Application type: use `external` to deploy from `integration/<app>` (no app register needed; controller creates and deploys automatically)
 - `--client-id <id>` - Client ID (overrides config)
 - `--client-secret <secret>` - Client Secret (overrides config)
 - `--poll` - Poll for deployment status (default: true)
 - `--no-poll` - Do not poll for status
 
+**App location:** The command looks for the app in `builder/<app>` (regular apps) or `integration/<app>` (external systems). Use `--type external` when the app lives only in `integration/<app>` so the CLI does not require `builder/<app>`. External deployments do not require `aifabrix app register`; the controller creates and deploys the application automatically.
+
 **Process:**
 1. Validates app name format
-2. Loads variables.yaml from `builder/<app>/`
+2. If `--type external`: uses `integration/<app>/` and external deployment flow (validate → manifest → deploy; no app register). Otherwise: detects type from `integration/<app>` then `builder/<app>/`, or loads variables.yaml from `builder/<app>/`
 3. Gets controller and environment from config.yaml
 4. Retrieves or refreshes client token for environment + app
 5. Loads env.template and parses environment variables

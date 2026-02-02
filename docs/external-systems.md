@@ -48,7 +48,7 @@ External systems are integrations that connect to third-party APIs and make thei
   }
 }}%%
 
-flowchart LR
+flowchart TD
 
 %% =======================
 %% Styles
@@ -302,7 +302,7 @@ Each datasource maps an external entity (company, contact, deal) to your datapla
   }
 }}%%
 
-flowchart LR
+flowchart TD
 
 %% =======================
 %% Styles
@@ -347,14 +347,14 @@ aifabrix validate integration/hubspot/hubspot-datasource-deal.json
 # Login to controller
 aifabrix login --controller https://controller.aifabrix.dev --method device --environment dev
 
-# Deploy to controller
-aifabrix deploy hubspot
+# Deploy to controller (use --type external when app is in integration/<app>/ only)
+aifabrix deploy hubspot --type external
 ```
 
 **What happens:**
 1. `aifabrix validate` - Validates components and generates full deployment manifest
 2. `aifabrix json` - Generates `<systemKey>-deploy.json` deployment manifest (combines system + datasources) for pipeline deployment
-3. `aifabrix deploy` - Uses the deployment manifest to deploy via Miso Controller pipeline API (same as regular apps)
+3. `aifabrix deploy <app> --type external` - Deploys from `integration/<app>/` via Miso Controller pipeline API (no app register needed; controller creates and deploys automatically)
 4. System is registered in the dataplane
 5. Datasources are published and available for querying
 
@@ -1474,10 +1474,10 @@ aifabrix test-integration hubspot --payload ./test-payload.json
 Deploy using the application-level workflow:
 
 ```bash
-aifabrix deploy hubspot
+aifabrix deploy hubspot --type external
 ```
 
-**What happens:** The CLI sends the deployment to the **Miso Controller** (pipeline API). The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates deployment.
+**What happens:** The CLI sends the deployment to the **Miso Controller** (pipeline API). Use `--type external` when the app is in `integration/<app>/` (no app register needed). The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates deployment.
 
 1. Generates `<systemKey>-deploy.json` (combines one system + all datasources)
 2. Sends to controller via pipeline API (validate then deploy)
@@ -1521,10 +1521,10 @@ aifabrix json hubspot
 ### 4. Deploy to Controller
 
 ```bash
-aifabrix deploy hubspot
+aifabrix deploy hubspot --type external
 ```
 
-**What happens:** The CLI sends the deployment to the **Miso Controller**. The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates it.
+**What happens:** The CLI sends the deployment to the **Miso Controller**. Use `--type external` when the app is in `integration/<app>/`. The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates it.
 
 1. Generates controller manifest (if not already generated) via `aifabrix json` internally
 2. Uses the same controller pipeline as regular apps: Validate then Deploy (`POST /api/v1/pipeline/{envKey}/validate`, `POST /api/v1/pipeline/{envKey}/deploy`)
@@ -1584,7 +1584,7 @@ aifabrix test hubspot
 aifabrix test-integration hubspot
 
 # 5. Deploy back to dataplane (via application-level workflow)
-aifabrix deploy hubspot
+aifabrix deploy hubspot --type external
 ```
 
 ### Create New System from Scratch
@@ -1605,7 +1605,7 @@ aifabrix test hubspot
 aifabrix test-integration hubspot
 
 # 5. Deploy to dataplane
-aifabrix deploy hubspot
+aifabrix deploy hubspot --type external
 ```
 
 ---
@@ -1787,8 +1787,10 @@ aifabrix json <app>
 
 **Deploy to controller:**
 ```bash
-aifabrix deploy <app> [--skip-validation]
+aifabrix deploy <app> [--type external] [--skip-validation]
 ```
+
+Use `--type external` when deploying from `integration/<app>/` (no app register needed).
 
 **Deploy individual datasource:** (uses controller and environment from config; dataplane is discovered from the controller)
 ```bash

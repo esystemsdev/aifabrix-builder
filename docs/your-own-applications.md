@@ -36,7 +36,7 @@ npm install -g @aifabrix/builder
   }
 }}%%
 
-flowchart LR
+flowchart TD
 
 %% =======================
 %% Styles

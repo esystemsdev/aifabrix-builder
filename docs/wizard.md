@@ -445,7 +445,13 @@ The scripts validate JSON files, deploy datasources, and optionally run integrat
 
 ### Using CLI Directly
 
-You can also deploy using the CLI directly:
+You can also deploy using the CLI directly. For external systems in `integration/<appKey>/`, use `--type external` (no app register needed; the controller creates and deploys automatically):
+
+```bash
+aifabrix deploy <appKey> --type external
+```
+
+If the app is auto-detected as external (e.g. `integration/<appKey>/variables.yaml` has `app.type: external`), you can omit the flag:
 
 ```bash
 aifabrix deploy <appKey>
