@@ -1,6 +1,6 @@
 # GitHub Workflows Documentation
 
-← [Back to Quick Start](quick-start.md)
+← [Back to Your Own Applications](your-own-applications.md)
 
 Complete guide to GitHub Actions workflow generation and customization.
 

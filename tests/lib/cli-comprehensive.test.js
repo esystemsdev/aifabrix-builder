@@ -24,9 +24,11 @@ jest.mock('../../lib/core/config', () => {
   const mockGetControllerUrl = jest.fn().mockResolvedValue(null);
   const mockSaveClientToken = jest.fn().mockResolvedValue();
   const mockSaveDeviceToken = jest.fn().mockResolvedValue();
+  const mockEnsureSecretsEncryptionKey = jest.fn().mockResolvedValue();
 
   return {
     getDeveloperId: mockGetDeveloperId,
+    ensureSecretsEncryptionKey: mockEnsureSecretsEncryptionKey,
     setDeveloperId: mockSetDeveloperId,
     getConfig: mockGetConfig,
     saveConfig: mockSaveConfig,
@@ -177,8 +179,8 @@ describe('CLI Comprehensive Tests', () => {
     it('should register all commands', () => {
       setupCommands(mockProgram);
       expect(mockProgram.command).toHaveBeenCalledWith('login');
-      expect(mockProgram.command).toHaveBeenCalledWith('up');
-      expect(mockProgram.command).toHaveBeenCalledWith('down [app]');
+      expect(mockProgram.command).toHaveBeenCalledWith('up-infra');
+      expect(mockProgram.command).toHaveBeenCalledWith('down-infra [app]');
       expect(mockProgram.command).toHaveBeenCalledWith('create <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('build <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('run <app>');
@@ -329,7 +331,7 @@ describe('CLI Comprehensive Tests', () => {
     it('should start infrastructure successfully', async() => {
       infra.startInfra.mockResolvedValue();
 
-      const action = commandActions.up;
+      const action = commandActions['up-infra'];
       await action({});
 
       expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: false });
@@ -338,7 +340,7 @@ describe('CLI Comprehensive Tests', () => {
     it('should handle infrastructure start errors', async() => {
       infra.startInfra.mockRejectedValue(new Error('Docker not running'));
 
-      const action = commandActions.up;
+      const action = commandActions['up-infra'];
       await action({});
 
       expect(console.error).toHaveBeenCalled();
@@ -354,7 +356,7 @@ describe('CLI Comprehensive Tests', () => {
     it('should stop infrastructure without volumes', async() => {
       infra.stopInfra.mockResolvedValue();
 
-      const action = commandActions['down [app]'];
+      const action = commandActions['down-infra [app]'];
       await action(undefined, {});
 
       expect(infra.stopInfra).toHaveBeenCalled();
@@ -364,7 +366,7 @@ describe('CLI Comprehensive Tests', () => {
     it('should stop infrastructure with volumes', async() => {
       infra.stopInfraWithVolumes = jest.fn().mockResolvedValue();
 
-      const action = commandActions['down [app]'];
+      const action = commandActions['down-infra [app]'];
       await action(undefined, { volumes: true });
 
       expect(infra.stopInfraWithVolumes).toHaveBeenCalled();
@@ -373,7 +375,7 @@ describe('CLI Comprehensive Tests', () => {
     it('should handle stop errors', async() => {
       infra.stopInfra.mockRejectedValue(new Error('Stop failed'));
 
-      const action = commandActions['down [app]'];
+      const action = commandActions['down-infra [app]'];
       await action(undefined, {});
 
       expect(console.error).toHaveBeenCalled();

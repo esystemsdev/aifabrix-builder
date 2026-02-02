@@ -1,6 +1,6 @@
 # External Integration Commands
 
-← [Back to Commands Index](README.md) | [Back to Quick Start](../quick-start.md)
+← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
 
 Commands for creating, testing, and managing external system integrations.
 

@@ -1,6 +1,6 @@
 # Deployment Commands
 
-← [Back to Commands Index](README.md) | [Back to Quick Start](../quick-start.md)
+← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
 
 Commands for deploying applications and environments via Miso Controller. The controller handles deployment to Azure (Container Apps) or local Docker based on the deployment type.
 

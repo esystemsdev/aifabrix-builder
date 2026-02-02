@@ -1,10 +1,12 @@
 # Infrastructure Guide
 
-← [Back to Quick Start](quick-start.md)
+← [Back to Your Own Applications](your-own-applications.md)
+
+We recommend running the AI Fabrix platform in **Microsoft Azure**. The aifabrix CLI works the same locally and in Azure—no manual config difference for the user.
 
 ## What is Infrastructure?
 
-When you run `aifabrix up`, you get **shared baseline services** that all your applications use:
+When you run `aifabrix up-infra`, you get **shared baseline services** that all your applications use:
 
 ### PostgreSQL (port 5432)
 - Database server for your applications
@@ -113,12 +115,12 @@ OpsTools --> Infrastructure
 
 ### Start Infrastructure
 ```bash
-aifabrix up
+aifabrix up-infra
 ```
 
 Start with Traefik:
 ```bash
-aifabrix up --traefik
+aifabrix up-infra --traefik
 ```
 
 **First time?** Docker downloads images (2-3 minutes).
@@ -130,7 +132,7 @@ aifabrix up --traefik
 
 ### Stop Infrastructure
 ```bash
-aifabrix down
+aifabrix down-infra
 ```
 
 Stops all containers. **Your data is preserved** in Docker volumes.
@@ -144,10 +146,32 @@ Shows what's running, what's not, and how to fix issues.
 
 ### Reset Everything (Delete All Data)
 ```bash
-aifabrix down --volumes
+aifabrix down-infra --volumes
 ```
 
 ⚠️ **Warning:** This deletes all databases, Redis data, everything. Use for fresh start.
+
+---
+
+<a id="traefik"></a>
+## Traefik configuration and validation
+
+Traefik is an optional reverse proxy for local routing (matches Front Door routing config in production). The builder can start Traefik as part of infrastructure and generates Traefik labels when `frontDoorRouting.enabled` is true in your app's `variables.yaml`.
+
+**Enable Traefik:**
+```bash
+aifabrix up-infra --traefik
+```
+This starts Traefik (ports 80/443) and saves `traefik: true` to `~/.aifabrix/config.yaml`. Use `aifabrix up-infra --no-traefik` to disable and persist.
+
+**Basic config:** Traefik listens on HTTP (80) and HTTPS (443). For TLS, set environment variables before running `aifabrix up-infra --traefik`:
+- `TRAEFIK_CERT_STORE` – Certificate store name (e.g. `wildcard`)
+- `TRAEFIK_CERT_FILE` – Absolute path to certificate file
+- `TRAEFIK_KEY_FILE` – Absolute path to private key file
+
+**How the builder uses Traefik:** When an app has `frontDoorRouting.enabled: true` in `variables.yaml`, the builder generates Traefik labels for the app's docker-compose service (router rule from host + path, TLS, optional cert store). The builder does not configure Traefik itself beyond starting it; labels are applied when you run the app with Traefik on the same Docker network.
+
+**Requirements:** DNS or `/etc/hosts` entry for `${DEV_USERNAME}.aifabrix.dev` → localhost if using host-based routing. See [variables.yaml frontDoorRouting](configuration/variables-yaml.md) for pattern and host configuration.
 
 ---
 
@@ -155,7 +179,7 @@ aifabrix down --volumes
 
 Install Keycloak and Miso Controller **from images** (no build). Use when you have pre-built images and want a fast platform setup for testing.
 
-**Prerequisites:** Infrastructure must be up (`aifabrix up`).
+**Prerequisites:** Infrastructure must be up (`aifabrix up-infra`).
 
 ```bash
 aifabrix up-miso
@@ -346,7 +370,7 @@ aifabrix run miso-controller
 ## Common Questions
 
 ### Do I need to run infrastructure all the time?
-Only when developing. Start with `aifabrix up` when you begin work, stop with `aifabrix down` when done.
+Only when developing. Start with `aifabrix up-infra` when you begin work, stop with `aifabrix down-infra` when done.
 
 ### What happens to my data when I stop?
 It's preserved in Docker volumes. Your databases and Redis data persist between restarts.
@@ -376,7 +400,7 @@ Data volumes: Depends on your usage
 → You have another Redis running. Stop it first.
 
 **Docker not running**  
-→ Start Docker Desktop, then run `aifabrix up` again.
+→ Start Docker Desktop, then run `aifabrix up-infra` again.
 
 **"Cannot connect to Docker daemon"**  
 → Make sure Docker Desktop is running and you're logged in.

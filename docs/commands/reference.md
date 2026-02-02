@@ -1,6 +1,6 @@
 # Command Reference
 
-← [Back to Commands Index](README.md) | [Back to Quick Start](../quick-start.md)
+← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
 
 Reference information for CLI commands including common workflows, global options, exit codes, configuration, and getting help.
 
@@ -11,7 +11,7 @@ Reference information for CLI commands including common workflows, global option
 ### Local Development
 ```bash
 # Start
-aifabrix up
+aifabrix up-infra
 aifabrix create myapp
 aifabrix build myapp
 aifabrix run myapp
@@ -125,9 +125,9 @@ aifabrix doctor
 ```
 
 **Documentation:**
-- [Quick Start](../quick-start.md)
+- [Your Own Applications](../your-own-applications.md)
 - [Infrastructure](../infrastructure.md)
-- [Configuration](../configuration.md)
+- [Configuration](../configuration/README.md)
 - [Building](../building.md)
 - [Running](../running.md)
 - [Deploying](../deploying.md)

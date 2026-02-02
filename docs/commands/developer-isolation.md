@@ -1,6 +1,6 @@
 # Developer Isolation Commands
 
-← [Back to Commands Index](README.md) | [Back to Quick Start](../quick-start.md)
+← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
 
 Commands for managing developer isolation and port configuration.
 
@@ -135,7 +135,7 @@ environment: dev
 
 **Next Steps:**
 After setting developer ID:
-- Start infrastructure: `aifabrix up` (or `aifabrix up --developer <id>`)
+- Start infrastructure: `aifabrix up-infra` (or `aifabrix up-infra --developer <id>`)
 - Run applications: `aifabrix run <app>` (uses developer-specific ports automatically)
 - Check status: `aifabrix status` (shows developer-specific ports)
 

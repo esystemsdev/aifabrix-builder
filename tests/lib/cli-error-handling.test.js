@@ -107,11 +107,11 @@ describe('CLI Error Handling', () => {
       const cli = require('../../lib/cli');
 
       const error = new Error('port 5432 is already in use');
-      const command = 'up';
+      const command = 'up-infra';
 
       cli.handleCommandError(error, command);
 
-      expect(console.error).toHaveBeenCalledWith('\n❌ Error in up command:');
+      expect(console.error).toHaveBeenCalledWith('\n❌ Error in up-infra command:');
       expect(console.error).toHaveBeenCalledWith('   Port conflict detected.');
       expect(console.error).toHaveBeenCalledWith('   Run "aifabrix doctor" to check which ports are in use.');
     });

@@ -1,6 +1,6 @@
 # External Systems Guide
 
-← [Back to Quick Start](quick-start.md)
+← [Back to Your Own Applications](your-own-applications.md)
 
 Connect your AI Fabrix Dataplane to third-party APIs like HubSpot, Salesforce, or any REST API. External systems don't require Docker containers—they're pure integrations that sync data and expose it via MCP/OpenAPI.
 
@@ -339,7 +339,7 @@ aifabrix validate integration/hubspot/hubspot-datasource-deal.json
 - Verifies required fields are present
 - Checks field mapping expressions are valid
 
-> **Note:** For some external integrations, `aifabrix validate <app>` may fail. If that happens, validate the individual files and see [Known Issues](#known-issues).
+> **Note:** For some external integrations, `aifabrix validate <app>` may fail. If that happens, validate the individual files (see Troubleshooting below).
 
 ### Step 5: Deploy
 
@@ -360,7 +360,7 @@ aifabrix deploy hubspot
 
 **Note:** The `aifabrix json` command generates `<systemKey>-deploy.json` deployment manifest. Individual component files (`hubspot-system.json`, `hubspot-datasource-company.json`, etc.) remain in your `integration/` folder and are referenced in `variables.yaml`.
 
-> **Known issue:** External system deployment via `aifabrix deploy` may fail if the controller requires a Docker image. See [Known Issues](#known-issues) for the `internal: true` workaround.
+> **Note:** If the controller requires a Docker image, use `internal: true` in `variables.yaml` (externalIntegration) so the system deploys on dataplane startup; see Troubleshooting.
 
 ### Step 6: Verify Deployment
 
@@ -484,7 +484,7 @@ External systems use standard variable names that are **automatically managed by
 | `{{PASSWORD}}`     | Basic Auth Password      | Basic authentication | `{{PASSWORD}}`     |
 <!-- markdownlint-enable MD060 -->
 
-OAuth2 redirect URI is managed by the dataplane credentials system and is not configured as a variable in the integration.
+OAuth2 redirect URI is managed by the dataplane credentials system and is not configured as a variable in the integration. **REDIRECT_URI is auto-generated; you do not need to set it.**
 
 **Important:**
 - Standard variables are managed by the dataplane credentials system—no `portalInput` needed
@@ -866,7 +866,7 @@ Each datasource maps one entity type from the external system.
 **Required fields:**
 - `key` - Unique datasource identifier
 - `systemKey` - Must match external system `key`
-- `entityType` - Entity identifier in external system (pattern: `^[a-z0-9-]+$`). Used to determine which type schema to validate against for type-specific configurations (e.g., `documentStorage`). Examples: `"documentStorage"` (maps to `type/document-storage.json`), `"vectorStore"` (maps to `type/vector-store.json`)
+- `entityType` - Entity type identifier; validated against the schema enum. Allowed values (from `lib/schema/external-datasource.schema.json`): `document-storage`, `documentStorage`, `vector-store`, `vectorStore`, `record-storage`, `recordStorage`, `message-service`, `messageService`, `none`. Defines storage semantics and which type schema is used for validation (e.g. `documentStorage` → document-storage schema).
 - `resourceType` - Resource type classification (pattern: `^[a-z0-9-]+$`, e.g., "customer", "contact", "deal")
 - `fieldMappings` - Field transformation rules with dimensions and attributes
 
@@ -908,14 +908,19 @@ Each datasource maps one entity type from the external system.
 
 **Note:** Datasource files are named using the datasource key: `<system-key>-datasource-<datasource-key>.json`. For example, a datasource with `key: "hubspot-company"` and `systemKey: "hubspot"` creates the file `hubspot-datasource-company.json`.
 
-#### Entity Type and Type Schema Mapping
+#### entityType enum
 
-The `entityType` field determines which type schema to validate against for type-specific configurations (e.g., `documentStorage`):
+The `entityType` field is validated against the schema enum. Allowed values (from `lib/schema/external-datasource.schema.json`):
 
-- **documentStorage**: When `entityType="documentStorage"` (or similar), validates against `type/document-storage.json`
-- **vectorStore**: When `entityType="vectorStore"` (or similar), validates against `type/vector-store.json`
+| Value | Description |
+|-------|-------------|
+| `document-storage`, `documentStorage` | Document storage with vector storage |
+| `vector-store`, `vectorStore` | External vector storage system |
+| `record-storage`, `recordStorage` | Record-based system with metadata sync and access rights |
+| `message-service`, `messageService` | Message service (Slack, Teams, Email) |
+| `none` | Uses external system data directly or connects other data sources |
 
-This enables multiple datasources with `documentStorage` in the same system, each potentially using different type schemas based on their `entityType`.
+Both camelCase and kebab-case are accepted. The field determines which type schema is used for validation (e.g. `documentStorage` → document-storage schema).
 
 **Example:**
 ```json
@@ -1022,8 +1027,7 @@ The `indexed` property in attribute definitions controls whether a database inde
 }
 ```
 
-**Record references (Plan 211):**
-Use the `record_ref:` prefix in expressions to create typed relationships between records across datasources. This creates foreign key relationships in the dataplane.
+**Record references:** Use the `record_ref:` prefix in expressions to create typed relationships between records across datasources. This creates foreign key relationships in the dataplane.
 
 **Example:**
 ```json
@@ -1473,12 +1477,12 @@ Deploy using the application-level workflow:
 aifabrix deploy hubspot
 ```
 
-**What happens:**
+**What happens:** The CLI sends the deployment to the **Miso Controller** (pipeline API). The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates deployment.
+
 1. Generates `<systemKey>-deploy.json` (combines one system + all datasources)
-2. Uploads to dataplane via pipeline API
-3. Validates changes (optional, can skip with `--skip-validation`)
-4. Publishes atomically with rollback support
-5. System and datasources are deployed together
+2. Sends to controller via pipeline API (validate then deploy)
+3. Controller deploys to dataplane; validates and publishes
+4. System and datasources are deployed together
 
 **Note:** Only one system per application is supported. If multiple systems are listed in `variables.yaml`, only the first one is included in the generated `<systemKey>-deploy.json`.
 
@@ -1520,20 +1524,14 @@ aifabrix json hubspot
 aifabrix deploy hubspot
 ```
 
-**What happens:**
-1. Generates controller manifest (if not already generated) via `aifabrix json` internally
-2. Uses the same controller pipeline as regular apps:
-   - Validate: `POST /api/v1/pipeline/{envKey}/validate` (controller)
-   - Deploy: `POST /api/v1/pipeline/{envKey}/deploy` (controller)
-3. External system and datasources are deployed via the controller
-4. Field mappings are compiled
-5. OpenAPI operations are registered
-6. System is ready for querying
+**What happens:** The CLI sends the deployment to the **Miso Controller**. The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates it.
 
-**Controller pipeline benefits:**
-- Same workflow as application deployment (validate then deploy)
-- Validation before deploy; deployment uses a one-time validate token
-- Optional polling for deployment status
+1. Generates controller manifest (if not already generated) via `aifabrix json` internally
+2. Uses the same controller pipeline as regular apps: Validate then Deploy (`POST /api/v1/pipeline/{envKey}/validate`, `POST /api/v1/pipeline/{envKey}/deploy`)
+3. Controller deploys external system and datasources to the dataplane
+4. Field mappings are compiled; OpenAPI operations are registered; system is ready for querying
+
+**Controller pipeline benefits:** Same workflow as application deployment; validation before deploy; optional polling for deployment status.
 
 ### 5. Deploy Individual Datasources (Optional)
 
@@ -1704,19 +1702,13 @@ Use defaults for optional fields:
 → Review deployment logs in controller UI
 
 **"Application deployment requires image"**
-→ External systems do not use Docker images
-→ Use `internal: true` in `variables.yaml` for automatic deployment
-→ See [Known Issues](#known-issues)
+→ External systems do not use Docker images. Use `internal: true` in `variables.yaml` (under `externalIntegration`) so the system deploys on dataplane startup; then restart the dataplane.
 
 **"Dataplane URL not found in application configuration"**
-→ External systems do not have their own dataplane URL
-→ Dataplane URL is always discovered from the controller; ensure the controller is set via `aifabrix login` or `aifabrix auth config --set-controller`
-→ See [Known Issues](#known-issues)
+→ External systems do not have their own dataplane URL. Dataplane URL is discovered from the controller; ensure the controller is set via `aifabrix login` or `aifabrix auth config --set-controller`.
 
 **"Cannot read properties of undefined (reading 'forEach')"**
-→ Validation may crash for external integrations
-→ Validate individual files as a workaround
-→ See [Known Issues](#known-issues)
+→ Validation may crash for some external integrations. Validate individual files: `aifabrix validate integration/<app>/<file>.json`.
 
 **"Datasource not appearing"**
 → Check `autopublish: true` in `variables.yaml`
@@ -1729,53 +1721,18 @@ Use defaults for optional fields:
 → Ensure `operationId` matches OpenAPI spec
 → Verify authentication is configured correctly
 
----
+**Datasource deploy:** Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is discovered from the controller. Example: `aifabrix datasource deploy hubspot integration/hubspot/hubspot-datasource-company.json`.
 
-## Known Issues
-
-### External System Deployment via `aifabrix deploy`
-**Issue:** The `aifabrix deploy` command currently expects a Docker image, which external systems do not have.
-
-**Workaround:** Use `internal: true` in `variables.yaml` to enable auto-deployment on dataplane restart:
-
-```yaml
-externalIntegration:
-  internal: true  # Deploy on dataplane startup
-  autopublish: true
-  schemaBasePath: ./
-  systems:
-    - hubspot-system.json
-  dataSources:
-    - hubspot-datasource-company.json
-```
-
-Then restart the dataplane to pick up the new integration.
-
-### Datasource Deploy for External Systems
-Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is discovered from the controller.
-
-```bash
-aifabrix datasource deploy hubspot integration/hubspot/hubspot-datasource-company.json
-```
-
-### Validate Command for External Systems
-**Issue:** `aifabrix validate <app>` can fail for external integrations.
-
-**Workaround:** Validate individual files instead:
-
-```bash
-aifabrix validate integration/hubspot/hubspot-system.json
-aifabrix validate integration/hubspot/hubspot-datasource-company.json
-```
+**Validate individual files:** If `aifabrix validate <app>` fails, validate files directly: `aifabrix validate integration/hubspot/hubspot-system.json`, `aifabrix validate integration/hubspot/hubspot-datasource-company.json`.
 
 ---
 
 ## Next Steps
 
-- [Configuration Reference](configuration.md#external-integration) - Detailed config options
+- [Configuration: External integration](configuration/external-integration.md) - Detailed config options
 - [CLI Reference](commands/external-integration.md) - All commands for external systems
 - [Pipeline Deployment](.cursor/plans/pipeline.md) - Advanced deployment options
-- [Field Mappings Guide](configuration.md#field-mappings) - Advanced mapping patterns
+- [Field Mappings Guide](configuration/README.md) - Configuration index and variables
 
 ---
 

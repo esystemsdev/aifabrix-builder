@@ -1,9 +1,13 @@
-# AI Fabrix - Builder SDK
+# AI Fabrix - Builder
 
 [![npm version](https://img.shields.io/npm/v/@aifabrix/builder.svg)](https://www.npmjs.com/package/@aifabrix/builder)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Local development infrastructure + Azure deployment tool.
+Install the AI Fabrix platform and test it locally. Then add external integrations or build your own applications.
+
+← **Full documentation:** [docs/README.md](docs/README.md) (table of contents for all guides)
+
+---
 
 ## Install
 
@@ -11,126 +15,86 @@ Local development infrastructure + Azure deployment tool.
 npm install -g @aifabrix/builder
 ```
 
-## Quick Start
+**Alias:** You can use `aifx` instead of `aifabrix` in any command.
 
-```bash
-aifabrix up              # Start Postgres + Redis
-aifabrix create myapp    # Create your app
-aifabrix build myapp     # Build Docker image
-aifabrix run myapp       # Run locally
-# Stop the app (optionally remove its data volume)
-aifabrix down myapp
-# aifabrix down myapp --volumes
-```
+---
 
-→ [Full Guide](docs/quick-start.md) | [CLI Commands](docs/cli-reference.md)
+## Goal 1: Start and test the AI Fabrix platform
 
-## What You Get
+Get the platform running locally so you can try it.
 
-- **Local Postgres + Redis infrastructure** - Runs in Docker
-- **Auto-generated Dockerfiles** - TypeScript and Python templates
-- **Environment variable management** - Secret resolution with kv:// references
-- **Azure deployment pipeline** - Push to ACR and deploy via controller
+1. **Start local infrastructure** (Postgres, Redis, optional Traefik):
 
-## Optional Platform Apps
+   ```bash
+   aifabrix up-infra
+   ```
 
-Want authentication or deployment controller?
+2. **Start the platform** (Keycloak, Miso Controller, Dataplane) from community images:
 
-**Quick install from images (no build):**
-```bash
-aifabrix up              # Start Postgres + Redis first
-aifabrix up-miso         # Install Keycloak + Miso Controller from images (auto-generated secrets for testing)
-```
+   ```bash
+   aifabrix up-platform
+   ```
 
-**Or create and build from templates:**
-```bash
-# Keycloak for authentication
-aifabrix create keycloak --port 8082 --database --template keycloak
-aifabrix build keycloak
-aifabrix run keycloak
+   Or run platform apps separately: `aifabrix up-miso` then `aifabrix up-dataplane`. Infra must be up first.
 
-# Miso Controller for Azure deployments
-aifabrix create miso-controller --port 3000 --database --redis --template miso-controller
-aifabrix build miso-controller
-aifabrix run miso-controller
-```
+3. **Configure secrets** – You need either **OpenAI** or **Azure OpenAI**:
 
-**Dataplane in dev (after login):**
-```bash
-aifabrix login --environment dev
-aifabrix up-dataplane    # Register or rotate, run, and deploy dataplane in dev
-```
+   - **OpenAI:** set your API key:
+     ```bash
+     aifabrix secrets set secrets-openaiApiKeyVault <your-openai-secret-key>
+     ```
+   - **Azure OpenAI:** set endpoint and API key:
+     ```bash
+     aifabrix secrets set azure-openaiapi-urlKeyVault <your-azure-openai-endpoint-url>
+     aifabrix secrets set secrets-azureOpenaiApiKeyVault <your-azure-openai-secret-key>
+     ```
 
-→ [Infrastructure Guide](docs/infrastructure.md)
+Secrets are stored in `~/.aifabrix/secrets.local.yaml` or the file from `aifabrix-secrets` in your config (e.g. `builder/secrets.local.yaml`).
+
+→ [Infrastructure guide](docs/infrastructure.md)
+
+---
+
+## Goal 2: External system integration
+
+Create and deploy an external system (e.g. HubSpot): wizard or manual setup, then validate and deploy.
+
+**Example: HubSpot**
+
+- Create: `aifabrix create hubspot-test --type external` (or `aifabrix wizard` for guided setup).
+- Configure auth and datasources under `integration/hubspot-test/`.
+- Validate: `aifabrix validate hubspot-test`
+- Deploy: `aifabrix deploy hubspot-test`
+
+→ [External systems guide](docs/external-systems.md) · [Wizard](docs/wizard.md)
+
+---
+
+## Goal 3: Build your own application
+
+Create, configure, and run your own AI Fabrix application locally or deploy it (create app → configure → build → run / deploy).
+
+→ [Your own applications](docs/your-own-applications.md)
+
+---
 
 ## Documentation
 
-- [Quick Start](docs/quick-start.md) - Get running in 5 minutes
-- [Infrastructure](docs/infrastructure.md) - What runs and why
-- [Configuration](docs/configuration.md) - Config file reference
-- [Building](docs/building.md) - Build process explained
-- [Running](docs/running.md) - Run apps locally
-- [Deploying](docs/deploying.md) - Deploy to Azure
-- [CLI Reference](docs/cli-reference.md) - All commands
+All guides and references are listed in **[docs/README.md](docs/README.md)** (table of contents).
 
-## How It Works
+- [CLI Reference](docs/cli-reference.md) – All commands
+- [Infrastructure](docs/infrastructure.md) – What runs and why
+- [Configuration](docs/configuration.md) – Config files
 
-1. **Infrastructure** - Minimal baseline (Postgres + Redis)
-2. **Create** - Generate config files for your app
-3. **Build** - Auto-detect runtime and build Docker image
-4. **Run** - Start locally, connected to infrastructure
-5. **Deploy** - Push to ACR and deploy via controller
-
-```mermaid
-%%{init: {
-  "theme": "base",
-  "themeVariables": {
-    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
-    "fontSize": "16px",
-    "background": "#FFFFFF",
-    "primaryColor": "#F8FAFC",
-    "primaryTextColor": "#0B0E15",
-    "primaryBorderColor": "#E2E8F0",
-    "lineColor": "#E2E8F0",
-    "textColor": "#0B0E15",
-    "borderRadius": 16
-  },
-  "flowchart": {
-    "curve": "linear",
-    "nodeSpacing": 34,
-    "rankSpacing": 34,
-    "padding": 10
-  }
-}}%%
-
-flowchart TD
-
-%% =======================
-%% Styles
-%% =======================
-classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
-classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
-
-%% =======================
-%% Flow
-%% =======================
-Install[Install CLI]:::primary --> Up[Start Infrastructure]:::base
-Up --> Create[Create App]:::base
-Create --> Build[Build Image]:::base
-Build --> Run[Run Locally]:::base
-Run --> Deploy[Deploy to Azure]:::primary
-```
-
-## Development
-
-- **Tests**: `npm test` (runs via wrapper; handles known Jest/Node exit issues).
-- **Coverage**: `npm run test:coverage` — runs tests with coverage through the same wrapper. May take 3–5 minutes for the full suite. If the process exits with a signal after "Ran all test suites", the wrapper treats it as success and coverage is written to `coverage/`. Use `test:coverage:nyc` only if you need nyc-specific reporters.
+---
 
 ## Requirements
 
-- **Docker Desktop** - For running containers
-- **Node.js 18+** - For running the CLI
-- **Azure CLI** - For deploying to Azure (optional)
+- **Docker Desktop** – For running containers
+- **Node.js 18+** – For running the CLI
+- **Azure CLI** – For deploying to Azure (optional)
+
+---
 
 ## License
 

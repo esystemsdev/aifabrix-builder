@@ -48,9 +48,9 @@ describe('Integration Step 07: Run Docker Container', () => {
     const infraRunning = await testInfrastructureRunning();
     if (!infraRunning) {
       console.warn('Infrastructure is not running. Starting infrastructure...');
-      const infraResult = await execCommand('aifabrix up', 60000);
+      const infraResult = await execCommand('aifabrix up-infra', 60000);
       if (infraResult.exitCode !== 0) {
-        throw new Error('Could not start infrastructure. Run \'aifabrix up\' manually.');
+        throw new Error('Could not start infrastructure. Run \'aifabrix up-infra\' manually.');
       }
       console.log('Waiting for infrastructure to be healthy...');
       await sleep(10000);

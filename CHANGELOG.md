@@ -1,3 +1,24 @@
+## [2.37.0] - 2026-02-02
+
+### Added
+- **CLI restructure**: Commands moved into `lib/cli/` with dedicated setup modules (setup-app, setup-auth, setup-dev, setup-environment, setup-external-system, setup-infra, setup-secrets, setup-utility)
+- **Infra and platform commands**: `up` → `up-infra` (start Postgres, Redis, optional Traefik); `down [app]` → `down-infra [app]`; new `up-platform` (runs up-miso then up-dataplane; infra must be up)
+- **Docs Quick Start**: `docs/README.md` as single entrypoint (install, up-infra → up-platform, build integrations)
+- **Configuration docs**: New `docs/configuration/` (env-config, env-template, external-integration, secrets-and-config, variables-yaml)
+- **Deployment docs**: `docs/deployment/environment-first-time.md`; deployment/environment split
+- **External system template**: `templates/external-system/deploy.js.hbs` for Node deploy script generation
+- **Encryption key**: `lib/core/ensure-encryption-key.js` for secure key generation and storage
+
+### Changed
+- **CLI**: Main CLI delegates to `lib/cli/index.js`; infra commands in `lib/cli/setup-infra.js`; help-builder lists up-infra, up-platform, down-infra
+- **Docs**: Lowercase filenames (building.md, deploying.md, cli-reference.md, etc.); quick-start content moved to `docs/your-own-applications.md`; infrastructure, wizard, github-workflows, external-systems, configuration, running, developer-isolation updated
+- **Display and run-helpers**: Messages reference `aifabrix up-infra`; up-miso error suggests `up-infra` first
+- **Templates**: dataplane and miso-controller variables.yaml; applications README.hbs
+- **Infrastructure helpers**: Docstring references down-infra/up-infra for re-init
+
+### Technical
+- Tests: cli, cli-comprehensive, cli-error-handling, cli-error-paths, cli-command-actions, up-miso, wizard-generator, app-display, app-readme; integration step-07-run
+
 ## [2.36.2] - 2026-02-01
 
 ### Changed
@@ -124,7 +145,7 @@
 ## [2.35.0] - 2026-01-23
 
 ### Added
-- **CLI alias `aifx`**: `aifx` is available as a shortcut for `aifabrix` in all commands (e.g. `aifx up`, `aifx create myapp`). Documented in [Quick Start](docs/quick-start.md) and [CLI Reference](docs/cli-reference.md).
+- **CLI alias `aifx`**: `aifx` is available as a shortcut for `aifabrix` in all commands (e.g. `aifx up`, `aifx create myapp`). Documented in [Your Own Applications](docs/your-own-applications.md) and [CLI Reference](docs/cli-reference.md).
 - **`aifabrix up --no-traefik`**: Exclude Traefik and persist `traefik: false` to `~/.aifabrix/config.yaml`. When neither `--traefik` nor `--no-traefik` is passed, the value is read from config.
 - **Centralized Port Resolution**: Single source of truth for resolving application port from `variables.yaml`
   - `lib/utils/port-resolver.js` with `getContainerPort`, `getLocalPort`, `getContainerPortFromPath`, `getLocalPortFromPath`

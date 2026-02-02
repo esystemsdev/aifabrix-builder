@@ -89,7 +89,7 @@ describe('Application Display Module', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Authentication enabled'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Environment converted'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('aifabrix up'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('aifabrix up-infra'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('aifabrix build'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('aifabrix run'));
     });

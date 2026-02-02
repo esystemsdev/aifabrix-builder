@@ -1,6 +1,6 @@
 # Running Your App Locally
 
-← [Back to Quick Start](quick-start.md)
+← [Back to Your Own Applications](your-own-applications.md)
 
 How to run your application in Docker for local development.
 
@@ -97,103 +97,7 @@ LocalhostApp[localhost:3000]:::primary -->|Port mapping| YourApp
 LocalhostDb[localhost:5432]:::primary -->|Port mapping| Postgres
 ```
 
-## Traefik Routing (Optional)
-
-When `frontDoorRouting.enabled` is set to `true` in your `variables.yaml`, the builder automatically generates Traefik labels for reverse proxy routing.
-
-### Configuration
-
-Add to your `variables.yaml`:
-
-```yaml
-frontDoorRouting:
-  enabled: true
-  host: ${DEV_USERNAME}.aifabrix.dev
-  pattern: /api/*
-  tls: true
-```
-
-### Accessing Your App
-
-Once running, your app will be accessible via:
-- **Traefik hostname**: `dev01.aifabrix.dev/api` (for developer-id 1)
-- **Direct port**: `http://localhost:3000` (still works)
-
-### Requirements
-
-- Traefik must be running and connected to the same Docker network (`infra-aifabrix-network` or `infra-dev{N}-aifabrix-network`)
-- Traefik must be configured to listen on ports 80 (HTTP) and/or 443 (HTTPS)
-- DNS or `/etc/hosts` entry pointing `${DEV_USERNAME}.aifabrix.dev` to `localhost` (for local development)
-
-### Example Traefik Setup
-
-If you don't have Traefik running, start infrastructure with Traefik:
-
-```bash
-# Start infrastructure including Traefik
-aifabrix up --traefik
-```
-
-**Note:** The builder generates Traefik labels automatically - you just need Traefik running.
-
-### Wildcard Certificate Setup
-
-If you have a wildcard certificate and want to use it:
-
-```yaml
-# In your variables.yaml
-frontDoorRouting:
-  enabled: true
-  host: ${DEV_USERNAME}.aifabrix.dev
-  pattern: /api/*
-  tls: true
-  certStore: wildcard  # Use your certificate store name
-```
-
-Configure Traefik with the certificate store:
-
-```bash
-export TRAEFIK_CERT_STORE=wildcard
-export TRAEFIK_CERT_FILE=/path/to/wildcard.crt
-export TRAEFIK_KEY_FILE=/path/to/wildcard.key
-```
-
-Then start infrastructure with Traefik:
-
-```bash
-aifabrix up --traefik
-```
-
-If you run Traefik separately, use this configuration:
-
-```yaml
-traefik:
-  image: traefik:v3.6
-  command:
-    - "--providers.docker=true"
-    - "--providers.docker.exposedbydefault=false"
-    - "--entrypoints.web.address=:80"
-    - "--entrypoints.websecure.address=:443"
-    - "--certificatesstores.wildcard.defaultcertificate.certfile=/certs/wildcard.crt"
-    - "--certificatesstores.wildcard.defaultcertificate.keyfile=/certs/wildcard.key"
-  ports:
-    - "80:80"
-    - "443:443"
-  volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
-    - ./certs:/certs  # Mount your wildcard certificate files
-  networks:
-    - infra-aifabrix-network
-```
-
-### Output
-
-```yaml
-✓ Infrastructure is running
-✓ Starting myapp...
-✓ Container aifabrix-myapp started
-✓ App running at http://localhost:3000
-```
+For Traefik reverse proxy setup (optional), see [Infrastructure Guide – Traefik](infrastructure.md#traefik). Start infrastructure with `aifabrix up-infra` (optionally `aifabrix up-infra --traefik`).
 
 ---
 
@@ -592,7 +496,7 @@ docker stats aifabrix-myapp
 
 **Fix:**
 ```bash
-aifabrix up
+aifabrix up-infra
 ```
 
 **Check:**
@@ -740,7 +644,7 @@ docker run -d --name aifabrix-myapp-3 -p 3003:3000 myapp:latest
 
 Remove everything and start fresh:
 ```bash
-aifabrix down myapp --volumes
+aifabrix down-infra myapp --volumes
 docker rmi myapp:latest
 aifabrix build myapp
 aifabrix run myapp
@@ -748,7 +652,7 @@ aifabrix run myapp
 
 **Without removing volumes:**
 ```bash
-aifabrix down myapp
+aifabrix down-infra myapp
 docker rmi myapp:latest
 aifabrix build myapp
 aifabrix run myapp

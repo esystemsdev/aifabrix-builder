@@ -1,6 +1,6 @@
 # Developer Isolation
 
-← [Back to Quick Start](quick-start.md)
+← [Back to Your Own Applications](your-own-applications.md)
 
 ## Overview
 
@@ -109,7 +109,7 @@ This ensures each developer automatically connects to their own controller insta
 
 ```bash
 # Set developer ID to 1 and start infrastructure
-aifabrix up --developer 1
+aifabrix up-infra --developer 1
 ```
 
 This command:
@@ -286,10 +286,10 @@ Overrides and fallbacks:
 
 ```bash
 # Developer 1
-aifabrix up --developer 1
+aifabrix up-infra --developer 1
 
 # Developer 2
-aifabrix up --developer 2
+aifabrix up-infra --developer 2
 ```
 
 ### Running Applications
@@ -375,7 +375,7 @@ If you get a "port already in use" error:
 
 If infrastructure commands fail:
 1. Ensure you've set your developer ID: `aifabrix dev config --set-id 1`
-2. Start infrastructure: `aifabrix up`
+2. Start infrastructure: `aifabrix up-infra`
 3. Check status: `aifabrix status`
 
 ### Container Name Conflicts

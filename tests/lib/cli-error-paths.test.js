@@ -64,7 +64,7 @@ describe('CLI Error Paths', () => {
       infra.startInfra.mockRejectedValue(error);
 
       // Simulate command execution with negative developer ID
-      const upCommand = program.commands.find(cmd => cmd.name() === 'up');
+      const upCommand = program.commands.find(cmd => cmd.name() === 'up-infra');
       expect(upCommand).toBeDefined();
 
       // Test the validation logic directly

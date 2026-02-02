@@ -1,8 +1,10 @@
-# Quick Start Guide
+# Your Own Applications
 
-Get your AI Fabrix application running in 5 minutes.
+Create, configure, and run your own AI Fabrix application locally or deploy it.
 
-← [Back to README](../README.md)
+← [Back to README](../README.md) · [Documentation index](README.md)
+
+This guide is **app-centric**: create app → configure → run locally / deploy. For getting the full platform up and building integrations, see the main [README](../README.md).
 
 ## Step 1: Install
 
@@ -57,7 +59,7 @@ Register --> Deploy[Deploy to Azure]:::primary
 ## Step 2: Start Infrastructure
 
 ```bash
-aifabrix up
+aifabrix up-infra
 ```
 
 **What starts:**
@@ -66,12 +68,12 @@ aifabrix up
 
 **Optional (Traefik):**
 ```bash
-aifabrix up --traefik
+aifabrix up-infra --traefik
 ```
 
 **First time?** Docker downloads images (takes 2-3 minutes).
 
-→ [What is Infrastructure?](infrastructure.md)
+→ [What is Infrastructure?](infrastructure.md) · To bring up the full platform (Keycloak, Miso Controller, Dataplane), see the main [README](../README.md).
 
 ## Step 3: Create Your App
 
@@ -217,7 +219,7 @@ frontDoorRouting:
   certStore: wildcard  # Optional: specify certificate store for wildcard certificates
 ```
 
-This generates Traefik labels for local development. See [Configuration Reference](configuration.md#frontdoorrouting) for details.
+This generates Traefik labels for local development. See [Configuration: variables.yaml](configuration/variables-yaml.md) for frontDoorRouting details.
 
 **Note:** If you're using a wildcard certificate, add `certStore` with the name of your Traefik certificate store. See [Traefik Routing](running.md#traefik-routing-optional) for certificate store setup instructions.
 
@@ -246,7 +248,7 @@ DATABASE_PORT=5432
 
 **Have existing .env?** Copy variables here. The SDK converts them to templates.
 
-→ [Configuration Reference](configuration.md)
+→ [Configuration](configuration/README.md)
 
 ### GitHub Actions Workflows (Optional)
 
@@ -340,7 +342,7 @@ aifabrix app register myapp
 
 To switch controller or environment later: `aifabrix auth config --set-controller <url>` or `aifabrix auth config --set-environment <env>`.
 
-**Dataplane in dev:** To register and run the dataplane app in dev in one step (register or rotate, run locally, then deploy), use `aifabrix up-dataplane`. Requires login and environment set to `dev`. See [Up Dataplane (dev)](infrastructure.md#up-dataplane-dev).
+**Dataplane in dev:** To register and run the dataplane app in dev in one step (register or rotate, run locally, then deploy), use `aifabrix up-dataplane`. Requires login and environment set to `dev`. See [Up Dataplane (dev)](infrastructure.md#up-dataplane-dev). To start the full platform in one go, see the main [README](../README.md) (`aifabrix up-infra` then `aifabrix up-platform`).
 
 ## Step 8: Deploy to Azure
 
@@ -413,7 +415,7 @@ All files are in the same folder for easy viewing and management.
 
 ### Learn More
 - [All CLI Commands](commands/README.md) - Complete command reference
-- [Configuration](configuration.md) - Detailed config file docs
+- [Configuration](configuration/README.md) - Config file reference
 - [Building](building.md) - Custom Dockerfiles and templates
 - [Running](running.md) - Local development workflow
 - [GitHub Workflows](github-workflows.md) - CI/CD automation setup
@@ -473,7 +475,7 @@ aifabrix doctor
 → Or use [Developer Isolation](developer-isolation.md) to avoid port conflicts
 
 **"Infrastructure not running"**  
-→ `aifabrix up`
+→ `aifabrix up-infra`
 
 **"Build failed"**  
 → Check Dockerfile syntax  

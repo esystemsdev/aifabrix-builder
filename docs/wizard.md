@@ -163,6 +163,7 @@ The wizard saves all files to `integration/<appKey>/`:
 - `env.template` - Environment variable template
 - `README.md` - Documentation (AI-generated from dataplane when available)
 - `<systemKey>-deploy.json` - Single deployment file
+- `deploy.js` - Node deployment script (recommended: run `node deploy.js` for full flow)
 - `deploy.sh` - Bash deployment script
 - `deploy.ps1` - PowerShell deployment script
 
@@ -381,6 +382,7 @@ integration/<appKey>/
 ├── env.template                # Environment variable template
 ├── README.md                   # Documentation (AI-generated from dataplane when available)
 ├── <systemKey>-deploy.json     # Single deployment file
+├── deploy.js                   # Node deployment script (check auth → login → deploy → test)
 ├── deploy.sh                   # Bash deployment script
 └── deploy.ps1                  # PowerShell deployment script
 ```
@@ -402,11 +404,28 @@ Update these values in your secrets store before deployment.
 
 ## Deployment
 
-After the wizard completes, you can deploy your external system using the generated deployment scripts or the CLI directly.
+After the wizard completes, you can deploy using the generated `deploy.js` script (recommended), the Bash/PowerShell scripts, or the CLI directly.
 
-### Using Deployment Scripts
+### Using deploy.js (recommended)
 
-The wizard generates deployment scripts for both Unix-like systems (Bash) and Windows (PowerShell):
+The wizard generates a Node script `deploy.js`. Run it for the full flow:
+
+```bash
+cd integration/<appKey>
+node deploy.js
+```
+
+**What the script does:**
+1. **Check auth** – Runs `aifabrix auth status`; if not logged in, runs `aifabrix login --environment <env>` so you can complete device or credentials flow.
+2. **Validate** – Validates all JSON configuration files.
+3. **Deploy** – Runs `aifabrix deploy <appKey>` to send the deployment to the Miso Controller.
+4. **Run integration tests** – Runs `aifabrix test-integration <appKey>` (unless `RUN_TESTS=false`).
+
+Controller URL and environment come from config (`aifabrix auth config`) or from `CONTROLLER` and `ENVIRONMENT` environment variables. You can extend the script (e.g. add steps or different test commands).
+
+### Using deploy.sh / deploy.ps1
+
+The wizard also generates Bash and PowerShell scripts:
 
 **Bash (Linux/macOS):**
 ```bash
@@ -420,20 +439,9 @@ cd integration\<appKey>
 .\deploy.ps1
 ```
 
-**Environment Variables:**
-- `ENVIRONMENT` - Environment key (default: dev)
-- `CONTROLLER` - Controller URL (default: <http://localhost:3000>)
-- `RUN_TESTS` - Set to "true" to run integration tests after deployment
+**Environment Variables:** `ENVIRONMENT` (default: dev), `CONTROLLER` (default: <http://localhost:3000>), `RUN_TESTS` (set to "true" to run integration tests). Example: `ENVIRONMENT=prod CONTROLLER=https://controller.example.com ./deploy.sh`.
 
-**Example:**
-```bash
-ENVIRONMENT=prod CONTROLLER=https://controller.example.com ./deploy.sh
-```
-
-The deployment scripts will:
-1. Validate all JSON configuration files
-2. Deploy all datasources to the specified environment
-3. Optionally run integration tests if `RUN_TESTS=true`
+The scripts validate JSON files, deploy datasources, and optionally run integration tests.
 
 ### Using CLI Directly
 
@@ -547,7 +555,7 @@ Create `wizard.yaml` in your repo (or under `integration/<app>/wizard.yaml` for 
 
 - [External Systems Documentation](external-systems.md) - Manual external system creation
 - [CLI Reference](commands/external-integration.md) - All CLI commands
-- [Configuration Guide](configuration.md) - Configuration file formats
+- [Configuration Guide](configuration/README.md) - Configuration file formats
 
 ## Dataplane Wizard API
 

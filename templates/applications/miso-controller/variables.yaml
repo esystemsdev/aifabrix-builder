@@ -38,8 +38,6 @@ authentication:
   enableSSO: true
   requiredRoles:
     - aifabrix-user
-  endpoints:
-    local: http://localhost:3000/auth/callback
 
 # Build Configuration
 build:

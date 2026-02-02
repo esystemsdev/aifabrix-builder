@@ -1,47 +1,47 @@
 # CLI Reference
 
-← [Back to Quick Start](quick-start.md)
+← [Back to Your Own Applications](your-own-applications.md)
 
-**Note:** The CLI reference has been reorganized into concept-based files for better navigation. All command documentation is now available in the [Commands Index](commands/README.md).
+All command documentation is organized by concept in the [Commands Index](commands/README.md).
 
-**Alias:** You can use `aifx` instead of `aifabrix` in any command (e.g. `aifx up`, `aifx create myapp`).
-
----
-
-## New Structure
-
-The CLI reference is now organized by concept in the `commands/` folder:
-
-### Quick Access
-- **[Commands Index](commands/README.md)** - Complete table of contents and navigation
-
-### By Category
-- **[Authentication Commands](commands/authentication.md)** - Login and logout
-- **[Infrastructure Commands](commands/infrastructure.md)** - Local infrastructure management
-- **[Developer Isolation Commands](commands/developer-isolation.md)** - Port isolation
-- **[Application Management Commands](commands/application-management.md)** - Application registration
-- **[Application Development Commands](commands/application-development.md)** - Local development
-- **[Deployment Commands](commands/deployment.md)** - Deploy via Controller (Azure or local Docker)
-- **[Validation Commands](commands/validation.md)** - Configuration validation
-- **[External Integration Commands](commands/external-integration.md)** - External system integration
-- **[Utility Commands](commands/utilities.md)** - Configuration and secret management
-- **[Command Reference](commands/reference.md)** - Workflows, options, exit codes, configuration
+**Alias:** You can use `aifx` instead of `aifabrix` in any command (e.g. `aifx up-infra`, `aifx create myapp`).
 
 ---
 
-## Legacy Anchor Links
+## Commands by category
 
-For backward compatibility, anchor links from the old structure are preserved. If you have bookmarks or links to specific commands, they will continue to work:
+- **[Commands Index](commands/README.md)** – Table of contents and navigation
+- **[Authentication Commands](commands/authentication.md)** – Login and logout
+- **[Infrastructure Commands](commands/infrastructure.md)** – Local infrastructure (up-infra, down-infra, up-platform, up-miso, up-dataplane)
+- **[Developer Isolation Commands](commands/developer-isolation.md)** – Port isolation
+- **[Application Management Commands](commands/application-management.md)** – Application registration
+- **[Application Development Commands](commands/application-development.md)** – Local development
+- **[Deployment Commands](commands/deployment.md)** – Deploy via Controller (Azure or local Docker)
+- **[Validation Commands](commands/validation.md)** – Configuration validation
+- **[External Integration Commands](commands/external-integration.md)** – External system integration
+- **[Utility Commands](commands/utilities.md)** – Configuration and secret management
+- **[Command Reference](commands/reference.md)** – Workflows, options, exit codes, configuration
+
+---
+
+## Anchor links
+
+For direct links to commands, use the anchors in the [Commands Index](commands/README.md) and the command pages (e.g. [Infrastructure Commands](commands/infrastructure.md)). Main infrastructure anchors:
+
+- `#aifabrix-up-infra` – [Infrastructure Commands](commands/infrastructure.md#aifabrix-up-infra)
+- `#aifabrix-down-infra` – [Infrastructure Commands](commands/infrastructure.md#aifabrix-down-infra)
+- `#aifabrix-up-platform` – [Infrastructure Commands](commands/infrastructure.md#aifabrix-up-platform)
+- `#aifabrix-up-miso` – [Infrastructure Commands](commands/infrastructure.md#aifabrix-up-miso)
+- `#aifabrix-up-dataplane` – [Infrastructure Commands](commands/infrastructure.md#aifabrix-up-dataplane)
+
+Other command anchors:
 
 - `#aifabrix-login` → [Authentication Commands](commands/authentication.md#aifabrix-login)
 - `#aifabrix-logout` → [Authentication Commands](commands/authentication.md#aifabrix-logout)
-- `#aifabrix-up` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-up)
-- `#aifabrix-up-miso` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-up-miso)
-- `#aifabrix-up-dataplane` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-up-dataplane)
-- `#aifabrix-down` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-down)
 - `#aifabrix-status` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-status)
 - `#aifabrix-restart-service` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-restart-service)
 - `#aifabrix-doctor` → [Infrastructure Commands](commands/infrastructure.md#aifabrix-doctor)
+
 - `#aifabrix-dev-config` → [Developer Isolation Commands](commands/developer-isolation.md#aifabrix-dev-config)
 - `#aifabrix-show-appkey` → [Application Management Commands](commands/application-management.md#aifabrix-show-appkey)
 - `#aifabrix-app-register-appkey` → [Application Management Commands](commands/application-management.md#aifabrix-app-register-appkey)
@@ -80,7 +80,7 @@ For backward compatibility, anchor links from the old structure are preserved. I
 ## Quick Links
 
 **Getting Started:**
-- [Quick Start Guide](quick-start.md)
+- [Your Own Applications](your-own-applications.md)
 - [Commands Index](commands/README.md)
 
 **Common Tasks:**

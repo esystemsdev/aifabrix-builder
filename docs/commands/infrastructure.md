@@ -1,32 +1,33 @@
 # Infrastructure Commands
 
-← [Back to Commands Index](README.md) | [Back to Quick Start](../quick-start.md)
+← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
 
 Commands for managing local infrastructure services (Postgres, Redis, pgAdmin, Redis Commander).
 
 ---
 
-## aifabrix up
+<a id="aifabrix-up-infra"></a>
+## aifabrix up-infra
 
-Start infrastructure (Postgres + Redis).
+Start local infrastructure (Postgres, Redis, optional Traefik).
 
-**What:** Starts PostgreSQL, Redis, pgAdmin, and Redis Commander in Docker. Supports developer isolation with developer-specific ports and infrastructure resources.
+**What:** Starts PostgreSQL, Redis, pgAdmin, and Redis Commander in Docker. Supports developer isolation with developer-specific ports and infrastructure resources. Optionally includes Traefik reverse proxy.
 
 **When:** First time setup, after system restart, when infrastructure is down.
 
 **Usage:**
 ```bash
 # Start infrastructure with default ports (developer ID 0)
-aifabrix up
+aifabrix up-infra
 
 # Set developer ID and start infrastructure (developer-specific ports)
-aifabrix up --developer 1
+aifabrix up-infra --developer 1
 
 # Start infrastructure with Traefik reverse proxy (saves to config for future runs)
-aifabrix up --traefik
+aifabrix up-infra --traefik
 
 # Exclude Traefik and save to config
-aifabrix up --no-traefik
+aifabrix up-infra --no-traefik
 ```
 
 **Options:**
@@ -65,7 +66,7 @@ Ports are calculated using: `basePort + (developer-id * 100)`
 ```
 
 **Traefik Certificate Configuration (Optional):**
-Set environment variables before running `aifabrix up --traefik`:
+Set environment variables before running `aifabrix up-infra --traefik`:
 - `TRAEFIK_CERT_STORE` - Certificate store name (e.g., `wildcard`)
 - `TRAEFIK_CERT_FILE` - Absolute path to certificate file
 - `TRAEFIK_KEY_FILE` - Absolute path to private key file
@@ -112,8 +113,37 @@ aifabrix up-miso --image keycloak=myreg/keycloak:v1 --image miso-controller=myre
 - `-i, --image <key>=<value>` - Override image (e.g. `keycloak=reg/k:v1`, `miso-controller=reg/m:v1`); can be repeated
 
 **Issues:**
-- **"Infrastructure is not up"** → Run `aifabrix up` first
+- **"Infrastructure is not up"** → Run `aifabrix up-infra` first
 - After success, run onboarding and register Keycloak from the miso-controller repo if needed
+
+---
+
+<a id="aifabrix-up-platform"></a>
+## aifabrix up-platform
+
+Start platform (Keycloak, Miso Controller, Dataplane) from community images. Infra must be up.
+
+**What:** Runs `up-miso` then `up-dataplane` in sequence. Use for community edition images when you want the full platform in one step.
+
+**When:** After `aifabrix up-infra`; when you want Keycloak, Miso Controller, and Dataplane running from images (no build).
+
+**Usage:**
+```bash
+# Start full platform (up-miso then up-dataplane)
+aifabrix up-platform
+
+# With registry override
+aifabrix up-platform --registry myacr.azurecr.io
+
+# With image overrides
+aifabrix up-platform --image keycloak=myreg/k:v1 --image miso-controller=myreg/m:v1 --image dataplane=myreg/d:v1
+```
+
+**Options:** Same as [up-miso](#aifabrix-up-miso) (registry, registry-mode, image). Passed to both up-miso and up-dataplane steps.
+
+**Issues:**
+- **"Infrastructure is not up"** → Run `aifabrix up-infra` first
+- **"Login required"** (for up-dataplane step) → Run `aifabrix login` first; ensure environment is `dev`
 
 ---
 
@@ -149,7 +179,8 @@ aifabrix up-dataplane --image myreg/dataplane:latest
 
 ---
 
-## aifabrix down
+<a id="aifabrix-down-infra"></a>
+## aifabrix down-infra
 
 Stop infrastructure or a specific application.
 
@@ -162,16 +193,16 @@ Stop infrastructure or a specific application.
 **Usage:**
 ```bash
 # Stop infrastructure
-aifabrix down
+aifabrix down-infra
 
 # Stop infrastructure and delete infra volumes (all data)
-aifabrix down --volumes
+aifabrix down-infra --volumes
 
 # Stop a specific application container
-aifabrix down myapp
+aifabrix down-infra myapp
 
 # Stop an application and remove its data volume
-aifabrix down myapp --volumes
+aifabrix down-infra myapp --volumes
 ```
 
 **Notes:**
@@ -228,7 +259,7 @@ aifabrix status
 ```
 
 **Issues:**
-- **"Infrastructure not running"** → Run `aifabrix up` first
+- **"Infrastructure not running"** → Run `aifabrix up-infra` first
 - **"Docker not running"** → Start Docker Desktop
 
 ---
@@ -265,7 +296,7 @@ aifabrix restart redis
 
 **Issues:**
 - **"Service not found"** → Use correct service name (postgres, redis, pgadmin, redis-commander)
-- **"Service not running"** → Service may not be started; use `aifabrix up` to start all services
+- **"Service not running"** → Service may not be started; use `aifabrix up-infra` to start all services
 
 ---
 

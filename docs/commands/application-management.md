@@ -1,6 +1,6 @@
 # Application Management Commands
 
-← [Back to Commands Index](README.md) | [Back to Quick Start](../quick-start.md)
+← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
 
 Application management commands for registering and managing applications with the Miso Controller.
 
@@ -108,7 +108,7 @@ aifabrix app register myapp --port 8080 --name "My Application"
 - `-n, --name <name>` - Override display name
 - `-d, --description <desc>` - Override description
 
-**Controller URL Resolution:** `config.controller` → device tokens → developer ID–based default (see [Configuration](configuration.md)).
+**Controller URL Resolution:** `config.controller` → device tokens → developer ID–based default (see [Configuration](configuration/README.md)).
 
 **Error Messages:**
 
@@ -175,7 +175,7 @@ This command uses the active `controller` and `environment` from `config.yaml` (
 aifabrix app list
 ```
 
-**Controller URL Resolution:** `config.controller` → device tokens → developer ID–based default (see [Configuration](configuration.md)).
+**Controller URL Resolution:** `config.controller` → device tokens → developer ID–based default (see [Configuration](configuration/README.md)).
 
 **Error Messages:**
 
@@ -235,7 +235,7 @@ aifabrix app rotate-secret myapp
 **Arguments:**
 - `<appKey>` - Application key (required, positional)
 
-**Controller URL Resolution:** Same as `app list` (see [Configuration](configuration.md)).
+**Controller URL Resolution:** Same as `app list` (see [Configuration](configuration/README.md)).
 
 **Error Messages:**
 

@@ -1,12 +1,22 @@
 # Deploying Applications
 
-← [Back to Quick Start](quick-start.md)
+← [Back to Your Own Applications](your-own-applications.md)
 
 Deploy your application via [Azure Marketplace](https://azuremarketplace.microsoft.com/) or Miso Controller. The **Miso Controller** handles the actual deployment execution:
 - **Azure deployments:** Controller deploys to Azure Container Apps (for production/cloud environments)
 - **Local Docker deployments:** Controller runs the application in Docker containers locally (for localhost/development environments)
 
 The builder CLI generates the deployment manifest and sends it to the controller; the controller determines the deployment target based on the deployment type and executes accordingly.
+
+## External system flow
+
+Flow for external systems (OpenAPI, MCP, etc.): **Local (dev)** → **Controller** → **Dataplane**.
+
+- **Local (dev):** You define external systems and datasources in `integration/<app>/` (system JSON, datasource JSON). You validate and deploy from the CLI.
+- **Controller:** The CLI sends deployment to the Miso Controller (`aifabrix deploy <app>` or datasource deploy). The controller orchestrates deployment; it does not deploy directly to the dataplane from the CLI for app-level deploy.
+- **Dataplane:** The controller deploys to the dataplane (or target environment). External systems and datasources are configured on the controller and published to the dataplane. Pipeline and schema publishing run after deployment when `autopublish` is true.
+
+So: **Deploy to Controller** means the CLI sends the deployment to the Miso Controller, which then deploys to the dataplane (or target environment). The controller orchestrates; you do not deploy directly to the dataplane from the CLI for app-level deploy.
 
 ## Prerequisites
 
@@ -103,17 +113,15 @@ end
 
 ---
 
-## Enterprise vs Open Source
+## Open source vs standard/enterprise
 
-### Enterprise Version
-- **Deployment Target**: Azure Container Apps
-- **Features**: Full Azure integration, scaling, monitoring
-- **Requirements**: Azure subscription, ACR access
+**Environments:**
+- **Open source:** Typically one environment (e.g. `dev`). Use it for local and single-environment setups.
+- **Standard/Enterprise:** Multiple environments (e.g. `dev`, `tst`, `pro`) for staging and production.
 
-### Open Source Version  
-- **Deployment Target**: Local Docker instances
-- **Features**: Basic container deployment
-- **Requirements**: Docker running locally
+**Deployment target:**
+- **Open source:** Local Docker instances; basic container deployment; Docker running locally.
+- **Enterprise:** Azure Container Apps; full Azure integration, scaling, monitoring; Azure subscription and ACR access.
 
 ---
 
@@ -159,52 +167,15 @@ Tags: `v1.0.0`, `latest`, `stable`
 
 ## Step 2: Deploy Environment (First Time)
 
-Before deploying applications, ensure the environment is set up:
+Before deploying applications, ensure the environment is set up in the Miso Controller. Run:
 
 ```bash
-# Deploy/setup the environment (dev, tst, pro, miso)
-# Uses controller and environment from config (set via aifabrix login or aifabrix auth config)
 aifabrix environment deploy dev
 ```
 
-### What Happens
+This validates the environment, authenticates (device token from `aifabrix login`), deploys environment infrastructure, and verifies readiness. Typically done once per environment.
 
-1. **Validates environment**
-   - Ensures environment key is valid (miso, dev, tst, pro)
-   - Checks controller accessibility
-
-2. **Authenticates**
-   - Uses device token (from `aifabrix login`)
-   - Requires admin/operator privileges
-
-3. **Deploys environment**
-   - Provisions environment infrastructure
-   - Configures environment resources
-   - Sets up environment isolation
-
-4. **Verifies readiness**
-   - Checks environment status
-   - Confirms environment is ready for applications
-
-### Output
-
-```yaml
-📋 Deploying environment 'dev' to https://controller.aifabrix.dev...
-✓ Environment validated
-✓ Authentication successful
-
-🚀 Deploying environment infrastructure...
-📤 Sending deployment request to https://controller.aifabrix.dev/api/v1/environments/dev/deploy...
-⏳ Polling deployment status (5000ms intervals)...
-
-✅ Environment deployed successfully
-   Environment: dev
-   Status: ✅ ready
-   
-✓ Environment is ready for application deployments
-```
-
-**Note:** Environment deployment is typically done once per environment, or when updating environment-level configuration. After the environment is set up, you can deploy multiple applications to it.
+**→ Full details:** [Deploy Environment (First Time)](deployment/environment-first-time.md)
 
 ---
 

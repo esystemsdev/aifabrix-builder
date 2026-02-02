@@ -1,6 +1,6 @@
 # CLI Commands Reference
 
-← [Back to Quick Start](../quick-start.md)
+← [Back to Your Own Applications](../your-own-applications.md)
 
 Complete command reference organized by concept with examples and troubleshooting.
 
@@ -13,10 +13,11 @@ Complete command reference organized by concept with examples and troubleshootin
   - `aifabrix login` - Authenticate with Miso Controller
   - `aifabrix logout` - Clear authentication tokens
 - [Infrastructure Commands](infrastructure.md) - Local infrastructure management
-  - `aifabrix up` - Start infrastructure (Postgres + Redis)
+  - `aifabrix up-infra` - Start local infrastructure (Postgres, Redis, optional Traefik)
+  - `aifabrix up-platform` - Start platform (Keycloak, Miso Controller, Dataplane) from community images
   - `aifabrix up-miso` - Install Keycloak + Miso Controller from images (no build)
   - `aifabrix up-dataplane` - Register/rotate, run, and deploy dataplane in dev
-  - `aifabrix down` - Stop infrastructure or an app
+  - `aifabrix down-infra` - Stop infrastructure or an app
   - `aifabrix status` - Show infrastructure service status
   - `aifabrix restart` - Restart infrastructure service
   - `aifabrix doctor` - Check environment and configuration
@@ -80,7 +81,7 @@ Complete command reference organized by concept with examples and troubleshootin
 ## Quick Navigation
 
 **Getting Started:**
-- [Quick Start Guide](../quick-start.md) - Get started in 5 minutes
+- [Your Own Applications](../your-own-applications.md) - Create and run your own app
 - [Authentication Commands](authentication.md) - Login to Miso Controller
 - [Infrastructure Commands](infrastructure.md) - Start local infrastructure
 
@@ -108,8 +109,8 @@ Complete command reference organized by concept with examples and troubleshootin
 
 ## Related Documentation
 
-- [Quick Start](../quick-start.md) - Getting started guide
-- [Configuration](../configuration.md) - Configuration file reference
+- [Your Own Applications](../your-own-applications.md) - Getting started guide
+- [Configuration](../configuration/README.md) - Configuration file reference
 - [Infrastructure](../infrastructure.md) - Infrastructure guide
 - [Building](../building.md) - Building applications
 - [Running](../running.md) - Running applications locally

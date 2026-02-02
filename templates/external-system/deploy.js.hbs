@@ -1,0 +1,58 @@
+#!/usr/bin/env node
+/**
+ * Deploy {{systemKey}} external system and datasources using aifabrix CLI.
+ * Run: node deploy.js
+ * Flow: check auth → login if needed → deploy → run integration tests.
+ */
+
+const { execSync } = require('child_process');
+const path = require('path');
+
+const scriptDir = __dirname;
+const appKey = '{{systemKey}}';
+const env = process.env.ENVIRONMENT || 'dev';
+// Controller URL: from config (aifabrix auth config) or set CONTROLLER env before running
+
+function run(cmd, options = {}) {
+  const opts = { cwd: scriptDir, stdio: 'inherit', ...options };
+  try {
+    execSync(cmd, opts);
+    return true;
+  } catch (err) {
+    if (options.ignoreExit) return false;
+    process.exit(err.status ?? 1);
+  }
+}
+
+function isLoggedIn() {
+  try {
+    execSync('aifabrix auth status', { cwd: scriptDir, stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+console.log('🔍 Checking authentication...');
+if (!isLoggedIn()) {
+  console.log('⚠️  Not logged in. Run login (e.g. aifabrix login --controller <url> --method device --environment ' + env + ').');
+  run('aifabrix login --environment ' + env);
+}
+
+console.log('🔍 Validating configuration...');
+{{#each allJsonFiles}}
+run('aifabrix validate "' + path.join(scriptDir, '{{this}}') + '"');
+{{/each}}
+console.log('✅ Validation passed');
+
+console.log('🚀 Deploying ' + appKey + '...');
+run('aifabrix deploy ' + appKey);
+console.log('✅ Deployment complete');
+
+if (process.env.RUN_TESTS !== 'false') {
+  console.log('🧪 Running integration tests...');
+  run('aifabrix test-integration ' + appKey);
+  console.log('✅ Tests passed');
+}
+
+console.log('✅ Done.');

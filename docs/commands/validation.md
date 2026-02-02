@@ -1,6 +1,6 @@
 # Validation Commands
 
-← [Back to Commands Index](README.md) | [Back to Quick Start](../quick-start.md)
+← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
 
 Commands for validating and comparing configuration files.
 
@@ -669,7 +669,7 @@ When modifying configurations:
 - [Wizard Guide](../wizard.md) - Wizard validation and configuration workflow
 - [External Integration Commands](external-integration.md) - External system validation commands (`test`, `test-integration`, `datasource validate`)
 - [External Systems Guide](../external-systems.md) - External system configuration, ABAC dimensions, and field mappings
-- [Configuration Guide](../configuration.md) - Application configuration
+- [Configuration Guide](../configuration/README.md) - Application configuration
 - [Commands Index](README.md) - All available commands
 
 ---

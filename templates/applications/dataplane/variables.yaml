@@ -43,8 +43,6 @@ authentication:
   type: azure
   enableSSO: true
   requiredRoles: ["aifabrix-user"]
-  endpoints:
-    local: "https://dataplane.aifabrix.ai/auth/callback"
 
 # Build Configuration
 build:

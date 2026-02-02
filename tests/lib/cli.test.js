@@ -1510,7 +1510,7 @@ describe('CLI Commands', () => {
               await infra.stopInfra();
             }
           } catch (error) {
-            cliUtils.handleCommandError(error, 'down');
+            cliUtils.handleCommandError(error, 'down-infra');
             process.exit(1);
           }
         };
@@ -1533,7 +1533,7 @@ describe('CLI Commands', () => {
               await infra.stopInfra();
             }
           } catch (error) {
-            cliUtils.handleCommandError(error, 'down');
+            cliUtils.handleCommandError(error, 'down-infra');
             process.exit(1);
           }
         };
@@ -1558,13 +1558,13 @@ describe('CLI Commands', () => {
               await infra.stopInfra();
             }
           } catch (error) {
-            cliUtils.handleCommandError(error, 'down');
+            cliUtils.handleCommandError(error, 'down-infra');
             process.exit(1);
           }
         };
 
         await action({ volumes: true });
-        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'down');
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'down-infra');
         expect(process.exit).toHaveBeenCalledWith(1);
       });
     });
@@ -2311,7 +2311,7 @@ describe('CLI Commands', () => {
         infra.stopInfraWithVolumes.mockResolvedValue();
         cliUtils.handleCommandError.mockImplementation(() => {});
 
-        const handler = commandActions['down [app]'];
+        const handler = commandActions['down-infra [app]'];
         expect(handler).toBeDefined();
 
         await handler(undefined, options);
@@ -2327,7 +2327,7 @@ describe('CLI Commands', () => {
         infra.stopInfra.mockResolvedValue();
         cliUtils.handleCommandError.mockImplementation(() => {});
 
-        const handler = commandActions['down [app]'];
+        const handler = commandActions['down-infra [app]'];
         expect(handler).toBeDefined();
 
         await handler(undefined, options);
@@ -2345,12 +2345,12 @@ describe('CLI Commands', () => {
         cliUtils.handleCommandError.mockImplementation(() => {});
         process.exit.mockImplementation(() => {});
 
-        const handler = commandActions['down [app]'];
+        const handler = commandActions['down-infra [app]'];
         expect(handler).toBeDefined();
 
         await handler(undefined, options);
 
-        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'down');
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'down-infra');
         expect(process.exit).toHaveBeenCalledWith(1);
       });
 
@@ -2362,7 +2362,7 @@ describe('CLI Commands', () => {
         app.downApp.mockResolvedValue();
         cliUtils.handleCommandError.mockImplementation(() => {});
 
-        const handler = commandActions['down [app]'];
+        const handler = commandActions['down-infra [app]'];
         expect(handler).toBeDefined();
 
         await handler(appName, options);
@@ -2528,7 +2528,7 @@ describe('CLI Commands', () => {
         infra.startInfra.mockResolvedValue();
         process.env.AIFABRIX_DEVELOPERID = undefined;
 
-        const handler = commandActions['up'];
+        const handler = commandActions['up-infra'];
         expect(handler).toBeDefined();
 
         await handler(options);
@@ -2546,12 +2546,12 @@ describe('CLI Commands', () => {
         cliUtils.handleCommandError.mockImplementation(() => {});
         process.exit.mockImplementation(() => {});
 
-        const handler = commandActions['up'];
+        const handler = commandActions['up-infra'];
         expect(handler).toBeDefined();
 
         await handler(options);
 
-        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'up');
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'up-infra');
         expect(process.exit).toHaveBeenCalledWith(1);
       });
 
@@ -2562,12 +2562,12 @@ describe('CLI Commands', () => {
         cliUtils.handleCommandError.mockImplementation(() => {});
         process.exit.mockImplementation(() => {});
 
-        const handler = commandActions['up'];
+        const handler = commandActions['up-infra'];
         expect(handler).toBeDefined();
 
         await handler(options);
 
-        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'up');
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'up-infra');
         expect(process.exit).toHaveBeenCalledWith(1);
       });
 
@@ -2578,7 +2578,7 @@ describe('CLI Commands', () => {
         const options = {};
         infra.startInfra.mockResolvedValue();
 
-        const handler = commandActions['up'];
+        const handler = commandActions['up-infra'];
         expect(handler).toBeDefined();
 
         await handler(options);
@@ -2593,7 +2593,7 @@ describe('CLI Commands', () => {
         config.saveConfig.mockResolvedValue();
         infra.startInfra.mockResolvedValue();
 
-        const handler = commandActions['up'];
+        const handler = commandActions['up-infra'];
         await handler({ traefik: true });
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ traefik: true }));
@@ -2607,7 +2607,7 @@ describe('CLI Commands', () => {
         config.saveConfig.mockResolvedValue();
         infra.startInfra.mockResolvedValue();
 
-        const handler = commandActions['up'];
+        const handler = commandActions['up-infra'];
         await handler({ traefik: false }); // --no-traefik sets options.traefik to false
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ traefik: false }));
@@ -2620,7 +2620,7 @@ describe('CLI Commands', () => {
         config.getConfig.mockResolvedValue({ traefik: true });
         infra.startInfra.mockResolvedValue();
 
-        const handler = commandActions['up'];
+        const handler = commandActions['up-infra'];
         await handler({});
 
         expect(config.saveConfig).not.toHaveBeenCalled();
@@ -2636,12 +2636,12 @@ describe('CLI Commands', () => {
         cliUtils.handleCommandError.mockImplementation(() => {});
         process.exit.mockImplementation(() => {});
 
-        const handler = commandActions['up'];
+        const handler = commandActions['up-infra'];
         expect(handler).toBeDefined();
 
         await handler(options);
 
-        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'up');
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'up-infra');
         expect(process.exit).toHaveBeenCalledWith(1);
       });
     });

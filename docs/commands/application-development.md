@@ -1,6 +1,6 @@
 # Application Development Commands
 
-← [Back to Commands Index](README.md) | [Back to Quick Start](../quick-start.md)
+← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
 
 Commands for creating, building, and running applications locally.
 
@@ -167,7 +167,7 @@ Run application locally in Docker container with automatic infrastructure connec
 
 **Prerequisites:**
 - Application must be built: `aifabrix build <app>`
-- Infrastructure must be running: `aifabrix up`
+- Infrastructure must be running: `aifabrix up-infra`
 - `.env` file must exist in `builder/<app>/`
 
 **Example:**
@@ -221,7 +221,7 @@ aifabrix run myapp --debug
 
 **Issues:**
 - **"Docker image not found"** → Run `aifabrix build <app>` first
-- **"Infrastructure not running"** → Run `aifabrix up` first
+- **"Infrastructure not running"** → Run `aifabrix up-infra` first
 - **"Port already in use"** → Use `--port <alternative>` flag
 - **"Container won't start"** → Check logs: `docker logs aifabrix-<app>`
 - **"Health check timeout"** → Check application logs and health endpoint

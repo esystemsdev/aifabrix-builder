@@ -75,7 +75,7 @@ describe('up-miso command', () => {
     it('should throw when infra is not up', async() => {
       infra.checkInfraHealth.mockResolvedValue({ postgres: 'unknown', redis: 'unknown' });
 
-      await expect(handleUpMiso({})).rejects.toThrow('Infrastructure is not up. Run \'aifabrix up\' first.');
+      await expect(handleUpMiso({})).rejects.toThrow('Infrastructure is not up. Run \'aifabrix up-infra\' first.');
       expect(ensureAppFromTemplate).not.toHaveBeenCalled();
     });
 

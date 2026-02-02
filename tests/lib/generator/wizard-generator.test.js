@@ -369,7 +369,7 @@ describe('Wizard Generator', () => {
       });
     });
 
-    it('should generate deploy.sh and deploy.ps1 scripts', async() => {
+    it('should generate deploy.sh, deploy.ps1, and deploy.js scripts', async() => {
       const result = await wizardGenerator.generateDeployScripts(
         appPath,
         systemKey,
@@ -377,10 +377,11 @@ describe('Wizard Generator', () => {
         datasourceFileNames
       );
 
-      expect(fsPromises.writeFile).toHaveBeenCalledTimes(2);
+      expect(fsPromises.writeFile).toHaveBeenCalledTimes(3);
       expect(fsPromises.chmod).toHaveBeenCalledTimes(1);
       expect(result.deployShPath).toContain('deploy.sh');
       expect(result.deployPs1Path).toContain('deploy.ps1');
+      expect(result.deployJsPath).toContain('deploy.js');
     });
 
     it('should generate deploy.sh with correct content', async() => {

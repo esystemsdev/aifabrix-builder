@@ -742,7 +742,7 @@ describe('CLI Command Actions', () => {
         await infra.startInfra();
       } catch (error) {
         expect(error.message).toBe('Docker not running');
-        cli.handleCommandError(error, 'up');
+        cli.handleCommandError(error, 'up-infra');
       }
     });
   });
@@ -760,7 +760,7 @@ describe('CLI Command Actions', () => {
         }
         expect(infra.stopInfra).toHaveBeenCalled();
       } catch (error) {
-        cli.handleCommandError(error, 'down');
+        cli.handleCommandError(error, 'down-infra');
       }
     });
 
@@ -776,7 +776,7 @@ describe('CLI Command Actions', () => {
         }
         expect(infra.stopInfraWithVolumes).toHaveBeenCalled();
       } catch (error) {
-        cli.handleCommandError(error, 'down');
+        cli.handleCommandError(error, 'down-infra');
       }
     });
   });

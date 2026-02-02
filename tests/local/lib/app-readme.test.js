@@ -76,7 +76,7 @@ describe('Application README Module', () => {
       expect(result).toContain('http://localhost:3000');
       expect(result).toContain('aifabrix/test-app:latest');
       expect(result).toContain('docker logs aifabrix-test-app -f');
-      expect(result).toContain('aifabrix down test-app');
+      expect(result).toContain('aifabrix down-infra test-app');
       expect(result).toContain('aifabrix push test-app --registry myacr.azurecr.io --tag "v1.0.0,latest"');
     });
 
