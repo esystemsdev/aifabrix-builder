@@ -48,8 +48,7 @@ Before marking this plan complete:
 
 - **Documentation**: Prerequisites (Node.js, Azure/Docker install, secrets before up-platform, first-time token), wizard example (manual setup), infrastructure vs Azure marketplace, disk space, back links to docs/README.md, environment-first-time (full params + why/where), deploying (manifest naming, flow, prereqs, rollback, version vs deployment key, commands), and controller-side section.
 - **Credentials**: Expose wizard credential list (dataplane `GET /api/v1/wizard/credentials`) and add `aifabrix credential list` calling controller/dataplane `GET /api/v1/credential`; document intent parameter for AI manifest generation per [.cursor/plans/credentials.md](.cursor/plans/credentials.md).
-- **Deployment**: Fix/improve `aifabrix deployment list` and `aifabrix app deployment <appKey>` (use `GET /api/v1/environments/{envKey}/deployments`), improve `aifabrix deploy <appKey> --tag` (newest version when multiple), ensure deployment key is derived from canonical manifest JSON (no whitespace/format variance).
-- **Controller**: Add a “What needs to be implemented in the controller” section (no auto-rotate on dataplane callback, deployment key validation against manifest, etc.).
+- **Deployment**: Fix/improve `aifabrix deployment list` and `aifabrix app deployment <appKey>` (use `GET /api/v1/environments/{envKey}/deployments and /api/v1/environments/{envKey}/applications/{appKey}/deployments`), improve `aifabrix deploy <appKey> --version`(newest version when multiple), ensure deployment key is derived from canonical manifest JSON (no whitespace/format variance). Value should be set in manifest
 
 ---
 
@@ -98,7 +97,7 @@ Before marking this plan complete:
 
 - Document that the wizard can **list** credentials for selection:
   - **Dataplane**: `GET /api/v1/wizard/credentials` (optional query e.g. `activeOnly`). Document in [docs/wizard.md](docs/wizard.md) (e.g. in “Step 3: Credential Selection” and in the Dataplane Wizard API table).
-- **CLI**: Add command `**aifabrix credential list**` that calls `**GET /api/v1/credential**` (controller or dataplane, depending on where credentials live). Implement in `lib/` (new or existing credential module), wire in CLI, and document in wizard and CLI reference.
+- **CLI**: Add command `**aifabrix credential list**` that calls `**GET /api/v1/credential**` (dataplane where credentials live). Implement in `lib/` (new or existing credential module), wire in CLI, and document in wizard and CLI reference.
 - **Intent**: In [docs/wizard.md](docs/wizard.md), expand the **intent** parameter description: it helps AI generate a better integration manifest; users can describe their needs and special integration requirements. Reference [.cursor/plans/credentials.md](.cursor/plans/credentials.md) for API shapes (list credentials, etc.).
 
 ---
@@ -115,7 +114,7 @@ Before marking this plan complete:
 
 **Manifest naming**
 
-- State clearly: deployment manifest is `**<appKey>-deploy.json**` (for apps: `builder/<app>/<appKey>-deploy.json`; for external: `integration/<app>/<systemKey>-deploy.json`). Remove or replace references to “aifabrix-deploy.json” as the primary name in prose; keep code/tests that still support legacy `aifabrix-deploy.json` for backward compatibility.
+- State clearly: deployment manifest is `**<appKey>-deploy.json**` (for apps: `builder/<app>/<appKey>-deploy.json`; for external: `integration/<app>/<systemKey>-deploy.json`). Remove or replace references to “aifabrix-deploy.json” as the primary name in prose; deletre code/tests that not support legacy `aifabrix-deploy.json`- no backward compatibility.
 - **Manifest content**: Document that the deployment manifest **includes** external system and data sources (for external type) so nothing is “missing” in the doc.
 
 **Copy and flow**
@@ -136,30 +135,25 @@ Before marking this plan complete:
 
 - State that **“Deploy Environment (First Time)” should be validated** (e.g. environment exists, config valid); reference environment-first-time doc and schema.
 
-**Dataplane callback and rotation**
-
-- Add a note: when the dataplane callbacks to the controller, **we do not automatically rotate secrets**; this must be validated in controller code (and add a controller-side item to confirm no auto-rotate on callback).
-
 **Rollback**
 
-- Document: `aifabrix deploy my-app --version <tag or complementKey>` (or the actual CLI flag used) for rollback.
+- Document: `aifabrix rollack my-app --deploymentId <deploymentId>` (or the actual CLI flag used) for rollback.
 - **Version vs deployment**: Clarify:
-  - **Version/tag**: logical identifier; **not** immutable; you can deploy the same version/tag multiple times (manual operation).
-  - **Deployment**: immutable; uniquely identified by **deployment key** (or deployment id).
+  - **Deployment**: immutable; uniquely identified by **deployment Id.**
 - Add a **small table**: “When to change version number” (e.g. breaking change → major; new feature → minor; fix → patch) as best practice.
 
 ---
 
-## 8. Deployment commands and deploy --tag
+## 8. Deployment commands
 
 **List commands**
 
 - `**aifabrix deployment list**`: Implement (or fix) to list last N (e.g. 50) deployments for the current environment using `**GET /api/v1/environments/{envKey}/deployments**`. Document in CLI reference and deploying.md. Decide and document whether more info is needed (e.g. filters, pagination - you can find parameter for filter and sort [.cursor/plans/credentials.md](.cursor/plans/credentials.md)).
-- `**aifabrix app deployment <appKey>**`: Implement (or fix) to list last N (e.g. 50) deployments **for that app** in the environment. If the controller exposes an app-scoped list (e.g. by appKey), use it; otherwise filter client-side from environment deployments and document.
+- `**aifabrix app deployment <appKey>**`: Implement (or fix) to list last N (e.g. 50) deployments **for that app** in the environment. If the controller exposes an app-scoped list (e.g. by appKey), use it; otherwise filter client-side from environment deployments and document. API - /api/v1/environments/{envKey}/applications/{appKey}/deployments:
 
-**Deploy with tag**
+**Deploy with version**
 
-- `**aifabrix deploy <appKey> --tag <tag>**`: Improve so that when **multiple images** share the same tag (e.g. multiple builds with `latest`), the **newest** image is used (e.g. by digest or build time), similar to download-by-tag behavior. Document in deploying and CLI reference.
+- `info here`
 
 ---
 
@@ -168,6 +162,36 @@ Before marking this plan complete:
 - **Key from manifest**: Deployment key must be **fully validated** against the deployment manifest JSON. In code, the key is already computed from the **manifest object** (not raw file) in [lib/core/key-generator.js](lib/core/key-generator.js) via `generateDeploymentKeyFromJson` (sorted keys, no whitespace). Ensure:
   - **Canonical form**: All call paths that send the manifest to the controller use the **same** canonical JSON (e.g. same sort + no whitespace) before hashing, so that **whitespace or line breaks** in the file do **not** create a different key.
 - **Doc**: In deploying.md, state that the deployment key is derived from the **canonical** deployment manifest JSON (minimal format, no formatting variance) and that the controller validates the key against the same canonical form.
+
+---
+
+## 10. Application version in variables.yaml and deployment JSON
+
+Add an application **version** field so the deployment manifest and variables carry a semantic version (e.g. for rollback semantics and “when to change version” best practice). Aligns with controller rollback: [aifabrix-miso plan 137](.cursor/plans/137-deployment_refactor_and_rollback.plan.md) uses deployment id and `uploadedConfig` for rollback; version in the manifest is the application’s logical version (tag).
+
+**Requirements**
+
+- **variables.yaml** – Under `app:`, add optional `version`. Example: [builder/dataplane/variables.yaml](builder/dataplane/variables.yaml) add `version: "1.0.0"` (or leave empty for auto default).
+- **Default when empty** – If `app.version` is missing or empty string, use **"1.0.0"** in:
+  - The generated deployment JSON (manifest sent to controller).
+  - Any code path that writes or normalizes variables.yaml (e.g. app create, wizard) so the file can store `version: "1.0.0"` when the user did not set one.
+- **Deployment manifest (JSON)** – Include top-level `version` in the manifest; value = `variables.app?.version` normalized (empty/missing → `"1.0.0"`).
+- **Schema** – Add optional `version` (string, e.g. semantic version pattern) to [lib/schema/application-schema.json](lib/schema/application-schema.json) deployment manifest properties.
+
+**Implementation touchpoints**
+
+
+| Area                       | File / change                                                                                                                                                                                                                                                                                      |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| variables.yaml (dataplane) | [builder/dataplane/variables.yaml](builder/dataplane/variables.yaml) – add `app.version: "1.0.0"` (or empty; code defaults to 1.0.0).                                                                                                                                                              |
+| Manifest from variables    | [lib/generator/builders.js](lib/generator/builders.js) – in `buildAppMetadata()` add `version: (variables.app?.version && String(variables.app.version).trim()) ? String(variables.app.version).trim() : '1.0.0'`; ensure `buildBaseDeployment` passes it so the manifest has top-level `version`. |
+| New app variables          | [lib/core/templates.js](lib/core/templates.js) – in `buildWebappVariables()` add `version: config.version                                                                                                                                                                                          |
+| Wizard variables           | [lib/generator/wizard.js](lib/generator/wizard.js) – in `generateOrUpdateVariablesYaml` when setting `variables.app`, add `version: variables.app?.version                                                                                                                                         |
+| Split JSON → variables     | [lib/generator/split.js](lib/generator/split.js) – in `extractAppSection()` add `if (deployment.version) app.version = deployment.version;`.                                                                                                                                                       |
+| Schema                     | [lib/schema/application-schema.json](lib/schema/application-schema.json) – add optional property `"version"` (string, description “Application version (semantic); default 1.0.0 when empty”).                                                                                                     |
+
+
+**Rollback context** – Per [137-deployment_refactor_and_rollback.plan.md](.cursor/plans/137-deployment_refactor_and_rollback.plan.md): rollback is by deployment id (POST applications/rollback with `deploymentId`); config is `uploadedConfig` only. The `version` field in the builder is the application’s semantic version in the manifest; the controller does not need to interpret it for rollback (rollback is by id), but it can be used for display and “when to change version” guidance in docs.
 
 ---
 
@@ -183,17 +207,18 @@ Before marking this plan complete:
 ## File touchpoints
 
 
-| Area                             | Files                                                                                                                                                                                                                                                                        |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Prerequisites / install          | [README.md](README.md), [docs/README.md](docs/README.md), [docs/infrastructure.md](docs/infrastructure.md)                                                                                                                                                                   |
-| Back links                       | All 26 docs under `docs/` that use “Back to Your Own Applications” or link to `your-own-applications.md` for back                                                                                                                                                            |
-| Wizard + credentials             | [docs/wizard.md](docs/wizard.md), [lib/api/wizard.api.js](lib/api/wizard.api.js) (optional listWizardCredentials), new credential list command + CLI                                                                                                                         |
-| Environment first time           | [docs/deployment/environment-first-time.md](docs/deployment/environment-first-time.md), [lib/schema/environment-deploy-request.schema.json](lib/schema/environment-deploy-request.schema.json), [templates/infra/environment-dev.json](templates/infra/environment-dev.json) |
-| Deploying                        | [docs/deploying.md](docs/deploying.md)                                                                                                                                                                                                                                       |
-| Deployment list / app deployment | [lib/cli/](lib/cli/) (new or existing setup), [lib/api/deployments.api.js](lib/api/deployments.api.js)                                                                                                                                                                       |
-| Deploy --tag                     | [lib/app/deploy.js](lib/app/deploy.js), [lib/deployment/deployer.js](lib/deployment/deployer.js), CLI deploy option                                                                                                                                                          |
-| Deployment key                   | [lib/core/key-generator.js](lib/core/key-generator.js), [lib/generator/index.js](lib/generator/index.js)                                                                                                                                                                     |
-| Controller section               | New subsection in [docs/deploying.md](docs/deploying.md) or new doc                                                                                                                                                                                                          |
+| Area                             | Files                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Prerequisites / install          | [README.md](README.md), [docs/README.md](docs/README.md), [docs/infrastructure.md](docs/infrastructure.md)                                                                                                                                                                                                                                                   |
+| Back links                       | All 26 docs under `docs/` that use “Back to Your Own Applications” or link to `your-own-applications.md` for back                                                                                                                                                                                                                                            |
+| Wizard + credentials             | [docs/wizard.md](docs/wizard.md), [lib/api/wizard.api.js](lib/api/wizard.api.js) (optional listWizardCredentials), new credential list command + CLI                                                                                                                                                                                                         |
+| Environment first time           | [docs/deployment/environment-first-time.md](docs/deployment/environment-first-time.md), [lib/schema/environment-deploy-request.schema.json](lib/schema/environment-deploy-request.schema.json), [templates/infra/environment-dev.json](templates/infra/environment-dev.json)                                                                                 |
+| Deploying                        | [docs/deploying.md](docs/deploying.md)                                                                                                                                                                                                                                                                                                                       |
+| Deployment list / app deployment | [lib/cli/](lib/cli/) (new or existing setup), [lib/api/deployments.api.js](lib/api/deployments.api.js)                                                                                                                                                                                                                                                       |
+| Deploy --tag                     | [lib/app/deploy.js](lib/app/deploy.js), [lib/deployment/deployer.js](lib/deployment/deployer.js), CLI deploy option                                                                                                                                                                                                                                          |
+| Deployment key                   | [lib/core/key-generator.js](lib/core/key-generator.js), [lib/generator/index.js](lib/generator/index.js)                                                                                                                                                                                                                                                     |
+| Application version              | [builder/dataplane/variables.yaml](builder/dataplane/variables.yaml), [lib/generator/builders.js](lib/generator/builders.js), [lib/core/templates.js](lib/core/templates.js), [lib/generator/wizard.js](lib/generator/wizard.js), [lib/generator/split.js](lib/generator/split.js), [lib/schema/application-schema.json](lib/schema/application-schema.json) |
+| Controller section               | New subsection in [docs/deploying.md](docs/deploying.md) or new doc                                                                                                                                                                                                                                                                                          |
 
 
 ---

@@ -265,4 +265,61 @@
         '500':
           $ref: '#/components/responses/InternalError'
       operationId: listEnvironmentsDeployments
-  
+  /api/v1/environments/{envKey}/applications/{appKey}/deployments:
+    get:
+      summary: List application deployments
+      description: Get deployment history for an application in an environment
+      tags:
+        - Environment Applications
+      security:
+        - oauth2:
+            - deployments:read
+      parameters:
+        - name: envKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: appKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: ./schemas/pagination.schema.yaml#/components/parameters/PaginationPage
+        - $ref: ./schemas/pagination.schema.yaml#/components/parameters/PaginationPageSize
+        - $ref: ./schemas/pagination.schema.yaml#/components/parameters/SortParameter
+        - $ref: ./schemas/pagination.schema.yaml#/components/parameters/FilterParameter
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search term to match across deployment fields (case-insensitive partial match)
+      responses:
+        '200':
+          description: Paginated list of deployments (SDK format)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - meta
+                  - data
+                  - links
+                properties:
+                  meta:
+                    $ref: ./schemas/pagination.schema.yaml#/components/schemas/Meta
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Deployment'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      operationId: listEnvironmentsApplicationsDeployments
