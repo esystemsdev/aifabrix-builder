@@ -93,8 +93,7 @@ integration/my-hubspot/
 ├── variables.yaml                   ← App config with externalIntegration block
 ├── env.template                     ← Environment variables template
 ├── README.md                        ← Generated documentation
-├── deploy.sh                        ← Deployment script
-└── deploy.ps1                       ← PowerShell deployment script
+└── deploy.js                        ← Node deployment script (run `node deploy.js`)
 ```
 
 ## Step 3: Understanding the Files

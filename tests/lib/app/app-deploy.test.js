@@ -222,6 +222,56 @@ app:
       expect(result).toEqual({ success: true, type: 'external' });
     });
 
+    it('should deploy from integration when --type external is passed (no builder required)', async() => {
+      // Only integration/<app> exists; no builder/<app> - --type external forces integration path
+      const integrationPath = path.join(tempDir, 'integration', 'test-e2e-hubspot');
+      fsSync.mkdirSync(integrationPath, { recursive: true });
+      const variablesYaml = `
+app:
+  key: test-e2e-hubspot
+  name: Test E2E HubSpot
+  type: external
+`;
+      fsSync.writeFileSync(path.join(integrationPath, 'variables.yaml'), variablesYaml);
+
+      const externalDeploy = require('../../../lib/external-system/deploy');
+      externalDeploy.deployExternalSystem.mockResolvedValue();
+
+      const result = await appDeploy.deployApp('test-e2e-hubspot', { type: 'external' });
+
+      expect(externalDeploy.deployExternalSystem).toHaveBeenCalledWith(
+        'test-e2e-hubspot',
+        expect.objectContaining({ type: 'external' })
+      );
+      const deployer = require('../../../lib/deployment/deployer');
+      expect(deployer.deployToController).not.toHaveBeenCalled();
+      expect(result).toEqual({ success: true, type: 'external' });
+    });
+
+    it('should deploy from integration when only integration folder exists (no --type external)', async() => {
+      // Fallback: no builder/<app>, integration/<app> with variables.yaml -> deploy as external
+      const integrationPath = path.join(tempDir, 'integration', 'test-e2e-hubspot');
+      fsSync.mkdirSync(integrationPath, { recursive: true });
+      const variablesYaml = `
+app:
+  key: test-e2e-hubspot
+  name: Test E2E HubSpot
+  type: external
+`;
+      fsSync.writeFileSync(path.join(integrationPath, 'variables.yaml'), variablesYaml);
+      // Do not create builder/test-e2e-hubspot
+
+      const externalDeploy = require('../../../lib/external-system/deploy');
+      externalDeploy.deployExternalSystem.mockResolvedValue();
+
+      const result = await appDeploy.deployApp('test-e2e-hubspot', {});
+
+      expect(externalDeploy.deployExternalSystem).toHaveBeenCalledWith('test-e2e-hubspot', expect.any(Object));
+      const deployer = require('../../../lib/deployment/deployer');
+      expect(deployer.deployToController).not.toHaveBeenCalled();
+      expect(result).toEqual({ success: true, type: 'external' });
+    });
+
     it('should error when controller URL is missing', async() => {
       // Create variables.yaml without deployment config
       const config = { app: { key: 'test-app', name: 'Test App' }, port: 3000 };

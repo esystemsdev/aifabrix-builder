@@ -78,6 +78,22 @@ describe('Secrets Generator Module', () => {
       expect(result).toEqual(['postgres-passwordKeyVault']);
     });
 
+    it('should skip commented and empty lines', () => {
+      const envTemplate = [
+        '# Environment variables for external system integration',
+        '',
+        '# OAuth2 Authentication',
+        '#CLIENT_ID=kv://secrets/client-id',
+        '#CLIENT_SECRET=kv://secrets/client-secret',
+        'ACTIVE_KEY=kv://active-secret'
+      ].join('\n');
+      const existingSecrets = { 'active-secret': 'value' };
+
+      const result = secretsGenerator.findMissingSecretKeys(envTemplate, existingSecrets);
+
+      expect(result).toEqual([]);
+    });
+
     it('should handle empty template', () => {
       const envTemplate = '';
       const existingSecrets = {};

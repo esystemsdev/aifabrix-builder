@@ -273,103 +273,35 @@ describe('Wizard Generator', () => {
       const fsSync = require('fs');
       fsPromises.readFile.mockImplementation((filePath) => {
         const filePathStr = String(filePath || '');
-        // Normalize path separators for cross-platform compatibility
         const normalizedPath = filePathStr.replace(/\\/g, '/');
-        if (normalizedPath.includes('deploy.sh.hbs') || normalizedPath.endsWith('deploy.sh.hbs')) {
-          // Read actual template file
+        if (normalizedPath.includes('deploy.js.hbs') || normalizedPath.endsWith('deploy.js.hbs')) {
           try {
-            const templatePath = path.join(__dirname, '..', '..', '..', 'templates', 'external-system', 'deploy.sh.hbs');
+            const templatePath = path.join(__dirname, '..', '..', '..', 'templates', 'external-system', 'deploy.js.hbs');
             if (fsSync.existsSync(templatePath)) {
               return Promise.resolve(fsSync.readFileSync(templatePath, 'utf8'));
             }
           } catch (error) {
             // Fall through to fallback
           }
-          // Fallback if file doesn't exist - return valid template content
-          return Promise.resolve('#!/bin/bash\n' +
-            '# Deploy {{systemKey}} external system and datasources using aifabrix CLI\n' +
-            '\n' +
-            'set -e\n' +
-            '\n' +
-            'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n' +
-            'ENVIRONMENT="${ENVIRONMENT:-dev}"\n' +
-            'CONTROLLER="${CONTROLLER:-http://localhost:3000}"\n' +
-            '\n' +
-            'echo "🔍 Validating {{systemKey}} configuration files..."\n' +
+          return Promise.resolve(
+            '#!/usr/bin/env node\n' +
+            'const path = require(\'path\');\n' +
+            'const scriptDir = __dirname;\n' +
+            'const appKey = \'{{systemKey}}\';\n' +
             '{{#each allJsonFiles}}\n' +
-            'aifabrix validate "${SCRIPT_DIR}/{{this}}" || exit 1\n' +
+            'run(\'aifabrix validate "\' + path.join(scriptDir, \'{{this}}\') + \'"\');\n' +
             '{{/each}}\n' +
-            '\n' +
-            'echo "✅ Validation passed"\n' +
-            '\n' +
-            'echo "🚀 Deploying {{systemKey}} external system and datasources..."\n' +
-            'echo "   Environment: ${ENVIRONMENT}"\n' +
-            'echo "   Controller: ${CONTROLLER}"\n' +
-            '\n' +
-            '# Deploy datasources\n' +
-            '{{#each datasourceFileNames}}\n' +
-            'aifabrix datasource deploy {{../systemKey}} "${SCRIPT_DIR}/{{this}}" \\\n' +
-            '  --environment "${ENVIRONMENT}" --controller "${CONTROLLER}" || exit 1\n' +
-            '{{/each}}\n' +
-            '\n' +
-            'echo "✅ Deployment complete"\n' +
-            '\n' +
-            '# Optional: Run tests\n' +
-            'if [ "${RUN_TESTS:-false}" = "true" ]; then\n' +
-            '  echo "🧪 Running integration tests..."\n' +
-            '  aifabrix test-integration {{systemKey}} --environment "${ENVIRONMENT}" --controller "${CONTROLLER}"\n' +
-            'fi\n');
-        } else if (normalizedPath.includes('deploy.ps1.hbs') || normalizedPath.endsWith('deploy.ps1.hbs')) {
-          // Read actual template file
-          try {
-            const templatePath = path.join(__dirname, '..', '..', '..', 'templates', 'external-system', 'deploy.ps1.hbs');
-            if (fsSync.existsSync(templatePath)) {
-              return Promise.resolve(fsSync.readFileSync(templatePath, 'utf8'));
-            }
-          } catch (error) {
-            // Fall through to fallback
-          }
-          // Fallback if file doesn't exist - return valid template content
-          return Promise.resolve('# Deploy {{systemKey}} external system and datasources using aifabrix CLI\n' +
-            '\n' +
-            '$ErrorActionPreference = "Stop"\n' +
-            '\n' +
-            '$SCRIPT_DIR = $PSScriptRoot\n' +
-            '$env:ENVIRONMENT = if ($env:ENVIRONMENT) { $env:ENVIRONMENT } else { "dev" }\n' +
-            '$env:CONTROLLER = if ($env:CONTROLLER) { $env:CONTROLLER } else { "http://localhost:3000" }\n' +
-            '\n' +
-            'Write-Host "🔍 Validating {{systemKey}} configuration files..."\n' +
-            '{{#each allJsonFiles}}\n' +
-            'aifabrix validate "${SCRIPT_DIR}\\{{this}}"\n' +
-            'if ($LASTEXITCODE -ne 0) { exit 1 }\n' +
-            '{{/each}}\n' +
-            '\n' +
-            'Write-Host "✅ Validation passed"\n' +
-            '\n' +
-            'Write-Host "🚀 Deploying {{systemKey}} external system and datasources..."\n' +
-            'Write-Host "   Environment: $env:ENVIRONMENT"\n' +
-            'Write-Host "   Controller: $env:CONTROLLER"\n' +
-            '\n' +
-            '# Deploy datasources\n' +
-            '{{#each datasourceFileNames}}\n' +
-            'aifabrix datasource deploy {{../systemKey}} "${SCRIPT_DIR}\\{{this}}" --environment $env:ENVIRONMENT --controller $env:CONTROLLER\n' +
-            'if ($LASTEXITCODE -ne 0) { exit 1 }\n' +
-            '{{/each}}\n' +
-            '\n' +
-            'Write-Host "✅ Deployment complete"\n' +
-            '\n' +
-            '# Optional: Run tests\n' +
-            'if ($env:RUN_TESTS -eq "true") {\n' +
-            '  Write-Host "🧪 Running integration tests..."\n' +
-            '  aifabrix test-integration {{systemKey}} --environment $env:ENVIRONMENT --controller $env:CONTROLLER\n' +
-            '}\n');
+            'run(\'aifabrix deploy \' + appKey);\n' +
+            'if (process.env.RUN_TESTS !== \'false\') {\n' +
+            '  run(\'aifabrix test-integration \' + appKey);\n' +
+            '}\n'
+          );
         }
-        // For other files, return the default mock value
         return Promise.resolve('existing: content');
       });
     });
 
-    it('should generate deploy.sh, deploy.ps1, and deploy.js scripts', async() => {
+    it('should generate deploy.js script only', async() => {
       const result = await wizardGenerator.generateDeployScripts(
         appPath,
         systemKey,
@@ -377,14 +309,12 @@ describe('Wizard Generator', () => {
         datasourceFileNames
       );
 
-      expect(fsPromises.writeFile).toHaveBeenCalledTimes(3);
-      expect(fsPromises.chmod).toHaveBeenCalledTimes(1);
-      expect(result.deployShPath).toContain('deploy.sh');
-      expect(result.deployPs1Path).toContain('deploy.ps1');
+      expect(fsPromises.writeFile).toHaveBeenCalledTimes(1);
+      expect(fsPromises.chmod).not.toHaveBeenCalled();
       expect(result.deployJsPath).toContain('deploy.js');
     });
 
-    it('should generate deploy.sh with correct content', async() => {
+    it('should generate deploy.js with correct content', async() => {
       await wizardGenerator.generateDeployScripts(
         appPath,
         systemKey,
@@ -392,55 +322,17 @@ describe('Wizard Generator', () => {
         datasourceFileNames
       );
 
-      const deployShCall = fsPromises.writeFile.mock.calls.find(call =>
-        call[0].includes('deploy.sh')
+      const deployJsCall = fsPromises.writeFile.mock.calls.find(call =>
+        call[0].includes('deploy.js')
       );
-      expect(deployShCall).toBeDefined();
-      const scriptContent = deployShCall[1];
-      expect(scriptContent).toContain('#!/bin/bash');
+      expect(deployJsCall).toBeDefined();
+      const scriptContent = deployJsCall[1];
+      expect(scriptContent).toContain('#!/usr/bin/env node');
       expect(scriptContent).toContain(systemKey);
       expect(scriptContent).toContain('aifabrix validate');
-      expect(scriptContent).toContain('aifabrix datasource deploy');
-      expect(scriptContent).toContain('ENVIRONMENT');
-      expect(scriptContent).toContain('CONTROLLER');
+      expect(scriptContent).toContain('aifabrix deploy');
+      expect(scriptContent).toContain('aifabrix test-integration');
       expect(scriptContent).toContain('RUN_TESTS');
-    });
-
-    it('should generate deploy.ps1 with correct content', async() => {
-      await wizardGenerator.generateDeployScripts(
-        appPath,
-        systemKey,
-        systemFileName,
-        datasourceFileNames
-      );
-
-      const deployPs1Call = fsPromises.writeFile.mock.calls.find(call =>
-        call[0].includes('deploy.ps1')
-      );
-      expect(deployPs1Call).toBeDefined();
-      const scriptContent = deployPs1Call[1];
-      expect(scriptContent).toContain('$ErrorActionPreference');
-      expect(scriptContent).toContain(systemKey);
-      expect(scriptContent).toContain('aifabrix validate');
-      expect(scriptContent).toContain('aifabrix datasource deploy');
-      expect(scriptContent).toContain('$env:ENVIRONMENT');
-      expect(scriptContent).toContain('$env:CONTROLLER');
-      expect(scriptContent).toContain('$env:RUN_TESTS');
-    });
-
-    it('should make deploy.sh executable', async() => {
-      await wizardGenerator.generateDeployScripts(
-        appPath,
-        systemKey,
-        systemFileName,
-        datasourceFileNames
-      );
-
-      const chmodCall = fsPromises.chmod.mock.calls.find(call =>
-        call[0].includes('deploy.sh')
-      );
-      expect(chmodCall).toBeDefined();
-      expect(chmodCall[1]).toBe(0o755);
     });
 
     it('should include all JSON files in validation', async() => {
@@ -451,10 +343,10 @@ describe('Wizard Generator', () => {
         datasourceFileNames
       );
 
-      const deployShCall = fsPromises.writeFile.mock.calls.find(call =>
-        call[0].includes('deploy.sh')
+      const deployJsCall = fsPromises.writeFile.mock.calls.find(call =>
+        call[0].includes('deploy.js')
       );
-      const scriptContent = deployShCall[1];
+      const scriptContent = deployJsCall[1];
       expect(scriptContent).toContain(systemFileName);
       datasourceFileNames.forEach(fileName => {
         expect(scriptContent).toContain(fileName);

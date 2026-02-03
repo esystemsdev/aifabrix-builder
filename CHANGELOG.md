@@ -1,3 +1,26 @@
+## [2.37.5] - 2026-02-03
+
+### Fixed
+- **Environment deploy**: Config file is now loaded and sent to the API when using `--config`; previously the request body omitted `environmentConfig`, causing "expected object, received undefined" from the controller
+- **Environment deploy polling**: Polling now uses GET deployment-by-ID (`/api/v1/pipeline/{envKey}/deployments/{deploymentId}` with fallback to `/api/v1/environments/{envKey}/deployments/{deploymentId}`) and treats `status === 'completed'` as done (and `failed`/`error` as failure); previously the CLI polled GET environment status and never saw completion, so it polled until timeout
+
+### Added
+- **Environment deploy config**: `--config <file>` is required for `aifabrix environment deploy`; JSON file must contain `environmentConfig` (object with `key`, `environment`, `preset`, `serviceName`, `location`) and optional `dryRun`; schema `lib/schema/environment-deploy-request.schema.json`; clear errors for missing file, invalid JSON, missing `environmentConfig`, and schema validation failures
+- **Environment deploy polling**: Status line per attempt: `Attempt N/60... Status: <status> (progress%)`; completion when deployment record has `status: 'completed'`
+
+### Changed
+- **Deploy**: `aifabrix deploy <app>` falls back to external deployment when only `integration/<app>` exists (no `builder/<app>`); deploy command option `--type external` documented in CLI
+- **App list**: External apps show 🔗 icon; hint added for `aifabrix app show <appKey>`
+- **Documentation**: Deployment docs updated to clarify external system deployment (README, deployment, external-integration, reference, deploying, external-systems, wizard, your-own-applications)
+- **Paths**: `getIntegrationPath` and `getBuilderPath` use project root when cwd is inside project so deploy works when run from `integration/<app>` (e.g. `node deploy.js`); new `getIntegrationBuilderBaseDir()`
+- **Secrets**: `findMissingSecretKeys` and `collectMissingSecrets` skip commented and empty lines when scanning env.template for `kv://` references
+- **Deployer**: Bearer-only auth supported when no client credentials; external manifests sent as-is via `transformExternalManifestForPipeline`
+- **External system test-auth**: Dataplane URL discovered from controller (`resolveDataplaneUrl`); optional `options.dataplane` override for tests
+- **Wizard**: Entity-type keys normalized to schema-valid segments via `toKeySegment` (e.g. camelCase → kebab-case)
+
+### Technical
+- Tests: external-system-test-auth (dataplane resolution, options.dataplane override); environment-deploy (config loading, schema validation, deployment-by-ID polling, pipeline then environments fallback), fixture `tests/fixtures/environment-deploy-config.json`, mocks for deployments.api and pipeline.api
+
 ## [2.37.0] - 2026-02-02
 
 ### Added

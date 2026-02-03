@@ -321,6 +321,51 @@ describe('app-list', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✗ app1'));
     });
 
+    it('should display external applications with link icon', async() => {
+      getConfig.mockResolvedValue({
+        device: {
+          'http://localhost:3000': {
+            token: 'test-token'
+          }
+        }
+      });
+      normalizeControllerUrl.mockReturnValue('http://localhost:3000');
+      getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'test-token',
+        controller: 'http://localhost:3000'
+      });
+
+      listEnvironmentApplications.mockResolvedValue({
+        success: true,
+        data: [
+          {
+            key: 'test-hubspot',
+            displayName: 'test-hubspot',
+            status: 'active',
+            configuration: {
+              type: 'external',
+              pipeline: { isActive: false }
+            }
+          },
+          {
+            key: 'dataplane',
+            displayName: 'AI Fabrix Dataplane',
+            status: 'pending',
+            configuration: {
+              type: 'api',
+              pipeline: { isActive: true }
+            }
+          }
+        ]
+      });
+
+      await listApplications({ environment: 'dev' });
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🔗'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✗ test-hubspot'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ dataplane'));
+    });
+
     it('should use default environment name when not provided', async() => {
       getConfig.mockResolvedValue({
         device: {

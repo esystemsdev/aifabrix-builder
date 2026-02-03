@@ -511,7 +511,7 @@ async function checkAppDirectory(appPath) {
  * @throws {Error} If required files are missing
  */
 async function validateRequiredFiles(appPath, entries) {
-  const requiredFiles = ['variables.yaml', 'env.template', 'README.md', 'deploy.sh', 'deploy.ps1'];
+  const requiredFiles = ['variables.yaml', 'env.template', 'README.md', 'deploy.js'];
   const missingFiles = [];
   for (const fileName of requiredFiles) {
     const filePath = path.join(appPath, fileName);

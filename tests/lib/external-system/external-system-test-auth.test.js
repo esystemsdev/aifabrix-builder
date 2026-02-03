@@ -7,15 +7,15 @@
  */
 
 const { getDeploymentAuth } = require('../../../lib/utils/token-manager');
-const { getDataplaneUrl } = require('../../../lib/datasource/deploy');
+const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
 
 // Mock dependencies
 jest.mock('../../../lib/utils/token-manager', () => ({
   getDeploymentAuth: jest.fn()
 }));
 
-jest.mock('../../../lib/datasource/deploy', () => ({
-  getDataplaneUrl: jest.fn()
+jest.mock('../../../lib/utils/dataplane-resolver', () => ({
+  resolveDataplaneUrl: jest.fn()
 }));
 
 // Mock controller-url to return consistent default URL
@@ -56,7 +56,7 @@ describe('External System Test Authentication Module', () => {
       const mockDataplaneUrl = 'https://dataplane.example.com';
 
       getDeploymentAuth.mockResolvedValue(mockAuthConfig);
-      getDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
+      resolveDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
 
       const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
       const { resolveEnvironment } = require('../../../lib/core/config');
@@ -72,9 +72,8 @@ describe('External System Test Authentication Module', () => {
         'dev',
         'hubspot'
       );
-      expect(getDataplaneUrl).toHaveBeenCalledWith(
+      expect(resolveDataplaneUrl).toHaveBeenCalledWith(
         'https://controller.example.com',
-        'hubspot',
         'dev',
         mockAuthConfig
       );
@@ -101,7 +100,7 @@ describe('External System Test Authentication Module', () => {
       const mockDataplaneUrl = 'https://dataplane.example.com';
 
       getDeploymentAuth.mockResolvedValue(mockAuthConfig);
-      getDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
+      resolveDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
 
       const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
       resolveControllerUrl.mockResolvedValueOnce('https://controller.example.com');
@@ -131,7 +130,7 @@ describe('External System Test Authentication Module', () => {
       const mockDataplaneUrl = 'https://dataplane.example.com';
 
       getDeploymentAuth.mockResolvedValue(mockAuthConfig);
-      getDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
+      resolveDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
 
       await setupIntegrationTestAuth(appName, options, config);
 
@@ -142,15 +141,14 @@ describe('External System Test Authentication Module', () => {
         'tst',
         'hubspot'
       );
-      expect(getDataplaneUrl).toHaveBeenCalledWith(
+      expect(resolveDataplaneUrl).toHaveBeenCalledWith(
         'https://custom-controller.example.com',
-        'hubspot',
         'tst',
         mockAuthConfig
       );
     });
 
-    it('should use controller and environment from config', async() => {
+    it('should use controller and environment from config (pro)', async() => {
       const appName = 'hubspot';
       const options = {};
       const config = {};
@@ -166,7 +164,7 @@ describe('External System Test Authentication Module', () => {
       const mockDataplaneUrl = 'https://dataplane.example.com';
 
       getDeploymentAuth.mockResolvedValue(mockAuthConfig);
-      getDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
+      resolveDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
 
       await setupIntegrationTestAuth(appName, options, config);
 
@@ -177,9 +175,8 @@ describe('External System Test Authentication Module', () => {
         'pro',
         'hubspot'
       );
-      expect(getDataplaneUrl).toHaveBeenCalledWith(
+      expect(resolveDataplaneUrl).toHaveBeenCalledWith(
         'https://config-controller.example.com',
-        'hubspot',
         'pro',
         mockAuthConfig
       );
@@ -201,7 +198,7 @@ describe('External System Test Authentication Module', () => {
       const mockDataplaneUrl = 'https://dataplane.example.com';
 
       getDeploymentAuth.mockResolvedValue(mockAuthConfig);
-      getDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
+      resolveDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
 
       await setupIntegrationTestAuth(appName, options, config);
 
@@ -213,9 +210,8 @@ describe('External System Test Authentication Module', () => {
         'dev',
         'hubspot'
       );
-      expect(getDataplaneUrl).toHaveBeenCalledWith(
+      expect(resolveDataplaneUrl).toHaveBeenCalledWith(
         'http://localhost:3000',
-        'hubspot',
         'dev',
         mockAuthConfig
       );
@@ -257,7 +253,7 @@ describe('External System Test Authentication Module', () => {
       const mockDataplaneUrl = 'https://dataplane.example.com';
 
       getDeploymentAuth.mockResolvedValue(mockAuthConfig);
-      getDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
+      resolveDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
 
       const result = await setupIntegrationTestAuth(appName, options, config);
 
@@ -267,7 +263,7 @@ describe('External System Test Authentication Module', () => {
       });
     });
 
-    it('should pass authConfig to getDataplaneUrl', async() => {
+    it('should pass authConfig to resolveDataplaneUrl', async() => {
       const appName = 'hubspot';
       const options = {};
       const config = {};
@@ -284,13 +280,12 @@ describe('External System Test Authentication Module', () => {
       const mockDataplaneUrl = 'https://dataplane.example.com';
 
       getDeploymentAuth.mockResolvedValue(mockAuthConfig);
-      getDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
+      resolveDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
 
       await setupIntegrationTestAuth(appName, options, config);
 
-      expect(getDataplaneUrl).toHaveBeenCalledWith(
+      expect(resolveDataplaneUrl).toHaveBeenCalledWith(
         'https://controller.example.com',
-        'hubspot',
         'dev',
         mockAuthConfig
       );
@@ -315,7 +310,7 @@ describe('External System Test Authentication Module', () => {
         const mockDataplaneUrl = 'https://dataplane.example.com';
 
         getDeploymentAuth.mockResolvedValue(mockAuthConfig);
-        getDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
+        resolveDataplaneUrl.mockResolvedValue(mockDataplaneUrl);
 
         await setupIntegrationTestAuth(appName, options, config);
 
@@ -345,7 +340,7 @@ describe('External System Test Authentication Module', () => {
       ).rejects.toThrow('Authentication failed');
     });
 
-    it('should handle getDataplaneUrl errors', async() => {
+    it('should handle resolveDataplaneUrl errors', async() => {
       const appName = 'hubspot';
       const options = {};
       const config = {};
@@ -360,11 +355,31 @@ describe('External System Test Authentication Module', () => {
       };
       const error = new Error('Dataplane URL not found');
       getDeploymentAuth.mockResolvedValue(mockAuthConfig);
-      getDataplaneUrl.mockRejectedValue(error);
+      resolveDataplaneUrl.mockRejectedValue(error);
 
       await expect(
         setupIntegrationTestAuth(appName, options, config)
       ).rejects.toThrow('Dataplane URL not found');
+    });
+
+    it('should use options.dataplane when provided (no discovery)', async() => {
+      const appName = 'hubspot-test-v1';
+      const options = { dataplane: 'http://127.0.0.1:3611' };
+      const config = {};
+
+      const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
+      const { resolveEnvironment } = require('../../../lib/core/config');
+      resolveControllerUrl.mockResolvedValueOnce('http://localhost:3610');
+      resolveEnvironment.mockResolvedValueOnce('dev');
+
+      const mockAuthConfig = { token: 'test-token' };
+      getDeploymentAuth.mockResolvedValue(mockAuthConfig);
+
+      const result = await setupIntegrationTestAuth(appName, options, config);
+
+      expect(result.authConfig).toEqual(mockAuthConfig);
+      expect(result.dataplaneUrl).toBe('http://127.0.0.1:3611');
+      expect(resolveDataplaneUrl).not.toHaveBeenCalled();
     });
   });
 });

@@ -163,9 +163,7 @@ The wizard saves all files to `integration/<appKey>/`:
 - `env.template` - Environment variable template
 - `README.md` - Documentation (AI-generated from dataplane when available)
 - `<systemKey>-deploy.json` - Single deployment file
-- `deploy.js` - Node deployment script (recommended: run `node deploy.js` for full flow)
-- `deploy.sh` - Bash deployment script
-- `deploy.ps1` - PowerShell deployment script
+- `deploy.js` - Node deployment script (run `node deploy.js` for full flow)
 
 ## Headless Mode Configuration (wizard.yaml)
 
@@ -382,14 +380,12 @@ integration/<appKey>/
 ├── env.template                # Environment variable template
 ├── README.md                   # Documentation (AI-generated from dataplane when available)
 ├── <systemKey>-deploy.json     # Single deployment file
-├── deploy.js                   # Node deployment script (check auth → login → deploy → test)
-├── deploy.sh                   # Bash deployment script
-└── deploy.ps1                  # PowerShell deployment script
+└── deploy.js                   # Node deployment script (check auth → login → deploy → test)
 ```
 
 ### README.md Generation
 
-The wizard attempts to fetch AI-generated README.md content from the dataplane's deployment-docs API. If the API is available and returns content, that content is used. Otherwise, a basic README.md is generated with essential information about the integration.
+The wizard generates files (including `variables.yaml` and `<systemKey>-deploy.json`), then calls the dataplane **POST** `/api/v1/wizard/deployment-docs/{systemKey}` with optional `variablesYaml` and `deployJson` in the request body. This produces higher-quality README.md content aligned with the integration folder. If the API is unavailable or returns no content, a basic README.md is used.
 
 ## Environment Variables
 
@@ -404,9 +400,9 @@ Update these values in your secrets store before deployment.
 
 ## Deployment
 
-After the wizard completes, you can deploy using the generated `deploy.js` script (recommended), the Bash/PowerShell scripts, or the CLI directly.
+After the wizard completes, you can deploy using the generated `deploy.js` script or the CLI directly.
 
-### Using deploy.js (recommended)
+### Using deploy.js
 
 The wizard generates a Node script `deploy.js`. Run it for the full flow:
 
@@ -422,26 +418,6 @@ node deploy.js
 4. **Run integration tests** – Runs `aifabrix test-integration <appKey>` (unless `RUN_TESTS=false`).
 
 Controller URL and environment come from config (`aifabrix auth config`) or from `CONTROLLER` and `ENVIRONMENT` environment variables. You can extend the script (e.g. add steps or different test commands).
-
-### Using deploy.sh / deploy.ps1
-
-The wizard also generates Bash and PowerShell scripts:
-
-**Bash (Linux/macOS):**
-```bash
-cd integration/<appKey>
-./deploy.sh
-```
-
-**PowerShell (Windows):**
-```powershell
-cd integration\<appKey>
-.\deploy.ps1
-```
-
-**Environment Variables:** `ENVIRONMENT` (default: dev), `CONTROLLER` (default: <http://localhost:3000>), `RUN_TESTS` (set to "true" to run integration tests). Example: `ENVIRONMENT=prod CONTROLLER=https://controller.example.com ./deploy.sh`.
-
-The scripts validate JSON files, deploy datasources, and optionally run integration tests.
 
 ### Using CLI Directly
 
@@ -584,7 +560,8 @@ The wizard uses the following dataplane wizard API endpoints:
 | `POST /api/v1/wizard/sessions/{id}/validate-step` | Validate specific step |
 | `GET /api/v1/wizard/preview/{id}` | Get configuration preview |
 | `POST /api/v1/wizard/test-mcp-connection` | Test MCP connection |
-| `GET /api/v1/wizard/deployment-docs/{key}` | Get deployment docs |
+| `GET /api/v1/wizard/deployment-docs/{key}` | Get deployment docs (DB only) |
+| `POST /api/v1/wizard/deployment-docs/{key}` | Generate deployment docs with optional `variablesYaml` and `deployJson` body for better README quality |
 | `GET /api/v1/wizard/platforms` | Get known platforms (optional; empty/404 hides "Known platform" in Step 2) |
 
 For detailed API documentation, see the dataplane API documentation.

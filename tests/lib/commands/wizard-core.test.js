@@ -44,7 +44,9 @@ const fs = require('fs').promises;
 jest.mock('fs', () => ({
   promises: {
     access: jest.fn(),
-    mkdir: jest.fn()
+    mkdir: jest.fn(),
+    readFile: jest.fn(),
+    writeFile: jest.fn()
   }
 }));
 
@@ -885,12 +887,18 @@ describe('Wizard Core Functions', () => {
       systemFilePath: '/workspace/integration/test-app/test-system-deploy.json'
     };
 
-    it('should save files successfully', async() => {
-      wizardApi.getDeploymentDocs.mockResolvedValue({
+    it('should save files successfully and update README via POST deployment-docs with variables.yaml and deploy JSON', async() => {
+      wizardGenerator.generateWizardFiles.mockResolvedValue(mockGeneratedFiles);
+      fs.readFile.mockImplementation((p) => {
+        if (String(p).endsWith('variables.yaml')) return Promise.resolve('app:\n  key: test-app\n');
+        if (String(p).endsWith('test-app-deploy.json')) return Promise.resolve('{}');
+        return Promise.reject(new Error('ENOENT'));
+      });
+      fs.writeFile.mockResolvedValue(undefined);
+      wizardApi.postDeploymentDocs.mockResolvedValue({
         success: true,
         data: { content: '# Test README' }
       });
-      wizardGenerator.generateWizardFiles.mockResolvedValue(mockGeneratedFiles);
       const result = await wizardCore.handleFileSaving(
         'test-app',
         mockSystemConfig,
@@ -904,16 +912,30 @@ describe('Wizard Core Functions', () => {
         mockSystemConfig,
         mockDatasourceConfigs,
         'test-system',
-        { aiGeneratedReadme: '# Test README' }
+        { aiGeneratedReadme: null }
+      );
+      expect(wizardApi.postDeploymentDocs).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        'test-system',
+        expect.objectContaining({ variablesYaml: expect.any(String), deployJson: expect.anything() })
+      );
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('README.md'),
+        '# Test README',
+        'utf8'
       );
       expect(result).toEqual(mockGeneratedFiles);
     });
 
     it('should handle missing deployment docs gracefully', async() => {
-      wizardApi.getDeploymentDocs.mockResolvedValue({
-        success: false
-      });
       wizardGenerator.generateWizardFiles.mockResolvedValue(mockGeneratedFiles);
+      fs.readFile.mockImplementation((p) => {
+        if (String(p).endsWith('variables.yaml')) return Promise.resolve('app:\n  key: test-app\n');
+        if (String(p).endsWith('test-app-deploy.json')) return Promise.resolve('{}');
+        return Promise.reject(new Error('ENOENT'));
+      });
+      wizardApi.postDeploymentDocs.mockResolvedValue({ success: false });
       await wizardCore.handleFileSaving(
         'test-app',
         mockSystemConfig,
@@ -929,11 +951,17 @@ describe('Wizard Core Functions', () => {
         'test-system',
         { aiGeneratedReadme: null }
       );
+      expect(fs.writeFile).not.toHaveBeenCalledWith(expect.stringContaining('README.md'), expect.any(String), 'utf8');
     });
 
-    it('should continue with null aiGeneratedReadme when getDeploymentDocs throws', async() => {
-      wizardApi.getDeploymentDocs.mockRejectedValue(new Error('Network error'));
+    it('should continue when postDeploymentDocs throws', async() => {
       wizardGenerator.generateWizardFiles.mockResolvedValue(mockGeneratedFiles);
+      fs.readFile.mockImplementation((p) => {
+        if (String(p).endsWith('variables.yaml')) return Promise.resolve('app:\n  key: test-app\n');
+        if (String(p).endsWith('test-app-deploy.json')) return Promise.resolve('{}');
+        return Promise.reject(new Error('ENOENT'));
+      });
+      wizardApi.postDeploymentDocs.mockRejectedValue(new Error('Network error'));
       const result = await wizardCore.handleFileSaving(
         'test-app',
         mockSystemConfig,
@@ -949,6 +977,31 @@ describe('Wizard Core Functions', () => {
         mockDatasourceConfigs,
         'test-system',
         { aiGeneratedReadme: null }
+      );
+      expect(result).toEqual(mockGeneratedFiles);
+    });
+
+    it('should fall back to GET deployment-docs when variables.yaml and deploy.json are unreadable', async() => {
+      wizardGenerator.generateWizardFiles.mockResolvedValue(mockGeneratedFiles);
+      fs.readFile.mockRejectedValue(new Error('ENOENT'));
+      wizardApi.getDeploymentDocs.mockResolvedValue({
+        success: true,
+        data: { content: '# Fallback README' }
+      });
+      const result = await wizardCore.handleFileSaving(
+        'test-app',
+        mockSystemConfig,
+        mockDatasourceConfigs,
+        'test-system',
+        mockDataplaneUrl,
+        mockAuthConfig
+      );
+      expect(wizardApi.getDeploymentDocs).toHaveBeenCalledWith(mockDataplaneUrl, mockAuthConfig, 'test-system');
+      expect(wizardApi.postDeploymentDocs).not.toHaveBeenCalled();
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('README.md'),
+        '# Fallback README',
+        'utf8'
       );
       expect(result).toEqual(mockGeneratedFiles);
     });

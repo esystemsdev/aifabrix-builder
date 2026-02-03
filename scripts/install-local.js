@@ -114,10 +114,19 @@ function installLocal() {
   console.log('Linking @aifabrix/builder globally...\n');
 
   try {
+    const projectRoot = path.join(__dirname, '..');
     if (pm === 'pnpm') {
-      execSync('pnpm link --global', { stdio: 'inherit' });
+      // Update pnpm global.
+      execSync('pnpm link --global', { stdio: 'inherit', cwd: projectRoot });
+      // Also run npm link so npm's global bin points here; often PATH has
+      // npm's global bin before pnpm's, so "aifabrix" would otherwise stay old.
+      try {
+        execSync('npm link', { stdio: 'inherit', cwd: projectRoot });
+      } catch {
+        // npm may not be available or may fail; pnpm link already ran
+      }
     } else {
-      execSync('npm link', { stdio: 'inherit' });
+      execSync('npm link', { stdio: 'inherit', cwd: projectRoot });
     }
 
     // Get new version after linking

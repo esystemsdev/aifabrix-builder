@@ -1,0 +1,10 @@
+{
+    "environmentConfig": {
+      "key": "dev",
+      "environment": "dev",
+      "preset": "s",
+      "serviceName": "aifabrix",
+      "location": "swedencentral"
+    },
+    "dryRun": false
+  }

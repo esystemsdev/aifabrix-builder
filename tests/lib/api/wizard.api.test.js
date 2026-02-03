@@ -425,6 +425,42 @@ describe('Wizard API', () => {
     });
   });
 
+  describe('postDeploymentDocs', () => {
+    it('should POST deployment docs with variablesYaml and deployJson for better README quality', async() => {
+      const systemKey = 'hubspot';
+      const body = {
+        variablesYaml: 'app:\n  key: hubspot\n',
+        deployJson: { key: 'hubspot', system: {}, dataSources: [] }
+      };
+      const mockResponse = {
+        success: true,
+        data: {
+          systemKey: 'hubspot',
+          content: '# HubSpot Deployment\n\nGenerated from variables and deploy JSON.',
+          contentType: 'text/markdown'
+        }
+      };
+      mockClient.post.mockResolvedValue(mockResponse);
+
+      const result = await wizardApi.postDeploymentDocs(dataplaneUrl, authConfig, systemKey, body);
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/api/v1/wizard/deployment-docs/hubspot',
+        expect.objectContaining({ body })
+      );
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should accept null body (empty object sent)', async() => {
+      mockClient.post.mockResolvedValue({ success: true, data: { content: '# Docs' } });
+      await wizardApi.postDeploymentDocs(dataplaneUrl, authConfig, 'my-system', null);
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/api/v1/wizard/deployment-docs/my-system',
+        expect.objectContaining({ body: {} })
+      );
+    });
+  });
+
   describe('error handling', () => {
     it('should propagate API errors', async() => {
       const errorResponse = {
