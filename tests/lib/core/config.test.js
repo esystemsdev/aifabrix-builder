@@ -602,6 +602,20 @@ describe('Config Module', () => {
       expect(result).toBe('/canonical/secrets.yaml');
     });
 
+    it('getSecretsPath expands ~ to home directory for aifabrix-secrets', async() => {
+      const yamlLib = require('js-yaml');
+      const os = require('os');
+      const mockConfig = {
+        'developer-id': '0',
+        'aifabrix-secrets': '~/.aifabrix/secrets.local.yaml'
+      };
+      fsPromises.readFile.mockResolvedValue(yamlLib.dump(mockConfig));
+
+      const { getSecretsPath } = require('../../../lib/core/config');
+      const result = await getSecretsPath();
+      expect(result).toBe(require('path').join(os.homedir(), '.aifabrix', 'secrets.local.yaml'));
+    });
+
     it('setSecretsPath validates input type', async() => {
       const { setSecretsPath } = require('../../../lib/core/config');
       await expect(setSecretsPath(null)).rejects.toThrow('Secrets path is required and must be a string');

@@ -2166,7 +2166,7 @@ environments:
       const defaultSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
       const defaultSecrets = { 'postgres-passwordKeyVault': 'admin123' };
 
-      // Case 1: invalid YAML (readYamlAtPath will throw via yaml.load)
+      // Case 1: invalid YAML (readYamlAtPath throws) - surface error so user can fix the file
       configMock.getSecretsPath.mockResolvedValue(canonicalPath);
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath === canonicalPath) return true;
@@ -2182,8 +2182,7 @@ environments:
         }
         return '';
       });
-      const resultInvalid = await secrets.loadSecrets(undefined, 'myapp');
-      expect(resultInvalid).toEqual(defaultSecrets);
+      await expect(secrets.loadSecrets(undefined, 'myapp')).rejects.toThrow(/Failed to load secrets file/);
 
       // Case 2: non-object YAML (e.g., number)
       fs.readFileSync.mockImplementation((filePath) => {

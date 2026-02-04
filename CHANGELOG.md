@@ -1,3 +1,9 @@
+## [2.37.9] - 2026-02-04
+
+### Changed
+- **Documentation and plans**: Enhanced deployment and credential documentation; plan updates for docs, CLI credentials, and deploy flows
+- **Secrets**: Config file secrets are merged into user secrets (user wins); `mergeUserWithConfigFile` and `loadMergedConfigAndUserSecrets` used in the loadSecrets cascade; returns null when config path is missing or config is empty
+
 ## [2.37.5] - 2026-02-03
 
 ### Fixed
