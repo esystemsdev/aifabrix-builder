@@ -155,6 +155,19 @@ Before marking this plan complete:
 
 - `info here`
 
+**Application status API**
+
+- **Endpoint**: `GET /api/v1/environments/{envKey}/applications/{appKey}/status`
+- **Summary**: Get application status (without configuration).
+- **Description**: Returns application metadata (id, key, displayName, url, internalUrl, port, status, runtimeStatus, environmentId, createdAt, updatedAt, image, description) without the configuration section. Same auth as POST self/status: bearer token or pipeline client credentials for that application (applications can only read their own status).
+- **Auth**: `clientCredentials` or OAuth2 `environments-applications:read`.
+- **Parameters**: path `envKey`, path `appKey`.
+- **Response 200**: `{ data: EnvironmentApplicationStatus }`.
+- **EnvironmentApplicationStatus** (metadata only, no configuration): id, key, displayName, description (string | null), url (string | null), internalUrl (string | null), image (string | null), port (integer | null), status (string), runtimeStatus (string | null), environmentId, createdAt (date-time), updatedAt (date-time).
+- **Responses**: 401 Unauthorized, 403 Forbidden, 404 NotFound, 500 InternalError.
+- **OperationId**: `getEnvironmentsApplicationStatus`.
+- Use for: CLI app status, URL resolution, and any flow that needs app metadata without full configuration.
+
 ---
 
 ## 9. Deployment key and manifest validation
@@ -201,6 +214,7 @@ Add an application **version** field so the deployment manifest and variables ca
 - **Deployment list**: [lib/api/deployments.api.js](lib/api/deployments.api.js) already has `listDeployments(controllerUrl, envKey, authConfig, options)`. Wire CLI commands to it and add pagination (e.g. pageSize=50).
 - **Deployment key**: [lib/core/key-generator.js](lib/core/key-generator.js) already uses `sortObjectKeys` and `JSON.stringify` (no spaces). Ensure the manifest sent to the controller is built from the same structure that was hashed (no re-serialization with different formatting).
 - **Manifest naming**: [lib/utils/paths.js](lib/utils/paths.js) and [lib/app/config.js](lib/app/config.js) use `<appName>-deploy.json`; docs and deploying.md should consistently say `<appKey>-deploy.json` and mention external systems as `<systemKey>-deploy.json`.
+- **Application status API**: `GET /api/v1/environments/{envKey}/applications/{appKey}/status` returns application metadata without configuration (EnvironmentApplicationStatus: id, key, displayName, url, internalUrl, port, status, runtimeStatus, etc.). Auth: bearer or pipeline client credentials for that app. Use for CLI app status or URL resolution; implement in `lib/api/` if adding an app status command.
 
 ---
 
