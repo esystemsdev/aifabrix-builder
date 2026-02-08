@@ -1,6 +1,6 @@
 # env.template
 
-← [Configuration](README.md)
+← [Documentation index](../README.md) · [Configuration](README.md)
 
 Environment variables template. `aifabrix resolve <app>` generates `.env` from this file plus secrets.
 

@@ -461,6 +461,36 @@ describe('Wizard API', () => {
     });
   });
 
+  describe('listWizardCredentials', () => {
+    it('should list wizard credentials without options', async() => {
+      mockClient.get.mockResolvedValue({ success: true, data: { credentials: [{ key: 'c1', displayName: 'Cred 1' }] } });
+
+      const result = await wizardApi.listWizardCredentials(dataplaneUrl, authConfig);
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/wizard/credentials', { params: {} });
+      expect(result.data.credentials).toHaveLength(1);
+      expect(result.data.credentials[0].key).toBe('c1');
+    });
+
+    it('should list wizard credentials with activeOnly', async() => {
+      mockClient.get.mockResolvedValue({ success: true, data: { credentials: [] } });
+
+      await wizardApi.listWizardCredentials(dataplaneUrl, authConfig, { activeOnly: true });
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/wizard/credentials', {
+        params: { activeOnly: true }
+      });
+    });
+
+    it('should handle listWizardCredentials errors', async() => {
+      mockClient.get.mockRejectedValue(new Error('List credentials failed'));
+
+      await expect(wizardApi.listWizardCredentials(dataplaneUrl, authConfig)).rejects.toThrow(
+        'List credentials failed'
+      );
+    });
+  });
+
   describe('error handling', () => {
     it('should propagate API errors', async() => {
       const errorResponse = {

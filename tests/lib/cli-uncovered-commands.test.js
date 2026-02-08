@@ -422,68 +422,6 @@ describe('CLI Uncovered Command Handlers', () => {
     });
   });
 
-  describe('genkey command handler', () => {
-    it('should handle genkey command successfully', async() => {
-      generator.generateDeployJson.mockResolvedValue('/test/app/aifabrix-deploy.json');
-      fs.readFileSync = jest.fn().mockReturnValue(JSON.stringify({
-        deploymentKey: 'test-deployment-key-123'
-      }));
-
-      const handler = async(appName) => {
-        try {
-          const jsonPath = await generator.generateDeployJson(appName);
-          const fs = require('fs');
-          const jsonContent = fs.readFileSync(jsonPath, 'utf8');
-          const deployment = JSON.parse(jsonContent);
-          const key = deployment.deploymentKey;
-
-          if (!key) {
-            throw new Error('deploymentKey not found in generated JSON');
-          }
-
-          logger.log(`\nDeployment key for ${appName}:`);
-          logger.log(key);
-          logger.log(chalk.gray(`\nGenerated from: ${jsonPath}`));
-        } catch (error) {
-          cliUtils.handleCommandError(error, 'genkey');
-          process.exit(1);
-        }
-      };
-
-      await handler('testapp');
-      expect(generator.generateDeployJson).toHaveBeenCalledWith('testapp');
-      expect(logger.log).toHaveBeenCalledWith('\nDeployment key for testapp:');
-      expect(logger.log).toHaveBeenCalledWith('test-deployment-key-123');
-      expect(process.exit).not.toHaveBeenCalled();
-    });
-
-    it('should handle genkey command error when key not found', async() => {
-      generator.generateDeployJson.mockResolvedValue('/test/app/aifabrix-deploy.json');
-      fs.readFileSync = jest.fn().mockReturnValue(JSON.stringify({}));
-
-      const handler = async(appName) => {
-        try {
-          const jsonPath = await generator.generateDeployJson(appName);
-          const fs = require('fs');
-          const jsonContent = fs.readFileSync(jsonPath, 'utf8');
-          const deployment = JSON.parse(jsonContent);
-          const key = deployment.deploymentKey;
-
-          if (!key) {
-            throw new Error('deploymentKey not found in generated JSON');
-          }
-        } catch (error) {
-          cliUtils.handleCommandError(error, 'genkey');
-          process.exit(1);
-        }
-      };
-
-      await handler('testapp');
-      expect(cliUtils.handleCommandError).toHaveBeenCalled();
-      expect(process.exit).toHaveBeenCalledWith(1);
-    });
-  });
-
   describe('validate command handler', () => {
     it('should handle validate command successfully', async() => {
       validate.validateAppOrFile.mockResolvedValue({ valid: true });

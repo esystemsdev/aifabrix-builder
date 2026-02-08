@@ -1,6 +1,6 @@
 # Application Development Commands
 
-← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
+← [Documentation index](../README.md) · [Commands index](README.md)
 
 Commands for creating, building, and running applications locally.
 
@@ -180,9 +180,16 @@ aifabrix run myapp
 aifabrix run myapp --port 3001
 ```
 
+**Run a specific image tag:**
+```bash
+aifabrix run myapp --tag v1.0.0
+```
+Overrides `image.tag` from variables.yaml so you can run a different built version without changing config.
+
 **Flags:**
 - `-p, --port <port>` - Override local port (default: from variables.yaml)
 - `-d, --debug` - Enable debug output with detailed container information (port detection, container status, Docker commands, health check details)
+- `-t, --tag <tag>` - Image tag to run (e.g. v1.0.0); overrides variables.yaml image.tag
 
 **Debug Mode:**
 When `--debug` is enabled, the command outputs detailed information including:
@@ -223,9 +230,67 @@ aifabrix run myapp --debug
 - **"Docker image not found"** → Run `aifabrix build <app>` first
 - **"Infrastructure not running"** → Run `aifabrix up-infra` first
 - **"Port already in use"** → Use `--port <alternative>` flag
-- **"Container won't start"** → Check logs: `docker logs aifabrix-<app>`
+- **"Container won't start"** → Check logs: `aifabrix logs <app>`
 - **"Health check timeout"** → Check application logs and health endpoint
 - **"Configuration validation failed"** → Fix issues in `builder/<app>/variables.yaml`
+
+---
+
+<a id="aifabrix-logs-app"></a>
+## aifabrix logs <app>
+
+Show application container logs and an optional env summary (with secrets masked).
+
+**What:** Prints container name, optionally dumps environment variables (sensitive values masked), then shows Docker logs.
+
+**When:** Debugging, inspecting env, or streaming logs.
+
+**Example:**
+```bash
+aifabrix logs myapp
+```
+Shows env summary (masked) and last 100 lines of logs.
+
+**Options:**
+- `-f` - Follow log stream
+- `-t, --tail <lines>` - Number of lines (default 100); `--tail 0` = full list
+
+**Examples:**
+```bash
+aifabrix logs myapp           # last 100 lines
+aifabrix logs myapp -t 50      # last 50 lines
+aifabrix logs myapp -t 0       # full list
+aifabrix logs myapp -f         # follow stream
+```
+
+**Issues:**
+- **"Failed to show logs"** - Container may not exist or be stopped; run `aifabrix run <app>` first.
+
+---
+
+<a id="aifabrix-down-app"></a>
+## aifabrix down-app <app>
+
+Stop and remove the application container; optionally remove the app's Docker volume and image.
+
+**What:** Stops the container, removes it, and removes the app's Docker image if no other container uses it. Optionally removes the app's named volume.
+
+**When:** Cleaning up after development, freeing port or disk.
+
+**Example:**
+```bash
+aifabrix down-app myapp
+```
+
+**Options:**
+- `--volumes` - Also remove the application's Docker volume (data)
+
+**Example with volumes:**
+```bash
+aifabrix down-app myapp --volumes
+```
+
+**Note:** Does not delete files under `builder/<app>/`. For full teardown including infra, use `aifabrix down-infra`.
 
 ---
 

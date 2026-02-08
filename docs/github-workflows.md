@@ -1,6 +1,6 @@
 # GitHub Workflows Documentation
 
-← [Back to Your Own Applications](your-own-applications.md)
+← [Documentation index](README.md)
 
 Complete guide to GitHub Actions workflow generation and customization.
 

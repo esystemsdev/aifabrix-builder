@@ -16,14 +16,35 @@ jest.mock('../../../lib/utils/build-copy', () => ({
 }));
 
 jest.mock('../../../lib/utils/compose-generator', () => ({
-  generateDockerCompose: jest.fn().mockResolvedValue('services: {}')
+  generateDockerCompose: jest.fn().mockResolvedValue('services: {}'),
+  getImageName: jest.fn((config, appName) => config?.image?.name || appName)
+}));
+
+jest.mock('../../../lib/utils/image-version', () => ({
+  resolveVersionForApp: jest.fn().mockResolvedValue({
+    version: '1.0.0',
+    fromImage: false,
+    updated: false
+  })
+}));
+
+jest.mock('../../../lib/utils/app-run-containers', () => ({
+  checkImageExists: jest.fn().mockResolvedValue(true),
+  checkContainerRunning: jest.fn(),
+  stopAndRemoveContainer: jest.fn(),
+  logContainerStatus: jest.fn(),
+  getContainerName: jest.fn()
+}));
+
+jest.mock('../../../lib/infrastructure', () => ({
+  checkInfraHealth: jest.fn().mockResolvedValue({ postgres: 'healthy', redis: 'healthy' })
 }));
 
 jest.mock('fs', () => {
   const actualFs = jest.requireActual('fs');
   const existsSync = jest.fn((p) => {
     const str = String(p || '');
-    if (str.includes('/builder/myapp/.env') || str.endsWith('/tmp/dev/myapp')) {
+    if (str.includes('/builder/myapp/.env') || str.endsWith('/tmp/dev/myapp') || str.includes('variables.yaml')) {
       return true;
     }
     return false;
@@ -42,7 +63,9 @@ jest.mock('fs', () => {
 });
 
 const secrets = require('../../../lib/core/secrets');
-const { prepareEnvironment } = require('../../../lib/app/run-helpers');
+const { prepareEnvironment, checkPrerequisites } = require('../../../lib/app/run-helpers');
+const { resolveVersionForApp } = require('../../../lib/utils/image-version');
+const { checkImageExists } = require('../../../lib/utils/app-run-containers');
 
 describe('Run .env generation', () => {
   beforeEach(() => {
@@ -53,6 +76,42 @@ describe('Run .env generation', () => {
     const appConfig = { port: 3000 };
     await prepareEnvironment('myapp', appConfig, {});
     expect(secrets.generateEnvFile).toHaveBeenCalledWith('myapp', null, 'docker', false, false);
+  });
+});
+
+describe('checkPrerequisites - version resolution', () => {
+  const appConfig = {
+    port: 3000,
+    image: { name: 'aifabrix/myapp', tag: 'latest' }
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    checkImageExists.mockResolvedValue(true);
+    resolveVersionForApp.mockResolvedValue({ version: '1.0.0', fromImage: false, updated: false });
+  });
+
+  it('should call resolveVersionForApp when image exists', async() => {
+    await checkPrerequisites('myapp', appConfig, false, true);
+
+    expect(resolveVersionForApp).toHaveBeenCalledWith(
+      'myapp',
+      appConfig,
+      expect.objectContaining({
+        updateBuilder: true,
+        builderPath: expect.any(String)
+      })
+    );
+  });
+
+  it('should pass updateBuilder true for run flow', async() => {
+    await checkPrerequisites('myapp', appConfig, false, true);
+
+    expect(resolveVersionForApp).toHaveBeenCalledWith(
+      'myapp',
+      appConfig,
+      expect.objectContaining({ updateBuilder: true })
+    );
   });
 });
 

@@ -1,8 +1,17 @@
 # Deploy Environment (First Time)
 
-← [Deploying](../deploying.md)
+← [Documentation index](../README.md) · [Deploying](../deploying.md)
 
 Before deploying applications, ensure the environment is set up in the Miso Controller.
+
+## Why
+
+Environment deploy provisions the target (dev, tst, pro, or miso) so the controller can run applications there. It creates or updates environment-level resources and isolation.
+
+## Where you deploy
+
+- **Local Docker:** Use a minimal config; the controller runs apps in Docker on your machine. See [templates/infra/environment-dev.json](../../templates/infra/environment-dev.json) for a minimal example.
+- **Azure:** Azure deploy typically requires **Azure Marketplace** install first. The environment deploy may need more fields (e.g. subscriptionId, tenantId, deploymentType) from the infrastructure schema. See [lib/schema/environment-deploy-request.schema.json](../../lib/schema/environment-deploy-request.schema.json) and [lib/schema/infrastructure-schema.json](../../lib/schema/infrastructure-schema.json) for all supported parameters.
 
 ## Command
 

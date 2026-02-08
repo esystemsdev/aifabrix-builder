@@ -93,8 +93,7 @@ aifabrix dockerfile miso-controller --force           # Generate Dockerfile
 aifabrix resolve miso-controller                      # Generate .env file
 
 # Deployment
-aifabrix json miso-controller                         # Preview deployment JSON
-aifabrix genkey miso-controller                       # Generate deployment key
+aifabrix json miso-controller                         # Generate deployment manifest
 aifabrix push miso-controller --registry myacr.azurecr.io # Push to ACR
 aifabrix deploy miso-controller --controller <url>    # Deploy to Azure
 
@@ -348,7 +347,6 @@ Failed to getSecret postgres-adminPassword: Secret not found
 ```bash
 aifabrix resolve miso-controller --force
 aifabrix json miso-controller
-aifabrix genkey miso-controller
 ```
 
 ---

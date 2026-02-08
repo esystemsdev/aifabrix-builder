@@ -189,12 +189,6 @@ describe('CLI Coverage Tests', () => {
       expect(result.validation.errors).toHaveLength(2);
     });
 
-    it('should handle genkey command', async() => {
-      keyGenerator.generateDeploymentKey.mockResolvedValue('sha256hash');
-      const key = await keyGenerator.generateDeploymentKey('test-app');
-      expect(key).toBe('sha256hash');
-    });
-
     it('should handle doctor command with recommendations', async() => {
       validator.checkEnvironment.mockResolvedValue({
         docker: 'ok',

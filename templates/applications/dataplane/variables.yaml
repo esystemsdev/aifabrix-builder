@@ -45,11 +45,13 @@ authentication:
   requiredRoles: ["aifabrix-user"]
 
 # Build Configuration
+# Dataplane builds from published image; context is project root (like miso-controller)
 build:
-  context: ../..                # Relative to builder/dataplane/ config location (goes to app root)
-  dockerfile: builder/dataplane/Dockerfile
+  context: ../..                # Docker build context (relative to builder/dataplane/)
+  dockerfile: builder/dataplane/Dockerfile  # Dockerfile path (relative to project root)
   envOutputPath: ../../.env     # Copy to repo root for local dev
-  localPort: 3011               # Port for local development (different from Docker port)
+  localPort: 3011              # Port for local development (different from Docker port)
+  language: python             # Runtime language for template selection (typescript or python)
 
 # =============================================================================
 # Portal Input Configuration (Deployment Wizard)

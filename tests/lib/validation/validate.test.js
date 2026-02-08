@@ -925,7 +925,7 @@ describe('Validation Module', () => {
       // Step 4: Manifest validation fails
       validateControllerManifest.mockResolvedValue({
         valid: false,
-        errors: ['Required field "deploymentKey" is missing'],
+        errors: ['Required field "system" is missing'],
         warnings: []
       });
 
@@ -935,7 +935,7 @@ describe('Validation Module', () => {
       expect(result.valid).toBe(false);
       expect(result.steps.components.valid).toBe(true);
       expect(result.steps.manifest.valid).toBe(false);
-      expect(result.steps.manifest.errors).toContain('Required field "deploymentKey" is missing');
+      expect(result.steps.manifest.errors).toContain('Required field "system" is missing');
       expect(generateControllerManifest).toHaveBeenCalled();
       expect(validateControllerManifest).toHaveBeenCalled();
     });

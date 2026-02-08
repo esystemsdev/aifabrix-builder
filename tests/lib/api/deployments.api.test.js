@@ -228,5 +228,37 @@ describe('Deployments API', () => {
       await expect(deploymentsApi.getDeploymentLogs(controllerUrl, envKey, deploymentId, authConfig)).rejects.toThrow('Get deployment logs failed');
     });
   });
+
+  describe('listApplicationDeployments', () => {
+    const appKey = 'my-app';
+
+    it('should list application deployments without options', async() => {
+      await deploymentsApi.listApplicationDeployments(controllerUrl, envKey, appKey, authConfig);
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        `/api/v1/environments/${envKey}/applications/${appKey}/deployments`,
+        { params: {} }
+      );
+    });
+
+    it('should list application deployments with options', async() => {
+      const options = { page: 1, pageSize: 50, sort: 'createdAt' };
+      await deploymentsApi.listApplicationDeployments(controllerUrl, envKey, appKey, authConfig, options);
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        `/api/v1/environments/${envKey}/applications/${appKey}/deployments`,
+        { params: options }
+      );
+    });
+
+    it('should handle listApplicationDeployments errors', async() => {
+      const error = new Error('List application deployments failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(
+        deploymentsApi.listApplicationDeployments(controllerUrl, envKey, appKey, authConfig)
+      ).rejects.toThrow('List application deployments failed');
+    });
+  });
 });
 

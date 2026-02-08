@@ -1,6 +1,6 @@
 # Deployment Commands
 
-← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
+← [Documentation index](../README.md) · [Commands index](README.md)
 
 Commands for deploying applications and environments via Miso Controller. The controller handles deployment to Azure (Container Apps) or local Docker based on the deployment type.
 
@@ -399,7 +399,6 @@ aifabrix deploy myapp --client-id my-client-id --client-secret my-secret
   "type": "webapp",
   "port": 3000,
   "image": "myacr.azurecr.io/myapp:latest",
-  "deploymentKey": "sha256hash...",
   "configuration": [
     {"name": "PORT", "value": "3000", "location": "variable", "required": true},
     {"name": "DATABASE_URL", "value": "key-name", "location": "keyvault", "required": true}
@@ -418,7 +417,7 @@ aifabrix deploy myapp --client-id my-client-id --client-secret my-secret
 - **"Failed to get authentication token"** → Run `aifabrix login --method credentials --app <app>` first, or ensure credentials are in `~/.aifabrix/secrets.local.yaml` as `<app-name>-client-idKeyVault` and `<app-name>-client-secretKeyVault`
 - **"Client credentials not found for app"** → Add credentials to `~/.aifabrix/secrets.local.yaml` or run `aifabrix login` first
 - **"Validation failed"** → Check `aifabrix-deploy.json` for missing required fields
-- **"Deployment key mismatch"** → Regenerate: `aifabrix genkey <app>`
+- **"Deployment key mismatch"** → Regenerate manifest: `aifabrix json <app>`
 - **"Authentication failed"** → Token may be expired, run `aifabrix login` again
 - **"Invalid deployment manifest"** → Check configuration in variables.yaml
 - **"Can't reach controller"** → Check URL, network connection, firewall
@@ -427,15 +426,46 @@ aifabrix deploy myapp --client-id my-client-id --client-secret my-secret
 
 ---
 
-## aifabrix deployments
+<a id="aifabrix-credential-list"></a>
+## aifabrix credential list
 
-**Note:** This command is planned but not yet implemented in the current version. Deployment status can be monitored during deployment using the `--poll` option of the `deploy` command, or by checking the controller dashboard directly.
+List credentials from the controller/dataplane (`GET /api/v1/credential`). Use this to see available credentials when choosing "Use existing" in the wizard (Step 3).
 
-**Planned functionality:**
-- List all deployments for an environment
-- View specific deployment details
-- View deployment logs
+**Example:**
+```bash
+aifabrix credential list
+aifabrix credential list --active-only --page-size 50
+```
 
-**Workaround:**
-Use `aifabrix deploy <app> --poll` to monitor deployment status, or access the controller dashboard at `https://controller.aifabrix.dev/deployments`.
+**Options:** `--controller <url>`, `--active-only`, `--page-size <n>` (default 50).
+
+---
+
+<a id="aifabrix-deployment-list"></a>
+## aifabrix deployment list
+
+List last N deployments for the current environment (default pageSize=50). Uses `GET /api/v1/environments/{envKey}/deployments`.
+
+**Example:**
+```bash
+aifabrix deployment list
+aifabrix deployment list --environment dev --page-size 50
+```
+
+**Options:** `--controller <url>`, `--environment <env>`, `--page-size <n>` (default 50).
+
+---
+
+<a id="aifabrix-app-deployment-appkey"></a>
+## aifabrix app deployment <appKey>
+
+List last N deployments for a specific application in the current environment (default pageSize=50). Uses `GET /api/v1/environments/{envKey}/applications/{appKey}/deployments`.
+
+**Example:**
+```bash
+aifabrix app deployment myapp
+aifabrix app deployment myapp --page-size 50
+```
+
+**Options:** `--controller <url>`, `--environment <env>`, `--page-size <n>` (default 50).
 

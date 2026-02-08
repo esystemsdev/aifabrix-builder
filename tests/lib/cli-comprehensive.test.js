@@ -191,7 +191,6 @@ describe('CLI Comprehensive Tests', () => {
       expect(mockProgram.command).toHaveBeenCalledWith('restart <service>');
       expect(mockProgram.command).toHaveBeenCalledWith('resolve <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('json <app>');
-      expect(mockProgram.command).toHaveBeenCalledWith('genkey <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('dockerfile <app>');
     });
   });
@@ -862,45 +861,6 @@ describe('CLI Comprehensive Tests', () => {
       } catch (error) {
         const { handleCommandError } = require('../../lib/cli');
         handleCommandError(error, 'json');
-        process.exit(1);
-        expect(console.error).toHaveBeenCalled();
-        expect(process.exit).toHaveBeenCalledWith(1);
-      }
-    });
-  });
-
-  describe('genkey command action', () => {
-    beforeEach(() => {
-      setupCommands(mockProgram);
-    });
-
-    it('should generate deployment key', async() => {
-      keyGenerator.generateDeploymentKey.mockResolvedValue('test-key-123');
-
-      const appName = 'test-app';
-      try {
-        const key = await keyGenerator.generateDeploymentKey(appName);
-        console.log(`\nDeployment key for ${appName}:`);
-        console.log(key);
-        console.log(`\nGenerated from: builder/${appName}/variables.yaml`);
-        expect(keyGenerator.generateDeploymentKey).toHaveBeenCalledWith(appName);
-        expect(console.log).toHaveBeenCalled();
-      } catch (error) {
-        const { handleCommandError } = require('../../lib/cli');
-        handleCommandError(error, 'genkey');
-        process.exit(1);
-      }
-    });
-
-    it('should handle genkey errors', async() => {
-      keyGenerator.generateDeploymentKey.mockRejectedValue(new Error('Key generation failed'));
-
-      const appName = 'test-app';
-      try {
-        await keyGenerator.generateDeploymentKey(appName);
-      } catch (error) {
-        const { handleCommandError } = require('../../lib/cli');
-        handleCommandError(error, 'genkey');
         process.exit(1);
         expect(console.error).toHaveBeenCalled();
         expect(process.exit).toHaveBeenCalledWith(1);

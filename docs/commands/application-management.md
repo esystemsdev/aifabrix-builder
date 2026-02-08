@@ -1,6 +1,6 @@
 # Application Management Commands
 
-← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
+← [Documentation index](../README.md) · [Commands index](README.md)
 
 Application management commands for registering and managing applications with the Miso Controller.
 

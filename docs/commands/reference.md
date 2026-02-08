@@ -1,6 +1,6 @@
 # Command Reference
 
-← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
+← [Documentation index](../README.md) · [Commands index](README.md)
 
 Reference information for CLI commands including common workflows, global options, exit codes, configuration, and getting help.
 
@@ -48,7 +48,6 @@ aifabrix doctor
 # Regenerate files
 aifabrix resolve myapp
 aifabrix json myapp
-aifabrix genkey myapp
 
 # View configuration
 cat builder/myapp/variables.yaml

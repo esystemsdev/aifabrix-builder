@@ -31,7 +31,7 @@ describe('Templates Module', () => {
       // Verify structure
       expect(parsed.app.key).toBe('test-app');
       expect(parsed.app.displayName).toBe('Test App');
-      expect(parsed.app.version).toBeUndefined(); // version removed
+      expect(parsed.app.version).toBe('1.0.0'); // default version
       expect(parsed.image.name).toBe('test-app');
       expect(parsed.image.tag).toBe('latest');
       expect(parsed.build.language).toBe('typescript');
@@ -64,7 +64,7 @@ describe('Templates Module', () => {
       const parsed = yaml.load(result);
 
       expect(parsed.app.key).toBe('python-app');
-      expect(parsed.app.version).toBeUndefined(); // version removed
+      expect(parsed.app.version).toBe('1.0.0'); // default version
       expect(parsed.image.name).toBe('python-app');
       expect(parsed.image.tag).toBe('latest');
       expect(parsed.build.language).toBe('python');
@@ -79,6 +79,21 @@ describe('Templates Module', () => {
       expect(parsed.healthCheck).toBeDefined();
     });
 
+    it('should use config.version when provided', () => {
+      const appName = 'versioned-app';
+      const config = {
+        language: 'typescript',
+        port: 3000,
+        version: '3.2.1'
+      };
+
+      const result = templates.generateVariablesYaml(appName, config);
+      const parsed = yaml.load(result);
+
+      expect(parsed.app.key).toBe('versioned-app');
+      expect(parsed.app.version).toBe('3.2.1');
+    });
+
     it('should handle missing configuration values', () => {
       const appName = 'minimal-app';
       const config = {};
@@ -87,7 +102,7 @@ describe('Templates Module', () => {
       const parsed = yaml.load(result);
 
       expect(parsed.app.key).toBe('minimal-app');
-      expect(parsed.app.version).toBeUndefined(); // version removed
+      expect(parsed.app.version).toBe('1.0.0'); // default version
       expect(parsed.image.name).toBe('minimal-app');
       expect(parsed.image.tag).toBe('latest');
       expect(parsed.build.language).toBe('typescript');

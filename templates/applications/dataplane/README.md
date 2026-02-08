@@ -103,8 +103,7 @@ aifabrix dockerfile dataplane --force           # Generate Dockerfile
 aifabrix resolve dataplane                      # Generate .env file
 
 # Deployment
-aifabrix json dataplane                         # Preview deployment JSON
-aifabrix genkey dataplane                       # Generate deployment key
+aifabrix json dataplane                         # Generate deployment manifest
 aifabrix push dataplane --registry myacr.azurecr.io # Push to ACR
 aifabrix deploy dataplane --controller <url>    # Deploy to Azure
 
@@ -184,7 +183,6 @@ export AIFABRIX_SECRETS=/path/to/secrets.yaml
 ```bash
 aifabrix resolve dataplane --force
 aifabrix json dataplane
-aifabrix genkey dataplane
 ```
 
 ---

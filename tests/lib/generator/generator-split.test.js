@@ -206,6 +206,21 @@ describe('Generator Split Functions', () => {
       expect(result.port).toBeUndefined();
     });
 
+    it('should extract version from deployment to app section', () => {
+      const deployment = {
+        key: 'versioned-app',
+        displayName: 'Versioned App',
+        description: 'App with version',
+        type: 'webapp',
+        version: '2.1.0'
+      };
+
+      const result = generator.extractVariablesYaml(deployment);
+
+      expect(result.app.key).toBe('versioned-app');
+      expect(result.app.version).toBe('2.1.0');
+    });
+
     it('should throw error for invalid deployment object', () => {
       expect(() => generator.extractVariablesYaml(null)).toThrow('Deployment object is required');
       expect(() => generator.extractVariablesYaml(undefined)).toThrow('Deployment object is required');

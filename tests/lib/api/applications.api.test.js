@@ -263,5 +263,37 @@ describe('Applications API', () => {
       await expect(applicationsApi.rotateApplicationSecret(controllerUrl, envKey, appKey, authConfig)).rejects.toThrow('Rotate secret failed');
     });
   });
+
+  describe('getApplicationStatus', () => {
+    it('should get application status', async() => {
+      const envKey = 'dev';
+      const appKey = 'my-app';
+      const response = { success: true, data: { key: appKey, status: 'running' } };
+      mockClient.get.mockResolvedValue(response);
+
+      const result = await applicationsApi.getApplicationStatus(
+        controllerUrl,
+        envKey,
+        appKey,
+        authConfig
+      );
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        `/api/v1/environments/${envKey}/applications/${appKey}/status`
+      );
+      expect(result).toEqual(response);
+    });
+
+    it('should handle getApplicationStatus errors', async() => {
+      const envKey = 'dev';
+      const appKey = 'my-app';
+      const error = new Error('Get status failed');
+      mockClient.get.mockRejectedValue(error);
+
+      await expect(
+        applicationsApi.getApplicationStatus(controllerUrl, envKey, appKey, authConfig)
+      ).rejects.toThrow('Get status failed');
+    });
+  });
 });
 

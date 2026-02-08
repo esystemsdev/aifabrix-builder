@@ -118,7 +118,7 @@ describe('External Manifest Validator Module', () => {
     it('should validate required fields', async() => {
       const manifest = {
         key: 'test-system',
-        // Missing displayName, description, type, deploymentKey
+        // Missing displayName, description, type
         system: { key: 'test-system' },
         dataSources: []
       };
@@ -130,7 +130,6 @@ describe('External Manifest Validator Module', () => {
       expect(result.errors.some(e => e.includes('displayName'))).toBe(true);
       expect(result.errors.some(e => e.includes('description'))).toBe(true);
       expect(result.errors.some(e => e.includes('type'))).toBe(true);
-      expect(result.errors.some(e => e.includes('deploymentKey'))).toBe(true);
     });
 
     it('should validate system against external-system schema', async() => {

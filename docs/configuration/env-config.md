@@ -1,6 +1,6 @@
 # env-config and variable interpolation
 
-← [Configuration](README.md)
+← [Documentation index](../README.md) · [Configuration](README.md)
 
 Environment variables in `env.template` can use `${VAR}` syntax; values are resolved from `env-config.yaml` based on deployment context (docker vs local).
 

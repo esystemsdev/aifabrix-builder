@@ -92,8 +92,7 @@ aifabrix dockerfile {{appName}} --force           # Generate Dockerfile
 aifabrix resolve {{appName}}                      # Generate .env file
 
 # Deployment
-aifabrix json {{appName}}                         # Preview deployment JSON
-aifabrix genkey {{appName}}                       # Generate deployment key
+aifabrix json {{appName}}                         # Generate deployment manifest
 aifabrix push {{appName}} --registry {{registry}} # Push to ACR
 aifabrix deploy {{appName}}                       # Deploy (controller/env from config)
 
@@ -176,7 +175,6 @@ Controller URL and environment (for `deploy`, `app register`, etc.) are set via 
 ```bash
 aifabrix resolve {{appName}} --force
 aifabrix json {{appName}}
-aifabrix genkey {{appName}}
 ```
 
 ---

@@ -58,7 +58,6 @@ describe('Integration Workflow', () => {
     // - step-02-dockerfile.test.js: Generates Dockerfile
     // - step-03-resolve.test.js: Resolves secrets
     // - step-04-json.test.js: Generates deployment JSON
-    // - step-05-genkey.test.js: Generates deployment key
     // - step-06-build.test.js: Builds Docker image
     // - step-07-run.test.js: Runs Docker container (REAL running container)
     // - step-08-validate-database.test.js: Validates database creation

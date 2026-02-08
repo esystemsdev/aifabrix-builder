@@ -26,6 +26,7 @@ coverage/
 .tmp/
 .temp/
 temp/
+tmp-imgver*/
 
 # Environment files
 .env

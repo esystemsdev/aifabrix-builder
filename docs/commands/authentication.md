@@ -1,6 +1,6 @@
 # Authentication Commands
 
-← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
+← [Documentation index](../README.md) · [Commands index](README.md)
 
 Commands for authenticating with Miso Controller and managing authentication tokens.
 

@@ -839,6 +839,5 @@
   ],
   "requiresDatabase": false,
   "requiresRedis": false,
-  "requiresStorage": false,
-  "deploymentKey": "9b5209bed2ef1eccb04fa83be73a74cf3a9c84d5d2580a95028d34fdb8db78a8"
+  "requiresStorage": false
 }

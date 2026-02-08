@@ -43,7 +43,6 @@ describe('Variable Transformer Module', () => {
       expect(result.requiresStorage).toBe(true);
       expect(result.databases).toEqual([{ name: 'test-db' }]);
       expect(result.authentication.type).toBe('azure');
-      expect(result.deploymentKey).toBeDefined();
     });
 
     it('should transform flat structure with minimal fields', () => {
@@ -63,7 +62,6 @@ describe('Variable Transformer Module', () => {
       expect(result.requiresRedis).toBe(false);
       expect(result.requiresStorage).toBe(false);
       expect(result.databases).toEqual([]);
-      expect(result.deploymentKey).toBeDefined();
     });
 
     it('should transform nested structure with app and image objects', () => {
@@ -103,7 +101,6 @@ describe('Variable Transformer Module', () => {
       expect(result.requiresRedis).toBe(true);
       expect(result.requiresStorage).toBe(false);
       expect(result.databases).toEqual([{ name: 'nested-db' }]);
-      expect(result.deploymentKey).toBeDefined();
     });
 
     it('should transform nested structure with minimal fields', () => {
@@ -127,7 +124,6 @@ describe('Variable Transformer Module', () => {
       expect(result.requiresRedis).toBe(false);
       expect(result.requiresStorage).toBe(false);
       expect(result.databases).toEqual([]);
-      expect(result.deploymentKey).toBeDefined();
     });
 
     it('should sanitize keycloak auth type to azure', () => {

@@ -1,6 +1,6 @@
 # CLI Commands Reference
 
-← [Back to Your Own Applications](../your-own-applications.md)
+← [Documentation index](../README.md) · [Commands index](README.md)
 
 Complete command reference organized by concept with examples and troubleshooting.
 
@@ -68,7 +68,6 @@ Complete command reference organized by concept with examples and troubleshootin
   - `aifabrix resolve` - Generate `.env` file from template
   - `aifabrix json` - Generate deployment JSON
   - `aifabrix split-json` - Split deployment JSON into component files
-  - `aifabrix genkey` - Generate deployment key
   - `aifabrix secure` - Encrypt secrets in secrets.local.yaml files
   - `aifabrix secrets` - Manage secrets in secrets files
     - `aifabrix secrets set` - Set a secret value in secrets file

@@ -70,6 +70,7 @@ Table of contents for all AI Fabrix Builder documentation.
 
 | Document                                                                    | Description                                                            |
 | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| [Deployment key](configuration/deployment-key.md)                           | How deployment key is calculated; why Miso Controller and Dataplane use the same key. |
 | [env-config](configuration/env-config.md)                                   | Environment configuration.                                             |
 | [env.template](configuration/env-template.md)                               | Environment template and variables.                                    |
 | [variables.yaml](configuration/variables-yaml.md)                           | Application variables.                                                 |

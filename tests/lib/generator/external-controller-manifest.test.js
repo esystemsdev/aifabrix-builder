@@ -21,9 +21,6 @@ jest.mock('fs', () => {
 jest.mock('../../../lib/utils/paths', () => ({
   detectAppType: jest.fn()
 }));
-jest.mock('../../../lib/core/key-generator', () => ({
-  generateDeploymentKeyFromJson: jest.fn()
-}));
 jest.mock('../../../lib/generator/external', () => ({
   loadSystemFile: jest.fn(),
   loadDatasourceFiles: jest.fn()
@@ -34,7 +31,6 @@ jest.mock('../../../lib/generator/helpers', () => ({
 }));
 
 const { detectAppType } = require('../../../lib/utils/paths');
-const { generateDeploymentKeyFromJson } = require('../../../lib/core/key-generator');
 const { loadSystemFile, loadDatasourceFiles } = require('../../../lib/generator/external');
 const { loadVariables, loadRbac } = require('../../../lib/generator/helpers');
 
@@ -87,7 +83,6 @@ describe('External Controller Manifest Generator Module', () => {
     loadRbac.mockReturnValue(null);
     loadSystemFile.mockResolvedValue(mockSystemJson);
     loadDatasourceFiles.mockResolvedValue([mockDatasourceJson]);
-    generateDeploymentKeyFromJson.mockReturnValue('test-deployment-key');
   });
 
   describe('generateControllerManifest', () => {
@@ -101,10 +96,8 @@ describe('External Controller Manifest Generator Module', () => {
       expect(result.type).toBe('external');
       expect(result.system).toEqual(mockSystemJson);
       expect(result.dataSources).toEqual([mockDatasourceJson]);
-      expect(result.deploymentKey).toBe('test-deployment-key');
       expect(loadSystemFile).toHaveBeenCalledWith(appPath, './', 'test-external-app-system.json');
       expect(loadDatasourceFiles).toHaveBeenCalledWith(appPath, './', ['test-external-app-datasource-entity1.json']);
-      expect(generateDeploymentKeyFromJson).toHaveBeenCalledWith(result);
     });
 
     it('should use appName as key if app.key not provided', async() => {
@@ -265,6 +258,44 @@ describe('External Controller Manifest Generator Module', () => {
       const { generateControllerManifest } = require('../../../lib/generator/external-controller-manifest');
       await expect(generateControllerManifest(appName))
         .rejects.toThrow('No system files specified in externalIntegration.systems');
+    });
+
+    it('should use app.version over externalIntegration.version', async() => {
+      const variablesWithAppVersion = {
+        ...mockVariables,
+        app: {
+          ...mockVariables.app,
+          version: '2.0.0'
+        },
+        externalIntegration: {
+          ...mockVariables.externalIntegration,
+          version: '1.0.0'
+        }
+      };
+      loadVariables.mockReturnValue({ parsed: variablesWithAppVersion });
+
+      const { generateControllerManifest } = require('../../../lib/generator/external-controller-manifest');
+      const result = await generateControllerManifest(appName);
+
+      expect(result.version).toBe('2.0.0');
+      expect(result.externalIntegration.version).toBe('2.0.0');
+    });
+
+    it('should set top-level manifest.version', async() => {
+      const variablesWithVersion = {
+        ...mockVariables,
+        externalIntegration: {
+          ...mockVariables.externalIntegration,
+          version: '1.5.0'
+        }
+      };
+      loadVariables.mockReturnValue({ parsed: variablesWithVersion });
+
+      const { generateControllerManifest } = require('../../../lib/generator/external-controller-manifest');
+      const result = await generateControllerManifest(appName);
+
+      expect(result.version).toBe('1.5.0');
+      expect(result.externalIntegration.version).toBe('1.5.0');
     });
 
     it('should use default schemaBasePath if not provided', async() => {

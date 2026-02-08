@@ -1,0 +1,121 @@
+# Deployment rules – Central mapping for Controller
+#
+# Defines which manifest paths trigger deployment and which can differ per environment.
+# Controller uses this file (or equivalent) for deployment key computation and value merge.
+# Schemas (application, external-system, external-datasource) remain clean; no x-* annotations.
+#
+# Semantics:
+#   triggerPaths:   Change affects deployment key / requires deploy
+#   overridablePaths: Value can differ per environment (preserve on promote)
+# A path may appear in both (e.g. authentication.endpoints triggers deploy and is overridable).
+#
+# Path format: Dot notation. Child paths override parent when both match.
+# Schema keys: application | externalSystem | externalDataSource
+
+application:
+  triggerPaths:
+    - key
+    - displayName
+    - description
+    - type
+    - version
+    - image
+    - registryMode
+    - port
+    - requiresDatabase
+    - databases
+    - requiresRedis
+    - requiresStorage
+    - configuration
+    - configuration.items
+    - configuration.items.required
+    - configuration.items.portalInput
+    - healthCheck
+    - healthCheck.path
+    - healthCheck.probePath
+    - healthCheck.probeRequestType
+    - healthCheck.probeProtocol
+    - frontDoorRouting
+    - authentication
+    - roles
+    - permissions
+    - repository
+    - startupCommand
+    - runtimeVersion
+    - scaling
+    - build
+    - deployment
+    - externalIntegration
+  overridablePaths:
+    - configuration.items.value
+    - authentication.endpoints
+    - deployment.controllerUrl
+    - healthCheck.interval
+    - healthCheck.probeIntervalInSeconds
+
+externalSystem:
+  triggerPaths:
+    - key
+    - displayName
+    - description
+    - type
+    - enabled
+    - environment
+    - authentication
+    - openapi
+    - mcp
+    - dataSources
+    - configuration
+    - configuration.items
+    - tags
+    - roles
+    - permissions
+    - endpoints
+    - endpointsActive
+    - generateMcpContract
+    - generateOpenApiContract
+  overridablePaths:
+    - environment.baseUrl
+    - environment.region
+    - authentication.oauth2
+    - authentication.apikey
+    - authentication.basic
+    - authentication.aad
+    - openapi.specUrl
+    - openapi.documentKey
+    - mcp.serverUrl
+    - mcp.toolPrefix
+    - configuration.items.value
+    - credentialIdOrKey
+
+externalDataSource:
+  triggerPaths:
+    - key
+    - displayName
+    - description
+    - enabled
+    - systemKey
+    - entityType
+    - resourceType
+    - version
+    - metadataSchema
+    - fieldMappings
+    - exposed
+    - validation
+    - quality
+    - indexing
+    - context
+    - documentStorage
+    - portalInput
+    - capabilities
+    - execution
+    - config
+    - openapi
+  overridablePaths:
+    - sync
+    - sync.mode
+    - sync.schedule
+    - sync.batchSize
+    - sync.maxParallelRequests
+    - openapi.baseUrl
+    - openapi.resourcePath

@@ -1,6 +1,6 @@
 # Validation Commands
 
-← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
+← [Documentation index](../README.md) · [Commands index](README.md)
 
 Commands for validating and comparing configuration files.
 
@@ -55,7 +55,7 @@ The validation system uses four core JSON schemas:
 - Application identifier (`key`)
 - Application metadata (`displayName`, `description`)
 - Application type (`webapp`, `functionapp`, `api`, `service`, `external`)
-- Deployment configuration (`deploymentKey`, `image`, `port`, `registryMode`)
+- Deployment configuration (`image`, `port`, `registryMode`)
 - External integration configuration (`externalIntegration` block)
 - Inline system and datasource configurations (for atomic deployments)
 
@@ -423,7 +423,7 @@ When validating files directly, the system automatically detects which schema to
 3. **By required fields** - Checks for characteristic required fields:
    - Has `systemKey` → external-datasource schema
    - Has `type` with `openapi`/`mcp`/`custom` → external-system schema
-   - Has `deploymentKey` → application schema
+   - Application manifest → application schema
 4. **By filename pattern** - Filenames containing `system`, `datasource`, `deploy`, etc.
 
 **Error Messages:**

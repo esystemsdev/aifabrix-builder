@@ -1,3 +1,33 @@
+## [2.38.0] - 2026-02-08
+
+### Added
+- **Central deployment mapping**: `lib/schema/deployment-rules.yaml` – single source of truth for deployment key computation and value merge rules. Replaces scattered `x-triggersDeployment` / `x-valueOverridable` schema annotations with `triggerPaths` and `overridablePaths` per schema (application, externalSystem, externalDataSource). Schemas remain clean; Controller reads rules from this file.
+- **CLI**: `aifabrix credential list` – list credentials from controller/dataplane (`GET /api/v1/credential`)
+- **CLI**: `aifabrix deployment list` – list last N deployments for environment; `aifabrix app deployment <appKey>` for app-scoped deployments
+- **CLI**: `aifabrix logs <appKey>` – show app logs (default 100 lines; `--full`, `--live`/`-f`); optional env dump with masked secrets
+- **CLI**: `aifabrix down-app <appKey>` – stop container, remove container and image if unused; `--volumes` for volume removal
+- **CLI**: `aifabrix run <app> --tag <tag>` – run app with specified image tag override
+- **Version resolution**: `lib/utils/image-version.js` – resolve version from Docker image (OCI label `org.opencontainers.image.version` or semver tag); `updateAppVersionInVariablesYaml` updates builder when running image; `resolveVersionForApp` for regular and external apps
+- **API**: `lib/api/credentials.api.js` for credential list; `getApplicationStatus` in applications.api.js for Application Status API
+- **Docs**: Application Status API (`GET /api/v1/environments/{envKey}/applications/{appKey}/status`); deployment key (`docs/configuration/deployment-key.md`) – canonical manifest JSON, deterministic hash, same key in Controller and Dataplane; "Central mapping" section; "When Controller does the job" references central mapping; Path reference to `deployment-rules.yaml`
+
+### Changed
+- **Controller-owned deployment key**: Builder no longer generates or sends `deploymentKey`. Miso Controller Pipeline REST API computes the key from manifest properties (via central mapping). Builder and Dataplane send manifest only.
+- **CLI**: Removed `aifabrix genkey <app>` command entirely. Use `aifabrix json <app>` to generate deployment manifest.
+- **Documentation**: Rewrote `docs/configuration/deployment-key.md` for CLI perspective; added "Central mapping" section; updated "When Controller does the job" to reference central mapping; updated deploying, utilities, validation, deployment docs; removed genkey references; replaced genkey with json in templates; prerequisites (Node.js, Azure/Docker), secrets before up-platform, back links to docs/README.md; environment-first-time (full params, why/where); deploying (manifest naming, flow, prereqs, rollback, version vs deployment key); secrets-and-config (why secure, ISO 27k, kv:// production readiness); integration-first, same flow for web app/image/external; running (restart = resolve env + apply + restart; prefer aifabrix over docker); infrastructure (RAM/disk); external-systems (next-step wizard link)
+- **Version in variables.yaml**: `app.version` optional; defaults to `1.0.0`; for regular apps, auto-resolved from image when running or deploying; external apps use `app.version` or `externalIntegration.version`; syncs to external manifest top-level in `external-controller-manifest.js`
+- **Run-helpers**: Version resolution from image when running; `updateBuilder: true` updates builder/variables.yaml with discovered version
+- **Templates**: dataplane, keycloak, miso-controller variables.yaml; `app.version` in generator context
+
+### Technical
+- **Generator**: Removed deploymentKey generation from `lib/generator/index.js` and `lib/generator/external-controller-manifest.js`
+- **Validator**: Removed deploymentKey from required in `lib/validation/external-manifest-validator.js`
+- **Variable transformer**: Removed `addPlaceholderDeploymentKey`; deploymentKey no longer added for validation
+- **Schema loader**: `detectFromApplicationFields` no longer requires deploymentKey for application detection
+- **Integration fixtures**: Removed deploymentKey from `integration/hubspot/hubspot-deploy.json`
+- **Tests**: Schema validation tests now validate `deployment-rules.yaml` structure (application, externalSystem, externalDataSource with triggerPaths and overridablePaths) instead of schema custom properties; image-version (getVersionFromImage, compareSemver, resolveVersionForApp, updateAppVersionInVariablesYaml); credential-list, deployment-list, app-logs, app-down; app run --tag
+- **Tests**: image-version tests use unique temp directories via `fs.mkdtempSync` to avoid parallel test collisions
+
 ## [2.37.9] - 2026-02-04
 
 ### Changed

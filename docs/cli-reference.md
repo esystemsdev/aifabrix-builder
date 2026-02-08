@@ -1,6 +1,6 @@
 # CLI Reference
 
-← [Back to Your Own Applications](your-own-applications.md)
+← [Documentation index](README.md)
 
 All command documentation is organized by concept in the [Commands Index](commands/README.md).
 
@@ -50,6 +50,8 @@ Other command anchors:
 - `#aifabrix-create-app` → [Application Development Commands](commands/application-development.md#aifabrix-create-app)
 - `#aifabrix-build-app` → [Application Development Commands](commands/application-development.md#aifabrix-build-app)
 - `#aifabrix-run-app` → [Application Development Commands](commands/application-development.md#aifabrix-run-app)
+- `#aifabrix-logs-app` → [Application Development Commands](commands/application-development.md#aifabrix-logs-app)
+- `#aifabrix-down-app` → [Application Development Commands](commands/application-development.md#aifabrix-down-app)
 - `#aifabrix-dockerfile-app` → [Application Development Commands](commands/application-development.md#aifabrix-dockerfile-app)
 - `#aifabrix-push-app` → [Deployment Commands](commands/deployment.md#aifabrix-push-app)
 - `#aifabrix-environment-deploy-env` → [Deployment Commands](commands/deployment.md#aifabrix-environment-deploy-env)
@@ -70,7 +72,6 @@ Other command anchors:
 - `#aifabrix-resolve-app` → [Utility Commands](commands/utilities.md#aifabrix-resolve-app)
 - `#aifabrix-json-app` → [Utility Commands](commands/utilities.md#aifabrix-json-app)
 - `#aifabrix-split-json-app` → [Utility Commands](commands/utilities.md#aifabrix-split-json-app)
-- `#aifabrix-genkey-app` → [Utility Commands](commands/utilities.md#aifabrix-genkey-app)
 - `#aifabrix-secure` → [Utility Commands](commands/utilities.md#aifabrix-secure)
 - `#aifabrix-secrets` → [Utility Commands](commands/utilities.md#aifabrix-secrets)
 - `#aifabrix-secrets-set` → [Utility Commands](commands/utilities.md#aifabrix-secrets-set)

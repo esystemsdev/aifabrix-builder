@@ -9,6 +9,25 @@ Install the AI Fabrix platform and test it locally. Then add external integratio
 
 ---
 
+## Why AI Fabrix Builder?
+
+- **Build perspective:** Everything is driven by declarative config and JSON schemas—no hidden logic, AI assistant–friendly.
+- **Industry standards and security:** Follow industry standards and high security (e.g. ISO 27k); no secrets in version control.
+- **Full lifecycle in your version control:** Configuration, apps, and integrations live in your own VCS (GitHub, GitLab, Azure DevOps).
+- **One tool from day one:** Single CLI for local infra, app and integration creation, build, run, and deploy—same workflow for apps and integrations.
+- **Consistency and production readiness:** Schema-driven; deploy apps and integrations to the same controller/dataplane; production-ready secrets with `kv://` and Azure Key Vault.
+- **Application development:** Use **[miso-client](https://github.com/esystemsdev/aifabrix-miso-client)** for TypeScript and Python to talk to the dataplane and controller (see [templates/applications/dataplane/README.md](templates/applications/dataplane/README.md) and the repo for usage).
+
+---
+
+## Prerequisites
+
+- **Node.js 18+** – Recommended for running the CLI.
+- **AI Fabrix Azure / platform:** Install from **Azure Marketplace** or run via **Docker** (e.g. `aifabrix up-platform`). You need **full access to Docker** (docker commands) where applicable.
+- **Secrets before platform:** Add secrets (e.g. OpenAI or Azure OpenAI) **before** running `aifabrix up-platform`; the platform reads them from the place you configure. See [Infrastructure](docs/infrastructure.md) and secrets configuration.
+
+---
+
 ## Install
 
 ```bash

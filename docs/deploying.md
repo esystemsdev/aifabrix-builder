@@ -1,14 +1,19 @@
 # Deploying Applications
 
-← [Back to Your Own Applications](your-own-applications.md)
+← [Documentation index](README.md)
 
-Deploy your application via [Azure Marketplace](https://azuremarketplace.microsoft.com/) or Miso Controller. The **Miso Controller** handles the actual deployment execution:
-- **Azure deployments:** Controller deploys to Azure Container Apps (for production/cloud environments)
-- **Local Docker deployments:** Controller runs the application in Docker containers locally (for localhost/development environments)
+Deployment is **unified**: the same flow and the same Miso Controller apply to (1) **web apps and Docker images** and (2) **external systems integration**. Most deployments in practice are **integration deployments** (external systems); image-based app deployment is one path. In all cases the CLI sends the deployment to the Controller; the Controller then deploys to the dataplane or target environment (Azure Container Apps or local Docker).
 
-The builder CLI generates the deployment manifest and sends it to the controller; the controller determines the deployment target based on the deployment type and executes accordingly.
+## What gets deployed
 
-## External system flow
+- **External systems:** OpenAPI/MCP integrations, datasources, and related config. You work in `integration/<app>/` and deploy with `aifabrix deploy <app> --type external`. No app registration needed; the controller creates and deploys from your integration manifest.
+- **Containerized applications:** Web apps or services built as Docker images. You build, push to a registry, then deploy with `aifabrix deploy <app>`. Requires app registration and image push first.
+
+Both paths use the same Controller and the same deploy pipeline; only the source (integration folder vs builder + registry) and manifest content differ.
+
+## Deploying external systems
+
+Flow: **Local (dev)** → **Controller** → **Dataplane**.
 
 Flow for external systems (OpenAPI, MCP, etc.): **Local (dev)** → **Controller** → **Dataplane**.
 
@@ -17,6 +22,10 @@ Flow for external systems (OpenAPI, MCP, etc.): **Local (dev)** → **Controller
 - **Dataplane:** The controller deploys to the dataplane (or target environment). External systems and datasources are configured on the controller and published to the dataplane. Pipeline and schema publishing run after deployment when `autopublish` is true.
 
 So: **Deploy to Controller** means the CLI sends the deployment to the Miso Controller, which then deploys to the dataplane (or target environment). The controller orchestrates; you do not deploy directly to the dataplane from the CLI for app-level deploy.
+
+## Deploying containerized applications
+
+For web apps and Docker images: build the image, push to a registry (e.g. ACR), then deploy via the Controller. Prerequisites and steps below apply to this path.
 
 ## Prerequisites
 
@@ -285,34 +294,7 @@ ControllerProcess --> DeployAzure[Deploy to Azure Container Apps]:::base
 
 ## Deployment Key
 
-Unique key generated from the deployment manifest JSON (excluding the deploymentKey field itself). The key is computed from the complete deployment configuration, ensuring integrity verification.
-
-### View Your Key
-
-```bash
-aifabrix genkey myapp
-```
-
-Output:
-```yaml
-Deployment key for myapp:
-a1b2c3d4e5f6789abcdef1234567890abcdef1234567890abcdef1234567890ab
-
-Generated from: builder/myapp/variables.yaml
-```
-
-### Why It Exists
-
-- **Authentication** - Controller verifies you own the config
-- **Integrity** - Detects if config was modified
-- **Security** - Prevents unauthorized deployments
-
-### When It Changes
-
-Key changes when `variables.yaml` changes. This is intentional - it means:
-- New deployment is needed
-- Configuration has been updated
-- Old deployments can be traced
+Controller computes and manages the deployment key. Builder sends manifest only (no `deploymentKey`). See [Deployment key](configuration/deployment-key.md) for details.
 
 ---
 
@@ -335,7 +317,6 @@ Creates `builder/myapp/aifabrix-deploy.json`:
   "displayName": "My Application",
   "image": "myacr.azurecr.io/myapp:v1.0.0",
   "port": 3000,
-  "deploymentKey": "a1b2c3d4...",
   "configuration": [
     {
       "name": "DATABASE_URL",
@@ -551,6 +532,8 @@ aifabrix deploy myapp
 
 ## Rollback
 
+**Deployment** is immutable and uniquely identified by **deployment Id**. To rollback, use the controller’s rollback API (e.g. POST with `deploymentId`) when available, or redeploy a previous image as below.
+
 ### Deploy Previous Version
 
 ```bash
@@ -568,22 +551,43 @@ image:
   tag: v0.9.0  # Change this
 ```
 
+### Version vs deployment
+
+| Concept | Description |
+|--------|-------------|
+| **Deployment** | Immutable; uniquely identified by **deployment Id**. |
+| **Application version** | Semantic version in `variables.yaml` (`app.version`, default `1.0.0`). Used for display and “when to change version” guidance. |
+
+**Purpose:** Version tracks product/application changes and enables schema diffing and migrations. For regular apps, `app.version` can be auto-resolved from the image (OCI label or semver tag) when running or deploying; it flows into the deployment JSON and to Miso Controller, then Dataplane. When running the image, `builder/<app>/variables.yaml` is updated with the discovered version.
+
+**Why two (version vs tag):** version = product semantics; tag = container artifact.
+
+### When to change version number
+
+| Change type | Version bump |
+|-------------|--------------|
+| Breaking change | Major (e.g. 1.0.0 → 2.0.0) |
+| New feature | Minor (e.g. 1.0.0 → 1.1.0) |
+| Bug fix | Patch (e.g. 1.0.0 → 1.0.1) |
+
 ---
 
 ## Monitoring Deployments
 
 ### Check Deployments Using CLI
 
-**Note:** The `aifabrix deployments` command is planned but not yet implemented. Deployment status is monitored during deployment using the `--poll` option of the `deploy` command.
-
-**Current approach:**
 ```bash
+# List last N deployments for the current environment (default pageSize=50)
+aifabrix deployment list
+
+# List last N deployments for a specific application
+aifabrix app deployment <appKey>
+
 # Deploy with status polling
 aifabrix deploy myapp --poll
-
-# Or check status via controller dashboard
-# Visit: https://controller.aifabrix.dev/deployments
 ```
+
+You can also check status via the controller dashboard.
 
 ---
 
@@ -633,14 +637,14 @@ aifabrix doctor
 
 ### "Deployment key mismatch"
 
-**Regenerate key:**
+**Regenerate manifest:**
 ```bash
-aifabrix genkey myapp
+aifabrix json myapp
 ```
 
-**Cause:** Deployment configuration changed (variables.yaml, env.template, or rbac.yaml) since last deployment, resulting in a new deployment manifest and thus a new key.
+**Cause:** Deployment configuration changed (variables.yaml, env.template, or rbac.yaml) since last deployment. Controller computes the key from the manifest.
 
-**Fix:** This is expected. New deployment with new configuration = new key.
+**Fix:** Regenerate manifest with `aifabrix json <app>` and redeploy.
 
 ### "Can't reach controller"
 
@@ -781,27 +785,20 @@ The `aifabrix deploy` command performs the following steps:
    - Includes: app metadata, image reference, port, configuration, roles, permissions
    - Validates required fields and format
 
-4. **Generate Deployment Key**
-   - Creates SHA256 hash from deployment manifest (excluding deploymentKey field)
-   - Uses deterministic JSON stringification (sorted keys, no whitespace)
-   - Used for authentication and integrity verification
-   - Key format: 64-character hexadecimal string
-   - Added to manifest as `deploymentKey` field
-
-5. **Validate Manifest**
-   - Checks required fields: key, displayName, image, port, deploymentKey
+4. **Validate Manifest**
+   - Checks required fields: key, displayName, image, port
    - Validates configuration array structure
    - Validates RBAC arrays (roles, permissions)
    - Returns validation errors and warnings
 
-6. **Send to Controller**
-   - POST request to `<controller>/api/v1/pipeline/{env}/deploy` (environment-aware endpoint)
+5. **Send to Controller**
+   - POST request sends manifest to `<controller>/api/v1/pipeline/{env}/deploy` (environment-aware endpoint)
    - HTTPS-only communication for security
    - Retries with exponential backoff on transient failures
    - Includes structured error handling
    - Uses ClientId/ClientSecret authentication
 
-7. **Poll Status (Optional)**
+6. **Poll Status**
    - Polls `/api/v1/environments/{env}/deployments/{deploymentId}` endpoint
    - Configurable interval (default: 5 seconds)
    - Maximum attempts (default: 60)
@@ -847,9 +844,8 @@ Rbac[rbac.yaml<br/>Roles & permissions]:::base --> Load
 
 Load --> Parse[Parse Environment Variables<br/>Convert kv:// references]:::base
 Parse --> Build[Build Deployment Manifest<br/>Merge all configuration]:::base
-Build --> GenKey[Generate Deployment Key<br/>SHA256 hash of manifest]:::base
-GenKey --> Validate[Validate Manifest<br/>Required fields<br/>Structure checks]:::base
-Validate --> Send[Send to Controller<br/>POST /api/v1/pipeline/env/deploy]:::medium
+Build --> Validate[Validate Manifest<br/>Required fields<br/>Structure checks]:::base
+Validate --> Send[Send to Controller<br/>Controller computes key<br/>POST /api/v1/pipeline/env/deploy]:::medium
 
 Send --> Poll{Poll Status?}
 Poll -->|Yes| PollStatus[Poll Deployment Status<br/>Every 5 seconds]:::base
@@ -963,7 +959,6 @@ Body:
   "displayName": "My Application",
   "image": "myacr.azurecr.io/myapp:latest",
   "port": 3000,
-  "deploymentKey": "sha256hash...",
   ...
 }
 ```
@@ -1003,9 +998,9 @@ Common HTTP status codes and their meanings:
 
 ### Deployment Key Details
 
-The deployment key is a SHA256 hash of the entire variables.yaml file contents. This ensures:
+The deployment key is derived from the **canonical** deployment manifest JSON: the builder hashes the manifest in a minimal, deterministic form (sorted keys, no whitespace). Whitespace or formatting in the file does **not** change the key. The controller validates the key against the same canonical form. This ensures:
 
-- **Configuration Integrity**: Any change to variables.yaml results in a different key
+- **Configuration Integrity**: Any change to the deployment manifest results in a different key
 - **Authentication**: Controller can verify the configuration is from the authorized source
 - **Traceability**: Each deployment key uniquely identifies a configuration version
 - **Security**: Prevents tampering with deployment configurations

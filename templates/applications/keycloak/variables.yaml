@@ -12,7 +12,7 @@ image:
   registry: devflowiseacr.azurecr.io
   registryMode: acr
 
-# Port Configuration
+# Port Configuration (base for host; host port = 8082 + developer_id*100 from ~/.aifabrix/config.yaml)
 port: 8082
 
 # Azure Requirements

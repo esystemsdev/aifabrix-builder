@@ -1,6 +1,6 @@
 # Developer Isolation
 
-← [Back to Your Own Applications](your-own-applications.md)
+← [Documentation index](README.md)
 
 ## Overview
 

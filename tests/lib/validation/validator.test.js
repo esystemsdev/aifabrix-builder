@@ -664,6 +664,28 @@ permissions:
       expect(result.errors).toEqual([]);
     });
 
+    it('should validate deployment JSON without deploymentKey (Controller-owned)', () => {
+      const deployment = {
+        key: 'testapp',
+        displayName: 'Test App',
+        description: 'A test application',
+        type: 'webapp',
+        image: 'myacr.azurecr.io/testapp:v1.0.0',
+        registryMode: 'acr',
+        port: 3000,
+        requiresDatabase: true,
+        requiresRedis: false,
+        requiresStorage: false,
+        databases: [{ name: 'testapp' }],
+        configuration: []
+      };
+
+      const result = validator.validateDeploymentJson(deployment);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
     it('should fail validation for missing required fields', () => {
       const deployment = {
         key: 'testapp'

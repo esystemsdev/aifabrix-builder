@@ -161,6 +161,16 @@ jest.mock('../../../lib/core/secrets', () => {
   };
 });
 jest.mock('../../../lib/utils/health-check');
+jest.mock('../../../lib/utils/app-run-containers', () => ({
+  checkImageExists: jest.fn().mockResolvedValue(true),
+  checkContainerRunning: jest.fn().mockResolvedValue(false),
+  stopAndRemoveContainer: jest.fn().mockResolvedValue(undefined),
+  startContainer: jest.fn().mockResolvedValue(undefined),
+  getContainerName: jest.fn((app, id) => `aifabrix-${app}`)
+}));
+jest.mock('../../../lib/utils/image-version', () => ({
+  resolveVersionForApp: jest.fn().mockResolvedValue({ version: '1.0.0', fromImage: false })
+}));
 jest.mock('../../../lib/utils/paths', () => {
   const actual = jest.requireActual('../../../lib/utils/paths');
   return {
@@ -710,8 +720,8 @@ describe('App-Run Uncovered Code Paths', () => {
         build: { port: 3000 }
       }));
 
-      // Set port to unavailable for this test
-      net.__setPortAvailable(false);
+      // Mock health-check.checkPortAvailable - run.js uses this directly (not appRun export)
+      healthCheck.checkPortAvailable.mockResolvedValue(false);
 
       // Mock exec for all docker commands
       exec.mockImplementation((command, callback) => {
@@ -726,11 +736,9 @@ describe('App-Run Uncovered Code Paths', () => {
         }
       });
 
-      // Set up spies BEFORE calling runApp to ensure they intercept
       const checkImageExistsSpy = jest.spyOn(appRun, 'checkImageExists').mockImplementation(async() => true);
       const checkContainerRunningSpy = jest.spyOn(appRun, 'checkContainerRunning').mockImplementation(async() => false);
 
-      // Ensure config mock is set up correctly
       config.getDeveloperId.mockResolvedValue(1);
 
       try {
@@ -738,8 +746,6 @@ describe('App-Run Uncovered Code Paths', () => {
       } finally {
         checkImageExistsSpy.mockRestore();
         checkContainerRunningSpy.mockRestore();
-        // Reset port availability for other tests
-        net.__setPortAvailable(true);
       }
     });
 

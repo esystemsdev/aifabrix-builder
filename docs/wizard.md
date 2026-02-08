@@ -1,5 +1,7 @@
 # External System Wizard
 
+← [Documentation index](README.md)
+
 ## Overview
 
 The AI Fabrix External System Wizard provides an interactive guided workflow for creating external system integrations. The wizard acts as a thin wrapper around the dataplane wizard API - all wizard logic (parsing, type detection, AI generation, validation) is handled by the dataplane server.
@@ -107,7 +109,9 @@ Select your source type; then the wizard parses OpenAPI or tests the connection 
 Configure credentials for the external system:
 - **Skip** – No credentials yet; you can add them later in `env.template` or via the dataplane. Choose this if you don't have test credentials.
 - **Create** – Create a new credential on the dataplane
-- **Use existing** – Enter a credential ID or key that exists on the dataplane
+- **Use existing** – Select or enter a credential ID or key that exists on the dataplane. The wizard can **list** credentials for selection:
+  - **Dataplane API:** `GET /api/v1/wizard/credentials` (optional query e.g. `activeOnly=true`) returns credentials for "Use existing". Documented in the Dataplane Wizard API table below.
+  - **CLI:** Run `aifabrix credential list` to list credentials from the controller/dataplane (`GET /api/v1/credential`). Use the same controller URL and login as for other CLI commands.
 
 **Validation:** The dataplane validates credentials when you choose "Use existing" (POST `/api/v1/wizard/credential-selection`). If the credential is not found or invalid, the wizard re-prompts for another ID/key or lets you leave the field empty to skip.
 
@@ -139,7 +143,7 @@ The wizard then uses AI to generate configurations based on:
 - User preferences (MCP, ABAC, RBAC)
 - Field onboarding level (full/standard/minimal)
 
-**Important**: The `intent` parameter accepts any descriptive text (e.g., "sales-focused CRM integration", "customer management system"). It's not limited to specific enum values.
+**Intent:** The `intent` parameter helps the AI generate a better integration manifest. You can describe your goals and any special integration requirements (e.g. "sales-focused CRM integration", "customer management with custom fields"). It accepts any descriptive text and is not limited to specific enum values. See [.cursor/plans/credentials.md](.cursor/plans/credentials.md) for API shapes (list credentials, etc.) and manifest generation context.
 
 ### Step 6: Validate Configuration
 
@@ -551,6 +555,7 @@ The wizard uses the following dataplane wizard API endpoints:
 | `DELETE /api/v1/wizard/sessions/{id}` | Delete session |
 | `GET /api/v1/wizard/sessions/{id}/progress` | Get session progress |
 | `POST /api/v1/wizard/parse-openapi` | Parse OpenAPI file/URL |
+| `GET /api/v1/wizard/credentials` | List credentials for Step 3 (optional query: `activeOnly`) |
 | `POST /api/v1/wizard/credential-selection` | Credential selection |
 | `POST /api/v1/wizard/detect-type` | Detect API type |
 | `POST /api/v1/wizard/generate-config` | Generate configuration (body: openapiSpec, detectedType, intent, mode, fieldOnboardingLevel, userPreferences, etc.) |

@@ -1,6 +1,6 @@
 # Building Your App
 
-← [Back to Your Own Applications](your-own-applications.md)
+← [Documentation index](README.md)
 
 How the build process works and how to customize it.
 

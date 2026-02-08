@@ -29,6 +29,15 @@ jest.mock('fs', () => {
   return mockFs;
 });
 
+// Mock image-version to avoid docker calls in tests
+jest.mock('../../../lib/utils/image-version', () => ({
+  resolveVersionForApp: jest.fn().mockImplementation(async(appName, variables) => {
+    const v = variables?.app?.version;
+    const version = (v !== undefined && v !== null && String(v).trim()) ? String(v).trim() : '1.0.0';
+    return { version, fromImage: false, updated: false };
+  })
+}));
+
 // Mock paths module to return builder path for regular apps
 jest.mock('../../../lib/utils/paths', () => {
   const actualPaths = jest.requireActual('../../../lib/utils/paths');
@@ -197,9 +206,8 @@ PUBLIC_CONFIG=public-value`;
       expect(deployment.authentication.type).toBeDefined();
       expect(deployment.authentication.enableSSO).toBeDefined();
       expect(deployment.authentication.requiredRoles).toBeDefined();
-      // deploymentKey should be present and valid SHA256 hash
-      expect(deployment.deploymentKey).toBeDefined();
-      expect(deployment.deploymentKey).toMatch(/^[a-f0-9]{64}$/);
+      // deploymentKey is optional (Controller computes it)
+      expect(deployment.key).toBeDefined();
     });
 
     it('should merge portalInput from variables.yaml into deployment JSON', async() => {
@@ -305,9 +313,6 @@ REDIS_URL=redis://localhost:6379`;
 
       expect(deployment.authentication.enableSSO).toBe(false);
       expect(deployment.authentication.type).toBe('none');
-      // deploymentKey should be present and valid SHA256 hash
-      expect(deployment.deploymentKey).toBeDefined();
-      expect(deployment.deploymentKey).toMatch(/^[a-f0-9]{64}$/);
       expect(deployment.authentication.requiredRoles).toEqual([]);
       expect(deployment.roles).toBeUndefined();
       expect(deployment.permissions).toBeUndefined();
@@ -1846,6 +1851,99 @@ OTHER_VAR=value`;
 
       // When app.key is missing, defaults to 'app' (not appName)
       expect(deployment.databases).toEqual([{ name: 'app' }]);
+    });
+
+    it('should include version from app.version in deployment manifest', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App', version: '2.0.0' },
+        port: 3000
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.version).toBe('2.0.0');
+    });
+
+    it('should default version to 1.0.0 when app.version missing or empty', async() => {
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.version).toBe('1.0.0');
+    });
+
+    it('should use image version when resolveVersionForApp returns fromImage', async() => {
+      const { resolveVersionForApp } = require('../../../lib/utils/image-version');
+      resolveVersionForApp.mockResolvedValueOnce({
+        version: '2.1.0',
+        fromImage: true,
+        updated: false
+      });
+
+      const variables = {
+        app: { key: 'testapp', displayName: 'Test App' },
+        port: 3000
+      };
+
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('variables.yaml')) {
+          return yaml.dump(variables);
+        }
+        if (filePath.includes('env.template')) {
+          return 'NODE_ENV=development';
+        }
+        return '';
+      });
+
+      await generator.generateDeployJson(appName);
+
+      const writeCall = fs.writeFileSync.mock.calls.find(call =>
+        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
+      );
+      expect(writeCall).toBeDefined();
+      const deployment = JSON.parse(writeCall[1]);
+
+      expect(deployment.version).toBe('2.1.0');
+      expect(resolveVersionForApp).toHaveBeenCalledWith(
+        appName,
+        expect.any(Object),
+        expect.objectContaining({ updateBuilder: false })
+      );
     });
   });
 

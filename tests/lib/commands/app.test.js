@@ -64,9 +64,14 @@ jest.mock('../../../lib/app/rotate-secret', () => ({
   rotateSecret: jest.fn()
 }));
 
+jest.mock('../../../lib/commands/deployment-list', () => ({
+  runAppDeploymentList: jest.fn()
+}));
+
 const { listApplications } = require('../../../lib/app/list');
 const { registerApplication } = require('../../../lib/app/register');
 const { rotateSecret } = require('../../../lib/app/rotate-secret');
+const { runAppDeploymentList } = require('../../../lib/commands/deployment-list');
 const { setupAppCommands } = require('../../../lib/commands/app');
 
 describe('App Commands Module', () => {
@@ -218,6 +223,19 @@ describe('App Commands Module', () => {
       expect(rotateCommand.command.option).not.toHaveBeenCalled();
     });
 
+    it('should setup app deployment command', () => {
+      setupAppCommands(program);
+
+      const appGroup = program._appGroup;
+      const deploymentCommand = appGroup._subCommands?.find(c => c.name === 'deployment <appKey>');
+      expect(deploymentCommand).toBeDefined();
+      expect(deploymentCommand.command.description).toHaveBeenCalledWith(
+        expect.stringContaining('List last N deployments')
+      );
+      expect(deploymentCommand.command.option).toHaveBeenCalledWith('--controller <url>', expect.any(String));
+      expect(deploymentCommand.command.option).toHaveBeenCalledWith('--page-size <n>', expect.any(String), '50');
+    });
+
     describe('register command action', () => {
       it('should call registerApplication with correct parameters', async() => {
         jest.spyOn(process, 'exit').mockImplementation(() => {});
@@ -362,6 +380,28 @@ describe('App Commands Module', () => {
             expect(process.exit).toHaveBeenCalledWith(1);
           }
         }
+      });
+    });
+
+    describe('deployment command action', () => {
+      it('should call runAppDeploymentList with appKey and options', async() => {
+        jest.spyOn(process, 'exit').mockImplementation(() => {});
+
+        runAppDeploymentList.mockResolvedValue();
+
+        setupAppCommands(program);
+
+        const appGroup = program._appGroup;
+        const deploymentCommand = appGroup._subCommands?.find(c => c.name === 'deployment <appKey>');
+        expect(deploymentCommand).toBeDefined();
+        const actionCall = deploymentCommand.command.action.mock.calls[0];
+        expect(actionCall).toBeDefined();
+        expect(typeof actionCall[0]).toBe('function');
+        const options = { environment: 'dev', pageSize: '50' };
+        await actionCall[0]('myapp', options);
+
+        expect(runAppDeploymentList).toHaveBeenCalledWith('myapp', expect.objectContaining({ pageSize: 50 }));
+        expect(process.exit).not.toHaveBeenCalled();
       });
     });
   });

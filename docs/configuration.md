@@ -1,6 +1,6 @@
 # Configuration Reference
 
-← [Back to Your Own Applications](your-own-applications.md)
+← [Documentation index](README.md)
 
 Configuration documentation has been reorganized into a folder for easier navigation.
 
@@ -8,6 +8,7 @@ Configuration documentation has been reorganized into a folder for easier naviga
 
 | Topic | Link |
 |-------|------|
+| Deployment key | [deployment-key.md](configuration/deployment-key.md) |
 | variables.yaml | [variables-yaml.md](configuration/variables-yaml.md) |
 | env.template | [env-template.md](configuration/env-template.md) |
 | External integration | [external-integration.md](configuration/external-integration.md) |

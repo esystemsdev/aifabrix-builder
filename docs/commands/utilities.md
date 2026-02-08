@@ -1,6 +1,6 @@
 # Utility Commands
 
-← [Back to Commands Index](README.md) | [Back to Your Own Applications](../your-own-applications.md)
+← [Documentation index](../README.md) · [Commands index](README.md)
 
 Utility commands for managing configuration files, secrets, and deployment artifacts.
 
@@ -130,7 +130,7 @@ aifabrix split-json hubspot
 - `README.md` - Application documentation (generated from deployment JSON)
 
 **Notes:**
-- The `deploymentKey` field is excluded from `variables.yaml` (it's generated, not configured)
+- The `deploymentKey` field is not set in `variables.yaml`; it is managed by Controller internally
 - Image references are parsed into `image.registry`, `image.name`, and `image.tag` components
 - Keyvault references (`location: "keyvault"`) are converted back to `kv://` format in `env.template`
 - Some information may be lost in reverse conversion (e.g., comments in original `env.template`)
@@ -140,32 +140,6 @@ aifabrix split-json hubspot
 - **"Deployment JSON file not found"** → Ensure `<app-name>-deploy.json` (regular apps) or `<systemKey>-deploy.json` (external systems) exists in the application directory
 - **"Invalid JSON syntax"** → Check that the deployment JSON file is valid JSON
 - **"Output directory creation failed"** → Check permissions for the output directory
-
----
-
-<a id="aifabrix-genkey-app"></a>
-## aifabrix genkey <app>
-
-Generate deployment key.
-
-**What:** Generates deployment JSON first, then extracts deployment key from it. The deployment key is a SHA256 hash of the deployment manifest (excluding the deploymentKey field) for controller authentication and integrity verification.
-
-**When:** Checking deployment key, troubleshooting authentication.
-
-**Example:**
-```bash
-aifabrix genkey myapp
-```
-
-**Output:**
-```text
-Deployment key for myapp:
-a1b2c3d4e5f6789abcdef1234567890abcdef1234567890abcdef1234567890ab
-
-Generated from: builder/myapp/aifabrix-deploy.json
-```
-
-**Issues:** None common.
 
 ---
 

@@ -40,6 +40,18 @@ aifabrix run keycloak
 
 **Access your app:** <http://dev.aifabrix:8082>
 
+**Token issuer (Docker + refresh):** Keycloak is configured with `KC_HOSTNAME=localhost` and `KC_HOSTNAME_PORT=${KEYCLOAK_PUBLIC_PORT}` so tokens always have issuer `http://localhost:<port>/realms/aifabrix`. This lets refresh work when users log in via localhost and the controller (in Docker) calls Keycloak at `http://keycloak:8080`.
+
+**If you get "Invalid token issuer. Expected 'http://keycloak:8080/realms/aifabrix'" on refresh:**
+
+1. Set `KEYCLOAK_PUBLIC_PORT` to the port you use for Keycloak (e.g. if your token issuer shows `http://localhost:8682/realms/aifabrix`, use `8682`). In `.env` (in the directory where you run `aifabrix resolve keycloak`) add or set: `KEYCLOAK_PUBLIC_PORT=8682`.
+2. Regenerate Keycloak env and restart Keycloak:
+   ```bash
+   aifabrix resolve keycloak
+   docker restart $(docker ps -q -f name=keycloak)
+   ```
+3. Re-run `pnpm validate:config -- --test-refresh` from the repo root.
+
 **View logs:**
 
 ```bash
@@ -93,8 +105,7 @@ aifabrix dockerfile keycloak --force           # Generate Dockerfile
 aifabrix resolve keycloak                      # Generate .env file
 
 # Deployment
-aifabrix json keycloak                         # Preview deployment JSON
-aifabrix genkey keycloak                       # Generate deployment key
+aifabrix json keycloak                         # Generate deployment manifest
 aifabrix push keycloak --registry myacr.azurecr.io # Push to ACR
 aifabrix deploy keycloak --controller <url>    # Deploy to Azure
 
@@ -128,7 +139,7 @@ aifabrix run keycloak --debug                  # Debug output
 
 ```bash
 aifabrix push keycloak --registry myacr.azurecr.io --tag v1.0.0
-aifabrix push keycloak --registry myacr.azurecr.io --tag "v1.0.0,latest,stable"
+aifabrix push keycloak --registry myacr.azurecr.io --tag "v1.0.0,latest"
 ```
 
 ### Deploy Options
@@ -174,7 +185,6 @@ export AIFABRIX_SECRETS=/path/to/secrets.yaml
 ```bash
 aifabrix resolve keycloak --force
 aifabrix json keycloak
-aifabrix genkey keycloak
 ```
 
 ---

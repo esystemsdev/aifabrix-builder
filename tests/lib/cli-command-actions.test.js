@@ -999,25 +999,6 @@ describe('CLI Command Actions', () => {
     });
   });
 
-  describe('genkey command action', () => {
-    it('should generate deployment key', async() => {
-      keyGenerator.generateDeploymentKey.mockResolvedValue('test-key-123');
-
-      const appName = 'test-app';
-
-      try {
-        const key = await keyGenerator.generateDeploymentKey(appName);
-        console.log(`\nDeployment key for ${appName}:`);
-        console.log(key);
-        console.log(`\nGenerated from: builder/${appName}/variables.yaml`);
-        expect(keyGenerator.generateDeploymentKey).toHaveBeenCalledWith(appName);
-        expect(console.log).toHaveBeenCalled();
-      } catch (error) {
-        cli.handleCommandError(error, 'genkey');
-      }
-    });
-  });
-
   describe('dockerfile command action', () => {
     it('should generate Dockerfile', async() => {
       app.generateDockerfileForApp = jest.fn().mockResolvedValue('/path/to/Dockerfile');

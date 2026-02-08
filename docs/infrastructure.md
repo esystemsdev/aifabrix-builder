@@ -1,6 +1,6 @@
 # Infrastructure Guide
 
-← [Back to Your Own Applications](your-own-applications.md)
+← [Documentation index](README.md)
 
 We recommend running the AI Fabrix platform in **Microsoft Azure**. The aifabrix CLI works the same locally and in Azure—no manual config difference for the user.
 
@@ -339,9 +339,12 @@ aifabrix run keycloak
 
 ## Install Miso-Controller (Azure Deployment)
 
-Miso Controller deploys your applications to Azure.
+- **Docker (local):** The steps below are for **Docker/local** install (create, build, run). Use this for local development.
+- **Azure:** For production or cloud, install the platform via **Azure Marketplace** first; then use the controller URL from that deployment. See Azure documentation or marketplace listing for Azure-specific setup.
 
-### 1. Create
+Miso Controller deploys your applications to Azure or runs them locally in Docker.
+
+### 1. Create (Docker / local)
 ```bash
 aifabrix create miso-controller --port 3000 --database --redis --template miso-controller
 ```
@@ -385,9 +388,13 @@ The SDK handles this automatically in generated config files.
 Yes! Configure connection strings in your app's `env.template`. The SDK doesn't force you to use infrastructure services.
 
 ### How much disk space does this use?
-Initial download: ~1GB (Docker images)  
-Running: ~500MB RAM, minimal CPU
-Data volumes: Depends on your usage
+
+Figures below are approximate; run `docker system df` and `docker stats` for your setup.
+
+- **Initial download (base infra):** Approximately 0.5–1.5 GB for Postgres and Redis images (varies by image version and platform).
+- **Full platform (Keycloak, Miso Controller, Dataplane, etc.):** Roughly 10–15 GB for all platform images; exact size depends on images used. Check with `docker images` or your registry to confirm.
+- **Running (base infra):** Approximately 256 MB–1 GB RAM (Postgres and Redis; add more if using Traefik, pgAdmin, or Redis Commander). CPU usage is low when idle.
+- **Data volumes:** Depends on your usage (databases, Redis persistence). Monitor with `docker system df`.
 
 ---
 

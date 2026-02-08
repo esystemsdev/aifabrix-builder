@@ -394,56 +394,6 @@ describe('CLI Commands', () => {
     });
   });
 
-  describe('genkey command', () => {
-    it('should generate deployment key successfully', async() => {
-      const appName = 'testapp';
-      const expectedKey = 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456';
-
-      keyGenerator.generateDeploymentKey.mockResolvedValue(expectedKey);
-
-      try {
-        const key = await keyGenerator.generateDeploymentKey(appName);
-        console.log(`\nDeployment key for ${appName}:`);
-        console.log(key);
-        console.log(`\nGenerated from: builder/${appName}/variables.yaml`);
-
-        expect(keyGenerator.generateDeploymentKey).toHaveBeenCalledWith(appName);
-        expect(console.log).toHaveBeenCalledWith(`\nDeployment key for ${appName}:`);
-        expect(console.log).toHaveBeenCalledWith(expectedKey);
-        expect(console.log).toHaveBeenCalledWith(`\nGenerated from: builder/${appName}/variables.yaml`);
-      } catch (error) {
-        expect(true).toBe(false); // Should not reach here
-      }
-    });
-
-    it('should handle key generation errors', async() => {
-      const appName = 'testapp';
-      const errorMessage = 'variables.yaml not found';
-
-      keyGenerator.generateDeploymentKey.mockRejectedValue(new Error(errorMessage));
-
-      try {
-        await keyGenerator.generateDeploymentKey(appName);
-        expect(true).toBe(false); // Should have thrown error
-      } catch (error) {
-        expect(error.message).toBe(errorMessage);
-      }
-    });
-
-    it('should handle invalid app name', async() => {
-      const errorMessage = 'App name is required and must be a string';
-
-      keyGenerator.generateDeploymentKey.mockRejectedValue(new Error(errorMessage));
-
-      try {
-        await keyGenerator.generateDeploymentKey();
-        expect(true).toBe(false); // Should have thrown error
-      } catch (error) {
-        expect(error.message).toBe(errorMessage);
-      }
-    });
-  });
-
   describe('doctor command', () => {
     it('should check environment successfully', async() => {
       const mockEnvResult = {
@@ -922,24 +872,6 @@ describe('CLI Commands', () => {
     });
   });
 
-  describe('genkey command - CLI handler', () => {
-    it('should handle genkey command errors in CLI handler', async() => {
-      const appName = 'testapp';
-      const errorMessage = 'Key generation failed';
-
-      keyGenerator.generateDeploymentKey.mockRejectedValue(new Error(errorMessage));
-      cliUtils.handleCommandError.mockImplementation(() => {});
-
-      try {
-        await keyGenerator.generateDeploymentKey(appName);
-        expect(true).toBe(false); // Should have thrown error
-      } catch (error) {
-        expect(error.message).toBe(errorMessage);
-        // In actual CLI handler, this would call handleCommandError and process.exit
-      }
-    });
-  });
-
   describe('dockerfile command', () => {
     it('should generate dockerfile successfully', async() => {
       const appName = 'testapp';
@@ -1368,55 +1300,6 @@ describe('CLI Commands', () => {
 
         await action(appName);
         expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'json');
-        expect(process.exit).toHaveBeenCalledWith(1);
-      });
-    });
-
-    describe('genkey command handler', () => {
-      it('should execute genkey command handler successfully', async() => {
-        const appName = 'testapp';
-        const expectedKey = 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456';
-        keyGenerator.generateDeploymentKey.mockResolvedValue(expectedKey);
-
-        // Simulate the command handler action from cli.js line 266-275 (exact match)
-        const action = async(appName) => {
-          try {
-            const key = await keyGenerator.generateDeploymentKey(appName);
-            logger.log(`\nDeployment key for ${appName}:`);
-            logger.log(key);
-          } catch (error) {
-            cliUtils.handleCommandError(error, 'genkey');
-            process.exit(1);
-          }
-        };
-
-        await action(appName);
-        expect(keyGenerator.generateDeploymentKey).toHaveBeenCalledWith(appName);
-        expect(logger.log).toHaveBeenCalledWith(`\nDeployment key for ${appName}:`);
-        expect(logger.log).toHaveBeenCalledWith(expectedKey);
-        expect(process.exit).not.toHaveBeenCalled();
-      });
-
-      it('should handle genkey command handler errors', async() => {
-        const appName = 'testapp';
-        const errorMessage = 'Key generation failed';
-        keyGenerator.generateDeploymentKey.mockRejectedValue(new Error(errorMessage));
-        cliUtils.handleCommandError.mockImplementation(() => {});
-
-        // Simulate the command handler action from cli.js line 266-275 (exact match)
-        const action = async(appName) => {
-          try {
-            const key = await keyGenerator.generateDeploymentKey(appName);
-            logger.log(`\nDeployment key for ${appName}:`);
-            logger.log(key);
-          } catch (error) {
-            cliUtils.handleCommandError(error, 'genkey');
-            process.exit(1);
-          }
-        };
-
-        await action(appName);
-        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'genkey');
         expect(process.exit).toHaveBeenCalledWith(1);
       });
     });
@@ -1991,58 +1874,6 @@ describe('CLI Commands', () => {
       logger.warn.mockClear();
       logger.info.mockClear();
     }
-
-    describe('genkey command handler execution', () => {
-      it('should execute genkey command handler via setupCommands', async() => {
-        setupCommandsAndResetLogger();
-
-        const appName = 'testapp';
-        const expectedKey = '0000000000000000000000000000000000000000000000000000000000000000';
-        const jsonPath = 'builder/testapp/testapp-deploy.json';
-        const deploymentJson = {
-          key: appName,
-          displayName: 'Test App',
-          deploymentKey: expectedKey
-        };
-
-        generator.generateDeployJson.mockResolvedValue(jsonPath);
-        // Mock fs.readFileSync - the handler uses require('fs') inside, so this should work
-        const freshFs = require('fs');
-        freshFs.readFileSync = jest.fn().mockReturnValue(JSON.stringify(deploymentJson));
-        chalk.gray.mockImplementation((text) => text);
-
-        const handler = commandActions['genkey <app>'];
-        expect(handler).toBeDefined();
-        expect(typeof handler).toBe('function');
-
-        await handler(appName);
-
-        expect(generator.generateDeployJson).toHaveBeenCalledWith(appName);
-        // Note: fs.readFileSync is called inside the handler via require('fs'), so we verify via the result
-        expect(logger.log).toHaveBeenCalledWith(`\nDeployment key for ${appName}:`);
-        expect(logger.log).toHaveBeenCalledWith(expectedKey);
-        expect(logger.log).toHaveBeenCalledWith(chalk.gray(`\nGenerated from: ${jsonPath}`));
-      });
-
-      it('should handle genkey command handler error via setupCommands', async() => {
-        setupCommandsAndResetLogger();
-
-        const appName = 'testapp';
-        const errorMessage = 'JSON generation failed';
-        generator.generateDeployJson.mockRejectedValue(new Error(errorMessage));
-        cliUtils.handleCommandError.mockImplementation(() => {});
-        process.exit.mockImplementation(() => {});
-
-        const handler = commandActions['genkey <app>'];
-        expect(handler).toBeDefined();
-
-        await handler(appName);
-
-        expect(generator.generateDeployJson).toHaveBeenCalledWith(appName);
-        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'genkey');
-        expect(process.exit).toHaveBeenCalledWith(1);
-      });
-    });
 
     describe('dockerfile command handler execution', () => {
       it('should execute dockerfile command handler via setupCommands', async() => {

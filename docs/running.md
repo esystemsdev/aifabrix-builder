@@ -1,8 +1,10 @@
 # Running Your App Locally
 
-← [Back to Your Own Applications](your-own-applications.md)
+← [Documentation index](README.md)
 
 How to run your application in Docker for local development.
+
+**Use the builder instead of raw Docker:** Commands like `aifabrix run`, `aifabrix logs`, and `aifabrix down-app` use compose, resolve `.env` from `env.template`, run db-init when needed, and keep behavior consistent. Plain `docker run` / `docker logs` do not—so prefer the builder for start, stop, logs, and running a different image tag.
 
 ## Start Your App
 
@@ -201,49 +203,56 @@ docker exec aifabrix-postgres psql -U pgadmin -c "CREATE DATABASE myapp;"
 
 ## View Logs
 
+Use the builder so env and logs are consistent and secrets are masked:
+
 ```bash
-docker logs aifabrix-myapp -f
+aifabrix logs myapp
 ```
 
-**-f** = follow (stream new logs)
+Shows an env summary (sensitive values masked) and the last 100 lines of logs.
 
-**Without follow:**
-```bash
-docker logs aifabrix-myapp
-```
+**Options:**
+- `-f` – follow log stream
+- `-t, --tail <n>` – number of lines (default 100); `--tail 0` = full list
 
-**Last 100 lines:**
+**Examples:**
 ```bash
-docker logs aifabrix-myapp --tail 100
+aifabrix logs myapp           # last 100 lines
+aifabrix logs myapp -t 50     # last 50 lines
+aifabrix logs myapp -t 0      # full list
+aifabrix logs myapp -f        # follow (default 100, then stream)
 ```
 
 ---
 
 ## Stop Your App
 
+Prefer the builder so the container and optionally the image are removed cleanly:
+
 ```bash
-docker stop aifabrix-myapp
+aifabrix down-app myapp
 ```
 
-**Or:**
+Stops the container, removes it, and removes the app’s Docker image if no other container uses it.
+
+**Remove app volume too:**
 ```bash
-docker rm -f aifabrix-myapp  # Stop and remove
+aifabrix down-app myapp --volumes
 ```
 
 ---
 
 ## Restart Your App
 
+**Restart** with the builder means: resolve `env.template` → update `.env` → (re)create/restart the container. So you get the latest env and compose setup, not just a plain container restart.
+
+**Recommended:** After editing `env.template`, run:
+
 ```bash
 aifabrix run myapp
 ```
 
-If already running, stops first then restarts.
-
-**Quick restart (keep container):**
-```bash
-docker restart aifabrix-myapp
-```
+If the app is already running, it stops the existing container then starts a new one with the updated env. Prefer this over raw `docker restart` so env and compose stay in sync.
 
 ---
 
@@ -416,40 +425,39 @@ docker cp ./file.txt aifabrix-myapp:/mnt/data/
 
 ## Environment Variables
 
-Your app sees variables from `.env` file.
+Your app sees variables from the `.env` file that the builder generates from `env.template`.
 
-**View environment:**
+**Workflow:** Edit **only** `env.template`, then run **one command** to apply settings:
+
 ```bash
-docker exec aifabrix-myapp env
+aifabrix run myapp
 ```
 
-**Specific variable:**
-```bash
-docker exec aifabrix-myapp sh -c 'echo $DATABASE_URL'
-```
+That resolves `env.template`, updates `.env`, and (re)starts the container—no manual `.env` editing for normal use.
 
-**Update .env:**
-1. Edit `builder/myapp/env.template`
-2. Rebuild: `aifabrix build myapp`
-3. Restart: `aifabrix run myapp`
+**View environment (masked):**
+```bash
+aifabrix logs myapp
+```
+(Shows env summary with secrets masked at the top, then logs.)
 
 ---
 
 ## Networking
 
-All containers are on `infra_aifabrix-network`.
+All containers are on `infra_aifabrix-network`. The **service name** used by other containers to reach your app is the app key (e.g. **myapp**), not the container name.
 
 **Containers can reach each other by name:**
-- `postgres` - Database
-- `redis` - Cache
-- `aifabrix-keycloak` - If running
-- `aifabrix-myapp` - Your app
-- `aifabrix-otherapp` - Other apps
+- `postgres` – Database
+- `redis` – Cache
+- `keycloak` – If running
+- **myapp** – Your app (service name)
+- **otherapp** – Other apps (service names)
 
-**Example:** App A calls App B:
+**Example:** App A calls App B (no SSL locally):
 ```typescript
 // From app A
-fetch('http://aifabrix-appb:3000/api/v1/data')
+fetch('http://otherapp:3000/api/v1/data')
 ```
 
 ---
@@ -463,13 +471,11 @@ aifabrix run myapp
 ```
 
 ### Run Different Version
+Use the builder so compose and env stay correct:
 ```bash
-docker run -d \
-  --name aifabrix-myapp-test \
-  --network infra_aifabrix-network \
-  -p 3001:3000 \
-  myapp:v1.0.0
+aifabrix run myapp --tag v1.0.0
 ```
+Runs the image with the given tag (overrides `image.tag` from variables.yaml).
 
 ### Execute Command in Container
 ```bash
@@ -558,7 +564,7 @@ docker exec aifabrix-postgres psql -U pgadmin -c "CREATE DATABASE myapp;"
 
 **Check logs:**
 ```bash
-docker logs aifabrix-myapp
+aifabrix logs myapp
 ```
 
 **Common causes:**
@@ -619,17 +625,11 @@ docker run -d \
 ```
 
 ### Debug Mode
-
+Edit `env.template` (e.g. add `DEBUG=*`, `NODE_ENV=development`), then run:
 ```bash
-docker run -d \
-  --name aifabrix-myapp \
-  --network infra_aifabrix-network \
-  -p 3000:3000 \
-  -p 9229:9229 \
-  -e NODE_ENV=development \
-  -e DEBUG=* \
-  myapp:latest
+aifabrix run myapp --debug
 ```
+The `--debug` flag enables detailed container and port information. For Node.js inspect, add the port to your template and use `--port` if needed.
 
 ### Multiple Instances
 
@@ -644,16 +644,15 @@ docker run -d --name aifabrix-myapp-3 -p 3003:3000 myapp:latest
 
 Remove everything and start fresh:
 ```bash
-aifabrix down-infra myapp --volumes
-docker rmi myapp:latest
+aifabrix down-app myapp --volumes
 aifabrix build myapp
 aifabrix run myapp
 ```
+`down-app` stops the container, removes it, and removes the image if unused. Use `--volumes` to remove the app’s data volume.
 
 **Without removing volumes:**
 ```bash
-aifabrix down-infra myapp
-docker rmi myapp:latest
+aifabrix down-app myapp
 aifabrix build myapp
 aifabrix run myapp
 ```

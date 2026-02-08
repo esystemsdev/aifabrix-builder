@@ -2,7 +2,7 @@
 
 Create, configure, and run your own AI Fabrix application locally or deploy it.
 
-← [Back to README](../README.md) · [Documentation index](README.md)
+← [Documentation index](README.md)
 
 This guide is **app-centric**: create app → configure → run locally / deploy. For getting the full platform up and building integrations, see the main [README](../README.md).
 

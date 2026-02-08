@@ -9,8 +9,8 @@ FROM aifabrix/dataplane:latest
 EXPOSE 3001
 
 # Health check (documentation; base image may already set this)
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3001/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
 
 # CMD inherited from base image; override only if needed
 # CMD inherited: uvicorn app.main:app --host 0.0.0.0 --port 3001
