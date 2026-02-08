@@ -13,8 +13,8 @@ const path = require('path');
 const fs = require('fs');
 const Ajv = require('ajv');
 
-// Resolve schema dir: __dirname is tests/lib/schema, so project root is 3 levels up
-const schemaDir = path.resolve(__dirname, '..', '..', '..', 'lib', 'schema');
+// Resolve schema dir via require - robust across local and CI (e.g. temp copy)
+const schemaDir = path.dirname(require.resolve('../../../lib/schema/application-schema.json'));
 
 describe('Schema validation (Plan 49)', () => {
   const schemas = [
