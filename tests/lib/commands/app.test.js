@@ -236,6 +236,16 @@ describe('App Commands Module', () => {
       expect(deploymentCommand.command.option).toHaveBeenCalledWith('--page-size <n>', expect.any(String), '50');
     });
 
+    it('should setup app show command with --permissions option', () => {
+      setupAppCommands(program);
+
+      const appGroup = program._appGroup;
+      const showCommand = appGroup._subCommands?.find(c => c.name === 'show <appKey>');
+      expect(showCommand).toBeDefined();
+      expect(showCommand.command.option).toHaveBeenCalledWith('--json', 'Output as JSON');
+      expect(showCommand.command.option).toHaveBeenCalledWith('--permissions', 'Show only list of permissions');
+    });
+
     describe('register command action', () => {
       it('should call registerApplication with correct parameters', async() => {
         jest.spyOn(process, 'exit').mockImplementation(() => {});

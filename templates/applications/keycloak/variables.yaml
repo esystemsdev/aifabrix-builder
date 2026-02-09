@@ -4,6 +4,7 @@ app:
   displayName: 'AI Fabrix Keycloak'
   description: 'Identity and Access Management'
   type: webapp
+  version: '26.5.2'
 
 # Image Configuration
 image:

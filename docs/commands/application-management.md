@@ -35,8 +35,10 @@ aifabrix show myapp --online --json
 - `--online` - Fetch application data from the controller (requires `aifabrix login`)
 - `--json` - Output a single JSON object to stdout
 
+**Permissions (online):** Controller access and `applications:read` (or environment-scoped application read). See [Online Commands and Permissions](permissions.md).
+
 **Output:**
-- **Offline:** First line is `Source: offline (builder/myapp/variables.yaml)` or the actual path (e.g. `integration/myapp/variables.yaml`). Then Application (key, display name, description, type, deployment, image, registry, port, health, build), Roles, Permissions, Authentication, Portal input configurations, Databases. For type **external**, also shows External integration (schemaBasePath, systems, dataSources) and a hint to run `aifabrix show <appKey> --online` or `aifabrix app show <appKey>` for dataplane data.
+- **Offline:** First line is `Source: offline (builder/myapp/variables.yaml)` or the actual path (e.g. `integration/myapp/variables.yaml`). Then Application (key, display name, description, type, deployment, image, registry, port, health, build), Roles, Authentication, Portal input configurations, Databases. Permissions are not shown by default; use `aifabrix app show <appKey> --permissions` to see only permissions. For type **external**, also shows External integration (schemaBasePath, systems, dataSources) and a hint to run `aifabrix show <appKey> --online` or `aifabrix app show <appKey>` for dataplane data.
 - **Online:** First line is `Source: online (https://controller.example.com)`. Then application details from the controller API; for type **external**, a section **External system (dataplane)** with system key, display name, type, status, dataSources, application summary, OpenAPI files/endpoints when available, and **Service links** when the system has OpenAPI or MCP: REST OpenAPI docs URL (`/api/v1/rest/{systemKey}/docs`) and MCP docs URL per dataSource (`/api/v1/mcp/{systemKey}/{resourceType}/docs`).
 
 **Exit codes:** `0` on success; `1` if variables.yaml not found or invalid YAML (offline), or on auth failure / 404 / API error (online).
@@ -65,6 +67,12 @@ aifabrix app show dataplane
 
 # JSON output (for scripting)
 aifabrix app show dataplane --json
+
+# Show only list of permissions
+aifabrix app show dataplane --permissions
+
+# Permissions as JSON (for scripting)
+aifabrix app show dataplane --permissions --json
 ```
 
 **Arguments:**
@@ -72,8 +80,11 @@ aifabrix app show dataplane --json
 
 **Options:**
 - `--json` - Output a single JSON object to stdout
+- `--permissions` - Show only list of permissions
 
-**Output:** Same as [aifabrix show \<appKey\>](#aifabrix-show-appkey) with `--online`: source line `Source: online (controller URL)`, Application details, and for type **external** the **External system (dataplane)** section with dataSources and service links.
+**Permissions:** Controller access and `applications:read` (or environment-scoped app access). For external type, Dataplane may be called and requires `external-system:read`. See [Online Commands and Permissions](permissions.md).
+
+**Output:** Same as [aifabrix show \<appKey\>](#aifabrix-show-appkey) with `--online`: source line `Source: online (controller URL)`, Application details, and for type **external** the **External system (dataplane)** section with dataSources and service links. The **Permissions** section is shown only when `--permissions` is set.
 
 **Exit codes:** `0` on success; `1` on auth failure, 404, or API error (requires `aifabrix login`).
 
@@ -275,4 +286,45 @@ Error: Application not found
 - **"Not logged in"** → Run `aifabrix login` first
 - **"Environment is required"** → Run `aifabrix login` or `aifabrix auth config --set-environment <env>`
 - **"Rotation failed"** → Check application key and permissions
+
+---
+
+<a id="aifabrix-service-user-create"></a>
+### aifabrix service-user create
+
+Create a service user for an integration and receive a **one-time** client secret.
+
+**What:** Creates a service user in the Miso Controller with username, email, redirect URIs, and group IDs. The response includes `clientId` and `clientSecret`; the secret is returned only on create and must be saved immediately—no other endpoint returns it again.
+
+**When:** You need a dedicated service account (e.g. for CI, an integration, or an API client) with OAuth2 redirect URIs and group assignments.
+
+**Usage:**
+```bash
+# Create service user (username, email, redirect-uris, group-names required)
+aifabrix service-user create --username api-client-001 --email api@example.com \
+  --redirect-uris "https://app.example.com/callback" \
+  --group-names "AI-Fabrix-Developers"
+
+# With optional description and multiple URIs/names (comma-separated)
+aifabrix service-user create -u "CI Pipeline" -e ci@example.com \
+  --redirect-uris "https://a.com/cb,https://oauth.pstmn.io/v1/callback" --group-names "AI-Fabrix-Developers,my-api-group" -d "For pipelines"
+```
+
+**Options:**
+- `--controller <url>` - Controller URL (default: from config)
+- `-u, --username <username>` - Service user username (required)
+- `-e, --email <email>` - Email address (required)
+- `--redirect-uris <uris>` - Comma-separated redirect URIs for OAuth2 (required, min 1)
+- `--group-names <names>` - Comma-separated group names (required, e.g. AI-Fabrix-Developers)
+- `-d, --description <description>` - Optional description
+
+**Permissions:** Controller `service-user:create`. See [Online Commands and Permissions](permissions.md).
+
+**Output:** On success, prints `clientId`, `clientSecret`, and a warning: *Save this secret now; it will not be shown again.*
+
+**Issues:**
+- **"Username is required"** / **"Email is required"** → Provide `--username` and `--email`
+- **"redirect URI is required"** / **"group name is required"** → Provide `--redirect-uris` and `--group-names` (comma-separated)
+- **"No authentication token"** → Run `aifabrix login` first
+- **"Missing permission: service-user:create"** → Your account needs the service-user:create permission on the controller
 

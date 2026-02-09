@@ -186,6 +186,10 @@ describe('CLI Comprehensive Tests', () => {
       expect(mockProgram.command).toHaveBeenCalledWith('run <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('push <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('deploy <app>');
+      const deployCmdIndex = mockProgram.command.mock.calls.findIndex(c => c[0] === 'deploy <app>');
+      expect(deployCmdIndex).toBeGreaterThanOrEqual(0);
+      const deployCmdMock = mockProgram.command.mock.results[deployCmdIndex].value;
+      expect(deployCmdMock.option).toHaveBeenCalledWith(expect.stringMatching(/--deployment/), expect.any(String), 'cloud');
       expect(mockProgram.command).toHaveBeenCalledWith('doctor');
       expect(mockProgram.command).toHaveBeenCalledWith('status');
       expect(mockProgram.command).toHaveBeenCalledWith('restart <service>');
@@ -579,6 +583,46 @@ describe('CLI Comprehensive Tests', () => {
         handleCommandError(error, 'deploy');
         process.exit(1);
       }
+    });
+
+    it('should call deployApp only when --deployment=cloud (default)', async() => {
+      app.deployApp.mockResolvedValue({ deploymentId: '123' });
+      app.runApp.mockResolvedValue();
+
+      const deployAction = commandActions['deploy <app>'];
+      expect(deployAction).toBeDefined();
+
+      await deployAction('test-app', { deployment: 'cloud' });
+
+      expect(app.deployApp).toHaveBeenCalledTimes(1);
+      expect(app.deployApp).toHaveBeenCalledWith('test-app', expect.objectContaining({ deployment: 'cloud' }));
+      expect(app.runApp).not.toHaveBeenCalled();
+    });
+
+    it('should call deployApp then runApp when --deployment=local', async() => {
+      app.deployApp.mockResolvedValue({ deploymentId: '123' });
+      app.runApp.mockResolvedValue();
+
+      const deployAction = commandActions['deploy <app>'];
+      expect(deployAction).toBeDefined();
+
+      await deployAction('test-app', { deployment: 'local' });
+
+      expect(app.deployApp).toHaveBeenCalledTimes(1);
+      expect(app.deployApp).toHaveBeenCalledWith('test-app', expect.objectContaining({ deployment: 'local' }));
+      expect(app.runApp).toHaveBeenCalledTimes(1);
+      expect(app.runApp).toHaveBeenCalledWith('test-app', expect.objectContaining({ deployment: 'local' }));
+    });
+
+    it('should throw and exit when --deployment is invalid', async() => {
+      const deployAction = commandActions['deploy <app>'];
+      expect(deployAction).toBeDefined();
+
+      await deployAction('test-app', { deployment: 'invalid' });
+
+      expect(app.deployApp).not.toHaveBeenCalled();
+      expect(app.runApp).not.toHaveBeenCalled();
+      expect(process.exit).toHaveBeenCalledWith(1);
     });
 
     it('should handle deploy with no-poll option', async() => {

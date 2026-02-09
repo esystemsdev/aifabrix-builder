@@ -4,6 +4,8 @@
 
 Commands for managing local infrastructure services (Postgres, Redis, pgAdmin, Redis Commander).
 
+**Docker and development only:** All `up-xxx` and `down-xxx` commands (`up-infra`, `up-platform`, `up-miso`, `up-dataplane`, `down-infra`, `down-app`) operate on Docker containers and are for local development only. They do not deploy the builder's own services to the cloud.
+
 ---
 
 <a id="aifabrix-up-infra"></a>
@@ -150,9 +152,9 @@ aifabrix up-platform --image keycloak=myreg/k:v1 --image miso-controller=myreg/m
 <a id="aifabrix-up-dataplane"></a>
 ## aifabrix up-dataplane
 
-Register or rotate, run locally, and deploy the dataplane app in dev.
+Register or rotate, deploy to the controller, then run the dataplane app locally in dev. **Always local deployment:** this command does not deploy dataplane to the cloud; it sends the manifest to the Miso Controller then runs the dataplane container locally (same as `aifabrix deploy dataplane --deployment=local`).
 
-**What:** If dataplane is already registered in the environment, rotates the app secret; otherwise registers the app. Then runs dataplane locally and deploys via Miso Controller. Requires login and environment `dev`.
+**What:** If dataplane is already registered in the environment, rotates the app secret; otherwise registers the app. Then deploys via Miso Controller (sends manifest), then runs the dataplane app locally. Requires login and environment `dev`.
 
 **When:** Setting up or refreshing dataplane in dev for pipeline development or testing.
 
@@ -161,7 +163,7 @@ Register or rotate, run locally, and deploy the dataplane app in dev.
 # Login and set environment to dev first
 aifabrix login --environment dev
 
-# Register/rotate, run, deploy dataplane
+# Register/rotate, deploy, then run dataplane locally
 aifabrix up-dataplane
 
 # With image override

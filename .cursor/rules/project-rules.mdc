@@ -262,6 +262,8 @@ const appResponse = await registerApplication(controllerUrl, environment, data, 
 - Gradually migrate modules to use centralized API client
 - Eventually deprecate direct usage of `lib/utils/api.js`
 
+**API Permissions**: When adding or changing `lib/api` functions that call Controller or Dataplane, document required permissions. See [permissions-guide.md](permissions-guide.md) for how to update `@requiresPermission` JSDoc and [docs/commands/permissions.md](../docs/commands/permissions.md).
+
 ## Code Style
 
 ### JavaScript Conventions
@@ -880,6 +882,7 @@ Define request/response types using JSDoc `@typedef`:
 - ✅ Use centralized API client (`lib/api/`) for new API calls
 - ✅ Define request/response types using JSDoc `@typedef` in `lib/api/types/`
 - ✅ Use domain-specific API modules (`lib/api/*.api.js`) instead of direct `makeApiCall`
+- ✅ When adding lib/api functions that call Controller/Dataplane, add `@requiresPermission` JSDoc per [permissions-guide.md](permissions-guide.md)
 
 ### Must Not Do (❌)
 - ❌ Never hardcode secrets, passwords, or tokens

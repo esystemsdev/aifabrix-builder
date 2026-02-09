@@ -2,7 +2,7 @@
 
 ← [Documentation index](../README.md) · [Commands index](README.md)
 
-Commands for authenticating with Miso Controller and managing authentication tokens.
+Commands for authenticating with Miso Controller and managing authentication tokens. After login, **online commands** (show --online, deploy, download, wizard, etc.) require specific RBAC permissions on the Controller or Dataplane; see [Online Commands and Permissions](permissions.md).
 
 ---
 

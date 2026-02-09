@@ -2,7 +2,7 @@
 
 ← [Documentation index](../README.md) · [Commands index](README.md)
 
-Commands for creating, testing, and managing external system integrations.
+Commands for creating, testing, and managing external system integrations. Commands that call the Dataplane require login and the appropriate Dataplane permissions (e.g. **external-system:read**, **external-system:create**, **credential:read**). See [Online Commands and Permissions](permissions.md).
 
 ---
 
@@ -106,6 +106,7 @@ Controller and environment come from `config.yaml` (set via `aifabrix login` or 
 **Prerequisites:**
 - Must be logged in: `aifabrix login`
 - System must exist in the dataplane
+- Dataplane permission: **external-system:read**
 
 **Process:**
 1. Gets dataplane URL from controller
@@ -433,7 +434,7 @@ After unit tests:
 <a id="aifabrix-test-integration-app"></a>
 ## aifabrix test-integration <app>
 
-Run integration tests via dataplane pipeline API.
+Run integration tests via dataplane pipeline API. Requires Dataplane access (authenticated; pipeline test endpoint). See [Online Commands and Permissions](permissions.md).
 
 **What:** Tests external system configuration by calling the dataplane pipeline test API. Validates field mappings, metadata schemas, and endpoint connectivity using real API calls. Requires dataplane access and authentication. Includes online validation of ABAC dimensions against the Dimension Catalog.
 
@@ -798,7 +799,7 @@ After comparing:
 <a id="aifabrix-datasource-deploy-myapp-file"></a>
 ### aifabrix datasource deploy <myapp> <file>
 
-Deploy datasource to dataplane.
+Deploy datasource to dataplane. Requires Dataplane access (authenticated; pipeline publish). See [Online Commands and Permissions](permissions.md).
 
 **What:** Validates and deploys an external datasource configuration to the dataplane via the Miso Controller. Gets dataplane URL from controller, then deploys datasource configuration.
 

@@ -838,8 +838,7 @@ app:
         status: { status: 'failed' }
       });
 
-      await appDeploy.deployApp('test-app', {});
-
+      await expect(appDeploy.deployApp('test-app', {})).rejects.toThrow('Deployment failed');
       expect(deployer.deployToController).toHaveBeenCalled();
     });
 

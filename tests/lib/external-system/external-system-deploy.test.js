@@ -63,6 +63,12 @@ jest.mock('../../../lib/generator/external-controller-manifest', () => ({
 jest.mock('../../../lib/deployment/deployer', () => ({
   deployToController: jest.fn()
 }));
+jest.mock('../../../lib/utils/dataplane-resolver', () => ({
+  resolveDataplaneUrl: jest.fn()
+}));
+jest.mock('../../../lib/api/external-systems.api', () => ({
+  getExternalSystem: jest.fn()
+}));
 
 const { getDeploymentAuth } = require('../../../lib/utils/token-manager');
 const { getConfig } = require('../../../lib/core/config');
@@ -71,6 +77,8 @@ const { validateExternalSystemComplete } = require('../../../lib/validation/vali
 const { displayValidationResults } = require('../../../lib/validation/validate-display');
 const { generateControllerManifest } = require('../../../lib/generator/external-controller-manifest');
 const { deployToController } = require('../../../lib/deployment/deployer');
+const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
+const { getExternalSystem } = require('../../../lib/api/external-systems.api');
 
 describe('External System Deploy Module', () => {
   const appName = 'test-external-app';
@@ -122,6 +130,8 @@ describe('External System Deploy Module', () => {
       success: true,
       data: { key: 'test-external-app' }
     });
+    resolveDataplaneUrl.mockResolvedValue('http://dataplane:4000');
+    getExternalSystem.mockResolvedValue({});
   });
 
   describe('deployExternalSystem', () => {
@@ -404,6 +414,82 @@ describe('External System Deploy Module', () => {
 
       // Should display validation results exactly as validate command would
       expect(displayValidationResults).toHaveBeenCalledWith(validationResult);
+    });
+
+    it('should display API and MCP docs when dataplane returns them', async() => {
+      getExternalSystem.mockResolvedValue({
+        data: {
+          key: 'test-external-app',
+          mcpServerUrl: 'https://dataplane.example.com/mcp/hubspot',
+          apiDocumentUrl: 'https://dataplane.example.com/openapi/hubspot.json',
+          openApiDocsPageUrl: 'https://dataplane.example.com/docs'
+        }
+      });
+
+      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
+      await deployExternalSystem(appName);
+
+      expect(resolveDataplaneUrl).toHaveBeenCalledWith(
+        'http://localhost:3000',
+        'dev',
+        { type: 'bearer', token: 'test-token' }
+      );
+      expect(getExternalSystem).toHaveBeenCalledWith(
+        'http://dataplane:4000',
+        'test-external-app',
+        { type: 'bearer', token: 'test-token' }
+      );
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Documentation:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('API Docs:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('MCP Server:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('OpenAPI Docs Page:'));
+    });
+
+    it('should display only present doc URLs when some are missing', async() => {
+      getExternalSystem.mockResolvedValue({
+        data: {
+          key: 'test-external-app',
+          mcpServerUrl: 'https://dataplane.example.com/mcp/hubspot'
+        }
+      });
+
+      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
+      await deployExternalSystem(appName);
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Documentation:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('MCP Server:'));
+      const logCalls = logger.log.mock.calls.map(c => c[0]);
+      expect(logCalls.some(s => s.includes('API Docs:'))).toBe(false);
+      expect(logCalls.some(s => s.includes('OpenAPI Docs Page:'))).toBe(false);
+    });
+
+    it('should not show Documentation section when no doc URLs returned', async() => {
+      getExternalSystem.mockResolvedValue({ data: { key: 'test-external-app' } });
+
+      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
+      await deployExternalSystem(appName);
+
+      const logCalls = logger.log.mock.calls.map(c => c[0]);
+      expect(logCalls.some(s => s === 'Documentation:')).toBe(false);
+    });
+
+    it('should complete successfully when resolveDataplaneUrl fails', async() => {
+      resolveDataplaneUrl.mockRejectedValue(new Error('Dataplane not found'));
+
+      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
+      const result = await deployExternalSystem(appName);
+
+      expect(result.success).toBe(true);
+      expect(getExternalSystem).not.toHaveBeenCalled();
+    });
+
+    it('should complete successfully when getExternalSystem fails', async() => {
+      getExternalSystem.mockRejectedValue(new Error('404 Not Found'));
+
+      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
+      const result = await deployExternalSystem(appName);
+
+      expect(result.success).toBe(true);
     });
   });
 });

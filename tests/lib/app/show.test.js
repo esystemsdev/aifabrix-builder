@@ -168,9 +168,9 @@ describe('lib/app/show.js', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Source: offline'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('My App'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('admin'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('read'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Authentication'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Databases'));
+      expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('🛡️ Permissions'));
     });
 
     it('should output JSON from generated manifest when --json', async() => {
@@ -192,6 +192,49 @@ describe('lib/app/show.js', () => {
       expect(out.source).toBe('offline');
       expect(out.appKey).toBe('myapp');
       expect(out.application.deploymentKey).toBeDefined();
+    });
+
+    it('should output only permissions when --permissions offline (human-readable)', async() => {
+      const appPath = path.join(process.cwd(), 'builder', 'myapp');
+      const deployment = {
+        key: 'myapp',
+        displayName: 'My App',
+        type: 'webapp',
+        deploymentKey: 'abc123',
+        roles: [{ name: 'admin', value: 'admin' }],
+        permissions: [{ name: 'read', roles: ['admin'], description: 'Read permission' }],
+        configuration: []
+      };
+      generator.buildDeploymentManifestInMemory.mockResolvedValue({ deployment, appPath });
+
+      await showApp('myapp', { online: false, json: false, permissions: true });
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Source: offline'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🛡️ Permissions'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('read'));
+      expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('📱 Application'));
+    });
+
+    it('should output only permissions when --permissions --json offline', async() => {
+      const appPath = path.join(process.cwd(), 'builder', 'myapp');
+      const deployment = {
+        key: 'myapp',
+        displayName: 'My App',
+        type: 'webapp',
+        deploymentKey: 'abc123',
+        roles: [],
+        permissions: [{ name: 'write', roles: ['admin'] }],
+        configuration: []
+      };
+      generator.buildDeploymentManifestInMemory.mockResolvedValue({ deployment, appPath });
+
+      await showApp('myapp', { json: true, permissions: true });
+
+      const out = JSON.parse(logger.log.mock.calls[0][0]);
+      expect(out.source).toBe('offline');
+      expect(out.appKey).toBe('myapp');
+      expect(out.permissions).toEqual([{ name: 'write', roles: ['admin'] }]);
+      expect(out.application).toBeUndefined();
     });
 
     it('should use generated manifest with system.configuration and conditionalConfiguration', async() => {
@@ -413,6 +456,56 @@ externalIntegration:
       expect(out.controllerUrl).toBe('http://localhost:3000');
       expect(out.appKey).toBe('myapp');
       expect(out.application).toBeDefined();
+    });
+
+    it('should output only permissions when --permissions online (human-readable)', async() => {
+      getApplication.mockResolvedValue({
+        success: true,
+        data: {
+          key: 'myapp',
+          displayName: 'My Application',
+          type: 'webapp',
+          configuration: {
+            permissions: [
+              { name: 'applications:read', roles: ['admin'], description: 'Read apps' }
+            ]
+          }
+        }
+      });
+
+      await showApp('myapp', { online: true, json: false, permissions: true });
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Source: online'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🛡️ Permissions'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('applications:read'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('admin'));
+      expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('📱 Application'));
+    });
+
+    it('should output only permissions when --permissions --json online', async() => {
+      getApplication.mockResolvedValue({
+        success: true,
+        data: {
+          key: 'myapp',
+          displayName: 'My Application',
+          type: 'webapp',
+          configuration: {
+            permissions: [
+              { name: 'applications:read', roles: ['admin'] }
+            ]
+          }
+        }
+      });
+
+      await showApp('myapp', { online: true, json: true, permissions: true });
+
+      expect(logger.log).toHaveBeenCalledTimes(1);
+      const out = JSON.parse(logger.log.mock.calls[0][0]);
+      expect(out.source).toBe('online');
+      expect(out.controllerUrl).toBe('http://localhost:3000');
+      expect(out.appKey).toBe('myapp');
+      expect(out.permissions).toEqual([{ name: 'applications:read', roles: ['admin'] }]);
+      expect(out.application).toBeUndefined();
     });
 
     it('should throw when no auth token (online)', async() => {

@@ -12,11 +12,11 @@ Complete command reference organized by concept with examples and troubleshootin
 - [Authentication Commands](authentication.md) - Login and logout
   - `aifabrix login` - Authenticate with Miso Controller
   - `aifabrix logout` - Clear authentication tokens
-- [Infrastructure Commands](infrastructure.md) - Local infrastructure management
+- [Infrastructure Commands](infrastructure.md) - Local infrastructure management (Docker containers and development only: up-infra, up-platform, up-miso, up-dataplane, down-infra, down-app)
   - `aifabrix up-infra` - Start local infrastructure (Postgres, Redis, optional Traefik)
   - `aifabrix up-platform` - Start platform (Keycloak, Miso Controller, Dataplane) from community images
   - `aifabrix up-miso` - Install Keycloak + Miso Controller from images (no build)
-  - `aifabrix up-dataplane` - Register/rotate, run, and deploy dataplane in dev
+  - `aifabrix up-dataplane` - Register/rotate, deploy, then run dataplane locally in dev (always local deployment)
   - `aifabrix down-infra` - Stop infrastructure or an app
   - `aifabrix status` - Show infrastructure service status
   - `aifabrix restart` - Restart infrastructure service
@@ -27,10 +27,11 @@ Complete command reference organized by concept with examples and troubleshootin
 ### Application Management
 - [Application Management Commands](application-management.md) - Application registration and management
   - `aifabrix show` - Show app info from local builder/integration (offline) or controller (--online)
-  - `aifabrix app show <appKey>` - Show application from controller (online; same as show --online)
+  - `aifabrix app show <appKey>` - Show application from controller (online; same as show --online); `--permissions` for permissions only
   - `aifabrix app register` - Register application and get pipeline credentials
   - `aifabrix app list` - List applications in an environment
   - `aifabrix app rotate-secret` - Rotate pipeline ClientSecret
+  - `aifabrix service-user create` - Create service user (username, email, redirect-uris, group-names); get one-time secret (see [permissions](permissions.md))
 
 ### Application Development
 - [Application Development Commands](application-development.md) - Local development
@@ -43,7 +44,7 @@ Complete command reference organized by concept with examples and troubleshootin
 - [Deployment Commands](deployment.md) - Deploy via Controller (Azure or local Docker)
   - `aifabrix push` - Push image to Azure Container Registry
   - `aifabrix environment deploy` - Deploy/setup environment in Miso Controller
-  - `aifabrix deploy` - Deploy via Miso Controller (use `--type external` for apps in `integration/<app>/`; no app register needed)
+  - `aifabrix deploy` - Deploy via Miso Controller (use `--deployment=local` to send manifest then run app locally; use `--type external` for apps in `integration/<app>/`; no app register needed)
   - `aifabrix deployments` - List deployments for an environment
 
 ### Validation & Comparison
@@ -74,6 +75,7 @@ Complete command reference organized by concept with examples and troubleshootin
 
 ### Reference
 - [Command Reference](reference.md) - Common workflows, global options, exit codes, configuration, and getting help
+- [Online Commands and Permissions](permissions.md) - Which permissions each online (Controller/Dataplane) command requires
 
 ---
 
@@ -103,6 +105,7 @@ Complete command reference organized by concept with examples and troubleshootin
 
 **Reference:**
 - [Command Reference](reference.md) - Workflows, options, exit codes, configuration
+- [Online Commands and Permissions](permissions.md) - Permissions for Controller and Dataplane commands
 
 ---
 

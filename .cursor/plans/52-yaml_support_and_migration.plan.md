@@ -134,7 +134,8 @@ Before marking this plan complete:
 
 | File                                                                     | Change                                                                                                                           |
 | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| [lib/schema/application-schema.json](lib/schema/application-schema.json) | `externalIntegration.systems` and `externalIntegration.dataSources` items: change pattern from `^[^ ].+\.json$` to `^[^ ].+\.(yaml|yml)$` |
+| [lib/schema/application-schema.json](lib/schema/application-schema.json) | `externalIntegration.systems` and `externalIntegration.dataSources` items: change pattern from `^[^ ].+\.json$` to `^[^ ].+(yaml |
+
 
 **Note:** After migration, schema only allows `.yaml`. No need to support both during transition.
 
@@ -367,6 +368,9 @@ Before marking this plan complete:
 | Dual support       | None; single format after convert                                           |
 | Documentation      | Single version, current only                                                |
 
+
+---
+
 ---
 
 ## Plan Validation Report
@@ -412,4 +416,3 @@ YAML support and migration: rename `variables.yaml` to `application.yaml`; conve
 - Consider adding `aifabrix convert` tests in Phase 1 (before removal) to verify conversion logic.
 - When implementing `resolveApplicationConfigPath`, ensure it is sync (fs.existsSync, fs.renameSync) as noted in plan.
 - Update project-rules.mdc "Generated Output" and "File Path Construction" examples to reference `application.yaml` after migration is complete.
-

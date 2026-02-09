@@ -22,10 +22,25 @@ jest.mock('../../../lib/utils/paths', () => ({
   getAifabrixHome: jest.fn(() => '/home/user/.aifabrix')
 }));
 
+// Mock config and dev-config (for developer-aware port checks)
+jest.mock('../../../lib/core/config', () => ({
+  getDeveloperId: jest.fn().mockResolvedValue('0')
+}));
+jest.mock('../../../lib/utils/dev-config', () => ({
+  getDevPorts: jest.fn((id) => ({
+    postgres: 5432 + (id || 0) * 100,
+    redis: 6379 + (id || 0) * 100,
+    pgadmin: 5050 + (id || 0) * 100,
+    redisCommander: 8081 + (id || 0) * 100
+  }))
+}));
+
 const fs = require('fs');
 const dockerUtils = require('../../../lib/utils/docker');
 const { getActualSecretsPath } = require('../../../lib/utils/secrets-path');
 const pathsUtil = require('../../../lib/utils/paths');
+const config = require('../../../lib/core/config');
+const devConfig = require('../../../lib/utils/dev-config');
 const {
   checkDocker,
   checkPorts,
@@ -135,6 +150,33 @@ describe('Environment Checker Module', () => {
       const result = await checkPorts();
 
       expect(result).toBe('warning');
+    });
+
+    it('should use developer-specific ports when developer-id is 6', async() => {
+      config.getDeveloperId.mockResolvedValue('6');
+      devConfig.getDevPorts.mockImplementation((id) => ({
+        postgres: 5432 + id * 100,
+        redis: 6379 + id * 100,
+        pgadmin: 5050 + id * 100,
+        redisCommander: 8081 + id * 100
+      }));
+
+      const result = await checkPorts();
+
+      expect(result).toBe('ok');
+      // Developer 6: 5432+600=6032, 6379+600=6979, 5050+600=5650, 8081+600=8681
+      expect(mockServer.listen).toHaveBeenCalledWith(6032, expect.any(Function));
+      expect(mockServer.listen).toHaveBeenCalledWith(6979, expect.any(Function));
+      expect(mockServer.listen).toHaveBeenCalledWith(5650, expect.any(Function));
+      expect(mockServer.listen).toHaveBeenCalledWith(8681, expect.any(Function));
+    });
+
+    it('should use explicit ports when passed to checkPorts', async() => {
+      const result = await checkPorts([1111, 2222]);
+
+      expect(result).toBe('ok');
+      expect(mockServer.listen).toHaveBeenCalledWith(1111, expect.any(Function));
+      expect(mockServer.listen).toHaveBeenCalledWith(2222, expect.any(Function));
     });
   });
 
@@ -276,6 +318,13 @@ describe('Environment Checker Module', () => {
     it('should include recommendations when ports are in use', async() => {
       dockerUtils.checkDockerCli.mockResolvedValue();
       dockerUtils.getComposeCommand.mockResolvedValue('docker compose');
+      config.getDeveloperId.mockResolvedValue('0');
+      devConfig.getDevPorts.mockImplementation((id) => ({
+        postgres: 5432 + (id || 0) * 100,
+        redis: 6379 + (id || 0) * 100,
+        pgadmin: 5050 + (id || 0) * 100,
+        redisCommander: 8081 + (id || 0) * 100
+      }));
 
       const net = require('net');
       const mockServer = {
@@ -300,6 +349,42 @@ describe('Environment Checker Module', () => {
 
       expect(result.ports).toBe('warning');
       expect(result.recommendations).toContain('Some required ports (5432, 6379, 5050, 8081) are in use');
+    });
+
+    it('should show developer-specific ports in recommendation when developer-id is 6', async() => {
+      dockerUtils.checkDockerCli.mockResolvedValue();
+      dockerUtils.getComposeCommand.mockResolvedValue('docker compose');
+      config.getDeveloperId.mockResolvedValue('6');
+      devConfig.getDevPorts.mockImplementation((id) => ({
+        postgres: 5432 + id * 100,
+        redis: 6379 + id * 100,
+        pgadmin: 5050 + id * 100,
+        redisCommander: 8081 + id * 100
+      }));
+
+      const net = require('net');
+      const mockServer = {
+        listen: jest.fn(() => {
+          mockServer.on.mockImplementation((event, handler) => {
+            if (event === 'error') {
+              setTimeout(() => handler(new Error('Port in use')), 0);
+            }
+          });
+          return mockServer;
+        }),
+        close: jest.fn(),
+        on: jest.fn()
+      };
+      net.createServer = jest.fn(() => mockServer);
+
+      const userPath = '/home/user/.aifabrix/secrets.local.yaml';
+      getActualSecretsPath.mockResolvedValue({ userPath, buildPath: null });
+      fs.existsSync.mockReturnValue(true);
+
+      const result = await checkEnvironment();
+
+      expect(result.ports).toBe('warning');
+      expect(result.recommendations).toContain('Some required ports (6032, 6979, 5650, 8681) are in use');
     });
 
     it('should include recommendations when secrets are missing', async() => {
@@ -331,6 +416,13 @@ describe('Environment Checker Module', () => {
 
     it('should include multiple recommendations when multiple issues found', async() => {
       dockerUtils.checkDockerCli.mockRejectedValue(new Error('Docker not found'));
+      config.getDeveloperId.mockResolvedValue('0');
+      devConfig.getDevPorts.mockImplementation((id) => ({
+        postgres: 5432 + (id || 0) * 100,
+        redis: 6379 + (id || 0) * 100,
+        pgadmin: 5050 + (id || 0) * 100,
+        redisCommander: 8081 + (id || 0) * 100
+      }));
 
       const net = require('net');
       const mockServer = {

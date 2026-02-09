@@ -73,6 +73,30 @@ describe('lib/app/show-display.js', () => {
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('URL:'));
   });
 
+  it('should display internalUrl when present', () => {
+    const summary = {
+      source: 'online',
+      controllerUrl: 'http://localhost:3600',
+      appKey: 'dataplane',
+      application: {
+        key: 'dataplane',
+        displayName: 'Dataplane',
+        type: 'webapp',
+        status: 'active',
+        url: 'http://localhost:3001',
+        internalUrl: 'http://dataplane:3001',
+        port: 3001
+      },
+      roles: [],
+      permissions: [],
+      portalInputConfigurations: [],
+      databases: []
+    };
+    display(summary);
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Internal URL:'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('http://dataplane:3001'));
+  });
+
   it('should display application with deploymentKey image healthCheck build', () => {
     const summary = {
       source: 'offline',
@@ -122,7 +146,7 @@ describe('lib/app/show-display.js', () => {
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('groups: [Admins]'));
   });
 
-  it('should display permissions with description', () => {
+  it('should not display permissions when permissionsOnly is not set', () => {
     const summary = {
       source: 'offline',
       path: 'builder/myapp',
@@ -136,10 +160,46 @@ describe('lib/app/show-display.js', () => {
       databases: []
     };
     display(summary);
+    expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('🛡️ Permissions'));
+  });
+
+  it('should display only permissions when permissionsOnly option is true', () => {
+    const summary = {
+      source: 'online',
+      controllerUrl: 'http://localhost:3000',
+      appKey: 'myapp',
+      application: { key: 'myapp', displayName: 'My App', type: 'webapp' },
+      roles: [{ name: 'admin', value: 'admin' }],
+      permissions: [
+        { name: 'applications:read', roles: ['admin'], description: 'Read apps' }
+      ],
+      portalInputConfigurations: [],
+      databases: []
+    };
+    display(summary, { permissionsOnly: true });
+    expect(logger.log).toHaveBeenCalledWith('Source: online (http://localhost:3000)');
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🛡️ Permissions'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('• read'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('roles: [admin, user]'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/\tRead access/));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('applications:read'));
+    expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('📱 Application'));
+    expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('👥 Roles'));
+  });
+
+  it('should display (none) when permissionsOnly and permissions empty', () => {
+    const summary = {
+      source: 'offline',
+      path: 'builder/myapp',
+      appKey: 'myapp',
+      application: { key: 'myapp' },
+      roles: [],
+      permissions: [],
+      portalInputConfigurations: [],
+      databases: []
+    };
+    display(summary, { permissionsOnly: true });
+    expect(logger.log).toHaveBeenCalledWith('Source: offline (builder/myapp)');
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🛡️ Permissions'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('(none)'));
+    expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('📱 Application'));
   });
 
   it('should display authentication', () => {
@@ -332,8 +392,7 @@ describe('lib/app/show-display.js', () => {
     display(summary);
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('👥 Roles'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('• user'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🛡️ Permissions'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('• read'));
+    expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('🛡️ Permissions'));
   });
 
   it('should display role as string (not object)', () => {
@@ -352,7 +411,7 @@ describe('lib/app/show-display.js', () => {
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('• viewer (viewer)'));
   });
 
-  it('should display permission without description', () => {
+  it('should display permission without description when permissionsOnly is true', () => {
     const summary = {
       source: 'offline',
       path: 'builder/myapp',
@@ -363,7 +422,7 @@ describe('lib/app/show-display.js', () => {
       portalInputConfigurations: [],
       databases: []
     };
-    display(summary);
+    display(summary, { permissionsOnly: true });
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🛡️ Permissions'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('• write'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('roles: [admin]'));
@@ -531,7 +590,7 @@ describe('lib/app/show-display.js', () => {
     expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('🗄️ Databases'));
   });
 
-  it('should display permission with empty roles', () => {
+  it('should display permission with empty roles when permissionsOnly is true', () => {
     const summary = {
       source: 'offline',
       path: 'builder/myapp',
@@ -542,7 +601,7 @@ describe('lib/app/show-display.js', () => {
       portalInputConfigurations: [],
       databases: []
     };
-    display(summary);
+    display(summary, { permissionsOnly: true });
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('• admin-only'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('roles: []'));
   });

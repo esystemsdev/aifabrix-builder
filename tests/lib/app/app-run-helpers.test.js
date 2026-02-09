@@ -113,5 +113,16 @@ describe('checkPrerequisites - version resolution', () => {
       expect.objectContaining({ updateBuilder: true })
     );
   });
+
+  it('should pass updateBuilder false for template apps (keycloak, miso-controller, dataplane)', async() => {
+    const templateAppConfig = { port: 8082, image: { name: 'aifabrix/keycloak', tag: 'latest' } };
+    await checkPrerequisites('keycloak', templateAppConfig, false, true);
+
+    expect(resolveVersionForApp).toHaveBeenCalledWith(
+      'keycloak',
+      templateAppConfig,
+      expect.objectContaining({ updateBuilder: false })
+    );
+  });
 });
 

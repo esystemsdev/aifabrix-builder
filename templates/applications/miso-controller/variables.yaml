@@ -2,7 +2,7 @@
 app:
   key: miso-controller
   displayName: 'Miso Controller'
-  description: 'AI Fabrix Miso Controller - Backend API and orchestration service'
+  description: 'Miso is the AI Fabrix in-tenant controller and portal layer for securely operating enterprise AI apps inside a customer’s Azure tenant. It provides Entra ID SSO, RBAC, audit logs, environment/app configuration via schemas, and safe secret handling via Key Vault references—ensuring governance, traceability, and predictable UX across portal, SDK, and CLI.'
   type: webapp
 
 # Image Configuration
@@ -11,7 +11,7 @@ image:
   registry: devflowiseacr.azurecr.io
   registryMode: acr
 
-# Port Configuration
+# Port Configuration (container port; host port = 3000 + developer_id*100 from ~/.aifabrix/config.yaml)
 port: 3000
 
 # Azure Requirements
@@ -64,7 +64,7 @@ configuration:
   - name: LOG_LEVEL
     portalInput:
       field: select
-      label: "Log Level"
+      label: 'Log Level'
       options:
         - debug
         - info
@@ -74,26 +74,26 @@ configuration:
   - name: ENABLE_API_DOCS
     portalInput:
       field: select
-      label: "Enable API Documentation (Swagger/ReDoc)"
+      label: 'Enable API Documentation (Swagger/ReDoc)'
       options:
-        - "true"
-        - "false"
+        - 'true'
+        - 'false'
 
   - name: FAST_STARTUP
     portalInput:
       field: select
-      label: "Fast Startup (skip non-critical init)"
+      label: 'Fast Startup (skip non-critical init)'
       options:
-        - "true"
-        - "false"
+        - 'true'
+        - 'false'
 
   - name: LOG_TO_FILE
     portalInput:
       field: select
-      label: "Log to File"
+      label: 'Log to File'
       options:
-        - "true"
-        - "false"
+        - 'true'
+        - 'false'
 
   # -------------------------------------------------------------------------
   # Keycloak Events (feature flag)
@@ -101,10 +101,10 @@ configuration:
   - name: KEYCLOAK_EVENTS_ENABLED
     portalInput:
       field: select
-      label: "Keycloak Events (sync users/groups)"
+      label: 'Keycloak Events (sync users/groups)'
       options:
-        - "true"
-        - "false"
+        - 'true'
+        - 'false'
 
   # -------------------------------------------------------------------------
   # Rate Limiting (tune for environment)
@@ -112,14 +112,14 @@ configuration:
   - name: RATE_LIMIT_WINDOW_MS
     portalInput:
       field: text
-      label: "Rate Limit Window (milliseconds)"
-      placeholder: "900000"
+      label: 'Rate Limit Window (milliseconds)'
+      placeholder: '900000'
 
   - name: RATE_LIMIT_MAX
     portalInput:
       field: text
-      label: "Rate Limit Max Requests per Window"
-      placeholder: "100"
+      label: 'Rate Limit Max Requests per Window'
+      placeholder: '100'
 
   # -------------------------------------------------------------------------
   # Redis Cache TTL (seconds) – RBAC/roles caching
@@ -127,11 +127,11 @@ configuration:
   - name: REDIS_ROLES_TTL
     portalInput:
       field: text
-      label: "Redis Roles Cache TTL (seconds)"
-      placeholder: "900"
+      label: 'Redis Roles Cache TTL (seconds)'
+      placeholder: '900'
 
   - name: REDIS_PERMISSIONS_TTL
     portalInput:
       field: text
-      label: "Redis Permissions Cache TTL (seconds)"
-      placeholder: "900"
+      label: 'Redis Permissions Cache TTL (seconds)'
+      placeholder: '900'

@@ -63,6 +63,7 @@ describe('up-dataplane command', () => {
     registerApplication.mockResolvedValue();
     rotateSecret.mockResolvedValue();
     app.deployApp.mockResolvedValue({});
+    app.runApp.mockResolvedValue();
   });
 
   describe('buildDataplaneImageRef', () => {
@@ -100,7 +101,7 @@ describe('up-dataplane command', () => {
       expect(ensureAppFromTemplate).toHaveBeenCalledWith('dataplane');
     });
 
-    it('should call register then deploy when app not registered', async() => {
+    it('should call register then deploy then run locally when app not registered', async() => {
       checkApplicationExists.mockResolvedValue(false);
 
       await handleUpDataplane({});
@@ -108,11 +109,11 @@ describe('up-dataplane command', () => {
       expect(checkApplicationExists).toHaveBeenCalledWith('dataplane', 'http://localhost:3000', 'dev', expect.any(Object));
       expect(registerApplication).toHaveBeenCalledWith('dataplane', expect.any(Object));
       expect(rotateSecret).not.toHaveBeenCalled();
-      expect(app.runApp).not.toHaveBeenCalled();
       expect(app.deployApp).toHaveBeenCalledWith('dataplane', expect.any(Object));
+      expect(app.runApp).toHaveBeenCalledWith('dataplane', {});
     });
 
-    it('should call rotateSecret (not register) then deploy when app already registered', async() => {
+    it('should call rotateSecret (not register) then deploy then run locally when app already registered', async() => {
       checkApplicationExists.mockResolvedValue(true);
 
       await handleUpDataplane({});
@@ -120,22 +121,22 @@ describe('up-dataplane command', () => {
       expect(checkApplicationExists).toHaveBeenCalledWith('dataplane', 'http://localhost:3000', 'dev', expect.any(Object));
       expect(rotateSecret).toHaveBeenCalledWith('dataplane', expect.any(Object));
       expect(registerApplication).not.toHaveBeenCalled();
-      expect(app.runApp).not.toHaveBeenCalled();
       expect(app.deployApp).toHaveBeenCalledWith('dataplane', expect.any(Object));
+      expect(app.runApp).toHaveBeenCalledWith('dataplane', {});
     });
 
-    it('should pass image override to register and deploy', async() => {
+    it('should pass image override to register and deploy then run locally', async() => {
       await handleUpDataplane({ image: 'myreg/dataplane:latest' });
 
       expect(registerApplication).toHaveBeenCalledWith('dataplane', expect.objectContaining({
         imageOverride: 'myreg/dataplane:latest',
         image: 'myreg/dataplane:latest'
       }));
-      expect(app.runApp).not.toHaveBeenCalled();
       expect(app.deployApp).toHaveBeenCalledWith('dataplane', expect.objectContaining({
         imageOverride: 'myreg/dataplane:latest',
         image: 'myreg/dataplane:latest'
       }));
+      expect(app.runApp).toHaveBeenCalledWith('dataplane', {});
     });
   });
 });

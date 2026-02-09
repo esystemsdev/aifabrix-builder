@@ -18,17 +18,27 @@ npm install -g @aifabrix/builder
 # Check your environment
 aifabrix doctor
 
-# Login to controller (change your own port)
-aifabrix login --method device --environment dev --controller http://localhost:3100
+# Login to controller (debug mode -c http://localhost:3010 - change your own port)
+aifabrix login 
 
 # Register your application (gets you credentials automatically)
 aifabrix app register dataplane
+
+# Rotate credentials if needed:
+aifabrix app rotate-secret dataplane
+
+# Run locally
+aifabrix run dataplane
+
+# Deploy to miso-controller
+aifabrix deploy dataplane
+
 ```
 
 ### 3. Build & Run Locally
 
 ```bash
-# Build the Docker image
+# Build the Docker image (latest)
 aifabrix build dataplane
 
 # Run locally
@@ -41,7 +51,7 @@ aifabrix run dataplane
 
 ## Testing dataplane (use DATAPLANE_TEST_GUIDE)
 
-**Use the builder's Dataplane Test Guide** for auth, health, wizard, external systems, and pipeline checks:
+**Use the builder’s Dataplane Test Guide** for auth, health, wizard, external systems, and pipeline checks:
 
 - **In aifabrix-builder:** `integration/hubspot/DATAPLANE_TEST_GUIDE.md`
 - **Dataplane base URL:** `http://localhost:3111`
@@ -53,13 +63,13 @@ Keep `build.localPort` in `variables.yaml` at **3111** so it matches that guide.
 **View logs:**
 
 ```bash
-docker logs aifabrix-dataplane -f
+docker logs aifabrix-dev06-dataplane -f
 ```
 
 **Stop:**
 
 ```bash
-docker stop aifabrix-dataplane
+docker stop aifabrix-dev06-dataplane
 ```
 
 ### 4. Deploy to Azure
@@ -73,6 +83,7 @@ aifabrix push dataplane --registry myacr.azurecr.io --tag "v1.0.0,latest"
 
 # Deploy to miso-controller
 aifabrix deploy dataplane
+
 ```
 
 ---
@@ -103,7 +114,8 @@ aifabrix dockerfile dataplane --force           # Generate Dockerfile
 aifabrix resolve dataplane                      # Generate .env file
 
 # Deployment
-aifabrix json dataplane                         # Generate deployment manifest
+aifabrix json dataplane                         # Preview deployment JSON
+aifabrix genkey dataplane                       # Generate deployment key
 aifabrix push dataplane --registry myacr.azurecr.io # Push to ACR
 aifabrix deploy dataplane --controller <url>    # Deploy to Azure
 
@@ -167,6 +179,8 @@ export AIFABRIX_HOME=/custom/path
 export AIFABRIX_SECRETS=/path/to/secrets.yaml
 ```
 
+**Default OAuth callback URL:** Set `DATAPLANE_WEB_SERVER_URL` (e.g. in `env.template` as `http://localhost:${PORT}`) so the dataplane can build the default OAuth2 callback URL when `redirectUri` is omitted. The callback URL is `{DATAPLANE_WEB_SERVER_URL}/auth/callback`. When you change the domain (e.g. from localhost to a production URL), update this single variable and register the same callback URL in your OAuth app (e.g. HubSpot).
+
 ---
 
 ## Troubleshooting
@@ -177,12 +191,14 @@ export AIFABRIX_SECRETS=/path/to/secrets.yaml
 - **"Authentication failed"** → Run `aifabrix login` again
 - **"Build fails"** → Check Docker is running and `variables.yaml` → `build.secrets` path is correct
 - **"Can't connect"** → Verify infrastructure is running and PostgreSQL is accessible
+- **Wizard / API 401 after `rotate-secret`** → The wizard may write `.env` to a different path (e.g. `../../.env`). Ensure the **project root** `.env` has the new `MISO_CLIENTID` and `MISO_CLIENTSECRET` (copy from the rotate-secret output or run `make resolve`), then **restart the backend** (`make dev` or restart the process) so it loads the new credentials.
 
 **Regenerate files:**
 
 ```bash
 aifabrix resolve dataplane --force
 aifabrix json dataplane
+aifabrix genkey dataplane
 ```
 
 ---

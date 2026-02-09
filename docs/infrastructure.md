@@ -204,7 +204,7 @@ aifabrix up-miso
 
 ## Up Dataplane (dev)
 
-Register (or rotate if already registered), run locally, and deploy the **dataplane** app in the **dev** environment. Use when developing against the dataplane or testing pipeline in dev.
+Register (or rotate if already registered), deploy to the controller, then run the **dataplane** app locally in the **dev** environment. Always local deployment: use when developing against the dataplane or testing pipeline in dev.
 
 **Prerequisites:** Logged in (`aifabrix login`), environment set to `dev` (`aifabrix auth config --set-environment dev`).
 
@@ -216,8 +216,8 @@ aifabrix up-dataplane
 **What happens:**
 - Ensures `builder/dataplane` exists (from template if missing)
 - If dataplane is already registered in the environment → rotates secret; otherwise → registers the app
-- Runs dataplane locally (`aifabrix run dataplane`) — until controller supports auto deployment, this step is required
-- Deploys dataplane via Miso Controller
+- Deploys dataplane via Miso Controller (sends manifest)
+- Runs dataplane locally (`aifabrix run dataplane`)
 
 **Options:**
 - `-r, --registry <url>` - Override registry for dataplane image

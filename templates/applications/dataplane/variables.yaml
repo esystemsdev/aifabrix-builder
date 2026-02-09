@@ -2,7 +2,7 @@
 app:
   key: dataplane
   displayName: "AI Fabrix Dataplane"
-  description: "Python microservice for AI processing and bulk operations. Handles document processing, external data management, and Flowise integration with MisoClient SDK authentication."
+  description: "AI Fabrix Dataplane is a secure, in-tenant integration and automation layer that supplies governed, normalized, and explainable enterprise data to AI agents. Using CIP as a declarative standard, it enforces RBAC and ABAC, executes integrations, and exposes trusted data via MCP and OpenAPI."
   type: webapp
   language: python  # Explicitly specify Python language
 

@@ -32,6 +32,17 @@ if (!global.fetch || typeof global.fetch.mockResolvedValue !== 'function') {
 // Mock modules
 jest.mock('fs');
 jest.mock('os');
+jest.mock('../../../lib/core/config', () => ({
+  getDeveloperId: jest.fn().mockResolvedValue('0')
+}));
+jest.mock('../../../lib/utils/dev-config', () => ({
+  getDevPorts: jest.fn((id) => ({
+    postgres: 5432 + (id || 0) * 100,
+    redis: 6379 + (id || 0) * 100,
+    pgadmin: 5050 + (id || 0) * 100,
+    redisCommander: 8081 + (id || 0) * 100
+  }))
+}));
 jest.mock('../../../lib/utils/secrets-path', () => ({
   getActualSecretsPath: jest.fn()
 }));

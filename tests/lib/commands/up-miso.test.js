@@ -53,10 +53,9 @@ describe('up-miso command', () => {
 
   describe('parseImageOptions', () => {
     it('should parse key=value pairs from array', () => {
-      expect(parseImageOptions(['keycloak=myreg/k:v1', 'miso-controller=myreg/m:v1', 'dataplane=myreg/d:v1'])).toEqual({
+      expect(parseImageOptions(['keycloak=myreg/k:v1', 'miso-controller=myreg/m:v1'])).toEqual({
         keycloak: 'myreg/k:v1',
-        'miso-controller': 'myreg/m:v1',
-        dataplane: 'myreg/d:v1'
+        'miso-controller': 'myreg/m:v1'
       });
     });
 
@@ -79,13 +78,12 @@ describe('up-miso command', () => {
       expect(ensureAppFromTemplate).not.toHaveBeenCalled();
     });
 
-    it('should ensure keycloak, miso-controller, and dataplane from template', async() => {
+    it('should ensure keycloak and miso-controller from template', async() => {
       await handleUpMiso({});
 
       expect(infra.checkInfraHealth).toHaveBeenCalledWith(undefined, { strict: true });
       expect(ensureAppFromTemplate).toHaveBeenCalledWith('keycloak');
       expect(ensureAppFromTemplate).toHaveBeenCalledWith('miso-controller');
-      expect(ensureAppFromTemplate).toHaveBeenCalledWith('dataplane');
     });
 
     it('should set secrets with correct ports for developer 0', async() => {
@@ -106,31 +104,28 @@ describe('up-miso command', () => {
       expect(saveLocalSecret).toHaveBeenCalledWith('miso-controller-web-server-url', 'http://localhost:3100');
     });
 
-    it('should call generateEnvFile without force for keycloak, miso-controller, and dataplane', async() => {
+    it('should call generateEnvFile without force for keycloak and miso-controller', async() => {
       await handleUpMiso({});
 
       expect(secrets.generateEnvFile).toHaveBeenCalledWith('keycloak', undefined, 'docker', false, true);
       expect(secrets.generateEnvFile).toHaveBeenCalledWith('miso-controller', undefined, 'docker', false, true);
-      expect(secrets.generateEnvFile).toHaveBeenCalledWith('dataplane', undefined, 'docker', false, true);
     });
 
-    it('should run keycloak, miso-controller, then dataplane', async() => {
+    it('should run keycloak then miso-controller', async() => {
       await handleUpMiso({});
 
-      expect(app.runApp).toHaveBeenCalledTimes(3);
+      expect(app.runApp).toHaveBeenCalledTimes(2);
       expect(app.runApp).toHaveBeenNthCalledWith(1, 'keycloak', expect.objectContaining({ skipEnvOutputPath: true, skipInfraCheck: true }));
       expect(app.runApp).toHaveBeenNthCalledWith(2, 'miso-controller', expect.objectContaining({ skipEnvOutputPath: true, skipInfraCheck: true }));
-      expect(app.runApp).toHaveBeenNthCalledWith(3, 'dataplane', expect.objectContaining({ skipEnvOutputPath: true, skipInfraCheck: true }));
     });
 
     it('should pass image overrides from --image options to runApp', async() => {
       await handleUpMiso({
-        image: ['keycloak=myreg/keycloak:v1', 'miso-controller=myreg/miso:v2', 'dataplane=myreg/dataplane:v3']
+        image: ['keycloak=myreg/keycloak:v1', 'miso-controller=myreg/miso:v2']
       });
 
       expect(app.runApp).toHaveBeenNthCalledWith(1, 'keycloak', expect.objectContaining({ image: 'myreg/keycloak:v1' }));
       expect(app.runApp).toHaveBeenNthCalledWith(2, 'miso-controller', expect.objectContaining({ image: 'myreg/miso:v2' }));
-      expect(app.runApp).toHaveBeenNthCalledWith(3, 'dataplane', expect.objectContaining({ image: 'myreg/dataplane:v3' }));
     });
   });
 });

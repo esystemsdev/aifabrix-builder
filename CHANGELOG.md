@@ -1,6 +1,23 @@
+## [2.39.0] - 2026-02-09
+
+### Added
+- **Deploy --deployment flag**: `aifabrix deploy <app> --deployment=local` runs the app locally (same as `aifabrix run <app>`); `--deployment=cloud` (default) deploys via Miso Controller
+- **Service user CLI**: `aifabrix service-user create` – create service user via controller API with group assignment; returns one-time secret with clear “save now” warning; OpenAPI spec in `templates/applications/miso-controller/openapi/service-user.openapi.yaml`
+- **API**: `lib/api/service-users.api.js` and `lib/api/types/service-users.types.js` for create service user; `@requiresPermission` and docs in `docs/commands/permissions.md`
+- **Permissions docs**: `docs/commands/permissions.md` – reference for all online (controller/dataplane) API methods and required permissions; JSDoc `@requiresPermission` in `lib/api` modules
+
+### Changed
+- **Docs**: Infrastructure – all `up-xxx` and `down-xxx` commands documented as Docker/local development only; up-dataplane explicitly “always local deployment”
+- **Docs**: Deployment – `--deployment` flag documented (local vs cloud); commands README notes up/down are Docker/development only
+
+### Technical
+- **Display**: Refactored `logApplicationOptional` in `lib/app/show-display.js` to reduce cyclomatic complexity (array-driven optional fields)
+- Tests: deploy command `--deployment=local`/`cloud` and invalid value; service-user create (API and CLI), permissions docs
+
 ## [2.38.0] - 2026-02-08
 
 ### Added
+- **CLI**: `aifabrix app show <appKey> --permissions` – show only list of permissions (human-readable or `--json`); useful for scripting RBAC checks
 - **Central deployment mapping**: `lib/schema/deployment-rules.yaml` – single source of truth for deployment key computation and value merge rules. Replaces scattered `x-triggersDeployment` / `x-valueOverridable` schema annotations with `triggerPaths` and `overridablePaths` per schema (application, externalSystem, externalDataSource). Schemas remain clean; Controller reads rules from this file.
 - **CLI**: `aifabrix credential list` – list credentials from controller/dataplane (`GET /api/v1/credential`)
 - **CLI**: `aifabrix deployment list` – list last N deployments for environment; `aifabrix app deployment <appKey>` for app-scoped deployments
