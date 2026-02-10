@@ -13,8 +13,8 @@ const path = require('path');
 const fs = require('fs');
 const Ajv = require('ajv');
 
-// Resolve schema dir via require - robust across local and CI (e.g. temp copy)
-const schemaDir = path.dirname(require.resolve('../../../lib/schema/application-schema.json'));
+// Resolve schema dir relative to this test file (tests/lib/schema -> ../../../lib/schema)
+const schemaDir = path.join(__dirname, '..', '..', '..', 'lib', 'schema');
 
 describe('Schema validation (Plan 49)', () => {
   const schemas = [
