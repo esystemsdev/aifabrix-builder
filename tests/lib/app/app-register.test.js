@@ -958,7 +958,7 @@ describe('App Register Module', () => {
       expect(body.port).toBeUndefined(); // Port should not be included for external
       expect(body.image).toBeUndefined(); // Image should not be included for external
       expect(body.externalIntegration).toBeDefined(); // externalIntegration should be included
-      expect(body.externalIntegration.url).toBe('https://api.hubspot.com'); // URL extracted from system JSON
+      expect(body.externalIntegration).toBeDefined(); // URL no longer from manifest; Controller resolves at deploy
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Application registered successfully'));
     });
 

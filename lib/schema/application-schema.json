@@ -772,18 +772,6 @@
       },
       "additionalProperties": false
     },
-    "deployment": {
-      "type": "object",
-      "description": "Deployment configuration for pipeline API",
-      "properties": {
-        "controllerUrl": {
-          "type": "string",
-          "description": "Controller API URL for deployment",
-          "pattern": "^https://.*$"
-        }
-      },
-      "additionalProperties": false
-    },
     "system": {
       "type": "object",
       "description": "Optional: Inline external system configuration for atomic deployment. Uses external-system.schema.json structure via $ref. Alternative to externalIntegration.systems file-based approach.",

@@ -201,3 +201,78 @@ Remove `deployment.controllerUrl` and `external-system.environment` from schemas
 - Before implementing Part 2.3, verify how `extractExternalAppConfiguration` / `externalIntegration.url` are used by the registration API (possibly in Controller or applications.api).
 - When modifying hubspot-system.json, consider whether Controller expects `BASE_URL` in configuration.items; coordinate with Controller repo changes.
 
+---
+
+## Implementation Validation Report
+
+**Date**: 2025-02-09  
+**Plan**: .cursor/plans/50-remove_deployment.controllerurl_and_environment.plan.md  
+**Status**: COMPLETE
+
+### Executive Summary
+
+The plan has been **fully implemented**. All Part 1 and Part 2 changes are in place; format, lint, and tests all pass. Part 3 (Controller repo) remains out of scope for this repo.
+
+### Task Completion
+
+The plan is structured by file/location rather than explicit checkboxes. Validation against the plan’s Parts 1–2 shows:
+
+
+| Part   | Scope                                                                                            | Status   |
+| ------ | ------------------------------------------------------------------------------------------------ | -------- |
+| Part 1 | Remove deployment.controllerUrl (schema, builders, variable-transformer, templates, docs, tests) | Complete |
+| Part 2 | Remove external-system.environment (schema, app-register-config, hubspot files, docs, tests)     | Complete |
+| Part 3 | Controller repo (document only; implementation elsewhere)                                        | N/A      |
+
+
+### File Existence Validation
+
+- lib/schema/application-schema.json – exists
+- lib/schema/external-system.schema.json – exists
+- lib/generator/builders.js – exists
+- lib/utils/variable-transformer.js – exists
+- lib/core/templates.js – exists
+- lib/utils/app-register-config.js – exists
+- docs/configuration/deployment-key.md – exists
+- docs/configuration/variables-yaml.md – exists
+- docs/deploying.md – exists
+- integration/hubspot/hubspot-system.json – exists
+- integration/hubspot/hubspot-deploy.json – exists
+- tests/lib/generator/generator.test.js – exists
+- tests/lib/utils/variable-transformer.test.js – exists
+- tests/lib/core/templates.test.js – exists
+- tests/integration/hubspot/hubspot-integration.test.js – exists
+- tests/lib/utils/app-register-config.test.js – exists
+
+### Implementation Completeness (Content)
+
+**Part 1 – deployment.controllerUrl**: All done. Schema deployment block removed; builders.js no longer emits deployment; variable-transformer returns null; templates.js no controllerUrl; docs and tests updated.
+
+**Part 2 – external-system.environment**: All done. Schema environment property removed; extractUrlFromSystemJson is no-op; hubspot JSON and docs/tests updated.
+
+### Test Coverage
+
+- Unit and integration tests exist for all modified code; assertions updated for removed fields; all tests pass.
+
+### Code Quality Validation
+
+- Format: PASSED (`npm run lint:fix` exit 0)
+- Lint: PASSED (`npm run lint` exit 0, 0 errors, 0 warnings)
+- Tests: PASSED (`npm test` exit 0, all tests pass)
+
+### Cursor Rules Compliance
+
+- Validation patterns, architecture, quality gates, testing, and security (manifest generic, no URLs) all satisfied.
+
+### Issues and Recommendations
+
+- None. Part 3 (Controller repo): stop reading these fields from manifest; resolve URLs from config; document in Controller repo when done.
+
+### Final Validation Checklist
+
+- All Part 1 and Part 2 tasks completed
+- All mentioned files exist and contain expected changes
+- Tests exist and pass
+- Format and lint pass (0 errors, 0 warnings)
+- Implementation complete
+

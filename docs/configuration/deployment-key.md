@@ -47,11 +47,9 @@ The canonical source is `lib/schema/deployment-rules.yaml`. Below is a summary.
 | `healthCheck` (path, interval, probePath, etc.) | Yes              | interval, probeIntervalInSeconds |
 | `frontDoorRouting`, `authentication`, `roles`, `permissions` | Yes | No |
 | `authentication.endpoints` (local, custom URLs) | Yes                | Yes               |
-| `deployment.controllerUrl`                     | Yes                | Yes               |
 | `configuration.items.value`                    | No                 | Yes               |
 | `configuration.items.required`                 | Yes                | No                |
 | `configuration.items.portalInput`              | Yes                | No                |
-| `externalSystem.environment` (baseUrl, region)  | Yes                | Yes               |
 | `externalSystem.authentication.oauth2`, `apikey`, `basic`, `aad` | No | Yes |
 | `externalSystem.openapi`, `mcp`                 | Yes                | Yes               |
 | `externalSystem.configuration.items.value`     | No                 | Yes               |
@@ -71,10 +69,8 @@ The canonical source is `lib/schema/deployment-rules.yaml`. Below is a summary.
 - `configuration.items.value` – literal values, parameter references, secrets
 - `authentication.oauth2`, `apikey`, `basic`, `aad` – credential config
 - `credentialIdOrKey` – runtime credential reference
-- `environment.baseUrl`, `region` – API base URLs per env
 - `openapi.specUrl`, `openapi.baseUrl`, `mcp.serverUrl` – endpoints per env
 - `authentication.endpoints.local`, `custom` – auth URLs per env
-- `deployment.controllerUrl` – Controller API URL per env
 - `sync.schedule`, `batchSize` – sync tuning per env
 
 **Values that impact deployment** (`triggerPaths`): structure, schema, identity, and behavior that require a redeploy when changed. Examples:

@@ -7,12 +7,16 @@
 - **Permissions docs**: `docs/commands/permissions.md` – reference for all online (controller/dataplane) API methods and required permissions; JSDoc `@requiresPermission` in `lib/api` modules
 
 ### Changed
+- **Manifest generic (no env-specific URLs)**: Removed `deployment.controllerUrl` from application schema, generators (`lib/generator/builders.js`), variable-transformer, and templates; removed `external-system.environment` (baseUrl, region) from external-system schema. Controller URL, dataplane URL, and external baseUrl are resolved outside the manifest (user config, controller config, runtime).
+- **App registration**: `lib/utils/app-register-config.js` no longer extracts URL from system JSON (`extractUrlFromSystemJson` is a no-op); registration payload and URL resolution handled by controller/config.
 - **Docs**: Infrastructure – all `up-xxx` and `down-xxx` commands documented as Docker/local development only; up-dataplane explicitly “always local deployment”
 - **Docs**: Deployment – `--deployment` flag documented (local vs cloud); commands README notes up/down are Docker/development only
+- **Docs**: deployment-key.md, variables-yaml.md, deploying.md – removed references to `deployment.controllerUrl` and `externalSystem.environment`
 
 ### Technical
 - **Display**: Refactored `logApplicationOptional` in `lib/app/show-display.js` to reduce cyclomatic complexity (array-driven optional fields)
-- Tests: deploy command `--deployment=local`/`cloud` and invalid value; service-user create (API and CLI), permissions docs
+- **Schemas**: application-schema.json (deployment block removed/controllerUrl removed), external-system.schema.json (environment property removed); integration fixtures (hubspot-system.json, hubspot-deploy.json) and tests updated for removed fields
+- Tests: deploy command `--deployment=local`/`cloud` and invalid value; service-user create (API and CLI), permissions docs; generator, variable-transformer, app-register-config, hubspot integration for manifest generic changes
 
 ## [2.38.0] - 2026-02-08
 

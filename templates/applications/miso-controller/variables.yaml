@@ -4,6 +4,7 @@ app:
   displayName: 'Miso Controller'
   description: 'Miso is the AI Fabrix in-tenant controller and portal layer for securely operating enterprise AI apps inside a customer’s Azure tenant. It provides Entra ID SSO, RBAC, audit logs, environment/app configuration via schemas, and safe secret handling via Key Vault references—ensuring governance, traceability, and predictable UX across portal, SDK, and CLI.'
   type: webapp
+  version: '1.8.0'
 
 # Image Configuration
 image:

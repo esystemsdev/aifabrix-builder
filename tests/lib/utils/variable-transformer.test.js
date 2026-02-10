@@ -282,7 +282,7 @@ describe('Variable Transformer Module', () => {
       expect(result.build.language).toBe('typescript');
     });
 
-    it('should handle deployment configuration', () => {
+    it('should not emit deployment from variables (manifest is generic)', () => {
       const variables = {
         key: 'deploy-app',
         deployment: {
@@ -293,8 +293,7 @@ describe('Variable Transformer Module', () => {
 
       const result = transformVariablesForValidation(variables, appName);
 
-      expect(result.deployment).toBeDefined();
-      expect(result.deployment.controllerUrl).toBe('https://controller.example.com');
+      expect(result.deployment).toBeUndefined();
     });
 
     it('should handle optional fields', () => {

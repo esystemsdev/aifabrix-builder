@@ -4,9 +4,6 @@
   "description": "HubSpot CRM integration with OpenAPI support for companies, contacts, and deals",
   "type": "openapi",
   "enabled": true,
-  "environment": {
-    "baseUrl": "https://api.hubapi.com"
-  },
   "authentication": {
     "type": "oauth2",
     "mode": "oauth2",

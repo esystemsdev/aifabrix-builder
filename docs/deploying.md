@@ -1025,7 +1025,6 @@ All deployment operations are logged with ISO 27001 compliant audit entries:
   "metadata": {
     "action": "deploy",
     "appName": "myapp",
-    "controllerUrl": "https://controller.aifabrix.dev",
     "environment": "dev"
   }
 }

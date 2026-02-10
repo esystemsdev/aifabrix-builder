@@ -102,22 +102,6 @@
       "type": "boolean",
       "default": true
     },
-    "environment": {
-      "type": "object",
-      "description": "Environment-level configuration values used by dataplane and external data sources.",
-      "properties": {
-        "baseUrl": {
-          "type": "string",
-          "description": "Base API URL or MCP server URL",
-          "pattern": "^(http|https)://.*$"
-        },
-        "region": {
-          "type": "string",
-          "description": "Optional region setting for API routing"
-        }
-      },
-      "additionalProperties": true
-    },
     "authentication": {
       "type": "object",
       "description": "Authentication configuration for external system",

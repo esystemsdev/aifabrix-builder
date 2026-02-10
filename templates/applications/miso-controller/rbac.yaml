@@ -352,3 +352,18 @@ permissions:
   - name: 'delegation:admin:delete'
     roles: ['aifabrix-platform-admin', 'aifabrix-security-admin']
     description: 'Administrative delete access to all delegated credentials'
+
+  # Onboarding
+  - name: 'onboarding:read'
+    roles:
+      [
+        'aifabrix-platform-admin',
+        'aifabrix-infrastructure-admin',
+        'aifabrix-deployment-admin',
+        'aifabrix-observer'
+      ]
+    description: 'View onboarding status and configuration'
+
+  - name: 'onboarding:config'
+    roles: ['aifabrix-platform-admin', 'aifabrix-infrastructure-admin']
+    description: 'Configure onboarding (license, Entra ID, subscription config)'

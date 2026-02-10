@@ -673,7 +673,7 @@ describe('Variable Transformer Module', () => {
     });
 
     describe('optional fields - deployment', () => {
-      it('should include deployment with valid controllerUrl', () => {
+      it('should not emit deployment from variables (manifest is generic)', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
@@ -684,7 +684,7 @@ describe('Variable Transformer Module', () => {
 
         const result = transformVariablesForValidation(variables, defaultAppName);
 
-        expect(result.deployment.controllerUrl).toBe('https://controller.example.com');
+        expect(result.deployment).toBeUndefined();
       });
 
       it('should not include controllerUrl when empty string', () => {
@@ -743,7 +743,7 @@ describe('Variable Transformer Module', () => {
         expect(result.deployment).toBeUndefined();
       });
 
-      it('should include deployment with valid controllerUrl', () => {
+      it('should not emit deployment when variables have deployment block', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
@@ -754,9 +754,7 @@ describe('Variable Transformer Module', () => {
 
         const result = transformVariablesForValidation(variables, defaultAppName);
 
-        expect(result.deployment).toEqual({
-          controllerUrl: 'https://controller.example.com'
-        });
+        expect(result.deployment).toBeUndefined();
       });
     });
 
@@ -904,7 +902,7 @@ describe('Variable Transformer Module', () => {
         expect(result.authentication.requiredRoles).toEqual([]);
         expect(result.repository.enabled).toBe(true);
         expect(result.build.dockerfile).toBe('Dockerfile.prod');
-        expect(result.deployment.controllerUrl).toBe('https://controller.example.com');
+        expect(result.deployment).toBeUndefined();
         expect(result.startupCommand).toBe('npm run start:prod');
         expect(result.runtimeVersion).toBe('18.0.0');
         expect(result.scaling).toEqual({ min: 2, max: 10 });

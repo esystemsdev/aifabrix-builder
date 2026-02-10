@@ -209,7 +209,7 @@ describe('App Register Config Module', () => {
   });
 
   describe('extractExternalIntegrationUrl', () => {
-    it('should extract URL from external system file', async() => {
+    it('should return url undefined (URL resolved by Controller, not from manifest)', async() => {
       const appKey = 'test-app';
       const appPath = '/builder/test-app';
       const externalIntegration = {
@@ -217,21 +217,17 @@ describe('App Register Config Module', () => {
         systems: ['test-system-deploy.json']
       };
       const systemFilePath = path.join(appPath, './', 'test-system-deploy.json');
-      const systemContent = JSON.stringify({
-        environment: {
-          baseUrl: 'https://api.example.com'
-        }
-      });
+      const systemContent = JSON.stringify({});
 
       detectAppType.mockResolvedValue({ appPath });
       fs.readFile = jest.fn().mockResolvedValue(systemContent);
 
       const result = await extractExternalIntegrationUrl(appKey, externalIntegration);
 
-      expect(result).toEqual({ url: 'https://api.example.com', apiKey: undefined });
+      expect(result).toEqual({ url: undefined, apiKey: undefined });
     });
 
-    it('should extract URL and API key from external system file', async() => {
+    it('should extract API key from external system file (url not from manifest)', async() => {
       const appKey = 'test-app';
       const appPath = '/builder/test-app';
       const externalIntegration = {
@@ -240,9 +236,6 @@ describe('App Register Config Module', () => {
       };
       const systemFilePath = path.join(appPath, './', 'test-system-deploy.json');
       const systemContent = JSON.stringify({
-        environment: {
-          baseUrl: 'https://api.example.com'
-        },
         authentication: {
           apikey: {
             key: 'api-key-123'
@@ -255,7 +248,7 @@ describe('App Register Config Module', () => {
 
       const result = await extractExternalIntegrationUrl(appKey, externalIntegration);
 
-      expect(result).toEqual({ url: 'https://api.example.com', apiKey: 'api-key-123' });
+      expect(result).toEqual({ url: undefined, apiKey: 'api-key-123' });
     });
 
     it('should not extract API key if it is a kv:// reference', async() => {
@@ -266,9 +259,6 @@ describe('App Register Config Module', () => {
         systems: ['test-system-deploy.json']
       };
       const systemContent = JSON.stringify({
-        environment: {
-          baseUrl: 'https://api.example.com'
-        },
         authentication: {
           apikey: {
             key: 'kv://secrets/api-key'
@@ -281,7 +271,7 @@ describe('App Register Config Module', () => {
 
       const result = await extractExternalIntegrationUrl(appKey, externalIntegration);
 
-      expect(result).toEqual({ url: 'https://api.example.com', apiKey: undefined });
+      expect(result).toEqual({ url: undefined, apiKey: undefined });
     });
 
     it('should throw error if externalIntegration.systems is missing', async() => {
@@ -309,7 +299,7 @@ describe('App Register Config Module', () => {
         .rejects.toThrow('External system file not found:');
     });
 
-    it('should throw error if baseUrl is missing', async() => {
+    it('should return url undefined when system JSON has no environment.baseUrl', async() => {
       const appKey = 'test-app';
       const appPath = '/builder/test-app';
       const externalIntegration = {
@@ -317,15 +307,14 @@ describe('App Register Config Module', () => {
         systems: ['test-system-deploy.json']
       };
       const systemContent = JSON.stringify({
-        // Missing environment.baseUrl
         authentication: {}
       });
 
       detectAppType.mockResolvedValue({ appPath });
       fs.readFile = jest.fn().mockResolvedValue(systemContent);
 
-      await expect(extractExternalIntegrationUrl(appKey, externalIntegration))
-        .rejects.toThrow('Missing environment.baseUrl');
+      const result = await extractExternalIntegrationUrl(appKey, externalIntegration);
+      expect(result.url).toBeUndefined();
     });
   });
 
@@ -346,11 +335,7 @@ describe('App Register Config Module', () => {
       const appKey = 'test-app';
       const options = {};
       const appPath = '/builder/test-app';
-      const systemContent = JSON.stringify({
-        environment: {
-          baseUrl: 'https://api.example.com'
-        }
-      });
+      const systemContent = JSON.stringify({});
 
       detectAppType.mockResolvedValue({ appPath });
       fs.readFile = jest.fn().mockResolvedValue(systemContent);
@@ -362,9 +347,7 @@ describe('App Register Config Module', () => {
         displayName: 'Test App',
         description: 'Test description',
         appType: 'external',
-        externalIntegration: {
-          url: 'https://api.example.com'
-        },
+        externalIntegration: {},
         port: null,
         image: null,
         language: null

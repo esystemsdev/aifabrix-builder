@@ -1425,7 +1425,7 @@ OTHER_VAR=value`;
       });
     });
 
-    it('should include deployment fields when provided', async() => {
+    it('should not emit deployment block from variables (manifest is generic)', async() => {
       const variables = {
         app: { key: 'testapp', displayName: 'Test App' },
         port: 3000,
@@ -1454,9 +1454,7 @@ OTHER_VAR=value`;
       expect(writeCall).toBeDefined();
       const deployment = JSON.parse(writeCall[1]);
 
-      expect(deployment.deployment).toEqual({
-        controllerUrl: 'https://controller.example.com'
-      });
+      expect(deployment.deployment).toBeUndefined();
     });
 
     it('should include startupCommand when provided', async() => {
@@ -1952,72 +1950,6 @@ OTHER_VAR=value`;
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('variables.yaml') || filePath.includes('env.template');
       });
-    });
-
-    it('should reject deployment config with http controllerUrl', async() => {
-      const variables = {
-        app: { key: 'testapp', displayName: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'http://controller.example.com'
-        }
-      };
-
-      fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
-          return yaml.dump(variables);
-        }
-        if (filePath.includes('env.template')) {
-          return 'NODE_ENV=development';
-        }
-        return '';
-      });
-
-      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
-
-      await generator.generateDeployJson(appName);
-
-      const writeCall = fs.writeFileSync.mock.calls.find(call =>
-        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
-      );
-      expect(writeCall).toBeDefined();
-      const deployment = JSON.parse(writeCall[1]);
-
-      // http:// URLs should be filtered out, so deployment should be undefined
-      expect(deployment.deployment).toBeUndefined();
-    });
-
-    it('should reject deployment config with empty strings', async() => {
-      const variables = {
-        app: { key: 'testapp', displayName: 'Test App' },
-        port: 3000,
-        deployment: {
-          controllerUrl: 'https://controller.example.com'
-        }
-      };
-
-      fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
-          return yaml.dump(variables);
-        }
-        if (filePath.includes('env.template')) {
-          return 'NODE_ENV=development';
-        }
-        return '';
-      });
-
-      jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
-
-      await generator.generateDeployJson(appName);
-
-      const writeCall = fs.writeFileSync.mock.calls.find(call =>
-        call[0] === jsonPath || call[0].includes('testapp-deploy.json')
-      );
-      expect(writeCall).toBeDefined();
-      const deployment = JSON.parse(writeCall[1]);
-
-      // Empty strings should be filtered out
-      expect(deployment.deployment.controllerUrl).toBe('https://controller.example.com');
     });
 
     it('should reject build config with empty dockerfile', async() => {

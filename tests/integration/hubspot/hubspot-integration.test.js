@@ -920,8 +920,7 @@ describe('HubSpot Integration Tests', () => {
       expect(dealJson.openapi.documentKey).toBe('hubspot-v3');
     });
 
-    it('should have consistent baseUrl', () => {
-      expect(systemJson.environment.baseUrl).toBe('https://api.hubapi.com');
+    it('should have consistent baseUrl in openapi', () => {
       expect(companyJson.openapi.baseUrl).toBe('https://api.hubapi.com');
       expect(contactJson.openapi.baseUrl).toBe('https://api.hubapi.com');
       expect(dealJson.openapi.baseUrl).toBe('https://api.hubapi.com');
