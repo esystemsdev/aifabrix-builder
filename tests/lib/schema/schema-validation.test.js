@@ -10,12 +10,31 @@
  */
 
 const path = require('path');
-const fs = require('fs');
 const Ajv = require('ajv');
 
-// Resolve schema dir from project root (where npm test runs) so paths work in CI and with Jest projects
-const projectRoot = process.cwd();
-const schemaDir = path.join(projectRoot, 'lib', 'schema');
+// Use real fs (not mocked) so existsSync/readFileSync return booleans in all environments (avoids "Received: undefined" when fs is mocked)
+const fs = jest.requireActual('fs');
+
+/**
+ * Resolve lib/schema directory. Tries multiple roots so tests pass in repo, CI copy, and GitHub Actions.
+ * @returns {string} Absolute path to lib/schema
+ */
+function resolveSchemaDir() {
+  const roots = [
+    typeof global !== 'undefined' && global.PROJECT_ROOT,
+    process.cwd(),
+    path.resolve(__dirname, '..', '..', '..')
+  ].filter(Boolean);
+  for (const root of roots) {
+    const candidate = path.join(path.resolve(root), 'lib', 'schema');
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return path.join(path.resolve(roots[roots.length - 1] || __dirname), 'lib', 'schema');
+}
+
+const schemaDir = resolveSchemaDir();
 
 describe('Schema validation (Plan 49)', () => {
   const schemas = [
