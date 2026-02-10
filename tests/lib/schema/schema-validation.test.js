@@ -13,8 +13,9 @@ const path = require('path');
 const fs = require('fs');
 const Ajv = require('ajv');
 
-// Resolve schema dir relative to this test file (tests/lib/schema -> ../../../lib/schema)
-const schemaDir = path.join(__dirname, '..', '..', '..', 'lib', 'schema');
+// Resolve schema dir from project root (where npm test runs) so paths work in CI and with Jest projects
+const projectRoot = process.cwd();
+const schemaDir = path.join(projectRoot, 'lib', 'schema');
 
 describe('Schema validation (Plan 49)', () => {
   const schemas = [

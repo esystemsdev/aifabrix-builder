@@ -1,3 +1,11 @@
+## [2.39.1] - 2026-02-10
+
+### Fixed
+- **Deploy lint**: Use strict equality (`===`/`!==`) in `lib/app/deploy.js` (eqeqeq); reduce cyclomatic complexity of status URL display
+
+### Technical
+- **Deploy**: Extracted status URL display into `lib/app/deploy-status-display.js` (`buildAppUrlFromControllerAndPort`, `parseUrlAndPortFromStatusBody`, `displayAppUrlFromController`) to satisfy max-lines and complexity limits
+
 ## [2.39.0] - 2026-02-09
 
 ### Added

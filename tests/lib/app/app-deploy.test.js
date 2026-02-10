@@ -23,6 +23,9 @@ jest.mock('../../../lib/utils/controller-url');
 jest.mock('../../../lib/external-system/deploy', () => ({
   deployExternalSystem: jest.fn()
 }));
+jest.mock('../../../lib/api/applications.api', () => ({
+  getApplicationStatus: jest.fn()
+}));
 
 describe('Application Deploy Module', () => {
   let tempDir;
@@ -798,6 +801,63 @@ app:
       await appDeploy.deployApp('test-app', {});
 
       expect(deployer.deployToController).toHaveBeenCalled();
+    });
+
+    it('should show app URL from status port (not controller URL) when status returns port', async() => {
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3001
+      };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        yaml.dump(config)
+      );
+
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
+      await fs.writeFile(manifestPath, JSON.stringify({
+        key: 'test-app',
+        displayName: 'Test App',
+        image: 'myreg.azurecr.io/test-app:latest',
+        port: 3001
+      }));
+
+      const generator = require('../../../lib/generator');
+      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
+
+      const controllerUrl = require('../../../lib/utils/controller-url');
+      controllerUrl.resolveControllerUrl.mockResolvedValue('http://localhost:3600');
+
+      const tokenManager = require('../../../lib/utils/token-manager');
+      tokenManager.getDeploymentAuth.mockResolvedValue({
+        type: 'bearer',
+        token: 'test-token',
+        controller: 'http://localhost:3600'
+      });
+
+      const deployer = require('../../../lib/deployment/deployer');
+      deployer.deployToController.mockResolvedValue({
+        deploymentId: 'deploy-123',
+        status: { status: 'completed' }
+      });
+
+      const applicationsApi = require('../../../lib/api/applications.api');
+      applicationsApi.getApplicationStatus.mockResolvedValue({
+        success: true,
+        data: { port: 3601 }
+      });
+
+      const logger = require('../../../lib/utils/logger');
+      const logSpy = jest.spyOn(logger, 'log');
+
+      await appDeploy.deployApp('test-app', {});
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining('http://localhost:3601')
+      );
+      expect(logSpy).not.toHaveBeenCalledWith(
+        expect.stringMatching(/App running at http:\/\/localhost:3600\b/)
+      );
+      logSpy.mockRestore();
     });
 
     it('should display deployment status when failed', async() => {
