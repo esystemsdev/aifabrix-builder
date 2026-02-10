@@ -42,6 +42,7 @@ npm test -- tests/local/lib/template-validator.test.js
 - `utils/build-copy.test.js` - Build copy utility tests
 - `lib/external-system/download-helpers.test.js` - External system download helpers tests
 - `lib/validation/external-manifest-validator.test.js` - External manifest validator tests with complex mocking
+- `lib/schema/schema-validation.test.js` - Schema validation (Plan 49): JSON schemas and deployment-rules.yaml structure; excluded from CI due to path resolution differences in GitHub Actions/Jest
 
 ## CI Exclusion
 

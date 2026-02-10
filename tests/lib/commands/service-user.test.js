@@ -196,4 +196,30 @@ describe('Service user create command', () => {
       })
     );
   });
+
+  it('should display clientId and clientSecret when controller returns data.data shape (user + clientSecret)', async() => {
+    createServiceUser.mockResolvedValue({
+      success: true,
+      data: {
+        data: {
+          user: {
+            id: 'user-uuid',
+            username: 'postman',
+            email: 'postman@esystems.fi',
+            federatedIdentity: { type: 'service-user', keycloakClientId: 'service-abc123' }
+          },
+          clientSecret: 'one-time-secret-from-controller'
+        }
+      }
+    });
+
+    await runServiceUserCreate(validOptions);
+
+    expect(logger.log).toHaveBeenCalled();
+    const output = logger.log.mock.calls.map(c => String(c[0])).join('\n');
+    expect(output).toContain('service-abc123');
+    expect(output).toContain('one-time-secret-from-controller');
+    expect(output).toContain('clientId');
+    expect(output).toContain('clientSecret');
+  });
 });

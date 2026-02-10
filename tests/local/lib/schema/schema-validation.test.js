@@ -4,6 +4,9 @@
  * Validates that all schemas parse as valid JSON, compile with AJV,
  * and that the central mapping (deployment-rules.yaml) has the expected structure.
  *
+ * In tests/local/ because path resolution to lib/schema is brittle across
+ * CI/GitHub Actions/Jest project isolation; run locally with INCLUDE_LOCAL_TESTS=true or npm test -- tests/local.
+ *
  * @fileoverview Schema validation for application, external-system, external-datasource, infrastructure
  * @author AI Fabrix Team
  * @version 2.0.0
@@ -12,26 +15,16 @@
 const path = require('path');
 const Ajv = require('ajv');
 
-// Use real fs (not mocked) so existsSync/readFileSync return booleans in all environments (avoids "Received: undefined" when fs is mocked)
 const fs = jest.requireActual('fs');
 
 /**
- * Resolve lib/schema directory. Tries multiple roots so tests pass in repo, CI copy, and GitHub Actions.
+ * Resolve lib/schema directory from this file (tests/local/lib/schema -> ../../../../lib/schema).
  * @returns {string} Absolute path to lib/schema
  */
 function resolveSchemaDir() {
-  const roots = [
-    typeof global !== 'undefined' && global.PROJECT_ROOT,
-    process.cwd(),
-    path.resolve(__dirname, '..', '..', '..')
-  ].filter(Boolean);
-  for (const root of roots) {
-    const candidate = path.join(path.resolve(root), 'lib', 'schema');
-    if (fs.existsSync(candidate)) {
-      return candidate;
-    }
-  }
-  return path.join(path.resolve(roots[roots.length - 1] || __dirname), 'lib', 'schema');
+  const projectRoot = path.resolve(__dirname, '..', '..', '..', '..');
+  const candidate = path.join(projectRoot, 'lib', 'schema');
+  return candidate;
 }
 
 const schemaDir = resolveSchemaDir();
@@ -60,7 +53,7 @@ describe('Schema validation (Plan 49)', () => {
 
   describe('JSON Schema validity (AJV compilation)', () => {
     it('should validate deployment via validator (schema compiles with $ref resolution)', () => {
-      const validator = require('../../../lib/validation/validator');
+      const validator = require('../../../../lib/validation/validator');
       const deployment = {
         key: 'testapp',
         displayName: 'Test App',
@@ -79,13 +72,13 @@ describe('Schema validation (Plan 49)', () => {
     });
 
     it('should compile external-system schema with AJV', () => {
-      const externalSystemSchema = require('../../../lib/schema/external-system.schema.json');
+      const externalSystemSchema = require('../../../../lib/schema/external-system.schema.json');
       const ajv = new Ajv({ allErrors: true, strict: false });
       expect(() => ajv.compile(externalSystemSchema)).not.toThrow();
     });
 
     it('should compile external-datasource schema with AJV', () => {
-      const externalDatasourceSchema = require('../../../lib/schema/external-datasource.schema.json');
+      const externalDatasourceSchema = require('../../../../lib/schema/external-datasource.schema.json');
       const schemaCopy = { ...externalDatasourceSchema };
       if (schemaCopy.$schema && schemaCopy.$schema.includes('2020-12')) {
         delete schemaCopy.$schema;
@@ -95,7 +88,7 @@ describe('Schema validation (Plan 49)', () => {
     });
 
     it('should compile infrastructure schema with AJV', () => {
-      const infrastructureSchema = require('../../../lib/schema/infrastructure-schema.json');
+      const infrastructureSchema = require('../../../../lib/schema/infrastructure-schema.json');
       const ajv = new Ajv({ allErrors: true, strict: false });
       expect(() => ajv.compile(infrastructureSchema)).not.toThrow();
     });
