@@ -263,6 +263,24 @@ describe('Application README Module', () => {
       expect(content).not.toContain('# Test App Builder');
     });
 
+    it('should overwrite existing README.md when options.force is true', async() => {
+      const appPath = path.join(process.cwd(), 'test-app-force');
+      fsSync.mkdirSync(appPath, { recursive: true });
+      const readmePath = path.join(appPath, 'README.md');
+      const existingContent = '# Old README';
+      fsSync.writeFileSync(readmePath, existingContent, 'utf8');
+
+      const appName = 'test-app';
+      const config = { port: 3000 };
+
+      await appReadme.generateReadmeMdFile(appPath, appName, config, { force: true });
+
+      const content = await fs.readFile(readmePath, 'utf8');
+      expect(content).toContain('# Test App Builder');
+      expect(content).toContain('aifabrix build test-app');
+      expect(content).not.toBe(existingContent);
+    });
+
     it('should handle errors gracefully', async() => {
       // Since generateReadmeMdFile now creates directories, we need to test a different error scenario
       // Test with a path that would fail for other reasons (e.g., permission denied)
@@ -344,6 +362,66 @@ describe('Application README Module', () => {
       expect(content).toContain('- Infrastructure running');
       expect(content).not.toContain('- PostgreSQL database');
       expect(content).not.toContain('- Redis');
+    });
+  });
+
+  describe('ensureReadmeForAppPath', () => {
+    it('should generate README.md when variables.yaml exists', async() => {
+      const appPath = path.join(process.cwd(), 'ensure-path-app');
+      fsSync.mkdirSync(appPath, { recursive: true });
+      const variablesContent = 'app:\n  key: myapp\nport: 3001\nimage:\n  name: aifabrix/myapp\n  registry: myacr.azurecr.io';
+      fsSync.writeFileSync(path.join(appPath, 'variables.yaml'), variablesContent, 'utf8');
+
+      await appReadme.ensureReadmeForAppPath(appPath, 'myapp');
+
+      const readmePath = path.join(appPath, 'README.md');
+      expect(fsSync.existsSync(readmePath)).toBe(true);
+      const content = fsSync.readFileSync(readmePath, 'utf8');
+      expect(content).toContain('# Myapp Builder');
+      expect(content).toContain('aifabrix build myapp');
+      expect(content).toContain('http://localhost:3001');
+    });
+
+    it('should overwrite existing README.md when variables.yaml exists', async() => {
+      const appPath = path.join(process.cwd(), 'ensure-path-overwrite');
+      fsSync.mkdirSync(appPath, { recursive: true });
+      fsSync.writeFileSync(path.join(appPath, 'README.md'), '# Old', 'utf8');
+      fsSync.writeFileSync(path.join(appPath, 'variables.yaml'), 'port: 4000\nimage:\n  name: aifabrix/overwrite', 'utf8');
+
+      await appReadme.ensureReadmeForAppPath(appPath, 'overwrite');
+
+      const content = fsSync.readFileSync(path.join(appPath, 'README.md'), 'utf8');
+      expect(content).toContain('# Overwrite Builder');
+      expect(content).not.toBe('# Old');
+    });
+
+    it('should do nothing when variables.yaml does not exist', async() => {
+      const appPath = path.join(process.cwd(), 'ensure-path-no-vars');
+      fsSync.mkdirSync(appPath, { recursive: true });
+
+      await appReadme.ensureReadmeForAppPath(appPath, 'no-vars');
+
+      expect(fsSync.existsSync(path.join(appPath, 'README.md'))).toBe(false);
+    });
+  });
+
+  describe('ensureReadmeForApp', () => {
+    it('should generate README at builder path when variables.yaml exists', async() => {
+      const builderPath = path.join(process.cwd(), 'builder', 'dataplane');
+      fsSync.mkdirSync(builderPath, { recursive: true });
+      fsSync.writeFileSync(
+        path.join(builderPath, 'variables.yaml'),
+        'port: 3001\nimage:\n  name: aifabrix/dataplane\n  registry: myacr.azurecr.io',
+        'utf8'
+      );
+
+      await appReadme.ensureReadmeForApp('dataplane');
+
+      const readmePath = path.join(builderPath, 'README.md');
+      expect(fsSync.existsSync(readmePath)).toBe(true);
+      const content = fsSync.readFileSync(readmePath, 'utf8');
+      expect(content).toContain('# Dataplane Builder');
+      expect(content).toContain('aifabrix build dataplane');
     });
   });
 });

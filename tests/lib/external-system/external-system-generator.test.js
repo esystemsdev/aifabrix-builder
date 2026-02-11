@@ -58,11 +58,8 @@ describe('External System Generator Module', () => {
   "description": "{{systemDescription}}",
   "type": "{{systemType}}",
   "enabled": true,
-  "environment": {
-    "baseUrl": "https://api.example.com"
-  },
   "authentication": {
-    "mode": "{{authType}}"{{#if (eq authType "apikey")}},
+    "type": "{{authType}}"{{#if (eq authType "apikey")}},
     "apikey": {
       "headerName": "X-API-Key",
       "key": "kv://{{systemKey}}-api-key"
@@ -72,7 +69,21 @@ describe('External System Generator Module', () => {
     "documentKey": "{{systemKey}}-api",
     "autoDiscoverEntities": false
   }{{/if}},
-  "tags": []
+  "tags": [],
+  "configuration": [
+    {
+      "name": "BASE_URL",
+      "value": "{{#if baseUrl}}{{baseUrl}}{{else}}https://api.example.com{{/if}}",
+      "location": "variable",
+      "required": true,
+      "portalInput": {
+        "field": "text",
+        "label": "Base URL",
+        "placeholder": "https://api.example.com",
+        "validation": { "required": true }
+      }
+    }
+  ]
 }`;
 
   const mockDatasourceTemplate = `{
@@ -130,7 +141,34 @@ describe('External System Generator Module', () => {
       const parsed = JSON.parse(writtenContent);
       expect(parsed.key).toBe('test-system');
       expect(parsed.type).toBe('openapi');
-      expect(parsed.authentication.mode).toBe('apikey');
+      expect(parsed.authentication.type).toBe('apikey');
+      expect(Array.isArray(parsed.configuration)).toBe(true);
+      expect(parsed.configuration).toHaveLength(1);
+      expect(parsed.configuration[0].name).toBe('BASE_URL');
+      expect(parsed.configuration[0].value).toBe('https://api.example.com');
+      expect(parsed.configuration[0].location).toBe('variable');
+      expect(parsed.configuration[0].required).toBe(true);
+      expect(parsed.configuration[0].portalInput).toEqual({
+        field: 'text',
+        label: 'Base URL',
+        placeholder: 'https://api.example.com',
+        validation: { required: true }
+      });
+    });
+
+    it('should use baseUrl in configuration when provided', async() => {
+      const systemKey = 'test-system';
+      const config = { baseUrl: 'https://api.hubapi.com' };
+
+      fsPromises.readFile = jest.fn().mockResolvedValue(mockSystemTemplate);
+      fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
+
+      const { generateExternalSystemTemplate } = require('../../../lib/external-system/generator');
+      await generateExternalSystemTemplate(appPath, systemKey, config);
+
+      const writeCall = fsPromises.writeFile.mock.calls[0];
+      const parsed = JSON.parse(writeCall[1]);
+      expect(parsed.configuration[0].value).toBe('https://api.hubapi.com');
     });
 
     it('should format system display name from key', async() => {
@@ -283,6 +321,71 @@ describe('External System Generator Module', () => {
       const { generateExternalDataSourceTemplate } = require('../../../lib/external-system/generator');
       await expect(generateExternalDataSourceTemplate(appPath, 'test-datasource', { systemKey: 'test' }))
         .rejects.toThrow('Failed to generate external datasource template');
+    });
+
+    it('should emit default dimensions and schema-valid attribute expressions when dimensions/attributes are empty', async() => {
+      const realTemplate = fs.readFileSync(datasourceTemplatePath, 'utf8');
+      fsPromises.readFile = jest.fn().mockResolvedValue(realTemplate);
+      fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
+
+      const { generateExternalDataSourceTemplate } = require('../../../lib/external-system/generator');
+      await generateExternalDataSourceTemplate(appPath, 'test-ds', {
+        systemKey: 'test-system',
+        entityType: 'recordStorage',
+        resourceType: 'document',
+        systemType: 'rest'
+      });
+
+      const writtenContent = fsPromises.writeFile.mock.calls[0][1];
+      const parsed = JSON.parse(writtenContent);
+
+      expect(parsed.fieldMappings.dimensions).toEqual({
+        country: 'metadata.country',
+        department: 'metadata.department'
+      });
+      expect(parsed.fieldMappings.attributes.id).toMatchObject({
+        expression: '{{raw.id}}',
+        type: 'string',
+        indexed: true
+      });
+      expect(parsed.fieldMappings.attributes.name).toMatchObject({
+        expression: '{{raw.name}}',
+        type: 'string',
+        indexed: false
+      });
+      expect(parsed.exposed.attributes).toEqual(['id', 'name']);
+    });
+
+    it('should generate datasource JSON that validates against external-datasource schema', async() => {
+      const Ajv = require('ajv');
+      const realTemplate = fs.readFileSync(datasourceTemplatePath, 'utf8');
+      fsPromises.readFile = jest.fn().mockResolvedValue(realTemplate);
+      fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
+
+      const { generateExternalDataSourceTemplate } = require('../../../lib/external-system/generator');
+      await generateExternalDataSourceTemplate(appPath, 'test-ds', {
+        systemKey: 'test-system',
+        entityType: 'recordStorage',
+        resourceType: 'document',
+        systemType: 'rest'
+      });
+
+      const writtenContent = fsPromises.writeFile.mock.calls[0][1];
+      const json = JSON.parse(writtenContent);
+
+      let schema = require('../../../lib/schema/external-datasource.schema.json');
+      if (schema.$schema && schema.$schema.includes('2020-12')) {
+        schema = { ...schema };
+        delete schema.$schema;
+      }
+      const ajv = new Ajv({ allErrors: true, strict: false });
+      ajv.addSchema(schema, schema.$id);
+      const valid = ajv.validate(schema.$id, json);
+
+      expect(valid).toBe(true);
+      if (!valid) {
+        expect(ajv.errors).toBeNull();
+      }
     });
   });
 

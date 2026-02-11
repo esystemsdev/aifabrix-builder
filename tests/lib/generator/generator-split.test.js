@@ -88,10 +88,10 @@ describe('Generator Split Functions', () => {
 
   describe('parseImageReference', () => {
     it('should parse full image reference with registry', () => {
-      const imageString = 'devflowiseacr.azurecr.io/aifabrix/miso-controller:latest';
+      const imageString = 'aifabrixdevacr.azurecr.io/aifabrix/miso-controller:latest';
       const result = generator.parseImageReference(imageString);
 
-      expect(result.registry).toBe('devflowiseacr.azurecr.io');
+      expect(result.registry).toBe('aifabrixdevacr.azurecr.io');
       expect(result.name).toBe('aifabrix/miso-controller');
       expect(result.tag).toBe('latest');
     });
@@ -106,10 +106,10 @@ describe('Generator Split Functions', () => {
     });
 
     it('should parse image without tag', () => {
-      const imageString = 'devflowiseacr.azurecr.io/aifabrix/miso-controller';
+      const imageString = 'aifabrixdevacr.azurecr.io/aifabrix/miso-controller';
       const result = generator.parseImageReference(imageString);
 
-      expect(result.registry).toBe('devflowiseacr.azurecr.io');
+      expect(result.registry).toBe('aifabrixdevacr.azurecr.io');
       expect(result.name).toBe('aifabrix/miso-controller');
       expect(result.tag).toBe('latest');
     });

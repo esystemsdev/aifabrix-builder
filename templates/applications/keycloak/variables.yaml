@@ -10,7 +10,7 @@ app:
 image:
   name: aifabrix/keycloak
   tag: 'latest'
-  registry: devflowiseacr.azurecr.io
+  registry: aifabrixdevacr.azurecr.io
   registryMode: acr
 
 # Port Configuration (base for host; host port = 8082 + developer_id*100 from ~/.aifabrix/config.yaml)

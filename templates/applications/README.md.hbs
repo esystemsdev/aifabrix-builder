@@ -19,7 +19,7 @@ npm install -g @aifabrix/builder
 aifabrix doctor
 
 # Login to controller (offline tokens are default; sets controller and environment in config)
-aifabrix login --method device --environment dev --controller http://localhost:3000
+aifabrix login --controller http://localhost:3000
 
 # Register your application (gets you credentials; uses controller and environment from config)
 aifabrix app register {{appName}}
@@ -42,13 +42,13 @@ aifabrix run {{appName}}
 
 **View logs:**
 ```bash
-docker logs aifabrix-{{appName}} -f
+aifabrix logs {{appName}}
 ```
 
 **Stop:**
 ```bash
-aifabrix down-infra {{appName}}
-# aifabrix down-infra {{appName}} --volumes   # also remove data volume
+aifabrix down-app {{appName}}
+# aifabrix down-app {{appName}} --volumes   # also remove data volume
 ```
 
 ### 4. Deploy to Azure
@@ -61,7 +61,7 @@ aifabrix build {{appName}} --tag v1.0.0
 aifabrix push {{appName}} --registry {{registry}} --tag "v1.0.0,latest"
 
 # Deploy (controller and environment from config; set via aifabrix login or aifabrix auth config)
-aifabrix deploy {{appName}}
+aifabrix deploy {{appName}} --deployment local
 ```
 
 ---
@@ -87,7 +87,7 @@ aifabrix app rotate-secret {{appName}}
 # Development
 aifabrix build {{appName}}                        # Build app
 aifabrix run {{appName}}                          # Run locally
-aifabrix down-infra {{appName}} [--volumes]             # Stop app (optionally remove volume)
+aifabrix down-app {{appName}} [--volumes]         # Stop app (optionally remove volume)
 aifabrix dockerfile {{appName}} --force           # Generate Dockerfile
 aifabrix resolve {{appName}}                      # Generate .env file
 
@@ -118,7 +118,7 @@ aifabrix build {{appName}} --language typescript  # Override language detection
 ### Run Options
 
 ```bash
-aifabrix run {{appName}} --port {{localPort}}   # Override local port
+aifabrix run {{appName}} --port {{localPort}}     # Override local port
 aifabrix run {{appName}} --debug                  # Debug output
 ```
 
@@ -132,7 +132,7 @@ aifabrix push {{appName}} --registry {{registry}} --tag "v1.0.0,latest,stable"
 ### Deploy Options
 
 ```bash
-aifabrix deploy {{appName}}                       # Uses controller and environment from config
+aifabrix deploy {{appName}} --deployment local    # Uses controller and environment from config
 aifabrix deploy {{appName}} --no-poll             # Deploy without polling for status
 ```
 

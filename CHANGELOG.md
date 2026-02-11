@@ -1,3 +1,17 @@
+## [2.39.2] - 2026-02-11
+
+### Added
+- **External system template**: `configuration` array with BASE_URL (portal input, validation); generator passes `baseUrl` and normalizes role `groups`; tests for configuration and baseUrl override.
+- **Dynamic README generation**: When using template apps or `aifabrix up-miso` / `up-platform` / `up-dataplane`, `README.md` is now generated from `templates/applications/README.md.hbs` using the app’s `variables.yaml`. Generated after copying from `templates/applications/<appName>` and refreshed on every ensure so docs stay in sync with config (port, image, registry, services).
+
+### Changed
+- **Template copy**: `ensureTemplateAtPath` (up-common) generates README at the target path after copying template files.
+- **ensureAppFromTemplate**: Calls `ensureReadmeForApp(appName)` at the end so keycloak, miso-controller, and dataplane get READMEs created or updated whenever the command runs.
+
+### Technical
+- **lib/app/readme.js**: `generateReadmeMdFile(..., options)` supports `options.force` to overwrite existing README; new `ensureReadmeForAppPath(appPath, appName)` (loads variables.yaml, writes README); new `ensureReadmeForApp(appName)` (primary and cwd builder paths).
+- **Tests**: app-readme (force overwrite, ensureReadmeForAppPath when vars exist/missing/overwrite, ensureReadmeForApp at builder path); up-common mock of readme and assertions that ensureReadmeForAppPath/ensureReadmeForApp are called.
+
 ## [2.39.1] - 2026-02-10
 
 ### Fixed

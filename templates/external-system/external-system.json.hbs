@@ -4,11 +4,8 @@
   "description": "{{systemDescription}}",
   "type": "{{systemType}}",
   "enabled": true,
-  "environment": {
-    "baseUrl": "https://api.example.com"
-  },
   "authentication": {
-    "mode": "{{authType}}"{{#if (eq authType "oauth2")}},
+    "type": "{{authType}}"{{#if (eq authType "oauth2")}},
     "oauth2": {
       "tokenUrl": "https://api.example.com/oauth/token",
       "clientId": "kv://{{systemKey}}-oauth2-client-id",
@@ -32,14 +29,30 @@
     "serverUrl": "https://mcp.example.com",
     "toolPrefix": "{{systemKey}}"
   }{{/if}},
-  "tags": []{{#if roles}},
+  "tags": [],
+  "configuration": [
+    {
+      "name": "BASE_URL",
+      "value": "{{#if baseUrl}}{{baseUrl}}{{else}}https://api.example.com{{/if}}",
+      "location": "variable",
+      "required": true,
+      "portalInput": {
+        "field": "text",
+        "label": "Base URL",
+        "placeholder": "https://api.example.com",
+        "validation": {
+          "required": true
+        }
+      }
+    }
+  ]{{#if roles}},
   "roles": [
     {{#each roles}}
     {
       "name": "{{name}}",
       "value": "{{value}}",
-      "description": "{{description}}"{{#if Groups}},
-      "groups": [{{#each Groups}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
+      "description": "{{description}}"{{#if groups}},
+      "groups": [{{#each groups}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
     }{{#unless @last}},{{/unless}}
     {{/each}}
   ]{{/if}}{{#if permissions}},

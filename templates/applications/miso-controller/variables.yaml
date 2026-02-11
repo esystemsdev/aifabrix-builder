@@ -9,7 +9,7 @@ app:
 # Image Configuration
 image:
   name: aifabrix/miso-controller
-  registry: devflowiseacr.azurecr.io
+  registry: aifabrixdevacr.azurecr.io
   registryMode: acr
 
 # Port Configuration (container port; host port = 3000 + developer_id*100 from ~/.aifabrix/config.yaml)

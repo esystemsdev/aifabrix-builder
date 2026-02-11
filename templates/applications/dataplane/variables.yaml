@@ -13,7 +13,7 @@ app:
 image:
   name: aifabrix/dataplane
   tag: latest
-  registry: devflowiseacr.azurecr.io
+  registry: aifabrixdevacr.azurecr.io
   registryMode: acr
 
 # Port Configuration

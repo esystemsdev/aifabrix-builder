@@ -27,6 +27,11 @@ jest.mock('../../../lib/validation/template', () => ({
   copyTemplateFiles: jest.fn()
 }));
 
+jest.mock('../../../lib/app/readme', () => ({
+  ensureReadmeForAppPath: jest.fn().mockResolvedValue(undefined),
+  ensureReadmeForApp: jest.fn().mockResolvedValue(undefined)
+}));
+
 jest.mock('../../../lib/utils/paths', () => ({
   getBuilderPath: jest.fn((appName) => require('path').join(process.cwd(), 'builder', appName))
 }));
@@ -40,6 +45,7 @@ const {
   getEnvOutputPathFolder
 } = require('../../../lib/commands/up-common');
 const { copyTemplateFiles } = require('../../../lib/validation/template');
+const { ensureReadmeForAppPath, ensureReadmeForApp } = require('../../../lib/app/readme');
 
 describe('up-common ensureAppFromTemplate', () => {
   const cwd = process.cwd();
@@ -74,6 +80,7 @@ describe('up-common ensureAppFromTemplate', () => {
 
     expect(result).toBe(false);
     expect(copyTemplateFiles).not.toHaveBeenCalled();
+    expect(ensureReadmeForApp).toHaveBeenCalledWith('keycloak');
   });
 
   it('should copy template and return true when variables.yaml does not exist', async() => {
@@ -86,6 +93,8 @@ describe('up-common ensureAppFromTemplate', () => {
 
     expect(result).toBe(true);
     expect(copyTemplateFiles).toHaveBeenCalledWith('dataplane', appPath);
+    expect(ensureReadmeForAppPath).toHaveBeenCalledWith(appPath, 'dataplane');
+    expect(ensureReadmeForApp).toHaveBeenCalledWith('dataplane');
   });
 });
 
