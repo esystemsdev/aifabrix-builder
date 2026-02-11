@@ -905,6 +905,19 @@ describe('App Register Module', () => {
       const appDir = path.join(tempDir, 'integration', appKey);
       fsSync.mkdirSync(appDir, { recursive: true });
 
+      // Force integration path for this appKey so variables load from integration/ (CI-safe)
+      paths.detectAppType.mockImplementation(async(key) => {
+        const integrationPath = path.join(tempDir, 'integration', key);
+        const builderPath = path.join(tempDir, 'builder', key);
+        if (key === appKey) {
+          return { isExternal: true, appPath: integrationPath, appType: 'external', baseDir: 'integration' };
+        }
+        if (fsSync.existsSync(integrationPath)) {
+          return { isExternal: true, appPath: integrationPath, appType: 'external', baseDir: 'integration' };
+        }
+        return { isExternal: false, appPath: builderPath, appType: 'webapp', baseDir: 'builder' };
+      });
+
       const variables = {
         app: {
           key: 'hubspot2',
@@ -966,6 +979,19 @@ describe('App Register Module', () => {
       const appKey = 'external-app';
       const appDir = path.join(tempDir, 'integration', appKey);
       fsSync.mkdirSync(appDir, { recursive: true });
+
+      // Force integration path for this appKey so variables load from integration/ (CI-safe)
+      paths.detectAppType.mockImplementation(async(key) => {
+        const integrationPath = path.join(tempDir, 'integration', key);
+        const builderPath = path.join(tempDir, 'builder', key);
+        if (key === appKey) {
+          return { isExternal: true, appPath: integrationPath, appType: 'external', baseDir: 'integration' };
+        }
+        if (fsSync.existsSync(integrationPath)) {
+          return { isExternal: true, appPath: integrationPath, appType: 'external', baseDir: 'integration' };
+        }
+        return { isExternal: false, appPath: builderPath, appType: 'webapp', baseDir: 'builder' };
+      });
 
       const variables = {
         app: {
