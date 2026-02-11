@@ -27,7 +27,7 @@ jest.mock('../../../lib/utils/logger', () => ({
 }));
 
 const logger = require('../../../lib/utils/logger');
-const { displayRegistrationResults, getEnvironmentPrefix } = require('../../../lib/utils/app-register-display');
+const { displayRegistrationResults, getEnvironmentPrefix, resolveDisplayName } = require('../../../lib/utils/app-register-display');
 
 describe('App Register Display Module', () => {
   beforeEach(() => {
@@ -194,6 +194,41 @@ describe('App Register Display Module', () => {
       displayRegistrationResults(data, apiUrl, environment);
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Environment level (custom-env):'));
+    });
+
+    it('should show requested display name when API returns key as displayName', () => {
+      const data = {
+        application: {
+          id: 'cmlhqjbq900b6gc2jelnw03eg',
+          key: 'dataplane',
+          displayName: 'dataplane'
+        },
+        credentials: {
+          clientId: 'miso-controller-dev-dataplane',
+          clientSecret: 'secret'
+        }
+      };
+      displayRegistrationResults(data, 'http://localhost:3600', 'dev', 'AI Fabrix Dataplane');
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Key:          dataplane'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Display Name: AI Fabrix Dataplane'));
+    });
+  });
+
+  describe('resolveDisplayName', () => {
+    it('should use API display name when it differs from key', () => {
+      expect(resolveDisplayName({ key: 'myapp', displayName: 'My Application' })).toBe('My Application');
+    });
+
+    it('should use requested display name when API returns key as displayName', () => {
+      expect(resolveDisplayName({ key: 'dataplane', displayName: 'dataplane' }, 'AI Fabrix Dataplane')).toBe('AI Fabrix Dataplane');
+    });
+
+    it('should use key when no requested display name and API echoes key', () => {
+      expect(resolveDisplayName({ key: 'dataplane', displayName: 'dataplane' })).toBe('dataplane');
+    });
+
+    it('should use key when displayName is missing and no requested', () => {
+      expect(resolveDisplayName({ key: 'myapp' }, undefined)).toBe('myapp');
     });
   });
 });

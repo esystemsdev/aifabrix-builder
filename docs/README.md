@@ -14,6 +14,8 @@ Table of contents for all AI Fabrix Builder documentation.
 | [CLI Reference](cli-reference.md)                                           | All CLI commands and options.                                          |
 | [Commands index](commands/README.md)                                        | Commands grouped by concept with examples.                             |
 
+**Example application and SDK:** For an example app and TypeScript/Python client to talk to the dataplane and controller, see [aifabrix-miso-client](https://github.com/esystemsdev/aifabrix-miso-client).
+
 ---
 
 ## Platform and infrastructure
@@ -21,8 +23,7 @@ Table of contents for all AI Fabrix Builder documentation.
 | Document                                                                    | Description                                                            |
 | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | [Infrastructure](infrastructure.md)                                         | Local infra (Postgres, Redis, Traefik), up-platform, up-miso, up-dataplane. |
-| [Configuration](configuration.md)                                           | Overview of configuration files.                                       |
-| [Configuration reference](configuration/README.md)                          | env-config, env.template, variables.yaml, secrets.                     |
+| [Configuration reference](configuration/README.md)                          | env-config, env.template, variables.yaml, secrets, deployment key.     |
 
 ---
 

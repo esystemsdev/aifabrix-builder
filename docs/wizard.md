@@ -102,7 +102,7 @@ Select your source type; then the wizard parses OpenAPI or tests the connection 
 - **OpenAPI file** – Local OpenAPI specification file
 - **OpenAPI URL** – Remote OpenAPI specification URL
 - **MCP server** – Model Context Protocol server
-- **Known platform** – Pre-configured platform. When the dataplane exposes `GET /api/v1/wizard/platforms`, the list of platforms is fetched from the dataplane; otherwise a default list (e.g. HubSpot, Salesforce) is used. If the endpoint is missing or returns an empty list, the "Known platform" choice is hidden.
+- **Known platform** – Pre-configured platform. The wizard **automatically detects Known Platforms** from your **dataplane template library** (`GET /api/v1/wizard/platforms` when available). Templates are **environment-specific**—the list may vary by environment or dataplane. If the endpoint is missing or returns an empty list, the "Known platform" choice is hidden.
 
 ### Step 3: Credential Selection (Optional)
 
@@ -143,7 +143,7 @@ The wizard then uses AI to generate configurations based on:
 - User preferences (MCP, ABAC, RBAC)
 - Field onboarding level (full/standard/minimal)
 
-**Intent:** The `intent` parameter helps the AI generate a better integration manifest. You can describe your goals and any special integration requirements (e.g. "sales-focused CRM integration", "customer management with custom fields"). It accepts any descriptive text and is not limited to specific enum values. See [.cursor/plans/credentials.md](.cursor/plans/credentials.md) for API shapes (list credentials, etc.) and manifest generation context.
+**Intent:** The `intent` parameter helps the AI generate a better integration manifest. You can describe your goals and any special integration requirements (e.g. "sales-focused CRM integration", "customer management with custom fields"). It accepts any descriptive text and is not limited to specific enum values. See [External Systems](external-systems.md) for configuration and manifest details.
 
 ### Step 6: Validate Configuration
 
@@ -170,6 +170,8 @@ The wizard saves all files to `integration/<appKey>/`:
 - `deploy.js` - Node deployment script (run `node deploy.js` for full flow)
 
 ## Headless Mode Configuration (wizard.yaml)
+
+The wizard **includes deployment** configuration so you can target a specific controller and environment. For automated or targeted runs, set **`deployment.controller`** (and optionally `deployment.environment`, `deployment.dataplane`) in `wizard.yaml`.
 
 For automated deployments, use a `wizard.yaml` file. When running interactively with an app name (e.g. `aifabrix wizard my-integration`), the wizard reads and writes `integration/my-integration/wizard.yaml` for load/save and resume.
 
@@ -225,11 +227,11 @@ preferences:
   enableABAC: false                        # Enable Attribute-Based Access Control
   enableRBAC: false                        # Enable Role-Based Access Control
 
-# Optional: Override deployment settings
+# Optional: Override deployment settings (wizard includes deployment; set when targeting a specific controller)
 deployment:
-  controller: https://controller.example.com
+  controller: https://controller.example.com   # Required when targeting a specific controller
   environment: dev
-  dataplane: https://dataplane.example.com  # Override dataplane lookup
+  dataplane: https://dataplane.example.com    # Optional: override dataplane lookup
 ```
 
 ### Environment Variable Support
@@ -327,14 +329,7 @@ The wizard will test the connection before proceeding.
 
 ### Known Platform
 
-Select from pre-configured platforms:
-- HubSpot
-- Salesforce
-- Zendesk
-- Slack
-- Microsoft 365
-
-The wizard uses platform-specific templates and configurations.
+Select from pre-configured platforms (e.g. HubSpot, Salesforce, Zendesk, Slack, Microsoft 365). The wizard **automatically detects Known Platforms** from your **dataplane template library**; the list is **environment-specific** and may vary by environment or dataplane. The wizard uses platform-specific templates and configurations.
 
 ## Configuration Generation
 

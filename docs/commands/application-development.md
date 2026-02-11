@@ -71,7 +71,7 @@ See `integration/hubspot/` for a complete HubSpot integration with companies, co
 - `builder/<app>/variables.yaml` - Application configuration (regular apps)
 - `builder/<app>/env.template` - Environment template with kv:// references
 - `builder/<app>/rbac.yaml` - RBAC configuration (if authentication enabled)
-- `builder/<app>/aifabrix-deploy.json` - Deployment manifest
+- `builder/<app>/<appKey>-deploy.json` - Deployment manifest (e.g. `builder/myapp/myapp-deploy.json`)
 - `builder/<app>/README.md` - Application documentation
 - `.github/workflows/` - GitHub Actions workflows (if --github specified)
 
@@ -254,6 +254,7 @@ Shows env summary (masked) and last 100 lines of logs.
 **Options:**
 - `-f` - Follow log stream
 - `-t, --tail <lines>` - Number of lines (default 100); `--tail 0` = full list
+- `-l, --level <level>` - Show only logs at this level or above (debug, info, warn, error)
 
 **Examples:**
 ```bash
@@ -261,7 +262,17 @@ aifabrix logs myapp           # last 100 lines
 aifabrix logs myapp -t 50      # last 50 lines
 aifabrix logs myapp -t 0       # full list
 aifabrix logs myapp -f         # follow stream
+aifabrix logs dataplane --level error   # only error lines
+aifabrix logs myapp -l warn              # warn and error
 ```
+
+**Validating the level filter**
+
+To confirm that `-l error` shows all error-level lines from the full log:
+
+1. Capture the full log: `aifabrix logs miso-controller > full.log`
+2. Capture only errors: `aifabrix logs miso-controller -l error > errors.log`
+3. Check that every line in `errors.log` appears in `full.log`, and that every line in `full.log` that looks like an error (e.g. starts with `error:` or `ERROR:` or has a timestamp then `error:`) appears in `errors.log`. You can diff or grep, e.g. `grep -F "error:" full.log` should match the same logical lines as in `errors.log`.
 
 **Issues:**
 - **"Failed to show logs"** - Container may not exist or be stopped; run `aifabrix run <app>` first.

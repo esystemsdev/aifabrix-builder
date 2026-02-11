@@ -656,7 +656,7 @@ aifabrix create my-ts-app --port 3000 --database --authentication --github
 #   ├── variables.yaml
 #   ├── env.template
 #   ├── rbac.yaml
-#   └── aifabrix-deploy.json
+#   └── <appKey>-deploy.json (e.g. myapp-deploy.json)
 ```
 
 ### Python Project with Custom Workflow

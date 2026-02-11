@@ -4,7 +4,7 @@ Create, configure, and run your own AI Fabrix application locally or deploy it.
 
 ← [Documentation index](README.md)
 
-This guide is **app-centric**: create app → configure → run locally / deploy. For getting the full platform up and building integrations, see the main [README](../README.md).
+This guide is **app-centric**: create app → configure → run locally / deploy. For getting the full platform up and building integrations, see the main [README](../README.md). For an **example application** and the **miso-client** SDK (TypeScript/Python) to talk to the dataplane and controller, see [aifabrix-miso-client](https://github.com/esystemsdev/aifabrix-miso-client).
 
 ## Step 1: Install
 
@@ -96,7 +96,7 @@ aifabrix create myapp
 - `builder/<app>/variables.yaml` - App configuration
 - `builder/<app>/env.template` - Environment variables  
 - `builder/<app>/rbac.yaml` - Roles & permissions (if authentication=yes)
-- `builder/<app>/aifabrix-deploy.json` - Deployment manifest
+- `builder/<app>/<appKey>-deploy.json` - Deployment manifest (e.g. `builder/myapp/myapp-deploy.json`)
 - `builder/<app>/README.md` - Application documentation
 
 ```mermaid
@@ -136,7 +136,7 @@ classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
 Create[aifabrix create myapp]:::primary --> Variables[variables.yaml<br/>App configuration]:::base
 Create --> EnvTemplate[env.template<br/>Environment variables]:::base
 Create --> Rbac[rbac.yaml<br/>Roles & permissions]:::base
-Create --> DeployJson[aifabrix-deploy.json<br/>Deployment manifest]:::base
+Create --> DeployJson["<appKey>-deploy.json<br/>Deployment manifest"]:::base
 Create --> Readme[README.md<br/>Documentation]:::base
 
 Variables --> Build[Build Process]:::medium

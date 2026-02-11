@@ -11,21 +11,15 @@ Deployment is **unified**: the same flow and the same Miso Controller apply to (
 
 Both paths use the same Controller and the same deploy pipeline; only the source (integration folder vs builder + registry) and manifest content differ.
 
-## Deploying external systems
+## Flow
 
-Flow: **Local (dev)** → **Controller** → **Dataplane**.
+**Local (dev)** → **Controller** → **Dataplane** (or target environment).
 
-Flow for external systems (OpenAPI, MCP, etc.): **Local (dev)** → **Controller** → **Dataplane**.
+- **Local (dev):** You define apps or external systems (e.g. in `builder/<app>/` or `integration/<app>/`). Validate and deploy from the CLI.
+- **Controller:** The CLI sends the deployment manifest to the Miso Controller. The controller validates the manifest and deploys to the dataplane or target environment (Azure Container Apps or local Docker). The builder does not generate or send a deployment key—the controller computes and manages it. See [Deployment key](configuration/deployment-key.md).
+- **Dataplane/target:** The controller deploys; pipeline and schema publishing run when configured (e.g. `autopublish: true` for external systems).
 
-- **Local (dev):** You define external systems and datasources in `integration/<app>/` (system JSON, datasource JSON). You validate and deploy from the CLI. Use `aifabrix deploy <app> --type external` to deploy from `integration/<app>/` (no app register needed; controller creates and deploys automatically).
-- **Controller:** The CLI sends deployment to the Miso Controller (`aifabrix deploy <app>` or `aifabrix deploy <app> --type external` for external systems, or datasource deploy). The controller orchestrates deployment; it does not deploy directly to the dataplane from the CLI for app-level deploy.
-- **Dataplane:** The controller deploys to the dataplane (or target environment). External systems and datasources are configured on the controller and published to the dataplane. Pipeline and schema publishing run after deployment when `autopublish` is true.
-
-So: **Deploy to Controller** means the CLI sends the deployment to the Miso Controller, which then deploys to the dataplane (or target environment). The controller orchestrates; you do not deploy directly to the dataplane from the CLI for app-level deploy.
-
-## Deploying containerized applications
-
-For web apps and Docker images: build the image, push to a registry (e.g. ACR), then deploy via the Controller. Prerequisites and steps below apply to this path.
+For **containerized applications:** build the image, push to a registry (e.g. ACR), then deploy via the Controller. Prerequisites and steps below apply. For **external systems:** use `aifabrix deploy <app> --type external` from `integration/<app>/` (no app registration needed).
 
 ## Prerequisites
 
@@ -49,7 +43,7 @@ Before deploying:
 
 ## Deployment Methods
 
-### Method 1: Using AI Fabrix Builder SDK
+### Method 1: Deploy via Controller (cloud)
 
 ```bash
 # Push image to registry
@@ -59,7 +53,15 @@ aifabrix push myapp --registry myacr.azurecr.io --tag v1.0.0
 aifabrix deploy myapp
 ```
 
-### Method 2: Automated CI/CD Deployment
+### Method 2: Deploy locally (controller + local Docker)
+
+```bash
+aifabrix deploy myapp --deployment local
+```
+
+Sends the deployment manifest to the controller (which validates and deploys as needed), then runs the app locally (same as `aifabrix run myapp`). Use for local development. The CLI still sends the manifest to the controller; the controller and dataplane validate and deploy; the app runs in local Docker.
+
+### Method 3: Automated CI/CD Deployment
 
 For automated deployments using the AI Fabrix Builder CLI, see [GitHub Workflows Guide](github-workflows.md#integration-with-ai-fabrix) for detailed workflow examples using `aifabrix login`, `aifabrix validate`, `aifabrix build`, and `aifabrix deploy` commands.
 
@@ -208,25 +210,18 @@ aifabrix deploy myapp
      - Saves token to config.yaml (never saves credentials)
    - **Note:** Device tokens (from device code flow) are stored at root level keyed by controller URL and include refresh tokens for automatic renewal on 401 errors
 
-2. **Generates deployment manifest**
-   - Creates `aifabrix-deploy.json`
-   - Includes all configuration from variables.yaml, env.template, rbac.yaml
-
-3. **Generates deployment key**
-   - SHA256 hash of variables.yaml
-   - Used for authentication and integrity check
+3. **Generates deployment manifest**
+   - Builds manifest from variables.yaml, env.template, rbac.yaml (e.g. `builder/myapp/myapp-deploy.json` for regular apps)
+   - Builder does not generate or send a deployment key; the controller computes and manages it
 
 4. **Sends to controller**
    - POST to `/api/v1/pipeline/{env}/deploy` (environment-aware endpoint)
-   - Includes manifest + deployment key
-   - Uses Bearer token authentication
+   - Sends manifest only; uses Bearer or client credentials authentication
 
 5. **Controller processes**
-   - Validates configuration
-   - Checks deployment key
-   - Deploys to Azure Container Apps
-   - Configures database, Redis, networking
-   - Sets up RBAC and permissions
+   - Validates manifest and computes deployment key internally
+   - Deploys to Azure Container Apps or local Docker
+   - Configures database, Redis, networking, RBAC and permissions as needed
 
 ```mermaid
 %%{init: {
@@ -273,18 +268,16 @@ SaveToken --> GenerateManifest
 GenerateManifest --> LoadConfig[Load Config Files<br/>variables.yaml<br/>env.template<br/>rbac.yaml]:::base
 LoadConfig --> ParseEnv[Parse Environment Variables]:::base
 ParseEnv --> BuildManifest[Build JSON Manifest]:::base
-BuildManifest --> GenKey[Generate Deployment Key<br/>SHA256 hash]:::base
-GenKey --> ValidateManifest[Validate Manifest]:::base
+BuildManifest --> ValidateManifest[Validate Manifest]:::base
 ValidateManifest --> SendController[Send to Controller<br/>POST /api/v1/pipeline/env/deploy]:::medium
-SendController --> ControllerProcess[Controller Processes]:::base
-ControllerProcess --> DeployAzure[Deploy to Azure Container Apps]:::base
+SendController --> ControllerProcess[Controller Validates<br/>Computes Key<br/>Deploys]:::base
+ControllerProcess --> DeployAzure[Azure Container Apps<br/>or Local Docker]:::base
 ```
 
 ### Output
 
 ```yaml
 ✓ Generated deployment manifest
-✓ Deployment key: a1b2c3d4...
 ✓ Sending to controller...
 ✓ Deployment started
 ✓ Status: https://controller.aifabrix.dev/deployments/12345
@@ -300,9 +293,11 @@ Controller computes and manages the deployment key. Builder sends manifest only 
 
 ## Deployment Manifest
 
-The `aifabrix-deploy.json` file sent to controller. The controller uses this manifest to:
-- **Azure deployments:** Deploy to Azure Container Apps with the specified configuration
-- **Local Docker deployments:** Run Docker containers locally with parameters extracted from the manifest
+The deployment manifest sent to the controller is named by app or system key:
+- **Regular apps (builder):** `builder/<app>/<appKey>-deploy.json` (e.g. `builder/myapp/myapp-deploy.json`)
+- **External systems (integration):** `integration/<app>/<systemKey>-deploy.json` (e.g. `integration/hubspot/hubspot-deploy.json`)
+
+The controller uses the manifest to deploy to Azure Container Apps or to run containers locally (local Docker).
 
 ### View Your Manifest
 
@@ -310,7 +305,7 @@ The `aifabrix-deploy.json` file sent to controller. The controller uses this man
 aifabrix json myapp
 ```
 
-Creates `builder/myapp/aifabrix-deploy.json`:
+Creates `builder/myapp/myapp-deploy.json`:
 ```json
 {
   "key": "myapp",
@@ -346,6 +341,8 @@ Creates `builder/myapp/aifabrix-deploy.json`:
 ## Application Registration
 
 Before deploying via pipeline API, you must register your application to get ClientId and ClientSecret credentials.
+
+**Register and rotate-secret require user bearer authentication:** `aifabrix app register` and `aifabrix app rotate-secret` work only when you are logged in with **user bearer authentication** (`aifabrix login`). You must **log in first**, then run register or rotate-secret; only then can you call the deploy action. This is by design for security (user-scoped actions). Flow: **Login** → **Register** (or rotate-secret) → **Deploy**.
 
 ### Step 1: Login to Controller
 
@@ -622,7 +619,7 @@ az acr repository list --name myacr
 **View manifest:**
 ```bash
 aifabrix json myapp
-cat builder/myapp/aifabrix-deploy.json
+cat builder/myapp/myapp-deploy.json
 ```
 
 **Common issues:**
@@ -642,7 +639,7 @@ aifabrix doctor
 aifabrix json myapp
 ```
 
-**Cause:** Deployment configuration changed (variables.yaml, env.template, or rbac.yaml) since last deployment. Controller computes the key from the manifest.
+**Cause:** Deployment configuration changed (variables.yaml, env.template, or rbac.yaml) since last deployment. The **controller** computes and stores the deployment key from the manifest (the builder does not send a key). See [Deployment key](configuration/deployment-key.md).
 
 **Fix:** Regenerate manifest with `aifabrix json <app>` and redeploy.
 
@@ -792,11 +789,10 @@ The `aifabrix deploy` command performs the following steps:
    - Returns validation errors and warnings
 
 5. **Send to Controller**
-   - POST request sends manifest to `<controller>/api/v1/pipeline/{env}/deploy` (environment-aware endpoint)
-   - HTTPS-only communication for security
-   - Retries with exponential backoff on transient failures
-   - Includes structured error handling
-   - Uses ClientId/ClientSecret authentication
+   - POST request sends manifest only to `<controller>/api/v1/pipeline/{env}/deploy` (environment-aware endpoint)
+   - Controller validates the manifest and computes the deployment key internally
+   - HTTPS-only communication; retries with exponential backoff on transient failures
+   - Uses Bearer token or ClientId/ClientSecret authentication
 
 6. **Poll Status**
    - Polls `/api/v1/environments/{env}/deployments/{deploymentId}` endpoint
@@ -874,7 +870,7 @@ Poll -->|No| Complete
   3. Client credentials (fallback) - direct credential authentication
 - **Credential Storage**: Client credentials displayed but not automatically saved (copy to GitHub Secrets)
 - **Token Management**: Bearer tokens auto-refresh with expiry tracking
-- **Deployment Key Authentication**: SHA256 hash validates configuration integrity
+- **Deployment key**: Controller computes and stores the key from the manifest; see [Deployment key](configuration/deployment-key.md)
 - **Sensitive Data Masking**: Passwords, secrets, tokens masked in logs
 - **Input Validation**: App names, URLs, and configurations validated
 - **Audit Logging**: All deployment attempts logged for ISO 27001 compliance
@@ -990,7 +986,7 @@ Common HTTP status codes and their meanings:
 
 - **200**: Deployment initiated successfully
 - **400**: Invalid deployment manifest (validation errors)
-- **401**: Authentication failed (invalid deployment key)
+- **401**: Authentication failed (invalid or expired token)
 - **403**: Authorization failed (insufficient permissions)
 - **404**: Controller endpoint not found
 - **500**: Internal server error (retry with exponential backoff)
@@ -998,20 +994,7 @@ Common HTTP status codes and their meanings:
 
 ### Deployment Key Details
 
-The deployment key is derived from the **canonical** deployment manifest JSON: the builder hashes the manifest in a minimal, deterministic form (sorted keys, no whitespace). Whitespace or formatting in the file does **not** change the key. The controller validates the key against the same canonical form. This ensures:
-
-- **Configuration Integrity**: Any change to the deployment manifest results in a different key
-- **Authentication**: Controller can verify the configuration is from the authorized source
-- **Traceability**: Each deployment key uniquely identifies a configuration version
-- **Security**: Prevents tampering with deployment configurations
-
-Key changes when you modify:
-- Application name or display name
-- Image references or tags
-- Port configurations
-- Service requirements (database, Redis, storage)
-- Health check settings
-- Authentication settings
+The **controller** computes and manages the deployment key from the manifest. The builder does not generate or send a deployment key. The controller derives the key from the canonical manifest (e.g. minimal, deterministic form) and uses it for validation and traceability. See [Deployment key](configuration/deployment-key.md) for trigger paths, overridable paths, and environment promotion.
 
 ### Audit Trail
 

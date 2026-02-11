@@ -52,7 +52,7 @@ aifabrix json myapp
 # View configuration
 cat builder/myapp/variables.yaml
 cat builder/myapp/.env
-cat builder/myapp/aifabrix-deploy.json
+cat builder/myapp/myapp-deploy.json
 ```
 
 ---

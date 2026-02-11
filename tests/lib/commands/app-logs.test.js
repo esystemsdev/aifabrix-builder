@@ -18,12 +18,98 @@ jest.mock('child_process', () => ({
 const util = require('util');
 jest.spyOn(util, 'promisify').mockImplementation((fn) => fn);
 
+const { PassThrough } = require('stream');
 const appLogs = require('../../../lib/commands/app-logs');
 
 describe('app-logs', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     require('../../../lib/core/config').getDeveloperId.mockResolvedValue(0);
+    require('../../../lib/app/push').validateAppName.mockImplementation(() => {});
+  });
+
+  describe('getLogLevel', () => {
+    it('parses prefix INFO:, ERROR:, WARN:, WARNING:, DEBUG:', () => {
+      expect(appLogs.getLogLevel('INFO: something')).toBe('info');
+      expect(appLogs.getLogLevel('ERROR: fail')).toBe('error');
+      expect(appLogs.getLogLevel('WARN: warning')).toBe('warn');
+      expect(appLogs.getLogLevel('WARNING: warning')).toBe('warn');
+      expect(appLogs.getLogLevel('DEBUG: debug')).toBe('debug');
+    });
+
+    it('parses lowercase prefix (miso-controller/pino): error:, info:', () => {
+      expect(appLogs.getLogLevel('error: generateClientToken failed: Application not found')).toBe('error');
+      expect(appLogs.getLogLevel('info: Request completed')).toBe('info');
+    });
+
+    it('parses level after timestamp or prefix (e.g. miso-controller with timestamp)', () => {
+      expect(
+        appLogs.getLogLevel('2026-02-11 08:51:01 error: generateClientToken failed: Application not found')
+      ).toBe('error');
+      expect(appLogs.getLogLevel('  info: Request completed')).toBe('info');
+    });
+
+    it('parses level after word boundary (e.g. [pino]error: or bracket prefix)', () => {
+      expect(appLogs.getLogLevel('[pino] error: generateClientToken failed')).toBe('error');
+      expect(appLogs.getLogLevel('[pino]error: generateClientToken failed')).toBe('error');
+    });
+
+    it('filtering full log with -l error keeps only error lines (miso-controller style)', () => {
+      const fullLogLines = [
+        'error: generateClientToken failed: Application not found generateClientToken failed: Application not found',
+        'info: Request completed Request completed',
+        'info: Request completed Request completed'
+      ];
+      const filtered = fullLogLines.filter((line) =>
+        appLogs.passesLevelFilter(appLogs.getLogLevel(line), 'error')
+      );
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0]).toContain('error: generateClientToken failed');
+      expect(filtered.some((l) => l.includes('info: Request completed'))).toBe(false);
+    });
+
+    it('parses JSON "level" field', () => {
+      expect(appLogs.getLogLevel('{"level": "info", "msg": "ok"}')).toBe('info');
+      expect(appLogs.getLogLevel('{"level":"error"}')).toBe('error');
+      expect(appLogs.getLogLevel('{"level": "warning"}')).toBe('warn');
+    });
+
+    it('returns null for line with no parseable level', () => {
+      expect(appLogs.getLogLevel('plain text')).toBeNull();
+      expect(appLogs.getLogLevel('')).toBeNull();
+      expect(appLogs.getLogLevel('GET /health 200')).toBeNull();
+    });
+  });
+
+  describe('passesLevelFilter', () => {
+    it('returns true when minLevel is null or undefined', () => {
+      expect(appLogs.passesLevelFilter('info', null)).toBe(true);
+      expect(appLogs.passesLevelFilter('error', undefined)).toBe(true);
+    });
+
+    it('filter error: only error passes', () => {
+      expect(appLogs.passesLevelFilter('error', 'error')).toBe(true);
+      expect(appLogs.passesLevelFilter('warn', 'error')).toBe(false);
+      expect(appLogs.passesLevelFilter('info', 'error')).toBe(false);
+      expect(appLogs.passesLevelFilter('debug', 'error')).toBe(false);
+    });
+
+    it('filter info: info, warn, error pass; debug does not', () => {
+      expect(appLogs.passesLevelFilter('info', 'info')).toBe(true);
+      expect(appLogs.passesLevelFilter('warn', 'info')).toBe(true);
+      expect(appLogs.passesLevelFilter('error', 'info')).toBe(true);
+      expect(appLogs.passesLevelFilter('debug', 'info')).toBe(false);
+    });
+
+    it('filter debug: all levels pass', () => {
+      expect(appLogs.passesLevelFilter('debug', 'debug')).toBe(true);
+      expect(appLogs.passesLevelFilter('info', 'debug')).toBe(true);
+    });
+
+    it('treats null lineLevel as info when filter is set', () => {
+      expect(appLogs.passesLevelFilter(null, 'info')).toBe(true);
+      expect(appLogs.passesLevelFilter(null, 'error')).toBe(false);
+    });
   });
 
   describe('maskEnvLine', () => {
@@ -106,6 +192,100 @@ describe('app-logs', () => {
         throw new Error('Application name is required');
       });
       await expect(appLogs.runAppLogs('ab', {})).rejects.toThrow();
+    });
+
+    it('filters lines by level when level option is set', async() => {
+      exec.mockImplementation((cmd) =>
+        Promise.resolve({
+          stdout: cmd.includes('env') ? 'NODE_ENV=dev\n' : '',
+          stderr: ''
+        })
+      );
+      const written = [];
+      jest.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
+        written.push(chunk);
+        return true;
+      });
+      const passThrough = new PassThrough();
+      const stderrStream = new PassThrough();
+      spawn.mockImplementation(() => {
+        setImmediate(() => {
+          passThrough.write('INFO: ok\n');
+          passThrough.write('ERROR: fail\n');
+          passThrough.end();
+          stderrStream.end();
+        });
+        let closeCb;
+        const onClose = (ev, fn) => {
+          if (ev === 'close') {
+            closeCb = fn;
+            const done = () => {
+              if (passThrough.readableEnded && stderrStream.readableEnded) setImmediate(() => closeCb(0));
+            };
+            passThrough.on('end', done);
+            stderrStream.on('end', done);
+          }
+          return { on: jest.fn() };
+        };
+        return { stdout: passThrough, stderr: stderrStream, on: onClose };
+      });
+
+      await appLogs.runAppLogs('myapp', { follow: false, tail: 100, level: 'error' });
+
+      const out = written.join('');
+      expect(out).toContain('ERROR: fail');
+      expect(out).not.toContain('INFO: ok');
+      process.stdout.write.mockRestore();
+    });
+
+    it('shows info and above when level is info', async() => {
+      exec.mockImplementation((cmd) =>
+        Promise.resolve({
+          stdout: cmd.includes('env') ? 'NODE_ENV=dev\n' : '',
+          stderr: ''
+        })
+      );
+      const written = [];
+      jest.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
+        written.push(chunk);
+        return true;
+      });
+      const passThrough = new PassThrough();
+      const stderrStream = new PassThrough();
+      spawn.mockImplementation(() => {
+        setImmediate(() => {
+          passThrough.write('INFO: ok\n');
+          passThrough.write('ERROR: fail\n');
+          passThrough.end();
+          stderrStream.end();
+        });
+        let closeCb;
+        const onClose = (ev, fn) => {
+          if (ev === 'close') {
+            closeCb = fn;
+            const done = () => {
+              if (passThrough.readableEnded && stderrStream.readableEnded) setImmediate(() => closeCb(0));
+            };
+            passThrough.on('end', done);
+            stderrStream.on('end', done);
+          }
+          return { on: jest.fn() };
+        };
+        return { stdout: passThrough, stderr: stderrStream, on: onClose };
+      });
+
+      await appLogs.runAppLogs('myapp', { follow: false, tail: 100, level: 'info' });
+
+      const out = written.join('');
+      expect(out).toContain('INFO: ok');
+      expect(out).toContain('ERROR: fail');
+      process.stdout.write.mockRestore();
+    });
+
+    it('throws on invalid level', async() => {
+      await expect(
+        appLogs.runAppLogs('myapp', { follow: false, tail: 100, level: 'invalid' })
+      ).rejects.toThrow('Invalid log level \'invalid\'; use one of: debug, info, warn, error');
     });
   });
 });

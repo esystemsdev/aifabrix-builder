@@ -50,7 +50,7 @@ This will generate the .env file without running validation checks afterward.
 
 Generate deployment JSON.
 
-**What:** Creates `aifabrix-deploy.json` from variables.yaml, env.template, rbac.yaml for normal applications. For external type applications, generates `<systemKey>-deploy.json` deployment manifest by loading the component files (`<systemKey>-system.json` and `<systemKey>-datasource-*.json`), combining them into a controller-compatible deployment manifest with inline system + datasources. This is the reverse operation of `aifabrix split-json` - it combines component files back into a deployment manifest. When you download an external system from the dataplane (via `aifabrix download`), you get `<systemKey>-deploy.json` which can then be split into component files using `aifabrix split-json`. Merges rbac.yaml (if present) into the system JSON. **Note:** Only the first system from `externalIntegration.systems` array is included in the generated `<systemKey>-deploy.json`. All data sources from `externalIntegration.dataSources` array are included.
+**What:** Creates `<appKey>-deploy.json` (e.g. `builder/<app>/<appKey>-deploy.json`) from variables.yaml, env.template, rbac.yaml for normal applications. For external type applications, generates `<systemKey>-deploy.json` deployment manifest by loading the component files (`<systemKey>-system.json` and `<systemKey>-datasource-*.json`), combining them into a controller-compatible deployment manifest with inline system + datasources. This is the reverse operation of `aifabrix split-json` - it combines component files back into a deployment manifest. When you download an external system from the dataplane (via `aifabrix download`), you get `<systemKey>-deploy.json` which can then be split into component files using `aifabrix split-json`. Merges rbac.yaml (if present) into the system JSON. **Note:** Only the first system from `externalIntegration.systems` array is included in the generated `<systemKey>-deploy.json`. All data sources from `externalIntegration.dataSources` array are included.
 
 **When:** Previewing deployment configuration, debugging deployments. For external systems, before deploying to generate the combined application schema file. For external systems with RBAC, ensures roles/permissions from rbac.yaml are merged into the system JSON.
 
@@ -66,7 +66,7 @@ aifabrix json hubspot --type external
 ```
 
 **Creates:**
-- Normal apps: `builder/<app>/aifabrix-deploy.json`
+- Normal apps: `builder/<app>/<appKey>-deploy.json` (e.g. `builder/myapp/myapp-deploy.json`)
 - External systems: `integration/<app>/<systemKey>-deploy.json` (deployment manifest combining `<systemKey>-system.json` + `<systemKey>-datasource-*.json` files with rbac.yaml merged if present)
 
 **RBAC Support for External Systems:**

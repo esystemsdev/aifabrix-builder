@@ -214,6 +214,7 @@ Shows an env summary (sensitive values masked) and the last 100 lines of logs.
 **Options:**
 - `-f` – follow log stream
 - `-t, --tail <n>` – number of lines (default 100); `--tail 0` = full list
+- `-l, --level <level>` – show only logs at this level or above (debug, info, warn, error)
 
 **Examples:**
 ```bash
@@ -221,6 +222,7 @@ aifabrix logs myapp           # last 100 lines
 aifabrix logs myapp -t 50     # last 50 lines
 aifabrix logs myapp -t 0      # full list
 aifabrix logs myapp -f        # follow (default 100, then stream)
+aifabrix logs myapp --level error   # only error lines
 ```
 
 ---
@@ -656,4 +658,6 @@ aifabrix down-app myapp
 aifabrix build myapp
 aifabrix run myapp
 ```
+
+**Next steps:** To deploy, see [Deploying](deploying.md). For an example application and the miso-client SDK (TypeScript/Python), see [aifabrix-miso-client](https://github.com/esystemsdev/aifabrix-miso-client).
 

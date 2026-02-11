@@ -1,3 +1,17 @@
+## [2.39.3] - 2026-02-11
+
+### Added
+- **CLI logs level filter**: `aifabrix logs <app> --level <level>` (or `-l`) to show only logs at the given level or above (debug, info, warn, error). Examples: `aifabrix logs dataplane -l error`, `aifabrix logs miso-controller -l warn`. Level is parsed from line prefixes (e.g. `INFO:`, `ERROR:`, `error:`, `info:` for miso-controller/pino) or from JSON `"level"` field in the line. Both docker stdout and stderr are read and filtered so no lines are missed. Documented in `docs/commands/application-development.md` and `docs/running.md`.
+
+### Fixed
+- **App register display**: "Application Details" after registration now shows the actual display name (e.g. from `variables.yaml` `app.name` or `--name`) instead of the application key when the controller returns the key as `displayName`. Introduced `resolveDisplayName(application, requestedDisplayName)` and pass registration `displayName` into the display so output shows "Display Name: AI Fabrix Dataplane" rather than "Display Name: dataplane".
+
+### Changed
+- **Docs**: Deploying (simplified flow, added `--deployment local`, manifest naming `<appKey>-deploy.json`, controller-owned deployment key, register/rotate-secret require login); single Configuration reference in index; external-systems (BASE_URL, portalInput for prod/dev URLs, environment promotions link); wizard (removed 404 link, deployment.controller, Known Platforms from dataplane); miso-client/example app links; manifest naming in commands/utilities/reference/your-own-applications.
+
+### Technical
+- **App register display**: `lib/utils/app-register-display.js` – `resolveDisplayName(application, requestedDisplayName)`; `displayRegistrationResults(..., requestedDisplayName)`; `lib/app/register.js` passes `registrationData.displayName` into display. Tests: requested display name when API echoes key; `resolveDisplayName` unit tests.
+
 ## [2.39.2] - 2026-02-11
 
 ### Added

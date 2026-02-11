@@ -103,7 +103,7 @@ All guides and references are listed in **[docs/README.md](docs/README.md)** (ta
 
 - [CLI Reference](docs/cli-reference.md) – All commands
 - [Infrastructure](docs/infrastructure.md) – What runs and why
-- [Configuration](docs/configuration.md) – Config files
+- [Configuration reference](docs/configuration/README.md) – Config files (deployment key, variables.yaml, env.template, secrets)
 
 ---
 

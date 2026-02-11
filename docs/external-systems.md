@@ -165,7 +165,7 @@ Datasource3 --> Deploy
 
 ### Step 2: Configure Authentication
 
-Edit `integration/hubspot/hubspot-system.json` to configure OAuth2. Use standard environment variable references:
+Edit `integration/hubspot/hubspot-system.json` to configure OAuth2. Use standard environment variable references. Add `BASE_URL` in `configuration` for the API base (schema does not support `environment.baseUrl`):
 
 ```json
 {
@@ -173,9 +173,6 @@ Edit `integration/hubspot/hubspot-system.json` to configure OAuth2. Use standard
   "displayName": "HubSpot CRM",
   "description": "HubSpot CRM integration",
   "type": "openapi",
-  "environment": {
-    "baseUrl": "https://api.hubapi.com"
-  },
   "authentication": {
     "type": "oauth2",
     "oauth2": {
@@ -210,13 +207,19 @@ Edit `integration/hubspot/hubspot-system.json` to configure OAuth2. Use standard
       "value": "https://api.hubapi.com/oauth/v1/token",
       "location": "variable",
       "required": true
+    },
+    {
+      "name": "BASE_URL",
+      "value": "https://api.hubapi.com",
+      "location": "variable",
+      "required": true
     }
   ]
 }
 ```
 
 **What this does:**
-- `baseUrl` - The API endpoint for HubSpot
+- `BASE_URL` - The API base for HubSpot (in `configuration`; schema has no `environment.baseUrl`)
 - `tokenUrl` - OAuth2 token endpoint (uses `{{TOKENURL}}` variable)
 - `clientId` / `clientSecret` - References standard variables `{{CLIENTID}}` and `{{CLIENTSECRET}}`
 - `configuration` - Defines variables that can be set via Miso Controller or Dataplane portal interface
@@ -398,6 +401,8 @@ The external system JSON (`<systemKey>-system.json`) defines the connection to t
 - `authentication` - Auth configuration (see below)
 - `configuration` - Array of configurable variables (see Configuration section)
 
+**BASE_URL / API base URL:** For the external API base URL, add a **`BASE_URL`** (or `API_BASE_URL`) entry in the `configuration` array. You can use a static value or Key Vault reference, and use `portalInput` so the URL can differ per environment (e.g. production vs dev) and be set via the portal. Reference it in your auth block or OpenAPI config as `{{BASE_URL}}` where needed. The external system schema does not define `environment.baseUrl`; use `configuration` only.
+
 **Example structure:**
 ```json
 {
@@ -406,11 +411,8 @@ The external system JSON (`<systemKey>-system.json`) defines the connection to t
   "description": "HubSpot CRM integration",
   "type": "openapi",
   "enabled": true,
-  "environment": {
-    "baseUrl": "https://api.hubapi.com"
-  },
   "authentication": { /* see Authentication section */ },
-  "configuration": [ /* see Configuration section */ ],
+  "configuration": [ /* see Configuration section; include BASE_URL for API base */ ],
   "openapi": {
     "documentKey": "hubspot-v3",
     "autoDiscoverEntities": false
@@ -459,6 +461,8 @@ The `configuration` array defines variables that can be set via the Miso Control
   - `options` - Array of options for `select` field type
   - `validation` - Validation rules (required, minLength, maxLength, pattern, etc.)
 
+**Production and dev URLs:** Use `portalInput` with `field: "text"` or `field: "select"` and `options` to let users enter or choose environment-specific URLs (e.g. production URL and dev URL). Example: a `BASE_URL` config item with `portalInput.field: "select"` and `options: ["https://api.example.com", "https://api-dev.example.com"]`, or separate `PRODUCTION_URL` and `DEV_URL` items with `portalInput.field: "text"`.
+
 **Important distinctions:**
 - **Standard variables** (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`, `APIKEY`, `USERNAME`, `PASSWORD`) are managed by the dataplane credentials system—**do not include `portalInput`**. Redirect URI for OAuth2 is managed by the dataplane and does not need to be configured in the integration.
 - **Custom variables** (any other variable name) can use `portalInput` to configure UI fields in the portal interface
@@ -493,6 +497,8 @@ OAuth2 redirect URI is managed by the dataplane credentials system and is not co
 - Values are set via the Miso Controller or Dataplane portal interface
 - Values are automatically stored in Key Vault by the platform
 - Simply reference them in your `configuration` array without `portalInput`
+
+**Environment promotions:** Configuration parameters support **environment promotions**: you can keep different values for different environments (static or `kv/key` Key Vault values). The platform manages enterprise promotions and overridable paths. **Read more:** [Deployment key](configuration/deployment-key.md).
 
 **Example - Standard variables (no portalInput):**
 ```json
@@ -1264,9 +1270,6 @@ externalIntegration:
   "description": "HubSpot CRM integration with OpenAPI support",
   "type": "openapi",
   "enabled": true,
-  "environment": {
-    "baseUrl": "https://api.hubapi.com"
-  },
   "authentication": {
     "type": "oauth2",
     "oauth2": {
@@ -1299,6 +1302,12 @@ externalIntegration:
     {
       "name": "TOKENURL",
       "value": "https://api.hubapi.com/oauth/v1/token",
+      "location": "variable",
+      "required": true
+    },
+    {
+      "name": "BASE_URL",
+      "value": "https://api.hubapi.com",
       "location": "variable",
       "required": true
     },
@@ -1719,7 +1728,7 @@ Use defaults for optional fields:
 
 **"OpenAPI operations not working"**
 → Verify `documentKey` matches registered OpenAPI spec
-→ Check `baseUrl` matches external API
+→ Check `BASE_URL` (in configuration) or OpenAPI base URL matches external API
 → Ensure `operationId` matches OpenAPI spec
 → Verify authentication is configured correctly
 
@@ -1733,7 +1742,7 @@ Use defaults for optional fields:
 
 - [Configuration: External integration](configuration/external-integration.md) - Detailed config options
 - [CLI Reference](commands/external-integration.md) - All commands for external systems
-- [Pipeline Deployment](.cursor/plans/pipeline.md) - Advanced deployment options
+- [Deploying](deploying.md) - Deployment flow and options
 - [Field Mappings Guide](configuration/README.md) - Configuration index and variables
 
 ---
