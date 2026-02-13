@@ -74,7 +74,7 @@ describe('Application Module - Comprehensive Tests', () => {
     pushUtils.checkACRAuthentication.mockResolvedValue(true);
     pushUtils.tagImage.mockResolvedValue();
     pushUtils.pushImage.mockResolvedValue();
-    appDeploy.deployApp.mockResolvedValue({ deploymentId: 'deploy-123' });
+    appDeploy.deployApp.mockResolvedValue({ result: { deploymentId: 'deploy-123' }, usedExternalDeploy: false });
   });
 
   afterEach(async() => {
@@ -118,6 +118,12 @@ describe('Application Module - Comprehensive Tests', () => {
     it('should delegate to appRun.runApp', async() => {
       await app.runApp('test-app', { port: 3001 });
       expect(appRun.runApp).toHaveBeenCalledWith('test-app', { port: 3001 });
+    });
+
+    it('should delegate restartApp to appRun.restartApp', async() => {
+      appRun.restartApp.mockResolvedValue();
+      await app.restartApp('myapp');
+      expect(appRun.restartApp).toHaveBeenCalledWith('myapp');
     });
 
     it('should handle run errors', async() => {
@@ -171,7 +177,7 @@ describe('Application Module - Comprehensive Tests', () => {
       const appPath = path.join('builder', 'test-app');
       fsSync.mkdirSync(appPath, { recursive: true });
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump({
           app: { key: 'test-app', name: 'Test App' },
           port: 3000,
@@ -198,8 +204,8 @@ describe('Application Module - Comprehensive Tests', () => {
       await expect(app.generateDockerfileForApp('Invalid App', {})).rejects.toThrow('Application name');
     });
 
-    it('should handle missing variables.yaml', async() => {
-      await fs.rm(path.join('builder', 'test-app', 'variables.yaml'));
+    it('should handle missing application.yaml', async() => {
+      await fs.rm(path.join('builder', 'test-app', 'application.yaml'));
       await expect(app.generateDockerfileForApp('test-app', {})).rejects.toThrow();
     });
 
@@ -250,7 +256,7 @@ describe('Application Module - Comprehensive Tests', () => {
       const appPath = path.join('builder', 'test-app');
       fsSync.mkdirSync(appPath, { recursive: true });
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump({
           app: { key: 'test-app', name: 'Test App' },
           image: { registry: 'myacr.azurecr.io' }
@@ -277,9 +283,11 @@ describe('Application Module - Comprehensive Tests', () => {
       await expect(app.pushApp('Invalid App', {})).rejects.toThrow('Application name');
     });
 
-    it('should handle missing variables.yaml', async() => {
-      await fs.rm(path.join('builder', 'test-app', 'variables.yaml'));
-      await expect(app.pushApp('test-app', {})).rejects.toThrow('Failed to load configuration');
+    it('should handle missing application.yaml', async() => {
+      await fs.rm(path.join('builder', 'test-app', 'application.yaml'));
+      await expect(app.pushApp('test-app', {})).rejects.toThrow(
+        /Failed to load configuration|App 'test-app' not found in integration/
+      );
     });
 
     it('should use registry from options', async() => {
@@ -290,7 +298,7 @@ describe('Application Module - Comprehensive Tests', () => {
     it('should handle missing registry', async() => {
       const appPath = path.join('builder', 'test-app');
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump({ app: { key: 'test-app' } })
       );
       await expect(app.pushApp('test-app', {})).rejects.toThrow('Registry URL is required');
@@ -338,9 +346,10 @@ describe('Application Module - Comprehensive Tests', () => {
   describe('deployApp', () => {
     it('should delegate to appDeploy.deployApp', async() => {
       const options = { controller: 'https://controller.example.com', environment: 'dev' };
-      const result = await app.deployApp('test-app', options);
+      const outcome = await app.deployApp('test-app', options);
       expect(appDeploy.deployApp).toHaveBeenCalledWith('test-app', options);
-      expect(result).toEqual({ deploymentId: 'deploy-123' });
+      expect(outcome.result).toEqual({ deploymentId: 'deploy-123' });
+      expect(outcome.usedExternalDeploy).toBe(false);
     });
 
     it('should handle deployment errors', async() => {
@@ -392,7 +401,7 @@ describe('Application Module - Comprehensive Tests', () => {
       const appPath = path.join('builder', 'test-app');
       fsSync.mkdirSync(appPath, { recursive: true });
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump({
           app: { key: 'test-app' },
           image: { registry: 'myacr.azurecr.io' }
@@ -410,7 +419,7 @@ describe('Application Module - Comprehensive Tests', () => {
       const appPath = path.join('builder', 'test-app');
       fsSync.mkdirSync(appPath, { recursive: true });
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump({
           app: { key: 'test-app' },
           image: { registry: 'myacr.azurecr.io' }
@@ -428,7 +437,7 @@ describe('Application Module - Comprehensive Tests', () => {
       const appPath = path.join('builder', 'test-app');
       fsSync.mkdirSync(appPath, { recursive: true });
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump({
           app: { key: 'test-app' },
           build: { language: 'typescript' }
@@ -447,7 +456,7 @@ describe('Application Module - Comprehensive Tests', () => {
       const appPath = path.join('builder', 'test-app');
       fsSync.mkdirSync(appPath, { recursive: true });
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump({
           app: { key: 'test-app' },
           image: { registry: 'myacr.azurecr.io' }
@@ -472,16 +481,16 @@ describe('Application Module - Comprehensive Tests', () => {
         clientSecret: 'client-secret',
         poll: true
       };
-      const result = await app.deployApp('test-app', options);
+      const outcome = await app.deployApp('test-app', options);
       expect(appDeploy.deployApp).toHaveBeenCalledWith('test-app', options);
-      expect(result.deploymentId).toBe('deploy-123');
+      expect(outcome.result.deploymentId).toBe('deploy-123');
     });
 
     it('should handle build and push sequence', async() => {
       const appPath = path.join('builder', 'test-app');
       fsSync.mkdirSync(appPath, { recursive: true });
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump({
           app: { key: 'test-app' },
           image: { registry: 'myacr.azurecr.io' }

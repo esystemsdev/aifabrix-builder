@@ -73,7 +73,7 @@ describe('Application Create Module', () => {
       expect(await fs.access(appPath).then(() => true).catch(() => false)).toBe(true);
 
       // Verify files were created
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const envTemplatePath = path.join(appPath, 'env.template');
       const rbacPath = path.join(appPath, 'rbac.yaml');
       const deployPath = path.join(appPath, `${appName}-deploy.json`);
@@ -83,7 +83,7 @@ describe('Application Create Module', () => {
       expect(await fs.access(rbacPath).then(() => true).catch(() => false)).toBe(true);
       expect(await fs.access(deployPath).then(() => true).catch(() => false)).toBe(true);
 
-      // Verify variables.yaml content
+      // Verify application.yaml content
       const variablesContent = await fs.readFile(variablesPath, 'utf8');
       expect(variablesContent).toContain('key: test-app');
       expect(variablesContent).toContain('language: typescript');
@@ -248,7 +248,7 @@ describe('Application Create Module', () => {
       expect(envContent).toContain('CLIENTSECRET=kv://test-external-clientsecretKeyVault');
     });
 
-    it('should use prompt values in variables.yaml for external system', async() => {
+    it('should use prompt values in application.yaml for external system', async() => {
       const appName = 'test-external';
       const options = {
         type: 'external'
@@ -256,8 +256,8 @@ describe('Application Create Module', () => {
 
       await app.createApp(appName, options);
 
-      // Verify variables.yaml uses prompt values
-      const variablesPath = path.join('integration', appName, 'variables.yaml');
+      // Verify application.yaml uses prompt values
+      const variablesPath = path.join('integration', appName, 'application.yaml');
       const variablesContent = await fs.readFile(variablesPath, 'utf8');
 
       expect(variablesContent).toContain('key: test-external');

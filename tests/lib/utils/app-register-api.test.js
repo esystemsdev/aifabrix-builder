@@ -127,7 +127,7 @@ describe('App Register API Module', () => {
       expect(logger.error).toHaveBeenCalledWith('Validation error');
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Controller URL:'));
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Request payload:'));
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Check your variables.yaml'));
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Check your application.yaml'));
       expect(process.exit).toHaveBeenCalledWith(1);
     });
 

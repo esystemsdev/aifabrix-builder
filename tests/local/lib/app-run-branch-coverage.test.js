@@ -111,7 +111,7 @@ describe('App-Run Branch Coverage Tests', () => {
       };
 
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -176,7 +176,7 @@ describe('App-Run Branch Coverage Tests', () => {
         realFs.mkdirSync(appPath, { recursive: true });
       }
 
-      const variablesPath = path.resolve(appPath, 'variables.yaml');
+      const variablesPath = path.resolve(appPath, 'application.yaml');
       realFs.writeFileSync(variablesPath, yaml.dump(variables), 'utf8');
 
       // Create .env file

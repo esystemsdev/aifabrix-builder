@@ -57,7 +57,7 @@ describe('Generator Error Paths', () => {
   describe('generateDeployJson for external systems', () => {
     const appName = 'testapp';
     const appPath = path.join(process.cwd(), 'builder', appName);
-    const variablesPath = path.join(appPath, 'variables.yaml');
+    const variablesPath = path.join(appPath, 'application.yaml');
     const deployJsonPath = path.join(appPath, `${appName}-deploy.json`);
     const systemFilePath = path.join(appPath, 'system.json');
 
@@ -89,7 +89,7 @@ describe('Generator Error Paths', () => {
       fs.readFileSync.mockReturnValue(yaml.dump({ app: { type: 'external' } }));
 
       await expect(generator.generateDeployJson(appName))
-        .rejects.toThrow('externalIntegration block not found in variables.yaml');
+        .rejects.toThrow('externalIntegration block not found in application.yaml');
     });
 
     it('should throw error when system file does not exist', async() => {
@@ -140,8 +140,11 @@ describe('Generator Error Paths', () => {
       fs.existsSync.mockImplementation((filePath) => {
         return filePath === variablesPath || filePath === systemFilePath;
       });
-      fs.readFileSync.mockReturnValue(variablesContent);
-      fs.promises.readFile.mockResolvedValue(JSON.stringify(mockSystemJson));
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === variablesPath) return variablesContent;
+        if (filePath === systemFilePath) return JSON.stringify(mockSystemJson);
+        return '';
+      });
       fs.promises.writeFile.mockRejectedValue(new Error('Write failed'));
 
       await expect(generator.generateDeployJson(appName))
@@ -152,7 +155,7 @@ describe('Generator Error Paths', () => {
   describe('generateDeployJson', () => {
     const appName = 'testapp';
     const appPath = path.join(process.cwd(), 'builder', appName);
-    const variablesPath = path.join(appPath, 'variables.yaml');
+    const variablesPath = path.join(appPath, 'application.yaml');
 
     beforeEach(() => {
       paths.detectAppType.mockResolvedValue({
@@ -166,7 +169,7 @@ describe('Generator Error Paths', () => {
       );
     });
 
-    it('should throw error when variables.yaml is missing', async() => {
+    it('should throw error when application.yaml is missing', async() => {
       fs.existsSync.mockReturnValue(false);
 
       await expect(
@@ -174,7 +177,7 @@ describe('Generator Error Paths', () => {
       ).rejects.toThrow();
     });
 
-    it('should throw error when variables.yaml has invalid YAML', async() => {
+    it('should throw error when application.yaml has invalid YAML', async() => {
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('invalid: yaml: content: [');
       envReader.loadVariables.mockImplementation(() => {
@@ -247,7 +250,7 @@ describe('Generator Error Paths', () => {
   describe('generateExternalSystemApplicationSchema', () => {
     const appName = 'testapp';
     const appPath = path.join(process.cwd(), 'builder', appName);
-    const variablesPath = path.join(appPath, 'variables.yaml');
+    const variablesPath = path.join(appPath, 'application.yaml');
 
     beforeEach(() => {
       paths.detectAppType.mockResolvedValue({
@@ -278,11 +281,11 @@ describe('Generator Error Paths', () => {
 
       await expect(
         generator.generateExternalSystemApplicationSchema(appName)
-      ).rejects.toThrow('externalIntegration block not found in variables.yaml');
+      ).rejects.toThrow('externalIntegration block not found in application.yaml');
     });
 
     it('should throw error when no system files specified', async() => {
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const yaml = require('js-yaml');
       const variablesContent = yaml.dump({
         externalIntegration: {
@@ -301,7 +304,7 @@ describe('Generator Error Paths', () => {
     });
 
     it('should throw error when system file not found', async() => {
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const systemFilePath = path.join(appPath, 'system.json');
       const yaml = require('js-yaml');
       const variablesContent = yaml.dump({
@@ -311,7 +314,7 @@ describe('Generator Error Paths', () => {
         }
       });
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath === variablesPath; // variables.yaml exists, system.json doesn't
+        return filePath === variablesPath; // application.yaml exists, system.json doesn't
       });
       fs.readFileSync.mockReturnValue(variablesContent);
 

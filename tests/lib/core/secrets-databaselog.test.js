@@ -66,7 +66,7 @@ describe('DATABASELOG_URL handling in resolve command', () => {
   const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
   const builderPath = path.join(process.cwd(), 'builder', appName);
   const envTemplatePath = path.join(builderPath, 'env.template');
-  const variablesPath = path.join(builderPath, 'variables.yaml');
+  const variablesPath = path.join(builderPath, 'application.yaml');
   const envPath = path.join(builderPath, '.env');
 
   beforeEach(() => {

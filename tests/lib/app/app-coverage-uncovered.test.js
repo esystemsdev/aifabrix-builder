@@ -152,7 +152,7 @@ describe('App.js Uncovered Paths', () => {
 
         // This should throw an error
         try {
-          await fs.writeFile(path.join(appPath, 'variables.yaml'), 'test');
+          await fs.writeFile(path.join(appPath, 'application.yaml'), 'test');
         } catch (error) {
           // Simulate the error that would be caught in generateConfigFiles
           expect(error).toBeDefined();
@@ -233,7 +233,7 @@ describe('App.js Uncovered Paths', () => {
       };
 
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -252,7 +252,7 @@ describe('App.js Uncovered Paths', () => {
       };
 
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -283,7 +283,7 @@ describe('App.js Uncovered Paths', () => {
       };
 
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -315,7 +315,7 @@ describe('App.js Uncovered Paths', () => {
       };
 
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -352,7 +352,7 @@ describe('App.js Uncovered Paths', () => {
       };
 
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -372,7 +372,7 @@ describe('App.js Uncovered Paths', () => {
       };
 
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -398,14 +398,14 @@ describe('App.js Uncovered Paths', () => {
       console.log.mockRestore();
     });
 
-    it('should handle missing variables.yaml', async() => {
+    it('should handle missing application.yaml', async() => {
       const appName = 'missing-app';
       const appPath = path.join(tempDir, 'builder', appName);
 
       fsSync.mkdirSync(appPath, { recursive: true });
 
       await expect(app.generateDockerfileForApp(appName, {}))
-        .rejects.toThrow('Failed to load configuration');
+        .rejects.toThrow(/Failed to load configuration|not found in integration|not found in builder/);
     });
   });
 
@@ -429,11 +429,11 @@ describe('App.js Uncovered Paths', () => {
   describe('deployApp delegation', () => {
     it('should delegate deployApp to appDeploy module', async() => {
       const appDeploy = require('../../../lib/app/deploy');
-      appDeploy.deployApp = jest.fn().mockResolvedValue({ deploymentId: '123' });
+      appDeploy.deployApp = jest.fn().mockResolvedValue({ result: { deploymentId: '123' }, usedExternalDeploy: false });
 
-      const result = await app.deployApp('test-app', {});
+      const outcome = await app.deployApp('test-app', {});
       expect(appDeploy.deployApp).toHaveBeenCalledWith('test-app', {});
-      expect(result).toHaveProperty('deploymentId');
+      expect(outcome.result).toHaveProperty('deploymentId');
     });
   });
 });

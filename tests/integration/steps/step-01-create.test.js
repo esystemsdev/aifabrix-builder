@@ -72,11 +72,11 @@ describe('Integration Step 01: Create Application', () => {
       expect(exists).toBe(true);
     }
 
-    // Verify variables.yaml
-    const variablesYaml = path.join(appInfo.builderPath, 'variables.yaml');
+    // Verify application.yaml
+    const variablesYaml = path.join(appInfo.builderPath, 'application.yaml');
     const variablesExists = await testFileExists(variablesYaml);
     if (!variablesExists) {
-      throw new Error('variables.yaml not found');
+      throw new Error('application.yaml not found');
     }
     expect(variablesExists).toBe(true);
   });

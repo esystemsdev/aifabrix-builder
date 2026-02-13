@@ -33,7 +33,7 @@ class IntegrationTestSequencer extends Sequencer {
         return stepA - stepB;
       }
 
-      // If only one has step number, prioritize it
+      // If only one has step number, prioritize it (0 runs before step-01, etc.)
       if (stepA !== null) return -1;
       if (stepB !== null) return 1;
 
@@ -47,14 +47,20 @@ class IntegrationTestSequencer extends Sequencer {
    * @param {string} path - Test file path
    * @returns {number|null} Step number or null if not found
    */
-  extractStepNumber(path) {
-    const match = path.match(/step-(\d+)-/);
+  extractStepNumber(testPath) {
+    const match = testPath.match(/step-(\d+)-/);
     if (match) {
       return parseInt(match[1], 10);
     }
     // workflow.test.js should run last (assign high number)
-    if (path.includes('workflow.test.js')) {
+    if (testPath.includes('workflow.test.js')) {
       return 999;
+    }
+    // Run real-fs–dependent tests first so they run before any test that mocks fs
+    if (testPath.includes('compose-generator.test.js') ||
+        testPath.includes('paths-detect-app-type.test.js') ||
+        testPath.includes('resolve-application-config-path.test.js')) {
+      return 0;
     }
     return null;
   }

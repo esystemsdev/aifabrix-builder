@@ -33,6 +33,15 @@ jest.mock('../../../lib/utils/logger', () => ({
   log: jest.fn()
 }));
 
+jest.mock('../../../lib/utils/app-config-resolver', () => ({
+  resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml'))
+}));
+jest.mock('../../../lib/utils/config-format', () => ({
+  loadConfigFile: jest.fn(),
+  writeConfigFile: jest.fn()
+}));
+
+const configFormat = require('../../../lib/utils/config-format');
 const mockGenerateExternalSystemApplicationSchema = jest.fn();
 const mockLoadSystemFile = jest.fn();
 const mockLoadDatasourceFiles = jest.fn();
@@ -80,6 +89,8 @@ describe('Wizard Generator', () => {
     jest.clearAllMocks();
     writtenFiles.clear(); // Clear written files for each test
     jest.spyOn(process, 'cwd').mockReturnValue('/workspace');
+    configFormat.loadConfigFile.mockReturnValue({});
+    configFormat.writeConfigFile.mockImplementation(() => {});
     fsPromises.mkdir.mockResolvedValue(undefined);
 
     // Track written files and their content for existsSync/readFileSync mocks
@@ -118,7 +129,7 @@ describe('Wizard Generator', () => {
       const normalizedPath = String(filePath || '').replace(/\\/g, '/');
       if (normalizedPath.includes('templates/external-system/README.md.hbs')) {
         // Return the actual template content
-        return '# {{displayName}}\n\n{{description}}\n\n## System Information\n\n- **System Key**: `{{systemKey}}`\n- **System Type**: `{{systemType}}`\n- **Datasources**: {{datasourceCount}}\n\n## Files\n\n- `variables.yaml` - Application configuration with externalIntegration block\n- `{{systemKey}}-deploy.json` - External system definition\n{{#each datasources}}\n- `{{fileName}}` - Datasource: {{displayName}}\n{{/each}}\n- `env.template` - Environment variables template\n- `application-schema.json` - Combined system + datasources for deployment\n\n## Quick Start\n\n### 1. Create External System\n\n```bash\naifabrix create {{appName}} --type external\n```\n\n### 2. Configure Authentication and Datasources\n\nEdit configuration files in `integration/{{appName}}/`:\n\n- Update authentication in `{{systemKey}}-deploy.json`\n- Configure field mappings in datasource JSON files\n\n### 3. Validate Configuration\n\n```bash\naifabrix validate {{appName}} --type external\n```\n\n### 4. Generate Deployment JSON\n\n```bash\naifabrix json {{appName}} --type external\n```\n\n### 5. Deploy to Dataplane\n\n```bash\naifabrix deploy {{appName}} --controller <url> --environment dev\n```\n\n## Testing\n\n### Unit Tests (Local Validation)\n\n```bash\naifabrix test {{appName}}\n```\n\n### Integration Tests (Via Dataplane)\n\n```bash\naifabrix test-integration {{appName}} --environment dev\n```\n\n## Deployment\n\nDeploy to dataplane via miso-controller:\n\n```bash\naifabrix deploy {{appName}} --controller <url> --environment dev\n```\n\n## Troubleshooting\n\n- **Validation errors**: Run `aifabrix validate {{appName}} --type external` to check configuration\n- **Deployment issues**: Check controller URL and authentication\n- **File not found**: Ensure you\'re in the project root directory\n';
+        return '# {{displayName}}\n\n{{description}}\n\n## System Information\n\n- **System Key**: `{{systemKey}}`\n- **System Type**: `{{systemType}}`\n- **Datasources**: {{datasourceCount}}\n\n## Files\n\n- `application.yaml` - Application configuration with externalIntegration block\n- `{{systemKey}}-deploy.json` - External system definition\n{{#each datasources}}\n- `{{fileName}}` - Datasource: {{displayName}}\n{{/each}}\n- `env.template` - Environment variables template\n- `application-schema.json` - Combined system + datasources for deployment\n\n## Quick Start\n\n### 1. Create External System\n\n```bash\naifabrix create {{appName}} --type external\n```\n\n### 2. Configure Authentication and Datasources\n\nEdit configuration files in `integration/{{appName}}/`:\n\n- Update authentication in `{{systemKey}}-deploy.json`\n- Configure field mappings in datasource JSON files\n\n### 3. Validate Configuration\n\n```bash\naifabrix validate {{appName}} --type external\n```\n\n### 4. Generate Deployment JSON\n\n```bash\naifabrix json {{appName}} --type external\n```\n\n### 5. Deploy to Dataplane\n\n```bash\naifabrix deploy {{appName}} --controller <url> --environment dev\n```\n\n## Testing\n\n### Unit Tests (Local Validation)\n\n```bash\naifabrix test {{appName}}\n```\n\n### Integration Tests (Via Dataplane)\n\n```bash\naifabrix test-integration {{appName}} --environment dev\n```\n\n## Deployment\n\nDeploy to dataplane via miso-controller:\n\n```bash\naifabrix deploy {{appName}} --controller <url> --environment dev\n```\n\n## Troubleshooting\n\n- **Validation errors**: Run `aifabrix validate {{appName}} --type external` to check configuration\n- **Deployment issues**: Check controller URL and authentication\n- **File not found**: Ensure you\'re in the project root directory\n';
       }
       // For written files, return the actual content that was written
       if (writtenFiles.has(normalizedPath)) {
@@ -149,46 +160,46 @@ describe('Wizard Generator', () => {
       expect(fsPromises.writeFile).toHaveBeenCalled();
       expect(result.appPath).toBe(path.join('/workspace', 'integration', appName));
       // appName takes priority over systemKey for file naming
-      // System file uses -system.json naming convention
-      expect(result.systemFilePath).toContain(`${appName}-system.json`);
+      // System file uses -system.yaml naming convention
+      expect(result.systemFilePath).toContain(`${appName}-system.yaml`);
     });
 
-    it('should write system JSON file with appName as key and displayName', async() => {
+    it('should write system YAML file with appName as key and displayName', async() => {
       await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, {});
       // appName takes priority for file naming
-      // System file uses -system.json naming convention
-      const systemFileCall = fsPromises.writeFile.mock.calls.find(call =>
-        call[0].includes(`${appName}-system.json`)
+      // System file uses -system.yaml naming convention; written via configFormat.writeConfigFile
+      const systemFileCall = configFormat.writeConfigFile.mock.calls.find(call =>
+        call[0] && String(call[0]).includes(`${appName}-system.yaml`)
       );
       expect(systemFileCall).toBeDefined();
-      const writtenContent = JSON.parse(systemFileCall[1]);
+      const writtenContent = systemFileCall[1];
       // Key and displayName should be generated from appName
       expect(writtenContent.key).toBe(appName);
       // displayName is generated from appName: "test-app" -> "Test App"
       expect(writtenContent.displayName).toBe('Test App');
     });
 
-    it('should write datasource JSON files with appName prefix', async() => {
+    it('should write datasource YAML files with appName prefix', async() => {
       await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, {});
       // appName takes priority for file naming
       // Datasource files use -datasource- naming convention
-      const datasourceFileCalls = fsPromises.writeFile.mock.calls.filter(call =>
-        call[0].includes(`${appName}-datasource-`) && call[0].endsWith('.json')
+      const datasourceFileCalls = configFormat.writeConfigFile.mock.calls.filter(call =>
+        call[0] && String(call[0]).includes(`${appName}-datasource-`) && String(call[0]).endsWith('.yaml')
       );
       expect(datasourceFileCalls.length).toBe(datasourceConfigs.length);
     });
 
-    it('should generate variables.yaml with appName-based system file', async() => {
+    it('should generate application.yaml with appName-based system file', async() => {
       await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, {});
-      const variablesCall = fsPromises.writeFile.mock.calls.find(call =>
-        call[0].includes('variables.yaml')
+      const variablesCall = configFormat.writeConfigFile.mock.calls.find(call =>
+        call[0] && String(call[0]).includes('application.yaml')
       );
       expect(variablesCall).toBeDefined();
-      const writtenYaml = yaml.load(variablesCall[1]);
-      expect(writtenYaml.externalIntegration).toBeDefined();
+      const writtenVars = variablesCall[1];
+      expect(writtenVars.externalIntegration).toBeDefined();
       // appName takes priority for file naming
-      // System file uses -system.json naming convention
-      expect(writtenYaml.externalIntegration.systems).toContain(`${appName}-system.json`);
+      // System file uses -system.yaml naming convention
+      expect(writtenVars.externalIntegration.systems).toContain(`${appName}-system.yaml`);
     });
 
     it('should generate env.template with authentication variables', async() => {
@@ -232,11 +243,12 @@ describe('Wizard Generator', () => {
 
     it('should handle empty datasource configs', async() => {
       await wizardGenerator.generateWizardFiles(appName, systemConfig, [], systemKey, {});
-      const variablesCall = fsPromises.writeFile.mock.calls.find(call =>
-        call[0].includes('variables.yaml')
+      const variablesCall = configFormat.writeConfigFile.mock.calls.find(call =>
+        call[0] && String(call[0]).includes('application.yaml')
       );
-      const writtenYaml = yaml.load(variablesCall[1]);
-      expect(writtenYaml.externalIntegration.dataSources).toEqual([]);
+      expect(variablesCall).toBeDefined();
+      const writtenVars = variablesCall[1];
+      expect(writtenVars.externalIntegration.dataSources).toEqual([]);
     });
   });
 

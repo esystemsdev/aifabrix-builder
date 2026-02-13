@@ -65,7 +65,7 @@ describe('Application Commands Branch Coverage Tests', () => {
       fs.readFile.mockRejectedValue(new Error('Permission denied'));
 
       try {
-        const variablesPath = path.join(process.cwd(), 'builder', 'test-app', 'variables.yaml');
+        const variablesPath = path.join(process.cwd(), 'builder', 'test-app', 'application.yaml');
         await fs.readFile(variablesPath, 'utf-8');
       } catch (error) {
         if (error.code !== 'ENOENT') {
@@ -83,7 +83,7 @@ describe('Application Commands Branch Coverage Tests', () => {
       app.createApp = null;
 
       try {
-        const variablesPath = path.join(process.cwd(), 'builder', 'test-app', 'variables.yaml');
+        const variablesPath = path.join(process.cwd(), 'builder', 'test-app', 'application.yaml');
         try {
           await fs.readFile(variablesPath, 'utf-8');
         } catch (error) {

@@ -99,7 +99,7 @@ describe('Application Commands Module', () => {
         build: { language: 'typescript', port: 3000 }
       };
 
-      const variablesPath = path.join(appDir, 'variables.yaml');
+      const variablesPath = path.join(appDir, 'application.yaml');
       const variablesYaml = yaml.dump(variables);
       // Use synchronous write to ensure file is created before check
       fsSync.writeFileSync(variablesPath, variablesYaml, 'utf-8');
@@ -139,11 +139,11 @@ describe('Application Commands Module', () => {
       expect(loadedVariables.build.language).toBe('typescript');
     });
 
-    it('should handle missing variables.yaml by creating app', async() => {
+    it('should handle missing application.yaml by creating app', async() => {
       const appKey = 'new-app';
       createApp.mockResolvedValue();
 
-      const variablesPath = path.join(tempDir, 'builder', appKey, 'variables.yaml');
+      const variablesPath = path.join(tempDir, 'builder', appKey, 'application.yaml');
 
       const error = new Error('File not found');
       error.code = 'ENOENT';
@@ -257,12 +257,12 @@ describe('Application Commands Module', () => {
       expect(config.token).toBeNull();
     });
 
-    it('should handle missing variables.yaml gracefully', async() => {
+    it('should handle missing application.yaml gracefully', async() => {
       const appKey = 'missing-app';
 
       try {
         await fs.readFile(
-          path.join(tempDir, 'builder', appKey, 'variables.yaml'),
+          path.join(tempDir, 'builder', appKey, 'application.yaml'),
           'utf-8'
         );
       } catch (error) {
@@ -271,7 +271,7 @@ describe('Application Commands Module', () => {
       }
     });
 
-    it('should validate required fields in variables.yaml', () => {
+    it('should validate required fields in application.yaml', () => {
       const incompleteConfig = {
         app: { name: 'Test' }
         // Missing app.key
@@ -303,7 +303,7 @@ describe('Application Commands Module', () => {
       expect(validModes).not.toContain(invalidMode);
     });
 
-    it('should extract app configuration from variables.yaml', async() => {
+    it('should extract app configuration from application.yaml', async() => {
       const appKey = 'test-app';
       const appDir = path.join(tempDir, 'builder', appKey);
       fsSync.mkdirSync(appDir, { recursive: true });
@@ -320,7 +320,7 @@ describe('Application Commands Module', () => {
         }
       };
 
-      const variablesPath = path.join(appDir, 'variables.yaml');
+      const variablesPath = path.join(appDir, 'application.yaml');
       const variablesYaml = yaml.dump(variables);
       // Use synchronous write to ensure file is created before check
       fsSync.writeFileSync(variablesPath, variablesYaml, 'utf-8');

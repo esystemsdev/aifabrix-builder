@@ -11,8 +11,7 @@ Table of contents for all AI Fabrix Builder documentation.
 | Document                                                                    | Description                                                            |
 | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | [Your own applications](your-own-applications.md)                           | Create, configure, build, and run your own app (app-centric).          |
-| [CLI Reference](cli-reference.md)                                           | All CLI commands and options.                                          |
-| [Commands index](commands/README.md)                                        | Commands grouped by concept with examples.                             |
+| [CLI Commands Reference](commands/README.md)                                 | All CLI commands and options (alias: use `aifx` for `aifabrix`).       |
 
 **Example application and SDK:** For an example app and TypeScript/Python client to talk to the dataplane and controller, see [aifabrix-miso-client](https://github.com/esystemsdev/aifabrix-miso-client).
 
@@ -23,7 +22,7 @@ Table of contents for all AI Fabrix Builder documentation.
 | Document                                                                    | Description                                                            |
 | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | [Infrastructure](infrastructure.md)                                         | Local infra (Postgres, Redis, Traefik), up-platform, up-miso, up-dataplane. |
-| [Configuration reference](configuration/README.md)                          | env-config, env.template, variables.yaml, secrets, deployment key.     |
+| [Configuration reference](configuration/README.md)                          | env-config, env.template, application.yaml, secrets, deployment key.     |
 
 ---
 
@@ -74,6 +73,6 @@ Table of contents for all AI Fabrix Builder documentation.
 | [Deployment key](configuration/deployment-key.md)                           | How deployment key is calculated; why Miso Controller and Dataplane use the same key. |
 | [env-config](configuration/env-config.md)                                   | Environment configuration.                                             |
 | [env.template](configuration/env-template.md)                               | Environment template and variables.                                    |
-| [variables.yaml](configuration/variables-yaml.md)                           | Application variables.                                                 |
+| [application.yaml](configuration/application-yaml.md)                       | Application config.                                                    |
 | [Secrets and config](configuration/secrets-and-config.md)                   | Secrets and configuration.                                             |
 | [External integration config](configuration/external-integration.md)        | External system configuration.                                         |

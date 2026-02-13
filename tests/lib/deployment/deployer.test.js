@@ -16,6 +16,9 @@ const axios = require('axios');
 // Mock axios
 jest.mock('axios');
 jest.mock('../../../lib/api/pipeline.api');
+jest.mock('../../../lib/api/auth.api', () => ({
+  getAuthUser: jest.fn().mockResolvedValue({ success: true, data: { authenticated: true } })
+}));
 jest.mock('../../../lib/utils/token-manager');
 jest.mock('../../../lib/utils/deployment-validation');
 

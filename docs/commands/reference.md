@@ -36,8 +36,8 @@ aifabrix push myapp --registry myacr.azurecr.io --tag v1.0.0
 # Deploy (uses controller and environment from config)
 aifabrix deploy myapp
 
-# Deploy external system from integration/<app>/ (no app register needed)
-aifabrix deploy myapp --type external
+# Deploy external system from integration/<app>/ (resolved first by default; no app register needed)
+aifabrix deploy myapp
 ```
 
 ### Troubleshooting
@@ -50,7 +50,7 @@ aifabrix resolve myapp
 aifabrix json myapp
 
 # View configuration
-cat builder/myapp/variables.yaml
+cat builder/myapp/application.yaml
 cat builder/myapp/.env
 cat builder/myapp/myapp-deploy.json
 ```

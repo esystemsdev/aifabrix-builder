@@ -20,9 +20,9 @@ describe('Key Generator Module', () => {
   });
 
   describe('generateDeploymentKey', () => {
-    it('should generate deployment key from variables.yaml', async() => {
+    it('should generate deployment key from application.yaml', async() => {
       const appName = 'testapp';
-      const variablesPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
+      const variablesPath = path.join(process.cwd(), 'builder', appName, 'application.yaml');
       const mockContent = 'key: testapp\ndisplayName: Test App';
       const expectedHash = crypto.createHash('sha256').update(mockContent, 'utf8').digest('hex');
 
@@ -42,13 +42,13 @@ describe('Key Generator Module', () => {
       await expect(keyGenerator.generateDeploymentKey('')).rejects.toThrow('App name is required and must be a string');
     });
 
-    it('should throw error if variables.yaml not found', async() => {
+    it('should throw error if application.yaml not found', async() => {
       const appName = 'testapp';
-      const variablesPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
+      const variablesPath = path.join(process.cwd(), 'builder', appName, 'application.yaml');
 
       fs.existsSync.mockReturnValue(false);
 
-      await expect(keyGenerator.generateDeploymentKey(appName)).rejects.toThrow(`variables.yaml not found: ${variablesPath}`);
+      await expect(keyGenerator.generateDeploymentKey(appName)).rejects.toThrow(/Application config not found|application\.yaml not found/);
     });
   });
 
@@ -275,7 +275,7 @@ describe('Key Generator Module', () => {
   describe('Integration tests', () => {
     it('should work end-to-end: generate key from file and validate it', async() => {
       const appName = 'testapp';
-      const variablesPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
+      const variablesPath = path.join(process.cwd(), 'builder', appName, 'application.yaml');
       const mockContent = 'key: testapp\ndisplayName: Test App';
 
       fs.existsSync.mockReturnValue(true);

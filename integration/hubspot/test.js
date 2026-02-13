@@ -511,7 +511,7 @@ async function checkAppDirectory(appPath) {
  * @throws {Error} If required files are missing
  */
 async function validateRequiredFiles(appPath, entries) {
-  const requiredFiles = ['variables.yaml', 'env.template', 'README.md', 'deploy.js'];
+  const requiredFiles = ['application.yaml', 'env.template', 'README.md', 'deploy.js'];
   const missingFiles = [];
   for (const fileName of requiredFiles) {
     const filePath = path.join(appPath, fileName);
@@ -558,10 +558,10 @@ function validateDeployFiles(appPath, entries) {
  */
 async function validateFileContents(appPath, deployFiles) {
   try {
-    const variablesContent = await fs.readFile(path.join(appPath, 'variables.yaml'), 'utf8');
+    const variablesContent = await fs.readFile(path.join(appPath, 'application.yaml'), 'utf8');
     yaml.load(variablesContent);
   } catch (error) {
-    throw new Error(`Invalid YAML syntax in variables.yaml: ${error.message}`);
+    throw new Error(`Invalid YAML syntax in application.yaml: ${error.message}`);
   }
   for (const fileName of deployFiles) {
     try {
@@ -597,7 +597,7 @@ async function validateGeneratedFiles(appName) {
  * @returns {Promise<Object>} Snapshot of file contents keyed by path
  */
 async function captureExternalSnapshot(appPath) {
-  const variablesPath = path.join(appPath, 'variables.yaml');
+  const variablesPath = path.join(appPath, 'application.yaml');
   const variablesContent = await fs.readFile(variablesPath, 'utf8');
   const variables = yaml.load(variablesContent);
 
@@ -608,7 +608,7 @@ async function captureExternalSnapshot(appPath) {
   const systemFiles = variables.externalIntegration.systems || [];
   const datasourceFiles = variables.externalIntegration.dataSources || [];
   const fileNames = [
-    'variables.yaml',
+    'application.yaml',
     'env.template',
     'README.md',
     ...systemFiles,

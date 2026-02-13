@@ -137,8 +137,8 @@ describe('Application Module Coverage', () => {
       // Ensure parent directory exists
       fsSync.mkdirSync(path.dirname(appPath), { recursive: true });
       fsSync.mkdirSync(appPath, { recursive: true });
-      // Ensure variables.yaml exists with proper structure
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      // Ensure application.yaml exists with proper structure
+      const variablesPath = path.join(appPath, 'application.yaml');
       const variablesContent = yaml.dump({
         app: { key: 'test-app' },
         image: { name: 'test-app' }
@@ -159,8 +159,8 @@ describe('Application Module Coverage', () => {
       // Ensure parent directory exists
       fsSync.mkdirSync(path.dirname(appPath), { recursive: true });
       fsSync.mkdirSync(appPath, { recursive: true });
-      // Ensure variables.yaml exists with proper structure
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      // Ensure application.yaml exists with proper structure
+      const variablesPath = path.join(appPath, 'application.yaml');
       const variablesContent = yaml.dump({
         app: { key: 'test-app' },
         image: { name: 'test-app' }
@@ -182,8 +182,8 @@ describe('Application Module Coverage', () => {
       // Ensure parent directory exists
       fsSync.mkdirSync(path.dirname(appPath), { recursive: true });
       fsSync.mkdirSync(appPath, { recursive: true });
-      // Ensure variables.yaml exists with proper structure
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      // Ensure application.yaml exists with proper structure
+      const variablesPath = path.join(appPath, 'application.yaml');
       const variablesContent = yaml.dump({
         app: { key: 'test-app' },
         image: { name: 'test-app', registry: 'myacr.azurecr.io' }
@@ -208,8 +208,8 @@ describe('Application Module Coverage', () => {
       const builderDir = path.dirname(appPath);
       fsSync.mkdirSync(builderDir, { recursive: true });
       fsSync.mkdirSync(appPath, { recursive: true });
-      // Ensure variables.yaml exists with proper structure
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      // Ensure application.yaml exists with proper structure
+      const variablesPath = path.join(appPath, 'application.yaml');
       const variablesContent = yaml.dump({
         app: { key: 'test-app' },
         image: { name: 'test-app', registry: 'myacr.azurecr.io' }

@@ -35,12 +35,19 @@ jest.mock('../../../lib/app/rotate-secret');
 jest.mock('../../../lib/utils/app-existence');
 jest.mock('../../../lib/app');
 jest.mock('../../../lib/commands/up-common');
+jest.mock('../../../lib/utils/paths', () => ({
+  getBuilderPath: jest.fn(),
+  resolveApplicationConfigPath: jest.fn()
+}));
+jest.mock('../../../lib/utils/config-format', () => ({
+  loadConfigFile: jest.fn()
+}));
 
-const fs = require('fs');
 const path = require('path');
-const yaml = require('js-yaml');
 const { handleUpDataplane, buildDataplaneImageRef } = require('../../../lib/commands/up-dataplane');
 const config = require('../../../lib/core/config');
+const pathsUtil = require('../../../lib/utils/paths');
+const configFormat = require('../../../lib/utils/config-format');
 const { checkAuthentication } = require('../../../lib/utils/app-register-auth');
 const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
 const { registerApplication } = require('../../../lib/app/register');
@@ -67,18 +74,22 @@ describe('up-dataplane command', () => {
   });
 
   describe('buildDataplaneImageRef', () => {
-    it('should return undefined when variables.yaml does not exist', () => {
-      fs.existsSync = jest.fn().mockReturnValue(false);
+    it('should return undefined when application config does not exist', () => {
+      pathsUtil.getBuilderPath.mockReturnValue(path.join(cwd, 'builder', 'dataplane'));
+      pathsUtil.resolveApplicationConfigPath.mockImplementation(() => {
+        throw new Error('Application config not found');
+      });
       expect(buildDataplaneImageRef('myreg.azurecr.io')).toBeUndefined();
     });
 
-    it('should build registry/name:tag from variables', () => {
-      const variablesPath = path.join(cwd, 'builder', 'dataplane', 'variables.yaml');
-      fs.existsSync = jest.fn().mockImplementation((p) => p === variablesPath);
-      fs.readFileSync = jest.fn().mockReturnValue(yaml.dump({
+    it('should build registry/name:tag from application config', () => {
+      const builderPath = path.join(cwd, 'builder', 'dataplane');
+      pathsUtil.getBuilderPath.mockReturnValue(builderPath);
+      pathsUtil.resolveApplicationConfigPath.mockReturnValue(path.join(builderPath, 'application.yaml'));
+      configFormat.loadConfigFile.mockReturnValue({
         app: { key: 'dataplane' },
         image: { name: 'aifabrix/dataplane', tag: 'v1' }
-      }));
+      });
 
       expect(buildDataplaneImageRef('myreg.azurecr.io')).toBe('myreg.azurecr.io/aifabrix/dataplane:v1');
     });

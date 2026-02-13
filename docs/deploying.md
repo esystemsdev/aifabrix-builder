@@ -6,7 +6,7 @@ Deployment is **unified**: the same flow and the same Miso Controller apply to (
 
 ## What gets deployed
 
-- **External systems:** OpenAPI/MCP integrations, datasources, and related config. You work in `integration/<app>/` and deploy with `aifabrix deploy <app> --type external`. No app registration needed; the controller creates and deploys from your integration manifest.
+- **External systems:** OpenAPI/MCP integrations, datasources, and related config. You work in `integration/<app>/`. Deploy with `aifabrix deploy <app>` (the CLI resolves `integration/<app>/` first, then `builder/<app>/`). No app registration needed; the controller creates and deploys from your integration manifest.
 - **Containerized applications:** Web apps or services built as Docker images. You build, push to a registry, then deploy with `aifabrix deploy <app>`. Requires app registration and image push first.
 
 Both paths use the same Controller and the same deploy pipeline; only the source (integration folder vs builder + registry) and manifest content differ.
@@ -19,7 +19,194 @@ Both paths use the same Controller and the same deploy pipeline; only the source
 - **Controller:** The CLI sends the deployment manifest to the Miso Controller. The controller validates the manifest and deploys to the dataplane or target environment (Azure Container Apps or local Docker). The builder does not generate or send a deployment key—the controller computes and manages it. See [Deployment key](configuration/deployment-key.md).
 - **Dataplane/target:** The controller deploys; pipeline and schema publishing run when configured (e.g. `autopublish: true` for external systems).
 
-For **containerized applications:** build the image, push to a registry (e.g. ACR), then deploy via the Controller. Prerequisites and steps below apply. For **external systems:** use `aifabrix deploy <app> --type external` from `integration/<app>/` (no app registration needed).
+For **containerized applications:** build the image, push to a registry (e.g. ACR), then deploy via the Controller. Prerequisites and steps below apply. For **external systems:** use `aifabrix deploy <app>` from `integration/<app>/` (path is resolved automatically; no app registration needed). MCP and OpenAPI docs are always **served by the dataplane** after publish; see [Controller and Dataplane: What, Why, When](#controller-and-dataplane-what-why-when) for when and how they become available.
+
+## Controller and Dataplane: What, Why, When
+
+A single place to understand the two platform components and when you get MCP/OpenAPI documentation.
+
+### What
+
+- **Miso Controller:** Orchestration and pipeline API. It validates manifests and deploys to Azure (Container Apps) or local Docker. For external systems, the controller may call the dataplane to publish; it does not serve MCP/OpenAPI docs itself.
+- **Dataplane:** Schema registry, pipeline (upload → validate → publish), and **serving** of MCP/OpenAPI docs from its database. Docs are always served by the dataplane, not pushed by the controller.
+
+### When to use deploy vs upload
+
+| Use case | Command | Path | Outcome |
+| -------- | ------- | ----- | ------- |
+| Promote to full platform (RBAC, Container Apps, etc.) | `aifabrix deploy <app>` | CLI → Controller → (Controller deploys / may call dataplane publish) | Full platform deployment; docs on dataplane after publish |
+| Test on dataplane only, or dataplane access but limited controller permissions | `aifabrix upload <system-key>` | CLI → Dataplane (upload → validate → publish) | System + datasources on dataplane; docs available after publish. No controller deploy; RBAC stays on dataplane until you promote via deploy or web UI |
+
+See [External systems: Deploy to Controller and Upload to dataplane](external-systems.md#4a-upload-to-dataplane-test-without-promoting) and [aifabrix upload](commands/external-integration.md#aifabrix-upload-system-key) for details.
+
+### When MCP and OpenAPI docs are available
+
+Docs are available **after** the system (and its datasources) are **published** on the dataplane—whether you published via **deploy** (controller-driven) or **upload** (dataplane pipeline only). The dataplane stores the published config in its database and then serves the docs at the URLs below.
+
+### How to get OpenAPI and MCP docs
+
+- **REST OpenAPI:** `{dataplane_base_url}/api/v1/rest/{system_key}/docs` (and `.json` / `.yaml` under that path).
+- **MCP:** `{dataplane_base_url}/api/v1/mcp/{system_key}/docs` and per-resource-type at `{dataplane_base_url}/api/v1/mcp/{system_key}/{resource_type}/docs`.
+
+Docs are visible only when `showOpenApiDocs` is `true` (default). To change visibility, use the External System API (e.g. update the system config on the dataplane).
+
+### Controller and Dataplane deployment paths
+
+The two main paths: **deploy** goes through the Controller; **upload** goes directly to the dataplane pipeline. In both cases, after publish, docs live on the dataplane.
+
+```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "subGraphTitleColor": "#64748B",
+    "subGraphTitleFontWeight": "500",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
+flowchart LR
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef medium fill:#1E3A8A,color:#ffffff,stroke-width:0px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+classDef note fill:#FFFFFF,color:#64748B,stroke:#E2E8F0,stroke-width:1.5px,stroke-dasharray: 4 2;
+
+%% =======================
+%% Deploy path
+%% =======================
+CLI[CLI]:::primary --> DeployCmd[aifabrix deploy]:::base
+DeployCmd --> Controller[Miso Controller<br/>validate + deploy]:::medium
+Controller --> DataplanePublish[Dataplane<br/>publish when controller-driven]:::base
+
+%% =======================
+%% Upload path
+%% =======================
+CLI --> UploadCmd[aifabrix upload]:::base
+UploadCmd --> DataplanePipe[Dataplane<br/>upload → validate → publish]:::base
+
+%% =======================
+%% Docs outcome
+%% =======================
+DataplanePublish --> Docs[Docs served<br/>by dataplane]:::note
+DataplanePipe --> Docs
+```
+
+### When MCP/OpenAPI docs become available
+
+After publish (via either path), the dataplane stores the config and serves docs at the standard URLs. Visibility is controlled by `showOpenApiDocs`.
+
+```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "subGraphTitleColor": "#64748B",
+    "subGraphTitleFontWeight": "500",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
+flowchart TD
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef medium fill:#1E3A8A,color:#ffffff,stroke-width:0px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+classDef note fill:#FFFFFF,color:#64748B,stroke:#E2E8F0,stroke-width:1.5px,stroke-dasharray: 4 2;
+
+%% =======================
+%% Flow
+%% =======================
+Publish[Publish via deploy<br/>or upload]:::primary --> Store[Dataplane stores<br/>in database]:::medium
+Store --> Serve[Docs served at<br/>standard URLs]:::base
+Serve --> Visible{showOpenApiDocs<br/>true?}:::base
+Visible -->|Yes| DocsVisible[OpenAPI and MCP<br/>docs visible]:::base
+Visible -->|No| DocsHidden[Docs not visible]:::note
+```
+
+### External systems: deploy vs upload
+
+- **Deploy:** CLI → Controller → Controller deploys (and may call dataplane publish). Use when promoting to the full platform (RBAC on platform, Container Apps, etc.). Docs on dataplane after publish.
+- **Upload:** CLI → Dataplane pipeline only (upload → validate → publish). Use when testing on the dataplane or when you have dataplane access but limited controller permissions. Docs on dataplane after publish; promote to platform later via `aifabrix deploy` or web UI.
+
+```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
+    "fontSize": "16px",
+    "background": "#FFFFFF",
+    "primaryColor": "#F8FAFC",
+    "primaryTextColor": "#0B0E15",
+    "primaryBorderColor": "#E2E8F0",
+    "lineColor": "#E2E8F0",
+    "textColor": "#0B0E15",
+    "subGraphTitleColor": "#64748B",
+    "subGraphTitleFontWeight": "500",
+    "borderRadius": 16
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 34,
+    "rankSpacing": 34,
+    "padding": 10
+  }
+}}%%
+
+flowchart TD
+
+%% =======================
+%% Styles
+%% =======================
+classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
+classDef medium fill:#1E3A8A,color:#ffffff,stroke-width:0px;
+classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
+classDef note fill:#FFFFFF,color:#64748B,stroke:#E2E8F0,stroke-width:1.5px,stroke-dasharray: 4 2;
+
+%% =======================
+%% Paths
+%% =======================
+Choice[External system<br/>deploy or upload?]:::primary --> DeployPath[Deploy path]:::base
+Choice --> UploadPath[Upload path]:::base
+DeployPath --> ViaController[CLI → Controller<br/>validate + deploy]:::medium
+ViaController --> OutcomeDeploy[RBAC on platform<br/>Docs on dataplane after publish]:::base
+UploadPath --> ViaDataplane[CLI → Dataplane<br/>upload → validate → publish]:::base
+ViaDataplane --> OutcomeUpload[Docs on dataplane<br/>after publish<br/>Promote later if needed]:::note
+```
+
+---
 
 ## Prerequisites
 
@@ -56,10 +243,13 @@ aifabrix deploy myapp
 ### Method 2: Deploy locally (controller + local Docker)
 
 ```bash
-aifabrix deploy myapp --deployment local
+aifabrix deploy myapp --local
 ```
 
-Sends the deployment manifest to the controller (which validates and deploys as needed), then runs the app locally (same as `aifabrix run myapp`). Use for local development. The CLI still sends the manifest to the controller; the controller and dataplane validate and deploy; the app runs in local Docker.
+- **Apps (builder/):** Sends the deployment manifest to the controller (which validates and deploys as needed), then runs the app locally (same as `aifabrix run myapp`). Use for local development.
+- **External systems (integration/):** Sends the manifest to the controller, then restarts the dataplane container so the dataplane picks up the new integration (`aifabrix restart dataplane`).
+
+The CLI always sends the manifest to the controller; the controller and dataplane validate and deploy. For apps, the app then runs in local Docker; for external systems, dataplane is restarted so it reloads the integration.
 
 ### Method 3: Automated CI/CD Deployment
 
@@ -211,7 +401,7 @@ aifabrix deploy myapp
    - **Note:** Device tokens (from device code flow) are stored at root level keyed by controller URL and include refresh tokens for automatic renewal on 401 errors
 
 3. **Generates deployment manifest**
-   - Builds manifest from variables.yaml, env.template, rbac.yaml (e.g. `builder/myapp/myapp-deploy.json` for regular apps)
+   - Builds manifest from application.yaml, env.template, rbac.yaml (e.g. `builder/myapp/myapp-deploy.json` for regular apps)
    - Builder does not generate or send a deployment key; the controller computes and manages it
 
 4. **Sends to controller**
@@ -265,7 +455,7 @@ Login --> SaveToken[Save Token to config.yaml]:::base
 GetToken -->|Token Valid| GenerateManifest[Generate Deployment Manifest]:::base
 SaveToken --> GenerateManifest
 
-GenerateManifest --> LoadConfig[Load Config Files<br/>variables.yaml<br/>env.template<br/>rbac.yaml]:::base
+GenerateManifest --> LoadConfig[Load Config Files<br/>application.yaml<br/>env.template<br/>rbac.yaml]:::base
 LoadConfig --> ParseEnv[Parse Environment Variables]:::base
 ParseEnv --> BuildManifest[Build JSON Manifest]:::base
 BuildManifest --> ValidateManifest[Validate Manifest]:::base
@@ -541,7 +731,7 @@ aifabrix push myapp --registry myacr.azurecr.io --tag v0.9.0
 aifabrix deploy myapp
 ```
 
-Controller deploys the image tag specified in variables.yaml:
+Controller deploys the image tag specified in application.yaml:
 ```yaml
 image:
   name: myapp
@@ -553,9 +743,9 @@ image:
 | Concept | Description |
 |--------|-------------|
 | **Deployment** | Immutable; uniquely identified by **deployment Id**. |
-| **Application version** | Semantic version in `variables.yaml` (`app.version`, default `1.0.0`). Used for display and “when to change version” guidance. |
+| **Application version** | Semantic version in `application.yaml` (`app.version`, default `1.0.0`). Used for display and “when to change version” guidance. |
 
-**Purpose:** Version tracks product/application changes and enables schema diffing and migrations. For regular apps, `app.version` can be auto-resolved from the image (OCI label or semver tag) when running or deploying; it flows into the deployment JSON and to Miso Controller, then Dataplane. When running the image, `builder/<app>/variables.yaml` is updated with the discovered version.
+**Purpose:** Version tracks product/application changes and enables schema diffing and migrations. For regular apps, `app.version` can be auto-resolved from the image (OCI label or semver tag) when running or deploying; it flows into the deployment JSON and to Miso Controller, then Dataplane. When running the image, `builder/<app>/application.yaml` is updated with the discovered version.
 
 **Why two (version vs tag):** version = product semantics; tag = container artifact.
 
@@ -574,10 +764,10 @@ image:
 ### Check Deployments Using CLI
 
 ```bash
-# List last N deployments for the current environment (default pageSize=50)
+# List environment deployments for the current environment (paginated; default page size 50)
 aifabrix deployment list
 
-# List last N deployments for a specific application
+# List deployments for a specific application in the current environment
 aifabrix app deployment <appKey>
 
 # Deploy with status polling
@@ -639,7 +829,7 @@ aifabrix doctor
 aifabrix json myapp
 ```
 
-**Cause:** Deployment configuration changed (variables.yaml, env.template, or rbac.yaml) since last deployment. The **controller** computes and stores the deployment key from the manifest (the builder does not send a key). See [Deployment key](configuration/deployment-key.md).
+**Cause:** Deployment configuration changed (application.yaml, env.template, or rbac.yaml) since last deployment. The **controller** computes and stores the deployment key from the manifest (the builder does not send a key). See [Deployment key](configuration/deployment-key.md).
 
 **Fix:** Regenerate manifest with `aifabrix json <app>` and redeploy.
 
@@ -768,7 +958,7 @@ Controller fetches from Azure Key Vault.
 The `aifabrix deploy` command performs the following steps:
 
 1. **Load Configuration Files**
-   - Reads `builder/<app>/variables.yaml` for application metadata
+   - Reads `builder/<app>/application.yaml` for application metadata
    - Reads `builder/<app>/env.template` for environment variables
    - Reads `builder/<app>/rbac.yaml` for roles and permissions (optional)
 
@@ -834,7 +1024,7 @@ classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
 %% =======================
 %% Flow
 %% =======================
-Variables[variables.yaml<br/>App metadata]:::primary --> Load[Load Configuration Files]:::base
+Variables[application.yaml<br/>App metadata]:::primary --> Load[Load Configuration Files]:::base
 EnvTemplate[env.template<br/>Environment variables]:::base --> Load
 Rbac[rbac.yaml<br/>Roles & permissions]:::base --> Load
 
@@ -868,6 +1058,7 @@ Poll -->|No| Complete
   1. Device token (if available) - for user-level audit
   2. Client token (if available) - for application-level authentication
   3. Client credentials (fallback) - direct credential authentication
+- **Bearer token only when logged in**: When using a Bearer token (device or client), the CLI **does not send client ID or client secret**—only the `Authorization: Bearer <token>` header. The CLI validates the token with the controller before deploy; if the token is invalid or expired, you are prompted to run `aifabrix login`. Client ID and secret are sent only when using the client-credentials fallback (e.g. CI/CD with no stored token).
 - **Credential Storage**: Client credentials displayed but not automatically saved (copy to GitHub Secrets)
 - **Token Management**: Bearer tokens auto-refresh with expiry tracking
 - **Deployment key**: Controller computes and stores the key from the manifest; see [Deployment key](configuration/deployment-key.md)
@@ -943,6 +1134,7 @@ Content-Type: application/json
 # Option 1: Bearer token (device token) - for user-level audit
 Headers:
   Authorization: Bearer <device-token>
+# Request body does not include clientId or clientSecret when using Bearer.
 
 # Option 2: Client credentials - for application-level audit
 Headers:

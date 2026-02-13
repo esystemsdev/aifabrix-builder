@@ -6,6 +6,14 @@ module.exports = {
     {
       displayName: 'default',
       testEnvironment: 'node',
+      transform: {
+        '^.+\\.js$': ['babel-jest', {
+          configFile: false,
+          babelrc: false,
+          presets: [['@babel/preset-env', { targets: { node: 'current' } }]],
+          plugins: ['@babel/plugin-syntax-optional-chaining']
+        }]
+      },
       testMatch: [
         '**/tests/**/*.test.js',
         '**/tests/**/*.spec.js'
@@ -25,8 +33,6 @@ module.exports = {
       })(),
       setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
       testTimeout: isCI ? 10000 : 5000,
-      verbose: true,
-      forceExit: true,
       detectOpenHandles: true,
       maxWorkers: isCI ? 2 : '50%'
     }

@@ -61,7 +61,7 @@ describe('Application Registration Commands - Direct Logic Tests', () => {
   });
 
   describe('register command logic', () => {
-    it('should register application with existing variables.yaml', async() => {
+    it('should register application with existing application.yaml', async() => {
       const variablesContent = yaml.dump({
         app: {
           key: 'test-app',
@@ -97,7 +97,7 @@ describe('Application Registration Commands - Direct Logic Tests', () => {
 
       // Test the registration logic directly
       const appKey = 'test-app';
-      const variablesPath = path.join(process.cwd(), 'builder', appKey, 'variables.yaml');
+      const variablesPath = path.join(process.cwd(), 'builder', appKey, 'application.yaml');
       const variablesContent2 = await fs.readFile(variablesPath, 'utf-8');
       const variables = yaml.load(variablesContent2);
 

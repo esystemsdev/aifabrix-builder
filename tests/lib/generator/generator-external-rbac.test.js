@@ -80,7 +80,7 @@ describe('External System RBAC Support', () => {
         ]
       };
 
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const systemFilePath = path.join(appPath, 'testexternal-deploy.json');
       const rbacPath = path.join(appPath, 'rbac.yaml');
 
@@ -104,15 +104,12 @@ describe('External System RBAC Support', () => {
         if (filePath === rbacPath) {
           return yaml.dump(rbacYaml);
         }
+        if (filePath === systemFilePath) {
+          return JSON.stringify(systemJson);
+        }
         return '';
       });
 
-      fs.promises.readFile.mockImplementation((filePath) => {
-        if (filePath === systemFilePath) {
-          return Promise.resolve(JSON.stringify(systemJson));
-        }
-        return Promise.reject(new Error(`File not found: ${filePath}`));
-      });
       fs.promises.writeFile.mockResolvedValue();
 
       await generator.generateDeployJson(appName);
@@ -166,7 +163,7 @@ describe('External System RBAC Support', () => {
         ]
       };
 
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const systemFilePath = path.join(appPath, 'testexternal-deploy.json');
       const rbacPath = path.join(appPath, 'rbac.yaml');
 
@@ -190,15 +187,12 @@ describe('External System RBAC Support', () => {
         if (filePath === rbacPath) {
           return yaml.dump(rbacYaml);
         }
+        if (filePath === systemFilePath) {
+          return JSON.stringify(systemJson);
+        }
         return '';
       });
 
-      fs.promises.readFile.mockImplementation((filePath) => {
-        if (filePath === systemFilePath) {
-          return Promise.resolve(JSON.stringify(systemJson));
-        }
-        return Promise.reject(new Error(`File not found: ${filePath}`));
-      });
       fs.promises.writeFile.mockResolvedValue();
 
       await generator.generateDeployJson(appName);
@@ -222,7 +216,7 @@ describe('External System RBAC Support', () => {
         authentication: { type: 'apikey' }
       };
 
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const systemFilePath = path.join(appPath, 'testexternal-deploy.json');
 
       fs.existsSync.mockImplementation((filePath) => {
@@ -242,15 +236,12 @@ describe('External System RBAC Support', () => {
             }
           });
         }
+        if (filePath === systemFilePath) {
+          return JSON.stringify(systemJson);
+        }
         return '';
       });
 
-      fs.promises.readFile.mockImplementation((filePath) => {
-        if (filePath === systemFilePath) {
-          return Promise.resolve(JSON.stringify(systemJson));
-        }
-        return Promise.reject(new Error(`File not found: ${filePath}`));
-      });
       fs.promises.writeFile.mockResolvedValue();
 
       await generator.generateDeployJson(appName);
@@ -292,7 +283,7 @@ describe('External System RBAC Support', () => {
         ]
       };
 
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const systemFilePath = path.join(appPath, 'testexternal-deploy.json');
       const rbacPath = path.join(appPath, 'rbac.yaml');
 
@@ -316,15 +307,12 @@ describe('External System RBAC Support', () => {
         if (filePath === rbacPath) {
           return yaml.dump(rbacYaml);
         }
+        if (filePath === systemFilePath) {
+          return JSON.stringify(systemJson);
+        }
         return '';
       });
 
-      fs.promises.readFile.mockImplementation((filePath) => {
-        if (filePath === systemFilePath) {
-          return Promise.resolve(JSON.stringify(systemJson));
-        }
-        return Promise.reject(new Error(`File not found: ${filePath}`));
-      });
       fs.promises.writeFile.mockResolvedValue();
 
       await generator.generateDeployJson(appName);

@@ -50,3 +50,4 @@ apps/
 # Integration files
 integration/my-hubspot/
 integration/hubspot-test-*/
+integration/test-*/

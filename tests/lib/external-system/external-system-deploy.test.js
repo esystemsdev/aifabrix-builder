@@ -69,6 +69,18 @@ jest.mock('../../../lib/utils/dataplane-resolver', () => ({
 jest.mock('../../../lib/api/external-systems.api', () => ({
   getExternalSystem: jest.fn()
 }));
+jest.mock('../../../lib/utils/paths', () => {
+  const pathMod = require('path');
+  return {
+    detectAppType: jest.fn().mockResolvedValue({
+      appPath: pathMod.join(process.cwd(), 'integration', 'test-external-app'),
+      isExternal: true,
+      appType: 'external'
+    }),
+    getIntegrationPath: jest.fn(),
+    getBuilderPath: jest.fn()
+  };
+});
 
 const { getDeploymentAuth } = require('../../../lib/utils/token-manager');
 const { getConfig } = require('../../../lib/core/config');
@@ -83,7 +95,7 @@ const { getExternalSystem } = require('../../../lib/api/external-systems.api');
 describe('External System Deploy Module', () => {
   const appName = 'test-external-app';
   const appPath = path.join(process.cwd(), 'integration', appName);
-  const variablesPath = path.join(appPath, 'variables.yaml');
+  const variablesPath = path.join(appPath, 'application.yaml');
 
   const mockManifest = {
     key: 'test-external-app',
@@ -139,8 +151,8 @@ describe('External System Deploy Module', () => {
       const { deployExternalSystem } = require('../../../lib/external-system/deploy');
       const result = await deployExternalSystem(appName);
 
-      expect(validateExternalSystemComplete).toHaveBeenCalledWith(appName);
-      expect(generateControllerManifest).toHaveBeenCalledWith(appName);
+      expect(validateExternalSystemComplete).toHaveBeenCalledWith(appName, expect.any(Object));
+      expect(generateControllerManifest).toHaveBeenCalledWith(appName, expect.any(Object));
       expect(getDeploymentAuth).toHaveBeenCalledWith(
         'http://localhost:3000',
         'dev',

@@ -105,8 +105,16 @@ describe('AI Fabrix CLI Entry Point', () => {
     });
 
     afterEach(() => {
-      // Restore original values
-      require.main = originalMain;
+      // Restore original values (require.main can be read-only in Node 20+)
+      try {
+        require.main = originalMain;
+      } catch (e) {
+        try {
+          Object.defineProperty(require, 'main', { value: originalMain, writable: true, configurable: true });
+        } catch (defineErr) {
+          // require.main may be non-configurable in some environments
+        }
+      }
       process.exit = originalExit;
     });
 

@@ -23,7 +23,13 @@ jest.mock('../../../lib/utils/logger', () => ({
 
 // Mock paths
 jest.mock('../../../lib/utils/paths', () => ({
-  detectAppType: jest.fn()
+  detectAppType: jest.fn(),
+  resolveApplicationConfigPath: jest.fn()
+}));
+
+// Mock config-format
+jest.mock('../../../lib/utils/config-format', () => ({
+  loadConfigFile: jest.fn()
 }));
 
 // Mock app module
@@ -31,11 +37,11 @@ jest.mock('../../../lib/app', () => ({
   createApp: jest.fn()
 }));
 
-const fs = require('fs').promises;
 const path = require('path');
 const yaml = require('js-yaml');
 const logger = require('../../../lib/utils/logger');
-const { detectAppType } = require('../../../lib/utils/paths');
+const { detectAppType, resolveApplicationConfigPath } = require('../../../lib/utils/paths');
+const { loadConfigFile } = require('../../../lib/utils/config-format');
 const { createApp } = require('../../../lib/app');
 const {
   loadVariablesYaml,
@@ -51,50 +57,51 @@ describe('App Register Config Module', () => {
   });
 
   describe('loadVariablesYaml', () => {
-    it('should load variables.yaml successfully', async() => {
+    it('should load application config successfully', async() => {
       const appKey = 'test-app';
       const appPath = '/builder/test-app';
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      const variablesContent = 'app:\n  key: test-app\n  displayName: Test App';
-      const expectedVariables = yaml.load(variablesContent);
+      const configPath = path.join(appPath, 'application.yaml');
+      const expectedVariables = { app: { key: 'test-app', displayName: 'Test App' } };
 
       detectAppType.mockResolvedValue({ appPath });
-      fs.readFile = jest.fn().mockResolvedValue(variablesContent);
+      resolveApplicationConfigPath.mockReturnValue(configPath);
+      loadConfigFile.mockReturnValue(expectedVariables);
 
       const result = await loadVariablesYaml(appKey);
 
       expect(detectAppType).toHaveBeenCalledWith(appKey);
-      expect(fs.readFile).toHaveBeenCalledWith(variablesPath, 'utf-8');
+      expect(resolveApplicationConfigPath).toHaveBeenCalledWith(appPath);
+      expect(loadConfigFile).toHaveBeenCalledWith(configPath);
       expect(result).toEqual({ variables: expectedVariables, created: false });
     });
 
-    it('should return created flag when variables.yaml not found', async() => {
+    it('should return created flag when application config not found', async() => {
       const appKey = 'test-app';
       const appPath = '/builder/test-app';
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      const error = new Error('File not found');
-      error.code = 'ENOENT';
 
       detectAppType.mockResolvedValue({ appPath });
-      fs.readFile = jest.fn().mockRejectedValue(error);
+      resolveApplicationConfigPath.mockImplementation(() => {
+        throw new Error('Application config not found in ' + appPath);
+      });
 
       const result = await loadVariablesYaml(appKey);
 
       expect(result).toEqual({ variables: null, created: true });
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('variables.yaml not found'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Application config not found'));
     });
 
-    it('should throw error for other file read errors', async() => {
+    it('should throw error for other config read errors', async() => {
       const appKey = 'test-app';
       const appPath = '/builder/test-app';
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      const error = new Error('Permission denied');
-      error.code = 'EACCES';
+      const configPath = path.join(appPath, 'application.yaml');
 
       detectAppType.mockResolvedValue({ appPath });
-      fs.readFile = jest.fn().mockRejectedValue(error);
+      resolveApplicationConfigPath.mockReturnValue(configPath);
+      loadConfigFile.mockImplementation(() => {
+        throw new Error('Permission denied');
+      });
 
-      await expect(loadVariablesYaml(appKey)).rejects.toThrow('Failed to read variables.yaml: Permission denied');
+      await expect(loadVariablesYaml(appKey)).rejects.toThrow('Failed to read application config: Permission denied');
     });
   });
 
@@ -103,13 +110,13 @@ describe('App Register Config Module', () => {
       const appKey = 'test-app';
       const options = { port: 3000 };
       const appPath = '/builder/test-app';
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      const variablesContent = 'app:\n  key: test-app\nport: 3000';
-      const expectedVariables = yaml.load(variablesContent);
+      const configPath = path.join(appPath, 'application.yaml');
+      const expectedVariables = { app: { key: 'test-app' }, port: 3000 };
 
       detectAppType.mockResolvedValue({ appPath });
       createApp.mockResolvedValue();
-      fs.readFile = jest.fn().mockResolvedValue(variablesContent);
+      resolveApplicationConfigPath.mockReturnValue(configPath);
+      loadConfigFile.mockReturnValue(expectedVariables);
 
       const result = await createMinimalAppIfNeeded(appKey, options);
 
@@ -217,13 +224,13 @@ describe('App Register Config Module', () => {
         systems: ['test-system-deploy.json']
       };
       const systemFilePath = path.join(appPath, './', 'test-system-deploy.json');
-      const systemContent = JSON.stringify({});
 
       detectAppType.mockResolvedValue({ appPath });
-      fs.readFile = jest.fn().mockResolvedValue(systemContent);
+      loadConfigFile.mockReturnValue({});
 
       const result = await extractExternalIntegrationUrl(appKey, externalIntegration);
 
+      expect(loadConfigFile).toHaveBeenCalledWith(systemFilePath);
       expect(result).toEqual({ url: undefined, apiKey: undefined });
     });
 
@@ -235,19 +242,20 @@ describe('App Register Config Module', () => {
         systems: ['test-system-deploy.json']
       };
       const systemFilePath = path.join(appPath, './', 'test-system-deploy.json');
-      const systemContent = JSON.stringify({
+      const systemJson = {
         authentication: {
           apikey: {
             key: 'api-key-123'
           }
         }
-      });
+      };
 
       detectAppType.mockResolvedValue({ appPath });
-      fs.readFile = jest.fn().mockResolvedValue(systemContent);
+      loadConfigFile.mockReturnValue(systemJson);
 
       const result = await extractExternalIntegrationUrl(appKey, externalIntegration);
 
+      expect(loadConfigFile).toHaveBeenCalledWith(systemFilePath);
       expect(result).toEqual({ url: undefined, apiKey: 'api-key-123' });
     });
 
@@ -258,16 +266,16 @@ describe('App Register Config Module', () => {
         schemaBasePath: './',
         systems: ['test-system-deploy.json']
       };
-      const systemContent = JSON.stringify({
+      const systemJson = {
         authentication: {
           apikey: {
             key: 'kv://secrets/api-key'
           }
         }
-      });
+      };
 
       detectAppType.mockResolvedValue({ appPath });
-      fs.readFile = jest.fn().mockResolvedValue(systemContent);
+      loadConfigFile.mockReturnValue(systemJson);
 
       const result = await extractExternalIntegrationUrl(appKey, externalIntegration);
 
@@ -289,14 +297,16 @@ describe('App Register Config Module', () => {
         schemaBasePath: './',
         systems: ['missing-file.json']
       };
-      const error = new Error('File not found');
-      error.code = 'ENOENT';
+      const systemFilePath = path.join(appPath, './', 'missing-file.json');
 
       detectAppType.mockResolvedValue({ appPath });
-      fs.readFile = jest.fn().mockRejectedValue(error);
+      loadConfigFile.mockImplementation((fp) => {
+        if (fp === systemFilePath) throw new Error('Config file not found: ' + fp);
+        return {};
+      });
 
       await expect(extractExternalIntegrationUrl(appKey, externalIntegration))
-        .rejects.toThrow('External system file not found:');
+        .rejects.toThrow(/External system file not found|Config file not found/);
     });
 
     it('should return url undefined when system JSON has no environment.baseUrl', async() => {
@@ -306,12 +316,10 @@ describe('App Register Config Module', () => {
         schemaBasePath: './',
         systems: ['test-system-deploy.json']
       };
-      const systemContent = JSON.stringify({
-        authentication: {}
-      });
+      const systemJson = { authentication: {} };
 
       detectAppType.mockResolvedValue({ appPath });
-      fs.readFile = jest.fn().mockResolvedValue(systemContent);
+      loadConfigFile.mockReturnValue(systemJson);
 
       const result = await extractExternalIntegrationUrl(appKey, externalIntegration);
       expect(result.url).toBeUndefined();
@@ -335,10 +343,10 @@ describe('App Register Config Module', () => {
       const appKey = 'test-app';
       const options = {};
       const appPath = '/builder/test-app';
-      const systemContent = JSON.stringify({});
+      const systemFilePath = path.join(appPath, './', 'test-system-deploy.json');
 
       detectAppType.mockResolvedValue({ appPath });
-      fs.readFile = jest.fn().mockResolvedValue(systemContent);
+      loadConfigFile.mockImplementation((fp) => (fp === systemFilePath ? {} : {}));
 
       const result = await extractAppConfiguration(variables, appKey, options);
 

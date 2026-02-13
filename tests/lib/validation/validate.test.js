@@ -211,7 +211,7 @@ describe('Validation Module', () => {
     it('should validate app name without externalIntegration', async() => {
       const appName = 'myapp';
       const appPath = path.join(process.cwd(), 'builder', appName);
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const yaml = require('js-yaml');
       const { detectAppType } = require('../../../lib/utils/paths');
 
@@ -247,7 +247,7 @@ describe('Validation Module', () => {
     it('should validate app name with externalIntegration', async() => {
       const appName = 'myapp';
       const appPath = path.join(process.cwd(), 'builder', appName);
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const yaml = require('js-yaml');
       const { detectAppType } = require('../../../lib/utils/paths');
 
@@ -313,7 +313,7 @@ describe('Validation Module', () => {
     it('should aggregate errors from app and external files', async() => {
       const appName = 'myapp';
       const appPath = path.join(process.cwd(), 'builder', appName);
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const yaml = require('js-yaml');
       const { detectAppType } = require('../../../lib/utils/paths');
 
@@ -373,10 +373,10 @@ describe('Validation Module', () => {
       await expect(validateAppOrFile('')).rejects.toThrow('App name or file path is required');
     });
 
-    it('should handle invalid YAML in variables.yaml', async() => {
+    it('should handle invalid YAML in application.yaml', async() => {
       const appName = 'myapp';
       const appPath = path.join(process.cwd(), 'builder', appName);
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const { detectAppType } = require('../../../lib/utils/paths');
 
       detectAppType.mockResolvedValue({
@@ -713,7 +713,7 @@ describe('Validation Module', () => {
       });
       // Mock fs.existsSync for file existence checks
       fsSync.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('test-external-app') || filePath.includes('variables.yaml');
+        return filePath.includes('test-external-app') || filePath.includes('application.yaml');
       });
     });
 
@@ -746,7 +746,7 @@ describe('Validation Module', () => {
       fsSync.existsSync.mockImplementation((filePath) => {
         return filePath === systemFilePath ||
                filePath === datasourceFilePath ||
-               filePath.includes('variables.yaml') ||
+               filePath.includes('application.yaml') ||
                filePath.includes('test-external-app');
       });
 
@@ -790,7 +790,7 @@ describe('Validation Module', () => {
       expect(result.steps.application.valid).toBe(true);
       expect(result.steps.components.valid).toBe(true);
       expect(result.steps.manifest.valid).toBe(true);
-      expect(generateControllerManifest).toHaveBeenCalledWith(appName);
+      expect(generateControllerManifest).toHaveBeenCalledWith(appName, expect.any(Object));
       expect(validateControllerManifest).toHaveBeenCalledWith(mockManifest);
     });
 
@@ -813,7 +813,7 @@ describe('Validation Module', () => {
       ]);
 
       fsSync.existsSync.mockImplementation((filePath) => {
-        return filePath === systemFilePath || filePath.includes('variables.yaml');
+        return filePath === systemFilePath || filePath.includes('application.yaml');
       });
 
       fsSync.readFileSync.mockImplementation((filePath) => {
@@ -897,7 +897,7 @@ describe('Validation Module', () => {
       ]);
 
       fsSync.existsSync.mockImplementation((filePath) => {
-        return filePath === systemFilePath || filePath.includes('variables.yaml');
+        return filePath === systemFilePath || filePath.includes('application.yaml');
       });
 
       fsSync.readFileSync.mockImplementation((filePath) => {
@@ -940,11 +940,11 @@ describe('Validation Module', () => {
       expect(validateControllerManifest).toHaveBeenCalled();
     });
 
-    it('should show Step 1 errors when variables.yaml is invalid', async() => {
+    it('should show Step 1 errors when application.yaml is invalid', async() => {
       // Step 1: Application validation fails
       validator.validateApplication.mockResolvedValue({
         valid: false,
-        errors: ['externalIntegration block not found in variables.yaml'],
+        errors: ['externalIntegration block not found in application.yaml'],
         warnings: []
       });
 
@@ -953,7 +953,7 @@ describe('Validation Module', () => {
 
       expect(result.valid).toBe(false);
       expect(result.steps.application.valid).toBe(false);
-      expect(result.steps.application.errors).toContain('externalIntegration block not found in variables.yaml');
+      expect(result.steps.application.errors).toContain('externalIntegration block not found in application.yaml');
       // Should still try to validate components
       expect(resolveExternalFiles).toHaveBeenCalled();
     });
@@ -977,7 +977,7 @@ describe('Validation Module', () => {
 
       // File doesn't exist
       fsSync.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml');
+        return filePath.includes('application.yaml');
       });
 
       const { validateExternalSystemComplete } = require('../../../lib/validation/validate');

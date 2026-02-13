@@ -37,7 +37,8 @@ jest.mock('chalk', () => {
   return mockChalk;
 });
 jest.mock('../../../lib/utils/token-manager', () => ({
-  getDeploymentAuth: jest.fn()
+  getDeploymentAuth: jest.fn(),
+  requireBearerForDataplanePipeline: jest.fn()
 }));
 jest.mock('../../../lib/utils/api', () => ({
   authenticatedApiCall: jest.fn()
@@ -62,6 +63,12 @@ jest.mock('../../../lib/datasource/deploy', () => ({
 jest.mock('../../../lib/utils/paths', () => ({
   detectAppType: jest.fn()
 }));
+jest.mock('../../../lib/utils/app-config-resolver', () => ({
+  resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml'))
+}));
+jest.mock('../../../lib/utils/config-format', () => ({
+  loadConfigFile: jest.fn()
+}));
 
 // Note: We don't mock the validators or display - we test the actual implementations
 
@@ -74,6 +81,7 @@ const { getConfig } = require('../../../lib/core/config');
 const logger = require('../../../lib/utils/logger');
 const { getDataplaneUrl } = require('../../../lib/datasource/deploy');
 const { detectAppType } = require('../../../lib/utils/paths');
+const configFormat = require('../../../lib/utils/config-format');
 const {
   validateFieldMappingExpression,
   validateFieldMappings,
@@ -176,11 +184,10 @@ describe('External System Test Module', () => {
       appPath: appPath,
       appType: 'external'
     });
+    configFormat.loadConfigFile.mockReturnValue(mockVariables);
     fs.existsSync.mockReturnValue(true);
     fsPromises.readFile.mockImplementation((filePath) => {
-      if (filePath.includes('variables.yaml')) {
-        return Promise.resolve(yaml.dump(mockVariables));
-      } else if (filePath.includes('hubspot-deploy.json')) {
+      if (filePath.includes('hubspot-deploy.json')) {
         return Promise.resolve(JSON.stringify(mockSystem));
       } else if (filePath.includes('hubspot-deploy-company.json')) {
         return Promise.resolve(JSON.stringify(mockDatasource));
@@ -334,7 +341,7 @@ describe('External System Test Module', () => {
           return Promise.resolve(JSON.stringify(datasourceWithoutPayload));
         }
         // Use the original mock implementation for other files
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml')) {
           return Promise.resolve(yaml.dump(mockVariables));
         } else if (filePath.includes('hubspot-deploy.json') && !filePath.includes('company')) {
           return Promise.resolve(JSON.stringify(mockSystem));
@@ -348,10 +355,12 @@ describe('External System Test Module', () => {
       expect(dsResult.warnings).toContain('No testPayload.payloadTemplate found - skipping field mapping and metadata schema tests');
     });
 
-    it('should throw error when variables.yaml not found', async() => {
-      fs.existsSync.mockReturnValue(false);
+    it('should throw error when application.yaml not found', async() => {
+      configFormat.loadConfigFile.mockImplementation(() => {
+        throw new Error('ENOENT: no such file or directory');
+      });
       const { testExternalSystem } = require('../../../lib/external-system/test');
-      await expect(testExternalSystem(appName, {})).rejects.toThrow('variables.yaml not found');
+      await expect(testExternalSystem(appName, {})).rejects.toThrow(/application\.yaml not found|Application config|ENOENT/);
     });
   });
 
@@ -435,7 +444,7 @@ describe('External System Test Module', () => {
           return Promise.resolve(JSON.stringify(customPayload));
         }
         // Use default mock for other files
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml')) {
           return Promise.resolve(yaml.dump(mockVariables));
         } else if (filePath.includes('hubspot-deploy.json') && !filePath.includes('company')) {
           return Promise.resolve(JSON.stringify(mockSystem));
@@ -481,7 +490,7 @@ describe('External System Test Module', () => {
           return Promise.resolve(JSON.stringify(datasourceWithoutPayload));
         }
         // Use default mock for other files
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml')) {
           return Promise.resolve(yaml.dump(mockVariables));
         } else if (filePath.includes('hubspot-deploy.json') && !filePath.includes('company')) {
           return Promise.resolve(JSON.stringify(mockSystem));

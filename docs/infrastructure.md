@@ -156,7 +156,7 @@ aifabrix down-infra --volumes
 <a id="traefik"></a>
 ## Traefik configuration and validation
 
-Traefik is an optional reverse proxy for local routing (matches Front Door routing config in production). The builder can start Traefik as part of infrastructure and generates Traefik labels when `frontDoorRouting.enabled` is true in your app's `variables.yaml`.
+Traefik is an optional reverse proxy for local routing (matches Front Door routing config in production). The builder can start Traefik as part of infrastructure and generates Traefik labels when `frontDoorRouting.enabled` is true in your app's `application.yaml`.
 
 **Enable Traefik:**
 ```bash
@@ -169,9 +169,9 @@ This starts Traefik (ports 80/443) and saves `traefik: true` to `~/.aifabrix/con
 - `TRAEFIK_CERT_FILE` – Absolute path to certificate file
 - `TRAEFIK_KEY_FILE` – Absolute path to private key file
 
-**How the builder uses Traefik:** When an app has `frontDoorRouting.enabled: true` in `variables.yaml`, the builder generates Traefik labels for the app's docker-compose service (router rule from host + path, TLS, optional cert store). The builder does not configure Traefik itself beyond starting it; labels are applied when you run the app with Traefik on the same Docker network.
+**How the builder uses Traefik:** When an app has `frontDoorRouting.enabled: true` in `application.yaml`, the builder generates Traefik labels for the app's docker-compose service (router rule from host + path, TLS, optional cert store). The builder does not configure Traefik itself beyond starting it; labels are applied when you run the app with Traefik on the same Docker network.
 
-**Requirements:** DNS or `/etc/hosts` entry for `${DEV_USERNAME}.aifabrix.dev` → localhost if using host-based routing. See [variables.yaml frontDoorRouting](configuration/variables-yaml.md) for pattern and host configuration.
+**Requirements:** DNS or `/etc/hosts` entry for `${DEV_USERNAME}.aifabrix.dev` → localhost if using host-based routing. See [application.yaml frontDoorRouting](configuration/application-yaml.md) for pattern and host configuration.
 
 ---
 

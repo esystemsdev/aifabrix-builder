@@ -102,6 +102,11 @@
       "type": "boolean",
       "default": true
     },
+    "internal": {
+      "type": "boolean",
+      "description": "When true, this integration is deployed on dataplane startup (internal integration). When false or absent, deployed via pipeline only.",
+      "default": false
+    },
     "authentication": {
       "type": "object",
       "description": "Authentication configuration for external system",
@@ -414,6 +419,11 @@
       "type": "boolean",
       "description": "Reserved: whether to generate or expose OpenAPI contract on publish. Not yet implemented.",
       "default": true
+    },
+    "triggerPathsHash": {
+      "type": "string",
+      "description": "SHA256 hash of triggerPaths payload (64-char hex). Used to detect structural changes. Optional; Dataplane computes when absent.",
+      "pattern": "^[a-f0-9]{64}$"
     }
   },
   "additionalProperties": false

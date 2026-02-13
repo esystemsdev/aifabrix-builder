@@ -28,8 +28,15 @@ jest.mock('../../../lib/utils/paths', () => ({
   detectAppType: jest.fn(),
   getDeployJsonPath: jest.fn()
 }));
+jest.mock('../../../lib/utils/app-config-resolver', () => ({
+  resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml'))
+}));
+jest.mock('../../../lib/utils/config-format', () => ({
+  loadConfigFile: jest.fn()
+}));
 
 const { detectAppType, getDeployJsonPath } = require('../../../lib/utils/paths');
+const configFormat = require('../../../lib/utils/config-format');
 const {
   loadVariablesYaml,
   validateSingleSystemFile,
@@ -45,10 +52,13 @@ describe('External System Deployment Helpers Module', () => {
   });
 
   describe('loadVariablesYaml', () => {
-    it('should load and parse variables.yaml file', async() => {
+    beforeEach(() => {
+      configFormat.loadConfigFile.mockReset();
+    });
+
+    it('should load and parse application config file', async() => {
       const appName = 'hubspot';
       const appPath = '/path/to/integration/hubspot';
-      const variablesPath = path.join(appPath, 'variables.yaml');
       const mockVariables = {
         name: 'hubspot',
         externalIntegration: {
@@ -58,25 +68,22 @@ describe('External System Deployment Helpers Module', () => {
       };
 
       detectAppType.mockResolvedValue({ appPath });
-      fs.readFile.mockResolvedValue(yaml.dump(mockVariables));
+      configFormat.loadConfigFile.mockReturnValue(mockVariables);
 
       const result = await loadVariablesYaml(appName);
 
       expect(detectAppType).toHaveBeenCalledWith(appName);
-      expect(fs.readFile).toHaveBeenCalledWith(variablesPath, 'utf8');
+      expect(configFormat.loadConfigFile).toHaveBeenCalledWith(path.join(appPath, 'application.yaml'));
       expect(result).toEqual(mockVariables);
     });
 
     it('should handle different app types', async() => {
       const appName = 'test-app';
       const appPath = '/path/to/builder/test-app';
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      const mockVariables = {
-        name: 'test-app'
-      };
+      const mockVariables = { name: 'test-app' };
 
       detectAppType.mockResolvedValue({ appPath });
-      fs.readFile.mockResolvedValue(yaml.dump(mockVariables));
+      configFormat.loadConfigFile.mockReturnValue(mockVariables);
 
       const result = await loadVariablesYaml(appName);
 
@@ -88,7 +95,9 @@ describe('External System Deployment Helpers Module', () => {
       const appPath = '/path/to/integration/hubspot';
 
       detectAppType.mockResolvedValue({ appPath });
-      fs.readFile.mockRejectedValue(new Error('File not found'));
+      configFormat.loadConfigFile.mockImplementation(() => {
+        throw new Error('File not found');
+      });
 
       await expect(loadVariablesYaml(appName)).rejects.toThrow('File not found');
     });
@@ -96,10 +105,11 @@ describe('External System Deployment Helpers Module', () => {
     it('should throw error when YAML is invalid', async() => {
       const appName = 'hubspot';
       const appPath = '/path/to/integration/hubspot';
-      const variablesPath = path.join(appPath, 'variables.yaml');
 
       detectAppType.mockResolvedValue({ appPath });
-      fs.readFile.mockResolvedValue('invalid: yaml: content: [unclosed');
+      configFormat.loadConfigFile.mockImplementation(() => {
+        throw new Error('Invalid YAML syntax');
+      });
 
       await expect(loadVariablesYaml(appName)).rejects.toThrow();
     });

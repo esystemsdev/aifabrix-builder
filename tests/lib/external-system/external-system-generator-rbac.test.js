@@ -8,6 +8,13 @@
 
 const fs = require('fs');
 const path = require('path');
+
+jest.mock('../../../lib/utils/config-format', () => ({
+  loadConfigFile: jest.fn(),
+  writeConfigFile: jest.fn()
+}));
+
+const configFormat = require('../../../lib/utils/config-format');
 const externalSystemGenerator = require('../../../lib/external-system/generator');
 
 // Mock fs module
@@ -15,6 +22,7 @@ jest.mock('fs', () => {
   const actualFs = jest.requireActual('fs');
   const mockFs = {
     ...actualFs,
+    writeFileSync: jest.fn(),
     promises: {
       readFile: jest.fn(),
       writeFile: jest.fn()
@@ -96,16 +104,16 @@ describe('External System Generator RBAC Support', () => {
 }`;
 
       fs.promises.readFile.mockResolvedValue(templateContent);
-      fs.promises.writeFile.mockResolvedValue();
+      configFormat.writeConfigFile.mockImplementation(() => {});
 
       const result = await externalSystemGenerator.generateExternalSystemTemplate(appPath, systemKey, config);
 
       expect(result).toBeDefined();
-      expect(fs.promises.writeFile).toHaveBeenCalled();
+      expect(configFormat.writeConfigFile).toHaveBeenCalled();
 
-      // Verify the generated JSON contains roles and permissions
-      const writtenContent = fs.promises.writeFile.mock.calls[0][1];
-      const parsed = JSON.parse(writtenContent);
+      // Verify the generated config contains roles and permissions
+      const systemCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-system.yaml'));
+      const parsed = systemCall[1];
 
       // The template outputs 'groups' (lowercase) for the groups array
       // while the config uses 'Groups' (uppercase) as the input key
@@ -167,16 +175,16 @@ describe('External System Generator RBAC Support', () => {
 }`;
 
       fs.promises.readFile.mockResolvedValue(templateContent);
-      fs.promises.writeFile.mockResolvedValue();
+      configFormat.writeConfigFile.mockImplementation(() => {});
 
       const result = await externalSystemGenerator.generateExternalSystemTemplate(appPath, systemKey, config);
 
       expect(result).toBeDefined();
-      expect(fs.promises.writeFile).toHaveBeenCalled();
+      expect(configFormat.writeConfigFile).toHaveBeenCalled();
 
-      // Verify the generated JSON does not contain roles/permissions
-      const writtenContent = fs.promises.writeFile.mock.calls[0][1];
-      const parsed = JSON.parse(writtenContent);
+      // Verify the generated config does not contain roles/permissions
+      const systemCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-system.yaml'));
+      const parsed = systemCall[1];
       expect(parsed.roles).toBeUndefined();
       expect(parsed.permissions).toBeUndefined();
     });
@@ -238,16 +246,16 @@ describe('External System Generator RBAC Support', () => {
 }`;
 
       fs.promises.readFile.mockResolvedValue(templateContent);
-      fs.promises.writeFile.mockResolvedValue();
+      configFormat.writeConfigFile.mockImplementation(() => {});
 
       const result = await externalSystemGenerator.generateExternalSystemTemplate(appPath, systemKey, config);
 
       expect(result).toBeDefined();
-      expect(fs.promises.writeFile).toHaveBeenCalled();
+      expect(configFormat.writeConfigFile).toHaveBeenCalled();
 
-      // Verify the generated JSON contains roles without Groups
-      const writtenContent = fs.promises.writeFile.mock.calls[0][1];
-      const parsed = JSON.parse(writtenContent);
+      // Verify the generated config contains roles without Groups
+      const systemCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-system.yaml'));
+      const parsed = systemCall[1];
       expect(parsed.roles).toEqual(config.roles);
       expect(parsed.roles[0].Groups).toBeUndefined();
     });
@@ -296,18 +304,16 @@ describe('External System Generator RBAC Support', () => {
 }`;
 
       fs.promises.readFile.mockResolvedValue(templateContent);
-      fs.promises.writeFile.mockResolvedValue();
+      configFormat.writeConfigFile.mockImplementation(() => {});
 
       const result = await externalSystemGenerator.generateExternalSystemTemplate(appPath, systemKey, config);
 
       expect(result).toBeDefined();
-      expect(fs.promises.writeFile).toHaveBeenCalled();
+      expect(configFormat.writeConfigFile).toHaveBeenCalled();
 
-      // Verify empty arrays are handled (should not include roles/permissions in JSON)
-      const writtenContent = fs.promises.writeFile.mock.calls[0][1];
-      const parsed = JSON.parse(writtenContent);
-      // Handlebars {{#if}} checks for truthy, empty arrays are truthy but won't render content
-      // So roles/permissions should not appear in the output
+      // Verify empty arrays are handled (should not include roles/permissions in output)
+      const systemCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-system.yaml'));
+      const parsed = systemCall[1];
       expect(parsed.roles).toBeUndefined();
       expect(parsed.permissions).toBeUndefined();
     });

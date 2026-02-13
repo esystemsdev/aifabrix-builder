@@ -19,6 +19,12 @@ jest.mock('fs', () => {
 jest.mock('../../../lib/utils/logger');
 jest.mock('../../../lib/utils/external-system-validators');
 jest.mock('../../../lib/utils/paths');
+jest.mock('../../../lib/utils/app-config-resolver', () => ({
+  resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml'))
+}));
+jest.mock('../../../lib/utils/config-format', () => ({
+  loadConfigFile: jest.fn()
+}));
 jest.mock('../../../lib/utils/token-manager');
 jest.mock('../../../lib/datasource/deploy');
 jest.mock('../../../lib/core/config');
@@ -60,31 +66,34 @@ describe('External System Test Error Paths', () => {
     datasourceDeploy.getDataplaneUrl.mockResolvedValue('https://dataplane.example.com');
   });
 
+  const configFormat = require('../../../lib/utils/config-format');
+
   describe('testExternalSystem - file loading errors', () => {
-    it('should throw error when variables.yaml not found', async() => {
+    it('should throw error when application.yaml not found', async() => {
       const appName = 'testapp';
-      fs.existsSync.mockReturnValue(false);
+      configFormat.loadConfigFile.mockImplementation(() => {
+        throw new Error('ENOENT: no such file or directory');
+      });
 
       await expect(
         externalSystemTest.testExternalSystem(appName)
-      ).rejects.toThrow('variables.yaml not found');
+      ).rejects.toThrow(/application\.yaml not found|Application config/);
     });
 
-    it('should throw error when variables.yaml has invalid YAML', async() => {
+    it('should throw error when application.yaml has invalid YAML', async() => {
       const appName = 'testapp';
-      fs.existsSync.mockReturnValue(true);
-      fsp.readFile.mockResolvedValue('invalid: yaml: [');
+      configFormat.loadConfigFile.mockImplementation(() => {
+        throw new Error('Invalid YAML syntax');
+      });
 
       await expect(
         externalSystemTest.testExternalSystem(appName)
-      ).rejects.toThrow('Invalid YAML syntax');
+      ).rejects.toThrow(/Invalid YAML|Application config/);
     });
 
     it('should throw error when externalIntegration block is missing', async() => {
       const appName = 'testapp';
-      const variablesContent = yaml.dump({ name: 'test' });
-      fs.existsSync.mockReturnValue(true);
-      fsp.readFile.mockResolvedValue(variablesContent);
+      configFormat.loadConfigFile.mockReturnValue({ name: 'test' });
 
       await expect(
         externalSystemTest.testExternalSystem(appName)
@@ -93,16 +102,12 @@ describe('External System Test Error Paths', () => {
 
     it('should throw error when system file not found', async() => {
       const appName = 'testapp';
-      const variablesContent = yaml.dump({
+      configFormat.loadConfigFile.mockReturnValue({
         externalIntegration: {
           systems: ['system.json'],
           schemaBasePath: './'
         }
       });
-      fs.existsSync.mockImplementation((path) => {
-        return path.includes('variables.yaml');
-      });
-      fsp.readFile.mockResolvedValue(variablesContent);
 
       await expect(
         externalSystemTest.testExternalSystem(appName)
@@ -111,7 +116,7 @@ describe('External System Test Error Paths', () => {
 
     it('should throw error when system file contains invalid JSON', async() => {
       const appName = 'testapp';
-      const variablesContent = yaml.dump({
+      configFormat.loadConfigFile.mockReturnValue({
         externalIntegration: {
           systems: ['system.json'],
           schemaBasePath: './'
@@ -119,8 +124,8 @@ describe('External System Test Error Paths', () => {
       });
       fs.existsSync.mockReturnValue(true);
       fsp.readFile.mockImplementation((path) => {
-        if (path.includes('variables.yaml')) {
-          return Promise.resolve(variablesContent);
+        if (path.includes('application.yaml')) {
+          return Promise.resolve('{}');
         }
         return Promise.resolve('invalid json');
       });
@@ -132,7 +137,7 @@ describe('External System Test Error Paths', () => {
 
     it('should throw error when datasource file contains invalid JSON', async() => {
       const appName = 'testapp';
-      const variablesContent = yaml.dump({
+      configFormat.loadConfigFile.mockReturnValue({
         externalIntegration: {
           systems: ['system.json'],
           dataSources: ['datasource.json'],
@@ -141,11 +146,11 @@ describe('External System Test Error Paths', () => {
       });
       const systemJson = { key: 'test-system' };
       fs.existsSync.mockReturnValue(true);
-      fsp.readFile.mockImplementation((path) => {
-        if (path.includes('variables.yaml')) {
-          return Promise.resolve(variablesContent);
+      fsp.readFile.mockImplementation((filePath) => {
+        if (filePath.includes('application.yaml')) {
+          return Promise.resolve('{}');
         }
-        if (path.includes('system.json')) {
+        if (filePath.includes('system.json')) {
           return Promise.resolve(JSON.stringify(systemJson));
         }
         return Promise.resolve('invalid json');
@@ -172,7 +177,7 @@ describe('External System Test Error Paths', () => {
 
       fs.existsSync.mockReturnValue(true);
       fsp.readFile.mockImplementation((path) => {
-        if (path.includes('variables.yaml')) {
+        if (path.includes('application.yaml')) {
           return Promise.resolve(variablesContent);
         }
         if (path.includes('datasource.json')) {
@@ -209,7 +214,7 @@ describe('External System Test Error Paths', () => {
 
       fs.existsSync.mockReturnValue(true);
       fsp.readFile.mockImplementation((path) => {
-        if (path.includes('variables.yaml')) {
+        if (path.includes('application.yaml')) {
           return Promise.resolve(variablesContent);
         }
         if (path.includes('system.json')) {
@@ -234,25 +239,25 @@ describe('External System Test Error Paths', () => {
   });
 
   describe('testExternalSystemIntegration - file loading errors', () => {
-    it('should throw error when variables.yaml not found', async() => {
+    it('should throw error when application.yaml not found', async() => {
       const appName = 'testapp';
-      fs.existsSync.mockReturnValue(false);
+      configFormat.loadConfigFile.mockImplementation(() => {
+        throw new Error('ENOENT: no such file or directory');
+      });
 
       await expect(
         externalSystemTest.testExternalSystemIntegration(appName)
-      ).rejects.toThrow('variables.yaml not found');
+      ).rejects.toThrow(/application\.yaml not found|Application config|ENOENT/);
     });
 
     it('should throw error when no system files found', async() => {
       const appName = 'testapp';
-      const variablesContent = yaml.dump({
+      configFormat.loadConfigFile.mockReturnValue({
         externalIntegration: {
           systems: [],
           schemaBasePath: './'
         }
       });
-      fs.existsSync.mockReturnValue(true);
-      fsp.readFile.mockResolvedValue(variablesContent);
 
       await expect(
         externalSystemTest.testExternalSystemIntegration(appName)
@@ -261,21 +266,14 @@ describe('External System Test Error Paths', () => {
 
     it('should throw error when no datasources found', async() => {
       const appName = 'testapp';
-      const variablesContent = yaml.dump({
+      configFormat.loadConfigFile.mockReturnValue({
         externalIntegration: {
           systems: ['system.json'],
           dataSources: [],
           schemaBasePath: './'
         }
       });
-      const systemJson = { key: 'test-system' };
-      fs.existsSync.mockReturnValue(true);
-      fsp.readFile.mockImplementation((path) => {
-        if (path.includes('variables.yaml')) {
-          return Promise.resolve(variablesContent);
-        }
-        return Promise.resolve(JSON.stringify(systemJson));
-      });
+      fsp.readFile.mockResolvedValue(JSON.stringify({ key: 'test-system' }));
 
       await expect(
         externalSystemTest.testExternalSystemIntegration(appName)
@@ -286,28 +284,18 @@ describe('External System Test Error Paths', () => {
   describe('testExternalSystemIntegration - authentication errors', () => {
     it('should throw error when authentication is missing', async() => {
       const appName = 'testapp';
-      const variablesContent = yaml.dump({
+      configFormat.loadConfigFile.mockReturnValue({
         externalIntegration: {
           systems: ['system.json'],
           dataSources: ['datasource.json'],
           schemaBasePath: './'
         }
       });
-      const systemJson = { key: 'test-system' };
-      const datasourceJson = {
-        key: 'test-datasource',
-        systemKey: 'test-system'
-      };
-
-      fs.existsSync.mockReturnValue(true);
       fsp.readFile.mockImplementation((path) => {
-        if (path.includes('variables.yaml')) {
-          return Promise.resolve(variablesContent);
-        }
         if (path.includes('system.json')) {
-          return Promise.resolve(JSON.stringify(systemJson));
+          return Promise.resolve(JSON.stringify({ key: 'test-system' }));
         }
-        return Promise.resolve(JSON.stringify(datasourceJson));
+        return Promise.resolve(JSON.stringify({ key: 'test-datasource', systemKey: 'test-system' }));
       });
 
       tokenManager.getDeploymentAuth.mockResolvedValue({});

@@ -21,7 +21,8 @@ jest.mock('chalk', () => {
   return mockChalk;
 });
 jest.mock('../../../lib/utils/token-manager', () => ({
-  getDeploymentAuth: jest.fn()
+  getDeploymentAuth: jest.fn(),
+  requireBearerForDataplanePipeline: jest.fn()
 }));
 jest.mock('../../../lib/api/environments.api', () => ({
   getEnvironmentApplication: jest.fn()

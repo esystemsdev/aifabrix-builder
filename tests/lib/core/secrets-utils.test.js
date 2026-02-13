@@ -232,9 +232,9 @@ describe('Secrets Utils Module', () => {
   // Tests removed as function no longer exists
   describe.skip('loadBuildSecrets (removed)', () => {
     const appName = 'testapp';
-    const variablesPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
+    const variablesPath = path.join(process.cwd(), 'builder', appName, 'application.yaml');
 
-    it('should return merged secrets when variables.yaml does not exist', async() => {
+    it('should return merged secrets when application.yaml does not exist', async() => {
       const mergedSecrets = { 'existing-key': 'existing-value' };
       fs.existsSync.mockReturnValue(false);
 
@@ -244,7 +244,7 @@ describe('Secrets Utils Module', () => {
       expect(fs.existsSync).toHaveBeenCalledWith(variablesPath);
     });
 
-    it('should return merged secrets when variables.yaml exists but no build.secrets', async() => {
+    it('should return merged secrets when application.yaml exists but no build.secrets', async() => {
       const mergedSecrets = { 'existing-key': 'existing-value' };
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('port: 3000');
@@ -387,7 +387,7 @@ describe('Secrets Utils Module', () => {
       expect(result['new-key']).toBe('new-value');
     });
 
-    it('should return merged secrets and log warning on error loading variables.yaml', async() => {
+    it('should return merged secrets and log warning on error loading application.yaml', async() => {
       const mergedSecrets = { 'existing-key': 'existing-value' };
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockImplementation(() => {
@@ -398,7 +398,7 @@ describe('Secrets Utils Module', () => {
 
       expect(result).toEqual(mergedSecrets);
       expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Warning: Could not load build.secrets from variables.yaml')
+        expect.stringContaining('Warning: Could not load build.secrets from application.yaml')
       );
     });
 
@@ -414,7 +414,7 @@ describe('Secrets Utils Module', () => {
 
       expect(result).toEqual(mergedSecrets);
       expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Warning: Could not load build.secrets from variables.yaml')
+        expect.stringContaining('Warning: Could not load build.secrets from application.yaml')
       );
     });
   });
@@ -571,8 +571,8 @@ describe('Secrets Utils Module', () => {
       expect(fs.existsSync).not.toHaveBeenCalled();
     });
 
-    it('should return original URL when service variables.yaml does not exist', () => {
-      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'variables.yaml');
+    it('should return original URL when service application.yaml does not exist', () => {
+      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'application.yaml');
       fs.existsSync.mockReturnValue(false);
 
       const result = secretsUtils.resolveUrlPort(protocol, hostname, port, urlPath, hostnameToService);
@@ -581,8 +581,8 @@ describe('Secrets Utils Module', () => {
       expect(fs.existsSync).toHaveBeenCalledWith(serviceVariablesPath);
     });
 
-    it('should replace port with containerPort from variables.yaml', () => {
-      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'variables.yaml');
+    it('should replace port with containerPort from application.yaml', () => {
+      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'application.yaml');
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(`
 port: 8082
@@ -602,7 +602,7 @@ build:
     });
 
     it('should fallback to port when containerPort is not defined', () => {
-      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'variables.yaml');
+      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'application.yaml');
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('port: 8080');
       yaml.load.mockReturnValue({ port: 8080 });
@@ -613,7 +613,7 @@ build:
     });
 
     it('should use original port when neither containerPort nor port is defined', () => {
-      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'variables.yaml');
+      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'application.yaml');
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('build: {}');
 
@@ -623,7 +623,7 @@ build:
     });
 
     it('should preserve URL path and query parameters', () => {
-      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'variables.yaml');
+      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'application.yaml');
       const fullPath = '/auth/realms/master?param=value';
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(`
@@ -642,7 +642,7 @@ build:
     });
 
     it('should return original URL and log warning on YAML parse error', () => {
-      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'variables.yaml');
+      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'application.yaml');
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('invalid: yaml: content: [');
       yaml.load.mockImplementation(() => {
@@ -653,12 +653,12 @@ build:
 
       expect(result).toBe(`${protocol}${hostname}:${port}${urlPath}`);
       expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Warning: Could not load variables.yaml for service keycloak')
+        expect.stringContaining('Warning: Could not load application config for service keycloak')
       );
     });
 
     it('should return original URL and log warning on file read error', () => {
-      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'variables.yaml');
+      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'application.yaml');
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockImplementation(() => {
         throw new Error('Permission denied');
@@ -668,13 +668,13 @@ build:
 
       expect(result).toBe(`${protocol}${hostname}:${port}${urlPath}`);
       expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Warning: Could not load variables.yaml for service keycloak')
+        expect.stringContaining('Warning: Could not load application config for service keycloak')
       );
     });
 
     it('should handle https protocol', () => {
       const httpsProtocol = 'https://';
-      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'variables.yaml');
+      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'application.yaml');
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(`
 port: 8082
@@ -692,7 +692,7 @@ build:
     });
 
     it('should handle empty URL path', () => {
-      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'variables.yaml');
+      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'application.yaml');
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(`
 port: 8082
@@ -712,7 +712,7 @@ build:
     it('should handle different service names', () => {
       const misoHostname = 'miso-controller';
       const misoHostnameToService = { 'miso-controller': 'miso-controller' };
-      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'miso-controller', 'variables.yaml');
+      const serviceVariablesPath = path.join(process.cwd(), 'builder', 'miso-controller', 'application.yaml');
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(`
 port: 3010

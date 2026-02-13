@@ -102,7 +102,7 @@ end
 %% =======================
 subgraph Application["Application"]
   direction TB
-  Config["Configuration<br/>variables.yaml · env.template"]:::base
+  Config["Configuration<br/>application.yaml · env.template"]:::base
   Dockerfile["Dockerfile<br/>Auto-generated"]:::base
   DeployJson["Deployment JSON<br/>aifabrix-deploy.json"]:::base
 end
@@ -199,7 +199,7 @@ TemplateFile["Template Files<br/>.hbs Templates"]:::note
 %% =======================
 %% Output
 %% =======================
-Output["Application Files<br/>variables.yaml · Dockerfile"]:::base
+Output["Application Files<br/>application.yaml · Dockerfile"]:::base
 Deploy["Deployment<br/>Local or Azure"]:::base
 
 %% =======================

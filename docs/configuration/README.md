@@ -9,7 +9,7 @@ Overview of AI Fabrix configuration files and where to find details.
 | Topic | Description |
 |-------|-------------|
 | [Deployment key](deployment-key.md) | How deployment key is calculated (SHA256 of manifest); why Miso Controller and Dataplane use the same key. |
-| [variables.yaml](variables-yaml.md) | App configuration: app.key, app.displayName, port, image, build, requires, externalIntegration, etc. |
+| [application.yaml](application-yaml.md) | Application config: app.key, app.displayName, port, image, build, requires, externalIntegration, etc. |
 | [env.template](env-template.md) | Environment variables template; kv:// references; `.env` generation. |
 | [External integration](external-integration.md) | externalIntegration block, schemaBasePath, systems, dataSources; validation. |
 | [Secrets and config](secrets-and-config.md) | config.yaml, secrets.local.yaml, encryption (aifabrix secure). |
@@ -17,14 +17,14 @@ Overview of AI Fabrix configuration files and where to find details.
 
 ## Version
 
-Version (`app.version`) is a semantic version that tracks product/application changes. For regular apps, it can be auto-resolved from the Docker image when running or deploying. See [variables.yaml](variables-yaml.md#version-and-tag), [External integration](external-integration.md), and [Deploying](../deploying.md#version-vs-deployment).
+Version (`app.version`) is a semantic version that tracks product/application changes. For regular apps, it can be auto-resolved from the Docker image when running or deploying. See [application.yaml](application-yaml.md#version-and-tag), [External integration](external-integration.md), and [Deploying](../deploying.md#version-vs-deployment).
 
-## Mapping: variables.yaml vs schema
+## Mapping: application.yaml vs schema
 
-- In **variables.yaml** you use nested keys: `app.key`, `app.displayName`, `app.type`, `port`, `image.*`, `build.*`, `requires.*`, `externalIntegration`, etc.
+- In **application.yaml** you use nested keys: `app.key`, `app.displayName`, `app.type`, `port`, `image.*`, `build.*`, `requires.*`, `externalIntegration`, etc.
 - The **generator** transforms these into the flat structure expected by the deployment API and [application-schema.json](../../lib/schema/application-schema.json).
-- **deploymentKey** is not set in variables.yaml; it is managed by Controller internally. See [Deployment key](deployment-key.md).
-- **key** in the schema corresponds to **app.key** in variables.yaml; **displayName** to **app.displayName**; **type** to **app.type**.
+- **deploymentKey** is not set in application.yaml; it is managed by Controller internally. See [Deployment key](deployment-key.md).
+- **key** in the schema corresponds to **app.key** in application.yaml; **displayName** to **app.displayName**; **type** to **app.type**.
 
 ## Quick links
 

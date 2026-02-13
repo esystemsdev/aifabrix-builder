@@ -29,8 +29,8 @@ describe('Generator Helpers Module', () => {
   });
 
   describe('loadVariables', () => {
-    it('should load and parse variables.yaml successfully', () => {
-      const variablesPath = '/path/to/variables.yaml';
+    it('should load and parse application config (yaml) successfully', () => {
+      const configPath = '/path/to/application.yaml';
       const mockVariables = {
         name: 'test-app',
         image: { name: 'test-image' }
@@ -39,31 +39,28 @@ describe('Generator Helpers Module', () => {
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(yaml.dump(mockVariables));
 
-      const result = loadVariables(variablesPath);
+      const result = loadVariables(configPath);
 
-      expect(fs.existsSync).toHaveBeenCalledWith(variablesPath);
-      expect(fs.readFileSync).toHaveBeenCalledWith(variablesPath, 'utf8');
-      expect(result).toEqual({
-        content: yaml.dump(mockVariables),
-        parsed: mockVariables
-      });
+      expect(fs.existsSync).toHaveBeenCalledWith(configPath);
+      expect(fs.readFileSync).toHaveBeenCalledWith(configPath, 'utf8');
+      expect(result).toEqual({ parsed: mockVariables });
     });
 
-    it('should throw error when file does not exist', () => {
-      const variablesPath = '/path/to/variables.yaml';
+    it('should throw error when config file does not exist', () => {
+      const configPath = '/path/to/application.yaml';
 
       fs.existsSync.mockReturnValue(false);
 
-      expect(() => loadVariables(variablesPath)).toThrow(`variables.yaml not found: ${variablesPath}`);
+      expect(() => loadVariables(configPath)).toThrow(/Config file not found/);
     });
 
     it('should throw error when YAML is invalid', () => {
-      const variablesPath = '/path/to/variables.yaml';
+      const configPath = '/path/to/application.yaml';
 
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('invalid: yaml: content: [unclosed');
 
-      expect(() => loadVariables(variablesPath)).toThrow('Invalid YAML syntax in variables.yaml:');
+      expect(() => loadVariables(configPath)).toThrow(/Invalid YAML syntax/);
     });
   });
 

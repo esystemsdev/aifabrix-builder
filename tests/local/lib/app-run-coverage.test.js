@@ -205,7 +205,7 @@ describe('Application Run Module - Additional Coverage', () => {
       const appPath = path.join(builderDir, appName);
       fsSync.mkdirSync(appPath, { recursive: true });
 
-      const configPath = path.join(appPath, 'variables.yaml');
+      const configPath = path.join(appPath, 'application.yaml');
       const configData = { app: { key: appName, name: 'Test App' }, build: { port: 3000 } };
       const configContent = yaml.dump(configData);
 
@@ -249,7 +249,7 @@ describe('Application Run Module - Additional Coverage', () => {
       fsSync.mkdirSync(appPath, { recursive: true });
 
       const testPort = 50000 + Math.floor(Math.random() * 10000);
-      const configPath = path.join(appPath, 'variables.yaml');
+      const configPath = path.join(appPath, 'application.yaml');
       const configData = {
         app: { key: appName, name: 'Test App' },
         port: testPort,
@@ -307,7 +307,7 @@ describe('Application Run Module - Additional Coverage', () => {
       fsSync.mkdirSync(appPath, { recursive: true });
 
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump({
           app: { key: appName, name: 'Test App' },
           build: { port: 3000, language: 'typescript' },
@@ -417,7 +417,7 @@ describe('Application Run Module - Additional Coverage', () => {
       fsSync.mkdirSync(appPath, { recursive: true });
 
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump({ app: { key: appName, name: 'Test App' }, build: { port: 3000 } })
       );
 

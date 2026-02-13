@@ -84,14 +84,14 @@ describe('port-resolver', () => {
 
     it('returns null when file does not exist', () => {
       fs.existsSync = jest.fn().mockReturnValue(false);
-      expect(loadVariablesFromPath('/some/variables.yaml')).toBeNull();
-      expect(fs.existsSync).toHaveBeenCalledWith('/some/variables.yaml');
+      expect(loadVariablesFromPath('/some/application.yaml')).toBeNull();
+      expect(fs.existsSync).toHaveBeenCalledWith('/some/application.yaml');
     });
 
     it('returns parsed YAML when file exists', () => {
       fs.existsSync = jest.fn().mockReturnValue(true);
       fs.readFileSync = jest.fn().mockReturnValue('port: 8080\nbuild:\n  localPort: 3010');
-      const result = loadVariablesFromPath('/app/variables.yaml');
+      const result = loadVariablesFromPath('/app/application.yaml');
       expect(result).toEqual({ port: 8080, build: { localPort: 3010 } });
     });
 
@@ -102,7 +102,7 @@ describe('port-resolver', () => {
       const spy = jest.spyOn(yaml, 'load').mockImplementation(() => {
         throw new Error('parse error');
       });
-      expect(loadVariablesFromPath('/app/variables.yaml')).toBeNull();
+      expect(loadVariablesFromPath('/app/application.yaml')).toBeNull();
       spy.mockRestore();
     });
   });
@@ -119,19 +119,19 @@ describe('port-resolver', () => {
     it('returns containerPort when set in file', () => {
       fs.existsSync = jest.fn().mockReturnValue(true);
       fs.readFileSync = jest.fn().mockReturnValue('build:\n  containerPort: 8081');
-      expect(getContainerPortFromPath('/app/variables.yaml')).toBe(8081);
+      expect(getContainerPortFromPath('/app/application.yaml')).toBe(8081);
     });
 
     it('returns port when containerPort not set', () => {
       fs.existsSync = jest.fn().mockReturnValue(true);
       fs.readFileSync = jest.fn().mockReturnValue('port: 4000');
-      expect(getContainerPortFromPath('/app/variables.yaml')).toBe(4000);
+      expect(getContainerPortFromPath('/app/application.yaml')).toBe(4000);
     });
 
     it('returns null when neither containerPort nor port is set', () => {
       fs.existsSync = jest.fn().mockReturnValue(true);
       fs.readFileSync = jest.fn().mockReturnValue('app:\n  key: myapp');
-      expect(getContainerPortFromPath('/app/variables.yaml')).toBeNull();
+      expect(getContainerPortFromPath('/app/application.yaml')).toBeNull();
     });
   });
 
@@ -145,25 +145,25 @@ describe('port-resolver', () => {
     it('returns build.localPort when it is a positive number', () => {
       fs.existsSync = jest.fn().mockReturnValue(true);
       fs.readFileSync = jest.fn().mockReturnValue('build:\n  localPort: 3010');
-      expect(getLocalPortFromPath('/app/variables.yaml')).toBe(3010);
+      expect(getLocalPortFromPath('/app/application.yaml')).toBe(3010);
     });
 
     it('falls back to port when localPort is 0 or invalid', () => {
       fs.existsSync = jest.fn().mockReturnValue(true);
       fs.readFileSync = jest.fn().mockReturnValue('port: 4000\nbuild:\n  localPort: 0');
-      expect(getLocalPortFromPath('/app/variables.yaml')).toBe(4000);
+      expect(getLocalPortFromPath('/app/application.yaml')).toBe(4000);
     });
 
     it('returns null when neither localPort nor port is set', () => {
       fs.existsSync = jest.fn().mockReturnValue(true);
       fs.readFileSync = jest.fn().mockReturnValue('app:\n  key: myapp');
-      expect(getLocalPortFromPath('/app/variables.yaml')).toBeNull();
+      expect(getLocalPortFromPath('/app/application.yaml')).toBeNull();
     });
 
     it('returns port when build.localPort is not a positive number', () => {
       fs.existsSync = jest.fn().mockReturnValue(true);
       fs.readFileSync = jest.fn().mockReturnValue('port: 5000');
-      expect(getLocalPortFromPath('/app/variables.yaml')).toBe(5000);
+      expect(getLocalPortFromPath('/app/application.yaml')).toBe(5000);
     });
   });
 });

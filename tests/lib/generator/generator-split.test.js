@@ -32,9 +32,30 @@ describe('Generator Split Functions', () => {
   const deployJsonPath = path.join(process.cwd(), 'test-deploy.json');
   const outputDir = path.join(process.cwd(), 'output');
 
+  let applicationsReadmeTemplateContent;
+  beforeAll(() => {
+    const actualFs = jest.requireActual('fs');
+    const projectRoot = path.join(__dirname, '..', '..', '..');
+    const templatePath = path.join(projectRoot, 'templates', 'applications', 'README.md.hbs');
+    applicationsReadmeTemplateContent = actualFs.readFileSync(templatePath, 'utf8');
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     fs.existsSync.mockReturnValue(true);
+    fs.readFileSync.mockImplementation((filePath, encoding) => {
+      const pathStr = String(filePath);
+      if (pathStr.includes('applications/README.md.hbs')) {
+        return applicationsReadmeTemplateContent;
+      }
+      if (pathStr.includes('external-system/README.md.hbs')) {
+        return jest.requireActual('fs').readFileSync(
+          path.join(path.join(__dirname, '..', '..', '..'), 'templates', 'external-system', 'README.md.hbs'),
+          'utf8'
+        );
+      }
+      return undefined;
+    });
   });
 
   describe('extractEnvTemplate', () => {
@@ -226,6 +247,101 @@ describe('Generator Split Functions', () => {
       expect(() => generator.extractVariablesYaml(undefined)).toThrow('Deployment object is required');
     });
 
+    it('should not include roles or permissions in variables (they go only to rbac.yml)', () => {
+      const deployment = {
+        key: 'testapp',
+        displayName: 'Test App',
+        type: 'webapp',
+        roles: [{ value: 'admin', displayName: 'Admin' }],
+        permissions: [{ name: 'read', roles: ['admin'] }]
+      };
+
+      const result = generator.extractVariablesYaml(deployment);
+
+      expect(result.roles).toBeUndefined();
+      expect(result.permissions).toBeUndefined();
+    });
+
+    it('should include only portalInput entries in configuration (no value/location/required)', () => {
+      const deployment = {
+        key: 'dataplane',
+        displayName: 'Dataplane',
+        type: 'webapp',
+        configuration: [
+          { name: 'PORT', value: '3001', location: 'variable', required: false },
+          { name: 'LOG_LEVEL', value: 'INFO', location: 'variable', required: false, portalInput: { field: 'select', label: 'Log Level', options: ['DEBUG', 'INFO'] } }
+        ]
+      };
+
+      const result = generator.extractVariablesYaml(deployment);
+
+      expect(result.configuration).toHaveLength(1);
+      expect(result.configuration[0]).toEqual({ name: 'LOG_LEVEL', portalInput: { field: 'select', label: 'Log Level', options: ['DEBUG', 'INFO'] } });
+      expect(result.configuration[0].value).toBeUndefined();
+      expect(result.configuration[0].location).toBeUndefined();
+    });
+
+    it('should not add configuration to variables when no items have portalInput', () => {
+      const deployment = {
+        key: 'app',
+        displayName: 'App',
+        type: 'webapp',
+        configuration: [
+          { name: 'PORT', value: '3000', location: 'variable', required: false }
+        ]
+      };
+
+      const result = generator.extractVariablesYaml(deployment);
+
+      expect(result.configuration).toBeUndefined();
+    });
+
+    it('should produce app block, configuration, and externalIntegration for external format (deployment.system)', () => {
+      const deployment = {
+        system: {
+          key: 'test-hubspot',
+          displayName: 'Companies',
+          description: 'HubSpot CRM integration'
+        },
+        configuration: [
+          {
+            name: 'BASE_URL',
+            value: 'https://api.hubapi.com',
+            location: 'variable',
+            required: true,
+            portalInput: { field: 'text', label: 'Base URL', placeholder: 'https://api.hubapi.com', validation: { required: true } }
+          }
+        ],
+        dataSources: [
+          { key: 'companies-data', displayName: 'Companies Data' },
+          { key: 'test-hubspot-data', displayName: 'Deals Data' }
+        ]
+      };
+
+      const result = generator.extractVariablesYaml(deployment);
+
+      expect(result.app).toEqual({
+        key: 'test-hubspot',
+        displayName: 'Companies',
+        description: 'HubSpot CRM integration',
+        type: 'external'
+      });
+      expect(result.configuration).toHaveLength(1);
+      expect(result.configuration[0].name).toBe('BASE_URL');
+      expect(result.configuration[0].portalInput).toBeDefined();
+      expect(result.image).toBeUndefined();
+      expect(result.port).toBeUndefined();
+      expect(result.externalIntegration).toBeDefined();
+      expect(result.externalIntegration.schemaBasePath).toBe('./');
+      expect(result.externalIntegration.systems).toEqual(['test-hubspot-system.yaml']);
+      expect(result.externalIntegration.dataSources).toEqual([
+        'test-hubspot-datasource-companies-data.yaml',
+        'test-hubspot-datasource-data.yaml'
+      ]);
+      expect(result.externalIntegration.autopublish).toBe(true);
+      expect(result.externalIntegration.version).toBe('1.0.0');
+    });
+
     it('should handle optional fields', () => {
       const deployment = {
         key: 'testapp',
@@ -318,7 +434,7 @@ describe('Generator Split Functions', () => {
   });
 
   describe('generateReadmeFromDeployJson', () => {
-    it('should generate README.md content', () => {
+    it('should generate README.md content from applications template', () => {
       const deployment = {
         key: 'testapp',
         displayName: 'Test Application',
@@ -329,22 +445,48 @@ describe('Generator Split Functions', () => {
 
       const result = generator.generateReadmeFromDeployJson(deployment);
 
-      expect(result).toContain('# Test Application');
-      expect(result).toContain('A test application for deployment');
+      expect(result).toContain('# Test Application Builder');
+      expect(result).toContain('Test Application');
       expect(result).toContain('testapp');
       expect(result).toContain('3000');
-      expect(result).toContain('myacr.azurecr.io/testapp:latest');
+      expect(result).toContain('myacr.azurecr.io');
     });
 
-    it('should handle deployment with minimal fields', () => {
+    it('should handle deployment with minimal fields (displayName from key)', () => {
       const deployment = {
         key: 'minimal'
       };
 
       const result = generator.generateReadmeFromDeployJson(deployment);
 
-      expect(result).toContain('# minimal');
+      expect(result).toContain('# Minimal Builder');
       expect(result).toContain('minimal');
+    });
+
+    it('should generate README from external-system template when deployment has system (external format)', () => {
+      const deployment = {
+        system: {
+          key: 'test-hubspot',
+          displayName: 'Companies',
+          description: 'HubSpot CRM integration',
+          type: 'openapi'
+        },
+        dataSources: [
+          { key: 'companies-data', displayName: 'Companies Data', systemKey: 'test-hubspot' },
+          { key: 'deals-data', displayName: 'Deals Data', systemKey: 'test-hubspot' }
+        ]
+      };
+
+      const result = generator.generateReadmeFromDeployJson(deployment);
+
+      expect(result).toContain('# Companies');
+      expect(result).toContain('HubSpot CRM integration');
+      expect(result).toContain('test-hubspot');
+      expect(result).toContain('openapi');
+      expect(result).toContain('aifabrix create test-hubspot --type external');
+      expect(result).toContain('integration/test-hubspot');
+      expect(result).toContain('Datasource: Companies Data');
+      expect(result).toContain('Datasource: Deals Data');
     });
 
     it('should throw error for invalid deployment', () => {
@@ -416,17 +558,61 @@ describe('Generator Split Functions', () => {
       expect(envTemplateCall[1]).toContain('PORT=3000');
     });
 
-    it('should write variables.yaml correctly', async() => {
+    it('should write application.yaml correctly', async() => {
       await generator.splitDeployJson(deployJsonPath);
 
       const writeCalls = fs.promises.writeFile.mock.calls;
-      const variablesCall = writeCalls.find(call => call[0].endsWith('variables.yaml'));
+      const variablesCall = writeCalls.find(call => call[0].endsWith('application.yaml'));
 
       expect(variablesCall).toBeDefined();
       const variablesYaml = yaml.load(variablesCall[1]);
       expect(variablesYaml.app.key).toBe('testapp');
       expect(variablesYaml.image.name).toBe('testapp');
       expect(variablesYaml.port).toBe(3000);
+    });
+
+    it('should not include roles or permissions in application.yaml (only in rbac.yml)', async() => {
+      await generator.splitDeployJson(deployJsonPath);
+
+      const writeCalls = fs.promises.writeFile.mock.calls;
+      const variablesCall = writeCalls.find(call => call[0].endsWith('application.yaml'));
+      const variablesYaml = yaml.load(variablesCall[1]);
+
+      expect(variablesYaml.roles).toBeUndefined();
+      expect(variablesYaml.permissions).toBeUndefined();
+    });
+
+    it('should include only portalInput entries in application.yaml (values are in env.template)', async() => {
+      const deploymentWithPortalInput = {
+        ...mockDeployment,
+        configuration: [
+          { name: 'PORT', value: '3001', location: 'variable', required: false },
+          {
+            name: 'LOG_LEVEL',
+            value: 'INFO',
+            location: 'variable',
+            required: false,
+            portalInput: { field: 'select', label: 'Log Level', options: ['DEBUG', 'INFO', 'WARNING', 'ERROR'] }
+          }
+        ]
+      };
+      fs.promises.readFile.mockResolvedValue(JSON.stringify(deploymentWithPortalInput));
+
+      await generator.splitDeployJson(deployJsonPath);
+
+      const writeCalls = fs.promises.writeFile.mock.calls;
+      const variablesCall = writeCalls.find(call => call[0].endsWith('application.yaml'));
+      const variablesYaml = yaml.load(variablesCall[1]);
+
+      expect(variablesYaml.configuration).toBeDefined();
+      expect(variablesYaml.configuration).toHaveLength(1);
+      expect(variablesYaml.configuration[0].name).toBe('LOG_LEVEL');
+      expect(variablesYaml.configuration[0].portalInput).toEqual({
+        field: 'select',
+        label: 'Log Level',
+        options: ['DEBUG', 'INFO', 'WARNING', 'ERROR']
+      });
+      expect(variablesYaml.configuration[0].value).toBeUndefined();
     });
 
     it('should write rbac.yml when roles/permissions exist', async() => {
@@ -465,8 +651,11 @@ describe('Generator Split Functions', () => {
 
     it('should create output directory if it does not exist', async() => {
       fs.existsSync.mockImplementation((filePath) => {
-        // Return true for deployJsonPath, false for outputDir
-        return filePath === deployJsonPath;
+        const pathStr = String(filePath);
+        // Return true for deploy JSON path and README template paths, false for outputDir
+        return filePath === deployJsonPath ||
+          pathStr.includes('applications/README.md.hbs') ||
+          pathStr.includes('external-system/README.md.hbs');
       });
 
       await generator.splitDeployJson(deployJsonPath, outputDir);
@@ -517,7 +706,7 @@ describe('Generator Split Functions', () => {
       await generator.splitDeployJson(deployJsonPath);
 
       const writeCalls = fs.promises.writeFile.mock.calls;
-      const variablesCall = writeCalls.find(call => call[0].endsWith('variables.yaml'));
+      const variablesCall = writeCalls.find(call => call[0].endsWith('application.yaml'));
       const variablesYaml = yaml.load(variablesCall[1]);
       expect(variablesYaml.image.registryMode).toBe('external');
     });

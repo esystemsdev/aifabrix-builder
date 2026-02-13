@@ -61,7 +61,7 @@ aifabrix build {{appName}} --tag v1.0.0
 aifabrix push {{appName}} --registry {{registry}} --tag "v1.0.0,latest"
 
 # Deploy (controller and environment from config; set via aifabrix login or aifabrix auth config)
-aifabrix deploy {{appName}} --deployment local
+aifabrix deploy {{appName}} --local
 ```
 
 ---
@@ -132,7 +132,7 @@ aifabrix push {{appName}} --registry {{registry}} --tag "v1.0.0,latest,stable"
 ### Deploy Options
 
 ```bash
-aifabrix deploy {{appName}} --deployment local    # Uses controller and environment from config
+aifabrix deploy {{appName}} --local    # Uses controller and environment from config
 aifabrix deploy {{appName}} --no-poll             # Deploy without polling for status
 ```
 
@@ -166,7 +166,7 @@ Controller URL and environment (for `deploy`, `app register`, etc.) are set via 
 
 - **"Docker not running"** → Start Docker Desktop
 - **"Not logged in"** → Run `aifabrix login` first
-- **"Port already in use"** → Use `aifabrix run {{appName}} --port <port>` or set `build.localPort` in `variables.yaml` (default: {{localPort}})
+- **"Port already in use"** → Use `aifabrix run {{appName}} --port <port>` or set `build.localPort` in `application.yaml` (default: {{localPort}})
 - **"Authentication failed"** → Run `aifabrix login` again
 - **"Build fails"** → Check Docker is running and `aifabrix-secrets` in `config.yaml` is configured correctly
 - **"Can't connect"** → Verify infrastructure is running{{#if hasDatabase}} and PostgreSQL is accessible{{/if}}

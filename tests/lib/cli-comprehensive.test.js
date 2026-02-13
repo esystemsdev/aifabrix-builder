@@ -189,7 +189,7 @@ describe('CLI Comprehensive Tests', () => {
       const deployCmdIndex = mockProgram.command.mock.calls.findIndex(c => c[0] === 'deploy <app>');
       expect(deployCmdIndex).toBeGreaterThanOrEqual(0);
       const deployCmdMock = mockProgram.command.mock.results[deployCmdIndex].value;
-      expect(deployCmdMock.option).toHaveBeenCalledWith(expect.stringMatching(/--deployment/), expect.any(String), 'cloud');
+      expect(deployCmdMock.option).toHaveBeenCalledWith('--local', expect.any(String));
       expect(mockProgram.command).toHaveBeenCalledWith('doctor');
       expect(mockProgram.command).toHaveBeenCalledWith('status');
       expect(mockProgram.command).toHaveBeenCalledWith('restart <service>');
@@ -585,48 +585,58 @@ describe('CLI Comprehensive Tests', () => {
       }
     });
 
-    it('should call deployApp only when --deployment=cloud (default)', async() => {
-      app.deployApp.mockResolvedValue({ deploymentId: '123' });
+    it('should call deployApp only when --local is not set (default)', async() => {
+      app.deployApp.mockResolvedValue({ result: { deploymentId: '123' }, usedExternalDeploy: false });
       app.runApp.mockResolvedValue();
+      app.restartApp.mockResolvedValue();
 
       const deployAction = commandActions['deploy <app>'];
       expect(deployAction).toBeDefined();
 
-      await deployAction('test-app', { deployment: 'cloud' });
+      await deployAction('test-app', {});
 
       expect(app.deployApp).toHaveBeenCalledTimes(1);
-      expect(app.deployApp).toHaveBeenCalledWith('test-app', expect.objectContaining({ deployment: 'cloud' }));
+      expect(app.deployApp).toHaveBeenCalledWith('test-app', expect.objectContaining({ local: false }));
       expect(app.runApp).not.toHaveBeenCalled();
+      expect(app.restartApp).not.toHaveBeenCalled();
     });
 
-    it('should call deployApp then runApp when --deployment=local', async() => {
-      app.deployApp.mockResolvedValue({ deploymentId: '123' });
+    it('should call deployApp then runApp when --local for app', async() => {
+      app.deployApp.mockResolvedValue({ result: { deploymentId: '123' }, usedExternalDeploy: false });
       app.runApp.mockResolvedValue();
+      app.restartApp.mockResolvedValue();
 
       const deployAction = commandActions['deploy <app>'];
       expect(deployAction).toBeDefined();
 
-      await deployAction('test-app', { deployment: 'local' });
+      await deployAction('test-app', { local: true });
 
       expect(app.deployApp).toHaveBeenCalledTimes(1);
-      expect(app.deployApp).toHaveBeenCalledWith('test-app', expect.objectContaining({ deployment: 'local' }));
+      expect(app.deployApp).toHaveBeenCalledWith('test-app', expect.objectContaining({ local: true }));
       expect(app.runApp).toHaveBeenCalledTimes(1);
-      expect(app.runApp).toHaveBeenCalledWith('test-app', expect.objectContaining({ deployment: 'local' }));
+      expect(app.runApp).toHaveBeenCalledWith('test-app', expect.objectContaining({ local: true }));
+      expect(app.restartApp).not.toHaveBeenCalled();
     });
 
-    it('should throw and exit when --deployment is invalid', async() => {
+    it('should call deployApp then restartApp dataplane when --local for external', async() => {
+      app.deployApp.mockResolvedValue({ result: { success: true }, usedExternalDeploy: true });
+      app.runApp.mockResolvedValue();
+      app.restartApp.mockResolvedValue();
+
       const deployAction = commandActions['deploy <app>'];
       expect(deployAction).toBeDefined();
 
-      await deployAction('test-app', { deployment: 'invalid' });
+      await deployAction('my-external', { local: true });
 
-      expect(app.deployApp).not.toHaveBeenCalled();
+      expect(app.deployApp).toHaveBeenCalledTimes(1);
+      expect(app.deployApp).toHaveBeenCalledWith('my-external', expect.objectContaining({ local: true }));
+      expect(app.restartApp).toHaveBeenCalledTimes(1);
+      expect(app.restartApp).toHaveBeenCalledWith('dataplane');
       expect(app.runApp).not.toHaveBeenCalled();
-      expect(process.exit).toHaveBeenCalledWith(1);
     });
 
     it('should handle deploy with no-poll option', async() => {
-      app.deployApp.mockResolvedValue({ deploymentId: '123' });
+      app.deployApp.mockResolvedValue({ result: { deploymentId: '123' }, usedExternalDeploy: false });
 
       const appName = 'test-app';
       const options = { poll: false };

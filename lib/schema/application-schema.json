@@ -799,19 +799,19 @@
         },
         "systems": {
           "type": "array",
-          "description": "List of external-system JSON files to deploy via pipeline.",
+          "description": "List of external-system files to deploy via pipeline (.json, .yaml, or .yml).",
           "items": {
             "type": "string",
-            "pattern": "^[^ ].+\\.json$"
+            "pattern": "^[^ ].+\\.(json|yaml|yml)$"
           },
           "uniqueItems": true
         },
         "dataSources": {
           "type": "array",
-          "description": "List of external-datasource JSON files belonging to this app.",
+          "description": "List of external-datasource files belonging to this app (.json, .yaml, or .yml).",
           "items": {
             "type": "string",
-            "pattern": "^[^ ].+\\.json$"
+            "pattern": "^[^ ].+\\.(json|yaml|yml)$"
           },
           "uniqueItems": true
         },

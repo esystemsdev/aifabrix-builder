@@ -133,6 +133,9 @@ jest.mock('../../../lib/utils/paths', () => {
     getBuilderPath: jest.fn((appName) => pathMod.join(process.cwd(), 'builder', appName))
   };
 });
+jest.mock('../../../lib/utils/app-config-resolver', () => ({
+  resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml'))
+}));
 jest.mock('../../../lib/utils/logger', () => ({
   log: jest.fn(),
   warn: jest.fn(),
@@ -376,14 +379,14 @@ environments:
       expect(result).toBe(path.join(builderPath, '.env'));
     });
 
-    it('should copy .env to envOutputPath if specified in variables.yaml', async() => {
+    it('should copy .env to envOutputPath if specified in application.yaml', async() => {
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('env.template') ||
-               filePath.includes('variables.yaml') ||
+               filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml');
       });
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml')) {
           return `
 build:
   envOutputPath: ../app/.env
@@ -1070,11 +1073,11 @@ environments:
     it('should not copy .env when envOutputPath is null', async() => {
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('env.template') ||
-               filePath.includes('variables.yaml') ||
+               filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml');
       });
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml')) {
           return `
 build:
   envOutputPath: null
@@ -1104,7 +1107,7 @@ environments:
     it('should handle envOutputPath ending with .env', async() => {
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('env.template') ||
-               filePath.includes('variables.yaml') ||
+               filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml');
       });
       if (!fs.statSync) {
@@ -1112,7 +1115,7 @@ environments:
       }
       fs.statSync.mockReturnValue({ isDirectory: () => false });
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml')) {
           return `
 build:
   envOutputPath: ../app/.env
@@ -1147,7 +1150,7 @@ environments:
       const outputPath = path.resolve(builderPath, '../app');
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template') ||
-            filePath.includes('variables.yaml') ||
+            filePath.includes('application.yaml') ||
             filePath.includes('secrets.yaml')) {
           return true;
         }
@@ -1166,7 +1169,7 @@ environments:
         return { isDirectory: () => false };
       });
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml')) {
           return `
 build:
   envOutputPath: ../app
@@ -1251,7 +1254,7 @@ environments:
         if (filePath === secretsPath || (filePath && filePath.includes('secrets.local.yaml') && !filePath.includes('aifabrix-setup'))) {
           return true;
         }
-        return filePath && (filePath.includes('env.template') || filePath.includes('variables.yaml'));
+        return filePath && (filePath.includes('env.template') || filePath.includes('application.yaml'));
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath && filePath.includes('env-config.yaml')) {
@@ -1271,7 +1274,7 @@ environments:
         if (filePath === secretsPath || (filePath && filePath.includes('secrets.local.yaml') && !filePath.includes('aifabrix-setup'))) {
           return secretsFileContent;
         }
-        if (filePath && filePath.includes('variables.yaml')) {
+        if (filePath && filePath.includes('application.yaml')) {
           return 'port: 3000';
         }
         return '';
@@ -1312,7 +1315,7 @@ environments:
         if (filePath === overrideSecretsPath || (filePath && filePath.includes('secrets.local.yaml') && !filePath.includes('aifabrix-setup'))) {
           return true;
         }
-        return filePath && (filePath.includes('env.template') || filePath.includes('variables.yaml'));
+        return filePath && (filePath.includes('env.template') || filePath.includes('application.yaml'));
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath && filePath.includes('env-config.yaml')) {
@@ -1332,7 +1335,7 @@ environments:
         if (filePath === overrideSecretsPath || (filePath && filePath.includes('secrets.local.yaml') && !filePath.includes('aifabrix-setup'))) {
           return secretsFileContent;
         }
-        if (filePath && filePath.includes('variables.yaml')) {
+        if (filePath && filePath.includes('application.yaml')) {
           return 'port: 3000';
         }
         return '';
@@ -1369,7 +1372,7 @@ environments:
         if (resolvedPath === resolvedExplicit || filePath === explicitPath || filePath === explicitPathRelative) {
           return true;
         }
-        return filePath && (filePath.includes('env.template') || filePath.includes('variables.yaml'));
+        return filePath && (filePath.includes('env.template') || filePath.includes('application.yaml'));
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath && filePath.includes('env-config.yaml')) {
@@ -1393,7 +1396,7 @@ environments:
         if (resolvedPath === resolvedExplicit || filePath === explicitPath || filePath === explicitPathRelative) {
           return secretsFileContent;
         }
-        if (filePath && filePath.includes('variables.yaml')) {
+        if (filePath && filePath.includes('application.yaml')) {
           return 'port: 3000';
         }
         return '';
@@ -1421,11 +1424,11 @@ environments:
     it('should handle envOutputPath when output directory does not exist', async() => {
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('env.template') ||
-               filePath.includes('variables.yaml') ||
+               filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml');
       });
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml')) {
           return `
 build:
   envOutputPath: ../app/.env
@@ -1457,7 +1460,7 @@ environments:
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
-    it('should handle envOutputPath when variables.yaml does not exist', async() => {
+    it('should handle envOutputPath when application.yaml does not exist', async() => {
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('env.template') || filePath.includes('secrets.yaml');
       });
@@ -1486,11 +1489,11 @@ environments:
     it('should handle envOutputPath when build.envOutputPath is not set', async() => {
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('env.template') ||
-               filePath.includes('variables.yaml') ||
+               filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml');
       });
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml')) {
           return 'build: {}';
         }
         if (filePath.includes('env.template')) {
@@ -1517,11 +1520,11 @@ environments:
     it('should handle envOutputPath when path does not end with .env and directory does not exist', async() => {
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('env.template') ||
-               filePath.includes('variables.yaml') ||
+               filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml');
       });
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml')) {
           return `
 build:
   envOutputPath: ../app
@@ -1631,7 +1634,7 @@ environments:
         if (filePath === builderEnvPath || (String(filePath).includes('builder') && String(filePath).endsWith('.env'))) {
           return true;
         }
-        if (filePath.includes('env.template') || filePath.includes('secrets.yaml') || filePath.includes('variables.yaml') || filePath.includes('env-config')) {
+        if (filePath.includes('env.template') || filePath.includes('secrets.yaml') || filePath.includes('application.yaml') || filePath.includes('env-config')) {
           return true;
         }
         return false;
@@ -1647,7 +1650,7 @@ environments:
         if (filePath.includes('secrets.yaml') || filePath.includes('secrets.local.yaml')) {
           return 'jwt-secretKeyVault: "newly-generated-jwt"\nredis-passwordKeyVault: "newly-generated-redis"';
         }
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml')) {
           return 'port: 3000';
         }
         if (filePath.includes('env-config.yaml')) {
@@ -1676,10 +1679,10 @@ environments:
 
     beforeEach(() => {
       fs.existsSync.mockImplementation((filePath) => {
-        // Return true for env.template, secrets.yaml, and keycloak variables.yaml
+        // Return true for env.template, secrets.yaml, and keycloak application.yaml
         if (filePath.includes('env.template') ||
             filePath.includes('secrets.yaml') ||
-            filePath.includes('keycloak/variables.yaml')) {
+            filePath.includes('keycloak/application.yaml')) {
           return true;
         }
         return false;
@@ -1688,11 +1691,11 @@ environments:
 
     it('should replace port in URLs with containerPort for docker environment', async() => {
       fs.existsSync.mockImplementation((filePath) => {
-        // Return true for env.template, secrets.yaml, and keycloak variables.yaml
+        // Return true for env.template, secrets.yaml, and keycloak application.yaml
         if (filePath.includes('env.template') ||
             filePath.includes('secrets.yaml') ||
-            filePath.includes('keycloak/variables.yaml') ||
-            filePath.includes('keycloak') && filePath.includes('variables.yaml')) {
+            filePath.includes('keycloak/application.yaml') ||
+            filePath.includes('keycloak') && filePath.includes('application.yaml')) {
           return true;
         }
         return false;
@@ -1704,7 +1707,7 @@ environments:
         if (filePath.includes('secrets.yaml')) {
           return 'keycloak-auth-server-urlKeyVault: "http://${KEYCLOAK_HOST}:8082"';
         }
-        if (filePath.includes('keycloak/variables.yaml') || (filePath.includes('keycloak') && filePath.includes('variables.yaml'))) {
+        if (filePath.includes('keycloak/application.yaml') || (filePath.includes('keycloak') && filePath.includes('application.yaml'))) {
           return `
 port: 8082
 build:
@@ -1764,7 +1767,7 @@ environments:
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template') ||
             filePath.includes('secrets.yaml') ||
-            (filePath.includes('keycloak') && filePath.includes('variables.yaml'))) {
+            (filePath.includes('keycloak') && filePath.includes('application.yaml'))) {
           return true;
         }
         return false;
@@ -1776,7 +1779,7 @@ environments:
         if (filePath.includes('secrets.yaml')) {
           return 'keycloak-auth-server-urlKeyVault: "http://${KEYCLOAK_HOST}:8082"';
         }
-        if (filePath.includes('keycloak') && filePath.includes('variables.yaml')) {
+        if (filePath.includes('keycloak') && filePath.includes('application.yaml')) {
           return `
 port: 8080
 build:
@@ -1803,10 +1806,10 @@ environments:
       expect(envContent).toContain('KEYCLOAK_AUTH_SERVER_URL=http://keycloak:8080');
     });
 
-    it('should keep original port when service variables.yaml not found', async() => {
+    it('should keep original port when service application.yaml not found', async() => {
       fs.existsSync.mockImplementation((filePath) => {
-        // Return false for keycloak variables.yaml
-        if (filePath.includes('keycloak/variables.yaml')) {
+        // Return false for keycloak application.yaml
+        if (filePath.includes('keycloak/application.yaml')) {
           return false;
         }
         if (filePath.includes('env.template') || filePath.includes('secrets.yaml')) {
@@ -1873,8 +1876,8 @@ environments:
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template') ||
             filePath.includes('secrets.yaml') ||
-            (filePath.includes('keycloak') && filePath.includes('variables.yaml')) ||
-            (filePath.includes('miso-controller') && filePath.includes('variables.yaml'))) {
+            (filePath.includes('keycloak') && filePath.includes('application.yaml')) ||
+            (filePath.includes('miso-controller') && filePath.includes('application.yaml'))) {
           return true;
         }
         return false;
@@ -1887,14 +1890,14 @@ environments:
           return `keycloak-urlKeyVault: "http://\${KEYCLOAK_HOST}:8082"
 miso-urlKeyVault: "http://\${MISO_HOST}:3010"`;
         }
-        if (filePath.includes('keycloak') && filePath.includes('variables.yaml')) {
+        if (filePath.includes('keycloak') && filePath.includes('application.yaml')) {
           return `
 port: 8082
 build:
   containerPort: 8080
 `;
         }
-        if (filePath.includes('miso-controller') && filePath.includes('variables.yaml')) {
+        if (filePath.includes('miso-controller') && filePath.includes('application.yaml')) {
           return `
 port: 3010
 build:
@@ -1928,7 +1931,7 @@ environments:
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template') ||
             filePath.includes('secrets.yaml') ||
-            (filePath.includes('keycloak') && filePath.includes('variables.yaml'))) {
+            (filePath.includes('keycloak') && filePath.includes('application.yaml'))) {
           return true;
         }
         return false;
@@ -1940,7 +1943,7 @@ environments:
         if (filePath.includes('secrets.yaml')) {
           return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth/realms/master?param=value"';
         }
-        if (filePath.includes('keycloak') && filePath.includes('variables.yaml')) {
+        if (filePath.includes('keycloak') && filePath.includes('application.yaml')) {
           return `
 port: 8082
 build:
@@ -2273,7 +2276,7 @@ environments:
 
     it.skip('should fallback to build.secrets when value missing in user file (removed - use config.yaml aifabrix-secrets)', async() => {
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
-      const variablesPath = path.join(process.cwd(), 'builder', 'myapp', 'variables.yaml');
+      const variablesPath = path.join(process.cwd(), 'builder', 'myapp', 'application.yaml');
       const buildSecretsPath = path.resolve(path.dirname(variablesPath), '../../secrets.local.yaml');
       const userSecrets = { 'myapp-client-idKeyVault': 'user-client-id' };
       const buildSecrets = {
@@ -2308,7 +2311,7 @@ environments:
 
     it.skip('should use build.secrets for empty values in user file (removed - use config.yaml aifabrix-secrets)', async() => {
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
-      const variablesPath = path.join(process.cwd(), 'builder', 'myapp', 'variables.yaml');
+      const variablesPath = path.join(process.cwd(), 'builder', 'myapp', 'application.yaml');
       const buildSecretsPath = path.resolve(path.dirname(variablesPath), '../../secrets.local.yaml');
       const userSecrets = { 'myapp-client-idKeyVault': '' };
       const buildSecrets = { 'myapp-client-idKeyVault': 'build-client-id' };
@@ -2587,7 +2590,7 @@ environments:
     });
 
     it('should resolve service ports in URLs for docker environment', async() => {
-      const keycloakVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'variables.yaml');
+      const keycloakVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'application.yaml');
 
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath === keycloakVariablesPath) {
@@ -2671,7 +2674,7 @@ environments:
     });
 
     it('should preserve URL paths and query parameters', async() => {
-      const keycloakVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'variables.yaml');
+      const keycloakVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'application.yaml');
 
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath === keycloakVariablesPath) {
@@ -2720,7 +2723,7 @@ environments:
     const appName = 'testapp';
     const builderPath = path.join(process.cwd(), 'builder', appName);
     const envPath = path.join(builderPath, '.env');
-    const variablesPath = path.join(builderPath, 'variables.yaml');
+    const variablesPath = path.join(builderPath, 'application.yaml');
 
     beforeEach(() => {
       fs.existsSync.mockReturnValue(true);
@@ -2763,7 +2766,7 @@ port: 3000
 
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('env.template') ||
-               filePath.includes('variables.yaml') ||
+               filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml') ||
                filePath === envPath;
       });
@@ -2788,7 +2791,7 @@ port: 3000
 
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('env.template') ||
-               filePath.includes('variables.yaml') ||
+               filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml') ||
                filePath === envPath;
       });
@@ -2835,7 +2838,7 @@ environments:
     it('should not copy when envOutputPath is null', async() => {
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('env.template') ||
-               filePath.includes('variables.yaml') ||
+               filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml') ||
                filePath === envPath;
       });
@@ -2883,7 +2886,7 @@ environments:
           return false;
         }
         return filePath.includes('env.template') ||
-               filePath.includes('variables.yaml') ||
+               filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml') ||
                filePath === envPath;
       });
@@ -2906,7 +2909,7 @@ environments:
           return true;
         }
         return filePath.includes('env.template') ||
-               filePath.includes('variables.yaml') ||
+               filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml') ||
                filePath === envPath;
       });
@@ -2927,7 +2930,7 @@ environments:
       expect(outputCall).toBeDefined();
     });
 
-    it('should not process when variables.yaml does not exist', async() => {
+    it('should not process when application.yaml does not exist', async() => {
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath === variablesPath) {
           return false;
@@ -2964,7 +2967,7 @@ environments:
         return filePath.includes('env.template') ||
                filePath.includes('secrets.yaml') ||
                filePath.includes('env-config.yaml') ||
-               filePath.includes('variables.yaml');
+               filePath.includes('application.yaml');
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath === userSecretsPath) {
@@ -2983,7 +2986,7 @@ environments:
     REDIS_HOST: localhost
 `;
         }
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml')) {
           return 'port: 3000';
         }
         return '';
@@ -3069,7 +3072,7 @@ environments:
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       const builderPath = path.join(process.cwd(), 'builder', appName);
       const envTemplatePath = path.join(builderPath, 'env.template');
-      const variablesPath = path.join(builderPath, 'variables.yaml');
+      const variablesPath = path.join(builderPath, 'application.yaml');
       const envPath = path.join(builderPath, '.env');
 
       // Mock os.homedir

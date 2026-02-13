@@ -165,6 +165,8 @@ describe('Diff Module', () => {
   });
 
   describe('compareFiles', () => {
+    const noValidate = { validate: false };
+
     it('should compare identical files', async() => {
       const file1 = '/path/to/file1.json';
       const file2 = '/path/to/file2.json';
@@ -174,7 +176,7 @@ describe('Diff Module', () => {
       fsSync.readFileSync.mockReturnValue(content);
 
       const { compareFiles } = require('../../../lib/core/diff');
-      const result = await compareFiles(file1, file2);
+      const result = await compareFiles(file1, file2, noValidate);
 
       expect(result.identical).toBe(true);
       expect(result.version1).toBe('1.0.0');
@@ -195,7 +197,7 @@ describe('Diff Module', () => {
       });
 
       const { compareFiles } = require('../../../lib/core/diff');
-      const result = await compareFiles(file1, file2);
+      const result = await compareFiles(file1, file2, noValidate);
 
       expect(result.identical).toBe(false);
       expect(result.changed.length).toBeGreaterThanOrEqual(1);
@@ -217,7 +219,7 @@ describe('Diff Module', () => {
       });
 
       const { compareFiles } = require('../../../lib/core/diff');
-      const result = await compareFiles(file1, file2);
+      const result = await compareFiles(file1, file2, noValidate);
 
       expect(result.version1).toBe('1.0.0');
       expect(result.version2).toBe('2.0.0');
@@ -256,7 +258,7 @@ describe('Diff Module', () => {
       });
 
       const { compareFiles } = require('../../../lib/core/diff');
-      await expect(compareFiles(file1, file2)).rejects.toThrow('Failed to parse');
+      await expect(compareFiles(file1, file2, noValidate)).rejects.toThrow('Failed to parse');
     });
 
     it('should throw error on invalid JSON in file2', async() => {
@@ -271,7 +273,7 @@ describe('Diff Module', () => {
       });
 
       const { compareFiles } = require('../../../lib/core/diff');
-      await expect(compareFiles(file1, file2)).rejects.toThrow('Failed to parse');
+      await expect(compareFiles(file1, file2, noValidate)).rejects.toThrow('Failed to parse');
     });
 
     it('should throw error if file1 path is missing', async() => {
@@ -300,11 +302,56 @@ describe('Diff Module', () => {
       });
 
       const { compareFiles } = require('../../../lib/core/diff');
-      const result = await compareFiles(file1, file2);
+      const result = await compareFiles(file1, file2, noValidate);
 
       expect(result.summary.totalAdded).toBe(1);
       expect(result.summary.totalRemoved).toBe(1);
       expect(result.summary.totalChanged).toBe(1);
+    });
+
+    it('should throw on type mismatch (app vs system)', async() => {
+      const file1 = '/path/to/app.json';
+      const file2 = '/path/to/system.json';
+      const appContent = JSON.stringify({
+        key: 'myapp',
+        displayName: 'My App',
+        description: 'An app',
+        type: 'standard',
+        image: 'img',
+        registryMode: 'acr',
+        port: 8080
+      });
+      const systemContent = JSON.stringify({
+        key: 'sys1',
+        displayName: 'System',
+        type: 'openapi',
+        authentication: {}
+      });
+
+      fsSync.existsSync.mockImplementation((filePath) => filePath === file1 || filePath === file2);
+      fsSync.readFileSync.mockImplementation((filePath) => {
+        if (filePath === file1) return appContent;
+        if (filePath === file2) return systemContent;
+        return '{}';
+      });
+
+      const { compareFiles } = require('../../../lib/core/diff');
+      await expect(compareFiles(file1, file2, noValidate)).rejects.toThrow('Type mismatch');
+      await expect(compareFiles(file1, file2, noValidate)).rejects.toThrow('app');
+      await expect(compareFiles(file1, file2, noValidate)).rejects.toThrow('system');
+    });
+
+    it('should run comparison when types match with validate false', async() => {
+      const file1 = '/path/to/a.json';
+      const file2 = '/path/to/b.json';
+      const content = JSON.stringify({ key: 'v', version: '1.0.0' });
+
+      fsSync.existsSync.mockImplementation((filePath) => filePath === file1 || filePath === file2);
+      fsSync.readFileSync.mockReturnValue(content);
+
+      const { compareFiles } = require('../../../lib/core/diff');
+      const result = await compareFiles(file1, file2, noValidate);
+      expect(result.identical).toBe(true);
     });
   });
 

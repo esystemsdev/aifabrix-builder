@@ -53,7 +53,7 @@ describe('Build Copy Utilities', () => {
       const builderParent = path.dirname(builderPath);
       fsSync.mkdirSync(builderParent, { recursive: true });
       fsSync.mkdirSync(builderPath, { recursive: true });
-      fsSync.writeFileSync(path.join(builderPath, 'variables.yaml'), 'test: value', 'utf8');
+      fsSync.writeFileSync(path.join(builderPath, 'application.yaml'), 'test: value', 'utf8');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
       // Use statSync for reliable check
@@ -64,7 +64,7 @@ describe('Build Copy Utilities', () => {
       const devDir = await buildCopy.copyBuilderToDevDirectory(appName, developerId);
       const expectedPath = path.join(tempDir, '.aifabrix', 'applications-dev-01');
       expect(devDir).toBe(expectedPath);
-      expect(fsSync.statSync(path.join(devDir, 'variables.yaml')).isFile()).toBe(true);
+      expect(fsSync.statSync(path.join(devDir, 'application.yaml')).isFile()).toBe(true);
     });
   });
 
@@ -88,7 +88,7 @@ describe('Build Copy Utilities', () => {
       fsSync.mkdirSync(builderParent, { recursive: true });
       // Create builder directory with files (use sync to ensure it's created)
       fsSync.mkdirSync(builderPath, { recursive: true });
-      fsSync.writeFileSync(path.join(builderPath, 'variables.yaml'), 'test: value', 'utf8');
+      fsSync.writeFileSync(path.join(builderPath, 'application.yaml'), 'test: value', 'utf8');
       fsSync.writeFileSync(path.join(builderPath, 'Dockerfile'), 'FROM node:18', 'utf8');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
@@ -108,7 +108,7 @@ describe('Build Copy Utilities', () => {
       expect(fsSync.statSync(devDir).isDirectory()).toBe(true);
 
       // Verify files were copied
-      const variablesPath = path.join(devDir, 'variables.yaml');
+      const variablesPath = path.join(devDir, 'application.yaml');
       const dockerfilePath = path.join(devDir, 'Dockerfile');
       expect(() => fsSync.statSync(variablesPath).isFile()).not.toThrow();
       expect(fsSync.statSync(variablesPath).isFile()).toBe(true);
@@ -130,7 +130,7 @@ describe('Build Copy Utilities', () => {
       fsSync.mkdirSync(builderParent, { recursive: true });
       // Create builder directory with files (use sync to ensure it's created)
       fsSync.mkdirSync(builderPath, { recursive: true });
-      fsSync.writeFileSync(path.join(builderPath, 'variables.yaml'), 'test: value', 'utf8');
+      fsSync.writeFileSync(path.join(builderPath, 'application.yaml'), 'test: value', 'utf8');
       fsSync.writeFileSync(path.join(builderPath, 'Dockerfile'), 'FROM node:18', 'utf8');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
@@ -150,7 +150,7 @@ describe('Build Copy Utilities', () => {
       expect(fsSync.statSync(devDir).isDirectory()).toBe(true);
 
       // Verify files were copied directly to applications/
-      const variablesPath = path.join(devDir, 'variables.yaml');
+      const variablesPath = path.join(devDir, 'application.yaml');
       const dockerfilePath = path.join(devDir, 'Dockerfile');
       expect(() => fsSync.statSync(variablesPath).isFile()).not.toThrow();
       expect(fsSync.statSync(variablesPath).isFile()).toBe(true);
@@ -183,7 +183,7 @@ describe('Build Copy Utilities', () => {
       fsSync.mkdirSync(builderPath, { recursive: true });
       fsSync.mkdirSync(path.join(builderPath, 'config'), { recursive: true });
       fsSync.mkdirSync(path.join(builderPath, 'scripts'), { recursive: true });
-      fsSync.writeFileSync(path.join(builderPath, 'variables.yaml'), 'test: value', 'utf8');
+      fsSync.writeFileSync(path.join(builderPath, 'application.yaml'), 'test: value', 'utf8');
       fsSync.writeFileSync(path.join(builderPath, 'config', 'app.yaml'), 'app: config', 'utf8');
       fsSync.writeFileSync(path.join(builderPath, 'scripts', 'start.sh'), '#!/bin/bash', 'utf8');
 
@@ -216,7 +216,7 @@ describe('Build Copy Utilities', () => {
       fsSync.mkdirSync(builderParent, { recursive: true });
       // Create builder directory with various files
       fsSync.mkdirSync(builderPath, { recursive: true });
-      fsSync.writeFileSync(path.join(builderPath, 'variables.yaml'), 'test: value', 'utf8');
+      fsSync.writeFileSync(path.join(builderPath, 'application.yaml'), 'test: value', 'utf8');
       fsSync.writeFileSync(path.join(builderPath, '.env'), 'ENV_VAR=value', 'utf8');
       fsSync.writeFileSync(path.join(builderPath, '.gitignore'), 'node_modules/', 'utf8');
       fsSync.writeFileSync(path.join(builderPath, '.hidden-file'), 'should be skipped', 'utf8');
@@ -253,7 +253,7 @@ describe('Build Copy Utilities', () => {
       fsSync.mkdirSync(builderParent, { recursive: true });
 
       fsSync.mkdirSync(builderPath, { recursive: true });
-      fsSync.writeFileSync(path.join(builderPath, 'variables.yaml'), 'test: value', 'utf8');
+      fsSync.writeFileSync(path.join(builderPath, 'application.yaml'), 'test: value', 'utf8');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
       // Use statSync for reliable check
@@ -369,7 +369,7 @@ describe('Build Copy Utilities', () => {
 
       // Create builder directory and copy it
       fsSync.mkdirSync(builderPath, { recursive: true });
-      fsSync.writeFileSync(path.join(builderPath, 'variables.yaml'), 'test: value', 'utf8');
+      fsSync.writeFileSync(path.join(builderPath, 'application.yaml'), 'test: value', 'utf8');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
       // Use statSync for reliable check
@@ -396,7 +396,7 @@ describe('Build Copy Utilities', () => {
 
       // Create builder directory and copy for developer 1
       fsSync.mkdirSync(builderPath, { recursive: true });
-      fsSync.writeFileSync(path.join(builderPath, 'variables.yaml'), 'test: value', 'utf8');
+      fsSync.writeFileSync(path.join(builderPath, 'application.yaml'), 'test: value', 'utf8');
 
       // Verify directory exists before calling copyBuilderToDevDirectory
       // Use statSync for reliable check

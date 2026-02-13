@@ -176,7 +176,7 @@ describe('Validation Error Formatters', () => {
       };
       const result = validationErrors.formatValidationError(errorData);
       expect(result).toContain('Tips:');
-      expect(result).toContain('Check your variables.yaml file');
+      expect(result).toContain('Check your application.yaml file');
       expect(result).toContain('Verify field names match');
       expect(result).toContain('Ensure required fields are present');
     });

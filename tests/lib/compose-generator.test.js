@@ -6,10 +6,24 @@
  * @version 2.0.0
  */
 
+// Use real fs so .env files created in tests are visible to compose-generator when run in full suite
+jest.mock('fs', () => jest.requireActual('fs'));
+
+const { execSync } = require('child_process');
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
+
+function createDirReal(dir) {
+  execSync('mkdir -p ' + JSON.stringify(dir), { stdio: ['pipe', 'pipe', 'pipe'] });
+}
+function writeFileReal(filePath, content) {
+  const node = process.execPath;
+  const b64 = Buffer.from(content, 'utf8').toString('base64');
+  const script = 'const fs=require(\'fs\'); const b=Buffer.from(process.argv[2],\'base64\'); fs.writeFileSync(process.argv[1], b.toString(\'utf8\'));';
+  execSync(node + ' -e ' + JSON.stringify(script) + ' ' + JSON.stringify(filePath) + ' ' + JSON.stringify(b64), { stdio: ['pipe', 'pipe', 'pipe'] });
+}
 
 // Mock config and devConfig
 jest.mock('../../lib/core/config', () => {
@@ -62,6 +76,8 @@ jest.mock('../../lib/utils/dev-config', () => {
   };
 });
 
+// Reload compose-generator so it picks up real fs (when run after tests that mock fs)
+delete require.cache[require.resolve('../../lib/utils/compose-generator')];
 const composeGenerator = require('../../lib/utils/compose-generator');
 const buildCopy = require('../../lib/utils/build-copy');
 
@@ -357,9 +373,6 @@ describe('Compose Generator Module', () => {
     // Helper to ensure .env file is created correctly
     // Uses realFs (via jest.requireActual) to bypass any mocks
     const ensureEnvFile = async(appName, content) => {
-      // Use jest.requireActual to get the real fs module, bypassing all mocks
-      const realFs = jest.requireActual('fs');
-
       const configModule = require('../../lib/core/config');
       const devId = await configModule.getDeveloperId();
       const actualDevDir = buildCopy.getDevDirectory(appName, devId);
@@ -367,92 +380,10 @@ describe('Compose Generator Module', () => {
       // The path from getDevDirectory should already be absolute (uses tempDir from beforeEach)
       const absoluteDir = actualDevDir;
 
-      // Always ensure directory exists - create it with explicit parent creation
-      // Create parent directories first, then the target directory
-      const parentDir = path.dirname(absoluteDir);
-      try {
-        realFs.mkdirSync(parentDir, { recursive: true });
-      } catch (error) {
-        if (error.code !== 'EEXIST') {
-          throw new Error(`Failed to create parent directory ${parentDir}: ${error.message} (code: ${error.code})`);
-        }
-      }
-
-      // Now create the target directory
-      try {
-        realFs.mkdirSync(absoluteDir, { recursive: true });
-      } catch (error) {
-        // EEXIST is fine - directory already exists
-        if (error.code !== 'EEXIST') {
-          throw new Error(`Failed to create directory ${absoluteDir}: ${error.message} (code: ${error.code})`);
-        }
-      }
-
-      // Verify directory exists - use statSync for more reliable check
-      let dirExists = false;
-      try {
-        const dirStat = realFs.statSync(absoluteDir);
-        dirExists = dirStat.isDirectory();
-      } catch (statError) {
-        // Directory doesn't exist, try creating one more time
-        try {
-          realFs.mkdirSync(absoluteDir, { recursive: true });
-          const retryStat = realFs.statSync(absoluteDir);
-          dirExists = retryStat.isDirectory();
-        } catch (retryError) {
-          // Still failed, throw error
-          throw new Error(`Directory does not exist after creation attempts: ${absoluteDir}. Error: ${retryError.message}`);
-        }
-      }
-
-      if (!dirExists) {
-        throw new Error(`Directory exists but is not a directory: ${absoluteDir}`);
-      }
-
+      // Create directory and file on real filesystem (subprocess) so they exist when fs is mocked
+      createDirReal(absoluteDir);
       const envPath = path.join(absoluteDir, '.env');
-
-      // Double-check directory exists right before writing using statSync for more reliable check
-      try {
-        const finalStat = realFs.statSync(absoluteDir);
-        if (!finalStat.isDirectory()) {
-          throw new Error(`Path exists but is not a directory: ${absoluteDir}`);
-        }
-      } catch (statError) {
-        // Directory doesn't exist, try creating one more time
-        try {
-          realFs.mkdirSync(absoluteDir, { recursive: true });
-          // Verify with statSync
-          const verifyStat = realFs.statSync(absoluteDir);
-          if (!verifyStat.isDirectory()) {
-            throw new Error(`Directory does not exist before writing file: ${absoluteDir}`);
-          }
-        } catch (createError) {
-          throw new Error(`Directory does not exist before writing file: ${absoluteDir}. Creation error: ${createError.message}`);
-        }
-      }
-
-      // Write file using realFs
-      try {
-        realFs.writeFileSync(envPath, content, 'utf8');
-      } catch (error) {
-        throw new Error(`Failed to write .env file at ${envPath}: ${error.message} (code: ${error.code}, errno: ${error.errno})`);
-      }
-
-      // Verify file exists
-      if (!realFs.existsSync(envPath)) {
-        throw new Error(`File does not exist after write: ${envPath}`);
-      }
-
-      // Verify file has correct content by reading it back
-      try {
-        const writtenContent = realFs.readFileSync(envPath, 'utf8');
-        if (writtenContent !== content) {
-          throw new Error(`File content mismatch. Expected length: ${content.length}, Got length: ${writtenContent.length}`);
-        }
-      } catch (readError) {
-        throw new Error(`File exists but cannot be read: ${envPath}. Error: ${readError.message}`);
-      }
-
+      writeFileReal(envPath, content);
       return envPath;
     };
 

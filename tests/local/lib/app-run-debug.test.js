@@ -212,14 +212,14 @@ describe('App-Run Debug Paths and Error Handling', () => {
       throw new Error(`Directory exists but is not a directory: ${builderDir}`);
     }
 
-    // Note: variables.yaml will be created in individual tests that need it
+    // Note: application.yaml will be created in individual tests that need it
     // This ensures the file is created fresh for each test and avoids timing issues
 
     // Create dev directory and .env file (where generateDockerCompose reads from)
     const devDir = path.join(os.homedir(), '.aifabrix', 'test-app-dev-1');
     fsSync.mkdirSync(devDir, { recursive: true });
     fsSync.writeFileSync(path.join(devDir, '.env'), 'DB_PASSWORD=secret123\n');
-    fsSync.writeFileSync(path.join(devDir, 'variables.yaml'), yaml.dump({
+    fsSync.writeFileSync(path.join(devDir, 'application.yaml'), yaml.dump({
       port: 3000,
       language: 'typescript'
     }));
@@ -272,7 +272,7 @@ describe('App-Run Debug Paths and Error Handling', () => {
     config.getDeveloperId.mockResolvedValue(1); // Integer, not string
   });
 
-  // Helper to ensure variables.yaml exists (needed for runApp tests)
+  // Helper to ensure application.yaml exists (needed for runApp tests)
   // Uses same pattern as compose-generator tests that work in CI
   const ensureVariablesYaml = () => {
     const realFs = jest.requireActual('fs');
@@ -282,7 +282,7 @@ describe('App-Run Debug Paths and Error Handling', () => {
       throw new Error('tempDir is not defined. This function must be called within a test context.');
     }
     const builderDir = path.resolve(tempDir, 'builder', 'test-app');
-    const configPath = path.join(builderDir, 'variables.yaml');
+    const configPath = path.join(builderDir, 'application.yaml');
 
     // Check if file already exists
     if (realFs.existsSync(configPath)) {
@@ -316,7 +316,7 @@ describe('App-Run Debug Paths and Error Handling', () => {
       // Write file synchronously - this is the most reliable method
       realFs.writeFileSync(absoluteConfigPath, configContent, 'utf8');
     } catch (writeError) {
-      throw new Error(`Failed to write variables.yaml at ${absoluteConfigPath}: ${writeError.message} (code: ${writeError.code})`);
+      throw new Error(`Failed to write application.yaml at ${absoluteConfigPath}: ${writeError.message} (code: ${writeError.code})`);
     }
 
     // Verify file exists immediately after write
@@ -410,7 +410,7 @@ describe('App-Run Debug Paths and Error Handling', () => {
     });
 
     it('should log debug messages throughout runApp when debug is enabled', async() => {
-      // Ensure variables.yaml exists (required by runApp)
+      // Ensure application.yaml exists (required by runApp)
       ensureVariablesYaml();
 
       // Config mock is set up in beforeEach, so it should be available
@@ -422,7 +422,7 @@ describe('App-Run Debug Paths and Error Handling', () => {
     });
 
     it('should log debug messages when container is already running', async() => {
-      // Ensure variables.yaml exists (required by runApp)
+      // Ensure application.yaml exists (required by runApp)
       ensureVariablesYaml();
 
       // Ensure config mock returns correct integer value (1 = developer-specific)
@@ -450,7 +450,7 @@ describe('App-Run Debug Paths and Error Handling', () => {
     });
 
     it('should log debug error message when container start fails', async() => {
-      // Ensure variables.yaml exists (required by runApp)
+      // Ensure application.yaml exists (required by runApp)
 
       // Ensure config mock returns correct integer value (1 = developer-specific)
       config.getDeveloperId.mockResolvedValue(1); // Integer, creates container name: aifabrix-dev1-test-app
@@ -473,7 +473,7 @@ describe('App-Run Debug Paths and Error Handling', () => {
     });
 
     it('should log debug error message when runApp fails', async() => {
-      // Ensure variables.yaml exists (required by runApp)
+      // Ensure application.yaml exists (required by runApp)
 
       validator.validateApplication.mockRejectedValue(new Error('Validation failed'));
 
@@ -553,7 +553,7 @@ describe('App-Run Debug Paths and Error Handling', () => {
     });
 
     it('should log debug messages when starting container through runApp', async() => {
-      // Ensure variables.yaml exists (required by runApp)
+      // Ensure application.yaml exists (required by runApp)
       ensureVariablesYaml();
 
       // Ensure config mock returns correct integer value (1 = developer-specific)
@@ -582,7 +582,7 @@ describe('App-Run Debug Paths and Error Handling', () => {
     });
 
     it('should log debug container status after start through runApp', async() => {
-      // Ensure variables.yaml exists (required by runApp)
+      // Ensure application.yaml exists (required by runApp)
       ensureVariablesYaml();
 
       // Ensure config mock returns correct integer value (1 = developer-specific)

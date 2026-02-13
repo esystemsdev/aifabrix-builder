@@ -1,10 +1,56 @@
+## [2.40.0] - 2026-02-13
+
+### Added
+- **Upload to dataplane**: `aifabrix upload <system-key>` – upload full external system (system + all datasources + RBAC) directly to the dataplane via pipeline **upload → validate → publish**; no controller deploy. Controller is used only to resolve dataplane URL and auth. Options: `--dry-run` (validate and build payload only; no API calls), `--dataplane <url>` to override dataplane URL. Use when testing the full system on the dataplane without promoting, or when you have only dataplane access. RBAC stays in the dataplane until you promote via `aifabrix deploy <app> --type external` or the web UI. Documented in `docs/commands/external-integration.md`, `docs/commands/README.md`, `docs/external-systems.md` (subsection “Upload to dataplane”), `docs/wizard.md`, and `docs/commands/permissions.md`.
+- **App show (online/offline)**: Source line shows 🟢 for online and 🔴 for offline. For external apps, Application section uses **🧷 Application - external** with Key, Display name, Description, Deployment, Status (and Version for offline). **🧩 Dataplane** block follows with Version, Credential, Status, API docs, MCP server, OpenAPI spec when dataplane data is available; when not available, shows "🧩 Dataplane: not available". External integration block appears after Dataplane. Option `--online` is accepted on `aifabrix app show <appKey>` for UX parity with `aifabrix show <appKey> --online`.
+- **App show dataplane**: For external apps when showing online, the CLI calls dataplane `GET /api/v1/external/systems/{systemIdOrKey}` (in addition to config and OpenAPI lists) and surfaces credentialId, status, version, showOpenApiDocs, mcpServerUrl, apiDocumentUrl, openApiDocsPageUrl in the Dataplane block and in JSON output. Response shape is normalized (body.data ?? body; config.type/config.version used when top-level missing); null URL/credential values are omitted so display shows "—". Documented in `docs/commands/application-management.md`.
+- **Config format and path resolution**: Application config can be **YAML or JSON** on disk (`application.yaml`, `application.yml`, or `application.json`). Single entry point `resolveApplicationConfigPath(appPath)` resolves path (prefers `application.yaml`/`application.json`; renames legacy `variables.yaml` to `application.yaml` if present). Config format converter layer in `lib/utils/config-format.js`: `yamlToJson`, `jsonToYaml`, `loadConfigFile`, `writeConfigFile`—all config loaders and writers use this layer; internal code works with JSON object and JSON Schema only. System and datasource definitions (`*-system.*`, `*-datasource-*.*`) may be `.yaml` or `.json`; deployment manifest remains **JSON only**.
+- **Convert format utility**: `aifabrix convert <app> --format json | yaml` converts integration/external system and datasource config files between JSON and YAML, updates `externalIntegration.systems` and `externalIntegration.dataSources` in application config to the new filenames, and removes old files only after validation and (unless `--force`) confirmation. Process: validate first → prompt "Are you sure?" (or skip with `-f, --force`) → write new files → update app config links → delete old files. Does not convert `*-deploy.json`, env.template, README, or rbac. Documented in `docs/commands/utilities.md` and `docs/commands/README.md`.
+- **Docs**: `docs/configuration/application-yaml.md` (replaces variables-yaml.md)—application config format, YAML/JSON choice, deployment manifest JSON-only; single-version docs updated across configuration, commands, external-systems, deploying, running, building, wizard, infrastructure.
+- **Diff type matching and schema validation**: `aifabrix diff <file1> <file2>` now requires both files to be the **same config type** (app, system, or datasource); type is auto-detected from content and filename. If types differ, the command exits with a clear "Type mismatch" error. Both files are validated against the appropriate schema by default; use `--no-validate` to skip schema validation. Type detection works with YAML via `detectSchemaTypeFromParsed` in schema-loader. Documented in `docs/commands/validation.md` and `docs/commands/external-integration.md`.
+- **Docs (Controller and Dataplane)**: New section in `docs/deploying.md` — **"Controller and Dataplane: What, Why, When"** (roles, when to use deploy vs upload, when MCP/OpenAPI docs are available, how to get OpenAPI and MCP docs, `showOpenApiDocs`). Three Mermaid diagrams: deployment paths (CLI → Controller/Dataplane), when MCP/OpenAPI docs become available, deploy vs upload. Cross-links and "when docs available" in `docs/external-systems.md`, `docs/wizard.md`, `docs/commands/deployment.md`, and `docs/commands/external-integration.md`.
+
+### Changed
+- **Path resolution (no `--type` override)**: The `--type app` and `--type external` options are **removed** from deploy, json, validate, convert, split-json, and delete. Path resolution is **fixed**: the CLI always checks **`integration/<app>`** first, then **`builder/<app>`**; if neither exists, it errors. There is no option to override this order. Commands such as `aifabrix json hubspot`, `aifabrix validate my-hubspot`, `aifabrix deploy hubspot`, `aifabrix delete hubspot` resolve the app path automatically.
+- **Create keeps `--type`**: The create command still accepts `--type` for **application kind** only: `webapp`, `api`, `service`, `functionapp`, or `external` (e.g. `aifabrix create test-hubspot --type external`). This specifies what is being created, not which path to use for existing apps.
+- **Create validation**: Create fails with a clear error if `integration/<name>` or `builder/<name>` already exists; use a different name or remove the existing directory. Documented in application-development, your-own-applications, and plan 58.
+- **Delete**: `aifabrix delete <system-key>` has no `--type` option; path is resolved (integration first, then builder).
+- **split-json**: No `--type` option; uses the same resolution order (integration first, then builder, then error).
+- **split-json README**: Generated README now uses the shared templates `templates/applications/README.md.hbs` (app type) or `templates/external-system/README.md.hbs` (external type). Variables (displayName, description, appName, port, image, etc.) are taken from the deployment JSON. The dedicated `templates/applications/split-readme.md.hbs` template was removed.
+- **split-json application.yaml**: Roles and permissions are written only to **rbac.yml**; they are no longer included in application.yaml. The **configuration** section in application.yaml contains only **portal input** definitions (entries that have `portalInput`), each as `{ name, portalInput }`. Actual values, location, and required flag remain in **env.template** and are not duplicated in application.yaml.
+- **Application config filename**: All loaders and writers use `application.yaml` or `application.json` (legacy `variables.yaml` is supported via auto-rename on first resolve). Templates emit `application.yaml` (e.g. `templates/applications/dataplane/application.yaml`, keycloak, miso-controller). Fixtures and integration/hubspot use `application.yaml`.
+
+### Fixed
+- **split-json for external systems – README**: When splitting deploy JSON that has a top-level `system` (external format), the generated README now uses `templates/external-system/README.md.hbs` (Quick Start, Create External System, integration path, etc.) instead of the generic application README.
+- **split-json for external systems – application.yaml**: Splitting external deploy JSON now produces a valid `application.yaml` with the required `app` block (key, displayName, description, type: external) and the required **externalIntegration** block (schemaBasePath, systems, dataSources, autopublish, version). Previously only `configuration` was written, causing validation errors: "Missing required property externalIntegration" and "externalIntegration block is required when app.type is external".
+- **split-json for external systems – system and datasource files**: For external format, split-json now writes `{systemKey}-system.yaml` and `{systemKey}-datasource-{suffix}.yaml` from `deployment.system` and `deployment.dataSources`, so the directory is complete and `aifabrix validate <app>` can pass. The CLI logs the system and datasource file paths in the success message.
+- **README and externalIntegration use .yaml**: The external-system README template and `application.yaml` externalIntegration now reference **.yaml** (not .json) for system and datasource files. Split generates and references `.yaml` files. The application schema allows `.yaml` and `.yml` in addition to `.json` for `externalIntegration.systems` and `dataSources`.
+- **Validator and YAML external files**: When validating external system/datasource files, the validator now parses `.yaml`/`.yml` with js-yaml instead of JSON, so validation succeeds for the generated system and datasource YAML files.
+- **README datasource file names**: The README "Files" section now lists correct, unique datasource filenames (e.g. `test-hubspot-datasource-companies-data.yaml`, `test-hubspot-datasource-data.yaml`) by aligning the suffix logic with the split filename derivation; previously it could show duplicate or incorrect names.
+- **App show external dataplane fetch**: When the controller returns application type only in `configuration.type` (not on `appData.type`), the CLI now still treats the app as external and fetches dataplane data, so the Dataplane section shows values instead of "not available".
+
+### Technical
+- **Upload**: `lib/commands/upload.js` – `uploadExternalSystem`, `buildUploadPayload`, `resolveDataplaneAndAuth`, `runUploadValidatePublish`; uses `validateExternalSystemComplete`, `generateControllerManifest`, and `lib/api/pipeline.api.js` (uploadApplicationViaPipeline, validateUploadViaPipeline, publishUploadViaPipeline). CLI: `lib/cli/setup-external-system.js` – `upload <system-key>` with `--dry-run`, `--dataplane`. Tests: `tests/lib/commands/upload.test.js`.
+- **Convert**: `lib/commands/convert.js` – `runConvert`, `promptConfirm`, `targetFileName`, `convertOneFile`; validate first, then prompt (unless `--force`), convert with `loadConfigFile`/`writeConfigFile`, update application config links, delete old files. Registered in `lib/cli/setup-utility.js` with `--format`, `-f, --force`, `--type`. Tests: `tests/lib/commands/convert.test.js`.
+- **Config**: `lib/utils/app-config-resolver.js` – `resolveApplicationConfigPath`; `lib/utils/config-format.js` – `yamlToJson`, `jsonToYaml`, `loadConfigFile`, `writeConfigFile`. All config I/O in lib (generator, validation, app, external-system, commands, utils) uses resolver + converter; no raw `yaml.load`/`JSON.parse` for config outside config-format.
+- **Paths**: `lib/utils/paths.js` – `detectAppType(appName)` (no `options.type`): resolution order is integration first, then builder; if neither exists, throws. `checkIntegrationFolder` / `checkBuilderFolder` unchanged; `resolveExternalOnly` and type override branches removed.
+- **Create validation**: `lib/app/helpers.js` – `validateAppOrExternalNameNotExists(appName)` checks `integration/<name>` and `builder/<name>` before create; called from `validateAppCreation`. Clear error when either exists.
+- **CLI**: `lib/cli/setup-utility.js` – `--type` removed from json, split-json, convert, validate; `resolveSplitJsonApp(appName)` uses `detectAppType(appName)` only. `lib/cli/setup-app.js` – `--type` removed from deploy. `lib/cli/setup-external-system.js` – delete has no `--type` option. `logOfflinePathWhenType(appPath)` (cli-utils) logs "Using: &lt;path&gt;" whenever appPath is set (no type check).
+- **Schemas**: application and external schemas allow `.yaml`/`.yml`/`.json` for config file references; validation operates on object from converter.
+- **Docs**: deployment, utilities, validation, README, application-development, application-management, external-integration, external-systems, wizard, your-own-applications, deploying – removed `--type app` / `--type external` from deploy, json, validate, convert, split-json, delete; documented fixed resolution order (integration first, then builder, then error) and create validation (fails if name exists in integration/ or builder/). Config format (YAML/JSON for config, JSON only for deploy manifest) unchanged.
+- **Tests**: `tests/lib/utils/config-format.test.js`, `tests/lib/utils/resolve-application-config-path.test.js`; `tests/lib/utils/paths-detect-app-type.test.js` – detectAppType (real fs) for resolution order; validator, generator, env-generation for resolver + application.yaml. Plan 58: app-deploy (path resolution without options.type), app-helpers (validateAppCreation calls validateAppOrExternalNameNotExists; 3× fs.access), app.test (create conflict message), app-display (validate step without --type external), app-run-uncovered (detectAppType mocked for canRunApp).
+- **Split (external)**: `lib/generator/split.js` – `buildReadmeConfigFromDeployment` detects external format via `deployment.system` and builds config for external-system README; `extractVariablesYamlForExternal` and `getExternalDatasourceFileName` produce app, configuration, and externalIntegration with `.yaml` references; `writeExternalSystemAndDatasourceFiles` writes system and datasource YAML. `lib/app/readme.js` uses real `config.datasources` when present for external README. `lib/utils/external-readme.js` – `normalizeDatasources` suffix aligned with split for unique README filenames. `templates/external-system/README.md.hbs` – system file listed as `-system.yaml`. `lib/validation/validate.js` – `parseJsonFileContent` parses `.yaml`/`.yml` with js-yaml. `lib/schema/application-schema.json` – externalIntegration systems/dataSources items pattern allows `.(json|yaml|yml)$` Tests: generator-split (external format app + externalIntegration + .yaml, README from external-system template).
+- **Split (app)**: `lib/generator/split.js` – roles/permissions removed from optional sections so they appear only in rbac.yml; `extractPortalInputConfiguration()` returns only configuration entries with `portalInput` as `{ name, portalInput }` (values stay in env.template); README from `generateReadmeMd()` using shared applications or external-system template. `lib/app/readme.js` – `buildReadmeContext()` uses `config.displayName` when present. Removed `templates/applications/split-readme.md.hbs`. Tests: application.yaml has no roles/permissions; configuration only portalInput entries; no configuration when no portalInput; README from applications/external-system templates.
+- **App show**: `lib/commands/app.js` – `--online` option on `app show <appKey>`. `lib/app/show.js` – `getExternalSystem` called for external apps; `normalizeExternalSystemResponse(systemResponse)` for dataplane response (body.data ?? body); `buildExternalSystemResult` uses res.config for type/version when top-level missing, omits null credentialId/URLs; external app detection uses `appData.type === 'external' || cfg.type === 'external'`. `lib/app/show-display.js` – 🟢/🔴 in source line; 🧷 Application - external (online: Key, Display name, Description, Deployment, Status; offline: + Version); 🧩 Dataplane compact block (Version, Credential, Status, API docs, MCP server, OpenAPI spec); "🧩 Dataplane: not available" when no data; External integration after Dataplane. Tests: show.test.js (getExternalSystem, compact output, --online option); show-display.test.js (external layout, source emoji).
+- **Diff (type and schema)**: `lib/core/diff.js` – type detection for both files via `detectSchemaTypeFromParsed`, type-matching (app/system/datasource), schema validation (application, external-system, external-datasource) unless `--no-validate`. `lib/utils/schema-loader.js` – `detectSchemaTypeFromParsed(parsed, filePath)` exported for YAML-aware type detection. `lib/cli/setup-utility.js` – `--no-validate` on diff command. Docs: validation.md (type requirement, type mismatch error, schema validation, Process), external-integration.md (datasource diff note). Tests: diff.test.js (type mismatch, same-type, validation on/off), schema-loader tests for `detectSchemaTypeFromParsed`.
+
 ## [2.39.3] - 2026-02-11
 
 ### Added
 - **CLI logs level filter**: `aifabrix logs <app> --level <level>` (or `-l`) to show only logs at the given level or above (debug, info, warn, error). Examples: `aifabrix logs dataplane -l error`, `aifabrix logs miso-controller -l warn`. Level is parsed from line prefixes (e.g. `INFO:`, `ERROR:`, `error:`, `info:` for miso-controller/pino) or from JSON `"level"` field in the line. Both docker stdout and stderr are read and filtered so no lines are missed. Documented in `docs/commands/application-development.md` and `docs/running.md`.
 
 ### Fixed
-- **App register display**: "Application Details" after registration now shows the actual display name (e.g. from `variables.yaml` `app.name` or `--name`) instead of the application key when the controller returns the key as `displayName`. Introduced `resolveDisplayName(application, requestedDisplayName)` and pass registration `displayName` into the display so output shows "Display Name: AI Fabrix Dataplane" rather than "Display Name: dataplane".
+- **App register display**: "Application Details" after registration now shows the actual display name (e.g. from `application.yaml` `app.name` or `--name`) instead of the application key when the controller returns the key as `displayName`. Introduced `resolveDisplayName(application, requestedDisplayName)` and pass registration `displayName` into the display so output shows "Display Name: AI Fabrix Dataplane" rather than "Display Name: dataplane".
 
 ### Changed
 - **Docs**: Deploying (simplified flow, added `--deployment local`, manifest naming `<appKey>-deploy.json`, controller-owned deployment key, register/rotate-secret require login); single Configuration reference in index; external-systems (BASE_URL, portalInput for prod/dev URLs, environment promotions link); wizard (removed 404 link, deployment.controller, Known Platforms from dataplane); miso-client/example app links; manifest naming in commands/utilities/reference/your-own-applications.
@@ -16,14 +62,14 @@
 
 ### Added
 - **External system template**: `configuration` array with BASE_URL (portal input, validation); generator passes `baseUrl` and normalizes role `groups`; tests for configuration and baseUrl override.
-- **Dynamic README generation**: When using template apps or `aifabrix up-miso` / `up-platform` / `up-dataplane`, `README.md` is now generated from `templates/applications/README.md.hbs` using the app’s `variables.yaml`. Generated after copying from `templates/applications/<appName>` and refreshed on every ensure so docs stay in sync with config (port, image, registry, services).
+- **Dynamic README generation**: When using template apps or `aifabrix up-miso` / `up-platform` / `up-dataplane`, `README.md` is now generated from `templates/applications/README.md.hbs` using the app’s `application.yaml`. Generated after copying from `templates/applications/<appName>` and refreshed on every ensure so docs stay in sync with config (port, image, registry, services).
 
 ### Changed
 - **Template copy**: `ensureTemplateAtPath` (up-common) generates README at the target path after copying template files.
 - **ensureAppFromTemplate**: Calls `ensureReadmeForApp(appName)` at the end so keycloak, miso-controller, and dataplane get READMEs created or updated whenever the command runs.
 
 ### Technical
-- **lib/app/readme.js**: `generateReadmeMdFile(..., options)` supports `options.force` to overwrite existing README; new `ensureReadmeForAppPath(appPath, appName)` (loads variables.yaml, writes README); new `ensureReadmeForApp(appName)` (primary and cwd builder paths).
+- **lib/app/readme.js**: `generateReadmeMdFile(..., options)` supports `options.force` to overwrite existing README; new `ensureReadmeForAppPath(appPath, appName)` (loads application.yaml, writes README); new `ensureReadmeForApp(appName)` (primary and cwd builder paths).
 - **Tests**: app-readme (force overwrite, ensureReadmeForAppPath when vars exist/missing/overwrite, ensureReadmeForApp at builder path); up-common mock of readme and assertions that ensureReadmeForAppPath/ensureReadmeForApp are called.
 
 ## [2.39.1] - 2026-02-10
@@ -72,9 +118,9 @@
 - **Controller-owned deployment key**: Builder no longer generates or sends `deploymentKey`. Miso Controller Pipeline REST API computes the key from manifest properties (via central mapping). Builder and Dataplane send manifest only.
 - **CLI**: Removed `aifabrix genkey <app>` command entirely. Use `aifabrix json <app>` to generate deployment manifest.
 - **Documentation**: Rewrote `docs/configuration/deployment-key.md` for CLI perspective; added "Central mapping" section; updated "When Controller does the job" to reference central mapping; updated deploying, utilities, validation, deployment docs; removed genkey references; replaced genkey with json in templates; prerequisites (Node.js, Azure/Docker), secrets before up-platform, back links to docs/README.md; environment-first-time (full params, why/where); deploying (manifest naming, flow, prereqs, rollback, version vs deployment key); secrets-and-config (why secure, ISO 27k, kv:// production readiness); integration-first, same flow for web app/image/external; running (restart = resolve env + apply + restart; prefer aifabrix over docker); infrastructure (RAM/disk); external-systems (next-step wizard link)
-- **Version in variables.yaml**: `app.version` optional; defaults to `1.0.0`; for regular apps, auto-resolved from image when running or deploying; external apps use `app.version` or `externalIntegration.version`; syncs to external manifest top-level in `external-controller-manifest.js`
-- **Run-helpers**: Version resolution from image when running; `updateBuilder: true` updates builder/variables.yaml with discovered version
-- **Templates**: dataplane, keycloak, miso-controller variables.yaml; `app.version` in generator context
+- **Version in application.yaml**: `app.version` optional; defaults to `1.0.0`; for regular apps, auto-resolved from image when running or deploying; external apps use `app.version` or `externalIntegration.version`; syncs to external manifest top-level in `external-controller-manifest.js`
+- **Run-helpers**: Version resolution from image when running; `updateBuilder: true` updates builder/application.yaml with discovered version
+- **Templates**: dataplane, keycloak, miso-controller application.yaml; `app.version` in generator context
 
 ### Technical
 - **Generator**: Removed deploymentKey generation from `lib/generator/index.js` and `lib/generator/external-controller-manifest.js`
@@ -129,7 +175,7 @@
 - **CLI**: Main CLI delegates to `lib/cli/index.js`; infra commands in `lib/cli/setup-infra.js`; help-builder lists up-infra, up-platform, down-infra
 - **Docs**: Lowercase filenames (building.md, deploying.md, cli-reference.md, etc.); quick-start content moved to `docs/your-own-applications.md`; infrastructure, wizard, github-workflows, external-systems, configuration, running, developer-isolation updated
 - **Display and run-helpers**: Messages reference `aifabrix up-infra`; up-miso error suggests `up-infra` first
-- **Templates**: dataplane and miso-controller variables.yaml; applications README.hbs
+- **Templates**: dataplane and miso-controller application.yaml; applications README.hbs
 - **Infrastructure helpers**: Docstring references down-infra/up-infra for re-init
 
 ### Technical
@@ -162,7 +208,7 @@
 ## [2.36.0] - 2026-01-31
 
 ### Added
-- **`aifabrix show <appKey>`**: New top-level command to display app info; default (offline) loads from builder/ or integration/ (variables.yaml); `--online` fetches from controller; `--json` for machine output; clear Source label (offline/online); roles, permissions, authentication, portal input configs, databases; for external type online, External system (dataplane) section with dataSources and OpenAPI
+- **`aifabrix show <appKey>`**: New top-level command to display app info; default (offline) loads from builder/ or integration/ (application.yaml); `--online` fetches from controller; `--json` for machine output; clear Source label (offline/online); roles, permissions, authentication, portal input configs, databases; for external type online, External system (dataplane) section with dataSources and OpenAPI
 - **Wizard improvements**: `wizard [appName]` positional; mode-first flow (Create new | Add datasource); load/save `integration/<appKey>/wizard.yaml`; known platforms from dataplane (`getWizardPlatforms`); add-datasource validation via `getExternalSystem`; credential step selection (`promptForCredentialAction`); error.log helper (`appendWizardError`) and resume instructions; removed "Edit configuration manually" from review step
 
 ### Changed
@@ -205,7 +251,7 @@
 - **`aifabrix up-miso`**: New command to bring up Miso Controller locally with Docker
 - **`aifabrix up-dataplane`**: New command to bring up Dataplane locally with Docker
 - **Up commands shared logic**: `lib/commands/up-common.js` for shared options and behavior
-- **Dataplane application template**: New template set under `templates/applications/dataplane/` (Dockerfile, env.template, rbac.yaml, variables.yaml, README)
+- **Dataplane application template**: New template set under `templates/applications/dataplane/` (Dockerfile, env.template, rbac.yaml, application.yaml, README)
 - **Secrets Docker env**: `lib/core/secrets-docker-env.js` for resolving secrets into Docker env format
 - **Image reference parser**: `lib/utils/parse-image-ref.js` for parsing image references
 - **Keycloak and Miso Controller READMEs**: Application-specific READMEs for keycloak and miso-controller templates
@@ -263,7 +309,7 @@
 ### Added
 - **CLI alias `aifx`**: `aifx` is available as a shortcut for `aifabrix` in all commands (e.g. `aifx up`, `aifx create myapp`). Documented in [Your Own Applications](docs/your-own-applications.md) and [CLI Reference](docs/cli-reference.md).
 - **`aifabrix up --no-traefik`**: Exclude Traefik and persist `traefik: false` to `~/.aifabrix/config.yaml`. When neither `--traefik` nor `--no-traefik` is passed, the value is read from config.
-- **Centralized Port Resolution**: Single source of truth for resolving application port from `variables.yaml`
+- **Centralized Port Resolution**: Single source of truth for resolving application port from `application.yaml`
   - `lib/utils/port-resolver.js` with `getContainerPort`, `getLocalPort`, `getContainerPortFromPath`, `getLocalPortFromPath`
   - Container port: `build.containerPort` → `port` → default 3000
   - Local port: `build.localPort` (if > 0) → `port` → default 3000
@@ -307,7 +353,7 @@
 ### Changed
 - **`aifabrix up --traefik`**: Description updated to "Include Traefik reverse proxy and save to config". Both `--traefik` and `--no-traefik` persist to `config.yaml`; when omitted, `traefik` is read from config.
 - **Infrastructure and configuration docs**: Documented `--traefik` / `--no-traefik` persistence and config fallback.
-- **Centralized Port Resolution (refactor)**: All port reads from `variables.yaml` now use `lib/utils/port-resolver.js`
+- **Centralized Port Resolution (refactor)**: All port reads from `application.yaml` now use `lib/utils/port-resolver.js`
   - `app register` uses `variables.port` and `build.containerPort` (and `--port` override); `build.port` no longer used
   - `env-ports.updateContainerPortInEnvFile` uses `build.localPort` when set
   - Refactored: `app-register-config`, `dockerfile`, `env-copy`, `secrets-helpers`, `lib/core/secrets`, `env-ports`, `compose-generator`, `variable-transformer`, `builders`, `secrets-utils`
@@ -318,10 +364,10 @@
     - This is what gets deployed to controller
   - **System File**: `<systemKey>-deploy.json` (system) → `<systemKey>-system.json` (e.g., `my-hubspot-system.json`)
     - Contains external system configuration
-    - Referenced in variables.yaml
+    - Referenced in application.yaml
   - **Datasource Files**: `<systemKey>-deploy-<entityType>.json` → `<systemKey>-datasource-<dataSourceKey>.json` (e.g., `my-hubspot-datasource-record-storage.json`)
     - Contains datasource configuration
-    - Referenced in variables.yaml
+    - Referenced in application.yaml
   - Updated all generators, validators, and file resolvers to use new naming convention
   - Updated wizard to generate files with new names
   - Migration support: Code handles both old and new names during transition
@@ -367,7 +413,7 @@
   - **Environment**: `config.environment` → default: `'dev'`
   - **Dataplane URL**: Always discovered from the controller when needed (never stored in config)
   - Removed all flag-based resolution (no `options.controller`, `options.environment`, `options.dataplane`)
-  - Removed `variables.yaml` → `deployment.controllerUrl` lookup
+  - Removed `application.yaml` → `deployment.controllerUrl` lookup
 - **Updated All Commands**: All commands now use config defaults only
   - `wizard`, `deploy`, `datasource deploy`, `download`, `delete`, `test-integration`, `environment deploy`
   - All commands use `resolveControllerUrl()`, `resolveEnvironment()`, `resolveDataplaneUrl()` from config
@@ -375,13 +421,13 @@
   - Commands display active configuration via command header utility
 - **Controller URL Resolution**: Simplified `lib/utils/controller-url.js`
   - Updated `resolveControllerUrl()` - Removed all flag/options support
-  - Removed `variables.yaml` → `deployment.controllerUrl` lookup code
+  - Removed `application.yaml` → `deployment.controllerUrl` lookup code
   - Uses only: `config.controller` → device tokens → developer default
   - Added `getControllerFromConfig()` helper function
 
 ### Removed
-- **variables.yaml Controller URL Support**: Removed `variables.yaml` → `deployment.controllerUrl` usage for CLI controller resolution
-  - **Removed**: All `variables.yaml` → `deployment.controllerUrl` lookup code
+- **application.yaml Controller URL Support**: Removed `application.yaml` → `deployment.controllerUrl` usage for CLI controller resolution
+  - **Removed**: All `application.yaml` → `deployment.controllerUrl` lookup code
   - **Removed**: Support for `config.deployment?.controllerUrl` references
   - Controller URL must now be set via `config.yaml` (saved during login or via `auth config`)
 
@@ -394,7 +440,7 @@
 - Simplified deployment: `lib/external-system/deploy.js` (removed ~200 lines of dataplane code)
 - Fixed datasource list: `lib/datasource/list.js`, `lib/api/environments.api.js`
 - Updated core config: `lib/core/config.js` - Added controller URL storage (dataplane is not stored; discovered from controller)
-- Updated controller resolution: `lib/utils/controller-url.js` - Removed flag support, removed variables.yaml lookup
+- Updated controller resolution: `lib/utils/controller-url.js` - Removed flag support, removed application.yaml lookup
 - Updated login commands: `lib/commands/login.js`, `lib/commands/login-device.js`, `lib/commands/login-credentials.js` - Save controller URL
 - Updated CLI: `lib/cli.js` - Removed all `--controller`, `--environment`, `--dataplane` flags from all commands
 - Updated all command handlers: `wizard`, `datasource`, `deploy`, `external-system`, `deployment` - Use config defaults only
@@ -421,7 +467,7 @@
   - `templates/external-system/README.md.hbs` with external system-specific documentation
   - Auto-generated README includes external system workflow (create, validate, deploy)
   - No Docker build/run commands (external systems are config-only)
-  - References to external system files (variables.yaml, system JSON, datasource JSONs)
+  - References to external system files (application.yaml, system JSON, datasource JSONs)
   - Testing and deployment commands specific to external systems
   - Template used in: `lib/utils/external-readme.js`, `lib/generator/external-schema-utils.js`, `lib/external-system/download-helpers.js`, `lib/generator/wizard.js`, `lib/app/readme.js`
 - **External System Type Flag**: New `--type external` flag for validate and json commands
@@ -603,7 +649,7 @@
   - File upload support for OpenAPI specifications
   - Progress indicators for long-running operations (parsing, generating, validating)
   - Integration with `aifabrix create --type external --wizard` command
-  - Creates complete file structure: `variables.yaml`, system JSON, datasource JSONs, `env.template`, `README.md`, `application-schema.json`
+  - Creates complete file structure: `application.yaml`, system JSON, datasource JSONs, `env.template`, `README.md`, `application-schema.json`
   - Comprehensive wizard documentation in `docs/wizard.md`
 - **Wizard API Client Module**: New API client for dataplane wizard endpoints
   - `lib/api/wizard.api.js` with typed API functions for wizard operations
@@ -817,10 +863,10 @@
   - Split-JSON operations extract `rbac.yaml` from external system JSON with roles/permissions
   - Backward compatible: external systems without `rbac.yaml` continue to work unchanged
 - **Controller Parameter Support for App Commands**: Added `--controller` option to all app management commands
-  - `app register` now accepts `-c, --controller <url>` option to override controller URL from variables.yaml
+  - `app register` now accepts `-c, --controller <url>` option to override controller URL from application.yaml
   - `app list` now accepts `-c, --controller <url>` option to specify controller URL
   - `app rotate-secret` now accepts `-c, --controller <url>` option to specify controller URL
-  - Controller URL resolution follows priority: `--controller` flag > `variables.yaml` > device tokens
+  - Controller URL resolution follows priority: `--controller` flag > `application.yaml` > device tokens
   - Enables explicit controller URL specification for CI/CD workflows and multi-controller environments
 - **Enhanced Error Messages with Controller URL Context**: All error messages now display the controller URL used or attempted
   - Authentication errors prominently show which controller URL failed
@@ -853,7 +899,7 @@
   - Updated `formatNetworkError()` to prominently display controller URL
   - Updated `formatApiError()` to accept and pass controller URL to all formatters
 - **Controller URL Resolution**: Improved controller URL resolution priority across app commands
-  - `app register`: `--controller` flag > `variables.yaml` → `deployment.controllerUrl` > device tokens
+  - `app register`: `--controller` flag > `application.yaml` → `deployment.controllerUrl` > device tokens
   - `app list` / `app rotate-secret`: `--controller` flag > device tokens
   - All commands track and display the actual controller URL used for better debugging
 
@@ -881,8 +927,8 @@
 ## [2.21.1] - 2025-12-27
 
 ### Added
-- **PortalInput Support in variables.yaml**: New configuration section for portal UI customization
-  - Added `configuration` section to `variables.yaml` for defining `portalInput` settings
+- **PortalInput Support in application.yaml**: New configuration section for portal UI customization
+  - Added `configuration` section to `application.yaml` for defining `portalInput` settings
   - PortalInput settings merge with environment variables parsed from `env.template` during deployment JSON generation
   - Supports all portalInput field types: `text`, `password`, `textarea`, `select`
   - Validates portalInput structure against application schema before merging
@@ -891,7 +937,7 @@
 - **Deployment JSON Split Functionality**: Reverse operation to extract component files from deployment JSON
   - New `splitDeployJson()` function in `lib/generator-split.js` to split deployment JSON into component files
   - Extracts `env.template` from configuration array
-  - Extracts `variables.yaml` from deployment metadata
+  - Extracts `application.yaml` from deployment metadata
   - Extracts `rbac.yml` from roles and permissions arrays
   - Generates `README.md` from deployment JSON structure
   - New CLI command: `aifabrix split-json <app>` with optional `-o, --output <dir>` option
@@ -914,7 +960,7 @@
   - Enhanced accessibility of visual elements in documentation
 - **Environment Variable Parsing**: Enhanced to support portalInput merging
   - `parseEnvironmentVariables()` function now accepts optional `variablesConfig` parameter
-  - Merges portalInput settings from `variables.yaml` with configuration parsed from `env.template`
+  - Merges portalInput settings from `application.yaml` with configuration parsed from `env.template`
   - Validates portalInput structure before merging with clear error messages
   - Maintains backward compatibility with existing `env.template` parsing
 
@@ -1019,7 +1065,7 @@
   - External systems now properly generate `env.template` files based on authentication type (OAuth2, API Key, Basic Auth)
   - Template includes appropriate environment variables with Key Vault references (`kv://`) for each auth type
   - Previously, external systems skipped `env.template` generation entirely
-- **External System Variables Configuration**: Fixed hardcoded values in `variables.yaml` generation for external systems
+- **External System Variables Configuration**: Fixed hardcoded values in `application.yaml` generation for external systems
   - Now properly uses `systemKey`, `systemDisplayName`, and `systemDescription` from configuration
   - Falls back to app name and generated display name when config values are not provided
   - Ensures consistent configuration across external system creation workflow
@@ -1086,7 +1132,7 @@
 - **HubSpot Integration Example**: Complete integration example in `integration/hubspot/`
   - Example external system configuration files
   - HubSpot datasource deployment configurations
-  - Environment template and variables.yaml examples
+  - Environment template and application.yaml examples
   - README with integration instructions
 
 ### Changed
@@ -1138,7 +1184,7 @@
   - New validation system for external integration files (external-system.json and external-datasource.json)
   - Schema-based validation using JSON Schema (draft-07 for systems, draft-2020-12 for datasources)
   - Automatic schema type detection from file content and naming
-  - Support for `externalIntegration` block in `variables.yaml` with `schemaBasePath` configuration
+  - Support for `externalIntegration` block in `application.yaml` with `schemaBasePath` configuration
   - Path resolution for external files (absolute and relative paths supported)
 - **New CLI Commands**:
   - `aifabrix validate <appOrFile>` - Validate applications or external integration files
@@ -1173,7 +1219,7 @@
     - Uses deployment authentication (device token or client credentials)
 - **Schema Resolution Utilities**: New utility modules for schema management
   - `lib/utils/schema-resolver.js` - Path resolution for external integration schemas
-    - `resolveSchemaBasePath(appName)` - Resolves schema base path from variables.yaml
+    - `resolveSchemaBasePath(appName)` - Resolves schema base path from application.yaml
     - `resolveExternalFiles(appName)` - Resolves all external system and datasource files
     - Supports absolute and relative paths
     - Validates file existence and directory structure
@@ -1295,7 +1341,7 @@
 ### Changed
 - **Deployment Key Generation Flow**
   - `aifabrix genkey` command now generates `aifabrix-deploy.json` first, then extracts the `deploymentKey` from it
-  - Deployment key is computed from the complete manifest object rather than just `variables.yaml` content
+  - Deployment key is computed from the complete manifest object rather than just `application.yaml` content
   - Key generation uses deterministic JSON serialization (sorted keys, no whitespace) for consistency
   - Updated command output to show source file: "Generated from: builder/myapp/aifabrix-deploy.json"
 - **Deployment JSON Generation**
@@ -1417,19 +1463,19 @@
 
 ### Changed
 - **Environment Generation Flow**
-  - Fixed local `.env` file generation to use correct PORT from `build.localPort` or `port` in `variables.yaml`
+  - Fixed local `.env` file generation to use correct PORT from `build.localPort` or `port` in `application.yaml`
   - Fixed local `.env` file to use correct infrastructure endpoints (e.g., `redis://dev.aifabrix:6379` instead of `redis://redis:6379`)
   - Implemented clear override chain for environment variables:
     1. Base config from `lib/schema/env-config.yaml`
     2. User config from `~/.aifabrix/config.yaml` → `aifabrix-env-config` file
-    3. Application config from `variables.yaml`
+    3. Application config from `application.yaml`
     4. Developer-id adjustment: `finalPort = basePort + (developerId * 100)`
   - Local environment: Uses `build.localPort` (or `port` fallback) with developer-id offset
-  - Docker environment: Uses `port` from `variables.yaml` with developer-id offset
+  - Docker environment: Uses `port` from `application.yaml` with developer-id offset
   - Infrastructure ports (Postgres, Redis) now correctly use base ports + developer-id offset
 - **Secrets Resolution**
   - Enhanced `lib/secrets.js` with improved environment transformations
-  - `updatePortForDocker()` now follows proper override chain: env-config → config.yaml → variables.yaml → developer-id
+  - `updatePortForDocker()` now follows proper override chain: env-config → config.yaml → application.yaml → developer-id
   - `adjustLocalEnvPortsInContent()` correctly reads `build.localPort` with fallback to `port`
   - Improved port resolution for URLs in Docker environment context
 - **Build and Template Pipeline**
@@ -1480,7 +1526,7 @@
   - All path resolution now derives from `config.yaml` (single source of truth)
 - Secrets resolution precedence clarified and enforced:
   1) User-local: `<home>/secrets.local.yaml` (highest)
-  2) App build secrets: `builder/<app>/variables.yaml` → `build.secrets` (fills only missing keys)
+  2) App build secrets: `builder/<app>/application.yaml` → `build.secrets` (fills only missing keys)
   3) Default fallback: `<home>/secrets.yaml`
 
 ### Removed
@@ -1554,7 +1600,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Secrets Encryption Command**: New `aifabrix secure` command for ISO 27001 compliance
   - Encrypts all secrets in `secrets.local.yaml` files using AES-256-GCM encryption
   - Supports user secrets file (`~/.aifabrix/secrets.local.yaml`) and app build secrets
-  - Finds and encrypts secrets from all applications configured with `build.secrets` in `variables.yaml`
+  - Finds and encrypts secrets from all applications configured with `build.secrets` in `application.yaml`
   - Encryption key management stored in `~/.aifabrix/config.yaml`
   - Interactive prompts for encryption key if not provided
   - Validates encryption key format (32 bytes, hex or base64)
@@ -1615,7 +1661,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Base ports: app=3000, postgres=5432, redis=6379, pgadmin=5050, redisCommander=8081
   - Developer 1: app=3100, postgres=5532, redis=6479, pgadmin=5150, redisCommander=8181
   - Developer 2: app=3200, postgres=5632, redis=6579, pgadmin=5250, redisCommander=8281
-  - `localPort` in `variables.yaml` remains unchanged (only Docker host ports are offset)
+  - `localPort` in `application.yaml` remains unchanged (only Docker host ports are offset)
   - Dockerfile container ports remain unchanged (internal container ports)
 - **Developer Configuration Command**: New `aifabrix dev config` command
   - `aifabrix dev config` - Display current developer ID and calculated ports
@@ -1679,7 +1725,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Environment File Generation**: Developer-specific infrastructure ports for local context
   - Docker context (container-to-container): Uses service names (unchanged)
   - Local context (host machine): Uses `localhost` with dev-specific ports
-  - `PORT` variable still uses `localPort` from `variables.yaml` (unchanged)
+  - `PORT` variable still uses `localPort` from `application.yaml` (unchanged)
 - **Infrastructure Template**: Converted to Handlebars template with developer variables
   - `templates/infra/compose.yaml.hbs` - Parameterized template
   - Variables: `{{devId}}`, `{{postgresPort}}`, `{{redisPort}}`, etc.
@@ -1732,7 +1778,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed Keycloak port configuration for Docker containers
   - URLs in `.env` files now automatically resolve ports based on environment context
-  - Docker environment uses `containerPort` from service's `variables.yaml` (e.g., `http://keycloak:8080`)
+  - Docker environment uses `containerPort` from service's `application.yaml` (e.g., `http://keycloak:8080`)
   - Local environment uses `localPort` or original port (e.g., `http://localhost:8082`)
   - Resolves connection failures when services try to connect to Keycloak in Docker containers
   - Port resolution works for all services (keycloak, miso-controller, dataplane, etc.)
@@ -1749,7 +1795,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `lib/utils/secrets-utils.js` utility module with helper functions:
   - `loadSecretsFromFile()` - Loads secrets from file
   - `loadUserSecrets()` - Loads user secrets from ~/.aifabrix/secrets.local.yaml
-  - `loadBuildSecrets()` - Loads build secrets from variables.yaml
+  - `loadBuildSecrets()` - Loads build secrets from application.yaml
   - `loadDefaultSecrets()` - Loads default secrets from ~/.aifabrix/secrets.yaml
   - `buildHostnameToServiceMap()` - Builds hostname to service name mapping
   - `resolveUrlPort()` - Resolves port for URLs in Docker environment
@@ -1781,7 +1827,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed `aifabrix status` command showing ❌ for running services (normalized status value to handle quotes and whitespace)
-- Fixed `aifabrix push` command to use correct image name from `variables.yaml` instead of app name
+- Fixed `aifabrix push` command to use correct image name from `application.yaml` instead of app name
   - Now correctly resolves image name from `image.name`, `app.key`, or falls back to app name
   - Matches the same logic used by `aifabrix build` command
 - Improved authentication error handling in push command:

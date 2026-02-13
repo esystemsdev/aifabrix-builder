@@ -6,6 +6,18 @@ Utility commands for managing configuration files, secrets, and deployment artif
 
 ---
 
+## Config file formats
+
+Commands in this section work with the following conventions:
+
+- **Application config** — `application.yaml`, `application.yml`, or `application.json` in the app directory. See [application.yaml (application config)](../configuration/application-yaml.md).
+- **System and datasource config** (external integrations) — `*-system.*` and `*-datasource-*.*` may be `.yaml`, `.yml`, or `.json`.
+- **Deployment manifest** — Always **JSON only**: `<appKey>-deploy.json` or `<systemKey>-deploy.json`. Not editable as YAML.
+
+The CLI loads config via a single converter layer; use whichever format you prefer for application and system/datasource files.
+
+---
+
 <a id="aifabrix-resolve-app"></a>
 ## aifabrix resolve <app>
 
@@ -50,7 +62,7 @@ This will generate the .env file without running validation checks afterward.
 
 Generate deployment JSON.
 
-**What:** Creates `<appKey>-deploy.json` (e.g. `builder/<app>/<appKey>-deploy.json`) from variables.yaml, env.template, rbac.yaml for normal applications. For external type applications, generates `<systemKey>-deploy.json` deployment manifest by loading the component files (`<systemKey>-system.json` and `<systemKey>-datasource-*.json`), combining them into a controller-compatible deployment manifest with inline system + datasources. This is the reverse operation of `aifabrix split-json` - it combines component files back into a deployment manifest. When you download an external system from the dataplane (via `aifabrix download`), you get `<systemKey>-deploy.json` which can then be split into component files using `aifabrix split-json`. Merges rbac.yaml (if present) into the system JSON. **Note:** Only the first system from `externalIntegration.systems` array is included in the generated `<systemKey>-deploy.json`. All data sources from `externalIntegration.dataSources` array are included.
+**What:** Creates `<appKey>-deploy.json` (e.g. `builder/<app>/<appKey>-deploy.json`) from application config, env.template, and rbac for normal applications. Application config may be `application.yaml` or `application.json`; system/datasource config may be `.yaml` or `.json`. The deployment manifest is always **JSON only** (`<appKey>-deploy.json` or `<systemKey>-deploy.json`). For external type applications, generates `<systemKey>-deploy.json` by loading the component files (`<systemKey>-system.yaml`/`.json` and `<systemKey>-datasource-*.*`), combining them into a controller-compatible deployment manifest with inline system + datasources. This is the reverse operation of `aifabrix split-json` — it combines component files back into a deployment manifest. When you download an external system from the dataplane (via `aifabrix download`), you get `<systemKey>-deploy.json`, which can then be split into component files using `aifabrix split-json`. Merges rbac.yaml (if present) into the system JSON. **Note:** Only the first system from `externalIntegration.systems` is included in the generated `<systemKey>-deploy.json`. All data sources from `externalIntegration.dataSources` are included.
 
 **When:** Previewing deployment configuration, debugging deployments. For external systems, before deploying to generate the combined application schema file. For external systems with RBAC, ensures roles/permissions from rbac.yaml are merged into the system JSON.
 
@@ -61,13 +73,13 @@ aifabrix json myapp
 
 **Example (external system):**
 ```bash
-aifabrix json hubspot --type external
-# Generates intefration/hubspot/<systemKey>-deploy.json
+aifabrix json hubspot
+# Resolves integration/hubspot first, then builder/hubspot; generates <systemKey>-deploy.json in the resolved directory
 ```
 
 **Creates:**
 - Normal apps: `builder/<app>/<appKey>-deploy.json` (e.g. `builder/myapp/myapp-deploy.json`)
-- External systems: `integration/<app>/<systemKey>-deploy.json` (deployment manifest combining `<systemKey>-system.json` + `<systemKey>-datasource-*.json` files with rbac.yaml merged if present)
+- External systems: `integration/<app>/<systemKey>-deploy.json` (deployment manifest, JSON only; combines `<systemKey>-system.*` + `<systemKey>-datasource-*.*` files with rbac merged if present)
 
 **RBAC Support for External Systems:**
 - External systems can define roles and permissions in `rbac.yaml` (same format as regular apps)
@@ -77,8 +89,8 @@ aifabrix json hubspot --type external
 
 **Issues:**
 - **"Validation failed"** → Check configuration files for errors
-- **"Missing required fields"** → Complete variables.yaml
-- **"External system file not found"** → Ensure system/datasource JSON files exist in schemas/ directory
+- **"Missing required fields"** → Complete application config ([application.yaml or application.json](../configuration/application-yaml.md))
+- **"External system file not found"** → Ensure system/datasource config files (YAML or JSON) exist in the app directory
 
 ---
 
@@ -87,7 +99,7 @@ aifabrix json hubspot --type external
 
 Split deployment JSON into component files.
 
-**What:** Performs the reverse operation of `aifabrix json`. Reads a deployment JSON file (`<app-name>-deploy.json` for regular apps, `<systemKey>-deploy.json` for external systems) and splits it into component files. For regular apps, extracts `env.template`, `variables.yaml`, `rbac.yml`, and `README.md`. For external systems, splits `<systemKey>-deploy.json` into `<systemKey>-system.json` (system configuration) and `<systemKey>-datasource-*.json` files (one per datasource), plus `variables.yaml`, `env.template`, and `README.md`. This enables migration of existing deployment JSON files back to the component file structure. For external systems, extracts roles/permissions from the system JSON into rbac.yml if present.
+**What:** Performs the reverse operation of `aifabrix json`. Reads a deployment JSON file (`<app-name>-deploy.json` or `<systemKey>-deploy.json`; deployment manifest is always JSON) and splits it into component files. For regular apps, extracts `env.template`, `application.yaml` (or `application.json`), `rbac.yml`, and `README.md`. For external systems, splits into `<systemKey>-system.*` (system config) and `<systemKey>-datasource-*.*` (one per datasource), plus application config, `env.template`, and `README.md`. Component config files may be written as YAML or JSON. This enables migration of existing deployment JSON back to the component file structure. For external systems, extracts roles/permissions from the system JSON into rbac.yml if present.
 
 **When:** Migrating existing deployment JSON files to component-based structure, recovering component files from deployment JSON, or reverse-engineering deployment configurations.
 
@@ -106,11 +118,13 @@ aifabrix split-json hubspot
 **Options:**
 - `-o, --output <dir>` - Output directory for component files (defaults to same directory as JSON file)
 
+**App path resolution:** The command resolves the app by checking **`integration/<app>`** first, then **`builder/<app>`**. If neither exists, it errors. There is no option to override this order.
+
 **Process:**
 1. Locates `<app-name>-deploy.json` (regular apps) or `<systemKey>-deploy.json` (external systems) in the application directory
 2. Parses the deployment JSON structure
 3. Extracts `configuration` array → `env.template` (converts keyvault references back to `kv://` format)
-4. Extracts deployment metadata → `variables.yaml` (parses image reference, extracts app config, requirements, etc.)
+4. Extracts deployment metadata → `application.yaml` (parses image reference, extracts app config, requirements, etc.)
 5. Extracts `roles` and `permissions` → `rbac.yml` (only if present)
 6. Generates `README.md` from deployment information
 
@@ -118,28 +132,69 @@ aifabrix split-json hubspot
 ```text
 ✓ Successfully split deployment JSON into component files:
   • env.template: builder/myapp/env.template
-  • variables.yaml: builder/myapp/variables.yaml
+  • application.yaml: builder/myapp/application.yaml
   • rbac.yml: builder/myapp/rbac.yml
   • README.md: builder/myapp/README.md
 ```
 
 **Generated Files:**
 - `env.template` - Environment variables template (from `configuration` array)
-- `variables.yaml` - Application configuration (from deployment JSON metadata)
+- `application.yaml` or `application.json` - Application configuration (from deployment JSON metadata); format matches generator default or existing app convention
 - `rbac.yml` - Roles and permissions (from `roles` and `permissions` arrays, only if present)
 - `README.md` - Application documentation (generated from deployment JSON)
 
 **Notes:**
-- The `deploymentKey` field is not set in `variables.yaml`; it is managed by Controller internally
+- The `deploymentKey` field is not set in `application.yaml`; it is managed by Controller internally
 - Image references are parsed into `image.registry`, `image.name`, and `image.tag` components
 - Keyvault references (`location: "keyvault"`) are converted back to `kv://` format in `env.template`
 - Some information may be lost in reverse conversion (e.g., comments in original `env.template`)
-- The generated `variables.yaml` may not match the original exactly, but should be functionally equivalent
+- The generated `application.yaml` may not match the original exactly, but should be functionally equivalent
 
 **Issues:**
 - **"Deployment JSON file not found"** → Ensure `<app-name>-deploy.json` (regular apps) or `<systemKey>-deploy.json` (external systems) exists in the application directory
 - **"Invalid JSON syntax"** → Check that the deployment JSON file is valid JSON
 - **"Output directory creation failed"** → Check permissions for the output directory
+
+---
+
+<a id="aifabrix-convert-app"></a>
+## aifabrix convert <app>
+
+Convert integration/external system and datasource config files between JSON and YAML.
+
+**What:** Converts `*-system.*`, `*-datasource-*.*`, and application config between JSON and YAML; updates `externalIntegration.systems` and `externalIntegration.dataSources` in application config to the new filenames; removes old files only after writing new ones. Process: validate first, then (unless `--force`) prompt for confirmation, then convert, then delete old files. Does not convert `*-deploy.json` (deployment manifest remains JSON only).
+
+**When:** Standardising on YAML or JSON, or after downloading an external system in one format and wanting the other.
+
+**Usage:**
+```bash
+# Convert to YAML (prompt for confirmation unless --force)
+aifabrix convert hubspot --format yaml
+
+# Convert to JSON and skip confirmation
+aifabrix convert hubspot --format json --force
+
+aifabrix convert hubspot --format json --force
+```
+
+**Options:**
+- `--format <format>` - Target format: `json` or `yaml` (required)
+- `-f, --force` - Skip "Are you sure?" confirmation prompt
+
+**App path resolution:** The command resolves the app by checking **`integration/<app>`** first, then **`builder/<app>`**. If neither exists, it errors. There is no option to override this order.
+
+**Process:**
+1. Validate the app; abort if validation fails.
+2. If not `--force`, show which files will be converted and prompt "Are you sure? (y/N)"; abort if no.
+3. Write new files in the target format.
+4. Update application config so `externalIntegration.systems` and `externalIntegration.dataSources` list the new filenames; write application config in the target format.
+5. Delete old files only after all writes succeed.
+
+**Issues:**
+- **"Option --format is required and must be 'json' or 'yaml'"** → Pass `--format json` or `--format yaml`
+- **"Validation failed"** → Fix validation errors (run `aifabrix validate <app>`) before converting
+- **"Convert cancelled"** → You answered no to the confirmation prompt; run again with `--force` to skip the prompt
+- **"App not found"** → Ensure the app exists in `integration/<app>` or `builder/<app>`
 
 ---
 
@@ -329,4 +384,11 @@ aifabrix secrets set api-keyKeyVault "\${API_KEY}"
 - **"Secret key is required"** → Provide a non-empty key name
 - **"Secret value is required"** → Provide a non-empty value
 - **"File permission error"** → Ensure you have read/write access to secrets files directory
+
+---
+
+## See also
+
+- [application.yaml (application config)](../configuration/application-yaml.md) — Application config format and options
+- [External integration](../configuration/external-integration.md) — System and datasource config files
 

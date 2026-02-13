@@ -49,7 +49,7 @@ describe('Application Display Module', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('1. Edit external system JSON files'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('2. Run: aifabrix validate'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('--type external'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('2. Run: aifabrix validate'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('3. Run: aifabrix login'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('4. Run: aifabrix deploy'));
       expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('aifabrix build'));

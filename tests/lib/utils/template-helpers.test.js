@@ -20,11 +20,19 @@ jest.mock('../../../lib/utils/logger', () => ({
   error: jest.fn(),
   info: jest.fn()
 }));
+jest.mock('../../../lib/utils/app-config-resolver', () => ({
+  resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml'))
+}));
+jest.mock('../../../lib/utils/config-format', () => ({
+  loadConfigFile: jest.fn(),
+  writeConfigFile: jest.fn()
+}));
 
 const fs = require('fs').promises;
 const path = require('path');
 const yaml = require('js-yaml');
 const logger = require('../../../lib/utils/logger');
+const configFormat = require('../../../lib/utils/config-format');
 const {
   loadTemplateVariables,
   updateTemplateVariables,
@@ -47,10 +55,10 @@ describe('Template Helpers Module', () => {
       expect(result).toBeNull();
     });
 
-    it('should load template variables from variables.yaml', async() => {
+    it('should load template variables from application.yaml', async() => {
       const templateName = 'test-template';
       const templatePath = path.join(__dirname, '..', '..', '..', 'templates', 'applications', templateName);
-      const templateVariablesPath = path.join(templatePath, 'variables.yaml');
+      const templateVariablesPath = path.join(templatePath, 'application.yaml');
       const templateContent = 'app:\n  key: test-app\n  displayName: Test App\nport: 3000';
       const expectedVariables = yaml.load(templateContent);
 
@@ -77,7 +85,7 @@ describe('Template Helpers Module', () => {
     it('should warn and return null if template file has invalid YAML', async() => {
       const templateName = 'invalid-template';
       const templatePath = path.join(__dirname, '..', '..', '..', 'templates', 'applications', templateName);
-      const templateVariablesPath = path.join(templatePath, 'variables.yaml');
+      const templateVariablesPath = path.join(templatePath, 'application.yaml');
       const invalidContent = 'invalid: yaml: content: [';
       const error = new Error('YAML parse error');
       error.code = 'YAML_PARSE_ERROR';
@@ -87,130 +95,109 @@ describe('Template Helpers Module', () => {
 
       expect(fs.readFile).toHaveBeenCalledWith(templateVariablesPath, 'utf8');
       expect(result).toBeNull();
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Could not load template variables.yaml'));
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Could not load template application.yaml'));
     });
   });
 
   describe('updateTemplateVariables', () => {
     const appPath = '/test/app/path';
     const appName = 'test-app';
-    const variablesPath = path.join(appPath, 'variables.yaml');
+    const configPath = path.join(appPath, 'application.yaml');
+
+    beforeEach(() => {
+      configFormat.writeConfigFile.mockClear();
+      configFormat.loadConfigFile.mockReset();
+    });
 
     it('should update app metadata in variables', async() => {
-      const initialContent = 'app:\n  key: old-key\n  displayName: Old Display Name\nport: 3000';
-      const variables = yaml.load(initialContent);
-      fs.readFile = jest.fn().mockResolvedValue(initialContent);
-      fs.writeFile = jest.fn().mockResolvedValue();
+      const initialVariables = { app: { key: 'old-key', displayName: 'Old Display Name' }, port: 3000 };
+      configFormat.loadConfigFile.mockReturnValue(initialVariables);
 
       await updateTemplateVariables(appPath, appName, {}, {});
 
-      expect(fs.readFile).toHaveBeenCalledWith(variablesPath, 'utf8');
-      expect(fs.writeFile).toHaveBeenCalled();
-      const writtenContent = fs.writeFile.mock.calls[0][0];
-      expect(writtenContent).toBe(variablesPath);
-      const writtenYaml = fs.writeFile.mock.calls[0][1];
-      const writtenVariables = yaml.load(writtenYaml);
+      expect(configFormat.writeConfigFile).toHaveBeenCalled();
+      const [, writtenVariables] = configFormat.writeConfigFile.mock.calls[0];
       expect(writtenVariables.app.key).toBe(appName);
     });
 
     it('should update displayName if it contains "miso"', async() => {
-      const initialContent = 'app:\n  key: old-key\n  displayName: MISO Application\nport: 3000';
-      const variables = yaml.load(initialContent);
-      fs.readFile = jest.fn().mockResolvedValue(initialContent);
-      fs.writeFile = jest.fn().mockResolvedValue();
+      const initialVariables = { app: { key: 'old-key', displayName: 'MISO Application' }, port: 3000 };
+      configFormat.loadConfigFile.mockReturnValue(initialVariables);
 
       await updateTemplateVariables(appPath, appName, {}, {});
 
-      const writtenYaml = fs.writeFile.mock.calls[0][1];
-      const writtenVariables = yaml.load(writtenYaml);
+      const [, writtenVariables] = configFormat.writeConfigFile.mock.calls[0];
       expect(writtenVariables.app.displayName).toBe('Test App');
     });
 
     it('should update port if provided in options and config', async() => {
-      const initialContent = 'port: 3000';
+      configFormat.loadConfigFile.mockReturnValue({ port: 3000 });
       const options = { port: 8080 };
       const config = { port: 8080 };
-      fs.readFile = jest.fn().mockResolvedValue(initialContent);
-      fs.writeFile = jest.fn().mockResolvedValue();
 
       await updateTemplateVariables(appPath, appName, options, config);
 
-      const writtenYaml = fs.writeFile.mock.calls[0][1];
-      const writtenVariables = yaml.load(writtenYaml);
+      const [, writtenVariables] = configFormat.writeConfigFile.mock.calls[0];
       expect(writtenVariables.port).toBe(8080);
     });
 
     it('should not update port if not provided in options', async() => {
-      const initialContent = 'port: 3000';
-      const options = {};
-      const config = {};
-      fs.readFile = jest.fn().mockResolvedValue(initialContent);
-      fs.writeFile = jest.fn().mockResolvedValue();
+      configFormat.loadConfigFile.mockReturnValue({ port: 3000 });
 
-      await updateTemplateVariables(appPath, appName, options, config);
+      await updateTemplateVariables(appPath, appName, {}, {});
 
-      const writtenYaml = fs.writeFile.mock.calls[0][1];
-      const writtenVariables = yaml.load(writtenYaml);
+      const [, writtenVariables] = configFormat.writeConfigFile.mock.calls[0];
       expect(writtenVariables.port).toBe(3000);
     });
 
     it('should nullify build.envOutputPath', async() => {
-      const initialContent = 'build:\n  envOutputPath: ./env\nport: 3000';
-      fs.readFile = jest.fn().mockResolvedValue(initialContent);
-      fs.writeFile = jest.fn().mockResolvedValue();
+      configFormat.loadConfigFile.mockReturnValue({ build: { envOutputPath: './env' }, port: 3000 });
 
       await updateTemplateVariables(appPath, appName, {}, {});
 
-      const writtenYaml = fs.writeFile.mock.calls[0][1];
-      const writtenVariables = yaml.load(writtenYaml);
+      const [, writtenVariables] = configFormat.writeConfigFile.mock.calls[0];
       expect(writtenVariables.build.envOutputPath).toBeNull();
     });
 
     it('should update database config when --app flag is set', async() => {
-      const initialContent = 'requires:\n  database: true\nport: 3000';
+      configFormat.loadConfigFile.mockReturnValue({ requires: { database: true }, port: 3000 });
       const options = { app: true };
-      fs.readFile = jest.fn().mockResolvedValue(initialContent);
-      fs.writeFile = jest.fn().mockResolvedValue();
 
       await updateTemplateVariables(appPath, appName, options, {});
 
-      const writtenYaml = fs.writeFile.mock.calls[0][1];
-      const writtenVariables = yaml.load(writtenYaml);
+      const [, writtenVariables] = configFormat.writeConfigFile.mock.calls[0];
       expect(writtenVariables.requires.databases).toEqual([{ name: appName }]);
     });
 
     it('should not update database config when --app flag is not set', async() => {
-      const initialContent = 'requires:\n  database: true\nport: 3000';
-      const options = {};
-      fs.readFile = jest.fn().mockResolvedValue(initialContent);
-      fs.writeFile = jest.fn().mockResolvedValue();
+      configFormat.loadConfigFile.mockReturnValue({ requires: { database: true }, port: 3000 });
 
-      await updateTemplateVariables(appPath, appName, options, {});
+      await updateTemplateVariables(appPath, appName, {}, {});
 
-      const writtenYaml = fs.writeFile.mock.calls[0][1];
-      const writtenVariables = yaml.load(writtenYaml);
+      const [, writtenVariables] = configFormat.writeConfigFile.mock.calls[0];
       expect(writtenVariables.requires.databases).toBeUndefined();
     });
 
-    it('should handle missing variables.yaml gracefully', async() => {
-      const error = new Error('File not found');
-      error.code = 'ENOENT';
-      fs.readFile = jest.fn().mockRejectedValue(error);
+    it('should handle missing application config gracefully', async() => {
+      const appConfigResolver = require('../../../lib/utils/app-config-resolver');
+      appConfigResolver.resolveApplicationConfigPath.mockImplementationOnce(() => {
+        throw new Error('Application config not found');
+      });
 
       await updateTemplateVariables(appPath, appName, {}, {});
 
       expect(logger.warn).not.toHaveBeenCalled();
-      expect(fs.writeFile).not.toHaveBeenCalled();
+      expect(configFormat.writeConfigFile).not.toHaveBeenCalled();
     });
 
     it('should warn on other errors when updating variables', async() => {
-      const error = new Error('Permission denied');
-      error.code = 'EACCES';
-      fs.readFile = jest.fn().mockRejectedValue(error);
+      configFormat.loadConfigFile.mockImplementationOnce(() => {
+        throw new Error('Permission denied');
+      });
 
       await updateTemplateVariables(appPath, appName, {}, {});
 
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Could not update variables.yaml'));
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Could not update application config'));
     });
   });
 

@@ -74,14 +74,14 @@ describe('File System Operations', () => {
   });
 
   describe('File Write Operations', () => {
-    it('should write variables.yaml file', async() => {
+    it('should write application.yaml file', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
         port: 3000,
         build: { language: 'typescript' }
       };
 
-      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'variables.yaml');
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'application.yaml');
       const dirPath = path.dirname(filePath);
       fsSync.mkdirSync(dirPath, { recursive: true });
       const yamlContent = yaml.dump(config);
@@ -140,7 +140,7 @@ describe('File System Operations', () => {
       fsSync.mkdirSync(appPath, { recursive: true });
 
       const files = [
-        { name: 'variables.yaml', content: yaml.dump({ app: { key: 'test-app' } }) },
+        { name: 'application.yaml', content: yaml.dump({ app: { key: 'test-app' } }) },
         { name: 'rbac.yaml', content: yaml.dump({ roles: [] }) },
         { name: 'env.template', content: 'PORT=3000' }
       ];
@@ -160,13 +160,13 @@ describe('File System Operations', () => {
   });
 
   describe('File Read Operations', () => {
-    it('should read variables.yaml file', async() => {
+    it('should read application.yaml file', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
         port: 3000
       };
 
-      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'variables.yaml');
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'application.yaml');
       fsSync.mkdirSync(path.dirname(filePath), { recursive: true });
       fsSync.writeFileSync(filePath, yaml.dump(config), 'utf8');
 
@@ -214,7 +214,7 @@ NODE_ENV=production`;
 
   describe('File Existence Checks', () => {
     it('should check if file exists', async() => {
-      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'variables.yaml');
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'application.yaml');
       fsSync.mkdirSync(path.dirname(filePath), { recursive: true });
       fsSync.writeFileSync(filePath, 'test', 'utf8');
 
@@ -232,7 +232,7 @@ NODE_ENV=production`;
       const appPath = path.join(process.cwd(), 'builder', 'test-app');
       fsSync.mkdirSync(appPath, { recursive: true });
 
-      const files = ['variables.yaml', 'rbac.yaml', 'env.template'];
+      const files = ['application.yaml', 'rbac.yaml', 'env.template'];
 
       for (const filename of files) {
         const filePath = path.join(appPath, filename);
@@ -256,7 +256,7 @@ NODE_ENV=production`;
         services: { database: true, redis: true }
       };
 
-      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'variables.yaml');
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'application.yaml');
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, yaml.dump(config), 'utf8');
 
@@ -270,7 +270,7 @@ NODE_ENV=production`;
     it('should handle invalid YAML gracefully', async() => {
       const invalidYaml = 'app:\n  key: test-app\n  name: Test App\n invalid: [';
 
-      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'variables.yaml');
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'application.yaml');
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, invalidYaml, 'utf8');
 
@@ -286,7 +286,7 @@ NODE_ENV=production`;
         port: 3000
       };
 
-      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'variables.yaml');
+      const filePath = path.join(process.cwd(), 'builder', 'test-app', 'application.yaml');
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, yaml.dump(config), 'utf8');
 
@@ -338,13 +338,13 @@ NODE_ENV=production`;
     it('should join paths correctly', () => {
       const basePath = 'builder';
       const appPath = 'test-app';
-      const filePath = 'variables.yaml';
+      const filePath = 'application.yaml';
 
       const fullPath = path.join(basePath, appPath, filePath);
 
       expect(fullPath).toContain('builder');
       expect(fullPath).toContain('test-app');
-      expect(fullPath).toContain('variables.yaml');
+      expect(fullPath).toContain('application.yaml');
     });
 
     it('should resolve absolute paths', () => {
@@ -355,7 +355,7 @@ NODE_ENV=production`;
     });
 
     it('should normalize path separators', () => {
-      const unixPath = 'builder/test-app/variables.yaml';
+      const unixPath = 'builder/test-app/application.yaml';
       const normalized = path.normalize(unixPath);
 
       expect(normalized).toContain(path.sep);

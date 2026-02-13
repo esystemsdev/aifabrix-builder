@@ -91,7 +91,7 @@ describe('External System RBAC Validation', () => {
 
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
-      expect(detectAppType).toHaveBeenCalledWith(appName);
+      expect(detectAppType).toHaveBeenCalledWith(appName, expect.any(Object));
     });
 
     it('should validate rbac.yaml for external system in builder/ directory', async() => {
@@ -135,7 +135,7 @@ describe('External System RBAC Validation', () => {
 
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
-      expect(detectAppType).toHaveBeenCalledWith(appName);
+      expect(detectAppType).toHaveBeenCalledWith(appName, expect.any(Object));
     });
 
     it('should return warning when rbac.yaml is missing for external system', async() => {
@@ -192,7 +192,7 @@ describe('External System RBAC Validation', () => {
 
       // Note: Pattern validation happens at schema level, not in validator.js
       // This test verifies the function runs without errors
-      expect(detectAppType).toHaveBeenCalledWith(appName);
+      expect(detectAppType).toHaveBeenCalledWith(appName, expect.any(Object));
     });
 
     it('should validate permission name pattern', async() => {

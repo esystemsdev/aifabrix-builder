@@ -101,9 +101,9 @@ Create, configure, and run your own AI Fabrix application locally or deploy it (
 
 All guides and references are listed in **[docs/README.md](docs/README.md)** (table of contents).
 
-- [CLI Reference](docs/cli-reference.md) – All commands
+- [CLI Commands Reference](docs/commands/README.md) – All commands
 - [Infrastructure](docs/infrastructure.md) – What runs and why
-- [Configuration reference](docs/configuration/README.md) – Config files (deployment key, variables.yaml, env.template, secrets)
+- [Configuration reference](docs/configuration/README.md) – Config files (deployment key, application.yaml, env.template, secrets)
 
 ---
 

@@ -18,6 +18,7 @@ jest.mock('fs', () => {
     ...actualFs,
     existsSync: jest.fn(() => true),
     readFileSync: jest.fn(),
+    writeFileSync: jest.fn(),
     promises: {
       readFile: jest.fn(),
       writeFile: jest.fn(),
@@ -144,6 +145,7 @@ describe('External System Download Module', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    fs.writeFileSync.mockImplementation(() => {});
     resolveDataplaneUrl.mockResolvedValue('http://dataplane:8080');
     getDeploymentAuth.mockResolvedValue({
       type: 'bearer',
@@ -170,7 +172,7 @@ describe('External System Download Module', () => {
       const normalizedPath = String(filePath || '').replace(/\\/g, '/');
       if (normalizedPath.includes('templates/external-system/README.md.hbs')) {
         // Return the actual template content
-        return '# {{displayName}}\n\n{{description}}\n\n## System Information\n\n- **System Key**: `{{systemKey}}`\n- **System Type**: `{{systemType}}`\n- **Datasources**: {{datasourceCount}}\n\n## Files\n\n- `variables.yaml` - Application configuration with externalIntegration block\n- `{{systemKey}}-deploy.json` - External system definition\n{{#each datasources}}\n- `{{fileName}}` - Datasource: {{displayName}}\n{{/each}}\n- `env.template` - Environment variables template\n- `application-schema.json` - Combined system + datasources for deployment\n\n## Quick Start\n\n### 1. Create External System\n\n```bash\naifabrix create {{appName}} --type external\n```\n\n### 2. Configure Authentication and Datasources\n\nEdit configuration files in `integration/{{appName}}/`:\n\n- Update authentication in `{{systemKey}}-deploy.json`\n- Configure field mappings in datasource JSON files\n\n### 3. Validate Configuration\n\n```bash\naifabrix validate {{appName}} --type external\n```\n\n### 4. Generate Deployment JSON\n\n```bash\naifabrix json {{appName}} --type external\n```\n\n### 5. Deploy to Dataplane\n\n```bash\naifabrix deploy {{appName}} --controller <url> --environment dev\n```\n\n## Testing\n\n### Unit Tests (Local Validation)\n\n```bash\naifabrix test {{appName}}\n```\n\n### Integration Tests (Via Dataplane)\n\n```bash\naifabrix test-integration {{appName}} --environment dev\n```\n\n## Deployment\n\nDeploy to dataplane via miso-controller:\n\n```bash\naifabrix deploy {{appName}} --controller <url> --environment dev\n```\n\n## Troubleshooting\n\n- **Validation errors**: Run `aifabrix validate {{appName}} --type external` to check configuration\n- **Deployment issues**: Check controller URL and authentication\n- **File not found**: Ensure you\'re in the project root directory\n';
+        return '# {{displayName}}\n\n{{description}}\n\n## System Information\n\n- **System Key**: `{{systemKey}}`\n- **System Type**: `{{systemType}}`\n- **Datasources**: {{datasourceCount}}\n\n## Files\n\n- `application.yaml` - Application configuration with externalIntegration block\n- `{{systemKey}}-deploy.json` - External system definition\n{{#each datasources}}\n- `{{fileName}}` - Datasource: {{displayName}}\n{{/each}}\n- `env.template` - Environment variables template\n- `application-schema.json` - Combined system + datasources for deployment\n\n## Quick Start\n\n### 1. Create External System\n\n```bash\naifabrix create {{appName}} --type external\n```\n\n### 2. Configure Authentication and Datasources\n\nEdit configuration files in `integration/{{appName}}/`:\n\n- Update authentication in `{{systemKey}}-deploy.json`\n- Configure field mappings in datasource JSON files\n\n### 3. Validate Configuration\n\n```bash\naifabrix validate {{appName}} --type external\n```\n\n### 4. Generate Deployment JSON\n\n```bash\naifabrix json {{appName}} --type external\n```\n\n### 5. Deploy to Dataplane\n\n```bash\naifabrix deploy {{appName}} --controller <url> --environment dev\n```\n\n## Testing\n\n### Unit Tests (Local Validation)\n\n```bash\naifabrix test {{appName}}\n```\n\n### Integration Tests (Via Dataplane)\n\n```bash\naifabrix test-integration {{appName}} --environment dev\n```\n\n## Deployment\n\nDeploy to dataplane via miso-controller:\n\n```bash\naifabrix deploy {{appName}} --controller <url> --environment dev\n```\n\n## Troubleshooting\n\n- **Validation errors**: Run `aifabrix validate {{appName}} --type external` to check configuration\n- **Deployment issues**: Check controller URL and authentication\n- **File not found**: Ensure you\'re in the project root directory\n';
       }
       return '';
     });
@@ -299,7 +301,7 @@ describe('External System Download Module', () => {
   });
 
   describe('generateVariablesYaml', () => {
-    it('should generate variables.yaml structure', () => {
+    it('should generate application.yaml structure', () => {
       const { generateVariablesYaml } = require('../../../lib/external-system/download');
       const result = generateVariablesYaml(systemKey, mockApplication, [mockDataSource1, mockDataSource2]);
       expect(result.app.key).toBe(systemKey);
@@ -316,7 +318,7 @@ describe('External System Download Module', () => {
       expect(result).toContain('HubSpot CRM');
       expect(result).toContain(systemKey);
       expect(result).toContain('**Datasources**: 2');
-      expect(result).toContain('variables.yaml');
+      expect(result).toContain('application.yaml');
       expect(result).toContain('aifabrix test');
       expect(result).toContain('aifabrix test-integration');
     });
@@ -381,25 +383,28 @@ describe('External System Download Module', () => {
 
     it('should handle partial download errors', async() => {
       getExternalSystemConfig.mockResolvedValue(mockDownloadResponse);
-      let writeCount = 0;
-      fsPromises.writeFile.mockImplementation((filePath) => {
-        writeCount++;
-        // Fail on second datasource write (contact)
-        if (filePath.includes('contact') || (writeCount > 3 && filePath.includes('deploy-'))) {
+      // Datasource files are written via writeConfigFile (fs.writeFileSync)
+      let writeSyncCallCount = 0;
+      fs.writeFileSync.mockImplementation((filePath) => {
+        writeSyncCallCount++;
+        // Fail on a datasource write (contact) to trigger partial download handling
+        if (filePath && String(filePath).includes('contact')) {
           throw new Error('Failed to write datasource');
         }
-        return Promise.resolve();
       });
 
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await expect(
         downloadExternalSystem(systemKey, {})
-      ).rejects.toThrow('Partial download');
+      ).rejects.toThrow(/Partial download/);
     });
 
     it('should clean up temporary folder on error', async() => {
       getExternalSystemConfig.mockResolvedValue(mockDownloadResponse);
-      fsPromises.writeFile.mockRejectedValue(new Error('Write failed'));
+      // System/datasource files are written via writeConfigFile (writeFileSync)
+      fs.writeFileSync.mockImplementationOnce(() => {
+        throw new Error('Write failed');
+      });
 
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await expect(
@@ -461,12 +466,13 @@ describe('External System Download Module', () => {
       await downloadExternalSystem(systemKey, { environment: 'dev' });
 
       // Should extract inline datasources and merge with regular datasources
-      expect(fsPromises.writeFile).toHaveBeenCalled();
+      // System and datasource files are written via writeConfigFile (fs.writeFileSync)
+      expect(fs.writeFileSync).toHaveBeenCalled();
       // Verify datasource files are created (should have 3: company, contact, deal)
-      // New naming convention uses -datasource- instead of -deploy-
-      const writeCalls = fsPromises.writeFile.mock.calls;
-      const datasourceFileWrites = writeCalls.filter(call =>
-        call[0].includes('datasource-') && call[0].endsWith('.json')
+      // New naming convention uses -datasource- and .yaml
+      const writeSyncCalls = fs.writeFileSync.mock.calls;
+      const datasourceFileWrites = writeSyncCalls.filter(call =>
+        call[0] && String(call[0]).includes('datasource-') && String(call[0]).endsWith('.yaml')
       );
       expect(datasourceFileWrites.length).toBeGreaterThanOrEqual(3);
     });

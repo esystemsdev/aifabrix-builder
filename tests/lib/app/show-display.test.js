@@ -43,7 +43,7 @@ describe('lib/app/show-display.js', () => {
       databases: []
     };
     display(summary);
-    expect(logger.log).toHaveBeenCalledWith('Source: offline (builder/myapp)');
+    expect(logger.log).toHaveBeenCalledWith('🔴 Source: offline (builder/myapp)');
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('📱 Application'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('myapp'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('My App'));
@@ -68,7 +68,7 @@ describe('lib/app/show-display.js', () => {
       databases: []
     };
     display(summary);
-    expect(logger.log).toHaveBeenCalledWith('Source: online (http://localhost:3000)');
+    expect(logger.log).toHaveBeenCalledWith('🟢 Source: online (http://localhost:3000)');
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Status:'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('URL:'));
   });
@@ -177,7 +177,7 @@ describe('lib/app/show-display.js', () => {
       databases: []
     };
     display(summary, { permissionsOnly: true });
-    expect(logger.log).toHaveBeenCalledWith('Source: online (http://localhost:3000)');
+    expect(logger.log).toHaveBeenCalledWith('🟢 Source: online (http://localhost:3000)');
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🛡️ Permissions'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('applications:read'));
     expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('📱 Application'));
@@ -196,7 +196,7 @@ describe('lib/app/show-display.js', () => {
       databases: []
     };
     display(summary, { permissionsOnly: true });
-    expect(logger.log).toHaveBeenCalledWith('Source: offline (builder/myapp)');
+    expect(logger.log).toHaveBeenCalledWith('🔴 Source: offline (builder/myapp)');
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🛡️ Permissions'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('(none)'));
     expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('📱 Application'));
@@ -337,7 +337,12 @@ describe('lib/app/show-display.js', () => {
       source: 'online',
       controllerUrl: 'http://localhost:3000',
       appKey: 'hubspot',
-      application: { key: 'hubspot', type: 'external' },
+      isExternal: true,
+      application: {
+        key: 'hubspot',
+        type: 'external',
+        externalIntegration: { schemaBasePath: './', systems: ['hubspot-system.json'], dataSources: ['contacts.json'] }
+      },
       roles: [],
       permissions: [],
       portalInputConfigurations: [],
@@ -349,6 +354,7 @@ describe('lib/app/show-display.js', () => {
         type: 'openapi',
         status: 'published',
         version: '1.0.0',
+        credentialId: 'hubspot-cred',
         dataSources: [
           { key: 'contacts', displayName: 'Contacts', systemKey: 'hubspot' }
         ],
@@ -361,19 +367,16 @@ describe('lib/app/show-display.js', () => {
       }
     };
     display(summary);
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🔗 External system (dataplane)'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Dataplane:'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('System key:'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('DataSources:'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('• contacts'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Application (from dataplane)'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('OpenAPI files: 1'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('OpenAPI endpoints: 2'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Service links:'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('REST OpenAPI:'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/api/v1/rest/hubspot/docs'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('MCP contacts:'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/api/v1/mcp/hubspot/contacts/docs'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🧷 Application - external'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🧩 Dataplane'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Version:'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Credential:'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Status:'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('API docs:'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('MCP server:'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('OpenAPI spec:'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('External integration'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('hubspot-system.json'));
   });
 
   it('should use application.roles and application.permissions when summary level missing', () => {
@@ -542,7 +545,7 @@ describe('lib/app/show-display.js', () => {
       databases: []
     };
     display(summary);
-    expect(logger.log).toHaveBeenCalledWith('Source: offline (—)');
+    expect(logger.log).toHaveBeenCalledWith('🔴 Source: offline (—)');
   });
 
   it('should display config label from name when label missing', () => {

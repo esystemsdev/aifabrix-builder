@@ -37,7 +37,7 @@ const { loadVariables, loadRbac } = require('../../../lib/generator/helpers');
 describe('External Controller Manifest Generator Module', () => {
   const appName = 'test-external-app';
   const appPath = path.join(process.cwd(), 'integration', appName);
-  const variablesPath = path.join(appPath, 'variables.yaml');
+  const variablesPath = path.join(appPath, 'application.yaml');
   const rbacPath = path.join(appPath, 'rbac.yaml');
 
   const mockVariables = {
@@ -171,7 +171,7 @@ describe('External Controller Manifest Generator Module', () => {
       expect(result.system.roles).not.toEqual(mockRbac.roles);
     });
 
-    it('should use custom schemaBasePath from variables.yaml', async() => {
+    it('should use custom schemaBasePath from application.yaml', async() => {
       const variablesWithCustomPath = {
         ...mockVariables,
         externalIntegration: {
@@ -186,6 +186,23 @@ describe('External Controller Manifest Generator Module', () => {
 
       expect(loadSystemFile).toHaveBeenCalledWith(appPath, './schemas', 'test-external-app-system.json');
       expect(loadDatasourceFiles).toHaveBeenCalledWith(appPath, './schemas', ['test-external-app-datasource-entity1.json']);
+    });
+
+    it('should normalize schemaBasePath when it duplicates app path (integration/appName)', async() => {
+      const variablesWithRedundantPath = {
+        ...mockVariables,
+        externalIntegration: {
+          ...mockVariables.externalIntegration,
+          schemaBasePath: 'integration/test-external-app'
+        }
+      };
+      loadVariables.mockReturnValue({ parsed: variablesWithRedundantPath });
+
+      const { generateControllerManifest } = require('../../../lib/generator/external-controller-manifest');
+      await generateControllerManifest(appName);
+
+      expect(loadSystemFile).toHaveBeenCalledWith(appPath, './', 'test-external-app-system.json');
+      expect(loadDatasourceFiles).toHaveBeenCalledWith(appPath, './', ['test-external-app-datasource-entity1.json']);
     });
 
     it('should handle empty datasources array', async() => {
@@ -242,7 +259,7 @@ describe('External Controller Manifest Generator Module', () => {
 
       const { generateControllerManifest } = require('../../../lib/generator/external-controller-manifest');
       await expect(generateControllerManifest(appName))
-        .rejects.toThrow('externalIntegration block not found in variables.yaml');
+        .rejects.toThrow('externalIntegration block not found in application.yaml');
     });
 
     it('should throw error if systems array is empty', async() => {

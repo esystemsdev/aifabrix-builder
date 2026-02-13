@@ -105,12 +105,12 @@ describe('CLI Commands', () => {
 
   describe('deploy command', () => {
     it('should call deployApp with correct parameters', async() => {
-      app.deployApp.mockResolvedValue({ deploymentId: '123' });
+      app.deployApp.mockResolvedValue({ result: { deploymentId: '123' }, usedExternalDeploy: false });
 
-      const result = await app.deployApp('test-app', { controller: 'https://controller.example.com' });
+      const outcome = await app.deployApp('test-app', { controller: 'https://controller.example.com' });
 
       expect(app.deployApp).toHaveBeenCalledWith('test-app', { controller: 'https://controller.example.com' });
-      expect(result).toHaveProperty('deploymentId');
+      expect(outcome.result).toHaveProperty('deploymentId');
     });
 
     it('should handle deploy command errors', async() => {

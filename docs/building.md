@@ -12,7 +12,7 @@ aifabrix build myapp
 
 ### What Happens
 
-1. **Loads configuration** from `builder/myapp/variables.yaml`
+1. **Loads configuration** from `builder/myapp/application.yaml`
 2. **Detects language** (or uses what you specified)
 3. **Finds or generates Dockerfile**
    - Looks in your app root
@@ -21,11 +21,11 @@ aifabrix build myapp
 5. **Builds image as** `myapp-dev<developerId>:<tag>` and also tags `myapp:<tag>` for compatibility
 6. **Generates `.env` files** from env.template + secrets
    - **Docker `.env`**: `builder/myapp/.env` - For container runtime
-     - Uses `port` from variables.yaml
+     - Uses `port` from application.yaml
      - Uses docker service names (redis, postgres)
      - All ports get developer-id adjustment
    - **Local `.env`**: Generated at `build.envOutputPath` (if configured) - For local development
-     - Uses `build.localPort` (or `port` as fallback) from variables.yaml
+     - Uses `build.localPort` (or `port` as fallback) from application.yaml
      - Uses localhost/dev.aifabrix for infrastructure hosts
      - App port gets developer-id adjustment; infra ports use base + developer-id adjustment
 
@@ -62,7 +62,7 @@ classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
 %% =======================
 %% Flow
 %% =======================
-Start[aifabrix build myapp]:::primary --> LoadConfig[Load variables.yaml]:::base
+Start[aifabrix build myapp]:::primary --> LoadConfig[Load application.yaml]:::base
 LoadConfig --> DetectLang[Detect Language]:::base
 DetectLang --> FindDockerfile{Find Dockerfile?}
 FindDockerfile -->|Found| UseExisting[Use Existing Dockerfile]:::base
@@ -106,7 +106,7 @@ SDK auto-detects your language:
 aifabrix build myapp --language python
 ```
 
-Or set in `variables.yaml`:
+Or set in `application.yaml`:
 ```yaml
 build:
   language: python
@@ -150,7 +150,7 @@ Start[Build Process]:::base --> CheckPackage{Check package.json?}
 CheckPackage -->|Found| TypeScript[TypeScript/Node.js<br/>Node 20 Alpine]:::medium
 CheckPackage -->|Not Found| CheckRequirements{Check requirements.txt<br/>or pyproject.toml?}
 CheckRequirements -->|Found| Python[Python<br/>Python 3.11 Alpine]:::medium
-CheckRequirements -->|Not Found| UseConfig{Use variables.yaml<br/>build.language?}
+CheckRequirements -->|Not Found| UseConfig{Use application.yaml<br/>build.language?}
 UseConfig -->|typescript| TypeScript
 UseConfig -->|python| Python
 UseConfig -->|Not Set| Error[Error: Cannot detect language]:::base
@@ -244,7 +244,7 @@ Place `Dockerfile` in your app root - SDK will use it automatically.
 
 ### Custom Location
 
-Specify in `variables.yaml`:
+Specify in `application.yaml`:
 ```yaml
 build:
   dockerfile: docker/Dockerfile.prod
@@ -292,11 +292,11 @@ workspace/
 │   ├── shared/       # Shared code
 │   └── myapp/        # Your app
 │       └── builder/
-│           └── variables.yaml
+│           └── application.yaml
 ```
 
 ```yaml
-# variables.yaml
+# application.yaml
 build:
   context: ../../     # Go to workspace root
   dockerfile: packages/myapp/Dockerfile
@@ -322,7 +322,7 @@ docker images | grep myapp-dev
 **Location:** `builder/myapp/.env`  
 **Contains:** Resolved environment variables for Docker container runtime
 - Uses docker service names (redis, postgres) for infrastructure
-- Uses `port` from variables.yaml for application port
+- Uses `port` from application.yaml for application port
 - All ports include developer-id adjustment
 
 **View:**
@@ -334,7 +334,7 @@ cat builder/myapp/.env
 **Location:** Path specified in `build.envOutputPath` (e.g., `../../apps/myapp/.env`)  
 **Contains:** Resolved environment variables for local development
 - Uses localhost/dev.aifabrix for infrastructure hosts
-- Uses `build.localPort` (or `port` as fallback) from variables.yaml
+- Uses `build.localPort` (or `port` as fallback) from application.yaml
 - App port includes developer-id adjustment; infra ports use base + developer-id adjustment
 
 **View:**
@@ -467,7 +467,7 @@ docker volume prune
 ### "Can't find package.json"
 **Cause:** Build context doesn't include your files
 
-**Fix:** Set correct context in variables.yaml:
+**Fix:** Set correct context in application.yaml:
 ```yaml
 build:
   context: .  # Current directory

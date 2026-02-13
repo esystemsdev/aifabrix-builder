@@ -32,11 +32,20 @@ jest.mock('../../../lib/app/readme', () => ({
   ensureReadmeForApp: jest.fn().mockResolvedValue(undefined)
 }));
 
+const path = require('path');
+const pathsUtil = require('../../../lib/utils/paths');
+const configFormat = require('../../../lib/utils/config-format');
+
 jest.mock('../../../lib/utils/paths', () => ({
-  getBuilderPath: jest.fn((appName) => require('path').join(process.cwd(), 'builder', appName))
+  getBuilderPath: jest.fn((appName) => require('path').join(process.cwd(), 'builder', appName)),
+  resolveApplicationConfigPath: jest.fn()
 }));
 
-const path = require('path');
+jest.mock('../../../lib/utils/config-format', () => ({
+  loadConfigFile: jest.fn(),
+  writeConfigFile: jest.fn()
+}));
+
 const fs = require('fs');
 const {
   ensureAppFromTemplate,
@@ -52,14 +61,6 @@ describe('up-common ensureAppFromTemplate', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(require('fs'), 'existsSync').mockImplementation(() => false);
-  });
-
-  afterEach(() => {
-    const fs = require('fs');
-    if (fs.existsSync.mockRestore) {
-      fs.existsSync.mockRestore();
-    }
   });
 
   it('should throw if appName is missing', async() => {
@@ -72,9 +73,10 @@ describe('up-common ensureAppFromTemplate', () => {
     await expect(ensureAppFromTemplate(123)).rejects.toThrow('Application name is required and must be a string');
   });
 
-  it('should return false and not copy when variables.yaml exists', async() => {
-    const variablesPath = path.join(cwd, 'builder', 'keycloak', 'variables.yaml');
-    require('fs').existsSync.mockImplementation((p) => p === variablesPath);
+  it('should return false and not copy when application config exists', async() => {
+    const targetAppPath = path.join(cwd, 'builder', 'keycloak');
+    const configPath = path.join(targetAppPath, 'application.yaml');
+    pathsUtil.resolveApplicationConfigPath.mockReturnValue(configPath);
 
     const result = await ensureAppFromTemplate('keycloak');
 
@@ -83,11 +85,12 @@ describe('up-common ensureAppFromTemplate', () => {
     expect(ensureReadmeForApp).toHaveBeenCalledWith('keycloak');
   });
 
-  it('should copy template and return true when variables.yaml does not exist', async() => {
+  it('should copy template and return true when application config does not exist', async() => {
     const appPath = path.join(cwd, 'builder', 'dataplane');
-    const variablesPath = path.join(appPath, 'variables.yaml');
-    require('fs').existsSync.mockImplementation((p) => p !== variablesPath);
-    copyTemplateFiles.mockResolvedValue(['variables.yaml', 'env.template']);
+    pathsUtil.resolveApplicationConfigPath.mockImplementation(() => {
+      throw new Error('Application config not found');
+    });
+    copyTemplateFiles.mockResolvedValue(['application.yaml', 'env.template']);
 
     const result = await ensureAppFromTemplate('dataplane');
 
@@ -100,11 +103,11 @@ describe('up-common ensureAppFromTemplate', () => {
 
 describe('up-common getEnvOutputPathFolder', () => {
   it('returns directory containing the output .env file', () => {
-    const variablesPath = path.join(process.cwd(), 'builder', 'miso-controller', 'variables.yaml');
+    const configPath = path.join(process.cwd(), 'builder', 'miso-controller', 'application.yaml');
     // ../../.env from builder/miso-controller => folder is repo root (cwd)
-    expect(getEnvOutputPathFolder('../../.env', variablesPath)).toBe(path.resolve(process.cwd()));
+    expect(getEnvOutputPathFolder('../../.env', configPath)).toBe(path.resolve(process.cwd()));
     // ../../packages/miso-controller/.env => folder is packages/miso-controller under repo root
-    expect(getEnvOutputPathFolder('../../packages/miso-controller/.env', variablesPath)).toBe(
+    expect(getEnvOutputPathFolder('../../packages/miso-controller/.env', configPath)).toBe(
       path.resolve(process.cwd(), 'packages', 'miso-controller')
     );
   });
@@ -116,67 +119,68 @@ describe('up-common validateEnvOutputPathFolderOrNull', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(fs, 'existsSync');
-    jest.spyOn(fs, 'readFileSync');
-    jest.spyOn(fs, 'writeFileSync');
   });
 
   afterEach(() => {
     fs.existsSync.mockRestore?.();
-    fs.readFileSync.mockRestore?.();
-    fs.writeFileSync.mockRestore?.();
   });
 
   it('does nothing when appName is missing or empty', () => {
     validateEnvOutputPathFolderOrNull(null);
     validateEnvOutputPathFolderOrNull(undefined);
     validateEnvOutputPathFolderOrNull('');
-    expect(fs.readFileSync).not.toHaveBeenCalled();
+    expect(configFormat.loadConfigFile).not.toHaveBeenCalled();
   });
 
-  it('does nothing when variables.yaml does not exist', () => {
-    fs.existsSync.mockReturnValue(false);
+  it('does nothing when application config does not exist', () => {
+    pathsUtil.resolveApplicationConfigPath.mockImplementation(() => {
+      throw new Error('not found');
+    });
     validateEnvOutputPathFolderOrNull('miso-controller');
-    expect(fs.readFileSync).not.toHaveBeenCalled();
+    expect(configFormat.loadConfigFile).not.toHaveBeenCalled();
   });
 
   it('leaves envOutputPath unchanged when target folder exists', () => {
-    const variablesPath = path.join(cwd, 'builder', 'miso-controller', 'variables.yaml');
-    const repoRoot = path.resolve(process.cwd()); // ../../.env from builder/miso-controller => repo root
-    fs.existsSync.mockImplementation((p) => p === variablesPath || p === repoRoot);
-    fs.readFileSync.mockReturnValue('build:\n  envOutputPath: ../../.env\nport: 3000');
+    const configPath = path.join(cwd, 'builder', 'miso-controller', 'application.yaml');
+    const repoRoot = path.resolve(process.cwd());
+    pathsUtil.resolveApplicationConfigPath.mockReturnValue(configPath);
+    configFormat.loadConfigFile.mockReturnValue({ build: { envOutputPath: '../../.env' }, port: 3000 });
+    fs.existsSync.mockImplementation((p) => p === repoRoot);
     validateEnvOutputPathFolderOrNull('miso-controller');
-    expect(fs.writeFileSync).not.toHaveBeenCalled();
+    expect(configFormat.writeConfigFile).not.toHaveBeenCalled();
   });
 
   it('leaves envOutputPath ../../packages/miso-controller/.env unchanged when packages/miso-controller folder exists', () => {
-    const variablesPath = path.join(cwd, 'builder', 'miso-controller', 'variables.yaml');
+    const configPath = path.join(cwd, 'builder', 'miso-controller', 'application.yaml');
     const packagesMisoFolder = path.resolve(cwd, 'packages', 'miso-controller');
-    const content = 'build:\n  envOutputPath: ../../packages/miso-controller/.env # Copy .env to repo root for local dev\nport: 3000';
-    fs.existsSync.mockImplementation((p) => p === variablesPath || p === packagesMisoFolder);
-    fs.readFileSync.mockReturnValue(content);
+    pathsUtil.resolveApplicationConfigPath.mockReturnValue(configPath);
+    configFormat.loadConfigFile.mockReturnValue({
+      build: { envOutputPath: '../../packages/miso-controller/.env' },
+      port: 3000
+    });
+    fs.existsSync.mockImplementation((p) => p === packagesMisoFolder);
     validateEnvOutputPathFolderOrNull('miso-controller');
-    expect(fs.writeFileSync).not.toHaveBeenCalled();
+    expect(configFormat.writeConfigFile).not.toHaveBeenCalled();
   });
 
   it('patches envOutputPath to null when target folder does not exist', () => {
-    const variablesPath = path.join(cwd, 'builder', 'miso-controller', 'variables.yaml');
-    fs.existsSync.mockImplementation((p) => p === variablesPath);
-    const content = 'build:\n  envOutputPath: ../../.env  # deploy only\nport: 3000';
-    fs.readFileSync.mockReturnValue(content);
+    const configPath = path.join(cwd, 'builder', 'miso-controller', 'application.yaml');
+    pathsUtil.resolveApplicationConfigPath.mockReturnValue(configPath);
+    configFormat.loadConfigFile.mockReturnValue({ build: { envOutputPath: '../../.env' }, port: 3000 });
+    fs.existsSync.mockReturnValue(false);
     validateEnvOutputPathFolderOrNull('miso-controller');
-    expect(fs.writeFileSync).toHaveBeenCalledWith(
-      variablesPath,
-      content.replace(/^(\s*envOutputPath:)\s*.*$/m, '$1 null  # deploy only, no copy'),
-      'utf8'
+    expect(configFormat.writeConfigFile).toHaveBeenCalledWith(
+      configPath,
+      expect.objectContaining({ build: expect.objectContaining({ envOutputPath: null }), port: 3000 })
     );
   });
 
   it('skips when envOutputPath is already null or missing', () => {
-    const variablesPath = path.join(cwd, 'builder', 'miso-controller', 'variables.yaml');
-    fs.existsSync.mockReturnValue(true);
-    fs.readFileSync.mockReturnValue('build:\n  envOutputPath: null\nport: 3000');
+    const configPath = path.join(cwd, 'builder', 'miso-controller', 'application.yaml');
+    pathsUtil.resolveApplicationConfigPath.mockReturnValue(configPath);
+    configFormat.loadConfigFile.mockReturnValue({ build: { envOutputPath: null }, port: 3000 });
     validateEnvOutputPathFolderOrNull('miso-controller');
-    expect(fs.writeFileSync).not.toHaveBeenCalled();
+    expect(configFormat.writeConfigFile).not.toHaveBeenCalled();
   });
 });
 
@@ -186,57 +190,60 @@ describe('up-common patchEnvOutputPathForDeployOnly', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(fs, 'existsSync');
-    jest.spyOn(fs, 'readFileSync');
-    jest.spyOn(fs, 'writeFileSync');
   });
 
   afterEach(() => {
     fs.existsSync.mockRestore?.();
-    fs.readFileSync.mockRestore?.();
-    fs.writeFileSync.mockRestore?.();
   });
 
   it('does NOT patch when target folder exists (e.g. ../../packages/miso-controller/.env)', () => {
-    const variablesPath = path.join(cwd, 'builder', 'miso-controller', 'variables.yaml');
+    const configPath = path.join(cwd, 'builder', 'miso-controller', 'application.yaml');
     const packagesMisoFolder = path.resolve(cwd, 'packages', 'miso-controller');
-    const content = 'build:\n  envOutputPath: ../../packages/miso-controller/.env # Copy .env to repo root for local dev\nport: 3000';
-    fs.existsSync.mockImplementation((p) => p === variablesPath || p === packagesMisoFolder);
-    fs.readFileSync.mockReturnValue(content);
+    pathsUtil.resolveApplicationConfigPath.mockReturnValue(configPath);
+    configFormat.loadConfigFile.mockReturnValue({
+      build: { envOutputPath: '../../packages/miso-controller/.env' },
+      port: 3000
+    });
+    fs.existsSync.mockImplementation((p) => p === packagesMisoFolder);
     patchEnvOutputPathForDeployOnly('miso-controller');
-    expect(fs.writeFileSync).not.toHaveBeenCalled();
+    expect(configFormat.writeConfigFile).not.toHaveBeenCalled();
   });
 
   it('does NOT patch when repo root folder exists (envOutputPath ../../.env)', () => {
-    const variablesPath = path.join(cwd, 'builder', 'miso-controller', 'variables.yaml');
+    const configPath = path.join(cwd, 'builder', 'miso-controller', 'application.yaml');
     const repoRoot = path.resolve(process.cwd());
-    const content = 'build:\n  envOutputPath: ../../.env\nport: 3000';
-    fs.existsSync.mockImplementation((p) => p === variablesPath || p === repoRoot);
-    fs.readFileSync.mockReturnValue(content);
+    pathsUtil.resolveApplicationConfigPath.mockReturnValue(configPath);
+    configFormat.loadConfigFile.mockReturnValue({ build: { envOutputPath: '../../.env' }, port: 3000 });
+    fs.existsSync.mockImplementation((p) => p === repoRoot);
     patchEnvOutputPathForDeployOnly('miso-controller');
-    expect(fs.writeFileSync).not.toHaveBeenCalled();
+    expect(configFormat.writeConfigFile).not.toHaveBeenCalled();
   });
 
   it('patches to null when target folder does not exist', () => {
-    const variablesPath = path.join(cwd, 'builder', 'miso-controller', 'variables.yaml');
-    fs.existsSync.mockImplementation((p) => p === variablesPath);
-    const content = 'build:\n  envOutputPath: ../../packages/miso-controller/.env\nport: 3000';
-    fs.readFileSync.mockReturnValue(content);
+    const configPath = path.join(cwd, 'builder', 'miso-controller', 'application.yaml');
+    pathsUtil.resolveApplicationConfigPath.mockReturnValue(configPath);
+    configFormat.loadConfigFile.mockReturnValue({
+      build: { envOutputPath: '../../packages/miso-controller/.env' },
+      port: 3000
+    });
+    fs.existsSync.mockReturnValue(false);
     patchEnvOutputPathForDeployOnly('miso-controller');
-    expect(fs.writeFileSync).toHaveBeenCalledWith(
-      variablesPath,
-      content.replace(/^(\s*envOutputPath:)\s*.*$/m, '$1 null  # deploy only, no copy'),
-      'utf8'
+    expect(configFormat.writeConfigFile).toHaveBeenCalledWith(
+      configPath,
+      expect.objectContaining({ build: expect.objectContaining({ envOutputPath: null }), port: 3000 })
     );
   });
 
   it('patches when envOutputPath points to non-existent packages/miso-controller folder', () => {
-    const variablesPath = path.join(cwd, 'builder', 'miso-controller', 'variables.yaml');
-    const packagesMisoFolder = path.resolve(cwd, 'packages', 'miso-controller');
-    fs.existsSync.mockImplementation((p) => p === variablesPath); // folder does NOT exist
-    const content = 'build:\n  envOutputPath: ../../packages/miso-controller/.env # Copy for local dev\nport: 3000';
-    fs.readFileSync.mockReturnValue(content);
+    const configPath = path.join(cwd, 'builder', 'miso-controller', 'application.yaml');
+    pathsUtil.resolveApplicationConfigPath.mockReturnValue(configPath);
+    configFormat.loadConfigFile.mockReturnValue({
+      build: { envOutputPath: '../../packages/miso-controller/.env' },
+      port: 3000
+    });
+    fs.existsSync.mockReturnValue(false);
     patchEnvOutputPathForDeployOnly('miso-controller');
-    expect(fs.writeFileSync).toHaveBeenCalled();
-    expect(fs.writeFileSync.mock.calls[0][1]).toContain('envOutputPath: null  # deploy only, no copy');
+    expect(configFormat.writeConfigFile).toHaveBeenCalled();
+    expect(configFormat.writeConfigFile.mock.calls[0][1].build.envOutputPath).toBe(null);
   });
 });

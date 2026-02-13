@@ -106,7 +106,7 @@ Create your own step templates in `templates/github/steps/{your-step}.hbs` and r
 
 ### Language and Infrastructure Templates
 
-These templates are processed automatically by the AI Fabrix Builder SDK based on the application schema defined in `variables.yaml`. The generated files will be valid Docker files after template processing.
+These templates are processed automatically by the AI Fabrix Builder SDK based on the application schema defined in `application.yaml`. The generated files will be valid Docker files after template processing.
 
 ## VS Code Configuration
 

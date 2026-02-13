@@ -173,7 +173,7 @@ describe('secure command', () => {
       const appName = 'test-app';
       const builderDir = path.join(process.cwd(), 'builder');
       const buildSecretsPath = path.join(process.cwd(), 'builder', appName, 'secrets.local.yaml');
-      const variablesPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
+      const variablesPath = path.join(process.cwd(), 'builder', appName, 'application.yaml');
 
       fs.existsSync.mockImplementation((filePath) => {
         return filePath === mockSecretsPath ||
@@ -433,11 +433,11 @@ describe('secure command', () => {
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
-    it('should handle findSecretsFiles when variables.yaml read fails', async() => {
+    it('should handle findSecretsFiles when application.yaml read fails', async() => {
       const options = { secretsEncryption: validHexKey };
       const appName = 'test-app';
       const builderDir = path.join(process.cwd(), 'builder');
-      const variablesPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
+      const variablesPath = path.join(process.cwd(), 'builder', appName, 'application.yaml');
 
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath === mockSecretsPath) return true;
@@ -461,11 +461,11 @@ describe('secure command', () => {
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
-    it('should handle findSecretsFiles when variables.yaml has invalid YAML', async() => {
+    it('should handle findSecretsFiles when application.yaml has invalid YAML', async() => {
       const options = { secretsEncryption: validHexKey };
       const appName = 'test-app';
       const builderDir = path.join(process.cwd(), 'builder');
-      const variablesPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
+      const variablesPath = path.join(process.cwd(), 'builder', appName, 'application.yaml');
 
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath === mockSecretsPath) return true;

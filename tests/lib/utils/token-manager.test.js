@@ -1292,5 +1292,34 @@ describe('Token Manager Module', () => {
       ).rejects.toThrow('Device token authentication required. Run "aifabrix login" to authenticate.');
     });
   });
+
+  describe('requireBearerForDataplanePipeline', () => {
+    it('should not throw when authConfig has token', () => {
+      expect(() => {
+        tokenManager.requireBearerForDataplanePipeline({ token: 'bearer-token' });
+      }).not.toThrow();
+    });
+
+    it('should throw when authConfig has only clientId and clientSecret', () => {
+      expect(() => {
+        tokenManager.requireBearerForDataplanePipeline({
+          clientId: 'cid',
+          clientSecret: 'secret'
+        });
+      }).toThrow('Dataplane pipeline endpoints require OAuth2 (Bearer token)');
+    });
+
+    it('should throw when authConfig has only clientId', () => {
+      expect(() => {
+        tokenManager.requireBearerForDataplanePipeline({ clientId: 'cid' });
+      }).toThrow('Dataplane pipeline endpoints require OAuth2 (Bearer token)');
+    });
+
+    it('should not throw when authConfig is empty (no token, no client creds)', () => {
+      expect(() => {
+        tokenManager.requireBearerForDataplanePipeline({});
+      }).not.toThrow();
+    });
+  });
 });
 

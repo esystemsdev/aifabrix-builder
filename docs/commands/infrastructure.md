@@ -99,7 +99,7 @@ Install Keycloak and Miso Controller from images (no build).
 
 **Usage:**
 ```bash
-# Install from local/default images (variables.yaml)
+# Install from local/default images (application.yaml)
 aifabrix up-miso
 
 # Override registry for both apps
@@ -152,7 +152,7 @@ aifabrix up-platform --image keycloak=myreg/k:v1 --image miso-controller=myreg/m
 <a id="aifabrix-up-dataplane"></a>
 ## aifabrix up-dataplane
 
-Register or rotate, deploy to the controller, then run the dataplane app locally in dev. **Always local deployment:** this command does not deploy dataplane to the cloud; it sends the manifest to the Miso Controller then runs the dataplane container locally (same as `aifabrix deploy dataplane --deployment=local`).
+Register or rotate, deploy to the controller, then run the dataplane app locally in dev. **Always local deployment:** this command does not deploy dataplane to the cloud; it sends the manifest to the Miso Controller then runs the dataplane container locally (same as `aifabrix deploy dataplane --local`).
 
 **What:** If dataplane is already registered in the environment, rotates the app secret; otherwise registers the app. Then deploys via Miso Controller (sends manifest), then runs the dataplane app locally. Requires login and environment `dev`.
 
@@ -267,15 +267,15 @@ aifabrix status
 ---
 
 <a id="aifabrix-restart-service"></a>
-## aifabrix restart <service>
+## aifabrix restart <service|app>
 
-Restart a specific infrastructure service.
+Restart an infrastructure service or a Docker application.
 
-**What:** Restarts a single infrastructure service (postgres, redis, pgadmin, redis-commander) without affecting other services.
+**What:** Restarts either a single infrastructure service (postgres, redis, pgadmin, redis-commander, traefik) or a running Docker application (by app name). For applications, the app must have been started with `aifabrix run <app>`; see [Application Development Commands](application-development.md#aifabrix-restart-app).
 
-**When:** Service is misbehaving, after configuration changes, troubleshooting.
+**When:** Service or app is misbehaving, after configuration changes, troubleshooting.
 
-**Example:**
+**Example (infrastructure):**
 ```bash
 # Restart Postgres
 aifabrix restart postgres
@@ -284,21 +284,33 @@ aifabrix restart postgres
 aifabrix restart redis
 ```
 
-**Available services:**
+**Example (application):**
+```bash
+# Restart a running app (builder/myapp)
+aifabrix restart myapp
+```
+
+**Available infrastructure services:**
 - `postgres` - PostgreSQL database
 - `redis` - Redis cache
 - `pgadmin` - pgAdmin web UI
 - `redis-commander` - Redis Commander web UI
 - `traefik` - Traefik reverse proxy (when started with `--traefik`)
 
-**Output:**
+**Output (infrastructure):**
 ```yaml
 ✅ postgres service restarted successfully
 ```
 
+**Output (application):**
+```yaml
+✅ myapp restarted successfully
+```
+
 **Issues:**
-- **"Service not found"** → Use correct service name (postgres, redis, pgadmin, redis-commander)
-- **"Service not running"** → Service may not be started; use `aifabrix up-infra` to start all services
+- **"Invalid service name"** (infra) → Use one of: postgres, redis, pgadmin, redis-commander, traefik
+- **"Application 'X' is not running"** (app) → Start the app first: `aifabrix run <app>`
+- **"Infrastructure not properly configured"** → Run `aifabrix up-infra` first
 
 ---
 

@@ -6,7 +6,7 @@ This folder contains test fixtures used by `env-generation.test.js`.
 
 - **env-config.yaml**: Base environment configuration (copied from `lib/schema/env-config.yaml`)
 - **env.template**: Environment template file used in tests
-- **variables.yaml**: Application variables configuration
+- **application.yaml**: Application variables configuration
 - **config.yaml**: User config file that simulates `~/.aifabrix/config.yaml` for testing overrides
 
 ## Usage

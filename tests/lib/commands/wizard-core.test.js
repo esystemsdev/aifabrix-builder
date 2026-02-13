@@ -15,6 +15,9 @@ jest.mock('../../../lib/commands/wizard-dataplane');
 jest.mock('../../../lib/utils/controller-url');
 jest.mock('../../../lib/api/wizard.api');
 jest.mock('../../../lib/generator/wizard');
+jest.mock('../../../lib/utils/app-config-resolver', () => ({
+  resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml'))
+}));
 const mockPromptForCredentialIdOrKeyRetry = jest.fn();
 jest.mock('../../../lib/generator/wizard-prompts', () => ({
   promptForCredentialIdOrKeyRetry: (...args) => mockPromptForCredentialIdOrKeyRetry(...args)
@@ -887,10 +890,10 @@ describe('Wizard Core Functions', () => {
       systemFilePath: '/workspace/integration/test-app/test-system-deploy.json'
     };
 
-    it('should save files successfully and update README via POST deployment-docs with variables.yaml and deploy JSON', async() => {
+    it('should save files successfully and update README via POST deployment-docs with application.yaml and deploy JSON', async() => {
       wizardGenerator.generateWizardFiles.mockResolvedValue(mockGeneratedFiles);
       fs.readFile.mockImplementation((p) => {
-        if (String(p).endsWith('variables.yaml')) return Promise.resolve('app:\n  key: test-app\n');
+        if (String(p).endsWith('application.yaml')) return Promise.resolve('app:\n  key: test-app\n');
         if (String(p).endsWith('test-app-deploy.json')) return Promise.resolve('{}');
         return Promise.reject(new Error('ENOENT'));
       });
@@ -931,7 +934,7 @@ describe('Wizard Core Functions', () => {
     it('should handle missing deployment docs gracefully', async() => {
       wizardGenerator.generateWizardFiles.mockResolvedValue(mockGeneratedFiles);
       fs.readFile.mockImplementation((p) => {
-        if (String(p).endsWith('variables.yaml')) return Promise.resolve('app:\n  key: test-app\n');
+        if (String(p).endsWith('application.yaml')) return Promise.resolve('app:\n  key: test-app\n');
         if (String(p).endsWith('test-app-deploy.json')) return Promise.resolve('{}');
         return Promise.reject(new Error('ENOENT'));
       });
@@ -957,7 +960,7 @@ describe('Wizard Core Functions', () => {
     it('should continue when postDeploymentDocs throws', async() => {
       wizardGenerator.generateWizardFiles.mockResolvedValue(mockGeneratedFiles);
       fs.readFile.mockImplementation((p) => {
-        if (String(p).endsWith('variables.yaml')) return Promise.resolve('app:\n  key: test-app\n');
+        if (String(p).endsWith('application.yaml')) return Promise.resolve('app:\n  key: test-app\n');
         if (String(p).endsWith('test-app-deploy.json')) return Promise.resolve('{}');
         return Promise.reject(new Error('ENOENT'));
       });
@@ -981,7 +984,7 @@ describe('Wizard Core Functions', () => {
       expect(result).toEqual(mockGeneratedFiles);
     });
 
-    it('should fall back to GET deployment-docs when variables.yaml and deploy.json are unreadable', async() => {
+    it('should fall back to GET deployment-docs when application.yaml and deploy.json are unreadable', async() => {
       wizardGenerator.generateWizardFiles.mockResolvedValue(mockGeneratedFiles);
       fs.readFile.mockRejectedValue(new Error('ENOENT'));
       wizardApi.getDeploymentDocs.mockResolvedValue({

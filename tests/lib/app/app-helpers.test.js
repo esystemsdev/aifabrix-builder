@@ -60,8 +60,16 @@ jest.mock('../../../lib/utils/template-helpers', () => ({
 jest.mock('../../../lib/app/push', () => ({
   validateAppName: jest.fn()
 }));
+jest.mock('../../../lib/utils/app-config-resolver', () => ({
+  resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml'))
+}));
+jest.mock('../../../lib/utils/config-format', () => ({
+  loadConfigFile: jest.fn(),
+  writeConfigFile: jest.fn()
+}));
 
 const logger = require('../../../lib/utils/logger');
+const configFormat = require('../../../lib/utils/config-format');
 const { validateTemplate, copyTemplateFiles, copyAppFiles } = require('../../../lib/validation/template');
 const { generateGithubWorkflows } = require('../../../lib/generator/github');
 const { updateTemplateVariables } = require('../../../lib/utils/template-helpers');
@@ -233,9 +241,7 @@ describe('Application Helpers Module', () => {
       const appPath = '/path/to/builder/test-app';
       const appsPath = path.join(process.cwd(), 'apps', appName);
       validateAppName.mockReturnValue();
-      fs.access
-        .mockRejectedValueOnce({ code: 'ENOENT' }) // appPath doesn't exist
-        .mockRejectedValueOnce({ code: 'ENOENT' }); // appsPath doesn't exist
+      fs.access.mockRejectedValue({ code: 'ENOENT' });
 
       await validateAppCreation(appName, options, appPath, 'builder');
 
@@ -246,11 +252,12 @@ describe('Application Helpers Module', () => {
       const appName = 'test-app';
       const options = { app: true };
       const appPath = '/path/to/builder/test-app';
-      const appsPath = path.join(process.cwd(), 'apps', appName);
       validateAppName.mockReturnValue();
       fs.access
-        .mockRejectedValueOnce({ code: 'ENOENT' }) // appPath doesn't exist
-        .mockResolvedValueOnce(); // appsPath exists
+        .mockRejectedValueOnce({ code: 'ENOENT' })
+        .mockRejectedValueOnce({ code: 'ENOENT' })
+        .mockRejectedValueOnce({ code: 'ENOENT' })
+        .mockResolvedValueOnce();
 
       await expect(validateAppCreation(appName, options, appPath, 'builder')).rejects.toThrow(
         'Application \'test-app\' already exists in apps/test-app/'
@@ -266,7 +273,7 @@ describe('Application Helpers Module', () => {
 
       await validateAppCreation(appName, options, appPath, 'builder');
 
-      expect(fs.access).toHaveBeenCalledTimes(1); // Only appPath check
+      expect(fs.access).toHaveBeenCalledTimes(3);
     });
   });
 
@@ -297,55 +304,53 @@ describe('Application Helpers Module', () => {
   });
 
   describe('updateVariablesForAppFlag', () => {
-    it('should update variables.yaml with build context and envOutputPath', async() => {
+    it('should update application.yaml with build context and envOutputPath', async() => {
       const appPath = '/path/to/app';
       const appName = 'test-app';
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const existingVariables = {
         app: { key: 'test-app' },
         build: { language: 'typescript' }
       };
-      fs.readFile.mockResolvedValue('app:\n  key: test-app\nbuild:\n  language: typescript\n');
-      fs.writeFile.mockResolvedValue();
-
-      // Mock js-yaml
-      const yaml = require('js-yaml');
-      jest.spyOn(yaml, 'load').mockReturnValue(existingVariables);
-      jest.spyOn(yaml, 'dump').mockReturnValue('updated yaml');
+      configFormat.loadConfigFile.mockReturnValue(existingVariables);
+      configFormat.writeConfigFile.mockImplementation(() => {});
 
       await updateVariablesForAppFlag(appPath, appName);
 
-      expect(fs.readFile).toHaveBeenCalledWith(variablesPath, 'utf8');
-      expect(fs.writeFile).toHaveBeenCalled();
+      expect(configFormat.loadConfigFile).toHaveBeenCalledWith(variablesPath);
+      expect(configFormat.writeConfigFile).toHaveBeenCalledWith(variablesPath, expect.objectContaining({
+        build: expect.objectContaining({
+          context: '../..',
+          envOutputPath: '../../apps/test-app/.env',
+          language: 'typescript'
+        })
+      }));
     });
 
     it('should create build object if it does not exist', async() => {
       const appPath = '/path/to/app';
       const appName = 'test-app';
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      const existingVariables = {
-        app: { key: 'test-app' }
-      };
-      fs.readFile.mockResolvedValue('app:\n  key: test-app\n');
-      fs.writeFile.mockResolvedValue();
-
-      const yaml = require('js-yaml');
-      jest.spyOn(yaml, 'load').mockReturnValue(existingVariables);
-      jest.spyOn(yaml, 'dump').mockReturnValue('updated yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
+      configFormat.loadConfigFile.mockReturnValue({ app: { key: 'test-app' } });
+      configFormat.writeConfigFile.mockImplementation(() => {});
 
       await updateVariablesForAppFlag(appPath, appName);
 
-      expect(fs.writeFile).toHaveBeenCalled();
+      expect(configFormat.writeConfigFile).toHaveBeenCalledWith(variablesPath, expect.objectContaining({
+        build: { context: '../..', envOutputPath: '../../apps/test-app/.env' }
+      }));
     });
 
     it('should handle errors gracefully', async() => {
       const appPath = '/path/to/app';
       const appName = 'test-app';
-      fs.readFile.mockRejectedValue(new Error('File not found'));
+      configFormat.loadConfigFile.mockImplementation(() => {
+        throw new Error('Permission denied');
+      });
 
       await updateVariablesForAppFlag(appPath, appName);
 
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Could not update variables.yaml'));
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Could not update application config'));
     });
   });
 
@@ -357,36 +362,29 @@ describe('Application Helpers Module', () => {
       const result = await getLanguageForAppFiles(language, appPath);
 
       expect(result).toBe('typescript');
-      expect(fs.readFile).not.toHaveBeenCalled();
+      expect(configFormat.loadConfigFile).not.toHaveBeenCalled();
     });
 
-    it('should read language from variables.yaml if not provided', async() => {
+    it('should read language from application.yaml if not provided', async() => {
       const language = null;
       const appPath = '/path/to/app';
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      const variablesContent = 'build:\n  language: python\n';
-      fs.readFile.mockResolvedValue(variablesContent);
-
-      const yaml = require('js-yaml');
-      jest.spyOn(yaml, 'load').mockReturnValue({ build: { language: 'python' } });
+      const variablesPath = path.join(appPath, 'application.yaml');
+      configFormat.loadConfigFile.mockReturnValue({ build: { language: 'python' } });
 
       const result = await getLanguageForAppFiles(language, appPath);
 
       expect(result).toBe('python');
-      expect(fs.readFile).toHaveBeenCalledWith(variablesPath, 'utf8');
+      expect(configFormat.loadConfigFile).toHaveBeenCalledWith(variablesPath);
     });
 
     it('should throw error if language cannot be determined', async() => {
       const language = null;
       const appPath = '/path/to/app';
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      fs.readFile.mockResolvedValue('app:\n  key: test-app\n');
-
-      const yaml = require('js-yaml');
-      jest.spyOn(yaml, 'load').mockReturnValue({ app: { key: 'test-app' } });
+      const variablesPath = path.join(appPath, 'application.yaml');
+      configFormat.loadConfigFile.mockReturnValue({ app: { key: 'test-app' } });
 
       await expect(getLanguageForAppFiles(language, appPath)).rejects.toThrow(
-        'Language not specified and could not be determined from variables.yaml'
+        'Language not specified and could not be determined from application.yaml'
       );
     });
   });
@@ -399,16 +397,10 @@ describe('Application Helpers Module', () => {
       const options = {};
       const appsPath = path.join(process.cwd(), 'apps', appName);
 
-      // Mock updateVariablesForAppFlag by mocking fs operations
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      fs.readFile.mockResolvedValue('build:\n  language: typescript\n');
-      fs.writeFile.mockResolvedValue();
+      configFormat.loadConfigFile.mockReturnValue({ build: { language: 'typescript' } });
+      configFormat.writeConfigFile.mockImplementation(() => {});
       fs.mkdir.mockResolvedValue();
       copyAppFiles.mockResolvedValue(['app.ts', 'package.json']);
-
-      const yaml = require('js-yaml');
-      jest.spyOn(yaml, 'load').mockReturnValue({ build: { language: 'typescript' } });
-      jest.spyOn(yaml, 'dump').mockReturnValue('updated yaml');
 
       await setupAppFiles(appName, appPath, config, options);
 
@@ -424,15 +416,10 @@ describe('Application Helpers Module', () => {
       const options = { language: 'python' };
       const appsPath = path.join(process.cwd(), 'apps', appName);
 
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      fs.readFile.mockResolvedValue('build:\n  language: python\n');
-      fs.writeFile.mockResolvedValue();
+      configFormat.loadConfigFile.mockReturnValue({ build: { language: 'python' } });
+      configFormat.writeConfigFile.mockImplementation(() => {});
       fs.mkdir.mockResolvedValue();
       copyAppFiles.mockResolvedValue(['app.py', 'requirements.txt']);
-
-      const yaml = require('js-yaml');
-      jest.spyOn(yaml, 'load').mockReturnValue({ build: { language: 'python' } });
-      jest.spyOn(yaml, 'dump').mockReturnValue('updated yaml');
 
       await setupAppFiles(appName, appPath, config, options);
 

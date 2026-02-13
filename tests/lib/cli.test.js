@@ -381,7 +381,7 @@ describe('CLI Commands', () => {
 
     it('should handle generation errors', async() => {
       const appName = 'testapp';
-      const errorMessage = 'variables.yaml not found';
+      const errorMessage = 'application.yaml not found';
 
       generator.generateDeployJsonWithValidation.mockRejectedValue(new Error(errorMessage));
 

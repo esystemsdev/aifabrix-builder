@@ -11,13 +11,13 @@ Application management commands for registering and managing applications with t
 
 Show application info from local builder/ or integration/ folder (offline) or from the controller (with `--online`).
 
-**What:** By default loads and displays app info from the local **builder/** or **integration/** folder (offline). With `--online` it fetches application data from the controller. Output clearly indicates whether the source is offline or online. Does not run schema validation — use `aifabrix validate` for that.
+**What:** By default loads and displays app info from the local **builder/** or **integration/** folder (offline). The CLI resolves the app path by checking **`integration/<appKey>`** first, then **`builder/<appKey>`**; if neither exists, it errors. With `--online` it fetches application data from the controller. Output clearly indicates whether the source is offline or online. Does not run schema validation — use `aifabrix validate` for that.
 
 **When:** To inspect application key, type, roles, permissions, authentication, portal input configurations, and databases; or to compare local config with what is on the controller.
 
 **Usage:**
 ```bash
-# Offline: show from local builder/ or integration/ (variables.yaml)
+# Offline: show from local builder/ or integration/ (application.yaml)
 aifabrix show myapp
 
 # Online: fetch from controller (requires login)
@@ -38,10 +38,10 @@ aifabrix show myapp --online --json
 **Permissions (online):** Controller access and `applications:read` (or environment-scoped application read). See [Online Commands and Permissions](permissions.md).
 
 **Output:**
-- **Offline:** First line is `Source: offline (builder/myapp/variables.yaml)` or the actual path (e.g. `integration/myapp/variables.yaml`). Then Application (key, display name, description, type, deployment, image, registry, port, health, build), Roles, Authentication, Portal input configurations, Databases. Permissions are not shown by default; use `aifabrix app show <appKey> --permissions` to see only permissions. For type **external**, also shows External integration (schemaBasePath, systems, dataSources) and a hint to run `aifabrix show <appKey> --online` or `aifabrix app show <appKey>` for dataplane data.
-- **Online:** First line is `Source: online (https://controller.example.com)`. Then application details from the controller API; for type **external**, a section **External system (dataplane)** with system key, display name, type, status, dataSources, application summary, OpenAPI files/endpoints when available, and **Service links** when the system has OpenAPI or MCP: REST OpenAPI docs URL (`/api/v1/rest/{systemKey}/docs`) and MCP docs URL per dataSource (`/api/v1/mcp/{systemKey}/{resourceType}/docs`).
+- **Offline:** First line is `Source: offline (builder/myapp/application.yaml)` or the actual path (e.g. `integration/myapp/application.yaml`). Then Application (key, display name, description, type, deployment, image, registry, port, health, build), Roles, Authentication, Portal input configurations, Databases. Permissions are not shown by default; use `aifabrix app show <appKey> --permissions` to see only permissions. For type **external**, also shows External integration (schemaBasePath, systems, dataSources) and a hint to run `aifabrix show <appKey> --online` or `aifabrix app show <appKey>` for dataplane data.
+- **Online:** First line is `Source: online (https://controller.example.com)`. Then application details from the controller API. For type **external**, the Application section shows **Status** (application status from the controller), **Dataplane Status** (from the dataplane system endpoint), and **Version** when available; it omits port, image, registry, build, URL, and internal URL. For type **external**, a section **External system (dataplane)** shows: credentialId, status, version, showOpenApiDocs, mcpServerUrl, apiDocumentUrl, openApiDocsPageUrl, dataSources, application summary, OpenAPI files/endpoints when available, and **Service links** (OpenAPI docs page URL when provided by dataplane, plus REST OpenAPI and MCP docs URLs). Online external data is fetched from the controller and from the dataplane endpoint `GET /api/v1/external/systems/{systemIdOrKey}` (and config/openapi calls).
 
-**Exit codes:** `0` on success; `1` if variables.yaml not found or invalid YAML (offline), or on auth failure / 404 / API error (online).
+**Exit codes:** `0` on success; `1` if application.yaml not found or invalid YAML (offline), or on auth failure / 404 / API error (online).
 
 **See also:** To show application data from the controller only (online), you can use [aifabrix app show \<appKey\>](#aifabrix-app-show-appkey), which is equivalent to `aifabrix show <appKey> --online`.
 
@@ -79,12 +79,13 @@ aifabrix app show dataplane --permissions --json
 - `<appKey>` - Application key (e.g. `dataplane`, or any registered app key)
 
 **Options:**
+- `--online` - Fetch from controller (default for this command; accepted for UX parity with `aifabrix show <appKey> --online`)
 - `--json` - Output a single JSON object to stdout
 - `--permissions` - Show only list of permissions
 
 **Permissions:** Controller access and `applications:read` (or environment-scoped app access). For external type, Dataplane may be called and requires `external-system:read`. See [Online Commands and Permissions](permissions.md).
 
-**Output:** Same as [aifabrix show \<appKey\>](#aifabrix-show-appkey) with `--online`: source line `Source: online (controller URL)`, Application details, and for type **external** the **External system (dataplane)** section with dataSources and service links. The **Permissions** section is shown only when `--permissions` is set.
+**Output:** Same as [aifabrix show \<appKey\>](#aifabrix-show-appkey) with `--online`: source line `Source: online (controller URL)`, Application details (for type **external**: Status, Dataplane Status, and Version when present; deployment-related fields omitted), and for type **external** the **External system (dataplane)** section with credentialId, status, version, showOpenApiDocs, mcpServerUrl, apiDocumentUrl, openApiDocsPageUrl, dataSources, and service links. The **Permissions** section is shown only when `--permissions` is set.
 
 **Exit codes:** `0` on success; `1` on auth failure, 404, or API error (requires `aifabrix login`).
 
@@ -115,7 +116,7 @@ aifabrix app register myapp --port 8080 --name "My Application"
 
 **Options:**
 - `-p, --port <port>` - Override application port (container/Docker image port; used as base for URL when no `--url`)
-- `-u, --url <url>` - Application URL. If omitted: `app.url`, `deployment.dataplaneUrl`, or `deployment.appUrl` in variables.yaml; else `http://localhost:{build.localPort or port}`. For a **localhost** controller, both the **port** sent to the controller and the fallback URL use the **developer-ID–adjusted Docker/exposed port** (base + developerId×100), e.g. developer 01 with base 3001 → port `3101`, URL `http://localhost:3101`. For non-localhost, `port` is the container port from variables (or `--port`).
+- `-u, --url <url>` - Application URL. If omitted: `app.url`, `deployment.dataplaneUrl`, or `deployment.appUrl` in application.yaml; else `http://localhost:{build.localPort or port}`. For a **localhost** controller, both the **port** sent to the controller and the fallback URL use the **developer-ID–adjusted Docker/exposed port** (base + developerId×100), e.g. developer 01 with base 3001 → port `3101`, URL `http://localhost:3101`. For non-localhost, `port` is the container port from variables (or `--port`).
 - `-n, --name <name>` - Override display name
 - `-d, --description <desc>` - Override description
 
@@ -134,7 +135,7 @@ Your authentication token is invalid or has expired.
 ```
 
 **Process:**
-1. Reads `builder/{appKey}/variables.yaml`
+1. Reads `builder/{appKey}/application.yaml`
 2. If missing, creates minimal configuration automatically
 3. Validates required fields
 4. Registers with Miso Controller
@@ -168,7 +169,7 @@ Your authentication token is invalid or has expired.
 
 **Issues:**
 - **"Not logged in"** → Run `aifabrix login` first
-- **"Missing required fields"** → Update variables.yaml with app.key, app.name
+- **"Missing required fields"** → Update application.yaml with app.key, app.name
 - **"Registration failed"** → Check environment ID and controller URL
 
 ---

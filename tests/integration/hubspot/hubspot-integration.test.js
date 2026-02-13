@@ -27,7 +27,7 @@ const generator = require('../../../lib/generator');
 describe('HubSpot Integration Tests', () => {
   const appName = 'hubspot';
   const integrationPath = path.join(process.cwd(), 'integration', appName);
-  const variablesPath = path.join(integrationPath, 'variables.yaml');
+  const variablesPath = path.join(integrationPath, 'application.yaml');
   const systemFilePath = path.join(integrationPath, 'hubspot-system.json');
   const companyFilePath = path.join(integrationPath, 'hubspot-datasource-company.json');
   const contactFilePath = path.join(integrationPath, 'hubspot-datasource-contact.json');
@@ -116,7 +116,7 @@ describe('HubSpot Integration Tests', () => {
 
   // Load files before all tests
   beforeAll(() => {
-    // Load variables.yaml
+    // Load application.yaml
     const variablesContent = fs.readFileSync(variablesPath, 'utf8');
     variables = yaml.load(variablesContent);
 
@@ -136,7 +136,7 @@ describe('HubSpot Integration Tests', () => {
   });
 
   describe('File Structure Tests', () => {
-    it('should have variables.yaml file', () => {
+    it('should have application.yaml file', () => {
       expect(fs.existsSync(variablesPath)).toBe(true);
     });
 
@@ -162,7 +162,7 @@ describe('HubSpot Integration Tests', () => {
   });
 
   describe('YAML Configuration Tests', () => {
-    it('should parse variables.yaml correctly', () => {
+    it('should parse application.yaml correctly', () => {
       expect(variables).toBeDefined();
       expect(typeof variables).toBe('object');
     });
@@ -685,7 +685,7 @@ describe('HubSpot Integration Tests', () => {
       }
     });
 
-    it('should have matching system key in variables.yaml', () => {
+    it('should have matching system key in application.yaml', () => {
       const systemFile = variables.externalIntegration.systems[0];
       expect(systemFile).toBe('hubspot-system.json');
       expect(systemJson.key).toBe('hubspot');
@@ -926,7 +926,7 @@ describe('HubSpot Integration Tests', () => {
       expect(dealJson.openapi.baseUrl).toBe('https://api.hubapi.com');
     });
 
-    it('should have all datasources referenced in variables.yaml', () => {
+    it('should have all datasources referenced in application.yaml', () => {
       const referencedDataSources = variables.externalIntegration.dataSources;
       expect(referencedDataSources).toContain('hubspot-datasource-company.json');
       expect(referencedDataSources).toContain('hubspot-datasource-contact.json');
@@ -961,7 +961,7 @@ describe('HubSpot Integration Tests', () => {
     });
 
     it('should have correct structure for application-schema.json generation', () => {
-      // Verify that variables.yaml has correct structure for generation
+      // Verify that application.yaml has correct structure for generation
       expect(variables.externalIntegration).toBeDefined();
       expect(variables.externalIntegration.systems).toBeDefined();
       expect(variables.externalIntegration.dataSources).toBeDefined();
@@ -983,11 +983,11 @@ describe('HubSpot Integration Tests', () => {
   });
 
   describe('Deployment JSON Split Tests', () => {
-    // Note: For external systems, split-json only recovers variables.yaml
+    // Note: For external systems, split-json only recovers application.yaml
     // Individual system/datasource JSON files are NOT regenerated
 
-    it('should be able to extract variables.yaml structure from deployment JSON', () => {
-      // Test that splitDeployJson could extract variables.yaml structure
+    it('should be able to extract application.yaml structure from deployment JSON', () => {
+      // Test that splitDeployJson could extract application.yaml structure
       // We verify the structure matches what would be extracted
       const mockDeployment = {
         key: 'hubspot',
@@ -1004,7 +1004,7 @@ describe('HubSpot Integration Tests', () => {
 
     it('should document information loss for external systems', () => {
       // Document that split-json for external systems:
-      // - DOES recover: variables.yaml (with externalIntegration block)
+      // - DOES recover: application.yaml (with externalIntegration block)
       // - DOES NOT recover: Individual system/datasource JSON files
       // - DOES NOT recover: Field mapping expressions separately
       // - DOES NOT recover: Metadata schemas separately
@@ -1015,9 +1015,9 @@ describe('HubSpot Integration Tests', () => {
       expect(true).toBe(true);
     });
 
-    it('should verify split would only extract variables.yaml for external systems', () => {
+    it('should verify split would only extract application.yaml for external systems', () => {
       // For external systems, split-json only extracts:
-      // - variables.yaml (with externalIntegration block referencing files)
+      // - application.yaml (with externalIntegration block referencing files)
       // - env.template (if configuration exists)
       // - README.md (generated documentation)
       // - rbac.yml (if roles/permissions exist)

@@ -195,7 +195,7 @@ describe('App Commands Module', () => {
       const registerCommand = appGroup._subCommands?.find(c => c.name === 'register <appKey>');
       expect(registerCommand).toBeDefined();
       expect(registerCommand.command.description).toHaveBeenCalledWith('Register application and get pipeline credentials');
-      expect(registerCommand.command.option).toHaveBeenCalledWith('-p, --port <port>', 'Application port (default: from variables.yaml)');
+      expect(registerCommand.command.option).toHaveBeenCalledWith('-p, --port <port>', 'Application port (default: from application.yaml)');
       expect(registerCommand.command.option).toHaveBeenCalledWith('-n, --name <name>', 'Override display name');
       expect(registerCommand.command.option).toHaveBeenCalledWith('-d, --description <desc>', 'Override description');
       expect(registerCommand.command.requiredOption).not.toHaveBeenCalled();
@@ -236,12 +236,13 @@ describe('App Commands Module', () => {
       expect(deploymentCommand.command.option).toHaveBeenCalledWith('--page-size <n>', expect.any(String), '50');
     });
 
-    it('should setup app show command with --permissions option', () => {
+    it('should setup app show command with --online, --json and --permissions options', () => {
       setupAppCommands(program);
 
       const appGroup = program._appGroup;
       const showCommand = appGroup._subCommands?.find(c => c.name === 'show <appKey>');
       expect(showCommand).toBeDefined();
+      expect(showCommand.command.option).toHaveBeenCalledWith('--online', 'Fetch from controller (default for this command)');
       expect(showCommand.command.option).toHaveBeenCalledWith('--json', 'Output as JSON');
       expect(showCommand.command.option).toHaveBeenCalledWith('--permissions', 'Show only list of permissions');
     });

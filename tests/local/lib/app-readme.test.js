@@ -366,11 +366,11 @@ describe('Application README Module', () => {
   });
 
   describe('ensureReadmeForAppPath', () => {
-    it('should generate README.md when variables.yaml exists', async() => {
+    it('should generate README.md when application.yaml exists', async() => {
       const appPath = path.join(process.cwd(), 'ensure-path-app');
       fsSync.mkdirSync(appPath, { recursive: true });
       const variablesContent = 'app:\n  key: myapp\nport: 3001\nimage:\n  name: aifabrix/myapp\n  registry: myacr.azurecr.io';
-      fsSync.writeFileSync(path.join(appPath, 'variables.yaml'), variablesContent, 'utf8');
+      fsSync.writeFileSync(path.join(appPath, 'application.yaml'), variablesContent, 'utf8');
 
       await appReadme.ensureReadmeForAppPath(appPath, 'myapp');
 
@@ -382,11 +382,11 @@ describe('Application README Module', () => {
       expect(content).toContain('http://localhost:3001');
     });
 
-    it('should overwrite existing README.md when variables.yaml exists', async() => {
+    it('should overwrite existing README.md when application.yaml exists', async() => {
       const appPath = path.join(process.cwd(), 'ensure-path-overwrite');
       fsSync.mkdirSync(appPath, { recursive: true });
       fsSync.writeFileSync(path.join(appPath, 'README.md'), '# Old', 'utf8');
-      fsSync.writeFileSync(path.join(appPath, 'variables.yaml'), 'port: 4000\nimage:\n  name: aifabrix/overwrite', 'utf8');
+      fsSync.writeFileSync(path.join(appPath, 'application.yaml'), 'port: 4000\nimage:\n  name: aifabrix/overwrite', 'utf8');
 
       await appReadme.ensureReadmeForAppPath(appPath, 'overwrite');
 
@@ -395,7 +395,7 @@ describe('Application README Module', () => {
       expect(content).not.toBe('# Old');
     });
 
-    it('should do nothing when variables.yaml does not exist', async() => {
+    it('should do nothing when application.yaml does not exist', async() => {
       const appPath = path.join(process.cwd(), 'ensure-path-no-vars');
       fsSync.mkdirSync(appPath, { recursive: true });
 
@@ -406,11 +406,11 @@ describe('Application README Module', () => {
   });
 
   describe('ensureReadmeForApp', () => {
-    it('should generate README at builder path when variables.yaml exists', async() => {
+    it('should generate README at builder path when application.yaml exists', async() => {
       const builderPath = path.join(process.cwd(), 'builder', 'dataplane');
       fsSync.mkdirSync(builderPath, { recursive: true });
       fsSync.writeFileSync(
-        path.join(builderPath, 'variables.yaml'),
+        path.join(builderPath, 'application.yaml'),
         'port: 3001\nimage:\n  name: aifabrix/dataplane\n  registry: myacr.azurecr.io',
         'utf8'
       );

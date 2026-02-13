@@ -13,6 +13,8 @@ The wizard helps you:
 - Validate configurations before deployment
 - Support headless mode via `--config <file>` or `--silent` (with app name and existing `wizard.yaml`) for automated/non-interactive runs
 
+The wizard produces configuration that you then **deploy** (via the controller) or **upload** (to the dataplane); after publish, MCP and OpenAPI docs are available from the dataplane. See [Controller and Dataplane: What, Why, When](deploying.md#controller-and-dataplane-what-why-when) for details.
+
 ## Quick Start
 
 ### Command options
@@ -161,9 +163,9 @@ Returns validation errors and warnings.
 The wizard saves all files to `integration/<appKey>/`:
 - `wizard.yaml` - Saved wizard state (loaded on resume; saved on success or on error as partial state)
 - `error.log` - Errors appended here (timestamp + message; validation details when the API returns them)
-- `variables.yaml` - Application variables and external integration configuration
-- `<systemKey>-system.json` - System configuration
-- `<systemKey>-datasource-*.json` - Datasource configurations
+- `application.yaml` - Application variables and external integration configuration
+- `<systemKey>-system.yaml` - System configuration
+- `<systemKey>-datasource-*.jsyamlon` - Datasource configurations
 - `env.template` - Environment variable template
 - `README.md` - Documentation (AI-generated from dataplane when available)
 - `<systemKey>-deploy.json` - Single deployment file
@@ -371,20 +373,20 @@ The wizard creates the following file structure:
 
 ```yaml
 integration/<appKey>/
-├── wizard.yaml                 # Saved wizard state (load/save and resume)
-├── error.log                   # Errors appended (timestamp + message; validation details when available)
-├── variables.yaml              # Application variables and external integration config
-├── <systemKey>-system.json     # System configuration
-├── <systemKey>-datasource-*.json   # Datasource configurations
-├── env.template                # Environment variable template
-├── README.md                   # Documentation (AI-generated from dataplane when available)
-├── <systemKey>-deploy.json     # Single deployment file
-└── deploy.js                   # Node deployment script (check auth → login → deploy → test)
+├── wizard.yaml                    # Saved wizard state (load/save and resume)
+├── error.log                      # Errors appended (timestamp + message; validation details when available)
+├── application.yaml               # Application variables and external integration config
+├── <systemKey>-system.yaml        # System configuration
+├── <systemKey>-datasource-*.yaml  # Datasource configurations
+├── env.template                   # Environment variable template
+├── README.md                      # Documentation (AI-generated from dataplane when available)
+├── <systemKey>-deploy.json        # Single deployment file
+└── deploy.js                      # Node deployment script (check auth → login → deploy → test)
 ```
 
 ### README.md Generation
 
-The wizard generates files (including `variables.yaml` and `<systemKey>-deploy.json`), then calls the dataplane **POST** `/api/v1/wizard/deployment-docs/{systemKey}` with optional `variablesYaml` and `deployJson` in the request body. This produces higher-quality README.md content aligned with the integration folder. If the API is unavailable or returns no content, a basic README.md is used.
+The wizard generates files (including `application.yaml` and `<systemKey>-deploy.json`), then calls the dataplane **POST** `/api/v1/wizard/deployment-docs/{systemKey}` with optional `variablesYaml` and `deployJson` in the request body. This produces higher-quality README.md content aligned with the integration folder. If the API is unavailable or returns no content, a basic README.md is used.
 
 ## Environment Variables
 
@@ -399,7 +401,7 @@ Update these values in your secrets store before deployment.
 
 ## Deployment
 
-After the wizard completes, you can deploy using the generated `deploy.js` script or the CLI directly.
+After the wizard completes, you can test the integration on the dataplane with **`aifabrix upload <system-key>`** before promoting with **`aifabrix deploy <app>`**. See [External Integration Commands](commands/external-integration.md#aifabrix-upload-system-key). You can also deploy using the generated `deploy.js` script or the CLI directly.
 
 ### Using deploy.js
 
@@ -420,13 +422,7 @@ Controller URL and environment come from config (`aifabrix auth config`) or from
 
 ### Using CLI Directly
 
-You can also deploy using the CLI directly. For external systems in `integration/<appKey>/`, use `--type external` (no app register needed; the controller creates and deploys automatically):
-
-```bash
-aifabrix deploy <appKey> --type external
-```
-
-If the app is auto-detected as external (e.g. `integration/<appKey>/variables.yaml` has `app.type: external`), you can omit the flag:
+You can also deploy using the CLI directly. For external systems in `integration/<appKey>/`, the CLI resolves the app path automatically (integration first, then builder). No app register needed; the controller creates and deploys automatically:
 
 ```bash
 aifabrix deploy <appKey>

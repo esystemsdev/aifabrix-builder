@@ -1,0 +1,37 @@
+app:
+  key: hubspot
+  displayName: HubSpot CRM Integration
+  description: HubSpot CRM external system integration with companies, contacts, and deals
+  type: external
+configuration:
+  - name: HUBSPOT_API_VERSION
+    portalInput:
+      field: select
+      label: HubSpot API Version
+      placeholder: Select API version
+      options:
+        - v1
+        - v2
+        - v3
+      validation:
+        required: false
+  - name: MAX_PAGE_SIZE
+    portalInput:
+      field: text
+      label: Maximum Page Size
+      placeholder: '100'
+      validation:
+        required: false
+        pattern: ^[0-9]+$
+        minLength: 1
+        maxLength: 1000
+externalIntegration:
+  schemaBasePath: ./
+  systems:
+    - hubspot-system.json
+  dataSources:
+    - hubspot-datasource-company.json
+    - hubspot-datasource-contact.json
+    - hubspot-datasource-deal.json
+  autopublish: true
+  version: 1.0.0

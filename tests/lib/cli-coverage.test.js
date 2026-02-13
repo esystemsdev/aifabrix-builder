@@ -87,11 +87,11 @@ describe('CLI Coverage Tests', () => {
     });
 
     it('should execute deployApp command', async() => {
-      app.deployApp.mockResolvedValue({ deploymentId: '123' });
+      app.deployApp.mockResolvedValue({ result: { deploymentId: '123' }, usedExternalDeploy: false });
 
-      const result = await app.deployApp('test-app', { controller: 'https://controller.example.com' });
+      const outcome = await app.deployApp('test-app', { controller: 'https://controller.example.com' });
 
-      expect(result).toHaveProperty('deploymentId');
+      expect(outcome.result).toHaveProperty('deploymentId');
     });
   });
 

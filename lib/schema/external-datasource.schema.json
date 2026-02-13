@@ -1587,6 +1587,11 @@
            }
         },
         "additionalProperties":false
+     },
+     "triggerPathsHash":{
+        "type":"string",
+        "description":"SHA256 hash of triggerPaths payload (64-char hex). Used to detect structural changes. Optional; Dataplane computes when absent.",
+        "pattern":"^[a-f0-9]{64}$"
      }
   },
   "additionalProperties":false

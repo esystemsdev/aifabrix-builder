@@ -256,7 +256,7 @@ Secrets --> Deploy
 ### Prerequisites
 
 1. AI Fabrix CLI installed and authenticated
-2. Application variables.yaml configured
+2. Application application.yaml configured
 3. Access to controller environment (miso/dev/tst/pro)
 
 ### Step 1: Login to Controller
@@ -274,7 +274,7 @@ aifabrix app register myapp
 ```
 
 **What happens:**
-1. Reads configuration from `builder/myapp/variables.yaml` automatically
+1. Reads configuration from `builder/myapp/application.yaml` automatically
 2. Creates minimal configuration if file doesn't exist
 3. Registers with controller
 4. For localhost deployments: automatically saves credentials to `~/.aifabrix/secrets.local.yaml` and updates `env.template` with `MISO_CLIENTID`, `MISO_CLIENTSECRET`, and `MISO_CONTROLLER_URL`
@@ -653,7 +653,7 @@ aifabrix create my-ts-app --port 3000 --database --authentication --github
 #   ├── release.yaml
 #   └── pr-checks.yaml
 # builder/my-ts-app/
-#   ├── variables.yaml
+#   ├── application.yaml
 #   ├── env.template
 #   ├── rbac.yaml
 #   └── <appKey>-deploy.json (e.g. myapp-deploy.json)
@@ -704,7 +704,7 @@ EOF
 
 Use the Pipeline API for automated deployments with proper authentication.
 
-**Note:** The `aifabrix validate` command validates application configurations locally before deployment. It checks `variables.yaml`, `env.template`, and `rbac.yaml` files for syntax errors and schema compliance. This helps catch configuration errors early, before building Docker images, saving time in CI/CD pipelines.
+**Note:** The `aifabrix validate` command validates application configurations locally before deployment. It checks `application.yaml`, `env.template`, and `rbac.yaml` files for syntax errors and schema compliance. This helps catch configuration errors early, before building Docker images, saving time in CI/CD pipelines.
 
 For automated deployments, use the CLI-based workflow (see examples above) which includes:
 1. `aifabrix login` - Authenticate with controller
@@ -771,7 +771,7 @@ jobs:
 1. **Setup Node.js**: Configures Node.js environment for the runner
 2. **Install AI Fabrix Builder**: Installs the `@aifabrix/builder` CLI package globally
 3. **Authenticate with Controller**: Uses `aifabrix login` to authenticate and store credentials in `~/.aifabrix/config.yaml` on the runner
-4. **Validate Application Manifest**: Validates `variables.yaml`, `env.template`, and `rbac.yaml` before building (catches configuration errors early, saving time)
+4. **Validate Application Manifest**: Validates `application.yaml`, `env.template`, and `rbac.yaml` before building (catches configuration errors early, saving time)
 5. **Build Docker Image**: Builds the Docker image with proper tagging using the commit SHA
 6. **Deploy Application**: Deploys to ACR/Azure using stored authentication from login (no credentials needed in deploy step)
 
@@ -884,7 +884,7 @@ The workflow automatically selects the correct environment and secrets based on 
 **Why Validate Before Build:**
 
 The `aifabrix validate` step runs **before** the build step to catch configuration errors early. This saves time by:
-- Validating `variables.yaml` syntax and schema compliance
+- Validating `application.yaml` syntax and schema compliance
 - Checking `env.template` for proper secret references
 - Validating `rbac.yaml` for external systems
 - Catching errors before spending time building Docker images

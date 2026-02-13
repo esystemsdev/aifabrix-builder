@@ -100,11 +100,11 @@ aifabrix create hubspot --type external
 ```yaml
 integration/
   hubspot/
-    variables.yaml                    # App configuration
-    hubspot-system.json              # External system definition
-    hubspot-datasource-company.json  # Companies datasource
-    hubspot-datasource-contact.json  # Contacts datasource
-    hubspot-datasource-deal.json     # Deals datasource
+    application.yaml                    # App configuration
+    hubspot-system.yaml              # External system definition
+    hubspot-datasource-company.yaml  # Companies datasource
+    hubspot-datasource-contact.yaml  # Contacts datasource
+    hubspot-datasource-deal.yaml     # Deals datasource
     hubspot-deploy.json              # Deployment manifest (generated)
     rbac.yaml                        # RBAC roles and permissions (optional)
     env.template                     # Environment variables
@@ -147,11 +147,11 @@ classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
 %% =======================
 %% Flow
 %% =======================
-Create[aifabrix create hubspot<br/>--type external]:::primary --> Variables[variables.yaml<br/>App configuration<br/>externalIntegration block]:::base
-Create --> SystemJson[hubspot-system.json<br/>External system definition]:::base
-Create --> Datasource1[hubspot-datasource-company.json<br/>Companies datasource]:::base
-Create --> Datasource2[hubspot-datasource-contact.json<br/>Contacts datasource]:::base
-Create --> Datasource3[hubspot-datasource-deal.json<br/>Deals datasource]:::base
+Create[aifabrix create hubspot<br/>--type external]:::primary --> Variables[application.yaml<br/>App configuration<br/>externalIntegration block]:::base
+Create --> SystemYaml[hubspot-system.yaml<br/>External system definition]:::base
+Create --> Datasource1[hubspot-datasource-company.yaml<br/>Companies datasource]:::base
+Create --> Datasource2[hubspot-datasource-contact.yaml<br/>Contacts datasource]:::base
+Create --> Datasource3[hubspot-datasource-deal.yaml<br/>Deals datasource]:::base
 Create --> DeployManifest[hubspot-deploy.json<br/>Deployment manifest]:::base
 Create --> EnvTemplate[env.template<br/>Environment variables]:::base
 Create --> Readme[README.md<br/>Documentation]:::base
@@ -165,57 +165,43 @@ Datasource3 --> Deploy
 
 ### Step 2: Configure Authentication
 
-Edit `integration/hubspot/hubspot-system.json` to configure OAuth2. Use standard environment variable references. Add `BASE_URL` in `configuration` for the API base (schema does not support `environment.baseUrl`):
+Edit `integration/hubspot/hubspot-system.yaml` to configure OAuth2. Use standard environment variable references. Add `BASE_URL` in `configuration` for the API base (schema does not support `environment.baseUrl`):
 
-```json
-{
-  "key": "hubspot",
-  "displayName": "HubSpot CRM",
-  "description": "HubSpot CRM integration",
-  "type": "openapi",
-  "authentication": {
-    "type": "oauth2",
-    "oauth2": {
-      "tokenUrl": "{{TOKENURL}}",
-      "clientId": "{{CLIENTID}}",
-      "clientSecret": "{{CLIENTSECRET}}",
-      "scopes": [
-        "crm.objects.companies.read",
-        "crm.objects.companies.write",
-        "crm.objects.contacts.read",
-        "crm.objects.contacts.write",
-        "crm.objects.deals.read",
-        "crm.objects.deals.write"
-      ]
-    }
-  },
-  "configuration": [
-    {
-      "name": "CLIENTID",
-      "value": "hubspot-clientidKeyVault",
-      "location": "keyvault",
-      "required": true
-    },
-    {
-      "name": "CLIENTSECRET",
-      "value": "hubspot-clientsecretKeyVault",
-      "location": "keyvault",
-      "required": true
-    },
-    {
-      "name": "TOKENURL",
-      "value": "https://api.hubapi.com/oauth/v1/token",
-      "location": "variable",
-      "required": true
-    },
-    {
-      "name": "BASE_URL",
-      "value": "https://api.hubapi.com",
-      "location": "variable",
-      "required": true
-    }
-  ]
-}
+```yaml
+key: hubspot
+displayName: HubSpot CRM
+description: HubSpot CRM integration
+type: openapi
+authentication:
+  type: oauth2
+  oauth2:
+    tokenUrl: "{{TOKENURL}}"
+    clientId: "{{CLIENTID}}"
+    clientSecret: "{{CLIENTSECRET}}"
+    scopes:
+      - crm.objects.companies.read
+      - crm.objects.companies.write
+      - crm.objects.contacts.read
+      - crm.objects.contacts.write
+      - crm.objects.deals.read
+      - crm.objects.deals.write
+configuration:
+  - name: CLIENTID
+    value: hubspot-clientidKeyVault
+    location: keyvault
+    required: true
+  - name: CLIENTSECRET
+    value: hubspot-clientsecretKeyVault
+    location: keyvault
+    required: true
+  - name: TOKENURL
+    value: https://api.hubapi.com/oauth/v1/token
+    location: variable
+    required: true
+  - name: BASE_URL
+    value: https://api.hubapi.com
+    location: variable
+    required: true
 ```
 
 **What this does:**
@@ -233,50 +219,39 @@ Edit `integration/hubspot/hubspot-system.json` to configure OAuth2. Use standard
 
 ### Step 3: Configure Datasources
 
-Each datasource maps an external entity (company, contact, deal) to your dataplane. Edit the datasource JSON files to configure field mappings.
+Each datasource maps an external entity (company, contact, deal) to your dataplane. Edit the datasource YAML files to configure field mappings.
 
-**Example: `hubspot-datasource-company.json`**
+**Example: `hubspot-datasource-company.yaml`**
 
-```json
-{
-  "key": "hubspot-company",
-  "systemKey": "hubspot",
-  "entityType": "company",
-  "resourceType": "customer",
-  "fieldMappings": {
-    "dimensions": {
-      "country": "metadata.country",
-      "domain": "metadata.domain"
-    },
-    "attributes": {
-      "name": {
-        "expression": "{{properties.name.value}} | trim",
-        "type": "string",
-        "indexed": false
-      },
-      "domain": {
-        "expression": "{{properties.domain.value}} | toLower | trim",
-        "type": "string",
-        "indexed": false
-      },
-      "country": {
-        "expression": "{{properties.country.value}} | toUpper | trim",
-        "type": "string",
-        "indexed": true
-      }
-    }
-  },
-  "openapi": {
-    "enabled": true,
-    "operations": {
-      "list": {
-        "operationId": "getCompanies",
-        "method": "GET",
-        "path": "/crm/v3/objects/companies"
-      }
-    }
-  }
-}
+```yaml
+key: hubspot-company
+systemKey: hubspot
+entityType: company
+resourceType: customer
+fieldMappings:
+  dimensions:
+    country: metadata.country
+    domain: metadata.domain
+  attributes:
+    name:
+      expression: "{{properties.name.value}} | trim"
+      type: string
+      indexed: false
+    domain:
+      expression: "{{properties.domain.value}} | toLower | trim"
+      type: string
+      indexed: false
+    country:
+      expression: "{{properties.country.value}} | toUpper | trim"
+      type: string
+      indexed: true
+openapi:
+  enabled: true
+  operations:
+    list:
+      operationId: getCompanies
+      method: GET
+      path: /crm/v3/objects/companies
 ```
 
 **What this does:**
@@ -328,18 +303,18 @@ DataplaneSchema --> Query[Query via<br/>MCP/OpenAPI]:::base
 ### Step 4: Validate Configuration
 
 ```bash
-# Validate entire integration
-aifabrix validate hubspot --type external
+# Validate entire integration (path resolved: integration first, then builder)
+aifabrix validate hubspot
 
 # Validate individual files
-aifabrix validate integration/hubspot/hubspot-system.json
-aifabrix validate integration/hubspot/hubspot-datasource-company.json
-aifabrix validate integration/hubspot/hubspot-datasource-contact.json
-aifabrix validate integration/hubspot/hubspot-datasource-deal.json
+aifabrix validate integration/hubspot/hubspot-system.yaml
+aifabrix validate integration/hubspot/hubspot-datasource-company.yaml
+aifabrix validate integration/hubspot/hubspot-datasource-contact.yaml
+aifabrix validate integration/hubspot/hubspot-datasource-deal.yaml
 ```
 
 **What happens:**
-- Validates JSON syntax
+- Validates YAML syntax
 - Checks against schemas (`external-system.schema.json`, `external-datasource.schema.json`)
 - Verifies required fields are present
 - Checks field mapping expressions are valid
@@ -352,20 +327,20 @@ aifabrix validate integration/hubspot/hubspot-datasource-deal.json
 # Login to controller
 aifabrix login --controller https://controller.aifabrix.dev --method device --environment dev
 
-# Deploy to controller (use --type external when app is in integration/<app>/ only)
-aifabrix deploy hubspot --type external
+# Deploy to controller (path resolved: integration first, then builder; no app register needed for external)
+aifabrix deploy hubspot
 ```
 
 **What happens:**
 1. `aifabrix validate` - Validates components and generates full deployment manifest
 2. `aifabrix json` - Generates `<systemKey>-deploy.json` deployment manifest (combines system + datasources) for pipeline deployment
-3. `aifabrix deploy <app> --type external` - Deploys from `integration/<app>/` via Miso Controller pipeline API (no app register needed; controller creates and deploys automatically)
+3. `aifabrix deploy <app>` - Resolves app path (integration first, then builder); deploys from the resolved path via Miso Controller pipeline API (no app register needed for external; controller creates and deploys automatically)
 4. System is registered in the dataplane
 5. Datasources are published and available for querying
 
-**Note:** The `aifabrix json` command generates `<systemKey>-deploy.json` deployment manifest. Individual component files (`hubspot-system.json`, `hubspot-datasource-company.json`, etc.) remain in your `integration/` folder and are referenced in `variables.yaml`.
+**Note:** The `aifabrix json` command generates `<systemKey>-deploy.json` deployment manifest. Individual component files (`hubspot-system.yaml`, `hubspot-datasource-company.yaml`, etc.) remain in your `integration/` folder and are referenced in `application.yaml`.
 
-> **Note:** If the controller requires a Docker image, use `internal: true` in `variables.yaml` (externalIntegration) so the system deploys on dataplane startup; see Troubleshooting.
+> **Note:** If the controller requires a Docker image, use `internal: true` in `application.yaml` (externalIntegration) so the system deploys on dataplane startup; see Troubleshooting.
 
 ### Step 6: Verify Deployment
 
@@ -391,7 +366,7 @@ aifabrix datasource validate hubspot-company
 
 ### External System Configuration
 
-The external system JSON (`<systemKey>-system.json`) defines the connection to the third-party API.
+The external system YAML (`<systemKey>-system.yaml`) defines the connection to the third-party API.
 
 **Required fields:**
 - `key` - Unique identifier (lowercase, alphanumeric, hyphens)
@@ -404,48 +379,46 @@ The external system JSON (`<systemKey>-system.json`) defines the connection to t
 **BASE_URL / API base URL:** For the external API base URL, add a **`BASE_URL`** (or `API_BASE_URL`) entry in the `configuration` array. You can use a static value or Key Vault reference, and use `portalInput` so the URL can differ per environment (e.g. production vs dev) and be set via the portal. Reference it in your auth block or OpenAPI config as `{{BASE_URL}}` where needed. The external system schema does not define `environment.baseUrl`; use `configuration` only.
 
 **Example structure:**
-```json
-{
-  "key": "hubspot",
-  "displayName": "HubSpot CRM",
-  "description": "HubSpot CRM integration",
-  "type": "openapi",
-  "enabled": true,
-  "authentication": { /* see Authentication section */ },
-  "configuration": [ /* see Configuration section; include BASE_URL for API base */ ],
-  "openapi": {
-    "documentKey": "hubspot-v3",
-    "autoDiscoverEntities": false
-  },
-  "tags": ["crm", "sales", "marketing"]
-}
+```yaml
+key: hubspot
+displayName: HubSpot CRM
+description: HubSpot CRM integration
+type: openapi
+enabled: true
+authentication:  # see Authentication section
+configuration:   # see Configuration section; include BASE_URL for API base
+openapi:
+  documentKey: hubspot-v3
+  autoDiscoverEntities: false
+tags:
+  - crm
+  - sales
+  - marketing
 ```
 
 ### Configuration Array
 
-The `configuration` array defines variables that can be set via the Miso Controller or Dataplane portal interface. This allows users to configure authentication and other settings without editing JSON files.
+The `configuration` array defines variables that can be set via the Miso Controller or Dataplane portal interface. This allows users to configure authentication and other settings without editing YAML files.
 
 **Configuration object structure:**
-```json
-{
-  "name": "VARIABLENAME",
-  "value": "keyvault-key-name or literal-value",
-  "location": "keyvault or variable",
-  "required": true,
-  "portalInput": {
-    "field": "text|password|textarea|select|json",
-    "label": "Display Label",
-    "placeholder": "Placeholder text",
-    "masked": true,
-    "options": ["option1", "option2"],
-    "validation": {
-      "required": true,
-      "minLength": 1,
-      "maxLength": 100,
-      "pattern": "^regex$"
-    }
-  }
-}
+```yaml
+name: VARIABLENAME
+value: keyvault-key-name or literal-value
+location: keyvault or variable
+required: true
+portalInput:
+  field: text|password|textarea|select|json
+  label: Display Label
+  placeholder: Placeholder text
+  masked: true
+  options:
+    - option1
+    - option2
+  validation:
+    required: true
+    minLength: 1
+    maxLength: 100
+    pattern: "^regex$"
 ```
 
 **Fields:**
@@ -501,29 +474,20 @@ OAuth2 redirect URI is managed by the dataplane credentials system and is not co
 **Environment promotions:** Configuration parameters support **environment promotions**: you can keep different values for different environments (static or `kv/key` Key Vault values). The platform manages enterprise promotions and overridable paths. **Read more:** [Deployment key](configuration/deployment-key.md).
 
 **Example - Standard variables (no portalInput):**
-```json
-{
-  "configuration": [
-    {
-      "name": "CLIENTID",
-      "value": "hubspot-clientidKeyVault",
-      "location": "keyvault",
-      "required": true
-    },
-    {
-      "name": "CLIENTSECRET",
-      "value": "hubspot-clientsecretKeyVault",
-      "location": "keyvault",
-      "required": true
-    },
-    {
-      "name": "TOKENURL",
-      "value": "https://api.hubapi.com/oauth/v1/token",
-      "location": "variable",
-      "required": true
-    }
-  ]
-}
+```yaml
+configuration:
+  - name: CLIENTID
+    value: hubspot-clientidKeyVault
+    location: keyvault
+    required: true
+  - name: CLIENTSECRET
+    value: hubspot-clientsecretKeyVault
+    location: keyvault
+    required: true
+  - name: TOKENURL
+    value: https://api.hubapi.com/oauth/v1/token
+    location: variable
+    required: true
 ```
 
 ### Custom Variables with Portal Input
@@ -531,59 +495,47 @@ OAuth2 redirect URI is managed by the dataplane credentials system and is not co
 For **custom variables** (non-standard), you can use `portalInput` to configure UI fields in the portal interface. Use any variable name like `{{MYVAR}}` and configure it with `portalInput`.
 
 **Example - Custom variables with portalInput:**
-```json
-{
-  "configuration": [
-    {
-      "name": "HUBSPOT_API_VERSION",
-      "value": "v3",
-      "location": "variable",
-      "required": false,
-      "portalInput": {
-        "field": "select",
-        "label": "HubSpot API Version",
-        "placeholder": "Select API version",
-        "options": ["v1", "v2", "v3"],
-        "validation": {
-          "required": false
-        }
-      }
-    },
-    {
-      "name": "MAX_PAGE_SIZE",
-      "value": "100",
-      "location": "variable",
-      "required": false,
-      "portalInput": {
-        "field": "text",
-        "label": "Maximum Page Size",
-        "placeholder": "100",
-        "validation": {
-          "required": false,
-          "pattern": "^[0-9]+$",
-          "minLength": 1,
-          "maxLength": 1000
-        }
-      }
-    },
-    {
-      "name": "CUSTOM_ENDPOINT",
-      "value": "custom-endpointKeyVault",
-      "location": "keyvault",
-      "required": false,
-      "portalInput": {
-        "field": "text",
-        "label": "Custom API Endpoint",
-        "placeholder": "https://api.example.com/custom",
-        "masked": false,
-        "validation": {
-          "required": false,
-          "pattern": "^(http|https)://.*$"
-        }
-      }
-    }
-  ]
-}
+```yaml
+configuration:
+  - name: HUBSPOT_API_VERSION
+    value: v3
+    location: variable
+    required: false
+    portalInput:
+      field: select
+      label: HubSpot API Version
+      placeholder: Select API version
+      options:
+        - v1
+        - v2
+        - v3
+      validation:
+        required: false
+  - name: MAX_PAGE_SIZE
+    value: "100"
+    location: variable
+    required: false
+    portalInput:
+      field: text
+      label: Maximum Page Size
+      placeholder: "100"
+      validation:
+        required: false
+        pattern: "^[0-9]+$"
+        minLength: 1
+        maxLength: 1000
+  - name: CUSTOM_ENDPOINT
+    value: custom-endpointKeyVault
+    location: keyvault
+    required: false
+    portalInput:
+      field: text
+      label: Custom API Endpoint
+      placeholder: https://api.example.com/custom
+      masked: false
+      validation:
+        required: false
+        pattern: "^(http|https)://.*$"
 ```
 
 **When to use custom variables:**
@@ -597,38 +549,29 @@ For **custom variables** (non-standard), you can use `portalInput` to configure 
 
 Best for production integrations with user consent flows.
 
-```json
-{
-  "authentication": {
-    "type": "oauth2",
-    "oauth2": {
-      "tokenUrl": "{{TOKENURL}}",
-      "clientId": "{{CLIENTID}}",
-      "clientSecret": "{{CLIENTSECRET}}",
-      "scopes": ["read", "write"]
-    }
-  },
-  "configuration": [
-    {
-      "name": "CLIENTID",
-      "value": "hubspot-clientidKeyVault",
-      "location": "keyvault",
-      "required": true
-    },
-    {
-      "name": "CLIENTSECRET",
-      "value": "hubspot-clientsecretKeyVault",
-      "location": "keyvault",
-      "required": true
-    },
-    {
-      "name": "TOKENURL",
-      "value": "https://api.example.com/oauth/v1/token",
-      "location": "variable",
-      "required": true
-    }
-  ]
-}
+```yaml
+authentication:
+  type: oauth2
+  oauth2:
+    tokenUrl: "{{TOKENURL}}"
+    clientId: "{{CLIENTID}}"
+    clientSecret: "{{CLIENTSECRET}}"
+    scopes:
+      - read
+      - write
+configuration:
+  - name: CLIENTID
+    value: hubspot-clientidKeyVault
+    location: keyvault
+    required: true
+  - name: CLIENTSECRET
+    value: hubspot-clientsecretKeyVault
+    location: keyvault
+    required: true
+  - name: TOKENURL
+    value: https://api.example.com/oauth/v1/token
+    location: variable
+    required: true
 ```
 
 **Note:** Standard variables (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`) don't need `portalInput`—they're managed by the dataplane credentials system.
@@ -644,24 +587,17 @@ Best for production integrations with user consent flows.
 
 Simpler for testing or private APIs.
 
-```json
-{
-  "authentication": {
-    "type": "apikey",
-    "apikey": {
-      "headerName": "X-API-Key",
-      "key": "{{APIKEY}}"
-    }
-  },
-  "configuration": [
-    {
-      "name": "APIKEY",
-      "value": "hubspot-apikeyKeyVault",
-      "location": "keyvault",
-      "required": true
-    }
-  ]
-}
+```yaml
+authentication:
+  type: apikey
+  apikey:
+    headerName: X-API-Key
+    key: "{{APIKEY}}"
+configuration:
+  - name: APIKEY
+    value: hubspot-apikeyKeyVault
+    location: keyvault
+    required: true
 ```
 
 **Note:** Standard variable `APIKEY` doesn't need `portalInput`—it's managed by the dataplane credentials system.
@@ -675,30 +611,21 @@ Simpler for testing or private APIs.
 
 For simple username/password authentication.
 
-```json
-{
-  "authentication": {
-    "type": "basic",
-    "basic": {
-      "username": "{{USERNAME}}",
-      "password": "{{PASSWORD}}"
-    }
-  },
-  "configuration": [
-    {
-      "name": "USERNAME",
-      "value": "hubspot-usernameKeyVault",
-      "location": "keyvault",
-      "required": true
-    },
-    {
-      "name": "PASSWORD",
-      "value": "hubspot-passwordKeyVault",
-      "location": "keyvault",
-      "required": true
-    }
-  ]
-}
+```yaml
+authentication:
+  type: basic
+  basic:
+    username: "{{USERNAME}}"
+    password: "{{PASSWORD}}"
+configuration:
+  - name: USERNAME
+    value: hubspot-usernameKeyVault
+    location: keyvault
+    required: true
+  - name: PASSWORD
+    value: hubspot-passwordKeyVault
+    location: keyvault
+    required: true
 ```
 
 **Note:** Standard variables (`USERNAME`, `PASSWORD`) don't need `portalInput`—they're managed by the dataplane credentials system.
@@ -707,38 +634,27 @@ For simple username/password authentication.
 
 For Azure Active Directory authentication.
 
-```json
-{
-  "authentication": {
-    "type": "aad",
-    "aad": {
-      "tenantId": "{{TENANTID}}",
-      "clientId": "{{CLIENTID}}",
-      "clientSecret": "{{CLIENTSECRET}}",
-      "scope": "https://graph.microsoft.com/.default"
-    }
-  },
-  "configuration": [
-    {
-      "name": "TENANTID",
-      "value": "azure-tenantidKeyVault",
-      "location": "keyvault",
-      "required": true
-    },
-    {
-      "name": "CLIENTID",
-      "value": "azure-clientidKeyVault",
-      "location": "keyvault",
-      "required": true
-    },
-    {
-      "name": "CLIENTSECRET",
-      "value": "azure-clientsecretKeyVault",
-      "location": "keyvault",
-      "required": true
-    }
-  ]
-}
+```yaml
+authentication:
+  type: aad
+  aad:
+    tenantId: "{{TENANTID}}"
+    clientId: "{{CLIENTID}}"
+    clientSecret: "{{CLIENTSECRET}}"
+    scope: https://graph.microsoft.com/.default
+configuration:
+  - name: TENANTID
+    value: azure-tenantidKeyVault
+    location: keyvault
+    required: true
+  - name: CLIENTID
+    value: azure-clientidKeyVault
+    location: keyvault
+    required: true
+  - name: CLIENTSECRET
+    value: azure-clientsecretKeyVault
+    location: keyvault
+    required: true
 ```
 
 **Note:** Standard variables (`CLIENTID`, `CLIENTSECRET`) don't need `portalInput`—they're managed by the dataplane credentials system.
@@ -758,9 +674,9 @@ External systems support RBAC (Role-Based Access Control) configuration via `rba
 External systems can define roles and permissions in two ways:
 
 1. **In `rbac.yaml` file** (recommended for separation of concerns)
-2. **Directly in the system JSON file** (`<systemKey>-system.json`)
+2. **Directly in the system YAML file** (`<systemKey>-system.yaml`)
 
-When generating deployment JSON with `aifabrix json`, roles/permissions from `rbac.yaml` are automatically merged into the system JSON. Priority: roles/permissions in system JSON > rbac.yaml (if both exist, prefer JSON).
+When generating deployment JSON with `aifabrix json`, roles/permissions from `rbac.yaml` are automatically merged into the system YAML. Priority: roles/permissions in system YAML > rbac.yaml (if both exist, prefer system YAML).
 
 **Example `rbac.yaml`:**
 
@@ -794,40 +710,32 @@ permissions:
     description: Administrative access to HubSpot integration
 ```
 
-**Example in System JSON:**
+**Example in system YAML:**
 
-```json
-{
-  "key": "hubspot",
-  "displayName": "HubSpot CRM",
-  "description": "HubSpot CRM integration",
-  "type": "openapi",
-  "roles": [
-    {
-      "name": "HubSpot Admin",
-      "value": "hubspot-admin",
-      "description": "Full access to HubSpot integration",
-      "groups": ["hubspot-admins@company.com"]
-    },
-    {
-      "name": "HubSpot User",
-      "value": "hubspot-user",
-      "description": "Read-only access to HubSpot data"
-    }
-  ],
-  "permissions": [
-    {
-      "name": "hubspot:read",
-      "roles": ["hubspot-user", "hubspot-admin"],
-      "description": "Read access to HubSpot data"
-    },
-    {
-      "name": "hubspot:write",
-      "roles": ["hubspot-admin"],
-      "description": "Write access to HubSpot data"
-    }
-  ]
-}
+```yaml
+key: hubspot
+displayName: HubSpot CRM
+description: HubSpot CRM integration
+type: openapi
+roles:
+  - name: HubSpot Admin
+    value: hubspot-admin
+    description: Full access to HubSpot integration
+    groups:
+      - hubspot-admins@company.com
+  - name: HubSpot User
+    value: hubspot-user
+    description: Read-only access to HubSpot data
+permissions:
+  - name: hubspot:read
+    roles:
+      - hubspot-user
+      - hubspot-admin
+    description: Read access to HubSpot data
+  - name: hubspot:write
+    roles:
+      - hubspot-admin
+    description: Write access to HubSpot data
 ```
 
 **Role Requirements:**
@@ -847,7 +755,7 @@ permissions:
 
 When validating external systems with `aifabrix validate`, the builder:
 - Validates `rbac.yaml` structure (if present)
-- Validates roles and permissions in system JSON (if present)
+- Validates roles and permissions in system YAML (if present)
 - Checks that all role references in permissions exist in the roles array
 - Validates role value patterns (`^[a-z-]+$`)
 - Validates permission name patterns (`^[a-z0-9-:]+$`)
@@ -861,7 +769,7 @@ aifabrix json hubspot
 # Validate including rbac.yaml
 aifabrix validate hubspot
 
-# Split JSON back to component files (extracts roles/permissions to rbac.yml)
+# Split JSON back to component files (extracts roles/permissions to rbac.yaml)
 aifabrix split-json hubspot
 ```
 
@@ -914,7 +822,7 @@ Each datasource maps one entity type from the external system.
 }
 ```
 
-**Note:** Datasource files are named using the datasource key: `<system-key>-datasource-<datasource-key>.json`. For example, a datasource with `key: "hubspot-company"` and `systemKey: "hubspot"` creates the file `hubspot-datasource-company.json`.
+**Note:** Datasource files are named using the datasource key: `<system-key>-datasource-<datasource-key>.yaml`. For example, a datasource with `key: "hubspot-company"` and `systemKey: "hubspot"` creates the file `hubspot-datasource-company.yaml`.
 
 #### entityType enum
 
@@ -931,17 +839,14 @@ The `entityType` field is validated against the schema enum. Allowed values (fro
 Both camelCase and kebab-case are accepted. The field determines which type schema is used for validation (e.g. `documentStorage` → document-storage schema).
 
 **Example:**
-```json
-{
-  "key": "hubspot-documents",
-  "entityType": "documentStorage",
-  "resourceType": "document",
-  "systemKey": "hubspot",
-  "documentStorage": {
-    "enabled": true,
-    "binaryOperationRef": "get"
-  }
-}
+```yaml
+key: hubspot-documents
+entityType: documentStorage
+resourceType: document
+systemKey: hubspot
+documentStorage:
+  enabled: true
+  binaryOperationRef: get
 ```
 
 In this example, `entityType="documentStorage"` causes `documentStorage` to validate against `type/document-storage.json`.
@@ -964,50 +869,39 @@ Field mappings transform external API data into normalized schemas.
 
 **HubSpot example:**
 HubSpot uses nested properties:
-```json
-{
-  "properties": {
-    "name": { "value": "Acme Corp" },
-    "country": { "value": "us" }
-  }
-}
+```yaml
+properties:
+  name:
+    value: Acme Corp
+  country:
+    value: us
 ```
 
 Map to flat structure:
-```json
-{
-  "name": {
-    "expression": "{{properties.name.value}} | trim",
-    "type": "string"
-  },
-  "country": {
-    "expression": "{{properties.country.value}} | toUpper | trim",
-    "type": "string"
-  }
-}
+```yaml
+name:
+  expression: "{{properties.name.value}} | trim"
+  type: string
+country:
+  expression: "{{properties.country.value}} | toUpper | trim"
+  type: string
 ```
 
 **Dimensions:**
 Dimensions are used for ABAC (Attribute-Based Access Control) filtering using the dimensions-first model. The `dimensions` object maps dimension keys (from the Dimension Catalog) to attribute paths (e.g., `metadata.country`, `metadata.domain`). Dimensions are automatically indexed for efficient filtering.
 
 **Example:**
-```json
-{
-  "fieldMappings": {
-    "dimensions": {
-      "country": "metadata.country",
-      "department": "metadata.department",
-      "organization": "metadata.organization"
-    },
-    "attributes": {
-      "country": {
-        "expression": "{{properties.country.value}} | toUpper",
-        "type": "string",
-        "indexed": false
-      }
-    }
-  }
-}
+```yaml
+fieldMappings:
+  dimensions:
+    country: metadata.country
+    department: metadata.department
+    organization: metadata.organization
+  attributes:
+    country:
+      expression: "{{properties.country.value}} | toUpper"
+      type: string
+      indexed: false
 ```
 
 Dimensions should identify data ownership or access scope (e.g., `country`, `domain`, `organization`).
@@ -1016,43 +910,31 @@ Dimensions should identify data ownership or access scope (e.g., `country`, `dom
 The `indexed` property in attribute definitions controls whether a database index is created for that attribute. Set `indexed: true` for attributes that are frequently used in queries or filters. Dimensions are automatically indexed (no `indexed` property needed).
 
 **Example:**
-```json
-{
-  "fieldMappings": {
-    "attributes": {
-      "id": {
-        "expression": "{{id}}",
-        "type": "string",
-        "indexed": true
-      },
-      "name": {
-        "expression": "{{properties.name.value}} | trim",
-        "type": "string",
-        "indexed": false
-      }
-    }
-  }
-}
+```yaml
+fieldMappings:
+  attributes:
+    id:
+      expression: "{{id}}"
+      type: string
+      indexed: true
+    name:
+      expression: "{{properties.name.value}} | trim"
+      type: string
+      indexed: false
 ```
 
 **Record references:** Use the `record_ref:` prefix in expressions to create typed relationships between records across datasources. This creates foreign key relationships in the dataplane.
 
 **Example:**
-```json
-{
-  "fieldMappings": {
-    "attributes": {
-      "customerId": {
-        "expression": "record_ref:customer",
-        "type": "string"
-      },
-      "dealId": {
-        "expression": "record_ref:deal",
-        "type": "string"
-      }
-    }
-  }
-}
+```yaml
+fieldMappings:
+  attributes:
+    customerId:
+      expression: record_ref:customer
+      type: string
+    dealId:
+      expression: record_ref:deal
+      type: string
 ```
 
 The `record_ref:` prefix must be followed by a valid entity type (pattern: `^[a-z0-9-]+$`).
@@ -1061,41 +943,32 @@ The `record_ref:` prefix must be followed by a valid entity type (pattern: `^[a-
 
 Test payloads allow you to test field mappings and metadata schemas locally and via integration tests. Add a `testPayload` property to your datasource configuration:
 
-```json
-{
-  "key": "hubspot-company",
-  "systemKey": "hubspot",
-  "entityType": "company",
-  "fieldMappings": {
-    "dimensions": {
-      "country": "metadata.country"
-    },
-    "attributes": {
-      "name": {
-        "expression": "{{properties.name.value}} | trim",
-        "type": "string",
-        "indexed": false
-      },
-      "country": {
-        "expression": "{{properties.country.value}} | toUpper | trim",
-        "type": "string",
-        "indexed": false
-      }
-    }
-  },
-  "testPayload": {
-    "payloadTemplate": {
-      "properties": {
-        "name": { "value": "Acme Corp" },
-        "country": { "value": "us" }
-      }
-    },
-    "expectedResult": {
-      "name": "Acme Corp",
-      "country": "US"
-    }
-  }
-}
+```yaml
+key: hubspot-company
+systemKey: hubspot
+entityType: company
+fieldMappings:
+  dimensions:
+    country: metadata.country
+  attributes:
+    name:
+      expression: "{{properties.name.value}} | trim"
+      type: string
+      indexed: false
+    country:
+      expression: "{{properties.country.value}} | toUpper | trim"
+      type: string
+      indexed: false
+testPayload:
+  payloadTemplate:
+    properties:
+      name:
+        value: Acme Corp
+      country:
+        value: us
+  expectedResult:
+    name: Acme Corp
+    country: US
 ```
 
 **Test Payload Properties:**
@@ -1144,42 +1017,33 @@ These features are optional and can be added as needed. See the `external-dataso
 
 Configure which API endpoints to expose for each datasource.
 
-```json
-{
-  "openapi": {
-    "enabled": true,
-    "documentKey": "hubspot-v3",
-    "baseUrl": "https://api.hubapi.com",
-    "operations": {
-      "list": {
-        "operationId": "getCompanies",
-        "method": "GET",
-        "path": "/crm/v3/objects/companies"
-      },
-      "get": {
-        "operationId": "getCompany",
-        "method": "GET",
-        "path": "/crm/v3/objects/companies/{companyId}"
-      },
-      "create": {
-        "operationId": "createCompany",
-        "method": "POST",
-        "path": "/crm/v3/objects/companies"
-      },
-      "update": {
-        "operationId": "updateCompany",
-        "method": "PATCH",
-        "path": "/crm/v3/objects/companies/{companyId}"
-      },
-      "delete": {
-        "operationId": "deleteCompany",
-        "method": "DELETE",
-        "path": "/crm/v3/objects/companies/{companyId}"
-      }
-    },
-    "autoRbac": true
-  }
-}
+```yaml
+openapi:
+  enabled: true
+  documentKey: hubspot-v3
+  baseUrl: https://api.hubapi.com
+  operations:
+    list:
+      operationId: getCompanies
+      method: GET
+      path: /crm/v3/objects/companies
+    get:
+      operationId: getCompany
+      method: GET
+      path: /crm/v3/objects/companies/{companyId}
+    create:
+      operationId: createCompany
+      method: POST
+      path: /crm/v3/objects/companies
+    update:
+      operationId: updateCompany
+      method: PATCH
+      path: /crm/v3/objects/companies/{companyId}
+    delete:
+      operationId: deleteCompany
+      method: DELETE
+      path: /crm/v3/objects/companies/{companyId}
+  autoRbac: true
 ```
 
 **What this does:**
@@ -1192,18 +1056,26 @@ Configure which API endpoints to expose for each datasource.
 
 Control which attributes are exposed via MCP/OpenAPI.
 
-```json
-{
-  "exposed": {
-    "attributes": ["id", "name", "email"],
-    "omit": ["internalId", "secret"],
-    "readonly": ["createdAt"],
-    "groups": {
-      "default": ["id", "name"],
-      "analytics": ["id", "name", "email", "revenue"]
-    }
-  }
-}
+```yaml
+exposed:
+  attributes:
+    - id
+    - name
+    - email
+  omit:
+    - internalId
+    - secret
+  readonly:
+    - createdAt
+  groups:
+    default:
+      - id
+      - name
+    analytics:
+      - id
+      - name
+      - email
+      - revenue
 ```
 
 **What this does:**
@@ -1223,23 +1095,23 @@ Here's a complete HubSpot integration with companies, contacts, and deals.
 ```yaml
 integration/
   hubspot/
-    variables.yaml
-    hubspot-system.json                    # External system definition
-    hubspot-datasource-company.json        # Datasource: key="hubspot-company"
-    hubspot-datasource-contact.json         # Datasource: key="hubspot-contact"
-    hubspot-datasource-deal.json            # Datasource: key="hubspot-deal"
+    application.yaml
+    hubspot-system.yaml                     # External system definition
+    hubspot-datasource-company.yaml         # Datasource: key="hubspot-company"
+    hubspot-datasource-contact.yaml         # Datasource: key="hubspot-contact"
+    hubspot-datasource-deal.yaml            # Datasource: key="hubspot-deal"
     hubspot-deploy.json                     # Deployment manifest (generated)
-    rbac.yaml                              # RBAC roles and permissions (optional)
+    rbac.yaml                               # RBAC roles and permissions (optional)
     env.template
 ```
 
 **File Naming Convention:**
-- System file: `<system-key>-system.json` (e.g., `hubspot-system.json`)
-- Datasource files: `<system-key>-datasource-<datasource-key>.json` (e.g., `hubspot-datasource-company.json`)
+- System file: `<system-key>-system.yaml` (e.g., `hubspot-system.yaml`)
+- Datasource files: `<system-key>-datasource-<datasource-key>.yaml` (e.g., `hubspot-datasource-company.yaml`)
 - Deployment manifest: `<system-key>-deploy.json` (e.g., `hubspot-deploy.json`) - generated by `aifabrix json`
-- The `entityType` comes from the datasource's `entityType` field in the JSON
+- The `entityType` comes from the datasource's `entityType` field in the YAML
 
-### variables.yaml
+### application.yaml
 
 ```yaml
 app:
@@ -1250,106 +1122,90 @@ app:
 externalIntegration:
   schemaBasePath: ./
   systems:
-    - hubspot-system.json
+    - hubspot-system.yaml
   dataSources:
-    - hubspot-datasource-company.json
-    - hubspot-datasource-contact.json
-    - hubspot-datasource-deal.json
+    - hubspot-datasource-company.yaml
+    - hubspot-datasource-contact.yaml
+    - hubspot-datasource-deal.yaml
   autopublish: true
   version: 1.0.0
 ```
 
 **Important:** Only one system is supported per application. The `systems` array should contain a single entry. Only the first system in the array will be included in the generated `<systemKey>-deploy.json`. Multiple data sources are supported and all will be included.
 
-### hubspot-system.json
+### hubspot-system.yaml
 
-```json
-{
-  "key": "hubspot",
-  "displayName": "HubSpot CRM",
-  "description": "HubSpot CRM integration with OpenAPI support",
-  "type": "openapi",
-  "enabled": true,
-  "authentication": {
-    "type": "oauth2",
-    "oauth2": {
-      "tokenUrl": "{{TOKENURL}}",
-      "clientId": "{{CLIENTID}}",
-      "clientSecret": "{{CLIENTSECRET}}",
-      "scopes": [
-        "crm.objects.companies.read",
-        "crm.objects.companies.write",
-        "crm.objects.contacts.read",
-        "crm.objects.contacts.write",
-        "crm.objects.deals.read",
-        "crm.objects.deals.write"
-      ]
-    }
-  },
-  "configuration": [
-    {
-      "name": "CLIENTID",
-      "value": "hubspot-clientidKeyVault",
-      "location": "keyvault",
-      "required": true
-    },
-    {
-      "name": "CLIENTSECRET",
-      "value": "hubspot-clientsecretKeyVault",
-      "location": "keyvault",
-      "required": true
-    },
-    {
-      "name": "TOKENURL",
-      "value": "https://api.hubapi.com/oauth/v1/token",
-      "location": "variable",
-      "required": true
-    },
-    {
-      "name": "BASE_URL",
-      "value": "https://api.hubapi.com",
-      "location": "variable",
-      "required": true
-    },
-    {
-      "name": "HUBSPOT_API_VERSION",
-      "value": "v3",
-      "location": "variable",
-      "required": false,
-      "portalInput": {
-        "field": "select",
-        "label": "HubSpot API Version",
-        "placeholder": "Select API version",
-        "options": ["v1", "v2", "v3"],
-        "validation": {
-          "required": false
-        }
-      }
-    },
-    {
-      "name": "MAX_PAGE_SIZE",
-      "value": "100",
-      "location": "variable",
-      "required": false,
-      "portalInput": {
-        "field": "text",
-        "label": "Maximum Page Size",
-        "placeholder": "100",
-        "validation": {
-          "required": false,
-          "pattern": "^[0-9]+$",
-          "minLength": 1,
-          "maxLength": 1000
-        }
-      }
-    }
-  ],
-  "openapi": {
-    "documentKey": "hubspot-v3",
-    "autoDiscoverEntities": false
-  },
-  "tags": ["crm", "sales", "marketing", "hubspot"]
-}
+```yaml
+key: hubspot
+displayName: HubSpot CRM
+description: HubSpot CRM integration with OpenAPI support
+type: openapi
+enabled: true
+authentication:
+  type: oauth2
+  oauth2:
+    tokenUrl: "{{TOKENURL}}"
+    clientId: "{{CLIENTID}}"
+    clientSecret: "{{CLIENTSECRET}}"
+    scopes:
+      - crm.objects.companies.read
+      - crm.objects.companies.write
+      - crm.objects.contacts.read
+      - crm.objects.contacts.write
+      - crm.objects.deals.read
+      - crm.objects.deals.write
+configuration:
+  - name: CLIENTID
+    value: hubspot-clientidKeyVault
+    location: keyvault
+    required: true
+  - name: CLIENTSECRET
+    value: hubspot-clientsecretKeyVault
+    location: keyvault
+    required: true
+  - name: TOKENURL
+    value: https://api.hubapi.com/oauth/v1/token
+    location: variable
+    required: true
+  - name: BASE_URL
+    value: https://api.hubapi.com
+    location: variable
+    required: true
+  - name: HUBSPOT_API_VERSION
+    value: v3
+    location: variable
+    required: false
+    portalInput:
+      field: select
+      label: HubSpot API Version
+      placeholder: Select API version
+      options:
+        - v1
+        - v2
+        - v3
+      validation:
+        required: false
+  - name: MAX_PAGE_SIZE
+    value: "100"
+    location: variable
+    required: false
+    portalInput:
+      field: text
+      label: Maximum Page Size
+      placeholder: "100"
+      validation:
+        required: false
+        pattern: "^[0-9]+$"
+        minLength: 1
+        maxLength: 1000
+openapi:
+  documentKey: hubspot-v3
+  autoDiscoverEntities: false
+tags:
+  - crm
+  - sales
+  - marketing
+  - hubspot
 ```
 
 **Key points:**
@@ -1359,9 +1215,9 @@ externalIntegration:
 - Standard variables are set via the dataplane credentials interface
 - Custom variables with `portalInput` get UI fields for user configuration
 
-### hubspot-datasource-company.json
+### hubspot-datasource-company.yaml
 
-See the complete example in `integration/hubspot/hubspot-datasource-company.json` for:
+See the complete example in `integration/hubspot/hubspot-datasource-company.yaml` for:
 - Full metadata schema for HubSpot company properties
 - Field mappings with transformations
 - OpenAPI operations configuration
@@ -1410,27 +1266,27 @@ aifabrix download hubspot
 - Downloads system configuration from dataplane API
 - Downloads all datasource configurations
 - Creates `integration/<system-key>/` folder structure
-- Generates all development files (variables.yaml, JSON files, env.template, README.md)
+- Generates all development files (application.yaml, YAML files, env.template, README.md)
 
 **File structure created:**
 ```yaml
 integration/
   hubspot/
-    variables.yaml                   # App configuration with externalIntegration block
-    hubspot-system.json              # External system definition
-    hubspot-datasource-company.json  # Companies datasource
-    hubspot-datasource-contact.json  # Contacts datasource
-    hubspot-datasource-deal.json     # Deals datasource
-    hubspot-deploy.json              # Deployment manifest (generated)
-    rbac.yaml                        # RBAC roles and permissions (optional)
-    env.template                     # Environment variables template
-    README.md                        # Documentation
+    application.yaml                   # App configuration with externalIntegration block
+    hubspot-system.yaml                # External system definition
+    hubspot-datasource-company.yaml    # Companies datasource
+    hubspot-datasource-contact.yaml    # Contacts datasource
+    hubspot-datasource-deal.yaml       # Deals datasource
+    hubspot-deploy.json                # Deployment manifest (generated)
+    rbac.yaml                          # RBAC roles and permissions (optional)
+    env.template                       # Environment variables template
+    README.md                          # Documentation
 ```
 
 ### 2. Edit Configuration Files
 
 Edit the configuration files in `integration/<system-key>/` to make your changes:
-- Update field mappings in datasource JSON files
+- Update field mappings in datasource YAML files
 - Modify authentication configuration
 - Add or update test payloads for testing
 
@@ -1450,7 +1306,7 @@ aifabrix test hubspot --verbose
 ```
 
 **What happens:**
-- Validates JSON syntax
+- Validates YAML syntax
 - Validates against schemas
 - Tests field mapping expressions
 - Validates metadata schemas against test payloads (if provided)
@@ -1485,17 +1341,17 @@ aifabrix test-integration hubspot --payload ./test-payload.json
 Deploy using the application-level workflow:
 
 ```bash
-aifabrix deploy hubspot --type external
+aifabrix deploy hubspot
 ```
 
-**What happens:** The CLI sends the deployment to the **Miso Controller** (pipeline API). Use `--type external` when the app is in `integration/<app>/` (no app register needed). The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates deployment.
+**What happens:** The CLI resolves the app path (integration first, then builder) and sends the deployment to the **Miso Controller** (pipeline API). When the app is in `integration/<app>/`, no app register is needed. The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates deployment.
 
 1. Generates `<systemKey>-deploy.json` (combines one system + all datasources)
 2. Sends to controller via pipeline API (validate then deploy)
 3. Controller deploys to dataplane; validates and publishes
 4. System and datasources are deployed together
 
-**Note:** Only one system per application is supported. If multiple systems are listed in `variables.yaml`, only the first one is included in the generated `<systemKey>-deploy.json`.
+**Note:** Only one system per application is supported. If multiple systems are listed in `application.yaml`, only the first one is included in the generated `<systemKey>-deploy.json`.
 
 ## Deployment Workflow
 
@@ -1523,7 +1379,7 @@ aifabrix json hubspot
 ```
 
 **What happens:**
-- Combines `variables.yaml` with all JSON files
+- Combines `application.yaml` with all YAML files (system + datasources)
 - Generates application schema structure (one system + all datasources) ready for deployment
 - Validates all configurations against schemas
 - The schema structure is used internally by `aifabrix deploy` command
@@ -1532,10 +1388,10 @@ aifabrix json hubspot
 ### 4. Deploy to Controller
 
 ```bash
-aifabrix deploy hubspot --type external
+aifabrix deploy hubspot
 ```
 
-**What happens:** The CLI sends the deployment to the **Miso Controller**. Use `--type external` when the app is in `integration/<app>/`. The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates it.
+**What happens:** The CLI resolves the app path (integration first, then builder) and sends the deployment to the **Miso Controller**. The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates it.
 
 1. Generates controller manifest (if not already generated) via `aifabrix json` internally
 2. Uses the same controller pipeline as regular apps: Validate then Deploy (`POST /api/v1/pipeline/{envKey}/validate`, `POST /api/v1/pipeline/{envKey}/deploy`)
@@ -1544,13 +1400,27 @@ aifabrix deploy hubspot --type external
 
 **Controller pipeline benefits:** Same workflow as application deployment; validation before deploy; optional polling for deployment status.
 
+**When do I get MCP/OpenAPI docs?** After publish (via deploy or upload), MCP and OpenAPI docs are served by the dataplane at standard URLs. See [Controller and Dataplane: What, Why, When](deploying.md#controller-and-dataplane-what-why-when) for when they become available and how to access them.
+
+### 4a. Upload to dataplane (test without promoting)
+
+Use **`aifabrix upload <system-key>`** when you want to publish the full manifest (system + all datasources + RBAC) to the dataplane **without** going through the controller pipeline deploy. The command uses the dataplane pipeline **upload → validate → publish** flow; the controller is only used to resolve the dataplane URL and authentication.
+
+**When to use upload vs deploy:**
+- **`aifabrix upload <system-key>`** – Test the full system on the dataplane without promoting; or when you have only dataplane access or limited controller permissions. The dataplane does **not** deploy RBAC to the controller—RBAC stays in the dataplane. Promote to the full platform later via the web interface or **`aifabrix deploy <app>`**.
+- **`aifabrix deploy <app>`** – Full deployment via the controller (validate + deploy); use when you want the system (and RBAC) promoted to the platform.
+
+**When do I get MCP/OpenAPI docs?** After publish, the dataplane serves MCP and OpenAPI docs at standard URLs. See [Controller and Dataplane: What, Why, When](deploying.md#controller-and-dataplane-what-why-when) for details and the deploy-vs-upload diagram.
+
+See [External Integration Commands](commands/external-integration.md#aifabrix-upload-system-key) for usage, options, and prerequisites.
+
 ### 5. Deploy Individual Datasources (Optional)
 
 You can deploy and test individual datasources:
 
 ```bash
 # Deploy a single datasource
-aifabrix datasource deploy hubspot hubspot-datasource-company.json
+aifabrix datasource deploy hubspot hubspot-datasource-company.yaml
 
 # This is useful for:
 # - Testing individual datasources
@@ -1595,7 +1465,7 @@ aifabrix test hubspot
 aifabrix test-integration hubspot
 
 # 5. Deploy back to dataplane (via application-level workflow)
-aifabrix deploy hubspot --type external
+aifabrix deploy hubspot
 ```
 
 ### Create New System from Scratch
@@ -1616,7 +1486,7 @@ aifabrix test hubspot
 aifabrix test-integration hubspot
 
 # 5. Deploy to dataplane
-aifabrix deploy hubspot --type external
+aifabrix deploy hubspot
 ```
 
 ---
@@ -1627,72 +1497,56 @@ aifabrix deploy hubspot --type external
 
 Many APIs use nested property structures. Map them to flat attributes:
 
-```json
-{
-  "fieldMappings": {
-    "dimensions": {
-      "country": "metadata.country"
-    },
-    "attributes": {
-      "name": {
-        "expression": "{{properties.name.value}} | trim",
-        "type": "string",
-        "indexed": false
-      }
-    }
-  }
-}
+```yaml
+fieldMappings:
+  dimensions:
+    country: metadata.country
+  attributes:
+    name:
+      expression: "{{properties.name.value}} | trim"
+      type: string
+      indexed: false
 ```
 
 ### Pattern 2: Array Extraction
 
 Extract first item from array:
 
-```json
-{
-  "associatedCompany": {
-    "expression": "{{associations.companies.results[0].id}}",
-    "type": "string"
-  }
-}
+```yaml
+associatedCompany:
+  expression: "{{associations.companies.results[0].id}}"
+  type: string
 ```
 
 ### Pattern 3: Multiple Transformations
 
 Chain transformations:
 
-```json
-{
-  "email": {
-    "expression": "{{properties.email.value}} | toLower | trim",
-    "type": "string"
-  },
-  "country": {
-    "expression": "{{properties.country.value}} | toUpper | trim",
-    "type": "string"
-  }
-}
+```yaml
+email:
+  expression: "{{properties.email.value}} | toLower | trim"
+  type: string
+country:
+  expression: "{{properties.country.value}} | toUpper | trim"
+  type: string
 ```
 
 ### Pattern 4: Default Values
 
 Use defaults for optional fields:
 
-```json
-{
-  "status": {
-    "expression": "{{properties.status.value}} | default('active')",
-    "type": "string"
-  }
-}
+```yaml
+status:
+  expression: "{{properties.status.value}} | default('active')"
+  type: string
 ```
 
 ---
 
 ## Troubleshooting
 
-**"Validation failed: Invalid JSON"**
-→ Check JSON syntax with a JSON validator
+**"Validation failed: Invalid YAML"**
+→ Check YAML syntax with a YAML validator
 → Ensure all required fields are present
 → Verify field mapping expressions are valid
 
@@ -1713,17 +1567,17 @@ Use defaults for optional fields:
 → Review deployment logs in controller UI
 
 **"Application deployment requires image"**
-→ External systems do not use Docker images. Use `internal: true` in `variables.yaml` (under `externalIntegration`) so the system deploys on dataplane startup; then restart the dataplane.
+→ External systems do not use Docker images. Use `internal: true` in `application.yaml` (under `externalIntegration`) so the system deploys on dataplane startup; then restart the dataplane.
 
 **"Dataplane URL not found in application configuration"**
 → External systems do not have their own dataplane URL. Dataplane URL is discovered from the controller; ensure the controller is set via `aifabrix login` or `aifabrix auth config --set-controller`.
 
 **"Cannot read properties of undefined (reading 'forEach')"**
-→ Validation may crash for some external integrations. Validate individual files: `aifabrix validate integration/<app>/<file>.json`.
+→ Validation may crash for some external integrations. Validate individual files: `aifabrix validate integration/<app>/<file>.yaml`.
 
 **"Datasource not appearing"**
-→ Check `autopublish: true` in `variables.yaml`
-→ Verify datasource JSON files are listed in `dataSources`
+→ Check `autopublish: true` in `application.yaml`
+→ Verify datasource YAML files are listed in `dataSources`
 → Check datasource is enabled: `"enabled": true`
 
 **"OpenAPI operations not working"**
@@ -1732,9 +1586,9 @@ Use defaults for optional fields:
 → Ensure `operationId` matches OpenAPI spec
 → Verify authentication is configured correctly
 
-**Datasource deploy:** Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is discovered from the controller. Example: `aifabrix datasource deploy hubspot integration/hubspot/hubspot-datasource-company.json`.
+**Datasource deploy:** Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is discovered from the controller. Example: `aifabrix datasource deploy hubspot integration/hubspot/hubspot-datasource-company.yaml`.
 
-**Validate individual files:** If `aifabrix validate <app>` fails, validate files directly: `aifabrix validate integration/hubspot/hubspot-system.json`, `aifabrix validate integration/hubspot/hubspot-datasource-company.json`.
+**Validate individual files:** If `aifabrix validate <app>` fails, validate files directly: `aifabrix validate integration/hubspot/hubspot-system.yaml`, `aifabrix validate integration/hubspot/hubspot-datasource-company.yaml`.
 
 ---
 
@@ -1756,10 +1610,10 @@ aifabrix download <system-key>
 
 **Delete external system:**
 ```bash
-aifabrix delete <system-key> --type external
+aifabrix delete <system-key>
 
 # Skip confirmation prompt
-aifabrix delete <system-key> --type external --yes
+aifabrix delete <system-key> --yes
 ```
 
 **Create external system:**
@@ -1798,10 +1652,10 @@ aifabrix json <app>
 
 **Deploy to controller:**
 ```bash
-aifabrix deploy <app> [--type external] [--skip-validation]
+aifabrix deploy <app> [--skip-validation]
 ```
 
-Use `--type external` when deploying from `integration/<app>/` (no app register needed).
+Path is resolved automatically: `integration/<app>/` first, then `builder/<app>/`. When deploying from `integration/<app>/`, no app register is needed.
 
 **Deploy individual datasource:** (uses controller and environment from config; dataplane is discovered from the controller)
 ```bash

@@ -29,7 +29,12 @@ jest.mock('../../../lib/utils/token-manager', () => ({
 }));
 
 jest.mock('../../../lib/core/config', () => ({
-  normalizeControllerUrl: jest.fn((url) => (url ? url.replace(/\/$/, '') : url))
+  normalizeControllerUrl: jest.fn((url) => (url ? url.replace(/\/$/, '') : url)),
+  resolveEnvironment: jest.fn()
+}));
+
+jest.mock('../../../lib/utils/dataplane-resolver', () => ({
+  resolveDataplaneUrl: jest.fn()
 }));
 
 jest.mock('../../../lib/api/credentials.api', () => ({
@@ -39,6 +44,8 @@ jest.mock('../../../lib/api/credentials.api', () => ({
 const logger = require('../../../lib/utils/logger');
 const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
 const { getOrRefreshDeviceToken } = require('../../../lib/utils/token-manager');
+const { resolveEnvironment } = require('../../../lib/core/config');
+const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
 const { listCredentials } = require('../../../lib/api/credentials.api');
 const { runCredentialList } = require('../../../lib/commands/credential-list');
 
@@ -54,6 +61,8 @@ describe('Credential list command', () => {
       token: 'test-token',
       controller: 'https://controller.example.com'
     });
+    resolveEnvironment.mockResolvedValue('dev');
+    resolveDataplaneUrl.mockResolvedValue('https://dataplane.example.com');
     listCredentials.mockResolvedValue({
       data: { credentials: [{ key: 'cred-1', displayName: 'My Credential' }] }
     });
@@ -67,8 +76,14 @@ describe('Credential list command', () => {
     await runCredentialList({});
 
     expect(resolveControllerUrl).toHaveBeenCalled();
-    expect(listCredentials).toHaveBeenCalledWith(
+    expect(resolveEnvironment).toHaveBeenCalled();
+    expect(resolveDataplaneUrl).toHaveBeenCalledWith(
       'https://controller.example.com',
+      'dev',
+      expect.objectContaining({ type: 'bearer', token: 'test-token' })
+    );
+    expect(listCredentials).toHaveBeenCalledWith(
+      'https://dataplane.example.com',
       { type: 'bearer', token: 'test-token' },
       expect.objectContaining({ pageSize: 50 })
     );
@@ -90,6 +105,7 @@ describe('Credential list command', () => {
 
     await expect(runCredentialList({})).rejects.toThrow('process.exit(1)');
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('No authentication token'));
+    expect(resolveDataplaneUrl).not.toHaveBeenCalled();
     expect(listCredentials).not.toHaveBeenCalled();
   });
 
@@ -154,13 +170,39 @@ describe('Credential list command', () => {
       controller: 'https://custom.controller.com'
     });
     resolveControllerUrl.mockResolvedValue('https://fallback.example.com');
+    resolveDataplaneUrl.mockResolvedValue('https://dataplane.from.controller.com');
 
     await runCredentialList({ controller: 'https://custom.controller.com' });
 
-    expect(listCredentials).toHaveBeenCalledWith(
+    expect(resolveDataplaneUrl).toHaveBeenCalledWith(
       'https://custom.controller.com',
+      'dev',
+      expect.any(Object)
+    );
+    expect(listCredentials).toHaveBeenCalledWith(
+      'https://dataplane.from.controller.com',
       expect.objectContaining({ type: 'bearer' }),
       expect.any(Object)
     );
+  });
+
+  it('should use dataplane option when provided (skip resolution)', async() => {
+    await runCredentialList({ dataplane: 'https://my-dataplane.local' });
+
+    expect(resolveDataplaneUrl).not.toHaveBeenCalled();
+    expect(listCredentials).toHaveBeenCalledWith(
+      'https://my-dataplane.local',
+      expect.objectContaining({ type: 'bearer' }),
+      expect.any(Object)
+    );
+  });
+
+  it('should exit when Dataplane URL cannot be resolved', async() => {
+    resolveDataplaneUrl.mockRejectedValue(new Error('No dataplane for env'));
+
+    await expect(runCredentialList({})).rejects.toThrow('process.exit(1)');
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Could not resolve Dataplane URL'));
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('--dataplane'));
+    expect(listCredentials).not.toHaveBeenCalled();
   });
 });

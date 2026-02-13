@@ -354,7 +354,7 @@ describe('CLI Uncovered Command Handlers', () => {
       fs.existsSync.mockReturnValue(true);
       generator.splitDeployJson.mockResolvedValue({
         envTemplate: '/test/app/env.template',
-        variables: '/test/app/variables.yaml',
+        variables: '/test/app/application.yaml',
         rbac: '/test/app/rbac.yml',
         readme: '/test/app/README.md'
       });
@@ -375,7 +375,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
           logger.log(chalk.green('\n✓ Successfully split deployment JSON into component files:'));
           logger.log(`  • env.template: ${result.envTemplate}`);
-          logger.log(`  • variables.yaml: ${result.variables}`);
+          logger.log(`  • application.yaml: ${result.variables}`);
           if (result.rbac) {
             logger.log(`  • rbac.yml: ${result.rbac}`);
           }

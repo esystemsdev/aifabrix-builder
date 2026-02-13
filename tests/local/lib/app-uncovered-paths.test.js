@@ -110,7 +110,7 @@ describe('App Module - Uncovered Code Paths', () => {
             }
           }
         }
-        const variablesPath = path.join(appPath, 'variables.yaml');
+        const variablesPath = path.join(appPath, 'application.yaml');
         const variables = {
           port: config.port || 3000,
           build: {
@@ -152,7 +152,7 @@ describe('App Module - Uncovered Code Paths', () => {
       };
 
       // Don't create directories - let createApp create them
-      // But we need to create variables.yaml after createApp runs
+      // But we need to create application.yaml after createApp runs
       templateValidator.copyAppFiles.mockResolvedValue(['app.ts', 'package.json']);
 
       await app.createApp(appName, options);
@@ -203,7 +203,7 @@ describe('App Module - Uncovered Code Paths', () => {
   });
 
   describe('updateVariablesForAppFlag', () => {
-    it('should update variables.yaml with build context and envOutputPath', async() => {
+    it('should update application.yaml with build context and envOutputPath', async() => {
       const appName = 'test-app-update-vars';
       const options = {
         app: true,
@@ -211,7 +211,7 @@ describe('App Module - Uncovered Code Paths', () => {
         language: 'typescript'
       };
 
-      // Make generateConfigFiles actually create variables.yaml
+      // Make generateConfigFiles actually create application.yaml
       // Ensure directory exists first - use mockImplementationOnce to ensure it's called
       appConfig.generateConfigFiles.mockImplementationOnce(async(appPath, name, config, existingEnv) => {
         // appPath is already absolute from getAppPath
@@ -238,7 +238,7 @@ describe('App Module - Uncovered Code Paths', () => {
               }
             }
           }
-          const variablesPath = path.join(appPath, 'variables.yaml');
+          const variablesPath = path.join(appPath, 'application.yaml');
           const variables = {
             port: config.port || 3000,
             build: {
@@ -257,7 +257,7 @@ describe('App Module - Uncovered Code Paths', () => {
       await app.createApp(appName, options);
 
       const appPath = path.join(tempDir, 'builder', appName);
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
 
       // Verify file exists before reading
       expect(fsSync.existsSync(variablesPath)).toBe(true);
@@ -278,7 +278,7 @@ describe('App Module - Uncovered Code Paths', () => {
         language: 'typescript'
       };
 
-      // Make generateConfigFiles create variables.yaml without build section
+      // Make generateConfigFiles create application.yaml without build section
       appConfig.generateConfigFiles.mockImplementation(async(appPath, name, config, existingEnv) => {
         // appPath is already absolute from getAppPath
         // Ensure parent directories exist
@@ -305,7 +305,7 @@ describe('App Module - Uncovered Code Paths', () => {
         } catch (error) {
           throw new Error(`generateConfigFiles mock failed: ${error.message}`);
         }
-        const variablesPath = path.join(appPath, 'variables.yaml');
+        const variablesPath = path.join(appPath, 'application.yaml');
         const variables = {
           port: config.port || 3000
           // No build section
@@ -318,12 +318,12 @@ describe('App Module - Uncovered Code Paths', () => {
       await app.createApp(appName, options);
 
       const appPath = path.join(tempDir, 'builder', appName);
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const updatedContent = fsSync.readFileSync(variablesPath, 'utf8');
       const updatedVariables = yaml.load(updatedContent);
     });
 
-    it('should handle error when updating variables.yaml', async() => {
+    it('should handle error when updating application.yaml', async() => {
       const appName = 'test-app-error-vars';
       const options = {
         app: true,
@@ -355,7 +355,7 @@ describe('App Module - Uncovered Code Paths', () => {
               }
             }
           }
-          const variablesPath = path.join(appPath, 'variables.yaml');
+          const variablesPath = path.join(appPath, 'application.yaml');
           const variables = {
             port: config.port || 3000,
             build: {
@@ -412,7 +412,7 @@ describe('App Module - Uncovered Code Paths', () => {
       expect(templateValidator.copyAppFiles).toHaveBeenCalledWith('python', expect.any(String));
     });
 
-    it('should read language from variables.yaml when not in config', async() => {
+    it('should read language from application.yaml when not in config', async() => {
       const appName = 'test-app-lang-yaml';
 
       // Override mock to return python
@@ -425,7 +425,7 @@ describe('App Module - Uncovered Code Paths', () => {
         authentication: false
       });
 
-      // Make generateConfigFiles create variables.yaml with python language
+      // Make generateConfigFiles create application.yaml with python language
       appConfig.generateConfigFiles.mockImplementationOnce(async(appPath, name, config, existingEnv) => {
         // appPath is already absolute from getAppPath
         // Ensure parent directories exist
@@ -451,11 +451,11 @@ describe('App Module - Uncovered Code Paths', () => {
               }
             }
           }
-          const variablesPath = path.join(appPath, 'variables.yaml');
+          const variablesPath = path.join(appPath, 'application.yaml');
           const variables = {
             port: config.port || 3000,
             build: {
-              language: 'python' // Set language in variables.yaml
+              language: 'python' // Set language in application.yaml
             }
           };
           fsSync.writeFileSync(variablesPath, yaml.dump(variables), 'utf8');
@@ -466,9 +466,9 @@ describe('App Module - Uncovered Code Paths', () => {
 
       templateValidator.copyAppFiles.mockResolvedValue(['app.py']);
 
-      // Create app - getLanguageForAppFiles should read python from variables.yaml
+      // Create app - getLanguageForAppFiles should read python from application.yaml
       // when config.language is not set (but it will be set from options.language)
-      // Actually, this test is verifying that language in variables.yaml is used
+      // Actually, this test is verifying that language in application.yaml is used
       // when getLanguageForAppFiles is called with undefined language
       await app.createApp(appName, {
         app: true,
@@ -476,9 +476,9 @@ describe('App Module - Uncovered Code Paths', () => {
         language: 'python'
       });
 
-      // Verify variables.yaml has the language
+      // Verify application.yaml has the language
       const appPath = path.join(tempDir, 'builder', appName);
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       expect(fsSync.existsSync(variablesPath)).toBe(true);
     });
 
@@ -500,7 +500,7 @@ describe('App Module - Uncovered Code Paths', () => {
         authentication: false
       });
 
-      // Make generateConfigFiles create variables.yaml without language
+      // Make generateConfigFiles create application.yaml without language
       appConfig.generateConfigFiles.mockImplementationOnce(async(appPath, name, config, existingEnv) => {
         // appPath is already absolute from getAppPath
         // Ensure parent directories exist
@@ -527,7 +527,7 @@ describe('App Module - Uncovered Code Paths', () => {
         } catch (error) {
           throw new Error(`generateConfigFiles mock failed: ${error.message}`);
         }
-        const variablesPath = path.join(appPath, 'variables.yaml');
+        const variablesPath = path.join(appPath, 'application.yaml');
         const variables = {
           port: config.port || 3000
           // No build.language
@@ -574,7 +574,7 @@ describe('App Module - Uncovered Code Paths', () => {
               }
             }
           }
-          const variablesPath = path.join(appPath, 'variables.yaml');
+          const variablesPath = path.join(appPath, 'application.yaml');
           const variables = {
             port: config.port || 3000,
             build: {
@@ -607,7 +607,7 @@ describe('App Module - Uncovered Code Paths', () => {
 
       await app.createApp(appName, options);
 
-      // Should use language from options, not from variables.yaml
+      // Should use language from options, not from application.yaml
       expect(templateValidator.copyAppFiles).toHaveBeenCalledWith('typescript', expect.any(String));
     });
   });
@@ -645,7 +645,7 @@ describe('App Module - Uncovered Code Paths', () => {
               }
             }
           }
-          const variablesPath = path.join(appPath, 'variables.yaml');
+          const variablesPath = path.join(appPath, 'application.yaml');
           const variables = {
             port: config.port || 3000,
             build: {

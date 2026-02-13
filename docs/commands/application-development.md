@@ -11,7 +11,7 @@ Commands for creating, building, and running applications locally.
 
 Create new application with configuration files.
 
-**What:** Generates `builder/` folder with `variables.yaml`, `env.template`, `rbac.yaml`, and optional GitHub Actions workflows.
+**What:** Generates `builder/` folder with `application.yaml`, `env.template`, `rbac.yaml`, and optional GitHub Actions workflows.
 
 **When:** Starting a new application.
 
@@ -46,7 +46,7 @@ aifabrix create myapp --github --github-steps npm
 ```bash
 aifabrix create hubspot --type external
 ```
-Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2/apikey/basic), number of datasources.
+Creates in `integration/<app>/`. Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2/apikey/basic), number of datasources. For other commands (validate, json, deploy, delete), the CLI always resolves the app by checking `integration/<app>` first, then `builder/<app>`; if neither exists, it errors. There is no option to override this order.
 
 **Complete HubSpot example:**
 See `integration/hubspot/` for a complete HubSpot integration with companies, contacts, and deals datasources. Includes OAuth2 authentication, field mappings, and OpenAPI operations.
@@ -68,7 +68,7 @@ See `integration/hubspot/` for a complete HubSpot integration with companies, co
 - `--main-branch <branch>` - Main branch name for workflows (default: main)
 
 **Creates:**
-- `builder/<app>/variables.yaml` - Application configuration (regular apps)
+- `builder/<app>/application.yaml` - Application configuration (regular apps)
 - `builder/<app>/env.template` - Environment template with kv:// references
 - `builder/<app>/rbac.yaml` - RBAC configuration (if authentication enabled)
 - `builder/<app>/<appKey>-deploy.json` - Deployment manifest (e.g. `builder/myapp/myapp-deploy.json`)
@@ -77,9 +77,9 @@ See `integration/hubspot/` for a complete HubSpot integration with companies, co
 
 **External Type (`--type external`):**
 When using `--type external`, the command creates an external system integration in `integration/<app>/`:
-- `integration/<app>/variables.yaml` - App configuration with `app.type: "external"` and `externalIntegration` block
-- `integration/<app>/<systemKey>-system.json` - External system configuration
-- `integration/<app>/<systemKey>-datasource-<datasource-key>.json` - Datasource JSON files (all in same folder)
+- `integration/<app>/application.yaml` - App configuration with `app.type: "external"` and `externalIntegration` block
+- `integration/<app>/<systemKey>-system.yaml` - External system configuration
+- `integration/<app>/<systemKey>-datasource-<datasource-key>.yaml` - Datasource YAML files (all in same folder)
 - `integration/<app>/<systemKey>-deploy.json` - Deployment manifest (generated)
 - `integration/<app>/env.template` - Environment variables template
 - `integration/<app>/README.md` - Application documentation
@@ -100,8 +100,10 @@ When using `--type external`, the command creates an external system integration
 - Cannot start or end with dash
 - Cannot have consecutive dashes
 
+**Create validation:** The command fails if `integration/<name>` or `builder/<name>` already exists. Use a different name or remove the existing directory before creating.
+
 **Issues:**
-- **"Application 'name' already exists"** → Choose different name or delete existing folder
+- **"Application 'name' already exists"** or **"already exists in integration/" or "already exists in builder/"** → Choose a different name or remove the existing folder
 - **"Application name must be 3-40 characters"** → Use valid format (lowercase, dashes only)
 - **"Port must be between 1 and 65535"** → Use valid port number
 - **"Language must be either typescript or python"** → Use supported language
@@ -161,12 +163,12 @@ aifabrix build myapp --force-template
 
 Run application locally in Docker container with automatic infrastructure connectivity.
 
-**What:** Starts container, connects to infrastructure, maps ports, waits for health check.
+**What:** Starts container, connects to infrastructure, maps ports, waits for health check. **Only applications in `builder/<app>/` can be run** (no `--type` flag; external systems in `integration/` are not run as containers—use `aifabrix build` / deploy and test via OpenAPI instead).
 
 **When:** Testing, development, debugging, local demonstrations.
 
 **Prerequisites:**
-- Application must be built: `aifabrix build <app>`
+- Application must be in `builder/<app>/` and built: `aifabrix build <app>`
 - Infrastructure must be running: `aifabrix up-infra`
 - `.env` file must exist in `builder/<app>/`
 
@@ -184,12 +186,12 @@ aifabrix run myapp --port 3001
 ```bash
 aifabrix run myapp --tag v1.0.0
 ```
-Overrides `image.tag` from variables.yaml so you can run a different built version without changing config.
+Overrides `image.tag` from application.yaml so you can run a different built version without changing config.
 
 **Flags:**
-- `-p, --port <port>` - Override local port (default: from variables.yaml)
+- `-p, --port <port>` - Override local port (default: from application.yaml)
 - `-d, --debug` - Enable debug output with detailed container information (port detection, container status, Docker commands, health check details)
-- `-t, --tag <tag>` - Image tag to run (e.g. v1.0.0); overrides variables.yaml image.tag
+- `-t, --tag <tag>` - Image tag to run (e.g. v1.0.0); overrides application.yaml image.tag
 
 **Debug Mode:**
 When `--debug` is enabled, the command outputs detailed information including:
@@ -211,7 +213,7 @@ aifabrix run myapp --debug
 5. Checks port availability
 6. Generates `.env` file from template (if needed)
 7. Generates Docker Compose configuration
-8. **Creates database and user** (if `requiresDatabase: true` in variables.yaml)
+8. **Creates database and user** (if `requiresDatabase: true` in application.yaml)
    - Automatically creates database named after app key
    - Creates database user with proper permissions
    - Grants all privileges and sets schema ownership
@@ -227,12 +229,44 @@ aifabrix run myapp --debug
 **Health Check:** `/health` endpoint
 
 **Issues:**
+- **"Application not found in builder/"** → Only apps in `builder/<app>/` can be run. Create or copy the app into builder (e.g. `aifabrix create <app>` or copy from templates). External systems in `integration/` are not run as containers.
+- **"External systems don't run as Docker containers"** → The app in `builder/<app>/` has `app.type: external`; run only supports runnable apps. Use `aifabrix build` and deploy, then test via OpenAPI.
 - **"Docker image not found"** → Run `aifabrix build <app>` first
 - **"Infrastructure not running"** → Run `aifabrix up-infra` first
 - **"Port already in use"** → Use `--port <alternative>` flag
 - **"Container won't start"** → Check logs: `aifabrix logs <app>`
 - **"Health check timeout"** → Check application logs and health endpoint
-- **"Configuration validation failed"** → Fix issues in `builder/<app>/variables.yaml`
+- **"Configuration validation failed"** → Fix issues in `builder/<app>/application.yaml`
+
+---
+
+<a id="aifabrix-restart-app"></a>
+## aifabrix restart <app>
+
+Restart a running Docker application (container restart without recreating).
+
+**What:** Restarts the application container started by `aifabrix run <app>`. Uses Docker restart so the same container and configuration are reused. Only applies to apps in `builder/<app>/`.
+
+**When:** After code or config changes where a full stop/start is not needed, or to clear a stuck process.
+
+**Prerequisites:**
+- Application must already be running: `aifabrix run <app>` (or started via deploy with `--local`)
+
+**Example:**
+```bash
+aifabrix restart myapp
+```
+
+**Output:**
+```yaml
+✅ myapp restarted successfully
+```
+
+**Note:** The same command is used for infrastructure services: `aifabrix restart postgres`, `aifabrix restart redis`, etc. If the argument is an infrastructure service name (postgres, redis, pgadmin, redis-commander, traefik), that service is restarted; otherwise it is treated as an application name.
+
+**Issues:**
+- **"Application 'X' is not running"** → Start the app first: `aifabrix run <app>`
+- **"Invalid service name"** (infra only) → Use one of: postgres, redis, pgadmin, redis-commander, traefik
 
 ---
 
@@ -331,7 +365,7 @@ aifabrix dockerfile myapp --language python
 - `-f, --force` - Overwrite existing Dockerfile
 
 **Process:**
-1. Reads `builder/{app}/variables.yaml`
+1. Reads `builder/{app}/application.yaml`
 2. Detects language (TypeScript/Python)
 3. Loads template from `templates/{language}/Dockerfile.hbs`
 4. Generates Dockerfile with application-specific configuration
@@ -346,5 +380,5 @@ Location: builder/myapp/Dockerfile
 **Issues:**
 - **"Dockerfile already exists"** → Use `--force` flag to overwrite
 - **"Failed to load configuration"** → Run `aifabrix create myapp` first
-- **"Language not supported"** → Update variables.yaml with supported language
+- **"Language not supported"** → Update application.yaml with supported language
 

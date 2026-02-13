@@ -169,11 +169,11 @@ describe('App Commands', () => {
   });
 
   describe('register command', () => {
-    it('should register app with existing variables.yaml', async() => {
+    it('should register app with existing application.yaml', async() => {
       const appName = 'test-app';
       const environment = 'dev';
 
-      // Create app directory with variables.yaml
+      // Create app directory with application.yaml
       // Use tempDir directly instead of process.cwd() for reliability
       const appDir = path.join(tempDir, 'builder', appName);
       // Ensure parent directory exists (builder directory is created in beforeEach)
@@ -203,7 +203,7 @@ describe('App Commands', () => {
         }
       };
       const variablesYaml = yaml.dump(variablesData);
-      const variablesPath = path.join(appDir, 'variables.yaml');
+      const variablesPath = path.join(appDir, 'application.yaml');
       // Use synchronous write to ensure file is created
       fsSync.writeFileSync(variablesPath, variablesYaml, 'utf-8');
 
@@ -230,7 +230,7 @@ describe('App Commands', () => {
         }
       });
 
-      // Test that variables.yaml is read correctly
+      // Test that application.yaml is read correctly
       const variablesContent = await fs.readFile(variablesPath, 'utf-8');
       const loadedVariables = yaml.load(variablesContent);
 
@@ -243,16 +243,16 @@ describe('App Commands', () => {
       expect(loadedVariables.build.language).toBe('typescript');
     });
 
-    it('should create minimal config if variables.yaml is missing', async() => {
+    it('should create minimal config if application.yaml is missing', async() => {
       const appName = 'new-app';
       const environment = 'dev';
 
       // Mock createApp
       createApp.mockResolvedValue();
 
-      // Simulate the case where variables.yaml doesn't exist
+      // Simulate the case where application.yaml doesn't exist
       const appDir = path.join(tempDir, 'builder', appName);
-      const variablesPath = path.join(appDir, 'variables.yaml');
+      const variablesPath = path.join(appDir, 'application.yaml');
 
       let variables;
       try {

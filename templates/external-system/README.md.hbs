@@ -10,8 +10,8 @@
 
 ## Files
 
-- `variables.yaml` – Application configuration with `app` and `externalIntegration` blocks
-- `{{systemKey}}-system.json` – External system definition (authentication, OpenAPI/MCP, RBAC)
+- `application.yaml` – Application configuration with `app` and `externalIntegration` blocks
+- `{{systemKey}}-system.yaml` – External system definition (authentication, OpenAPI/MCP, RBAC)
 {{#each datasources}}
 - `{{fileName}}` – Datasource: {{displayName}}
 {{/each}}
@@ -38,8 +38,8 @@ aifabrix wizard --app {{appName}}
 
 Edit files in `integration/{{appName}}/`:
 
-- **Authentication**: `{{systemKey}}-system.json` (auth type, credentials placeholders)
-- **Field mappings**: `{{systemKey}}-datasource-*.json` (dimensions, attributes, operations)
+- **Authentication**: `{{systemKey}}-system.yaml` (auth type, credentials placeholders)
+- **Field mappings**: `{{systemKey}}-datasource-*.yaml` (dimensions, attributes, operations)
 
 ### 3. Validate Configuration
 

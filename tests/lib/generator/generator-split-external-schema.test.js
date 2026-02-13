@@ -60,12 +60,12 @@ describe('splitExternalApplicationSchema', () => {
     const result = await splitExternalApplicationSchema(schemaPath, outputDir);
 
     expect(fs.promises.mkdir).toHaveBeenCalledWith(outputDir, { recursive: true });
-    // New naming convention: system file uses -system.json
-    expect(result.systemFile).toBe(path.join(outputDir, 'testext-system.json'));
+    // New naming convention: system file uses -system.yaml
+    expect(result.systemFile).toBe(path.join(outputDir, 'testext-system.yaml'));
     // New naming convention: datasource files use -datasource- prefix
     // Key 'testext-deploy-entity1' - the extraction logic keeps 'deploy-entity1' part
-    expect(result.datasourceFiles[0]).toBe(path.join(outputDir, 'testext-datasource-deploy-entity1.json'));
-    expect(result.variables).toBe(path.join(outputDir, 'variables.yaml'));
+    expect(result.datasourceFiles[0]).toBe(path.join(outputDir, 'testext-datasource-deploy-entity1.yaml'));
+    expect(result.variables).toBe(path.join(outputDir, 'application.yaml'));
     expect(result.envTemplate).toBe(path.join(outputDir, 'env.template'));
     expect(result.readme).toBe(path.join(outputDir, 'README.md'));
     expect(result.rbac).toBe(path.join(outputDir, 'rbac.yml'));

@@ -188,7 +188,7 @@ beforeEach(() => {
 
 describe('External System Download Helpers Module', () => {
   describe('generateVariablesYaml', () => {
-    it('should generate variables.yaml with system and datasources', () => {
+    it('should generate application.yaml with system and datasources', () => {
       const systemKey = 'hubspot';
       const application = {
         displayName: 'HubSpot Integration',

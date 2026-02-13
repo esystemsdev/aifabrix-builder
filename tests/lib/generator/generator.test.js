@@ -60,7 +60,7 @@ jest.mock('../../../lib/utils/paths', () => {
 describe('Generator Module', () => {
   const appName = 'testapp';
   const builderPath = path.join(process.cwd(), 'builder', appName);
-  const variablesPath = path.join(builderPath, 'variables.yaml');
+  const variablesPath = path.join(builderPath, 'application.yaml');
   const templatePath = path.join(builderPath, 'env.template');
   const rbacPath = path.join(builderPath, 'rbac.yaml');
   const jsonPath = path.join(builderPath, 'testapp-deploy.json');
@@ -142,7 +142,7 @@ PUBLIC_CONFIG=public-value`;
       });
 
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') ||
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') ||
                filePath.includes('env.template') ||
                filePath.includes('rbac.yaml');
       });
@@ -152,7 +152,7 @@ PUBLIC_CONFIG=public-value`;
         if (writtenFiles[filePath]) {
           return writtenFiles[filePath];
         }
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(mockVariables);
         }
         if (filePath.includes('env.template')) {
@@ -210,7 +210,7 @@ PUBLIC_CONFIG=public-value`;
       expect(deployment.key).toBeDefined();
     });
 
-    it('should merge portalInput from variables.yaml into deployment JSON', async() => {
+    it('should merge portalInput from application.yaml into deployment JSON', async() => {
       const variablesWithPortalInput = {
         ...mockVariables,
         configuration: [
@@ -249,7 +249,7 @@ REDIS_URL=redis://localhost:6379`;
         if (writtenFiles[filePath]) {
           return writtenFiles[filePath];
         }
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variablesWithPortalInput);
         }
         if (filePath.includes('env.template')) {
@@ -298,7 +298,7 @@ REDIS_URL=redis://localhost:6379`;
 
     it('should handle missing rbac.yaml gracefully', async() => {
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') ||
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') ||
                filePath.includes('env.template');
         // rbac.yaml not found
       });
@@ -325,11 +325,11 @@ REDIS_URL=redis://localhost:6379`;
       };
 
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') || filePath.includes('env.template');
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') || filePath.includes('env.template');
       });
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -354,37 +354,37 @@ REDIS_URL=redis://localhost:6379`;
       await expect(generator.generateDeployJson('')).rejects.toThrow('App name is required and must be a string');
     });
 
-    it('should throw error if variables.yaml not found', async() => {
+    it('should throw error if application config not found', async() => {
       fs.existsSync.mockReturnValue(false);
 
-      await expect(generator.generateDeployJson(appName)).rejects.toThrow(`variables.yaml not found: ${variablesPath}`);
+      await expect(generator.generateDeployJson(appName)).rejects.toThrow(/Application config not found/);
     });
 
     it('should throw error if env.template not found', async() => {
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml');
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml');
         // env.template not found
       });
 
       await expect(generator.generateDeployJson(appName)).rejects.toThrow(`env.template not found: ${templatePath}`);
     });
 
-    it('should throw error for invalid YAML syntax in variables.yaml', async() => {
+    it('should throw error for invalid YAML syntax in application config', async() => {
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('invalid: yaml: content: [unclosed');
 
-      await expect(generator.generateDeployJson(appName)).rejects.toThrow('Invalid YAML syntax in variables.yaml');
+      await expect(generator.generateDeployJson(appName)).rejects.toThrow(/Invalid YAML syntax/);
     });
 
     it('should throw error for invalid YAML syntax in rbac.yaml', async() => {
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') ||
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') ||
                filePath.includes('env.template') ||
                filePath.includes('rbac.yaml');
       });
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(mockVariables);
         }
         if (filePath.includes('env.template')) {
@@ -459,7 +459,7 @@ NORMAL_VAR=value`;
       expect(result).toEqual([]);
     });
 
-    it('should merge portalInput from variables.yaml with env.template', () => {
+    it('should merge portalInput from application.yaml with env.template', () => {
       const template = `MISO_CLIENTID=kv://miso-test-client-idKeyVault
 API_KEY=kv://api-keyKeyVault
 NORMAL_VAR=value`;
@@ -1211,11 +1211,11 @@ DOCKER_REGISTRY_SERVER_PASSWORD=pass
 OTHER_VAR=value`;
 
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') || filePath.includes('env.template');
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') || filePath.includes('env.template');
       });
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1255,11 +1255,11 @@ DOCKER_REGISTRY_SERVER_URL=https://registry.example.com
 OTHER_VAR=value`;
 
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') || filePath.includes('env.template');
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') || filePath.includes('env.template');
       });
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1289,7 +1289,7 @@ OTHER_VAR=value`;
   describe('generateDeployJson - optional fields', () => {
     beforeEach(() => {
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') || filePath.includes('env.template');
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') || filePath.includes('env.template');
       });
     });
 
@@ -1301,7 +1301,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1331,7 +1331,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1364,7 +1364,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1400,7 +1400,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1435,7 +1435,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1465,7 +1465,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1495,7 +1495,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1525,7 +1525,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1555,7 +1555,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1589,13 +1589,13 @@ OTHER_VAR=value`;
       };
 
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') ||
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') ||
                filePath.includes('env.template') ||
                filePath.includes('rbac.yaml');
       });
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1631,13 +1631,13 @@ OTHER_VAR=value`;
       };
 
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') ||
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') ||
                filePath.includes('env.template') ||
                filePath.includes('rbac.yaml');
       });
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1674,13 +1674,13 @@ OTHER_VAR=value`;
       };
 
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') ||
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') ||
                filePath.includes('env.template') ||
                filePath.includes('rbac.yaml');
       });
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1709,7 +1709,7 @@ OTHER_VAR=value`;
   describe('generateDeployJson - buildBaseDeployment edge cases', () => {
     beforeEach(() => {
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') || filePath.includes('env.template');
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') || filePath.includes('env.template');
       });
       jest.spyOn(validator, 'validateDeploymentJson').mockReturnValue({ valid: true });
     });
@@ -1721,7 +1721,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1748,7 +1748,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1774,7 +1774,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1802,7 +1802,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1830,7 +1830,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1858,7 +1858,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1885,7 +1885,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1919,7 +1919,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1948,7 +1948,7 @@ OTHER_VAR=value`;
   describe('generateDeployJson - validation edge cases', () => {
     beforeEach(() => {
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') || filePath.includes('env.template');
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') || filePath.includes('env.template');
       });
     });
 
@@ -1963,7 +1963,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -1997,7 +1997,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -2031,7 +2031,7 @@ OTHER_VAR=value`;
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -2111,7 +2111,7 @@ NORMAL_VAR=value456`;
   describe('generateDeployJsonWithValidation', () => {
     beforeEach(() => {
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') ||
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') ||
                filePath.includes('env.template');
       });
     });
@@ -2127,7 +2127,7 @@ NORMAL_VAR=value456`;
         if (writtenFiles[filePath]) {
           return writtenFiles[filePath];
         }
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -2165,7 +2165,7 @@ NORMAL_VAR=value456`;
         if (writtenFiles[filePath]) {
           return writtenFiles[filePath];
         }
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(variables);
         }
         if (filePath.includes('env.template')) {
@@ -2194,7 +2194,7 @@ NORMAL_VAR=value456`;
   describe('generateExternalSystemApplicationSchema', () => {
     const externalAppName = 'hubspot';
     const externalAppPath = path.join(process.cwd(), 'integration', externalAppName);
-    const externalVariablesPath = path.join(externalAppPath, 'variables.yaml');
+    const externalVariablesPath = path.join(externalAppPath, 'application.yaml');
     const systemFilePath = path.join(externalAppPath, 'hubspot-deploy.json');
     const datasourceFile1 = path.join(externalAppPath, 'hubspot-deploy-company.json');
     const datasourceFile2 = path.join(externalAppPath, 'hubspot-deploy-contact.json');
@@ -2275,25 +2275,23 @@ NORMAL_VAR=value456`;
         if (filePath === externalVariablesPath) {
           return yaml.dump(mockExternalVariables);
         }
+        if (filePath === systemFilePath) {
+          return JSON.stringify(mockSystemJson);
+        }
+        if (filePath === datasourceFile1) {
+          return JSON.stringify(mockDatasourceJson1);
+        }
+        if (filePath === datasourceFile2) {
+          return JSON.stringify(mockDatasourceJson2);
+        }
         throw new Error(`Unexpected file read: ${filePath}`);
       });
 
-      // Mock fs.promises for async file operations
+      // Mock fs.promises for async file operations (e.g. deploy manifest write)
       if (!fs.promises) {
         fs.promises = {};
       }
-      fs.promises.readFile = jest.fn().mockImplementation((filePath) => {
-        if (filePath === systemFilePath) {
-          return Promise.resolve(JSON.stringify(mockSystemJson));
-        }
-        if (filePath === datasourceFile1) {
-          return Promise.resolve(JSON.stringify(mockDatasourceJson1));
-        }
-        if (filePath === datasourceFile2) {
-          return Promise.resolve(JSON.stringify(mockDatasourceJson2));
-        }
-        throw new Error(`File not found: ${filePath}`);
-      });
+      fs.promises.readFile = jest.fn().mockImplementation(() => Promise.reject(new Error('File not found')));
     });
 
     it('should generate application schema successfully', async() => {
@@ -2327,7 +2325,7 @@ NORMAL_VAR=value456`;
 
       await expect(
         generator.generateExternalSystemApplicationSchema(externalAppName)
-      ).rejects.toThrow('variables.yaml not found');
+      ).rejects.toThrow(/Config file not found|Application config not found/);
     });
 
     it('should throw error when datasource file is missing', async() => {

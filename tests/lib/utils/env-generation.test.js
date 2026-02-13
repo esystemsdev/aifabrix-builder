@@ -220,6 +220,10 @@ jest.mock('../../../lib/utils/logger', () => ({
   log: jest.fn()
 }));
 
+jest.mock('../../../lib/utils/app-config-resolver', () => ({
+  resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml'))
+}));
+
 const { generateEnvContent } = require('../../../lib/core/secrets');
 const { adjustLocalEnvPortsInContent } = require('../../../lib/utils/secrets-helpers');
 const { buildEnvVarMap } = require('../../../lib/utils/env-map');
@@ -230,7 +234,7 @@ describe('Environment Generation - Comprehensive Tests', () => {
   const mockAppName = 'test-app';
   const mockBuilderPath = path.join(process.cwd(), 'builder', mockAppName);
   const mockTemplatePath = path.join(mockBuilderPath, 'env.template');
-  const mockVariablesPath = path.join(mockBuilderPath, 'variables.yaml');
+  const mockVariablesPath = path.join(mockBuilderPath, 'application.yaml');
 
   const baseEnvTemplate = `NODE_ENV=development
 PORT=3077
@@ -889,10 +893,10 @@ DB_PORT=\${DB_PORT}`;
 
   describe('PORT Override Chain Scenarios', () => {
     describe('Scenario 1: All sources present', () => {
-      it('should use variables.yaml build.localPort as strongest override (dev-id 1)', async() => {
+      it('should use application.yaml build.localPort as strongest override (dev-id 1)', async() => {
         // env-config.yaml → PORT: 3000
         // config.yaml → PORT: 3010
-        // variables.yaml → build.localPort: 3015 (strongest)
+        // application.yaml → build.localPort: 3015 (strongest)
         // Expected: 3015 + 100 = 3115
 
         const variables = {
@@ -923,8 +927,8 @@ DB_PORT=\${DB_PORT}`;
       });
     });
 
-    describe('Scenario 2: Only variables.yaml present', () => {
-      it('should use variables.yaml build.localPort when other sources missing (dev-id 1)', async() => {
+    describe('Scenario 2: Only application.yaml present', () => {
+      it('should use application.yaml build.localPort when other sources missing (dev-id 1)', async() => {
         const variables = {
           port: 3000,
           build: {
@@ -950,8 +954,8 @@ DB_PORT=\${DB_PORT}`;
       });
     });
 
-    describe('Scenario 3: Only variables.yaml port (no build.localPort)', () => {
-      it('should use variables.yaml port as fallback (dev-id 1)', async() => {
+    describe('Scenario 3: Only application.yaml port (no build.localPort)', () => {
+      it('should use application.yaml port as fallback (dev-id 1)', async() => {
         const variables = {
           port: 3000
         };
@@ -975,7 +979,7 @@ DB_PORT=\${DB_PORT}`;
     });
 
     describe('Scenario 4: Only env-config.yaml present', () => {
-      it('should use env-config.yaml PORT when variables.yaml missing (dev-id 1)', async() => {
+      it('should use env-config.yaml PORT when application.yaml missing (dev-id 1)', async() => {
         fs.readFileSync.mockImplementation((filePath) => {
           return '';
         });

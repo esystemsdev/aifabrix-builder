@@ -168,7 +168,7 @@ describe('Wizard Command Handler', () => {
       appPath: '/path/to/integration/test-app',
       systemFilePath: '/path/to/integration/test-app/test-system-deploy.json',
       datasourceFilePaths: ['/path/to/integration/test-app/test-system-deploy-entity1.json'],
-      variablesPath: '/path/to/integration/test-app/variables.yaml',
+      variablesPath: '/path/to/integration/test-app/application.yaml',
       envTemplatePath: '/path/to/integration/test-app/env.template',
       readmePath: '/path/to/integration/test-app/README.md',
       applicationSchemaPath: '/path/to/integration/test-app/application-schema.json'

@@ -40,13 +40,21 @@ jest.mock('../../../lib/utils/logger', () => ({
   warn: jest.fn(),
   error: jest.fn()
 }));
+jest.mock('../../../lib/utils/app-config-resolver', () => ({
+  resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml'))
+}));
+jest.mock('../../../lib/utils/config-format', () => ({
+  loadConfigFile: jest.fn(),
+  writeConfigFile: jest.fn()
+}));
 
 const logger = require('../../../lib/utils/logger');
+const configFormat = require('../../../lib/utils/config-format');
 
 describe('External System Generator Module', () => {
   const appName = 'test-external-app';
   const appPath = path.join(process.cwd(), 'integration', appName);
-  const variablesPath = path.join(appPath, 'variables.yaml');
+  const variablesPath = path.join(appPath, 'application.yaml');
   // Generator uses templates/external-system/ (from lib/external-system/generator.js, goes up 2 levels)
   const templateDir = path.join(process.cwd(), 'templates', 'external-system');
   const systemTemplatePath = path.join(templateDir, 'external-system.json.hbs');
@@ -117,12 +125,12 @@ describe('External System Generator Module', () => {
       const { generateExternalSystemTemplate } = require('../../../lib/external-system/generator');
       const result = await generateExternalSystemTemplate(appPath, systemKey, config);
 
-      // Files are now in same folder as variables.yaml (not schemas/ subfolder)
-      // Naming: <app-name>-system.json
-      expect(result).toBe(path.join(appPath, `${systemKey}-system.json`));
+      // Files are now in same folder as application.yaml (not schemas/ subfolder)
+      // Naming: <app-name>-system.yaml
+      expect(result).toBe(path.join(appPath, `${systemKey}-system.yaml`));
       expect(fsPromises.readFile).toHaveBeenCalledWith(systemTemplatePath, 'utf8');
       // mkdir should not be called (no subfolder needed)
-      expect(fsPromises.writeFile).toHaveBeenCalled();
+      expect(configFormat.writeConfigFile).toHaveBeenCalled();
     });
 
     it('should use default values when config is minimal', async() => {
@@ -131,14 +139,14 @@ describe('External System Generator Module', () => {
 
       fsPromises.readFile = jest.fn().mockResolvedValue(mockSystemTemplate);
       fsPromises.mkdir = jest.fn().mockResolvedValue(undefined);
-      fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
+      configFormat.writeConfigFile.mockClear();
 
       const { generateExternalSystemTemplate } = require('../../../lib/external-system/generator');
       await generateExternalSystemTemplate(appPath, systemKey, config);
 
-      const writeCall = fsPromises.writeFile.mock.calls[0];
-      const writtenContent = writeCall[1];
-      const parsed = JSON.parse(writtenContent);
+      const systemCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-system.yaml'));
+      expect(systemCall).toBeDefined();
+      const parsed = systemCall[1];
       expect(parsed.key).toBe('test-system');
       expect(parsed.type).toBe('openapi');
       expect(parsed.authentication.type).toBe('apikey');
@@ -161,13 +169,13 @@ describe('External System Generator Module', () => {
       const config = { baseUrl: 'https://api.hubapi.com' };
 
       fsPromises.readFile = jest.fn().mockResolvedValue(mockSystemTemplate);
-      fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
+      configFormat.writeConfigFile.mockClear();
 
       const { generateExternalSystemTemplate } = require('../../../lib/external-system/generator');
       await generateExternalSystemTemplate(appPath, systemKey, config);
 
-      const writeCall = fsPromises.writeFile.mock.calls[0];
-      const parsed = JSON.parse(writeCall[1]);
+      const systemCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-system.yaml'));
+      const parsed = systemCall[1];
       expect(parsed.configuration[0].value).toBe('https://api.hubapi.com');
     });
 
@@ -177,14 +185,13 @@ describe('External System Generator Module', () => {
 
       fsPromises.readFile = jest.fn().mockResolvedValue(mockSystemTemplate);
       fsPromises.mkdir = jest.fn().mockResolvedValue(undefined);
-      fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
+      configFormat.writeConfigFile.mockClear();
 
       const { generateExternalSystemTemplate } = require('../../../lib/external-system/generator');
       await generateExternalSystemTemplate(appPath, systemKey, config);
 
-      const writeCall = fsPromises.writeFile.mock.calls[0];
-      const writtenContent = writeCall[1];
-      const parsed = JSON.parse(writtenContent);
+      const systemCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-system.yaml'));
+      const parsed = systemCall[1];
       expect(parsed.displayName).toBe('My Test System');
     });
 
@@ -207,7 +214,9 @@ describe('External System Generator Module', () => {
     it('should throw error if write fails', async() => {
       fsPromises.readFile = jest.fn().mockResolvedValue(mockSystemTemplate);
       fsPromises.mkdir = jest.fn().mockResolvedValue(undefined);
-      fsPromises.writeFile = jest.fn().mockRejectedValue(new Error('Write failed'));
+      configFormat.writeConfigFile.mockImplementationOnce(() => {
+        throw new Error('Write failed');
+      });
 
       const { generateExternalSystemTemplate } = require('../../../lib/external-system/generator');
       await expect(generateExternalSystemTemplate(appPath, 'test-system', {}))
@@ -233,17 +242,17 @@ describe('External System Generator Module', () => {
 
       const { generateExternalDataSourceTemplate } = require('../../../lib/external-system/generator');
       // Function expects just the entity key (like 'entity1'), it will extract the key part
-      // and generate: <systemKey>-datasource-<datasourceKeyOnly>.json
+      // and generate: <systemKey>-datasource-<datasourceKeyOnly>.yaml
       const result = await generateExternalDataSourceTemplate(appPath, datasourceKey, config);
 
-      // Files are now in same folder as variables.yaml (not schemas/ subfolder)
-      // Naming: <systemKey>-datasource-<datasourceKeyOnly>.json
+      // Files are now in same folder as application.yaml (not schemas/ subfolder)
+      // Naming: <systemKey>-datasource-<datasourceKeyOnly>.yaml
       // Since datasourceKey is 'test-system-entity1' and systemKey is 'test-system',
-      // the function extracts 'entity1' and generates 'test-system-datasource-entity1.json'
-      expect(result).toBe(path.join(appPath, 'test-system-datasource-entity1.json'));
+      // the function extracts 'entity1' and generates 'test-system-datasource-entity1.yaml'
+      expect(result).toBe(path.join(appPath, 'test-system-datasource-entity1.yaml'));
       expect(fsPromises.readFile).toHaveBeenCalledWith(datasourceTemplatePath, 'utf8');
       // mkdir should not be called (no subfolder needed)
-      expect(fsPromises.writeFile).toHaveBeenCalled();
+      expect(configFormat.writeConfigFile).toHaveBeenCalled();
     });
 
     it('should use default values when config is minimal', async() => {
@@ -254,14 +263,14 @@ describe('External System Generator Module', () => {
 
       fsPromises.readFile = jest.fn().mockResolvedValue(mockDatasourceTemplate);
       fsPromises.mkdir = jest.fn().mockResolvedValue(undefined);
-      fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
+      configFormat.writeConfigFile.mockClear();
 
       const { generateExternalDataSourceTemplate } = require('../../../lib/external-system/generator');
       await generateExternalDataSourceTemplate(appPath, datasourceKey, config);
 
-      const writeCall = fsPromises.writeFile.mock.calls[0];
-      const writtenContent = writeCall[1];
-      const parsed = JSON.parse(writtenContent);
+      const dsCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-datasource-'));
+      expect(dsCall).toBeDefined();
+      const parsed = dsCall[1];
       expect(parsed.key).toBe('test-system-entity1');
       expect(parsed.systemKey).toBe('test-system');
       expect(parsed.resourceType).toBe('document');
@@ -280,9 +289,9 @@ describe('External System Generator Module', () => {
       const { generateExternalDataSourceTemplate } = require('../../../lib/external-system/generator');
       await generateExternalDataSourceTemplate(appPath, datasourceKey, config);
 
-      const writeCall = fsPromises.writeFile.mock.calls[0];
-      const writtenContent = writeCall[1];
-      const parsed = JSON.parse(writtenContent);
+      const dsCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-datasource-'));
+      expect(dsCall).toBeDefined();
+      const parsed = dsCall[1];
       expect(parsed.entityType).toBe('customer');
     });
 
@@ -299,9 +308,8 @@ describe('External System Generator Module', () => {
       const { generateExternalDataSourceTemplate } = require('../../../lib/external-system/generator');
       await generateExternalDataSourceTemplate(appPath, datasourceKey, config);
 
-      const writeCall = fsPromises.writeFile.mock.calls[0];
-      const writtenContent = writeCall[1];
-      const parsed = JSON.parse(writtenContent);
+      const dsCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-datasource-'));
+      const parsed = dsCall[1];
       expect(parsed.displayName).toContain('Test System Entity One');
     });
 
@@ -336,8 +344,8 @@ describe('External System Generator Module', () => {
         systemType: 'rest'
       });
 
-      const writtenContent = fsPromises.writeFile.mock.calls[0][1];
-      const parsed = JSON.parse(writtenContent);
+      const dsCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-datasource-'));
+      const parsed = dsCall[1];
 
       expect(parsed.fieldMappings.dimensions).toEqual({
         country: 'metadata.country',
@@ -370,8 +378,8 @@ describe('External System Generator Module', () => {
         systemType: 'rest'
       });
 
-      const writtenContent = fsPromises.writeFile.mock.calls[0][1];
-      const json = JSON.parse(writtenContent);
+      const dsCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-datasource-'));
+      const json = dsCall[1];
 
       let schema = require('../../../lib/schema/external-datasource.schema.json');
       if (schema.$schema && schema.$schema.includes('2020-12')) {
@@ -396,12 +404,11 @@ describe('External System Generator Module', () => {
     };
 
     beforeEach(() => {
+      configFormat.loadConfigFile.mockReturnValue(mockVariables);
+      configFormat.writeConfigFile.mockClear();
       fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
         if (filePath === systemTemplatePath || filePath === datasourceTemplatePath) {
           return Promise.resolve(mockSystemTemplate);
-        }
-        if (filePath === variablesPath) {
-          return Promise.resolve(yaml.dump(mockVariables));
         }
         return Promise.reject(new Error('File not found'));
       });
@@ -421,12 +428,12 @@ describe('External System Generator Module', () => {
       const { generateExternalSystemFiles } = require('../../../lib/external-system/generator');
       const result = await generateExternalSystemFiles(appPath, appName, config);
 
-      // Files are now in same folder with new naming: <app-name>-system.json
-      expect(result.systemPath).toBe(path.join(appPath, 'test-system-system.json'));
+      // Files are now in same folder with new naming: <app-name>-system.yaml
+      expect(result.systemPath).toBe(path.join(appPath, 'test-system-system.yaml'));
       expect(result.datasourcePaths).toHaveLength(2);
-      // Datasource naming: <systemKey>-datasource-<entityKey>.json
-      expect(result.datasourcePaths[0]).toBe(path.join(appPath, 'test-system-datasource-entity1.json'));
-      expect(result.datasourcePaths[1]).toBe(path.join(appPath, 'test-system-datasource-entity2.json'));
+      // Datasource naming: <systemKey>-datasource-<entityKey>.yaml
+      expect(result.datasourcePaths[0]).toBe(path.join(appPath, 'test-system-datasource-entity1.yaml'));
+      expect(result.datasourcePaths[1]).toBe(path.join(appPath, 'test-system-datasource-entity2.yaml'));
       expect(logger.log).toHaveBeenCalled();
     });
 
@@ -438,8 +445,8 @@ describe('External System Generator Module', () => {
       const { generateExternalSystemFiles } = require('../../../lib/external-system/generator');
       const result = await generateExternalSystemFiles(appPath, appName, config);
 
-      // Files are now in same folder with new naming: <app-name>-system.json
-      expect(result.systemPath).toBe(path.join(appPath, `${appName}-system.json`));
+      // Files are now in same folder with new naming: <app-name>-system.yaml
+      expect(result.systemPath).toBe(path.join(appPath, `${appName}-system.yaml`));
     });
 
     it('should use default datasourceCount of 1', async() => {
@@ -459,12 +466,10 @@ describe('External System Generator Module', () => {
         datasourceCount: 5
       };
 
+      configFormat.loadConfigFile.mockReturnValue(mockVariables);
       fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
         if (filePath === systemTemplatePath || filePath === datasourceTemplatePath) {
           return Promise.resolve('{"resourceType": "{{resourceType}}"}');
-        }
-        if (filePath === variablesPath) {
-          return Promise.resolve(yaml.dump(mockVariables));
         }
         return Promise.reject(new Error('File not found'));
       });
@@ -472,15 +477,14 @@ describe('External System Generator Module', () => {
       const { generateExternalSystemFiles } = require('../../../lib/external-system/generator');
       await generateExternalSystemFiles(appPath, appName, config);
 
-      const writeCalls = fsPromises.writeFile.mock.calls;
+      const datasourceCalls = configFormat.writeConfigFile.mock.calls.filter(c => c[0] && String(c[0]).includes('-datasource-'));
       const resourceTypes = ['customer', 'contact', 'person', 'document', 'deal'];
       resourceTypes.forEach((type, index) => {
-        const parsed = JSON.parse(writeCalls[index + 1][1]);
-        expect(parsed.resourceType).toBe(type);
+        expect(datasourceCalls[index][1].resourceType).toBe(type);
       });
     });
 
-    it('should update variables.yaml with externalIntegration block', async() => {
+    it('should update application.yaml with externalIntegration block', async() => {
       const config = {
         systemKey: 'test-system',
         datasourceCount: 2
@@ -489,17 +493,19 @@ describe('External System Generator Module', () => {
       const { generateExternalSystemFiles } = require('../../../lib/external-system/generator');
       await generateExternalSystemFiles(appPath, appName, config);
 
-      const variablesWriteCall = fsPromises.writeFile.mock.calls.find(call => call[0] === variablesPath);
-      expect(variablesWriteCall).toBeDefined();
-      const writtenYaml = yaml.load(variablesWriteCall[1]);
-      expect(writtenYaml.externalIntegration).toBeDefined();
-      // schemaBasePath is now './' (same folder)
-      expect(writtenYaml.externalIntegration.schemaBasePath).toBe('./');
-      // System file naming: <app-name>-system.json
-      expect(writtenYaml.externalIntegration.systems).toEqual(['test-system-system.json']);
-      expect(writtenYaml.externalIntegration.dataSources).toHaveLength(2);
-      expect(writtenYaml.externalIntegration.autopublish).toBe(true);
-      expect(writtenYaml.externalIntegration.version).toBe('1.0.0');
+      expect(configFormat.writeConfigFile).toHaveBeenCalledWith(variablesPath, expect.objectContaining({
+        externalIntegration: expect.objectContaining({
+          schemaBasePath: './',
+          systems: ['test-system-system.yaml'],
+          dataSources: expect.any(Array),
+          autopublish: true,
+          version: '1.0.0'
+        })
+      }));
+      const applicationYamlCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('application.yaml'));
+      expect(applicationYamlCall).toBeDefined();
+      const writtenVariables = applicationYamlCall[1];
+      expect(writtenVariables.externalIntegration.dataSources).toHaveLength(2);
     });
 
     it('should throw error if system template generation fails', async() => {
@@ -523,9 +529,6 @@ describe('External System Generator Module', () => {
         if (filePath === datasourceTemplatePath) {
           return Promise.reject(new Error('Datasource template read failed'));
         }
-        if (filePath === variablesPath) {
-          return Promise.resolve(yaml.dump(mockVariables));
-        }
         return Promise.reject(new Error('File not found'));
       });
 
@@ -534,15 +537,9 @@ describe('External System Generator Module', () => {
         .rejects.toThrow('Failed to generate external system files');
     });
 
-    it('should throw error if variables.yaml update fails', async() => {
-      fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
-        if (filePath === systemTemplatePath || filePath === datasourceTemplatePath) {
-          return Promise.resolve(mockSystemTemplate);
-        }
-        if (filePath === variablesPath) {
-          return Promise.reject(new Error('Variables read failed'));
-        }
-        return Promise.reject(new Error('File not found'));
+    it('should throw error if application.yaml update fails', async() => {
+      configFormat.loadConfigFile.mockImplementation(() => {
+        throw new Error('Variables read failed');
       });
 
       const { generateExternalSystemFiles } = require('../../../lib/external-system/generator');
@@ -552,7 +549,7 @@ describe('External System Generator Module', () => {
   });
 
   describe('updateVariablesYamlWithExternalIntegration', () => {
-    it('should update variables.yaml with externalIntegration block', async() => {
+    it('should update application.yaml with externalIntegration block', async() => {
       const mockVariables = {
         app: { key: appName },
         port: 3000
@@ -561,27 +558,21 @@ describe('External System Generator Module', () => {
       const systemKey = 'test-system';
       // Files are now in same folder with new naming: <systemKey>-datasource-<entityKey>.json
       const datasourcePaths = [
-        path.join(appPath, 'test-system-datasource-entity1.json'),
-        path.join(appPath, 'test-system-datasource-entity2.json')
+        path.join(appPath, 'test-system-datasource-entity1.yaml'),
+        path.join(appPath, 'test-system-datasource-entity2.yaml')
       ];
 
+      configFormat.loadConfigFile.mockReturnValue(mockVariables);
       fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
         if (filePath === systemTemplatePath || filePath === datasourceTemplatePath) {
           return Promise.resolve(mockSystemTemplate);
-        }
-        if (filePath === variablesPath) {
-          return Promise.resolve(yaml.dump(mockVariables));
         }
         return Promise.reject(new Error('File not found'));
       });
       fsPromises.mkdir = jest.fn().mockResolvedValue(undefined);
       fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
 
-      // Access the internal function via the module
       const module = require('../../../lib/external-system/generator');
-
-      // Since updateVariablesYamlWithExternalIntegration is not exported,
-      // we test it indirectly through generateExternalSystemFiles
       const config = {
         systemKey: systemKey,
         datasourceCount: 2
@@ -589,61 +580,53 @@ describe('External System Generator Module', () => {
 
       await module.generateExternalSystemFiles(appPath, appName, config);
 
-      const variablesWriteCall = fsPromises.writeFile.mock.calls.find(call => call[0] === variablesPath);
-      expect(variablesWriteCall).toBeDefined();
-      const writtenYaml = yaml.load(variablesWriteCall[1]);
-      expect(writtenYaml.externalIntegration).toBeDefined();
-      // System file naming: <app-name>-system.json
-      expect(writtenYaml.externalIntegration.systems).toEqual([`${systemKey}-system.json`]);
-      // Datasource naming: <systemKey>-datasource-<entityKey>.json
-      expect(writtenYaml.externalIntegration.dataSources).toEqual([
-        'test-system-datasource-entity1.json',
-        'test-system-datasource-entity2.json'
-      ]);
+      expect(configFormat.writeConfigFile).toHaveBeenCalledWith(variablesPath, expect.objectContaining({
+        externalIntegration: expect.objectContaining({
+          systems: [`${systemKey}-system.yaml`],
+          dataSources: ['test-system-datasource-entity1.yaml', 'test-system-datasource-entity2.yaml']
+        })
+      }));
     });
 
     it('should preserve existing variables when updating', async() => {
-      const mockVariables = {
+      const mockVariablesWithDb = {
         app: { key: appName },
         port: 3000,
         database: { enabled: true }
       };
 
+      configFormat.loadConfigFile.mockReturnValue(mockVariablesWithDb);
       fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
         if (filePath === systemTemplatePath || filePath === datasourceTemplatePath) {
           return Promise.resolve(mockSystemTemplate);
         }
-        if (filePath === variablesPath) {
-          return Promise.resolve(yaml.dump(mockVariables));
-        }
         return Promise.reject(new Error('File not found'));
       });
-
       fsPromises.mkdir = jest.fn().mockResolvedValue(undefined);
       fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
 
       const { generateExternalSystemFiles } = require('../../../lib/external-system/generator');
       await generateExternalSystemFiles(appPath, appName, { systemKey: 'test-system', datasourceCount: 1 });
 
-      const variablesWriteCall = fsPromises.writeFile.mock.calls.find(call => call[0] === variablesPath);
-      const writtenYaml = yaml.load(variablesWriteCall[1]);
-      expect(writtenYaml.app).toEqual(mockVariables.app);
-      expect(writtenYaml.port).toBe(3000);
-      expect(writtenYaml.database).toEqual(mockVariables.database);
-      expect(writtenYaml.externalIntegration).toBeDefined();
+      const applicationYamlCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('application.yaml'));
+      expect(applicationYamlCall).toBeDefined();
+      const writtenVariables = applicationYamlCall[1];
+      expect(writtenVariables.app).toEqual(mockVariablesWithDb.app);
+      expect(writtenVariables.port).toBe(3000);
+      expect(writtenVariables.database).toEqual(mockVariablesWithDb.database);
+      expect(writtenVariables.externalIntegration).toBeDefined();
     });
 
-    it('should throw error if variables.yaml does not exist', async() => {
+    it('should throw error if application.yaml does not exist', async() => {
+      configFormat.loadConfigFile.mockImplementation(() => {
+        throw new Error('Application config not found');
+      });
       fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
         if (filePath === systemTemplatePath || filePath === datasourceTemplatePath) {
           return Promise.resolve(mockSystemTemplate);
         }
-        if (filePath === variablesPath) {
-          return Promise.reject(new Error('ENOENT'));
-        }
         return Promise.reject(new Error('File not found'));
       });
-
       fsPromises.mkdir = jest.fn().mockResolvedValue(undefined);
       fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
 
@@ -652,17 +635,16 @@ describe('External System Generator Module', () => {
         .rejects.toThrow('Failed to generate external system files');
     });
 
-    it('should throw error if variables.yaml is invalid YAML', async() => {
+    it('should throw error if application.yaml is invalid YAML', async() => {
+      configFormat.loadConfigFile.mockImplementation(() => {
+        throw new Error('Invalid YAML syntax');
+      });
       fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
         if (filePath === systemTemplatePath || filePath === datasourceTemplatePath) {
           return Promise.resolve(mockSystemTemplate);
         }
-        if (filePath === variablesPath) {
-          return Promise.resolve('invalid: yaml: [unclosed');
-        }
         return Promise.reject(new Error('File not found'));
       });
-
       fsPromises.mkdir = jest.fn().mockResolvedValue(undefined);
       fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
 

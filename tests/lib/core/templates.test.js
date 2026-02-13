@@ -144,7 +144,7 @@ describe('Templates Module', () => {
       });
     });
 
-    it('should generate variables.yaml for external type with config values', () => {
+    it('should generate application.yaml for external type with config values', () => {
       const appName = 'test-external';
       const config = {
         type: 'external',

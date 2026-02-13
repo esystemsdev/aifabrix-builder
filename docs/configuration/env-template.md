@@ -16,4 +16,4 @@ API_KEY=kv://my-api-keyKeyVault
 MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}
 ```
 
-See [variables.yaml](variables-yaml.md), [env-config](env-config.md), [Secrets and config](secrets-and-config.md).
+See [application.yaml](application-yaml.md), [env-config](env-config.md), [Secrets and config](secrets-and-config.md).

@@ -74,10 +74,25 @@ describe('app-logs', () => {
       expect(appLogs.getLogLevel('{"level": "warning"}')).toBe('warn');
     });
 
-    it('returns null for line with no parseable level', () => {
+    it('parses JSON "level" numeric (pino/bunyan: 50=error, 60=fatal, 40=warn, 30=info)', () => {
+      expect(appLogs.getLogLevel('{"level":50,"msg":"fail"}')).toBe('error');
+      expect(appLogs.getLogLevel('{"level": 60}')).toBe('error');
+      expect(appLogs.getLogLevel('{"level":40}')).toBe('warn');
+      expect(appLogs.getLogLevel('{"level":30}')).toBe('info');
+      expect(appLogs.getLogLevel('{"level":20}')).toBe('debug');
+    });
+
+    it('fallback: treats line containing word "error" as error level', () => {
+      expect(appLogs.getLogLevel('Error: connection refused')).toBe('error');
+      expect(appLogs.getLogLevel('Something went wrong: Error: timeout')).toBe('error');
+      expect(appLogs.getLogLevel('exception: Error: Application not found')).toBe('error');
+    });
+
+    it('returns null for line with no parseable level and no error word', () => {
       expect(appLogs.getLogLevel('plain text')).toBeNull();
       expect(appLogs.getLogLevel('')).toBeNull();
       expect(appLogs.getLogLevel('GET /health 200')).toBeNull();
+      expect(appLogs.getLogLevel('  at foo (bar.js:10)')).toBeNull();
     });
   });
 

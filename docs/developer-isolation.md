@@ -151,7 +151,7 @@ Each developer gets their own:
 Applications use:
 - **Container names**: `aifabrix-dev{id}-{appName}`
 - **Host ports**: Developer-specific (e.g., 3100 for dev 1)
-- **Container ports**: Unchanged from `variables.yaml` (e.g., 3000)
+- **Container ports**: Unchanged from `application.yaml` (e.g., 3000)
 - **Network**: Developer-specific network
 
 ### Developer-Specific Domains
@@ -181,17 +181,17 @@ Docker Compose maps ports as: `hostPort:containerPort`
 
 Example for developer 1:
 - Host port: 3100 (dev-specific)
-- Container port: 3000 (from `variables.yaml`, unchanged)
+- Container port: 3000 (from `application.yaml`, unchanged)
 - Mapping: `3100:3000`
 
 ## Important Notes
 
-### localPort in variables.yaml
-The `build.localPort` field in `variables.yaml` specifies the base application port for local development (e.g., 3000). This is used when generating the local `.env` file (at `build.envOutputPath`). For local development, generated `.env` files are adjusted to reflect developer-specific ports:
+### localPort in application.yaml
+The `build.localPort` field in `application.yaml` specifies the base application port for local development (e.g., 3000). This is used when generating the local `.env` file (at `build.envOutputPath`). For local development, generated `.env` files are adjusted to reflect developer-specific ports:
 - `PORT` is set to `baseAppPort + (developer-id * 100)` (e.g., 3100 for dev 1 when base is 3000).
 - The base port is determined by: `build.localPort` (if set) → `port` (fallback)
 - Any `http(s)://localhost:<baseAppPort>` occurrences (e.g., in `ALLOWED_ORIGINS`) are rewritten to use the developer-specific port.
-- **Note:** The docker `.env` file (`builder/myapp/.env`) always uses `port` from variables.yaml, not `build.localPort`.
+- **Note:** The docker `.env` file (`builder/myapp/.env`) always uses `port` from application.yaml, not `build.localPort`.
 
 ### Dockerfile Ports
 
@@ -265,8 +265,8 @@ For local context (apps/.env, generated when `build.envOutputPath` is set):
 **Port Override Chain for Local Context:**
 1. Start with `env-config.yaml` → `environments.local.PORT` (if exists)
 2. Override with `config.yaml` → `environments.local.PORT` (if exists)
-3. Override with `variables.yaml` → `build.localPort` (if exists)
-4. Fallback to `variables.yaml` → `port` (if build.localPort not set)
+3. Override with `application.yaml` → `build.localPort` (if exists)
+4. Fallback to `application.yaml` → `port` (if build.localPort not set)
 5. Apply developer-id adjustment: `finalPort = basePort + (developerId * 100)`
 
 **Infrastructure Port Override Chain for Local Context:**
@@ -430,7 +430,7 @@ If you see container name conflicts:
 | `KEYCLOAK_HOST` | env-config.yaml | keycloak | keycloak | keycloak |
 | `KEYCLOAK_PORT` | env-config.yaml (internal) | 8082 | 8082 | 8082 |
 | `KEYCLOAK_PUBLIC_PORT` | Calculated (public) | - | 8182 | 8282 |
-| `PORT` | variables.yaml port (internal) | 3000 | 3000 | 3000 |
+| `PORT` | application.yaml port (internal) | 3000 | 3000 | 3000 |
 
 **Note:** In docker context, `*_PORT` values are internal container ports (unchanged), while `*_PUBLIC_PORT` values are calculated for host access when developer-id > 0. The pattern applies automatically to all services with `*_PORT` variables.
 
@@ -453,26 +453,26 @@ If you see container name conflicts:
 | ------ | ----- | --------------------- |
 | env-config.yaml → environments.local.PORT | 3000 | 3100 |
 | config.yaml → environments.local.PORT | 3010 | 3110 (overrides) |
-| variables.yaml → build.localPort | 3015 | 3115 (strongest) |
+| application.yaml → build.localPort | 3015 | 3115 (strongest) |
 | Result | | **3115** |
 
-#### Scenario 2: Only variables.yaml Present
+#### Scenario 2: Only application.yaml Present
 
 | Source | Value | Final Port (Dev ID 1) |
 | ------ | ----- | --------------------- |
 | env-config.yaml → environments.local.PORT | (not set) | - |
 | config.yaml → environments.local.PORT | (not set) | - |
-| variables.yaml → build.localPort | 3010 | 3110 |
+| application.yaml → build.localPort | 3010 | 3110 |
 | Result | | **3110** |
 
-#### Scenario 3: Only variables.yaml port (no build.localPort)
+#### Scenario 3: Only application.yaml port (no build.localPort)
 
 | Source | Value | Final Port (Dev ID 1) |
 | ------ | ----- | --------------------- |
 | env-config.yaml → environments.local.PORT | (not set) | - |
 | config.yaml → environments.local.PORT | (not set) | - |
-| variables.yaml → build.localPort | (not set) | - |
-| variables.yaml → port | 3000 | 3100 (fallback) |
+| application.yaml → build.localPort | (not set) | - |
+| application.yaml → port | 3000 | 3100 (fallback) |
 | Result | | **3100** |
 
 #### Scenario 4: Only env-config.yaml Present
@@ -481,8 +481,8 @@ If you see container name conflicts:
 | ------ | ----- | --------------------- |
 | env-config.yaml → environments.local.PORT | 3000 | 3100 |
 | config.yaml → environments.local.PORT | (not set) | - |
-| variables.yaml → build.localPort | (not set) | - |
-| variables.yaml → port | (not set) | - |
+| application.yaml → build.localPort | (not set) | - |
+| application.yaml → port | (not set) | - |
 | Result | | **3100** |
 
 ### Infrastructure Port Override Scenarios (Local Context)
@@ -517,7 +517,7 @@ If you see container name conflicts:
 
 | Variable | Source | Value |
 | -------- | ------ | ----- |
-| `PORT` | variables.yaml → build.localPort (3010) + adjustment | 3110 |
+| `PORT` | application.yaml → build.localPort (3010) + adjustment | 3110 |
 | `DB_HOST` | env-config.yaml | localhost |
 | `DB_PORT` | env-config.yaml (5432) + adjustment | 5532 |
 | `REDIS_HOST` | env-config.yaml | localhost |

@@ -8,15 +8,26 @@
 
 const fs = require('fs');
 const path = require('path');
-const yaml = require('js-yaml');
 
 // Mock fs BEFORE requiring modules
 jest.mock('fs');
+jest.mock('../../../lib/utils/paths', () => ({
+  detectAppType: jest.fn(() => Promise.resolve({
+    appPath: require('path').join(process.cwd(), 'builder', 'testapp')
+  }))
+}));
+jest.mock('../../../lib/utils/app-config-resolver', () => ({
+  resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml'))
+}));
+jest.mock('../../../lib/utils/config-format', () => ({
+  loadConfigFile: jest.fn()
+}));
 const fsSync = require('fs');
+const configFormat = require('../../../lib/utils/config-format');
 
 describe('Schema Resolver Utilities', () => {
   const mockAppName = 'testapp';
-  const mockVariablesPath = path.join(process.cwd(), 'builder', mockAppName, 'variables.yaml');
+  const mockVariablesPath = path.join(process.cwd(), 'builder', mockAppName, 'application.yaml');
   const mockSchemaBasePath = path.join(process.cwd(), 'builder', mockAppName, 'schemas');
   const mockSystemFile = 'hubspot.json';
   const mockDatasourceFile = 'hubspot-deal.json';
@@ -26,27 +37,17 @@ describe('Schema Resolver Utilities', () => {
   });
 
   describe('resolveSchemaBasePath', () => {
-    it('should resolve absolute path from variables.yaml', async() => {
+    it('should resolve absolute path from application.yaml', async() => {
       const absolutePath = '/absolute/path/to/schemas';
-      const variablesContent = yaml.dump({
-        externalIntegration: {
-          schemaBasePath: absolutePath
-        }
+      const pathMod = require('path');
+      const normalizedPath = pathMod.normalize(absolutePath);
+
+      configFormat.loadConfigFile.mockReturnValue({
+        externalIntegration: { schemaBasePath: absolutePath }
       });
-
-      // Use path.normalize to match what the actual code does
-      const path = require('path');
-      const normalizedPath = path.normalize(absolutePath);
-
       fsSync.existsSync.mockImplementation((filePath) => {
-        if (filePath === mockVariablesPath) return true;
-        // Handle both original and normalized paths (Windows vs Unix)
         if (filePath === absolutePath || filePath === normalizedPath) return true;
         return false;
-      });
-      fsSync.readFileSync.mockImplementation((filePath) => {
-        if (filePath === mockVariablesPath) return variablesContent;
-        return '';
       });
       fsSync.statSync.mockImplementation((filePath) => ({
         isDirectory: () => filePath === absolutePath || filePath === normalizedPath
@@ -55,30 +56,20 @@ describe('Schema Resolver Utilities', () => {
       const { resolveSchemaBasePath } = require('../../../lib/utils/schema-resolver');
       const result = await resolveSchemaBasePath(mockAppName);
 
-      // Result should be normalized
       expect(result).toBe(normalizedPath);
-      expect(fsSync.existsSync).toHaveBeenCalledWith(mockVariablesPath);
-      // Check that existsSync was called with normalized path
-      expect(fsSync.existsSync).toHaveBeenCalledWith(normalizedPath);
+      expect(configFormat.loadConfigFile).toHaveBeenCalledWith(mockVariablesPath);
     });
 
-    it('should resolve relative path from variables.yaml', async() => {
+    it('should resolve relative path from application.yaml', async() => {
       const relativePath = './schemas';
-      const variablesContent = yaml.dump({
-        externalIntegration: {
-          schemaBasePath: relativePath
-        }
-      });
       const expectedResolvedPath = path.resolve(path.dirname(mockVariablesPath), relativePath);
 
+      configFormat.loadConfigFile.mockReturnValue({
+        externalIntegration: { schemaBasePath: relativePath }
+      });
       fsSync.existsSync.mockImplementation((filePath) => {
-        if (filePath === mockVariablesPath) return true;
         if (filePath === expectedResolvedPath) return true;
         return false;
-      });
-      fsSync.readFileSync.mockImplementation((filePath) => {
-        if (filePath === mockVariablesPath) return variablesContent;
-        return '';
       });
       fsSync.statSync.mockImplementation((filePath) => ({
         isDirectory: () => filePath === expectedResolvedPath
@@ -96,61 +87,46 @@ describe('Schema Resolver Utilities', () => {
       await expect(resolveSchemaBasePath('')).rejects.toThrow('App name is required');
     });
 
-    it('should throw error if variables.yaml not found', async() => {
-      fsSync.existsSync.mockReturnValue(false);
+    it('should throw error if application.yaml not found', async() => {
+      configFormat.loadConfigFile.mockImplementation(() => {
+        throw new Error('Application config not found');
+      });
 
       const { resolveSchemaBasePath } = require('../../../lib/utils/schema-resolver');
-      await expect(resolveSchemaBasePath(mockAppName)).rejects.toThrow('variables.yaml not found');
+      await expect(resolveSchemaBasePath(mockAppName)).rejects.toThrow(/application\.yaml not found|Application config/);
     });
 
     it('should throw error if externalIntegration block missing', async() => {
-      const variablesContent = yaml.dump({});
-
-      fsSync.existsSync.mockReturnValue(true);
-      fsSync.readFileSync.mockReturnValue(variablesContent);
+      configFormat.loadConfigFile.mockReturnValue({});
 
       const { resolveSchemaBasePath } = require('../../../lib/utils/schema-resolver');
       await expect(resolveSchemaBasePath(mockAppName)).rejects.toThrow('externalIntegration block not found');
     });
 
     it('should throw error if schemaBasePath missing', async() => {
-      const variablesContent = yaml.dump({
+      configFormat.loadConfigFile.mockReturnValue({
         externalIntegration: {}
       });
 
-      fsSync.existsSync.mockReturnValue(true);
-      fsSync.readFileSync.mockReturnValue(variablesContent);
-
       const { resolveSchemaBasePath } = require('../../../lib/utils/schema-resolver');
-      await expect(resolveSchemaBasePath(mockAppName)).rejects.toThrow('schemaBasePath not found');
+      await expect(resolveSchemaBasePath(mockAppName)).rejects.toThrow(/schemaBasePath not found/);
     });
 
     it('should throw error if path does not exist', async() => {
-      const variablesContent = yaml.dump({
-        externalIntegration: {
-          schemaBasePath: '/nonexistent/path'
-        }
+      configFormat.loadConfigFile.mockReturnValue({
+        externalIntegration: { schemaBasePath: '/nonexistent/path' }
       });
-
-      fsSync.existsSync.mockImplementation((filePath) => {
-        if (filePath === mockVariablesPath) return true;
-        return false;
-      });
-      fsSync.readFileSync.mockReturnValue(variablesContent);
+      fsSync.existsSync.mockReturnValue(false);
 
       const { resolveSchemaBasePath } = require('../../../lib/utils/schema-resolver');
       await expect(resolveSchemaBasePath(mockAppName)).rejects.toThrow('Schema base path does not exist');
     });
 
     it('should throw error if path is not a directory', async() => {
-      const variablesContent = yaml.dump({
-        externalIntegration: {
-          schemaBasePath: '/path/to/file'
-        }
+      configFormat.loadConfigFile.mockReturnValue({
+        externalIntegration: { schemaBasePath: '/path/to/file' }
       });
-
       fsSync.existsSync.mockReturnValue(true);
-      fsSync.readFileSync.mockReturnValue(variablesContent);
       fsSync.statSync.mockReturnValue({
         isDirectory: () => false
       });
@@ -160,17 +136,18 @@ describe('Schema Resolver Utilities', () => {
     });
 
     it('should throw error on invalid YAML', async() => {
-      fsSync.existsSync.mockReturnValue(true);
-      fsSync.readFileSync.mockReturnValue('invalid: yaml: content: [unclosed');
+      configFormat.loadConfigFile.mockImplementation(() => {
+        throw new Error('Invalid YAML syntax');
+      });
 
       const { resolveSchemaBasePath } = require('../../../lib/utils/schema-resolver');
-      await expect(resolveSchemaBasePath(mockAppName)).rejects.toThrow('Invalid YAML syntax');
+      await expect(resolveSchemaBasePath(mockAppName)).rejects.toThrow(/Invalid YAML|Application config/);
     });
   });
 
   describe('resolveExternalFiles', () => {
     it('should resolve system and datasource files', async() => {
-      const variablesContent = yaml.dump({
+      configFormat.loadConfigFile.mockReturnValue({
         externalIntegration: {
           schemaBasePath: './schemas',
           systems: [mockSystemFile],
@@ -183,13 +160,11 @@ describe('Schema Resolver Utilities', () => {
       const datasourcePath = path.join(schemaBasePath, mockDatasourceFile);
 
       fsSync.existsSync.mockImplementation((filePath) => {
-        if (filePath === mockVariablesPath) return true;
         if (filePath === schemaBasePath) return true;
         if (filePath === systemPath) return true;
         if (filePath === datasourcePath) return true;
         return false;
       });
-      fsSync.readFileSync.mockReturnValue(variablesContent);
       fsSync.statSync.mockImplementation((filePath) => ({
         isDirectory: () => filePath === schemaBasePath
       }));
@@ -211,10 +186,7 @@ describe('Schema Resolver Utilities', () => {
     });
 
     it('should return empty array if no externalIntegration block', async() => {
-      const variablesContent = yaml.dump({});
-
-      fsSync.existsSync.mockReturnValue(true);
-      fsSync.readFileSync.mockReturnValue(variablesContent);
+      configFormat.loadConfigFile.mockReturnValue({});
 
       const { resolveExternalFiles } = require('../../../lib/utils/schema-resolver');
       const result = await resolveExternalFiles(mockAppName);
@@ -223,7 +195,7 @@ describe('Schema Resolver Utilities', () => {
     });
 
     it('should return empty array if no systems or datasources', async() => {
-      const variablesContent = yaml.dump({
+      configFormat.loadConfigFile.mockReturnValue({
         externalIntegration: {
           schemaBasePath: './schemas'
         }
@@ -236,7 +208,6 @@ describe('Schema Resolver Utilities', () => {
         if (filePath === schemaBasePath) return true;
         return false;
       });
-      fsSync.readFileSync.mockReturnValue(variablesContent);
       fsSync.statSync.mockImplementation((filePath) => ({
         isDirectory: () => filePath === schemaBasePath
       }));
@@ -248,7 +219,7 @@ describe('Schema Resolver Utilities', () => {
     });
 
     it('should throw error if system file not found', async() => {
-      const variablesContent = yaml.dump({
+      configFormat.loadConfigFile.mockReturnValue({
         externalIntegration: {
           schemaBasePath: './schemas',
           systems: [mockSystemFile]
@@ -262,7 +233,6 @@ describe('Schema Resolver Utilities', () => {
         if (filePath === schemaBasePath) return true;
         return false; // System file doesn't exist
       });
-      fsSync.readFileSync.mockReturnValue(variablesContent);
       fsSync.statSync.mockImplementation((filePath) => ({
         isDirectory: () => filePath === schemaBasePath
       }));
@@ -272,7 +242,7 @@ describe('Schema Resolver Utilities', () => {
     });
 
     it('should throw error if datasource file not found', async() => {
-      const variablesContent = yaml.dump({
+      configFormat.loadConfigFile.mockReturnValue({
         externalIntegration: {
           schemaBasePath: './schemas',
           dataSources: [mockDatasourceFile]
@@ -286,7 +256,6 @@ describe('Schema Resolver Utilities', () => {
         if (filePath === schemaBasePath) return true;
         return false; // Datasource file doesn't exist
       });
-      fsSync.readFileSync.mockReturnValue(variablesContent);
       fsSync.statSync.mockImplementation((filePath) => ({
         isDirectory: () => filePath === schemaBasePath
       }));
@@ -296,7 +265,7 @@ describe('Schema Resolver Utilities', () => {
     });
 
     it('should handle multiple systems and datasources', async() => {
-      const variablesContent = yaml.dump({
+      configFormat.loadConfigFile.mockReturnValue({
         externalIntegration: {
           schemaBasePath: './schemas',
           systems: ['system1.json', 'system2.json'],
@@ -307,7 +276,6 @@ describe('Schema Resolver Utilities', () => {
       const schemaBasePath = path.resolve(path.dirname(mockVariablesPath), './schemas');
 
       fsSync.existsSync.mockReturnValue(true);
-      fsSync.readFileSync.mockReturnValue(variablesContent);
       fsSync.statSync.mockReturnValue({
         isDirectory: () => true
       });
@@ -326,11 +294,13 @@ describe('Schema Resolver Utilities', () => {
       await expect(resolveExternalFiles('')).rejects.toThrow('App name is required');
     });
 
-    it('should throw error if variables.yaml not found', async() => {
-      fsSync.existsSync.mockReturnValue(false);
+    it('should throw error if application config not found', async() => {
+      configFormat.loadConfigFile.mockImplementation(() => {
+        throw new Error('Application config not found');
+      });
 
       const { resolveExternalFiles } = require('../../../lib/utils/schema-resolver');
-      await expect(resolveExternalFiles(mockAppName)).rejects.toThrow('variables.yaml not found');
+      await expect(resolveExternalFiles(mockAppName)).rejects.toThrow(/Application config/);
     });
   });
 });

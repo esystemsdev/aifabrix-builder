@@ -6,6 +6,8 @@ How to run your application in Docker for local development.
 
 **Use the builder instead of raw Docker:** Commands like `aifabrix run`, `aifabrix logs`, and `aifabrix down-app` use compose, resolve `.env` from `env.template`, run db-init when needed, and keep behavior consistent. Plain `docker run` / `docker logs` do not—so prefer the builder for start, stop, logs, and running a different image tag.
 
+**Run only uses builder:** `aifabrix run <app>` only runs applications that exist in `builder/<app>/`. External systems in `integration/` are not run as Docker containers; use `aifabrix build` and deploy, then test via OpenAPI endpoints.
+
 ## Start Your App
 
 ```bash
@@ -107,7 +109,7 @@ For Traefik reverse proxy setup (optional), see [Infrastructure Guide – Traefi
 
 **URL:** <http://localhost>:<localPort>
 
-**localPort from variables.yaml:**
+**localPort from application.yaml:**
 ```yaml
 build:
   localPort: 3001  # You access at localhost:3001
@@ -122,7 +124,7 @@ aifabrix run myapp --port 3002
 
 ## Database Creation
 
-If your app has `requiresDatabase: true` in `variables.yaml`, `aifabrix run` automatically creates the database and user before starting your application.
+If your app has `requiresDatabase: true` in `application.yaml`, `aifabrix run` automatically creates the database and user before starting your application.
 
 ### What Gets Created
 
@@ -161,7 +163,7 @@ Database initialization complete!
 
 ### Configuration
 
-To enable automatic database creation, ensure your `builder/<app>/variables.yaml` includes:
+To enable automatic database creation, ensure your `builder/<app>/application.yaml` includes:
 
 ```yaml
 requires:
@@ -170,7 +172,7 @@ requires:
 
 ### Multiple Databases
 
-If your app requires multiple databases, configure them in `variables.yaml`:
+If your app requires multiple databases, configure them in `application.yaml`:
 
 ```yaml
 requires:
@@ -477,7 +479,7 @@ Use the builder so compose and env stay correct:
 ```bash
 aifabrix run myapp --tag v1.0.0
 ```
-Runs the image with the given tag (overrides `image.tag` from variables.yaml).
+Runs the image with the given tag (overrides `image.tag` from application.yaml).
 
 ### Execute Command in Container
 ```bash
@@ -532,11 +534,11 @@ aifabrix run myapp --port 3001
 
 ### "Can't connect to database"
 
-**Note:** `aifabrix run` automatically creates the database if `requiresDatabase: true` is set in `variables.yaml`. If you're seeing connection errors:
+**Note:** `aifabrix run` automatically creates the database if `requiresDatabase: true` is set in `application.yaml`. If you're seeing connection errors:
 
 1. **Ensure database requirement is enabled:**
    ```yaml
-   # In builder/myapp/variables.yaml
+   # In builder/myapp/application.yaml
    requires:
      database: true
    ```

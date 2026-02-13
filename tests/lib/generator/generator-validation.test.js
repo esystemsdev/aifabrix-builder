@@ -210,7 +210,7 @@ describe('Generator Validation Module', () => {
     beforeEach(() => {
       writtenFiles = {};
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') ||
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') ||
                filePath.includes('env.template') ||
                filePath.includes('testapp-deploy.json');
       });
@@ -220,7 +220,7 @@ describe('Generator Validation Module', () => {
         if (writtenFiles[filePath]) {
           return writtenFiles[filePath];
         }
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(mockVariables);
         }
         if (filePath.includes('env.template')) {
@@ -273,7 +273,7 @@ describe('Generator Validation Module', () => {
       };
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return yaml.dump(invalidVariables);
         }
         if (filePath.includes('env.template')) {

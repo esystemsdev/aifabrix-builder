@@ -43,27 +43,19 @@ npm test -- tests/local/lib/template-validator.test.js
 - `lib/external-system/download-helpers.test.js` - External system download helpers tests
 - `lib/validation/external-manifest-validator.test.js` - External manifest validator tests with complex mocking
 - `lib/schema/schema-validation.test.js` - Schema validation (Plan 49): JSON schemas and deployment-rules.yaml structure; excluded from CI due to path resolution differences in GitHub Actions/Jest
+- `lib/commands-app-actions.test.js` - Application command action handlers (register, list); excluded from CI due to cwd/temp-dir and path resolution differences (getProjectRoot, detectAppType) between local and CI
 
 ## CI Exclusion
 
-These tests are automatically excluded from CI runs via `jest.config.js` when running in CI environments (detected via `CI=true` or `CI_SIMULATION=true` environment variables):
+These tests are excluded from default test runs via `jest.config.js` (when `INCLUDE_LOCAL_TESTS` is not `'true'`). CI and `npm test` both exclude `tests/local/` by default.
 
-```javascript
-// Detect CI environment (GitHub Actions, CI simulation, etc.)
-const isCI = process.env.CI === 'true' || process.env.CI_SIMULATION === 'true';
+To run local tests:
 
-testPathIgnorePatterns: [
-  '/node_modules/',
-  '\\\\node_modules\\\\',
-  '/tests/integration/',
-  '\\\\tests\\\\integration\\\\',
-  // Exclude local tests in CI environments
-  ...(isCI ? [
-    '/tests/local/',
-    '\\\\tests\\\\local\\\\'
-  ] : [])
-]
+```bash
+INCLUDE_LOCAL_TESTS=true npm test
+# or
+npm test -- tests/local
 ```
 
-This ensures CI builds are fast and reliable while still allowing developers to run comprehensive tests locally. When running `npm test` locally (without CI environment variables), these tests will be included.
+This keeps CI and default `npm test` fast and reliable while allowing developers to run comprehensive local-only tests when needed.
 

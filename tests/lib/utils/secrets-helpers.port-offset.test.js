@@ -59,7 +59,7 @@ describe('processEnvVariables - copied .env PORT/localhost URL offsets', () => {
 
   it('writes copied .env with offset PORT and updated localhost URLs', async() => {
     const envPath = path.join(process.cwd(), 'builder', 'myapp', '.env');
-    const variablesPath = path.join(process.cwd(), 'builder', 'myapp', 'variables.yaml');
+    const variablesPath = path.join(process.cwd(), 'builder', 'myapp', 'application.yaml');
     const outDir = '/tmp/aifabrix-out';
     const outEnvPath = path.join(outDir, '.env');
 
@@ -111,7 +111,7 @@ describe('processEnvVariables - copied .env PORT/localhost URL offsets', () => {
 
   it('uses localPort + offset when developer id is set', async() => {
     const envPath = path.join(process.cwd(), 'builder', 'myapp', '.env');
-    const variablesPath = path.join(process.cwd(), 'builder', 'myapp', 'variables.yaml');
+    const variablesPath = path.join(process.cwd(), 'builder', 'myapp', 'application.yaml');
     const outDir = '/tmp/aifabrix-out';
     const outEnvPath = path.join(outDir, '.env');
 

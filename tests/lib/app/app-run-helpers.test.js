@@ -44,7 +44,7 @@ jest.mock('fs', () => {
   const actualFs = jest.requireActual('fs');
   const existsSync = jest.fn((p) => {
     const str = String(p || '');
-    if (str.includes('/builder/myapp/.env') || str.endsWith('/tmp/dev/myapp') || str.includes('variables.yaml')) {
+    if (str.includes('/builder/myapp/.env') || str.endsWith('/tmp/dev/myapp') || str.includes('application.yaml')) {
       return true;
     }
     return false;

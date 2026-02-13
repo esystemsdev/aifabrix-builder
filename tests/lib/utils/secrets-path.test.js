@@ -142,9 +142,9 @@ describe('Secrets Path Module', () => {
       });
     });
 
-    it('should return object with null buildPath when error reading variables.yaml', async() => {
+    it('should return object with null buildPath when error reading application.yaml', async() => {
       const appName = 'test-app';
-      const variablesPath = path.join(mockCwd, 'builder', appName, 'variables.yaml');
+      const variablesPath = path.join(mockCwd, 'builder', appName, 'application.yaml');
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
 
       fs.existsSync.mockImplementation((filePath) => {
@@ -168,9 +168,9 @@ describe('Secrets Path Module', () => {
       });
     });
 
-    it('should return object with null buildPath when parsing invalid YAML in variables.yaml', async() => {
+    it('should return object with null buildPath when parsing invalid YAML in application.yaml', async() => {
       const appName = 'test-app';
-      const variablesPath = path.join(mockCwd, 'builder', appName, 'variables.yaml');
+      const variablesPath = path.join(mockCwd, 'builder', appName, 'application.yaml');
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
 
       fs.existsSync.mockImplementation((filePath) => {

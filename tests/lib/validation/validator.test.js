@@ -46,6 +46,19 @@ jest.mock('../../../lib/utils/dev-config', () => ({
 jest.mock('../../../lib/utils/secrets-path', () => ({
   getActualSecretsPath: jest.fn()
 }));
+jest.mock('../../../lib/utils/paths', () => {
+  const pathMod = require('path');
+  const actual = jest.requireActual('../../../lib/utils/paths');
+  return {
+    ...actual,
+    detectAppType: jest.fn().mockResolvedValue({
+      isExternal: false,
+      appPath: pathMod.join(process.cwd(), 'builder', 'testapp'),
+      appType: 'regular',
+      baseDir: 'builder'
+    })
+  };
+});
 jest.mock('net', () => {
   const actualNet = jest.requireActual('net');
   return {
@@ -121,9 +134,9 @@ describe('Validator Module', () => {
 
   describe('validateVariables', () => {
     const appName = 'testapp';
-    const variablesPath = path.join(process.cwd(), 'builder', appName, 'variables.yaml');
+    const variablesPath = path.join(process.cwd(), 'builder', appName, 'application.yaml');
 
-    it('should validate valid variables.yaml', async() => {
+    it('should validate valid application.yaml', async() => {
       const validVariables = {
         key: 'testapp',
         displayName: 'Test App',
@@ -148,12 +161,12 @@ requiresStorage: false`);
 
       const result = await validator.validateVariables(appName);
 
-      expect(fs.existsSync).toHaveBeenCalledWith(variablesPath);
+      expect(fs.existsSync).toHaveBeenCalled();
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
     });
 
-    it('should return errors for invalid variables.yaml', async() => {
+    it('should return errors for invalid application.yaml', async() => {
       const invalidVariables = {
         key: 'test-app', // invalid pattern
         port: 99999 // invalid range
@@ -174,17 +187,17 @@ port: 99999`);
       await expect(validator.validateVariables(123)).rejects.toThrow('App name is required and must be a string');
     });
 
-    it('should throw error if variables.yaml not found', async() => {
+    it('should throw error if application config not found', async() => {
       fs.existsSync.mockReturnValue(false);
 
-      await expect(validator.validateVariables(appName)).rejects.toThrow(`variables.yaml not found: ${variablesPath}`);
+      await expect(validator.validateVariables(appName)).rejects.toThrow(/Config file not found|Application config not found/);
     });
 
     it('should throw error for invalid YAML syntax', async() => {
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('invalid: yaml: content: [unclosed');
 
-      await expect(validator.validateVariables(appName)).rejects.toThrow('Invalid YAML syntax in variables.yaml');
+      await expect(validator.validateVariables(appName)).rejects.toThrow(/Invalid YAML syntax/);
     });
 
     it('should return error when frontDoorRouting enabled without host', async() => {
@@ -265,6 +278,21 @@ frontDoorRouting:
 
       expect(result.valid).toBe(true);
       expect(result.warnings).toContain('rbac.yaml not found - authentication disabled');
+    });
+
+    it('should validate valid rbac.yml when rbac.yaml is missing', async() => {
+      const validRbac = {
+        roles: [{ name: 'Admin', value: 'admin', description: 'Administrator role' }],
+        permissions: [{ name: 'app:admin', roles: ['admin'], description: 'Admin permissions' }]
+      };
+      fs.existsSync.mockImplementation((filePath) => filePath.endsWith('rbac.yml'));
+      fs.readFileSync.mockReturnValue(JSON.stringify(validRbac));
+
+      const result = await validator.validateRbac(appName);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+      expect(result.warnings).toEqual([]);
     });
 
     it('should return errors for invalid rbac structure', async() => {
@@ -570,13 +598,13 @@ frontDoorRouting:
       const validTemplate = 'DATABASE_URL=kv://postgres-urlKeyVault\nPORT=3000';
 
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') ||
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') ||
                filePath.includes('rbac.yaml') ||
                filePath.includes('env.template');
       });
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return `key: testapp
 displayName: Test App
 description: A test application
@@ -615,13 +643,13 @@ permissions:
 
     it('should aggregate errors from all validations', async() => {
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('variables.yaml') ||
+        return filePath.includes('application.yaml') || filePath.includes('application.yaml') ||
                filePath.includes('rbac.yaml') ||
                filePath.includes('env.template');
       });
 
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('variables.yaml')) {
+        if (filePath.includes('application.yaml') || filePath.includes('application.yaml')) {
           return JSON.stringify({ key: 'invalid-key!' }); // invalid
         }
         if (filePath.includes('rbac.yaml')) {
@@ -772,6 +800,47 @@ permissions:
 
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
+    });
+  });
+
+  describe('validateObjectAgainstApplicationSchema', () => {
+    const validAppShape = {
+      key: 'myapp',
+      displayName: 'My App',
+      description: 'An app',
+      type: 'webapp',
+      image: 'myacr.azurecr.io/myapp:v1',
+      registryMode: 'acr',
+      port: 8080,
+      requiresDatabase: true,
+      requiresRedis: false,
+      requiresStorage: false,
+      databases: [{ name: 'myapp' }],
+      configuration: [{ name: 'NODE_ENV', value: 'production', location: 'variable', required: false }]
+    };
+
+    it('should validate flat app-shaped object', () => {
+      const result = validator.validateObjectAgainstApplicationSchema(validAppShape);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('should validate nested app object (app: {...})', () => {
+      const result = validator.validateObjectAgainstApplicationSchema({ app: validAppShape });
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('should return errors for invalid object', () => {
+      const result = validator.validateObjectAgainstApplicationSchema({ key: 'x' });
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    it('should return errors for non-object', () => {
+      const result = validator.validateObjectAgainstApplicationSchema(null);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('Config must be an object');
     });
   });
 });

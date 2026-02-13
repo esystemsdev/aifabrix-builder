@@ -18,9 +18,9 @@ The AI Fabrix Builder validates all configuration files using **JSON Schema vali
 
 The validation system validates:
 
-- **Application configurations** (`variables.yaml`) - Main application settings
-- **External system files** (`*-system.json`) - External integration system definitions
-- **External datasource files** (`*-datasource-*.json`) - Datasource configurations
+- **Application configurations** (`application.yaml`) - Main application settings
+- **External system files** (`*-system.yaml`) - External integration system definitions
+- **External datasource files** (`*-datasource-*.yaml`) - Datasource configurations
 - **Wizard configurations** (`wizard.yaml`) - Wizard setup files; includes `preferences.fieldOnboardingLevel` (full \| standard \| minimal) and intent, MCP/ABAC/RBAC (see [Wizard Guide](../wizard.md))
 - **Deployment manifests** - Generated deployment configurations
 - **ABAC dimensions** - Dimension keys and mappings (validated online during deployment)
@@ -49,7 +49,7 @@ The validation system uses four core JSON schemas:
 
 ### 1. Application Schema
 
-**Purpose:** Validates application configuration from `variables.yaml` and deployment manifests.
+**Purpose:** Validates application configuration from `application.yaml` and deployment manifests.
 
 **Validates:**
 - Application identifier (`key`)
@@ -147,15 +147,15 @@ Schemas are linked together using JSON Schema's `$ref` (reference) mechanism. Th
 application-schema.json
 ├── Can reference: external-system.schema.json (via $ref)
 ├── Can reference: external-datasource.schema.json (via $ref)
-└── Validates: variables.yaml → deployment manifests
+└── Validates: application.yaml → deployment manifests
 
 external-system.schema.json
 ├── Standalone schema
-└── Validates: *-system.json files
+└── Validates: *-system.yaml files
 
 external-datasource.schema.json
 ├── Standalone schema
-└── Validates: *-datasource-*.json files
+└── Validates: *-datasource-*.yaml files
 
 wizard-config.schema.json
 ├── Standalone schema
@@ -293,6 +293,7 @@ For more information about ABAC dimensions, see [External Systems Guide](../exte
 
 ---
 
+<a id="aifabrix-validate-apporfile"></a>
 ## aifabrix validate <appOrFile>
 
 Validate application or external integration file.
@@ -313,20 +314,19 @@ Validate application or external integration file.
 aifabrix validate myapp
 
 # Validate external system file directly
-aifabrix validate ./schemas/hubspot-system.json
+aifabrix validate ./schemas/hubspot-system.yaml
 
 # Validate external datasource file directly
-aifabrix validate ./schemas/hubspot-datasource-company.json
+aifabrix validate ./schemas/hubspot-datasource-company.yaml
 
-# Validate external system with complete validation (all steps)
-aifabrix validate my-hubspot --type external
+# Validate external system with complete validation (all steps; path resolved automatically)
+aifabrix validate my-hubspot
 ```
 
 **Arguments:**
 - `<appOrFile>` - Application name or path to configuration file
 
-**Options:**
-- `--type <type>` - Force application type (e.g., `external` for complete external system validation)
+**App path resolution:** The command resolves the app by checking **`integration/<app>`** first, then **`builder/<app>`**. If neither exists, it errors. There is no option to override this order. When the resolved app is in `integration/`, full external system validation (all steps) runs automatically.
 
 **Process:**
 
@@ -335,14 +335,15 @@ aifabrix validate my-hubspot --type external
    - If app name → Application validation
 
 2. **Application Validation (app name):**
-   - Loads `variables.yaml` from `builder/<app-name>/` or `integration/<app-name>/`
+   - Resolves app path: `integration/<app-name>/` first, then `builder/<app-name>/`; if neither exists, errors.
+   - Loads `application.yaml` from the resolved path
    - Validates against application schema
    - If `type: external`:
      - Validates `rbac.yaml` (if present)
      - Checks role references in permissions
      - If `externalIntegration` block exists:
        - Resolves schema base path
-       - Finds all `*-system.json` and `*-datasource-*.json` files
+       - Finds all `*-system.yaml` and `*-datasource-*.yaml` files
        - Validates each file against its schema
    - Aggregates all validation results
 
@@ -356,7 +357,7 @@ aifabrix validate my-hubspot --type external
    - Validates file against schema
    - For external-system files, also validates role references in permissions
 
-4. **External System Complete Validation (`--type external`):**
+4. **External System Complete Validation:** When the resolved app is in `integration/`, runs full external validation:
    - **Step 1:** Application configuration validation
    - **Step 2:** Individual component files validation (system + datasources)
    - **Step 3:** Full deployment manifest validation (generated manifest with inline system/dataSources)
@@ -369,9 +370,9 @@ Application:
   ✓ Application configuration is valid
 
 External Integration Files:
-  ✓ hubspot-system.json (system)
-  ✓ hubspot-datasource-company.json (datasource)
-  ✓ hubspot-datasource-contact.json (datasource)
+  ✓ hubspot-system.yaml (system)
+  ✓ hubspot-datasource-company.yaml (datasource)
+  ✓ hubspot-datasource-contact.yaml (datasource)
 ```
 
 **Output (validation failed):**
@@ -384,7 +385,7 @@ Application:
     • Field "app.port": Expected number, got string
 
 External Integration Files:
-  ✗ hubspot-system.json (system):
+  ✗ hubspot-system.yaml (system):
     • Field "key": Missing required field
     • Field "version": Invalid value "1.0" - must match pattern ^[0-9]+\.[0-9]+\.[0-9]+$
 ```
@@ -397,9 +398,9 @@ Step 1: Application Configuration
   ✓ Application configuration is valid
 
 Step 2: Component Files
-  ✓ hubspot-system.json (system) is valid
-  ✓ hubspot-datasource-company.json (datasource) is valid
-  ✓ hubspot-datasource-contact.json (datasource) is valid
+  ✓ hubspot-system.yaml (system) is valid
+  ✓ hubspot-datasource-company.yaml (datasource) is valid
+  ✓ hubspot-datasource-contact.yaml (datasource) is valid
 
 Step 3: Deployment Manifest
   ✓ Generated deployment manifest is valid
@@ -409,7 +410,7 @@ Step 3: Deployment Manifest
 ```yaml
 ✓ Validation passed!
 
-File: ./schemas/hubspot-system.json
+File: ./schemas/hubspot-system.yaml
 Type: external-system
   ✓ File is valid
 ```
@@ -440,7 +441,7 @@ Validation errors are formatted to be clear and actionable:
 - **"App name or file path is required"** → Provide application name or file path
 - **"File not found"** → Check file path is correct
 - **"Invalid JSON syntax"** → Fix JSON syntax errors in file
-- **"externalIntegration block not found"** → Add externalIntegration block to variables.yaml or validate file directly
+- **"externalIntegration block not found"** → Add externalIntegration block to application.yaml or validate file directly
 - **"schemaBasePath not found"** → Add schemaBasePath to externalIntegration block
 - **"File not found: <path>"** → Check that external system/datasource files exist at specified paths
 - **"Unknown schema type"** → File must be application, external-system, or external-datasource JSON
@@ -464,9 +465,9 @@ aifabrix validate myapp
 ```
 
 **What happens:**
-1. Loads `builder/myapp/variables.yaml` or `integration/myapp/variables.yaml`
-2. Transforms YAML to JSON structure
-3. Validates against application schema
+1. Resolves path: `integration/myapp/` first, then `builder/myapp/`; if neither exists, errors
+2. Loads `application.yaml` from the resolved path
+3. Transforms YAML to JSON structure and validates against application schema
 4. Returns validation result
 
 **Success:**
@@ -480,7 +481,7 @@ Application:
 ### Example 2: Validating External System File
 
 ```bash
-aifabrix validate ./integration/hubspot/hubspot-system.json
+aifabrix validate ./integration/hubspot/hubspot-system.yaml
 ```
 
 **What happens:**
@@ -493,7 +494,7 @@ aifabrix validate ./integration/hubspot/hubspot-system.json
 ```yaml
 ✓ Validation passed!
 
-File: ./integration/hubspot/hubspot-system.json
+File: ./integration/hubspot/hubspot-system.yaml
 Type: external-system
   ✓ File is valid
 ```
@@ -501,15 +502,16 @@ Type: external-system
 ### Example 3: Complete External System Validation
 
 ```bash
-aifabrix validate my-hubspot --type external
+aifabrix validate my-hubspot
 ```
+(When the app is in `integration/my-hubspot/`, full external validation runs automatically.)
 
 **What happens:**
-1. **Step 1:** Validates `variables.yaml` against application schema
+1. **Step 1:** Validates `application.yaml` against application schema
 2. **Step 2:** Validates component files:
-   - `hubspot-system.json` against external-system schema
-   - `hubspot-datasource-company.json` against external-datasource schema
-   - `hubspot-datasource-contact.json` against external-datasource schema
+   - `hubspot-system.yaml` against external-system schema
+   - `hubspot-datasource-company.yaml` against external-datasource schema
+   - `hubspot-datasource-contact.yaml` against external-datasource schema
 3. **Step 3:** Generates deployment manifest and validates:
    - Manifest structure against application schema
    - Inline `system` object against external-system schema (via schema reference)
@@ -523,9 +525,9 @@ Step 1: Application Configuration
   ✓ Application configuration is valid
 
 Step 2: Component Files
-  ✓ hubspot-system.json (system) is valid
-  ✓ hubspot-datasource-company.json (datasource) is valid
-  ✓ hubspot-datasource-contact.json (datasource) is valid
+  ✓ hubspot-system.yaml (system) is valid
+  ✓ hubspot-datasource-company.yaml (datasource) is valid
+  ✓ hubspot-datasource-contact.yaml (datasource) is valid
 
 Step 3: Deployment Manifest
   ✓ Generated deployment manifest is valid
@@ -572,25 +574,25 @@ Application:
 Always validate configurations before deployment:
 
 ```bash
-# Validate application
+# Validate application (path resolved: integration first, then builder)
 aifabrix validate myapp
 
-# Validate external system completely
-aifabrix validate my-hubspot --type external
+# Validate external system completely (when app is in integration/, full validation runs automatically)
+aifabrix validate my-hubspot
 
 # Validate individual files
-aifabrix validate ./schemas/hubspot-system.json
+aifabrix validate ./schemas/hubspot-system.yaml
 ```
 
 ### 2. Use Complete Validation for External Systems
 
-For external systems, use `--type external` for complete validation that checks:
+For external systems in `integration/<app>/`, running `aifabrix validate <app>` performs complete validation that checks:
 - Application configuration
 - Component files (system + datasources)
 - Generated deployment manifest
 
 ```bash
-aifabrix validate my-hubspot --type external
+aifabrix validate my-hubspot
 ```
 
 ### 3. Fix Errors in Order
@@ -640,7 +642,7 @@ When modifying configurations:
 **Solution:**
 - Ensure file has `$id` or `title` field indicating schema type
 - Check required fields match expected schema type
-- Verify filename pattern matches schema type (e.g., `*-system.json` for external-system)
+- Verify filename pattern matches schema type (e.g., `*-system.yaml` for external-system)
 
 ### Validation Performance
 
@@ -679,49 +681,58 @@ When modifying configurations:
 
 Compare two configuration files.
 
-**What:** Performs deep comparison of two JSON configuration files, identifying added, removed, and changed fields. Categorizes changes as breaking or non-breaking. Used for deployment pipeline validation and schema migration detection.
+**What:** Performs deep comparison of two configuration files (JSON or YAML), identifying added, removed, and changed fields. Both files must be the **same config type** (app, system, or datasource). Type is **auto-detected** from file content and filename. By default both files are validated against their schema before comparison.
 
 **When:** Before deploying configuration changes, comparing schema versions, validating migrations, or reviewing configuration differences.
 
 **Usage:**
 ```bash
 # Compare two external system files
-aifabrix diff ./schemas/hubspot-v1.json ./schemas/hubspot-v2.json
+aifabrix diff ./schemas/hubspot-v1.yaml ./schemas/hubspot-v2.yaml
 
 # Compare two datasource files
-aifabrix diff ./schemas/hubspot-deal-v1.json ./schemas/hubspot-deal-v2.json
+aifabrix diff ./schemas/hubspot-deal-v1.yaml ./schemas/hubspot-deal-v2.yaml
 
-# Compare deployment configurations
+# Compare deployment configurations (app type)
 aifabrix diff ./old-config.json ./new-config.json
+
+# Skip schema validation (type check still applied)
+aifabrix diff ./file1.yaml ./file2.yaml --no-validate
 ```
 
 **Arguments:**
 - `<file1>` - Path to first configuration file
 - `<file2>` - Path to second configuration file
 
+**Options:**
+- `--no-validate` - Skip schema validation; type check (same app/system/datasource) is still applied, then raw diff is shown.
+
 **Process:**
-1. Reads and parses both JSON files
-2. Performs deep object comparison
-3. Identifies:
+1. Reads and parses both files (JSON or YAML by extension)
+2. Detects config type for each file (app, system, or datasource) from content and filename
+3. If types differ → exits with **Type mismatch** error (no comparison)
+4. Validates both files against their schema (unless `--no-validate`)
+5. Performs deep object comparison
+6. Identifies:
    - Added fields (present in file2, not in file1)
    - Removed fields (present in file1, not in file2)
    - Changed fields (different values)
    - Version changes
-4. Categorizes breaking changes:
+7. Categorizes breaking changes:
    - Removed fields (potentially breaking)
    - Type changes (breaking)
-5. Displays formatted diff output
+8. Displays formatted diff output
 
 **Output (identical files):**
 ```yaml
-Comparing: hubspot-v1.json ↔ hubspot-v2.json
+Comparing: hubspot-v1.yaml ↔ hubspot-v2.yaml
 
 ✓ Files are identical
 ```
 
 **Output (different files):**
 ```yaml
-Comparing: hubspot-v1.json ↔ hubspot-v2.json
+Comparing: hubspot-v1.yaml ↔ hubspot-v2.yaml
 
 Files are different
 
@@ -769,7 +780,9 @@ Summary:
 - **"First file path is required"** → Provide path to first file
 - **"Second file path is required"** → Provide path to second file
 - **"File not found: <path>"** → Check file paths are correct
-- **"Failed to parse <file>"** → Fix JSON syntax errors in file
+- **"Failed to parse <file>"** → Fix JSON or YAML syntax errors in file
+- **"Type mismatch: &lt;file1&gt; is &lt;type1&gt; config and &lt;file2&gt; is &lt;type2&gt; config..."** → Both files must be the same kind of config (app, system, or datasource). Use two app configs, or two system configs, or two datasource configs.
+- **"Validation failed for &lt;file&gt;: ..."** → Fix schema validation errors in that file, or run with `--no-validate` to skip validation (type check still applied).
 
 **Next Steps:**
 After comparing:

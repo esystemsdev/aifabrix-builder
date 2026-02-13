@@ -14,7 +14,13 @@ jest.mock('fs', () => {
     readFileSync: jest.fn()
   };
 });
-jest.mock('../../../lib/utils/paths');
+jest.mock('../../../lib/utils/paths', () => ({
+  detectAppType: jest.fn(),
+  resolveApplicationConfigPath: jest.fn()
+}));
+jest.mock('../../../lib/utils/config-format', () => ({
+  loadConfigFile: jest.fn()
+}));
 jest.mock('../../../lib/core/config');
 jest.mock('../../../lib/utils/token-manager');
 jest.mock('../../../lib/utils/controller-url', () => ({
@@ -43,7 +49,9 @@ jest.mock('chalk', () => {
 
 const path = require('path');
 const fs = require('fs');
-const { detectAppType } = require('../../../lib/utils/paths');
+const yaml = require('js-yaml');
+const { detectAppType, resolveApplicationConfigPath } = require('../../../lib/utils/paths');
+const { loadConfigFile } = require('../../../lib/utils/config-format');
 const config = require('../../../lib/core/config');
 const { getApplication } = require('../../../lib/api/applications.api');
 const logger = require('../../../lib/utils/logger');
@@ -79,19 +87,17 @@ describe('lib/app/show.js', () => {
   });
 
   describe('offline (default)', () => {
-    it('should load and display app info from variables.yaml (no validation)', async() => {
+    it('should load and display app info from application config (no validation)', async() => {
       const appPath = path.join(process.cwd(), 'builder', 'myapp');
+      const configPath = path.join(appPath, 'application.yaml');
       detectAppType.mockResolvedValue({ appPath });
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      fs.existsSync.mockImplementation((p) => p === variablesPath);
-      fs.readFileSync.mockImplementation((p) => {
-        if (p === variablesPath) return minimalVariablesYaml;
-        return '';
-      });
+      resolveApplicationConfigPath.mockReturnValue(configPath);
+      loadConfigFile.mockReturnValue(yaml.load(minimalVariablesYaml));
 
       await showApp('myapp', { online: false, json: false });
 
       expect(detectAppType).toHaveBeenCalledWith('myapp');
+      expect(resolveApplicationConfigPath).toHaveBeenCalledWith(appPath);
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Source: offline'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('myapp'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('My Application'));
@@ -99,31 +105,35 @@ describe('lib/app/show.js', () => {
       expect(getApplication).not.toHaveBeenCalled();
     });
 
-    it('should throw when variables.yaml is not found', async() => {
+    it('should throw when application config is not found', async() => {
       const appPath = path.join(process.cwd(), 'builder', 'missing');
       detectAppType.mockResolvedValue({ appPath });
-      fs.existsSync.mockReturnValue(false);
+      resolveApplicationConfigPath.mockImplementation(() => {
+        throw new Error('Application config not found in ' + appPath);
+      });
 
-      await expect(showApp('missing', {})).rejects.toThrow(/variables\.yaml not found/);
+      await expect(showApp('missing', {})).rejects.toThrow(/not found/);
       expect(getApplication).not.toHaveBeenCalled();
     });
 
-    it('should throw when variables.yaml has invalid YAML', async() => {
+    it('should throw when application config has invalid content', async() => {
       const appPath = path.join(process.cwd(), 'builder', 'myapp');
+      const configPath = path.join(appPath, 'application.yaml');
       detectAppType.mockResolvedValue({ appPath });
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      fs.existsSync.mockImplementation((p) => p === variablesPath);
-      fs.readFileSync.mockReturnValue('invalid: yaml: [unclosed');
+      resolveApplicationConfigPath.mockReturnValue(configPath);
+      loadConfigFile.mockImplementation(() => {
+        throw new Error('Invalid YAML syntax: unexpected end of stream');
+      });
 
-      await expect(showApp('myapp', {})).rejects.toThrow(/Invalid YAML/);
+      await expect(showApp('myapp', {})).rejects.toThrow(/Invalid application config/);
     });
 
     it('should output JSON with source offline when --json', async() => {
       const appPath = path.join(process.cwd(), 'builder', 'myapp');
+      const configPath = path.join(appPath, 'application.yaml');
       detectAppType.mockResolvedValue({ appPath });
-      const variablesPath = path.join(appPath, 'variables.yaml');
-      fs.existsSync.mockImplementation((p) => p === variablesPath);
-      fs.readFileSync.mockImplementation((p) => (p === variablesPath ? minimalVariablesYaml : ''));
+      resolveApplicationConfigPath.mockReturnValue(configPath);
+      loadConfigFile.mockReturnValue(yaml.load(minimalVariablesYaml));
 
       await showApp('myapp', { json: true });
 
@@ -285,20 +295,20 @@ describe('lib/app/show.js', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Source: offline'));
     });
 
-    it('should throw when fallback variables.yaml is empty or invalid', async() => {
+    it('should throw when fallback application config is empty or invalid', async() => {
       const appPath = path.join(process.cwd(), 'builder', 'myapp');
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const configPath = path.join(appPath, 'application.yaml');
       generator.buildDeploymentManifestInMemory.mockRejectedValue(new Error('env.template not found'));
       detectAppType.mockResolvedValue({ appPath });
-      fs.existsSync.mockImplementation((p) => p === variablesPath);
-      fs.readFileSync.mockReturnValue('');
+      resolveApplicationConfigPath.mockReturnValue(configPath);
+      loadConfigFile.mockReturnValue(null);
 
       await expect(showApp('myapp', {})).rejects.toThrow(/empty or invalid/);
     });
 
     it('should use variables with conditionalConfiguration and portalInput (masked, field)', async() => {
       const appPath = path.join(process.cwd(), 'builder', 'myapp');
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const configPath = path.join(appPath, 'application.yaml');
       const variablesYaml = `
 app:
   key: myapp
@@ -323,8 +333,8 @@ conditionalConfiguration:
 `;
       generator.buildDeploymentManifestInMemory.mockRejectedValue(new Error('no manifest'));
       detectAppType.mockResolvedValue({ appPath });
-      fs.existsSync.mockImplementation((p) => p === variablesPath);
-      fs.readFileSync.mockImplementation((p) => (p === variablesPath ? variablesYaml : ''));
+      resolveApplicationConfigPath.mockReturnValue(configPath);
+      loadConfigFile.mockReturnValue(yaml.load(variablesYaml));
 
       await showApp('myapp', { online: false, json: false });
 
@@ -337,7 +347,7 @@ conditionalConfiguration:
 
     it('should use variables with requiresDatabase and databases', async() => {
       const appPath = path.join(process.cwd(), 'builder', 'myapp');
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const configPath = path.join(appPath, 'application.yaml');
       const variablesYaml = `
 app:
   key: myapp
@@ -350,8 +360,8 @@ databases:
 `;
       generator.buildDeploymentManifestInMemory.mockRejectedValue(new Error('no manifest'));
       detectAppType.mockResolvedValue({ appPath });
-      fs.existsSync.mockImplementation((p) => p === variablesPath);
-      fs.readFileSync.mockImplementation((p) => (p === variablesPath ? variablesYaml : ''));
+      resolveApplicationConfigPath.mockReturnValue(configPath);
+      loadConfigFile.mockReturnValue(yaml.load(variablesYaml));
 
       await showApp('myapp', { online: false, json: false });
 
@@ -362,7 +372,7 @@ databases:
 
     it('should use variables with type external and externalIntegration', async() => {
       const appPath = path.join(process.cwd(), 'builder', 'myapp');
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const configPath = path.join(appPath, 'application.yaml');
       const variablesYaml = `
 app:
   key: hubspot
@@ -375,8 +385,8 @@ externalIntegration:
 `;
       generator.buildDeploymentManifestInMemory.mockRejectedValue(new Error('no manifest'));
       detectAppType.mockResolvedValue({ appPath });
-      fs.existsSync.mockImplementation((p) => p === variablesPath);
-      fs.readFileSync.mockImplementation((p) => (p === variablesPath ? variablesYaml : ''));
+      resolveApplicationConfigPath.mockReturnValue(configPath);
+      loadConfigFile.mockReturnValue(yaml.load(variablesYaml));
 
       await showApp('hubspot', { online: false, json: false });
 
@@ -596,8 +606,18 @@ externalIntegration:
     it('should include externalSystem when type is external and dataplane resolves', async() => {
       config.resolveEnvironment = jest.fn().mockResolvedValue('dev');
       const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
-      const { getExternalSystemConfig } = require('../../../lib/api/external-systems.api');
+      const { getExternalSystem, getExternalSystemConfig } = require('../../../lib/api/external-systems.api');
       resolveDataplaneUrl.mockResolvedValue('http://dataplane:4000');
+      getExternalSystem.mockResolvedValue({
+        data: {
+          status: 'published',
+          credentialId: 'cred-1',
+          showOpenApiDocs: true,
+          mcpServerUrl: 'http://dataplane:4000/mcp',
+          apiDocumentUrl: 'http://dataplane:4000/api',
+          openApiDocsPageUrl: 'http://dataplane:4000/docs'
+        }
+      });
       getExternalSystemConfig.mockResolvedValue({
         data: {
           system: { key: 'hubspot', displayName: 'HubSpot', type: 'openapi', status: 'published' },
@@ -611,15 +631,27 @@ externalIntegration:
           key: 'hubspot',
           displayName: 'HubSpot',
           type: 'external',
-          configuration: { type: 'external', configuration: [] }
+          status: 'active',
+          configuration: {
+            type: 'external',
+            configuration: [],
+            externalIntegration: { schemaBasePath: './', systems: ['hubspot-system.json'], dataSources: ['contacts.json'] }
+          }
         }
       });
 
       await showApp('hubspot', { online: true, json: false });
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('External system (dataplane)'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Dataplane:'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('DataSources:'));
+      expect(getExternalSystem).toHaveBeenCalledWith(
+        'http://dataplane:4000',
+        'hubspot',
+        expect.objectContaining({ type: 'bearer', token: 'test-token' })
+      );
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🧷 Application - external'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🧩 Dataplane'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('published'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Credential:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('API docs:'));
     });
 
     it('should show externalSystem error when dataplane fails for external type', async() => {
@@ -664,8 +696,19 @@ externalIntegration:
     it('should output JSON with externalSystem when --online --json and type external', async() => {
       config.resolveEnvironment = jest.fn().mockResolvedValue('dev');
       const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
-      const { getExternalSystemConfig } = require('../../../lib/api/external-systems.api');
+      const { getExternalSystem, getExternalSystemConfig } = require('../../../lib/api/external-systems.api');
       resolveDataplaneUrl.mockResolvedValue('http://dataplane:4000');
+      getExternalSystem.mockResolvedValue({
+        data: {
+          status: 'published',
+          credentialId: 'cred-2',
+          version: 2,
+          showOpenApiDocs: true,
+          mcpServerUrl: 'http://dataplane:4000/mcp',
+          apiDocumentUrl: 'http://dataplane:4000/api',
+          openApiDocsPageUrl: 'http://dataplane:4000/docs'
+        }
+      });
       getExternalSystemConfig.mockResolvedValue({
         data: {
           system: { key: 'hubspot', displayName: 'HubSpot', type: 'openapi', status: 'published' },
@@ -691,6 +734,51 @@ externalIntegration:
       expect(out.externalSystem).toBeDefined();
       expect(out.externalSystem.error).toBeUndefined();
       expect(out.externalSystem.displayName).toBe('HubSpot');
+      expect(out.externalSystem.dataplaneStatus).toBe('published');
+      expect(out.externalSystem.credentialId).toBe('cred-2');
+      expect(out.externalSystem.showOpenApiDocs).toBe(true);
+      expect(out.externalSystem.mcpServerUrl).toBe('http://dataplane:4000/mcp');
+      expect(out.externalSystem.apiDocumentUrl).toBe('http://dataplane:4000/api');
+      expect(out.externalSystem.openApiDocsPageUrl).toBe('http://dataplane:4000/docs');
+    });
+
+    it('should show Application without port/image/url for online external and show Status, Dataplane Status, Version', async() => {
+      config.resolveEnvironment = jest.fn().mockResolvedValue('dev');
+      const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
+      const { getExternalSystem, getExternalSystemConfig } = require('../../../lib/api/external-systems.api');
+      resolveDataplaneUrl.mockResolvedValue('http://dataplane:4000');
+      getExternalSystem.mockResolvedValue({ data: { status: 'published' } });
+      getExternalSystemConfig.mockResolvedValue({
+        data: {
+          system: { displayName: 'HubSpot', type: 'openapi', status: 'published' },
+          dataSources: [],
+          application: { key: 'hubspot', displayName: 'HubSpot', type: 'openapi' }
+        }
+      });
+      getApplication.mockResolvedValue({
+        success: true,
+        data: {
+          key: 'hubspot',
+          displayName: 'HubSpot',
+          type: 'external',
+          status: 'active',
+          version: 3,
+          configuration: { type: 'external', version: 3, configuration: [] }
+        }
+      });
+
+      await showApp('hubspot', { online: true, json: false });
+
+      const logs = logger.log.mock.calls.map((c) => c[0]);
+      expect(logs).toContainEqual(expect.stringContaining('🧷 Application - external'));
+      expect(logs).toContainEqual(expect.stringContaining('Status:'));
+      expect(logs).toContainEqual(expect.stringContaining('Version:'));
+      expect(logs).toContainEqual(expect.stringContaining('3'));
+      const appSectionStart = logs.findIndex((l) => typeof l === 'string' && l.includes('Application - external'));
+      expect(appSectionStart).toBeGreaterThanOrEqual(0);
+      const afterApp = logs.slice(appSectionStart, appSectionStart + 12);
+      const hasPortInAppSection = afterApp.some((l) => typeof l === 'string' && l.trim().startsWith('Port:'));
+      expect(hasPortInAppSection).toBe(false);
     });
 
     it('should output JSON with externalSystem error when dataplane fails and --json', async() => {
@@ -740,8 +828,8 @@ externalIntegration:
 
       await showApp('hubspot', { online: true, json: false });
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('External system (dataplane)'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('OpenAPI endpoints'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🧩 Dataplane'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Status:'));
     });
   });
 

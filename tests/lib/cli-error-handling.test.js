@@ -116,7 +116,7 @@ describe('CLI Error Handling', () => {
       expect(console.error).toHaveBeenCalledWith('   Run "aifabrix doctor" to check which ports are in use.');
     });
 
-    it('should handle permission errors', () => {
+    it('should handle API permission errors with hint', () => {
       const cli = require('../../lib/cli');
 
       const error = new Error('permission denied');
@@ -125,6 +125,19 @@ describe('CLI Error Handling', () => {
       cli.handleCommandError(error, command);
 
       expect(console.error).toHaveBeenCalledWith('\n❌ Error in build command:');
+      expect(console.error).toHaveBeenCalledWith('   permission denied');
+      expect(console.error).toHaveBeenCalledWith('   Ensure your token has the required permission (e.g. external-system:delete for delete).');
+    });
+
+    it('should handle Docker permission denied errors', () => {
+      const cli = require('../../lib/cli');
+
+      const error = new Error('Got permission denied while trying to connect to the Docker daemon socket');
+      const command = 'run';
+
+      cli.handleCommandError(error, command);
+
+      expect(console.error).toHaveBeenCalledWith('\n❌ Error in run command:');
       expect(console.error).toHaveBeenCalledWith('   Permission denied.');
       expect(console.error).toHaveBeenCalledWith('   Make sure you have the necessary permissions to run Docker commands.');
     });
@@ -186,7 +199,7 @@ describe('CLI Error Handling', () => {
       cli.handleCommandError(error, command);
 
       expect(console.error).toHaveBeenCalledWith('   Registry URL is required.');
-      expect(console.error).toHaveBeenCalledWith('   Provide via --registry flag or configure in variables.yaml under image.registry');
+      expect(console.error).toHaveBeenCalledWith('   Provide via --registry flag or configure in application.yaml under image.registry');
     });
 
     it('should handle generic errors', () => {

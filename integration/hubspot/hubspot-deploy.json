@@ -3,6 +3,7 @@
   "displayName": "HubSpot CRM Integration",
   "description": "HubSpot CRM external system integration with companies, contacts, and deals",
   "type": "external",
+  "version": "1.0.0",
   "externalIntegration": {
     "schemaBasePath": "./",
     "systems": [

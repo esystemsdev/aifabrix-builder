@@ -106,7 +106,7 @@ describe('Application Module', () => {
       expect(await fs.access(appPath).then(() => true).catch(() => false)).toBe(true);
 
       // Verify files were created
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const envTemplatePath = path.join(appPath, 'env.template');
       const rbacPath = path.join(appPath, 'rbac.yaml');
       const deployPath = path.join(appPath, `${appName}-deploy.json`);
@@ -116,7 +116,7 @@ describe('Application Module', () => {
       expect(await fs.access(rbacPath).then(() => true).catch(() => false)).toBe(true);
       expect(await fs.access(deployPath).then(() => true).catch(() => false)).toBe(true);
 
-      // Verify variables.yaml content
+      // Verify application.yaml content
       const variablesContent = await fs.readFile(variablesPath, 'utf8');
       expect(variablesContent).toContain('key: test-app');
       expect(variablesContent).toContain('language: typescript');
@@ -153,8 +153,7 @@ describe('Application Module', () => {
       await app.createApp(appName, options);
 
       // Try to create again - should throw error
-      await expect(app.createApp(appName, options))
-        .rejects.toThrow(`Application '${appName}' already exists in builder/${appName}/`);
+      await expect(app.createApp(appName, options)).rejects.toThrow(/already exists in builder\//);
     });
 
     it('should generate GitHub workflows when requested', async() => {
@@ -192,7 +191,7 @@ describe('Application Module', () => {
       // Setup mocks
       templateValidator.validateTemplate.mockResolvedValue(true);
       templateValidator.copyTemplateFiles.mockResolvedValue([
-        'builder/template-app/variables.yaml',
+        'builder/template-app/application.yaml',
         'builder/template-app/env.template'
       ]);
 
@@ -382,7 +381,7 @@ describe('Application Module', () => {
       // Create app directory structure
       fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app'), { recursive: true });
 
-      // Create variables.yaml
+      // Create application.yaml
       const variablesYaml = `
 app:
   key: test-app
@@ -391,7 +390,7 @@ image:
   name: test-app
   registry: myacr.azurecr.io
 `;
-      fsSync.writeFileSync(path.join(tempDir, 'builder', 'test-app', 'variables.yaml'), variablesYaml);
+      fsSync.writeFileSync(path.join(tempDir, 'builder', 'test-app', 'application.yaml'), variablesYaml);
     });
 
     it('should push image to Azure Container Registry', async() => {
@@ -463,7 +462,7 @@ image:
         .rejects.toThrow('Invalid registry URL format');
     });
 
-    it('should use registry from variables.yaml when not provided via flag', async() => {
+    it('should use registry from application.yaml when not provided via flag', async() => {
       const appName = 'test-app';
       const options = { tag: 'v1.0.0' };
 
@@ -476,14 +475,14 @@ image:
       const appName = 'test-app-no-registry';
       const options = { tag: 'v1.0.0' };
 
-      // Create app without registry in variables.yaml
+      // Create app without registry in application.yaml
       fsSync.mkdirSync(path.join(tempDir, 'builder', appName), { recursive: true });
       const variablesYaml = `
 app:
   key: ${appName}
   name: Test App
 `;
-      fsSync.writeFileSync(path.join(tempDir, 'builder', appName, 'variables.yaml'), variablesYaml);
+      fsSync.writeFileSync(path.join(tempDir, 'builder', appName, 'application.yaml'), variablesYaml);
 
       jest.spyOn(app, 'pushApp').mockRejectedValue(new Error('Registry URL is required'));
 
@@ -536,11 +535,11 @@ app:
   });
 
   describe('loadTemplateVariables', () => {
-    it('should load template variables.yaml successfully', async() => {
+    it('should load template application.yaml successfully', async() => {
       const templateName = 'test-template';
       // Use temp directory to avoid writing to real templates
       const templateDir = path.join(tempDir, 'templates', 'applications', templateName);
-      const templateFile = path.join(templateDir, 'variables.yaml');
+      const templateFile = path.join(templateDir, 'application.yaml');
       const templateContent = 'app:\n  key: test\nport: 3000';
 
       // Create template directory and file in temp location
@@ -606,7 +605,7 @@ app:
       const templateName = 'test-template';
       // Use temp directory to avoid writing to real templates
       const templateDir = path.join(tempDir, 'templates', 'applications', templateName);
-      const templateFile = path.join(templateDir, 'variables.yaml');
+      const templateFile = path.join(templateDir, 'application.yaml');
       // Create a file that can be read but has invalid YAML syntax
       const invalidYaml = 'invalid: yaml: content: [';
 
@@ -659,10 +658,10 @@ app:
   });
 
   describe('updateTemplateVariables', () => {
-    it('should update variables.yaml with app name and port', async() => {
+    it('should update application.yaml with app name and port', async() => {
       const appName = 'new-app';
       const appPath = path.join(tempDir, 'builder', appName);
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const originalContent = `app:
   key: template-app
   displayName: Miso Controller Application
@@ -688,7 +687,7 @@ port: 8080
     it('should update app.key when app section exists', async() => {
       const appName = 'test-app';
       const appPath = path.join(tempDir, 'builder', appName);
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const originalContent = `app:
   key: old-key
   displayName: Old App
@@ -708,7 +707,7 @@ port: 8080
     it('should update displayName when it contains miso', async() => {
       const appName = 'my-new-app';
       const appPath = path.join(tempDir, 'builder', appName);
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const originalContent = `app:
   key: ${appName}
   displayName: Miso Application
@@ -728,7 +727,7 @@ port: 8080
     it('should update port when provided in options', async() => {
       const appName = 'test-app';
       const appPath = path.join(tempDir, 'builder', appName);
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const originalContent = `port: 8080
 `;
 
@@ -757,7 +756,7 @@ port: 8080
     it('should warn on non-ENOENT error', async() => {
       const appName = 'test-app';
       const appPath = path.join(tempDir, 'builder', appName);
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       // Create invalid YAML that will cause parsing error
       const invalidYaml = 'invalid: yaml: [';
 

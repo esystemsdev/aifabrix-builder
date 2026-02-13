@@ -85,11 +85,11 @@ describe('CLI Setup Tests', () => {
     });
 
     it('should handle deploy command action', async() => {
-      app.deployApp.mockResolvedValue({ deploymentId: '123' });
+      app.deployApp.mockResolvedValue({ result: { deploymentId: '123' }, usedExternalDeploy: false });
 
-      const result = await app.deployApp('test-app', { controller: 'https://controller.example.com' });
+      const outcome = await app.deployApp('test-app', { controller: 'https://controller.example.com' });
 
-      expect(result).toHaveProperty('deploymentId');
+      expect(outcome.result).toHaveProperty('deploymentId');
     });
 
     it('should handle up command action', async() => {

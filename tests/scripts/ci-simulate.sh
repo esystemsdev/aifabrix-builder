@@ -61,6 +61,11 @@ cp -r . "$TEST_PROJECT_DIR/" 2>/dev/null || {
 cd "$TEST_PROJECT_DIR"
 rm -rf node_modules .git coverage .cursor temp 2>/dev/null || true
 
+# Ensure babel config exists in CI
+if [ ! -f "$TEST_PROJECT_DIR/babel.config.js" ]; then
+  echo 'module.exports = { presets: [] };' > "$TEST_PROJECT_DIR/babel.config.js"
+fi
+
 if [ ! -f "$TEST_PROJECT_DIR/package.json" ]; then
     echo -e "${RED}✗ Failed to copy project${NC}"
     exit 1

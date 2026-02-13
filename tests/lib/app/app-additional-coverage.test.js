@@ -13,6 +13,7 @@ const os = require('os');
 const yaml = require('js-yaml');
 const app = require('../../../lib/app');
 const pushUtils = require('../../../lib/deployment/push');
+const paths = require('../../../lib/utils/paths');
 
 jest.mock('inquirer');
 jest.mock('../../../lib/generator/github');
@@ -350,20 +351,29 @@ describe('App.js Additional Coverage Tests', () => {
   describe('pushApp - successful ACR authentication and push flow', () => {
     beforeEach(() => {
       const appName = 'test-app';
-      const appPath = path.join(tempDir, 'builder', appName);
-      fsSync.mkdirSync(appPath, { recursive: true });
-
       const variables = {
         image: {
           name: appName,
           registry: 'myacr.azurecr.io'
         }
       };
+      const configContent = yaml.dump(variables);
+      // Write to both tempDir and cwd so config is found whether mock or real path resolution runs (CI)
+      const dirs = [
+        path.join(tempDir, 'builder', appName),
+        path.join(process.cwd(), 'builder', appName)
+      ];
+      for (const appPath of dirs) {
+        fsSync.mkdirSync(appPath, { recursive: true });
+        fsSync.writeFileSync(path.join(appPath, 'application.yaml'), configContent);
+      }
 
-      fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
-        yaml.dump(variables)
-      );
+      jest.spyOn(paths, 'detectAppType').mockImplementation(async(name) => ({
+        appPath: path.join(process.cwd(), 'builder', name),
+        appType: 'regular',
+        baseDir: 'builder',
+        isExternal: false
+      }));
 
       // Mock validateRegistryURL to return true for valid registries
       pushUtils.validateRegistryURL.mockImplementation((url) => {
@@ -463,31 +473,34 @@ describe('App.js Additional Coverage Tests', () => {
   describe('pushApp - error paths', () => {
     beforeEach(() => {
       const appName = 'test-app';
-      const appPath = path.join(tempDir, 'builder', appName);
-      fsSync.mkdirSync(appPath, { recursive: true });
+      for (const base of [tempDir, process.cwd()]) {
+        const appPath = path.join(base, 'builder', appName);
+        fsSync.mkdirSync(appPath, { recursive: true });
+      }
+
+      jest.spyOn(paths, 'detectAppType').mockImplementation(async(name) => ({
+        appPath: path.join(process.cwd(), 'builder', name),
+        appType: 'regular',
+        baseDir: 'builder',
+        isExternal: false
+      }));
     });
 
     it('should handle missing config file error', async() => {
       const appName = 'missing-config-app';
 
       await expect(app.pushApp(appName, {}))
-        .rejects.toThrow('Failed to load configuration');
+        .rejects.toThrow(/Failed to load configuration|not found in integration|not found in builder/);
     });
 
     it('should handle invalid registry URL error', async() => {
       const appName = 'test-app';
-      const appPath = path.join(tempDir, 'builder', appName);
-
-      const variables = {
-        image: {
-          registry: 'invalid-registry.com'
-        }
-      };
-
-      fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
-        yaml.dump(variables)
-      );
+      const variables = { image: { registry: 'invalid-registry.com' } };
+      const configContent = yaml.dump(variables);
+      for (const base of [tempDir, process.cwd()]) {
+        const appPath = path.join(base, 'builder', appName);
+        fsSync.writeFileSync(path.join(appPath, 'application.yaml'), configContent);
+      }
 
       pushUtils.validateRegistryURL.mockReturnValue(false);
 

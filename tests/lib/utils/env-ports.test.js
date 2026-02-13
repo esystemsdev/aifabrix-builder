@@ -25,7 +25,7 @@ const config = require('../../../lib/core/config');
 
 describe('Environment Port Utilities', () => {
   const envPath = path.join(process.cwd(), 'builder', 'testapp', '.env');
-  const variablesPath = path.join(process.cwd(), 'builder', 'testapp', 'variables.yaml');
+  const variablesPath = path.join(process.cwd(), 'builder', 'testapp', 'application.yaml');
   const configPath = config.CONFIG_FILE;
 
   beforeEach(() => {
@@ -49,7 +49,7 @@ describe('Environment Port Utilities', () => {
       expect(fs.writeFileSync).not.toHaveBeenCalled();
     });
 
-    it('should use default port 3000 when port not specified in variables.yaml', () => {
+    it('should use default port 3000 when port not specified in application.yaml', () => {
       const envContent = 'PORT=3000\nOTHER_VAR=value';
       const variablesContent = 'app:\n  name: Test App';
 
@@ -72,7 +72,7 @@ describe('Environment Port Utilities', () => {
       expect(fs.writeFileSync).toHaveBeenCalledWith(envPath, expect.stringContaining('PORT=3000'), { mode: 0o600 });
     });
 
-    it('should use port from variables.yaml when specified', () => {
+    it('should use port from application.yaml when specified', () => {
       const envContent = 'PORT=3000\nOTHER_VAR=value';
       const variablesContent = 'port: 4000\napp:\n  name: Test App';
 

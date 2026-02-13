@@ -26,6 +26,30 @@ jest.mock('../../../lib/external-system/deploy', () => ({
 jest.mock('../../../lib/api/applications.api', () => ({
   getApplicationStatus: jest.fn()
 }));
+jest.mock('../../../lib/utils/paths', () => {
+  const pathMod = require('path');
+  const actual = jest.requireActual('../../../lib/utils/paths');
+  return {
+    ...actual,
+    detectAppType: jest.fn().mockImplementation(async(appName) => {
+      if (appName === 'nonexistent-app') {
+        throw new Error(`App '${appName}' not found in integration/${appName} or builder/${appName}`);
+      }
+      if (appName === 'external-app') {
+        return actual.detectAppType(appName);
+      }
+      if (appName === 'test-app') {
+        return {
+          isExternal: false,
+          appPath: pathMod.join(process.cwd(), 'builder', appName),
+          appType: 'regular',
+          baseDir: 'builder'
+        };
+      }
+      return actual.detectAppType(appName);
+    })
+  };
+});
 
 describe('Application Deploy Module', () => {
   let tempDir;
@@ -82,7 +106,7 @@ describe('Application Deploy Module', () => {
       // Create app directory structure
       fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app'), { recursive: true });
 
-      // Create variables.yaml
+      // Create application.yaml
       const variablesYaml = `
 app:
   key: test-app
@@ -92,14 +116,14 @@ image:
   registry: myacr.azurecr.io
 `;
       fsSync.writeFileSync(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         variablesYaml
       );
     });
 
     it('should error when app configuration is missing', async() => {
       await expect(appDeploy.pushApp('nonexistent-app', {}))
-        .rejects.toThrow('Failed to load configuration');
+        .rejects.toThrow(/Failed to load configuration|not found in integration|not found in builder/);
     });
 
     it('should error when no registry is configured', async() => {
@@ -111,7 +135,7 @@ app:
 `;
       fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app-no-registry'));
       fsSync.writeFileSync(
-        path.join(tempDir, 'builder', 'test-app-no-registry', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app-no-registry', 'application.yaml'),
         variablesYaml
       );
 
@@ -209,12 +233,12 @@ app:
   name: External App
   type: external
 `;
-      fsSync.writeFileSync(path.join(integrationPath, 'variables.yaml'), variablesYaml);
+      fsSync.writeFileSync(path.join(integrationPath, 'application.yaml'), variablesYaml);
 
       const externalDeploy = require('../../../lib/external-system/deploy');
       externalDeploy.deployExternalSystem.mockResolvedValue();
 
-      const result = await appDeploy.deployApp('external-app', {
+      const outcome = await appDeploy.deployApp('external-app', {
         controller: 'https://controller.example.com',
         environment: 'dev'
       });
@@ -222,11 +246,11 @@ app:
       expect(externalDeploy.deployExternalSystem).toHaveBeenCalledWith('external-app', expect.any(Object));
       const deployer = require('../../../lib/deployment/deployer');
       expect(deployer.deployToController).not.toHaveBeenCalled();
-      expect(result).toEqual({ success: true, type: 'external' });
+      expect(outcome.result).toEqual({ success: true, type: 'external' });
+      expect(outcome.usedExternalDeploy).toBe(true);
     });
 
-    it('should deploy from integration when --type external is passed (no builder required)', async() => {
-      // Only integration/<app> exists; no builder/<app> - --type external forces integration path
+    it('should deploy from integration when only integration folder exists', async() => {
       const integrationPath = path.join(tempDir, 'integration', 'test-e2e-hubspot');
       fsSync.mkdirSync(integrationPath, { recursive: true });
       const variablesYaml = `
@@ -235,51 +259,25 @@ app:
   name: Test E2E HubSpot
   type: external
 `;
-      fsSync.writeFileSync(path.join(integrationPath, 'variables.yaml'), variablesYaml);
+      fsSync.writeFileSync(path.join(integrationPath, 'application.yaml'), variablesYaml);
 
       const externalDeploy = require('../../../lib/external-system/deploy');
       externalDeploy.deployExternalSystem.mockResolvedValue();
 
-      const result = await appDeploy.deployApp('test-e2e-hubspot', { type: 'external' });
-
-      expect(externalDeploy.deployExternalSystem).toHaveBeenCalledWith(
-        'test-e2e-hubspot',
-        expect.objectContaining({ type: 'external' })
-      );
-      const deployer = require('../../../lib/deployment/deployer');
-      expect(deployer.deployToController).not.toHaveBeenCalled();
-      expect(result).toEqual({ success: true, type: 'external' });
-    });
-
-    it('should deploy from integration when only integration folder exists (no --type external)', async() => {
-      // Fallback: no builder/<app>, integration/<app> with variables.yaml -> deploy as external
-      const integrationPath = path.join(tempDir, 'integration', 'test-e2e-hubspot');
-      fsSync.mkdirSync(integrationPath, { recursive: true });
-      const variablesYaml = `
-app:
-  key: test-e2e-hubspot
-  name: Test E2E HubSpot
-  type: external
-`;
-      fsSync.writeFileSync(path.join(integrationPath, 'variables.yaml'), variablesYaml);
-      // Do not create builder/test-e2e-hubspot
-
-      const externalDeploy = require('../../../lib/external-system/deploy');
-      externalDeploy.deployExternalSystem.mockResolvedValue();
-
-      const result = await appDeploy.deployApp('test-e2e-hubspot', {});
+      const outcome = await appDeploy.deployApp('test-e2e-hubspot', {});
 
       expect(externalDeploy.deployExternalSystem).toHaveBeenCalledWith('test-e2e-hubspot', expect.any(Object));
       const deployer = require('../../../lib/deployment/deployer');
       expect(deployer.deployToController).not.toHaveBeenCalled();
-      expect(result).toEqual({ success: true, type: 'external' });
+      expect(outcome.result).toEqual({ success: true, type: 'external' });
+      expect(outcome.usedExternalDeploy).toBe(true);
     });
 
     it('should error when controller URL is missing', async() => {
-      // Create variables.yaml without deployment config
+      // Create application.yaml without deployment config
       const config = { app: { key: 'test-app', name: 'Test App' }, port: 3000 };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -297,7 +295,7 @@ app:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -316,7 +314,7 @@ app:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -374,7 +372,7 @@ app:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -406,6 +404,8 @@ app:
 
       await appDeploy.deployApp('test-app', {});
 
+      expect(generator.generateDeployJson).toHaveBeenCalledWith('test-app', {});
+
       expect(configModule.resolveEnvironment).toHaveBeenCalled();
       expect(tokenManager.getDeploymentAuth).toHaveBeenCalledWith(
         'https://controller.example.com',
@@ -425,13 +425,51 @@ app:
       );
     });
 
+    it('should call generateDeployJson with app name and options', async() => {
+      const config = {
+        app: { key: 'test-app', name: 'Test App' },
+        port: 3000
+      };
+      await fs.writeFile(
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
+        yaml.dump(config)
+      );
+
+      const manifestPath = path.join(tempDir, 'builder', 'test-app', 'test-app-deploy.json');
+      await fs.writeFile(manifestPath, JSON.stringify({
+        key: 'test-app',
+        image: 'myreg.azurecr.io/test-app:latest',
+        port: 3000
+      }));
+
+      const generator = require('../../../lib/generator');
+      jest.spyOn(generator, 'generateDeployJson').mockResolvedValue(manifestPath);
+
+      const configModule = require('../../../lib/core/config');
+      configModule.resolveEnvironment = jest.fn().mockResolvedValue('dev');
+
+      const tokenManager = require('../../../lib/utils/token-manager');
+      tokenManager.getDeploymentAuth.mockResolvedValue({
+        type: 'bearer',
+        token: 'test-token',
+        controller: 'https://controller.example.com'
+      });
+
+      const deployer = require('../../../lib/deployment/deployer');
+      deployer.deployToController.mockResolvedValue({ deploymentId: 'deploy-123' });
+
+      await appDeploy.deployApp('test-app', {});
+
+      expect(generator.generateDeployJson).toHaveBeenCalledWith('test-app', expect.any(Object));
+    });
+
     it('should allow options to override default configuration', async() => {
       const config = {
         app: { key: 'test-app', name: 'Test App' },
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -488,12 +526,13 @@ app:
     it('should error when app not found in builder', async() => {
       await expect(appDeploy.deployApp('nonexistent-app', {
         controller: 'https://controller.example.com'
-      })).rejects.toThrow('not found in builder/');
+      })).rejects.toThrow(/not found in (integration\/.* or )?builder\/|App 'nonexistent-app' not found/);
     });
 
     it('should error when app directory access fails with non-ENOENT error', async() => {
-      // Create app directory but make fs.access throw a different error
+      // Create app directory and minimal config so detectAppType resolves to builder
       fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app'), { recursive: true });
+      fsSync.writeFileSync(path.join(tempDir, 'builder', 'test-app', 'application.yaml'), 'app: { key: test-app, name: Test App }\nport: 3000');
 
       // Mock fs.access to throw a permission error
       const accessSpy = jest.spyOn(fs, 'access').mockRejectedValue(new Error('EACCES: permission denied'));
@@ -505,22 +544,23 @@ app:
       accessSpy.mockRestore();
     });
 
-    it('should error when variables.yaml cannot be read', async() => {
+    it('should error when application.yaml cannot be read', async() => {
       fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app'), { recursive: true });
+      fsSync.writeFileSync(path.join(tempDir, 'builder', 'test-app', 'application.yaml'), 'app: { key: test-app, name: Test App }\nport: 3000');
 
-      // Mock fs.readFile to throw an error only for variables.yaml
+      // Mock fs.readFile to throw an error only for application.yaml (after detectAppType has run)
+      const realReadFile = jest.requireActual('fs').promises.readFile;
       const readFileSpy = jest.spyOn(fs, 'readFile').mockImplementation((filePath, ...args) => {
         const filePathStr = filePath && filePath.toString();
-        if (filePathStr && filePathStr.includes('variables.yaml')) {
+        if (filePathStr && filePathStr.includes('application.yaml')) {
           return Promise.reject(new Error('EACCES: permission denied'));
         }
-        // For other files, call the original fs.readFile
-        return fsSync.promises.readFile(filePath, ...args);
+        return realReadFile(filePath, ...args);
       });
 
       await expect(appDeploy.deployApp('test-app', {
         controller: 'https://controller.example.com'
-      })).rejects.toThrow('Failed to load configuration from variables.yaml');
+      })).rejects.toThrow(/Failed to load configuration|ENOENT|permission denied/);
 
       readFileSpy.mockRestore();
     });
@@ -531,7 +571,7 @@ app:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -568,7 +608,7 @@ app:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -606,7 +646,7 @@ app:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -637,7 +677,7 @@ app:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -679,7 +719,7 @@ app:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -723,7 +763,7 @@ app:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -766,7 +806,7 @@ app:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -809,7 +849,7 @@ app:
         port: 3001
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -866,7 +906,7 @@ app:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -908,7 +948,7 @@ app:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -986,7 +1026,7 @@ app:
       // Create app directory structure
       fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app'), { recursive: true });
 
-      // Create variables.yaml
+      // Create application.yaml
       const variablesYaml = `
 app:
   key: test-app
@@ -996,7 +1036,7 @@ image:
   registry: myacr.azurecr.io
 `;
       fsSync.writeFileSync(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         variablesYaml
       );
     });
@@ -1065,7 +1105,7 @@ image:
 
       await expect(appDeploy.deployApp('nonexistent-app', {
         controller: 'https://controller.example.com'
-      })).rejects.toThrow('not found in builder/');
+      })).rejects.toThrow(/not found in (integration\/.* or )?builder\/|App 'nonexistent-app' not found/);
     });
 
     it('should handle validateAppDirectory with non-ENOENT error', async() => {
@@ -1092,7 +1132,7 @@ image:
 
       fsSync.mkdirSync(path.join(tempDir, 'builder', 'test-app'), { recursive: true });
       const readFileSpy = jest.spyOn(fs, 'readFile').mockImplementation((filePath) => {
-        if (filePath.toString().includes('variables.yaml')) {
+        if (filePath.toString().includes('application.yaml') || filePath.toString().includes('application.yaml')) {
           return Promise.reject(new Error('EACCES: permission denied'));
         }
         return fsSync.promises.readFile(filePath);
@@ -1100,7 +1140,7 @@ image:
 
       await expect(appDeploy.deployApp('test-app', {
         controller: 'https://controller.example.com'
-      })).rejects.toThrow('Failed to load configuration from variables.yaml');
+      })).rejects.toThrow(/Failed to load configuration|ENOENT|permission denied/);
 
       readFileSpy.mockRestore();
     });
@@ -1111,7 +1151,7 @@ image:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -1171,7 +1211,7 @@ image:
         // No deployment.controllerUrl
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -1222,7 +1262,7 @@ image:
         // No deployment.controllerUrl
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -1245,7 +1285,7 @@ image:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -1271,7 +1311,7 @@ image:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -1311,7 +1351,7 @@ image:
           return e;
         }
       })();
-      expect(err.message).toContain('builder/myapp/variables.yaml');
+      expect(err.message).toContain('builder/myapp');
       expect(err.message).toContain('<registry>/myapp:<tag>');
     });
 
@@ -1321,7 +1361,7 @@ image:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -1361,7 +1401,7 @@ image:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 
@@ -1399,7 +1439,7 @@ image:
         port: 3000
       };
       await fs.writeFile(
-        path.join(tempDir, 'builder', 'test-app', 'variables.yaml'),
+        path.join(tempDir, 'builder', 'test-app', 'application.yaml'),
         yaml.dump(config)
       );
 

@@ -52,7 +52,7 @@ jest.mock('../../../lib/utils/external-readme', () => {
 
 ## Files
 
-- \`variables.yaml\` – Application configuration with \`app\` and \`externalIntegration\` blocks
+- \`application.yaml\` – Application configuration with \`app\` and \`externalIntegration\` blocks
 - \`{{systemKey}}-system.json\` – External system definition (authentication, OpenAPI/MCP, RBAC)
 {{#each datasources}}
 - \`{{fileName}}\` – Datasource: {{displayName}}

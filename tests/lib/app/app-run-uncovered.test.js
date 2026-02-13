@@ -172,10 +172,17 @@ jest.mock('../../../lib/utils/image-version', () => ({
   resolveVersionForApp: jest.fn().mockResolvedValue({ version: '1.0.0', fromImage: false })
 }));
 jest.mock('../../../lib/utils/paths', () => {
+  const pathMod = require('path');
   const actual = jest.requireActual('../../../lib/utils/paths');
   return {
     ...actual,
-    getBuilderPath: jest.fn()
+    getBuilderPath: jest.fn(),
+    detectAppType: jest.fn().mockImplementation((appName) => Promise.resolve({
+      isExternal: false,
+      appPath: pathMod.join(process.cwd(), 'builder', appName || 'test-app'),
+      appType: 'regular',
+      baseDir: 'builder'
+    }))
   };
 });
 jest.mock('../../../lib/utils/compose-generator', () => {
@@ -220,7 +227,7 @@ describe('App-Run Uncovered Code Paths', () => {
     fsSync.mkdirSync.mockReturnValue(undefined);
     fsSync.writeFileSync.mockReturnValue(undefined);
     fsSync.readFileSync.mockImplementation((filePath) => {
-      if (filePath.includes('variables.yaml')) {
+      if (filePath.includes('application.yaml')) {
         return yaml.dump({
           app: { key: 'test-app', name: 'Test App' },
           build: { port: 3000 }
@@ -497,7 +504,7 @@ describe('App-Run Uncovered Code Paths', () => {
       appRun.checkPortAvailable.mockRestore();
     });
 
-    it('should handle envOutputPath in variables.yaml', async() => {
+    it('should handle envOutputPath in application.yaml', async() => {
       const appName = 'test-app';
 
       // Mock fs operations
@@ -809,6 +816,34 @@ describe('App-Run Uncovered Code Paths', () => {
       await expect(appRun.runApp(appName, {})).rejects.toThrow('Failed to run application: Validation error');
 
       appRun.checkImageExists.mockRestore();
+    });
+  });
+
+  describe('restartApp', () => {
+    it('should restart app container when running', async() => {
+      config.getDeveloperId.mockResolvedValue(0);
+      exec.mockImplementation((cmd, opts, cb) => {
+        const callback = typeof opts === 'function' ? opts : cb;
+        callback(null, '', '');
+      });
+      await expect(appRun.restartApp('myapp')).resolves.not.toThrow();
+      expect(exec).toHaveBeenCalledWith(expect.stringContaining('docker restart'), expect.any(Function));
+    });
+
+    it('should throw when app name is missing', async() => {
+      await expect(appRun.restartApp('')).rejects.toThrow('Application name is required');
+      await expect(appRun.restartApp(null)).rejects.toThrow('Application name is required');
+    });
+
+    it('should throw friendly error when container is not running', async() => {
+      config.getDeveloperId.mockResolvedValue(0);
+      const err = new Error('No such container');
+      err.stderr = 'Error: No such container: aifabrix-myapp';
+      exec.mockImplementation((cmd, opts, cb) => {
+        const callback = typeof opts === 'function' ? opts : cb;
+        callback(err, '', 'No such container');
+      });
+      await expect(appRun.restartApp('myapp')).rejects.toThrow('Application \'myapp\' is not running. Start it with: aifabrix run myapp');
     });
   });
 });

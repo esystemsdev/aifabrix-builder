@@ -50,9 +50,9 @@ aifabrix wizard --config path/to/wizard.yaml
 8. **Save Files** - Save all files to `integration/<app-name>/`
 
 **Files Created:**
-- `variables.yaml` - Application variables and external integration configuration
-- `<systemKey>-system.json` - System configuration
-- `<systemKey>-datasource-*.json` - Datasource configurations
+- `application.yaml` - Application variables and external integration configuration
+- `<systemKey>-system.yaml` - System configuration
+- `<systemKey>-datasource-*.yaml` - Datasource configurations
 - `env.template` - Environment variable template
 - `README.md` - Documentation
 - `<systemKey>-deploy.json` - Deployment manifest (generated)
@@ -69,6 +69,8 @@ aifabrix wizard --app my-api
 
 # Use wizard when creating external system
 aifabrix create my-integration --type external --wizard
+# Delete (path resolved: integration first, then builder)
+aifabrix delete hubspot
 ```
 
 **See Also:**
@@ -116,13 +118,13 @@ Controller and environment come from `config.yaml` (set via `aifabrix login` or 
 5. Creates `integration/<system-key>/` folder structure
 6. Generates development files:
    - `<system-key>-deploy.json` - Deployment manifest (single file with inline system + datasources)
-   - `variables.yaml` - Application configuration with externalIntegration block
+   - `application.yaml` - Application configuration with externalIntegration block
    - `env.template` - Environment variables template
    - `README.md` - Documentation with setup instructions
 
 **Note:** The downloaded `<system-key>-deploy.json` can be split into component files using `aifabrix split-json <system-key>`, which creates:
-   - `<system-key>-system.json` - External system definition
-   - `<system-key>-datasource-<datasource-key>.json` - Datasource files (one per datasource)
+   - `<system-key>-system.yaml` - External system definition
+   - `<system-key>-datasource-<datasource-key>.yaml` - Datasource files (one per datasource)
 
 **Output:**
 ```yaml
@@ -140,13 +142,13 @@ Controller and environment come from `config.yaml` (set via `aifabrix login` or 
 
 📝 Generating development files...
 ✓ Created integration/hubspot/hubspot-deploy.json
-✓ Created integration/hubspot/variables.yaml
+✓ Created integration/hubspot/application.yaml
 ✓ Created integration/hubspot/env.template
 ✓ Created integration/hubspot/README.md
 
 💡 Tip: Split the deployment manifest into component files:
    aifabrix split-json hubspot
-   # Creates: hubspot-system.json, hubspot-datasource-*.json
+   # Creates: hubspot-system.yaml, hubspot-datasource-*.yaml
 
 ✅ External system downloaded successfully!
    Location: integration/hubspot/
@@ -156,13 +158,13 @@ Controller and environment come from `config.yaml` (set via `aifabrix login` or 
 ```text
 integration/
   <system-key>/
-    <system-key>-deploy.json          # Deployment manifest (downloaded, can be split)
-    variables.yaml                    # App configuration with externalIntegration block
-    <system-key>-system.json         # External system definition
-    <system-key>-datasource-<datasource-key1>.json  # Datasource 1
-    <system-key>-datasource-<datasource-key2>.json  # Datasource 2
-    env.template                     # Environment variables template
-    README.md                        # Documentation
+    <system-key>-deploy.json                # Deployment manifest (downloaded, can be split)
+    application.yaml                        # App configuration with externalIntegration block
+    <system-key>-system.yaml                # External system definition
+    <system-key>-datasource-<ds-key1>.yaml  # Datasource 1
+    <system-key>-datasource-<ds-key2>.yaml  # Datasource 2
+    env.template                            # Environment variables template
+    README.md                               # Documentation
 ```
 
 **Issues:**
@@ -178,7 +180,68 @@ After downloading:
 - Review configuration files in `integration/<system-key>/`
 - Run unit tests: `aifabrix test <system-key>`
 - Run integration tests: `aifabrix test-integration <system-key>`
-- Deploy changes: `aifabrix deploy <system-key> --type external` (deploys from `integration/<system-key>/`; no app register needed)
+- Deploy changes: `aifabrix deploy <system-key>` (resolves `integration/<system-key>/` first; no app register needed). After deploy (or upload), MCP/OpenAPI docs are served by the dataplane—see [Controller and Dataplane: What, Why, When](../deploying.md#controller-and-dataplane-what-why-when).
+
+---
+
+<a id="aifabrix-upload-system-key"></a>
+## aifabrix upload <system-key>
+
+Upload full external system (system + all datasources + RBAC) to the dataplane for the current environment.
+
+**What:** Uploads the full manifest to the dataplane using the pipeline **upload → validate → publish** flow. No controller deploy: the controller is used only to resolve the dataplane URL and authentication. The dataplane does **not** deploy RBAC to the controller—RBAC stays in the dataplane; promote to the full platform later via the web UI or `aifabrix deploy <app>`.
+
+**When:** Test the full system on the dataplane without promoting; or when you have only dataplane access or limited controller permissions (e.g. no `applications:deploy` on the controller).
+
+**When MCP/OpenAPI docs are available:** After publish (via upload or deploy), the dataplane serves MCP and OpenAPI docs at standard URLs. See [Controller and Dataplane: What, Why, When](../deploying.md#controller-and-dataplane-what-why-when).
+
+**Usage:**
+```bash
+# Upload to dataplane (uses controller and environment from config)
+aifabrix upload my-hubspot
+
+# Validate and build payload only; no API calls
+aifabrix upload my-hubspot --dry-run
+
+# Use a specific dataplane URL
+aifabrix upload my-hubspot --dataplane https://dataplane.example.com
+```
+
+**Arguments:** `<system-key>` – External system key (same as `integration/<system-key>/`).
+
+**Options:**
+- `--dry-run` – Validate locally and build payload only; no API calls
+- `--dataplane <url>` – Dataplane URL (default: discovered from controller)
+
+**Prerequisites:**
+- Login or app credentials for the system: `aifabrix login` or `aifabrix app register <system-key>`
+- `integration/<system-key>/` with valid `application.yaml` and system/datasource files
+
+**Process:**
+1. Validate locally (`validateExternalSystemComplete`)
+2. Build payload from controller manifest (system with RBAC + datasources) → `{ version, application, dataSources }`
+3. Resolve dataplane URL and auth (from controller + environment)
+4. `POST /api/v1/pipeline/upload` → get upload ID
+5. `POST /api/v1/pipeline/upload/{id}/validate` → on failure, show validation errors and exit
+6. `POST /api/v1/pipeline/upload/{id}/publish`
+
+**Output example:**
+```text
+Uploading external system to dataplane: my-hubspot
+Validation passed.
+Resolving dataplane URL...
+Dataplane: https://dataplane.example.com
+
+Upload validated and published to dataplane.
+Environment: dev
+System: my-hubspot
+Dataplane: https://dataplane.example.com
+```
+
+**Issues / next steps:**
+- **Validation failed** – Fix errors shown (e.g. missing `application.yaml`, invalid system/datasource files) then run again.
+- **Authentication required** – Run `aifabrix login` or `aifabrix app register <system-key>`.
+- The system is available only on this dataplane until you run `aifabrix deploy <app>` (or promote via the web interface).
 
 ---
 
@@ -195,18 +258,17 @@ This command uses the active `controller` and `environment` from `config.yaml` (
 
 **Usage:**
 ```bash
-# Delete external system with confirmation prompt
-aifabrix delete hubspot --type external
+# Delete external system with confirmation prompt (defaults to integration/<app>)
+aifabrix delete hubspot
 
 # Delete without confirmation prompt (for automation)
-aifabrix delete hubspot --type external --yes
+aifabrix delete hubspot --yes
 ```
 
 **Arguments:**
 - `<system-key>` - External system key (identifier)
 
 **Options:**
-- `--type <type>` - Application type (must be `external` for this command)
 - `--yes` - Skip confirmation prompt
 - `--force` - Skip confirmation prompt (alias for `--yes`)
 
@@ -289,7 +351,7 @@ Deletion cancelled.
 
 **Issues:**
 - **"System key is required"** → Provide system key as argument
-- **"Delete command for external systems requires --type external"** → Add `--type external` flag
+- **"External system not found in integration/..."** → Ensure the system exists in `integration/<system-key>/` or `builder/<system-key>/` (the CLI resolves integration first, then builder)
 - **"Not logged in"** → Run `aifabrix login` first
 - **"External system 'hubspot' not found"** → Check system key exists in the dataplane
 - **"Failed to delete external system"** → Check dataplane URL, authentication, and network connection
@@ -332,7 +394,7 @@ aifabrix test hubspot --verbose
 - `-v, --verbose` - Show detailed validation output
 
 **Process:**
-1. Loads and validates `variables.yaml` syntax
+1. Loads and validates `application.yaml` syntax
 2. Loads and validates system JSON file(s) against `external-system.schema.json`
 3. Loads and validates datasource JSON file(s) against `external-datasource.schema.json`
 4. If `testPayload.payloadTemplate` exists in datasource:
@@ -361,10 +423,10 @@ aifabrix test hubspot --verbose
 🧪 Running unit tests for 'hubspot'...
 
 ✓ Application configuration is valid
-✓ System configuration is valid (hubspot-system.json)
-✓ Datasource configuration is valid (hubspot-datasource-company.json)
-✓ Datasource configuration is valid (hubspot-datasource-contact.json)
-✓ Datasource configuration is valid (hubspot-datasource-deal.json)
+✓ System configuration is valid (hubspot-system.yaml)
+✓ Datasource configuration is valid (hubspot-datasource-company.yaml)
+✓ Datasource configuration is valid (hubspot-datasource-contact.yaml)
+✓ Datasource configuration is valid (hubspot-datasource-deal.yaml)
 
 Field Mapping Tests:
   ✓ hubspot-company: All field mappings valid
@@ -384,8 +446,8 @@ Metadata Schema Tests:
 🧪 Running unit tests for 'hubspot'...
 
 ✓ Application configuration is valid
-✓ System configuration is valid (hubspot-system.json)
-✗ Datasource configuration has errors (hubspot-datasource-company.json):
+✓ System configuration is valid (hubspot-system.yaml)
+✗ Datasource configuration has errors (hubspot-datasource-company.yaml):
   • Field mapping expression invalid: '{{properties.name.value | trim' (missing closing brace)
   • Metadata schema validation failed: Field 'country' not found in test payload
 
@@ -605,10 +667,10 @@ Validate external datasource JSON file.
 **Usage:**
 ```bash
 # Validate datasource file
-aifabrix datasource validate ./schemas/hubspot-deal.json
+aifabrix datasource validate ./schemas/hubspot-deal.yaml
 
 # Validate with relative path
-aifabrix datasource validate schemas/my-datasource.json
+aifabrix datasource validate schemas/my-datasource.yaml
 ```
 
 **Arguments:**
@@ -623,12 +685,12 @@ aifabrix datasource validate schemas/my-datasource.json
 
 **Output (valid):**
 ```yaml
-✓ Datasource file is valid: ./schemas/hubspot-deal.json
+✓ Datasource file is valid: ./schemas/hubspot-deal.yaml
 ```
 
 **Output (invalid):**
 ```yaml
-✗ Datasource file has errors: ./schemas/hubspot-deal.json
+✗ Datasource file has errors: ./schemas/hubspot-deal.yaml
   • Missing required field 'key'
   • Field 'systemKey' must be a string
   • Field 'version' must match pattern ^[0-9]+\.[0-9]+\.[0-9]+$
@@ -714,17 +776,17 @@ After listing:
 
 Compare two datasource configuration files.
 
-**What:** Compares two datasource JSON files and highlights differences, with special focus on dataplane-relevant fields (fieldMappings, exposed fields, sync configuration, OpenAPI, MCP).
+**What:** Compares two datasource JSON files and highlights differences, with special focus on dataplane-relevant fields (fieldMappings, exposed fields, sync configuration, OpenAPI, MCP). The generic command `aifabrix diff <file1> <file2>` (see [Validation Commands](validation.md#aifabrix-diff-file1-file2)) also works for two datasource files: it requires both files to be the same config type (app, system, or datasource) and validates them against their schema by default; `aifabrix datasource diff` is a convenience for comparing two datasource files with dataplane-focused output.
 
 **When:** Before deploying datasource updates, validating schema migrations, or reviewing configuration changes for dataplane deployment.
 
 **Usage:**
 ```bash
 # Compare two datasource versions
-aifabrix datasource diff ./schemas/hubspot-deal-v1.json ./schemas/hubspot-deal-v2.json
+aifabrix datasource diff ./schemas/hubspot-deal-v1.yaml ./schemas/hubspot-deal-v2.yaml
 
 # Compare datasource configurations
-aifabrix datasource diff ./old-datasource.json ./new-datasource.json
+aifabrix datasource diff ./old-datasource.yaml ./new-datasource.yaml
 ```
 
 **Arguments:**
@@ -743,7 +805,7 @@ aifabrix datasource diff ./old-datasource.json ./new-datasource.json
 
 **Output:**
 ```yaml
-Comparing: hubspot-deal-v1.json ↔ hubspot-deal-v2.json
+Comparing: hubspot-deal-v1.yaml ↔ hubspot-deal-v2.yaml
 
 Files are different
 
@@ -810,7 +872,7 @@ This command uses the active `controller` and `environment` from `config.yaml` (
 **Usage:**
 ```bash
 # Deploy datasource to dataplane
-aifabrix datasource deploy myapp ./schemas/hubspot-deal.json
+aifabrix datasource deploy myapp ./schemas/hubspot-deal.yaml
 ```
 
 **Arguments:**

@@ -90,7 +90,7 @@ integration/my-hubspot/
 ├── hubspot-datasource-contact.json  ← Contacts datasource
 ├── hubspot-datasource-deal.json     ← Deals datasource
 ├── hubspot-deploy.json              ← Deployment manifest (generated)
-├── variables.yaml                   ← App config with externalIntegration block
+├── application.yaml                   ← App config with externalIntegration block
 ├── env.template                     ← Environment variables template
 ├── README.md                        ← Generated documentation
 └── deploy.js                        ← Node deployment script (run `node deploy.js`)
@@ -110,9 +110,9 @@ This is the **main external system definition**. It contains:
 - System file: `hubspot-system.json`
 - Datasource files: `hubspot-datasource-company.json`, etc.
 - Deployment manifest: `hubspot-deploy.json` (generated)
-- Config files: `variables.yaml`, `env.template`, `README.md`
+- Config files: `application.yaml`, `env.template`, `README.md`
 
-### `variables.yaml` (Application Configuration)
+### `application.yaml` (Application Configuration)
 Contains the `externalIntegration` block that references all datasource files:
 
 ```yaml
@@ -172,12 +172,12 @@ After validation, you can manually edit the files:
 
 1. **Edit `hubspot-system.json`**: Modify system configuration, authentication, or configuration variables
 2. **Edit datasource files**: Modify field mappings, transformations, or add new datasources
-3. **Edit `variables.yaml`**: Update application metadata or add new datasources to the list
+3. **Edit `application.yaml`**: Update application metadata or add new datasources to the list
 4. **Edit `env.template`**: Add or modify environment variables
 
 **Adding a new datasource:**
 1. Create a new `*-deploy-*.json` file following the same structure
-2. Add it to `variables.yaml` under `externalIntegration.dataSources`
+2. Add it to `application.yaml` under `externalIntegration.dataSources`
 
 ## Step 6: Generate Deployment JSON
 
@@ -277,7 +277,7 @@ curl http://localhost:3200/health
 
 ### Validation errors
 - Check JSON syntax in all `-deploy.json` files
-- Check YAML syntax in `variables.yaml`
+- Check YAML syntax in `application.yaml`
 - Ensure all referenced files exist
 - Use `--type external` flag when validating external systems
 
@@ -296,13 +296,13 @@ A: The files are already separated! The wizard generates:
 - System file: `hubspot-system.json`
 - Datasource files: `hubspot-datasource-*.json`
 - Deployment manifest: `hubspot-deploy.json` (generated)
-- Config files: `variables.yaml`, `env.template`, `README.md`
+- Config files: `application.yaml`, `env.template`, `README.md`
 
 **Q: Can I split an existing deployment manifest?**  
 A: For external systems, the structure uses separate component files. The system file (`hubspot-system.json`) is the external system definition itself. Datasources are in separate files (`hubspot-datasource-*.json`). The deployment manifest (`hubspot-deploy.json`) is generated from these component files.
 
 **Q: How do I add a new datasource?**  
-A: Create a new `*-deploy-*.json` file following the same structure, then add it to `variables.yaml` under `externalIntegration.dataSources`.
+A: Create a new `*-deploy-*.json` file following the same structure, then add it to `application.yaml` under `externalIntegration.dataSources`.
 
 **Q: How do I delete a HubSpot integration to start fresh?**  
 A: Delete local files with `rm -rf integration/my-hubspot`. If deployed, delete via Controller UI or CLI command.

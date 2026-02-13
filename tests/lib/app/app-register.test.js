@@ -128,7 +128,14 @@ describe('App Register Module', () => {
 
     jest.clearAllMocks();
 
-    // Re-setup mocks after clearing
+    // Re-setup mocks after clearing (resolveApplicationConfigPath must follow filesystem)
+    paths.resolveApplicationConfigPath.mockImplementation((appPath) => {
+      const appYaml = path.join(appPath, 'application.yaml');
+      if (fsSync.existsSync(appYaml)) return appYaml;
+      const varYaml = path.join(appPath, 'application.yaml');
+      if (fsSync.existsSync(varYaml)) return varYaml;
+      throw new Error(`Application config not found in ${appPath}. Expected application.yaml, application.yml, application.json, or application.yaml.`);
+    });
     config.getDeveloperId.mockResolvedValue('0');
     localSecrets.isLocalhost.mockReturnValue(true);
     localSecrets.saveLocalSecret.mockResolvedValue();
@@ -139,7 +146,7 @@ describe('App Register Module', () => {
     if (!app.createApp) {
       app.createApp = jest.fn();
     }
-    // Make createApp actually create variables.yaml file when called
+    // Make createApp actually create application.yaml file when called
     app.createApp.mockImplementation(async(appName, options) => {
       const { detectAppType } = require('../../../lib/utils/paths');
       const appTypeResult = await detectAppType(appName);
@@ -150,7 +157,7 @@ describe('App Register Module', () => {
         fsSync.mkdirSync(appPath, { recursive: true });
       }
 
-      // Create minimal variables.yaml
+      // Create minimal application.yaml
       const variables = {
         app: {
           key: appName,
@@ -161,7 +168,7 @@ describe('App Register Module', () => {
           port: options?.port || 3000
         }
       };
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       fsSync.writeFileSync(variablesPath, yaml.dump(variables), 'utf8');
     });
   });
@@ -188,7 +195,7 @@ describe('App Register Module', () => {
   });
 
   describe('loadVariablesYaml', () => {
-    it('should load existing variables.yaml', async() => {
+    it('should load existing application.yaml', async() => {
       const appKey = 'test-app';
       const appDir = path.join(tempDir, 'builder', appKey);
       fsSync.mkdirSync(appDir, { recursive: true });
@@ -200,7 +207,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -211,12 +218,12 @@ describe('App Register Module', () => {
       expect(config.getConfig).toHaveBeenCalled();
     });
 
-    it('should handle missing variables.yaml', async() => {
+    it('should handle missing application.yaml', async() => {
       const appKey = 'new-app';
       const appDir = path.join(tempDir, 'builder', appKey);
       fsSync.mkdirSync(appDir, { recursive: true });
 
-      // Create variables.yaml after createApp is called
+      // Create application.yaml after createApp is called
       app.createApp.mockImplementation(async() => {
         const variables = {
           app: {
@@ -229,7 +236,7 @@ describe('App Register Module', () => {
           }
         };
         fsSync.writeFileSync(
-          path.join(appDir, 'variables.yaml'),
+          path.join(appDir, 'application.yaml'),
           yaml.dump(variables)
         );
       });
@@ -243,14 +250,12 @@ describe('App Register Module', () => {
       const appKey = 'error-app';
       const appDir = path.join(tempDir, 'builder', appKey);
       fsSync.mkdirSync(appDir, { recursive: true });
-
-      // Make file unreadable
-      fsSync.writeFileSync(path.join(appDir, 'variables.yaml'), 'invalid content');
-      jest.spyOn(fs, 'readFile').mockRejectedValueOnce(new Error('Permission denied'));
+      // Invalid YAML so loadConfigFile throws when parsing
+      fsSync.writeFileSync(path.join(appDir, 'application.yaml'), 'key: [unclosed');
 
       await expect(
         appRegister.registerApplication(appKey, { environment: 'dev' })
-      ).rejects.toThrow('Failed to read variables.yaml');
+      ).rejects.toThrow('Failed to read application config');
     });
   });
 
@@ -317,7 +322,7 @@ describe('App Register Module', () => {
         port: 70000 // Invalid port > 65535
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -340,7 +345,7 @@ describe('App Register Module', () => {
         port: -1 // Invalid port < 1
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -367,7 +372,7 @@ describe('App Register Module', () => {
         port: 3000.5 // Non-integer port
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -397,7 +402,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -441,7 +446,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -530,7 +535,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -560,7 +565,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -591,7 +596,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -620,7 +625,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -660,7 +665,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -698,7 +703,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -732,7 +737,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -761,7 +766,7 @@ describe('App Register Module', () => {
         port: 8080
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -783,7 +788,7 @@ describe('App Register Module', () => {
         port: 3001
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -821,7 +826,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -853,7 +858,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -883,7 +888,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -941,7 +946,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -1008,7 +1013,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -1046,7 +1051,7 @@ describe('App Register Module', () => {
         // Missing build.port - should fail validation
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -1084,7 +1089,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -1124,7 +1129,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -1149,7 +1154,7 @@ describe('App Register Module', () => {
         port: 1 // Minimum valid port
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variablesMin)
       );
 
@@ -1167,7 +1172,7 @@ describe('App Register Module', () => {
         port: 65535 // Maximum valid port
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variablesMax)
       );
 
@@ -1196,7 +1201,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -1226,7 +1231,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -1246,7 +1251,7 @@ describe('App Register Module', () => {
       fsSync.mkdirSync(appDir, { recursive: true });
 
       // This test is tricky because extractAppConfiguration determines type from build.language
-      // We can't directly set an invalid type through variables.yaml
+      // We can't directly set an invalid type through application.yaml
       // But we can test that the validation schema rejects invalid types
       // by checking the error message format
       const variables = {
@@ -1260,7 +1265,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -1290,7 +1295,7 @@ describe('App Register Module', () => {
         }
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 
@@ -1314,7 +1319,7 @@ describe('App Register Module', () => {
         port: -1 // Invalid: below minimum 1
       };
       fsSync.writeFileSync(
-        path.join(appDir, 'variables.yaml'),
+        path.join(appDir, 'application.yaml'),
         yaml.dump(variables)
       );
 

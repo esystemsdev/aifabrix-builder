@@ -22,6 +22,14 @@ jest.mock('fs', () => {
   return {
     ...actual,
     existsSync: jest.fn((p) => mockFileStore.has(pathMod.resolve(p)) || actual.existsSync(p)),
+    readFileSync: jest.fn((p, enc) => {
+      const norm = pathMod.resolve(p);
+      if (mockFileStore.has(norm)) return mockFileStore.get(norm);
+      return actual.readFileSync(p, enc);
+    }),
+    writeFileSync: jest.fn((p, content) => {
+      mockFileStore.set(pathMod.resolve(p), typeof content === 'string' ? content : String(content));
+    }),
     mkdtempSync: jest.fn(() => pathMod.join(require('os').tmpdir(), 'imgver-' + Math.random().toString(36).slice(2))),
     promises: {
       ...actual.promises,
@@ -225,9 +233,9 @@ describe('image-version', () => {
       expect(result.fromImage).toBe(true);
     });
 
-    it('should update builder variables.yaml when fromImage and updateBuilder true', async() => {
+    it('should update builder application.yaml when fromImage and updateBuilder true', async() => {
       const tmpDir = makeTempDir();
-      const yamlPath = path.join(tmpDir, 'variables.yaml');
+      const yamlPath = path.join(tmpDir, 'application.yaml');
       const yaml = require('js-yaml');
       const initial = { app: { key: 'myapp' }, port: 3000, image: { name: 'myapp', tag: 'latest' } };
       mockFileStore.set(path.resolve(yamlPath), yaml.dump(initial));
@@ -261,7 +269,7 @@ describe('image-version', () => {
       expect(result).toBe(false);
     });
 
-    it('should return false when variables.yaml does not exist', async() => {
+    it('should return false when application config does not exist', async() => {
       const nonexistentDir = path.join(__dirname, '..', '..', '..', 'nonexistent-dir-xyz-123');
       const result = await updateAppVersionInVariablesYaml(nonexistentDir, '1.0.0');
       expect(result).toBe(false);
@@ -269,7 +277,7 @@ describe('image-version', () => {
 
     it('should update app.version when app exists', async() => {
       const tmpDir = makeTempDir();
-      const yamlPath = path.join(tmpDir, 'variables.yaml');
+      const yamlPath = path.join(tmpDir, 'application.yaml');
       const yaml = require('js-yaml');
       const initial = { app: { key: 'test', version: '1.0.0' }, port: 3000 };
       mockFileStore.set(path.resolve(yamlPath), yaml.dump(initial));
@@ -284,7 +292,7 @@ describe('image-version', () => {
 
     it('should preserve other YAML keys when updating app.version', async() => {
       const tmpDir = makeTempDir();
-      const yamlPath = path.join(tmpDir, 'variables.yaml');
+      const yamlPath = path.join(tmpDir, 'application.yaml');
       const yaml = require('js-yaml');
       const initial = {
         app: { key: 'test', displayName: 'Test', version: '1.0.0' },
@@ -309,7 +317,7 @@ describe('image-version', () => {
 
     it('should create app block when missing', async() => {
       const tmpDir = makeTempDir();
-      const yamlPath = path.join(tmpDir, 'variables.yaml');
+      const yamlPath = path.join(tmpDir, 'application.yaml');
       const yaml = require('js-yaml');
       const initial = { port: 3000 };
       mockFileStore.set(path.resolve(yamlPath), yaml.dump(initial));

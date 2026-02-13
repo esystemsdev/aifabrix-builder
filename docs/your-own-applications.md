@@ -93,7 +93,7 @@ aifabrix create myapp
 - Controller URL? *(if Controller=yes)*
 
 **What gets created:**
-- `builder/<app>/variables.yaml` - App configuration
+- `builder/<app>/application.yaml` - App configuration
 - `builder/<app>/env.template` - Environment variables  
 - `builder/<app>/rbac.yaml` - Roles & permissions (if authentication=yes)
 - `builder/<app>/<appKey>-deploy.json` - Deployment manifest (e.g. `builder/myapp/myapp-deploy.json`)
@@ -133,7 +133,7 @@ classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
 %% =======================
 %% Flow
 %% =======================
-Create[aifabrix create myapp]:::primary --> Variables[variables.yaml<br/>App configuration]:::base
+Create[aifabrix create myapp]:::primary --> Variables[application.yaml<br/>App configuration]:::base
 Create --> EnvTemplate[env.template<br/>Environment variables]:::base
 Create --> Rbac[rbac.yaml<br/>Roles & permissions]:::base
 Create --> DeployJson["<appKey>-deploy.json<br/>Deployment manifest"]:::base
@@ -169,12 +169,12 @@ aifabrix create myapp --github --github-steps npm
 ```bash
 aifabrix create hubspot-test --type external
 ```
-Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2/apikey/basic), number of datasources.
+Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2/apikey/basic), number of datasources. Create fails if `integration/<name>` or `builder/<name>` already exists—use a different name or remove the existing directory.
 
 **What gets created for external systems:**
-- `integration/<app>/variables.yaml` - App configuration with `app.type: "external"` and `externalIntegration` block
-- `integration/<app>/<systemKey>-system.json` - External system configuration
-- `integration/<app>/<systemKey>-datasource-<datasource-key>.json` - Datasource JSON files (all in same folder)
+- `integration/<app>/application.yaml` - App configuration with `app.type: "external"` and `externalIntegration` block
+- `integration/<app>/<systemKey>-system.yaml` - External system configuration
+- `integration/<app>/<systemKey>-datasource-<datasource-key>.yaml` - Datasource JSON files (all in same folder)
 - `integration/<app>/<systemKey>-deploy.json` - Deployment manifest (generated)
 - `integration/<app>/env.template` - Environment variables template
 - `integration/<app>/README.md` - Application documentation
@@ -185,7 +185,7 @@ Prompts for: system key, display name, description, system type (openapi/mcp/cus
 
 ## Step 4: Review Configuration Your App
 
-### builder/myapp/variables.yaml
+### builder/myapp/application.yaml
 ```yaml
 app:
   key: myapp
@@ -219,7 +219,7 @@ frontDoorRouting:
   certStore: wildcard  # Optional: specify certificate store for wildcard certificates
 ```
 
-This generates Traefik labels for local development. See [Configuration: variables.yaml](configuration/variables-yaml.md) for frontDoorRouting details.
+This generates Traefik labels for local development. See [Configuration: application.yaml](configuration/application-yaml.md) for frontDoorRouting details.
 
 **Note:** If you're using a wildcard certificate, add `certStore` with the name of your Traefik certificate store. See [Traefik Routing](running.md#traefik-routing-optional) for certificate store setup instructions.
 
@@ -396,11 +396,11 @@ aifabrix deploy hubspot
 ```yaml
 integration/
   hubspot/
-    variables.yaml                    # App configuration
-    hubspot-system.json              # External system definition
-    hubspot-datasource-company.json  # Companies datasource
-    hubspot-datasource-contact.json  # Contacts datasource
-    hubspot-datasource-deal.json     # Deals datasource
+    application.yaml                    # App configuration
+    hubspot-system.yaml              # External system definition
+    hubspot-datasource-company.yaml  # Companies datasource
+    hubspot-datasource-contact.yaml  # Contacts datasource
+    hubspot-datasource-deal.yaml     # Deals datasource
     hubspot-deploy.json              # Deployment manifest (generated)
     env.template                     # Environment variables
 ```
@@ -431,7 +431,7 @@ All files are in the same folder for easy viewing and management.
 
 **Add another database:**
 ```yaml
-# builder/myapp/variables.yaml
+# builder/myapp/application.yaml
 requires:
   databases:
     - name: myapp

@@ -140,6 +140,28 @@ describe('Deployment list commands', () => {
       expect(logger.log).toHaveBeenCalled();
       expect(logger.log.mock.calls.some(c => String(c[0]).includes('dep-1'))).toBe(true);
     });
+
+    it('should handle OpenAPI paginated response (meta, data, links)', async() => {
+      listDeployments.mockResolvedValue({
+        success: true,
+        data: {
+          meta: { totalItems: 2, currentPage: 1, pageSize: 10, type: 'deployment' },
+          data: [
+            { id: 'dep-a', targetId: 'myapp', deploymentType: 'application', status: 'completed', createdAt: '2024-01-15T10:00:00Z' },
+            { id: 'dep-b', targetId: 'otherapp', deploymentType: 'application', status: 'running', createdAt: '2024-01-15T11:00:00Z' }
+          ],
+          links: { self: '...', first: '...', last: '...' }
+        },
+        status: 200
+      });
+
+      await runDeploymentList({});
+
+      expect(logger.log).toHaveBeenCalled();
+      expect(logger.log.mock.calls.some(c => String(c[0]).includes('dep-a'))).toBe(true);
+      expect(logger.log.mock.calls.some(c => String(c[0]).includes('dep-b'))).toBe(true);
+      expect(logger.log.mock.calls.some(c => String(c[0]).includes('myapp'))).toBe(true);
+    });
   });
 
   describe('runAppDeploymentList', () => {

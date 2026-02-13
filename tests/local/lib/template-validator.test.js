@@ -221,7 +221,7 @@ describe('Template Validator Module', () => {
       const appPath = path.join(tempDir, 'builder', 'test-app');
 
       fsSync.mkdirSync(testTemplatePath, { recursive: true });
-      fsSync.writeFileSync(path.join(testTemplatePath, 'variables.yaml'), 'app: test', 'utf8');
+      fsSync.writeFileSync(path.join(testTemplatePath, 'application.yaml'), 'app: test', 'utf8');
       fsSync.writeFileSync(path.join(testTemplatePath, 'env.template'), 'PORT=3000', 'utf8');
       // Ensure app directory parent exists
       const appParent = path.dirname(appPath);
@@ -231,16 +231,16 @@ describe('Template Validator Module', () => {
       fsSync.mkdirSync(appPath, { recursive: true });
 
       // Verify files exist - use statSync for reliable check
-      expect(fsSync.existsSync(path.join(testTemplatePath, 'variables.yaml'))).toBe(true);
+      expect(fsSync.existsSync(path.join(testTemplatePath, 'application.yaml'))).toBe(true);
       expect(fsSync.existsSync(path.join(testTemplatePath, 'env.template'))).toBe(true);
-      expect(fsSync.statSync(path.join(testTemplatePath, 'variables.yaml')).isFile()).toBe(true);
+      expect(fsSync.statSync(path.join(testTemplatePath, 'application.yaml')).isFile()).toBe(true);
       expect(fsSync.statSync(path.join(testTemplatePath, 'env.template')).isFile()).toBe(true);
 
       try {
         const copiedFiles = await templateValidator.copyTemplateFiles('test-copy', appPath);
 
         expect(copiedFiles.length).toBe(2);
-        expect(fsSync.statSync(path.join(appPath, 'variables.yaml')).isFile()).toBe(true);
+        expect(fsSync.statSync(path.join(appPath, 'application.yaml')).isFile()).toBe(true);
         expect(fsSync.statSync(path.join(appPath, 'env.template')).isFile()).toBe(true);
       } finally {
         pathsModule.getProjectRoot.mockClear();
@@ -270,7 +270,7 @@ describe('Template Validator Module', () => {
       const appPath = path.join(tempDir, 'builder', 'test-app');
 
       fsSync.mkdirSync(path.join(testTemplatePath, 'config'), { recursive: true });
-      fsSync.writeFileSync(path.join(testTemplatePath, 'variables.yaml'), 'app: test', 'utf8');
+      fsSync.writeFileSync(path.join(testTemplatePath, 'application.yaml'), 'app: test', 'utf8');
       fsSync.writeFileSync(path.join(testTemplatePath, 'config', 'settings.yaml'), 'settings', 'utf8');
       // Ensure app directory parent exists
       const appParent = path.dirname(appPath);
@@ -279,16 +279,16 @@ describe('Template Validator Module', () => {
       }
 
       // Verify files exist - use statSync for reliable check
-      expect(fsSync.existsSync(path.join(testTemplatePath, 'variables.yaml'))).toBe(true);
+      expect(fsSync.existsSync(path.join(testTemplatePath, 'application.yaml'))).toBe(true);
       expect(fsSync.existsSync(path.join(testTemplatePath, 'config', 'settings.yaml'))).toBe(true);
-      expect(fsSync.statSync(path.join(testTemplatePath, 'variables.yaml')).isFile()).toBe(true);
+      expect(fsSync.statSync(path.join(testTemplatePath, 'application.yaml')).isFile()).toBe(true);
       expect(fsSync.statSync(path.join(testTemplatePath, 'config', 'settings.yaml')).isFile()).toBe(true);
 
       try {
         const copiedFiles = await templateValidator.copyTemplateFiles('test-subdir', appPath);
 
         expect(copiedFiles.length).toBeGreaterThanOrEqual(2);
-        expect(fsSync.statSync(path.join(appPath, 'variables.yaml')).isFile()).toBe(true);
+        expect(fsSync.statSync(path.join(appPath, 'application.yaml')).isFile()).toBe(true);
         expect(fsSync.statSync(path.join(appPath, 'config', 'settings.yaml')).isFile()).toBe(true);
       } finally {
         pathsModule.getProjectRoot.mockClear();

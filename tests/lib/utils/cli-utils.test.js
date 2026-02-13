@@ -17,7 +17,7 @@ const mockFsPromises = { mkdir: jest.fn(), appendFile: jest.fn() };
 jest.mock('fs', () => ({ promises: mockFsPromises }));
 
 const logger = require('../../../lib/utils/logger');
-const { validateCommand, handleCommandError, appendWizardError } = require('../../../lib/utils/cli-utils');
+const { validateCommand, handleCommandError, appendWizardError, logOfflinePathWhenType } = require('../../../lib/utils/cli-utils');
 
 describe('CLI Utils Module', () => {
   beforeEach(() => {
@@ -93,12 +93,22 @@ describe('CLI Utils Module', () => {
       expect(logger.error).toHaveBeenCalledWith('   Run "aifabrix doctor" to check which ports are in use.');
     });
 
-    it('should handle permission denied errors', () => {
+    it('should handle API permission denied errors with hint', () => {
       const error = new Error('Permission denied: /path/to/file');
 
       handleCommandError(error, 'build');
 
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in build command'));
+      expect(logger.error).toHaveBeenCalledWith('   Permission denied: /path/to/file');
+      expect(logger.error).toHaveBeenCalledWith('   Ensure your token has the required permission (e.g. external-system:delete for delete).');
+    });
+
+    it('should handle Docker permission denied errors', () => {
+      const error = new Error('Got permission denied while trying to connect to the Docker daemon socket');
+
+      handleCommandError(error, 'run');
+
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in run command'));
       expect(logger.error).toHaveBeenCalledWith('   Permission denied.');
       expect(logger.error).toHaveBeenCalledWith('   Make sure you have the necessary permissions to run Docker commands.');
     });
@@ -152,7 +162,7 @@ describe('CLI Utils Module', () => {
 
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in push command'));
       expect(logger.error).toHaveBeenCalledWith('   Registry URL is required.');
-      expect(logger.error).toHaveBeenCalledWith('   Provide via --registry flag or configure in variables.yaml under image.registry');
+      expect(logger.error).toHaveBeenCalledWith('   Provide via --registry flag or configure in application.yaml under image.registry');
     });
 
     it('should handle missing secrets errors with app name', () => {
@@ -297,6 +307,59 @@ describe('CLI Utils Module', () => {
       await appendWizardError('myapp', new Error('x'));
 
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Could not write wizard error.log'));
+    });
+  });
+
+  describe('logOfflinePathWhenType', () => {
+    const path = require('path');
+    let origRelative;
+    beforeEach(() => {
+      origRelative = path.relative.bind(path);
+      jest.spyOn(path, 'relative').mockImplementation((cwd, p) => {
+        if (typeof p === 'string' && p.includes('integration') && p.includes('hubspot')) return 'integration/hubspot';
+        if (typeof p === 'string' && p.includes('builder') && p.includes('myapp')) return 'bar/builder/myapp';
+        return origRelative(cwd, p);
+      });
+    });
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should log "Using: <path>" when options.type is "app"', () => {
+      logOfflinePathWhenType('/foo/bar/builder/myapp', { type: 'app' });
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Using:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/builder[/\\]myapp/));
+    });
+
+    it('should log "Using: <path>" when options.type is "external"', () => {
+      logOfflinePathWhenType('/foo/integration/hubspot', { type: 'external' });
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Using:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/integration[/\\]hubspot/));
+    });
+
+    it('should not log when options is missing', () => {
+      logger.log.mockClear();
+      logOfflinePathWhenType('/foo/builder/myapp', undefined);
+      expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('Using:'));
+    });
+
+    it('should not log when options.type is not "app" or "external"', () => {
+      logger.log.mockClear();
+      logOfflinePathWhenType('/foo/builder/myapp', {});
+      logOfflinePathWhenType('/foo/builder/myapp', { type: 'other' });
+      const calls = logger.log.mock.calls.map(c => c[0]);
+      const usingCalls = calls.filter(m => typeof m === 'string' && m.includes('Using:'));
+      expect(usingCalls).toHaveLength(0);
+    });
+
+    it('should not log when appPath is falsy', () => {
+      logger.log.mockClear();
+      logOfflinePathWhenType(null, { type: 'app' });
+      logOfflinePathWhenType(undefined, { type: 'external' });
+      logOfflinePathWhenType('', { type: 'app' });
+      const calls = logger.log.mock.calls.map(c => c[0]);
+      const usingCalls = calls.filter(m => typeof m === 'string' && m.includes('Using:'));
+      expect(usingCalls).toHaveLength(0);
     });
   });
 });

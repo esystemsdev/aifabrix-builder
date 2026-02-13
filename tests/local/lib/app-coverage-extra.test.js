@@ -160,7 +160,7 @@ describe('Application Module - Additional Coverage', () => {
       });
 
       const appPath = path.join(tempDir, 'builder', appName);
-      const variablesPath = path.join(appPath, 'variables.yaml');
+      const variablesPath = path.join(appPath, 'application.yaml');
       const variables = yaml.load(fsSync.readFileSync(variablesPath, 'utf8'));
 
       expect(variables.app.key).toBe(appName);
@@ -210,7 +210,7 @@ describe('Application Module - Additional Coverage', () => {
       };
 
       fsSync.writeFileSync(
-        path.join(appPath, 'variables.yaml'),
+        path.join(appPath, 'application.yaml'),
         yaml.dump(variables)
       );
 

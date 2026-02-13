@@ -319,5 +319,44 @@ describe('Schema Loader Utilities', () => {
       expect(result).toBe('application');
     });
   });
+
+  describe('detectSchemaTypeFromParsed', () => {
+    it('should detect application from parsed object (application fields)', () => {
+      const parsed = { image: 'img', registryMode: 'acr', port: 8080 };
+      const { detectSchemaTypeFromParsed } = require('../../../lib/utils/schema-loader');
+      expect(detectSchemaTypeFromParsed(parsed, '/path/to/file.json')).toBe('application');
+    });
+
+    it('should detect external-system from parsed object ($id)', () => {
+      const parsed = { $id: 'https://aifabrix.dev/schemas/external-system.schema.json' };
+      const { detectSchemaTypeFromParsed } = require('../../../lib/utils/schema-loader');
+      expect(detectSchemaTypeFromParsed(parsed, '/path/to/file.json')).toBe('external-system');
+    });
+
+    it('should detect external-datasource from parsed object (datasource fields)', () => {
+      const parsed = { systemKey: 's', entityType: 'Deal', fieldMappings: {} };
+      const { detectSchemaTypeFromParsed } = require('../../../lib/utils/schema-loader');
+      expect(detectSchemaTypeFromParsed(parsed, '/path/to/file.json')).toBe('external-datasource');
+    });
+
+    it('should use filename when content does not determine type', () => {
+      const parsed = { unknown: true };
+      const { detectSchemaTypeFromParsed } = require('../../../lib/utils/schema-loader');
+      expect(detectSchemaTypeFromParsed(parsed, '/path/to/external-system.json')).toBe('external-system');
+      expect(detectSchemaTypeFromParsed(parsed, '/path/to/application.yaml')).toBe('application');
+    });
+
+    it('should default to application when detection returns null', () => {
+      const parsed = { foo: 'bar' };
+      const { detectSchemaTypeFromParsed } = require('../../../lib/utils/schema-loader');
+      expect(detectSchemaTypeFromParsed(parsed, '/path/to/other.txt')).toBe('application');
+    });
+
+    it('should handle non-object parsed (default to application)', () => {
+      const { detectSchemaTypeFromParsed } = require('../../../lib/utils/schema-loader');
+      expect(detectSchemaTypeFromParsed(null, '/path/to/file.json')).toBe('application');
+      expect(detectSchemaTypeFromParsed(undefined, '/path/to/file.json')).toBe('application');
+    });
+  });
 });
 
