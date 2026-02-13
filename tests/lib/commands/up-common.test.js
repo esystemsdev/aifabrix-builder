@@ -43,7 +43,8 @@ jest.mock('../../../lib/utils/paths', () => ({
 
 jest.mock('../../../lib/utils/config-format', () => ({
   loadConfigFile: jest.fn(),
-  writeConfigFile: jest.fn()
+  writeConfigFile: jest.fn(),
+  isYamlPath: jest.fn().mockReturnValue(false)
 }));
 
 const fs = require('fs');

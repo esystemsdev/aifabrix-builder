@@ -18,6 +18,7 @@ const build = require('../../../lib/build');
 const appRun = require('../../../lib/app/run');
 const pushUtils = require('../../../lib/deployment/push');
 const appDeploy = require('../../../lib/app/deploy');
+const { clearProjectRootCache } = require('../../../lib/utils/paths');
 
 // Mock dependencies
 jest.mock('../../../lib/build');
@@ -45,11 +46,17 @@ jest.mock('chalk', () => {
 describe('Application Module - Comprehensive Tests', () => {
   let tempDir;
   let originalCwd;
+  let originalProjectRoot;
 
   beforeEach(() => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));
     originalCwd = process.cwd();
+    originalProjectRoot = global.PROJECT_ROOT;
     process.chdir(tempDir);
+    // So path resolution uses tempDir: getProjectRoot() uses global.PROJECT_ROOT when it has package.json
+    fsSync.writeFileSync(path.join(tempDir, 'package.json'), '{}');
+    global.PROJECT_ROOT = tempDir;
+    clearProjectRootCache();
     jest.clearAllMocks();
 
     // Mock inquirer to return default values
@@ -79,6 +86,8 @@ describe('Application Module - Comprehensive Tests', () => {
 
   afterEach(async() => {
     process.chdir(originalCwd);
+    global.PROJECT_ROOT = originalProjectRoot;
+    clearProjectRootCache();
     // Retry cleanup on Windows (handles EBUSY errors)
     let retries = 3;
     while (retries > 0) {
