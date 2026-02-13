@@ -13,6 +13,7 @@ const os = require('os');
 const yaml = require('js-yaml');
 const app = require('../../../lib/app');
 const pushUtils = require('../../../lib/deployment/push');
+const { clearProjectRootCache } = require('../../../lib/utils/paths');
 
 jest.mock('inquirer');
 jest.mock('../../../lib/generator/github');
@@ -37,11 +38,16 @@ const appRun = require('../../../lib/app/run');
 describe('App.js Uncovered Paths', () => {
   let tempDir;
   let originalCwd;
+  let originalProjectRoot;
 
   beforeEach(() => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));
     originalCwd = process.cwd();
+    originalProjectRoot = global.PROJECT_ROOT;
     process.chdir(tempDir);
+    fsSync.writeFileSync(path.join(tempDir, 'package.json'), '{}');
+    global.PROJECT_ROOT = tempDir;
+    clearProjectRootCache();
 
     fsSync.mkdirSync(path.join(tempDir, 'builder'), { recursive: true });
 
@@ -65,6 +71,8 @@ describe('App.js Uncovered Paths', () => {
 
   afterEach(async() => {
     process.chdir(originalCwd);
+    global.PROJECT_ROOT = originalProjectRoot;
+    clearProjectRootCache();
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
     jest.clearAllMocks();
   });
@@ -227,6 +235,7 @@ describe('App.js Uncovered Paths', () => {
     it('should validate registry URL format', async() => {
       const appName = 'test-app';
       const appPath = path.join(tempDir, 'builder', appName);
+      fsSync.mkdirSync(appPath, { recursive: true });
 
       const variables = {
         image: { registry: 'invalid-registry.com' }
