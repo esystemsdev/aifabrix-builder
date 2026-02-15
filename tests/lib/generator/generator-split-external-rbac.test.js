@@ -11,20 +11,30 @@ const path = require('path');
 const yaml = require('js-yaml');
 const generator = require('../../../lib/generator');
 
-// Mock fs module
+// Mock fs module so project root resolution still works (paths.js uses existsSync for package.json).
+// Jest mock factory may not reference out-of-scope variables; use require('path') inside.
 jest.mock('fs', () => {
   const actualFs = jest.requireActual('fs');
-  const mockFs = {
+  const pathMod = require('path');
+  const mockExistsSync = (filePath) => {
+    const p = String(filePath);
+    const isDeployJson = p.includes('testexternal-deploy.json');
+    const isOutputDir = p.includes('integration') && (p.endsWith('testexternal') || p.endsWith('testexternal' + pathMod.sep) || p.includes('testexternal' + pathMod.sep));
+    if (isDeployJson || isOutputDir) {
+      return true;
+    }
+    return actualFs.existsSync(filePath);
+  };
+  return {
     ...actualFs,
-    existsSync: jest.fn(),
-    statSync: jest.fn(),
+    existsSync: jest.fn(mockExistsSync),
+    statSync: jest.fn((filePath) => actualFs.statSync(filePath)),
     promises: {
       readFile: jest.fn(),
       writeFile: jest.fn(),
       mkdir: jest.fn()
     }
   };
-  return mockFs;
 });
 
 describe('External System RBAC Split-JSON', () => {
