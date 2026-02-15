@@ -10,6 +10,8 @@ How the build process works and how to customize it.
 aifabrix build myapp
 ```
 
+**Environments (dev, tst, pro):** The builder does not require environment-specific Dockerfiles for dev/tst/pro. Environment is a deploy-time concern: the same image can be used, and the Miso Controller (or environment selection) promotes the appropriate config per environment. You can build without specifying an environment name in the Dockerfile.
+
 ### What Happens
 
 1. **Loads configuration** from `builder/myapp/application.yaml`

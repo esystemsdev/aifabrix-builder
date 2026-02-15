@@ -491,6 +491,35 @@ describe('CLI Uncovered Command Handlers', () => {
       expect(cliUtils.handleCommandError).toHaveBeenCalledWith(error, 'validate');
       expect(process.exit).toHaveBeenCalledWith(1);
     });
+
+    it('should output JSON when validate is run with --format json', async() => {
+      const mockResult = { valid: true, errors: [], warnings: [] };
+      validate.validateAppOrFile.mockResolvedValue(mockResult);
+      logger.log.mockClear();
+      validate.displayValidationResults.mockClear();
+
+      const handler = async(appOrFile, options = {}) => {
+        const validateMod = require('../../lib/validation/validate');
+        const result = await validateMod.validateAppOrFile(appOrFile, options);
+        const outFormat = (options.format || 'default').toLowerCase();
+        if (outFormat === 'json') {
+          logger.log(JSON.stringify(result, null, 2));
+        } else {
+          validateMod.displayValidationResults(result);
+        }
+        if (!result.valid) process.exit(1);
+      };
+
+      await handler('testapp', { format: 'json' });
+
+      expect(validate.validateAppOrFile).toHaveBeenCalledWith('testapp', { format: 'json' });
+      expect(logger.log).toHaveBeenCalledTimes(1);
+      const logged = logger.log.mock.calls[0][0];
+      expect(() => JSON.parse(logged)).not.toThrow();
+      expect(JSON.parse(logged)).toEqual(mockResult);
+      expect(validate.displayValidationResults).not.toHaveBeenCalled();
+      expect(process.exit).not.toHaveBeenCalled();
+    });
   });
 
   describe('diff command handler', () => {

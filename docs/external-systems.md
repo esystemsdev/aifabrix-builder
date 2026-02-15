@@ -165,7 +165,7 @@ Datasource3 --> Deploy
 
 ### Step 2: Configure Authentication
 
-Edit `integration/hubspot/hubspot-system.yaml` to configure OAuth2. Use standard environment variable references. Add `BASE_URL` in `configuration` for the API base (schema does not support `environment.baseUrl`):
+Edit `integration/hubspot/hubspot-system.yaml` to configure OAuth2. Use standard environment variable references. For the API base URL, use the credential-backed variable `BASEURL` (see Standard Environment Variables).
 
 ```yaml
 key: hubspot
@@ -185,30 +185,27 @@ authentication:
       - crm.objects.contacts.write
       - crm.objects.deals.read
       - crm.objects.deals.write
-configuration:
-  - name: CLIENTID
-    value: hubspot-clientidKeyVault
-    location: keyvault
-    required: true
-  - name: CLIENTSECRET
-    value: hubspot-clientsecretKeyVault
-    location: keyvault
-    required: true
-  - name: TOKENURL
-    value: https://api.hubapi.com/oauth/v1/token
-    location: variable
-    required: true
-  - name: BASE_URL
-    value: https://api.hubapi.com
-    location: variable
-    required: true
+configuration: []   # Credential-backed variables (CLIENTID, CLIENTSECRET, TOKENURL, BASEURL) come from the selected credential; add only custom variables here if needed
+```
+
+**In auth block, reference standard variables:** `{{CLIENTID}}`, `{{CLIENTSECRET}}`, `{{TOKENURL}}`, and for base URL use `{{BASEURL}}` — values are injected at runtime from the credential. Example auth and base URL usage:
+
+```yaml
+authentication:
+  type: oauth2
+  oauth2:
+    tokenUrl: "{{TOKENURL}}"
+    clientId: "{{CLIENTID}}"
+    clientSecret: "{{CLIENTSECRET}}"
+    scopes: [...]
+# BASEURL is supplied from the selected credential; use {{BASEURL}} in OpenAPI baseUrl or other config as needed
 ```
 
 **What this does:**
-- `BASE_URL` - The API base for HubSpot (in `configuration`; schema has no `environment.baseUrl`)
+- Base URL - Use the standard variable `BASEURL` from the selected credential (see Standard Environment Variables); its value is provided at runtime from credentials, not from the configuration section.
 - `tokenUrl` - OAuth2 token endpoint (uses `{{TOKENURL}}` variable)
 - `clientId` / `clientSecret` - References standard variables `{{CLIENTID}}` and `{{CLIENTSECRET}}`
-- `configuration` - Defines variables that can be set via Miso Controller or Dataplane portal interface
+- `configuration` - For custom/non-credential variables only; credential-backed variables (CLIENTID, CLIENTSECRET, TOKENURL, BASEURL, etc.) are resolved from the selected credential and do not need to be listed in configuration.
 - `scopes` - Required OAuth2 permissions
 
 **Important:**
@@ -340,7 +337,7 @@ aifabrix deploy hubspot
 
 **Note:** The `aifabrix json` command generates `<systemKey>-deploy.json` deployment manifest. Individual component files (`hubspot-system.yaml`, `hubspot-datasource-company.yaml`, etc.) remain in your `integration/` folder and are referenced in `application.yaml`.
 
-> **Note:** If the controller requires a Docker image, use `internal: true` in `application.yaml` (externalIntegration) so the system deploys on dataplane startup; see Troubleshooting.
+> **Note:** When an external integration is deployed and the controller expects a Docker image, the platform can use `internal: true` (in `application.yaml` under `externalIntegration`) so the system deploys on dataplane startup. This applies to template- or platform-maintained integrations; end customers do not add internal integrations by editing YAML—they use the template system. See [Troubleshooting](#troubleshooting).
 
 ### Step 6: Verify Deployment
 
@@ -376,7 +373,7 @@ The external system YAML (`<systemKey>-system.yaml`) defines the connection to t
 - `authentication` - Auth configuration (see below)
 - `configuration` - Array of configurable variables (see Configuration section)
 
-**BASE_URL / API base URL:** For the external API base URL, add a **`BASE_URL`** (or `API_BASE_URL`) entry in the `configuration` array. You can use a static value or Key Vault reference, and use `portalInput` so the URL can differ per environment (e.g. production vs dev) and be set via the portal. Reference it in your auth block or OpenAPI config as `{{BASE_URL}}` where needed. The external system schema does not define `environment.baseUrl`; use `configuration` only.
+**Base URL:** Use the standard variable **`BASEURL`** from credentials. Its value is provided at runtime from the selected credential (per environment or per datasource). Reference it in your auth block or OpenAPI config as `{{BASEURL}}`. Do not add a separate base URL in the configuration array—credential-backed variables are injected from the selected credential.
 
 **Example structure:**
 ```yaml
@@ -386,7 +383,7 @@ description: HubSpot CRM integration
 type: openapi
 enabled: true
 authentication:  # see Authentication section
-configuration:   # see Configuration section; include BASE_URL for API base
+configuration:   # see Configuration section; BASEURL comes from credential, not configuration
 openapi:
   documentKey: hubspot-v3
   autoDiscoverEntities: false
@@ -434,60 +431,56 @@ portalInput:
   - `options` - Array of options for `select` field type
   - `validation` - Validation rules (required, minLength, maxLength, pattern, etc.)
 
-**Production and dev URLs:** Use `portalInput` with `field: "text"` or `field: "select"` and `options` to let users enter or choose environment-specific URLs (e.g. production URL and dev URL). Example: a `BASE_URL` config item with `portalInput.field: "select"` and `options: ["https://api.example.com", "https://api-dev.example.com"]`, or separate `PRODUCTION_URL` and `DEV_URL` items with `portalInput.field: "text"`.
+**URLs per environment:** URL variables are not set dynamically per environment in the integration config. Use a single key (e.g. `BASEURL`) from credentials; the Miso Controller promotes different values per environment (dev/tst/pro) when the credential or environment is selected.
 
 **Important distinctions:**
-- **Standard variables** (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`, `APIKEY`, `USERNAME`, `PASSWORD`) are managed by the dataplane credentials system—**do not include `portalInput`**. Redirect URI for OAuth2 is managed by the dataplane and does not need to be configured in the integration.
-- **Custom variables** (any other variable name) can use `portalInput` to configure UI fields in the portal interface
+- **Credential-backed standard variables** (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`, `APIKEY`, `USERNAME`, `PASSWORD`, `BASEURL`) are **not** listed in `configuration`. They are supplied from the selected credential at runtime; reference them in auth blocks (e.g. `{{CLIENTID}}`, `{{BASEURL}}`). Redirect URI for OAuth2 is managed by the dataplane and does not need to be configured in the integration.
+- **Custom variables** (any other variable name) go in the `configuration` array and can use `portalInput` to configure UI fields in the portal interface.
 
 **How it works:**
-1. Variables defined in `configuration` can be referenced in `authentication` using `{{VARIABLENAME}}`
-2. Standard variables are managed by the dataplane credentials system
-3. Custom variables with `portalInput` get UI fields in the portal interface
-4. Users set values via the Miso Controller or Dataplane portal interface
-5. Values are automatically stored in Key Vault (for `location: "keyvault"`)
-6. Values are resolved at deployment time
+1. Credential-backed variables are referenced in `authentication` (e.g. `{{CLIENTID}}`, `{{BASEURL}}`) and resolved from the selected credential at runtime—they are not defined in `configuration`.
+2. Custom variables are defined in `configuration` and can be referenced in `authentication` using `{{VARIABLENAME}}`.
+3. Custom variables with `portalInput` get UI fields in the portal interface.
+4. Users set credential values via the Miso Controller or Dataplane portal when configuring the credential; custom variable values are set via the portal or controller.
+5. Values are automatically stored in Key Vault where applicable.
+6. Values are resolved at deployment/runtime.
 
 ### Standard Environment Variables
 
-External systems use standard variable names that are **automatically managed by the dataplane credentials system**. These variables do **not** require `portalInput` configuration—they are handled by the platform's credential management.
+External systems use standard variable names that are **supplied at runtime from the selected credential**. These variables are **not** listed in the `configuration` array—they are defined in credentials; the credential is selected per environment (and per datasource if needed). Their values are injected at runtime.
 
 <!-- markdownlint-disable MD060 -->
-| Variable Name      | Description              | Used For              | Example            |
-|-------------------|--------------------------|-----------------------|--------------------|
-| `{{CLIENTID}}`     | OAuth2 Client ID         | OAuth2 authentication | `{{CLIENTID}}`     |
-| `{{CLIENTSECRET}}` | OAuth2 Client Secret     | OAuth2 authentication | `{{CLIENTSECRET}}` |
-| `{{TOKENURL}}`     | OAuth2 Token URL         | OAuth2 token endpoint | `{{TOKENURL}}`     |
-| `{{APIKEY}}`       | API Key                  | API Key authentication| `{{APIKEY}}`       |
-| `{{USERNAME}}`     | Basic Auth Username      | Basic authentication | `{{USERNAME}}`     |
-| `{{PASSWORD}}`     | Basic Auth Password      | Basic authentication | `{{PASSWORD}}`     |
+| Variable Name      | Description              | Used For              | From credential |
+|-------------------|--------------------------|-----------------------|-----------------|
+| `{{CLIENTID}}`     | OAuth2 Client ID         | OAuth2 authentication | Yes (mandatory where applicable) |
+| `{{CLIENTSECRET}}` | OAuth2 Client Secret     | OAuth2 authentication | Yes (mandatory where applicable) |
+| `{{TOKENURL}}`     | OAuth2 Token URL         | OAuth2 token endpoint | Yes (mandatory where applicable) |
+| `{{APIKEY}}`       | API Key                  | API Key authentication| Yes (mandatory where applicable) |
+| `{{USERNAME}}`     | Basic Auth Username      | Basic authentication | Yes (mandatory where applicable) |
+| `{{PASSWORD}}`     | Basic Auth Password      | Basic authentication | Yes (mandatory where applicable) |
+| `{{BASEURL}}`     | API base URL        | Base URL for API calls | Yes (mandatory where applicable) |
 <!-- markdownlint-enable MD060 -->
 
 OAuth2 redirect URI is managed by the dataplane credentials system and is not configured as a variable in the integration. **REDIRECT_URI is auto-generated; you do not need to set it.**
 
 **Important:**
-- Standard variables are managed by the dataplane credentials system—no `portalInput` needed
-- Values are set via the Miso Controller or Dataplane portal interface
-- Values are automatically stored in Key Vault by the platform
-- Simply reference them in your `configuration` array without `portalInput`
+- Standard variables (including BASEURL) come from the selected credential—do **not** add them to the `configuration` array
+- Reference them in auth blocks (e.g. `{{CLIENTID}}`, `{{BASEURL}}`); values are injected at runtime
+- Values are set via the Miso Controller or Dataplane portal when configuring the credential
+- The platform stores credential values in Key Vault; no `portalInput` is needed for standard variables
 
 **Environment promotions:** Configuration parameters support **environment promotions**: you can keep different values for different environments (static or `kv/key` Key Vault values). The platform manages enterprise promotions and overridable paths. **Read more:** [Deployment key](configuration/deployment-key.md).
 
-**Example - Standard variables (no portalInput):**
+**Example - Auth block only (credential variables not in configuration):**
 ```yaml
-configuration:
-  - name: CLIENTID
-    value: hubspot-clientidKeyVault
-    location: keyvault
-    required: true
-  - name: CLIENTSECRET
-    value: hubspot-clientsecretKeyVault
-    location: keyvault
-    required: true
-  - name: TOKENURL
-    value: https://api.hubapi.com/oauth/v1/token
-    location: variable
-    required: true
+authentication:
+  type: oauth2
+  oauth2:
+    tokenUrl: "{{TOKENURL}}"
+    clientId: "{{CLIENTID}}"
+    clientSecret: "{{CLIENTSECRET}}"
+# CLIENTID, CLIENTSECRET, TOKENURL, BASEURL are from the selected credential; do not add them to configuration
+configuration: []   # Add only custom (non-credential) variables here
 ```
 
 ### Custom Variables with Portal Input
@@ -559,22 +552,11 @@ authentication:
     scopes:
       - read
       - write
-configuration:
-  - name: CLIENTID
-    value: hubspot-clientidKeyVault
-    location: keyvault
-    required: true
-  - name: CLIENTSECRET
-    value: hubspot-clientsecretKeyVault
-    location: keyvault
-    required: true
-  - name: TOKENURL
-    value: https://api.example.com/oauth/v1/token
-    location: variable
-    required: true
+# CLIENTID, CLIENTSECRET, TOKENURL come from the selected credential; do not add them to configuration
+configuration: []
 ```
 
-**Note:** Standard variables (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`) don't need `portalInput`—they're managed by the dataplane credentials system.
+**Note:** Standard variables (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`) are supplied from the selected credential at runtime—they are not listed in `configuration`.
 
 **Setup steps:**
 1. Register OAuth2 app in external system (HubSpot, Salesforce, etc.)
@@ -593,14 +575,11 @@ authentication:
   apikey:
     headerName: X-API-Key
     key: "{{APIKEY}}"
-configuration:
-  - name: APIKEY
-    value: hubspot-apikeyKeyVault
-    location: keyvault
-    required: true
+# APIKEY comes from the selected credential; do not add it to configuration
+configuration: []
 ```
 
-**Note:** Standard variable `APIKEY` doesn't need `portalInput`—it's managed by the dataplane credentials system.
+**Note:** Standard variable `APIKEY` is supplied from the selected credential at runtime—it is not listed in `configuration`.
 
 **Setup steps:**
 1. Generate API key in external system
@@ -617,18 +596,11 @@ authentication:
   basic:
     username: "{{USERNAME}}"
     password: "{{PASSWORD}}"
-configuration:
-  - name: USERNAME
-    value: hubspot-usernameKeyVault
-    location: keyvault
-    required: true
-  - name: PASSWORD
-    value: hubspot-passwordKeyVault
-    location: keyvault
-    required: true
+# USERNAME, PASSWORD come from the selected credential; do not add them to configuration
+configuration: []
 ```
 
-**Note:** Standard variables (`USERNAME`, `PASSWORD`) don't need `portalInput`—they're managed by the dataplane credentials system.
+**Note:** Standard variables (`USERNAME`, `PASSWORD`) are supplied from the selected credential at runtime—they are not listed in `configuration`.
 
 #### Azure AD (AAD)
 
@@ -642,22 +614,11 @@ authentication:
     clientId: "{{CLIENTID}}"
     clientSecret: "{{CLIENTSECRET}}"
     scope: https://graph.microsoft.com/.default
-configuration:
-  - name: TENANTID
-    value: azure-tenantidKeyVault
-    location: keyvault
-    required: true
-  - name: CLIENTID
-    value: azure-clientidKeyVault
-    location: keyvault
-    required: true
-  - name: CLIENTSECRET
-    value: azure-clientsecretKeyVault
-    location: keyvault
-    required: true
+# TENANTID, CLIENTID, CLIENTSECRET come from the selected credential; do not add them to configuration
+configuration: []
 ```
 
-**Note:** Standard variables (`CLIENTID`, `CLIENTSECRET`) don't need `portalInput`—they're managed by the dataplane credentials system.
+**Note:** Standard variables (`CLIENTID`, `CLIENTSECRET`, and for AAD `TENANTID`) are supplied from the selected credential at runtime—they are not listed in `configuration`.
 
 **Setup steps:**
 1. Register Azure AD application in Azure Portal
@@ -743,7 +704,7 @@ permissions:
 - `name` - Human-readable role name (required)
 - `value` - Role identifier used in JWT and ACL (required, pattern: `^[a-z-]+$`)
 - `description` - Role description (required)
-- `Groups` - Optional array of Azure AD groups mapped to this role
+- `groups` - Optional array of Azure AD groups mapped to this role
 
 **Permission Requirements:**
 
@@ -923,7 +884,7 @@ fieldMappings:
       indexed: false
 ```
 
-**Record references:** Use the `record_ref:` prefix in expressions to create typed relationships between records across datasources. This creates foreign key relationships in the dataplane.
+**Primary key / link (recordRef):** Links between entities are defined using a primary key or record reference. The concept is named **recordRef** (camelCase). In expressions, use the prefix `record_ref:<entityType>` (e.g. `record_ref:customer`) to define the link. The schema accepts `record_ref:` in expressions (snake_case).
 
 **Example:**
 ```yaml
@@ -941,7 +902,7 @@ The `record_ref:` prefix must be followed by a valid entity type (pattern: `^[a-
 
 ### Test Payloads
 
-Test payloads allow you to test field mappings and metadata schemas locally and via integration tests. Add a `testPayload` property to your datasource configuration:
+Test payloads allow you to test field mappings and metadata schemas locally and via integration tests. Add a `testPayload` property to your datasource configuration. For full detail on test payload format, unit vs integration tests, and troubleshooting, see [External Integration Testing](commands/external-integration-testing.md).
 
 ```yaml
 key: hubspot-company
@@ -1006,7 +967,7 @@ The datasource schema supports additional advanced features beyond basic field m
 - `context` - Natural-language hints for AI agents (semantic tags, synonyms, natural language hints)
 
 **Document Storage:**
-- `documentStorage` - Vector storage configuration for document-based datasources. The type schema used for validation is determined by the `entityType` field (e.g., `entityType="document"` maps to `type/document-storage.json`)
+- `documentStorage` - Vector storage configuration for document-based datasources. The type schema used for validation is determined by the `entityType` field (e.g., `entityType: documentStorage` maps to `type/document-storage.json`)
 
 **Sync Configuration:**
 - `sync` - Record synchronization rules (pull/push/bidirectional, schedule, batch size)
@@ -1155,22 +1116,7 @@ authentication:
       - crm.objects.deals.read
       - crm.objects.deals.write
 configuration:
-  - name: CLIENTID
-    value: hubspot-clientidKeyVault
-    location: keyvault
-    required: true
-  - name: CLIENTSECRET
-    value: hubspot-clientsecretKeyVault
-    location: keyvault
-    required: true
-  - name: TOKENURL
-    value: https://api.hubapi.com/oauth/v1/token
-    location: variable
-    required: true
-  - name: BASE_URL
-    value: https://api.hubapi.com
-    location: variable
-    required: true
+  # CLIENTID, CLIENTSECRET, TOKENURL, BASEURL come from the selected credential—do not list them here
   - name: HUBSPOT_API_VERSION
     value: v3
     location: variable
@@ -1209,11 +1155,9 @@ tags:
 ```
 
 **Key points:**
-- **Standard variables** (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`) are managed by the dataplane credentials system—no `portalInput` needed
-- **Custom variables** (`HUBSPOT_API_VERSION`, `MAX_PAGE_SIZE`) use `portalInput` to configure UI fields in the portal interface
-- Values are stored in Key Vault automatically by the platform
-- Standard variables are set via the dataplane credentials interface
-- Custom variables with `portalInput` get UI fields for user configuration
+- **Credential variables** (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`, `BASEURL`) are not in `configuration`—they are supplied from the selected credential at runtime
+- **Custom variables** (`HUBSPOT_API_VERSION`, `MAX_PAGE_SIZE`) are in `configuration` and use `portalInput` to configure UI fields in the portal interface
+- Credential values are set via the dataplane credentials interface; custom variable values are set via the portal
 
 ### hubspot-datasource-company.yaml
 
@@ -1236,9 +1180,9 @@ TOKENURL=https://api.hubapi.com/oauth/v1/token
 ```
 
 **Setup:**
-1. Values are set via the Miso Controller or Dataplane portal interface
+1. Credential values (CLIENTID, CLIENTSECRET, TOKENURL, BASEURL, etc.) are set via the Miso Controller or Dataplane portal when configuring the credential
 2. Key Vault storage is managed automatically by the platform
-3. Values are resolved at deployment time from the `configuration` array
+3. Values are resolved at runtime from the selected credential
 
 ---
 
@@ -1582,7 +1526,7 @@ status:
 
 **"OpenAPI operations not working"**
 → Verify `documentKey` matches registered OpenAPI spec
-→ Check `BASE_URL` (in configuration) or OpenAPI base URL matches external API
+→ Check `BASEURL` from the selected credential or OpenAPI base URL matches external API
 → Ensure `operationId` matches OpenAPI spec
 → Verify authentication is configured correctly
 

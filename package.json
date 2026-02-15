@@ -1,6 +1,6 @@
 {
   "name": "@aifabrix/builder",
-  "version": "2.40.0",
+  "version": "2.40.1",
   "description": "AI Fabrix Local Fabric & Deployment SDK",
   "main": "lib/index.js",
   "bin": {
@@ -16,6 +16,7 @@
     "test:integration": "jest --config jest.config.integration.js --runInBand",
     "test:integration:python": "cross-env TEST_LANGUAGE=python jest --config jest.config.integration.js --runInBand",
     "test:integration:typescript": "cross-env TEST_LANGUAGE=typescript jest --config jest.config.integration.js --runInBand",
+    "test:manual": "jest --config jest.config.manual.js --runInBand",
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
     "lint:ci": "eslint . --ext .js --format json --output-file eslint-report.json",

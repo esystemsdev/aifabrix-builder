@@ -78,20 +78,7 @@ describe('External System Generator Module', () => {
     "autoDiscoverEntities": false
   }{{/if}},
   "tags": [],
-  "configuration": [
-    {
-      "name": "BASE_URL",
-      "value": "{{#if baseUrl}}{{baseUrl}}{{else}}https://api.example.com{{/if}}",
-      "location": "variable",
-      "required": true,
-      "portalInput": {
-        "field": "text",
-        "label": "Base URL",
-        "placeholder": "https://api.example.com",
-        "validation": { "required": true }
-      }
-    }
-  ]
+  "configuration": []
 }`;
 
   const mockDatasourceTemplate = `{
@@ -151,20 +138,10 @@ describe('External System Generator Module', () => {
       expect(parsed.type).toBe('openapi');
       expect(parsed.authentication.type).toBe('apikey');
       expect(Array.isArray(parsed.configuration)).toBe(true);
-      expect(parsed.configuration).toHaveLength(1);
-      expect(parsed.configuration[0].name).toBe('BASE_URL');
-      expect(parsed.configuration[0].value).toBe('https://api.example.com');
-      expect(parsed.configuration[0].location).toBe('variable');
-      expect(parsed.configuration[0].required).toBe(true);
-      expect(parsed.configuration[0].portalInput).toEqual({
-        field: 'text',
-        label: 'Base URL',
-        placeholder: 'https://api.example.com',
-        validation: { required: true }
-      });
+      expect(parsed.configuration).toHaveLength(0);
     });
 
-    it('should use baseUrl in configuration when provided', async() => {
+    it('should emit empty configuration (BASEURL comes from credential, not config)', async() => {
       const systemKey = 'test-system';
       const config = { baseUrl: 'https://api.hubapi.com' };
 
@@ -176,7 +153,7 @@ describe('External System Generator Module', () => {
 
       const systemCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-system.yaml'));
       const parsed = systemCall[1];
-      expect(parsed.configuration[0].value).toBe('https://api.hubapi.com');
+      expect(parsed.configuration).toEqual([]);
     });
 
     it('should format system display name from key', async() => {

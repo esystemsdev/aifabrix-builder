@@ -21,6 +21,11 @@ tests/
 │   ├── build.test.js      # Build process tests
 │   ├── deploy.test.js     # Deployment tests
 │   └── security.test.js   # Security validation tests
+├── manual/                 # Manual tests (real API calls; excluded from CI; run: npm run test:manual)
+│   ├── README.md          # Prerequisites and usage
+│   ├── setup.js           # Auth validation before tests
+│   ├── require-auth.js    # Auth/config helper
+│   └── api-auth.test.js   # Real Controller API tests
 └── setup.js               # Test configuration and utilities
 ```
 
@@ -80,6 +85,14 @@ npm run lint
 # Run full validation (lint + test with coverage)
 npm run validate
 ```
+
+### Manual tests (real API calls)
+
+Manual tests live in **tests/manual/**. They call **real** Controller and Dataplane APIs (no mocks), are **excluded from CI** and default `npm test`, and **require you to be logged in**.
+
+- **Prerequisite**: Run `aifabrix login` (or have valid client credentials). Before running, the suite validates auth with `aifabrix auth status --validate`; if validation fails, no tests run and the full error is shown.
+- **Run**: `npm run test:manual`
+- See **tests/manual/README.md** for details and configuration.
 
 ## Test Writing Guidelines
 

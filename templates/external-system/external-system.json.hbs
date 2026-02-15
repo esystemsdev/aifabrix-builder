@@ -30,22 +30,7 @@
     "toolPrefix": "{{systemKey}}"
   }{{/if}},
   "tags": [],
-  "configuration": [
-    {
-      "name": "BASE_URL",
-      "value": "{{#if baseUrl}}{{baseUrl}}{{else}}https://api.example.com{{/if}}",
-      "location": "variable",
-      "required": true,
-      "portalInput": {
-        "field": "text",
-        "label": "Base URL",
-        "placeholder": "https://api.example.com",
-        "validation": {
-          "required": true
-        }
-      }
-    }
-  ]{{#if roles}},
+  "configuration": []{{#if roles}},
   "roles": [
     {{#each roles}}
     {

@@ -6,7 +6,7 @@ How to run your application in Docker for local development.
 
 **Use the builder instead of raw Docker:** Commands like `aifabrix run`, `aifabrix logs`, and `aifabrix down-app` use compose, resolve `.env` from `env.template`, run db-init when needed, and keep behavior consistent. Plain `docker run` / `docker logs` do not—so prefer the builder for start, stop, logs, and running a different image tag.
 
-**Run only uses builder:** `aifabrix run <app>` only runs applications that exist in `builder/<app>/`. External systems in `integration/` are not run as Docker containers; use `aifabrix build` and deploy, then test via OpenAPI endpoints.
+**Run only uses builder:** `aifabrix run <app>` only runs applications that exist in `builder/<app>/`. External systems in `integration/` are not run as Docker containers. For them: run `aifabrix validate <integration-name>`, then upload or deploy via the controller (e.g. `aifabrix upload <system-key>` or `aifabrix deploy <app>`), then test via OpenAPI endpoints.
 
 ## Start Your App
 

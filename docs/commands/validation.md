@@ -308,6 +308,8 @@ Validate application or external integration file.
 - [aifabrix test-integration](external-integration.md#aifabrix-test-integration-app) - Integration tests with online validation including ABAC dimensions
 - [aifabrix datasource validate](external-integration.md#aifabrix-datasource-validate-file) - Validate datasource files directly
 
+For test commands and test payload behavior in detail, see [External Integration Testing](external-integration-testing.md).
+
 **Usage:**
 ```bash
 # Validate application by name (includes externalIntegration files if present)
@@ -670,6 +672,7 @@ When modifying configurations:
 
 - [Wizard Guide](../wizard.md) - Wizard validation and configuration workflow
 - [External Integration Commands](external-integration.md) - External system validation commands (`test`, `test-integration`, `datasource validate`)
+- [External Integration Testing](external-integration-testing.md) - Unit and integration testing, test payloads, troubleshooting
 - [External Systems Guide](../external-systems.md) - External system configuration, ABAC dimensions, and field mappings
 - [Configuration Guide](../configuration/README.md) - Application configuration
 - [Commands Index](README.md) - All available commands

@@ -23,7 +23,9 @@ module.exports = {
           '/node_modules/',
           '\\\\node_modules\\\\',
           '/tests/integration/',
-          '\\\\tests\\\\integration\\\\'
+          '\\\\tests\\\\integration\\\\',
+          '/tests/manual/',
+          '\\\\tests\\\\manual\\\\'
         ];
         if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
           patterns.push('/tests/local/');

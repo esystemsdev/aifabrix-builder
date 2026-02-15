@@ -305,7 +305,7 @@ describe('Generator Split Functions', () => {
         },
         configuration: [
           {
-            name: 'BASE_URL',
+            name: 'BASEURL',
             value: 'https://api.hubapi.com',
             location: 'variable',
             required: true,
@@ -327,7 +327,7 @@ describe('Generator Split Functions', () => {
         type: 'external'
       });
       expect(result.configuration).toHaveLength(1);
-      expect(result.configuration[0].name).toBe('BASE_URL');
+      expect(result.configuration[0].name).toBe('BASEURL');
       expect(result.configuration[0].portalInput).toBeDefined();
       expect(result.image).toBeUndefined();
       expect(result.port).toBeUndefined();

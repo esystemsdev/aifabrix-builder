@@ -488,7 +488,7 @@ For coverage reporting:
 For automated deployment via pipeline API:
 
 **Repository level:**
-1. **MISO_CONTROLLER_URL** - Controller API endpoint (e.g., `https://controller.aifabrix.dev`)
+1. **MISO_CONTROLLER_URL** - Controller API endpoint. Use a **public** controller URL (e.g., `https://controller.aifabrix.dev`) so that GitHub Actions runners can reach it; private or on-premises URLs may require self-hosted runners or VPN.
 
 **Environment level (dev/staging/production):**
 2. **DEV_MISO_CLIENTID** - Pipeline ClientId from application registration
@@ -716,7 +716,7 @@ The CLI commands handle all the complexity internally, including manifest genera
 
 Use the AI Fabrix Builder CLI for automated deployments:
 
-**⚠️ Important:** Automatic deployment via GitHub Actions deploys images to **ACR (Azure Container Registry) and Azure** - this is **NOT for local deployment**. For local deployment, use the builder CLI tool directly (`aifabrix deploy` from your local machine).
+**⚠️ Important:** Automatic deployment via GitHub Actions deploys images to **ACR (Azure Container Registry) and Azure** - this is **NOT for local deployment**. For local deployment, use `aifabrix deploy <app> --local` from your local machine (sends manifest to controller, then runs app locally or restarts dataplane as appropriate).
 
 ```yaml
 # .github/workflows/deploy.yaml
@@ -863,6 +863,10 @@ The workflow automatically selects the correct environment and secrets based on 
 **Optional:**
 - `APP_NAME` - Application name (or hardcode in workflow)
 
+**Controller URL:** Use a **public** controller URL for `MISO_CONTROLLER_URL` in workflows (e.g. `https://controller.aifabrix.dev`) so GitHub-hosted runners can authenticate and deploy. For more secure pipelines, use GitHub protected branches, Azure DevOps approval gates, or a Miso Controller promotion pipeline.
+
+**Dataplane external systems:** Deploying external systems (integrations in `integration/`) via GitHub Actions uses the same pipeline credentials (application client id/secret) or dataplane application client id/secret; all such deployment can be done via GitHub Actions (validate → upload or deploy). See [External systems deployment](#external-systems-deployment-via-github-actions) below.
+
 **Deployment Types:**
 
 ### Automatic Deployment (GitHub Actions)
@@ -877,9 +881,9 @@ The workflow automatically selects the correct environment and secrets based on 
 
 - **Purpose**: Deploy to local infrastructure or test environments
 - **Use Case**: Local development, testing, debugging
-- **Location**: Run `aifabrix deploy` directly from your machine
-- **Process**: Uses local Docker images, deploys to local or configured environments
-- **Use**: `aifabrix deploy myapp` from your local terminal
+- **Location**: Run `aifabrix deploy <app> --local` directly from your machine
+- **Process**: Sends the deployment manifest to the controller, then runs the app locally (e.g. same as `aifabrix run <app>`) or restarts the dataplane as appropriate for the app type
+- **Use**: `aifabrix deploy myapp --local` from your local terminal
 
 **Why Validate Before Build:**
 
@@ -890,6 +894,29 @@ The `aifabrix validate` step runs **before** the build step to catch configurati
 - Catching errors before spending time building Docker images
 
 If validation fails, the workflow stops immediately with clear error messages, preventing unnecessary build steps.
+
+---
+
+## External systems deployment via GitHub Actions
+
+External systems (integrations in `integration/<app>/`) can be validated and deployed from GitHub Actions using the same controller URL and credentials as application deployment.
+
+**Workflow:**
+1. **Validate** – `aifabrix validate <app>` (validates YAML and schemas; use app/integration key)
+2. **Upload or deploy** – `aifabrix upload <system-key>` to publish to the dataplane without promoting through the full controller pipeline, or `aifabrix deploy <app>` to deploy via the controller (validate + deploy)
+3. **Credentials** – Use the same `MISO_CONTROLLER_URL` and application/client credentials as for app deployment; the controller and (if needed) dataplane client id/secret are used for pipeline and upload
+4. **Controller URL** – Use a public controller URL (e.g. `https://controller.aifabrix.dev`) so runners can reach the API
+
+**Example steps for a workflow job:**
+```yaml
+- name: Validate external system
+  run: aifabrix validate my-integration
+- name: Deploy external system
+  run: aifabrix deploy my-integration
+  # Or: aifabrix upload my-integration  (to test on dataplane without full promote)
+```
+
+See [External systems](external-systems.md) for configuration and [External integration commands](commands/external-integration.md) for `validate`, `upload`, and `deploy` options.
 
 ---
 

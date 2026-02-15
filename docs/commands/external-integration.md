@@ -2,7 +2,7 @@
 
 ← [Documentation index](../README.md) · [Commands index](README.md)
 
-Commands for creating, testing, and managing external system integrations. Commands that call the Dataplane require login and the appropriate Dataplane permissions (e.g. **external-system:read**, **external-system:create**, **credential:read**). See [Online Commands and Permissions](permissions.md).
+Commands for creating, testing, and managing external system integrations. Commands that call the Dataplane require login and the appropriate Dataplane permissions (e.g. **external-system:read**, **external-system:create**, **credential:read**). See [Online Commands and Permissions](permissions.md). For detailed testing documentation (unit and integration tests, test payloads, troubleshooting), see [External Integration Testing](external-integration-testing.md).
 
 ---
 
@@ -370,9 +370,9 @@ After deletion:
 
 Run unit tests for external system (local validation, no API calls).
 
-**What:** Validates external system configuration locally without making API calls. Tests JSON syntax, schema validation, field mapping expressions, metadata schemas, and relationships. Uses test payloads from datasource configuration if available.
+**What:** Validates external system configuration locally without making API calls. Tests syntax, schemas, field mapping expressions, metadata schemas, and relationships using test payloads from the datasource when available.
 
-**When:** Before deploying changes, validating configuration locally, or testing field mappings without network access.
+**When:** Before deploying, validating configuration locally, or testing field mappings without network access.
 
 **Usage:**
 ```bash
@@ -382,114 +382,19 @@ aifabrix test hubspot
 # Test specific datasource only
 aifabrix test hubspot --datasource hubspot-company
 
-# Verbose output with detailed validation
+# Verbose output
 aifabrix test hubspot --verbose
 ```
 
-**Arguments:**
-- `<app>` - Application name (external system)
+**Arguments:** `<app>` – Application name (external system).
 
-**Options:**
-- `-d, --datasource <key>` - Test specific datasource only
-- `-v, --verbose` - Show detailed validation output
+**Options:** `-d, --datasource <key>` – Test specific datasource only. `-v, --verbose` – Show detailed validation output.
 
-**Process:**
-1. Loads and validates `application.yaml` syntax
-2. Loads and validates system JSON file(s) against `external-system.schema.json`
-3. Loads and validates datasource JSON file(s) against `external-datasource.schema.json`
-4. If `testPayload.payloadTemplate` exists in datasource:
-   - Validates metadata schema against test payload
-   - Tests field mapping expressions (mock transformer, no real API calls)
-   - Compares with `expectedResult` if provided
-5. Validates relationships (systemKey matches, entityKey consistency)
-6. Returns structured test results
+**Prerequisites:** None (fully local; no login required).
 
-**Validation Checks:**
-- JSON syntax validation
-- Schema validation (external-system.schema.json, external-datasource.schema.json)
-- Field mapping expression syntax validation:
-  - Validates pipe-based DSL syntax: `{{path.to.field}} | toUpper | trim`
-  - Ensures path is wrapped in `{{}}`
-  - Validates transformation names (toUpper, toLower, trim, default, toNumber, etc.)
-  - Checks for proper pipe separator `|`
-- Metadata schema validation against test payload
-- Required fields presence
-- Relationship validation (systemKey, entityKey)
+**Process:** (1) Load and validate `application.yaml`, system, and datasource files against schemas. (2) If a datasource has `testPayload.payloadTemplate`, validate metadata schema and field mappings against it (mock transformer; no API calls), and compare with `expectedResult` if provided. (3) Validate relationships (systemKey, entityKey). (4) Return structured results.
 
-**See Also:** [Validation Commands](validation.md) - Complete validation documentation including schema details, validation flow, and error formatting.
-
-**Output (success):**
-```yaml
-🧪 Running unit tests for 'hubspot'...
-
-✓ Application configuration is valid
-✓ System configuration is valid (hubspot-system.yaml)
-✓ Datasource configuration is valid (hubspot-datasource-company.yaml)
-✓ Datasource configuration is valid (hubspot-datasource-contact.yaml)
-✓ Datasource configuration is valid (hubspot-datasource-deal.yaml)
-
-Field Mapping Tests:
-  ✓ hubspot-company: All field mappings valid
-  ✓ hubspot-contact: All field mappings valid
-  ✓ hubspot-deal: All field mappings valid
-
-Metadata Schema Tests:
-  ✓ hubspot-company: Metadata schema valid against test payload
-  ✓ hubspot-contact: Metadata schema valid against test payload
-  ✓ hubspot-deal: Metadata schema valid against test payload
-
-✅ All tests passed!
-```
-
-**Output (failure):**
-```yaml
-🧪 Running unit tests for 'hubspot'...
-
-✓ Application configuration is valid
-✓ System configuration is valid (hubspot-system.yaml)
-✗ Datasource configuration has errors (hubspot-datasource-company.yaml):
-  • Field mapping expression invalid: '{{properties.name.value | trim' (missing closing brace)
-  • Metadata schema validation failed: Field 'country' not found in test payload
-
-Field Mapping Tests:
-  ✗ hubspot-company: 1 field mapping error(s)
-
-❌ Tests failed!
-```
-
-**Test Payload Configuration:**
-Test payloads are configured in datasource JSON files using the `testPayload` property:
-
-```json
-{
-  "key": "hubspot-company",
-  "testPayload": {
-    "payloadTemplate": {
-      "properties": {
-        "name": { "value": "Acme Corp" },
-        "country": { "value": "us" }
-      }
-    },
-    "expectedResult": {
-      "name": "Acme Corp",
-      "country": "US"
-    }
-  }
-}
-```
-
-**Issues:**
-- **"App name is required"** → Provide application name as argument
-- **"Application not found"** → Check application exists in `integration/<app>/`
-- **"Validation failed"** → Fix errors reported in test output
-- **"Test payload not found"** → Add `testPayload` to datasource configuration or use `--datasource` to test specific datasource
-- **"Field mapping expression invalid"** → Check expression syntax: `{{path}} | transformation`
-
-**Next Steps:**
-After unit tests:
-- Fix any validation errors
-- Run integration tests: `aifabrix test-integration <app>`
-- Deploy validated configuration: `aifabrix deploy <app>`
+For test payload configuration, examples, and troubleshooting, see [External Integration Testing](external-integration-testing.md#unit-tests-aifabrix-test).
 
 ---
 
@@ -498,135 +403,32 @@ After unit tests:
 
 Run integration tests via dataplane pipeline API. Requires Dataplane access (authenticated; pipeline test endpoint). See [Online Commands and Permissions](permissions.md).
 
-**What:** Tests external system configuration by calling the dataplane pipeline test API. Validates field mappings, metadata schemas, and endpoint connectivity using real API calls. Requires dataplane access and authentication. Includes online validation of ABAC dimensions against the Dimension Catalog.
+**What:** Tests external system configuration by calling the dataplane pipeline test API. Validates field mappings, metadata schemas, endpoint connectivity, and ABAC dimensions using real API calls.
 
-**When:** After unit tests pass, validating against real dataplane, or testing endpoint connectivity before deployment.
-
-**See Also:** [Validation Commands](validation.md) - Complete validation documentation including online ABAC dimension validation.
-
-This command uses the active `controller` and `environment` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is always discovered from the controller.
+**When:** After unit tests pass, when validating against the real dataplane, or when testing endpoint connectivity before deployment.
 
 **Usage:**
 ```bash
 # Test entire external system
 aifabrix test-integration hubspot
 
-# Test specific datasource only
+# Test specific datasource or use custom payload
 aifabrix test-integration hubspot --datasource hubspot-company
-
-# Use custom test payload file
 aifabrix test-integration hubspot --payload ./test-payload.json
 
-# Verbose output with detailed results
-aifabrix test-integration hubspot --verbose
-
-# Custom timeout
-aifabrix test-integration hubspot --timeout 60000
+# Verbose with custom timeout
+aifabrix test-integration hubspot --verbose --timeout 60000
 ```
 
-**Arguments:**
-- `<app>` - Application name (external system)
+**Arguments:** `<app>` – Application name (external system).
 
-**Options:**
-- `-d, --datasource <key>` - Test specific datasource only
-- `-p, --payload <file>` - Path to custom test payload file (overrides datasource testPayload)
-- `-v, --verbose` - Show detailed test output
-- `--timeout <ms>` - Request timeout in milliseconds (default: 30000)
+**Options:** `-d, --datasource <key>` – Test specific datasource only. `-p, --payload <file>` – Custom test payload file (overrides datasource testPayload). `-v, --verbose` – Detailed output. `--timeout <ms>` – Request timeout (default: 30000).
 
-**Prerequisites:**
-- Must be logged in: `aifabrix login`
-- Dataplane must be accessible
-- System must exist in dataplane (or be ready for testing)
+**Prerequisites:** Logged in (`aifabrix login`); dataplane accessible; system published or ready for testing.
 
-**Process:**
-1. Gets dataplane URL from controller
-2. For each datasource (or specified one):
-   - Loads test payload from datasource config (`testPayload.payloadTemplate`) or from `--payload` file
-   - Calls dataplane pipeline API: `POST /api/v1/pipeline/{systemKey}/{datasourceKey}/test`
-   - Request body: `{ "payloadTemplate": <testPayload> }`
-   - Parses response with validation results, field mapping results, endpoint test results
-3. Displays results for each datasource
-4. Returns aggregated results
+**Process:** (1) Resolve dataplane URL from controller. (2) For each datasource: load payload from datasource `testPayload.payloadTemplate` or `--payload` file; call `POST /api/v1/pipeline/{systemKey}/{datasourceKey}/test` with payload; parse validation, field mapping, and endpoint results. (3) Display and aggregate results. Includes retry with exponential backoff for transient failures.
 
-**Response Handling:**
-- Parses `validationResults` (isValid, errors, warnings, normalizedMetadata)
-- Parses `fieldMappingResults` (dimensions, mappedFields, mappingCount)
-- Parses `endpointTestResults` (endpointConfigured, connectivity status)
-
-**Output (success):**
-```yaml
-🧪 Running integration tests for 'hubspot' via dataplane...
-
-🔐 Getting authentication...
-✓ Authentication successful
-🌐 Getting dataplane URL from controller...
-✓ Dataplane URL: https://dataplane.aifabrix.dev
-
-Testing datasource: hubspot-company
-  ✓ Validation: passed
-  ✓ Field mappings: 5 fields mapped successfully
-  ✓ Endpoint connectivity: connected
-  ✓ Metadata schema: valid
-
-Testing datasource: hubspot-contact
-  ✓ Validation: passed
-  ✓ Field mappings: 8 fields mapped successfully
-  ✓ Endpoint connectivity: connected
-  ✓ Metadata schema: valid
-
-Testing datasource: hubspot-deal
-  ✓ Validation: passed
-  ✓ Field mappings: 6 fields mapped successfully
-  ✓ Endpoint connectivity: connected
-  ✓ Metadata schema: valid
-
-✅ All integration tests passed!
-```
-
-**Output (failure):**
-```yaml
-🧪 Running integration tests for 'hubspot' via dataplane...
-
-🔐 Getting authentication...
-✓ Authentication successful
-🌐 Getting dataplane URL from controller...
-✓ Dataplane URL: https://dataplane.aifabrix.dev
-
-Testing datasource: hubspot-company
-  ✗ Validation: failed
-    • Field 'country' not found in payload
-  ✗ Field mappings: 3 of 5 fields mapped successfully
-  ✓ Endpoint connectivity: connected
-  ✗ Metadata schema: invalid
-
-❌ Integration tests failed!
-```
-
-**Test Payload:**
-Test payloads can be:
-1. From datasource configuration (`testPayload.payloadTemplate`)
-2. From custom file (`--payload` flag)
-3. Generated automatically if not provided (basic structure)
-
-**Retry Logic:**
-The command includes automatic retry logic for transient API failures:
-- 3 retries with exponential backoff
-- Retries on network errors, timeouts, and 5xx server errors
-
-**Issues:**
-- **"App name is required"** → Provide application name as argument
-- **"Not logged in"** → Run `aifabrix login` first
-- **"Dataplane URL not found"** → Check controller configuration and that the controller can provide a dataplane URL
-- **"Test payload not found"** → Add `testPayload` to datasource configuration or use `--payload` flag
-- **"API call failed"** → Check dataplane URL, authentication, and network connection
-- **"Request timeout"** → Increase timeout with `--timeout` flag or check network connection
-- **"Validation failed"** → Fix errors reported in test output
-
-**Next Steps:**
-After integration tests:
-- Fix any validation or connectivity errors
-- Re-run unit tests: `aifabrix test <app>`
-- Deploy validated configuration: `aifabrix deploy <app>`
+For payload sources, response handling, and troubleshooting, see [External Integration Testing](external-integration-testing.md#integration-tests-aifabrix-test-integration).
 
 ---
 

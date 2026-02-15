@@ -68,6 +68,16 @@ describe('convert command', () => {
       );
     });
 
+    it('uses same validation as validate command (validateAppOrFile with app name and options)', async() => {
+      const variables = { externalIntegration: { schemaBasePath: './', systems: [], dataSources: [] } };
+      configFormat.loadConfigFile.mockReturnValue(variables);
+      validate.validateAppOrFile.mockResolvedValue({ valid: true });
+
+      await convert.runConvert('avoma', { format: 'json', force: true });
+
+      expect(validate.validateAppOrFile).toHaveBeenCalledWith('avoma', { format: 'json', force: true });
+    });
+
     it('throws when user cancels prompt (no --force)', async() => {
       configFormat.loadConfigFile.mockReturnValue({
         externalIntegration: { schemaBasePath: './', systems: [], dataSources: [] }

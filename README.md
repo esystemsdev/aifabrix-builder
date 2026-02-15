@@ -16,7 +16,7 @@ Install the AI Fabrix platform and test it locally. Then add external integratio
 - **Full lifecycle in your version control:** Configuration, apps, and integrations live in your own VCS (GitHub, GitLab, Azure DevOps).
 - **One tool from day one:** Single CLI for local infra, app and integration creation, build, run, and deploy—same workflow for apps and integrations.
 - **Consistency and production readiness:** Schema-driven; deploy apps and integrations to the same controller/dataplane; production-ready secrets with `kv://` and Azure Key Vault.
-- **Application development:** Use **[miso-client](https://github.com/esystemsdev/aifabrix-miso-client)** for TypeScript and Python to talk to the dataplane and controller (see [templates/applications/dataplane/README.md](templates/applications/dataplane/README.md) and the repo for usage).
+- **Application development:** Use **[miso-client](https://github.com/esystemsdev/aifabrix-miso-client)** (TypeScript and Python) to talk to the dataplane and controller. The repo includes both TypeScript and Python SDKs; see [templates/applications/dataplane/README.md](templates/applications/dataplane/README.md) and the repo for usage.
 
 ---
 

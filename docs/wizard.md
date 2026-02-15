@@ -343,7 +343,7 @@ The wizard uses AI to generate configurations based on:
 
 Generated configurations include:
 - System metadata (key, display name, description)
-- Authentication configuration
+- Authentication configuration (standard variables such as CLIENTID, CLIENTSECRET, TOKENURL, BASEURL are referenced in auth blocks and supplied from the selected credential at runtime—they are not placed in the `configuration` section)
 - API endpoint mappings
 - Datasource definitions
 - Entity relationships
@@ -390,14 +390,14 @@ The wizard generates files (including `application.yaml` and `<systemKey>-deploy
 
 ## Environment Variables
 
-The wizard generates `env.template` with authentication variables based on the detected authentication type:
+The wizard generates `env.template` with authentication variables based on the detected authentication type. Standard variables (including `CLIENTID`, `CLIENTSECRET`, `TOKENURL`, `APIKEY`, `USERNAME`, `PASSWORD`, and `BASEURL`) are **supplied at runtime from the selected credential**—they are not added to the integration YAML `configuration` section. Reference them in auth blocks (e.g. `{{CLIENTID}}`, `{{BASEURL}}`); the platform injects values from the credential.
 
-- **API Key**: `API_KEY=kv://secrets/api-key`
-- **OAuth2**: `CLIENT_ID`, `CLIENT_SECRET`, `AUTH_URL`, `TOKEN_URL`
-- **Bearer Token**: `BEARER_TOKEN=kv://secrets/bearer-token`
-- **Basic Auth**: `USERNAME`, `PASSWORD`
+- **API Key**: `APIKEY` (from credential)
+- **OAuth2**: `CLIENTID`, `CLIENTSECRET`, `TOKENURL`, `BASEURL` (from credential)
+- **Bearer Token**: `BEARER_TOKEN` (from credential or config as appropriate)
+- **Basic Auth**: `USERNAME`, `PASSWORD` (from credential)
 
-Update these values in your secrets store before deployment.
+Set credential values via the Miso Controller or Dataplane portal when configuring the credential; do not list standard credential variables in the `configuration` array.
 
 ## Deployment
 

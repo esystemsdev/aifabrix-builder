@@ -61,6 +61,7 @@ Complete command reference organized by concept with examples and troubleshootin
 
 ### External Integration
 - [External Integration Commands](external-integration.md) - External system integration
+- [External Integration Testing](external-integration-testing.md) - Unit and integration testing, test payloads
   - [`aifabrix wizard [appName]`](external-integration.md#aifabrix-wizard) - Interactive wizard (mode first; loads/saves integration/<appName>/wizard.yaml); appName optional
   - [`aifabrix download <system-key>`](external-integration.md#aifabrix-download-system-key) - Download external system from dataplane
   - [`aifabrix upload <system-key>`](external-integration.md#aifabrix-upload-system-key) - Upload external system to dataplane (upload → validate → publish; no controller deploy)
@@ -108,6 +109,7 @@ Shortcuts to all command pages and key guides (same categories as the [Table of 
 
 **External Systems:**
 - [External Integration Commands](external-integration.md) - Create and manage external system integrations
+- [External Integration Testing](external-integration-testing.md) - Unit and integration testing, test payloads
 - [Wizard Guide](../wizard.md) - Interactive wizard documentation
 - [External Systems Guide](../external-systems.md) - Complete external systems guide
 

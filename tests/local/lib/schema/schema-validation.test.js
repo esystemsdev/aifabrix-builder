@@ -77,6 +77,40 @@ describe('Schema validation (Plan 49)', () => {
       expect(() => ajv.compile(externalSystemSchema)).not.toThrow();
     });
 
+    it('should accept valid external-system without environment (manifest is generic)', () => {
+      const externalSystemSchema = require('../../../../lib/schema/external-system.schema.json');
+      const ajv = new Ajv({ allErrors: true, strict: false });
+      const validate = ajv.compile(externalSystemSchema);
+      const system = {
+        key: 'avoma',
+        displayName: 'Avoma',
+        description: 'Test',
+        type: 'openapi',
+        authentication: { type: 'apikey' }
+      };
+      const valid = validate(system);
+      expect(valid).toBe(true);
+      expect(validate.errors).toBeNull();
+    });
+
+    it('should reject external-system with environment property (additionalProperties)', () => {
+      const externalSystemSchema = require('../../../../lib/schema/external-system.schema.json');
+      const ajv = new Ajv({ allErrors: true, strict: false });
+      const validate = ajv.compile(externalSystemSchema);
+      const systemWithEnv = {
+        key: 'avoma',
+        displayName: 'Avoma',
+        description: 'Test',
+        type: 'openapi',
+        authentication: { type: 'apikey' },
+        environment: 'dev'
+      };
+      const valid = validate(systemWithEnv);
+      expect(valid).toBe(false);
+      expect(validate.errors).toBeDefined();
+      expect(validate.errors.some(e => e.keyword === 'additionalProperties' && e.params.additionalProperty === 'environment')).toBe(true);
+    });
+
     it('should compile external-datasource schema with AJV', () => {
       const externalDatasourceSchema = require('../../../../lib/schema/external-datasource.schema.json');
       const schemaCopy = { ...externalDatasourceSchema };
