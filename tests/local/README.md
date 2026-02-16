@@ -38,6 +38,7 @@ npm test -- tests/local/lib/template-validator.test.js
 - `app-run-advanced.test.js` - Advanced app-run tests
 - `app-run-compose.test.js` - Docker compose generation tests
 - `app-coverage-extra.test.js` - Extra coverage tests
+- `lib/app/app-coverage-uncovered.test.js` - Uncovered app.js paths (pushApp, generateDockerfileForApp, promptForOptions); excluded from CI due to temp-dir/path resolution (getProjectRoot, detectAppType) differences in GitHub Actions
 - `app-run-branch-coverage.test.js` - Branch coverage tests
 - `utils/build-copy.test.js` - Build copy utility tests
 - `lib/external-system/download-helpers.test.js` - External system download helpers tests

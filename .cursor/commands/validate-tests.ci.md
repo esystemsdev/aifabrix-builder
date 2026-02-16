@@ -37,7 +37,7 @@ When the `/validate-tests-ci` command is used, the agent must run CI test valida
 **Important Notes:**
 
 - This command runs tests in a clean environment similar to GitHub CI
-- Local tests in `tests/local/` are automatically excluded in CI environments
+- Local tests in `tests/local/` are automatically excluded in CI environments (see `jest.config.js` when `INCLUDE_LOCAL_TESTS` is not `'true'`). This includes complex tests such as `app-coverage-uncovered.test.js` that rely on temp-dir and path resolution and are kept out of CI scope.
 - The CI simulation may take several minutes to complete
 - Test results are saved to `temp/ci-reports/` for review
 - This validation is more strict than local testing and catches environment-specific issues

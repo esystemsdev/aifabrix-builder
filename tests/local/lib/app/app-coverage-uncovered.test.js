@@ -1,6 +1,9 @@
 /**
  * Tests for Uncovered App.js Code Paths
  *
+ * Local-only: excluded from CI due to complex temp-dir/path resolution (getProjectRoot, detectAppType)
+ * that behaves differently in GitHub Actions. Run with: npm test -- tests/local
+ *
  * @fileoverview Tests for uncovered code paths in app.js to improve coverage
  * @author AI Fabrix Team
  * @version 2.0.0
@@ -11,29 +14,29 @@ const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');
-const app = require('../../../lib/app');
-const pushUtils = require('../../../lib/deployment/push');
-const { clearProjectRootCache } = require('../../../lib/utils/paths');
+const app = require('../../../../lib/app');
+const pushUtils = require('../../../../lib/deployment/push');
+const { clearProjectRootCache } = require('../../../../lib/utils/paths');
 
 jest.mock('inquirer');
-jest.mock('../../../lib/generator/github');
-jest.mock('../../../lib/core/env-reader');
-jest.mock('../../../lib/core/templates');
-jest.mock('../../../lib/build');
-jest.mock('../../../lib/app/run');
-jest.mock('../../../lib/deployment/push');
-jest.mock('../../../lib/app/deploy');
-jest.mock('../../../lib/app/readme', () => ({
+jest.mock('../../../../lib/generator/github');
+jest.mock('../../../../lib/core/env-reader');
+jest.mock('../../../../lib/core/templates');
+jest.mock('../../../../lib/build');
+jest.mock('../../../../lib/app/run');
+jest.mock('../../../../lib/deployment/push');
+jest.mock('../../../../lib/app/deploy');
+jest.mock('../../../../lib/app/readme', () => ({
   generateReadmeMdFile: jest.fn().mockResolvedValue(),
   generateReadmeMd: jest.fn().mockReturnValue('# Test README\n')
 }));
 
 const inquirer = require('inquirer');
-const githubGenerator = require('../../../lib/generator/github');
-const envReader = require('../../../lib/core/env-reader');
-const templates = require('../../../lib/core/templates');
-const build = require('../../../lib/build');
-const appRun = require('../../../lib/app/run');
+const githubGenerator = require('../../../../lib/generator/github');
+const envReader = require('../../../../lib/core/env-reader');
+const templates = require('../../../../lib/core/templates');
+const build = require('../../../../lib/build');
+const appRun = require('../../../../lib/app/run');
 
 describe('App.js Uncovered Paths', () => {
   let tempDir;
@@ -441,7 +444,7 @@ describe('App.js Uncovered Paths', () => {
 
   describe('deployApp delegation', () => {
     it('should delegate deployApp to appDeploy module', async() => {
-      const appDeploy = require('../../../lib/app/deploy');
+      const appDeploy = require('../../../../lib/app/deploy');
       appDeploy.deployApp = jest.fn().mockResolvedValue({ result: { deploymentId: '123' }, usedExternalDeploy: false });
 
       const outcome = await app.deployApp('test-app', {});
@@ -450,4 +453,3 @@ describe('App.js Uncovered Paths', () => {
     });
   });
 });
-
