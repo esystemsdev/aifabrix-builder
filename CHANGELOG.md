@@ -1,4 +1,4 @@
-## [2.40.2] - 2026-02-15
+## [2.40.2] - 2026-02-16
 
 ### Added
 - **Manual tests (real API)**: New `tests/manual/` suite for tests that call **real** Controller and Dataplane APIs (no mocks). Excluded from default `npm test` and CI; run with `npm run test:manual`. Prerequisite: user must be logged in (`aifabrix login` or client credentials); setup runs `aifabrix auth status --validate` before any test and exits with the full error if auth fails. New `jest.config.manual.js`, script `test:manual`, and docs in `tests/manual/README.md` and `tests/README.md`. **Auth**: `aifabrix auth status` supports `--validate` (exit code 1 when not authenticated, for scripted use). **Coverage**: Every `lib/api` module is covered—auth, applications, environments, deployments, pipeline, credentials, external-systems, datasources-core, datasources-extended, wizard—with 39 tests making real HTTP calls to verify connectivity and API usage when logged in.
