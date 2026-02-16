@@ -18,6 +18,8 @@ const build = require('../../../lib/build');
 const appRun = require('../../../lib/app/run');
 const pushUtils = require('../../../lib/deployment/push');
 const appDeploy = require('../../../lib/app/deploy');
+const paths = require('../../../lib/utils/paths');
+const configFormat = require('../../../lib/utils/config-format');
 const { clearProjectRootCache } = require('../../../lib/utils/paths');
 
 // Mock dependencies
@@ -59,17 +61,33 @@ describe('Application Module - Comprehensive Tests', () => {
     clearProjectRootCache();
     jest.clearAllMocks();
 
-    // Create builder/test-app and minimal application.yaml so detectAppType finds the app
-    // (used by generateDockerfileForApp and pushApp)
+    // Create builder/test-app and minimal application.yaml
     const appPath = path.join(tempDir, 'builder', 'test-app');
     fsSync.mkdirSync(appPath, { recursive: true });
+    const defaultAppConfig = {
+      app: { key: 'test-app', name: 'Test App' },
+      image: { registry: 'myacr.azurecr.io' },
+      build: { language: 'typescript' },
+      port: 3000
+    };
     fsSync.writeFileSync(
       path.join(appPath, 'application.yaml'),
-      yaml.dump({
-        app: { key: 'test-app', name: 'Test App' },
-        image: { registry: 'myacr.azurecr.io' }
-      })
+      yaml.dump(defaultAppConfig)
     );
+
+    // Avoid path/fs sensitivity in CI: mock so generateDockerfileForApp and pushApp work in copied-project runs
+    jest.spyOn(paths, 'detectAppType').mockImplementation(async(name) => ({
+      appPath: path.join(tempDir, 'builder', name),
+      appType: 'regular',
+      baseDir: 'builder',
+      isExternal: false
+    }));
+    jest.spyOn(configFormat, 'loadConfigFile').mockImplementation((filePath) => {
+      if (filePath && String(filePath).includes('test-app')) {
+        return { ...defaultAppConfig };
+      }
+      throw new Error(`Application config not found in ${filePath}. Expected application.yaml, application.yml, application.json, or variables.yaml.\nRun 'aifabrix create test-app' first`);
+    });
 
     // Mock inquirer to return default values
     const inquirer = require('inquirer');
@@ -100,6 +118,7 @@ describe('Application Module - Comprehensive Tests', () => {
     process.chdir(originalCwd);
     global.PROJECT_ROOT = originalProjectRoot;
     clearProjectRootCache();
+    jest.restoreAllMocks();
     // Retry cleanup on Windows (handles EBUSY errors)
     let retries = 3;
     while (retries > 0) {
@@ -226,7 +245,9 @@ describe('Application Module - Comprehensive Tests', () => {
     });
 
     it('should handle missing application.yaml', async() => {
-      await fs.rm(path.join('builder', 'test-app', 'application.yaml'));
+      configFormat.loadConfigFile.mockImplementationOnce(() => {
+        throw new Error('Application config not found in builder/test-app. Expected application.yaml, application.yml, application.json, or variables.yaml.\nRun \'aifabrix create test-app\' first');
+      });
       await expect(app.generateDockerfileForApp('test-app', {})).rejects.toThrow();
     });
 
@@ -305,7 +326,9 @@ describe('Application Module - Comprehensive Tests', () => {
     });
 
     it('should handle missing application.yaml', async() => {
-      await fs.rm(path.join('builder', 'test-app', 'application.yaml'));
+      configFormat.loadConfigFile.mockImplementationOnce(() => {
+        throw new Error('Application config not found in builder/test-app. Expected application.yaml, application.yml, application.json, or variables.yaml.\nRun \'aifabrix create test-app\' first');
+      });
       await expect(app.pushApp('test-app', {})).rejects.toThrow(
         /Failed to load configuration|App 'test-app' not found in integration/
       );
@@ -317,11 +340,7 @@ describe('Application Module - Comprehensive Tests', () => {
     });
 
     it('should handle missing registry', async() => {
-      const appPath = path.join('builder', 'test-app');
-      fsSync.writeFileSync(
-        path.join(appPath, 'application.yaml'),
-        yaml.dump({ app: { key: 'test-app' } })
-      );
+      configFormat.loadConfigFile.mockImplementationOnce(() => ({ app: { key: 'test-app' } }));
       await expect(app.pushApp('test-app', {})).rejects.toThrow('Registry URL is required');
     });
 
