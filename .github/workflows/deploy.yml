@@ -28,7 +28,7 @@ jobs:
         run: npm ci
         
       - name: Build and validate
-        run: npm run build
+        run: npm run build:ci
         
       - name: Check if version changed
         id: version-check
@@ -47,7 +47,7 @@ jobs:
         
       - name: Publish to NPM
         if: steps.version-check.outputs.already_published == 'false'
-        run: npm publish --access public
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           

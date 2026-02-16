@@ -22,6 +22,7 @@
     "lint:ci": "eslint . --ext .js --format json --output-file eslint-report.json",
     "dev": "node bin/aifabrix.js",
     "build": "npm run lint && npm run test",
+    "build:ci": "npm run lint && npm run test:ci",
     "pack": "npm run build && npm pack",
     "validate": "npm run build",
     "prepublishOnly": "npm run validate",

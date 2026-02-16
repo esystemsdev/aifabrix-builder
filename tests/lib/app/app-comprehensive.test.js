@@ -82,6 +82,12 @@ describe('Application Module - Comprehensive Tests', () => {
       baseDir: 'builder',
       isExternal: false
     }));
+    jest.spyOn(paths, 'resolveApplicationConfigPath').mockImplementation((appPath) => {
+      if (appPath && String(appPath).includes('test-app')) {
+        return path.join(appPath, 'application.yaml');
+      }
+      throw new Error(`Application config not found in ${appPath}. Expected application.yaml, application.yml, application.json, or variables.yaml.`);
+    });
     jest.spyOn(configFormat, 'loadConfigFile').mockImplementation((filePath) => {
       if (filePath && String(filePath).includes('test-app')) {
         return { ...defaultAppConfig };
