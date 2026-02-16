@@ -367,6 +367,13 @@ describe('App.js Additional Coverage Tests', () => {
         isExternal: false
       }));
 
+      jest.spyOn(paths, 'resolveApplicationConfigPath').mockImplementation((appPath) => {
+        if (appPath && String(appPath).includes('test-app')) {
+          return path.join(appPath, 'application.yaml');
+        }
+        throw new Error(`Application config not found in ${appPath}. Expected application.yaml, application.yml, application.json, or variables.yaml.`);
+      });
+
       // Avoid fs dependency in CI: push.js loadConfigFile() may see mocked fs from other suites
       jest.spyOn(configFormat, 'loadConfigFile').mockImplementation((filePath) => {
         if (filePath && String(filePath).includes('test-app')) {
@@ -488,6 +495,16 @@ describe('App.js Additional Coverage Tests', () => {
         baseDir: 'builder',
         isExternal: false
       }));
+
+      jest.spyOn(paths, 'resolveApplicationConfigPath').mockImplementation((appPath) => {
+        if (appPath && String(appPath).includes('test-app')) {
+          return path.join(appPath, 'application.yaml');
+        }
+        if (appPath && String(appPath).includes('missing-config-app')) {
+          throw new Error(`Application config not found in ${appPath}. Expected application.yaml, application.yml, application.json, or variables.yaml.`);
+        }
+        throw new Error(`Application config not found in ${appPath}. Expected application.yaml, application.yml, application.json, or variables.yaml.`);
+      });
 
       jest.spyOn(configFormat, 'loadConfigFile').mockImplementation((filePath) => {
         if (filePath && String(filePath).includes('test-app')) {
