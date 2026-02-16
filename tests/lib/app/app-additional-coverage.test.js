@@ -14,6 +14,7 @@ const yaml = require('js-yaml');
 const app = require('../../../lib/app');
 const pushUtils = require('../../../lib/deployment/push');
 const paths = require('../../../lib/utils/paths');
+const configFormat = require('../../../lib/utils/config-format');
 
 jest.mock('inquirer');
 jest.mock('../../../lib/generator/github');
@@ -349,24 +350,30 @@ describe('App.js Additional Coverage Tests', () => {
   });
 
   describe('pushApp - successful ACR authentication and push flow', () => {
+    const defaultPushConfig = { app: { key: 'test-app' }, image: { registry: 'myacr.azurecr.io' } };
+
     beforeEach(() => {
       const appPath = path.join(tempDir, 'builder', 'test-app');
       fsSync.mkdirSync(appPath, { recursive: true });
       fsSync.writeFileSync(
         path.join(appPath, 'application.yaml'),
-        yaml.dump({
-          app: { key: 'test-app' },
-          image: { registry: 'myacr.azurecr.io' }
-        })
+        yaml.dump(defaultPushConfig)
       );
 
-      // push.js require()s paths inside loadPushConfig, so this mock is used; avoids getProjectRoot/fs in CI
       jest.spyOn(paths, 'detectAppType').mockImplementation(async(name) => ({
         appPath: path.join(tempDir, 'builder', name),
         appType: 'regular',
         baseDir: 'builder',
         isExternal: false
       }));
+
+      // Avoid fs dependency in CI: push.js loadConfigFile() may see mocked fs from other suites
+      jest.spyOn(configFormat, 'loadConfigFile').mockImplementation((filePath) => {
+        if (filePath && String(filePath).includes('test-app')) {
+          return { ...defaultPushConfig };
+        }
+        throw new Error(`Application config not found in ${filePath}. Expected application.yaml, application.yml, application.json, or variables.yaml.\nRun 'aifabrix create test-app' first`);
+      });
 
       pushUtils.validateRegistryURL.mockImplementation((url) => {
         return url.endsWith('.azurecr.io');
@@ -472,10 +479,7 @@ describe('App.js Additional Coverage Tests', () => {
       fsSync.mkdirSync(appPath, { recursive: true });
       fsSync.writeFileSync(
         path.join(appPath, 'application.yaml'),
-        yaml.dump({
-          app: { key: 'test-app' },
-          image: { registry: 'myacr.azurecr.io' }
-        })
+        yaml.dump({ app: { key: 'test-app' }, image: { registry: 'myacr.azurecr.io' } })
       );
 
       jest.spyOn(paths, 'detectAppType').mockImplementation(async(name) => ({
@@ -484,6 +488,16 @@ describe('App.js Additional Coverage Tests', () => {
         baseDir: 'builder',
         isExternal: false
       }));
+
+      jest.spyOn(configFormat, 'loadConfigFile').mockImplementation((filePath) => {
+        if (filePath && String(filePath).includes('test-app')) {
+          return { app: { key: 'test-app' }, image: { registry: 'myacr.azurecr.io' } };
+        }
+        if (filePath && String(filePath).includes('missing-config-app')) {
+          throw new Error(`Application config not found in ${filePath}. Expected application.yaml, application.yml, application.json, or variables.yaml.\nRun 'aifabrix create missing-config-app' first`);
+        }
+        throw new Error(`Application config not found in ${filePath}. Expected application.yaml, application.yml, application.json, or variables.yaml.\nRun 'aifabrix create test-app' first`);
+      });
     });
 
     afterEach(() => {
@@ -499,12 +513,10 @@ describe('App.js Additional Coverage Tests', () => {
 
     it('should handle invalid registry URL error', async() => {
       const appName = 'test-app';
-      const variables = { image: { registry: 'invalid-registry.com' } };
-      const configContent = yaml.dump(variables);
-      for (const base of [tempDir, process.cwd()]) {
-        const appPath = path.join(base, 'builder', appName);
-        fsSync.writeFileSync(path.join(appPath, 'application.yaml'), configContent);
-      }
+      configFormat.loadConfigFile.mockImplementationOnce(() => ({
+        app: { key: 'test-app' },
+        image: { registry: 'invalid-registry.com' }
+      }));
 
       pushUtils.validateRegistryURL.mockReturnValue(false);
 
