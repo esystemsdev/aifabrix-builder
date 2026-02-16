@@ -45,6 +45,7 @@ npm test -- tests/local/lib/template-validator.test.js
 - `lib/validation/external-manifest-validator.test.js` - External manifest validator tests with complex mocking
 - `lib/schema/schema-validation.test.js` - Schema validation (Plan 49): JSON schemas and deployment-rules.yaml structure; excluded from CI due to path resolution differences in GitHub Actions/Jest
 - `lib/commands-app-actions.test.js` - Application command action handlers (register, list); excluded from CI due to cwd/temp-dir and path resolution differences (getProjectRoot, detectAppType) between local and CI
+- `lib/generator/generator-split-external-rbac.test.js` - External system RBAC split-JSON (roles/permissions to rbac.yml); excluded from CI due to getProjectRoot/template path resolution differing in GitHub Actions
 
 ## CI Exclusion
 

@@ -1,6 +1,9 @@
 /**
  * Tests for External System RBAC Support in Split-JSON
  *
+ * Local-only: excluded from CI due to path resolution (getProjectRoot, templates/applications/README.md.hbs)
+ * differing in GitHub Actions. Run with: INCLUDE_LOCAL_TESTS=true npm test or npm test -- tests/local
+ *
  * @fileoverview Unit tests for split-json with external system RBAC
  * @author AI Fabrix Team
  * @version 2.0.0
@@ -9,7 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
-const generator = require('../../../lib/generator');
+const generator = require('../../../../lib/generator');
 
 // Mock fs module so project root resolution still works (paths.js uses existsSync for package.json).
 // Jest mock factory may not reference out-of-scope variables; use require('path') inside.
@@ -256,4 +259,3 @@ describe('External System RBAC Split-JSON', () => {
     });
   });
 });
-
