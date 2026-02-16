@@ -349,14 +349,7 @@ describe('App.js Additional Coverage Tests', () => {
   });
 
   describe('pushApp - successful ACR authentication and push flow', () => {
-    let savedProjectRoot;
-
     beforeEach(() => {
-      savedProjectRoot = global.PROJECT_ROOT;
-      fsSync.writeFileSync(path.join(tempDir, 'package.json'), '{}');
-      global.PROJECT_ROOT = tempDir;
-      paths.clearProjectRootCache();
-
       const appPath = path.join(tempDir, 'builder', 'test-app');
       fsSync.mkdirSync(appPath, { recursive: true });
       fsSync.writeFileSync(
@@ -367,14 +360,21 @@ describe('App.js Additional Coverage Tests', () => {
         })
       );
 
+      // push.js require()s paths inside loadPushConfig, so this mock is used; avoids getProjectRoot/fs in CI
+      jest.spyOn(paths, 'detectAppType').mockImplementation(async(name) => ({
+        appPath: path.join(tempDir, 'builder', name),
+        appType: 'regular',
+        baseDir: 'builder',
+        isExternal: false
+      }));
+
       pushUtils.validateRegistryURL.mockImplementation((url) => {
         return url.endsWith('.azurecr.io');
       });
     });
 
     afterEach(() => {
-      global.PROJECT_ROOT = savedProjectRoot;
-      paths.clearProjectRootCache();
+      jest.restoreAllMocks();
     });
 
     it('should handle successful push with ACR already authenticated', async() => {
@@ -467,14 +467,7 @@ describe('App.js Additional Coverage Tests', () => {
   });
 
   describe('pushApp - error paths', () => {
-    let savedProjectRoot;
-
     beforeEach(() => {
-      savedProjectRoot = global.PROJECT_ROOT;
-      fsSync.writeFileSync(path.join(tempDir, 'package.json'), '{}');
-      global.PROJECT_ROOT = tempDir;
-      paths.clearProjectRootCache();
-
       const appPath = path.join(tempDir, 'builder', 'test-app');
       fsSync.mkdirSync(appPath, { recursive: true });
       fsSync.writeFileSync(
@@ -484,11 +477,17 @@ describe('App.js Additional Coverage Tests', () => {
           image: { registry: 'myacr.azurecr.io' }
         })
       );
+
+      jest.spyOn(paths, 'detectAppType').mockImplementation(async(name) => ({
+        appPath: path.join(tempDir, 'builder', name),
+        appType: 'regular',
+        baseDir: 'builder',
+        isExternal: false
+      }));
     });
 
     afterEach(() => {
-      global.PROJECT_ROOT = savedProjectRoot;
-      paths.clearProjectRootCache();
+      jest.restoreAllMocks();
     });
 
     it('should handle missing config file error', async() => {
