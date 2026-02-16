@@ -13,10 +13,16 @@ jest.mock('../../../lib/utils/logger', () => ({
   info: jest.fn()
 }));
 
-const mockFsPromises = { mkdir: jest.fn(), appendFile: jest.fn() };
-jest.mock('fs', () => ({ promises: mockFsPromises }));
+// Mock fs with factory-only refs to avoid Jest ModuleMocker stack overflow when other suites run in same worker
+jest.mock('fs', () => ({
+  promises: {
+    mkdir: jest.fn(),
+    appendFile: jest.fn()
+  }
+}));
 
 const logger = require('../../../lib/utils/logger');
+const fs = require('fs');
 const { validateCommand, handleCommandError, appendWizardError, logOfflinePathWhenType } = require('../../../lib/utils/cli-utils');
 
 describe('CLI Utils Module', () => {
@@ -247,18 +253,18 @@ describe('CLI Utils Module', () => {
 
   describe('appendWizardError', () => {
     beforeEach(() => {
-      mockFsPromises.mkdir.mockResolvedValue();
-      mockFsPromises.appendFile.mockResolvedValue();
+      fs.promises.mkdir.mockResolvedValue();
+      fs.promises.appendFile.mockResolvedValue();
     });
 
     it('should append error message to integration/<appKey>/error.log', async() => {
       await appendWizardError('myapp', new Error('Test error'));
 
-      expect(mockFsPromises.mkdir).toHaveBeenCalledWith(
+      expect(fs.promises.mkdir).toHaveBeenCalledWith(
         expect.stringMatching(/integration[\\/]myapp$/),
         { recursive: true }
       );
-      expect(mockFsPromises.appendFile).toHaveBeenCalledWith(
+      expect(fs.promises.appendFile).toHaveBeenCalledWith(
         expect.stringMatching(/integration[\\/]myapp[\\/]error\.log$/),
         expect.stringMatching(/^\d{4}-\d{2}-\d{2}T.* Test error\n$/),
         'utf8'
@@ -271,7 +277,7 @@ describe('CLI Utils Module', () => {
 
       await appendWizardError('myapp', err);
 
-      const written = mockFsPromises.appendFile.mock.calls[0][1];
+      const written = fs.promises.appendFile.mock.calls[0][1];
       expect(written).toContain('Long validation message with details and field list');
       expect(written).not.toContain('\x1b[');
     });
@@ -279,7 +285,7 @@ describe('CLI Utils Module', () => {
     it('should write error.message when error.formatted is absent', async() => {
       await appendWizardError('myapp', new Error('Only message'));
 
-      const written = mockFsPromises.appendFile.mock.calls[0][1];
+      const written = fs.promises.appendFile.mock.calls[0][1];
       expect(written).toContain('Only message');
     });
 
@@ -289,7 +295,7 @@ describe('CLI Utils Module', () => {
 
       await appendWizardError('myapp', err);
 
-      const written = mockFsPromises.appendFile.mock.calls[0][1];
+      const written = fs.promises.appendFile.mock.calls[0][1];
       expect(written).toContain('Long error message here');
     });
 
@@ -297,12 +303,12 @@ describe('CLI Utils Module', () => {
       await appendWizardError('', new Error('x'));
       await appendWizardError('UPPERCASE', new Error('x'));
 
-      expect(mockFsPromises.mkdir).not.toHaveBeenCalled();
-      expect(mockFsPromises.appendFile).not.toHaveBeenCalled();
+      expect(fs.promises.mkdir).not.toHaveBeenCalled();
+      expect(fs.promises.appendFile).not.toHaveBeenCalled();
     });
 
     it('should not throw when fs fails', async() => {
-      mockFsPromises.mkdir.mockRejectedValue(new Error('Permission denied'));
+      fs.promises.mkdir.mockRejectedValue(new Error('Permission denied'));
 
       await appendWizardError('myapp', new Error('x'));
 
