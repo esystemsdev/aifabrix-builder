@@ -37,9 +37,21 @@ jest.mock('fs', () => {
   };
 });
 
+const actualFs = jest.requireActual('fs');
+
 describe('External System RBAC Split-JSON', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Restore conditional existsSync/statSync so getProjectRoot() resolves correctly (don't use mockReturnValue(true))
+    const pathMod = require('path');
+    fs.existsSync.mockImplementation((filePath) => {
+      const p = String(filePath);
+      const isDeployJson = p.includes('testexternal-deploy.json');
+      const isOutputDir = p.includes('integration') && (p.endsWith('testexternal') || p.endsWith('testexternal' + pathMod.sep) || p.includes('testexternal' + pathMod.sep));
+      if (isDeployJson || isOutputDir) return true;
+      return actualFs.existsSync(filePath);
+    });
+    fs.statSync.mockImplementation((filePath) => actualFs.statSync(filePath));
   });
 
   describe('splitDeployJson with external system JSON containing roles/permissions', () => {
@@ -80,8 +92,6 @@ describe('External System RBAC Split-JSON', () => {
         ]
       };
 
-      fs.existsSync.mockReturnValue(true);
-      fs.statSync.mockReturnValue({ isFile: () => true });
       fs.promises.readFile.mockResolvedValue(JSON.stringify(externalSystemJson));
       fs.promises.writeFile.mockResolvedValue();
       fs.promises.mkdir.mockResolvedValue();
@@ -114,8 +124,6 @@ describe('External System RBAC Split-JSON', () => {
         authentication: { type: 'apikey' }
       };
 
-      fs.existsSync.mockReturnValue(true);
-      fs.statSync.mockReturnValue({ isFile: () => true });
       fs.promises.readFile.mockResolvedValue(JSON.stringify(externalSystemJson));
       fs.promises.writeFile.mockResolvedValue();
       fs.promises.mkdir.mockResolvedValue();
@@ -150,8 +158,6 @@ describe('External System RBAC Split-JSON', () => {
         ]
       };
 
-      fs.existsSync.mockReturnValue(true);
-      fs.statSync.mockReturnValue({ isFile: () => true });
       fs.promises.readFile.mockResolvedValue(JSON.stringify(externalSystemJson));
       fs.promises.writeFile.mockResolvedValue();
       fs.promises.mkdir.mockResolvedValue();
@@ -189,8 +195,6 @@ describe('External System RBAC Split-JSON', () => {
         ]
       };
 
-      fs.existsSync.mockReturnValue(true);
-      fs.statSync.mockReturnValue({ isFile: () => true });
       fs.promises.readFile.mockResolvedValue(JSON.stringify(externalSystemJson));
       fs.promises.writeFile.mockResolvedValue();
       fs.promises.mkdir.mockResolvedValue();
@@ -236,8 +240,6 @@ describe('External System RBAC Split-JSON', () => {
         ]
       };
 
-      fs.existsSync.mockReturnValue(true);
-      fs.statSync.mockReturnValue({ isFile: () => true });
       fs.promises.readFile.mockResolvedValue(JSON.stringify(externalSystemJson));
       fs.promises.writeFile.mockResolvedValue();
       fs.promises.mkdir.mockResolvedValue();
