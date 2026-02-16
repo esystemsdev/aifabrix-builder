@@ -349,36 +349,32 @@ describe('App.js Additional Coverage Tests', () => {
   });
 
   describe('pushApp - successful ACR authentication and push flow', () => {
+    let savedProjectRoot;
+
     beforeEach(() => {
-      const appName = 'test-app';
-      const variables = {
-        image: {
-          name: appName,
-          registry: 'myacr.azurecr.io'
-        }
-      };
-      const configContent = yaml.dump(variables);
-      // Write to both tempDir and cwd so config is found whether mock or real path resolution runs (CI)
-      const dirs = [
-        path.join(tempDir, 'builder', appName),
-        path.join(process.cwd(), 'builder', appName)
-      ];
-      for (const appPath of dirs) {
-        fsSync.mkdirSync(appPath, { recursive: true });
-        fsSync.writeFileSync(path.join(appPath, 'application.yaml'), configContent);
-      }
+      savedProjectRoot = global.PROJECT_ROOT;
+      fsSync.writeFileSync(path.join(tempDir, 'package.json'), '{}');
+      global.PROJECT_ROOT = tempDir;
+      paths.clearProjectRootCache();
 
-      jest.spyOn(paths, 'detectAppType').mockImplementation(async(name) => ({
-        appPath: path.join(process.cwd(), 'builder', name),
-        appType: 'regular',
-        baseDir: 'builder',
-        isExternal: false
-      }));
+      const appPath = path.join(tempDir, 'builder', 'test-app');
+      fsSync.mkdirSync(appPath, { recursive: true });
+      fsSync.writeFileSync(
+        path.join(appPath, 'application.yaml'),
+        yaml.dump({
+          app: { key: 'test-app' },
+          image: { registry: 'myacr.azurecr.io' }
+        })
+      );
 
-      // Mock validateRegistryURL to return true for valid registries
       pushUtils.validateRegistryURL.mockImplementation((url) => {
         return url.endsWith('.azurecr.io');
       });
+    });
+
+    afterEach(() => {
+      global.PROJECT_ROOT = savedProjectRoot;
+      paths.clearProjectRootCache();
     });
 
     it('should handle successful push with ACR already authenticated', async() => {
@@ -471,19 +467,28 @@ describe('App.js Additional Coverage Tests', () => {
   });
 
   describe('pushApp - error paths', () => {
-    beforeEach(() => {
-      const appName = 'test-app';
-      for (const base of [tempDir, process.cwd()]) {
-        const appPath = path.join(base, 'builder', appName);
-        fsSync.mkdirSync(appPath, { recursive: true });
-      }
+    let savedProjectRoot;
 
-      jest.spyOn(paths, 'detectAppType').mockImplementation(async(name) => ({
-        appPath: path.join(process.cwd(), 'builder', name),
-        appType: 'regular',
-        baseDir: 'builder',
-        isExternal: false
-      }));
+    beforeEach(() => {
+      savedProjectRoot = global.PROJECT_ROOT;
+      fsSync.writeFileSync(path.join(tempDir, 'package.json'), '{}');
+      global.PROJECT_ROOT = tempDir;
+      paths.clearProjectRootCache();
+
+      const appPath = path.join(tempDir, 'builder', 'test-app');
+      fsSync.mkdirSync(appPath, { recursive: true });
+      fsSync.writeFileSync(
+        path.join(appPath, 'application.yaml'),
+        yaml.dump({
+          app: { key: 'test-app' },
+          image: { registry: 'myacr.azurecr.io' }
+        })
+      );
+    });
+
+    afterEach(() => {
+      global.PROJECT_ROOT = savedProjectRoot;
+      paths.clearProjectRootCache();
     });
 
     it('should handle missing config file error', async() => {

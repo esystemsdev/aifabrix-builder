@@ -59,6 +59,18 @@ describe('Application Module - Comprehensive Tests', () => {
     clearProjectRootCache();
     jest.clearAllMocks();
 
+    // Create builder/test-app and minimal application.yaml so detectAppType finds the app
+    // (used by generateDockerfileForApp and pushApp)
+    const appPath = path.join(tempDir, 'builder', 'test-app');
+    fsSync.mkdirSync(appPath, { recursive: true });
+    fsSync.writeFileSync(
+      path.join(appPath, 'application.yaml'),
+      yaml.dump({
+        app: { key: 'test-app', name: 'Test App' },
+        image: { registry: 'myacr.azurecr.io' }
+      })
+    );
+
     // Mock inquirer to return default values
     const inquirer = require('inquirer');
     inquirer.prompt.mockResolvedValue({
