@@ -218,6 +218,11 @@ describe('App.js Uncovered Paths', () => {
     beforeEach(() => {
       const appPath = path.join(tempDir, 'builder', 'test-app');
       fsSync.mkdirSync(appPath, { recursive: true });
+      // Default application.yaml so detectAppType finds the app (tests overwrite when needed)
+      fsSync.writeFileSync(
+        path.join(appPath, 'application.yaml'),
+        yaml.dump({ app: { key: 'test-app' }, image: { registry: 'myacr.azurecr.io' } })
+      );
     });
 
     it('should handle config load errors', async() => {
@@ -349,21 +354,20 @@ describe('App.js Uncovered Paths', () => {
   });
 
   describe('generateDockerfileForApp - uncovered paths', () => {
+    beforeEach(() => {
+      const appPath = path.join(tempDir, 'builder', 'test-app');
+      fsSync.mkdirSync(appPath, { recursive: true });
+      fsSync.writeFileSync(
+        path.join(appPath, 'application.yaml'),
+        yaml.dump({ app: { key: 'test-app' }, build: { language: 'typescript', port: 3000 } })
+      );
+    });
+
     it('should handle existing Dockerfile without force flag', async() => {
       const appName = 'test-app';
       const appPath = path.join(tempDir, 'builder', appName);
 
-      fsSync.mkdirSync(appPath, { recursive: true });
       fsSync.writeFileSync(path.join(appPath, 'Dockerfile'), 'FROM node:16\n');
-
-      const variables = {
-        build: { language: 'typescript', port: 3000 }
-      };
-
-      fsSync.writeFileSync(
-        path.join(appPath, 'application.yaml'),
-        yaml.dump(variables)
-      );
 
       await expect(app.generateDockerfileForApp(appName, {}))
         .rejects.toThrow('Dockerfile already exists');
