@@ -2,11 +2,11 @@
 
 ← [Documentation index](../README.md) · [Configuration](README.md)
 
-Environment variables template. `aifabrix resolve <app>` generates `.env` from this file plus secrets.
+Environment variables template. `aifabrix resolve <app>` and run/build generate `.env` from this file plus secrets. The only persisted `.env` is written to `build.envOutputPath` when set (or to a temp path for run); never to `builder/<app>/.env` or `integration/<app>/.env`.
 
 **kv:// references:** `kv://name` resolves from the secrets file (e.g. `~/.aifabrix/secrets.local.yaml`). Pattern: `<app>-client-idKeyVault`, `<app>-client-secretKeyVault`, or any `*KeyVault` key.
 
-**Auto-added variables:** Database (if requires.database), Redis (if requires.redis), language-specific (NODE_ENV, PYTHON*), MISO_* (if controller enabled), ALLOWED_ORIGINS, WEB_SERVER_URL. Values like `${NODE_ENV}` and `${MISO_HOST}` are resolved from [env-config](env-config.md).
+**Auto-added variables:** Database (if requires.database), Redis (if requires.redis), language-specific (NODE_ENV, PYTHON*), MISO_* (if controller enabled), ALLOWED_ORIGINS, WEB_SERVER_URL. Values like `${NODE_ENV}`, `${PORT}`, and `${MISO_HOST}` are resolved from [env-config](env-config.md) and application config (for `${PORT}`).
 
 **Example:**
 ```bash

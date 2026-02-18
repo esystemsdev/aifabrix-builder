@@ -736,14 +736,8 @@
       "properties": {
         "envOutputPath": {
           "type": "string",
-          "description": "Path where .env file is copied for local development (relative to builder/)",
+          "description": "Path where .env file is written for local development (relative to config dir); single .env for run",
           "pattern": "^[^/].*"
-        },
-        "localPort": {
-          "type": "integer",
-          "description": "Port for local development (different from Docker port)",
-          "minimum": 1000,
-          "maximum": 65535
         },
         "containerPort": {
           "type": "integer",

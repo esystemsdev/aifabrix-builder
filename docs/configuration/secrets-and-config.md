@@ -12,15 +12,23 @@ In production, AI Fabrix stores secrets in **Azure Key Vault**. Using `kv://` re
 
 ## config.yaml
 
-Location: `~/.aifabrix/config.yaml`. Manages developer-id, aifabrix-home, aifabrix-secrets, aifabrix-env-config, traefik, controller, environment, device tokens, and per-environment client tokens.
+Location: `~/.aifabrix/config.yaml`. Manages developer-id, aifabrix-home, aifabrix-secrets, aifabrix-env-config, traefik, controller, environment, device tokens, per-environment client tokens, and **remote development** when using a remote dev server.
 
 **Key fields:** `developer-id` (read by `aifabrix up-infra`), `traefik` (set by `aifabrix up-infra --traefik`), `controller` and `environment` (set by login/auth config), `device` (device flow tokens), `environments.<env>.clients.<app>` (client tokens). Tokens can be encrypted at rest when `secrets-encryption` is set.
 
-## secrets.local.yaml
+**Remote development (when `remote-server` is set):** `aifabrix-workspace-root` (path on the remote host used for sync and app code), `remote-server` (SSH host for remote Docker and Mutagen), `docker-endpoint` (Docker API endpoint on the remote host). All dev APIs (settings, secrets, sync) use **certificate (mTLS) authentication**. You can refresh config from the server with `aifabrix dev config` after `aifabrix dev init`; `GET /api/dev/settings` (cert-authenticated) provides sync and Docker parameters. See [Commands: Developer isolation](../commands/developer-isolation.md) for `dev init` and remote setup.
 
-**Single place:** One `secrets.local.yaml` (local or shared) holds all secrets the CLI needs. Everyone can point to the same file so there is no per-developer manual secret setup. Use the path from **`aifabrix-secrets`** in `config.yaml` to set a custom location (e.g. a shared drive or team path).
+## aifabrix-secrets: remote vs local
 
-Location: `~/.aifabrix/secrets.local.yaml` or path from `aifabrix-secrets` in config. Flat key-value; pattern `<app>-client-idKeyVault`, `<app>-client-secretKeyVault`, and other `*KeyVault` keys. Used by `aifabrix resolve`, `aifabrix login --method credentials`, and deploy. The CLI writes to this file only when you run `aifabrix secrets set`, `aifabrix secure`, or when the system bootstraps an encryption key on empty install; otherwise treat it as edit-at-your-own-risk. Recommended permissions: 600.
+**When `aifabrix-secrets` is a file path:** Secrets are stored in that file (e.g. `~/.aifabrix/secrets.local.yaml` or a project path). `aifabrix resolve`, run, and build read from it. `secrets list`, `secrets set`, and `secrets remove` operate on that file; use `--shared` to read/write shared keys from the same file (see [Commands: Utilities](../commands/utilities.md)).
+
+**When `aifabrix-secrets` is an `http(s)://` URL:** Shared secrets are served by the remote API. `secrets list --shared`, `secrets set --shared`, and `secrets remove --shared` call the API (cert-authenticated). Shared values are **never stored on disk**; they are fetched at resolution time when generating `.env`. Local (non-shared) secrets can still use a local file if configured. Admin or secret-manager role is required for shared set/remove when using the remote API.
+
+## secrets.local.yaml (file-based secrets)
+
+**Single place:** When using a file for secrets, one `secrets.local.yaml` (local or shared) holds the secrets the CLI needs. Use the path from **`aifabrix-secrets`** in `config.yaml` to set a custom location (e.g. a shared drive or team path).
+
+Location: `~/.aifabrix/secrets.local.yaml` or path from `aifabrix-secrets` in config (when it is a path). Flat key-value; pattern `<app>-client-idKeyVault`, `<app>-client-secretKeyVault`, and other `*KeyVault` keys. Used by `aifabrix resolve`, `aifabrix login --method credentials`, and deploy. The CLI writes to this file only when you run `aifabrix secret set` (local), `aifabrix secure`, or when the system bootstraps an encryption key on empty install; otherwise treat it as edit-at-your-own-risk. Recommended permissions: 600.
 
 ### Special key: secrets-encryptionKeyVault
 

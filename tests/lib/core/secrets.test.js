@@ -79,6 +79,15 @@ jest.mock('../../../lib/core/config', () => ({
   CONFIG_FILE: '/mock/config/dir/config.yaml'
 }));
 
+jest.mock('../../../lib/utils/remote-dev-auth', () => ({
+  isRemoteSecretsUrl: jest.fn((v) => typeof v === 'string' && (v.startsWith('http://') || v.startsWith('https://'))),
+  getRemoteDevAuth: jest.fn().mockResolvedValue(null)
+}));
+
+jest.mock('../../../lib/api/dev.api', () => ({
+  listSecrets: jest.fn().mockResolvedValue([])
+}));
+
 // Require config after mock is defined
 const config = require('../../../lib/core/config');
 
@@ -2135,6 +2144,28 @@ environments:
       expect(result).toEqual(canonicalSecrets);
     });
 
+    it('when aifabrix-secrets is https URL, merges shared secrets from API with user (user wins)', async() => {
+      const configMock = require('../../../lib/core/config');
+      const remoteDevAuth = require('../../../lib/utils/remote-dev-auth');
+      const devApi = require('../../../lib/api/dev.api');
+
+      configMock.getSecretsPath.mockResolvedValue('https://dev.example.com/secrets');
+      remoteDevAuth.getRemoteDevAuth.mockResolvedValue({
+        serverUrl: 'https://dev.example.com',
+        clientCertPem: 'mock-pem'
+      });
+      devApi.listSecrets.mockResolvedValue([
+        { name: 'API_KEY', value: 'secret-from-api' },
+        { name: 'DB_PASS', value: 'db-from-api' }
+      ]);
+
+      const result = await secrets.loadSecrets(undefined, 'myapp');
+      expect(remoteDevAuth.getRemoteDevAuth).toHaveBeenCalled();
+      expect(devApi.listSecrets).toHaveBeenCalledWith('https://dev.example.com', 'mock-pem');
+      expect(result.API_KEY).toBe('secret-from-api');
+      expect(result.DB_PASS).toBe('db-from-api');
+    });
+
     it('when config has aifabrix-secrets, local (user) file is strongest and overrides project for same key', async() => {
       const configMock = require('../../../lib/core/config');
       const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
@@ -2745,8 +2776,7 @@ environments:
           return `
 build:
   envOutputPath: ../app/.env
-  localPort: 4000
-port: 3000
+port: 4000
 `;
         }
         if (filePath === envPath) {
@@ -2756,7 +2786,7 @@ port: 3000
       });
     });
 
-    it('should copy .env to envOutputPath with localPort', async() => {
+    it('should copy .env to envOutputPath with port', async() => {
       const outputPath = path.resolve(builderPath, '../app/.env');
 
       // Set developer-id to 0 for this test to avoid offset

@@ -17,19 +17,13 @@ aifabrix build myapp
 1. **Loads configuration** from `builder/myapp/application.yaml`
 2. **Detects language** (or uses what you specified)
 3. **Finds or generates Dockerfile**
-   - Looks in your app root
+   - Looks in your app root (or `build.context` when set)
    - If not found, generates from template
-4. **Builds Docker image** with proper context
+4. **Builds Docker image** with proper context (`build.context` is the canonical app code directory; it is also used for `run --reload` as the local mount path and, for remote Docker, as the Mutagen local path)
 5. **Builds image as** `myapp-dev<developerId>:<tag>` and also tags `myapp:<tag>` for compatibility
-6. **Generates `.env` files** from env.template + secrets
-   - **Docker `.env`**: `builder/myapp/.env` - For container runtime
-     - Uses `port` from application.yaml
-     - Uses docker service names (redis, postgres)
-     - All ports get developer-id adjustment
-   - **Local `.env`**: Generated at `build.envOutputPath` (if configured) - For local development
-     - Uses `build.localPort` (or `port` as fallback) from application.yaml
-     - Uses localhost/dev.aifabrix for infrastructure hosts
-     - App port gets developer-id adjustment; infra ports use base + developer-id adjustment
+6. **Resolves env** from env.template + secrets in memory; the **only** persisted `.env` is written to `build.envOutputPath` when set (for run, compose uses this path or a temp path; no `.env` under `builder/<app>/` or `integration/<app>/`)
+   - Container runtime: compose's `env_file` points to that single path (envOutputPath or temp for run)
+   - Uses `port` from application.yaml; uses docker service names (redis, postgres) for container-to-container; all ports get developer-id adjustment where applicable
 
 ```mermaid
 %%{init: {
@@ -72,11 +66,9 @@ FindDockerfile -->|Not Found| GenerateDockerfile[Generate from Template]:::base
 UseExisting --> BuildImage[Build Docker Image]:::base
 GenerateDockerfile --> BuildImage
 BuildImage --> TagImage[Tag Image<br/>myapp-devID:tag]:::base
-TagImage --> GenerateEnv[Generate .env Files]:::base
-GenerateEnv --> DockerEnv[Docker .env<br/>builder/myapp/.env]:::base
-GenerateEnv --> LocalEnv[Local .env<br/>envOutputPath if configured]:::base
-DockerEnv --> Complete[Build Complete]:::base
-LocalEnv --> Complete
+TagImage --> ResolveEnv[Resolve env in memory]:::base
+ResolveEnv --> SingleEnv[Single .env at envOutputPath<br/>or temp for run]:::base
+SingleEnv --> Complete[Build Complete]:::base
 ```
 
 ### Output
@@ -88,7 +80,7 @@ LocalEnv --> Complete
 ✓ Building image...
 ✓ Image built: myapp-dev123:latest
 ✓ Tagged image: myapp:latest
-✓ Generated .env file
+✓ Resolved env (written to envOutputPath when configured)
 ```
 
 ---
@@ -268,7 +260,7 @@ aifabrix build myapp --force-template
 
 ## Build Context
 
-**Build context** = files Docker can access during build.
+**Build context** (`build.context`) = canonical app code directory for both build and **run --reload**. Docker uses it for the build; for **run --reload**, local Docker mounts this path, and remote Docker uses it as the Mutagen local path (remote path = user Mutagen folder + `/dev/` + appKey). Resolved relative to the directory containing the config file.
 
 ### Default Context
 
@@ -285,6 +277,7 @@ build:
 - Monorepo: build from workspace root
 - Shared code: include sibling directories
 - Build tools: access files outside app folder
+- **run --reload**: same path is used for local mount or Mutagen sync
 
 ### Example: Monorepo
 
@@ -318,31 +311,23 @@ docker images | grep myapp
 docker images | grep myapp-dev
 ```
 
-### .env Files
+### .env (single file)
 
-**Docker `.env` file**  
-**Location:** `builder/myapp/.env`  
-**Contains:** Resolved environment variables for Docker container runtime
-- Uses docker service names (redis, postgres) for infrastructure
-- Uses `port` from application.yaml for application port
-- All ports include developer-id adjustment
+Secrets are resolved in memory; the **only** persisted `.env` is written to `build.envOutputPath` when set. For run, compose uses this path or a temp path; there is no `.env` under `builder/<app>/` or `integration/<app>/`.
 
-**View:**
-```bash
-cat builder/myapp/.env
-```
-
-**Local `.env` file** (if `build.envOutputPath` is configured)  
+**When `build.envOutputPath` is set:**  
 **Location:** Path specified in `build.envOutputPath` (e.g., `../../apps/myapp/.env`)  
-**Contains:** Resolved environment variables for local development
-- Uses localhost/dev.aifabrix for infrastructure hosts
-- Uses `build.localPort` (or `port` as fallback) from application.yaml
-- App port includes developer-id adjustment; infra ports use base + developer-id adjustment
+**Contains:** Resolved environment variables for container runtime and local use
+- Uses docker service names (redis, postgres) for container-to-container
+- Uses `port` from application.yaml; developer-id adjustment applies where applicable
+- For run, compose's `env_file` points to this path (or temp when envOutputPath is not set)
 
 **View:**
 ```bash
 cat apps/myapp/.env  # If envOutputPath points here
 ```
+
+For an env summary with secrets masked, use `aifabrix logs myapp`.
 
 ```mermaid
 %%{init: {
@@ -382,11 +367,8 @@ EnvTemplate[env.template<br/>Template variables]:::primary --> Resolver[Secret R
 Secrets[secrets.yaml<br/>kv:// references]:::base --> Resolver
 EnvConfig[env-config.yaml<br/>Template values]:::base --> Resolver
 
-Resolver --> DockerEnv[Docker .env<br/>builder/myapp/.env<br/>Docker service names<br/>Container ports]:::base
-Resolver --> LocalEnv[Local .env<br/>envOutputPath<br/>localhost hosts<br/>Local ports]:::base
-
-DockerEnv --> DockerContainer[Docker Container]:::base
-LocalEnv --> LocalDev[Local Development]:::base
+Resolver --> SingleEnv[Single .env at envOutputPath<br/>or temp for run]:::base
+SingleEnv --> DockerContainer[Docker Container / Run]:::base
 ```
 
 ### Build Logs

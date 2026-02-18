@@ -11,7 +11,7 @@ Table of contents for all AI Fabrix Builder documentation.
 | Document                                                                    | Description                                                            |
 | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | [Your own applications](your-own-applications.md)                           | Create, configure, build, and run your own app (app-centric).          |
-| [CLI Commands Reference](commands/README.md)                                 | All CLI commands and options (alias: use `aifx` for `aifabrix`).       |
+| [CLI Commands Reference](commands/README.md)                                 | All CLI commands and options (alias: use `af` for `aifabrix`).       |
 
 **Example application and SDK:** For an example app and TypeScript/Python client to talk to the dataplane and controller, see [aifabrix-miso-client](https://github.com/esystemsdev/aifabrix-miso-client).
 
@@ -44,7 +44,7 @@ Table of contents for all AI Fabrix Builder documentation.
 | [Running](running.md)                                                       | Run applications locally.                                              |
 | [Deploying](deploying.md)                                                   | Deploy to Azure and environment setup.                                 |
 | [Deployment – first-time environment](deployment/environment-first-time.md) | First-time environment setup.                                          |
-| [Developer isolation](developer-isolation.md)                               | Port isolation for multiple developers.                                |
+| [Developer isolation](developer-isolation.md)                               | Port isolation (one network per developer), remote Docker, and dev init for remote setup. |
 
 
 ---

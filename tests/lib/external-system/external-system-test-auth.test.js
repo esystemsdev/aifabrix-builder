@@ -61,12 +61,11 @@ describe('External System Test Authentication Module', () => {
       const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
       const { resolveEnvironment } = require('../../../lib/core/config');
       resolveControllerUrl.mockResolvedValueOnce('https://controller.example.com');
-      resolveEnvironment.mockResolvedValueOnce('dev');
 
       const result = await setupIntegrationTestAuth(appName, options, config);
 
       expect(resolveControllerUrl).toHaveBeenCalledWith();
-      expect(resolveEnvironment).toHaveBeenCalledWith();
+      expect(resolveEnvironment).not.toHaveBeenCalled();
       expect(getDeploymentAuth).toHaveBeenCalledWith(
         'https://controller.example.com',
         'dev',

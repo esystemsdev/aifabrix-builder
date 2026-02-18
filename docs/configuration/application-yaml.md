@@ -8,7 +8,7 @@ Application config can be **application.yaml**, **application.yml**, or **applic
 
 **Required:** app.key, app.displayName, app.description, app.type, port (except external), image.name, image.registry, image.registryMode (except external), build.language.
 
-**Optional:** app.version, build.localPort, build.dockerfile, build.context, build.envOutputPath, requires.database, requires.databases, requires.redis, requires.storage, healthCheck, authentication, roles, permissions, repository, startupCommand, runtimeVersion, scaling, frontDoorRouting, deployment.environment, externalIntegration, configuration (portal UI).
+**Optional:** app.version, build.dockerfile, **build.context** (canonical app code directory for local and remote: local `run --reload` uses it as the mount path; remote `run --reload` uses it as the Mutagen local path; resolved relative to the directory containing the config file), **build.envOutputPath** (the only persisted `.env` is written here, or to a temp path when not set for run; no `.env` under `builder/<app>/` or `integration/<app>/`), requires.database, requires.databases, requires.redis, requires.storage, healthCheck, authentication, roles, permissions, repository, startupCommand, runtimeVersion, scaling, frontDoorRouting, deployment.environment, externalIntegration, configuration (portal UI). Port for the application comes from `port` in application.yaml only (developer-id offset applies when applicable).
 
 ### Version and tag
 

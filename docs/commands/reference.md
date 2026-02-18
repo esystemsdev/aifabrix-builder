@@ -51,8 +51,17 @@ aifabrix json myapp
 
 # View configuration
 cat builder/myapp/application.yaml
-cat builder/myapp/.env
+# .env: view at build.envOutputPath if set, or use "aifabrix logs myapp" for env summary (masked)
 cat builder/myapp/myapp-deploy.json
+```
+
+### Dev with live reload and remote onboarding
+```bash
+# Local or remote dev with live reload (dev only)
+aifabrix run myapp --reload
+
+# Remote: one-time setup (cert, settings, SSH keys for Mutagen)
+aifabrix dev init
 ```
 
 ---

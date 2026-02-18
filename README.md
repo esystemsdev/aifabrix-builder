@@ -34,7 +34,7 @@ Install the AI Fabrix platform and test it locally. Then add external integratio
 npm install -g @aifabrix/builder
 ```
 
-**Alias:** You can use `aifx` instead of `aifabrix` in any command.
+**Alias:** You can use `af` instead of `aifabrix` in any command.
 
 ---
 
@@ -60,12 +60,12 @@ Get the platform running locally so you can try it.
 
    - **OpenAI:** set your API key:
      ```bash
-     aifabrix secrets set secrets-openaiApiKeyVault <your-openai-secret-key>
+     aifabrix secret set secrets-openaiApiKeyVault <your-openai-secret-key>
      ```
    - **Azure OpenAI:** set endpoint and API key:
      ```bash
-     aifabrix secrets set azure-openaiapi-urlKeyVault <your-azure-openai-endpoint-url>
-     aifabrix secrets set secrets-azureOpenaiApiKeyVault <your-azure-openai-secret-key>
+     aifabrix secret set azure-openaiapi-urlKeyVault <your-azure-openai-endpoint-url>
+     aifabrix secret set secrets-azureOpenaiApiKeyVault <your-azure-openai-secret-key>
      ```
 
 Secrets are stored in `~/.aifabrix/secrets.local.yaml` or the file from `aifabrix-secrets` in your config (e.g. `builder/secrets.local.yaml`).

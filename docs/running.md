@@ -8,6 +8,8 @@ How to run your application in Docker for local development.
 
 **Run only uses builder:** `aifabrix run <app>` only runs applications that exist in `builder/<app>/`. External systems in `integration/` are not run as Docker containers. For them: run `aifabrix validate <integration-name>`, then upload or deploy via the controller (e.g. `aifabrix upload <system-key>` or `aifabrix deploy <app>`), then test via OpenAPI endpoints.
 
+**Prerequisites:** Env is generated at run time: the builder resolves secrets and writes the only `.env` to `build.envOutputPath` when set, or to a temp path for run. You do not need a pre-existing `.env` file in `builder/<app>/`; set `build.envOutputPath` in application.yaml if you want a persisted env file for run.
+
 ## Start Your App
 
 ```bash
@@ -17,7 +19,7 @@ aifabrix run myapp
 ### What Happens
 
 1. **Checks infrastructure** - Postgres and Redis running?
-2. **Generates .env file** - Creates environment variables from template
+2. **Resolves env** - Resolves `env.template` and secrets in memory and writes the only persisted `.env` to `build.envOutputPath` when set (or to a temp path for run); no `.env` under `builder/<app>/` or `integration/<app>/`.
 3. **Generates docker-compose** - Creates container configuration
 4. **Creates database** - Automatically creates database and user (if app requires database)
 5. **Starts container** - Named `aifabrix-myapp`
@@ -107,15 +109,19 @@ For Traefik reverse proxy setup (optional), see [Infrastructure Guide – Traefi
 
 ## Accessing Your App
 
-**URL:** <http://localhost>:<localPort>
+**URL:** <http://localhost>:<port>
 
-**localPort from application.yaml:**
+**Port from application.yaml** (`port` is the only source; developer-id offset applies when not 0):
 ```yaml
-build:
-  localPort: 3001  # You access at localhost:3001
+port: 3001  # You access at localhost:3001 (or localhost:3101 for developer 01)
 ```
 
-**Or override:**
+**Environment:** Use `--env dev|tst|pro` to run for a specific environment:
+```bash
+aifabrix run myapp --env dev
+```
+
+**Or override port:**
 ```bash
 aifabrix run myapp --port 3002
 ```
@@ -140,7 +146,7 @@ The database initialization happens via a `db-init` service that runs before you
 1. Waits for PostgreSQL to be ready
 2. Checks if database already exists
 3. Creates database if it doesn't exist
-4. Creates database user with password from `.env` file
+4. Creates database user with password from the resolved env (single .env at envOutputPath or temp for run)
 5. Grants all privileges and sets schema ownership
 
 ### Example Output
@@ -429,7 +435,7 @@ docker cp ./file.txt aifabrix-myapp:/mnt/data/
 
 ## Environment Variables
 
-Your app sees variables from the `.env` file that the builder generates from `env.template`.
+Your app sees variables from the resolved env. The builder resolves `env.template` and secrets in memory and writes the **only** persisted `.env` to `build.envOutputPath` when set (or to a temp path for run); there is no `.env` in `builder/<app>/` or `integration/<app>/`.
 
 **Workflow:** Edit **only** `env.template`, then run **one command** to apply settings:
 
@@ -437,13 +443,9 @@ Your app sees variables from the `.env` file that the builder generates from `en
 aifabrix run myapp
 ```
 
-That resolves `env.template`, updates `.env`, and (re)starts the container—no manual `.env` editing for normal use.
+That resolves `env.template`, writes env to envOutputPath or temp, and (re)starts the container—no manual `.env` editing for normal use.
 
-**View environment (masked):**
-```bash
-aifabrix logs myapp
-```
-(Shows env summary with secrets masked at the top, then logs.)
+**View environment (masked):** Use `aifabrix logs myapp` for an env summary (secrets masked) at the top of the output. If you set `build.envOutputPath`, you can also view the file at that path (e.g. `cat /path/from/envOutputPath`).
 
 ---
 
@@ -549,10 +551,7 @@ aifabrix run myapp --port 3001
    ```
    Look for "Database initialization complete!" message.
 
-3. **Check DATABASE_URL:**
-   ```bash
-   cat builder/myapp/.env | grep DATABASE_URL
-   ```
+3. **Check DATABASE_URL:** Use the env summary from `aifabrix logs myapp` (masked), or if `build.envOutputPath` is set, check the file at that path (e.g. `grep DATABASE_URL <envOutputPath>`).
 
 4. **Verify database exists:**
    ```bash
@@ -618,15 +617,13 @@ docker images myapp:latest
 
 ### Live Reload
 
-Mount your code as volume for hot reload:
+Use the builder for hot reload (recommended):
+
 ```bash
-docker run -d \
-  --name aifabrix-myapp \
-  --network infra_aifabrix-network \
-  -p 3000:3000 \
-  -v $(pwd):/app \
-  myapp:latest npm run dev
+aifabrix run myapp --reload
 ```
+
+**Local Docker:** Mounts the resolved `build.context` directory as the app code path so changes are reflected in the container. **Remote Docker** (when `remote-server` is set): Uses Mutagen to sync—local path = resolved `build.context`, remote path = user Mutagen folder + `/dev/` + appKey. With remote Docker configured, run and build use the remote Docker endpoint and Mutagen for dev `--reload`; run `aifabrix dev init` first. The `--reload` option is for **dev** only (not tst/pro).
 
 ### Debug Mode
 Edit `env.template` (e.g. add `DEBUG=*`, `NODE_ENV=development`), then run:

@@ -1,11 +1,11 @@
 {
   "name": "@aifabrix/builder",
-  "version": "2.40.2",
+  "version": "2.40.3",
   "description": "AI Fabrix Local Fabric & Deployment SDK",
   "main": "lib/index.js",
   "bin": {
     "aifabrix": "bin/aifabrix.js",
-    "aifx": "bin/aifabrix.js"
+    "af": "bin/aifabrix.js"
   },
   "scripts": {
     "test": "node tests/scripts/test-wrapper.js",

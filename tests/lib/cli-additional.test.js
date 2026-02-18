@@ -40,7 +40,7 @@ describe('CLI Additional Coverage Tests', () => {
         alias: jest.fn().mockReturnThis(),
         argument: jest.fn().mockReturnThis(),
         allowUnknownOption: jest.fn().mockReturnThis(),
-        // Support nested commands for command groups (e.g., 'secrets set')
+        // Support nested commands for command groups (e.g., 'secret set')
         command: jest.fn().mockImplementation(() => createMockCommand())
       };
       return mockCommand;

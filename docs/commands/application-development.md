@@ -148,8 +148,7 @@ aifabrix build myapp --force-template
 
 **Creates:**
 - Docker image: `myapp:latest`
-- `.env` file in `builder/`
-  - Note: build resolves variables using the local environment (run uses docker)
+- Env is resolved in memory; the only persisted `.env` is written to `build.envOutputPath` when configured (run uses the same single .env path or temp).
 
 **Issues:**
 - **"Docker not running"** → Start Docker Desktop
@@ -170,11 +169,21 @@ Run application locally in Docker container with automatic infrastructure connec
 **Prerequisites:**
 - Application must be in `builder/<app>/` and built: `aifabrix build <app>`
 - Infrastructure must be running: `aifabrix up-infra`
-- `.env` file must exist in `builder/<app>/`
+- Env is generated at run time to `build.envOutputPath` when set (or to a temp path); no requirement for a pre-existing `.env` file in `builder/<app>/`
 
 **Example:**
 ```bash
 aifabrix run myapp
+```
+
+**With live reload (dev only):** Local Docker mounts resolved `build.context`; remote Docker uses Mutagen (local = resolved `build.context`, remote = user Mutagen folder + `/dev/` + appKey).
+```bash
+aifabrix run myapp --reload
+```
+
+**Environment:** Run for a specific environment (dev, tst, pro):
+```bash
+aifabrix run myapp --env dev
 ```
 
 **Custom port:**
@@ -189,7 +198,9 @@ aifabrix run myapp --tag v1.0.0
 Overrides `image.tag` from application.yaml so you can run a different built version without changing config.
 
 **Flags:**
-- `-p, --port <port>` - Override local port (default: from application.yaml)
+- `--reload` - (Dev only) Mount or sync app code for live reload; local = mount `build.context`, remote = Mutagen sync
+- `--env <dev|tst|pro>` - Environment to run for (default: dev)
+- `-p, --port <port>` - Override port (default: from application.yaml `port`, developer offset applies)
 - `-d, --debug` - Enable debug output with detailed container information (port detection, container status, Docker commands, health check details)
 - `-t, --tag <tag>` - Image tag to run (e.g. v1.0.0); overrides application.yaml image.tag
 
@@ -211,7 +222,7 @@ aifabrix run myapp --debug
 3. Verifies infrastructure health
 4. Stops existing container if running
 5. Checks port availability
-6. Generates `.env` file from template (if needed)
+6. Resolves env in memory and writes to `build.envOutputPath` or temp (no `.env` in builder/)
 7. Generates Docker Compose configuration
 8. **Creates database and user** (if `requiresDatabase: true` in application.yaml)
    - Automatically creates database named after app key
@@ -313,6 +324,11 @@ To confirm that `-l error` shows all error-level lines from the full log:
 
 ---
 
+<a id="aifabrix-stop-app"></a>
+## aifabrix stop <app>
+
+Alias for [aifabrix down-app <app>](#aifabrix-down-app). Stops and removes the application container (optionally with `--volumes`).
+
 <a id="aifabrix-down-app"></a>
 ## aifabrix down-app <app>
 
@@ -336,6 +352,59 @@ aifabrix down-app myapp --volumes
 ```
 
 **Note:** Does not delete files under `builder/<app>/`. For full teardown including infra, use `aifabrix down-infra`.
+
+---
+
+<a id="aifabrix-shell-app"></a>
+## aifabrix shell <app>
+
+Open a shell in the running or ephemeral container (exec into the container; no SSH).
+
+**What:** Execs into the app container so you can run commands inside it. For **dev**: uses the running container if the app is up; for **tst**: starts an ephemeral container, runs the shell, then stops it.
+
+**When:** Debugging, running one-off commands (e.g. migrations, scripts) inside the app environment.
+
+**Usage:**
+```bash
+# Dev: shell into running container (or start ephemeral if not running)
+aifabrix shell myapp
+
+# Dev environment (default)
+aifabrix shell myapp --env dev
+
+# Tst: ephemeral container
+aifabrix shell myapp --env tst
+```
+
+**Options:**
+- `--env <dev|tst>` - Environment (dev = running or ephemeral container; tst = ephemeral)
+
+**See Also:** For external-system apps in `integration/`, use the external integration test flow (e.g. OpenAPI); `aifabrix shell` is for **builder** applications only.
+
+---
+
+<a id="aifabrix-test-app"></a>
+## aifabrix test <app> (builder applications)
+
+Run tests inside the container for **builder** applications (not external systems).
+
+**What:** Runs the app's test suite inside the container. For **dev**: uses the running container if the app is up; for **tst**: starts an ephemeral container, runs tests, then stops it.
+
+**When:** Running unit or integration tests in the same environment as the running app (same env, dependencies, network).
+
+**Usage:**
+```bash
+# Dev: run tests in running container or ephemeral
+aifabrix test myapp
+
+# Tst: ephemeral container
+aifabrix test myapp --env tst
+```
+
+**Options:**
+- `--env <dev|tst>` - Environment (dev = running or ephemeral; tst = ephemeral)
+
+**Note:** For **external-system** applications in `integration/`, testing is via the external integration flow (e.g. OpenAPI, upload, deploy); see [External Systems](../external-systems.md). `aifabrix test <app>` here refers only to builder apps in `builder/<app>/`.
 
 ---
 

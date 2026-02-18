@@ -9,10 +9,28 @@
 const {
   getPathConfig,
   setPathConfig,
-  createPathConfigFunctions
+  createPathConfigFunctions,
+  SETTINGS_RESPONSE_KEYS
 } = require('../../../lib/utils/config-paths');
 
+/** GET /api/dev/settings response parameter names per .cursor/plans/builder-cli.md §1 */
+const BUILDER_CLI_SETTINGS_KEYS = [
+  'user-mutagen-folder',
+  'secrets-encryption',
+  'aifabrix-secrets',
+  'aifabrix-env-config',
+  'remote-server',
+  'docker-endpoint',
+  'sync-ssh-user',
+  'sync-ssh-host'
+];
+
 describe('Config Paths Module', () => {
+  describe('SETTINGS_RESPONSE_KEYS (builder-cli.md contract)', () => {
+    it('should match GET /api/dev/settings response parameters from builder-cli.md §1', () => {
+      expect(SETTINGS_RESPONSE_KEYS).toEqual(BUILDER_CLI_SETTINGS_KEYS);
+    });
+  });
   describe('getPathConfig', () => {
     it('should return path value from config', async() => {
       const getConfigFn = jest.fn().mockResolvedValue({ 'test-key': '/test/path' });
@@ -178,6 +196,34 @@ describe('Config Paths Module', () => {
       it('should throw error if env config path is not provided', async() => {
         await expect(pathConfigFunctions.setAifabrixEnvConfigPath(null))
           .rejects.toThrow('Env config path is required and must be a string');
+      });
+    });
+
+    describe('mergeRemoteSettings', () => {
+      it('should merge only GET /api/dev/settings contract keys into config', async() => {
+        getConfigFn.mockResolvedValue({ existing: 'keep' });
+        const settings = {
+          'user-mutagen-folder': '/opt/workspace/dev-01',
+          'aifabrix-secrets': '/secrets.yaml',
+          'unknown-key': 'ignored'
+        };
+        await pathConfigFunctions.mergeRemoteSettings(settings);
+        expect(saveConfigFn).toHaveBeenCalledWith({
+          existing: 'keep',
+          'user-mutagen-folder': '/opt/workspace/dev-01',
+          'aifabrix-secrets': '/secrets.yaml'
+        });
+        expect(saveConfigFn.mock.calls[0][0]['unknown-key']).toBeUndefined();
+      });
+
+      it('should trim string values from settings', async() => {
+        getConfigFn.mockResolvedValue({});
+        await pathConfigFunctions.mergeRemoteSettings({
+          'remote-server': '  https://dev.example.com/  '
+        });
+        expect(saveConfigFn).toHaveBeenCalledWith({
+          'remote-server': 'https://dev.example.com/'
+        });
       });
     });
   });

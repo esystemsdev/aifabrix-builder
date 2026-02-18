@@ -73,12 +73,14 @@ Set environment variables before running `aifabrix up-infra --traefik`:
 - `TRAEFIK_CERT_FILE` - Absolute path to certificate file
 - `TRAEFIK_KEY_FILE` - Absolute path to private key file
 
-**Developer Isolation:**
+**Developer Isolation (one network per developer):**
 When using `--developer`, each developer gets:
 - Separate Docker Compose project: `infra-dev{id}`
-- Isolated network: `infra-dev{id}-aifabrix-network`
+- **One network per developer:** `infra-dev{id}-aifabrix-network` — dev, tst, and pro **share this same developer network** on the host (no separate networks per environment).
 - Isolated volumes: `dev{id}_postgres_data`, `dev{id}_redis_data`
 - Isolated containers: `aifabrix-dev{id}-postgres`, `aifabrix-dev{id}-redis`, etc.
+
+When `remote-server` is set in config, infrastructure may run on the remote host; see [Developer isolation commands](developer-isolation.md) for `dev init` and remote setup.
 
 **Issues:**
 - **"Port 5432 already in use"** → Stop other Postgres: `docker stop <container>`, or use `--developer` to use different ports

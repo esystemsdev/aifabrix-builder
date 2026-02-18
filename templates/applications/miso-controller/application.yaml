@@ -45,7 +45,6 @@ build:
   context: ../.. # Docker build context (relative to builder/miso-controller/)
   dockerfile: builder/miso-controller/Dockerfile # Dockerfile name (relative to project root)
   envOutputPath: ../../packages/miso-controller/.env # Copy .env to repo root for local dev (relative to builder/) (if null, no .env file is copied) (if empty, .env file is copied to repo root)
-  localPort: 3010 # Port for local development (different from Docker port)
   language: typescript # Runtime language for template selection (typescript or python)
 
 # =============================================================================

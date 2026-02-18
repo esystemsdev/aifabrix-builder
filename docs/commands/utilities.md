@@ -48,7 +48,7 @@ This will generate the .env file without running validation checks afterward.
 - `-f, --force` - Generate missing secret keys in secrets file
 - `--skip-validation` - Skip file validation after generating .env
 
-**Creates:** `builder/myapp/.env`
+**Output:** Writes `.env` **only** to `build.envOutputPath` when set in application.yaml (or document temp/run-only behaviour so it's consistent with run). No `.env` under `builder/<app>/` or `integration/<app>/`.
 
 **Issues:**
 - **"Secrets file not found"** → Create `~/.aifabrix/secrets.yaml`
@@ -313,11 +313,26 @@ Encrypted secrets are automatically decrypted when loaded by `aifabrix resolve`,
 
 ---
 
-## aifabrix secrets
+## aifabrix secret
 
-Manage secrets in secrets files.
+Manage secrets: local (project/user secrets file) and shared (file or remote API). When `aifabrix-secrets` in config is an **http(s)://** URL, shared secrets are served by the remote API; shared values are **never stored on disk** and are fetched at resolution time. When it is a file path, use the project secret file as today.
 
-### aifabrix secrets set
+<a id="aifabrix-secret-list"></a>
+### aifabrix secret list
+
+List secret **keys and values**. **Local:** list user's local secrets (project file from `aifabrix-secrets` or user secrets). **Shared:** `aifabrix secret list --shared` — when `aifabrix-secrets` is a file path, lists from that file; when it is an `http(s)://` URL, lists from GET `/api/dev/secrets` (cert required). Output format is `key: value` per line.
+
+**Usage:**
+```bash
+# List local secrets
+aifabrix secret list
+
+# List shared secrets (file path: from project file; URL: from API, cert required)
+aifabrix secret list --shared
+```
+
+<a id="aifabrix-secret-set"></a>
+### aifabrix secret set
 
 Set a secret value in secrets file.
 
@@ -325,23 +340,25 @@ Set a secret value in secrets file.
 
 **When:** Setting up new secrets, updating existing secret values, or configuring environment-specific secrets.
 
+You can add secrets manually in the project secrets file, but the recommended approach is to use the remote server (e.g. `aifabrix-secrets` URL in `config.yaml`).
+
 **Usage:**
 ```bash
 # Set secret in user secrets file (default)
-aifabrix secrets set keycloak-public-server-urlKeyVault "https://mydomain.com/keycloak"
+aifabrix secret set keycloak-public-server-urlKeyVault "https://mydomain.com/keycloak"
 
 # Set secret in general secrets file (shared across projects)
-aifabrix secrets set keycloak-public-server-urlKeyVault "https://mydomain.com/keycloak" --shared
+aifabrix secret set keycloak-public-server-urlKeyVault "https://mydomain.com/keycloak" --shared
 
 # Set secret with environment variable interpolation
-aifabrix secrets set keycloak-public-server-urlKeyVault "https://\${KEYCLOAK_HOST}:\${KEYCLOAK_PORT}"
+aifabrix secret set keycloak-public-server-urlKeyVault "https://\${KEYCLOAK_HOST}:\${KEYCLOAK_PORT}"
 
 # Set secret with full URL path
-aifabrix secrets set keycloak-public-server-urlKeyVault "https://keycloak.example.com/auth/realms/master"
+aifabrix secret set keycloak-public-server-urlKeyVault "https://keycloak.example.com/auth/realms/master"
 ```
 
 **Options:**
-- `--shared` - Save to general secrets file (from `config.yaml` `aifabrix-secrets`) instead of user secrets file
+- `--shared` - Save to shared secrets: when `aifabrix-secrets` is a file path, write to that file; when it is an `http(s)://` URL, POST to `/api/dev/secrets` (cert required; admin/secret-manager for shared when remote)
 
 **Secret Value Formats:**
 - **Full URLs**: Direct URL values (e.g., `https://mydomain.com/keycloak`)
@@ -355,16 +372,16 @@ aifabrix secrets set keycloak-public-server-urlKeyVault "https://keycloak.exampl
 **Examples:**
 ```bash
 # Set Keycloak public server URL in user secrets
-aifabrix secrets set keycloak-public-server-urlKeyVault "https://keycloak.example.com"
+aifabrix secret set keycloak-public-server-urlKeyVault "https://keycloak.example.com"
 
 # Set Keycloak public server URL in shared secrets file
-aifabrix secrets set keycloak-public-server-urlKeyVault "https://keycloak.example.com" --shared
+aifabrix secret set keycloak-public-server-urlKeyVault "https://keycloak.example.com" --shared
 
 # Set database password in user secrets
-aifabrix secrets set postgres-passwordKeyVault "my-secure-password"
+aifabrix secret set postgres-passwordKeyVault "my-secure-password"
 
 # Set API key with environment variable interpolation
-aifabrix secrets set api-keyKeyVault "\${API_KEY}"
+aifabrix secret set api-keyKeyVault "\${API_KEY}"
 ```
 
 **Output:**
@@ -384,6 +401,22 @@ aifabrix secrets set api-keyKeyVault "\${API_KEY}"
 - **"Secret key is required"** → Provide a non-empty key name
 - **"Secret value is required"** → Provide a non-empty value
 - **"File permission error"** → Ensure you have read/write access to secrets files directory
+
+<a id="aifabrix-secret-remove"></a>
+### aifabrix secret remove
+
+Remove a secret. **Local:** `aifabrix secret remove <key>` removes from user/project secrets file. **Shared:** `aifabrix secret remove <key> --shared` — when `aifabrix-secrets` is a file path, removes from that file; when it is an `http(s)://` URL, DELETE `/api/dev/secrets/{key}` (cert required).
+
+**Usage:**
+```bash
+# Remove local secret
+aifabrix secret remove my-keyKeyVault
+
+# Remove shared secret (file path vs API when URL)
+aifabrix secret remove my-keyKeyVault --shared
+```
+
+**Security note:** When `aifabrix-secrets` is a URL, shared secret values are never stored on disk; they are fetched at resolution time when generating `.env`.
 
 ---
 

@@ -278,10 +278,80 @@ describe('Environment Deployment Module', () => {
         .rejects.toThrow('Controller URL is required. Run "aifabrix login" to set the controller URL in config.yaml');
     });
 
-    it('should throw when config file is missing', async() => {
+    it('should deploy with default preset when config is not provided', async() => {
+      const mockToken = { token: 't', controller: 'http://localhost:3000' };
+      const mockDeploymentResponse = {
+        success: true,
+        data: { deploymentId: 'deploy-1', status: 'initiated' }
+      };
+      getOrRefreshDeviceToken.mockResolvedValue(mockToken);
+      deploymentsApi.deployEnvironment.mockResolvedValue(mockDeploymentResponse);
+
+      await deployEnvironment('dev', { noPoll: true });
+
+      expect(deploymentsApi.deployEnvironment).toHaveBeenCalledWith(
+        expect.any(String),
+        'dev',
+        expect.objectContaining({ token: 't' }),
+        expect.objectContaining({
+          environmentConfig: expect.objectContaining({
+            key: 'dev',
+            environment: 'dev',
+            preset: 's',
+            serviceName: 'aifabrix',
+            location: 'swedencentral'
+          }),
+          dryRun: false
+        })
+      );
+    });
+
+    it('should deploy with explicit preset (m, l, xl) when config is not provided', async() => {
+      const mockToken = { token: 't', controller: 'http://localhost:3000' };
+      const mockDeploymentResponse = {
+        success: true,
+        data: { deploymentId: 'deploy-2', status: 'initiated' }
+      };
+      getOrRefreshDeviceToken.mockResolvedValue(mockToken);
+      deploymentsApi.deployEnvironment.mockResolvedValue(mockDeploymentResponse);
+
+      await deployEnvironment('tst', { preset: 'm', noPoll: true });
+
+      expect(deploymentsApi.deployEnvironment).toHaveBeenCalledWith(
+        expect.any(String),
+        'tst',
+        expect.any(Object),
+        expect.objectContaining({
+          environmentConfig: expect.objectContaining({
+            key: 'tst',
+            environment: 'tst',
+            preset: 'm',
+            serviceName: 'aifabrix',
+            location: 'swedencentral'
+          })
+        })
+      );
+    });
+
+    it('should accept preset in uppercase (normalized to lowercase)', async() => {
+      const mockToken = { token: 't', controller: 'http://localhost:3000' };
+      const mockDeploymentResponse = {
+        success: true,
+        data: { deploymentId: 'deploy-3', status: 'initiated' }
+      };
+      getOrRefreshDeviceToken.mockResolvedValue(mockToken);
+      deploymentsApi.deployEnvironment.mockResolvedValue(mockDeploymentResponse);
+
+      await deployEnvironment('dev', { preset: 'XL', noPoll: true });
+
+      const call = deploymentsApi.deployEnvironment.mock.calls[0];
+      expect(call[3].environmentConfig.preset).toBe('xl');
+    });
+
+    it('should throw when preset is invalid', async() => {
       getOrRefreshDeviceToken.mockResolvedValue({ token: 't', controller: 'http://localhost:3000' });
-      await expect(deployEnvironment('dev', { noPoll: true }))
-        .rejects.toThrow('Environment deploy requires a config file');
+      await expect(deployEnvironment('dev', { preset: 'xxl', noPoll: true }))
+        .rejects.toThrow('Invalid preset');
     });
 
     it('should throw error when device token is not available', async() => {

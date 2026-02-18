@@ -25,9 +25,10 @@ services:
       - "traefik.http.routers.{{app.key}}.middlewares={{app.key}}-stripprefix"
       {{/unless}}
     {{/if}}
+    environment:
+      - MISO_ENVIRONMENT={{misoEnvironment}}
     {{#if traefik.enabled}}
     {{#unless (eq traefik.path "/")}}
-    environment:
       - BASE_PATH={{traefik.path}}
       - X_FORWARDED_PREFIX={{traefik.path}}
     {{/unless}}
@@ -38,9 +39,17 @@ services:
       - "{{hostPort}}:{{containerPort}}"
     networks:
       - {{networkName}}
+    {{#if devMountPath}}
+    volumes:
+      - {{devMountPath}}:/app
+      {{#if requiresStorage}}
+      - {{#if (eq devId 0)}}aifabrix_{{app.key}}_data{{else}}aifabrix_dev{{devId}}_{{app.key}}_data{{/if}}:/mnt/data
+      {{/if}}
+    {{else}}
     {{#if requiresStorage}}
     volumes:
       - {{#if (eq devId 0)}}aifabrix_{{app.key}}_data{{else}}aifabrix_dev{{devId}}_{{app.key}}_data{{/if}}:/mnt/data
+    {{/if}}
     {{/if}}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:{{port}}{{healthCheck.path}}"]

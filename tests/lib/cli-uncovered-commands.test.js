@@ -593,15 +593,15 @@ describe('CLI Uncovered Command Handlers', () => {
     });
   });
 
-  describe('secrets set command handler', () => {
-    it('should handle secrets set command successfully', async() => {
+  describe('secret set command handler', () => {
+    it('should handle secret set command successfully', async() => {
       handleSecretsSet.mockResolvedValue();
 
       const handler = async(key, value, options) => {
         try {
           await handleSecretsSet(key, value, options);
         } catch (error) {
-          cliUtils.handleCommandError(error, 'secrets set');
+          cliUtils.handleCommandError(error, 'secret set');
           process.exit(1);
         }
       };
@@ -611,21 +611,21 @@ describe('CLI Uncovered Command Handlers', () => {
       expect(process.exit).not.toHaveBeenCalled();
     });
 
-    it('should handle secrets set command error', async() => {
-      const error = new Error('Secrets set failed');
+    it('should handle secret set command error', async() => {
+      const error = new Error('Secret set failed');
       handleSecretsSet.mockRejectedValue(error);
 
       const handler = async(key, value, options) => {
         try {
           await handleSecretsSet(key, value, options);
         } catch (error) {
-          cliUtils.handleCommandError(error, 'secrets set');
+          cliUtils.handleCommandError(error, 'secret set');
           process.exit(1);
         }
       };
 
       await handler('test-key', 'test-value', {});
-      expect(cliUtils.handleCommandError).toHaveBeenCalledWith(error, 'secrets set');
+      expect(cliUtils.handleCommandError).toHaveBeenCalledWith(error, 'secret set');
       expect(process.exit).toHaveBeenCalledWith(1);
     });
   });
@@ -778,49 +778,42 @@ describe('CLI Uncovered Command Handlers', () => {
   });
 
   describe('test-integration command handler', () => {
+    const testIntegrationHandler = async(appName, options) => {
+      const test = require('../../lib/external-system/test');
+      const opts = { ...options, environment: options.env || options.environment };
+      try {
+        const results = await test.testExternalSystemIntegration(appName, opts);
+        test.displayIntegrationTestResults(results, options.verbose);
+        if (!results.success) process.exit(1);
+      } catch (error) {
+        cliUtils.handleCommandError(error, 'test-integration');
+        process.exit(1);
+      }
+    };
+
     it('should handle test-integration command successfully', async() => {
       test.testExternalSystemIntegration.mockResolvedValue({ success: true });
       test.displayIntegrationTestResults.mockImplementation(() => {});
 
-      const handler = async(appName, options) => {
-        try {
-          const test = require('../../lib/external-system/test');
-          const results = await test.testExternalSystemIntegration(appName, options);
-          test.displayIntegrationTestResults(results, options.verbose);
-          if (!results.success) {
-            process.exit(1);
-          }
-        } catch (error) {
-          cliUtils.handleCommandError(error, 'test-integration');
-          process.exit(1);
-        }
-      };
-
-      await handler('testapp', { verbose: true });
-      expect(test.testExternalSystemIntegration).toHaveBeenCalledWith('testapp', { verbose: true });
+      await testIntegrationHandler('testapp', { verbose: true });
+      expect(test.testExternalSystemIntegration).toHaveBeenCalledWith('testapp', { verbose: true, environment: undefined });
       expect(test.displayIntegrationTestResults).toHaveBeenCalled();
       expect(process.exit).not.toHaveBeenCalled();
+    });
+
+    it('should pass --env as environment to test-integration', async() => {
+      test.testExternalSystemIntegration.mockResolvedValue({ success: true });
+      test.displayIntegrationTestResults.mockImplementation(() => {});
+
+      await testIntegrationHandler('myapp', { env: 'tst', verbose: false });
+      expect(test.testExternalSystemIntegration).toHaveBeenCalledWith('myapp', expect.objectContaining({ environment: 'tst' }));
     });
 
     it('should exit when integration test fails', async() => {
       test.testExternalSystemIntegration.mockResolvedValue({ success: false });
       test.displayIntegrationTestResults.mockImplementation(() => {});
 
-      const handler = async(appName, options) => {
-        try {
-          const test = require('../../lib/external-system/test');
-          const results = await test.testExternalSystemIntegration(appName, options);
-          test.displayIntegrationTestResults(results, options.verbose);
-          if (!results.success) {
-            process.exit(1);
-          }
-        } catch (error) {
-          cliUtils.handleCommandError(error, 'test-integration');
-          process.exit(1);
-        }
-      };
-
-      await handler('testapp', {});
+      await testIntegrationHandler('testapp', {});
       expect(process.exit).toHaveBeenCalledWith(1);
     });
 
@@ -828,21 +821,7 @@ describe('CLI Uncovered Command Handlers', () => {
       const error = new Error('Integration test failed');
       test.testExternalSystemIntegration.mockRejectedValue(error);
 
-      const handler = async(appName, options) => {
-        try {
-          const test = require('../../lib/external-system/test');
-          const results = await test.testExternalSystemIntegration(appName, options);
-          test.displayIntegrationTestResults(results, options.verbose);
-          if (!results.success) {
-            process.exit(1);
-          }
-        } catch (error) {
-          cliUtils.handleCommandError(error, 'test-integration');
-          process.exit(1);
-        }
-      };
-
-      await handler('testapp', {});
+      await testIntegrationHandler('testapp', {});
       expect(cliUtils.handleCommandError).toHaveBeenCalledWith(error, 'test-integration');
       expect(process.exit).toHaveBeenCalledWith(1);
     });

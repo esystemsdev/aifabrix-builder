@@ -3,7 +3,12 @@
  */
 
 jest.mock('../../../lib/core/secrets', () => ({
-  generateEnvFile: jest.fn().mockResolvedValue('/tmp/.env')
+  generateEnvFile: jest.fn().mockResolvedValue('/tmp/.env'),
+  generateEnvContent: jest.fn().mockResolvedValue('PORT=3000\n')
+}));
+
+jest.mock('../../../lib/core/secrets-env-write', () => ({
+  resolveAndWriteEnvFile: jest.fn().mockResolvedValue('/tmp/myapp-env.env')
 }));
 
 jest.mock('../../../lib/core/config', () => ({
@@ -62,7 +67,7 @@ jest.mock('fs', () => {
   };
 });
 
-const secrets = require('../../../lib/core/secrets');
+const secretsEnvWrite = require('../../../lib/core/secrets-env-write');
 const { prepareEnvironment, checkPrerequisites } = require('../../../lib/app/run-helpers');
 const { resolveVersionForApp } = require('../../../lib/utils/image-version');
 const { checkImageExists } = require('../../../lib/utils/app-run-containers');
@@ -72,10 +77,14 @@ describe('Run .env generation', () => {
     jest.clearAllMocks();
   });
 
-  it('uses docker environment when generating .env during run prepare', async() => {
+  it('uses docker environment when resolving and writing .env during run prepare', async() => {
     const appConfig = { port: 3000 };
     await prepareEnvironment('myapp', appConfig, {});
-    expect(secrets.generateEnvFile).toHaveBeenCalledWith('myapp', null, 'docker', false, false);
+    expect(secretsEnvWrite.resolveAndWriteEnvFile).toHaveBeenCalledWith('myapp', expect.objectContaining({
+      environment: 'docker',
+      secretsPath: null,
+      force: false
+    }));
   });
 });
 

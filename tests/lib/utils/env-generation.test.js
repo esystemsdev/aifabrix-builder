@@ -283,10 +283,8 @@ DB_PORT=\${DB_PORT}`;
     describe('Local with build.localPort set', () => {
       it('should use build.localPort when developer-id is null', async() => {
         const variables = {
-          port: 3077,
-          build: {
-            localPort: 3087
-          }
+          port: 3087,
+          build: {}
         };
 
         fs.readFileSync.mockImplementation((filePath) => {
@@ -307,10 +305,8 @@ DB_PORT=\${DB_PORT}`;
 
       it('should use build.localPort when developer-id is 0', async() => {
         const variables = {
-          port: 3077,
-          build: {
-            localPort: 3087
-          }
+          port: 3087,
+          build: {}
         };
 
         fs.readFileSync.mockImplementation((filePath) => {
@@ -330,10 +326,8 @@ DB_PORT=\${DB_PORT}`;
 
       it('should use build.localPort + 100 when developer-id is 1', async() => {
         const variables = {
-          port: 3077,
-          build: {
-            localPort: 3087
-          }
+          port: 3087,
+          build: {}
         };
 
         fs.readFileSync.mockImplementation((filePath) => {
@@ -353,10 +347,8 @@ DB_PORT=\${DB_PORT}`;
 
       it('should use build.localPort + 200 when developer-id is 2', async() => {
         const variables = {
-          port: 3077,
-          build: {
-            localPort: 3087
-          }
+          port: 3087,
+          build: {}
         };
 
         fs.readFileSync.mockImplementation((filePath) => {
@@ -766,10 +758,8 @@ DB_PORT=\${DB_PORT}`;
     describe('Base port selection', () => {
       it('should use build.localPort when set', async() => {
         const variables = {
-          port: 3077,
-          build: {
-            localPort: 3087
-          }
+          port: 3087,
+          build: {}
         };
 
         fs.readFileSync.mockImplementation((filePath) => {
@@ -865,10 +855,8 @@ DB_PORT=\${DB_PORT}`;
     describe('Developer-id offset application', () => {
       it('should apply offset to app port', async() => {
         const variables = {
-          port: 3077,
-          build: {
-            localPort: 3087
-          }
+          port: 3087,
+          build: {}
         };
 
         fs.readFileSync.mockImplementation((filePath) => {
@@ -893,17 +881,15 @@ DB_PORT=\${DB_PORT}`;
 
   describe('PORT Override Chain Scenarios', () => {
     describe('Scenario 1: All sources present', () => {
-      it('should use application.yaml build.localPort as strongest override (dev-id 1)', async() => {
+      it('should use application.yaml port as strongest override (dev-id 1)', async() => {
         // env-config.yaml → PORT: 3000
         // config.yaml → PORT: 3010
-        // application.yaml → build.localPort: 3015 (strongest)
+        // application.yaml → port: 3015 (strongest)
         // Expected: 3015 + 100 = 3115
 
         const variables = {
-          port: 3000,
-          build: {
-            localPort: 3015
-          }
+          port: 3015,
+          build: {}
         };
 
         fs.readFileSync.mockImplementation((filePath) => {
@@ -928,12 +914,10 @@ DB_PORT=\${DB_PORT}`;
     });
 
     describe('Scenario 2: Only application.yaml present', () => {
-      it('should use application.yaml build.localPort when other sources missing (dev-id 1)', async() => {
+      it('should use application.yaml port when other sources missing (dev-id 1)', async() => {
         const variables = {
-          port: 3000,
-          build: {
-            localPort: 3010
-          }
+          port: 3010,
+          build: {}
         };
 
         fs.readFileSync.mockImplementation((filePath) => {
@@ -1346,10 +1330,8 @@ DB_PORT=\${DB_PORT}`;
     describe('Developer ID 1, Local Context', () => {
       it('should generate all variables with developer-id adjustment', async() => {
         const variables = {
-          port: 3000,
-          build: {
-            localPort: 3010
-          }
+          port: 3010,
+          build: {}
         };
 
         fs.readFileSync.mockImplementation((filePath) => {
@@ -1396,10 +1378,8 @@ MISO_PORT=\${MISO_PORT}`;
     describe('Developer ID 2, Local Context', () => {
       it('should generate all variables with developer-id adjustment', async() => {
         const variables = {
-          port: 3000,
-          build: {
-            localPort: 3010
-          }
+          port: 3010,
+          build: {}
         };
 
         fs.readFileSync.mockImplementation((filePath) => {
@@ -1604,9 +1584,8 @@ MISO_PUBLIC_PORT=\${MISO_PUBLIC_PORT}`;
         const outEnvPath = path.join(outDir, '.env');
 
         const variables = {
-          port: 3077,
+          port: 3087,
           build: {
-            localPort: 3087,
             envOutputPath: outDir
           }
         };
@@ -1640,16 +1619,15 @@ MISO_PUBLIC_PORT=\${MISO_PUBLIC_PORT}`;
         expect(writtenContent).toMatch(/^PORT=3087$/m);
       });
 
-      it('should use build.localPort and apply developer-id offset', async() => {
+      it('should use port and apply developer-id offset', async() => {
         const envPath = path.join(mockBuilderPath, '.env');
         const variablesPath = mockVariablesPath;
         const outDir = '/tmp/aifabrix-out';
         const outEnvPath = path.join(outDir, '.env');
 
         const variables = {
-          port: 3077,
+          port: 3087,
           build: {
-            localPort: 3087,
             envOutputPath: outDir
           }
         };
@@ -1691,9 +1669,8 @@ MISO_PUBLIC_PORT=\${MISO_PUBLIC_PORT}`;
         const outEnvPath = path.join(outDir, '.env');
 
         const variables = {
-          port: 3077,
+          port: 3087,
           build: {
-            localPort: 3087,
             envOutputPath: outDir
           }
         };

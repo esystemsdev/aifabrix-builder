@@ -1,3 +1,22 @@
+## [2.41.0] - 2026-02-17
+
+### Added
+- **Remote Docker development (plan 65)**: Full remote dev flow for dev/tst/pro with certificate (mTLS) authentication. **Config:** `~/.aifabrix/config.yaml` supports `aifabrix-workspace-root`, `remote-server`, and `docker-endpoint`; when `remote-server` is set, Docker commands use the remote endpoint. **Onboarding:** `aifabrix init` (or `aifabrix dev init`) with `--dev-id`, `--server`, `--pin` — generates CSR, calls `POST /api/dev/issue-cert`, stores certificate in `~/.aifabrix/certs/<dev-id>/`, fetches settings via `GET /api/dev/settings`, and registers SSH public key via `POST /api/dev/users/{id}/ssh-keys` so Mutagen works without username/password (ed25519 key generation on Windows/Mac). **Dev API (cert-authenticated):** Users — `GET/POST/PATCH/DELETE /api/dev/users`, `POST /api/dev/users/{id}/pin`; SSH keys — `GET/POST/DELETE /api/dev/users/{id}/ssh-keys`; Secrets — when `aifabrix-secrets` is an http(s) URL, `GET/POST/DELETE /api/dev/secrets` for shared secrets (values never stored on disk). **Run:** `aifabrix run <app> --reload` (dev) uses Mutagen sync (local ↔ remote path), then container with `-v <remote_path>:/app`; `--env tst`/`pro` run immutable image on the same per-developer network. **Infra:** One Docker network per developer; dev/tst/pro share that network. Mutagen binary under `~/.aifabrix/bin/` (auto-download if missing). Backend contract: `.cursor/plans/swagger.json`.
+- **Local Docker and single .env (plan 66)**: `aifabrix run <appKey> --reload` with **local** Docker (Windows/Mac, local HDD). **Content mapping:** `build.context` in `application.yaml` is the canonical app code directory for both local and remote — local run mounts resolved `build.context`; remote run uses it as Mutagen local path. **Single .env:** Secrets resolved in memory; .env is written **only** to `build.envOutputPath` (code folder). No .env under `builder/<appKey>/` or `integration/<appKey>/`; compose `env_file` uses that single path (or temp when envOutputPath unset). **Port:** `build.localPort` removed from schema and code; app port comes only from `port` in `application.yaml` (developer offset for multi-dev unchanged).
+
+### Changed
+- **Run flow:** `prepareAppRun` and `ensureReloadSync` use resolved `build.context` for local mount path and (when remote) Mutagen local path. Compose generator accepts explicit `envFilePath` for `env_file`. Port resolution and compose use `port` only (no `localPort`).
+- **Secrets/core:** `generateEnvFile` and run flow no longer write .env to builder or integration; resolve via `generateEnvContent` in memory and write only to `envOutputPath` or temp. `processEnvVariables` (env-copy) simplified to single-path write when used.
+- **Schema and config:** `build.localPort` removed from `application-schema.json`; `port-resolver`, `secrets-helpers`, `env-copy`, and compose-generator use `port` only.
+- **Docs:** application-yaml, developer-isolation, running, building updated for single .env, `build.context` as content mapping, and removal of `build.localPort`.
+
+### Technical
+- **Remote dev:** `lib/api/dev.api.js`, `lib/commands/dev-init.js`, `lib/commands/dev-down.js`, `lib/commands/dev-cli-handlers.js`; `lib/utils/remote-dev-auth.js`, `lib/utils/remote-docker-env.js`, `lib/utils/remote-secrets-loader.js`, `lib/utils/mutagen.js`, `lib/utils/ssh-key-helper.js`, `lib/utils/dev-cert-helper.js`; config keys and GET /api/dev/settings usage; Mutagen session lifecycle and path formula (user-mutagen-folder + `/dev/` + appKey).
+- **Local run + single .env:** `lib/app/run.js`, `lib/app/run-helpers.js` — codePath from resolved `build.context`, `devMountPath` for local/remote; `lib/core/secrets.js` — resolve-and-write only to envOutputPath/temp; `lib/utils/compose-generator.js` — `envFilePath`; `lib/utils/port-resolver.js`, `lib/utils/secrets-helpers.js`, `lib/utils/env-copy.js` — localPort removed.
+- **Tests:** `tests/lib/api/dev.api.test.js`, `tests/lib/commands/dev-*.test.js`, `tests/lib/commands/secrets-list.test.js`, `tests/lib/commands/secrets-remove.test.js`, `tests/lib/utils/remote-*.test.js`, `tests/lib/utils/mutagen.test.js`, `tests/lib/utils/dev-cert-helper.test.js`, `tests/lib/utils/ssh-key-helper.test.js`; updates for localPort removal and single .env behaviour across run, config-paths, docker-build, secrets.
+
+---
+
 ## [2.40.2] - 2026-02-16
 
 ### Added
@@ -317,7 +336,7 @@
 ## [2.35.0] - 2026-01-23
 
 ### Added
-- **CLI alias `aifx`**: `aifx` is available as a shortcut for `aifabrix` in all commands (e.g. `aifx up`, `aifx create myapp`). Documented in [Your Own Applications](docs/your-own-applications.md) and [CLI Reference](docs/cli-reference.md).
+- **CLI alias `af`**: `af` is available as a shortcut for `aifabrix` in all commands (e.g. `af up`, `af create myapp`). Documented in [Your Own Applications](docs/your-own-applications.md) and [CLI Reference](docs/cli-reference.md).
 - **`aifabrix up --no-traefik`**: Exclude Traefik and persist `traefik: false` to `~/.aifabrix/config.yaml`. When neither `--traefik` nor `--no-traefik` is passed, the value is read from config.
 - **Centralized Port Resolution**: Single source of truth for resolving application port from `application.yaml`
   - `lib/utils/port-resolver.js` with `getContainerPort`, `getLocalPort`, `getContainerPortFromPath`, `getLocalPortFromPath`
@@ -1305,7 +1324,7 @@
 ## [2.6.2] - 2025-11-20
 
 ### Added
-- **Secrets Set Command**: New `aifabrix secrets set <key> <value> [--shared]` command
+- **Secrets Set Command**: New `aifabrix secret set <key> <value> [--shared]` command
   - Dynamically set secret values in secrets files without manual file editing
   - Supports saving to user secrets file (`~/.aifabrix/secrets.local.yaml`) or general secrets file (from `config.yaml` `aifabrix-secrets`)
   - `--shared` flag saves to general secrets file for shared configuration across projects

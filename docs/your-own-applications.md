@@ -12,7 +12,7 @@ This guide is **app-centric**: create app → configure → run locally / deploy
 npm install -g @aifabrix/builder
 ```
 
-**Alias:** `aifx` is available as a shortcut—use `aifx` instead of `aifabrix` in any command.
+**Alias:** `af` is available as a shortcut—use `af` instead of `aifabrix` in any command.
 
 ```mermaid
 %%{init: {
@@ -204,7 +204,7 @@ build:
 **What to check:**
 - Display name looks good?
 - Need more databases? Add them to the list
-- Want different local port? Set `build.localPort`
+- Want different port? Set `port` in application.yaml (or use `aifabrix run <app> --port <port>`)
 
 ### Optional: Traefik Routing
 
@@ -284,10 +284,10 @@ aifabrix build myapp
 ```
 
 **What happens:**
-1. Looks for `Dockerfile` in your app root
+1. Looks for `Dockerfile` in your app root (or uses `build.context`)
 2. If not found, generates from template (Node 20 Alpine or Python 3.11 Alpine)
 3. Builds Docker image: `myapp:latest`
-4. Creates `.env` file from `env.template`
+4. Resolves env from `env.template` and secrets; the only persisted `.env` is written to `build.envOutputPath` when set (for run, a temp path is used when envOutputPath is not set). No `.env` under `builder/<app>/` or `integration/<app>/`.
 
 **Want to use your own Dockerfile?**  
 Place it in your app root - the SDK will use it.
@@ -306,6 +306,7 @@ aifabrix run myapp
 ```
 
 **What happens:**
+- Resolves env at run time (to `build.envOutputPath` or temp); no pre-existing `.env` in `builder/` required
 - Creates database and user automatically (if app requires database)
 - Starts container as `aifabrix-myapp`
 - Connects to Postgres and Redis
@@ -314,9 +315,12 @@ aifabrix run myapp
 **Access your app:**  
 <http://localhost:3000> (or your port)
 
+**Live reload (dev):** Use `aifabrix run myapp --reload` for local or remote dev; with remote Docker configured, run `aifabrix dev init` first.
+
 **View logs:**
 ```bash
-docker logs aifabrix-myapp -f
+aifabrix logs myapp
+# or: docker logs aifabrix-myapp -f
 ```
 
 **Stop app:**
@@ -482,7 +486,7 @@ aifabrix doctor
 → Run `aifabrix doctor` to check Docker
 
 **"Can't connect to database"**  
-→ Check `DATABASE_URL` in `.env`  
+→ Check `DATABASE_URL` via `aifabrix logs myapp` (env summary, masked) or at `build.envOutputPath` if set  
 → Verify database exists: `docker exec aifabrix-postgres psql -U pgadmin -l`
 
 **"GitHub Actions failing"**  

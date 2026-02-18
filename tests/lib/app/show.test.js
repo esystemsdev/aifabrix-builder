@@ -585,7 +585,7 @@ externalIntegration:
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('45s'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Build:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('node'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('localPort 3000'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('port 3000'));
     });
 
     it('should throw on API error when success is false and status is not 404', async() => {
@@ -894,9 +894,9 @@ externalIntegration:
       it('should return dash when build has no known fields', () => {
         expect(formatBuildForDisplay({})).toBe('—');
       });
-      it('should include language and localPort', () => {
+      it('should include language and port', () => {
         expect(formatBuildForDisplay({ language: 'node', localPort: 3000 }))
-          .toBe('node, localPort 3000');
+          .toBe('node, port 3000');
       });
       it('should include only dockerfile when no envOutputPath', () => {
         expect(formatBuildForDisplay({ dockerfile: 'Dockerfile' })).toBe('dockerfile');

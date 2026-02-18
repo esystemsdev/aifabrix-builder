@@ -409,10 +409,11 @@ Run integration tests via dataplane pipeline API. Requires Dataplane access (aut
 
 **Usage:**
 ```bash
-# Test entire external system
+# Test entire external system (dataplane URL from controller)
 aifabrix test-integration hubspot
 
-# Test specific datasource or use custom payload
+# Test with environment or specific datasource
+aifabrix test-integration hubspot --env tst
 aifabrix test-integration hubspot --datasource hubspot-company
 aifabrix test-integration hubspot --payload ./test-payload.json
 
@@ -422,7 +423,7 @@ aifabrix test-integration hubspot --verbose --timeout 60000
 
 **Arguments:** `<app>` – Application name (external system).
 
-**Options:** `-d, --datasource <key>` – Test specific datasource only. `-p, --payload <file>` – Custom test payload file (overrides datasource testPayload). `-v, --verbose` – Detailed output. `--timeout <ms>` – Request timeout (default: 30000).
+**Options:** `-e, --env <env>` – Environment: dev, tst, or pro (default: from aifabrix auth config). `-d, --datasource <key>` – Test specific datasource only. `-p, --payload <file>` – Custom test payload file (overrides datasource testPayload). `-v, --verbose` – Detailed output. `--timeout <ms>` – Request timeout (default: 30000). Dataplane URL is always resolved from the controller; no `--dataplane` option.
 
 **Prerequisites:** Logged in (`aifabrix login`); dataplane accessible; system published or ready for testing.
 

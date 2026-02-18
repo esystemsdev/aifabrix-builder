@@ -26,9 +26,9 @@ This plan must comply with the following from [Project Rules](.cursor/rules/proj
 
 ## Before Development
 
-- [ ] Read the relevant doc files and schemas listed in "File and schema touch points".
-- [ ] Confirm standard variable list (e.g. in `lib/generator/wizard.js` and external-systems.md) before aligning wizard and external-systems docs.
-- [ ] If changing schema or validators: review [lib/schema/external-datasource.schema.json](lib/schema/external-datasource.schema.json) and [lib/utils/external-system-validators.js](lib/utils/external-system-validators.js).
+- Read the relevant doc files and schemas listed in "File and schema touch points".
+- Confirm standard variable list (e.g. in `lib/generator/wizard.js` and external-systems.md) before aligning wizard and external-systems docs.
+- If changing schema or validators: review [lib/schema/external-datasource.schema.json](lib/schema/external-datasource.schema.json) and [lib/utils/external-system-validators.js](lib/utils/external-system-validators.js).
 
 ## Definition of Done
 

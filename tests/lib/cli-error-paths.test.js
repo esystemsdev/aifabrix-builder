@@ -267,7 +267,7 @@ describe('CLI Error Paths', () => {
     });
   });
 
-  describe('secrets set command error handling', () => {
+  describe('secret set command error handling', () => {
     beforeEach(() => {
       cli.setupCommands(program);
     });

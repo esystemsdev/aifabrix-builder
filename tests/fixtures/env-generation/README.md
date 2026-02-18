@@ -19,7 +19,7 @@ These fixtures are used to test:
 
 ## Test Scenarios
 
-1. **Local environment with build.localPort**: Tests port calculation when `build.localPort` is set
+1. **Local environment**: Tests port calculation using `port` from application.yaml (developer-id offset applies)
 2. **Local environment with port only**: Tests port calculation when only `port` is set
 3. **Docker environment**: Tests port calculation for docker context
 4. **Config.yaml overrides**: Tests that `environments.local` and `environments.docker` overrides work

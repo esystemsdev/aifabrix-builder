@@ -1,7 +1,7 @@
 /**
- * Tests for secrets set command
+ * Tests for secret set command
  *
- * @fileoverview Tests for secrets set command implementation
+ * @fileoverview Tests for secret set command implementation
  * @author AI Fabrix Team
  * @version 2.0.0
  */
@@ -48,7 +48,7 @@ const config = require('../../../lib/core/config');
 const logger = require('../../../lib/utils/logger');
 const pathsUtil = require('../../../lib/utils/paths');
 
-describe('secrets set command', () => {
+describe('secret set command', () => {
   const mockHomeDir = '/home/test';
   const mockUserSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
   const mockGeneralSecretsPath = '/project/secrets.yaml';

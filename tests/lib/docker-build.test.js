@@ -8,7 +8,7 @@
 
 jest.mock('child_process');
 jest.mock('ora');
-
+jest.mock('../../lib/utils/remote-docker-env', () => ({ getRemoteDockerEnv: jest.fn().mockResolvedValue({}) }));
 const { spawn } = require('child_process');
 const path = require('path');
 const ora = require('ora');
@@ -318,7 +318,7 @@ describe('Docker Build Utilities', () => {
       expect(mockSpawn).toHaveBeenCalledWith(
         'docker',
         ['build', '-t', `${imageName}:${tag}`, '-f', expectedDockerfilePath, expectedContextPath],
-        { shell: process.platform === 'win32' }
+        expect.objectContaining({ shell: process.platform === 'win32' })
       );
     });
 
@@ -667,7 +667,7 @@ describe('Docker Build Utilities', () => {
       expect(mockSpawn).toHaveBeenCalledWith(
         'docker',
         ['build', '-t', `${imageName}:${tag}`, '-f', expectedDockerfilePath, expectedContextPath],
-        { shell: true }
+        expect.objectContaining({ shell: true })
       );
 
       Object.defineProperty(process, 'platform', {

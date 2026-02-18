@@ -70,7 +70,6 @@ Extra workflow steps are located in `templates/github/steps/`. When you use `--g
 - `{{databases}}` - Array of database configurations
 
 ### Build Configuration
-- `{{build.localPort}}` - Local development port (different from Docker port)
 - `{{mountVolume}}` - Volume mount path for local development
 
 ## Usage

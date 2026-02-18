@@ -38,7 +38,7 @@ aifabrix resolve {{appName}}
 aifabrix run {{appName}}
 ```
 
-**Access your app:** http://localhost:{{localPort}}
+**Access your app:** http://localhost:{{port}}
 
 **View logs:**
 ```bash
@@ -118,7 +118,7 @@ aifabrix build {{appName}} --language typescript  # Override language detection
 ### Run Options
 
 ```bash
-aifabrix run {{appName}} --port {{localPort}}     # Override local port
+aifabrix run {{appName}} --port {{port}}     # Override port
 aifabrix run {{appName}} --debug                  # Debug output
 ```
 
@@ -166,7 +166,7 @@ Controller URL and environment (for `deploy`, `app register`, etc.) are set via 
 
 - **"Docker not running"** → Start Docker Desktop
 - **"Not logged in"** → Run `aifabrix login` first
-- **"Port already in use"** → Use `aifabrix run {{appName}} --port <port>` or set `build.localPort` in `application.yaml` (default: {{localPort}})
+- **"Port already in use"** → Use `aifabrix run {{appName}} --port <port>` or set `port` in `application.yaml` (default: {{port}})
 - **"Authentication failed"** → Run `aifabrix login` again
 - **"Build fails"** → Check Docker is running and `aifabrix-secrets` in `config.yaml` is configured correctly
 - **"Can't connect"** → Verify infrastructure is running{{#if hasDatabase}} and PostgreSQL is accessible{{/if}}
@@ -203,4 +203,4 @@ aifabrix json {{appName}}
 
 ---
 
-**Application**: {{appName}} | **Port**: {{localPort}} | **Registry**: {{registry}} | **Image**: {{imageName}}:latest
+**Application**: {{appName}} | **Port**: {{port}} | **Registry**: {{registry}} | **Image**: {{imageName}}:latest

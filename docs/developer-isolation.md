@@ -142,7 +142,7 @@ environment: dev
 
 Each developer gets their own:
 - **Docker Compose project**: `infra-dev{id}`
-- **Network**: `infra-dev{id}-aifabrix-network`
+- **Network**: `infra-dev{id}-aifabrix-network` — **one network per developer** on the host; dev, tst, and pro share this same developer network (there are no separate networks per environment).
 - **Volumes**: `dev{id}_postgres_data`, `dev{id}_redis_data`
 - **Containers**: `aifabrix-dev{id}-postgres`, `aifabrix-dev{id}-redis`, etc.
 
@@ -186,12 +186,11 @@ Example for developer 1:
 
 ## Important Notes
 
-### localPort in application.yaml
-The `build.localPort` field in `application.yaml` specifies the base application port for local development (e.g., 3000). This is used when generating the local `.env` file (at `build.envOutputPath`). For local development, generated `.env` files are adjusted to reflect developer-specific ports:
-- `PORT` is set to `baseAppPort + (developer-id * 100)` (e.g., 3100 for dev 1 when base is 3000).
-- The base port is determined by: `build.localPort` (if set) → `port` (fallback)
-- Any `http(s)://localhost:<baseAppPort>` occurrences (e.g., in `ALLOWED_ORIGINS`) are rewritten to use the developer-specific port.
-- **Note:** The docker `.env` file (`builder/myapp/.env`) always uses `port` from application.yaml, not `build.localPort`.
+### Port in application.yaml
+The `port` field in `application.yaml` is the single application port for both container and host mapping (developer offset applies). When generating the `.env` file (at `build.envOutputPath` or temp for run), developer-specific ports are applied:
+- `PORT` is set to `port + (developer-id * 100)` (e.g., 3100 for dev 1 when port is 3000).
+- Any `http(s)://localhost:<port>` occurrences (e.g., in `ALLOWED_ORIGINS`) are rewritten to use the developer-specific port.
+- **Note:** `.env` is written only at `build.envOutputPath` (or temp for run); no `.env` under `builder/` or `integration/`.
 
 ### Dockerfile Ports
 
@@ -235,7 +234,7 @@ MISO_PUBLIC_URL=http://localhost:${MISO_PUBLIC_PORT}
 **Manual Override:**
 If you manually set `*_PUBLIC_PORT` in your config, it will be preserved and not recalculated.
 
-For docker context (builder/.env):
+For docker context (single .env at envOutputPath or temp for run):
 - `DB_HOST=postgres`, `DB_PORT=5432` (internal, unchanged)
 - `DB_PUBLIC_PORT=5432 + PortAddition` (public, calculated when developer-id > 0)
 - `REDIS_HOST=redis`, `REDIS_PORT=6379` (internal, unchanged)
@@ -254,20 +253,19 @@ For docker context (builder/.env):
 - Public `*_PUBLIC_PORT` values are used for host access and Docker port mapping
 - Pattern applies to all services automatically (MISO, KEYCLOAK, DB, REDIS, etc.)
 
-For local context (apps/.env, generated when `build.envOutputPath` is set):
+For local context (same single .env at `build.envOutputPath` when set, or temp for run):
 - `DB_HOST=localhost` (or `aifabrix-localhost` override from config.yaml)
 - `DB_PORT=5432 + PortAddition`
 - `REDIS_HOST=localhost` (or `aifabrix-localhost` override from config.yaml)
 - `REDIS_PORT=6379 + PortAddition`
 - `REDIS_URL=redis://{REDIS_HOST}:{REDIS_PORT}`
-- `PORT=(build.localPort || variables.port) + PortAddition`
+- `PORT=variables.port + PortAddition`
 
 **Port Override Chain for Local Context:**
 1. Start with `env-config.yaml` → `environments.local.PORT` (if exists)
 2. Override with `config.yaml` → `environments.local.PORT` (if exists)
-3. Override with `application.yaml` → `build.localPort` (if exists)
-4. Fallback to `application.yaml` → `port` (if build.localPort not set)
-5. Apply developer-id adjustment: `finalPort = basePort + (developerId * 100)`
+3. Override with `application.yaml` → `port`
+4. Apply developer-id adjustment: `finalPort = basePort + (developerId * 100)`
 
 **Infrastructure Port Override Chain for Local Context:**
 1. Start with `env-config.yaml` → `environments.local.{REDIS_PORT|DB_PORT}` (if exists)
@@ -301,6 +299,8 @@ aifabrix run myapp
 # Developer 2 runs app on port 3200
 aifabrix run myapp
 ```
+
+**Fast development:** Use `aifabrix run myapp --reload` to mount or sync your code for live reload (local Docker mounts `build.context`; remote Docker uses Mutagen). No rebuild needed for code changes.
 
 ### Checking Status
 
@@ -359,7 +359,7 @@ Ports:
 - **No port conflicts**: Each developer has isolated ports
 - **Complete isolation**: Separate Docker Compose projects, networks, and volumes
 - **Simple setup**: Just set developer ID and everything works
-- **No build file changes**: `localPort` and container ports remain unchanged
+- **No build file changes**: `port` and container ports remain unchanged
 - **Easy to add developers**: Just increment the developer ID
 
 ## Troubleshooting
@@ -392,6 +392,10 @@ If you see container name conflicts:
 3. **Document assignments**: Keep a list of developer ID assignments for your team
 4. **Check before starting**: Run `aifabrix dev config` to verify your developer ID before starting infrastructure
 
+### Remote Docker (when `remote-server` is set)
+
+When `config.yaml` has `remote-server` set, run and build use the remote Docker endpoint; dev APIs (settings, secrets, sync) use **certificate (mTLS) authentication**. One network per developer applies on the remote host. There is no dev user management (dev add/update/pin/delete/list) when there is no remote server. Use `aifabrix dev init` to issue a cert and configure Mutagen for `run --reload`. See [Secrets and config](configuration/secrets-and-config.md) and [Commands: Developer isolation](commands/developer-isolation.md).
+
 ## Port Scenarios Reference
 
 ### Infrastructure Ports by Developer ID
@@ -413,7 +417,7 @@ If you see container name conflicts:
 
 ### Environment Variable Scenarios
 
-#### Docker Context (builder/.env)
+#### Docker context (single .env at envOutputPath or temp for run)
 
 | Variable | Source | Dev ID 0 | Dev ID 1 | Dev ID 2 |
 | -------- | ------ | -------- | -------- | -------- |
@@ -453,7 +457,7 @@ If you see container name conflicts:
 | ------ | ----- | --------------------- |
 | env-config.yaml → environments.local.PORT | 3000 | 3100 |
 | config.yaml → environments.local.PORT | 3010 | 3110 (overrides) |
-| application.yaml → build.localPort | 3015 | 3115 (strongest) |
+| application.yaml → port | 3015 | 3115 (strongest) |
 | Result | | **3115** |
 
 #### Scenario 2: Only application.yaml Present
@@ -462,16 +466,15 @@ If you see container name conflicts:
 | ------ | ----- | --------------------- |
 | env-config.yaml → environments.local.PORT | (not set) | - |
 | config.yaml → environments.local.PORT | (not set) | - |
-| application.yaml → build.localPort | 3010 | 3110 |
+| application.yaml → port | 3010 | 3110 |
 | Result | | **3110** |
 
-#### Scenario 3: Only application.yaml port (no build.localPort)
+#### Scenario 3: Only application.yaml port
 
 | Source | Value | Final Port (Dev ID 1) |
 | ------ | ----- | --------------------- |
 | env-config.yaml → environments.local.PORT | (not set) | - |
 | config.yaml → environments.local.PORT | (not set) | - |
-| application.yaml → build.localPort | (not set) | - |
 | application.yaml → port | 3000 | 3100 (fallback) |
 | Result | | **3100** |
 
@@ -481,7 +484,6 @@ If you see container name conflicts:
 | ------ | ----- | --------------------- |
 | env-config.yaml → environments.local.PORT | 3000 | 3100 |
 | config.yaml → environments.local.PORT | (not set) | - |
-| application.yaml → build.localPort | (not set) | - |
 | application.yaml → port | (not set) | - |
 | Result | | **3100** |
 
@@ -517,7 +519,7 @@ If you see container name conflicts:
 
 | Variable | Source | Value |
 | -------- | ------ | ----- |
-| `PORT` | application.yaml → build.localPort (3010) + adjustment | 3110 |
+| `PORT` | application.yaml → port (3010) + adjustment | 3110 |
 | `DB_HOST` | env-config.yaml | localhost |
 | `DB_PORT` | env-config.yaml (5432) + adjustment | 5532 |
 | `REDIS_HOST` | env-config.yaml | localhost |

@@ -116,11 +116,11 @@ aifabrix app register myapp --port 8080 --name "My Application"
 
 **Options:**
 - `-p, --port <port>` - Override application port (container/Docker image port; used as base for URL when no `--url`)
-- `-u, --url <url>` - Application URL. If omitted: `app.url`, `deployment.dataplaneUrl`, or `deployment.appUrl` in application.yaml; else `http://localhost:{build.localPort or port}`. For a **localhost** controller, both the **port** sent to the controller and the fallback URL use the **developer-ID–adjusted Docker/exposed port** (base + developerId×100), e.g. developer 01 with base 3001 → port `3101`, URL `http://localhost:3101`. For non-localhost, `port` is the container port from variables (or `--port`).
+- `-u, --url <url>` - Application URL. If omitted: `app.url`, `deployment.dataplaneUrl`, or `deployment.appUrl` in application.yaml; else `http://localhost:{port}`. For a **localhost** controller, both the **port** sent to the controller and the fallback URL use the **developer-ID–adjusted Docker/exposed port** (base + developerId×100), e.g. developer 01 with base 3001 → port `3101`, URL `http://localhost:3101`. For non-localhost, `port` is the container port from variables (or `--port`).
 - `-n, --name <name>` - Override display name
 - `-d, --description <desc>` - Override description
 
-**Controller URL Resolution:** `config.controller` → device tokens → developer ID–based default (see [Configuration](configuration/README.md)).
+**Controller URL Resolution:** `config.controller` → device tokens → developer ID–based default (see [Configuration](../configuration/README.md)).
 
 **Error Messages:**
 
@@ -187,7 +187,7 @@ This command uses the active `controller` and `environment` from `config.yaml` (
 aifabrix app list
 ```
 
-**Controller URL Resolution:** `config.controller` → device tokens → developer ID–based default (see [Configuration](configuration/README.md)).
+**Controller URL Resolution:** `config.controller` → device tokens → developer ID–based default (see [Configuration](../configuration/README.md)).
 
 **Error Messages:**
 
@@ -247,7 +247,7 @@ aifabrix app rotate-secret myapp
 **Arguments:**
 - `<appKey>` - Application key (required, positional)
 
-**Controller URL Resolution:** Same as `app list` (see [Configuration](configuration/README.md)).
+**Controller URL Resolution:** Same as `app list` (see [Configuration](../configuration/README.md)).
 
 **Error Messages:**
 

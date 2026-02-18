@@ -501,7 +501,7 @@ describe('Variable Transformer Module', () => {
         expect(result.build).toBeUndefined();
       });
 
-      it('should exclude secrets when empty string but include other valid fields', () => {
+      it('should exclude secrets when empty string; localPort is no longer included', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
@@ -513,11 +513,10 @@ describe('Variable Transformer Module', () => {
 
         const result = transformVariablesForValidation(variables, defaultAppName);
 
-        expect(result.build).toBeDefined();
-        expect(result.build.localPort).toBe(3001);
+        expect(result.build).toBeUndefined();
       });
 
-      it('should include build with localPort', () => {
+      it('should not include build when only localPort (localPort removed from schema)', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
@@ -528,7 +527,7 @@ describe('Variable Transformer Module', () => {
 
         const result = transformVariablesForValidation(variables, defaultAppName);
 
-        expect(result.build.localPort).toBe(3001);
+        expect(result.build).toBeUndefined();
       });
 
       it('should include build with language', () => {
@@ -647,13 +646,12 @@ describe('Variable Transformer Module', () => {
         expect(result.build).toBeUndefined();
       });
 
-      it('should include build with all fields', () => {
+      it('should include build with all fields (localPort removed)', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
           build: {
             envOutputPath: '.env',
-            localPort: 3001,
             language: 'typescript',
             context: './src',
             dockerfile: 'Dockerfile.prod'
@@ -664,7 +662,6 @@ describe('Variable Transformer Module', () => {
 
         expect(result.build).toEqual({
           envOutputPath: '.env',
-          localPort: 3001,
           language: 'typescript',
           context: './src',
           dockerfile: 'Dockerfile.prod'

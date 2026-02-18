@@ -121,6 +121,11 @@ aifabrix environment deploy miso
 # Using alias
 aifabrix env deploy dev
 
+# With size preset (default is s)
+aifabrix env deploy dev --preset s
+aifabrix env deploy dev --preset m
+aifabrix env deploy dev --preset xl
+
 # Without status polling
 aifabrix environment deploy dev --no-poll
 ```
@@ -165,15 +170,20 @@ The environment deploy command automatically:
 # Without status polling
 aifabrix environment deploy dev --no-poll
 
-# With environment configuration file
-aifabrix environment deploy dev --config ./env-config.yaml
+# Size preset (s, m, l, xl); default is s when no --config is used
+aifabrix env deploy dev --preset s
+aifabrix env deploy dev --preset m
+
+# With environment configuration file (overrides preset)
+aifabrix environment deploy dev --config ./env-config.json
 
 # Skip validation checks
 aifabrix environment deploy dev --skip-validation
 ```
 
 **Flags:**
-- `--config <file>` - Environment configuration file (optional, for custom environment setup)
+- `--config <file>` - Environment configuration file (optional). If omitted, deployment uses `--preset` (default: s).
+- `--preset <size>` - Environment size preset: `s`, `m`, `l`, `xl` (default: `s`). Used when `--config` is not provided. Case-insensitive.
 - `--skip-validation` - Skip environment validation checks
 - `--poll` - Poll for deployment status (default: true)
 - `--no-poll` - Do not poll for status

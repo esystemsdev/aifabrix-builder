@@ -1760,17 +1760,19 @@ describe('CLI Commands', () => {
           const mockCommand = {
             description: jest.fn().mockReturnThis(),
             option: jest.fn().mockReturnThis(),
+            requiredOption: jest.fn().mockReturnThis(),
             addHelpText: jest.fn().mockReturnThis(),
             action: function(action) {
               commandActions[cmdName] = action;
               return this;
             },
-            // Support nested commands for command groups (e.g., 'secrets set')
+            // Support nested commands for command groups (e.g., 'secret set')
             command: jest.fn((subCmdName) => {
               const fullCmdName = `${cmdName} ${subCmdName}`;
               const mockSubCommand = {
                 description: jest.fn().mockReturnThis(),
                 option: jest.fn().mockReturnThis(),
+                requiredOption: jest.fn().mockReturnThis(),
                 action: function(action) {
                   commandActions[fullCmdName] = action;
                   return this;
@@ -1800,17 +1802,19 @@ describe('CLI Commands', () => {
           const mockCommand = {
             description: jest.fn().mockReturnThis(),
             option: jest.fn().mockReturnThis(),
+            requiredOption: jest.fn().mockReturnThis(),
             addHelpText: jest.fn().mockReturnThis(),
             action: function(action) {
               commandActions[cmdName] = action;
               return this;
             },
-            // Support nested commands for command groups (e.g., 'secrets set')
+            // Support nested commands for command groups (e.g., 'secret set')
             command: jest.fn((subCmdName) => {
               const fullCmdName = `${cmdName} ${subCmdName}`;
               const mockSubCommand = {
                 description: jest.fn().mockReturnThis(),
                 option: jest.fn().mockReturnThis(),
+                requiredOption: jest.fn().mockReturnThis(),
                 action: function(action) {
                   commandActions[fullCmdName] = action;
                   return this;
@@ -2562,6 +2566,8 @@ describe('CLI Commands', () => {
 
         const options = { setId: '1' };
         config.setDeveloperId.mockResolvedValue();
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
         config.getAifabrixHomeOverride.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
         config.getAifabrixEnvConfigPath.mockResolvedValue(null);
@@ -2592,6 +2598,8 @@ describe('CLI Commands', () => {
         expect(logger.log).toHaveBeenCalledWith('  Redis: 6479');
         expect(logger.log).toHaveBeenCalledWith('  pgAdmin: 5150');
         expect(logger.log).toHaveBeenCalledWith('  Redis Commander: 8181');
+        expect(logger.log).toHaveBeenCalledWith('  environment: \'dev\'');
+        expect(logger.log).toHaveBeenCalledWith('  controller: (not set)');
         expect(config.getAifabrixHomeOverride).toHaveBeenCalled();
         expect(config.getAifabrixSecretsPath).toHaveBeenCalled();
         expect(config.getAifabrixEnvConfigPath).toHaveBeenCalled();
@@ -2602,6 +2610,8 @@ describe('CLI Commands', () => {
 
         const options = { 'set-id': '2' };
         config.setDeveloperId.mockResolvedValue();
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
         config.getAifabrixHomeOverride.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
         config.getAifabrixEnvConfigPath.mockResolvedValue(null);
@@ -2632,6 +2642,8 @@ describe('CLI Commands', () => {
 
         const options = { setId: '01' };
         config.setDeveloperId.mockResolvedValue();
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
         config.getAifabrixHomeOverride.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
         config.getAifabrixEnvConfigPath.mockResolvedValue(null);
@@ -2674,6 +2686,8 @@ describe('CLI Commands', () => {
 
         const options = {};
         config.getDeveloperId.mockResolvedValue(0);
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
         config.getAifabrixHomeOverride.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
         config.getAifabrixEnvConfigPath.mockResolvedValue(null);
@@ -2711,6 +2725,8 @@ describe('CLI Commands', () => {
 
         const options = {};
         config.getDeveloperId.mockResolvedValue(1);
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue('http://localhost:3610');
         config.getAifabrixHomeOverride.mockResolvedValue('/workspace/.aifabrix');
         config.getAifabrixSecretsPath.mockResolvedValue('/workspace/aifabrix-miso/builder/secrets.local.yaml');
         config.getAifabrixEnvConfigPath.mockResolvedValue('/workspace/aifabrix-miso/builder/env-config.yaml');
@@ -2734,6 +2750,8 @@ describe('CLI Commands', () => {
         expect(logger.log).toHaveBeenCalledWith('\nPorts:');
         expect(logger.log).toHaveBeenCalledWith('  App: 3100');
         expect(logger.log).toHaveBeenCalledWith('\nConfiguration:');
+        expect(logger.log).toHaveBeenCalledWith('  environment: \'dev\'');
+        expect(logger.log).toHaveBeenCalledWith('  controller: \'http://localhost:3610\'');
         expect(logger.log).toHaveBeenCalledWith('  aifabrix-home: /workspace/.aifabrix');
         expect(logger.log).toHaveBeenCalledWith('  aifabrix-secrets: /workspace/aifabrix-miso/builder/secrets.local.yaml');
         expect(logger.log).toHaveBeenCalledWith('  aifabrix-env-config: /workspace/aifabrix-miso/builder/env-config.yaml');
@@ -2744,6 +2762,8 @@ describe('CLI Commands', () => {
 
         const options = { setId: '2' };
         config.setDeveloperId.mockResolvedValue();
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue('http://localhost:3610');
         config.getAifabrixHomeOverride.mockResolvedValue('/workspace/.aifabrix');
         config.getAifabrixSecretsPath.mockResolvedValue('/workspace/aifabrix-miso/builder/secrets.local.yaml');
         config.getAifabrixEnvConfigPath.mockResolvedValue('/workspace/aifabrix-miso/builder/env-config.yaml');
@@ -2770,6 +2790,8 @@ describe('CLI Commands', () => {
         expect(logger.log).toHaveBeenCalledWith('\nPorts:');
         expect(logger.log).toHaveBeenCalledWith('  App: 3200');
         expect(logger.log).toHaveBeenCalledWith('\nConfiguration:');
+        expect(logger.log).toHaveBeenCalledWith('  environment: \'dev\'');
+        expect(logger.log).toHaveBeenCalledWith('  controller: \'http://localhost:3610\'');
         expect(logger.log).toHaveBeenCalledWith('  aifabrix-home: /workspace/.aifabrix');
         expect(logger.log).toHaveBeenCalledWith('  aifabrix-secrets: /workspace/aifabrix-miso/builder/secrets.local.yaml');
         expect(logger.log).toHaveBeenCalledWith('  aifabrix-env-config: /workspace/aifabrix-miso/builder/env-config.yaml');
@@ -2780,6 +2802,8 @@ describe('CLI Commands', () => {
 
         const options = {};
         config.getDeveloperId.mockResolvedValue(1);
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
         config.getAifabrixHomeOverride.mockResolvedValue('/workspace/.aifabrix');
         config.getAifabrixSecretsPath.mockResolvedValue(null);
         config.getAifabrixEnvConfigPath.mockResolvedValue('/workspace/aifabrix-miso/builder/env-config.yaml');
@@ -2797,6 +2821,8 @@ describe('CLI Commands', () => {
         await handler(options);
 
         expect(logger.log).toHaveBeenCalledWith('\nConfiguration:');
+        expect(logger.log).toHaveBeenCalledWith('  environment: \'dev\'');
+        expect(logger.log).toHaveBeenCalledWith('  controller: (not set)');
         expect(logger.log).toHaveBeenCalledWith('  aifabrix-home: /workspace/.aifabrix');
         expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('aifabrix-secrets'));
         expect(logger.log).toHaveBeenCalledWith('  aifabrix-env-config: /workspace/aifabrix-miso/builder/env-config.yaml');
@@ -2839,6 +2865,8 @@ describe('CLI Commands', () => {
 
         const options = { setId: '1' };
         config.setDeveloperId.mockResolvedValue();
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
         config.getAifabrixHomeOverride.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
         config.getAifabrixEnvConfigPath.mockResolvedValue(null);

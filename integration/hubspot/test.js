@@ -281,7 +281,7 @@ async function loadEnvFile(envPath, options) {
 /**
  * Load test config (controller, environment, dataplane, openapi file).
  * Reads integration/hubspot/.env; missing CONTROLLER_URL/ENVIRONMENT fall back to
- * the same resolution as the CLI (aifx auth status) so tests use the same controller.
+ * the same resolution as the CLI (af auth status) so tests use the same controller.
  * @async
  * @function loadTestConfigFromEnv
  * @returns {Promise<Object>} Context with controllerUrl, environment, dataplaneUrl, openapiFile

@@ -109,7 +109,7 @@ describe('processEnvVariables - copied .env PORT/localhost URL offsets', () => {
     expect(writtenContent).toMatch(/ALLOWED_ORIGINS=http:\/\/localhost:3200,http:\/\/localhost:5173/);
   });
 
-  it('uses localPort + offset when developer id is set', async() => {
+  it('uses port + offset when developer id is set', async() => {
     const envPath = path.join(process.cwd(), 'builder', 'myapp', '.env');
     const variablesPath = path.join(process.cwd(), 'builder', 'myapp', 'application.yaml');
     const outDir = '/tmp/aifabrix-out';
@@ -127,8 +127,7 @@ describe('processEnvVariables - copied .env PORT/localhost URL offsets', () => {
         return [
           'build:',
           '  envOutputPath: ' + outDir,
-          '  localPort: 4000',
-          'port: 3000'
+          'port: 4000'
         ].join('\n');
       }
       if (p === envPath) {
