@@ -52,7 +52,7 @@ describe('dev-cli-handlers', () => {
       expect(devApi.listUsers).toHaveBeenCalledWith('https://dev.example.com', 'pem');
       const logger = require('../../../lib/utils/logger').log;
       expect(logger).toHaveBeenCalledWith(expect.stringContaining('Developers:'));
-      expect(logger).toHaveBeenCalledWith(expect.stringMatching(/^ID\s+Name\s+Email\s+Cert\s+Groups$/));
+      expect(logger).toHaveBeenCalledWith(expect.stringMatching(/^ID\s+Name\s+Email\s+Cert\s+Until\s+Groups$/));
       // Sorted by name: Alice then Bob
       const calls = logger.mock.calls.map(c => c[0]);
       const aliceRow = calls.find(s => typeof s === 'string' && s.includes('Alice') && s.includes('a@example.com'));
@@ -60,6 +60,21 @@ describe('dev-cli-handlers', () => {
       expect(aliceRow).toBeDefined();
       expect(bobRow).toBeDefined();
       expect(calls.indexOf(aliceRow)).toBeLessThan(calls.indexOf(bobRow));
+      expect(aliceRow).toMatch(/\bno cert\b/);
+      expect(aliceRow).toMatch(/\s-\s+developer/);
+      expect(bobRow).toMatch(/\byes\b/);
+      expect(bobRow).toContain('2026-01-01');
+    });
+
+    it('formats Until as datetime without milliseconds (e.g. 2026-03-20T17:31:14)', async() => {
+      devApi.listUsers.mockResolvedValue([
+        { id: '03', name: 'E2E', email: 'e2e@example.com', certificateIssued: true, certificateValidNotAfter: '2026-03-20T17:31:14.000Z', groups: ['developer'] }
+      ]);
+      await handleDevList();
+      const logger = require('../../../lib/utils/logger').log;
+      const row = logger.mock.calls.find(c => c[0].includes('E2E') && c[0].includes('e2e@example.com'))?.[0];
+      expect(row).toContain('2026-03-20T17:31:14');
+      expect(row).not.toContain('.000Z');
     });
   });
 

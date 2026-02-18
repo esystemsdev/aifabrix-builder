@@ -10,7 +10,7 @@ const os = require('os');
 jest.mock('fs');
 jest.mock('child_process', () => ({ execSync: jest.fn() }));
 
-const { getCertDir, readClientCertPem } = require('../../../lib/utils/dev-cert-helper');
+const { getCertDir, readClientCertPem, readClientKeyPem } = require('../../../lib/utils/dev-cert-helper');
 const { execSync } = require('child_process');
 
 describe('dev-cert-helper', () => {
@@ -49,6 +49,26 @@ describe('dev-cert-helper', () => {
         throw new Error('EACCES');
       });
       expect(() => readClientCertPem('/certs/01')).toThrow('EACCES');
+    });
+  });
+
+  describe('readClientKeyPem', () => {
+    it('returns key content when key.pem exists', () => {
+      const certDir = '/certs/01';
+      const keyPath = path.join(certDir, 'key.pem');
+      const content = '-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----';
+      fs.readFileSync.mockReturnValue(content);
+      expect(readClientKeyPem(certDir)).toBe(content);
+      expect(fs.readFileSync).toHaveBeenCalledWith(keyPath, 'utf8');
+    });
+
+    it('returns null when key.pem does not exist', () => {
+      fs.readFileSync.mockImplementation(() => {
+        const err = new Error('ENOENT');
+        err.code = 'ENOENT';
+        throw err;
+      });
+      expect(readClientKeyPem('/certs/01')).toBeNull();
     });
   });
 

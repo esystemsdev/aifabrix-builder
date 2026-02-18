@@ -2824,7 +2824,7 @@ describe('CLI Commands', () => {
         expect(logger.log).toHaveBeenCalledWith('  environment: \'dev\'');
         expect(logger.log).toHaveBeenCalledWith('  controller: (not set)');
         expect(logger.log).toHaveBeenCalledWith('  aifabrix-home: /workspace/.aifabrix');
-        expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('aifabrix-secrets'));
+        expect(logger.log).toHaveBeenCalledWith('  aifabrix-secrets: (not set)');
         expect(logger.log).toHaveBeenCalledWith('  aifabrix-env-config: /workspace/aifabrix-miso/builder/env-config.yaml');
       });
 

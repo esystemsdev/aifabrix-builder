@@ -33,7 +33,7 @@ describe('remote-docker-env', () => {
     expect(result).toEqual({});
   });
 
-  it('returns empty object when cert or key file missing', async() => {
+  it('returns empty object when cert, key, or ca.pem missing', async() => {
     config.getDockerEndpoint.mockResolvedValue('tcp://host:2376');
     config.getDeveloperId.mockResolvedValue('01');
     fs.existsSync.mockReturnValue(false);
@@ -41,12 +41,23 @@ describe('remote-docker-env', () => {
     expect(result).toEqual({});
   });
 
-  it('returns DOCKER_HOST, DOCKER_TLS_VERIFY, DOCKER_CERT_PATH when cert and key exist', async() => {
+  it('returns empty object when ca.pem missing (cert and key exist)', async() => {
     config.getDockerEndpoint.mockResolvedValue('tcp://host:2376');
     config.getDeveloperId.mockResolvedValue('01');
     const certDir = '/config/certs/01';
     fs.existsSync.mockImplementation((p) => {
       return p === path.join(certDir, 'cert.pem') || p === path.join(certDir, 'key.pem');
+    });
+    const result = await getRemoteDockerEnv();
+    expect(result).toEqual({});
+  });
+
+  it('returns DOCKER_HOST, DOCKER_TLS_VERIFY, DOCKER_CERT_PATH when cert, key, and ca.pem exist', async() => {
+    config.getDockerEndpoint.mockResolvedValue('tcp://host:2376');
+    config.getDeveloperId.mockResolvedValue('01');
+    const certDir = '/config/certs/01';
+    fs.existsSync.mockImplementation((p) => {
+      return p === path.join(certDir, 'cert.pem') || p === path.join(certDir, 'key.pem') || p === path.join(certDir, 'ca.pem');
     });
     const result = await getRemoteDockerEnv();
     expect(result).toEqual({

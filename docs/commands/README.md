@@ -26,6 +26,7 @@ Complete command reference organized by concept with examples and troubleshootin
 - [Developer Isolation Commands](developer-isolation.md) - Port isolation and remote development
   - [`aifabrix dev config`](developer-isolation.md#aifabrix-dev-config) - View or set developer ID; when remote and cert available, refresh from GET /api/dev/settings
   - [`aifabrix dev init`](developer-isolation.md#aifabrix-dev-init) - (Remote only) Issue cert, fetch settings, register SSH keys for Mutagen
+  - [`aifabrix dev refresh`](developer-isolation.md#aifabrix-dev-refresh) - (Remote only) Fetch settings from Builder Server and update config (e.g. when docker-endpoint or sync-ssh-host are empty)
   - [`aifabrix dev add`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev update`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev pin`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev delete`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev list`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) - (Remote only) Manage developers on server
   - [`aifabrix dev down`](developer-isolation.md#aifabrix-dev-down) - (Remote only) Stop sync sessions and optionally app containers
 

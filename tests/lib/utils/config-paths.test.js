@@ -222,8 +222,90 @@ describe('Config Paths Module', () => {
           'remote-server': '  https://dev.example.com/  '
         });
         expect(saveConfigFn).toHaveBeenCalledWith({
-          'remote-server': 'https://dev.example.com/'
+          'remote-server': 'https://dev.example.com/',
+          'sync-ssh-host': 'dev.example.com',
+          'docker-endpoint': 'tcp://dev.example.com:2376'
         });
+      });
+
+      it('should not overwrite config with empty string from server', async() => {
+        getConfigFn.mockResolvedValue({
+          'aifabrix-env-config': '/existing/env-config.yaml',
+          'remote-server': 'https://builder01.aifabrix.dev'
+        });
+        await pathConfigFunctions.mergeRemoteSettings({
+          'aifabrix-env-config': '',
+          'remote-server': 'https://other.example.com'
+        });
+        expect(saveConfigFn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            'aifabrix-env-config': '/existing/env-config.yaml',
+            'remote-server': 'https://other.example.com'
+          })
+        );
+      });
+
+      it('should set aifabrix-secrets to remote URL when remote-server is set and server sends path', async() => {
+        getConfigFn.mockResolvedValue({});
+        await pathConfigFunctions.mergeRemoteSettings({
+          'remote-server': 'https://builder01.aifabrix.dev',
+          'aifabrix-secrets': '/workspace/aifabrix-miso/builder/secrets.local.yaml'
+        });
+        expect(saveConfigFn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            'remote-server': 'https://builder01.aifabrix.dev',
+            'aifabrix-secrets': 'https://builder01.aifabrix.dev/api/dev/secrets'
+          })
+        );
+      });
+
+      it('should not override aifabrix-secrets when already an https URL', async() => {
+        getConfigFn.mockResolvedValue({});
+        const url = 'https://builder01.aifabrix.dev/api/custom/secrets';
+        await pathConfigFunctions.mergeRemoteSettings({
+          'remote-server': 'https://builder01.aifabrix.dev',
+          'aifabrix-secrets': url
+        });
+        expect(saveConfigFn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            'aifabrix-secrets': url
+          })
+        );
+      });
+
+      it('should derive sync-ssh-host and docker-endpoint from remote-server when server does not send them', async() => {
+        getConfigFn.mockResolvedValue({
+          'remote-server': 'https://builder.aifabrix.dev',
+          'user-mutagen-folder': '/data/workspace/dev-06',
+          'sync-ssh-user': 'aifabrix-sync'
+        });
+        await pathConfigFunctions.mergeRemoteSettings({
+          'user-mutagen-folder': '/data/workspace/dev-06',
+          'sync-ssh-user': 'aifabrix-sync'
+        });
+        expect(saveConfigFn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            'user-mutagen-folder': '/data/workspace/dev-06',
+            'sync-ssh-user': 'aifabrix-sync',
+            'sync-ssh-host': 'builder.aifabrix.dev',
+            'docker-endpoint': 'tcp://builder.aifabrix.dev:2376'
+          })
+        );
+      });
+
+      it('should not override sync-ssh-host or docker-endpoint when server sends them', async() => {
+        getConfigFn.mockResolvedValue({});
+        await pathConfigFunctions.mergeRemoteSettings({
+          'remote-server': 'https://builder.aifabrix.dev',
+          'sync-ssh-host': 'ssh.aifabrix.dev',
+          'docker-endpoint': 'tcp://docker.aifabrix.dev:2376'
+        });
+        expect(saveConfigFn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            'sync-ssh-host': 'ssh.aifabrix.dev',
+            'docker-endpoint': 'tcp://docker.aifabrix.dev:2376'
+          })
+        );
       });
     });
   });

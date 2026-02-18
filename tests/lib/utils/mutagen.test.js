@@ -8,9 +8,11 @@ const path = require('path');
 jest.mock('../../../lib/utils/paths', () => ({ getAifabrixHome: jest.fn(() => '/home/.aifabrix') }));
 jest.mock('fs');
 jest.mock('child_process', () => ({ exec: jest.fn() }));
+jest.mock('../../../lib/utils/mutagen-install', () => ({ installMutagen: jest.fn().mockResolvedValue(undefined) }));
 
 const fs = require('fs');
 const { exec } = require('child_process');
+const mutagenInstall = require('../../../lib/utils/mutagen-install');
 const mutagen = require('../../../lib/utils/mutagen');
 
 describe('mutagen', () => {
@@ -44,30 +46,34 @@ describe('mutagen', () => {
       expect(result).toBe(path.join('/home/.aifabrix', 'bin', mutagen.getMutagenBinaryName()));
     });
 
-    it('returns null when not in bin and which/where fails', async() => {
+    it('returns null when not in bin (internal path only, no PATH)', async() => {
       fs.existsSync.mockReturnValue(false);
-      exec.mockImplementation((cmd, opts, cb) => {
-        const done = (typeof opts === 'function') ? opts : cb;
-        if (typeof done === 'function') done(new Error('not found'));
-        return {};
-      });
       const result = await mutagen.getMutagenPath();
       expect(result).toBeNull();
+      expect(exec).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ensureMutagenPath', () => {
+    it('returns existing path when bin exists', async() => {
+      fs.existsSync.mockReturnValue(true);
+      const result = await mutagen.ensureMutagenPath();
+      expect(result).toBe(path.join('/home/.aifabrix', 'bin', mutagen.getMutagenBinaryName()));
+      expect(mutagenInstall.installMutagen).not.toHaveBeenCalled();
     });
 
-    it('returns path from which when not in bin (exec mock invokes callback)', async() => {
-      fs.existsSync.mockReturnValue(false);
-      exec.mockImplementation((cmd, opts, cb) => {
-        const callback = (typeof opts === 'function') ? opts : cb;
-        if (typeof callback === 'function') {
-          setImmediate(() => callback(null, '/usr/bin/mutagen\n', ''));
-        }
-        return {};
-      });
-      const result = await mutagen.getMutagenPath();
-      expect(exec).toHaveBeenCalled();
-      // Result depends on exec callback being invoked; when mock works, result is path
-      expect(result === null || result === '/usr/bin/mutagen').toBe(true);
+    it('calls installMutagen and returns bin path when not installed', async() => {
+      fs.existsSync.mockReturnValueOnce(false).mockReturnValueOnce(true);
+      const result = await mutagen.ensureMutagenPath();
+      expect(mutagenInstall.installMutagen).toHaveBeenCalled();
+      expect(result).toBe(path.join('/home/.aifabrix', 'bin', mutagen.getMutagenBinaryName()));
+    });
+
+    it('passes log to installMutagen when provided', async() => {
+      fs.existsSync.mockReturnValueOnce(false).mockReturnValueOnce(true);
+      const log = jest.fn();
+      await mutagen.ensureMutagenPath(log);
+      expect(mutagenInstall.installMutagen).toHaveBeenCalledWith(log);
     });
   });
 

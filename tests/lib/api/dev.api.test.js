@@ -29,6 +29,20 @@ describe('Dev API', () => {
       expect(devApi.encodeCertForHeader(pem)).toBe(Buffer.from(pem, 'utf8').toString('base64'));
     });
 
+    it('should produce single-line value with no newlines (safe for header)', () => {
+      const pem = '-----BEGIN CERTIFICATE-----\nMIIBkTCB\n-----END CERTIFICATE-----';
+      const encoded = devApi.encodeCertForHeader(pem);
+      expect(encoded).not.toMatch(/\n/);
+      expect(encoded).toMatch(/^[A-Za-z0-9+/=]+$/);
+    });
+
+    it('should be decodable back to original PEM', () => {
+      const pem = '-----BEGIN CERTIFICATE-----\nMIIBkTCB\n-----END CERTIFICATE-----';
+      const encoded = devApi.encodeCertForHeader(pem);
+      const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+      expect(decoded).toBe(pem);
+    });
+
     it('should return empty string for empty or non-string', () => {
       expect(devApi.encodeCertForHeader('')).toBe('');
       expect(devApi.encodeCertForHeader(null)).toBe('');
@@ -109,17 +123,18 @@ describe('Dev API', () => {
   });
 
   describe('getSettings', () => {
-    it('should GET /api/dev/settings with X-Client-Cert header', async() => {
+    it('should GET /api/dev/settings with X-Client-Cert header as base64', async() => {
       const settings = { dataDir: '/data', someKey: 'value' };
       mockMakeApiCall.mockResolvedValue({ success: true, data: settings });
 
       const result = await devApi.getSettings(serverUrl, clientCertPem);
 
+      const expectedCertHeader = Buffer.from(clientCertPem, 'utf8').toString('base64');
       expect(mockMakeApiCall).toHaveBeenCalledWith(
         'https://builder-server.example.com/api/dev/settings',
         expect.objectContaining({
           method: 'GET',
-          headers: expect.objectContaining({ 'X-Client-Cert': expect.any(String) })
+          headers: expect.objectContaining({ 'X-Client-Cert': expectedCertHeader })
         })
       );
       expect(result).toEqual(settings);
@@ -132,15 +147,19 @@ describe('Dev API', () => {
   });
 
   describe('listUsers', () => {
-    it('should GET /api/dev/users and return array', async() => {
+    it('should GET /api/dev/users with X-Client-Cert as base64', async() => {
       const users = [{ id: 'u1', developerId: 'dev1' }];
       mockMakeApiCall.mockResolvedValue({ success: true, data: users });
 
       const result = await devApi.listUsers(serverUrl, clientCertPem);
 
+      const expectedCertHeader = Buffer.from(clientCertPem, 'utf8').toString('base64');
       expect(mockMakeApiCall).toHaveBeenCalledWith(
         'https://builder-server.example.com/api/dev/users',
-        expect.objectContaining({ method: 'GET' })
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ 'X-Client-Cert': expectedCertHeader })
+        })
       );
       expect(result).toEqual(users);
     });
@@ -155,16 +174,18 @@ describe('Dev API', () => {
   });
 
   describe('createUser', () => {
-    it('should POST /api/dev/users with body', async() => {
+    it('should POST /api/dev/users with body and X-Client-Cert as base64', async() => {
       const body = { developerId: 'dev1', name: 'Dev One', email: 'dev@example.com' };
       mockMakeApiCall.mockResolvedValue({ success: true, data: { id: 'u1', ...body } });
 
       const result = await devApi.createUser(serverUrl, clientCertPem, body);
 
+      const expectedCertHeader = Buffer.from(clientCertPem, 'utf8').toString('base64');
       expect(mockMakeApiCall).toHaveBeenCalledWith(
         'https://builder-server.example.com/api/dev/users',
         expect.objectContaining({
           method: 'POST',
+          headers: expect.objectContaining({ 'X-Client-Cert': expectedCertHeader }),
           body: JSON.stringify(body)
         })
       );
@@ -249,16 +270,18 @@ describe('Dev API', () => {
   });
 
   describe('addSshKey', () => {
-    it('should POST /api/dev/users/:id/ssh-keys with body', async() => {
+    it('should POST /api/dev/users/:id/ssh-keys with body and X-Client-Cert as base64', async() => {
       const body = { publicKey: 'ssh-rsa AAAA...', label: 'laptop' };
       mockMakeApiCall.mockResolvedValue({ success: true, data: { fingerprint: 'fp1', ...body } });
 
       const result = await devApi.addSshKey(serverUrl, clientCertPem, 'user-1', body);
 
+      const expectedCertHeader = Buffer.from(clientCertPem, 'utf8').toString('base64');
       expect(mockMakeApiCall).toHaveBeenCalledWith(
         'https://builder-server.example.com/api/dev/users/user-1/ssh-keys',
         expect.objectContaining({
           method: 'POST',
+          headers: expect.objectContaining({ 'X-Client-Cert': expectedCertHeader }),
           body: JSON.stringify(body)
         })
       );
