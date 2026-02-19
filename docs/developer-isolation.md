@@ -394,7 +394,57 @@ If you see container name conflicts:
 
 ### Remote Docker (when `remote-server` is set)
 
-When `config.yaml` has `remote-server` set, run and build use the remote Docker endpoint; dev APIs (settings, secrets, sync) use **certificate (mTLS) authentication**. One network per developer applies on the remote host. There is no dev user management (dev add/update/pin/delete/list) when there is no remote server. Use `aifabrix dev init` to issue a cert and configure Mutagen for `run --reload`. See [Secrets and config](configuration/secrets-and-config.md) and [Commands: Developer isolation](commands/developer-isolation.md).
+When your `~/.aifabrix/config.yaml` includes a `remote-server` URL, the CLI uses a **remote Docker host** for run and build instead of your local machine. Each developer still has an isolated network and workspace on the remote host (same developer-id model as local). Access to the remote server uses **client certificates (mTLS)**; there is no SSH or direct host access.
+
+#### One-time setup
+
+Before using remote Docker, run:
+
+```bash
+aifabrix dev init --dev-id <id> --server <remote-server-url> --pin <pin>
+```
+
+Example:
+
+```bash
+aifabrix dev init --dev-id 01 --server https://builder.aifabrix.dev --pin 123456
+```
+
+This validates your PIN, obtains a client certificate and CA, and writes config (e.g. `remote-server`, `docker-endpoint`) and certs under `~/.aifabrix/certs/<id>/`. Use the developer ID and PIN provided by your team. After this, **renewal uses your existing certificate** (no PIN) and the CLI can auto-renew when the cert is near expiry.
+
+If the remote Docker context becomes invalid or you see certificate errors, run `aifabrix dev init` again (with `--pin` if your certificate has expired).
+
+#### Environments (dev / tst / pro)
+
+| Environment | Sync / mount | Reload | Requires image |
+| ----------- | ------------ | ------ | -------------- |
+| **dev**     | Yes          | Yes    | Optional       |
+| **tst**     | No           | No     | Yes            |
+| **pro**     | No           | No     | Yes            |
+
+- **dev**: Use `aifabrix run myapp --env dev --reload` for live code sync and reload. Code is synced to the remote host automatically; you don’t need to manage sync tools yourself.
+- **tst** / **pro**: Use `aifabrix run myapp --env tst` or `--env pro`. No sync or mount; the app runs from the built image (image must exist).
+
+#### Commands (remote Docker)
+
+- **Infrastructure**: `aifabrix up-infra` — ensures the dev network and infra containers exist on the remote host.
+- **Run**: `aifabrix run <app> --env dev --reload` (dev with sync) or `aifabrix run <app> --env tst` / `--env pro` (from image).
+- **Build**: `aifabrix build <app>` — builds on the remote Docker engine (e.g. image tagged like `myapp:dev-01-latest`).
+- **Stop / logs / shell**: `aifabrix stop <app>`, `aifabrix logs <app>`, `aifabrix shell <app>` (optionally with `--env`).
+- **Tests**: `aifabrix test <app>`, `aifabrix test-integration <app>`, `aifabrix test-e2e <app>`, `aifabrix lint <app>` (with `--env dev` or `--env tst` as needed). In dev, tests run inside the running container; in tst, an ephemeral container is used.
+
+#### If something goes wrong
+
+- **Sync or run fails (e.g. sync errors)**: Stop sync with `aifabrix dev down`, then run again: `aifabrix run myapp --env dev --reload`.
+- **Docker or certificate errors**: Re-run setup:  
+  `aifabrix dev init` (add `--pin` if your certificate has expired).
+
+#### What you have (and don’t)
+
+- You **do not** have SSH, Docker group, or host OS access on the remote server.
+- You **do** have access via the AI Fabrix CLI: TLS-secured Docker API, your own isolated network, and your isolated workspace. Everything is done through the CLI.
+
+See also [Secrets and config](configuration/secrets-and-config.md) and [Commands: Developer isolation](commands/developer-isolation.md).
 
 ## Port Scenarios Reference
 

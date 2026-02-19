@@ -15,7 +15,8 @@ jest.mock('../../../lib/utils/dev-cert-helper', () => ({
   generateCSR: jest.fn(),
   getCertDir: jest.fn((dir, id) => `${dir}/certs/${id}`),
   readClientCertPem: jest.fn(),
-  readClientKeyPem: jest.fn()
+  readClientKeyPem: jest.fn(),
+  getCertValidNotAfter: jest.fn()
 }));
 jest.mock('../../../lib/utils/remote-dev-auth', () => ({ getRemoteDevAuth: jest.fn() }));
 jest.mock('../../../lib/utils/ssh-key-helper', () => ({ getOrCreatePublicKeyContent: jest.fn(() => 'ssh-ed25519 AAAA key') }));
@@ -27,7 +28,7 @@ jest.mock('fs', () => ({ promises: { mkdir: jest.fn(), writeFile: jest.fn() } })
 const logger = require('../../../lib/utils/logger');
 const config = require('../../../lib/core/config');
 const devApi = require('../../../lib/api/dev.api');
-const { generateCSR, readClientCertPem, readClientKeyPem } = require('../../../lib/utils/dev-cert-helper');
+const { generateCSR, readClientCertPem, readClientKeyPem, getCertValidNotAfter } = require('../../../lib/utils/dev-cert-helper');
 const { getRemoteDevAuth } = require('../../../lib/utils/remote-dev-auth');
 const { runDevInit, runDevRefresh } = require('../../../lib/commands/dev-init');
 
@@ -108,6 +109,19 @@ describe('dev-init command', () => {
     expect(writeCalls.some(p => String(p).endsWith('ca.pem'))).toBe(true);
   });
 
+  it('normalizes escaped newlines in certificate and caCertificate when saving', async() => {
+    devApi.issueCert.mockResolvedValue({
+      certificate: '-----BEGIN CERTIFICATE-----\\ndata\\n-----END CERTIFICATE-----',
+      caCertificate: '-----BEGIN CERTIFICATE-----\\nca\\n-----END CERTIFICATE-----'
+    });
+    await runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456' });
+    const writeCalls = fs.writeFile.mock.calls;
+    const certCall = writeCalls.find(c => String(c[0]).endsWith('cert.pem'));
+    const caCall = writeCalls.find(c => String(c[0]).endsWith('ca.pem'));
+    expect(certCall[1]).toContain('-----BEGIN CERTIFICATE-----\ndata\n-----END CERTIFICATE-----');
+    expect(caCall[1]).toContain('-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----');
+  });
+
   it('when getSettings returns 400, logs warning with 400/nginx hint and completes init', async() => {
     const err = new Error('Bad Request');
     err.status = 400;
@@ -140,6 +154,8 @@ describe('dev-init command', () => {
         'docker-endpoint': 'tcp://builder01.aifabrix.dev:2376',
         'sync-ssh-host': 'builder01.aifabrix.dev'
       });
+      devApi.createPin = jest.fn().mockResolvedValue({ pin: '654321', expiresAt: '2026-12-31T00:00:00Z' });
+      getCertValidNotAfter.mockReturnValue(new Date(Date.now() + 20 * 24 * 60 * 60 * 1000)); // 20 days from now
     });
 
     it('throws when remote server not configured', async() => {
@@ -152,13 +168,37 @@ describe('dev-init command', () => {
       await expect(runDevRefresh()).rejects.toThrow('Client certificate not found');
     });
 
-    it('fetches settings and merges into config', async() => {
+    it('fetches settings and merges when cert valid for 20+ days', async() => {
       await runDevRefresh();
       expect(devApi.getSettings).toHaveBeenCalledWith('https://builder01.aifabrix.dev', 'cert-pem', 'key-pem');
       expect(config.mergeRemoteSettings).toHaveBeenCalledWith({
         'docker-endpoint': 'tcp://builder01.aifabrix.dev:2376',
         'sync-ssh-host': 'builder01.aifabrix.dev'
       });
+      expect(devApi.createPin).not.toHaveBeenCalled();
+      expect(devApi.issueCert).not.toHaveBeenCalled();
+    });
+
+    it('refreshes certificate when cert expires within 14 days', async() => {
+      getCertValidNotAfter.mockReturnValue(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)); // 5 days
+      await runDevRefresh();
+      expect(devApi.createPin).toHaveBeenCalledWith('https://builder01.aifabrix.dev', 'cert-pem', '01');
+      expect(devApi.issueCert).toHaveBeenCalledWith('https://builder01.aifabrix.dev', expect.objectContaining({ developerId: '01', pin: '654321' }));
+      expect(config.mergeRemoteSettings).toHaveBeenCalled();
+      expect(devApi.getSettings).toHaveBeenCalled();
+    });
+
+    it('refreshes certificate when runDevRefresh called with --cert', async() => {
+      await runDevRefresh({ cert: true });
+      expect(devApi.createPin).toHaveBeenCalledWith('https://builder01.aifabrix.dev', 'cert-pem', '01');
+      expect(devApi.issueCert).toHaveBeenCalledWith('https://builder01.aifabrix.dev', expect.objectContaining({ developerId: '01', pin: '654321' }));
+    });
+
+    it('refreshes certificate when getCertValidNotAfter returns null (unknown expiry)', async() => {
+      getCertValidNotAfter.mockReturnValue(null);
+      await runDevRefresh();
+      expect(devApi.createPin).toHaveBeenCalled();
+      expect(devApi.issueCert).toHaveBeenCalled();
     });
   });
 });

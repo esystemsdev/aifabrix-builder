@@ -10,7 +10,7 @@ const os = require('os');
 jest.mock('fs');
 jest.mock('child_process', () => ({ execSync: jest.fn() }));
 
-const { getCertDir, readClientCertPem, readClientKeyPem } = require('../../../lib/utils/dev-cert-helper');
+const { getCertDir, readClientCertPem, readClientKeyPem, getCertValidNotAfter } = require('../../../lib/utils/dev-cert-helper');
 const { execSync } = require('child_process');
 
 describe('dev-cert-helper', () => {
@@ -115,6 +115,42 @@ describe('dev-cert-helper', () => {
       fs.rmdirSync.mockImplementation(() => {});
 
       expect(() => devCertHelper.generateCSR('01')).toThrow('OpenSSL is required');
+    });
+  });
+
+  describe('getCertValidNotAfter', () => {
+    it('returns null when cert.pem does not exist', () => {
+      fs.existsSync.mockReturnValue(false);
+      expect(getCertValidNotAfter('/certs/01')).toBeNull();
+      expect(execSync).not.toHaveBeenCalled();
+    });
+
+    it('returns Date when openssl returns notAfter', () => {
+      fs.existsSync.mockReturnValue(true);
+      execSync.mockReturnValue('notAfter=Dec 31 23:59:59 2026 GMT\n');
+      const result = getCertValidNotAfter('/certs/01');
+      expect(result).toBeInstanceOf(Date);
+      expect(result.getFullYear()).toBe(2026);
+      expect(result.getMonth()).toBe(11);
+      expect(result.getDate()).toBe(31);
+      expect(execSync).toHaveBeenCalledWith(
+        expect.stringContaining('openssl x509 -enddate -noout'),
+        expect.any(Object)
+      );
+    });
+
+    it('returns null when openssl throws', () => {
+      fs.existsSync.mockReturnValue(true);
+      execSync.mockImplementation(() => {
+        throw new Error('openssl failed');
+      });
+      expect(getCertValidNotAfter('/certs/01')).toBeNull();
+    });
+
+    it('returns null when output has no notAfter line', () => {
+      fs.existsSync.mockReturnValue(true);
+      execSync.mockReturnValue('invalid output');
+      expect(getCertValidNotAfter('/certs/01')).toBeNull();
     });
   });
 });

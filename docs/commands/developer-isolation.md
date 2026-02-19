@@ -4,7 +4,7 @@
 
 Commands for managing developer isolation, port configuration, and **remote development** (when a remote server is configured).
 
-**Remote-only commands:** `dev init`, `dev add`, `dev update`, `dev pin`, `dev delete`, `dev list`, and `dev down` are available **only when `remote-server` is set** in `~/.aifabrix/config.yaml`. Without a remote server, there is no dev user API or sync sessions to manage.
+**Remote-only commands:** `dev init`, `dev refresh`, `dev add`, `dev update`, `dev pin`, `dev delete`, `dev list`, and `dev down` are available **only when `remote-server` is set** in `~/.aifabrix/config.yaml`. Without a remote server, there is no dev user API or sync sessions to manage.
 
 When you run `dev add`, `dev update`, `dev pin`, or `dev delete` without a configured remote, the CLI shows: **"Remote server is not configured. Set remote-server and run \"aifabrix dev init\" first."**
 
@@ -41,6 +41,29 @@ aifabrix dev init --developer-id 01 --server my-remote-host --pin 123456
 
 ---
 
+<a id="aifabrix-dev-refresh"></a>
+## aifabrix dev refresh (remote only)
+
+Fetch settings from the Builder Server and update config. Optionally refresh your client certificate.
+
+**What:** If your certificate expires **within 14 days** (or expiry cannot be read), the CLI automatically refreshes it: creates a new PIN (POST `/api/dev/users/<id>/pin` with your current cert), requests a new certificate (POST `/api/dev/issue-cert` with the PIN and a new CSR), saves the new cert and key, then fetches settings and merges into config. Otherwise it only calls GET `/api/dev/settings` (cert-authenticated) and updates `~/.aifabrix/config.yaml` (e.g. `user-mutagen-folder`, `docker-endpoint`, `sync-ssh-host`, `sync-ssh-user`). If the server does not return `docker-endpoint` or `sync-ssh-host`, the CLI derives them from `remote-server` (hostname and `tcp://<host>:2376`).
+
+**When:** Use when `docker-endpoint` or `sync-ssh-host` are **(not set)** after `dev init`, after the server’s settings have changed, or to renew your certificate before it expires (automatic when < 14 days remaining, or use `--cert` to force).
+
+**Usage:**
+```bash
+aifabrix dev refresh
+aifabrix dev refresh --cert   # Force certificate refresh even when cert is still valid
+```
+
+**Options:** `--cert` – Force certificate refresh (create PIN + issue-cert) even when the certificate is still valid for 14+ days.
+
+**Requirements:** `remote-server` must be set and a client certificate must exist (from a successful `aifabrix dev init`). Certificate refresh requires a **valid** current cert (so you can create your own PIN); if your cert is already expired, an admin must create a PIN for you and you use `aifabrix dev init --pin <pin>`.
+
+**See Also:** [aifabrix dev config](#aifabrix-dev-config) (view config after refresh), [aifabrix dev init](#aifabrix-dev-init).
+
+---
+
 <a id="aifabrix-dev-add-update-pin-delete-list"></a>
 ## aifabrix dev add / update / pin / delete / list (remote only)
 
@@ -56,12 +79,30 @@ Manage developers on the remote server. **Only when `remote-server` is set**; no
 ```bash
 aifabrix dev list
 aifabrix dev add --developer-id <id> --name <name> --email <email> [--groups <items>]
-aifabrix dev update [developerId] --developer-id <id> [--name <name>] [--email <email>] [--groups <items>]
+aifabrix dev update [developerId] [--name <name>] [--email <email>] [--groups <items>]
 aifabrix dev pin [developerId]
 aifabrix dev delete <developer-id>
 ```
 
+**Setting groups:** Use a single `--groups` option with **comma-separated** values (no spaces between group names). Examples:
+```bash
+# Give developer 06 both admin and secret-manager
+aifabrix dev update 06 --groups admin,secret-manager
+
+# Set only developer (default)
+aifabrix dev update 06 --groups developer
+
+# Add with multiple groups
+aifabrix dev add --developer-id 07 --name "Jane" --email jane@example.com --groups admin,secret-manager
+```
+
 **Parameter alignment:** `dev add`, `dev update`, and `dev init` use the same option names: `--developer-id`, `--name`, `--email`, `--groups` (and `--server`, `--pin` for init). For `dev update` you can pass the developer ID either as a positional argument or with `--developer-id`.
+
+| Group | Capabilities |
+| ------- | -------------- |
+| **admin** | All dev and secrets endpoints (list/create/update/delete users, create PIN for any user, list/add/delete secrets). |
+| **secret-manager** | Secrets only: list, add, delete. No user management or PIN creation. |
+| **developer** | List users (read-only), create PIN for **self** only, get own settings, manage own SSH keys. No create/update/delete users, no secrets. |
 
 **See Also:** [Developer Isolation Guide](../developer-isolation.md), [Secrets and config](../configuration/secrets-and-config.md).
 
@@ -103,10 +144,10 @@ View or set developer ID for port isolation.
 aifabrix dev config
 
 # Set developer ID
-aifabrix dev config --set-id 1
+aifabrix dev config --set-id 01
 
 # Set developer ID to 2
-aifabrix dev config --set-id 2
+aifabrix dev config --set-id 02
 ```
 
 **Options:**
@@ -116,7 +157,7 @@ aifabrix dev config --set-id 2
 ```yaml
 🔧 Developer Configuration
 
-Developer ID: 1
+Developer ID: 01
 
 Ports:
   App: 3100
@@ -130,7 +171,7 @@ Ports:
 ```yaml
 🔧 Developer Configuration
 
-Developer ID: 1
+Developer ID: 01
 
 Ports:
   App: 3100
@@ -208,7 +249,9 @@ The command displays configuration variables if they are set in `~/.aifabrix/con
 - `remote-server` - SSH host for remote Docker and Mutagen
 - `docker-endpoint` - Docker API endpoint on the remote host
 
-All dev APIs (settings, secrets, sync) use certificate (mTLS) authentication when remote is configured. These variables are only shown if they are explicitly set. If not set, the Configuration section is omitted from the output.
+All dev APIs (settings, secrets, sync) use certificate (mTLS) authentication when remote is configured.
+
+**Remote Docker (docker-endpoint):** The Docker CLI requires `cert.pem`, `key.pem`, and **`ca.pem`** in `~/.aifabrix/certs/<developer-id>/`. If the Builder Server includes a CA in the issue-cert response (`caCertificate` or `ca`), it is saved as `ca.pem` during `aifabrix dev init`. If `ca.pem` is missing, the CLI does not set `DOCKER_CERT_PATH` and Docker commands use the local daemon. To use remote Docker, ensure the server provides the CA or add `ca.pem` manually to the cert directory. These variables are only shown if they are explicitly set. If not set, the Configuration section is omitted from the output.
 
 **Configuration File:**
 The developer ID is stored in `~/.aifabrix/config.yaml`:
