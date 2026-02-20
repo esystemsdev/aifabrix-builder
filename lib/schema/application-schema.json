@@ -762,6 +762,11 @@
           "type": "string",
           "description": "Dockerfile name (empty or missing = use auto-generated template)",
           "pattern": "^[^/].*"
+        },
+        "remoteSyncPath": {
+          "type": "string",
+          "description": "Relative path under user-mutagen-folder for remote sync and Docker -v; when unset, defaults to dev/<appKey>. No leading slash.",
+          "pattern": "^[^/].*"
         }
       },
       "additionalProperties": false

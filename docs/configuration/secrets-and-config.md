@@ -16,7 +16,7 @@ Location: `~/.aifabrix/config.yaml`. Manages developer-id, aifabrix-home, aifabr
 
 **Key fields:** `developer-id` (read by `aifabrix up-infra`), `traefik` (set by `aifabrix up-infra --traefik`), `controller` and `environment` (set by login/auth config), `device` (device flow tokens), `environments.<env>.clients.<app>` (client tokens). Tokens can be encrypted at rest when `secrets-encryption` is set.
 
-**Remote development (when `remote-server` is set):** `aifabrix-workspace-root` (path on the remote host used for sync and app code), `remote-server` (SSH host for remote Docker and Mutagen), `docker-endpoint` (Docker API endpoint on the remote host). All dev APIs (settings, secrets, sync) use **certificate (mTLS) authentication**. You can refresh config from the server with `aifabrix dev config` after `aifabrix dev init`; `GET /api/dev/settings` (cert-authenticated) provides sync and Docker parameters. See [Commands: Developer isolation](../commands/developer-isolation.md) for `dev init` and remote setup.
+**Remote development (when `remote-server` is set):** `remote-server` (SSH host for remote Docker and Mutagen), `docker-endpoint` (Docker API endpoint on the remote host). All dev APIs (settings, secrets, sync) use **certificate (mTLS) authentication**. You can refresh config from the server with `aifabrix dev config` after `aifabrix dev init`; `GET /api/dev/settings` (cert-authenticated) provides sync and Docker parameters. See [Commands: Developer isolation](../commands/developer-isolation.md) for `dev init` and remote setup.
 
 ## aifabrix-secrets: remote vs local
 

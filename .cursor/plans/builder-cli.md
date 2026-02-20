@@ -45,9 +45,10 @@ The CLI calls **GET /api/dev/settings** with **client certificate authentication
 
 ### Remote path formula (single convention)
 
-- **remote_path** = `user-mutagen-folder` + `'/dev/'` + **appKey**
-- Example: `user-mutagen-folder` = `/opt/aifabrix/builder-server/data/workspace/dev-01`, appKey = `myapp`  
-  → **remote_path** = `/opt/aifabrix/builder-server/data/workspace/dev-01/dev/myapp`
+- **remote_path** = `user-mutagen-folder` + `'/'` + **relative_path**
+- **relative_path** = `build.remoteSyncPath` from application.yaml when set (relative, no leading slash), else `'dev/'` + **appKey**
+- Example (default): `user-mutagen-folder` = `/home/dev01`, appKey = `myapp` → **remote_path** = `/home/dev01/dev/myapp`
+- Example (override): `user-mutagen-folder` = `/home/dev06`, `build.remoteSyncPath` = `aifabrix-miso/packages/miso-controller` → **remote_path** = `/home/dev06/aifabrix-miso/packages/miso-controller`
 
 This same path is used for:
 
@@ -88,7 +89,7 @@ This same path is used for:
 ## 4. Summary
 
 - **Settings endpoint** supplies: user-mutagen-folder, secrets-encryption, aifabrix-secrets, aifabrix-env-config, remote-server, docker-endpoint, **sync-ssh-user**, **sync-ssh-host**.
-- **Convention** fixes: **remote_path** = user-mutagen-folder + `/dev/` + appKey; same path for Mutagen and Docker `-v`.
+- **Convention** fixes: **remote_path** = user-mutagen-folder + `/` + (build.remoteSyncPath from application.yaml if set, else `dev/` + appKey); same path for Mutagen and Docker `-v`.
 - **CLI** provides: appKey (from command), local path rule, network, container env, Mutagen options. No hardcoded SSH user/host once settings include sync-ssh-user and sync-ssh-host.
 
 ---

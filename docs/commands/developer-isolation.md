@@ -37,7 +37,7 @@ aifabrix dev init --developer-id 01 --server my-remote-host --pin 123456
 2. GET `/api/dev/settings` (cert-authenticated) to receive sync and Docker parameters
 3. POST SSH keys so Mutagen can sync without password prompt
 
-**See Also:** [Secrets and config](../configuration/secrets-and-config.md) (remote-server, docker-endpoint, aifabrix-workspace-root), [Developer Isolation Guide](../developer-isolation.md).
+**See Also:** [Secrets and config](../configuration/secrets-and-config.md) (remote-server, docker-endpoint), [Developer Isolation Guide](../developer-isolation.md).
 
 ---
 
@@ -245,7 +245,6 @@ The command displays configuration variables if they are set in `~/.aifabrix/con
 - `aifabrix-env-config` - Custom environment configuration file path
 
 **Remote development variables** (when `remote-server` is set):
-- `aifabrix-workspace-root` - Path on the remote host used for sync and app code
 - `remote-server` - SSH host for remote Docker and Mutagen
 - `docker-endpoint` - Docker API endpoint on the remote host
 

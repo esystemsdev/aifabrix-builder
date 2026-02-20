@@ -153,6 +153,7 @@ Before marking this plan complete:
 6. **JSDoc:** All new or modified public functions have JSDoc (params, returns, throws).
 7. **Code quality:** All rule requirements met; no hardcoded secrets; ISO 27001 considerations for secret handling.
 8. **Tasks:** Schema updated; variable flow and deploy JSON include flag; secrets resolution (kv prefix + add keys with same values); Redis DB index on resolve; compose container name and Traefik path prefix; run flow passes envKey and app config; docs updated; tests added and passing.
+9. **All plan tasks completed:** All implementation tasks (sections 1–8) completed and verified.
 
 ## Out of scope (for this plan)
 
@@ -202,4 +203,45 @@ Add an optional application-level boolean `environmentScopedResources` so that f
 - When implementing, ensure `generateEnvFile` / `resolveKvReferences` receive app config (or a way to read `environmentScopedResources`) and envKey so resolution can prefix and add keys without changing env.template.
 - Define Redis DB index mapping (e.g. dev → 0, tst → 1) in one place (constant or config) and use it during resolution.
 - Add validator test that application.yaml with `environmentScopedResources: true` validates and that the flag is optional.
+
+---
+
+## Plan Validation Report (Re-validation)
+
+**Date:** 2025-02-20  
+**Plan:** .cursor/plans/64-environment-scoped_resources_schema.plan.md  
+**Status:** ✅ VALIDATED
+
+### Plan Purpose
+
+Add an optional application-level boolean `environmentScopedResources` so that for **dev** and **tst** only, resource names (Key Vault keys, database names, Docker container name, Traefik path) are prefixed with the environment key, and Redis uses the correct DB index. Enables dev/tst/pro to share the same Postgres and Docker host. env.template stays unchanged; resolution and generation apply the flag. **Affected areas:** schema (`lib/schema/`), config/variable flow (`lib/utils/variable-transformer.js`, `lib/generator/`), secrets (`lib/core/secrets.js`), Docker Compose (`lib/utils/compose-generator.js`), run flow (`lib/app/run.js`, run-helpers), documentation. **Plan type:** Development (schema, config, secrets, compose, run) + Documentation.
+
+### Applicable Rules
+
+- ✅ [Validation Patterns](.cursor/rules/project-rules.mdc#validation-patterns) – Schema in lib/schema/, JSON Schema, validate before deployment.
+- ✅ [Architecture Patterns](.cursor/rules/project-rules.mdc#architecture-patterns) – Module structure, lib/ layout, schema under lib/schema/.
+- ✅ [Code Quality Standards](.cursor/rules/project-rules.mdc#code-quality-standards) – Files ≤500 lines, functions ≤50 lines, JSDoc.
+- ✅ [Quality Gates](.cursor/rules/project-rules.mdc#quality-gates) – Build/lint/test, coverage ≥80%, no hardcoded secrets.
+- ✅ [Testing Conventions](.cursor/rules/project-rules.mdc#testing-conventions) – Jest, tests in tests/, success and error paths.
+- ✅ [Security & Compliance (ISO 27001)](.cursor/rules/project-rules.mdc#security--compliance-iso-27001) – kv:// resolution, never log secrets.
+- ✅ [Docker & Infrastructure](.cursor/rules/project-rules.mdc#docker--infrastructure) – Compose generation, env vars, validate compose.
+- ✅ [Error Handling & Logging](.cursor/rules/project-rules.mdc#error-handling--logging) – Structured errors, no secrets in messages.
+
+### Rule Compliance
+
+- ✅ DoD Requirements: Build (first), Lint, Test, order BUILD → LINT → TEST, file size, JSDoc, security, all tasks completed.
+- ✅ Rules and Standards: Present with rule links and key requirements.
+- ✅ Before Development: Checklist present (schema, secrets, compose, envKey).
+- ✅ Definition of Done: Includes explicit “All plan tasks completed” item.
+
+### Plan Updates Made (This Re-validation)
+
+- ✅ DoD: Added item 9 “All plan tasks completed” for explicit task-completion requirement.
+- ✅ Appended this re-validation report.
+
+### Recommendations
+
+- Implement after [65-remote-docker-validated.plan.md](65-remote-docker-validated.plan.md) as stated in Prerequisite.
+- Centralize Redis DB index mapping (e.g. dev → 0, tst → 1) and use it in resolution.
+- Ensure `resolveKvReferences` (or equivalent in lib/core/secrets.js) receives app config and envKey for prefixing and adding prefixed keys with same values when missing.
 

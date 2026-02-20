@@ -625,7 +625,7 @@ Use the builder for hot reload (recommended):
 aifabrix run myapp --reload
 ```
 
-**Local Docker:** Mounts the resolved `build.context` directory as the app code path so changes are reflected in the container. **Remote Docker** (when `remote-server` is set): Uses Mutagen to sync—local path = resolved `build.context`, remote path = user Mutagen folder + `/dev/` + appKey. With remote Docker configured, run and build use the remote Docker endpoint and Mutagen for dev `--reload`; run `aifabrix dev init` first. The `--reload` option is for **dev** only (not tst/pro).
+**Local Docker:** Mounts the resolved `build.context` directory as the app code path so changes are reflected in the container. **Remote Docker** (when `remote-server` is set): Uses Mutagen to sync—local path = resolved `build.context`, remote path = user Mutagen folder + `/` + (build.remoteSyncPath from application.yaml if set, else `dev/` + appKey). You can override the remote path per app via `build.remoteSyncPath`. With remote Docker configured, run and build use the remote Docker endpoint and Mutagen for dev `--reload`; run `aifabrix dev init` first. The `--reload` option is for **dev** only (not tst/pro).
 
 ### Debug Mode
 Edit `env.template` (e.g. add `DEBUG=*`, `NODE_ENV=development`), then run:

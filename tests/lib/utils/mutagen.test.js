@@ -85,7 +85,7 @@ describe('mutagen', () => {
   });
 
   describe('getRemotePath', () => {
-    it('returns userMutagenFolder + /dev/ + appKey', () => {
+    it('returns userMutagenFolder + /dev/ + appKey when no third arg', () => {
       expect(mutagen.getRemotePath('/opt/workspace/dev-01', 'myapp')).toBe('/opt/workspace/dev-01/dev/myapp');
     });
 
@@ -95,6 +95,18 @@ describe('mutagen', () => {
 
     it('returns empty string when folder empty', () => {
       expect(mutagen.getRemotePath('', 'myapp')).toBe('');
+    });
+
+    it('uses default dev/appKey when relativePathOverride is empty or undefined', () => {
+      expect(mutagen.getRemotePath('/home/dev06', 'myapp', '')).toBe('/home/dev06/dev/myapp');
+      expect(mutagen.getRemotePath('/home/dev06', 'myapp', undefined)).toBe('/home/dev06/dev/myapp');
+    });
+
+    it('uses relativePathOverride when non-empty (normalized, no leading slash)', () => {
+      expect(mutagen.getRemotePath('/home/dev06', 'myapp', 'aifabrix-miso/packages/miso-controller'))
+        .toBe('/home/dev06/aifabrix-miso/packages/miso-controller');
+      expect(mutagen.getRemotePath('/home/dev06', 'myapp', '/a/b/c')).toBe('/home/dev06/a/b/c');
+      expect(mutagen.getRemotePath('/home/dev06', 'myapp', '  foo/bar  ')).toBe('/home/dev06/foo/bar');
     });
   });
 

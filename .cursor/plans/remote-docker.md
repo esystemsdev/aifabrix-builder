@@ -22,7 +22,6 @@
 
 ## ~/.aifabrix/config.yaml
 
-aifabrix-workspace-root: all commands via aifabrix CLI working as it here if not set full path. If missing full path then we use workapce-root
 remote-server: this is remote server where we get certicate and remote docker endpoint and other settings
 aifabrix-secrets: this support workspace-root as similar than other files
 
@@ -34,7 +33,6 @@ when remote-server is used we do not generate different localPort or different n
 developer-id: '06'
 secrets-encryption: '685d4b7ab1ec43fa38f96f3b40bd12b98b9bc6f1d53242888d11d5c8f8d5b634'
 aifabrix-home: '/workspace/.aifabrix'
-aifabrix-workspace-root: /workspace
 aifabrix-secrets: '/aifabrix-miso/builder/secrets.local.yaml'
 aifabrix-env-config: 'aifabrix-miso/builder/env-config.yaml'
 environment: 'dev'

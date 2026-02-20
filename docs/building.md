@@ -260,7 +260,7 @@ aifabrix build myapp --force-template
 
 ## Build Context
 
-**Build context** (`build.context`) = canonical app code directory for both build and **run --reload**. Docker uses it for the build; for **run --reload**, local Docker mounts this path, and remote Docker uses it as the Mutagen local path (remote path = user Mutagen folder + `/dev/` + appKey). Resolved relative to the directory containing the config file.
+**Build context** (`build.context`) = canonical app code directory for both build and **run --reload**. Docker uses it for the build; for **run --reload**, local Docker mounts this path, and remote Docker uses it as the Mutagen local path (remote path = user Mutagen folder + `/` + (build.remoteSyncPath if set, else `dev/` + appKey)). Override per app with `build.remoteSyncPath`. Resolved relative to the directory containing the config file.
 
 ### Default Context
 

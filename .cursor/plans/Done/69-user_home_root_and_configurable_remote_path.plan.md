@@ -60,21 +60,21 @@ If any of these indicate localhost, return `null` **before** requiring sync sett
 
 ### 2.2 Code and config changes
 
-**1. Schema — [lib/schema/application-schema.json**](lib/schema/application-schema.json)  
+**1. Schema — [lib/schema/application-schema.json](lib/schema/application-schema.json)**  
 
 - In `build.properties`, add an optional field, e.g. `remoteSyncPath`:
   - `type`: string
   - `description`: Relative path under user-mutagen-folder for remote sync and Docker -v; when unset, defaults to `dev/<appKey>`.
-  - Pattern: allow relative segments with slashes (e.g. `aifabrix-miso/packages/miso-controller`), no leading slash (e.g. `^[^/].*` or allow internal slashes only).
+  - Pattern: allow relative segments with slashes (e.g. `aifabrix-miso/packages/miso-controller`), no leading slash (e.g. `^[^/].`* or allow internal slashes only).
 
-**2. Mutagen — [lib/utils/mutagen.js**](lib/utils/mutagen.js)  
+**2. Mutagen — [lib/utils/mutagen.js*](lib/utils/mutagen.js)*  
 
 - Change `getRemotePath(userMutagenFolder, appKey, relativePathOverride)`:
   - If `relativePathOverride` is a non-empty string: normalize (trim, strip leading slashes), then return `userMutagenFolder + '/' + normalized`.
   - Else: return `userMutagenFolder + '/dev/' + appKey` (current behavior).
 - Update JSDoc for the new parameter.
 
-**3. Run flow — [lib/app/run.js**](lib/app/run.js)  
+**3. Run flow — [lib/app/run.js](lib/app/run.js)**  
 
 - **Localhost guard:** At the start of `ensureReloadSync`, after reading `endpoint` and `serverUrl` (and optionally `syncSshHost`): if the host part of the Docker endpoint, remote-server URL, or sync-ssh-host is localhost or 127.0.0.1, return `null` immediately (do not require sync settings or start Mutagen). Use a small helper e.g. `isLocalhostEndpoint(url)` / `isLocalhostHost(host)` so both `tcp://localhost:2376` and `https://127.0.0.1:8443` are detected.
 - Pass the optional relative path from app config into `ensureReloadSync`: add parameter `remoteSyncPath` (e.g. `appConfig.build?.remoteSyncPath` from `prepareAppRun`). Inside `ensureReloadSync` call `mutagen.getRemotePath(userMutagenFolder, appName, remoteSyncPath)`.
@@ -133,4 +133,97 @@ No change in aifabrix-setup for this path segment; only the builder needs to rea
 | [docs/configuration/application-yaml.md](docs/configuration/application-yaml.md)                                   | Document `build.remoteSyncPath`                                                                                                                               |
 | [docs/running.md](docs/running.md) or [docs/commands/developer-isolation.md](docs/commands/developer-isolation.md) | One-line note on override (if formula is mentioned)                                                                                                           |
 
+
+---
+
+## Implementation Validation Report
+
+**Date:** 2025-02-20  
+**Plan:** .cursor/plans/69-user_home_root_and_configurable_remote_path.plan.md  
+**Status:** ✅ COMPLETE
+
+### Executive Summary
+
+Part 2 (aifabrix-builder) of plan 69 is fully implemented. All required code and config changes, tests, and documentation are in place. Part 1 (aifabrix-setup) is out of scope for this repo. Format, lint, and tests all pass with zero errors and zero warnings.
+
+### Task Completion
+
+- **Total tasks:** Plan uses frontmatter `todos: []`; implementation checklist from §2.2 and “Files to touch” is complete.
+- **Completed:** Schema, Mutagen, run flow (localhost guard + remoteSyncPath), tests (mutagen + run-reload-sync), config-paths (no change needed), documentation (builder-cli, application-yaml, running, application-development, building).
+- **Completion:** 100% for aifabrix-builder scope.
+
+### File Existence Validation
+
+
+| File                                     | Status                                                                                                                       |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| lib/schema/application-schema.json       | ✅ `build.remoteSyncPath` added (optional string, pattern `^[^/].`*)                                                          |
+| lib/utils/mutagen.js                     | ✅ `getRemotePath(userMutagenFolder, appKey, relativePathOverride)` with normalization and JSDoc                              |
+| lib/app/run.js                           | ✅ `isLocalhostHost`, `isLocalhostEndpoint`; localhost guard in `ensureReloadSync`; `remoteSyncPath` param; exports for tests |
+| tests/lib/utils/mutagen.test.js          | ✅ Extended `getRemotePath` (no third arg, override, empty/undefined)                                                         |
+| tests/lib/app/run-reload-sync.test.js    | ✅ New: localhost helpers + `ensureReloadSync` (null when localhost, Mutagen when remote, remoteSyncPath passed)              |
+| .cursor/plans/builder-cli.md             | ✅ §2 Remote path formula and §4 Summary updated with override                                                                |
+| docs/configuration/application-yaml.md   | ✅ `build.remoteSyncPath` documented                                                                                          |
+| docs/running.md                          | ✅ Remote path formula + one-line override note                                                                               |
+| docs/commands/application-development.md | ✅ Formula + override note                                                                                                    |
+| docs/building.md                         | ✅ Formula + override note                                                                                                    |
+| tests/lib/utils/config-paths.test.js     | ✅ No change (only references `user-mutagen-folder`; no hardcoded path formula)                                               |
+
+
+### Test Coverage
+
+- **Unit tests:** ✅ `tests/lib/utils/mutagen.test.js` — getRemotePath (default, override, empty/undefined). ✅ `tests/lib/app/run-reload-sync.test.js` — isLocalhostHost, isLocalhostEndpoint, ensureReloadSync (null when endpoint/server/sync-host is localhost; Mutagen when non-local; remoteSyncPath passed to getRemotePath).
+- **Integration tests:** N/A for this plan.
+- **Test execution:** All tests pass via `npm test`.
+
+### Code Quality Validation
+
+
+| Step              | Result                          |
+| ----------------- | ------------------------------- |
+| Format (lint:fix) | ✅ PASSED                        |
+| Lint              | ✅ PASSED (0 errors, 0 warnings) |
+| Tests             | ✅ PASSED (all tests pass)       |
+
+
+### Cursor Rules Compliance
+
+
+| Rule             | Status                                                                                       |
+| ---------------- | -------------------------------------------------------------------------------------------- |
+| Code reuse       | ✅ Uses existing mutagen, config, paths, logger                                               |
+| Error handling   | ✅ try/catch in URL parsing; meaningful errors for missing sync settings                      |
+| Logging          | ✅ logger.log (chalk); debug-only for localhost skip                                          |
+| Type safety      | ✅ JSDoc on isLocalhostHost, isLocalhostEndpoint, ensureReloadSync, getRemotePath             |
+| Async patterns   | ✅ async/await; ensureReloadSync returns Promise                                              |
+| File operations  | ✅ N/A for new logic (path/URL parsing only)                                                  |
+| Input validation | ✅ isLocalhostHost/isLocalhostEndpoint guard; ensureReloadSync receives validated app context |
+| Module patterns  | ✅ CommonJS; named exports                                                                    |
+| Security         | ✅ No hardcoded secrets; no logging of tokens/paths beyond debug                              |
+
+
+### Implementation Completeness
+
+
+| Area          | Status                                                                                  |
+| ------------- | --------------------------------------------------------------------------------------- |
+| Schema        | ✅ build.remoteSyncPath optional string, pattern no leading slash                        |
+| Mutagen       | ✅ getRemotePath with third param and normalization                                      |
+| Run flow      | ✅ Localhost guard; remoteSyncPath from app config to ensureReloadSync and getRemotePath |
+| Tests         | ✅ Mutagen + run-reload-sync tests added/extended                                        |
+| Documentation | ✅ builder-cli, application-yaml, running, application-development, building updated     |
+
+
+### Issues and Recommendations
+
+- None. Part 1 (aifabrix-setup) remains to be done in the aifabrix-setup repo when that codebase is available.
+
+### Final Validation Checklist
+
+- All aifabrix-builder tasks completed
+- All mentioned files exist and contain expected changes
+- Tests exist and pass
+- Code quality (format → lint → test) passes
+- Cursor rules compliance verified
+- Implementation complete for this repo
 

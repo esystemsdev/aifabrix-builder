@@ -176,7 +176,7 @@ Run application locally in Docker container with automatic infrastructure connec
 aifabrix run myapp
 ```
 
-**With live reload (dev only):** Local Docker mounts resolved `build.context`; remote Docker uses Mutagen (local = resolved `build.context`, remote = user Mutagen folder + `/dev/` + appKey).
+**With live reload (dev only):** Local Docker mounts resolved `build.context`; remote Docker uses Mutagen (local = resolved `build.context`, remote = user Mutagen folder + `/` + (build.remoteSyncPath if set, else `dev/` + appKey)). Override per app with `build.remoteSyncPath` in application.yaml.
 ```bash
 aifabrix run myapp --reload
 ```
