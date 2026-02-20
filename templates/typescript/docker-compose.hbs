@@ -125,6 +125,10 @@ services:
           psql -d {{name}} -c "GRANT ALL ON SCHEMA public TO \"{{pgUserName name}}\";" &&
           echo 'Database "{{name}}" created successfully!'
         fi &&
+        {{#if (isVectorDatabase name)}}
+        psql -d {{name}} -c "CREATE EXTENSION IF NOT EXISTS vector;" &&
+        echo 'pgvector extension enabled on "{{name}}".' &&
+        {{/if}}
         {{/each}}
         {{else}}
         echo 'Creating {{app.key}} database and user...' &&

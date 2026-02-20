@@ -128,6 +128,15 @@ describe('App Register Module', () => {
 
     jest.clearAllMocks();
 
+    // Re-setup detectAppType after clearAllMocks (it was cleared above)
+    paths.detectAppType.mockImplementation(async(appKey) => {
+      const builderPath = path.join(tempDir, 'builder', appKey);
+      const integrationPath = path.join(tempDir, 'integration', appKey);
+      if (fsSync.existsSync(integrationPath)) {
+        return { isExternal: true, appPath: integrationPath, appType: 'external', baseDir: 'integration' };
+      }
+      return { isExternal: false, appPath: builderPath, appType: 'webapp', baseDir: 'builder' };
+    });
     // Re-setup mocks after clearing (resolveApplicationConfigPath must follow filesystem)
     paths.resolveApplicationConfigPath.mockImplementation((appPath) => {
       const appYaml = path.join(appPath, 'application.yaml');

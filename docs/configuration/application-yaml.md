@@ -10,7 +10,9 @@ Application config can be **application.yaml**, **application.yml**, or **applic
 
 **Optional:** app.version, build.dockerfile, **build.context** (canonical app code directory for local and remote: local `run --reload` uses it as the mount path; remote `run --reload` uses it as the Mutagen local path; resolved relative to the directory containing the config file), **build.envOutputPath** (the only persisted `.env` is written here, or to a temp path when not set for run; no `.env` under `builder/<app>/` or `integration/<app>/`), requires.database, requires.databases, requires.redis, requires.storage, healthCheck, authentication, roles, permissions, repository, startupCommand, runtimeVersion, scaling, frontDoorRouting, deployment.environment, externalIntegration, configuration (portal UI). Port for the application comes from `port` in application.yaml only (developer-id offset applies when applicable).
 
-### Version and tag
+**Database requirements:** When `requires.database` is true, use `requires.databases` to list multiple databases (each with a `name`). Any database whose **name ends with `vector`** is treated as a vector store and gets the **pgvector** extension during db-init when you run the app locally. For Azure or managed Postgres, see [Running: Multiple Databases / Vector stores](../running.md#multiple-databases).
+
+## Version and tag
 
 - **app.version** – Semantic version (e.g. `1.0.0`). For regular apps, can be auto-resolved from the image (OCI label `org.opencontainers.image.version` or semver tag) when running or deploying if the template is empty or smaller. Defaults to `1.0.0` when no image or no version in image.
 - **image.tag** – Docker image tag (which image to pull).

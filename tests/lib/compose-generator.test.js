@@ -16,13 +16,19 @@ const path = require('path');
 const os = require('os');
 
 function createDirReal(dir) {
-  execSync('mkdir -p ' + JSON.stringify(dir), { stdio: ['pipe', 'pipe', 'pipe'] });
+  const script = 'require(\'fs\').mkdirSync(process.argv[1], { recursive: true })';
+  const nodeExe = process.execPath.includes(' ') ? `"${process.execPath}"` : process.execPath;
+  const cmd = `${nodeExe} -e ${JSON.stringify(script)} ${JSON.stringify(dir)}`;
+  execSync(cmd, { stdio: ['pipe', 'pipe', 'pipe'], shell: true });
 }
 function writeFileReal(filePath, content) {
-  const node = process.execPath;
+  const nodeExe = process.execPath.includes(' ') ? `"${process.execPath}"` : process.execPath;
   const b64 = Buffer.from(content, 'utf8').toString('base64');
   const script = 'const fs=require(\'fs\'); const b=Buffer.from(process.argv[2],\'base64\'); fs.writeFileSync(process.argv[1], b.toString(\'utf8\'));';
-  execSync(node + ' -e ' + JSON.stringify(script) + ' ' + JSON.stringify(filePath) + ' ' + JSON.stringify(b64), { stdio: ['pipe', 'pipe', 'pipe'] });
+  execSync(nodeExe + ' -e ' + JSON.stringify(script) + ' ' + JSON.stringify(filePath) + ' ' + JSON.stringify(b64), {
+    stdio: ['pipe', 'pipe', 'pipe'],
+    shell: true
+  });
 }
 
 // Mock config and devConfig
@@ -87,6 +93,24 @@ describe('Compose Generator Module', () => {
   let devDir;
   let originalExistsSync;
   let originalReadFileSync;
+
+  describe('isVectorDatabaseName', () => {
+    const { isVectorDatabaseName } = composeGenerator;
+    it('returns true when name ends with vector', () => {
+      expect(isVectorDatabaseName('dataplane-vector')).toBe(true);
+      expect(isVectorDatabaseName('myVector')).toBe(true);
+      expect(isVectorDatabaseName('VECTOR')).toBe(true);
+    });
+    it('returns false when name does not end with vector', () => {
+      expect(isVectorDatabaseName('mydb')).toBe(false);
+      expect(isVectorDatabaseName('vector-store')).toBe(false);
+      expect(isVectorDatabaseName('main')).toBe(false);
+    });
+    it('returns false for null or undefined', () => {
+      expect(isVectorDatabaseName(null)).toBe(false);
+      expect(isVectorDatabaseName(undefined)).toBe(false);
+    });
+  });
 
   beforeEach(() => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-compose-test-'));
@@ -664,6 +688,48 @@ describe('Compose Generator Module', () => {
 
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
       expect(result).toBeDefined();
+    });
+
+    it('should include CREATE EXTENSION vector for databases whose name ends with vector', async() => {
+      const actualDevDir = await getAndEnsureDevDir('test-app');
+      const envPath = path.join(actualDevDir, '.env');
+      fsSync.writeFileSync(envPath, 'DB_0_PASSWORD=pass1\nDB_1_PASSWORD=pass2\n');
+
+      const config = {
+        port: 3000,
+        requires: {
+          database: true,
+          databases: [
+            { name: 'main' },
+            { name: 'dataplane-vector' }
+          ]
+        }
+      };
+
+      const result = await composeGenerator.generateDockerCompose('test-app', config, {});
+      expect(result).toContain('CREATE EXTENSION IF NOT EXISTS vector');
+      expect(result).toContain('dataplane-vector');
+      expect(result).toContain('pgvector extension enabled on "dataplane-vector"');
+    });
+
+    it('should not include CREATE EXTENSION vector when no database name ends with vector', async() => {
+      const actualDevDir = await getAndEnsureDevDir('test-app');
+      const envPath = path.join(actualDevDir, '.env');
+      fsSync.writeFileSync(envPath, 'DB_0_PASSWORD=pass1\nDB_1_PASSWORD=pass2\n');
+
+      const config = {
+        port: 3000,
+        requires: {
+          database: true,
+          databases: [
+            { name: 'db1' },
+            { name: 'db2' }
+          ]
+        }
+      };
+
+      const result = await composeGenerator.generateDockerCompose('test-app', config, {});
+      expect(result).not.toContain('CREATE EXTENSION IF NOT EXISTS vector');
     });
   });
 

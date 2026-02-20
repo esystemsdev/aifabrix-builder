@@ -19,29 +19,36 @@ jest.mock('fs', () => jest.requireActual('fs'));
 const fs = require('fs');
 const realFs = jest.requireActual('fs');
 
-/** Create temp dir on real filesystem so it exists even when fs is mocked by other tests. */
+/** Create temp dir on real filesystem so it exists even when fs is mocked by other tests. Cross-platform. */
 function createTempDirReal(dir) {
-  execSync('mkdir -p ' + JSON.stringify(dir), { stdio: ['pipe', 'pipe', 'pipe'] });
+  const script = 'require(\'fs\').mkdirSync(process.argv[1], { recursive: true })';
+  const nodeExe = process.execPath.includes(' ') ? `"${process.execPath}"` : process.execPath;
+  const cmd = `${nodeExe} -e ${JSON.stringify(script)} ${JSON.stringify(dir)}`;
+  execSync(cmd, { stdio: ['pipe', 'pipe', 'pipe'], shell: true });
+}
+
+function nodeCmd() {
+  return process.execPath.includes(' ') ? `"${process.execPath}"` : process.execPath;
 }
 
 /** Write file on real filesystem via subprocess so it exists when fs is mocked by other tests. */
 function writeFileReal(filePath, content) {
-  const node = process.execPath;
   const b64 = Buffer.from(content, 'utf8').toString('base64');
   const script = 'const fs=require(\'fs\'); const b=Buffer.from(process.argv[2],\'base64\'); fs.writeFileSync(process.argv[1], b.toString(\'utf8\'));';
-  execSync(
-    node + ' -e ' + JSON.stringify(script) + ' ' + JSON.stringify(filePath) + ' ' + JSON.stringify(b64),
-    { stdio: ['pipe', 'pipe', 'pipe'] }
-  );
+  execSync(nodeCmd() + ' -e ' + JSON.stringify(script) + ' ' + JSON.stringify(filePath) + ' ' + JSON.stringify(b64), {
+    stdio: ['pipe', 'pipe', 'pipe'],
+    shell: true
+  });
 }
 
 /** Check file exists on real filesystem via subprocess (for assertions when fs may be mocked). */
 function existsReal(filePath) {
   try {
-    execSync(
-      process.execPath + ' -e "process.exit(require(\'fs\').existsSync(process.argv[1])?0:1)" ' + JSON.stringify(filePath),
-      { stdio: ['pipe', 'pipe', 'pipe'] }
-    );
+    const script = 'process.exit(require(\'fs\').existsSync(process.argv[1])?0:1)';
+    execSync(nodeCmd() + ' -e ' + JSON.stringify(script) + ' ' + JSON.stringify(filePath), {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: true
+    });
     return true;
   } catch {
     return false;
@@ -50,23 +57,23 @@ function existsReal(filePath) {
 
 /** Read file from real filesystem via subprocess (for assertions when fs may be mocked). */
 function readFileReal(filePath, encoding) {
-  const node = process.execPath;
   const script = 'process.stdout.write(require(\'fs\').readFileSync(process.argv[1], process.argv[2] || \'utf8\'));';
-  return execSync(node + ' -e ' + JSON.stringify(script) + ' ' + JSON.stringify(filePath) + ' utf8', {
+  return execSync(nodeCmd() + ' -e ' + JSON.stringify(script) + ' ' + JSON.stringify(filePath) + ' utf8', {
     encoding: 'utf8',
-    stdio: ['pipe', 'pipe', 'pipe']
+    stdio: ['pipe', 'pipe', 'pipe'],
+    shell: true
   });
 }
 
 /** Resolve config path in a subprocess so real fs is always used (avoids Jest fs mock from other tests). */
 function resolveInSubprocess(appPath) {
-  const node = process.execPath;
   const resolverPath = path.resolve(__dirname, '../../../lib/utils/app-config-resolver.js');
   const script = 'const r=require(process.argv[2]); try { console.log(r.resolveApplicationConfigPath(process.argv[1])); } catch(e) { console.error(e.message); process.exit(1); }';
   try {
-    return execSync(node + ' -e ' + JSON.stringify(script) + ' ' + JSON.stringify(appPath) + ' ' + JSON.stringify(resolverPath), {
+    return execSync(nodeCmd() + ' -e ' + JSON.stringify(script) + ' ' + JSON.stringify(appPath) + ' ' + JSON.stringify(resolverPath), {
       encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: true
     }).trim();
   } catch (err) {
     const msg = (err.stderr || err.stdout || err.message || '').toString().trim();

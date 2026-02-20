@@ -19,20 +19,23 @@ jest.mock('fs', () => jest.requireActual('fs'));
 const fs = require('fs');
 const realFs = jest.requireActual('fs');
 
-/** Create temp dir on real filesystem so it exists even when fs is mocked by other tests. */
+/** Create temp dir on real filesystem so it exists even when fs is mocked by other tests. Cross-platform. */
 function createTempDirReal(baseDir) {
-  execSync('mkdir -p ' + JSON.stringify(baseDir), { stdio: ['pipe', 'pipe', 'pipe'] });
+  const script = 'require(\'fs\').mkdirSync(process.argv[1], { recursive: true })';
+  const nodeExe = process.execPath.includes(' ') ? `"${process.execPath}"` : process.execPath;
+  const cmd = `${nodeExe} -e ${JSON.stringify(script)} ${JSON.stringify(baseDir)}`;
+  execSync(cmd, { stdio: ['pipe', 'pipe', 'pipe'], shell: true });
 }
 
 /** Write file on real filesystem via subprocess so it exists when fs is mocked by other tests. */
 function writeFileReal(filePath, content) {
-  const node = process.execPath;
+  const nodeExe = process.execPath.includes(' ') ? `"${process.execPath}"` : process.execPath;
   const b64 = Buffer.from(content, 'utf8').toString('base64');
   const script = 'const fs=require(\'fs\'); const b=Buffer.from(process.argv[2],\'base64\'); fs.writeFileSync(process.argv[1], b.toString(\'utf8\'));';
-  execSync(
-    node + ' -e ' + JSON.stringify(script) + ' ' + JSON.stringify(filePath) + ' ' + JSON.stringify(b64),
-    { stdio: ['pipe', 'pipe', 'pipe'] }
-  );
+  execSync(nodeExe + ' -e ' + JSON.stringify(script) + ' ' + JSON.stringify(filePath) + ' ' + JSON.stringify(b64), {
+    stdio: ['pipe', 'pipe', 'pipe'],
+    shell: true
+  });
 }
 
 describe('detectAppType', () => {
@@ -74,10 +77,11 @@ describe('detectAppType', () => {
   function detectAppTypeInSubprocess(appNameArg, optionsArg = {}) {
     const runnerPath = path.resolve(__dirname, 'run-detect-app-type.js');
     const optionsJson = JSON.stringify(optionsArg);
+    const nodeExe = process.execPath.includes(' ') ? `"${process.execPath}"` : process.execPath;
     try {
       const out = execSync(
-        process.execPath + ' ' + JSON.stringify(runnerPath) + ' ' + JSON.stringify(tempDir) + ' ' + JSON.stringify(appNameArg) + ' ' + JSON.stringify(optionsJson),
-        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+        nodeExe + ' ' + JSON.stringify(runnerPath) + ' ' + JSON.stringify(tempDir) + ' ' + JSON.stringify(appNameArg) + ' ' + JSON.stringify(optionsJson),
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], shell: true }
       ).trim();
       return JSON.parse(out);
     } catch (err) {

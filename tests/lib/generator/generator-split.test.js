@@ -44,7 +44,7 @@ describe('Generator Split Functions', () => {
     jest.clearAllMocks();
     fs.existsSync.mockReturnValue(true);
     fs.readFileSync.mockImplementation((filePath, encoding) => {
-      const pathStr = String(filePath);
+      const pathStr = String(filePath).replace(/\\/g, '/');
       if (pathStr.includes('applications/README.md.hbs')) {
         return applicationsReadmeTemplateContent;
       }
@@ -651,7 +651,7 @@ describe('Generator Split Functions', () => {
 
     it('should create output directory if it does not exist', async() => {
       fs.existsSync.mockImplementation((filePath) => {
-        const pathStr = String(filePath);
+        const pathStr = String(filePath).replace(/\\/g, '/');
         // Return true for deploy JSON path and README template paths, false for outputDir
         return filePath === deployJsonPath ||
           pathStr.includes('applications/README.md.hbs') ||

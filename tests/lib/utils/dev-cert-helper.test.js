@@ -130,9 +130,9 @@ describe('dev-cert-helper', () => {
       execSync.mockReturnValue('notAfter=Dec 31 23:59:59 2026 GMT\n');
       const result = getCertValidNotAfter('/certs/01');
       expect(result).toBeInstanceOf(Date);
-      expect(result.getFullYear()).toBe(2026);
-      expect(result.getMonth()).toBe(11);
-      expect(result.getDate()).toBe(31);
+      expect(result.getUTCFullYear()).toBe(2026);
+      expect(result.getUTCMonth()).toBe(11);
+      expect(result.getUTCDate()).toBe(31);
       expect(execSync).toHaveBeenCalledWith(
         expect.stringContaining('openssl x509 -enddate -noout'),
         expect.any(Object)

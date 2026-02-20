@@ -79,6 +79,25 @@ describe('Application Deploy Module', () => {
 
     // Clear all mocks to prevent leakage between tests
     jest.clearAllMocks();
+
+    // Re-apply paths.detectAppType after clearAllMocks (used by loadDeploymentConfig)
+    const paths = require('../../../lib/utils/paths');
+    paths.detectAppType.mockImplementation(async(appName) => {
+      if (appName === 'nonexistent-app') {
+        throw new Error(`App '${appName}' not found in integration/${appName} or builder/${appName}`);
+      }
+      const builderPath = path.join(process.cwd(), 'builder', appName);
+      const integrationPath = path.join(process.cwd(), 'integration', appName);
+      if (fsSync.existsSync(integrationPath)) {
+        return { isExternal: true, appPath: integrationPath, appType: 'external', baseDir: 'integration' };
+      }
+      return {
+        isExternal: false,
+        appPath: builderPath,
+        appType: 'regular',
+        baseDir: 'builder'
+      };
+    });
   });
 
   afterEach(async() => {

@@ -2020,7 +2020,7 @@ environments:
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
-    it('should use empty string when postgres-passwordKeyVault is missing', async() => {
+    it('should use default admin123 when postgres-passwordKeyVault is missing (new local install)', async() => {
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('other-key: "value"');
 
@@ -2028,7 +2028,7 @@ environments:
 
       expect(fs.writeFileSync).toHaveBeenCalledWith(
         mockAdminSecretsPath,
-        expect.stringContaining('POSTGRES_PASSWORD='),
+        expect.stringContaining('POSTGRES_PASSWORD=admin123'),
         { mode: 0o600 }
       );
     });
@@ -2476,9 +2476,9 @@ environments:
       await localSecrets.saveLocalSecret('myapp-client-idKeyVault', 'client-id-value');
 
       expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
-      expect(fs.mkdirSync).toHaveBeenCalledWith(overrideHome, { recursive: true, mode: 0o700 });
+      expect(fs.mkdirSync).toHaveBeenCalledWith(path.normalize(overrideHome), { recursive: true, mode: 0o700 });
       expect(fs.writeFileSync).toHaveBeenCalledWith(
-        overrideSecretsPath,
+        path.normalize(overrideSecretsPath),
         expect.stringContaining('myapp-client-idKeyVault'),
         { mode: 0o600 }
       );

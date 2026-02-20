@@ -365,10 +365,10 @@ describe('secret set command', () => {
         await handleSecretsSet(key, value, options);
 
         expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
-        expect(fs.mkdirSync).toHaveBeenCalledWith(overrideHome, { recursive: true, mode: 0o700 });
+        expect(fs.mkdirSync).toHaveBeenCalledWith(path.normalize(overrideHome), { recursive: true, mode: 0o700 });
         expect(fs.writeFileSync).toHaveBeenCalled();
         const writeCall = fs.writeFileSync.mock.calls[0];
-        expect(writeCall[0]).toBe(overrideSecretsPath);
+        expect(writeCall[0]).toBe(path.normalize(overrideSecretsPath));
         expect(logger.log).toHaveBeenCalledWith(expect.stringContaining(overrideSecretsPath));
       });
 

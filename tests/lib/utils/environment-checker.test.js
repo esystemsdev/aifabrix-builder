@@ -36,6 +36,7 @@ jest.mock('../../../lib/utils/dev-config', () => ({
 }));
 
 const fs = require('fs');
+const path = require('path');
 const dockerUtils = require('../../../lib/utils/docker');
 const { getActualSecretsPath } = require('../../../lib/utils/secrets-path');
 const pathsUtil = require('../../../lib/utils/paths');
@@ -238,7 +239,7 @@ describe('Environment Checker Module', () => {
 
       const result = await checkSecrets();
 
-      expect(result).toEqual({ status: 'ok', paths: [defaultPath] });
+      expect(result).toEqual({ status: 'ok', paths: [path.normalize(defaultPath)] });
     });
 
     it('should return missing when fallback path also not found', async() => {
@@ -249,7 +250,7 @@ describe('Environment Checker Module', () => {
 
       const result = await checkSecrets();
 
-      expect(result).toEqual({ status: 'missing', paths: [defaultPath] });
+      expect(result).toEqual({ status: 'missing', paths: [path.normalize(defaultPath)] });
     });
   });
 

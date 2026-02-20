@@ -190,6 +190,8 @@ databases:
 
 Each database will be created automatically with its own user and permissions.
 
+**Vector stores (pgvector):** Databases whose name **ends with `vector`** (e.g. `dataplane-vector`) are treated as vector stores. The db-init service creates the **pgvector** extension in those databases automatically (`CREATE EXTENSION IF NOT EXISTS vector`). For Azure or managed PostgreSQL, if the application user cannot create extensions, a DBA must run `CREATE EXTENSION IF NOT EXISTS vector;` as superuser on the vector database(s)—see [Troubleshooting Database Creation](#troubleshooting-database-creation) below.
+
 ### Troubleshooting Database Creation
 
 **Check db-init logs:**
