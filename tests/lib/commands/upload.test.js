@@ -38,6 +38,9 @@ jest.mock('../../../lib/api/pipeline.api', () => ({
 jest.mock('../../../lib/utils/api-error-handler', () => ({
   formatApiError: jest.fn((r) => r?.formattedError || r?.error || 'Unknown error')
 }));
+jest.mock('../../../lib/utils/credential-secrets-env', () => ({
+  pushCredentialSecrets: jest.fn().mockResolvedValue({ pushed: 0 })
+}));
 jest.mock('../../../lib/utils/logger', () => ({
   log: jest.fn()
 }));
@@ -51,9 +54,11 @@ jest.mock('chalk', () => {
   return mock;
 });
 
+const logger = require('../../../lib/utils/logger');
 const { validateExternalSystemComplete } = require('../../../lib/validation/validate');
 const { generateControllerManifest } = require('../../../lib/generator/external-controller-manifest');
 const { getDeploymentAuth } = require('../../../lib/utils/token-manager');
+const { pushCredentialSecrets } = require('../../../lib/utils/credential-secrets-env');
 const {
   uploadApplicationViaPipeline,
   validateUploadViaPipeline,
@@ -74,6 +79,7 @@ describe('upload command', () => {
     validateExternalSystemComplete.mockResolvedValue({ valid: true, errors: [], warnings: [] });
     generateControllerManifest.mockResolvedValue(mockManifest);
     getDeploymentAuth.mockResolvedValue({ type: 'bearer', token: 'token' });
+    pushCredentialSecrets.mockResolvedValue({ pushed: 0 });
     uploadApplicationViaPipeline.mockResolvedValue({ success: true, data: { uploadId: 'up-123' } });
     validateUploadViaPipeline.mockResolvedValue({ success: true });
     publishUploadViaPipeline.mockResolvedValue({ success: true });
@@ -87,6 +93,15 @@ describe('upload command', () => {
       expect(validateExternalSystemComplete).toHaveBeenCalledWith(systemKey, { type: 'external' });
       expect(generateControllerManifest).toHaveBeenCalledWith(systemKey, { type: 'external' });
       expect(getDeploymentAuth).toHaveBeenCalled();
+      expect(pushCredentialSecrets).toHaveBeenCalledWith(
+        'http://dataplane:4000',
+        { type: 'bearer', token: 'token' },
+        expect.objectContaining({
+          envFilePath: expect.any(String),
+          appName: systemKey,
+          payload: expect.any(Object)
+        })
+      );
       expect(uploadApplicationViaPipeline).toHaveBeenCalledWith(
         'http://dataplane:4000',
         { type: 'bearer', token: 'token' },
@@ -106,6 +121,20 @@ describe('upload command', () => {
         'up-123',
         { type: 'bearer', token: 'token' }
       );
+    });
+
+    it('should log success when credential secrets are pushed', async() => {
+      pushCredentialSecrets.mockResolvedValue({ pushed: 2 });
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await uploadExternalSystem(systemKey);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Pushed 2 credential'));
+    });
+
+    it('should log warning when credential push returns warning', async() => {
+      pushCredentialSecrets.mockResolvedValue({ pushed: 0, warning: 'Permission denied' });
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await uploadExternalSystem(systemKey);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Warning: Permission denied'));
     });
 
     it('should use --dataplane override when provided', async() => {

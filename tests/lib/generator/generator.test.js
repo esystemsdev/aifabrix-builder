@@ -2214,7 +2214,8 @@ NORMAL_VAR=value456`;
       description: 'HubSpot CRM integration',
       type: 'openapi',
       authentication: {
-        type: 'oauth2'
+        method: 'oauth2',
+        variables: {}
       }
     };
 

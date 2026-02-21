@@ -45,3 +45,12 @@ The key **`secrets-encryptionKeyVault`** in `secrets.local.yaml` is used only wh
 Run `aifabrix secure --secrets-encryption <key>` to encrypt secrets in `secrets.local.yaml`. Key: 32 bytes, hex or base64. Encrypted values use `secure://` prefix. Plaintext secrets work if no encryption key is configured; the system detects encrypted values and only decrypts when needed. The key is stored in `config.yaml` as `secrets-encryption` for automatic decryption.
 
 See [Commands: Utilities](../commands/utilities.md) for `secrets set` and `secure`.
+
+## External integrations: KV_* in .env and kv:// in config
+
+For **external integrations** (e.g. `aifabrix upload <system-key>`), you can supply credentials in two ways:
+
+1. **`.env` in the integration folder** – In `integration/<system-key>/.env`, use keys like `KV_SECRETS_CLIENT_SECRET`. The prefix `KV_` plus segments separated by underscores map to `kv://segment1/segment2/...` (lowercase). Example: `KV_SECRETS_CLIENT_SECRET` → `kv://secrets/client/secret`. Values can be plain or `kv://...`; if a value is `kv://...`, the CLI resolves it from aifabrix secret systems (local file or remote) before pushing to the dataplane.
+2. **`kv://` in application/datasource config** – You can reference `kv://...` in your application or datasource configuration. Even without adding `KV_*` to `.env`, upload will try to resolve those refs from aifabrix secret systems (local file or remote) and push them to the dataplane so publish can use them.
+
+The CLI pushes these secrets to the dataplane secret store automatically before upload/publish. Dataplane permission **credential:create** is required for the push; see [Online Commands and Permissions](../commands/permissions.md).

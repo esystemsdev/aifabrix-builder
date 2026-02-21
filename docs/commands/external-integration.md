@@ -221,9 +221,10 @@ aifabrix upload my-hubspot --dataplane https://dataplane.example.com
 1. Validate locally (`validateExternalSystemComplete`)
 2. Build payload from controller manifest (system with RBAC + datasources) → `{ version, application, dataSources }`
 3. Resolve dataplane URL and auth (from controller + environment)
-4. `POST /api/v1/pipeline/upload` → get upload ID
-5. `POST /api/v1/pipeline/upload/{id}/validate` → on failure, show validation errors and exit
-6. `POST /api/v1/pipeline/upload/{id}/publish`
+4. **Credential secrets push (automatic):** The CLI reads `integration/<system-key>/.env` and sends any `KV_*` variables (values resolved from local/remote secrets if they are `kv://`). It also scans the upload payload (application + datasources) for `kv://` references that are **not** in `.env` and resolves their values from aifabrix secret systems (local file or remote), then sends all to the dataplane secret store (`POST /api/v1/credential/secret`). So credentials in config can be satisfied from `.env` or from local/remote secrets without extra steps. Dataplane permission **credential:create** is required for this automatic push; if the push fails (e.g. 403), upload still continues but secrets must be available elsewhere (e.g. env on dataplane). See [Secrets and config](../configuration/secrets-and-config.md) and [Permissions](permissions.md).
+5. `POST /api/v1/pipeline/upload` → get upload ID
+6. `POST /api/v1/pipeline/upload/{id}/validate` → on failure, show validation errors and exit
+7. `POST /api/v1/pipeline/upload/{id}/publish`
 
 **Output example:**
 ```text
