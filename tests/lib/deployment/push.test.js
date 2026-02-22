@@ -169,6 +169,35 @@ describe('Push Utilities', () => {
     });
   });
 
+  describe('checkAzureLogin', () => {
+    it('should return true when user is logged in to Azure', async() => {
+      execAsync.mockResolvedValueOnce({ stdout: '{"name": "sub"}', stderr: '' });
+
+      const result = await pushUtils.checkAzureLogin();
+
+      expect(result).toBe(true);
+      expect(execAsync).toHaveBeenCalledWith('az account show', expect.objectContaining({
+        timeout: 10000
+      }));
+    });
+
+    it('should return false when user is not logged in', async() => {
+      execAsync.mockRejectedValueOnce(new Error('Please run az login'));
+
+      const result = await pushUtils.checkAzureLogin();
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false on timeout', async() => {
+      execAsync.mockRejectedValueOnce(Object.assign(new Error('ETIMEDOUT'), { code: 'ETIMEDOUT' }));
+
+      const result = await pushUtils.checkAzureLogin();
+
+      expect(result).toBe(false);
+    });
+  });
+
   describe('checkACRAuthentication', () => {
     it('should return true when authenticated', async() => {
       execAsync.mockResolvedValueOnce({ stdout: 'registry info', stderr: '' });
@@ -176,11 +205,11 @@ describe('Push Utilities', () => {
       const result = await pushUtils.checkACRAuthentication('myacr.azurecr.io');
 
       expect(result).toBe(true);
-      // On Windows, includes shell: true option
+      // On Windows, includes shell: true option; all include timeout to avoid hang when not logged in
       if (process.platform === 'win32') {
-        expect(execAsync).toHaveBeenCalledWith('az acr show --name myacr', { shell: true });
+        expect(execAsync).toHaveBeenCalledWith('az acr show --name myacr', { shell: true, timeout: 15000 });
       } else {
-        expect(execAsync).toHaveBeenCalledWith('az acr show --name myacr', {});
+        expect(execAsync).toHaveBeenCalledWith('az acr show --name myacr', { timeout: 15000 });
       }
     });
 
@@ -207,11 +236,11 @@ describe('Push Utilities', () => {
 
       await pushUtils.authenticateACR('myacr.azurecr.io');
 
-      // On Windows, includes shell: true option
+      // On Windows, includes shell: true option; all include timeout to avoid hang
       if (process.platform === 'win32') {
-        expect(execAsync).toHaveBeenCalledWith('az acr login --name myacr', { shell: true });
+        expect(execAsync).toHaveBeenCalledWith('az acr login --name myacr', { shell: true, timeout: 120000 });
       } else {
-        expect(execAsync).toHaveBeenCalledWith('az acr login --name myacr', {});
+        expect(execAsync).toHaveBeenCalledWith('az acr login --name myacr', { timeout: 120000 });
       }
       expect(console.log).toHaveBeenCalled();
     });
@@ -221,6 +250,13 @@ describe('Push Utilities', () => {
 
       await expect(pushUtils.authenticateACR('myacr.azurecr.io'))
         .rejects.toThrow('Failed to authenticate');
+    });
+
+    it('should throw clear error on timeout (e.g. not logged in)', async() => {
+      execAsync.mockRejectedValueOnce(Object.assign(new Error('ETIMEDOUT'), { code: 'ETIMEDOUT' }));
+
+      await expect(pushUtils.authenticateACR('myacr.azurecr.io'))
+        .rejects.toThrow('Authentication timed out');
     });
 
     it('should handle invalid registry name', async() => {

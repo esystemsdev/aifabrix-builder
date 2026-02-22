@@ -114,6 +114,7 @@ describe('Application Module - Comprehensive Tests', () => {
     pushUtils.validateRegistryURL.mockReturnValue(true);
     pushUtils.checkLocalImageExists.mockResolvedValue(true);
     pushUtils.checkAzureCLIInstalled.mockResolvedValue(true);
+    pushUtils.checkAzureLogin.mockResolvedValue(true);
     pushUtils.checkACRAuthentication.mockResolvedValue(true);
     pushUtils.tagImage.mockResolvedValue();
     pushUtils.pushImage.mockResolvedValue();
@@ -369,6 +370,12 @@ describe('Application Module - Comprehensive Tests', () => {
     it('should handle missing Azure CLI', async() => {
       pushUtils.checkAzureCLIInstalled.mockResolvedValueOnce(false);
       await expect(app.pushApp('test-app', {})).rejects.toThrow('Azure CLI is not installed');
+    });
+
+    it('should fail fast with clear message when not logged in to Azure', async() => {
+      pushUtils.checkAzureLogin.mockResolvedValueOnce(false);
+      await expect(app.pushApp('test-app', {}))
+        .rejects.toThrow('Not logged in to Azure');
     });
 
     it('should authenticate if not already authenticated', async() => {

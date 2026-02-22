@@ -98,6 +98,39 @@ function displaySuccessMessage(currentVersion, newVersion) {
 }
 
 /**
+ * Run pnpm link --global and npm link from project root (handles pnpm global bin not set).
+ * @param {string} projectRoot - Path to project root
+ * @returns {void}
+ * @throws {Error} If linking fails when pnpm global bin is not configured
+ */
+function runPnpmLink(projectRoot) {
+  let pnpmLinked = false;
+  try {
+    execSync('pnpm link --global', { stdio: 'inherit', cwd: projectRoot });
+    pnpmLinked = true;
+  } catch (pnpmErr) {
+    const msg = (pnpmErr.message || String(pnpmErr));
+    if (msg.includes('global bin directory') || msg.includes('ERR_PNPM_NO_GLOBAL_BIN_DIR')) {
+      console.log(
+        '⚠️  pnpm global bin is not set up. Run "pnpm setup" and add PNPM_HOME to PATH, or we will use npm link.\n'
+      );
+    } else {
+      throw pnpmErr;
+    }
+  }
+  try {
+    execSync('npm link', { stdio: 'inherit', cwd: projectRoot });
+  } catch {
+    if (!pnpmLinked) {
+      console.error(
+        '\n💡 To fix: run "pnpm setup" and add the suggested line to your shell config, then run install:local again.'
+      );
+      throw new Error('Linking failed. pnpm global bin not configured and npm link failed.');
+    }
+  }
+}
+
+/**
  * Install local package globally
  * @returns {void}
  */
@@ -107,31 +140,17 @@ function installLocal() {
   const currentVersion = getCurrentVersion();
 
   console.log(`Detected package manager: ${pm}\n`);
-
-  // Show version comparison
   displayVersionInfo(currentVersion, packageVersion);
-
   console.log('Linking @aifabrix/builder globally...\n');
 
   try {
     const projectRoot = path.join(__dirname, '..');
     if (pm === 'pnpm') {
-      // Update pnpm global.
-      execSync('pnpm link --global', { stdio: 'inherit', cwd: projectRoot });
-      // Also run npm link so npm's global bin points here; often PATH has
-      // npm's global bin before pnpm's, so "aifabrix" would otherwise stay old.
-      try {
-        execSync('npm link', { stdio: 'inherit', cwd: projectRoot });
-      } catch {
-        // npm may not be available or may fail; pnpm link already ran
-      }
+      runPnpmLink(projectRoot);
     } else {
       execSync('npm link', { stdio: 'inherit', cwd: projectRoot });
     }
-
-    // Get new version after linking
     const newVersion = getCurrentVersion();
-
     displaySuccessMessage(currentVersion, newVersion);
   } catch (error) {
     console.error('\n❌ Failed to link package:', error.message);

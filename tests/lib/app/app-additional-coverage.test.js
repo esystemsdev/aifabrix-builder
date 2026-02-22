@@ -396,6 +396,7 @@ describe('App.js Additional Coverage Tests', () => {
 
       pushUtils.checkLocalImageExists.mockResolvedValue(true);
       pushUtils.checkAzureCLIInstalled.mockResolvedValue(true);
+      pushUtils.checkAzureLogin.mockResolvedValue(true);
       pushUtils.checkACRAuthentication.mockResolvedValue(true);
       pushUtils.tagImage.mockResolvedValue();
       pushUtils.pushImage.mockResolvedValue();
@@ -419,6 +420,7 @@ describe('App.js Additional Coverage Tests', () => {
 
       pushUtils.checkLocalImageExists.mockResolvedValue(true);
       pushUtils.checkAzureCLIInstalled.mockResolvedValue(true);
+      pushUtils.checkAzureLogin.mockResolvedValue(true);
       pushUtils.checkACRAuthentication.mockResolvedValue(false);
       pushUtils.authenticateACR.mockResolvedValue();
       pushUtils.tagImage.mockResolvedValue();
@@ -441,6 +443,7 @@ describe('App.js Additional Coverage Tests', () => {
 
       pushUtils.checkLocalImageExists.mockResolvedValue(true);
       pushUtils.checkAzureCLIInstalled.mockResolvedValue(true);
+      pushUtils.checkAzureLogin.mockResolvedValue(true);
       pushUtils.checkACRAuthentication.mockResolvedValue(true);
       pushUtils.tagImage.mockResolvedValue();
       pushUtils.pushImage.mockResolvedValue();
@@ -464,6 +467,7 @@ describe('App.js Additional Coverage Tests', () => {
 
       pushUtils.checkLocalImageExists.mockResolvedValue(true);
       pushUtils.checkAzureCLIInstalled.mockResolvedValue(true);
+      pushUtils.checkAzureLogin.mockResolvedValue(true);
       pushUtils.checkACRAuthentication.mockResolvedValue(true);
       pushUtils.tagImage.mockResolvedValue();
       pushUtils.pushImage.mockResolvedValue();
