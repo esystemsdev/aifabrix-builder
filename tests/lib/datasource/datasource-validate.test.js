@@ -120,6 +120,199 @@ describe('Datasource Validation Module', () => {
 
       expect(result.warnings).toEqual([]);
     });
+
+    describe('field reference validation (after schema passes)', () => {
+      it('should return valid: false when indexing.embedding references missing field', async() => {
+        const mockFilePath = '/path/to/datasource.json';
+        const mockContent = JSON.stringify({
+          key: 'test',
+          systemKey: 'hubspot',
+          entityKey: 'deal',
+          fieldMappings: { attributes: { id: {}, name: {} } },
+          indexing: { embedding: ['id', 'missingField'], uniqueKey: 'id' }
+        });
+        const mockValidate = jest.fn().mockReturnValue(true);
+
+        fsSync.existsSync.mockImplementation((p) => p === mockFilePath);
+        fsSync.readFileSync.mockReturnValue(mockContent);
+        loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+        const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+        const result = await validateDatasourceFile(mockFilePath);
+
+        expect(result.valid).toBe(false);
+        expect(result.errors).toContain(
+          'indexing.embedding[1]: field \'missingField\' does not exist in fieldMappings.attributes'
+        );
+      });
+
+      it('should return valid: false when indexing.uniqueKey not in fieldMappings.attributes', async() => {
+        const mockFilePath = '/path/to/datasource.json';
+        const mockContent = JSON.stringify({
+          key: 'test',
+          fieldMappings: { attributes: { id: {} } },
+          indexing: { uniqueKey: 'unknownKey' }
+        });
+        const mockValidate = jest.fn().mockReturnValue(true);
+
+        fsSync.existsSync.mockImplementation((p) => p === mockFilePath);
+        fsSync.readFileSync.mockReturnValue(mockContent);
+        loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+        const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+        const result = await validateDatasourceFile(mockFilePath);
+
+        expect(result.valid).toBe(false);
+        expect(result.errors).toContain(
+          'indexing.uniqueKey: field \'unknownKey\' does not exist in fieldMappings.attributes'
+        );
+      });
+
+      it('should return valid: false when validation.repeatingValues[].field not in attributes', async() => {
+        const mockFilePath = '/path/to/datasource.json';
+        const mockContent = JSON.stringify({
+          key: 'test',
+          fieldMappings: { attributes: { id: {} } },
+          validation: {
+            repeatingValues: [{ field: 'badField', scope: [], strategy: 'first' }]
+          }
+        });
+        const mockValidate = jest.fn().mockReturnValue(true);
+
+        fsSync.existsSync.mockImplementation((p) => p === mockFilePath);
+        fsSync.readFileSync.mockReturnValue(mockContent);
+        loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+        const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+        const result = await validateDatasourceFile(mockFilePath);
+
+        expect(result.valid).toBe(false);
+        expect(result.errors.some((e) =>
+          e.includes('validation.repeatingValues') && e.includes('badField')
+        )).toBe(true);
+      });
+
+      it('should return valid: false when quality.rejectIf[].field not in attributes', async() => {
+        const mockFilePath = '/path/to/datasource.json';
+        const mockContent = JSON.stringify({
+          key: 'test',
+          fieldMappings: { attributes: { id: {} } },
+          quality: { rejectIf: [{ field: 'badField', operator: 'empty' }] }
+        });
+        const mockValidate = jest.fn().mockReturnValue(true);
+
+        fsSync.existsSync.mockImplementation((p) => p === mockFilePath);
+        fsSync.readFileSync.mockReturnValue(mockContent);
+        loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+        const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+        const result = await validateDatasourceFile(mockFilePath);
+
+        expect(result.valid).toBe(false);
+        expect(result.errors.some((e) =>
+          e.includes('quality.rejectIf') && e.includes('badField')
+        )).toBe(true);
+      });
+
+      it('should return valid: true when all field references exist in fieldMappings.attributes', async() => {
+        const mockFilePath = '/path/to/datasource.json';
+        const mockContent = JSON.stringify({
+          key: 'test',
+          fieldMappings: {
+            attributes: { id: {}, name: {}, body: {} }
+          },
+          indexing: { embedding: ['name', 'body'], uniqueKey: 'id' },
+          validation: {
+            repeatingValues: [{ field: 'name', scope: [], strategy: 'first' }]
+          },
+          quality: { rejectIf: [{ field: 'id', operator: 'empty' }] }
+        });
+        const mockValidate = jest.fn().mockReturnValue(true);
+
+        fsSync.existsSync.mockImplementation((p) => p === mockFilePath);
+        fsSync.readFileSync.mockReturnValue(mockContent);
+        loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+        const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+        const result = await validateDatasourceFile(mockFilePath);
+
+        expect(result.valid).toBe(true);
+        expect(result.errors).toEqual([]);
+      });
+
+      it('should not add field-reference errors when fieldMappings.attributes is empty', async() => {
+        const mockFilePath = '/path/to/datasource.json';
+        const mockContent = JSON.stringify({
+          key: 'test',
+          fieldMappings: { attributes: {} },
+          indexing: { embedding: ['x'], uniqueKey: 'y' }
+        });
+        const mockValidate = jest.fn().mockReturnValue(true);
+
+        fsSync.existsSync.mockImplementation((p) => p === mockFilePath);
+        fsSync.readFileSync.mockReturnValue(mockContent);
+        loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+        const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+        const result = await validateDatasourceFile(mockFilePath);
+
+        expect(result.valid).toBe(true);
+        expect(result.errors).toEqual([]);
+      });
+
+      it('should return only schema errors when schema validation fails (no field-reference check)', async() => {
+        const mockFilePath = '/path/to/datasource.json';
+        const mockContent = JSON.stringify({
+          key: 'test',
+          fieldMappings: { attributes: { id: {} } },
+          indexing: { embedding: ['missingField'], uniqueKey: 'id' }
+        });
+        const mockValidate = jest.fn().mockReturnValue(false);
+        mockValidate.errors = [{ message: 'Schema error' }];
+        formatValidationErrors.mockReturnValue(['Schema error']);
+
+        fsSync.existsSync.mockImplementation((p) => p === mockFilePath);
+        fsSync.readFileSync.mockReturnValue(mockContent);
+        loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+        const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+        const result = await validateDatasourceFile(mockFilePath);
+
+        expect(result.valid).toBe(false);
+        expect(result.errors).toEqual(['Schema error']);
+        expect(result.errors.some((e) => e.includes('missingField'))).toBe(false);
+      });
+
+      it('should return all field-reference errors when multiple references are invalid', async() => {
+        const mockFilePath = '/path/to/datasource.json';
+        const mockContent = JSON.stringify({
+          key: 'test',
+          fieldMappings: { attributes: { id: {} } },
+          indexing: { embedding: ['id', 'bad1'], uniqueKey: 'badUnique' },
+          quality: { rejectIf: [{ field: 'badReject', operator: 'empty' }] }
+        });
+        const mockValidate = jest.fn().mockReturnValue(true);
+
+        fsSync.existsSync.mockImplementation((p) => p === mockFilePath);
+        fsSync.readFileSync.mockReturnValue(mockContent);
+        loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+        const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+        const result = await validateDatasourceFile(mockFilePath);
+
+        expect(result.valid).toBe(false);
+        expect(result.errors).toHaveLength(3);
+        expect(result.errors).toContain(
+          'indexing.embedding[1]: field \'bad1\' does not exist in fieldMappings.attributes'
+        );
+        expect(result.errors).toContain(
+          'indexing.uniqueKey: field \'badUnique\' does not exist in fieldMappings.attributes'
+        );
+        expect(result.errors).toContain(
+          'quality.rejectIf[0].field: field \'badReject\' does not exist in fieldMappings.attributes'
+        );
+      });
+    });
   });
 });
 

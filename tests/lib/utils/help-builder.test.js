@@ -45,6 +45,25 @@ describe('help-builder', () => {
       expect(extCat).toBeDefined();
       expect(extCat.commands.map(c => c.name)).toContain('test-integration');
     });
+
+    it('should include upload in External Systems', () => {
+      const extCat = CATEGORIES.find(c => c.name === 'External Systems');
+      expect(extCat).toBeDefined();
+      expect(extCat.commands.map(c => c.name)).toContain('upload');
+    });
+
+    it('should include convert in Configuration & Validation', () => {
+      const cfgCat = CATEGORIES.find(c => c.name === 'Configuration & Validation');
+      expect(cfgCat).toBeDefined();
+      expect(cfgCat.commands.map(c => c.name)).toContain('convert');
+    });
+
+    it('should include credential and deployment in Application & Datasource Management', () => {
+      const mgmtCat = CATEGORIES.find(c => c.name === 'Application & Datasource Management');
+      expect(mgmtCat).toBeDefined();
+      expect(mgmtCat.commands.map(c => c.name)).toContain('credential');
+      expect(mgmtCat.commands.map(c => c.name)).toContain('deployment');
+    });
   });
 
   describe('buildCategorizedHelp', () => {
@@ -86,6 +105,41 @@ describe('help-builder', () => {
       const help = buildCategorizedHelp(program);
       expect(help).toContain('Help:');
       expect(help).toContain('help [command]');
+    });
+
+    it('should include upload, convert, credential, deployment when those commands are registered', () => {
+      const program = new Command();
+      program.name('aifabrix').description('Test');
+      program.command('upload <system-key>').description('Upload external system to dataplane');
+      program.command('convert <app>').description('Convert config between JSON and YAML');
+      program.command('credential').description('Manage credentials');
+      program.command('deployment').description('List deployments');
+
+      const help = buildCategorizedHelp(program);
+      expect(help).toContain('upload <system-key>');
+      expect(help).toContain('convert <app>');
+      expect(help).toContain('credential');
+      expect(help).toContain('deployment');
+    });
+  });
+
+  describe('help coverage', () => {
+    it('should list every registered top-level command in CATEGORIES', () => {
+      const program = new Command();
+      program.name('aifabrix').description('Test');
+      const cli = require('../../../lib/cli');
+      cli.setupCommands(program);
+
+      const inHelp = new Set();
+      for (const cat of CATEGORIES) {
+        for (const spec of cat.commands) inHelp.add(spec.name);
+      }
+
+      const allowedOmissions = new Set(['down-app']); // alias for stop; only stop is shown in help
+      const missing = program.commands
+        .filter((c) => !inHelp.has(c.name()) && !allowedOmissions.has(c.name()))
+        .map((c) => c.name());
+      expect(missing).toEqual([]);
     });
   });
 });
