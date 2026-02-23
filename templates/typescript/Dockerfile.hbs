@@ -7,6 +7,12 @@ FROM node:20-alpine
 # Set working directory
 WORKDIR /app
 
+# Optional build args for private registries (NPM_TOKEN, PYPI_TOKEN from env.template/kv://)
+ARG NPM_TOKEN
+ARG PYPI_TOKEN
+# npm uses NODE_AUTH_TOKEN for registry auth during install
+ENV NODE_AUTH_TOKEN=$NPM_TOKEN
+
 # Install system dependencies
 RUN apk add --no-cache \
     dumb-init \

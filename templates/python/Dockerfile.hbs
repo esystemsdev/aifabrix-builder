@@ -7,6 +7,10 @@ FROM python:3.11-alpine
 # Set working directory
 WORKDIR /app
 
+# Optional build args for private registries (NPM_TOKEN, PYPI_TOKEN from env.template/kv://)
+ARG NPM_TOKEN
+ARG PYPI_TOKEN
+
 # Install system dependencies
 RUN apk add --no-cache \
     dumb-init \

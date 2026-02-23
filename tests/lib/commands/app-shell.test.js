@@ -16,6 +16,7 @@ jest.mock('../../../lib/utils/paths', () => ({
   resolveApplicationConfigPath: jest.fn((p) => `${p}/application.yaml`)
 }));
 jest.mock('../../../lib/utils/config-format', () => ({ loadConfigFile: jest.fn(() => ({})) }));
+jest.mock('../../../lib/core/secrets-env-write', () => ({ resolveAndWriteEnvFile: jest.fn().mockResolvedValue('/tmp/shell.env') }));
 jest.mock('child_process', () => ({ spawn: jest.fn() }));
 
 const containerHelpers = require('../../../lib/utils/app-run-containers');
@@ -38,7 +39,7 @@ describe('app-shell command', () => {
     await expect(runAppShell('myapp', {})).rejects.toThrow('is not running');
   });
 
-  it('spawns docker exec -it container sh', async() => {
+  it('spawns docker exec -it with env-file and TMPDIR', async() => {
     let resolve;
     const p = new Promise(r => {
       resolve = r;
@@ -56,6 +57,14 @@ describe('app-shell command', () => {
     const run = runAppShell('myapp', {});
     await run;
 
-    expect(spawn).toHaveBeenCalledWith('docker', ['exec', '-it', 'aifabrix-dev01-myapp', 'sh'], expect.objectContaining({ stdio: 'inherit', shell: false }));
+    const secretsEnvWrite = require('../../../lib/core/secrets-env-write');
+    expect(secretsEnvWrite.resolveAndWriteEnvFile).toHaveBeenCalledWith('myapp', {});
+    expect(spawn).toHaveBeenCalledWith('docker', [
+      'exec', '-it',
+      '--env-file', '/tmp/shell.env',
+      '-e', 'TMPDIR=/tmp',
+      'aifabrix-dev01-myapp',
+      'sh'
+    ], expect.objectContaining({ stdio: 'inherit', shell: false }));
   });
 });

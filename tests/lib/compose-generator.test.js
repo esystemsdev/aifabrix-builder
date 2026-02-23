@@ -1021,6 +1021,7 @@ describe('Compose Generator Module', () => {
         const result = await composeGenerator.generateDockerCompose('test-app', config, options);
         expect(result).toContain('cd /app && pnpm run reloadStart');
         expect(result).toContain('command:');
+        expect(result).toContain('user: "${AIFABRIX_UID:-1000}:${AIFABRIX_GID:-1000}"');
       });
 
       it('should not add command override when devMountPath is set but build.reloadStart is not', async() => {

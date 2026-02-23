@@ -47,13 +47,17 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix run <app>`](application-development.md#aifabrix-run-app) - Run application locally or remotely on your Docker host (options: `--reload` for sync/mount with Mutagen or local Docker, `--env dev|tst|pro`)
   - [`aifabrix shell <app>`](application-development.md#aifabrix-shell-app) - Exec into running or ephemeral container (builder apps)
   - [`aifabrix test <app> [--env dev|tst]`](application-development.md#aifabrix-test-app) - Run tests (builder app: in container; external system: local validation)
+  - [`aifabrix install <app> [--env dev|tst]`](application-development.md#aifabrix-install-app) - Install dependencies in container (builder apps)
+  - [`aifabrix test-e2e <app> [--env dev|tst]`](application-development.md#aifabrix-test-e2e-app) - Run e2e tests in container (builder apps)
+  - [`aifabrix test-integration <app> [--env dev|tst]`](application-development.md#aifabrix-test-integration-app) - Run integration tests (builder app: in container; external system: via dataplane)
+  - [`aifabrix lint <app> [--env dev|tst]`](application-development.md#aifabrix-lint-app) - Run lint in container (builder apps)
   - [`aifabrix restart <app>`](application-development.md#aifabrix-restart-app) - Restart a running Docker application (builder/<app>)
   - [`aifabrix logs <app>`](application-development.md#aifabrix-logs-app) - Show application container logs
   - [`aifabrix stop <app>`](application-development.md#aifabrix-stop-app) - Stop and remove application container (alias: down-app)
   - [`aifabrix down-app <app>`](application-development.md#aifabrix-down-app) - Stop and remove application container
   - [`aifabrix dockerfile <app>`](application-development.md#aifabrix-dockerfile-app) - Generate Dockerfile for an application
 
-  For end-to-end or lint, run the app's scripts inside the container (e.g. `aifabrix shell <app>` then `make test:e2e` or `make lint`), or use the app's Makefile/npm scripts locally.
+  For custom scripts, use `build.scripts` in application.yaml or run `aifabrix shell <app>` then run make/npm commands manually.
 
 ### Deployment
 - [Deployment Commands](deployment.md) - Deploy via Controller (Azure or local Docker)
@@ -75,7 +79,7 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix upload <system-key>`](external-integration.md#aifabrix-upload-system-key) - Upload external system to dataplane (upload → validate → publish; no controller deploy)
   - [`aifabrix delete <system-key>`](external-integration.md#aifabrix-delete-system-key) - Delete external system from dataplane
   - [`aifabrix test <app> [--env dev|tst]`](external-integration.md#aifabrix-test-app) - Run unit tests for external system (local validation) or builder app tests in container
-  - [`aifabrix test-integration <app> [--env dev|tst]`](external-integration.md#aifabrix-test-integration-app) - Run integration tests via dataplane pipeline API (dataplane URL from controller)
+  - [`aifabrix test-integration <app> [--env dev|tst]`](application-development.md#aifabrix-test-integration-app) - Run integration tests (builder: in container; external: via dataplane). See [External Integration Testing](external-integration-testing.md) for external payloads and troubleshooting.
   - [`aifabrix datasource`](external-integration.md#aifabrix-datasource) - Manage external data sources
     - [`aifabrix datasource validate <file>`](external-integration.md#aifabrix-datasource-validate-file) - Validate external datasource JSON file
     - [`aifabrix datasource list`](external-integration.md#aifabrix-datasource-list) - List datasources from environment

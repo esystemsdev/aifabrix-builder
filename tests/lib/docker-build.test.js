@@ -322,6 +322,35 @@ describe('Docker Build Utilities', () => {
       );
     });
 
+    it('should pass buildArgs as --build-arg when provided', async() => {
+      const imageName = 'test-image';
+      const dockerfilePath = './Dockerfile';
+      const contextPath = './';
+      const tag = 'latest';
+      const buildArgs = { NPM_TOKEN: 'secret-npm', PYPI_TOKEN: 'secret-pypi' };
+
+      let closeCallback;
+      mockProcess.on.mockImplementation((event, callback) => {
+        if (event === 'close') closeCallback = callback;
+      });
+
+      const buildPromise = dockerBuild.executeDockerBuild(imageName, dockerfilePath, contextPath, tag, buildArgs);
+      if (closeCallback) closeCallback(0);
+      await buildPromise;
+
+      const expectedDockerfilePath = path.resolve(dockerfilePath);
+      const expectedContextPath = path.resolve(contextPath);
+      expect(mockSpawn).toHaveBeenCalledWith(
+        'docker',
+        [
+          'build', '-t', `${imageName}:${tag}`, '-f', expectedDockerfilePath,
+          '--build-arg', 'NPM_TOKEN=secret-npm',
+          '--build-arg', 'PYPI_TOKEN=secret-pypi',
+          expectedContextPath
+        ],
+        expect.any(Object)
+      );
+    });
     it('should handle build failure with error code', async() => {
       const imageName = 'test-image';
       const dockerfilePath = './Dockerfile';

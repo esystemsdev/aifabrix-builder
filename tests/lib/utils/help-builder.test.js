@@ -11,13 +11,16 @@ const { buildCategorizedHelp, CATEGORIES } = require('../../../lib/utils/help-bu
 
 describe('help-builder', () => {
   describe('CATEGORIES', () => {
-    it('should include Applications category with run, shell, test, logs, stop', () => {
+    it('should include Applications category with run, shell, test, install, test-e2e, lint, logs, stop', () => {
       const appCat = CATEGORIES.find(c => c.name === 'Applications (Create & Develop)');
       expect(appCat).toBeDefined();
       const names = appCat.commands.map(c => c.name);
       expect(names).toContain('run');
       expect(names).toContain('shell');
       expect(names).toContain('test');
+      expect(names).toContain('install');
+      expect(names).toContain('test-e2e');
+      expect(names).toContain('lint');
       expect(names).toContain('logs');
       expect(names).toContain('stop');
     });

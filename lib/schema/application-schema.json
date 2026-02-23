@@ -771,6 +771,18 @@
         "reloadStart": {
           "type": "string",
           "description": "When running with --reload, override the container command with this command (run from the mounted app root /app). Examples: TypeScript pnpm run reloadStart, Python make reloadStart."
+        },
+        "scripts": {
+          "type": "object",
+          "description": "Override CLI script commands (aifabrix test, install, lint, test-e2e, test-integration). When a key is missing, language default is used (TypeScript: pnpm test/install/lint/test:e2e/test:integration, Python: make test/install/lint/test:e2e/test-integration).",
+          "properties": {
+            "test": { "type": "string", "description": "Command for aifabrix test <app>" },
+            "install": { "type": "string", "description": "Command for aifabrix install <app>" },
+            "lint": { "type": "string", "description": "Command for aifabrix lint <app>" },
+            "testE2e": { "type": "string", "description": "Command for aifabrix test-e2e <app> (YAML may use test:e2e)" },
+            "testIntegration": { "type": "string", "description": "Command for aifabrix test-integration <app> (YAML may use test:integration). Defaults to testE2e when unset." }
+          },
+          "additionalProperties": true
         }
       },
       "additionalProperties": false

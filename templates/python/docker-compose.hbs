@@ -48,6 +48,7 @@ services:
       {{#if requiresStorage}}
       - {{#if (eq devId 0)}}aifabrix_{{app.key}}_data{{else}}aifabrix_dev{{devId}}_{{app.key}}_data{{/if}}:/mnt/data
       {{/if}}
+    user: "${AIFABRIX_UID:-1000}:${AIFABRIX_GID:-1000}"
     {{else}}
     {{#if requiresStorage}}
     volumes:

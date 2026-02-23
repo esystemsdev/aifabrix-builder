@@ -150,6 +150,8 @@ aifabrix build myapp --force-template
 - Docker image: `myapp:latest`
 - Env is resolved in memory; the only persisted `.env` is written to `build.envOutputPath` when configured (run uses the same single .env path or temp).
 
+**Environment and tokens:** Build passes `NPM_TOKEN` and `PYPI_TOKEN` as Docker build-args when they are in `env.template` (e.g. `NPM_TOKEN=kv://npm-tokenKeyVault`) or in your secrets file, so private npm/pypi registries work during `RUN npm install` / `pip install`. Add them to `env.template` as `kv://` references; see [env.template](../configuration/env-template.md#build-run-shell-and-install). The TypeScript Dockerfile uses `NODE_AUTH_TOKEN=$NPM_TOKEN` so npm install can authenticate; for Python, use a custom Dockerfile or run `aifabrix install <app>` after build if you need private PyPI during install. Note: build-args can appear in image history; for maximum security use Docker build secrets or install-after-build.
+
 **Issues:**
 - **"Docker not running"** → Start Docker Desktop
 - **"Build failed"** → Check Dockerfile syntax, dependencies
@@ -169,7 +171,7 @@ Run application locally in Docker container with automatic infrastructure connec
 **Prerequisites:**
 - Application must be in `builder/<app>/` and built: `aifabrix build <app>`
 - Infrastructure must be running: `aifabrix up-infra`
-- Env is generated at run time to `build.envOutputPath` when set (or to a temp path); no requirement for a pre-existing `.env` file in `builder/<app>/`
+- Env is generated at run time to `build.envOutputPath` when set (or to a temp path); no requirement for a pre-existing `.env` file in `builder/<app>/`. For `NPM_TOKEN`/`PYPI_TOKEN` (private registries), add them to `env.template` as `kv://` references; see [env.template](../configuration/env-template.md#build-run-shell-and-install).
 
 **Example:**
 ```bash
@@ -408,6 +410,97 @@ aifabrix test myapp --env tst
 
 ---
 
+<a id="aifabrix-install-app"></a>
+## aifabrix install <app>
+
+Install dependencies inside the container for **builder** applications.
+
+**What:** Runs the app's install command (e.g. `pnpm install`, `make install`) inside the container. For **dev**: uses the running container if the app is up; for **tst**: starts an ephemeral container with the same resolved `.env` as run (so `NPM_TOKEN`/`PYPI_TOKEN` from `env.template` are available for private registries).
+
+**When:** After pulling code or when dependencies change; useful when the image was built without private registry tokens and you need to install from a private npm/pypi.
+
+**Usage:**
+```bash
+# Dev: run install in running container
+aifabrix install myapp
+
+# Tst: ephemeral container with resolved .env
+aifabrix install myapp --env tst
+```
+
+**Options:**
+- `--env <dev|tst>` - Environment (dev = running container; tst = ephemeral with env file)
+
+**Script:** Override with `build.scripts.install` in application.yaml; see [Scripts and commands](#scripts-and-commands) below.
+
+**Read-only /app:** Install (and running `pnpm install` or `make install` in `aifabrix shell`) must write to `node_modules` under `/app`. If you see **EACCES** (e.g. `permission denied, rmdir '.../node_modules/.bin'` or `open '/app/_tmp_...'`), the container's `/app` is read-only. Use **`aifabrix run <app> --reload`** so the app directory is mounted and writable, or ensure the image gives the runtime user write access to `/app` (e.g. correct ownership in the Dockerfile).
+
+---
+
+<a id="aifabrix-test-e2e-app"></a>
+## aifabrix test-e2e <app>
+
+Run e2e tests inside the container for **builder** applications.
+
+**What:** Runs the app's test:e2e command (e.g. `pnpm test:e2e`, `make test:e2e`) inside the container. For **dev**: uses the running container; for **tst**: ephemeral container with resolved `.env`.
+
+**Usage:** `aifabrix test-e2e myapp` or `aifabrix test-e2e myapp --env tst`
+
+**Options:** `--env <dev|tst>` — same as [aifabrix test](#aifabrix-test-app). Override with `build.scripts.test:e2e` or `build.scripts.testE2e`; see [Scripts and commands](#scripts-and-commands).
+
+---
+
+<a id="aifabrix-test-integration-app"></a>
+## aifabrix test-integration <app>
+
+Run integration tests for **builder** applications (in container) or **external** systems (via dataplane pipeline API).
+
+**What:** For **builder** apps in `builder/<app>/`: runs the app's integration test command inside the container (same pattern as [aifabrix test](#aifabrix-test-app) and [aifabrix test-e2e](#aifabrix-test-e2e-app)). For **external** systems in `integration/<app>/` with an `externalIntegration` block: runs integration tests via the dataplane pipeline API (see [External Integration Testing](external-integration-testing.md)).
+
+**When:** Running integration tests in the same environment as the app (builder) or validating external system pipelines (external).
+
+**Usage (builder app):**
+```bash
+# Dev: run integration tests in running container
+aifabrix test-integration myapp
+
+# Tst: ephemeral container with resolved .env
+aifabrix test-integration myapp --env tst
+```
+
+**Usage (external system):**
+```bash
+aifabrix test-integration hubspot
+aifabrix test-integration hubspot --env tst
+aifabrix test-integration hubspot --datasource hubspot-company --payload ./test-payload.json
+```
+
+**Options:**
+- `--env <dev|tst|pro>` — For builder: dev (running container) or tst (ephemeral). For external: environment for dataplane (dev, tst, pro).
+- `-d, --datasource <key>` — (External only) Test a specific datasource.
+- `-p, --payload <file>` — (External only) Path to custom test payload file.
+- `-v, --verbose` — (External only) Show detailed test output.
+- `--timeout <ms>` — (External only) Request timeout in milliseconds (default 30000).
+
+**Script:** For builder apps, override with `build.scripts.test:integration` or `build.scripts.testIntegration` in application.yaml. When unset, the command used is the same as [aifabrix test-e2e](#aifabrix-test-e2e-app) (e.g. `pnpm test:e2e`, `make test:e2e`). See [Scripts and commands](#scripts-and-commands).
+
+**See also:** [External Integration Testing](external-integration-testing.md) for external system integration tests, payload configuration, and troubleshooting.
+
+---
+
+<a id="aifabrix-lint-app"></a>
+## aifabrix lint <app>
+
+Run lint inside the container for **builder** applications.
+
+**What:** Runs the app's lint command (e.g. `pnpm lint`, `make lint`) inside the container. For **dev**: uses the running container; for **tst**: ephemeral container with resolved `.env`.
+
+**Usage:** `aifabrix lint myapp` or `aifabrix lint myapp --env tst`
+
+**Options:** `--env <dev|tst>` — same as [aifabrix test](#aifabrix-test-app). Override with `build.scripts.lint`; see [Scripts and commands](#scripts-and-commands).
+
+---
+
 <a id="aifabrix-dockerfile-app"></a>
 ## aifabrix dockerfile <app>
 
@@ -450,4 +543,35 @@ Location: builder/myapp/Dockerfile
 - **"Dockerfile already exists"** → Use `--force` flag to overwrite
 - **"Failed to load configuration"** → Run `aifabrix create myapp` first
 - **"Language not supported"** → Update application.yaml with supported language
+
+---
+
+<a id="scripts-and-commands"></a>
+## Scripts and commands
+
+The following CLI commands resolve their shell command from `application.yaml` → `build.scripts` (or top-level `scripts`), with language defaults when a key is missing:
+
+| CLI / usage               | application.yaml key                     | TypeScript default | Python default  |
+| ------------------------- | ---------------------------------------- | ------------------ | --------------- |
+| `aifabrix test <app>`     | `build.scripts.test`                     | `pnpm test`        | `make test`     |
+| `aifabrix install <app>`  | `build.scripts.install`                  | `pnpm install`     | `make install`  |
+| `aifabrix test-e2e <app>` | `build.scripts.test:e2e` / `testE2e`    | `pnpm test:e2e`    | `make test:e2e` |
+| `aifabrix test-integration <app>` | `build.scripts.test:integration` / `testIntegration` | (falls back to test-e2e) | (falls back to test-e2e) |
+| `aifabrix lint <app>`     | `build.scripts.lint`                     | `pnpm lint`        | `make lint`     |
+
+Example override in `application.yaml`:
+
+```yaml
+build:
+  language: typescript
+  scripts:
+    test: pnpm test
+    install: pnpm install
+    test:e2e: pnpm test:e2e
+    test:integration: pnpm test:integration   # optional; when unset, test-integration uses test:e2e
+    lint: pnpm lint
+```
+
+See [application.yaml](../configuration/application-yaml.md) for the full config reference.
+
 

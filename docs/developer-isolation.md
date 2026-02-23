@@ -431,7 +431,7 @@ If the remote Docker context becomes invalid or you see certificate errors, run 
 - **Run**: `aifabrix run <app> --env dev --reload` (dev with sync) or `aifabrix run <app> --env tst` / `--env pro` (from image).
 - **Build**: `aifabrix build <app>` — builds on the remote Docker engine (e.g. image tagged like `myapp:dev-01-latest`).
 - **Stop / logs / shell**: `aifabrix stop <app>`, `aifabrix logs <app>`, `aifabrix shell <app>` (optionally with `--env`).
-- **Tests**: `aifabrix test <app>`, `aifabrix test-integration <app>`, `aifabrix test-e2e <app>`, `aifabrix lint <app>` (with `--env dev` or `--env tst` as needed). In dev, tests run inside the running container; in tst, an ephemeral container is used.
+- **Tests**: `aifabrix test <app>`, `aifabrix test-integration <app>` (external systems only), and for builder apps `aifabrix test-e2e <app>`, `aifabrix lint <app>` (with `--env dev` or `--env tst` as needed). In dev, tests run inside the running container; in tst, an ephemeral container is used. See [Application Development Commands](application-development.md).
 
 #### If something goes wrong
 
