@@ -482,6 +482,62 @@ describe('App.js Additional Coverage Tests', () => {
 
       console.log.mockRestore();
     });
+
+    it('should use image.name from application.yaml for ACR repository (e.g. aifabrix/dataplane)', async() => {
+      const appName = 'dataplane';
+      const registry = 'aifabrixdevacr.azurecr.io';
+      const imageName = 'aifabrix/dataplane';
+      const configWithImageName = {
+        app: { key: appName },
+        image: { name: imageName, tag: 'latest', registry, registryMode: 'acr' }
+      };
+
+      configFormat.loadConfigFile.mockImplementation((filePath) => {
+        if (filePath && String(filePath).includes('dataplane')) {
+          return { ...configWithImageName };
+        }
+        return { ...defaultPushConfig };
+      });
+
+      jest.spyOn(paths, 'detectAppType').mockImplementation(async(name) => ({
+        appPath: path.join(tempDir, 'builder', name),
+        appType: 'regular',
+        baseDir: 'builder',
+        isExternal: false
+      }));
+      jest.spyOn(paths, 'resolveApplicationConfigPath').mockImplementation((appPath) => {
+        if (appPath && (String(appPath).includes('test-app') || String(appPath).includes('dataplane'))) {
+          return path.join(appPath, 'application.yaml');
+        }
+        throw new Error(`Application config not found in ${appPath}. Expected application.yaml, application.yml, application.json, or variables.yaml.`);
+      });
+      const dataplaneAppPath = path.join(tempDir, 'builder', 'dataplane');
+      fsSync.mkdirSync(dataplaneAppPath, { recursive: true });
+      fsSync.writeFileSync(path.join(dataplaneAppPath, 'application.yaml'), yaml.dump(configWithImageName));
+
+      pushUtils.checkLocalImageExists.mockResolvedValue(true);
+      pushUtils.checkAzureCLIInstalled.mockResolvedValue(true);
+      pushUtils.checkAzureLogin.mockResolvedValue(true);
+      pushUtils.checkACRAuthentication.mockResolvedValue(true);
+      pushUtils.tagImage.mockResolvedValue();
+      pushUtils.pushImage.mockResolvedValue();
+
+      await app.pushApp(appName, { registry, tag: 'v1.0.0,latest' });
+
+      expect(pushUtils.checkLocalImageExists).toHaveBeenCalledWith(imageName, 'latest');
+      expect(pushUtils.tagImage).toHaveBeenCalledWith(
+        `${imageName}:latest`,
+        `${registry}/${imageName}:v1.0.0`
+      );
+      expect(pushUtils.pushImage).toHaveBeenCalledWith(
+        `${registry}/${imageName}:v1.0.0`,
+        registry
+      );
+      expect(pushUtils.pushImage).toHaveBeenCalledWith(
+        `${registry}/${imageName}:latest`,
+        registry
+      );
+    });
   });
 
   describe('pushApp - error paths', () => {

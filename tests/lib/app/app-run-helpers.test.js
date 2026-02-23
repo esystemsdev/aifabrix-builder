@@ -133,5 +133,30 @@ describe('checkPrerequisites - version resolution', () => {
       expect.objectContaining({ updateBuilder: false })
     );
   });
+
+  it('should use runOptions.image for image check when provided', async() => {
+    const templateAppConfig = { port: 8082, image: { name: 'aifabrix/keycloak', tag: 'latest' } };
+    await checkPrerequisites('keycloak', templateAppConfig, false, true, { image: 'myreg/keycloak:v1' });
+
+    expect(checkImageExists).toHaveBeenCalledWith('myreg/keycloak', 'v1', false);
+  });
+
+  it('should throw template-app hint when image not found for keycloak', async() => {
+    checkImageExists.mockResolvedValue(false);
+    const templateAppConfig = { port: 8082, image: { name: 'aifabrix/keycloak', tag: 'latest' } };
+
+    await expect(checkPrerequisites('keycloak', templateAppConfig, false, true))
+      .rejects.toThrow(/Docker image aifabrix\/keycloak:latest not found/);
+    await expect(checkPrerequisites('keycloak', templateAppConfig, false, true))
+      .rejects.toThrow(/Pull the image|use --image/);
+  });
+
+  it('should throw build hint when image not found for non-template app', async() => {
+    checkImageExists.mockResolvedValue(false);
+    const appConfig = { port: 3000, image: { name: 'aifabrix/myapp', tag: 'latest' } };
+
+    await expect(checkPrerequisites('myapp', appConfig, false, true))
+      .rejects.toThrow(/Run 'aifabrix build myapp' first/);
+  });
 });
 

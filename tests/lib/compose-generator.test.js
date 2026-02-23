@@ -1004,6 +1004,57 @@ describe('Compose Generator Module', () => {
       expect(result).toContain('traefik.http.routers.test-app.entrypoints=websecure');
       expect(result).not.toContain('traefik.http.routers.test-app.tls.certstore');
     });
+
+    describe('reloadStart (run --reload command override)', () => {
+      it('should add command override when devMountPath and build.reloadStart are set', async() => {
+        const actualDevDir = await getAndEnsureDevDir('test-app');
+        const envPath = path.join(actualDevDir, '.env');
+        fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+        const config = {
+          port: 3000,
+          requires: { database: true },
+          build: { language: 'typescript', reloadStart: 'pnpm run reloadStart' }
+        };
+        const options = { devMountPath: '/workspace/myapp' };
+
+        const result = await composeGenerator.generateDockerCompose('test-app', config, options);
+        expect(result).toContain('cd /app && pnpm run reloadStart');
+        expect(result).toContain('command:');
+      });
+
+      it('should not add command override when devMountPath is set but build.reloadStart is not', async() => {
+        const actualDevDir = await getAndEnsureDevDir('test-app');
+        const envPath = path.join(actualDevDir, '.env');
+        fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+        const config = {
+          port: 3000,
+          requires: { database: true },
+          build: { language: 'typescript' }
+        };
+        const options = { devMountPath: '/workspace/myapp' };
+
+        const result = await composeGenerator.generateDockerCompose('test-app', config, options);
+        expect(result).not.toContain('cd /app && pnpm run reloadStart');
+      });
+
+      it('should not add command override when build.reloadStart is set but devMountPath is not', async() => {
+        const actualDevDir = await getAndEnsureDevDir('test-app');
+        const envPath = path.join(actualDevDir, '.env');
+        fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+        const config = {
+          port: 3000,
+          requires: { database: true },
+          build: { language: 'typescript', reloadStart: 'pnpm run reloadStart' }
+        };
+        const options = {};
+
+        const result = await composeGenerator.generateDockerCompose('test-app', config, options);
+        expect(result).not.toContain('cd /app && pnpm run reloadStart');
+      });
+    });
   });
 });
 

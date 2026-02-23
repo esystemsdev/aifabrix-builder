@@ -35,6 +35,9 @@ services:
     {{/if}}
     env_file:
       - {{envFile}}
+    {{#if reloadStartCommand}}
+    command: ["sh", "-c", "cd /app && {{reloadStartCommand}}"]
+    {{/if}}
     ports:
       - "{{hostPort}}:{{containerPort}}"
     networks:

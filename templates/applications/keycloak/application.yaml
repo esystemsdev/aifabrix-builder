@@ -41,5 +41,6 @@ authentication:
 build:
   context: .. # Docker build context (relative to builder/)
   dockerfile: builder/Dockerfile # Dockerfile name (empty = use template)
-  containerPort: 8080 # Container port (port is used for host mapping)
+  localPort: 8082 # Port for local development (different from Docker port)
+  containerPort: 8080 # Container port (different from local port)
   language: typescript # Runtime language for template selection

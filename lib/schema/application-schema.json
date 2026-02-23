@@ -767,6 +767,10 @@
           "type": "string",
           "description": "Relative path under user-mutagen-folder for remote sync and Docker -v; when unset, defaults to dev/<appKey>. No leading slash.",
           "pattern": "^[^/].*"
+        },
+        "reloadStart": {
+          "type": "string",
+          "description": "When running with --reload, override the container command with this command (run from the mounted app root /app). Examples: TypeScript pnpm run reloadStart, Python make reloadStart."
         }
       },
       "additionalProperties": false

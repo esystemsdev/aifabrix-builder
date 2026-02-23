@@ -79,6 +79,19 @@ describe('CLI Utils Module', () => {
       expect(logger.error).toHaveBeenCalledWith('   Run: aifabrix build <app> first');
     });
 
+    it('should preserve template-app hint when Docker image not found (up-miso/up-dataplane)', () => {
+      const error = new Error(
+        'Docker image aifabrix/keycloak:latest not found\nPull the image (e.g. docker pull aifabrix/keycloak:latest) or use --image keycloak=<image> for up-miso/up-dataplane.'
+      );
+
+      handleCommandError(error, 'up-miso');
+
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in up-miso command'));
+      expect(logger.error).toHaveBeenCalledWith('   Docker image aifabrix/keycloak:latest not found');
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Pull the image'));
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('use --image keycloak='));
+    });
+
     it('should handle Docker not running errors', () => {
       const error = new Error('Docker is not running');
 
