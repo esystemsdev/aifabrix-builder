@@ -53,7 +53,7 @@ build:
   envOutputPath: ../../.env       # Copy to repo root for local dev
   localPort: 3011                 # Port for local development (different from Docker port)
   language: python                # Runtime language for template selection (typescript or python)
-  reloadStart: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001} --reload  # When running with --reload
+  reloadStart: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001} --reload  # PORT set from port above at run time; default 3001 must match port
 
 # =============================================================================
 # Portal Input Configuration (Deployment Wizard)

@@ -27,6 +27,9 @@ services:
     {{/if}}
     environment:
       - MISO_ENVIRONMENT={{misoEnvironment}}
+    {{#if reloadStartCommand}}
+      - PORT={{containerPort}}
+    {{/if}}
     {{#if traefik.enabled}}
     {{#unless (eq traefik.path "/")}}
       - BASE_PATH={{traefik.path}}

@@ -1055,7 +1055,24 @@ describe('Compose Generator Module', () => {
         const result = await composeGenerator.generateDockerCompose('test-app', config, options);
         expect(result).not.toContain('cd /app && pnpm run reloadStart');
       });
+
+      it('should set PORT to containerPort in environment when reloadStart is set so reload command uses container port', async() => {
+        const actualDevDir = await getAndEnsureDevDir('dataplane');
+        const envPath = path.join(actualDevDir, '.env');
+        fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+        const config = {
+          app: { key: 'dataplane' },
+          port: 3001,
+          requires: { database: true },
+          build: { language: 'python', reloadStart: 'uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001} --reload' }
+        };
+        const options = { devMountPath: '/workspace/dataplane' };
+
+        const result = await composeGenerator.generateDockerCompose('dataplane', config, options);
+        expect(result).toContain('cd /app && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001} --reload');
+        expect(result).toMatch(/PORT=3001/);
+      });
     });
   });
 });
-
