@@ -20,15 +20,15 @@ Location: `~/.aifabrix/config.yaml`. Manages developer-id, aifabrix-home, aifabr
 
 ## aifabrix-secrets: remote vs local
 
-**When `aifabrix-secrets` is a file path:** Secrets are stored in that file (e.g. `~/.aifabrix/secrets.local.yaml` or a project path). `aifabrix resolve`, run, and build read from it. `secrets list`, `secrets set`, and `secrets remove` operate on that file; use `--shared` to read/write shared keys from the same file (see [Commands: Utilities](../commands/utilities.md)).
+**When `aifabrix-secrets` is a file path:** Secrets are stored in that file (e.g. `~/.aifabrix/secrets.local.yaml` or a project path). `aifabrix resolve`, run, and build read from it. `secret list`, `secret set`, and `secret remove` operate on that file. Missing secret keys are created automatically when you run `aifabrix up-infra`, app create, resolve with `--force`, or integration create; use `--shared` to read/write shared keys from the same file (see [Commands: Utilities](../commands/utilities.md)).
 
-**When `aifabrix-secrets` is an `http(s)://` URL:** Shared secrets are served by the remote API. `secrets list --shared`, `secrets set --shared`, and `secrets remove --shared` call the API (cert-authenticated). Shared values are **never stored on disk**; they are fetched at resolution time when generating `.env`. Local (non-shared) secrets can still use a local file if configured. Admin or secret-manager role is required for shared set/remove when using the remote API.
+**When `aifabrix-secrets` is an `http(s)://` URL:** Shared secrets are served by the remote API. `secret list --shared`, `secret set --shared`, and `secret remove --shared` call the API (cert-authenticated). Shared values are **never stored on disk**; they are fetched at resolution time when generating `.env`. Local (non-shared) secrets can still use a local file if configured. Admin or secret-manager role is required for shared set/remove when using the remote API.
 
 ## secrets.local.yaml (file-based secrets)
 
 **Single place:** When using a file for secrets, one `secrets.local.yaml` (local or shared) holds the secrets the CLI needs. Use the path from **`aifabrix-secrets`** in `config.yaml` to set a custom location (e.g. a shared drive or team path).
 
-Location: `~/.aifabrix/secrets.local.yaml` or path from `aifabrix-secrets` in config (when it is a path). Flat key-value; pattern `<app>-client-idKeyVault`, `<app>-client-secretKeyVault`, and other `*KeyVault` keys. Used by `aifabrix resolve`, `aifabrix login --method credentials`, and deploy. The CLI writes to this file only when you run `aifabrix secret set` (local), `aifabrix secure`, or when the system bootstraps an encryption key on empty install; otherwise treat it as edit-at-your-own-risk. Recommended permissions: 600.
+Location: `~/.aifabrix/secrets.local.yaml` or path from `aifabrix-secrets` in config (when it is a path). Flat key-value; pattern `<app>-client-idKeyVault`, `<app>-client-secretKeyVault`, and other `*KeyVault` keys. Used by `aifabrix resolve`, `aifabrix login --method credentials`, and deploy. The CLI creates missing keys when you run `aifabrix up-infra`, app create, `aifabrix resolve <app> --force`, or integration create; it also writes when you run `aifabrix secret set` (local), `aifabrix secure`, or when the system bootstraps an encryption key on empty install. When `secrets-encryption` is set, newly created values in file-based stores are encrypted. Recommended permissions: 600.
 
 ### Special key: secrets-encryptionKeyVault
 
@@ -40,11 +40,15 @@ The key **`secrets-encryptionKeyVault`** in `secrets.local.yaml` is used only wh
 - **Changing or losing the encryption key breaks decryption.** If you change `secrets-encryption` in `config.yaml` or remove it, or if you had encrypted values and the key no longer matches, those values cannot be decrypted. Recovery is to re-enter secrets (e.g. run `aifabrix login` again for tokens) and re-run `aifabrix secure` if you use encryption.
 - **Keep a safe copy of the encryption key.** If you use `aifabrix secure`, store the key used for `--secrets-encryption` in a secure place (e.g. password manager). Without it, encrypted secrets in `secrets.local.yaml` cannot be decrypted and the system will not work for any command that needs those secrets.
 
+## admin-secrets.env and run .env (ISO 27K)
+
+**admin-secrets.env** (`~/.aifabrix/admin-secrets.env`) is the single source for infrastructure admin credentials (Postgres, pgAdmin, Redis Commander). Use it everywhere: `aifabrix up-infra --adminPwd <password>` updates this file (and any existing values are overwritten with the new password). Values may be plain or **encrypted** (`secure://`); the same **secrets-encryption** key from `config.yaml` is used for both infra and application runs. When starting infra or running an app, the CLI reads and decrypts admin-secrets in memory and writes a **temporary** `.env` (e.g. `.env.run`) only for the duration of `docker compose up`. That file is **deleted after successful execution** so passwords are not stored on disk (ISO 27K). The pgAdmin pgpass file is also created only as a temporary file, copied into the container, then deleted; it is not stored under `~/.aifabrix/infra/`. If a run fails, temporary files may remain for debugging; remove them manually if they contain secrets.
+
 ## Encryption (aifabrix secure)
 
 Run `aifabrix secure --secrets-encryption <key>` to encrypt secrets in `secrets.local.yaml`. Key: 32 bytes, hex or base64. Encrypted values use `secure://` prefix. Plaintext secrets work if no encryption key is configured; the system detects encrypted values and only decrypts when needed. The key is stored in `config.yaml` as `secrets-encryption` for automatic decryption.
 
-See [Commands: Utilities](../commands/utilities.md) for `secrets set` and `secure`.
+See [Commands: Utilities](../commands/utilities.md) for `secret set`, `secret validate`, and `secure`. Run `aifabrix secret validate [path]` to validate a secrets file (YAML structure and optional `--naming` for *KeyVault convention).
 
 ## External integrations: KV_* in .env and kv:// in config
 

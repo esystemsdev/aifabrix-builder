@@ -501,7 +501,7 @@ describe('Variable Transformer Module', () => {
         expect(result.build).toBeUndefined();
       });
 
-      it('should exclude secrets when empty string; localPort is no longer included', () => {
+      it('should include build with localPort when present (secrets empty string excluded)', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
@@ -513,10 +513,10 @@ describe('Variable Transformer Module', () => {
 
         const result = transformVariablesForValidation(variables, defaultAppName);
 
-        expect(result.build).toBeUndefined();
+        expect(result.build).toEqual({ localPort: 3001 });
       });
 
-      it('should not include build when only localPort (localPort removed from schema)', () => {
+      it('should include build when only localPort is set', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
@@ -527,7 +527,7 @@ describe('Variable Transformer Module', () => {
 
         const result = transformVariablesForValidation(variables, defaultAppName);
 
-        expect(result.build).toBeUndefined();
+        expect(result.build).toEqual({ localPort: 3001 });
       });
 
       it('should include build with language', () => {
@@ -646,7 +646,7 @@ describe('Variable Transformer Module', () => {
         expect(result.build).toBeUndefined();
       });
 
-      it('should include build with all fields (localPort removed)', () => {
+      it('should include build with all fields including localPort', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
@@ -654,7 +654,8 @@ describe('Variable Transformer Module', () => {
             envOutputPath: '.env',
             language: 'typescript',
             context: './src',
-            dockerfile: 'Dockerfile.prod'
+            dockerfile: 'Dockerfile.prod',
+            localPort: 3001
           }
         };
 
@@ -664,7 +665,8 @@ describe('Variable Transformer Module', () => {
           envOutputPath: '.env',
           language: 'typescript',
           context: './src',
-          dockerfile: 'Dockerfile.prod'
+          dockerfile: 'Dockerfile.prod',
+          localPort: 3001
         });
       });
     });

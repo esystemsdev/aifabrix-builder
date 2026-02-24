@@ -8,7 +8,18 @@ jest.mock('../../../lib/core/secrets', () => ({
 }));
 
 jest.mock('../../../lib/core/secrets-env-write', () => ({
-  resolveAndWriteEnvFile: jest.fn().mockResolvedValue('/tmp/myapp-env.env')
+  resolveAndWriteEnvFile: jest.fn().mockResolvedValue('/tmp/myapp-env.env'),
+  resolveAndGetEnvMap: jest.fn().mockResolvedValue({ PORT: '3000' })
+}));
+
+jest.mock('../../../lib/core/admin-secrets', () => ({
+  readAndDecryptAdminSecrets: jest.fn().mockResolvedValue({ POSTGRES_PASSWORD: 'admin' }),
+  envObjectToContent: jest.fn((obj) => Object.entries(obj).map(([k, v]) => `${k}=${v}`).join('\n'))
+}));
+
+jest.mock('../../../lib/infrastructure', () => ({
+  checkInfraHealth: jest.fn().mockResolvedValue({ postgres: 'healthy', redis: 'healthy' }),
+  ensureAdminSecrets: jest.fn().mockResolvedValue('/tmp/admin-secrets.env')
 }));
 
 jest.mock('../../../lib/core/config', () => ({
@@ -37,22 +48,57 @@ jest.mock('../../../lib/utils/app-run-containers', () => ({
   checkImageExists: jest.fn().mockResolvedValue(true),
   checkContainerRunning: jest.fn(),
   stopAndRemoveContainer: jest.fn(),
-  logContainerStatus: jest.fn(),
+  logContainerStatus: jest.fn().mockResolvedValue(),
   getContainerName: jest.fn()
 }));
 
-jest.mock('../../../lib/infrastructure', () => ({
-  checkInfraHealth: jest.fn().mockResolvedValue({ postgres: 'healthy', redis: 'healthy' })
+jest.mock('../../../lib/utils/docker', () => ({
+  ensureDockerAndCompose: jest.fn().mockResolvedValue(),
+  getComposeCommand: jest.fn().mockResolvedValue('docker compose')
+}));
+
+jest.mock('../../../lib/utils/health-check', () => ({
+  waitForHealthCheck: jest.fn().mockResolvedValue()
+}));
+
+jest.mock('../../../lib/utils/remote-docker-env', () => ({
+  getRemoteDockerEnv: jest.fn().mockResolvedValue({})
+}));
+
+jest.mock('../../../lib/utils/env-copy', () => ({
+  resolveEnvOutputPath: jest.fn(() => '/tmp/env-output/.env')
+}));
+
+jest.mock('child_process', () => ({
+  exec: jest.fn((cmd, opts, cb) => {
+    if (typeof opts === 'function') {
+      cb = opts;
+      opts = {};
+    }
+    setImmediate(() => cb(null, '', ''));
+    return { kill: jest.fn() };
+  })
 }));
 
 jest.mock('fs', () => {
   const actualFs = jest.requireActual('fs');
   const existsSync = jest.fn((p) => {
     const str = String(p || '');
-    if (str.includes('/builder/myapp/.env') || str.endsWith('/tmp/dev/myapp') || str.includes('application.yaml')) {
+    if (str.includes('/builder/myapp/.env') || str.endsWith('/tmp/dev/myapp') || str.includes('application.yaml') || str.includes('.env.run')) {
       return true;
     }
     return false;
+  });
+  const readFile = jest.fn((pathArg, encoding, cb) => {
+    if (typeof encoding === 'function') {
+      cb = encoding;
+      encoding = 'utf8';
+    }
+    const str = String(pathArg || '');
+    if (str.includes('.env.run')) {
+      return (cb ? setImmediate(() => cb(null, 'POSTGRES_PASSWORD=admin\nPORT=3000\n')) : Promise.resolve('POSTGRES_PASSWORD=admin\nPORT=3000\n'));
+    }
+    return actualFs.promises.readFile(pathArg, encoding).then((r) => (cb ? setImmediate(() => cb(null, r)) : r)).catch((e) => (cb ? setImmediate(() => cb(e)) : Promise.reject(e)));
   });
   return {
     ...actualFs,
@@ -62,13 +108,22 @@ jest.mock('fs', () => {
     promises: {
       ...actualFs.promises,
       copyFile: jest.fn().mockResolvedValue(),
-      writeFile: jest.fn().mockResolvedValue()
+      writeFile: jest.fn().mockResolvedValue(),
+      mkdir: jest.fn().mockResolvedValue(),
+      unlink: jest.fn().mockResolvedValue(),
+      readFile: jest.fn((pathArg, encoding) => {
+        const str = String(pathArg || '');
+        if (str.includes('.env.run')) return Promise.resolve('POSTGRES_PASSWORD=admin\nPORT=3000\n');
+        return actualFs.promises.readFile(pathArg, encoding);
+      })
     }
   };
 });
 
 const secretsEnvWrite = require('../../../lib/core/secrets-env-write');
-const { prepareEnvironment, checkPrerequisites } = require('../../../lib/app/run-helpers');
+const composeGenerator = require('../../../lib/utils/compose-generator');
+const { prepareEnvironment, checkPrerequisites, startContainer } = require('../../../lib/app/run-helpers');
+const fs = require('fs');
 const { resolveVersionForApp } = require('../../../lib/utils/image-version');
 const { checkImageExists } = require('../../../lib/utils/app-run-containers');
 
@@ -77,14 +132,124 @@ describe('Run .env generation', () => {
     jest.clearAllMocks();
   });
 
-  it('uses docker environment when resolving and writing .env during run prepare', async() => {
+  it('builds merged env and returns composePath, runEnvPath and runEnvAdminPath', async() => {
     const appConfig = { port: 3000 };
-    await prepareEnvironment('myapp', appConfig, {});
-    expect(secretsEnvWrite.resolveAndWriteEnvFile).toHaveBeenCalledWith('myapp', expect.objectContaining({
+    const result = await prepareEnvironment('myapp', appConfig, {});
+    expect(result).toEqual(expect.objectContaining({
+      composePath: expect.any(String),
+      runEnvPath: expect.any(String),
+      runEnvAdminPath: expect.any(String)
+    }));
+    expect(secretsEnvWrite.resolveAndGetEnvMap).toHaveBeenCalledWith('myapp', expect.objectContaining({
       environment: 'docker',
       secretsPath: null,
       force: false
     }));
+  });
+
+  it('uses docker environment for merged app env', async() => {
+    const appConfig = { port: 3000 };
+    await prepareEnvironment('myapp', appConfig, { reload: true });
+    expect(secretsEnvWrite.resolveAndGetEnvMap).toHaveBeenCalledWith('myapp', expect.objectContaining({
+      environment: 'docker',
+      secretsPath: null,
+      force: false
+    }));
+  });
+});
+
+describe('prepareEnvironment - port for run vs run --reload', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    composeGenerator.generateDockerCompose.mockResolvedValue('services: {}');
+  });
+
+  it('uses application.yaml port for compose host port (first in host:container)', async() => {
+    const appConfig = { port: 4000, build: { localPort: 3010 } };
+    await prepareEnvironment('myapp', appConfig, {});
+    expect(composeGenerator.generateDockerCompose).toHaveBeenCalledWith(
+      'myapp',
+      appConfig,
+      expect.objectContaining({ port: 4000 })
+    );
+  });
+
+  it('uses application.yaml port for compose host port with --reload', async() => {
+    const appConfig = { port: 4000, build: { localPort: 3010 } };
+    await prepareEnvironment('myapp', appConfig, { reload: true });
+    expect(composeGenerator.generateDockerCompose).toHaveBeenCalledWith(
+      'myapp',
+      appConfig,
+      expect.objectContaining({ port: 4000 })
+    );
+  });
+
+  it('uses application.yaml port for host and containerPort for container (e.g. 8082:8080)', async() => {
+    const appConfig = { port: 8082, build: { containerPort: 8080, localPort: 9999 } };
+    await prepareEnvironment('myapp', appConfig, {});
+    expect(composeGenerator.generateDockerCompose).toHaveBeenCalledWith(
+      'myapp',
+      appConfig,
+      expect.objectContaining({ port: 8082 })
+    );
+  });
+
+  it('throws when generated compose contains password literals in environment', async() => {
+    composeGenerator.generateDockerCompose.mockResolvedValue(
+      'services:\n  db:\n    environment:\n      POSTGRES_PASSWORD: secret123\n'
+    );
+    const appConfig = { port: 3000 };
+    await expect(prepareEnvironment('myapp', appConfig, {})).rejects.toThrow(
+      /must not contain password literals/
+    );
+  });
+
+  it('writes to envOutputPath with localPort when run without --reload', async() => {
+    const secrets = require('../../../lib/core/secrets');
+    const appConfig = { port: 3000, build: { envOutputPath: '../../packages/miso-controller/.env' } };
+    await prepareEnvironment('myapp', appConfig, {});
+    expect(secrets.generateEnvContent).toHaveBeenCalledWith('myapp', null, 'local', false);
+    expect(fs.promises.writeFile).toHaveBeenCalledWith('/tmp/env-output/.env', expect.any(String), { mode: 0o600 });
+  });
+
+  it('writes to envOutputPath same as container when run with --reload', async() => {
+    const secrets = require('../../../lib/core/secrets');
+    const appConfig = { port: 3000, build: { envOutputPath: '../../packages/miso-controller/.env' } };
+    await prepareEnvironment('myapp', appConfig, { reload: true });
+    expect(secrets.generateEnvContent).not.toHaveBeenCalledWith('myapp', null, 'local', false);
+    expect(fs.promises.readFile).toHaveBeenCalledWith(expect.stringContaining('.env.run'), 'utf8');
+    expect(fs.promises.writeFile).toHaveBeenCalledWith(
+      '/tmp/env-output/.env',
+      'POSTGRES_PASSWORD=admin\nPORT=3000\n',
+      { mode: 0o600 }
+    );
+  });
+});
+
+describe('startContainer', () => {
+  it('deletes runEnvPath (.env.run) after successful start (ISO 27K)', async() => {
+    const runEnvPath = '/home/.aifabrix/applications/.env.run';
+    const appConfig = { developerId: 0, healthCheck: { path: '/health' } };
+
+    await startContainer('myapp', '/path/compose.yaml', 3000, appConfig, { runEnvPath });
+
+    expect(fs.promises.unlink).toHaveBeenCalledWith(runEnvPath);
+  });
+
+  it('does not call unlink when runEnvPath is null', async() => {
+    await startContainer('myapp', '/path/compose.yaml', 3000, { developerId: 0 }, {});
+    expect(fs.promises.unlink).not.toHaveBeenCalled();
+  });
+
+  it('deletes both .env.run and .env.run.admin after successful start', async() => {
+    const runEnvPath = '/home/.aifabrix/applications/.env.run';
+    const runEnvAdminPath = '/home/.aifabrix/applications/.env.run.admin';
+    const appConfig = { developerId: 0, healthCheck: { path: '/health' } };
+
+    await startContainer('myapp', '/path/compose.yaml', 3000, appConfig, { runEnvPath, runEnvAdminPath });
+
+    expect(fs.promises.unlink).toHaveBeenCalledWith(runEnvPath);
+    expect(fs.promises.unlink).toHaveBeenCalledWith(runEnvAdminPath);
   });
 });
 

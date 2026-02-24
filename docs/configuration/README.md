@@ -12,7 +12,7 @@ Overview of AI Fabrix configuration files and where to find details.
 | [application.yaml](application-yaml.md) | Application config: app.key, app.displayName, port, image, build, requires, externalIntegration, etc. |
 | [env.template](env-template.md) | Environment variables template; kv:// references; `.env` generation. |
 | [External integration](external-integration.md) | externalIntegration block, schemaBasePath, systems, dataSources; validation. |
-| [Secrets and config](secrets-and-config.md) | config.yaml, secrets.local.yaml, encryption (aifabrix secure); **remote development** (remote-server, docker-endpoint) and remote vs local secrets (aifabrix-secrets as URL vs file). |
+| [Secrets and config](secrets-and-config.md) | config.yaml, secrets.local.yaml, **auto-creation** of missing secrets (up-infra, app create, resolve --force, integration create), encryption (aifabrix secure); remote vs local secrets (aifabrix-secrets); `aifabrix secret validate`. |
 | [env-config](env-config.md) | Environment-specific variable interpolation (${MISO_HOST}, ${NODE_ENV}, etc.). |
 
 ## Version
@@ -32,7 +32,7 @@ When using a remote dev server, set `remote-server`, and `docker-endpoint` in `c
 
 ## Quick links
 
-- [Commands: Utilities](../commands/utilities.md) – resolve, json, split-json, secrets list/set/remove, secure
+- [Commands: Utilities](../commands/utilities.md) – resolve, json, split-json, secret list/set/remove/validate, secure
 - [Commands: Developer isolation](../commands/developer-isolation.md) – dev init, dev config, remote setup
 - [Commands: Validation](../commands/validation.md) – validate, diff
 - [External systems](../external-systems.md) – External system and datasource JSON

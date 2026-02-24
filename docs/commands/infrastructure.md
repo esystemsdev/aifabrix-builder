@@ -6,6 +6,8 @@ Commands for managing local infrastructure services (Postgres, Redis, pgAdmin, R
 
 **Docker and development only:** All `up-xxx` and `down-xxx` commands (`up-infra`, `up-platform`, `up-miso`, `up-dataplane`, `down-infra`, `down-app`) operate on Docker containers and are for local development only. They do not deploy the builder's own services to the cloud.
 
+**Secrets on disk:** Generated `.env` files used for compose (e.g. `.env.run` in the applications or infra folder) are **temporary** and are **deleted after a successful run** so passwords are not stored on disk (ISO 27K). See [Secrets and config](configuration/secrets-and-config.md#admin-secretsenv-and-run-env-iso-27k).
+
 ---
 
 <a id="aifabrix-up-infra"></a>
@@ -22,6 +24,9 @@ Start local infrastructure (Postgres, Redis, optional Traefik).
 # Start infrastructure with default ports (developer ID 0)
 aifabrix up-infra
 
+# Override default admin password for new install (Postgres, pgAdmin, Redis Commander)
+aifabrix up-infra --adminPwd mySecurePassword
+
 # Set developer ID and start infrastructure (developer-specific ports)
 aifabrix up-infra --developer 1
 
@@ -34,6 +39,7 @@ aifabrix up-infra --no-traefik
 
 **Options:**
 - `-d, --developer <id>` - Set developer ID and start infrastructure with developer-specific ports. Developer ID must be a non-negative integer (0 = default infra, 1+ = developer-specific). When provided, sets the developer ID in `~/.aifabrix/config.yaml` and starts infrastructure with isolated ports.
+- `--adminPwd <password>` - Set or update the admin password in `~/.aifabrix/admin-secrets.env` for Postgres, pgAdmin, and Redis Commander. If the file already exists, its password fields are overwritten with this value; otherwise they are backfilled. Use a strong password in shared environments. **Note:** The Postgres container sets the `pgadmin` user password only when the data volume is first created. If you change the password after Postgres was already initialized, login to Postgres will fail until you reset the volume: run `cd ~/.aifabrix/infra && docker compose -f compose.yaml -p aifabrix down -v`, then run `aifabrix up-infra --adminPwd <password>` again.
 - `--traefik` - Include Traefik reverse proxy and save `traefik: true` to `~/.aifabrix/config.yaml` (used for this run and when neither flag is passed).
 - `--no-traefik` - Exclude Traefik and save `traefik: false` to config. When neither `--traefik` nor `--no-traefik` is passed, the value is read from config.
 
@@ -189,20 +195,20 @@ aifabrix up-dataplane --image myreg/dataplane:latest
 Stop infrastructure or a specific application.
 
 **What:**
-- Without arguments: stops all infrastructure containers. Data is preserved unless `--volumes` is used.
-- With an app name: stops and removes the application container. With `--volumes`, also removes the app's named Docker volume.
+- **Without arguments:** Stops all infrastructure containers **and all application containers on the same network** (for the current developer). Data is preserved unless `--volumes` is used. With `--volumes`, also removes all infrastructure and application Docker volumes.
+- **With an app name:** Stops and removes only that application's container. With `--volumes`, also removes that app's named Docker volume.
 
 **When:** Shutting down, freeing resources, before system maintenance.
 
 **Usage:**
 ```bash
-# Stop infrastructure
+# Stop infrastructure and all applications on the same network
 aifabrix down-infra
 
-# Stop infrastructure and delete infra volumes (all data)
+# Stop infrastructure, all applications on the same network, and delete all volumes (infra + app data)
 aifabrix down-infra --volumes
 
-# Stop a specific application container
+# Stop a specific application container only
 aifabrix down-infra myapp
 
 # Stop an application and remove its data volume

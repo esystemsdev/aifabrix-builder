@@ -135,7 +135,7 @@ aifabrix up-infra --traefik
 aifabrix down-infra
 ```
 
-Stops all containers. **Your data is preserved** in Docker volumes.
+Stops all infrastructure containers and **all application containers on the same network**. Your data is preserved in Docker volumes unless you use `--volumes`.
 
 ### Check Status
 ```bash
@@ -149,7 +149,9 @@ Shows what's running, what's not, and how to fix issues.
 aifabrix down-infra --volumes
 ```
 
-⚠️ **Warning:** This deletes all databases, Redis data, everything. Use for fresh start.
+Stops infrastructure and all apps on the same network and **removes all volumes** (infra and application data).
+
+⚠️ **Warning:** This deletes all databases, Redis data, and app volumes. Use for fresh start.
 
 ---
 

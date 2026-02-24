@@ -43,12 +43,12 @@ describe('Secrets Generator Module', () => {
 
   describe('findMissingSecretKeys', () => {
     it('should find missing secret keys from template', () => {
-      const envTemplate = 'DATABASE_URL=kv://postgres-passwordKeyVault\nREDIS_URL=kv://redis-urlKeyVault';
+      const envTemplate = 'DATABASE_URL=kv://postgres-passwordKeyVault\nREDIS_URL=kv://redis-url';
       const existingSecrets = { 'postgres-passwordKeyVault': 'admin123' };
 
       const result = secretsGenerator.findMissingSecretKeys(envTemplate, existingSecrets);
 
-      expect(result).toEqual(['redis-urlKeyVault']);
+      expect(result).toEqual(['redis-url']);
     });
 
     it('should return empty array when all secrets exist', () => {
@@ -61,12 +61,12 @@ describe('Secrets Generator Module', () => {
     });
 
     it('should return all keys when no secrets exist', () => {
-      const envTemplate = 'DATABASE_URL=kv://postgres-passwordKeyVault\nREDIS_URL=kv://redis-urlKeyVault';
+      const envTemplate = 'DATABASE_URL=kv://postgres-passwordKeyVault\nREDIS_URL=kv://redis-url';
       const existingSecrets = {};
 
       const result = secretsGenerator.findMissingSecretKeys(envTemplate, existingSecrets);
 
-      expect(result).toEqual(['postgres-passwordKeyVault', 'redis-urlKeyVault']);
+      expect(result).toEqual(['postgres-passwordKeyVault', 'redis-url']);
     });
 
     it('should handle duplicate kv:// references', () => {
@@ -368,7 +368,7 @@ describe('Secrets Generator Module', () => {
     it('should save secrets with proper YAML formatting', () => {
       const secrets = {
         'postgres-passwordKeyVault': 'admin123',
-        'redis-urlKeyVault': 'redis://localhost:6379'
+        'redis-url': 'redis://localhost:6379'
       };
       fs.existsSync.mockReturnValue(true);
 
@@ -469,7 +469,7 @@ describe('Secrets Generator Module', () => {
     });
 
     it('should merge new secrets with existing ones', async() => {
-      const envTemplate = 'DATABASE_URL=kv://postgres-passwordKeyVault\nREDIS_URL=kv://redis-urlKeyVault';
+      const envTemplate = 'DATABASE_URL=kv://postgres-passwordKeyVault\nREDIS_URL=kv://redis-url';
       const existingSecrets = { 'postgres-passwordKeyVault': 'admin123' };
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(yaml.dump(existingSecrets));
@@ -482,7 +482,7 @@ describe('Secrets Generator Module', () => {
       const parsed = yaml.load(writtenContent);
 
       expect(parsed['postgres-passwordKeyVault']).toBe('admin123');
-      expect(parsed['redis-urlKeyVault']).toBeDefined();
+      expect(parsed['redis-url']).toBeDefined();
     });
 
     it('should log generated keys', async() => {
@@ -593,9 +593,9 @@ describe('Secrets Generator Module', () => {
 
       expect(content).toContain('postgres-passwordKeyVault');
       expect(content).toContain('redis-passwordKeyVault');
-      expect(content).toContain('redis-urlKeyVault');
+      expect(content).toContain('redis-url');
       expect(content).toContain('keycloak-admin-passwordKeyVault');
-      expect(content).toContain('keycloak-auth-server-urlKeyVault');
+      expect(content).toContain('keycloak-server-url:');
     });
 
     it('should write file with correct permissions', async() => {

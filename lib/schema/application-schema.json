@@ -739,6 +739,12 @@
           "description": "Path where .env file is written for local development (relative to config dir); single .env for run",
           "pattern": "^[^/].*"
         },
+        "localPort": {
+          "type": "integer",
+          "description": "Port for local development (host and .env PORT); when set and > 0, overrides port for run and local .env. Container/deployment still use port/containerPort.",
+          "minimum": 1,
+          "maximum": 65535
+        },
         "containerPort": {
           "type": "integer",
           "description": "Container internal port (defaults to port if not specified)",

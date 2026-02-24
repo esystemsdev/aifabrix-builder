@@ -69,60 +69,64 @@ services:
     {{/if}}
 
   {{#if requiresDatabase}}
-  # Database Initialization
+  # Database Initialization (uses infra pgpass when available: ~/.aifabrix/infra/pgpass)
+  # env_file: .env.run.admin only (POSTGRES_PASSWORD + DB_*); admin secrets never in app container
   db-init:
     image: pgvector/pgvector:pg15
     container_name: {{containerName}}-db-init
     entrypoint: []
     env_file:
-      - ${ADMIN_SECRETS_PATH}
-      - {{envFile}}
+      - {{#if dbInitEnvFile}}{{dbInitEnvFile}}{{else}}{{envFile}}{{/if}}
     environment:
       POSTGRES_DB: postgres
       PGHOST: postgres
       PGPORT: "5432"
       PGUSER: pgadmin
-      {{#if databases}}
-      {{#each databases}}
-      DB_{{@index}}_PASSWORD: {{lookup ../databasePasswords.array @index}}
-      {{/each}}
-      {{else}}
-      DB_PASSWORD: {{lookup databasePasswords.array 0}}
+      {{#if useInfraPgpass}}
+      PGPASSFILE: /run/pgpass
       {{/if}}
     networks:
       - {{networkName}}
-    volumes: []
+    volumes:
+      {{#if useInfraPgpass}}
+      - {{infraPgpassPath}}:/run/pgpass:ro
+      {{else}}
+      []
+      {{/if}}
     tmpfs:
       - /var/lib/postgresql/data
     command:
       - sh
       - -c
       - |
-        export PGHOST=postgres PGPORT=5432 PGUSER=pgadmin &&
-        export PGPASSWORD="${POSTGRES_PASSWORD}" &&
+        {{#unless useInfraPgpass}}
+        export PGPASSWORD="$${POSTGRES_PASSWORD}" &&
+        {{/unless}}
         echo 'Waiting for PostgreSQL to be ready...' &&
         counter=0 &&
-        while [ ${counter:-0} -lt 30 ]; do
-          if pg_isready -h postgres -p 5432 -U pgadmin >/dev/null 2>&1; then
+        while [ $${counter:-0} -lt 30 ]; do
+          if pg_isready >/dev/null 2>&1; then
             echo 'PostgreSQL is ready!'
             break
           fi
           echo 'Waiting for PostgreSQL...'
           sleep 1
-          counter=$((${counter:-0} + 1))
+          counter=$$(($${counter:-0} + 1))
         done &&
         {{#if databases}}
         {{#each databases}}
         echo 'Creating {{name}} database and user...' &&
-        if psql -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '{{name}}'" 2>/dev/null | grep -q '^1$'; then
-          echo 'Database "{{name}}" already exists, all ok.'
+        if psql -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '{{name}}'" 2>/dev/null | grep -q '^1$$'; then
+          echo 'Database "{{name}}" already exists, syncing user password...' &&
+          psql -d postgres -c "ALTER USER \"{{pgUserName name}}\" WITH PASSWORD '"$${DB_{{@index}}_PASSWORD}"';" &&
+          echo 'Database "{{name}}" ok.'
         else
           echo 'Creating database "{{name}}"...' &&
           psql -d postgres -c "CREATE DATABASE \"{{name}}\";" &&
           echo 'Dropping old user if exists...' &&
           psql -d postgres -c "DROP USER IF EXISTS \"{{pgUserOld name}}\";" || true &&
           echo 'Creating user "{{pgUserName name}}"...' &&
-          psql -d postgres -c 'CREATE USER "{{pgUserName name}}" WITH PASSWORD '\''${DB_{{@index}}_PASSWORD}'\'';' &&
+          psql -d postgres -c "CREATE USER \"{{pgUserName name}}\" WITH PASSWORD '"$${DB_{{@index}}_PASSWORD}"';" &&
           echo 'Granting privileges...' &&
           psql -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"{{name}}\" TO \"{{pgUserName name}}\";" &&
           psql -d {{name}} -c "ALTER SCHEMA public OWNER TO \"{{pgUserName name}}\";" &&
@@ -136,15 +140,17 @@ services:
         {{/each}}
         {{else}}
         echo 'Creating {{app.key}} database and user...' &&
-        if psql -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '{{app.key}}'" 2>/dev/null | grep -q '^1$'; then
-          echo 'Database "{{app.key}}" already exists, all ok.'
+        if psql -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '{{app.key}}'" 2>/dev/null | grep -q '^1$$'; then
+          echo 'Database "{{app.key}}" already exists, syncing user password...' &&
+          psql -d postgres -c "ALTER USER \"{{pgUserName app.key}}\" WITH PASSWORD '"$${DB_0_PASSWORD:-$$DB_PASSWORD}"';" &&
+          echo 'Database "{{app.key}}" ok.'
         else
           echo 'Creating database "{{app.key}}"...' &&
           psql -d postgres -c "CREATE DATABASE \"{{app.key}}\";" &&
           echo 'Dropping old user if exists...' &&
           psql -d postgres -c "DROP USER IF EXISTS \"{{pgUserOld app.key}}\";" || true &&
           echo 'Creating user "{{pgUserName app.key}}"...' &&
-          psql -d postgres -c 'CREATE USER "{{pgUserName app.key}}" WITH PASSWORD '\''${DB_0_PASSWORD:-${DB_PASSWORD}}'\'';' &&
+          psql -d postgres -c "CREATE USER \"{{pgUserName app.key}}\" WITH PASSWORD '"$${DB_0_PASSWORD:-$$DB_PASSWORD}"';" &&
           echo 'Granting privileges...' &&
           psql -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"{{app.key}}\" TO \"{{pgUserName app.key}}\";" &&
           psql -d {{app.key}} -c "ALTER SCHEMA public OWNER TO \"{{pgUserName app.key}}\";" &&

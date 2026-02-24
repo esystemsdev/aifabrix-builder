@@ -269,7 +269,7 @@ environments:
   describe('resolveKvReferences', () => {
     const mockSecrets = {
       'postgres-passwordKeyVault': 'admin123',
-      'redis-urlKeyVault': 'redis://${REDIS_HOST}:6379'
+      'redis-url': 'redis://${REDIS_HOST}:6379'
     };
 
     beforeEach(() => {
@@ -291,7 +291,7 @@ environments:
     });
 
     it('should resolve environment variables in secret values', async() => {
-      const template = 'REDIS_URL=kv://redis-urlKeyVault';
+      const template = 'REDIS_URL=kv://redis-url';
 
       const result = await secrets.resolveKvReferences(template, mockSecrets);
 
@@ -340,7 +340,7 @@ environments:
     REDIS_HOST: localhost
 `);
 
-      const template = 'REDIS_URL=kv://redis-urlKeyVault';
+      const template = 'REDIS_URL=kv://redis-url';
 
       const result = await secrets.resolveKvReferences(template, mockSecrets, 'docker');
 
@@ -554,7 +554,7 @@ environments:
   describe('resolveKvReferences - branch coverage', () => {
     const mockSecrets = {
       'postgres-passwordKeyVault': 'admin123',
-      'redis-urlKeyVault': 'redis://${REDIS_HOST}:6379',
+      'redis-url': 'redis://${REDIS_HOST}:6379',
       'non-string-secret': 12345
     };
 
@@ -569,7 +569,7 @@ environments:
     });
 
     it('should fallback to local environment when specified environment does not exist', async() => {
-      const template = 'REDIS_URL=kv://redis-urlKeyVault';
+      const template = 'REDIS_URL=kv://redis-url';
 
       const result = await secrets.resolveKvReferences(template, mockSecrets, 'nonexistent');
 
@@ -614,9 +614,9 @@ environments:
 `);
       const mockSecretsWithVar = {
         'database-urlKeyVault': 'postgresql://user:pass@${DB_HOST}:5432/db',
-        'redis-urlKeyVault': 'redis://${REDIS_HOST}:6379'
+        'redis-url': 'redis://${REDIS_HOST}:6379'
       };
-      const template = 'DATABASE_URL=kv://database-urlKeyVault\nREDIS_URL=kv://redis-urlKeyVault';
+      const template = 'DATABASE_URL=kv://database-urlKeyVault\nREDIS_URL=kv://redis-url';
 
       const result = await secrets.resolveKvReferences(template, mockSecretsWithVar);
 
@@ -1611,10 +1611,10 @@ environments:
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
-          return 'REDIS_URL=kv://redis-urlKeyVault';
+          return 'REDIS_URL=kv://redis-url';
         }
         if (filePath.includes('secrets.yaml')) {
-          return 'redis-urlKeyVault: "redis://${REDIS_HOST}:6379"';
+          return 'redis-url: "redis://${REDIS_HOST}:6379"';
         }
         if (filePath.includes('env-config.yaml')) {
           return `
@@ -1685,12 +1685,14 @@ environments:
   describe('generateEnvFile - port resolution for docker environment', () => {
     const appName = 'miso-controller';
     const builderPath = path.join(process.cwd(), 'builder', appName);
+    const secretsFileMatch = (filePath) =>
+      filePath.includes('secrets.yaml') || filePath.includes('secrets.local.yaml');
 
     beforeEach(() => {
       fs.existsSync.mockImplementation((filePath) => {
-        // Return true for env.template, secrets.yaml, and keycloak application.yaml
+        // Return true for env.template, secrets file, and keycloak application.yaml
         if (filePath.includes('env.template') ||
-            filePath.includes('secrets.yaml') ||
+            secretsFileMatch(filePath) ||
             filePath.includes('keycloak/application.yaml')) {
           return true;
         }
@@ -1700,9 +1702,9 @@ environments:
 
     it('should replace port in URLs with containerPort for docker environment', async() => {
       fs.existsSync.mockImplementation((filePath) => {
-        // Return true for env.template, secrets.yaml, and keycloak application.yaml
+        // Return true for env.template, secrets file, and keycloak application.yaml
         if (filePath.includes('env.template') ||
-            filePath.includes('secrets.yaml') ||
+            secretsFileMatch(filePath) ||
             filePath.includes('keycloak/application.yaml') ||
             filePath.includes('keycloak') && filePath.includes('application.yaml')) {
           return true;
@@ -1711,10 +1713,10 @@ environments:
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
-          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-auth-server-urlKeyVault';
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-server-url:';
         }
-        if (filePath.includes('secrets.yaml')) {
-          return 'keycloak-auth-server-urlKeyVault: "http://${KEYCLOAK_HOST}:8082"';
+        if (secretsFileMatch(filePath)) {
+          return 'keycloak-server-url: "http://${KEYCLOAK_HOST}:8082"';
         }
         if (filePath.includes('keycloak/application.yaml') || (filePath.includes('keycloak') && filePath.includes('application.yaml'))) {
           return `
@@ -1747,10 +1749,10 @@ environments:
     it('should not replace ports in local environment', async() => {
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
-          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-auth-server-urlKeyVault';
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-server-url:';
         }
-        if (filePath.includes('secrets.yaml')) {
-          return 'keycloak-auth-server-urlKeyVault: "http://${KEYCLOAK_HOST}:8082"';
+        if (secretsFileMatch(filePath)) {
+          return 'keycloak-server-url: "http://${KEYCLOAK_HOST}:8082"';
         }
         if (filePath.includes('env-config.yaml')) {
           return `
@@ -1775,7 +1777,7 @@ environments:
     it('should fallback to port when containerPort not defined', async() => {
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template') ||
-            filePath.includes('secrets.yaml') ||
+            secretsFileMatch(filePath) ||
             (filePath.includes('keycloak') && filePath.includes('application.yaml'))) {
           return true;
         }
@@ -1783,10 +1785,10 @@ environments:
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
-          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-auth-server-urlKeyVault';
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-server-url:';
         }
-        if (filePath.includes('secrets.yaml')) {
-          return 'keycloak-auth-server-urlKeyVault: "http://${KEYCLOAK_HOST}:8082"';
+        if (secretsFileMatch(filePath)) {
+          return 'keycloak-server-url: "http://${KEYCLOAK_HOST}:8082"';
         }
         if (filePath.includes('keycloak') && filePath.includes('application.yaml')) {
           return `
@@ -1821,17 +1823,17 @@ environments:
         if (filePath.includes('keycloak/application.yaml')) {
           return false;
         }
-        if (filePath.includes('env.template') || filePath.includes('secrets.yaml')) {
+        if (filePath.includes('env.template') || secretsFileMatch(filePath)) {
           return true;
         }
         return false;
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
-          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-auth-server-urlKeyVault';
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-server-url:';
         }
-        if (filePath.includes('secrets.yaml')) {
-          return 'keycloak-auth-server-urlKeyVault: "http://${KEYCLOAK_HOST}:8082"';
+        if (secretsFileMatch(filePath)) {
+          return 'keycloak-server-url: "http://${KEYCLOAK_HOST}:8082"';
         }
         if (filePath.includes('env-config.yaml')) {
           return `
@@ -1858,7 +1860,7 @@ environments:
         if (filePath.includes('env.template')) {
           return 'EXTERNAL_API_URL=kv://external-api-urlKeyVault';
         }
-        if (filePath.includes('secrets.yaml')) {
+        if (secretsFileMatch(filePath)) {
           return 'external-api-urlKeyVault: "https://api.example.com:443"';
         }
         if (filePath.includes('env-config.yaml')) {
@@ -1884,7 +1886,7 @@ environments:
     it('should handle multiple service URLs in same .env file', async() => {
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template') ||
-            filePath.includes('secrets.yaml') ||
+            secretsFileMatch(filePath) ||
             (filePath.includes('keycloak') && filePath.includes('application.yaml')) ||
             (filePath.includes('miso-controller') && filePath.includes('application.yaml'))) {
           return true;
@@ -1895,7 +1897,7 @@ environments:
         if (filePath.includes('env.template')) {
           return 'KEYCLOAK_URL=kv://keycloak-urlKeyVault\nMISO_URL=kv://miso-urlKeyVault';
         }
-        if (filePath.includes('secrets.yaml')) {
+        if (secretsFileMatch(filePath)) {
           return `keycloak-urlKeyVault: "http://\${KEYCLOAK_HOST}:8082"
 miso-urlKeyVault: "http://\${MISO_HOST}:3010"`;
         }
@@ -1939,7 +1941,7 @@ environments:
     it('should preserve URL paths and query parameters', async() => {
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template') ||
-            filePath.includes('secrets.yaml') ||
+            secretsFileMatch(filePath) ||
             (filePath.includes('keycloak') && filePath.includes('application.yaml'))) {
           return true;
         }
@@ -1949,7 +1951,7 @@ environments:
         if (filePath.includes('env.template')) {
           return 'KEYCLOAK_URL=kv://keycloak-urlKeyVault';
         }
-        if (filePath.includes('secrets.yaml')) {
+        if (secretsFileMatch(filePath)) {
           return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth/realms/master?param=value"';
         }
         if (filePath.includes('keycloak') && filePath.includes('application.yaml')) {
@@ -2112,9 +2114,9 @@ environments:
 
       expect(content).toContain('postgres-passwordKeyVault');
       expect(content).toContain('redis-passwordKeyVault');
-      expect(content).toContain('redis-urlKeyVault');
+      expect(content).toContain('redis-url');
       expect(content).toContain('keycloak-admin-passwordKeyVault');
-      expect(content).toContain('keycloak-auth-server-urlKeyVault');
+      expect(content).toContain('keycloak-server-url:');
     });
   });
 

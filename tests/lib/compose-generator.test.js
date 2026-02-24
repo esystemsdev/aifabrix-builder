@@ -621,9 +621,9 @@ describe('Compose Generator Module', () => {
       // Note: DROP USER commands will contain old user names with hyphens (for migration)
       expect(result).toContain('miso_controller_user');
       expect(result).toContain('miso_logs_user');
-      // Verify CREATE USER commands use underscores (SafeString prevents HTML escaping, so quotes are correct)
-      expect(result).toContain('CREATE USER "miso_controller_user"');
-      expect(result).toContain('CREATE USER "miso_logs_user"');
+      // Verify CREATE USER commands use underscores; template emits \" for shell escaping in -c
+      expect(result).toContain('CREATE USER \\"miso_controller_user\\"');
+      expect(result).toContain('CREATE USER \\"miso_logs_user\\"');
       // Verify old user names are only in DROP USER commands (for migration)
       // Note: Quotes are escaped in YAML output, so check for the pattern without quotes
       expect(result).toContain('DROP USER IF EXISTS');

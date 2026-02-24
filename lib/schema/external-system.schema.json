@@ -112,6 +112,10 @@
         "type":"boolean",
         "default":true
      },
+     "credentialIdOrKey":{
+        "type":"string",
+        "description":"Credential identifier (ID or key) to attach to this system. Used by dataplane when creating/updating system from deploy config."
+     },
      "internal":{
         "type":"boolean",
         "description":"When true, this integration is deployed on dataplane startup (internal integration). When false or absent, deployed via pipeline only.",

@@ -91,7 +91,7 @@ describe('up-miso command', () => {
 
       await handleUpMiso({});
 
-      expect(saveLocalSecret).toHaveBeenCalledWith('keycloak-public-server-urlKeyVault', 'http://localhost:8082');
+      expect(saveLocalSecret).toHaveBeenCalledWith('keycloak-server-url', 'http://localhost:8082');
       expect(saveLocalSecret).toHaveBeenCalledWith('miso-controller-web-server-url', 'http://localhost:3000');
     });
 
@@ -100,7 +100,7 @@ describe('up-miso command', () => {
 
       await handleUpMiso({});
 
-      expect(saveLocalSecret).toHaveBeenCalledWith('keycloak-public-server-urlKeyVault', 'http://localhost:8182');
+      expect(saveLocalSecret).toHaveBeenCalledWith('keycloak-server-url', 'http://localhost:8182');
       expect(saveLocalSecret).toHaveBeenCalledWith('miso-controller-web-server-url', 'http://localhost:3100');
     });
 

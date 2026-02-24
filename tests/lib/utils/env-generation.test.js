@@ -365,6 +365,48 @@ DB_PORT=\${DB_PORT}`;
 
         expect(result).toMatch(/^PORT=3287$/m); // 3087 + 200
       });
+
+      it('should use build.localPort when set (overrides port)', async() => {
+        const variables = {
+          port: 3087,
+          build: { localPort: 3010 }
+        };
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockTemplatePath) return baseEnvTemplate;
+          if (filePath === mockVariablesPath) return yaml.dump(variables);
+          if (filePath && filePath.includes('env-config.yaml')) return yaml.dump(mockEnvConfig);
+          return '';
+        });
+
+        mockConfig.getDeveloperId.mockResolvedValue(null);
+        process.env.AIFABRIX_DEVELOPERID = undefined;
+
+        const result = await generateEnvContent(mockAppName, null, 'local', false);
+
+        expect(result).toMatch(/^PORT=3010$/m);
+      });
+
+      it('should use build.localPort + 100 when set and developer-id is 1', async() => {
+        const variables = {
+          port: 3087,
+          build: { localPort: 3010 }
+        };
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockTemplatePath) return baseEnvTemplate;
+          if (filePath === mockVariablesPath) return yaml.dump(variables);
+          if (filePath && filePath.includes('env-config.yaml')) return yaml.dump(mockEnvConfig);
+          return '';
+        });
+
+        mockConfig.getDeveloperId.mockResolvedValue('1');
+        process.env.AIFABRIX_DEVELOPERID = undefined;
+
+        const result = await generateEnvContent(mockAppName, null, 'local', false);
+
+        expect(result).toMatch(/^PORT=3110$/m); // 3010 + 100
+      });
     });
 
     describe('Local with build.localPort null/undefined', () => {

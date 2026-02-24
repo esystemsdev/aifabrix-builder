@@ -29,9 +29,10 @@ describe('port-resolver', () => {
       expect(getContainerPort({ build: { containerPort: 8081 } }, 3000)).toBe(8081);
     });
 
-    it('falls back to port when build.containerPort is undefined', () => {
+    it('falls back to port when build.containerPort is undefined or empty', () => {
       expect(getContainerPort({ port: 4000, build: {} })).toBe(4000);
       expect(getContainerPort({ port: 4000, build: { localPort: 5000 } })).toBe(4000);
+      expect(getContainerPort({ port: 8082, build: { containerPort: '' } })).toBe(8082);
     });
 
     it('returns defaultPort when neither containerPort nor port is set', () => {
@@ -52,8 +53,8 @@ describe('port-resolver', () => {
       expect(getLocalPort({ port: 8080 })).toBe(8080);
     });
 
-    it('returns port (localPort removed)', () => {
-      expect(getLocalPort({ port: 8080, build: { localPort: 3010 } })).toBe(8080);
+    it('returns build.localPort when set and positive, else port', () => {
+      expect(getLocalPort({ port: 8080, build: { localPort: 3010 } })).toBe(3010);
       expect(getLocalPort({ port: 3020 }, 3000)).toBe(3020);
     });
 
@@ -142,9 +143,15 @@ describe('port-resolver', () => {
       expect(getLocalPortFromPath('/nonexistent.yaml')).toBeNull();
     });
 
-    it('returns port from file (localPort removed)', () => {
+    it('returns port from file when only port is set', () => {
       fs.existsSync = jest.fn().mockReturnValue(true);
       fs.readFileSync = jest.fn().mockReturnValue('port: 3010');
+      expect(getLocalPortFromPath('/app/application.yaml')).toBe(3010);
+    });
+
+    it('returns build.localPort when set in file (overrides port)', () => {
+      fs.existsSync = jest.fn().mockReturnValue(true);
+      fs.readFileSync = jest.fn().mockReturnValue('port: 4000\nbuild:\n  localPort: 3010');
       expect(getLocalPortFromPath('/app/application.yaml')).toBe(3010);
     });
 
