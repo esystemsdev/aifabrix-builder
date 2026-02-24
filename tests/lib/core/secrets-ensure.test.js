@@ -29,7 +29,8 @@ jest.mock('../../../lib/utils/secrets-generator', () => ({
   findMissingSecretKeys: jest.fn(),
   generateSecretValue: jest.fn((key) => `generated-${key}`),
   loadExistingSecrets: jest.fn(() => ({})),
-  appendSecretsToFile: jest.fn()
+  appendSecretsToFile: jest.fn(),
+  saveSecretsFile: jest.fn()
 }));
 
 jest.mock('../../../lib/utils/secrets-encryption', () => ({
@@ -62,6 +63,7 @@ const {
   ensureSecretsForKeys,
   ensureSecretsFromEnvTemplate,
   ensureInfraSecrets,
+  setSecretInStore,
   resolveWriteTarget,
   loadExistingFromTarget,
   INFRA_SECRET_KEYS
@@ -292,6 +294,62 @@ describe('secrets-ensure', () => {
       await expect(ensureSecretsFromEnvTemplate('')).rejects.toThrow(
         /env.template path or content is required/
       );
+    });
+  });
+
+  describe('setSecretInStore', () => {
+    it('writes to file when target is file and merges with existing', async() => {
+      config.getSecretsPath.mockResolvedValue(null);
+      secretsGenerator.loadExistingSecrets.mockReturnValue({ existing: 'v1' });
+      config.getSecretsEncryptionKey.mockResolvedValue(null);
+
+      await setSecretInStore('postgres-passwordKeyVault', 'mypwd');
+
+      expect(secretsGenerator.saveSecretsFile).toHaveBeenCalledWith(
+        '/home/.aifabrix/secrets.local.yaml',
+        expect.objectContaining({
+          existing: 'v1',
+          'postgres-passwordKeyVault': 'mypwd'
+        })
+      );
+    });
+
+    it('encrypts value when secrets-encryption is set', async() => {
+      const { encryptSecret } = require('../../../lib/utils/secrets-encryption');
+      config.getSecretsPath.mockResolvedValue(null);
+      secretsGenerator.loadExistingSecrets.mockReturnValue({});
+      config.getSecretsEncryptionKey.mockResolvedValue('enc-key');
+      encryptSecret.mockReturnValue('encrypted(mypwd)');
+
+      await setSecretInStore('myKey', 'mypwd');
+
+      expect(secretsGenerator.saveSecretsFile).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ myKey: 'encrypted(mypwd)' })
+      );
+    });
+
+    it('calls remote addSecret when target is remote', async() => {
+      config.getSecretsPath.mockResolvedValue('https://dev.example.com/');
+      isRemoteSecretsUrl.mockReturnValue(true);
+      getRemoteDevAuth.mockResolvedValue({ clientCertPem: 'pem' });
+      devApi.addSecret.mockResolvedValue({});
+
+      await setSecretInStore('k', 'v');
+
+      expect(devApi.addSecret).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        { key: 'k', value: 'v' }
+      );
+      expect(secretsGenerator.saveSecretsFile).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when key is empty or value is undefined', async() => {
+      config.getSecretsPath.mockResolvedValue(null);
+      await setSecretInStore('', 'v');
+      await setSecretInStore('k', undefined);
+      expect(secretsGenerator.saveSecretsFile).not.toHaveBeenCalled();
     });
   });
 });

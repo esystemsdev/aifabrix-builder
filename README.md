@@ -48,6 +48,8 @@ Get the platform running locally so you can try it.
    aifabrix up-infra
    ```
 
+   First-time run creates required infra secrets automatically. Use `aifabrix up-infra --adminPwd <password>` to set a custom admin password for Postgres, pgAdmin, and Redis Commander.
+
 2. **Start the platform** (Keycloak, Miso Controller, Dataplane) from community images:
 
    ```bash

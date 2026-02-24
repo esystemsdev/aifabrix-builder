@@ -22,6 +22,10 @@ Location: `~/.aifabrix/config.yaml`. Manages developer-id, aifabrix-home, aifabr
 
 **When `aifabrix-secrets` is a file path:** Secrets are stored in that file (e.g. `~/.aifabrix/secrets.local.yaml` or a project path). `aifabrix resolve`, run, and build read from it. `secret list`, `secret set`, and `secret remove` operate on that file. Missing secret keys are created automatically when you run `aifabrix up-infra`, app create, resolve with `--force`, or integration create; use `--shared` to read/write shared keys from the same file (see [Commands: Utilities](../commands/utilities.md)).
 
+**Storage order when creating missing secrets:** If `aifabrix-secrets` is a **file path**, new keys are written there (file created if missing). If it is an **http(s) URL**, the CLI tries the remote API first; on failure (e.g. 403, network), it writes to the user secrets file and logs a warning. If **no** `aifabrix-secrets` is set, new keys are written to the user file (`~/.aifabrix/secrets.local.yaml` or `aifabrix-home`).
+
+**Provisioning reads from the same store:** When creating resources that need a secret (e.g. database users, Redis, init scripts), the CLI **reads** the secret value from the configured store (file or remote API) and uses it for the create/provision step. It does not generate or hardcode a password at creation time. If the secret is missing, the operation fails with a clear message (e.g. run `aifabrix up-infra` to ensure infra secrets).
+
 **When `aifabrix-secrets` is an `http(s)://` URL:** Shared secrets are served by the remote API. `secret list --shared`, `secret set --shared`, and `secret remove --shared` call the API (cert-authenticated). Shared values are **never stored on disk**; they are fetched at resolution time when generating `.env`. Local (non-shared) secrets can still use a local file if configured. Admin or secret-manager role is required for shared set/remove when using the remote API.
 
 ## secrets.local.yaml (file-based secrets)
@@ -42,13 +46,13 @@ The key **`secrets-encryptionKeyVault`** in `secrets.local.yaml` is used only wh
 
 ## admin-secrets.env and run .env (ISO 27K)
 
-**admin-secrets.env** (`~/.aifabrix/admin-secrets.env`) is the single source for infrastructure admin credentials (Postgres, pgAdmin, Redis Commander). Use it everywhere: `aifabrix up-infra --adminPwd <password>` updates this file (and any existing values are overwritten with the new password). Values may be plain or **encrypted** (`secure://`); the same **secrets-encryption** key from `config.yaml` is used for both infra and application runs. When starting infra or running an app, the CLI reads and decrypts admin-secrets in memory and writes a **temporary** `.env` (e.g. `.env.run`) only for the duration of `docker compose up`. That file is **deleted after successful execution** so passwords are not stored on disk (ISO 27K). The pgAdmin pgpass file is also created only as a temporary file, copied into the container, then deleted; it is not stored under `~/.aifabrix/infra/`. If a run fails, temporary files may remain for debugging; remove them manually if they contain secrets.
+**admin-secrets.env** (`~/.aifabrix/admin-secrets.env`) holds infrastructure admin credentials (Postgres, pgAdmin, Redis Commander) in **plaintext** so Docker Compose can read them. Restrict permissions (e.g. `chmod 600`). Use `aifabrix up-infra --adminPwd <password>` to set or update the admin password; the same value is synced to `postgres-passwordKeyVault` in the main secrets store. When `secrets-encryption` is set, only `secrets.local.yaml` (or the configured file) holds encrypted values; `admin-secrets.env` remains plaintext. When starting infra or running an app, the CLI reads admin-secrets and writes a **temporary** `.env` (e.g. `.env.run`) only for the duration of `docker compose up`. That file is **deleted after successful execution** so passwords are not left on disk (ISO 27K). The pgAdmin pgpass file is also created only as a temporary file, copied into the container, then deleted.
 
 ## Encryption (aifabrix secure)
 
 Run `aifabrix secure --secrets-encryption <key>` to encrypt secrets in `secrets.local.yaml`. Key: 32 bytes, hex or base64. Encrypted values use `secure://` prefix. Plaintext secrets work if no encryption key is configured; the system detects encrypted values and only decrypts when needed. The key is stored in `config.yaml` as `secrets-encryption` for automatic decryption.
 
-See [Commands: Utilities](../commands/utilities.md) for `secret set`, `secret validate`, and `secure`. Run `aifabrix secret validate [path]` to validate a secrets file (YAML structure and optional `--naming` for *KeyVault convention).
+See [Commands: Utilities](../commands/utilities.md) for `secret set`, `secret validate`, and `secure`. Run `aifabrix secret validate [path]` to validate a secrets file (YAML structure and optional `--naming` for *KeyVault convention). Secret keys in `secrets.local.yaml` follow the same naming as Key Vault secret names (e.g. `postgres-passwordKeyVault`, `redis-urlKeyVault`, `{app-key}-databases-{index}-passwordKeyVault`) for consistency with production.
 
 ## External integrations: KV_* in .env and kv:// in config
 
