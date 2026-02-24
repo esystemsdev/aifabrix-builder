@@ -187,6 +187,23 @@ describe('secrets-ensure', () => {
       expect(secretsGenerator.appendSecretsToFile).not.toHaveBeenCalled();
     });
 
+    it('does not backfill redis-passwordKeyVault when empty (allowed empty)', async() => {
+      secretsGenerator.loadExistingSecrets.mockReturnValue({
+        'postgres-passwordKeyVault': 'admin123',
+        'redis-passwordKeyVault': ''
+      });
+      config.getSecretsPath.mockResolvedValue(null);
+
+      const result = await ensureInfraSecrets();
+
+      expect(result).not.toContain('redis-passwordKeyVault');
+      const appendCalls = secretsGenerator.appendSecretsToFile.mock.calls;
+      const hasRedisBackfill = appendCalls.some(
+        (call) => call[1] && 'redis-passwordKeyVault' in call[1]
+      );
+      expect(hasRedisBackfill).toBe(false);
+    });
+
     it('uses suggestedValues when provided', async() => {
       secretsGenerator.loadExistingSecrets.mockReturnValue({});
       config.getSecretsPath.mockResolvedValue(null);
