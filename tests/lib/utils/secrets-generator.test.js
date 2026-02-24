@@ -399,6 +399,43 @@ describe('Secrets Generator Module', () => {
     });
   });
 
+  describe('appendSecretsToFile', () => {
+    it('should create file with secrets when file does not exist', () => {
+      const secrets = { 'new-key': 'new-value' };
+      fs.existsSync.mockReturnValue(false);
+
+      secretsGenerator.appendSecretsToFile(mockSecretsPath, secrets);
+
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        mockSecretsPath,
+        expect.stringContaining('new-key'),
+        { mode: 0o600 }
+      );
+    });
+
+    it('should append secrets to end of existing file without changing existing content', () => {
+      const existingContent = '# My comments\nold-key: old-value\n';
+      const secrets = { 'new-key': 'new-value' };
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(existingContent);
+
+      secretsGenerator.appendSecretsToFile(mockSecretsPath, secrets);
+
+      expect(fs.readFileSync).toHaveBeenCalledWith(mockSecretsPath, 'utf8');
+      const writeCall = fs.writeFileSync.mock.calls[0];
+      expect(writeCall[1]).toContain('# My comments');
+      expect(writeCall[1]).toContain('old-key: old-value');
+      expect(writeCall[1]).toContain('new-key');
+      expect(writeCall[1]).toContain('new-value');
+    });
+
+    it('should do nothing when secrets object is empty', () => {
+      fs.existsSync.mockReturnValue(true);
+      secretsGenerator.appendSecretsToFile(mockSecretsPath, {});
+      expect(fs.writeFileSync).not.toHaveBeenCalled();
+    });
+  });
+
   describe('generateMissingSecrets', () => {
     beforeEach(() => {
       const logger = require('../../../lib/utils/logger');

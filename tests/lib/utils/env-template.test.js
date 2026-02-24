@@ -85,7 +85,7 @@ describe('Environment Template Module', () => {
       fsSync.existsSync.mockRestore();
     });
 
-    it('should update existing MISO entries', async() => {
+    it('should update existing MISO_CLIENTID and MISO_CLIENTSECRET but preserve existing MISO_CONTROLLER_URL', async() => {
       const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
       const initialContent = `# MISO Configuration
 MISO_CLIENTID=kv://old-client-id
@@ -102,10 +102,10 @@ MISO_CONTROLLER_URL=http://old-controller:3010
       const writtenContent = fs.writeFile.mock.calls[0][1];
       expect(writtenContent).toContain('MISO_CLIENTID=kv://test-app-client-idKeyVault');
       expect(writtenContent).toContain('MISO_CLIENTSECRET=kv://test-app-client-secretKeyVault');
-      expect(writtenContent).toContain('MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}');
+      expect(writtenContent).toContain('MISO_CONTROLLER_URL=http://old-controller:3010');
       expect(writtenContent).not.toContain('kv://old-client-id');
       expect(writtenContent).not.toContain('kv://old-client-secret');
-      expect(writtenContent).not.toContain('http://old-controller:3010');
+      expect(writtenContent).not.toContain('http://${MISO_HOST}:${MISO_PORT}');
 
       fsSync.existsSync.mockRestore();
     });
@@ -199,11 +199,33 @@ REDIS_URL=redis://localhost:6379
       fsSync.existsSync.mockRestore();
     });
 
-    it('should handle entries with different whitespace', async() => {
+    it('should handle entries with different whitespace and preserve MISO_CONTROLLER_URL', async() => {
       const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
       const initialContent = `MISO_CLIENTID = kv://old-id
 MISO_CLIENTSECRET=kv://old-secret
 MISO_CONTROLLER_URL = http://old:3010
+`;
+      fsSync.existsSync = jest.fn().mockReturnValue(true);
+      fs.readFile = jest.fn().mockResolvedValue(initialContent);
+      fs.writeFile = jest.fn().mockResolvedValue();
+
+      await updateEnvTemplate(testAppKey, testClientIdKey, testClientSecretKey, testControllerUrl);
+
+      expect(fs.writeFile).toHaveBeenCalled();
+      const writtenContent = fs.writeFile.mock.calls[0][1];
+      expect(writtenContent).toContain('MISO_CLIENTID=kv://test-app-client-idKeyVault');
+      expect(writtenContent).toContain('MISO_CLIENTSECRET=kv://test-app-client-secretKeyVault');
+      expect(writtenContent).toMatch(/MISO_CONTROLLER_URL\s*=\s*http:\/\/old:3010/);
+      expect(writtenContent).not.toContain('MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}');
+
+      fsSync.existsSync.mockRestore();
+    });
+
+    it('should preserve MISO_CONTROLLER_URL when already template form', async() => {
+      const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
+      const initialContent = `MISO_CLIENTID=kv://old-id
+MISO_CLIENTSECRET=kv://old-secret
+MISO_CONTROLLER_URL=http://\${MISO_HOST}:\${MISO_PORT}
 `;
       fsSync.existsSync = jest.fn().mockReturnValue(true);
       fs.readFile = jest.fn().mockResolvedValue(initialContent);
@@ -220,7 +242,7 @@ MISO_CONTROLLER_URL = http://old:3010
       fsSync.existsSync.mockRestore();
     });
 
-    it('should ignore controllerUrl parameter and use template format', async() => {
+    it('should ignore controllerUrl parameter and use template format when adding MISO_CONTROLLER_URL', async() => {
       const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
       const initialContent = '# Configuration\n';
       fsSync.existsSync = jest.fn().mockReturnValue(true);

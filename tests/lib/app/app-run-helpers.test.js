@@ -2,10 +2,14 @@
  * Tests for run .env generation environment (docker)
  */
 
-jest.mock('../../../lib/core/secrets', () => ({
-  generateEnvFile: jest.fn().mockResolvedValue('/tmp/.env'),
-  generateEnvContent: jest.fn().mockResolvedValue('PORT=3000\n')
-}));
+jest.mock('../../../lib/core/secrets', () => {
+  const actual = jest.requireActual('../../../lib/core/secrets');
+  return {
+    ...actual,
+    generateEnvFile: jest.fn().mockResolvedValue('/tmp/.env'),
+    generateEnvContent: jest.fn().mockResolvedValue('PORT=3000\n')
+  };
+});
 
 jest.mock('../../../lib/core/secrets-env-write', () => ({
   resolveAndWriteEnvFile: jest.fn().mockResolvedValue('/tmp/myapp-env.env'),
@@ -66,7 +70,9 @@ jest.mock('../../../lib/utils/remote-docker-env', () => ({
 }));
 
 jest.mock('../../../lib/utils/env-copy', () => ({
-  resolveEnvOutputPath: jest.fn(() => '/tmp/env-output/.env')
+  resolveEnvOutputPath: jest.fn(() => '/tmp/env-output/.env'),
+  writeEnvOutputForReload: jest.fn().mockResolvedValue(undefined),
+  writeEnvOutputForLocal: jest.fn().mockResolvedValue(undefined)
 }));
 
 jest.mock('child_process', () => ({
@@ -205,24 +211,22 @@ describe('prepareEnvironment - port for run vs run --reload', () => {
   });
 
   it('writes to envOutputPath with localPort when run without --reload', async() => {
-    const secrets = require('../../../lib/core/secrets');
+    const envCopy = require('../../../lib/utils/env-copy');
     const appConfig = { port: 3000, build: { envOutputPath: '../../packages/miso-controller/.env' } };
     await prepareEnvironment('myapp', appConfig, {});
-    expect(secrets.generateEnvContent).toHaveBeenCalledWith('myapp', null, 'local', false);
-    expect(fs.promises.writeFile).toHaveBeenCalledWith('/tmp/env-output/.env', expect.any(String), { mode: 0o600 });
+    expect(envCopy.writeEnvOutputForLocal).toHaveBeenCalledWith('myapp', '/tmp/env-output/.env');
+    expect(envCopy.writeEnvOutputForReload).not.toHaveBeenCalled();
   });
 
   it('writes to envOutputPath same as container when run with --reload', async() => {
-    const secrets = require('../../../lib/core/secrets');
+    const envCopy = require('../../../lib/utils/env-copy');
     const appConfig = { port: 3000, build: { envOutputPath: '../../packages/miso-controller/.env' } };
     await prepareEnvironment('myapp', appConfig, { reload: true });
-    expect(secrets.generateEnvContent).not.toHaveBeenCalledWith('myapp', null, 'local', false);
-    expect(fs.promises.readFile).toHaveBeenCalledWith(expect.stringContaining('.env.run'), 'utf8');
-    expect(fs.promises.writeFile).toHaveBeenCalledWith(
+    expect(envCopy.writeEnvOutputForReload).toHaveBeenCalledWith(
       '/tmp/env-output/.env',
-      'POSTGRES_PASSWORD=admin\nPORT=3000\n',
-      { mode: 0o600 }
+      expect.stringContaining('.env.run')
     );
+    expect(envCopy.writeEnvOutputForLocal).not.toHaveBeenCalled();
   });
 });
 

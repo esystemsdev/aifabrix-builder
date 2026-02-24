@@ -432,6 +432,87 @@ environments:
 
       await expect(secrets.generateEnvFile(appName)).rejects.toThrow('env.template not found');
     });
+
+    describe('mergeEnvMapIntoContent and parseEnvContentToMap', () => {
+      it('parseEnvContentToMap parses KEY=value and skips comments', () => {
+        const content = '# comment\nFOO=bar\n\nBAZ=qux\n';
+        const map = secrets.parseEnvContentToMap(content);
+        expect(map).toEqual({ FOO: 'bar', BAZ: 'qux' });
+      });
+
+      it('mergeEnvMapIntoContent preserves comments and updates values', () => {
+        const existing = '# header\nPORT=3000\n# app\nNODE_ENV=development\n';
+        const newMap = { PORT: '3010', NODE_ENV: 'production' };
+        const result = secrets.mergeEnvMapIntoContent(existing, newMap);
+        expect(result).toContain('# header');
+        expect(result).toContain('# app');
+        expect(result).toMatch(/^PORT=3010$/m);
+        expect(result).toMatch(/^NODE_ENV=production$/m);
+      });
+
+      it('mergeEnvMapIntoContent appends keys from newMap not in existing', () => {
+        const existing = 'A=1\n';
+        const newMap = { A: '1', B: '2' };
+        const result = secrets.mergeEnvMapIntoContent(existing, newMap);
+        expect(result).toMatch(/^A=1$/m);
+        expect(result).toMatch(/^B=2$/m);
+      });
+
+      it('mergeEnvMapIntoContent returns existing when newMap empty', () => {
+        const existing = '# keep\nX=y\n';
+        const result = secrets.mergeEnvMapIntoContent(existing, {});
+        expect(result).toBe(existing);
+      });
+    });
+
+    it('should write .env to options.appPath when envOnly true (external integration)', async() => {
+      const appName = 'test-e2e-hubspot';
+      const integrationPath = path.join(process.cwd(), 'integration', appName);
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === integrationPath ||
+               filePath === path.join(integrationPath, 'env.template') ||
+               filePath.includes('secrets.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('env.template')) {
+          return 'API_KEY=kv://postgres-passwordKeyVault';
+        }
+        if (filePath.includes('secrets.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        if (filePath.includes('env-config.yaml')) {
+          return 'environments:\n  local:\n    REDIS_HOST: localhost\n  docker:\n    REDIS_HOST: redis\n';
+        }
+        return '';
+      });
+      const envCopy = require('../../../lib/utils/env-copy');
+      const processSpy = jest.spyOn(envCopy, 'processEnvVariables').mockResolvedValue();
+      const result = await secrets.generateEnvFile(appName, undefined, 'docker', false, { appPath: integrationPath, envOnly: true });
+      expect(result).toBe(path.join(integrationPath, '.env'));
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        path.join(integrationPath, '.env'),
+        expect.stringContaining('API_KEY=admin123'),
+        { mode: 0o600 }
+      );
+      expect(processSpy).toHaveBeenCalledWith(
+        path.join(integrationPath, '.env'),
+        null,
+        appName,
+        undefined
+      );
+      processSpy.mockRestore();
+    });
+
+    it('should throw when envOnly true but env.template missing at appPath', async() => {
+      const appName = 'test-e2e-hubspot';
+      const integrationPath = path.join(process.cwd(), 'integration', appName);
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === integrationPath;
+      });
+      await expect(
+        secrets.generateEnvFile(appName, undefined, 'docker', false, { appPath: integrationPath, envOnly: true })
+      ).rejects.toThrow('env.template not found');
+    });
   });
 
   describe('generateAdminSecretsEnv', () => {

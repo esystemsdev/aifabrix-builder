@@ -46,7 +46,7 @@ aifabrix create myapp --github --github-steps npm
 ```bash
 aifabrix create hubspot --type external
 ```
-Creates in `integration/<app>/`. Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2/apikey/basic), number of datasources. For other commands (validate, json, deploy, delete), the CLI always resolves the app by checking `integration/<app>` first, then `builder/<app>`; if neither exists, it errors. There is no option to override this order.
+Creates in `integration/<app>/`. Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2/apikey/basic), number of datasources. For other commands (validate, json, deploy, delete, **resolve**), the CLI always resolves the app by checking `integration/<app>` first, then `builder/<app>`; if neither exists, it errors. There is no option to override this order. **Resolve** additionally supports **env-only** mode: if `integration/<app>/env.template` exists (even without `application.yaml`), resolve uses that directory and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
 
 **Complete HubSpot example:**
 See `integration/hubspot/` for a complete HubSpot integration with companies, contacts, and deals datasources. Includes OAuth2 authentication, field mappings, and OpenAPI operations.

@@ -843,4 +843,56 @@ permissions:
       expect(result.errors).toContain('Config must be an object');
     });
   });
+
+  describe('findUnresolvedVariablesInObject', () => {
+    it('returns empty array when no ${...} in object', () => {
+      expect(validator.findUnresolvedVariablesInObject({ port: 3000, key: 'app' })).toEqual([]);
+      expect(validator.findUnresolvedVariablesInObject({ configuration: [{ value: 'production' }] })).toEqual([]);
+    });
+
+    it('finds ${...} in string values', () => {
+      const found = validator.findUnresolvedVariablesInObject({ port: '${PORT}' });
+      expect(found).toContain('port: ${PORT}');
+    });
+
+    it('finds ${...} in nested configuration', () => {
+      const obj = { configuration: [{ name: 'API_URL', value: '${API_URL}' }] };
+      const found = validator.findUnresolvedVariablesInObject(obj);
+      expect(found).toContain('configuration[0].value: ${API_URL}');
+    });
+
+    it('ignores null and undefined', () => {
+      expect(validator.findUnresolvedVariablesInObject(null)).toEqual([]);
+      expect(validator.findUnresolvedVariablesInObject(undefined)).toEqual([]);
+    });
+  });
+
+  describe('validateNoUnresolvedVariablesInDeployment', () => {
+    it('does not throw when manifest has no ${...}', () => {
+      const deployment = { port: 3000, key: 'app', configuration: [] };
+      expect(() => validator.validateNoUnresolvedVariablesInDeployment(deployment)).not.toThrow();
+    });
+
+    it('throws when port is ${PORT}', () => {
+      const deployment = { port: '${PORT}', key: 'app', configuration: [] };
+      expect(() => validator.validateNoUnresolvedVariablesInDeployment(deployment)).toThrow(
+        /Deployment manifest contains unresolved variables/
+      );
+      expect(() => validator.validateNoUnresolvedVariablesInDeployment(deployment)).toThrow(/secret variables \(kv:/);
+      expect(() => validator.validateNoUnresolvedVariablesInDeployment(deployment)).toThrow(
+        /set the application port as a number in application\.yaml/
+      );
+    });
+
+    it('throws when configuration value has ${...}', () => {
+      const deployment = {
+        port: 3000,
+        key: 'app',
+        configuration: [{ name: 'PORT', value: '${MISO_PORT}' }]
+      };
+      expect(() => validator.validateNoUnresolvedVariablesInDeployment(deployment)).toThrow(
+        /Deployment manifest contains unresolved variables/
+      );
+    });
+  });
 });

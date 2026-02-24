@@ -400,6 +400,76 @@ REDIS_URL=redis://localhost:6379`;
     });
   });
 
+  describe('getEffectivePortForSubstitution', () => {
+    it('returns port from variables when numeric', () => {
+      expect(generator.getEffectivePortForSubstitution({ port: 8080 })).toBe(8080);
+      expect(generator.getEffectivePortForSubstitution({ port: 3000 }, 3000)).toBe(3000);
+    });
+    it('returns default when port is ${PORT}', () => {
+      expect(generator.getEffectivePortForSubstitution({ port: '${PORT}' })).toBe(3000);
+      expect(generator.getEffectivePortForSubstitution({ port: '${PORT}' }, 8080)).toBe(8080);
+    });
+    it('uses build.containerPort when set', () => {
+      expect(generator.getEffectivePortForSubstitution({ port: '${PORT}', build: { containerPort: 8080 } })).toBe(8080);
+    });
+  });
+
+  describe('substitutePortInDeployment', () => {
+    it('replaces ${PORT} in port and configuration values', () => {
+      const deployment = {
+        port: '${PORT}',
+        key: 'app',
+        configuration: [
+          { name: 'PORT', value: '${PORT}' },
+          { name: 'API_URL', value: 'http://localhost:${PORT}/api' }
+        ]
+      };
+      generator.substitutePortInDeployment(deployment, 3000);
+      expect(deployment.port).toBe('3000');
+      expect(deployment.configuration[0].value).toBe('3000');
+      expect(deployment.configuration[1].value).toBe('http://localhost:3000/api');
+    });
+    it('leaves non-port strings unchanged', () => {
+      const deployment = { port: 3000, configuration: [{ name: 'NODE_ENV', value: 'production' }] };
+      generator.substitutePortInDeployment(deployment, 3000);
+      expect(deployment.port).toBe(3000);
+      expect(deployment.configuration[0].value).toBe('production');
+    });
+  });
+
+  describe('substituteEnvVarsInDeployment', () => {
+    it('replaces ${REDIS_HOST} and other vars from envVarMap in configuration values', () => {
+      const deployment = {
+        port: 3000,
+        key: 'app',
+        configuration: [
+          { name: 'REDIS_HOST', value: '${REDIS_HOST}' },
+          { name: 'REDIS_URL', value: 'redis://${REDIS_HOST}:${REDIS_PORT}' }
+        ]
+      };
+      const envVarMap = { REDIS_HOST: 'redis', REDIS_PORT: '6379' };
+      generator.substituteEnvVarsInDeployment(deployment, envVarMap);
+      expect(deployment.configuration[0].value).toBe('redis');
+      expect(deployment.configuration[1].value).toBe('redis://redis:6379');
+    });
+
+    it('leaves ${VAR} unchanged when VAR is not in envVarMap', () => {
+      const deployment = {
+        configuration: [{ name: 'UNKNOWN', value: '${UNKNOWN_VAR}' }]
+      };
+      generator.substituteEnvVarsInDeployment(deployment, { REDIS_HOST: 'redis' });
+      expect(deployment.configuration[0].value).toBe('${UNKNOWN_VAR}');
+    });
+
+    it('does nothing when envVarMap is null or empty', () => {
+      const deployment = { configuration: [{ name: 'REDIS_HOST', value: '${REDIS_HOST}' }] };
+      generator.substituteEnvVarsInDeployment(deployment, null);
+      expect(deployment.configuration[0].value).toBe('${REDIS_HOST}');
+      generator.substituteEnvVarsInDeployment(deployment, {});
+      expect(deployment.configuration[0].value).toBe('${REDIS_HOST}');
+    });
+  });
+
   describe('parseEnvironmentVariables', () => {
     it('should parse environment variables correctly', () => {
       const template = `NODE_ENV=development

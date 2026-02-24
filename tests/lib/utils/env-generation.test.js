@@ -1365,6 +1365,47 @@ DB_PORT=\${DB_PORT}`;
         // Reset mock for other tests
         loadEnvConfig.mockResolvedValue(mockEnvConfig);
       });
+
+      it('should resolve ${PORT} in env-config docker values when options.appPort is provided', async() => {
+        const envConfig = {
+          environments: {
+            docker: {
+              PORT: '${PORT}',
+              MISO_PORT: '${PORT}',
+              MISO_HOST: 'miso-controller',
+              DB_HOST: 'postgres'
+            }
+          }
+        };
+
+        const { loadEnvConfig } = require('../../../lib/utils/env-config-loader');
+        loadEnvConfig.mockResolvedValueOnce(envConfig);
+
+        const result = await buildEnvVarMap('docker', null, null, { appPort: 3001 });
+
+        expect(result.PORT).toBe('3001');
+        expect(result.MISO_PORT).toBe('3001');
+        loadEnvConfig.mockResolvedValue(mockEnvConfig);
+      });
+
+      it('should resolve ${PORT} to default 3000 when options.appPort not provided', async() => {
+        const envConfig = {
+          environments: {
+            docker: {
+              PORT: '${PORT}',
+              MISO_HOST: 'miso-controller'
+            }
+          }
+        };
+
+        const { loadEnvConfig } = require('../../../lib/utils/env-config-loader');
+        loadEnvConfig.mockResolvedValueOnce(envConfig);
+
+        const result = await buildEnvVarMap('docker');
+
+        expect(result.PORT).toBe('3000');
+        loadEnvConfig.mockResolvedValue(mockEnvConfig);
+      });
     });
   });
 

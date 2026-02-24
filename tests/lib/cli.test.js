@@ -104,6 +104,16 @@ jest.mock('../../lib/utils/logger');
 jest.mock('../../lib/commands/login');
 jest.mock('../../lib/core/config');
 jest.mock('../../lib/utils/dev-config');
+jest.mock('../../lib/utils/paths', () => {
+  const actual = jest.requireActual('../../lib/utils/paths');
+  return {
+    ...actual,
+    getResolveAppPath: jest.fn().mockResolvedValue({
+      appPath: require('path').join(process.cwd(), 'builder', 'testapp'),
+      envOnly: false
+    })
+  };
+});
 
 const chalk = require('chalk');
 const secrets = require('../../lib/core/secrets');
@@ -160,21 +170,21 @@ describe('CLI Commands', () => {
       // Import CLI module after mocking
       const cli = require('../../lib/cli');
 
-      // We need to simulate the command action
-      // Since we can't easily test Commander.js commands directly, we'll test the underlying logic
+      // Simulate the command action: getResolveAppPath then generateEnvFile with options
+      const paths = require('../../lib/utils/paths');
       try {
-        const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', false);
+        const { appPath, envOnly } = await paths.getResolveAppPath(appName);
+        const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', false, { appPath, envOnly });
         logger.log(`✓ Generated .env file: ${envPath}`);
-
-        // Validate after generating .env
-        const result = await validate.validateAppOrFile(appName);
-        validate.displayValidationResults(result);
-
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', false);
+        if (!envOnly) {
+          const result = await validate.validateAppOrFile(appName);
+          validate.displayValidationResults(result);
+        }
+        const expectedAppPath = path.join(process.cwd(), 'builder', appName);
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', false, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
         expect(validate.validateAppOrFile).toHaveBeenCalledWith(appName);
         expect(validate.displayValidationResults).toHaveBeenCalled();
       } catch (error) {
-        // This should not happen in this test
         expect(true).toBe(false); // Should not reach here
       }
     });
@@ -195,17 +205,19 @@ describe('CLI Commands', () => {
       });
       validate.displayValidationResults.mockImplementation(() => {});
 
+      const paths = require('../../lib/utils/paths');
       try {
-        const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', false);
+        const { appPath, envOnly } = await paths.getResolveAppPath(appName);
+        const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', false, { appPath, envOnly });
         logger.log(`✓ Generated .env file: ${envPath}`);
-
-        const result = await validate.validateAppOrFile(appName);
-        validate.displayValidationResults(result);
-        if (!result.valid) {
-          logger.log(chalk.yellow('\n⚠️  Validation found errors. Fix them before deploying.'));
-          process.exit(1);
+        if (!envOnly) {
+          const result = await validate.validateAppOrFile(appName);
+          validate.displayValidationResults(result);
+          if (!result.valid) {
+            logger.log(chalk.yellow('\n⚠️  Validation found errors. Fix them before deploying.'));
+            process.exit(1);
+          }
         }
-
         expect(secrets.generateEnvFile).toHaveBeenCalled();
         expect(validate.validateAppOrFile).toHaveBeenCalledWith(appName);
         expect(validate.displayValidationResults).toHaveBeenCalled();
@@ -221,12 +233,14 @@ describe('CLI Commands', () => {
 
       secrets.generateEnvFile.mockResolvedValue(expectedEnvPath);
 
+      const paths = require('../../lib/utils/paths');
       try {
-        const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', false);
+        const { appPath, envOnly } = await paths.getResolveAppPath(appName);
+        const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', false, { appPath, envOnly });
         logger.log(`✓ Generated .env file: ${envPath}`);
-
-        // Validation should be skipped
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', false);
+        // When skip-validation: validation not run (simulated by not calling validate when envOnly, or by option)
+        const expectedAppPath = path.join(process.cwd(), 'builder', appName);
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', false, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
         expect(validate.validateAppOrFile).not.toHaveBeenCalled();
       } catch (error) {
         expect(true).toBe(false); // Should not reach here
@@ -1187,10 +1201,11 @@ describe('CLI Commands', () => {
         const envPath = 'builder/testapp/.env';
         secrets.generateEnvFile.mockResolvedValue(envPath);
 
-        // Simulate the command handler action from cli.js line 227-235
+        const paths = require('../../lib/utils/paths');
         const action = async(appName) => {
           try {
-            const envPath = await secrets.generateEnvFile(appName);
+            const { appPath, envOnly } = await paths.getResolveAppPath(appName);
+            const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', undefined, { appPath, envOnly });
             logger.log(`✓ Generated .env file: ${envPath}`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'resolve');
@@ -1199,7 +1214,8 @@ describe('CLI Commands', () => {
         };
 
         await action(appName);
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName);
+        const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', undefined, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
         expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
         expect(process.exit).not.toHaveBeenCalled();
       });
@@ -1210,10 +1226,11 @@ describe('CLI Commands', () => {
         secrets.generateEnvFile.mockRejectedValue(new Error(errorMessage));
         cliUtils.handleCommandError.mockImplementation(() => {});
 
-        // Simulate the command handler action from cli.js line 227-235
+        const paths = require('../../lib/utils/paths');
         const action = async(appName) => {
           try {
-            const envPath = await secrets.generateEnvFile(appName);
+            const { appPath, envOnly } = await paths.getResolveAppPath(appName);
+            const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', undefined, { appPath, envOnly });
             logger.log(`✓ Generated .env file: ${envPath}`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'resolve');
@@ -1458,10 +1475,11 @@ describe('CLI Commands', () => {
         const envPath = 'builder/testapp/.env';
         secrets.generateEnvFile.mockResolvedValue(envPath);
 
-        // Simulate the command handler action from cli.js line 268-279
+        const paths = require('../../lib/utils/paths');
         const action = async(appName, options) => {
           try {
-            const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', options.force);
+            const { appPath, envOnly } = await paths.getResolveAppPath(appName);
+            const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', options.force, { appPath, envOnly });
             logger.log(`✓ Generated .env file: ${envPath}`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'resolve');
@@ -1470,7 +1488,8 @@ describe('CLI Commands', () => {
         };
 
         await action(appName, { force: true });
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', true);
+        const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', true, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
         expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
         expect(process.exit).not.toHaveBeenCalled();
       });
@@ -1480,10 +1499,11 @@ describe('CLI Commands', () => {
         const envPath = 'builder/testapp/.env';
         secrets.generateEnvFile.mockResolvedValue(envPath);
 
-        // Simulate the command handler action from cli.js line 268-279
+        const paths = require('../../lib/utils/paths');
         const action = async(appName, options) => {
           try {
-            const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', options.force);
+            const { appPath, envOnly } = await paths.getResolveAppPath(appName);
+            const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', options.force, { appPath, envOnly });
             logger.log(`✓ Generated .env file: ${envPath}`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'resolve');
@@ -1492,7 +1512,8 @@ describe('CLI Commands', () => {
         };
 
         await action(appName, { force: false });
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', false);
+        const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', false, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
         expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
         expect(process.exit).not.toHaveBeenCalled();
       });
@@ -1934,7 +1955,8 @@ describe('CLI Commands', () => {
 
         await handler(appName, options);
 
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', true);
+        const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', true, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
         expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
       });
 
@@ -1951,7 +1973,8 @@ describe('CLI Commands', () => {
 
         await handler(appName, options);
 
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', undefined);
+        const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', undefined, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
         expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
       });
 

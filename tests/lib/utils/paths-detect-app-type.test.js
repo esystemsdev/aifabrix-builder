@@ -200,3 +200,96 @@ describe('detectAppType', () => {
     await expect(detectAppType(undefined, {})).rejects.toThrow('App name is required and must be a string');
   });
 });
+
+describe('getResolveAppPath', () => {
+  let tempDir;
+  let originalCwd;
+  let originalProjectRoot;
+
+  beforeEach(() => {
+    tempDir = path.join(os.tmpdir(), `aifabrix-resolve-path-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+    createTempDirReal(tempDir);
+    writeFileReal(path.join(tempDir, 'package.json'), '{}');
+    originalCwd = process.cwd();
+    originalProjectRoot = global.PROJECT_ROOT;
+  });
+
+  afterEach(() => {
+    try {
+      process.chdir(originalCwd);
+      global.PROJECT_ROOT = originalProjectRoot;
+      if (tempDir && realFs.existsSync(tempDir)) {
+        realFs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    } catch {
+      // ignore
+    }
+  });
+
+  /** Run getResolveAppPath in a subprocess so real fs is always used. */
+  function getResolveAppPathInSubprocess(appNameArg) {
+    const runnerPath = path.resolve(__dirname, 'run-get-resolve-app-path.js');
+    const nodeExe = process.execPath.includes(' ') ? `"${process.execPath}"` : process.execPath;
+    try {
+      const out = execSync(
+        nodeExe + ' ' + JSON.stringify(runnerPath) + ' ' + JSON.stringify(tempDir) + ' ' + JSON.stringify(appNameArg),
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], shell: true }
+      ).trim();
+      return JSON.parse(out);
+    } catch (err) {
+      const msg = (err.stderr || err.stdout || err.message || '').toString().trim();
+      throw new Error(msg || 'getResolveAppPath failed');
+    }
+  }
+
+  it('returns integration path and envOnly true when only env.template exists in integration', async() => {
+    const appName = 'test-e2e-hubspot';
+    createTempDirReal(path.join(tempDir, 'integration', appName));
+    writeFileReal(path.join(tempDir, 'integration', appName, 'env.template'), 'API_KEY=kv://api-key\n');
+    const result = getResolveAppPathInSubprocess(appName);
+    expect(result).toEqual({
+      appPath: path.join(tempDir, 'integration', appName),
+      envOnly: true
+    });
+  });
+
+  it('returns integration path and envOnly true when integration has both env.template and application.yaml', async() => {
+    const appName = 'myapp';
+    createTempDirReal(path.join(tempDir, 'integration', appName));
+    writeFileReal(
+      path.join(tempDir, 'integration', appName, 'application.yaml'),
+      'app:\n  name: myapp\n  type: external\n'
+    );
+    writeFileReal(path.join(tempDir, 'integration', appName, 'env.template'), 'API_KEY=kv://api-key\n');
+    const result = getResolveAppPathInSubprocess(appName);
+    expect(result).toEqual({
+      appPath: path.join(tempDir, 'integration', appName),
+      envOnly: true
+    });
+  });
+
+  it('returns builder path and envOnly false when only builder has config', async() => {
+    const appName = 'myapp';
+    createTempDirReal(path.join(tempDir, 'builder', appName));
+    writeFileReal(
+      path.join(tempDir, 'builder', appName, 'application.yaml'),
+      'app:\n  name: myapp\n'
+    );
+    writeFileReal(path.join(tempDir, 'builder', appName, 'env.template'), 'PORT=3000\n');
+    const result = getResolveAppPathInSubprocess(appName);
+    expect(result).toEqual(
+      expect.objectContaining({
+        appPath: path.join(tempDir, 'builder', appName),
+        envOnly: false
+      })
+    );
+  });
+
+  it('throws when app not found in integration or builder', () => {
+    const appName = 'nonexistent';
+    createTempDirReal(path.join(tempDir, 'integration', appName));
+    expect(() => getResolveAppPathInSubprocess(appName)).toThrow(
+      `App '${appName}' not found in integration/${appName} or builder/${appName}`
+    );
+  });
+});

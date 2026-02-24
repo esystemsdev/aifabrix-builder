@@ -27,9 +27,17 @@ Generate `.env` file from template.
 
 **When:** After secrets change, troubleshooting environment issues.
 
+**App path:** Resolve works for **builder** apps and for **external integrations** in `integration/<app>/`. If `integration/<app>/env.template` exists (even without `application.yaml`), that directory is used and resolve runs in **env-only** mode; otherwise the CLI resolves the app via integration then builder using full config (application.yaml or application.json).
+
 **Example:**
 ```bash
 aifabrix resolve myapp
+```
+
+**Example (external integration with only env.template):**
+```bash
+aifabrix resolve test-e2e-hubspot
+# When integration/test-e2e-hubspot/env.template exists, .env is written to integration/test-e2e-hubspot/.env
 ```
 
 **Force generate missing secrets:**
@@ -48,12 +56,15 @@ This will generate the .env file without running validation checks afterward.
 - `-f, --force` - Generate missing secret keys in secrets file
 - `--skip-validation` - Skip file validation after generating .env
 
-**Output:** Writes `.env` **only** to `build.envOutputPath` when set in application.yaml (or document temp/run-only behaviour so it's consistent with run). No `.env` under `builder/<app>/` or `integration/<app>/`.
+**Output:** When the app is in **integration** with **env-only** (only `env.template` present, no `application.yaml`), `.env` is written to `integration/<app>/.env`. When the app has full config (builder or integration with `application.yaml`) and `build.envOutputPath` is set, `.env` is written to that path; otherwise behaviour is as documented for run/build (e.g. temp or run-only).
+
+**Env-only mode:** When resolving in **env-only** mode (integration + `env.template` only), post-resolve validation is skipped because there is no `application.yaml` to validate. Run `aifabrix validate <app>` separately when you add full config later.
 
 **Issues:**
 - **"Secrets file not found"** → Create `~/.aifabrix/secrets.yaml`
 - **"Missing kv:// reference"** → Add secret to secrets file or use `--force` to auto-generate
 - **"Permission denied"** → Check file permissions on secrets.yaml
+- **"env.template not found"** → Ensure `env.template` exists in the app directory (integration or builder)
 
 ---
 

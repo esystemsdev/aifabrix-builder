@@ -143,7 +143,7 @@ describe('App Commands Module', () => {
       expect(writtenContent).toContain('MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}');
     });
 
-    it('should update existing MISO_CLIENTID, MISO_CLIENTSECRET, and MISO_CONTROLLER_URL', async() => {
+    it('should update existing MISO_CLIENTID and MISO_CLIENTSECRET but preserve MISO_CONTROLLER_URL', async() => {
       const existingContent = '# Application Environment\nPORT=3000\nMISO_CLIENTID=kv://old-key\nMISO_CLIENTSECRET=kv://old-secret\nMISO_CONTROLLER_URL=http://old-url\n';
       fsSync.existsSync.mockReturnValue(true);
       fs.readFile.mockResolvedValue(existingContent);
@@ -155,10 +155,9 @@ describe('App Commands Module', () => {
       const writtenContent = fs.writeFile.mock.calls[0][1];
       expect(writtenContent).toContain('MISO_CLIENTID=kv://myapp-client-idKeyVault');
       expect(writtenContent).toContain('MISO_CLIENTSECRET=kv://myapp-client-secretKeyVault');
-      expect(writtenContent).toContain('MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}');
+      expect(writtenContent).toContain('MISO_CONTROLLER_URL=http://old-url');
       expect(writtenContent).not.toContain('kv://old-key');
       expect(writtenContent).not.toContain('kv://old-secret');
-      expect(writtenContent).not.toContain('http://old-url');
     });
 
     it('should warn if env.template not found', async() => {

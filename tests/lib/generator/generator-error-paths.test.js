@@ -35,9 +35,10 @@ jest.mock('../../../lib/utils/paths', () => {
   };
 });
 
-// Mock validator
+// Mock validator (validateNoUnresolvedVariablesInDeployment must be present; generator calls it after schema validation)
 jest.mock('../../../lib/validation/validator', () => ({
-  validateDeploymentJson: jest.fn()
+  validateDeploymentJson: jest.fn(),
+  validateNoUnresolvedVariablesInDeployment: jest.fn()
 }));
 
 // Mock variable loader
@@ -149,6 +150,35 @@ describe('Generator Error Paths', () => {
 
       await expect(generator.generateDeployJson(appName))
         .rejects.toThrow('Write failed');
+    });
+
+    it('should throw when deployment manifest contains unresolved ${...} variables', async() => {
+      const yaml = require('js-yaml');
+      const variablesContent = yaml.dump({
+        externalIntegration: {
+          systems: ['system.json'],
+          schemaBasePath: './'
+        }
+      });
+      const mockSystemJson = {
+        key: 'test-system',
+        displayName: 'Test System',
+        type: 'openapi',
+        authentication: { type: 'apikey' }
+      };
+      fs.existsSync.mockImplementation((filePath) => filePath === variablesPath || filePath === systemFilePath);
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === variablesPath) return variablesContent;
+        if (filePath === systemFilePath) return JSON.stringify(mockSystemJson);
+        return '';
+      });
+      fs.promises.writeFile.mockResolvedValue();
+      validator.validateNoUnresolvedVariablesInDeployment.mockImplementation(() => {
+        throw new Error('Deployment manifest contains unresolved variables (e.g. port: ${PORT}). Use secret variables (kv://) in env.template for sensitive values, and set the application port as a number in application.yaml.');
+      });
+
+      await expect(generator.generateDeployJson(appName))
+        .rejects.toThrow('Deployment manifest contains unresolved variables');
     });
   });
 

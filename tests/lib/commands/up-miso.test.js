@@ -24,30 +24,23 @@ jest.mock('chalk', () => {
 });
 
 jest.mock('../../../lib/core/config');
-jest.mock('../../../lib/core/secrets');
 jest.mock('../../../lib/infrastructure');
 jest.mock('../../../lib/app');
-jest.mock('../../../lib/utils/local-secrets');
 jest.mock('../../../lib/commands/up-common');
 
 const { handleUpMiso, parseImageOptions } = require('../../../lib/commands/up-miso');
 const config = require('../../../lib/core/config');
-const secrets = require('../../../lib/core/secrets');
 const infra = require('../../../lib/infrastructure');
 const app = require('../../../lib/app');
-const { saveLocalSecret } = require('../../../lib/utils/local-secrets');
-const { ensureAppFromTemplate } = require('../../../lib/commands/up-common');
+const { ensureAppFromTemplate, patchEnvOutputPathForDeployOnly, validateEnvOutputPathFolderOrNull } = require('../../../lib/commands/up-common');
 
 describe('up-miso command', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     infra.checkInfraHealth.mockResolvedValue({ postgres: 'healthy', redis: 'healthy' });
-    config.getDeveloperId.mockResolvedValue('0');
     config.getAifabrixBuilderDir = config.getAifabrixBuilderDir || jest.fn();
     config.getAifabrixBuilderDir.mockResolvedValue(null);
     ensureAppFromTemplate.mockResolvedValue(false);
-    saveLocalSecret.mockResolvedValue();
-    secrets.generateEnvFile.mockResolvedValue('/path/to/.env');
     app.runApp.mockResolvedValue();
   });
 
@@ -86,29 +79,13 @@ describe('up-miso command', () => {
       expect(ensureAppFromTemplate).toHaveBeenCalledWith('miso-controller');
     });
 
-    it('should set secrets with correct ports for developer 0', async() => {
-      config.getDeveloperId.mockResolvedValue('0');
-
+    it('should validate env output path and patch for deploy-only for keycloak and miso-controller', async() => {
       await handleUpMiso({});
 
-      expect(saveLocalSecret).toHaveBeenCalledWith('keycloak-server-url', 'http://localhost:8082');
-      expect(saveLocalSecret).toHaveBeenCalledWith('miso-controller-web-server-url', 'http://localhost:3000');
-    });
-
-    it('should set secrets with offset ports for developer 1', async() => {
-      config.getDeveloperId.mockResolvedValue('1');
-
-      await handleUpMiso({});
-
-      expect(saveLocalSecret).toHaveBeenCalledWith('keycloak-server-url', 'http://localhost:8182');
-      expect(saveLocalSecret).toHaveBeenCalledWith('miso-controller-web-server-url', 'http://localhost:3100');
-    });
-
-    it('should call generateEnvFile without force for keycloak and miso-controller', async() => {
-      await handleUpMiso({});
-
-      expect(secrets.generateEnvFile).toHaveBeenCalledWith('keycloak', undefined, 'docker', false, true);
-      expect(secrets.generateEnvFile).toHaveBeenCalledWith('miso-controller', undefined, 'docker', false, true);
+      expect(validateEnvOutputPathFolderOrNull).toHaveBeenCalledWith('keycloak');
+      expect(validateEnvOutputPathFolderOrNull).toHaveBeenCalledWith('miso-controller');
+      expect(patchEnvOutputPathForDeployOnly).toHaveBeenCalledWith('keycloak');
+      expect(patchEnvOutputPathForDeployOnly).toHaveBeenCalledWith('miso-controller');
     });
 
     it('should run keycloak then miso-controller', async() => {

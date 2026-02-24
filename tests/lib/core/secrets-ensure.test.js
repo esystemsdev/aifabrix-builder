@@ -29,7 +29,7 @@ jest.mock('../../../lib/utils/secrets-generator', () => ({
   findMissingSecretKeys: jest.fn(),
   generateSecretValue: jest.fn((key) => `generated-${key}`),
   loadExistingSecrets: jest.fn(() => ({})),
-  saveSecretsFile: jest.fn()
+  appendSecretsToFile: jest.fn()
 }));
 
 jest.mock('../../../lib/utils/secrets-encryption', () => ({
@@ -174,7 +174,7 @@ describe('secrets-ensure', () => {
 
       expect(result).toContain('newKey1');
       expect(result).toContain('newKey2');
-      expect(secretsGenerator.saveSecretsFile).toHaveBeenCalled();
+      expect(secretsGenerator.appendSecretsToFile).toHaveBeenCalled();
     });
 
     it('skips keys that already exist and are non-empty', async() => {
@@ -184,7 +184,7 @@ describe('secrets-ensure', () => {
       const result = await ensureSecretsForKeys(['existing']);
 
       expect(result).toEqual([]);
-      expect(secretsGenerator.saveSecretsFile).not.toHaveBeenCalled();
+      expect(secretsGenerator.appendSecretsToFile).not.toHaveBeenCalled();
     });
 
     it('uses suggestedValues when provided', async() => {
@@ -193,7 +193,7 @@ describe('secrets-ensure', () => {
       await ensureSecretsForKeys(['myKey'], {
         suggestedValues: { myKey: 'suggested-value' }
       });
-      expect(secretsGenerator.saveSecretsFile).toHaveBeenCalledWith(
+      expect(secretsGenerator.appendSecretsToFile).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ myKey: 'suggested-value' })
       );
@@ -206,7 +206,7 @@ describe('secrets-ensure', () => {
         _targetOverride: { type: 'file', filePath: customPath }
       });
       expect(secretsGenerator.loadExistingSecrets).toHaveBeenCalledWith(customPath);
-      expect(secretsGenerator.saveSecretsFile).toHaveBeenCalledWith(
+      expect(secretsGenerator.appendSecretsToFile).toHaveBeenCalledWith(
         customPath,
         expect.any(Object)
       );
@@ -230,7 +230,7 @@ describe('secrets-ensure', () => {
 
       await ensureInfraSecrets({ adminPwd: 'my-admin-pwd' });
 
-      expect(secretsGenerator.saveSecretsFile).toHaveBeenCalledWith(
+      expect(secretsGenerator.appendSecretsToFile).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ 'postgres-passwordKeyVault': 'my-admin-pwd' })
       );

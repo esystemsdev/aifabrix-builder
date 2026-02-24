@@ -57,24 +57,21 @@ describe('Local Secrets Module', () => {
       );
     });
 
-    it('should merge with existing secrets', async() => {
+    it('should append new secret without changing existing file content', async() => {
       const key = 'new-key';
       const value = 'new-value';
       const secretsPath = path.join('/home/user/.aifabrix', 'secrets.local.yaml');
-      const existingSecrets = { 'existing-key': 'existing-value' };
-      const existingContent = yaml.dump(existingSecrets);
-
-      fs.existsSync
-        .mockReturnValueOnce(true) // Directory exists
-        .mockReturnValueOnce(true); // File exists
+      const existingContent = '# comment\nexisting-key: existing-value\n';
+      fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(existingContent);
 
       await saveLocalSecret(key, value);
 
       const writtenContent = fs.writeFileSync.mock.calls[0][1];
-      const parsed = yaml.load(writtenContent);
-      expect(parsed['existing-key']).toBe('existing-value');
-      expect(parsed['new-key']).toBe('new-value');
+      expect(writtenContent).toContain('# comment');
+      expect(writtenContent).toContain('existing-key: existing-value');
+      expect(writtenContent).toContain('new-key');
+      expect(writtenContent).toContain('new-value');
     });
 
     it('should throw error if key is missing', async() => {
@@ -93,37 +90,34 @@ describe('Local Secrets Module', () => {
       await expect(saveLocalSecret('key', null)).rejects.toThrow('Secret value is required');
     });
 
-    it('should handle invalid YAML in existing file', async() => {
+    it('should append new secret even when existing file has invalid YAML (preserves raw content)', async() => {
       const key = 'test-key';
       const value = 'test-value';
-      const secretsPath = path.join('/home/user/.aifabrix', 'secrets.local.yaml');
-
-      fs.existsSync
-        .mockReturnValueOnce(true) // Directory exists
-        .mockReturnValueOnce(true); // File exists
-      fs.readFileSync.mockReturnValue('invalid: yaml: content: [unclosed');
-
-      await saveLocalSecret(key, value);
-
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Could not read existing secrets file'));
-      expect(fs.writeFileSync).toHaveBeenCalled();
-    });
-
-    it('should handle non-object YAML content', async() => {
-      const key = 'test-key';
-      const value = 'test-value';
-      const secretsPath = path.join('/home/user/.aifabrix', 'secrets.local.yaml');
-
-      fs.existsSync
-        .mockReturnValueOnce(true) // Directory exists
-        .mockReturnValueOnce(true); // File exists
-      fs.readFileSync.mockReturnValue('just a string');
+      const existingContent = 'invalid: yaml: content: [unclosed';
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(existingContent);
 
       await saveLocalSecret(key, value);
 
       const writtenContent = fs.writeFileSync.mock.calls[0][1];
-      const parsed = yaml.load(writtenContent);
-      expect(parsed['test-key']).toBe('test-value');
+      expect(writtenContent).toContain(existingContent);
+      expect(writtenContent).toContain('test-key');
+      expect(writtenContent).toContain('test-value');
+    });
+
+    it('should append new secret preserving existing non-object content', async() => {
+      const key = 'test-key';
+      const value = 'test-value';
+      const existingContent = 'just a string';
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(existingContent);
+
+      await saveLocalSecret(key, value);
+
+      const writtenContent = fs.writeFileSync.mock.calls[0][1];
+      expect(writtenContent).toContain('just a string');
+      expect(writtenContent).toContain('test-key');
+      expect(writtenContent).toContain('test-value');
     });
   });
 
@@ -168,24 +162,21 @@ describe('Local Secrets Module', () => {
       );
     });
 
-    it('should merge with existing secrets', async() => {
+    it('should append new secret without changing existing file content', async() => {
       const key = 'new-key';
       const value = 'new-value';
       const secretsPath = '/custom/path/secrets.yaml';
-      const existingSecrets = { 'existing-key': 'existing-value' };
-      const existingContent = yaml.dump(existingSecrets);
-
-      fs.existsSync
-        .mockReturnValueOnce(true) // Directory exists
-        .mockReturnValueOnce(true); // File exists
+      const existingContent = '# comment\nexisting-key: existing-value\n';
+      fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(existingContent);
 
       await saveSecret(key, value, secretsPath);
 
       const writtenContent = fs.writeFileSync.mock.calls[0][1];
-      const parsed = yaml.load(writtenContent);
-      expect(parsed['existing-key']).toBe('existing-value');
-      expect(parsed['new-key']).toBe('new-value');
+      expect(writtenContent).toContain('# comment');
+      expect(writtenContent).toContain('existing-key: existing-value');
+      expect(writtenContent).toContain('new-key');
+      expect(writtenContent).toContain('new-value');
     });
 
     it('should throw error if key is missing', async() => {
