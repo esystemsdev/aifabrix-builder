@@ -561,7 +561,7 @@ See also [Secrets and config](configuration/secrets-and-config.md) and [Commands
 
 | Template/Secret | Value | Interpolated (Dev ID 1) |
 | ---------------- | ----- | ----------------------- |
-| `KEYCLOAK_SERVER_URL=kv://keycloak-server-urlKeyVault` | `"http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}"` | `http://localhost:8082` |
+| `KEYCLOAK_SERVER_URL=kv://keycloak-server-url` | `"http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}"` | `http://localhost:8082` |
 | `KC_PORT=${KEYCLOAK_PORT}` | (from env-config.yaml) | `8082` |
 | `DATABASE_URL=kv://db-urlKeyVault` | `"postgresql://user:pass@${DB_HOST}:${DB_PORT}/db"` | `postgresql://localhost:5532/db` |
 

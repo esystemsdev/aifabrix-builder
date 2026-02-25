@@ -22,6 +22,7 @@ jest.mock('../../../lib/utils/paths', () => ({
 const tokenManager = require('../../../lib/utils/token-manager');
 const config = require('../../../lib/core/config');
 const api = require('../../../lib/utils/api');
+const { resetRefreshWarnedUrlsForTesting } = require('../../../lib/utils/token-manager-messages');
 
 describe('Token Manager Module', () => {
   const mockHomeDir = '/mock/home';
@@ -815,6 +816,10 @@ describe('Token Manager Module', () => {
 
   describe('getOrRefreshDeviceToken', () => {
     const controllerUrl = 'http://localhost:3010';
+
+    beforeEach(() => {
+      resetRefreshWarnedUrlsForTesting();
+    });
 
     it('should return existing token if valid', async() => {
       const mockToken = {

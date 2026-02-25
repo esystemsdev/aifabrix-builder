@@ -356,16 +356,16 @@ You can add secrets manually in the project secrets file, but the recommended ap
 **Usage:**
 ```bash
 # Set secret in user secrets file (default)
-aifabrix secret set keycloak-public-server-urlKeyVault "https://mydomain.com/keycloak"
+aifabrix secret set keycloak-server-url "https://mydomain.com/keycloak"
 
 # Set secret in general secrets file (shared across projects)
-aifabrix secret set keycloak-public-server-urlKeyVault "https://mydomain.com/keycloak" --shared
+aifabrix secret set keycloak-server-url "https://mydomain.com/keycloak" --shared
 
 # Set secret with environment variable interpolation
-aifabrix secret set keycloak-public-server-urlKeyVault "https://\${KEYCLOAK_HOST}:\${KEYCLOAK_PORT}"
+aifabrix secret set keycloak-server-url "https://\${KEYCLOAK_HOST}:\${KEYCLOAK_PORT}"
 
 # Set secret with full URL path
-aifabrix secret set keycloak-public-server-urlKeyVault "https://keycloak.example.com/auth/realms/master"
+aifabrix secret set keycloak-server-url "https://keycloak.example.com/auth/realms/master"
 ```
 
 **Options:**
@@ -382,12 +382,6 @@ aifabrix secret set keycloak-public-server-urlKeyVault "https://keycloak.example
 
 **Examples:**
 ```bash
-# Set Keycloak public server URL in user secrets
-aifabrix secret set keycloak-public-server-urlKeyVault "https://keycloak.example.com"
-
-# Set Keycloak public server URL in shared secrets file
-aifabrix secret set keycloak-public-server-urlKeyVault "https://keycloak.example.com" --shared
-
 # Set database password in user secrets
 aifabrix secret set postgres-passwordKeyVault "my-secure-password"
 
@@ -397,7 +391,7 @@ aifabrix secret set api-keyKeyVault "\${API_KEY}"
 
 **Output:**
 ```yaml
-✓ Secret 'keycloak-public-server-urlKeyVault' saved to user secrets file: /home/user/.aifabrix/secrets.local.yaml
+✓ Secret 'keycloak-server-url' saved to user secrets file: /home/user/.aifabrix/secrets.local.yaml
 ```
 
 **Behavior:**

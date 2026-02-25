@@ -33,7 +33,8 @@ jest.mock('js-yaml', () => {
 jest.mock('fs');
 jest.mock('os');
 jest.mock('../../../lib/utils/paths', () => ({
-  getAifabrixHome: jest.fn()
+  getAifabrixHome: jest.fn(),
+  getConfigDirForPaths: jest.fn()
 }));
 
 const yaml = require('js-yaml');
@@ -50,8 +51,9 @@ describe('Secrets Utils Module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     os.homedir.mockReturnValue(mockHomeDir);
-    // Default paths.getAifabrixHome() to return mockHomeDir/.aifabrix
-    pathsUtil.getAifabrixHome.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
+    const defaultAifabrix = path.join(mockHomeDir, '.aifabrix');
+    pathsUtil.getAifabrixHome.mockReturnValue(defaultAifabrix);
+    pathsUtil.getConfigDirForPaths.mockReturnValue(defaultAifabrix);
     // Reset yaml.load to use actual implementation by default
     const actualYaml = jest.requireActual('js-yaml');
     yaml.load.mockImplementation((content) => actualYaml.load(content));
@@ -125,6 +127,54 @@ describe('Secrets Utils Module', () => {
       expect(logger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Warning: Could not read secrets file')
       );
+    });
+  });
+
+  describe('loadPrimaryUserSecrets', () => {
+    it('should load from primary config dir (getConfigDirForPaths), not aifabrix-home', () => {
+      const primaryDir = '/workspace/.aifabrix';
+      const primarySecretsPath = path.join(primaryDir, 'secrets.local.yaml');
+      pathsUtil.getConfigDirForPaths.mockReturnValue(primaryDir);
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue('dataplane-web-server-url: "http://localhost:3001"');
+      yaml.load.mockReturnValue({ 'dataplane-web-server-url': 'http://localhost:3001' });
+
+      const result = secretsUtils.loadPrimaryUserSecrets();
+
+      expect(result).toEqual({ 'dataplane-web-server-url': 'http://localhost:3001' });
+      expect(pathsUtil.getConfigDirForPaths).toHaveBeenCalled();
+      expect(pathsUtil.getAifabrixHome).not.toHaveBeenCalled();
+      expect(fs.existsSync).toHaveBeenCalledWith(primarySecretsPath);
+    });
+
+    it('should return empty object when primary secrets file does not exist', () => {
+      pathsUtil.getConfigDirForPaths.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
+      fs.existsSync.mockReturnValue(false);
+
+      const result = secretsUtils.loadPrimaryUserSecrets();
+
+      expect(result).toEqual({});
+      expect(fs.readFileSync).not.toHaveBeenCalled();
+    });
+
+    it('should use primary home so user file is master when merging with public', () => {
+      const primaryDir = '/workspace/.aifabrix';
+      const primarySecretsPath = path.join(primaryDir, 'secrets.local.yaml');
+      pathsUtil.getConfigDirForPaths.mockReturnValue(primaryDir);
+      fs.existsSync.mockReturnValue(true);
+      const userSecrets = {
+        'dataplane-web-server-url': 'http://localhost:3001',
+        'keycloak-server-url': 'http://localhost:8080'
+      };
+      fs.readFileSync.mockReturnValue(
+        'dataplane-web-server-url: "http://localhost:3001"\nkeycloak-server-url: "http://localhost:8080"'
+      );
+      yaml.load.mockReturnValue(userSecrets);
+
+      const result = secretsUtils.loadPrimaryUserSecrets();
+
+      expect(result).toEqual(userSecrets);
+      expect(fs.existsSync).toHaveBeenCalledWith(primarySecretsPath);
     });
   });
 

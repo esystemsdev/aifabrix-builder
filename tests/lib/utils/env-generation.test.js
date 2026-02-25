@@ -199,6 +199,7 @@ jest.mock('../../../lib/utils/secrets-path', () => ({
 
 jest.mock('../../../lib/utils/secrets-utils', () => ({
   loadUserSecrets: jest.fn(() => ({})),
+  loadPrimaryUserSecrets: jest.fn(() => ({})),
   loadBuildSecrets: jest.fn().mockResolvedValue({}),
   loadDefaultSecrets: jest.fn(() => ({
     'redis-url': 'redis://localhost:6379',

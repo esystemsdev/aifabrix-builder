@@ -256,6 +256,30 @@ describe('Secrets Generator Module', () => {
     });
   });
 
+  describe('loadYamlTolerantOfDuplicateKeys', () => {
+    it('should return parsed object when YAML is valid', () => {
+      const content = 'a: 1\nb: 2';
+      const result = secretsGenerator.loadYamlTolerantOfDuplicateKeys(content);
+      expect(result).toEqual({ a: 1, b: 2 });
+    });
+
+    it('should tolerate duplicate keys and use last value', () => {
+      const content = 'key: first\nkey: last';
+      const result = secretsGenerator.loadYamlTolerantOfDuplicateKeys(content);
+      expect(result).toEqual({ key: 'last' });
+    });
+
+    it('should return empty object for empty or null content', () => {
+      expect(secretsGenerator.loadYamlTolerantOfDuplicateKeys('')).toEqual({});
+      expect(secretsGenerator.loadYamlTolerantOfDuplicateKeys(null)).toEqual({});
+    });
+
+    it('should throw on non-duplicate YAML errors', () => {
+      expect(() => secretsGenerator.loadYamlTolerantOfDuplicateKeys('invalid: [unclosed'))
+        .toThrow();
+    });
+  });
+
   describe('loadExistingSecrets', () => {
     it('should return empty object when file does not exist', () => {
       fs.existsSync.mockReturnValue(false);
@@ -326,6 +350,22 @@ describe('Secrets Generator Module', () => {
 
       expect(result).toEqual({});
       expect(logger.warn).toHaveBeenCalled();
+    });
+
+    it('should tolerate duplicate keys and use last value (loadYamlTolerantOfDuplicateKeys)', () => {
+      fs.existsSync.mockReturnValue(true);
+      const contentWithDuplicates = [
+        'dataplane-client-idKeyVault: first-id',
+        'dataplane-client-secretKeyVault: first-secret',
+        'dataplane-client-idKeyVault: last-id',
+        'dataplane-client-secretKeyVault: last-secret'
+      ].join('\n');
+      fs.readFileSync.mockReturnValue(contentWithDuplicates);
+
+      const result = secretsGenerator.loadExistingSecrets(mockSecretsPath);
+
+      expect(result['dataplane-client-idKeyVault']).toBe('last-id');
+      expect(result['dataplane-client-secretKeyVault']).toBe('last-secret');
     });
   });
 

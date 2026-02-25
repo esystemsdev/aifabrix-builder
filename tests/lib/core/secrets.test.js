@@ -139,6 +139,7 @@ jest.mock('../../../lib/utils/paths', () => {
   const pathMod = require('path');
   return {
     getAifabrixHome: jest.fn(),
+    getConfigDirForPaths: jest.fn(),
     getBuilderPath: jest.fn((appName) => pathMod.join(process.cwd(), 'builder', appName))
   };
 });
@@ -161,7 +162,9 @@ describe('Secrets Module', () => {
     jest.clearAllMocks();
     os.homedir.mockReturnValue(mockHomeDir);
     const pathsUtil = require('../../../lib/utils/paths');
-    pathsUtil.getAifabrixHome.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
+    const defaultAifabrix = path.join(mockHomeDir, '.aifabrix');
+    pathsUtil.getAifabrixHome.mockReturnValue(defaultAifabrix);
+    pathsUtil.getConfigDirForPaths.mockReturnValue(defaultAifabrix);
 
     // Default mock for env-config.yaml used by loadEnvConfig
     fs.existsSync.mockImplementation((filePath) => {
@@ -750,9 +753,9 @@ environments:
     KEYCLOAK_PORT: 8082
 `);
         const mockSecretsWithPort = {
-          'keycloak-server-urlKeyVault': 'http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}'
+          'keycloak-server-url': 'http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}'
         };
-        const template = 'KEYCLOAK_SERVER_URL=kv://keycloak-server-urlKeyVault';
+        const template = 'KEYCLOAK_SERVER_URL=kv://keycloak-server-url';
 
         config.getDeveloperId.mockResolvedValue('1');
 
@@ -810,9 +813,9 @@ environments:
 `);
         config.getDeveloperId.mockResolvedValue(6);
         const mockSecrets = {
-          'keycloak-public-server-urlKeyVault': 'http://localhost:${KEYCLOAK_PUBLIC_PORT}'
+          'keycloak-server-url': 'http://localhost:${KEYCLOAK_PUBLIC_PORT}'
         };
-        const template = 'KEYCLOAK_PUBLIC_SERVER_URL=kv://keycloak-public-server-urlKeyVault';
+        const template = 'KEYCLOAK_PUBLIC_SERVER_URL=kv://keycloak-server-url';
 
         const result = await secrets.resolveKvReferences(template, mockSecrets, 'docker');
 
@@ -1394,6 +1397,7 @@ environments:
       const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
       pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+      pathsUtil.getConfigDirForPaths.mockReturnValue(overrideHome);
       const existingSecrets = {
         'postgres-passwordKeyVault': 'admin123'
       };
@@ -1440,9 +1444,9 @@ environments:
 
       await secrets.generateEnvFile(appName, undefined, 'local', true);
 
-      // Verify that the same path was used for both read and write
+      // Verify that the same path was used for both read and write (primary user path)
       expect(writtenPath).toBe(overrideSecretsPath);
-      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+      expect(pathsUtil.getConfigDirForPaths).toHaveBeenCalled();
     });
 
     it('should use explicit path when provided', async() => {
@@ -2369,7 +2373,7 @@ environments:
       const userSecrets = { 'only-in-local': 'local-value' };
       const projectSecrets = {
         'only-in-local': 'ignored-if-same-key',
-        'keycloak-public-server-urlKeyVault': 'http://localhost:${KEYCLOAK_PUBLIC_PORT}'
+        'keycloak-server-url': 'http://localhost:${KEYCLOAK_PUBLIC_PORT}'
       };
 
       configMock.getSecretsPath.mockResolvedValue(canonicalPath);
@@ -2385,7 +2389,37 @@ environments:
       const result = await secrets.loadSecrets(undefined, 'myapp');
 
       expect(result['only-in-local']).toBe('local-value');
-      expect(result['keycloak-public-server-urlKeyVault']).toBe('http://localhost:${KEYCLOAK_PUBLIC_PORT}');
+      expect(result['keycloak-server-url']).toBe('http://localhost:${KEYCLOAK_PUBLIC_PORT}');
+    });
+
+    it('uses primary user file as master when aifabrix-secrets points to builder file (e.g. up-dataplane)', async() => {
+      const configMock = require('../../../lib/core/config');
+      const primaryUserPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const buildPath = path.join(process.cwd(), 'aifabrix-miso', 'builder', 'secrets.local.yaml');
+      const userSecrets = {
+        'dataplane-web-server-url': 'http://localhost:3001',
+        'keycloak-server-url': 'http://localhost:8080'
+      };
+      const buildSecrets = {
+        'dataplane-web-server-url': '',
+        'keycloak-server-url': ''
+      };
+
+      configMock.getSecretsPath.mockResolvedValue(buildPath);
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath === primaryUserPath || filePath === buildPath;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === primaryUserPath) return yaml.dump(userSecrets);
+        if (filePath === buildPath) return yaml.dump(buildSecrets);
+        return '';
+      });
+
+      const result = await secrets.loadSecrets(undefined, 'dataplane');
+
+      expect(result['dataplane-web-server-url']).toBe('http://localhost:3001');
+      expect(result['keycloak-server-url']).toBe('http://localhost:8080');
+      expect(fs.readFileSync).toHaveBeenCalledWith(primaryUserPath, 'utf8');
     });
 
     it.skip('should fallback to build.secrets when value missing in user file (removed - use config.yaml aifabrix-secrets)', async() => {
