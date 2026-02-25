@@ -121,7 +121,7 @@ describe('up-dataplane command', () => {
       expect(registerApplication).toHaveBeenCalledWith('dataplane', expect.any(Object));
       expect(rotateSecret).not.toHaveBeenCalled();
       expect(app.deployApp).toHaveBeenCalledWith('dataplane', expect.any(Object));
-      expect(app.runApp).toHaveBeenCalledWith('dataplane', {});
+      expect(app.runApp).toHaveBeenCalledWith('dataplane', { skipEnvOutputPath: true });
     });
 
     it('should call rotateSecret (not register) then deploy then run locally when app already registered', async() => {
@@ -133,7 +133,7 @@ describe('up-dataplane command', () => {
       expect(rotateSecret).toHaveBeenCalledWith('dataplane', expect.any(Object));
       expect(registerApplication).not.toHaveBeenCalled();
       expect(app.deployApp).toHaveBeenCalledWith('dataplane', expect.any(Object));
-      expect(app.runApp).toHaveBeenCalledWith('dataplane', {});
+      expect(app.runApp).toHaveBeenCalledWith('dataplane', { skipEnvOutputPath: true });
     });
 
     it('should pass image override to register and deploy then run locally', async() => {
@@ -147,7 +147,7 @@ describe('up-dataplane command', () => {
         imageOverride: 'myreg/dataplane:latest',
         image: 'myreg/dataplane:latest'
       }));
-      expect(app.runApp).toHaveBeenCalledWith('dataplane', {});
+      expect(app.runApp).toHaveBeenCalledWith('dataplane', { skipEnvOutputPath: true });
     });
   });
 });

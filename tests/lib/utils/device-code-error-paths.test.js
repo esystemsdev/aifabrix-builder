@@ -168,5 +168,54 @@ describe('Device Code Error Paths', () => {
       ).rejects.toThrow('Network error');
     });
   });
+
+  describe('buildVerificationUrlWithUserCode', () => {
+    it('should append ?user_code= when URL has no query string', () => {
+      const url = deviceCode.buildVerificationUrlWithUserCode(
+        'http://localhost:8182/realms/aifabrix/device',
+        'ABC-DEF'
+      );
+      expect(url).toBe('http://localhost:8182/realms/aifabrix/device?user_code=ABC-DEF');
+    });
+
+    it('should append &user_code= when URL already has query params', () => {
+      const url = deviceCode.buildVerificationUrlWithUserCode(
+        'http://localhost:8182/realms/aifabrix/device?realm=aifabrix',
+        'XYZ-123'
+      );
+      expect(url).toBe('http://localhost:8182/realms/aifabrix/device?realm=aifabrix&user_code=XYZ-123');
+    });
+
+    it('should encode user code in URL', () => {
+      const url = deviceCode.buildVerificationUrlWithUserCode(
+        'http://localhost:8182/realms/aifabrix/device',
+        'ABC DEF'
+      );
+      expect(url).toContain('user_code=ABC%20DEF');
+    });
+
+    it('should return base URL when userCode is empty', () => {
+      const base = 'http://localhost:8182/realms/aifabrix/device';
+      expect(deviceCode.buildVerificationUrlWithUserCode(base, '')).toBe(base);
+    });
+  });
+
+  describe('displayDeviceCodeInfo', () => {
+    it('should display visit URL with user_code query param', () => {
+      const logger = { log: jest.fn() };
+      const chalk = {
+        cyan: (s) => s,
+        yellow: (s) => s,
+        gray: (s) => s,
+        blue: { underline: (s) => s }
+      };
+      deviceCode.displayDeviceCodeInfo('MY-CODE', 'http://localhost:8182/realms/aifabrix/device', logger, chalk);
+      const logCalls = logger.log.mock.calls.map(c => c[0]);
+      const visitLine = logCalls.find(line => typeof line === 'string' && line.includes('Visit'));
+      expect(visitLine).toBeDefined();
+      expect(visitLine).toContain('user_code=MY-CODE');
+      expect(visitLine).toContain('http://localhost:8182/realms/aifabrix/device');
+    });
+  });
 });
 

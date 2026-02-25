@@ -23,7 +23,13 @@ jest.mock('fs', () => ({
 
 const logger = require('../../../lib/utils/logger');
 const fs = require('fs');
-const { validateCommand, handleCommandError, appendWizardError, logOfflinePathWhenType } = require('../../../lib/utils/cli-utils');
+const {
+  validateCommand,
+  handleCommandError,
+  isAuthenticationError,
+  appendWizardError,
+  logOfflinePathWhenType
+} = require('../../../lib/utils/cli-utils');
 
 describe('CLI Utils Module', () => {
   beforeEach(() => {
@@ -34,6 +40,59 @@ describe('CLI Utils Module', () => {
     it('should return true for any command (placeholder implementation)', () => {
       expect(validateCommand('test-command', {})).toBe(true);
       expect(validateCommand('build', { app: 'myapp' })).toBe(true);
+    });
+  });
+
+  describe('isAuthenticationError', () => {
+    it('should return false for null or undefined', () => {
+      expect(isAuthenticationError(null)).toBe(false);
+      expect(isAuthenticationError(undefined)).toBe(false);
+    });
+
+    it('should return true when error.authFailure is true', () => {
+      const err = new Error('No valid authentication found');
+      err.authFailure = true;
+      err.controllerUrl = 'http://localhost:3100';
+      expect(isAuthenticationError(err)).toBe(true);
+    });
+
+    it('should return true when message contains 401', () => {
+      expect(isAuthenticationError(new Error('Request failed with status 401'))).toBe(true);
+    });
+
+    it('should return true when message contains unauthorized', () => {
+      expect(isAuthenticationError(new Error('Unauthorized'))).toBe(true);
+      expect(isAuthenticationError(new Error('unauthorized access'))).toBe(true);
+    });
+
+    it('should return true when message contains authentication', () => {
+      expect(isAuthenticationError(new Error('Authentication failed'))).toBe(true);
+      expect(isAuthenticationError(new Error('Authentication required'))).toBe(true);
+    });
+
+    it('should return true when message contains token expired', () => {
+      expect(isAuthenticationError(new Error('Token expired'))).toBe(true);
+    });
+
+    it('should return true when message contains login required', () => {
+      expect(isAuthenticationError(new Error('Login required'))).toBe(true);
+    });
+
+    it('should return true when message contains device token or refresh token', () => {
+      expect(isAuthenticationError(new Error('Device token authentication required'))).toBe(true);
+      expect(isAuthenticationError(new Error('Refresh token has expired'))).toBe(true);
+    });
+
+    it('should return true when error.formatted contains auth hint', () => {
+      const err = new Error('Request failed');
+      err.formatted = 'To authenticate, run: aifabrix login';
+      expect(isAuthenticationError(err)).toBe(true);
+    });
+
+    it('should return false for non-auth errors', () => {
+      expect(isAuthenticationError(new Error('Configuration not found'))).toBe(false);
+      expect(isAuthenticationError(new Error('Port 3000 is in use'))).toBe(false);
+      expect(isAuthenticationError(new Error('Validation failed'))).toBe(false);
     });
   });
 

@@ -228,6 +228,14 @@ describe('prepareEnvironment - port for run vs run --reload', () => {
     );
     expect(envCopy.writeEnvOutputForLocal).not.toHaveBeenCalled();
   });
+
+  it('does not write to envOutputPath when skipEnvOutputPath is true (up-* flow)', async() => {
+    const envCopy = require('../../../lib/utils/env-copy');
+    const appConfig = { port: 3000, build: { envOutputPath: '../../.env' } };
+    await prepareEnvironment('myapp', appConfig, { skipEnvOutputPath: true });
+    expect(envCopy.writeEnvOutputForLocal).not.toHaveBeenCalled();
+    expect(envCopy.writeEnvOutputForReload).not.toHaveBeenCalled();
+  });
 });
 
 describe('startContainer', () => {

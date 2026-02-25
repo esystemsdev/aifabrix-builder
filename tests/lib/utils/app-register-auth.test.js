@@ -332,6 +332,23 @@ describe('App Register Auth Module', () => {
         controllerUrl: foundUrl
       });
     });
+
+    it('should throw with controllerUrl and authFailure when no token and throwOnFailure true', async() => {
+      const controllerUrl = 'http://localhost:3100';
+      const config = { device: {} };
+
+      getConfig.mockResolvedValue(config);
+      normalizeControllerUrl.mockReturnValue(controllerUrl);
+      getOrRefreshDeviceToken.mockResolvedValue(null);
+
+      await expect(checkAuthentication(controllerUrl, 'dev', { throwOnFailure: true }))
+        .rejects.toMatchObject({
+          message: expect.any(String),
+          controllerUrl: controllerUrl,
+          authFailure: true
+        });
+      expect(process.exit).not.toHaveBeenCalled();
+    });
   });
 });
 
