@@ -146,6 +146,25 @@ describe('Credential list command', () => {
     expect(logger.log.mock.calls.some(c => String(c[0]).includes('item-1'))).toBe(true);
   });
 
+  it('should handle paginated API shape (meta + data array)', async() => {
+    listCredentials.mockResolvedValue({
+      success: true,
+      data: {
+        meta: { totalItems: 1, currentPage: 1, pageSize: 20, type: 'CredentialResponse' },
+        data: [
+          { id: 'c67fb7ae03c5844a59ada1558', key: 'test-hubspot-cred', displayName: 'Test E2E HubSpot OAuth2' }
+        ]
+      },
+      status: 200
+    });
+
+    await runCredentialList({});
+
+    expect(logger.log).toHaveBeenCalled();
+    expect(logger.log.mock.calls.some(c => String(c[0]).includes('test-hubspot-cred'))).toBe(true);
+    expect(logger.log.mock.calls.some(c => String(c[0]).includes('Test E2E HubSpot OAuth2'))).toBe(true);
+  });
+
   it('should display credentials with alternative field names (id, credentialKey, name)', async() => {
     listCredentials.mockResolvedValue({
       data: {

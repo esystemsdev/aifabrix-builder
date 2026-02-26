@@ -178,6 +178,38 @@ describe('upload command', () => {
       expect(uploadApplicationViaPipeline).not.toHaveBeenCalled();
     });
 
+    it('should include actual validation errors in thrown message when validation fails', async() => {
+      const { displayValidationResults } = require('../../../lib/validation/validate-display');
+      const err1 = 'External datasource file not found: /path/to/missing.json';
+      validateExternalSystemComplete.mockResolvedValue({
+        valid: false,
+        errors: [err1],
+        warnings: []
+      });
+
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      const err = await uploadExternalSystem(systemKey).catch(e => e);
+      expect(err).toBeInstanceOf(Error);
+      expect(err.message).toContain('Validation failed');
+      expect(err.message).toContain(err1);
+      expect(err.message).toMatch(/Fix errors above|run the command again/);
+    });
+
+    it('should include up to 3 errors and "and N more" when many validation errors', async() => {
+      validateExternalSystemComplete.mockResolvedValue({
+        valid: false,
+        errors: ['Error1', 'Error2', 'Error3', 'Error4', 'Error5'],
+        warnings: []
+      });
+
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      const err = await uploadExternalSystem(systemKey).catch(e => e);
+      expect(err.message).toContain('Error1');
+      expect(err.message).toContain('Error2');
+      expect(err.message).toContain('Error3');
+      expect(err.message).toContain('and 2 more');
+    });
+
     it('should throw when upload returns no uploadId', async() => {
       uploadApplicationViaPipeline.mockResolvedValue({ success: true, data: {} });
 

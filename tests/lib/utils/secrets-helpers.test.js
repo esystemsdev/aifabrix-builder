@@ -21,7 +21,9 @@ jest.mock('../../../lib/core/config', () => ({
 
 const {
   formatMissingSecretsFileInfo,
-  applyCanonicalSecretsOverride
+  applyCanonicalSecretsOverride,
+  collectMissingSecrets,
+  replaceKvInContent
 } = require('../../../lib/utils/secrets-helpers');
 
 describe('formatMissingSecretsFileInfo', () => {
@@ -196,5 +198,94 @@ describe('applyCanonicalSecretsOverride', () => {
     expect(result['some-key']).toBe('user-value'); // User value preserved (plaintext, not encrypted)
   });
 
+});
+
+describe('collectMissingSecrets', () => {
+  it('returns empty array when all path-style kv refs are present in nested secrets', () => {
+    const content = [
+      'HUBSPOT_CLIENT_ID=kv://hubspot/clientId',
+      'HUBSPOT_CLIENT_SECRET=kv://hubspot/clientSecret'
+    ].join('\n');
+    const secrets = {
+      hubspot: {
+        clientId: 'secret-id',
+        clientSecret: 'secret-secret'
+      }
+    };
+    expect(collectMissingSecrets(content, secrets)).toEqual([]);
+  });
+
+  it('returns missing path-style kv refs when not in nested secrets', () => {
+    const content = 'HUBSPOT_CLIENT_ID=kv://hubspot/clientId\nHUBSPOT_CLIENT_SECRET=kv://hubspot/clientSecret';
+    const secrets = { other: 'value' };
+    const missing = collectMissingSecrets(content, secrets);
+    expect(missing).toContain('kv://hubspot/clientId');
+    expect(missing).toContain('kv://hubspot/clientSecret');
+    expect(missing).toHaveLength(2);
+  });
+
+  it('deduplicates missing refs when same path appears multiple times', () => {
+    const content = [
+      'HUBSPOT_CLIENT_ID=kv://hubspot/clientId',
+      'HUBSPOT_CLIENT_SECRET=kv://hubspot/clientSecret',
+      'ANOTHER=kv://hubspot/clientId'
+    ].join('\n');
+    const secrets = {};
+    const missing = collectMissingSecrets(content, secrets);
+    expect(missing.filter(m => m === 'kv://hubspot/clientId')).toHaveLength(1);
+    expect(missing).toContain('kv://hubspot/clientId');
+    expect(missing).toContain('kv://hubspot/clientSecret');
+    expect(missing).toHaveLength(2);
+  });
+
+  it('supports flat key with slash in secrets object', () => {
+    const content = 'KEY=kv://hubspot/clientId';
+    const secrets = { 'hubspot/clientId': 'flat-value' };
+    expect(collectMissingSecrets(content, secrets)).toEqual([]);
+  });
+
+  it('skips comment and empty lines when collecting missing', () => {
+    const content = '# comment\nHUBSPOT=kv://hubspot\n\nOTHER=kv://other';
+    const secrets = { hubspot: 'ok' };
+    const missing = collectMissingSecrets(content, secrets);
+    expect(missing).toEqual(['kv://other']);
+  });
+});
+
+describe('replaceKvInContent', () => {
+  it('replaces path-style kv refs using nested secrets', () => {
+    const content = 'HUBSPOT_CLIENT_ID=kv://hubspot/clientId\nHUBSPOT_CLIENT_SECRET=kv://hubspot/clientSecret';
+    const secrets = {
+      hubspot: {
+        clientId: 'replaced-id',
+        clientSecret: 'replaced-secret'
+      }
+    };
+    const result = replaceKvInContent(content, secrets, {});
+    expect(result).toContain('HUBSPOT_CLIENT_ID=replaced-id');
+    expect(result).toContain('HUBSPOT_CLIENT_SECRET=replaced-secret');
+  });
+
+  it('replaces path-style kv refs using flat key', () => {
+    const content = 'KEY=kv://hubspot/clientId';
+    const secrets = { 'hubspot/clientId': 'flat-value' };
+    const result = replaceKvInContent(content, secrets, {});
+    expect(result).toBe('KEY=flat-value');
+  });
+
+  it('leaves single-segment kv ref when present in secrets', () => {
+    const content = 'SIMPLE=kv://simple';
+    const secrets = { simple: 'value' };
+    const result = replaceKvInContent(content, secrets, {});
+    expect(result).toBe('SIMPLE=value');
+  });
+
+  it('interpolates ${VAR} in replaced secret value', () => {
+    const content = 'KEY=kv://mykey';
+    const secrets = { mykey: 'http://${HOST}:${PORT}' };
+    const envVars = { HOST: 'localhost', PORT: '3000' };
+    const result = replaceKvInContent(content, secrets, envVars);
+    expect(result).toContain('http://localhost:3000');
+  });
 });
 

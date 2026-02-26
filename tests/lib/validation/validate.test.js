@@ -535,6 +535,48 @@ describe('Validation Module', () => {
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('RBAC error 1'));
     });
+
+    it('should display step-by-step with manifest skipped when components failed', () => {
+      const { displayValidationResults } = require('../../../lib/validation/validate');
+      const result = {
+        valid: false,
+        errors: ['External datasource file not found: /path/to/missing.json'],
+        warnings: [],
+        steps: {
+          application: { valid: true, errors: [], warnings: ['rbac.yaml not found'] },
+          components: {
+            valid: false,
+            errors: ['External datasource file not found: /path/to/missing.json'],
+            warnings: [],
+            files: []
+          },
+          manifest: { valid: true, errors: [], warnings: [], skipped: true }
+        }
+      };
+
+      displayValidationResults(result);
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Skipped'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('External datasource file not found'));
+    });
+
+    it('should display deployment manifest failed with no error details when manifest.errors empty', () => {
+      const { displayValidationResults } = require('../../../lib/validation/validate');
+      const result = {
+        valid: false,
+        errors: ['Some error'],
+        warnings: [],
+        steps: {
+          application: { valid: true, errors: [], warnings: [] },
+          components: { valid: true, errors: [], warnings: [], files: [{ file: 'x', type: 'system', valid: true }] },
+          manifest: { valid: false, errors: [], warnings: [] }
+        }
+      };
+
+      displayValidationResults(result);
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('No error details available'));
+    });
   });
 
   describe('validateExternalFile edge cases', () => {
@@ -988,6 +1030,24 @@ describe('Validation Module', () => {
       expect(result.steps.components.errors.some(e => e.includes('File not found') || e.includes('test-system.json')));
     });
 
+    it('when components step fails, manifest step is skipped and not run', async() => {
+      validator.validateApplication.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+      resolveExternalFiles.mockRejectedValue(new Error('External datasource file not found: /path/to/missing.json'));
+
+      const { validateExternalSystemComplete } = require('../../../lib/validation/validate');
+      const result = await validateExternalSystemComplete(appName);
+
+      expect(result.valid).toBe(false);
+      expect(result.steps.components.valid).toBe(false);
+      expect(result.steps.manifest.skipped).toBe(true);
+      expect(result.steps.manifest.valid).toBe(true);
+      expect(generateControllerManifest).not.toHaveBeenCalled();
+    });
+
     it('should aggregate errors from all steps', async() => {
       // Step 1: Application has warnings
       validator.validateApplication.mockResolvedValue({
@@ -1024,6 +1084,82 @@ describe('Validation Module', () => {
         .rejects.toThrow('App name is required and must be a string');
       await expect(validateExternalSystemComplete(''))
         .rejects.toThrow('App name is required and must be a string');
+    });
+
+    it('should fail on systemKey mismatch when datasource systemKey does not match system key', async() => {
+      validator.validateApplication.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      const systemFilePath = path.join(appPath, 'test-system.json');
+      const datasourceFilePath = path.join(appPath, 'test-datasource.json');
+
+      resolveExternalFiles.mockResolvedValue([
+        {
+          path: systemFilePath,
+          fileName: 'test-system.json',
+          type: 'external-system'
+        },
+        {
+          path: datasourceFilePath,
+          fileName: 'test-datasource.json',
+          type: 'external-datasource'
+        }
+      ]);
+
+      fsSync.existsSync.mockImplementation((filePath) => {
+        return filePath === systemFilePath ||
+               filePath === datasourceFilePath ||
+               filePath.includes('application.yaml') ||
+               filePath.includes('test-external-app');
+      });
+
+      fsSync.readFileSync.mockImplementation((filePath) => {
+        if (filePath === systemFilePath) {
+          return JSON.stringify({ key: 'test-e2e-hubspot', displayName: 'Test System', type: 'openapi' });
+        }
+        if (filePath === datasourceFilePath) {
+          return JSON.stringify({
+            key: 'hubspot-deals',
+            systemKey: 'hubspot-deals-datasource',
+            entityKey: 'deal',
+            displayName: 'Deals'
+          });
+        }
+        return '';
+      });
+
+      loadExternalSystemSchema.mockReturnValue(jest.fn().mockReturnValue(true));
+      loadExternalDataSourceSchema.mockReturnValue(jest.fn().mockReturnValue(true));
+      formatValidationErrors.mockReturnValue([]);
+
+      const mockManifest = {
+        key: 'test-external-app',
+        displayName: 'Test App',
+        type: 'external',
+        system: { key: 'test-e2e-hubspot' },
+        dataSources: [
+          { key: 'hubspot-deals', systemKey: 'hubspot-deals-datasource' }
+        ],
+        deploymentKey: 'test-key'
+      };
+      generateControllerManifest.mockResolvedValue(mockManifest);
+      validateControllerManifest.mockResolvedValue({
+        valid: false,
+        errors: [
+          'Data source \'hubspot-deals\' systemKey does not match application system key (expected \'test-e2e-hubspot\', got \'hubspot-deals-datasource\')'
+        ],
+        warnings: []
+      });
+
+      const { validateExternalSystemComplete } = require('../../../lib/validation/validate');
+      const result = await validateExternalSystemComplete(appName);
+
+      expect(result.valid).toBe(false);
+      expect(result.steps.manifest.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('systemKey') && e.includes('test-e2e-hubspot'))).toBe(true);
     });
   });
 });

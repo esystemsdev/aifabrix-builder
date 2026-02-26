@@ -379,6 +379,18 @@ frontDoorRouting:
       expect(result.valid).toBe(true);
     });
 
+    it('should accept path-style kv:// references (e.g. kv://hubspot/clientId)', async() => {
+      const templateWithPathKv = 'HUBSPOT_CLIENT_ID=kv://hubspot/clientId\nHUBSPOT_CLIENT_SECRET=kv://hubspot/clientSecret\nPORT=3000';
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(templateWithPathKv);
+
+      const result = await validator.validateEnvTemplate(appName);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
     it('should allow empty values in environment variables', async() => {
       const templateWithEmptyValue = 'EMPTY_VAR=\nPORT=3000\nKEYCLOAK_PUBLIC_KEY=\n# Comment line';
 

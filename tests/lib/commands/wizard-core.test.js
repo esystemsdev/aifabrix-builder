@@ -898,9 +898,10 @@ describe('Wizard Core Functions', () => {
         return Promise.reject(new Error('ENOENT'));
       });
       fs.writeFile.mockResolvedValue(undefined);
+      const longReadme = '# Test README\n\n' + 'x'.repeat(400);
       wizardApi.postDeploymentDocs.mockResolvedValue({
         success: true,
-        data: { content: '# Test README' }
+        data: { content: longReadme }
       });
       const result = await wizardCore.handleFileSaving(
         'test-app',
@@ -925,7 +926,7 @@ describe('Wizard Core Functions', () => {
       );
       expect(fs.writeFile).toHaveBeenCalledWith(
         expect.stringContaining('README.md'),
-        '# Test README',
+        longReadme,
         'utf8'
       );
       expect(result).toEqual(mockGeneratedFiles);
@@ -987,9 +988,10 @@ describe('Wizard Core Functions', () => {
     it('should fall back to GET deployment-docs when application.yaml and deploy.json are unreadable', async() => {
       wizardGenerator.generateWizardFiles.mockResolvedValue(mockGeneratedFiles);
       fs.readFile.mockRejectedValue(new Error('ENOENT'));
+      const longFallbackReadme = '# Fallback README\n\n' + 'y'.repeat(400);
       wizardApi.getDeploymentDocs.mockResolvedValue({
         success: true,
-        data: { content: '# Fallback README' }
+        data: { content: longFallbackReadme }
       });
       const result = await wizardCore.handleFileSaving(
         'test-app',
@@ -1003,7 +1005,7 @@ describe('Wizard Core Functions', () => {
       expect(wizardApi.postDeploymentDocs).not.toHaveBeenCalled();
       expect(fs.writeFile).toHaveBeenCalledWith(
         expect.stringContaining('README.md'),
-        '# Fallback README',
+        longFallbackReadme,
         'utf8'
       );
       expect(result).toEqual(mockGeneratedFiles);

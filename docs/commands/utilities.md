@@ -209,6 +209,42 @@ aifabrix convert hubspot --format json --force
 
 ---
 
+<a id="aifabrix-repair-app"></a>
+## aifabrix repair <app>
+
+Repair external integration config when `application.yaml` drifts from files on disk.
+
+**What:** Aligns `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files, fixes `app.key` to match `system.key`, creates a minimal `externalIntegration` block when missing, extracts `rbac.yaml` from system roles/permissions when absent, and regenerates `<systemKey>-deploy.json`.
+
+**When:** After converting files (JSON ↔ YAML), after adding/removing datasource files, when validation reports "External datasource file not found", or when `application.yaml` gets out of sync with files on disk.
+
+**Repairable issues:**
+- **File list drift** — Config lists `.json` but files are `.yaml` (or vice versa)
+- **Deleted datasource** — Config lists a file that no longer exists
+- **Added datasource** — File exists on disk but not in config
+- **Missing externalIntegration** — No block; repair creates it from discovered files
+- **system.key mismatch** — System file has `key: X` but `app.key` is `Y`; repair updates `app.key`
+- **rbac.yaml missing** — System has roles/permissions but no `rbac.yaml`; repair creates it
+- **Stale deploy manifest** — Regenerates `<systemKey>-deploy.json` after config changes
+
+**Usage:**
+```bash
+# Repair and write changes
+aifabrix repair hubspot
+
+# Preview changes without writing (--dry-run)
+aifabrix repair hubspot --dry-run
+```
+
+**Options:**
+- `--dry-run` — Report what would be changed; do not write
+
+**Issues:**
+- **"App not found"** → Ensure the app exists in `integration/<app>` or `builder/<app>`
+- **"No system file found"** → Add a `*-system.yaml` or `*-system.json` file first
+
+---
+
 <a id="aifabrix-secure"></a>
 ## aifabrix secure
 

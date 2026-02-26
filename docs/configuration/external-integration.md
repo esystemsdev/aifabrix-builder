@@ -13,6 +13,8 @@ In `application.yaml`, the **externalIntegration** block defines external system
 
 Paths are relative to the application.yaml file or absolute. Validation: `aifabrix validate <app>`; external system files are validated against `external-system.schema.json`, datasource files against `external-datasource.schema.json`.
 
+If `application.yaml` gets out of sync with files on disk, run `aifabrix repair <app>` to fix.
+
 **Example:**
 ```yaml
 externalIntegration:

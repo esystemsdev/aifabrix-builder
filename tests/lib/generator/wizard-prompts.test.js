@@ -119,6 +119,85 @@ describe('Wizard Prompts', () => {
     });
   });
 
+  describe('promptForCredentialAction', () => {
+    it('should return only action (no credentialIdOrKey when select)', async() => {
+      inquirer.prompt.mockResolvedValue({ action: 'select' });
+      const result = await wizardPrompts.promptForCredentialAction();
+      expect(result).toEqual({ action: 'select' });
+      expect(inquirer.prompt).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return skip action', async() => {
+      inquirer.prompt.mockResolvedValue({ action: 'skip' });
+      const result = await wizardPrompts.promptForCredentialAction();
+      expect(result).toEqual({ action: 'skip' });
+    });
+  });
+
+  describe('promptForExistingCredential', () => {
+    it('should show list when credentials are provided', async() => {
+      const credentialsList = [
+        { key: 'cred-1', displayName: 'Credential One' },
+        { key: 'cred-2', displayName: 'Credential Two' }
+      ];
+      inquirer.prompt.mockResolvedValue({ credentialIdOrKey: 'cred-2' });
+      const result = await wizardPrompts.promptForExistingCredential(credentialsList);
+      expect(inquirer.prompt).toHaveBeenCalledWith([expect.objectContaining({
+        type: 'list',
+        name: 'credentialIdOrKey',
+        message: 'Select a credential:',
+        choices: [
+          { name: 'Credential One', value: 'cred-1' },
+          { name: 'Credential Two', value: 'cred-2' }
+        ]
+      })]);
+      expect(result).toEqual({ credentialIdOrKey: 'cred-2' });
+    });
+
+    it('should show input when credentials list is empty', async() => {
+      inquirer.prompt.mockResolvedValue({ credentialIdOrKey: 'my-credential' });
+      const result = await wizardPrompts.promptForExistingCredential([]);
+      expect(inquirer.prompt).toHaveBeenCalledWith([expect.objectContaining({
+        type: 'input',
+        name: 'credentialIdOrKey',
+        message: 'Enter credential ID or key (must exist on the dataplane):'
+      })]);
+      expect(result).toEqual({ credentialIdOrKey: 'my-credential' });
+    });
+  });
+
+  describe('promptForExistingSystem', () => {
+    it('should show list when systems are provided', async() => {
+      const systemsList = [
+        { key: 'sys-1', displayName: 'System One' },
+        { key: 'sys-2', displayName: 'System Two' }
+      ];
+      inquirer.prompt.mockResolvedValue({ systemIdOrKey: 'sys-2' });
+      const result = await wizardPrompts.promptForExistingSystem(systemsList);
+      expect(inquirer.prompt).toHaveBeenCalledWith([expect.objectContaining({
+        type: 'list',
+        name: 'systemIdOrKey',
+        message: 'Select an existing external system (not a webapp):',
+        choices: [
+          { name: 'System One', value: 'sys-1' },
+          { name: 'System Two', value: 'sys-2' }
+        ]
+      })]);
+      expect(result).toBe('sys-2');
+    });
+
+    it('should show input when list is empty', async() => {
+      inquirer.prompt.mockResolvedValue({ systemIdOrKey: 'my-system' });
+      const result = await wizardPrompts.promptForExistingSystem([]);
+      expect(inquirer.prompt).toHaveBeenCalledWith([expect.objectContaining({
+        type: 'input',
+        name: 'systemIdOrKey',
+        message: 'Enter the existing external system ID or key (not a webapp):'
+      })]);
+      expect(result).toBe('my-system');
+    });
+  });
+
   describe('promptForConfigReview', () => {
     it('should prompt for config review with accept', async() => {
       const systemConfig = { key: 'test-system' };

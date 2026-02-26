@@ -441,6 +441,7 @@ Validation errors are formatted to be clear and actionable:
 
 **Issues:**
 - **"App name or file path is required"** → Provide application name or file path
+- **"External datasource file not found"** or wrong extension → Run `aifabrix repair <app>` to sync config with files on disk
 - **"File not found"** → Check file path is correct
 - **"Invalid JSON syntax"** → Fix JSON syntax errors in file
 - **"externalIntegration block not found"** → Add externalIntegration block to application.yaml or validate file directly

@@ -2409,4 +2409,28 @@ NORMAL_VAR=value456`;
       ).rejects.toThrow('Datasource file not found');
     });
   });
+
+  describe('loadDatasourceFiles (external module)', () => {
+    it('should skip missing datasource files when skipMissingDatasourceFiles is true', async() => {
+      const { loadDatasourceFiles } = require('../../../lib/generator/external');
+      const appPath = path.join(process.cwd(), 'integration', 'test-app');
+      const existingPath = path.join(appPath, 'existing-datasource.json');
+      const missingPath = path.join(appPath, 'missing-datasource.json');
+
+      fs.existsSync.mockImplementation((filePath) => filePath === existingPath);
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === existingPath) {
+          return JSON.stringify({ key: 'existing-ds', systemKey: 'test-app' });
+        }
+        throw new Error('Unexpected read');
+      });
+
+      const result = await loadDatasourceFiles(appPath, '.', ['existing-datasource.json', 'missing-datasource.json'], {
+        skipMissingDatasourceFiles: true
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({ key: 'existing-ds', systemKey: 'test-app' });
+    });
+  });
 });
