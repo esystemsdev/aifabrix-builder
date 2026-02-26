@@ -195,3 +195,83 @@ After implementation:
 ## Optional: Update Plan 77
 
 In [.cursor/plans/77-external_integration_repair_command.plan.md](.cursor/plans/77-external_integration_repair_command.plan.md), move "Datasource systemKey mismatch" from "Non-Repairable" to "Repairable" and document the new validation rule.
+
+---
+
+## Implementation Validation Report
+
+**Date**: 2026-02-26
+**Plan**: .cursor/plans/78-datasource_systemkey_validation_repair.plan.md
+**Status**: ✅ COMPLETE
+
+## Executive Summary
+
+All tasks have been implemented. Validation rule `validateDatasourceSystemKeyAlignment` detects datasource systemKey mismatch; repair logic `alignDatasourceSystemKeys` corrects mismatched systemKey in datasource files. Tests cover validation, repair, dry-run, no-change, and multi-datasource scenarios. Code quality validation passes (format, lint, test). Plan 77 updated to move datasource systemKey from Non-Repairable to Repairable.
+
+## Task Completion
+
+- Total tasks: 6
+- Completed: 6
+- Incomplete: 0
+- Completion: 100%
+
+### Completed Tasks
+- ✅ Add `validateDatasourceSystemKeyAlignment` to external-manifest-validator.js
+- ✅ Add `alignDatasourceSystemKeys` to repair.js and integrate into flow
+- ✅ Add external-manifest-validator tests for systemKey mismatch
+- ✅ Add validate.test.js integration test for systemKey failure
+- ✅ Add repair.test.js tests for datasource systemKey fix and edge cases
+- ✅ Update Plan 77 to move datasource systemKey from Non-Repairable to Repairable
+
+## File Existence Validation
+
+- ✅ lib/validation/external-manifest-validator.js – `validateDatasourceSystemKeyAlignment` added, called from `validateControllerManifest`
+- ✅ lib/commands/repair.js – `alignDatasourceSystemKeys` added, integrated into repair flow
+- ✅ tests/local/lib/validation/external-manifest-validator.test.js – Tests for systemKey mismatch (single, multiple, aligned)
+- ✅ tests/lib/validation/validate.test.js – Integration test for `validateExternalSystemComplete` fails on systemKey mismatch
+- ✅ tests/lib/commands/repair.test.js – Repair tests: systemKey fix, dry-run, no change, multi-datasource, empty datasources
+
+## Test Coverage
+
+- ✅ Unit tests exist – external-manifest-validator.test.js (3 systemKey tests)
+- ✅ Integration tests exist – validate.test.js (1 systemKey mismatch test)
+- ✅ Repair tests exist – repair.test.js (6 systemKey-related tests)
+- Test count: 10+ new/updated tests covering validator, validate flow, and repair flow
+
+## Code Quality Validation
+
+- ✅ Format: PASSED (`npm run lint:fix` – exit code 0)
+- ✅ Lint: PASSED (0 errors, 0 warnings)
+- ✅ Tests: PASSED (221 suites, 4854 tests)
+
+## Cursor Rules Compliance
+
+- ✅ Code reuse: Uses existing `loadConfigFile`/`writeConfigFile` from config-format.js
+- ✅ Error handling: Proper parameter validation, try-catch where applicable
+- ✅ Logging: Uses logger for output; no sensitive data logged
+- ✅ Type safety: JSDoc for all new functions
+- ✅ Async patterns: async/await used in repair flow
+- ✅ File operations: Uses `path.join()`, proper encoding
+- ✅ Input validation: App name validation, path validation in repair
+- ✅ Module patterns: CommonJS, named exports
+- ✅ Security: No hardcoded secrets
+
+## Implementation Completeness
+
+- ✅ Validation rule: COMPLETE
+- ✅ Repair logic: COMPLETE
+- ✅ Tests: COMPLETE
+- ✅ Plan 77 update: COMPLETE (datasource systemKey moved to Repairable)
+
+## Issues and Recommendations
+
+- None. Implementation meets all plan requirements.
+
+## Final Validation Checklist
+
+- [x] All tasks completed
+- [x] All files exist and contain expected changes
+- [x] Tests exist and pass
+- [x] Code quality validation passes (format → lint → test)
+- [x] Cursor rules compliance verified
+- [x] Implementation complete
