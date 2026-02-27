@@ -237,6 +237,32 @@ describe('Wizard API', () => {
     });
   });
 
+  describe('getPlatformConfig', () => {
+    it('should get platform config for known platform', async() => {
+      const platformKey = 'hubspot';
+      const config = {
+        mode: 'create-system',
+        intent: 'general integration',
+        fieldOnboardingLevel: 'full',
+        credentialIdOrKey: 'cred-123'
+      };
+
+      await wizardApi.getPlatformConfig(dataplaneUrl, authConfig, platformKey, config);
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/platforms/hubspot/config', {
+        body: config
+      });
+    });
+
+    it('should URL-encode platform key in path', async() => {
+      await wizardApi.getPlatformConfig(dataplaneUrl, authConfig, 'my-platform', { mode: 'create-system' });
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/platforms/my-platform/config', {
+        body: { mode: 'create-system' }
+      });
+    });
+  });
+
   describe('generateConfig', () => {
     it('should generate configuration with all options', async() => {
       const config = {
@@ -355,13 +381,38 @@ describe('Wizard API', () => {
   });
 
   describe('getPreview', () => {
-    it('should get configuration preview', async() => {
+    it('should get configuration preview with full summary shape', async() => {
       const mockPreview = {
         success: true,
         data: {
-          systemConfig: { key: 'test-system' },
-          datasourceConfig: { key: 'test-ds' },
-          systemSummary: { key: 'test-system', endpointCount: 10 }
+          systemSummary: {
+            key: 'hubspot',
+            displayName: 'HubSpot CRM',
+            type: 'openapi',
+            baseUrl: 'https://api.hubapi.com',
+            authenticationType: 'oauth2',
+            endpointCount: 12
+          },
+          datasourceSummary: {
+            key: 'hubspot-contacts',
+            entity: 'Contact',
+            resourceType: 'record-based',
+            cipStepCount: 3,
+            fieldMappingCount: 15,
+            exposedProfileCount: 2
+          },
+          cipPipelineSummary: {
+            stepCount: 3,
+            steps: ['fetch', 'transform', 'load'],
+            estimatedExecutionTime: '~45s'
+          },
+          fieldMappingsSummary: {
+            mappingCount: 15,
+            mappedFields: ['id', 'email', 'firstname', 'lastname'],
+            unmappedFields: ['custom_field_x']
+          },
+          estimatedRecords: '~10,000',
+          estimatedSyncTime: '~2 min'
         }
       };
       mockClient.get.mockResolvedValue(mockPreview);
@@ -369,7 +420,10 @@ describe('Wizard API', () => {
       const result = await wizardApi.getPreview(dataplaneUrl, 'session-123', authConfig);
 
       expect(mockClient.get).toHaveBeenCalledWith('/api/v1/wizard/preview/session-123');
-      expect(result.data.systemSummary.endpointCount).toBe(10);
+      expect(result.data.systemSummary.displayName).toBe('HubSpot CRM');
+      expect(result.data.datasourceSummary.entity).toBe('Contact');
+      expect(result.data.cipPipelineSummary.stepCount).toBe(3);
+      expect(result.data.fieldMappingsSummary.mappedFields).toContain('email');
     });
   });
 

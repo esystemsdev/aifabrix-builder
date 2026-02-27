@@ -64,17 +64,20 @@ jest.mock('../../../lib/utils/logger', () => ({
 }));
 
 // Mock paths module
-jest.mock('../../../lib/utils/paths', () => ({
-  detectAppType: jest.fn(),
-  getProjectRoot: jest.fn(() => process.cwd())
-}));
+jest.mock('../../../lib/utils/paths', () => {
+  const pathMod = require('path');
+  return {
+    getIntegrationPath: jest.fn((appName) => pathMod.join(process.cwd(), 'integration', appName)),
+    getProjectRoot: jest.fn(() => process.cwd())
+  };
+});
 
 const { getDeploymentAuth } = require('../../../lib/utils/token-manager');
 const { getExternalSystemConfig } = require('../../../lib/api/external-systems.api');
 const { getConfig } = require('../../../lib/core/config');
 const logger = require('../../../lib/utils/logger');
 const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
-const { detectAppType } = require('../../../lib/utils/paths');
+const { getIntegrationPath } = require('../../../lib/utils/paths');
 
 describe('External System Download Module', () => {
   const systemKey = 'hubspot';
@@ -156,11 +159,7 @@ describe('External System Download Module', () => {
         controllerUrl: 'http://localhost:3000'
       }
     });
-    detectAppType.mockResolvedValue({
-      isExternal: true,
-      appPath: appPath,
-      appType: 'external'
-    });
+    getIntegrationPath.mockImplementation((name) => path.join(process.cwd(), 'integration', name));
     fs.existsSync.mockImplementation((filePath) => {
       const normalizedPath = String(filePath || '').replace(/\\/g, '/');
       if (normalizedPath.includes('templates/external-system/README.md.hbs')) {
@@ -327,13 +326,6 @@ describe('External System Download Module', () => {
   describe('downloadExternalSystem', () => {
     it('should download external system successfully', async() => {
       getExternalSystemConfig.mockResolvedValue(mockDownloadResponse);
-      // Mock the final path detection
-      detectAppType.mockResolvedValue({
-        isExternal: true,
-        appPath: appPath,
-        appType: 'external'
-      });
-
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await downloadExternalSystem(systemKey, { environment: 'dev' });
 
@@ -419,11 +411,6 @@ describe('External System Download Module', () => {
 
     it('should use discoverDataplaneUrl instead of getDataplaneUrl', async() => {
       getExternalSystemConfig.mockResolvedValue(mockDownloadResponse);
-      detectAppType.mockResolvedValue({
-        isExternal: true,
-        appPath: appPath,
-        appType: 'external'
-      });
 
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await downloadExternalSystem(systemKey, { environment: 'dev' });
@@ -456,11 +443,6 @@ describe('External System Download Module', () => {
         }
       };
       getExternalSystemConfig.mockResolvedValue(responseWithInline);
-      detectAppType.mockResolvedValue({
-        isExternal: true,
-        appPath: appPath,
-        appType: 'external'
-      });
 
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await downloadExternalSystem(systemKey, { environment: 'dev' });
@@ -492,11 +474,6 @@ describe('External System Download Module', () => {
         }
       };
       getExternalSystemConfig.mockResolvedValue(responseWithoutApplicationField);
-      detectAppType.mockResolvedValue({
-        isExternal: true,
-        appPath: appPath,
-        appType: 'external'
-      });
 
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await downloadExternalSystem(systemKey, { environment: 'dev' });

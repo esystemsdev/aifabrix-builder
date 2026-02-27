@@ -203,7 +203,7 @@ describe('Wizard Prompts', () => {
       const systemConfig = { key: 'test-system' };
       const datasourceConfigs = [{ key: 'ds1' }];
       inquirer.prompt.mockResolvedValue({ action: 'accept' });
-      const result = await wizardPrompts.promptForConfigReview(systemConfig, datasourceConfigs);
+      const result = await wizardPrompts.promptForConfigReview({ preview: null, systemConfig, datasourceConfigs });
       expect(result.action).toBe('accept');
     });
 
@@ -211,7 +211,7 @@ describe('Wizard Prompts', () => {
       const systemConfig = { key: 'test-system' };
       const datasourceConfigs = [{ key: 'ds1' }];
       inquirer.prompt.mockResolvedValue({ action: 'cancel' });
-      const result = await wizardPrompts.promptForConfigReview(systemConfig, datasourceConfigs);
+      const result = await wizardPrompts.promptForConfigReview({ preview: null, systemConfig, datasourceConfigs });
       expect(result.action).toBe('cancel');
     });
   });

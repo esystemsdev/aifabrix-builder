@@ -31,11 +31,16 @@ aifabrix dev init --developer-id 01 --server my-remote-host --pin 123456
 - `--developer-id <id>` - Developer ID (same as `dev add`; e.g. 01)
 - `--server <url>` - Builder Server base URL (e.g. https://dev.aifabrix.dev)
 - `--pin <pin>` - One-time PIN for onboarding (from your admin)
+- `-y, --yes` - Auto-install development CA without prompt when the server certificate is untrusted
+- `--no-install-ca` - Do not offer CA install; fail with manual instructions when the server certificate is untrusted
 
 **Process:**
-1. Issue or use existing client certificate (mTLS for dev APIs)
-2. GET `/api/dev/settings` (cert-authenticated) to receive sync and Docker parameters
-3. POST SSH keys so Mutagen can sync without password prompt
+1. Ensure server is reachable and trusted (see CA install below if certificate is untrusted)
+2. Issue or use existing client certificate (mTLS for dev APIs)
+3. GET `/api/dev/settings` (cert-authenticated) to receive sync and Docker parameters
+4. POST SSH keys so Mutagen can sync without password prompt
+
+**Untrusted certificate (dev Builder Server):** When the server uses a self-signed certificate (e.g. local dev servers like `https://builder02.local`), the initial health check may fail with an SSL verification error. The CLI will prompt: *"Server certificate not trusted. Download and install the development CA? (y/n)"*. On *y*, it fetches the Root CA from `{server}/install-ca`, installs it into your OS trust store (Windows user store, macOS login keychain, or Linux ca-certificates), then retries init. Use `--yes` to auto-install without prompting, or `--no-install-ca` to fail immediately with manual instructions. Manual install: download from `{server}/install-ca` and add the certificate to your system trust store. For Linux, see `{server}/install-ca-help` for steps.
 
 **See Also:** [Secrets and config](../configuration/secrets-and-config.md) (remote-server, docker-endpoint), [Developer Isolation Guide](../developer-isolation.md).
 

@@ -21,6 +21,12 @@ jest.mock('../../../lib/utils/dev-cert-helper', () => ({
 jest.mock('../../../lib/utils/remote-dev-auth', () => ({ getRemoteDevAuth: jest.fn() }));
 jest.mock('../../../lib/utils/ssh-key-helper', () => ({ getOrCreatePublicKeyContent: jest.fn(() => 'ssh-ed25519 AAAA key') }));
 jest.mock('../../../lib/api/dev.api');
+jest.mock('../../../lib/utils/dev-ca-install', () => ({
+  isSslUntrustedError: jest.fn(),
+  fetchInstallCa: jest.fn(),
+  installCaPlatform: jest.fn(),
+  promptInstallCa: jest.fn()
+}));
 
 const fs = require('fs').promises;
 jest.mock('fs', () => ({ promises: { mkdir: jest.fn(), writeFile: jest.fn() } }));
@@ -28,6 +34,7 @@ jest.mock('fs', () => ({ promises: { mkdir: jest.fn(), writeFile: jest.fn() } })
 const logger = require('../../../lib/utils/logger');
 const config = require('../../../lib/core/config');
 const devApi = require('../../../lib/api/dev.api');
+const devCaInstall = require('../../../lib/utils/dev-ca-install');
 const { generateCSR, readClientCertPem, readClientKeyPem, getCertValidNotAfter } = require('../../../lib/utils/dev-cert-helper');
 const { getRemoteDevAuth } = require('../../../lib/utils/remote-dev-auth');
 const { runDevInit, runDevRefresh } = require('../../../lib/commands/dev-init');
@@ -35,6 +42,7 @@ const { runDevInit, runDevRefresh } = require('../../../lib/commands/dev-init');
 describe('dev-init command', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    devCaInstall.isSslUntrustedError.mockReturnValue(false);
     config.setDeveloperId.mockResolvedValue(undefined);
     config.setRemoteServer.mockResolvedValue(undefined);
     config.getDeveloperId.mockResolvedValue('01');
@@ -66,8 +74,67 @@ describe('dev-init command', () => {
 
   it('throws when health check fails', async() => {
     devApi.getHealth.mockRejectedValue(new Error('ECONNREFUSED'));
+    devCaInstall.isSslUntrustedError.mockReturnValue(false);
     await expect(runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456' }))
       .rejects.toThrow('Cannot reach Builder Server');
+  });
+
+  it('when SSL error and --no-install-ca, throws with manual instructions', async() => {
+    const sslErr = new Error('UNABLE_TO_VERIFY_LEAF_SIGNATURE');
+    devApi.getHealth.mockRejectedValue(sslErr);
+    devCaInstall.isSslUntrustedError.mockReturnValue(true);
+    await expect(runDevInit({
+      developerId: '01',
+      server: 'https://dev.example.com',
+      pin: '123456',
+      'no-install-ca': true
+    })).rejects.toThrow('Server certificate not trusted. Install CA manually: https://dev.example.com/install-ca');
+    expect(devCaInstall.promptInstallCa).not.toHaveBeenCalled();
+    expect(devCaInstall.fetchInstallCa).not.toHaveBeenCalled();
+  });
+
+  it('when SSL error and user declines, throws with manual instructions', async() => {
+    const sslErr = new Error('UNABLE_TO_VERIFY_LEAF_SIGNATURE');
+    devApi.getHealth.mockRejectedValue(sslErr);
+    devCaInstall.isSslUntrustedError.mockReturnValue(true);
+    devCaInstall.promptInstallCa.mockResolvedValue(false);
+    await expect(runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456' }))
+      .rejects.toThrow('Server certificate not trusted. Install CA manually: https://dev.example.com/install-ca');
+    expect(devCaInstall.fetchInstallCa).not.toHaveBeenCalled();
+  });
+
+  it('when SSL error and user accepts, fetches CA, installs, retries, init succeeds', async() => {
+    const sslErr = new Error('UNABLE_TO_VERIFY_LEAF_SIGNATURE');
+    devApi.getHealth
+      .mockRejectedValueOnce(sslErr)
+      .mockResolvedValueOnce(undefined);
+    devCaInstall.isSslUntrustedError.mockReturnValue(true);
+    devCaInstall.promptInstallCa.mockResolvedValue(true);
+    devCaInstall.fetchInstallCa.mockResolvedValue(Buffer.from('-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----'));
+    devCaInstall.installCaPlatform.mockResolvedValue(undefined);
+
+    await runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456' });
+
+    expect(devCaInstall.fetchInstallCa).toHaveBeenCalledWith('https://dev.example.com');
+    expect(devCaInstall.installCaPlatform).toHaveBeenCalledWith(expect.any(Buffer), 'https://dev.example.com');
+    expect(devApi.getHealth).toHaveBeenCalledTimes(2);
+    expect(devApi.issueCert).toHaveBeenCalled();
+  });
+
+  it('when SSL error and --yes, auto-installs CA without prompt', async() => {
+    const sslErr = new Error('UNABLE_TO_VERIFY_LEAF_SIGNATURE');
+    devApi.getHealth
+      .mockRejectedValueOnce(sslErr)
+      .mockResolvedValueOnce(undefined);
+    devCaInstall.isSslUntrustedError.mockReturnValue(true);
+    devCaInstall.fetchInstallCa.mockResolvedValue(Buffer.from('-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----'));
+    devCaInstall.installCaPlatform.mockResolvedValue(undefined);
+
+    await runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456', yes: true });
+
+    expect(devCaInstall.promptInstallCa).not.toHaveBeenCalled();
+    expect(devCaInstall.fetchInstallCa).toHaveBeenCalledWith('https://dev.example.com');
+    expect(devApi.issueCert).toHaveBeenCalled();
   });
 
   it('throws when issue-cert returns 401', async() => {

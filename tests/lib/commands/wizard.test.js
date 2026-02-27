@@ -127,9 +127,24 @@ describe('Wizard Command Handler', () => {
         systemKey: 'test-system'
       }
     });
+    wizardApi.getPlatformConfig.mockResolvedValue({
+      success: true,
+      data: {
+        systemConfig: mockSystemConfig,
+        datasourceConfigs: mockDatasourceConfigs,
+        systemKey: 'test-system'
+      }
+    });
     wizardApi.validateWizardConfig.mockResolvedValue({
       success: true,
       data: { valid: true, errors: [], warnings: [] }
+    });
+    wizardApi.getPreview.mockResolvedValue({
+      success: true,
+      data: {
+        systemSummary: { key: 'test-system', displayName: 'Test System', type: 'openapi', endpointCount: 10 },
+        datasourceSummary: { key: 'ds1', entity: 'Entity1', resourceType: 'record-based', cipStepCount: 2 }
+      }
     });
     wizardApi.testMcpConnection.mockResolvedValue({
       success: true,
@@ -192,6 +207,18 @@ describe('Wizard Command Handler', () => {
       expect(wizardPrompts.promptForAppName).not.toHaveBeenCalled();
       expect(wizardPrompts.promptForMode).toHaveBeenCalled();
       expect(wizardApi.createWizardSession).toHaveBeenCalled();
+      expect(wizardApi.getPreview).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        'session-123',
+        mockAuthConfig
+      );
+      expect(wizardPrompts.promptForConfigReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          preview: expect.objectContaining({ systemSummary: expect.any(Object) }),
+          systemConfig: mockSystemConfig,
+          datasourceConfigs: mockDatasourceConfigs
+        })
+      );
       expect(wizardApi.generateConfig).toHaveBeenCalled();
       expect(wizardApi.validateWizardConfig).toHaveBeenCalled();
       expect(wizardGenerator.generateWizardFiles).toHaveBeenCalled();
@@ -412,6 +439,22 @@ describe('Wizard Command Handler', () => {
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Wizard cancelled'));
       expect(wizardGenerator.generateWizardFiles).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to YAML display when getPreview fails', async() => {
+      wizardApi.getPreview.mockRejectedValue(new Error('Preview API unavailable'));
+
+      await handleWizard(mockOptions);
+
+      expect(wizardApi.getPreview).toHaveBeenCalled();
+      expect(wizardPrompts.promptForConfigReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          preview: null,
+          systemConfig: mockSystemConfig,
+          datasourceConfigs: mockDatasourceConfigs
+        })
+      );
+      expect(logger.warn).toHaveBeenCalledWith('Preview unavailable, showing full configuration.');
     });
 
     it('should handle validation errors', async() => {

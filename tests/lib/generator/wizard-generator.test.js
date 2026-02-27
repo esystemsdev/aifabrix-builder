@@ -250,6 +250,37 @@ describe('Wizard Generator', () => {
       const writtenVars = variablesCall[1];
       expect(writtenVars.externalIntegration.dataSources).toEqual([]);
     });
+
+    it('should use platform datasource keys and replace system key prefix (known-platform)', async() => {
+      const platformSystemKey = 'test-e2e-hubspot';
+      const platformSystemConfig = { ...systemConfig, key: platformSystemKey };
+      const platformDatasourceConfigs = [
+        { key: `${platformSystemKey}-companies`, entityType: 'company', displayName: 'Companies' },
+        { key: `${platformSystemKey}-contacts`, entityType: 'contact', displayName: 'Contacts' },
+        { key: `${platformSystemKey}-deals`, entityType: 'deal', displayName: 'Deals' }
+      ];
+      await wizardGenerator.generateWizardFiles(
+        appName,
+        platformSystemConfig,
+        platformDatasourceConfigs,
+        platformSystemKey,
+        {}
+      );
+      const datasourceFileCalls = configFormat.writeConfigFile.mock.calls.filter(call =>
+        call[0] && String(call[0]).includes(`${appName}-datasource-`) && String(call[0]).endsWith('.yaml')
+      );
+      expect(datasourceFileCalls.length).toBe(3);
+      const writtenKeys = datasourceFileCalls.map(c => c[1].key);
+      expect(writtenKeys).toEqual([
+        `${appName}-companies`,
+        `${appName}-contacts`,
+        `${appName}-deals`
+      ]);
+      const fileNames = datasourceFileCalls.map(c => path.basename(c[0]));
+      expect(fileNames).toContain(`${appName}-datasource-companies.yaml`);
+      expect(fileNames).toContain(`${appName}-datasource-contacts.yaml`);
+      expect(fileNames).toContain(`${appName}-datasource-deals.yaml`);
+    });
   });
 
   describe('error handling', () => {

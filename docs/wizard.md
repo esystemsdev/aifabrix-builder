@@ -90,6 +90,14 @@ Step 6: Review & Validate       Accept and save, or Cancel
 Step 7: Save Files              Local file generation; wizard.yaml written to integration/<appKey>/
 ```
 
+### Quick Integration Flow
+
+1. Run `aifabrix wizard [appName]` or `aifabrix wizard --config wizard.yaml`
+2. Complete Steps 1–5 (mode, source, credential, type, preferences)
+3. At Step 6: Review the **preview summary** (fetched from dataplane); choose **Accept and save** or **Cancel**
+4. Wizard saves files to `integration/<appKey>/`
+5. Deploy: `aifabrix deploy <appKey>` or `node deploy.js` from the integration folder
+
 ### Step 1: Mode and Create Session
 
 The first question is: **What would you like to do?**
@@ -147,14 +155,39 @@ The wizard then uses AI to generate configurations based on:
 
 **Intent:** The `intent` parameter helps the AI generate a better integration manifest. You can describe your goals and any special integration requirements (e.g. "sales-focused CRM integration", "customer management with custom fields"). It accepts any descriptive text and is not limited to specific enum values. See [External Systems](external-systems.md) for configuration and manifest details.
 
-### Step 6: Validate Configuration
+### Step 6: Review & Validate
 
-Validates all generated configurations against:
-- External system schema
-- External datasource schema
-- Application schema
+The wizard fetches a **configuration preview** from the dataplane (`GET /api/v1/wizard/preview/{sessionId}`) and displays a compact summary of what will be created—system, datasource, CIP pipeline, field mappings, and estimates—instead of the full manifest. If the preview API is unavailable, the wizard falls back to showing the full YAML configuration.
 
-Returns validation errors and warnings.
+**Preview summary example:**
+
+```
+📋 Configuration Preview (what will be created)
+────────────────────────────────────────────────────────────────
+
+System
+  Key:            hubspot
+  Display name:   HubSpot CRM
+  Type:           openapi
+  Base URL:       https://api.hubapi.com
+  Auth:           oauth2
+  Endpoints:      12
+
+Datasource
+  Key:            hubspot-contacts
+  Entity:         Contact
+  Resource type:  record-based
+  CIP steps:      3
+  Field mappings: 15
+  Exposed:        2 profiles
+
+────────────────────────────────────────────────────────────────
+? What would you like to do?
+  ❯ Accept and save
+    Cancel
+```
+
+After reviewing, choose **Accept and save** or **Cancel**. On accept, the wizard validates all generated configurations against external system, datasource, and application schemas before saving.
 
 **See Also:** [Validation Commands](commands/validation.md) - Complete validation documentation including schema details and validation principles.
 
@@ -549,12 +582,13 @@ The wizard uses the following dataplane wizard API endpoints:
 | `GET /api/v1/wizard/credentials` | List credentials for Step 3 (optional query: `activeOnly`) |
 | `POST /api/v1/wizard/credential-selection` | Credential selection |
 | `POST /api/v1/wizard/detect-type` | Detect API type |
-| `POST /api/v1/wizard/generate-config` | Generate configuration (body: openapiSpec, detectedType, intent, mode, fieldOnboardingLevel, userPreferences, etc.) |
+| `POST /api/v1/wizard/generate-config` | Generate configuration from OpenAPI (body: openapiSpec, detectedType, intent, mode, etc.). Do NOT use for known-platform. |
 | `POST /api/v1/wizard/generate-config-stream` | Generate config (streaming; same body including fieldOnboardingLevel) |
+| `POST /api/v1/wizard/platforms/{platformKey}/config` | Get configuration for a known platform (no OpenAPI). Use when `sourceType=known-platform`. |
 | `POST /api/v1/wizard/validate` | Validate configuration |
 | `GET /api/v1/wizard/sessions/{id}/validate` | Validate all steps |
 | `POST /api/v1/wizard/sessions/{id}/validate-step` | Validate specific step |
-| `GET /api/v1/wizard/preview/{id}` | Get configuration preview |
+| `GET /api/v1/wizard/preview/{id}` | Get configuration preview; used at Step 6 to show "what will be created" before save |
 | `POST /api/v1/wizard/test-mcp-connection` | Test MCP connection |
 | `GET /api/v1/wizard/deployment-docs/{key}` | Get deployment docs (DB only) |
 | `POST /api/v1/wizard/deployment-docs/{key}` | Generate deployment docs with optional `variablesYaml` and `deployJson` body for better README quality |

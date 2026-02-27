@@ -820,6 +820,36 @@ describe('Wizard Core Functions', () => {
       );
       expect(result.datasourceConfigs).toEqual([mockDatasourceConfigs[0]]);
     });
+
+    it('should call getPlatformConfig (not generate-config) when sourceType is known-platform', async() => {
+      wizardApi.getPlatformConfig.mockResolvedValue({
+        success: true,
+        data: {
+          systemConfig: mockSystemConfig,
+          datasourceConfigs: mockDatasourceConfigs,
+          systemKey: 'test-system'
+        }
+      });
+      const result = await wizardCore.handleConfigurationGeneration(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        {
+          mode: 'create-system',
+          sourceType: 'known-platform',
+          platformKey: 'hubspot',
+          credentialIdOrKey: 'cred-123'
+        }
+      );
+      expect(wizardApi.getPlatformConfig).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        'hubspot',
+        { credentialIdOrKey: 'cred-123' }
+      );
+      expect(wizardApi.generateConfig).not.toHaveBeenCalled();
+      expect(result.systemConfig).toEqual(mockSystemConfig);
+      expect(result.datasourceConfigs).toEqual(mockDatasourceConfigs);
+    });
   });
 
   describe('validateWizardConfiguration', () => {
