@@ -173,7 +173,7 @@ This starts Traefik (ports 80/443) and saves `traefik: true` to `~/.aifabrix/con
 
 **How the builder uses Traefik:** When an app has `frontDoorRouting.enabled: true` in `application.yaml`, the builder generates Traefik labels for the app's docker-compose service (router rule from host + path, TLS, optional cert store). The builder does not configure Traefik itself beyond starting it; labels are applied when you run the app with Traefik on the same Docker network.
 
-**Requirements:** DNS or `/etc/hosts` entry for `${DEV_USERNAME}.aifabrix.dev` → localhost if using host-based routing. See [application.yaml frontDoorRouting](configuration/application-yaml.md) for pattern and host configuration.
+**Requirements:** DNS or `/etc/hosts` entry for `${DEV_USERNAME}.builder01.local` → localhost if using host-based routing. See [application.yaml frontDoorRouting](configuration/application-yaml.md) for pattern and host configuration.
 
 ---
 

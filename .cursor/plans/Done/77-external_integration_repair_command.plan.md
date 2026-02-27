@@ -352,3 +352,78 @@ Implementation is complete. All plan requirements are met. Code quality validati
 - Cursor rules compliance verified
 - Implementation complete
 
+---
+
+## Knowledge Base Validation Report
+
+**Date**: 2026-02-27  
+**Plan**: .cursor/plans/Done/77-external_integration_repair_command.plan.md  
+**Documents**: docs/commands/utilities.md, docs/configuration/external-integration.md, docs/commands/validation.md  
+**Status**: ✅ COMPLETE
+
+### Executive Summary
+
+All three plan-referenced documentation files pass validation. Structure, references, schema-based examples, and MarkdownLint checks are compliant. No manual fixes required.
+
+### Documents Validated
+
+| Document | Status | Notes |
+| -------- | ------ | ----- |
+| docs/commands/utilities.md | ✅ Passed | Repair section present; structure and nav valid |
+| docs/configuration/external-integration.md | ✅ Passed | Repair note present; example valid per schema |
+| docs/commands/validation.md | ✅ Passed | Repair troubleshooting present; cross-refs valid |
+
+**Total**: 3 · **Passed**: 3 · **Failed**: 0 · **Auto-fixed**: 0
+
+### Structure Validation
+
+- **utilities.md**: Single `#` title, correct hierarchy, nav links (Documentation index, Commands index), dedicated `aifabrix repair <app>` section with purpose, repairable issues, usage, options, issues.
+- **external-integration.md**: Single `#` title, correct hierarchy, nav links (Documentation index, Configuration), repair note at line 16: "If application.yaml gets out of sync with files on disk, run `aifabrix repair <app>` to fix."
+- **validation.md**: Single `#` title, correct hierarchy, nav links (Documentation index, Commands index), repair troubleshooting in Issues (line 343): "External datasource file not found" or wrong extension → Run `aifabrix repair <app>`.
+
+### Reference Validation
+
+All cross-references within docs/ resolve to existing files:
+
+- utilities.md → application-yaml.md, external-integration.md ✓
+- external-integration.md → external-systems.md, application-yaml.md ✓
+- validation.md → wizard.md, external-integration.md, external-systems.md, external-integration-testing.md, configuration/README.md, README.md ✓
+
+No broken internal links.
+
+### Schema-based Validation
+
+- **external-integration.md** (application-schema.json): Example at lines 19–29:
+  ```yaml
+  externalIntegration:
+    schemaBasePath: ./schemas
+    systems: [hubspot-system.yaml]
+    dataSources: [hubspot-datasource-deal.yaml, hubspot-datasource-contact.yaml]
+    autopublish: true
+    version: 1.0.0
+  ```
+  ✅ Valid: schemaBasePath, systems, dataSources, autopublish, version conform to application-schema.json externalIntegration block.
+
+- **utilities.md**, **validation.md**: No externalIntegration/system/datasource YAML/JSON examples requiring schema validation; CLI usage and troubleshooting only.
+
+### Markdown Validation
+
+- **MarkdownLint**: Passed (0 errors) on all three files.
+- **Auto-fixes**: None applied; no fixable issues found.
+
+### Project Rules Compliance
+
+- Content focused on **using the builder** (CLI commands, workflows, configuration) for external users.
+- CLI examples use `aifabrix` correctly.
+- Config examples align with lib/schema (application-schema.json for externalIntegration).
+- Mermaid diagram in validation.md uses canonical flow styling.
+
+### Final Checklist
+
+- [x] All documents validated
+- [x] MarkdownLint passes (0 errors)
+- [x] Cross-references within docs/ valid
+- [x] No broken links
+- [x] Examples and structure correct per lib/schema (application-schema.json)
+- [x] Content focused on using the builder (external users)
+

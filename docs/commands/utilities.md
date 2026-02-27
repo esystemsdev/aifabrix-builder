@@ -214,7 +214,7 @@ aifabrix convert hubspot --format json --force
 
 Repair external integration config when `application.yaml` drifts from files on disk.
 
-**What:** Aligns `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files, fixes `app.key` to match `system.key`, creates a minimal `externalIntegration` block when missing, extracts `rbac.yaml` from system roles/permissions when absent, and regenerates `<systemKey>-deploy.json`.
+**What:** Aligns `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files, fixes `app.key` to match `system.key`, aligns datasource `systemKey` values to match the system key, creates a minimal `externalIntegration` block when missing, extracts `rbac.yaml` from system roles/permissions when absent, and regenerates `<systemKey>-deploy.json`.
 
 **When:** After converting files (JSON ↔ YAML), after adding/removing datasource files, when validation reports "External datasource file not found", or when `application.yaml` gets out of sync with files on disk.
 
@@ -223,6 +223,7 @@ Repair external integration config when `application.yaml` drifts from files on 
 - **Deleted datasource** — Config lists a file that no longer exists
 - **Added datasource** — File exists on disk but not in config
 - **Missing externalIntegration** — No block; repair creates it from discovered files
+- **Datasource systemKey mismatch** — Datasource file has `systemKey: X` but system file has `key: Y`; repair updates `systemKey` in each datasource file to match system key
 - **system.key mismatch** — System file has `key: X` but `app.key` is `Y`; repair updates `app.key`
 - **rbac.yaml missing** — System has roles/permissions but no `rbac.yaml`; repair creates it
 - **Stale deploy manifest** — Regenerates `<systemKey>-deploy.json` after config changes

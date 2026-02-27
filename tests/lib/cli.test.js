@@ -1794,6 +1794,7 @@ describe('CLI Commands', () => {
                 description: jest.fn().mockReturnThis(),
                 option: jest.fn().mockReturnThis(),
                 requiredOption: jest.fn().mockReturnThis(),
+                addHelpText: jest.fn().mockReturnThis(),
                 action: function(action) {
                   commandActions[fullCmdName] = action;
                   return this;
@@ -1836,6 +1837,7 @@ describe('CLI Commands', () => {
                 description: jest.fn().mockReturnThis(),
                 option: jest.fn().mockReturnThis(),
                 requiredOption: jest.fn().mockReturnThis(),
+                addHelpText: jest.fn().mockReturnThis(),
                 action: function(action) {
                   commandActions[fullCmdName] = action;
                   return this;

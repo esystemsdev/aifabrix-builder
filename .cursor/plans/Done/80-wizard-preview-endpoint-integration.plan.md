@@ -293,3 +293,166 @@ Integrate `GET /api/v1/wizard/preview/{sessionId}` into the wizard review flow t
 - When implementing, add JSDoc for `promptForConfigReview` new signature `{ preview, systemConfig, datasourceConfigs }`
 - Verify `/validate-knowledgebase` path: plan references `wizard-preview-endpoint-integration.plan.md`; actual file is `80-wizard-preview-endpoint-integration.plan.md`
 
+---
+
+## Implementation Validation Report
+
+**Date**: 2025-02-27  
+**Plan**: .cursor/plans/80-wizard-preview-endpoint-integration.plan.md  
+**Status**: ✅ COMPLETE (plan scope)
+
+### Executive Summary
+
+The Wizard Preview Endpoint Integration plan has been fully implemented. All tasks are complete, all plan files exist and contain the expected changes, tests cover preview and fallback paths, and plan-scoped files pass lint. The repo has pre-existing lint and test failures in other modules (external-system/download.js, test-e2e.js, etc.) that are out of scope for this plan.
+
+### Task Completion
+
+- Total tasks: 4
+- Completed: 4
+- Incomplete: 0
+- Completion: 100%
+
+### Incomplete Tasks
+
+None.
+
+### File Existence Validation
+
+
+| File                                                 | Status                                                                                                         |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| lib/commands/wizard.js                               | ✅ Exists; handleConfigurationReview has sessionId, calls getPreview, passes preview/fallback                   |
+| lib/generator/wizard-prompts-secondary.js            | ✅ Exists; promptForConfigReview({ preview, systemConfig, datasourceConfigs }), format summaries, YAML fallback |
+| docs/wizard.md                                       | ✅ Exists; Step 6 updated, preview example, Quick Integration Flow                                              |
+| tests/lib/commands/wizard.test.js                    | ✅ Exists; getPreview mock, preview path, fallback path                                                         |
+| tests/lib/generator/wizard-prompts-secondary.test.js | ✅ Exists; preview display, derived summary, YAML fallback                                                      |
+| tests/lib/api/wizard.api.test.js                     | ✅ Exists; getPreview with full summary shape                                                                   |
+| lib/api/wizard.api.js                                | ✅ Exists; getPreview with @requiresPermission                                                                  |
+
+
+### Test Coverage
+
+- ✅ Unit tests exist for wizard.js (getPreview mock, preview display, fallback when getPreview fails)
+- ✅ Unit tests exist for wizard-prompts-secondary.js (preview display, derived summary, YAML fallback)
+- ✅ Unit tests exist for wizard.api.js getPreview (full summary shape)
+
+### Code Quality Validation
+
+- ✅ Format (lint:fix): Plan-scoped files have no format issues
+- ⚠️ Lint (npm run lint): FAILS due to pre-existing errors in lib/external-system/download.js, lib/datasource/test-*.js, lib/external-system/test.js, lib/utils/external-system-display.js (out of plan scope)
+- ⚠️ Tests (npm test): 2 suites fail (external-system-download, cli-error-paths) due to download.js `generateVariablesYaml is not defined`; plan-scoped wizard tests pass
+
+### Cursor Rules Compliance (Plan-Scoped Files)
+
+- ✅ Code reuse: Uses getPreview from lib/api
+- ✅ Error handling: Try-catch for getPreview; fallback to YAML
+- ✅ Logging: logger.warn for fallback; no tokens/secrets logged
+- ✅ Type safety: JSDoc for handleConfigurationReview, promptForConfigReview
+- ✅ Async patterns: async/await throughout
+- ✅ File operations: N/A (no file I/O in plan scope)
+- ✅ Input validation: Handles null/undefined preview
+- ✅ Module patterns: CommonJS, named exports
+- ✅ Security: No hardcoded secrets; getPreview has @requiresPermission
+
+### Implementation Completeness
+
+- ✅ handleConfigurationReview: sessionId param, getPreview call, fallback
+- ✅ promptForConfigReview: { preview, systemConfig, datasourceConfigs }, format summaries, YAML fallback
+- ✅ docs/wizard.md: Step 6, preview example, Quick Integration Flow, Dataplane Wizard API table
+- ✅ Tests: preview path, fallback path, full summary shape
+
+### Issues and Recommendations
+
+1. **Pre-existing repo issues**: `lib/external-system/download.js` has undefined references (generateVariablesYaml, writeConfigFile, etc.) causing lint errors and test failures. These are out of scope for plan 80.
+2. **/validate-knowledgebase**: Not run during this validation; plan recommends running it and attaching the report.
+3. **npm run build**: Will fail until download.js and related modules are fixed; plan 80 implementation itself is complete.
+
+### Final Validation Checklist
+
+- All tasks completed
+- All plan files exist and are implemented
+- Plan-scoped tests exist and pass (wizard, wizard-prompts-secondary, wizard.api)
+- Plan-scoped files pass lint (no errors in wizard.js, wizard-prompts-secondary.js)
+- Cursor rules compliance verified for plan scope
+- Implementation complete for plan 80
+
+---
+
+## Documentation Validation Report
+
+**Date**: 2025-02-27  
+**Plan**: .cursor/plans/Done/80-wizard-preview-endpoint-integration.plan.md  
+**Document(s)**: docs/wizard.md  
+**Status**: ✅ COMPLETE
+
+### Executive Summary
+
+The documentation validation for plan 80 is complete. `docs/wizard.md` (the only doc mentioned in the plan) has been validated. All checks passed: structure, schema compliance, cross-references, and MarkdownLint (0 errors after auto-fixes).
+
+### Documents Validated
+
+- **Total**: 1
+- **Passed**: 1
+- **Failed**: 0
+- **Auto-fixed**: 2 (MarkdownLint)
+
+### Document List
+
+- ✅ docs/wizard.md – Validated and fixed
+
+### Structure Validation
+
+- ✅ Title format: Single `#` at top ("External System Wizard")
+- ✅ Section hierarchy: Proper `##` and `###` structure
+- ✅ Required sections: Overview, Quick Start, Wizard Workflow, Step 6 (Review & Validate), Step 7 (Save Files), Quick Integration Flow, Headless Mode, Dataplane Wizard API
+- ✅ Navigation: "← [Documentation index](README.md)" present
+- ✅ Content focus: Explains how to use the aifabrix builder (CLI, wizard, workflows)
+
+### Reference Validation
+
+- ✅ Cross-references: All internal links valid (README.md, deploying.md, external-systems.md, commands/validation.md, commands/external-integration.md, configuration/README.md)
+- ✅ No broken links
+- ✅ Relative paths correct for docs/ context
+
+### Schema-based Validation
+
+- ✅ **wizard-config.schema.json**: All wizard.yaml code-block examples valid
+  - Full example (create-system, openapi-file, credential, preferences, deployment)
+  - MCP server with env var (mcp-server, token)
+  - OpenAPI file example
+  - Known platform (HubSpot) example
+  - Add-datasource example (openapi-url, systemIdOrKey)
+- ✅ Property names, enums, and required fields match schema
+
+### Markdown Validation
+
+- ✅ MarkdownLint: 0 errors (after fixes)
+- **Fixes applied**:
+  1. Table column style (line 23): Added spaces in separator row for MD060
+  2. Fenced code block (line 164): Added `text` language for preview example (MD040)
+
+### Project Rules Compliance
+
+- ✅ Focus on builder usage (external users)
+- ✅ CLI commands match actual tool (`aifabrix`, `aifabrix wizard`, etc.)
+- ✅ Config examples align with wizard-config.schema.json
+- ✅ Step 6 documents preview summary and `GET /api/v1/wizard/preview/{sessionId}`
+
+### Automatic Fixes Applied
+
+1. docs/wizard.md: Table pipe spacing (line 23)
+2. docs/wizard.md: Fenced code language (`text` for preview block, line 164)
+
+### Manual Fixes Required
+
+None.
+
+### Final Documentation Checklist
+
+- docs/wizard.md validated
+- MarkdownLint passes (0 errors)
+- Cross-references within docs/ valid
+- No broken links
+- Examples valid against wizard-config.schema.json
+- Content focused on using the builder (external users)
+

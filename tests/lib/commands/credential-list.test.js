@@ -10,6 +10,8 @@ jest.mock('chalk', () => {
   const mockChalk = (text) => text;
   mockChalk.red = (t) => t;
   mockChalk.gray = (t) => t;
+  mockChalk.green = (t) => t;
+  mockChalk.yellow = (t) => t;
   mockChalk.cyan = (t) => t;
   mockChalk.bold = (t) => t;
   return mockChalk;
@@ -163,6 +165,41 @@ describe('Credential list command', () => {
     expect(logger.log).toHaveBeenCalled();
     expect(logger.log.mock.calls.some(c => String(c[0]).includes('test-hubspot-cred'))).toBe(true);
     expect(logger.log.mock.calls.some(c => String(c[0]).includes('Test E2E HubSpot OAuth2'))).toBe(true);
+  });
+
+  it('should display status icon when credential has status', async() => {
+    listCredentials.mockResolvedValue({
+      data: {
+        credentials: [
+          { key: 'cred-ok', displayName: 'OK Cred', status: 'verified' },
+          { key: 'cred-fail', displayName: 'Fail Cred', status: 'failed' }
+        ]
+      }
+    });
+
+    await runCredentialList({});
+
+    expect(logger.log).toHaveBeenCalled();
+    const output = logger.log.mock.calls.map(c => String(c[0])).join('\n');
+    expect(output).toContain('cred-ok');
+    expect(output).toContain('cred-fail');
+    expect(output).toContain(' ✓');
+    expect(output).toContain(' ✗');
+  });
+
+  it('should display credentials without status icon when status is missing', async() => {
+    listCredentials.mockResolvedValue({
+      data: { credentials: [{ key: 'no-status', displayName: 'No Status Cred' }] }
+    });
+
+    await runCredentialList({});
+
+    expect(logger.log).toHaveBeenCalled();
+    const output = logger.log.mock.calls.map(c => String(c[0])).join('\n');
+    expect(output).toContain('no-status');
+    expect(output).toContain('No Status Cred');
+    expect(output).not.toContain(' ✓');
+    expect(output).not.toContain(' ✗');
   });
 
   it('should display credentials with alternative field names (id, credentialKey, name)', async() => {

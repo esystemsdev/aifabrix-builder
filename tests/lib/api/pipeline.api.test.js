@@ -231,6 +231,31 @@ describe('Pipeline API', () => {
     });
   });
 
+  describe('testSystemViaPipeline', () => {
+    const dataplaneUrl = 'https://dataplane.example.com';
+    const systemKey = 'test-system';
+    const testData = { includeDebug: true };
+
+    it('should test system via dataplane pipeline endpoint', async() => {
+      await pipelineApi.testSystemViaPipeline(dataplaneUrl, systemKey, authConfig, testData);
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        `/api/v1/pipeline/${systemKey}/test`,
+        { body: testData }
+      );
+    });
+
+    it('should pass timeout option when provided', async() => {
+      const options = { timeout: 5000 };
+      await pipelineApi.testSystemViaPipeline(dataplaneUrl, systemKey, authConfig, testData, options);
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        `/api/v1/pipeline/${systemKey}/test`,
+        { body: testData, timeout: 5000 }
+      );
+    });
+  });
+
   describe('testDatasourceViaPipeline', () => {
     const dataplaneUrl = 'https://dataplane.example.com';
     const systemKey = 'test-system';

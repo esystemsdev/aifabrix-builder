@@ -233,3 +233,78 @@ Plan 76 implementation requirements are **complete**. File names live only at ap
 - [x] Cursor rules followed for plan 76 scope
 - [x] Single-source approach: file names in application config; JSON = system + dataSources only
 
+---
+
+## Validation Report (Knowledge Base)
+
+**Date**: 2025-02-27  
+**Plan**: .cursor/plans/Done/76-single_source_datasource_list.plan.md  
+**Status**: ⚠️ INCOMPLETE (schema alignment issues; MarkdownLint not run)
+
+### Executive Summary
+
+Plan 76 does not explicitly list documentation files—it focuses on implementation (generators, manifest, upload). Related docs were identified by topic (application config, external integration, datasources) and validated. **Schema-based validation found invalid `entityType` values in `docs/external-systems.md`**. MarkdownLint was not run (markdownlint not installed in the project).
+
+### Documents Validated
+
+- **Total**: 4
+- **Passed structure/references**: 4
+- **Schema alignment**: 1 doc with invalid examples
+- **Auto-fixed**: 0 (no MarkdownLint run)
+
+### Document List
+
+| Document | Structure | References | Schema |
+|----------|-----------|------------|--------|
+| docs/configuration/application-yaml.md | ✅ | ✅ | ✅ (externalIntegration optional) |
+| docs/configuration/external-integration.md | ✅ | ✅ | ✅ |
+| docs/commands/external-integration.md | ✅ | ✅ | N/A (CLI only) |
+| docs/external-systems.md | ✅ | ✅ | ❌ (entityType examples invalid) |
+
+### Structure Validation
+
+- **docs/configuration/application-yaml.md**: Single `#` title, proper hierarchy, nav to Documentation index and Configuration. Content focused on builder usage.
+- **docs/configuration/external-integration.md**: Proper structure, nav links. Describes externalIntegration block correctly.
+- **docs/commands/external-integration.md**: Proper structure, nav links, comprehensive command coverage.
+- **docs/external-systems.md**: Proper structure, nav link to Documentation index, Mermaid diagrams present.
+
+### Reference Validation
+
+- Cross-references within `docs/` use valid relative paths.
+- Links to `../README.md`, `README.md`, `application-yaml.md`, `external-systems.md`, `validation.md`, `permissions.md`, `wizard.md`, `external-integration-testing.md`, `configuration/secrets-and-config.md` all resolve to existing files.
+- No broken internal links found.
+
+### Schema-based Validation
+
+| Document | Schema | Result |
+|----------|--------|--------|
+| docs/configuration/application-yaml.md | application-schema.json | ✅ No explicit externalIntegration example; mentions externalIntegration as optional. |
+| docs/configuration/external-integration.md | application-schema.json (externalIntegration) | ✅ Example valid: schemaBasePath, systems, dataSources, autopublish, version. |
+| docs/external-systems.md | external-datasource.schema.json | ❌ **entityType invalid**: Examples use `entityType: company` (e.g. line 222, 515). Schema enum allows only: `document-storage`, `documentStorage`, `vector-store`, `vectorStore`, `record-storage`, `recordStorage`, `message-service`, `messageService`, `none`. Use e.g. `recordStorage` for HubSpot companies. |
+| docs/external-systems.md | external-system.schema.json | ✅ System examples align (key, displayName, type, authentication, etc.). |
+
+### Markdown Validation
+
+- **MarkdownLint**: Not run (markdownlint not in package.json; `npx markdownlint` failed with "could not determine executable to run").
+- **Recommendation**: Add `markdownlint` and `markdownlint-cli` to devDependencies and run as part of docs validation.
+
+### Project Rules Compliance
+
+- Docs focus on **how to use the aifabrix builder** (CLI, configuration, workflows).
+- Config examples (application.yaml, externalIntegration) generally match `lib/schema/application-schema.json`.
+- `entityType` examples in external-systems.md do **not** match `lib/schema/external-datasource.schema.json`.
+
+### Manual Fixes Required
+
+1. **docs/external-systems.md**: Replace `entityType: company` (and similar invalid values) with a valid schema enum value (e.g. `recordStorage` for record-based entities like companies, contacts, deals). Update all HubSpot and other examples that use invalid entityType values.
+2. **Project**: Add markdownlint to devDependencies and run it on docs as part of validation.
+
+### Final Checklist
+
+- [x] Related documents validated (plan does not list docs; related docs identified by topic)
+- [ ] MarkdownLint passes (markdownlint not installed)
+- [x] Cross-references within docs/ valid
+- [x] No broken internal links
+- [ ] Examples and structure correct vs lib/schema (entityType examples invalid in external-systems.md)
+- [x] Content focused on using the builder (external users)
+- [ ] Auto-fixes applied; manual fixes documented

@@ -267,6 +267,78 @@ All tasks have been implemented. Validation rule `validateDatasourceSystemKeyAli
 
 - None. Implementation meets all plan requirements.
 
+---
+
+## Documentation Validation Report
+
+**Date**: 2026-02-27
+**Plan**: .cursor/plans/Done/78-datasource_systemkey_validation_repair.plan.md
+**Status**: ⚠️ INCOMPLETE (documentation gap)
+
+### Executive Summary
+
+The plan does not explicitly list docs paths. Validation was run on thematically related docs (validate, repair, datasource systemKey, external integration). One documentation gap was identified: `docs/commands/utilities.md` does not list **Datasource systemKey mismatch** as a repairable issue, though Plan 78 implements this repair and Plan 77 was updated accordingly.
+
+### Documents Validated
+
+| Document | Status | Notes |
+|----------|--------|-------|
+| docs/commands/validation.md | ✅ Pass | Structure, references, schema alignment OK |
+| docs/commands/utilities.md | ⚠️ Gap | Repair section missing "Datasource systemKey mismatch" |
+| docs/commands/external-integration.md | ✅ Pass | systemKey, datasource validate documented |
+| docs/configuration/external-integration.md | ✅ Pass | Mentions repair |
+
+### Structure Validation
+
+- **validation.md**: Single `#` title, proper hierarchy, nav links to index, focused on builder usage ✅
+- **utilities.md**: Proper structure, repair section present; repairable issues list incomplete ⚠️
+- **external-integration.md**, **configuration/external-integration.md**: Structure OK ✅
+
+### Reference Validation
+
+- Cross-references within docs use correct relative paths ✅
+- No broken internal links detected (README.md, wizard.md, external-integration.md, application-yaml.md, etc. exist) ✅
+
+### Schema-based Validation
+
+- **external-datasource.schema.json**: `systemKey` is required; docs correctly state it must reference/match the system ✅
+- **external-system.schema.json**: `key` is required; relationship docs align ✅
+- Config examples in docs match schema structure ✅
+
+### Markdown Validation
+
+- MarkdownLint: Not configured in project (`markdownlint-cli` not in package.json); skipped ⚠️
+
+### Project Rules Compliance
+
+- Content focused on using the builder (external users) ✅
+- CLI commands and options match the tool ✅
+
+### Manual Fix Required
+
+**docs/commands/utilities.md** – Add "Datasource systemKey mismatch" to the Repairable issues list under `aifabrix repair <app>`:
+
+```markdown
+**Repairable issues:**
+- **File list drift** — ...
+- **Datasource systemKey mismatch** — Datasource file has `systemKey: X` but system file has `key: Y`; repair updates `systemKey` in each datasource file to match system key
+- **system.key mismatch** — ...
+```
+
+### Recommendation
+
+Update `docs/commands/utilities.md` to document the datasource systemKey repair so integrators know that `aifabrix repair <app>` fixes this case (aligned with Plan 77 and the implementation).
+
+### Final Documentation Checklist
+
+- [x] Related documents validated
+- [ ] utilities.md updated with datasource systemKey repair
+- [x] Cross-references valid
+- [x] Examples and structure aligned with lib/schema
+- [x] Content focused on using the builder
+
+---
+
 ## Final Validation Checklist
 
 - [x] All tasks completed

@@ -62,6 +62,15 @@ jest.mock('../../../lib/utils/logger', () => ({
   warn: jest.fn(),
   error: jest.fn()
 }));
+jest.mock('../../../lib/generator', () => ({
+  splitDeployJson: jest.fn().mockResolvedValue({
+    envTemplate: 'env.template',
+    variables: 'application.yaml',
+    systemFile: 'hubspot-system.yaml',
+    datasourceFiles: ['hubspot-datasource-companies.yaml', 'hubspot-datasource-contacts.yaml'],
+    readme: 'README.md'
+  })
+}));
 
 // Mock paths module
 jest.mock('../../../lib/utils/paths', () => {
@@ -251,7 +260,7 @@ describe('External System Download Module', () => {
 
   describe('generateEnvTemplate', () => {
     it('should generate env template for OAuth2 authentication', () => {
-      const { generateEnvTemplate } = require('../../../lib/external-system/download');
+      const { generateEnvTemplate } = require('../../../lib/utils/external-system-env-helpers');
       const result = generateEnvTemplate(mockApplication);
       expect(result).toContain('CLIENT_ID');
       expect(result).toContain('CLIENT_SECRET');
@@ -259,7 +268,7 @@ describe('External System Download Module', () => {
     });
 
     it('should generate env template for API key authentication', () => {
-      const { generateEnvTemplate } = require('../../../lib/external-system/download');
+      const { generateEnvTemplate } = require('../../../lib/utils/external-system-env-helpers');
       const appWithApiKey = {
         key: 'test',
         authentication: {
@@ -275,7 +284,7 @@ describe('External System Download Module', () => {
     });
 
     it('should generate env template for basic auth', () => {
-      const { generateEnvTemplate } = require('../../../lib/external-system/download');
+      const { generateEnvTemplate } = require('../../../lib/utils/external-system-env-helpers');
       const appWithBasic = {
         key: 'test',
         authentication: {
@@ -292,7 +301,7 @@ describe('External System Download Module', () => {
     });
 
     it('should handle missing authentication', () => {
-      const { generateEnvTemplate } = require('../../../lib/external-system/download');
+      const { generateEnvTemplate } = require('../../../lib/utils/external-system-env-helpers');
       const appWithoutAuth = { key: 'test' };
       const result = generateEnvTemplate(appWithoutAuth);
       expect(result).toContain('# Environment variables');
@@ -301,7 +310,7 @@ describe('External System Download Module', () => {
 
   describe('generateVariablesYaml', () => {
     it('should generate application.yaml structure', () => {
-      const { generateVariablesYaml } = require('../../../lib/external-system/download');
+      const { generateVariablesYaml } = require('../../../lib/external-system/download-helpers');
       const result = generateVariablesYaml(systemKey, mockApplication, [mockDataSource1, mockDataSource2]);
       expect(result.app.key).toBe(systemKey);
       expect(result.externalIntegration).toBeDefined();
@@ -312,7 +321,7 @@ describe('External System Download Module', () => {
 
   describe('generateReadme', () => {
     it('should generate README.md content', () => {
-      const { generateReadme } = require('../../../lib/external-system/download');
+      const { generateReadme } = require('../../../lib/external-system/download-helpers');
       const result = generateReadme(systemKey, mockApplication, [mockDataSource1, mockDataSource2]);
       expect(result).toContain('HubSpot CRM');
       expect(result).toContain(systemKey);
@@ -326,6 +335,7 @@ describe('External System Download Module', () => {
   describe('downloadExternalSystem', () => {
     it('should download external system successfully', async() => {
       getExternalSystemConfig.mockResolvedValue(mockDownloadResponse);
+      const generator = require('../../../lib/generator');
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await downloadExternalSystem(systemKey, { environment: 'dev' });
 
@@ -336,7 +346,10 @@ describe('External System Download Module', () => {
       );
       expect(fsPromises.mkdir).toHaveBeenCalled();
       expect(fsPromises.writeFile).toHaveBeenCalled();
-      expect(fsPromises.copyFile).toHaveBeenCalled();
+      expect(generator.splitDeployJson).toHaveBeenCalledWith(
+        expect.stringContaining(`${systemKey}-deploy.json`),
+        appPath
+      );
     });
 
     it('should handle dry-run mode', async() => {
@@ -373,40 +386,15 @@ describe('External System Download Module', () => {
       ).rejects.toThrow('Failed to download system configuration');
     });
 
-    it('should handle partial download errors', async() => {
+    it('should propagate error when split fails', async() => {
       getExternalSystemConfig.mockResolvedValue(mockDownloadResponse);
-      // Datasource files are written via writeConfigFile (fs.writeFileSync)
-      let writeSyncCallCount = 0;
-      fs.writeFileSync.mockImplementation((filePath) => {
-        writeSyncCallCount++;
-        // Fail on a datasource write (contact) to trigger partial download handling
-        if (filePath && String(filePath).includes('contact')) {
-          throw new Error('Failed to write datasource');
-        }
-      });
+      const generator = require('../../../lib/generator');
+      generator.splitDeployJson.mockRejectedValueOnce(new Error('Split failed'));
 
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await expect(
         downloadExternalSystem(systemKey, {})
-      ).rejects.toThrow(/Partial download/);
-    });
-
-    it('should clean up temporary folder on error', async() => {
-      getExternalSystemConfig.mockResolvedValue(mockDownloadResponse);
-      // System/datasource files are written via writeConfigFile (writeFileSync)
-      fs.writeFileSync.mockImplementationOnce(() => {
-        throw new Error('Write failed');
-      });
-
-      const { downloadExternalSystem } = require('../../../lib/external-system/download');
-      await expect(
-        downloadExternalSystem(systemKey, {})
-      ).rejects.toThrow();
-
-      expect(fsPromises.rm).toHaveBeenCalledWith(
-        expect.stringContaining('aifabrix-download'),
-        { recursive: true, force: true }
-      );
+      ).rejects.toThrow(/Failed to download external system/);
     });
 
     it('should use discoverDataplaneUrl instead of getDataplaneUrl', async() => {
@@ -444,19 +432,12 @@ describe('External System Download Module', () => {
       };
       getExternalSystemConfig.mockResolvedValue(responseWithInline);
 
+      const generator = require('../../../lib/generator');
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await downloadExternalSystem(systemKey, { environment: 'dev' });
 
-      // Should extract inline datasources and merge with regular datasources
-      // System and datasource files are written via writeConfigFile (fs.writeFileSync)
-      expect(fs.writeFileSync).toHaveBeenCalled();
-      // Verify datasource files are created (should have 3: company, contact, deal)
-      // New naming convention uses -datasource- and .yaml
-      const writeSyncCalls = fs.writeFileSync.mock.calls;
-      const datasourceFileWrites = writeSyncCalls.filter(call =>
-        call[0] && String(call[0]).includes('datasource-') && String(call[0]).endsWith('.yaml')
-      );
-      expect(datasourceFileWrites.length).toBeGreaterThanOrEqual(3);
+      expect(getExternalSystemConfig).toHaveBeenCalled();
+      expect(generator.splitDeployJson).toHaveBeenCalled();
     });
 
     it('should handle application without separate application field', async() => {
@@ -475,11 +456,12 @@ describe('External System Download Module', () => {
       };
       getExternalSystemConfig.mockResolvedValue(responseWithoutApplicationField);
 
+      const generator = require('../../../lib/generator');
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await downloadExternalSystem(systemKey, { environment: 'dev' });
 
       expect(getExternalSystemConfig).toHaveBeenCalled();
-      expect(fsPromises.writeFile).toHaveBeenCalled();
+      expect(generator.splitDeployJson).toHaveBeenCalled();
     });
   });
 });

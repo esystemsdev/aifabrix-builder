@@ -194,6 +194,11 @@
           "type": "boolean",
           "description": "Enable Role-Based Access Control",
           "default": false
+        },
+        "debug": {
+          "type": "boolean",
+          "description": "When true, capture detailed generation steps and save to debug.log (dataplane returns debugLog)",
+          "default": false
         }
       }
     },

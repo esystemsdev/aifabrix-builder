@@ -422,11 +422,14 @@ aifabrix test-integration hubspot --payload ./test-payload.json
 
 # Verbose with custom timeout
 aifabrix test-integration hubspot --verbose --timeout 60000
+
+# Debug mode: include debug in response and write log to integration/<app>/logs/
+aifabrix test-integration hubspot --debug
 ```
 
 **Arguments:** `<app>` – Application name (external system).
 
-**Options:** `-e, --env <env>` – Environment: dev, tst, or pro (default: from aifabrix auth config). `-d, --datasource <key>` – Test specific datasource only. `-p, --payload <file>` – Custom test payload file (overrides datasource testPayload). `-v, --verbose` – Detailed output. `--timeout <ms>` – Request timeout (default: 30000). Dataplane URL is always resolved from the controller; no `--dataplane` option.
+**Options:** `-e, --env <env>` – Environment: dev, tst, or pro (default: from aifabrix auth config). `-d, --datasource <key>` – Test specific datasource only. `-p, --payload <file>` – Custom test payload file (overrides datasource testPayload). `-v, --verbose` – Detailed output. `--debug` – Include debug output in response and write log to `integration/<app>/logs/`. `--timeout <ms>` – Request timeout (default: 30000). Dataplane URL is always resolved from the controller; no `--dataplane` option.
 
 **Prerequisites:** Logged in (`aifabrix login`); dataplane accessible; system published or ready for testing.
 
@@ -441,21 +444,25 @@ For payload sources, response handling, and troubleshooting, see [External Integ
 
 Manage external data sources.
 
-**What:** Command group for managing external datasource configurations. Includes validation, listing, comparison, and deployment operations for datasources that integrate with external systems.
+**What:** Command group for managing external datasource configurations. Includes validation, listing, comparison, deployment, and testing operations for datasources that integrate with external systems.
 
 **Subcommands:**
 - `validate` - Validate external datasource JSON file
 - `list` - List datasources from environment
 - `diff` - Compare two datasource configuration files
 - `deploy` - Deploy datasource to dataplane
+- `test-integration` - Run integration (config) test for one datasource via dataplane
+- `test-e2e` - Run E2E test for one datasource (config, credential, sync, data, CIP) via dataplane
 
-**When:** Managing external integrations, deploying datasource configurations, or validating datasource schemas.
+**When:** Managing external integrations, deploying datasource configurations, validating datasource schemas, or running datasource-level tests.
 
 **See Also:**
 - [aifabrix datasource validate](#aifabrix-datasource-validate-file)
 - [aifabrix datasource list](#aifabrix-datasource-list)
 - [aifabrix datasource diff](#aifabrix-datasource-diff-file1-file2)
 - [aifabrix datasource deploy](#aifabrix-datasource-deploy-myapp-file)
+- [aifabrix datasource test-integration](#aifabrix-datasource-test-integration-datasourcekey)
+- [aifabrix datasource test-e2e](#aifabrix-datasource-test-e2e-datasourcekey)
 
 ---
 
@@ -737,6 +744,69 @@ Environment: dev
 **Next Steps:**
 After deployment:
 - Verify datasource: `aifabrix datasource list`
+- Run integration test: `aifabrix datasource test-integration <datasourceKey> --app <app>`
+- Run E2E test: `aifabrix datasource test-e2e <datasourceKey> --app <app>`
 - Check datasource status in controller dashboard
 - Monitor dataplane for datasource activity
+
+---
+
+<a id="aifabrix-datasource-test-integration-datasourcekey"></a>
+### aifabrix datasource test-integration <datasourceKey>
+
+Run integration (config) test for one datasource via dataplane pipeline. Requires Dataplane access. See [Online Commands and Permissions](permissions.md).
+
+**What:** Tests a single datasource by calling `POST /api/v1/pipeline/{systemKey}/{datasourceKey}/test`. Validates field mappings, metadata schemas, and endpoint connectivity. Supports client credentials for CI/CD.
+
+**When:** Testing one datasource without running tests for the whole system; in CI pipelines; when inside `integration/<appKey>/` and running from that directory.
+
+**Usage:**
+```bash
+# From integration/<appKey>/ or with explicit app
+aifabrix datasource test-integration hubspot-company --app hubspot
+
+# With custom payload and debug
+aifabrix datasource test-integration hubspot-company -a hubspot --payload ./payload.json --debug
+
+# With environment and timeout
+aifabrix datasource test-integration hubspot-company -a hubspot -e tst --timeout 60000
+```
+
+**Arguments:** `<datasourceKey>` – Datasource key (e.g. hubspot-company, hubspot-deal).
+
+**Options:** `-a, --app <appKey>` – App key (required if not inside `integration/<appKey>/`). `-p, --payload <file>` – Custom test payload file. `-e, --env <env>` – Environment: dev, tst, or pro. `--debug` – Include debug output and write log to `integration/<app>/logs/`. `--timeout <ms>` – Request timeout (default: 30000).
+
+**Context:** Resolve systemKey from `--app` or from current directory when inside `integration/<appKey>/`.
+
+**Prerequisites:** Logged in (`aifabrix login`) or client credentials configured; dataplane accessible; system and datasource published or ready for testing.
+
+For details, see [External Integration Testing](external-integration-testing.md#datasource-integration-tests).
+
+---
+
+<a id="aifabrix-datasource-test-e2e-datasourcekey"></a>
+### aifabrix datasource test-e2e <datasourceKey>
+
+Run E2E test for one datasource via dataplane external API. Requires Bearer token or API key (client credentials not supported). See [Online Commands and Permissions](permissions.md).
+
+**What:** Runs full E2E test (config, credential, sync, data, CIP) by calling `POST /api/v1/external/{sourceIdOrKey}/test-e2e`. Reports per-step status.
+
+**When:** End-to-end validation of a single datasource after integration tests pass; requires Bearer or API key authentication.
+
+**Usage:**
+```bash
+# From integration/<appKey>/ or with explicit app
+aifabrix datasource test-e2e hubspot-contacts --app hubspot
+
+# With environment and debug
+aifabrix datasource test-e2e hubspot-contacts -a hubspot -e tst --debug -v
+```
+
+**Arguments:** `<datasourceKey>` – Datasource key used as sourceIdOrKey (e.g. hubspot-contacts).
+
+**Options:** `-a, --app <appKey>` – App key (required if not inside `integration/<appKey>/`). `-e, --env <env>` – Environment: dev, tst, or pro. `-v, --verbose` – Detailed step output. `--debug` – Include debug output and write log to `integration/<app>/logs/`.
+
+**Prerequisites:** Logged in (`aifabrix login`) or API key configured. E2E endpoints require Bearer token or API key; client credentials are not accepted. Run `aifabrix login` if you see "E2E tests require Bearer token or API key".
+
+For details, see [External Integration Testing](external-integration-testing.md#datasource-e2e-tests).
 

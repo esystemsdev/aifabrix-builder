@@ -158,6 +158,7 @@ describe('CLI Comprehensive Tests', () => {
               description: jest.fn().mockReturnThis(),
               option: jest.fn().mockReturnThis(),
               requiredOption: jest.fn().mockReturnThis(),
+              addHelpText: jest.fn().mockReturnThis(),
               action: jest.fn((action) => {
                 commandActions[fullCmdName] = action;
                 return mockSubCommand;

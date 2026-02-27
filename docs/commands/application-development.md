@@ -473,6 +473,7 @@ aifabrix test-integration myapp --env tst
 aifabrix test-integration hubspot
 aifabrix test-integration hubspot --env tst
 aifabrix test-integration hubspot --datasource hubspot-company --payload ./test-payload.json
+aifabrix test-integration hubspot --debug  # write log to integration/hubspot/logs/
 ```
 
 **Options:**
@@ -480,6 +481,7 @@ aifabrix test-integration hubspot --datasource hubspot-company --payload ./test-
 - `-d, --datasource <key>` — (External only) Test a specific datasource.
 - `-p, --payload <file>` — (External only) Path to custom test payload file.
 - `-v, --verbose` — (External only) Show detailed test output.
+- `--debug` — (External only) Include debug output and write log to `integration/<app>/logs/`.
 - `--timeout <ms>` — (External only) Request timeout in milliseconds (default 30000).
 
 **Script:** For builder apps, override with `build.scripts.test:integration` or `build.scripts.testIntegration` in application.yaml. When unset, the command used is the same as [aifabrix test-e2e](#aifabrix-test-e2e-app) (e.g. `pnpm test:e2e`, `make test:e2e`). See [Scripts and commands](#scripts-and-commands).

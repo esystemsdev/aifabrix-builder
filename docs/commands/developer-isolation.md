@@ -29,7 +29,7 @@ aifabrix dev init --developer-id 01 --server my-remote-host --pin 123456
 
 **Options:**
 - `--developer-id <id>` - Developer ID (same as `dev add`; e.g. 01)
-- `--server <url>` - Builder Server base URL (e.g. https://dev.aifabrix.dev)
+- `--server <url>` - Builder Server base URL (e.g. <https://builder.local>)
 - `--pin <pin>` - One-time PIN for onboarding (from your admin)
 - `-y, --yes` - Auto-install development CA without prompt when the server certificate is untrusted
 - `--no-install-ca` - Do not offer CA install; fail with manual instructions when the server certificate is untrusted

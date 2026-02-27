@@ -346,3 +346,80 @@ Implementation sections completed:
 - Cursor rules compliance verified
 - Implementation complete
 
+---
+
+## Documentation Validation Report
+
+**Date**: 2026-02-27  
+**Plan**: .cursor/plans/Done/79-dev_init_ca_install.plan.md  
+**Document(s)**: docs/commands/developer-isolation.md  
+**Status**: ✅ COMPLETE
+
+### Executive Summary
+
+Documentation validation completed successfully. The single document mentioned in the plan (`docs/commands/developer-isolation.md`) was validated against structure, references, schema alignment, and Markdown standards. One auto-fix was applied (bare URL). All checks pass.
+
+### Documents Validated
+
+- Total: 1
+- Passed: 1
+- Auto-fixed: 1
+
+### Document List
+
+- ✅ docs/commands/developer-isolation.md – Passed (bare URL auto-fixed)
+
+### Structure Validation
+
+- **Title**: Single `#` at top ("Developer Isolation Commands")
+- **Hierarchy**: Proper `##` for main sections, `###` not used (flat structure appropriate for command reference)
+- **Nav links**: ← [Documentation index](../README.md) · [Commands index](README.md) – present and correct
+- **Sections**: Overview, `aifabrix dev init`, `dev refresh`, `dev add/update/pin/delete/list`, `dev down`, `dev config` – appropriate for user-facing command docs
+- **CA install content**: Section 5 documentation updates from the plan are present (CA install flow, `--yes`, `--no-install-ca`, manual install at `{server}/install-ca`, `{server}/install-ca-help`)
+
+### Reference Validation
+
+- `../README.md` → docs/README.md ✅
+- `README.md` → docs/commands/README.md ✅
+- `../configuration/secrets-and-config.md` → docs/configuration/secrets-and-config.md ✅
+- `../developer-isolation.md` → docs/developer-isolation.md ✅
+- `infrastructure.md` → docs/commands/infrastructure.md ✅  
+All cross-references valid; no broken links.
+
+### Schema-based Validation
+
+- **docs/commands/developer-isolation.md**: Command reference only. Contains YAML snippets for CLI output (e.g. developer config, ports) and user `config.yaml` (developer-id, environment). No application-schema, external-system, external-datasource, or infrastructure-schema examples. N/A – no schema validation required for this document.
+
+### Markdown Validation
+
+- **MarkdownLint**: ✅ PASSED (0 errors) after auto-fix
+- **Auto-fix applied**: MD034/no-bare-urls – wrapped `https://dev.aifabrix.dev` in angle brackets on line 32
+
+### Project Rules Compliance
+
+- Content focused on using the aifabrix builder (CLI commands, options, workflows)
+- CLI usage examples use `aifabrix`; options match plan (`--yes`, `--no-install-ca`)
+- No internal-only implementation details
+
+### Automatic Fixes Applied
+
+1. docs/commands/developer-isolation.md: Wrapped bare URL `https://dev.aifabrix.dev` in angle brackets (MD034)
+
+### Manual Fixes Required
+
+None.
+
+### Issues and Recommendations
+
+None.
+
+### Final Checklist
+
+- [x] All documents validated
+- [x] MarkdownLint passes (0 errors)
+- [x] Cross-references within docs/ valid
+- [x] No broken links
+- [x] Examples and structure correct (N/A – command doc, no config schema examples)
+- [x] Content focused on using the builder (external users)
+- [x] Auto-fixes applied
+

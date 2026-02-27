@@ -35,7 +35,9 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | `aifabrix download [systemKey]` | Dataplane | `external-system:read` | Download external system config from Dataplane. |
 | `aifabrix upload [system-key]` | Dataplane | `external-system:publish`; **credential:create** (if using automatic push of KV_* from `.env`) | Uses POST `/api/v1/pipeline/upload`, POST `.../upload/{id}/validate`, POST `.../upload/{id}/publish`. Before publish, the CLI may push credential secrets from `integration/<system-key>/.env` (KV_* vars) and from `kv://` refs in the payload to the dataplane via POST `/api/v1/credential/secret`; **credential:create** is required for that push. If the push fails (e.g. 403), upload still runs but secrets are not pushed. **Bearer token required** (e.g. from `aifabrix login`); client id/secret are not accepted for these endpoints. |
 | `aifabrix datasource deploy` | Dataplane | `external-system:publish` | Uses pipeline publish. |
-| `aifabrix test-integration` | Dataplane | `external-system:publish` or `external-data-source:read` | Calls Dataplane pipeline test endpoint. |
+| `aifabrix datasource test-integration` | Dataplane | `external-system:publish` or `external-data-source:read` | Calls pipeline test endpoint; supports **client credentials** (CI/CD). |
+| `aifabrix datasource test-e2e` | Dataplane | `external-data-source:read` | Calls external test-e2e endpoint; **Bearer or API key only** (no client credentials). |
+| `aifabrix test-integration` | Dataplane | `external-system:publish` or `external-data-source:read` | Calls pipeline test endpoint; supports **client credentials** (CI/CD). |
 | `aifabrix wizard [appName]` | Dataplane | `external-system:create`, `external-system:read`, `credential:read` (for credential step) | Wizard sessions and steps use Dataplane wizard API. |
 | `aifabrix service-user create` | Controller | `service-user:create` | Create service user (username, email, redirectUris, groupNames); receive one-time clientSecret (save at creation time). |
 
@@ -68,8 +70,8 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 - **external-system:create** – Create external system, from-template, wizard sessions and steps (parse, detect-type, generate-config, validate, etc.).
 - **external-system:update** – Update external system, publish, rollback, save-template, deployment docs POST.
 - **external-system:delete** – Delete (soft) external system.
-- **external-system:publish** – Dataplane **pipeline deployment** (mutating): POST `/api/v1/pipeline/publish`, POST `.../{systemIdOrKey}/publish`, POST `/upload`, POST `.../upload/{id}/validate`, POST `.../upload/{id}/publish`, and optionally datasource test. All of these require **OAuth2 (Bearer) only**; client id/secret are **not** accepted.
-- **external-data-source:read** – Can be used for Dataplane pipeline test endpoint (alternative to `external-system:publish`).
+- **external-system:publish** – Dataplane **pipeline deployment** (mutating): POST `/api/v1/pipeline/publish`, POST `.../{systemIdOrKey}/publish`, POST `/upload`, POST `.../upload/{id}/validate`, POST `.../upload/{id}/publish` require **OAuth2 (Bearer) only**; client id/secret are **not** accepted. **Pipeline test** endpoints (POST `.../pipeline/{systemKey}/test`, POST `.../pipeline/{systemKey}/{datasourceKey}/test`) accept Bearer, API key, or **client credentials** (x-client-id/x-client-secret) for CI/CD.
+- **external-data-source:read** – Dataplane pipeline test and external test endpoints. Can be used for pipeline test (alternative to `external-system:publish`). Required for `aifabrix datasource test-e2e` (external test-e2e endpoint; Bearer or API key only, no client credentials).
 - **credential:read** – List/get credentials, wizard credentials list.
 - **credential:create** – Create credential (if used by wizard).
 - **credential:update** – Update credential.

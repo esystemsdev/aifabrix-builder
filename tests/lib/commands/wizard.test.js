@@ -205,7 +205,7 @@ describe('Wizard Command Handler', () => {
       await handleWizard(mockOptions);
 
       expect(wizardPrompts.promptForAppName).not.toHaveBeenCalled();
-      expect(wizardPrompts.promptForMode).toHaveBeenCalled();
+      expect(wizardPrompts.promptForMode).not.toHaveBeenCalled();
       expect(wizardApi.createWizardSession).toHaveBeenCalled();
       expect(wizardApi.getPreview).toHaveBeenCalledWith(
         mockDataplaneUrl,
@@ -358,7 +358,7 @@ describe('Wizard Command Handler', () => {
         success: true
       });
 
-      await handleWizard(mockOptions);
+      await handleWizard({});
 
       expect(externalSystemsApi.listExternalSystems).toHaveBeenCalledWith(
         mockDataplaneUrl,
@@ -386,7 +386,7 @@ describe('Wizard Command Handler', () => {
         success: true
       });
 
-      await handleWizard(mockOptions);
+      await handleWizard({});
 
       expect(wizardPrompts.promptForExistingSystem).toHaveBeenCalledWith([], undefined);
       expect(wizardApi.createWizardSession).toHaveBeenCalledWith(

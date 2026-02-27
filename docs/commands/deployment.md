@@ -446,7 +446,7 @@ When you are logged in (e.g. `aifabrix auth status` shows "Authenticated"), the 
 <a id="aifabrix-credential-list"></a>
 ## aifabrix credential list
 
-List credentials from the controller/dataplane (`GET /api/v1/credential`). Use this to see available credentials when choosing "Use existing" in the wizard (Step 3).
+List credentials from the controller/dataplane (`GET /api/v1/credential`). Use this to see available credentials when choosing "Use existing" in the wizard (Step 3). When the dataplane provides credential status, the list shows a colored icon: ✓ (verified), ○ (pending), ✗ (failed), ⊘ (expired).
 
 **Example:**
 ```bash

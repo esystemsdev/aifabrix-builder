@@ -139,6 +139,7 @@ Field Mapping Tests:
 - `--datasource <key>` – Test only the specified datasource
 - `--payload <file>` – Path to custom test payload file (overrides datasource `testPayload`)
 - `--verbose` – Show detailed test output
+- `--debug` – Send `includeDebug: true` in the request; write full request/response to `integration/<app>/logs/test-integration-<timestamp>.json` (dataplane sanitizes secrets before responses are returned)
 - `--timeout <ms>` – Request timeout in milliseconds (default: 30000)
 
 ### Process
@@ -164,6 +165,9 @@ aifabrix test-integration hubspot --payload ./test-payload.json
 
 # Verbose with custom timeout
 aifabrix test-integration hubspot --verbose --timeout 60000
+
+# Debug mode: write log to integration/hubspot/logs/
+aifabrix test-integration hubspot --debug
 ```
 
 ### Sample output (success)
@@ -227,6 +231,56 @@ Testing datasource: hubspot-company
 
 ---
 
+## Datasource integration tests (`aifabrix datasource test-integration`)
+
+<a id="datasource-integration-tests"></a>
+
+Test **one** datasource via the pipeline API without running tests for the whole system. Useful in CI or when iterating on a single datasource.
+
+**Command:**
+```bash
+aifabrix datasource test-integration <datasourceKey> [options]
+```
+
+**Context:** Resolve `systemKey` from `--app <appKey>` or from the current directory when inside `integration/<appKey>/`.
+
+**Options:** `-a, --app <appKey>`, `-p, --payload <file>`, `-e, --env <env>`, `--debug`, `--timeout <ms>`.
+
+**Auth:** Supports Bearer token, API key, or **client credentials** (x-client-id/x-client-secret) for CI/CD.
+
+**Example:**
+```bash
+cd integration/hubspot
+aifabrix datasource test-integration hubspot-company
+
+# Or with explicit app
+aifabrix datasource test-integration hubspot-company --app hubspot --debug
+```
+
+---
+
+## Datasource E2E tests (`aifabrix datasource test-e2e`)
+
+<a id="datasource-e2e-tests"></a>
+
+Run full E2E test (config, credential, sync, data, CIP) for **one** datasource via the dataplane external API.
+
+**Command:**
+```bash
+aifabrix datasource test-e2e <datasourceKey> [options]
+```
+
+**Auth:** **Bearer token or API key only.** Client credentials are not accepted. Run `aifabrix login` first. If you see "E2E tests require Bearer token or API key", authenticate with `aifabrix login` or configure an API key.
+
+**Options:** `-a, --app <appKey>`, `-e, --env <env>`, `-v, --verbose`, `--debug`.
+
+**Example:**
+```bash
+aifabrix datasource test-e2e hubspot-contacts --app hubspot --verbose
+```
+
+---
+
 ## Test payload configuration
 
 <a id="test-payload-configuration"></a>
@@ -243,7 +297,7 @@ Test payloads are configured in the **datasource** (YAML or JSON) with a `testPa
 ```yaml
 key: hubspot-company
 systemKey: hubspot
-entityType: company
+entityType: recordStorage
 fieldMappings:
   dimensions:
     country: metadata.country
@@ -302,6 +356,6 @@ Datasources declare **capabilities** (e.g. list, get, create, update, delete). T
 
 ## See also
 
-- [External Integration Commands](external-integration.md) – Command reference for `aifabrix test`, `aifabrix test-integration`, and related commands
+- [External Integration Commands](external-integration.md) – Command reference for `aifabrix test`, `aifabrix test-integration`, `aifabrix datasource test-integration`, `aifabrix datasource test-e2e`, and related commands
 - [Validation Commands](validation.md) – General validation, schemas, and `aifabrix validate`
 - [External Systems Guide](../external-systems.md) – External system configuration and test payload overview (including [Test Payloads](../external-systems.md#test-payloads))

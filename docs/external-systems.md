@@ -223,7 +223,7 @@ Each datasource maps an external entity (company, contact, deal) to your datapla
 ```yaml
 key: hubspot-company
 systemKey: hubspot
-entityType: company
+entityType: recordStorage
 resourceType: customer
 fieldMappings:
   dimensions:
@@ -907,7 +907,7 @@ Test payloads allow you to test field mappings and metadata schemas locally and 
 ```yaml
 key: hubspot-company
 systemKey: hubspot
-entityType: company
+entityType: recordStorage
 fieldMappings:
   dimensions:
     country: metadata.country

@@ -44,6 +44,14 @@ describe('Wizard Prompts', () => {
       const result = await wizardPrompts.promptForMode();
       expect(result).toBe('add-datasource');
     });
+
+    it('should only show create-system when allowAddDatasource is false', async() => {
+      inquirer.prompt.mockResolvedValue({ mode: 'create-system' });
+      await wizardPrompts.promptForMode(undefined, false);
+      const call = inquirer.prompt.mock.calls[0][0][0];
+      expect(call.choices).toHaveLength(1);
+      expect(call.choices[0].value).toBe('create-system');
+    });
   });
 
   describe('promptForSourceType', () => {
@@ -146,6 +154,7 @@ describe('Wizard Prompts', () => {
         type: 'list',
         name: 'credentialIdOrKey',
         message: 'Select a credential:',
+        pageSize: 10,
         choices: [
           { name: 'Credential One', value: 'cred-1' },
           { name: 'Credential Two', value: 'cred-2' }
@@ -164,6 +173,21 @@ describe('Wizard Prompts', () => {
       })]);
       expect(result).toEqual({ credentialIdOrKey: 'my-credential' });
     });
+
+    it('should include status icon in choice names when credential has status', async() => {
+      const credentialsList = [
+        { key: 'cred-ok', displayName: 'OK Credential', status: 'verified' },
+        { key: 'cred-pending', displayName: 'Pending Cred', status: 'pending' }
+      ];
+      inquirer.prompt.mockResolvedValue({ credentialIdOrKey: 'cred-ok' });
+      await wizardPrompts.promptForExistingCredential(credentialsList);
+      const call = inquirer.prompt.mock.calls[0][0][0];
+      expect(call.choices).toHaveLength(2);
+      expect(call.choices[0].name).toContain(' ✓');
+      expect(call.choices[0].name).toContain('OK Credential');
+      expect(call.choices[1].name).toContain(' ○');
+      expect(call.choices[1].name).toContain('Pending Cred');
+    });
   });
 
   describe('promptForExistingSystem', () => {
@@ -178,9 +202,10 @@ describe('Wizard Prompts', () => {
         type: 'list',
         name: 'systemIdOrKey',
         message: 'Select an existing external system (not a webapp):',
+        pageSize: 10,
         choices: [
-          { name: 'System One', value: 'sys-1' },
-          { name: 'System Two', value: 'sys-2' }
+          { name: 'System One (sys-1)', value: 'sys-1' },
+          { name: 'System Two (sys-2)', value: 'sys-2' }
         ]
       })]);
       expect(result).toBe('sys-2');

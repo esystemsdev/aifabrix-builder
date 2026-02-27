@@ -44,6 +44,19 @@ describe('Wizard Prompts Secondary', () => {
       expect(derived.fieldMappingsSummary.mappedFields).toEqual(['id', 'email', 'firstName']);
       expect(derived.datasourceSummary.exposedProfileCount).toBe(2);
     });
+
+    it('should derive datasourceSummaries for multiple datasources', () => {
+      const systemConfig = { key: 'hubspot', displayName: 'HubSpot CRM', type: 'openapi' };
+      const datasourceConfigs = [
+        { key: 'hubspot-contact', entityType: 'record-storage', resourceType: 'contact' },
+        { key: 'hubspot-company', entityType: 'record-storage', resourceType: 'company' }
+      ];
+      const derived = wizardPromptsSecondary.derivePreviewFromConfig(systemConfig, datasourceConfigs);
+      expect(derived.datasourceSummaries).toHaveLength(2);
+      expect(derived.datasourceSummaries[0].key).toBe('hubspot-contact');
+      expect(derived.datasourceSummaries[1].key).toBe('hubspot-company');
+      expect(derived.datasourceSummary).toBeUndefined();
+    });
   });
 
   beforeEach(() => {

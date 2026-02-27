@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/@aifabrix/builder.svg)](https://www.npmjs.com/package/@aifabrix/builder)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Install the AI Fabrix platform and test it locally. Then add external integrations or build your own applications.
+Open developer runtime for AI Fabrix ecosystem. Install the AI Fabrix platform and test it locally. Then add external integrations or build your own applications.
 
 ← **Full documentation:** [docs/README.md](docs/README.md) (table of contents for all guides)
 

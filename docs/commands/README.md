@@ -79,12 +79,14 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix upload <system-key>`](external-integration.md#aifabrix-upload-system-key) - Upload external system to dataplane (upload → validate → publish; no controller deploy)
   - [`aifabrix delete <system-key>`](external-integration.md#aifabrix-delete-system-key) - Delete external system from dataplane
   - [`aifabrix test <app> [--env dev|tst]`](external-integration.md#aifabrix-test-app) - Run unit tests for external system (local validation) or builder app tests in container
-  - [`aifabrix test-integration <app> [--env dev|tst]`](application-development.md#aifabrix-test-integration-app) - Run integration tests (builder: in container; external: via dataplane). See [External Integration Testing](external-integration-testing.md) for external payloads and troubleshooting.
+  - [`aifabrix test-integration <app> [--env dev|tst] [--debug]`](application-development.md#aifabrix-test-integration-app) - Run integration tests (builder: in container; external: via dataplane). `--debug` writes logs to `integration/<app>/logs/`. See [External Integration Testing](external-integration-testing.md) for external payloads and troubleshooting.
   - [`aifabrix datasource`](external-integration.md#aifabrix-datasource) - Manage external data sources
     - [`aifabrix datasource validate <file>`](external-integration.md#aifabrix-datasource-validate-file) - Validate external datasource JSON file
     - [`aifabrix datasource list`](external-integration.md#aifabrix-datasource-list) - List datasources from environment
     - [`aifabrix datasource diff <file1> <file2>`](external-integration.md#aifabrix-datasource-diff-file1-file2) - Compare two datasource configuration files
     - [`aifabrix datasource deploy <myapp> <file>`](external-integration.md#aifabrix-datasource-deploy-myapp-file) - Deploy datasource to dataplane
+    - [`aifabrix datasource test-integration <datasourceKey>`](external-integration.md#aifabrix-datasource-test-integration-datasourcekey) - Run integration test for one datasource (supports client credentials)
+    - [`aifabrix datasource test-e2e <datasourceKey>`](external-integration.md#aifabrix-datasource-test-e2e-datasourcekey) - Run E2E test for one datasource (Bearer/API key only)
 
 ### Utilities
 - [Utility Commands](utilities.md) - Configuration and secret management
