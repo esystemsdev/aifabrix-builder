@@ -469,7 +469,7 @@ authentication:
     baseUrl: "https://api.example.com"
     headerName: "X-API-Key"
   security:
-    key: "kv://myapp-api-key"
+    apiKey: "kv://myapp-api-key"
 ```
 
 #### Basic Auth
@@ -499,6 +499,10 @@ authentication:
 ```
 
 Register Azure AD app, create Key Vault entries, and configure API permissions.
+
+**Credential update policy:** Credential *structure* (type, fields) cannot be changed via the Credential API. Structure changes must go through upload/publish—update the authentication template in your system config and run `aifabrix upload`. Only secret *values* can be updated via the API. Updates are locked when the credential is attached to an external system. See the dataplane knowledgebase for the full policy.
+
+**Shared credentials:** Multiple systems can reference the same credential by key. When publishing with `writeOnce: false`, structure updates affect all systems using that credential. Use `writeOnce: true` when sharing to avoid accidental overwrite.
 
 ### RBAC Support (Roles and Permissions)
 
@@ -1398,6 +1402,9 @@ status:
 → Check `autopublish: true` in `application.yaml`
 → Verify datasource YAML files are listed in `dataSources`
 → Check datasource is enabled: `"enabled": true`
+
+**"application.yaml out of sync with files"** or **"External datasource file not found"**
+→ Run `aifabrix repair <app>` to align `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files on disk.
 
 **"OpenAPI operations not working"**
 → Verify `documentKey` matches registered OpenAPI spec

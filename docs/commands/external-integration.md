@@ -6,6 +6,8 @@ Commands for creating, testing, and managing external system integrations. Comma
 
 **Resolve:** You can run `aifabrix resolve <app>` for external integrations when `integration/<app>/env.template` exists. If `application.yaml` is missing, resolve still runs in **env-only** mode and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
 
+**Repair:** If `application.yaml` gets out of sync with files on disk (e.g. after converting JSON ↔ YAML or adding/removing datasource files), run `aifabrix repair <app>`; see [Utility commands – repair](utilities.md#aifabrix-repair-app).
+
 ---
 
 ## aifabrix wizard
@@ -225,7 +227,7 @@ aifabrix upload my-hubspot --dry-run
 1. Validate locally (`validateExternalSystemComplete`)
 2. Build payload from controller manifest (system with RBAC + datasources) → `{ version, application, dataSources }`
 3. Resolve dataplane URL and auth (from controller + environment)
-4. **Credential secrets push (automatic):** The CLI reads `integration/<system-key>/.env` and sends any `KV_*` variables (values resolved from local/remote secrets if they are `kv://`). It also scans the upload payload (application + datasources) for `kv://` references that are **not** in `.env` and resolves their values from aifabrix secret systems (local file or remote), then sends all to the dataplane secret store (`POST /api/v1/credential/secret`). So credentials in config can be satisfied from `.env` or from local/remote secrets without extra steps. No separate `POST /api/v1/credential/secret` call is needed when using `aifabrix upload` for E2E or deployment flows—the CLI handles it automatically.
+4. **Credential secrets push (automatic):** The CLI reads `integration/<system-key>/.env` and sends any `KV_*` variables (values resolved from local/remote secrets if they are `kv://`). It also scans the upload payload (application + datasources) for `kv://` references that are **not** in `.env` and resolves their values from aifabrix secret systems (local file or remote), then sends all to the dataplane **secret store** (`POST /api/v1/credential/secret`). This stores secret *values* only; credential structure (type, fields) is created/updated by the publish step itself. So credentials in config can be satisfied from `.env` or from local/remote secrets without extra steps. No separate `POST /api/v1/credential/secret` call is needed when using `aifabrix upload` for E2E or deployment flows—the CLI handles it automatically.
 
    **Skip conditions:** If there is no `.env` file, no `KV_*` keys, or values are empty, the credential push step is skipped. No `POST /api/v1/credential/secret` call is made when there are no items to push.
 

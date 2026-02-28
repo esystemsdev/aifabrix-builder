@@ -71,6 +71,18 @@
         }
      ]
   },
+  "$defs":{
+     "authenticationVariablesByMethod":{
+        "oauth2":{"variables":[{"key":"baseUrl","required":true,"description":"API base URL"},{"key":"tokenUrl","required":true,"description":"OAuth token endpoint"},{"key":"authorizationUrl","required":false},{"key":"scope","required":false},{"key":"tenantId","required":false}],"security":[{"key":"clientId","required":true},{"key":"clientSecret","required":true}]},
+        "aad":{"variables":[{"key":"baseUrl","required":true},{"key":"tokenUrl","required":true},{"key":"authorizationUrl","required":false},{"key":"tenantId","required":false}],"security":[{"key":"clientId","required":true},{"key":"clientSecret","required":true}]},
+        "apikey":{"variables":[{"key":"baseUrl","required":true},{"key":"headerName","required":false},{"key":"prefix","required":false}],"security":[{"key":"apiKey","required":true}]},
+        "basic":{"variables":[{"key":"baseUrl","required":true}],"security":[{"key":"username","required":true},{"key":"password","required":true}]},
+        "queryParam":{"variables":[{"key":"baseUrl","required":true},{"key":"paramName","required":true}],"security":[{"key":"paramValue","required":true}]},
+        "oidc":{"variables":[{"key":"openIdConfigUrl","required":true},{"key":"clientId","required":true},{"key":"expectedIssuer","required":false},{"key":"algorithms","required":false},{"key":"validateSignature","required":false},{"key":"clockSkewSeconds","required":false}],"security":[]},
+        "hmac":{"variables":[{"key":"baseUrl","required":false},{"key":"algorithm","required":false},{"key":"signatureHeader","required":false},{"key":"timestampHeader","required":false},{"key":"signaturePrefix","required":false}],"security":[{"key":"signingSecret","required":true}]},
+        "none":{"variables":[],"security":[]}
+     }
+  },
   "type":"object",
   "required":[
      "key",
@@ -153,14 +165,14 @@
            },
            "variables":{
               "type":"object",
-              "description":"Non-secret config. Must include baseUrl for all methods except none. Common keys: baseUrl, tokenUrl, authorizationUrl, tenantId, audience, scope, headerName; queryParam: paramName; oidc: openIdConfigUrl, clientId, expectedIssuer; hmac: algorithm, signatureHeader, timestampHeader, signaturePrefix, timestampMaxAge.",
+              "description":"Non-secret config. See $defs.authenticationVariablesByMethod for per-method keys. oauth2/aad: baseUrl, tokenUrl; apikey: baseUrl, headerName (optional); basic: baseUrl; queryParam: baseUrl, paramName; oidc: openIdConfigUrl, clientId; hmac: optional; none: empty.",
               "additionalProperties":{
                  "type":"string"
               }
            },
            "security":{
               "type":"object",
-              "description":"Secret-bearing keys only. Every value must be a Key Vault reference matching ^kv://.+$",
+              "description":"Secret-bearing keys only. Values must be kv:// references. See $defs.authenticationVariablesByMethod. oauth2/aad: clientId, clientSecret; apikey: apiKey; basic: username, password; queryParam: paramValue; oidc: none; hmac: signingSecret.",
               "additionalProperties":{
                  "type":"string",
                  "pattern":"^kv://.+$"
@@ -172,6 +184,15 @@
               "default":true
            }
         },
+        "examples":[
+           {"method":"oauth2","variables":{"baseUrl":"https://api.example.com","tokenUrl":"https://api.example.com/oauth/token","authorizationUrl":"https://api.example.com/oauth/authorize"},"security":{"clientId":"kv://example/clientId","clientSecret":"kv://example/clientSecret"}},
+           {"method":"apikey","variables":{"baseUrl":"https://api.example.com","headerName":"X-API-Key"},"security":{"apiKey":"kv://example/apiKey"}},
+           {"method":"basic","variables":{"baseUrl":"https://api.example.com"},"security":{"username":"kv://example/username","password":"kv://example/password"}},
+           {"method":"queryParam","variables":{"baseUrl":"https://api.example.com","paramName":"api_key"},"security":{"paramValue":"kv://example/apiKey"}},
+           {"method":"oidc","variables":{"openIdConfigUrl":"https://example.com/.well-known/openid-configuration","clientId":"app-id"}},
+           {"method":"hmac","variables":{"signatureHeader":"X-Signature"},"security":{"signingSecret":"kv://example/signingSecret"}},
+           {"method":"none","variables":{}}
+        ],
         "additionalProperties":false
      },
      "openapi":{
