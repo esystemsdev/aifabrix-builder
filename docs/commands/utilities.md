@@ -465,5 +465,5 @@ aifabrix secret remove my-keyKeyVault --shared
 ## See also
 
 - [application.yaml (application config)](../configuration/application-yaml.md) — Application config format and options
-- [External integration](../configuration/external-integration.md) — System and datasource config files
+- [External integration](../configuration/application-yaml.md#external-integration-and-external-system) — System and datasource config files
 

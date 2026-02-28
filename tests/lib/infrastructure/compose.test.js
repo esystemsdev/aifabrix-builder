@@ -462,5 +462,44 @@ describe('Infrastructure Compose Module', () => {
 
       expect(result).toBe(path.join(mockInfraDir, 'compose.yaml'));
     });
+
+    it('should pass pgadmin and redisCommander enabled when options provided', () => {
+      compose.generateComposeFile(mockTemplatePath, '0', 0, mockPorts, mockInfraDir, {
+        pgadmin: { enabled: true },
+        redisCommander: { enabled: true }
+      });
+
+      expect(mockCompiledTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pgadmin: { enabled: true },
+          redisCommander: { enabled: true }
+        })
+      );
+    });
+
+    it('should pass pgadmin and redisCommander disabled when options provided', () => {
+      compose.generateComposeFile(mockTemplatePath, '0', 0, mockPorts, mockInfraDir, {
+        pgadmin: { enabled: false },
+        redisCommander: { enabled: false }
+      });
+
+      expect(mockCompiledTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pgadmin: { enabled: false },
+          redisCommander: { enabled: false }
+        })
+      );
+    });
+
+    it('should default pgadmin and redisCommander to enabled when not provided', () => {
+      compose.generateComposeFile(mockTemplatePath, '0', 0, mockPorts, mockInfraDir);
+
+      expect(mockCompiledTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pgadmin: { enabled: true },
+          redisCommander: { enabled: true }
+        })
+      );
+    });
   });
 });

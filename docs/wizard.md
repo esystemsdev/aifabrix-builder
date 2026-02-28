@@ -24,6 +24,7 @@ The wizard produces configuration that you then **deploy** (via the controller) 
 | `[appName]` or `-a, --app <app>` | Application/integration key. When set, the wizard uses `integration/<appName>/wizard.yaml` for load/save and `error.log`. |
 | `--config <file>` | Run headless using the given wizard config file (any path). Skips all prompts. |
 | `--silent` | Run headless using **only** `integration/<appName>/wizard.yaml` (requires app name). No prompts; file must exist and be valid. |
+| `--debug` | Enable debug output and save debug manifests on validation failure (`debug.log`, `debug-system.yaml`, `debug-datasource.yaml`). |
 
 ### Interactive Mode
 
@@ -39,6 +40,12 @@ Or with an app name (loads `integration/<appName>/wizard.yaml` if present; saves
 aifabrix wizard my-integration
 # or
 aifabrix wizard -a my-integration
+```
+
+With debug output (saves debug manifests on validation failure):
+
+```bash
+aifabrix wizard hubspot-test-v2 --debug
 ```
 
 If `integration/<appName>/wizard.yaml` exists and is valid, the wizard shows a short summary and asks **Run with saved config?** — choose **Yes** to run headless with that config, or **No** to be told to edit the file and run `aifabrix wizard <appName>` again.
@@ -503,7 +510,7 @@ To use client credentials, add entries to `~/.aifabrix/secrets.local.yaml` as `<
 If the wizard cannot find the dataplane URL:
 - Ensure your application is registered in the controller
 - Check that the environment is correct
-- Use `--dataplane <url>` to provide the URL directly
+- Ensure the dataplane service is registered in the controller
 
 ### OpenAPI Parsing Failed
 
@@ -571,7 +578,7 @@ aifabrix wizard --config wizard.yaml
 aifabrix wizard my-integration --silent
 ```
 
-Create `wizard.yaml` in your repo (or under `integration/<app>/wizard.yaml` for silent mode). You can include `deployment.controller`, `deployment.environment`, and `deployment.dataplane` to override config.
+Create `wizard.yaml` in your repo (or under `integration/<app>/wizard.yaml` for silent mode). You can include `deployment.controller` and `deployment.environment` to override config.
 
 ## Reference
 

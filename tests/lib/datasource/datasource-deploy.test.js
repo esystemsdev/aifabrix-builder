@@ -168,7 +168,7 @@ describe('Datasource Deploy Module', () => {
         .rejects.toThrow('Dataplane URL not found in application configuration');
     });
 
-    it('should require dataplane flag for external systems', async() => {
+    it('should throw clear error when dataplane URL not found for external systems', async() => {
       const authConfig = {
         type: 'bearer',
         token: 'test-token'
@@ -187,7 +187,7 @@ describe('Datasource Deploy Module', () => {
 
       const { getDataplaneUrl } = require('../../../lib/datasource/deploy');
       await expect(getDataplaneUrl('http://localhost:3010', 'myapp', 'dev', authConfig))
-        .rejects.toThrow('Provide --dataplane <url>');
+        .rejects.toThrow('Dataplane URL not found for external system');
     });
 
     it('should throw error if API call fails', async() => {

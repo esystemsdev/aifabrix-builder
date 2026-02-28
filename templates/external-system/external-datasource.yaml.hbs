@@ -1,0 +1,76 @@
+key: "{{fullDatasourceKey}}"
+displayName: "{{datasourceDisplayName}}"
+description: "{{datasourceDescription}}"
+systemKey: "{{systemKey}}"
+entityType: "{{schemaEntityType}}"
+resourceType: "{{resourceType}}"
+enabled: true
+version: "1.0.0"
+fieldMappings:
+{{#if dimensions}}
+  dimensions:
+{{#each dimensions}}
+    {{@key}}: "{{this}}"
+{{/each}}
+{{else}}
+  dimensions: {}
+  # Optional: add country, department, organization for ABAC
+{{/if}}
+  attributes:
+{{#if attributes}}
+{{#each attributes}}
+    {{@key}}:
+      expression: "{{this.expression}}"
+      type: {{this.type}}
+      indexed: {{#if this.indexed}}true{{else}}false{{/if}}
+{{/each}}
+{{else}}
+    id:
+      expression: "{{raw.id}}"
+      type: string
+      indexed: true
+    name:
+      expression: "{{raw.name}}"
+      type: string
+      indexed: false
+{{/if}}
+{{#if (eq systemType "openapi")}}
+openapi:
+  enabled: true
+  documentKey: "{{systemKey}}-api"
+  operations:
+    list:
+      operationId: "list{{entityKey}}"
+      method: GET
+      path: "/{{entityKey}}"
+    get:
+      operationId: "get{{entityKey}}"
+      method: GET
+      path: "/{{entityKey}}/{id}"
+  autoRbac: true
+{{/if}}
+
+# --- Optional sections: uncomment or delete as needed ---
+{{#if (eq schemaEntityType "recordStorage")}}
+# sync:
+#   pull:
+#     enabled: true
+#     schedule: "0 * * * *"
+# capabilities: [list, get]
+{{/if}}
+{{#if (eq schemaEntityType "documentStorage")}}
+# documentStorage:
+#   enabled: true
+#   binaryOperationRef: get
+#   embeddingField: content
+{{/if}}
+{{#if (eq schemaEntityType "vectorStore")}}
+# vectorStore:
+#   enabled: true
+#   embeddingModel: "text-embedding-ada-002"
+{{/if}}
+{{#if (eq schemaEntityType "messageService")}}
+# messageService:
+#   enabled: true
+#   channels: []
+{{/if}}

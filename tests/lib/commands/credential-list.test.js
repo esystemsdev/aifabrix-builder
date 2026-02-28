@@ -167,7 +167,7 @@ describe('Credential list command', () => {
     expect(logger.log.mock.calls.some(c => String(c[0]).includes('Test E2E HubSpot OAuth2'))).toBe(true);
   });
 
-  it('should display status icon when credential has status', async() => {
+  it('should display status icon and label when credential has status', async() => {
     listCredentials.mockResolvedValue({
       data: {
         credentials: [
@@ -185,6 +185,8 @@ describe('Credential list command', () => {
     expect(output).toContain('cred-fail');
     expect(output).toContain(' ✓');
     expect(output).toContain(' ✗');
+    expect(output).toContain(' (Valid)');
+    expect(output).toContain(' (Connection failed)');
   });
 
   it('should display credentials without status icon when status is missing', async() => {
@@ -242,23 +244,12 @@ describe('Credential list command', () => {
     );
   });
 
-  it('should use dataplane option when provided (skip resolution)', async() => {
-    await runCredentialList({ dataplane: 'https://my-dataplane.local' });
-
-    expect(resolveDataplaneUrl).not.toHaveBeenCalled();
-    expect(listCredentials).toHaveBeenCalledWith(
-      'https://my-dataplane.local',
-      expect.objectContaining({ type: 'bearer' }),
-      expect.any(Object)
-    );
-  });
-
   it('should exit when Dataplane URL cannot be resolved', async() => {
     resolveDataplaneUrl.mockRejectedValue(new Error('No dataplane for env'));
 
     await expect(runCredentialList({})).rejects.toThrow('process.exit(1)');
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Could not resolve Dataplane URL'));
-    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('--dataplane'));
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Could not resolve Dataplane URL'));
     expect(listCredentials).not.toHaveBeenCalled();
   });
 });

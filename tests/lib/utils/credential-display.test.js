@@ -92,20 +92,22 @@ describe('credential-display', () => {
   });
 
   describe('formatCredentialWithStatus', () => {
-    it('should return key, name, and colored status for credential with status', () => {
+    it('should return key, name, statusFormatted, and statusLabel for credential with status', () => {
       const cred = { key: 'hubspot-cred', displayName: 'HubSpot API Key', status: 'verified' };
       const result = formatCredentialWithStatus(cred);
       expect(result.key).toBe('hubspot-cred');
       expect(result.name).toBe('HubSpot API Key');
       expect(result.statusFormatted).toContain(' ✓');
+      expect(result.statusLabel).toBe(' (Valid)');
     });
 
-    it('should return empty statusFormatted when status is missing', () => {
+    it('should return empty statusFormatted and statusLabel when status is missing', () => {
       const cred = { key: 'cred-1', displayName: 'My Credential' };
       const result = formatCredentialWithStatus(cred);
       expect(result.key).toBe('cred-1');
       expect(result.name).toBe('My Credential');
       expect(result.statusFormatted).toBe('');
+      expect(result.statusLabel).toBe('');
     });
 
     it('should handle alternative field names (id, credentialKey, name)', () => {
@@ -127,6 +129,7 @@ describe('credential-display', () => {
       expect(result.key).toBe('-');
       expect(result.name).toBe('-');
       expect(result.statusFormatted).toBe('');
+      expect(result.statusLabel).toBe('');
     });
   });
 });

@@ -42,7 +42,6 @@ function printUsage() {
     '  --output <dir>             Output directory for files (default: integration/<name>)',
     '  --controller <url>         Controller URL (default: env CONTROLLER_URL)',
     '  --environment <env>        Environment name (default: env ENVIRONMENT)',
-    '  --dataplane <url>          Dataplane URL (optional, will be auto-discovered)',
     '  --keep-wizard-files        Keep wizard-generated files in integration/ directory',
     '  --help                     Show this help message',
     '',
@@ -66,7 +65,6 @@ function parseArgs(argv) {
     output: null,
     controller: DEFAULT_CONTROLLER_URL,
     environment: DEFAULT_ENVIRONMENT,
-    dataplane: process.env.DATAPLANE_URL || null,
     keepWizardFiles: false,
     help: false
   };
@@ -76,8 +74,7 @@ function parseArgs(argv) {
     '--openapi': 'openapi',
     '--output': 'output',
     '--controller': 'controller',
-    '--environment': 'environment',
-    '--dataplane': 'dataplane'
+    '--environment': 'environment'
   };
 
   for (let i = 2; i < argv.length; i += 1) {
@@ -204,118 +201,15 @@ async function createWizardConfig(appName, openapiFile, controllerUrl, environme
 }
 
 /**
- * Tests a single endpoint for reachability
- * @async
- * @function testEndpoint
- * @param {string} testUrl - URL to test
- * @param {number} timeoutMs - Timeout in milliseconds
- * @returns {Promise<boolean>} True if endpoint is reachable
- */
-async function testEndpoint(testUrl, timeoutMs) {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    const response = await Promise.race([
-      fetch(testUrl, {
-        method: 'GET',
-        signal: controller.signal,
-        headers: { 'Accept': 'application/json' }
-      }),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout')), timeoutMs)
-      )
-    ]).catch(() => null);
-
-    clearTimeout(timeoutId);
-
-    // If we get any response (even 404 or 401), the service is reachable
-    // 401 is OK because it means the API is working, just needs auth
-    if (response && (response.ok || response.status === 404 || response.status === 401)) {
-      return true;
-    }
-
-    // If we get a 500 or other server error, the service is up but broken
-    // Still consider it "reachable" - the wizard will handle the actual error
-    return response && response.status >= 500;
-  } catch (error) {
-    // Timeout or abort means endpoint is not reachable
-    return false;
-  }
-}
-
-/**
- * Checks if dataplane URL is reachable and API is functional
- * @async
- * @function checkDataplaneHealth
- * @param {string} dataplaneUrl - Dataplane URL to check
- * @param {number} timeoutMs - Timeout in milliseconds (default: 5000)
- * @returns {Promise<boolean>} True if dataplane is reachable and functional
- */
-async function checkDataplaneHealth(dataplaneUrl, timeoutMs = 5000) {
-  if (!dataplaneUrl) {
-    return false;
-  }
-
-  const baseUrl = dataplaneUrl.replace(/\/$/, '');
-  const endpointsToTest = ['/health', '/api/v1/health', '/api/health', ''];
-
-  for (const endpoint of endpointsToTest) {
-    const testUrl = endpoint ? `${baseUrl}${endpoint}` : baseUrl;
-    const isReachable = await testEndpoint(testUrl, timeoutMs);
-    if (isReachable) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-/**
- * Validates dataplane health before running wizard
- * @async
- * @function validateDataplaneHealth
- * @param {string} dataplaneUrl - Dataplane URL to check
- * @returns {Promise<Object|null>} Error object if unhealthy, null if healthy
- */
-async function validateDataplaneHealth(dataplaneUrl) {
-  logInfo('Checking dataplane connectivity...');
-  try {
-    const isHealthy = await checkDataplaneHealth(dataplaneUrl, 5000);
-    if (!isHealthy) {
-      return {
-        success: false,
-        stdout: '',
-        stderr: '',
-        error: `Dataplane is not reachable at ${dataplaneUrl}.\n\n` +
-               'Please ensure the dataplane service is running and accessible, then try again.\n' +
-               `You can check dataplane status with: curl ${dataplaneUrl}/health`
-      };
-    }
-    logSuccess('✓ Dataplane is reachable');
-    return null;
-  } catch (error) {
-    return {
-      success: false,
-      stdout: '',
-      stderr: '',
-      error: `Failed to check dataplane health: ${error.message}\n\n` +
-             `The dataplane at ${dataplaneUrl} may be down or unreachable.`
-    };
-  }
-}
-
-/**
  * Builds wizard command arguments
  * @function buildWizardArgs
  * @param {string} configPath - Path to wizard config file
  * @param {string} controllerUrl - Controller URL
  * @param {string} environment - Environment name
- * @param {string|null} dataplaneUrl - Optional dataplane URL
  * @returns {string[]} Command arguments
  */
-function buildWizardArgs(configPath, controllerUrl, environment, dataplaneUrl) {
-  const args = [
+function buildWizardArgs(configPath, controllerUrl, environment) {
+  return [
     'bin/aifabrix.js',
     'wizard',
     '--config',
@@ -325,19 +219,13 @@ function buildWizardArgs(configPath, controllerUrl, environment, dataplaneUrl) {
     '--environment',
     environment
   ];
-
-  if (dataplaneUrl) {
-    args.push('--dataplane', dataplaneUrl);
-  }
-
-  return args;
 }
 
 /**
  * Handles wizard command execution errors
  * @function handleWizardError
  * @param {Error} error - Error object
- * @param {string|null} dataplaneUrl - Dataplane URL
+ * @param {string|null} dataplaneUrl - Dataplane URL (for error context; may be null when auto-discovered)
  * @returns {Object} Error result object
  */
 function handleWizardError(error, dataplaneUrl) {
@@ -382,21 +270,11 @@ function handleWizardError(error, dataplaneUrl) {
  * @param {string} configPath - Path to wizard config file
  * @param {string} controllerUrl - Controller URL
  * @param {string} environment - Environment name
- * @param {string|null} dataplaneUrl - Optional dataplane URL
  * @returns {Promise<Object>} Command result object
  */
-async function runWizard(configPath, controllerUrl, environment, dataplaneUrl) {
-  if (dataplaneUrl) {
-    const healthError = await validateDataplaneHealth(dataplaneUrl);
-    if (healthError) {
-      return healthError;
-    }
-  } else {
-    logInfo('Note: No dataplane URL provided. Wizard will attempt to discover it from controller.');
-    logInfo('If dataplane discovery fails or hangs, provide --dataplane <url> explicitly.');
-  }
-
-  const args = buildWizardArgs(configPath, controllerUrl, environment, dataplaneUrl);
+async function runWizard(configPath, controllerUrl, environment) {
+  logInfo('Note: Dataplane URL is auto-discovered from the controller.');
+  const args = buildWizardArgs(configPath, controllerUrl, environment);
 
   try {
     const result = await execFileAsync('node', args, {
@@ -407,7 +285,7 @@ async function runWizard(configPath, controllerUrl, environment, dataplaneUrl) {
     });
     return { success: true, stdout: result.stdout || '', stderr: result.stderr || '' };
   } catch (error) {
-    return handleWizardError(error, dataplaneUrl);
+    return handleWizardError(error, null);
   }
 }
 
@@ -529,12 +407,7 @@ async function executeWizard(args) {
   logSuccess(`✓ Created config: ${configPath}`);
 
   logInfo('\n2. Running wizard...');
-  const wizardResult = await runWizard(
-    configPath,
-    args.controller,
-    args.environment,
-    args.dataplane
-  );
+  const wizardResult = await runWizard(configPath, args.controller, args.environment);
 
   if (!wizardResult.success) {
     logError('Wizard failed:');

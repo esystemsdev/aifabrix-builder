@@ -1,419 +1,194 @@
-# Infrastructure Guide
+# Local Infrastructure Guide
 
 ← [Documentation index](README.md)
 
-We recommend running the AI Fabrix platform in **Microsoft Azure**. The aifabrix CLI works the same locally and in Azure—no manual config difference for the user.
+**Scope:** This page is for **local Docker installation only**. For Azure deployment, use **Azure Marketplace**—Azure automatically provisions infrastructure, Keycloak, Miso Controller, and Dataplane. See your Azure deployment documentation for Marketplace setup.
 
-## What is Infrastructure?
+---
 
-When you run `aifabrix up-infra`, you get **shared baseline services** that all your applications use:
+## Local Infrastructure Overview
 
-### PostgreSQL (port 5432)
-- Database server for your applications
-- Includes pgvector extension for AI/ML workloads
+When you run `aifabrix up-infra`, you get shared baseline services for local development:
+
+| Service | Port | Required | Description |
+|---------|------|----------|-------------|
+| PostgreSQL | 5432 | Always | Database server (includes pgvector). Access: localhost:5432 |
+| Redis | 6379 | Always | In-memory cache, sessions, queues. Access: localhost:6379 |
+| pgAdmin | 5050 | Optional | Web UI for database management. Access: http://localhost:5050 |
+| Redis Commander | 8081 | Optional | Web UI for Redis. Access: http://localhost:8081 |
+| Traefik | 80/443 | Optional | Reverse proxy for local routing |
+
+**Default credentials:** Postgres user `pgadmin`, pgAdmin login `admin@aifabrix.dev` / admin123, Redis Commander login admin / admin123. First-time run creates secrets; use `--adminPwd <password>` for a custom admin password.
+
+---
+
+## Quick Start
+
+**Minimal (Postgres + Redis only):**
+```bash
+aifabrix up-infra
+```
+
+**Full stack (Postgres, Redis, pgAdmin, Redis Commander, Traefik):**
+```bash
+aifabrix up-infra --pgAdmin --redisAdmin --traefik
+```
+
+**First time?** Docker downloads images (2–3 minutes). You’ll see containers starting and health checks passing.
+
+---
+
+## up-infra Options
+
+| Option | Description |
+|--------|-------------|
+| `--pgAdmin` | Include pgAdmin web UI and save to config |
+| `--no-pgAdmin` | Exclude pgAdmin and save to config |
+| `--redisAdmin` | Include Redis Commander web UI and save to config |
+| `--no-redisAdmin` | Exclude Redis Commander and save to config |
+| `--traefik` | Include Traefik reverse proxy and save to config |
+| `--no-traefik` | Exclude Traefik and save to config |
+| `--adminPwd <password>` | Override default admin password (Postgres, pgAdmin, Redis Commander) |
+| `-d, --developer <id>` | Use developer-specific ports and network |
+
+Settings are stored in `~/.aifabrix/config.yaml`. When flags are omitted, saved values are used (pgAdmin and Redis Commander default to enabled).
+
+**Example with all optional services:**
+```bash
+aifabrix up-infra --pgAdmin --redisAdmin --traefik
+```
+
+---
+
+## Service Details
+
+### PostgreSQL (always on)
 - **Access:** localhost:5432
 - **Username:** pgadmin
-- **Password:** admin123
+- **Password:** from admin-secrets (default admin123 on first run)
 
-### Redis (port 6379)
-- In-memory data store for caching
-- Session storage
-- Message queue for background jobs
+### Redis (always on)
 - **Access:** localhost:6379
 
-### pgAdmin (port 5050) - Optional
-- Web UI for database management
-- Create/edit databases, run SQL queries
-- **Access:** <http://localhost:5050>
-- **Login:** <admin@aifabrix.dev> / admin123
+### pgAdmin (optional)
+- **Access:** http://localhost:5050 (port 5050 for dev 0; add 100 per developer ID)
+- **Login:** admin@aifabrix.dev / admin123 (or your `--adminPwd`)
 
-### Redis Commander (port 8081) - Optional
-- Web UI for Redis management  
-- View keys, monitor performance
-- **Access:** <http://localhost:8081>
-- **Login:** admin / admin123
+### Redis Commander (optional)
+- **Access:** http://localhost:8081 (port 8081 for dev 0; add 100 per developer ID)
+- **Login:** admin / admin123 (or your `--adminPwd`)
 
-### Traefik (ports 80/443) - Optional
-- Reverse proxy for local routing (matches Front Door routing config)
-- **Access:** <http://localhost:80>, <https://localhost:443>
-
-```mermaid
-%%{init: {
-  "theme": "base",
-  "themeVariables": {
-    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
-    "fontSize": "16px",
-    "background": "#FFFFFF",
-    "primaryColor": "#F8FAFC",
-    "primaryTextColor": "#0B0E15",
-    "primaryBorderColor": "#E2E8F0",
-    "lineColor": "#E2E8F0",
-    "textColor": "#0B0E15",
-    "subGraphTitleColor": "#64748B",
-    "subGraphTitleFontWeight": "500",
-    "borderRadius": 16
-  },
-  "flowchart": {
-    "curve": "linear",
-    "nodeSpacing": 34,
-    "rankSpacing": 34,
-    "padding": 10
-  }
-}}%%
-
-flowchart TB
-
-%% =======================
-%% Styles
-%% =======================
-classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
-classDef note fill:#FFFFFF,color:#64748B,stroke:#E2E8F0,stroke-width:1.5px,stroke-dasharray:4 4;
-
-%% =======================
-%% Infrastructure
-%% =======================
-subgraph Infrastructure["Infrastructure"]
-    direction TB
-    InfraNote["Stateful · Always running"]:::note
-    Postgres[(PostgreSQL)]:::base
-    Redis[(Redis)]:::base
-    Traefik[Traefik]:::base
-end
-
-%% =======================
-%% Operations Tools
-%% =======================
-subgraph OpsTools["Operations Tools"]
-    direction TB
-    OpsNote["On-demand / Admin only"]:::note
-    pgAdmin[pgAdmin]:::base
-    RedisCommander[Redis Commander]:::base
-end
-
-%% =======================
-%% Applications
-%% =======================
-subgraph Applications["Applications"]
-    direction TB
-    AppNote["Start / Stop · Scale"]:::note
-    Keycloak[Keycloak<br/>Identity & Access]:::base
-    MisoController[Miso Controller<br/>Deployment & Governance]:::base
-    YourApp[Customer Application]:::base
-    OtherApps[Other Applications]:::base
-end
-
-%% =======================
-%% Flow
-%% =======================
-Applications --> Infrastructure
-OpsTools --> Infrastructure
-```
+### Traefik (optional)
+- **Access:** http://localhost:80, https://localhost:443
+- **TLS:** Set `TRAEFIK_CERT_STORE`, `TRAEFIK_CERT_FILE`, `TRAEFIK_KEY_FILE` before `aifabrix up-infra --traefik`
 
 ---
 
 ## Commands
 
-### Start Infrastructure
-```bash
-aifabrix up-infra
-```
-
-Start with Traefik:
-```bash
-aifabrix up-infra --traefik
-```
-
-**First time?** Docker downloads images (2-3 minutes).
-
-**What you'll see:**
-- Containers starting
-- Health checks passing
-- Service URLs
-
-### Stop Infrastructure
+### Stop infrastructure
 ```bash
 aifabrix down-infra
 ```
+Stops all infrastructure and application containers on the same network. Data is preserved unless `--volumes` is used.
 
-Stops all infrastructure containers and **all application containers on the same network**. Your data is preserved in Docker volumes unless you use `--volumes`.
-
-### Check Status
-```bash
-aifabrix doctor
-```
-
-Shows what's running, what's not, and how to fix issues.
-
-### Reset Everything (Delete All Data)
+### Reset (delete all data)
 ```bash
 aifabrix down-infra --volumes
 ```
+Removes all volumes (databases, Redis, app data). Use for a fresh start.
 
-Stops infrastructure and all apps on the same network and **removes all volumes** (infra and application data).
-
-⚠️ **Warning:** This deletes all databases, Redis data, and app volumes. Use for fresh start.
-
----
-
-<a id="traefik"></a>
-## Traefik configuration and validation
-
-Traefik is an optional reverse proxy for local routing (matches Front Door routing config in production). The builder can start Traefik as part of infrastructure and generates Traefik labels when `frontDoorRouting.enabled` is true in your app's `application.yaml`.
-
-**Enable Traefik:**
+### Check status
 ```bash
-aifabrix up-infra --traefik
+aifabrix status
 ```
-This starts Traefik (ports 80/443) and saves `traefik: true` to `~/.aifabrix/config.yaml`. Use `aifabrix up-infra --no-traefik` to disable and persist.
+Shows running services, ports, and URLs.
 
-**Basic config:** Traefik listens on HTTP (80) and HTTPS (443). For TLS, set environment variables before running `aifabrix up-infra --traefik`:
-- `TRAEFIK_CERT_STORE` – Certificate store name (e.g. `wildcard`)
-- `TRAEFIK_CERT_FILE` – Absolute path to certificate file
-- `TRAEFIK_KEY_FILE` – Absolute path to private key file
-
-**How the builder uses Traefik:** When an app has `frontDoorRouting.enabled: true` in `application.yaml`, the builder generates Traefik labels for the app's docker-compose service (router rule from host + path, TLS, optional cert store). The builder does not configure Traefik itself beyond starting it; labels are applied when you run the app with Traefik on the same Docker network.
-
-**Requirements:** DNS or `/etc/hosts` entry for `${DEV_USERNAME}.builder01.local` → localhost if using host-based routing. See [application.yaml frontDoorRouting](configuration/application-yaml.md) for pattern and host configuration.
+### Health check
+```bash
+aifabrix doctor
+```
+Validates Docker, ports, secrets, and infrastructure health.
 
 ---
 
-## Quick install: up-miso
+## Platform (Local Only)
 
-Install Keycloak and Miso Controller **from images** (no build). Use when you have pre-built images and want a fast platform setup for testing.
+On Azure, Keycloak, Miso Controller, and Dataplane are auto-provisioned. Locally, install them with these commands:
 
-**Prerequisites:** Infrastructure must be up (`aifabrix up-infra`).
-
+### up-miso
+Install Keycloak and Miso Controller from images (no build). Requires `aifabrix up-infra` first.
 ```bash
 aifabrix up-miso
 ```
 
-**What happens:**
-- Ensures `builder/keycloak` and `builder/miso-controller` exist (from templates if missing)
-- Sets URL secrets for Keycloak and Miso Controller (ports from developer ID)
-- Resolves env with auto-generated secrets (force) so no manual secret setup is needed for testing
-- Runs Keycloak, then Miso Controller (no build step)
+### up-platform
+Full platform in one step: `up-miso` then `up-dataplane`.
+```bash
+aifabrix up-platform
+```
 
-**Options:**
-- `-r, --registry <url>` - Override registry for both apps (e.g. `myacr.azurecr.io`)
-- `--registry-mode <mode>` - Override registry mode (`acr` or `external`)
-- `-i, --image <key>=<value>` - Override image (e.g. `keycloak=myreg/keycloak:v1`, `miso-controller=myreg/miso:v1`); can be repeated
-
-**After up-miso:** Run onboarding and register Keycloak from the miso-controller repo if needed.
-
-→ [Infrastructure Commands](commands/infrastructure.md#aifabrix-up-miso) for full reference.
-
----
-
-## Up Dataplane (dev)
-
-Register (or rotate if already registered), deploy to the controller, then run the **dataplane** app locally in the **dev** environment. Always local deployment: use when developing against the dataplane or testing pipeline in dev.
-
-**Prerequisites:** Logged in (`aifabrix login`), environment set to `dev` (`aifabrix auth config --set-environment dev`).
-
+### up-dataplane
+Register/rotate, deploy to controller, then run dataplane locally in dev. Requires `aifabrix login` and environment `dev`.
 ```bash
 aifabrix login --environment dev
 aifabrix up-dataplane
 ```
 
-**What happens:**
-- Ensures `builder/dataplane` exists (from template if missing)
-- If dataplane is already registered in the environment → rotates secret; otherwise → registers the app
-- Deploys dataplane via Miso Controller (sends manifest)
-- Runs dataplane locally (`aifabrix run dataplane`)
-
-**Options:**
-- `-r, --registry <url>` - Override registry for dataplane image
-- `--registry-mode <mode>` - Override registry mode (`acr` or `external`)
-- `-i, --image <ref>` - Override dataplane image reference (e.g. `myreg/dataplane:latest`)
-
-→ [Infrastructure Commands](commands/infrastructure.md#aifabrix-up-dataplane) for full reference.
+→ [Infrastructure Commands](commands/infrastructure.md) for full reference.
 
 ---
 
-## Optional Platform Applications
+## Optional: Build Keycloak and Miso from Scratch
 
-**Keycloak and Miso-Controller are NOT infrastructure** - they are regular applications you install and run like your own apps.
+For local development, you can create and run Keycloak and Miso Controller from templates:
 
-### Why Separate?
-
-**Infrastructure** = Always running, shared by all apps (Postgres, Redis)
-
-**Applications** = Start/stop as needed, specific purpose (Keycloak, Miso-Controller, your apps)
-
-You might not need Keycloak or Miso-Controller for basic development. Install them when you need them.
-
-```mermaid
-%%{init: {
-  "theme": "base",
-  "themeVariables": {
-    "fontFamily": "Poppins, Arial Rounded MT Bold, Arial, sans-serif",
-    "fontSize": "16px",
-    "background": "#FFFFFF",
-    "primaryColor": "#F8FAFC",
-    "primaryTextColor": "#0B0E15",
-    "primaryBorderColor": "#E2E8F0",
-    "lineColor": "#E2E8F0",
-    "textColor": "#0B0E15",
-    "subGraphTitleColor": "#64748B",
-    "subGraphTitleFontWeight": "500",
-    "borderRadius": 16
-  },
-  "flowchart": {
-    "curve": "linear",
-    "nodeSpacing": 34,
-    "rankSpacing": 34,
-    "padding": 10
-  }
-}}%%
-
-flowchart TB
-
-%% =======================
-%% Styles
-%% =======================
-classDef base fill:#FFFFFF,color:#0B0E15,stroke:#E2E8F0,stroke-width:1.5px;
-classDef note fill:#FFFFFF,color:#64748B,stroke:#E2E8F0,stroke-width:1.5px,stroke-dasharray:4 4;
-
-%% =======================
-%% Infrastructure
-%% =======================
-subgraph Infrastructure["Infrastructure"]
-    direction TB
-    InfraNote["Stateful · Always running"]:::note
-    Postgres[(PostgreSQL)]:::base
-    Redis[(Redis)]:::base
-    Traefik[Traefik]:::base
-    pgAdmin[pgAdmin]:::base
-    RedisCommander[Redis Commander]:::base
-end
-
-%% =======================
-%% Applications
-%% =======================
-subgraph Applications["Applications"]
-    direction TB
-    AppNote["Start / Stop · Scale"]:::note
-    Keycloak[Keycloak<br/>Authentication]:::base
-    MisoController[Miso Controller<br/>Azure Deployment]:::base
-    YourApp[Your App]:::base
-    OtherApps[Other Apps]:::base
-end
-
-%% =======================
-%% Flow
-%% =======================
-Applications --> Infrastructure
-```
-
----
-
-## Install Keycloak (Authentication)
-
-Keycloak provides authentication and user management for your applications.
-
-### 1. Create
+**Keycloak:**
 ```bash
 aifabrix create keycloak --port 8082 --database --template keycloak
-```
-
-### 2. Build
-```bash
 aifabrix build keycloak
-```
-
-### 3. Run
-```bash
 aifabrix run keycloak
 ```
+Access: http://localhost:8082 (admin / admin123)
 
-### 4. Access
-**URL:** <http://localhost:8082>
-
-**Admin login:** admin / admin123
-
-### What You Get
-- User authentication
-- Single Sign-On (SSO)
-- Role-based access control
-- Social login providers
+**Miso Controller:**
+```bash
+aifabrix create miso-controller --port 3000 --database --redis --template miso-controller
+aifabrix build miso-controller
+aifabrix run miso-controller
+```
+Access: http://localhost:3000
 
 ---
 
-## Install Miso-Controller (Azure Deployment)
+## Traefik Configuration
 
-- **Docker (local):** The steps below are for **Docker/local** install (create, build, run). Use this for local development.
-- **Azure:** For production or cloud, install the platform via **Azure Marketplace** first; then use the controller URL from that deployment. See Azure documentation or marketplace listing for Azure-specific setup.
-
-Miso Controller deploys your applications to Azure or runs them locally in Docker.
-
-### 1. Create (Docker / local)
-```bash
-aifabrix create miso-controller --port 3000 --database --redis --template miso-controller
-```
-
-### 2. Build
-```bash
-aifabrix build miso-controller
-```
-
-### 3. Run
-```bash
-aifabrix run miso-controller
-```
-
-### 4. Access
-**URL:** <http://localhost:3000>
-
-**What You Get**
-- Deploy to Azure Container Apps
-- Manage deployments via API
-- Monitor application status
-- Handle secrets and configuration
+Traefik is an optional reverse proxy for local routing. Enable with `aifabrix up-infra --traefik`; disable with `aifabrix up-infra --no-traefik`. When an app has `frontDoorRouting.enabled: true` in `application.yaml`, the builder generates Traefik labels. See [application.yaml frontDoorRouting](configuration/application-yaml.md) for host and path configuration.
 
 ---
 
 ## Common Questions
 
-### Do I need to run infrastructure all the time?
-Only when developing. Start with `aifabrix up-infra` when you begin work, stop with `aifabrix down-infra` when done.
+**Do I need to run infrastructure all the time?**  
+Only when developing. Use `aifabrix up-infra` when you start, `aifabrix down-infra` when done.
 
-### What happens to my data when I stop?
-It's preserved in Docker volumes. Your databases and Redis data persist between restarts.
+**What happens to my data when I stop?**  
+It’s preserved in Docker volumes. Databases and Redis data persist between restarts.
 
-### How do I connect to Postgres from my app?
-**From Docker container:** `postgres:5432`  
-**From your local machine:** `localhost:5432`
+**Can I use my own Postgres/Redis?**  
+Yes. Configure connection strings in your app’s `env.template`.
 
-The SDK handles this automatically in generated config files.
-
-### Can I use my own Postgres/Redis?
-Yes! Configure connection strings in your app's `env.template`. The SDK doesn't force you to use infrastructure services.
-
-### How much disk space does this use?
-
-Figures below are approximate; run `docker system df` and `docker stats` for your setup.
-
-- **Initial download (base infra):** Approximately 0.5–1.5 GB for Postgres and Redis images (varies by image version and platform).
-- **Full platform (Keycloak, Miso Controller, Dataplane, etc.):** Roughly 10–15 GB for all platform images; exact size depends on images used. Check with `docker images` or your registry to confirm.
-- **Running (base infra):** Approximately 256 MB–1 GB RAM (Postgres and Redis; add more if using Traefik, pgAdmin, or Redis Commander). CPU usage is low when idle.
-- **Data volumes:** Depends on your usage (databases, Redis persistence). Monitor with `docker system df`.
+**How much disk space?**  
+Base infra: ~0.5–1.5 GB for images; ~256 MB–1 GB RAM when running (more if pgAdmin, Redis Commander, or Traefik are enabled).
 
 ---
 
 ## Troubleshooting
 
-**Port 5432 already in use**  
-→ You have another Postgres running. Stop it or change the port.
-
-**Port 6379 already in use**  
-→ You have another Redis running. Stop it first.
-
-**Docker not running**  
-→ Start Docker Desktop, then run `aifabrix up-infra` again.
-
-**"Cannot connect to Docker daemon"**  
-→ Make sure Docker Desktop is running and you're logged in.
-
-**Containers start but apps can't connect**  
-→ Run `aifabrix doctor` to check connectivity.
-
+| Issue | Action |
+|-------|--------|
+| Port 5432 already in use | Stop other Postgres or use `--developer` for different ports |
+| Port 6379 already in use | Stop other Redis |
+| Docker not running | Start Docker Desktop, then run `aifabrix up-infra` again |
+| Cannot connect to Docker daemon | Ensure Docker Desktop is running and you’re logged in |
+| Containers start but apps can’t connect | Run `aifabrix doctor` to check connectivity |

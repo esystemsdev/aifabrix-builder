@@ -2248,6 +2248,7 @@ describe('CLI Commands', () => {
           redis: 'unknown',
           pgadmin: 'unhealthy'
         };
+        config.getConfig.mockResolvedValue({});
         validator.checkEnvironment.mockResolvedValue(mockEnvResult);
         infra.checkInfraHealth.mockResolvedValue(mockHealthResult);
 
@@ -2396,7 +2397,7 @@ describe('CLI Commands', () => {
         expect(config.setDeveloperId).toHaveBeenCalledWith(1);
         expect(process.env.AIFABRIX_DEVELOPERID).toBe('1');
         expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Developer ID set to 1'));
-        expect(infra.startInfra).toHaveBeenCalledWith(1, { traefik: false });
+        expect(infra.startInfra).toHaveBeenCalledWith(1, expect.objectContaining({ traefik: false }));
       });
 
       it('should handle up command with invalid developer ID via setupCommands', async() => {
@@ -2444,7 +2445,7 @@ describe('CLI Commands', () => {
         await handler(options);
 
         expect(config.setDeveloperId).not.toHaveBeenCalled();
-        expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: false });
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: false }));
       });
 
       it('should execute up with --traefik, persist to config, and start with traefik', async() => {
@@ -2458,7 +2459,7 @@ describe('CLI Commands', () => {
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ traefik: true }));
         expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Traefik enabled and saved to config'));
-        expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: true });
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: true }));
       });
 
       it('should execute up with --no-traefik, persist to config, and start without traefik', async() => {
@@ -2472,7 +2473,44 @@ describe('CLI Commands', () => {
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ traefik: false }));
         expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Traefik disabled and saved to config'));
-        expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: false });
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: false }));
+      });
+
+      it('should execute up with --pgAdmin and --redisAdmin, persist to config', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
+        config.saveConfig.mockResolvedValue();
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({ pgAdmin: true, redisAdmin: true });
+
+        expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ pgadmin: true, redisCommander: true }));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ pgAdmin enabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Redis Commander enabled and saved to config'));
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({
+          traefik: false,
+          pgadmin: true,
+          redisCommander: true
+        }));
+      });
+
+      it('should execute up with --no-pgAdmin and --no-redisAdmin, persist to config', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
+        config.saveConfig.mockResolvedValue();
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({ pgAdmin: false, redisAdmin: false });
+
+        expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ pgadmin: false, redisCommander: false }));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ pgAdmin disabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Redis Commander disabled and saved to config'));
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({
+          pgadmin: false,
+          redisCommander: false
+        }));
       });
 
       it('should execute up reading traefik from config when flags omitted', async() => {
@@ -2484,7 +2522,7 @@ describe('CLI Commands', () => {
         await handler({});
 
         expect(config.saveConfig).not.toHaveBeenCalled();
-        expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: true });
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: true }));
       });
 
       it('should handle up command error via setupCommands', async() => {

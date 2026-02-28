@@ -91,6 +91,14 @@
               "Added contract versioning configuration to datasource root for CI/CD safety and agent stability"
            ],
            "breaking":false
+        },
+        {
+           "version":"2.2.0",
+           "date":"2026-02-26T00:00:00Z",
+           "changes":[
+              "capabilities: preferred format is array [\"list\",\"get\",...]. Schema oneOf accepts both array and legacy object; runtime accepts both for backward compatibility."
+           ],
+           "breaking":false
         }
      ]
   },
@@ -764,31 +772,27 @@
         "additionalProperties":false
      },
      "capabilities":{
-        "type":"object",
-        "description":"Declares which logical operations are supported by this datasource.",
-        "properties":{
-           "list":{
-              "type":"boolean",
-              "default":true
+        "oneOf":[
+           {
+              "type":"array",
+              "description":"Preferred: list of supported operation names. Values: list, get, create, update, delete.",
+              "items":{"type":"string","enum":["list","get","create","update","delete"]},
+              "uniqueItems":true
            },
-           "get":{
-              "type":"boolean",
-              "default":false
-           },
-           "create":{
-              "type":"boolean",
-              "default":false
-           },
-           "update":{
-              "type":"boolean",
-              "default":false
-           },
-           "delete":{
-              "type":"boolean",
-              "default":false
+           {
+              "type":"object",
+              "description":"Legacy: object with boolean flags per operation. Accepted for backward compatibility.",
+              "properties":{
+                 "list":{"type":"boolean"},
+                 "get":{"type":"boolean"},
+                 "create":{"type":"boolean"},
+                 "update":{"type":"boolean"},
+                 "delete":{"type":"boolean"}
+              },
+              "additionalProperties":false
            }
-        },
-        "additionalProperties":false
+        ],
+        "description":"Supported operations. When omitted, derived from execution.engine (CIP operations or list-only for Python)."
      },
      "execution":{
         "type":"object",

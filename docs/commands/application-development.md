@@ -486,7 +486,7 @@ aifabrix test-integration hubspot --debug  # write log to integration/hubspot/lo
 
 **Script:** For builder apps, override with `build.scripts.test:integration` or `build.scripts.testIntegration` in application.yaml. When unset, the command used is the same as [aifabrix test-e2e](#aifabrix-test-e2e-app) (e.g. `pnpm test:e2e`, `make test:e2e`). See [Scripts and commands](#scripts-and-commands).
 
-**See also:** [External Integration Testing](external-integration-testing.md) for external system integration tests, payload configuration, and troubleshooting.
+**See also:** [External Integration Testing](external-integration-testing.md) for external system integration tests, payload configuration, and troubleshooting. For datasource-level E2E tests (including credential validation), use `aifabrix datasource test-e2e <datasourceKey>`; see [External Integration Commands](external-integration.md#aifabrix-datasource-test-e2e-datasourcekey).
 
 ---
 

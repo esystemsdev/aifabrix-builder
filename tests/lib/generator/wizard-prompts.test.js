@@ -174,7 +174,7 @@ describe('Wizard Prompts', () => {
       expect(result).toEqual({ credentialIdOrKey: 'my-credential' });
     });
 
-    it('should include status icon in choice names when credential has status', async() => {
+    it('should include status icon and label in choice names when credential has status', async() => {
       const credentialsList = [
         { key: 'cred-ok', displayName: 'OK Credential', status: 'verified' },
         { key: 'cred-pending', displayName: 'Pending Cred', status: 'pending' }
@@ -185,8 +185,10 @@ describe('Wizard Prompts', () => {
       expect(call.choices).toHaveLength(2);
       expect(call.choices[0].name).toContain(' ✓');
       expect(call.choices[0].name).toContain('OK Credential');
+      expect(call.choices[0].name).toContain(' (Valid)');
       expect(call.choices[1].name).toContain(' ○');
       expect(call.choices[1].name).toContain('Pending Cred');
+      expect(call.choices[1].name).toContain(' (Not tested)');
     });
   });
 

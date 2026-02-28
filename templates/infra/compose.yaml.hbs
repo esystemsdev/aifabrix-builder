@@ -45,6 +45,7 @@ services:
       retries: 5
     restart: unless-stopped
 
+{{#if pgadmin.enabled}}
   # Optional: pgAdmin for database management
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -78,7 +79,9 @@ services:
         condition: service_healthy
     networks:
       - {{networkName}}
+{{/if}}
 
+{{#if redisCommander.enabled}}
   # Optional: Redis Commander for Redis management
   redis-commander:
     image: rediscommander/redis-commander:latest
@@ -96,6 +99,7 @@ services:
         condition: service_healthy
     networks:
       - {{networkName}}
+{{/if}}
 
 {{#if traefik.enabled}}
   # Traefik Reverse Proxy
@@ -139,9 +143,11 @@ volumes:
   {{#if (eq devId 0)}}redis_data{{else}}dev{{devId}}_redis_data{{/if}}:
     name: {{#if (eq devId 0)}}infra_redis_data{{else}}infra_dev{{devId}}_redis_data{{/if}}
     driver: local
+{{#if pgadmin.enabled}}
   {{#if (eq devId 0)}}pgadmin_data{{else}}dev{{devId}}_pgadmin_data{{/if}}:
     name: {{#if (eq devId 0)}}infra_pgadmin_data{{else}}infra_dev{{devId}}_pgadmin_data{{/if}}
     driver: local
+{{/if}}
 
 networks:
   {{networkName}}:

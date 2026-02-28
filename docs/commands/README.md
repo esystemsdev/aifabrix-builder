@@ -15,7 +15,7 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix logout`](authentication.md#aifabrix-logout) - Clear authentication tokens
   - [`aifabrix auth config --set-environment <env>`](authentication.md#aifabrix-auth-config) - Set default environment after login (e.g. dev, tst, pro)
 - [Infrastructure Commands](infrastructure.md) - Local infrastructure management (Docker containers and development only: up-infra, up-platform, up-miso, up-dataplane, down-infra, down-app)
-  - [`aifabrix up-infra`](infrastructure.md#aifabrix-up-infra) - Start local infrastructure (Postgres, Redis, optional Traefik)
+  - [`aifabrix up-infra`](infrastructure.md#aifabrix-up-infra) - Start local infrastructure (Postgres, Redis, optional pgAdmin, Redis Commander, Traefik)
   - [`aifabrix up-platform`](infrastructure.md#aifabrix-up-platform) - Start platform (Keycloak, Miso Controller, Dataplane) from community images
   - [`aifabrix up-miso`](infrastructure.md#aifabrix-up-miso) - Install Keycloak + Miso Controller from images (no build)
   - [`aifabrix up-dataplane`](infrastructure.md#aifabrix-up-dataplane) - Register/rotate, deploy, then run dataplane locally in dev (always local deployment)
@@ -74,7 +74,7 @@ Complete command reference organized by concept with examples and troubleshootin
 ### External Integration
 - [External Integration Commands](external-integration.md) - External system integration
 - [External Integration Testing](external-integration-testing.md) - Unit and integration testing, test payloads
-  - [`aifabrix wizard [appName]`](external-integration.md#aifabrix-wizard) - Interactive wizard (mode first; loads/saves integration/<appName>/wizard.yaml); appName optional
+  - [`aifabrix wizard [appName] [--debug]`](external-integration.md#aifabrix-wizard) - Interactive wizard (mode first; loads/saves integration/<appName>/wizard.yaml); appName optional; `--debug` for debug manifests
   - [`aifabrix download <system-key>`](external-integration.md#aifabrix-download-system-key) - Download external system from dataplane
   - [`aifabrix upload <system-key>`](external-integration.md#aifabrix-upload-system-key) - Upload external system to dataplane (upload → validate → publish; no controller deploy)
   - [`aifabrix delete <system-key>`](external-integration.md#aifabrix-delete-system-key) - Delete external system from dataplane

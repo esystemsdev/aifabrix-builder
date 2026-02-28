@@ -263,7 +263,7 @@ aifabrix datasource test-integration hubspot-company --app hubspot --debug
 
 <a id="datasource-e2e-tests"></a>
 
-Run full E2E test (config, credential, sync, data, CIP) for **one** datasource via the dataplane external API.
+Run full E2E test (config, credential, sync, data, CIP) for **one** datasource via the dataplane external API. The dataplane runs E2E steps in order: config, credential, sync, data, CIP. Credential status is validated as the second step in this sequence.
 
 **Command:**
 ```bash

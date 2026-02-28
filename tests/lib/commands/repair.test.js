@@ -241,7 +241,7 @@ describe('repair', () => {
     });
 
     it('creates rbac.yaml when missing and system has roles', async() => {
-      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync');
+      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
       existsSyncSpy.mockImplementation((p) => {
         const s = typeof p === 'string' ? p : '';
         if (s === configPath || s === appPath) return true;

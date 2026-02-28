@@ -15,7 +15,7 @@ Commands for managing local infrastructure services (Postgres, Redis, pgAdmin, R
 
 Start local infrastructure (Postgres, Redis, optional Traefik).
 
-**What:** Starts PostgreSQL, Redis, pgAdmin, and Redis Commander in Docker. Supports developer isolation with developer-specific ports and infrastructure resources. Optionally includes Traefik reverse proxy.
+**What:** Starts PostgreSQL and Redis in Docker. Optionally includes pgAdmin, Redis Commander, and Traefik. Supports developer isolation with developer-specific ports and infrastructure resources.
 
 **When:** First time setup, after system restart, when infrastructure is down.
 
@@ -24,13 +24,19 @@ Start local infrastructure (Postgres, Redis, optional Traefik).
 # Start infrastructure with default ports (developer ID 0)
 aifabrix up-infra
 
+# Full stack: pgAdmin, Redis Commander, Traefik
+aifabrix up-infra --pgAdmin --redisAdmin --traefik
+
 # Override default admin password for new install (Postgres, pgAdmin, Redis Commander)
 aifabrix up-infra --adminPwd mySecurePassword
 
 # Set developer ID and start infrastructure (developer-specific ports)
 aifabrix up-infra --developer 1
 
-# Start infrastructure with Traefik reverse proxy (saves to config for future runs)
+# Exclude optional services (minimal footprint)
+aifabrix up-infra --no-pgAdmin --no-redisAdmin --no-traefik
+
+# Include Traefik reverse proxy (saves to config for future runs)
 aifabrix up-infra --traefik
 
 # Exclude Traefik and save to config
@@ -40,6 +46,10 @@ aifabrix up-infra --no-traefik
 **Options:**
 - `-d, --developer <id>` - Set developer ID and start infrastructure with developer-specific ports. Developer ID must be a non-negative integer (0 = default infra, 1+ = developer-specific). When provided, sets the developer ID in `~/.aifabrix/config.yaml` and starts infrastructure with isolated ports.
 - `--adminPwd <password>` - Set or update the admin password in `~/.aifabrix/admin-secrets.env` for Postgres, pgAdmin, and Redis Commander. If the file already exists, its password fields are overwritten with this value; otherwise they are backfilled. Use a strong password in shared environments. **Note:** The Postgres container sets the `pgadmin` user password only when the data volume is first created. If you change the password after Postgres was already initialized, login to Postgres will fail until you reset the volume: run `cd ~/.aifabrix/infra && docker compose -f compose.yaml -p aifabrix down -v`, then run `aifabrix up-infra --adminPwd <password>` again.
+- `--pgAdmin` - Include pgAdmin web UI and save to config (default: enabled).
+- `--no-pgAdmin` - Exclude pgAdmin and save to config.
+- `--redisAdmin` - Include Redis Commander web UI and save to config (default: enabled).
+- `--no-redisAdmin` - Exclude Redis Commander and save to config.
 - `--traefik` - Include Traefik reverse proxy and save `traefik: true` to `~/.aifabrix/config.yaml` (used for this run and when neither flag is passed).
 - `--no-traefik` - Exclude Traefik and save `traefik: false` to config. When neither `--traefik` nor `--no-traefik` is passed, the value is read from config.
 

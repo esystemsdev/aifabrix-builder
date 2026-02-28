@@ -116,19 +116,45 @@ describe('Wizard Headless Mode Handler', () => {
           systemIdOrKey: undefined
         })
       );
-      expect(wizardCore.validateWizardConfiguration).toHaveBeenCalledWith(
+    });
+
+    it('should merge CLI --debug into configPrefs when opts.debug is true', async() => {
+      wizardCore.handleModeSelection.mockResolvedValue({
+        mode: 'create-system',
+        sessionId: 'session-123'
+      });
+      wizardCore.handleSourceSelection.mockResolvedValue({
+        sourceType: 'openapi-file',
+        sourceData: './openapi.yaml'
+      });
+      wizardCore.handleOpenApiParsing.mockResolvedValue({});
+      wizardCore.handleCredentialSelection.mockResolvedValue(null);
+      wizardCore.handleTypeDetection.mockResolvedValue({});
+      wizardCore.handleConfigurationGeneration.mockResolvedValue({
+        systemConfig: mockSystemConfig,
+        datasourceConfigs: mockDatasourceConfigs,
+        systemKey: 'test-system'
+      });
+      wizardCore.validateWizardConfiguration.mockResolvedValue(undefined);
+      wizardCore.handleFileSaving.mockResolvedValue(undefined);
+
+      await wizardHeadless.executeWizardFromConfig(
+        mockWizardConfig,
         mockDataplaneUrl,
         mockAuthConfig,
-        mockSystemConfig,
-        mockDatasourceConfigs
+        { debug: true }
       );
-      expect(wizardCore.handleFileSaving).toHaveBeenCalledWith(
-        'test-app',
-        mockSystemConfig,
-        mockDatasourceConfigs,
-        'test-system',
+
+      expect(wizardCore.handleConfigurationGeneration).toHaveBeenCalledWith(
         mockDataplaneUrl,
-        mockAuthConfig
+        mockAuthConfig,
+        expect.objectContaining({
+          configPrefs: expect.objectContaining({
+            debug: true,
+            intent: 'test integration',
+            fieldOnboardingLevel: 'full'
+          })
+        })
       );
     });
 
@@ -312,6 +338,45 @@ describe('Wizard Headless Mode Handler', () => {
       expect(wizardCore.setupDataplaneAndAuth).toHaveBeenCalledWith(
         expect.objectContaining({ config: './wizard.yaml' }),
         'test-app'
+      );
+    });
+
+    it('should enable debug and pass debug to configPrefs when options.debug is true', async() => {
+      wizardConfigValidator.validateWizardConfig.mockResolvedValue({
+        valid: true,
+        config: mockWizardConfig
+      });
+      wizardCore.validateAndCheckAppDirectory.mockResolvedValue(true);
+      wizardCore.setupDataplaneAndAuth.mockResolvedValue({
+        dataplaneUrl: mockDataplaneUrl,
+        authConfig: mockAuthConfig
+      });
+      wizardCore.handleModeSelection.mockResolvedValue({ sessionId: 'session-123' });
+      wizardCore.handleSourceSelection.mockResolvedValue({
+        sourceType: 'openapi-file',
+        sourceData: './openapi.yaml'
+      });
+      wizardCore.handleOpenApiParsing.mockResolvedValue({});
+      wizardCore.handleCredentialSelection.mockResolvedValue(null);
+      wizardCore.handleTypeDetection.mockResolvedValue({});
+      wizardCore.handleConfigurationGeneration.mockResolvedValue({
+        systemConfig: mockSystemConfig,
+        datasourceConfigs: mockDatasourceConfigs
+      });
+      wizardCore.validateWizardConfiguration.mockResolvedValue(undefined);
+      wizardCore.handleFileSaving.mockResolvedValue(undefined);
+
+      await wizardHeadless.handleWizardHeadless({ ...mockOptions, debug: true });
+
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringMatching(/\[DEBUG\].*[Ww]izard debug mode/)
+      );
+      expect(wizardCore.handleConfigurationGeneration).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        expect.objectContaining({
+          configPrefs: expect.objectContaining({ debug: true })
+        })
       );
     });
 

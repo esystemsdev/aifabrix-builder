@@ -34,12 +34,18 @@ aifabrix wizard -a my-integration
 
 # Headless from a config file
 aifabrix wizard --config path/to/wizard.yaml
+
+# With debug output (saves debug manifests on validation failure)
+aifabrix wizard hubspot-test-v2 --debug
 ```
 
 **Resume:** After an error, if an app key is known, state is saved to `integration/<appKey>/wizard.yaml` and the error is appended to `integration/<appKey>/error.log`. Run `aifabrix wizard <appKey>` to resume.
 
 **Options:**
 - `-a, --app <app>` - Application name (if not provided, will prompt)
+- `--config <file>` - Run headless from a wizard config file
+- `--silent` - Run headless using `integration/<app>/wizard.yaml` only (no prompts)
+- `--debug` - Enable debug output and save debug manifests on validation failure
 
 **Wizard Flow:**
 1. **Mode Selection** - Create new system or add datasource
@@ -204,16 +210,12 @@ aifabrix upload my-hubspot
 
 # Validate and build payload only; no API calls
 aifabrix upload my-hubspot --dry-run
-
-# Use a specific dataplane URL
-aifabrix upload my-hubspot --dataplane https://dataplane.example.com
 ```
 
 **Arguments:** `<system-key>` – External system key (same as `integration/<system-key>/`).
 
 **Options:**
 - `--dry-run` – Validate locally and build payload only; no API calls
-- `--dataplane <url>` – Dataplane URL (default: discovered from controller)
 
 **Prerequisites:**
 - Login or app credentials for the system: `aifabrix login` or `aifabrix app register <system-key>`
@@ -429,7 +431,7 @@ aifabrix test-integration hubspot --debug
 
 **Arguments:** `<app>` – Application name (external system).
 
-**Options:** `-e, --env <env>` – Environment: dev, tst, or pro (default: from aifabrix auth config). `-d, --datasource <key>` – Test specific datasource only. `-p, --payload <file>` – Custom test payload file (overrides datasource testPayload). `-v, --verbose` – Detailed output. `--debug` – Include debug output in response and write log to `integration/<app>/logs/`. `--timeout <ms>` – Request timeout (default: 30000). Dataplane URL is always resolved from the controller; no `--dataplane` option.
+**Options:** `-e, --env <env>` – Environment: dev, tst, or pro (default: from aifabrix auth config). `-d, --datasource <key>` – Test specific datasource only. `-p, --payload <file>` – Custom test payload file (overrides datasource testPayload). `-v, --verbose` – Detailed output. `--debug` – Include debug output in response and write log to `integration/<app>/logs/`. `--timeout <ms>` – Request timeout (default: 30000). Dataplane URL is always resolved from the controller.
 
 **Prerequisites:** Logged in (`aifabrix login`); dataplane accessible; system published or ready for testing.
 

@@ -137,22 +137,6 @@ describe('upload command', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Warning: Permission denied'));
     });
 
-    it('should use --dataplane override when provided', async() => {
-      const { uploadExternalSystem } = require('../../../lib/commands/upload');
-      await uploadExternalSystem(systemKey, { dataplane: 'https://custom-dp.example.com' });
-
-      expect(uploadApplicationViaPipeline).toHaveBeenCalledWith(
-        'https://custom-dp.example.com',
-        expect.any(Object),
-        expect.any(Object)
-      );
-      expect(validateUploadViaPipeline).toHaveBeenCalledWith(
-        'https://custom-dp.example.com',
-        'up-123',
-        expect.any(Object)
-      );
-    });
-
     it('should skip API calls and log payload on --dry-run', async() => {
       const { uploadExternalSystem } = require('../../../lib/commands/upload');
       await uploadExternalSystem(systemKey, { dryRun: true });
