@@ -225,7 +225,13 @@ aifabrix upload my-hubspot --dry-run
 1. Validate locally (`validateExternalSystemComplete`)
 2. Build payload from controller manifest (system with RBAC + datasources) → `{ version, application, dataSources }`
 3. Resolve dataplane URL and auth (from controller + environment)
-4. **Credential secrets push (automatic):** The CLI reads `integration/<system-key>/.env` and sends any `KV_*` variables (values resolved from local/remote secrets if they are `kv://`). It also scans the upload payload (application + datasources) for `kv://` references that are **not** in `.env` and resolves their values from aifabrix secret systems (local file or remote), then sends all to the dataplane secret store (`POST /api/v1/credential/secret`). So credentials in config can be satisfied from `.env` or from local/remote secrets without extra steps. Dataplane permission **credential:create** is required for this automatic push; if the push fails (e.g. 403), upload still continues but secrets must be available elsewhere (e.g. env on dataplane). See [Secrets and config](../configuration/secrets-and-config.md) and [Permissions](permissions.md).
+4. **Credential secrets push (automatic):** The CLI reads `integration/<system-key>/.env` and sends any `KV_*` variables (values resolved from local/remote secrets if they are `kv://`). It also scans the upload payload (application + datasources) for `kv://` references that are **not** in `.env` and resolves their values from aifabrix secret systems (local file or remote), then sends all to the dataplane secret store (`POST /api/v1/credential/secret`). So credentials in config can be satisfied from `.env` or from local/remote secrets without extra steps. No separate `POST /api/v1/credential/secret` call is needed when using `aifabrix upload` for E2E or deployment flows—the CLI handles it automatically.
+
+   **Skip conditions:** If there is no `.env` file, no `KV_*` keys, or values are empty, the credential push step is skipped. No `POST /api/v1/credential/secret` call is made when there are no items to push.
+
+   **Mapping:** If your external system uses `kv://test-hubspot/clientId` and `kv://test-hubspot/clientSecret`, ensure your `.env` contains corresponding `KV_*` variables (e.g. `KV_TEST_HUBSPOT_CLIENTID`, `KV_TEST_HUBSPOT_CLIENTSECRET`) or values are available in aifabrix secrets so upload maps them to the expected `kv://` paths. The prefix `KV_` plus segments separated by underscores map to `kv://segment1/segment2/...` (lowercase).
+
+   Dataplane permission **credential:create** is required for this automatic push; if the push fails (e.g. 403), upload still continues but secrets must be available elsewhere (e.g. env on dataplane). See [Secrets and config](../configuration/secrets-and-config.md) and [Permissions](permissions.md).
 5. `POST /api/v1/pipeline/upload` → get upload ID
 6. `POST /api/v1/pipeline/upload/{id}/validate` → on failure, show validation errors and exit
 7. `POST /api/v1/pipeline/upload/{id}/publish`
@@ -791,7 +797,7 @@ For details, see [External Integration Testing](external-integration-testing.md#
 
 Run E2E test for one datasource via dataplane external API. Requires Bearer token or API key (client credentials not supported). See [Online Commands and Permissions](permissions.md).
 
-**What:** Runs full E2E test (config, credential, sync, data, CIP) by calling `POST /api/v1/external/{sourceIdOrKey}/test-e2e`. Reports per-step status.
+**What:** Runs full E2E test (config, credential, sync, data, CIP) by calling `POST /api/v1/external/{sourceIdOrKey}/test-e2e`. Reports per-step status. The dataplane runs E2E steps in order: config, credential, sync, data, CIP. Credential status is validated as the second step in this sequence.
 
 **When:** End-to-end validation of a single datasource after integration tests pass; requires Bearer or API key authentication.
 

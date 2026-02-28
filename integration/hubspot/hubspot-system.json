@@ -5,41 +5,18 @@
   "type": "openapi",
   "enabled": true,
   "authentication": {
-    "type": "oauth2",
-    "mode": "oauth2",
-    "oauth2": {
-      "tokenUrl": "{{TOKENURL}}",
-      "clientId": "{{CLIENTID}}",
-      "clientSecret": "{{CLIENTSECRET}}",
-      "scopes": [
-        "crm.objects.companies.read",
-        "crm.objects.companies.write",
-        "crm.objects.contacts.read",
-        "crm.objects.contacts.write",
-        "crm.objects.deals.read",
-        "crm.objects.deals.write"
-      ]
+    "method": "oauth2",
+    "variables": {
+      "baseUrl": "https://api.hubapi.com",
+      "tokenUrl": "https://api.hubapi.com/oauth/v1/token",
+      "scope": "crm.objects.companies.read crm.objects.companies.write crm.objects.contacts.read crm.objects.contacts.write crm.objects.deals.read crm.objects.deals.write"
+    },
+    "security": {
+      "clientId": "kv://hubspot-clientidKeyVault",
+      "clientSecret": "kv://hubspot-clientsecretKeyVault"
     }
   },
   "configuration": [
-    {
-      "name": "CLIENTID",
-      "value": "hubspot-clientidKeyVault",
-      "location": "keyvault",
-      "required": true
-    },
-    {
-      "name": "CLIENTSECRET",
-      "value": "hubspot-clientsecretKeyVault",
-      "location": "keyvault",
-      "required": true
-    },
-    {
-      "name": "TOKENURL",
-      "value": "https://api.hubapi.com/oauth/v1/token",
-      "location": "variable",
-      "required": true
-    },
     {
       "name": "HUBSPOT_API_VERSION",
       "value": "v3",

@@ -123,11 +123,19 @@ describe('upload command', () => {
       );
     });
 
-    it('should log success when credential secrets are pushed', async() => {
-      pushCredentialSecrets.mockResolvedValue({ pushed: 2 });
+    it('should log success with keys when credential secrets are pushed', async() => {
+      pushCredentialSecrets.mockResolvedValue({ pushed: 2, keys: ['hubspot/clientid', 'hubspot/clientsecret'] });
       const { uploadExternalSystem } = require('../../../lib/commands/upload');
       await uploadExternalSystem(systemKey);
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Pushed 2 credential'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('hubspot/clientid'));
+    });
+
+    it('should log Secret push skipped in yellow when no secrets to push', async() => {
+      pushCredentialSecrets.mockResolvedValue({ pushed: 0, skipped: true });
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await uploadExternalSystem(systemKey);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Secret push skipped'));
     });
 
     it('should log warning when credential push returns warning', async() => {

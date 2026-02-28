@@ -136,9 +136,9 @@ describe('credential-secrets-env', () => {
   });
 
   describe('pushCredentialSecrets', () => {
-    it('should return { pushed: 0 } when no items and no .env', async() => {
+    it('should return { pushed: 0, skipped: true } when no items and no .env', async() => {
       const result = await pushCredentialSecrets('https://dp.example.com', { type: 'bearer', token: 't' }, {});
-      expect(result).toEqual({ pushed: 0 });
+      expect(result).toEqual({ pushed: 0, skipped: true });
       expect(storeCredentialSecrets).not.toHaveBeenCalled();
     });
 
