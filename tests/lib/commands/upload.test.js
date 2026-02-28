@@ -221,6 +221,38 @@ describe('upload command', () => {
       expect(publishUploadViaPipeline).not.toHaveBeenCalled();
     });
 
+    it('should throw when validate returns 200 with success:false in body', async() => {
+      validateUploadViaPipeline.mockResolvedValue({
+        success: true,
+        data: { success: false, errors: ['Schema validation failed'] }
+      });
+
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await expect(uploadExternalSystem(systemKey)).rejects.toThrow(/Upload validation failed/);
+      expect(publishUploadViaPipeline).not.toHaveBeenCalled();
+    });
+
+    it('should throw when publish upload fails', async() => {
+      publishUploadViaPipeline.mockResolvedValue({
+        success: false,
+        error: 'Publish error',
+        formattedError: 'Publish error'
+      });
+
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await expect(uploadExternalSystem(systemKey)).rejects.toThrow(/Upload publish failed/);
+    });
+
+    it('should throw when publish returns 200 with success:false in body', async() => {
+      publishUploadViaPipeline.mockResolvedValue({
+        success: true,
+        data: { success: false, error: 'Dataplane internal error' }
+      });
+
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await expect(uploadExternalSystem(systemKey)).rejects.toThrow(/Upload publish failed/);
+    });
+
     it('should throw when upload API fails', async() => {
       uploadApplicationViaPipeline.mockRejectedValue(new Error('Network error'));
 
