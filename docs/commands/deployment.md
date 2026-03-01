@@ -137,7 +137,7 @@ aifabrix environment deploy dev --no-poll
 ✓ Authentication successful
 
 🚀 Deploying environment infrastructure...
-📤 Sending deployment request to https://controller.aifabrix.dev/api/v1/environments/dev/deploy...
+📤 Sending deployment request to controller...
 ⏳ Polling deployment status (5000ms intervals)...
 
 ✅ Environment deployed successfully
@@ -313,7 +313,7 @@ aifabrix deploy myapp --local
    Port: 3000
 
 🚀 Deploying to https://controller.aifabrix.dev (environment: miso)...
-📤 Sending deployment request to https://controller.aifabrix.dev/api/v1/pipeline/miso/deploy...
+📤 Sending deployment request to controller...
 ⏳ Polling deployment status (5000ms intervals)...
 
 ✅ Deployment initiated successfully
@@ -334,7 +334,7 @@ aifabrix deploy myapp --local
    Port: 3000
 
 🚀 Deploying to http://localhost:3000 (environment: dev)...
-📤 Sending deployment request to http://localhost:3000/api/v1/pipeline/dev/deploy...
+📤 Sending deployment request to controller...
 ⏳ Polling deployment status (5000ms intervals)...
 
 ✅ Deployment initiated successfully
@@ -446,7 +446,7 @@ When you are logged in (e.g. `aifabrix auth status` shows "Authenticated"), the 
 <a id="aifabrix-credential-list"></a>
 ## aifabrix credential list
 
-List credentials from the controller/dataplane (`GET /api/v1/credential`). Use this to see available credentials when choosing "Use existing" in the wizard (Step 3). When the dataplane provides credential status, the list shows a colored icon: ✓ (verified), ○ (pending), ✗ (failed), ⊘ (expired).
+List credentials from the controller/dataplane. Use this to see available credentials when choosing "Use existing" in the wizard (Step 3). When the dataplane provides credential status, the list shows a colored icon: ✓ (verified), ○ (pending), ✗ (failed), ⊘ (expired).
 
 **Example:**
 ```bash
@@ -461,8 +461,7 @@ aifabrix credential list --active-only --page-size 50
 <a id="aifabrix-deployment-list"></a>
 ## aifabrix deployment list
 
-List **environment deployments** for the current environment (paginated; default page size 50). Returns both application and infrastructure deployments for that environment. Uses `GET /api/v1/environments/{envKey}/deployments`.
-
+List **environment deployments** for the current environment (paginated; default page size 50). Returns both application and infrastructure deployments for that environment. 
 **Example:**
 ```bash
 aifabrix deployment list
@@ -476,8 +475,7 @@ aifabrix deployment list --environment dev --page-size 50
 <a id="aifabrix-app-deployment-appkey"></a>
 ## aifabrix app deployment <appKey>
 
-List last N deployments for a specific application in the current environment (default pageSize=50). Uses `GET /api/v1/environments/{envKey}/applications/{appKey}/deployments`.
-
+List last N deployments for a specific application in the current environment (default pageSize=50). 
 **Example:**
 ```bash
 aifabrix app deployment myapp

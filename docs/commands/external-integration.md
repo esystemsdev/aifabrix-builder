@@ -122,7 +122,7 @@ Controller and environment come from `config.yaml` (set via `aifabrix login` or 
 
 **Process:**
 1. Gets dataplane URL from controller
-2. Downloads system configuration from dataplane API: `GET /api/v1/external/systems/{systemKey}/config`
+2. Downloads system configuration from dataplane
 3. Downloads datasource configurations
 4. Validates downloaded data against schemas
 5. Creates `integration/<system-key>/` folder structure
@@ -199,9 +199,9 @@ After downloading:
 
 Upload full external system (system + all datasources + RBAC) to the dataplane for the current environment.
 
-**What:** Uploads the full manifest to the dataplane using the pipeline **upload → validate → publish** flow. No controller deploy: the controller is used only to resolve the dataplane URL and authentication. The dataplane does **not** deploy RBAC to the controller—RBAC stays in the dataplane; promote to the full platform later via the web UI or `aifabrix deploy <app>`.
+**What:** Uploads the full manifest to the dataplane using the pipeline **upload → validate → publish** flow. Publishes config (system + datasources) into the dataplane and **registers RBAC with the controller**. Does **not** send a manifest to the controller for container/restart deployment. Suited for fast development iteration and testing (e.g. with `aifabrix test-integration`). Promote to full platform with `aifabrix deploy <app>` when ready.
 
-**When:** Test the full system on the dataplane without promoting; or when you have only dataplane access or limited controller permissions (e.g. no `applications:deploy` on the controller).
+**When:** Develop and test on the dataplane; or when you have only dataplane access or limited controller permissions (e.g. no `applications:deploy` on the controller).
 
 **When MCP/OpenAPI docs are available:** After publish (via upload or deploy), the dataplane serves MCP and OpenAPI docs at standard URLs. See [Controller and Dataplane: What, Why, When](../deploying.md#controller-and-dataplane-what-why-when).
 
@@ -227,16 +227,16 @@ aifabrix upload my-hubspot --dry-run
 1. Validate locally (`validateExternalSystemComplete`)
 2. Build payload from controller manifest (system with RBAC + datasources) → `{ version, application, dataSources }`
 3. Resolve dataplane URL and auth (from controller + environment)
-4. **Credential secrets push (automatic):** The CLI reads `integration/<system-key>/.env` and sends any `KV_*` variables (values resolved from local/remote secrets if they are `kv://`). It also scans the upload payload (application + datasources) for `kv://` references that are **not** in `.env` and resolves their values from aifabrix secret systems (local file or remote), then sends all to the dataplane **secret store** (`POST /api/v1/credential/secret`). This stores secret *values* only; credential structure (type, fields) is created/updated by the publish step itself. So credentials in config can be satisfied from `.env` or from local/remote secrets without extra steps. No separate `POST /api/v1/credential/secret` call is needed when using `aifabrix upload` for E2E or deployment flows—the CLI handles it automatically.
+4. **Credential secrets push (automatic):** The CLI reads `integration/<system-key>/.env` and sends any `KV_*` variables (values resolved from local/remote secrets if they are `kv://`). It also scans the upload payload (application + datasources) for `kv://` references that are **not** in `.env` and resolves their values from aifabrix secret systems (local file or remote), then sends all to the dataplane secret store. This stores secret *values* only; credential structure (type, fields) is created/updated by the publish step itself. So credentials in config can be satisfied from `.env` or from local/remote secrets without extra steps—the CLI handles it automatically.
 
-   **Skip conditions:** If there is no `.env` file, no `KV_*` keys, or values are empty, the credential push step is skipped. No `POST /api/v1/credential/secret` call is made when there are no items to push.
+   **Skip conditions:** If there is no `.env` file, no `KV_*` keys, or values are empty, the credential push step is skipped.
 
    **Mapping:** If your external system uses `kv://test-hubspot/clientId` and `kv://test-hubspot/clientSecret`, ensure your `.env` contains corresponding `KV_*` variables (e.g. `KV_TEST_HUBSPOT_CLIENTID`, `KV_TEST_HUBSPOT_CLIENTSECRET`) or values are available in aifabrix secrets so upload maps them to the expected `kv://` paths. The prefix `KV_` plus segments separated by underscores map to `kv://segment1/segment2/...` (lowercase).
 
    Dataplane permission **credential:create** is required for this automatic push; if the push fails (e.g. 403), upload still continues but secrets must be available elsewhere (e.g. env on dataplane). See [Secrets and config](../configuration/secrets-and-config.md) and [Permissions](permissions.md).
-5. `POST /api/v1/pipeline/upload` → get upload ID
-6. `POST /api/v1/pipeline/upload/{id}/validate` → on failure, show validation errors and exit
-7. `POST /api/v1/pipeline/upload/{id}/publish`
+5. Upload to dataplane → get upload ID
+6. Validate → on failure, show validation errors and exit
+7. Publish
 
 **Output example:**
 ```text
@@ -251,10 +251,12 @@ System: my-hubspot
 Dataplane: https://dataplane.example.com
 ```
 
+**Workflow:** Develop with `aifabrix upload` for quick iteration and testing. Promote with `aifabrix deploy <app>` when ready for full controller deployment and dev → tst → pro promotion.
+
 **Issues / next steps:**
 - **Validation failed** – Fix errors shown (e.g. missing `application.yaml`, invalid system/datasource files) then run again.
 - **Authentication required** – Run `aifabrix login` or `aifabrix app register <system-key>`.
-- The system is available only on this dataplane until you run `aifabrix deploy <app>` (or promote via the web interface).
+- For full controller deployment and environment promotion, run `aifabrix deploy <app>` (or promote via the web interface).
 
 ---
 
@@ -294,7 +296,7 @@ aifabrix delete hubspot --yes
 2. Fetches external system configuration to list associated datasources
 3. Displays warning with list of datasources that will be deleted
 4. Prompts for confirmation (unless `--yes` or `--force` is provided)
-5. Calls dataplane API: `DELETE /api/v1/external/systems/{systemKey}`
+5. Deletes the system (and all associated datasources) from the dataplane
 6. Displays success message
 
 **Output (with confirmation):**
@@ -443,7 +445,7 @@ aifabrix test-integration hubspot --debug
 
 **Prerequisites:** Logged in (`aifabrix login`); dataplane accessible; system published or ready for testing.
 
-**Process:** (1) Resolve dataplane URL from controller. (2) For each datasource: load payload from datasource `testPayload.payloadTemplate` or `--payload` file; call `POST /api/v1/pipeline/{systemKey}/{datasourceKey}/test` with payload; parse validation, field mapping, and endpoint results. (3) Display and aggregate results. Includes retry with exponential backoff for transient failures.
+**Process:** (1) Resolve dataplane URL from controller. (2) For each datasource: load payload from datasource `testPayload.payloadTemplate` or `--payload` file; run pipeline test; parse validation, field mapping, and endpoint results. (3) Display and aggregate results. Includes retry with exponential backoff for transient failures.
 
 For payload sources, response handling, and troubleshooting, see [External Integration Testing](external-integration-testing.md#integration-tests-aifabrix-test-integration).
 
@@ -561,7 +563,7 @@ aifabrix datasource list
 
 **Process:**
 1. Gets authentication token from config
-2. Calls controller API: `GET /api/v1/environments/{env}/datasources`
+2. Lists datasources from controller for the environment
 3. Extracts datasources from response
 4. Displays datasources in formatted table
 
@@ -714,7 +716,7 @@ aifabrix datasource deploy myapp ./schemas/hubspot-deal.yaml
 4. Gets authentication (device token or client credentials)
 5. Gets dataplane URL from controller
 6. Publishes datasource to dataplane:
-   - POST to `http://<dataplane-url>/api/v1/pipeline/{systemKey}/publish`
+   - Publishes the datasource to the dataplane
    - Sends datasource configuration as request body
 7. Displays deployment results
 
@@ -766,7 +768,7 @@ After deployment:
 
 Run integration (config) test for one datasource via dataplane pipeline. Requires Dataplane access. See [Online Commands and Permissions](permissions.md).
 
-**What:** Tests a single datasource by calling `POST /api/v1/pipeline/{systemKey}/{datasourceKey}/test`. Validates field mappings, metadata schemas, and endpoint connectivity. Supports client credentials for CI/CD.
+**What:** Tests a single datasource via the pipeline test endpoint. Validates field mappings, metadata schemas, and endpoint connectivity. Supports client credentials for CI/CD.
 
 **When:** Testing one datasource without running tests for the whole system; in CI pipelines; when inside `integration/<appKey>/` and running from that directory.
 
@@ -799,7 +801,7 @@ For details, see [External Integration Testing](external-integration-testing.md#
 
 Run E2E test for one datasource via dataplane external API. Requires Bearer token or API key (client credentials not supported). See [Online Commands and Permissions](permissions.md).
 
-**What:** Runs full E2E test (config, credential, sync, data, CIP) by calling `POST /api/v1/external/{sourceIdOrKey}/test-e2e`. Reports per-step status. The dataplane runs E2E steps in order: config, credential, sync, data, CIP. Credential status is validated as the second step in this sequence.
+**What:** Runs full E2E test (config, credential, sync, data, CIP) via the dataplane. Reports per-step status. The dataplane runs E2E steps in order: config, credential, sync, data, CIP. Credential status is validated as the second step in this sequence.
 
 **When:** End-to-end validation of a single datasource after integration tests pass; requires Bearer or API key authentication.
 

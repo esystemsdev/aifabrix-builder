@@ -1217,7 +1217,7 @@ aifabrix deploy hubspot
 **What happens:** The CLI resolves the app path (integration first, then builder) and sends the deployment to the **Miso Controller**. The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates it.
 
 1. Generates controller manifest (if not already generated) via `aifabrix json` internally
-2. Uses the same controller pipeline as regular apps: Validate then Deploy (`POST /api/v1/pipeline/{envKey}/validate`, `POST /api/v1/pipeline/{envKey}/deploy`)
+2. Uses the same controller pipeline as regular apps: Validate then Deploy
 3. Controller deploys external system and datasources to the dataplane
 4. Field mappings are compiled; OpenAPI operations are registered; system is ready for querying
 
@@ -1225,13 +1225,13 @@ aifabrix deploy hubspot
 
 **When do I get MCP/OpenAPI docs?** After publish (via deploy or upload), MCP and OpenAPI docs are served by the dataplane at standard URLs. See [Controller and Dataplane: What, Why, When](deploying.md#controller-and-dataplane-what-why-when) for when they become available and how to access them.
 
-### 4a. Upload to dataplane (test without promoting)
+### 4a. Upload to dataplane (development)
 
-Use **`aifabrix upload <system-key>`** when you want to publish the full manifest (system + all datasources + RBAC) to the dataplane **without** going through the controller pipeline deploy. The command uses the dataplane pipeline **upload → validate → publish** flow; the controller is only used to resolve the dataplane URL and authentication.
+Use **`aifabrix upload <system-key>`** for fast development iteration. The command uses the dataplane pipeline **upload → validate → publish** flow. It publishes config (system + datasources) into the dataplane and **registers RBAC with the controller**. It does **not** send a manifest to the controller for container/restart deployment. Suited for testing (e.g. with `aifabrix test-integration`).
 
 **When to use upload vs deploy:**
-- **`aifabrix upload <system-key>`** – Test the full system on the dataplane without promoting; or when you have only dataplane access or limited controller permissions. The dataplane does **not** deploy RBAC to the controller—RBAC stays in the dataplane. Promote to the full platform later via the web interface or **`aifabrix deploy <app>`**.
-- **`aifabrix deploy <app>`** – Full deployment via the controller (validate + deploy); use when you want the system (and RBAC) promoted to the platform.
+- **`aifabrix upload <system-key>`** – Development: quick iteration, dataplane publish, RBAC registration with controller. No controller validate/deploy; no manifest sent for container deployment. Use when developing or when you have limited controller permissions (e.g. no `applications:deploy`). Promote to full platform later via **`aifabrix deploy <app>`** or the web interface.
+- **`aifabrix deploy <app>`** – Promotion: Dataplane builds the manifest and sends it to the controller; controller performs validate + deploy (containers, dataplane restart, etc.). Full versioning and manifest in miso-controller. Enables dev → tst → pro promotion and visibility in `af app list`.
 
 **When do I get MCP/OpenAPI docs?** After publish, the dataplane serves MCP and OpenAPI docs at standard URLs. See [Controller and Dataplane: What, Why, When](deploying.md#controller-and-dataplane-what-why-when) for details and the deploy-vs-upload diagram.
 

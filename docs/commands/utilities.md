@@ -368,7 +368,7 @@ Manage secrets: local (project/user secrets file) and shared (file or remote API
 <a id="aifabrix-secret-list"></a>
 ### aifabrix secret list
 
-List secret **keys and values**. **Local:** list user's local secrets (project file from `aifabrix-secrets` or user secrets). **Shared:** `aifabrix secret list --shared` — when `aifabrix-secrets` is a file path, lists from that file; when it is an `http(s)://` URL, lists from GET `/api/dev/secrets` (cert required). Output format is `key: value` per line.
+List secret **keys and values**. **Local:** list user's local secrets (project file from `aifabrix-secrets` or user secrets). **Shared:** `aifabrix secret list --shared` — when `aifabrix-secrets` is a file path, lists from that file; when it is an `http(s)://` URL, lists from the remote server (cert required). Output format is `key: value` per line.
 
 **Usage:**
 ```bash
@@ -406,7 +406,7 @@ aifabrix secret set keycloak-server-url "https://keycloak.example.com/auth/realm
 ```
 
 **Options:**
-- `--shared` - Save to shared secrets: when `aifabrix-secrets` is a file path, write to that file; when it is an `http(s)://` URL, POST to `/api/dev/secrets` (cert required; admin/secret-manager for shared when remote)
+- `--shared` - Save to shared secrets: when `aifabrix-secrets` is a file path, write to that file; when it is an `http(s)://` URL, saves to the remote server (cert required; admin/secret-manager for shared when remote)
 
 **Secret Value Formats:**
 - **Full URLs**: Direct URL values (e.g., `https://mydomain.com/keycloak`)
@@ -447,7 +447,7 @@ aifabrix secret set api-keyKeyVault "\${API_KEY}"
 <a id="aifabrix-secret-remove"></a>
 ### aifabrix secret remove
 
-Remove a secret. **Local:** `aifabrix secret remove <key>` removes from user/project secrets file. **Shared:** `aifabrix secret remove <key> --shared` — when `aifabrix-secrets` is a file path, removes from that file; when it is an `http(s)://` URL, DELETE `/api/dev/secrets/{key}` (cert required).
+Remove a secret. **Local:** `aifabrix secret remove <key>` removes from user/project secrets file. **Shared:** `aifabrix secret remove <key> --shared` — when `aifabrix-secrets` is a file path, removes from that file; when it is an `http(s)://` URL, removes from the remote server (cert required).
 
 **Usage:**
 ```bash

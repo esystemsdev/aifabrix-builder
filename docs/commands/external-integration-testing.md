@@ -147,7 +147,7 @@ Field Mapping Tests:
 1. Resolve dataplane URL from controller (uses `config.yaml` controller and environment).
 2. For each datasource (or the one specified with `--datasource`):
    - Load test payload from datasource `testPayload.payloadTemplate` or from `--payload <file>`
-   - Call dataplane: `POST /api/v1/pipeline/{systemKey}/{datasourceKey}/test` with body `{ "payloadTemplate": <testPayload> }`
+   - Run pipeline test with the payload
    - Parse response: validation results, field mapping results, endpoint test results
 3. Display results per datasource and aggregate pass/fail.
 

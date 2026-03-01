@@ -24,7 +24,7 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix restart <service|app>`](infrastructure.md#aifabrix-restart-service) - Restart infrastructure service or Docker application (required)
   - [`aifabrix doctor`](infrastructure.md#aifabrix-doctor) - Check environment and configuration
 - [Developer Isolation Commands](developer-isolation.md) - Port isolation and remote development
-  - [`aifabrix dev config`](developer-isolation.md#aifabrix-dev-config) - View or set developer ID; when remote and cert available, refresh from GET /api/dev/settings
+  - [`aifabrix dev config`](developer-isolation.md#aifabrix-dev-config) - View or set developer ID; when remote and cert available, refresh config from server
   - [`aifabrix dev init`](developer-isolation.md#aifabrix-dev-init) - (Remote only) Issue cert, fetch settings, register SSH keys for Mutagen
   - [`aifabrix dev refresh`](developer-isolation.md#aifabrix-dev-refresh) - (Remote only) Fetch settings from Builder Server and update config (e.g. when docker-endpoint or sync-ssh-host are empty)
   - [`aifabrix dev add`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev update`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev pin`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev delete`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev list`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) - (Remote only) Manage developers on server
@@ -72,21 +72,20 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix diff <file1> <file2>`](validation.md#aifabrix-diff-file1-file2) - Compare two configuration files
 
 ### External Integration
-- [External Integration Commands](external-integration.md) - External system integration
-- [External Integration Testing](external-integration-testing.md) - Unit and integration testing, test payloads
+- [External Integration Commands](external-integration.md) - External system integration. See [External Integration Testing](external-integration-testing.md) for unit/integration test details and payloads.
   - [`aifabrix wizard [appName] [--debug]`](external-integration.md#aifabrix-wizard) - Interactive wizard (mode first; loads/saves integration/<appName>/wizard.yaml); appName optional; `--debug` for debug manifests
   - [`aifabrix download <system-key>`](external-integration.md#aifabrix-download-system-key) - Download external system from dataplane
-  - [`aifabrix upload <system-key>`](external-integration.md#aifabrix-upload-system-key) - Upload external system to dataplane (upload → validate → publish; no controller deploy)
+  - [`aifabrix upload <system-key>`](external-integration.md#aifabrix-upload-system-key) - Upload external system to dataplane (upload → validate → publish; registers RBAC with controller; dev iteration; promote via deploy)
   - [`aifabrix delete <system-key>`](external-integration.md#aifabrix-delete-system-key) - Delete external system from dataplane
-  - [`aifabrix test <app> [--env dev|tst]`](external-integration.md#aifabrix-test-app) - Run unit tests for external system (local validation) or builder app tests in container
-  - [`aifabrix test-integration <app> [--env dev|tst] [--debug]`](application-development.md#aifabrix-test-integration-app) - Run integration tests (builder: in container; external: via dataplane). `--debug` writes logs to `integration/<app>/logs/`. See [External Integration Testing](external-integration-testing.md) for external payloads and troubleshooting.
+  - [`aifabrix test <app> [--env dev|tst]`](external-integration.md#aifabrix-test-app) - Unit tests (external: local validation; builder: in container)
+  - [`aifabrix test-integration <app> [--env dev|tst] [--debug]`](external-integration.md#aifabrix-test-integration-app) - Integration tests (external: via dataplane; builder: in container). `--debug` writes logs to `integration/<app>/logs/`
   - [`aifabrix datasource`](external-integration.md#aifabrix-datasource) - Manage external data sources
-    - [`aifabrix datasource validate <file>`](external-integration.md#aifabrix-datasource-validate-file) - Validate external datasource JSON file
+    - [`aifabrix datasource validate <file>`](external-integration.md#aifabrix-datasource-validate-file) - Validate datasource JSON file
     - [`aifabrix datasource list`](external-integration.md#aifabrix-datasource-list) - List datasources from environment
     - [`aifabrix datasource diff <file1> <file2>`](external-integration.md#aifabrix-datasource-diff-file1-file2) - Compare two datasource configuration files
     - [`aifabrix datasource deploy <myapp> <file>`](external-integration.md#aifabrix-datasource-deploy-myapp-file) - Deploy datasource to dataplane
-    - [`aifabrix datasource test-integration <datasourceKey>`](external-integration.md#aifabrix-datasource-test-integration-datasourcekey) - Run integration test for one datasource (supports client credentials)
-    - [`aifabrix datasource test-e2e <datasourceKey>`](external-integration.md#aifabrix-datasource-test-e2e-datasourcekey) - Run E2E test for one datasource (Bearer/API key only)
+    - [`aifabrix datasource test-integration <datasourceKey>`](external-integration.md#aifabrix-datasource-test-integration-datasourcekey) - Integration test for one datasource
+    - [`aifabrix datasource test-e2e <datasourceKey>`](external-integration.md#aifabrix-datasource-test-e2e-datasourcekey) - E2E test for one datasource (Bearer/API key only)
 
 ### Utilities
 - [Utility Commands](utilities.md) - Configuration and secret management
