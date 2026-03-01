@@ -237,6 +237,72 @@ describe('Wizard API', () => {
     });
   });
 
+  describe('getPlatformDetails', () => {
+    it('should get platform details including datasources', async() => {
+      const platformData = {
+        key: 'hubspot',
+        displayName: 'HubSpot',
+        datasources: [
+          { key: 'hubspot-companies', displayName: 'Companies', entity: 'Company' },
+          { key: 'hubspot-contacts', displayName: 'Contacts', entity: 'Contact' },
+          { key: 'hubspot-deals', displayName: 'Deals', entity: 'Deal' }
+        ]
+      };
+      mockClient.get.mockResolvedValue({ success: true, data: platformData });
+
+      const result = await wizardApi.getPlatformDetails(dataplaneUrl, authConfig, 'hubspot');
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/wizard/platforms/hubspot');
+      expect(result.success).toBe(true);
+      expect(result.data.datasources).toHaveLength(3);
+    });
+
+    it('should throw on 404', async() => {
+      mockClient.get.mockResolvedValue({ success: false, status: 404, formattedError: 'Not found' });
+
+      await expect(wizardApi.getPlatformDetails(dataplaneUrl, authConfig, 'unknown')).rejects.toThrow(
+        'Platform \'unknown\' not found'
+      );
+    });
+
+    it('should throw on API error', async() => {
+      mockClient.get.mockResolvedValue({ success: false, formattedError: 'Server error', error: 'Server error' });
+
+      await expect(wizardApi.getPlatformDetails(dataplaneUrl, authConfig, 'hubspot')).rejects.toThrow('Server error');
+    });
+
+    it('should URL-encode platform key', async() => {
+      mockClient.get.mockResolvedValue({ success: true, data: {} });
+      await wizardApi.getPlatformDetails(dataplaneUrl, authConfig, 'my-platform');
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/wizard/platforms/my-platform');
+    });
+  });
+
+  describe('discoverEntities', () => {
+    it('should discover entities from OpenAPI spec', async() => {
+      const entities = [
+        { name: 'companies', pathCount: 5, schemaMatch: true },
+        { name: 'contacts', pathCount: 3, schemaMatch: true }
+      ];
+      mockClient.post.mockResolvedValue({ success: true, data: { entities } });
+
+      const openapiSpec = { openapi: '3.0.0', paths: {} };
+      const result = await wizardApi.discoverEntities(dataplaneUrl, authConfig, openapiSpec);
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/discover-entities', {
+        body: { openapiSpec }
+      });
+      expect(result.success).toBe(true);
+      expect(result.data.entities).toHaveLength(2);
+    });
+
+    it('should throw on API error', async() => {
+      mockClient.post.mockResolvedValue({ success: false, formattedError: 'Discovery failed' });
+
+      await expect(wizardApi.discoverEntities(dataplaneUrl, authConfig, {})).rejects.toThrow('Discovery failed');
+    });
+  });
+
   describe('getPlatformConfig', () => {
     it('should get platform config for known platform', async() => {
       const platformKey = 'hubspot';

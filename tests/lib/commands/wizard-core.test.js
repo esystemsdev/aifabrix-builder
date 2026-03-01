@@ -840,6 +840,7 @@ describe('Wizard Core Functions', () => {
           credentialIdOrKey: 'cred-123'
         }
       );
+      expect(wizardApi.getPlatformDetails).not.toHaveBeenCalled();
       expect(wizardApi.getPlatformConfig).toHaveBeenCalledWith(
         mockDataplaneUrl,
         mockAuthConfig,
@@ -849,6 +850,69 @@ describe('Wizard Core Functions', () => {
       expect(wizardApi.generateConfig).not.toHaveBeenCalled();
       expect(result.systemConfig).toEqual(mockSystemConfig);
       expect(result.datasourceConfigs).toEqual(mockDatasourceConfigs);
+    });
+
+    it('should validate datasourceKeys before getPlatformConfig when provided', async() => {
+      wizardApi.getPlatformDetails.mockResolvedValue({
+        success: true,
+        data: {
+          datasources: [
+            { key: 'hubspot-contacts', displayName: 'Contacts' },
+            { key: 'hubspot-deals', displayName: 'Deals' }
+          ]
+        }
+      });
+      wizardApi.getPlatformConfig.mockResolvedValue({
+        success: true,
+        data: {
+          systemConfig: mockSystemConfig,
+          datasourceConfigs: mockDatasourceConfigs,
+          systemKey: 'test-system'
+        }
+      });
+      const result = await wizardCore.handleConfigurationGeneration(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        {
+          mode: 'create-system',
+          sourceType: 'known-platform',
+          platformKey: 'hubspot',
+          datasourceKeys: ['hubspot-contacts', 'hubspot-deals'],
+          credentialIdOrKey: 'cred-123'
+        }
+      );
+      expect(wizardApi.getPlatformDetails).toHaveBeenCalledWith(mockDataplaneUrl, mockAuthConfig, 'hubspot');
+      expect(wizardApi.getPlatformConfig).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        'hubspot',
+        expect.objectContaining({ datasourceKeys: ['hubspot-contacts', 'hubspot-deals'] })
+      );
+      expect(result.systemConfig).toEqual(mockSystemConfig);
+    });
+
+    it('should throw when datasourceKeys contains invalid keys', async() => {
+      wizardApi.getPlatformDetails.mockResolvedValue({
+        success: true,
+        data: {
+          datasources: [
+            { key: 'hubspot-contacts', displayName: 'Contacts' },
+            { key: 'hubspot-deals', displayName: 'Deals' }
+          ]
+        }
+      });
+      await expect(wizardCore.handleConfigurationGeneration(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        {
+          mode: 'create-system',
+          sourceType: 'known-platform',
+          platformKey: 'hubspot',
+          datasourceKeys: ['hubspot-contacts', 'hubspot-invalid']
+        }
+      )).rejects.toThrow(/Invalid datasource keys: \[hubspot-invalid\]/);
+      expect(wizardApi.getPlatformDetails).toHaveBeenCalledWith(mockDataplaneUrl, mockAuthConfig, 'hubspot');
+      expect(wizardApi.getPlatformConfig).not.toHaveBeenCalled();
     });
   });
 

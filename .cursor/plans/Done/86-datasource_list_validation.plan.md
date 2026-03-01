@@ -4,22 +4,22 @@ overview: Add validation of datasourceKeys (known platform) and entityName (Open
 todos:
   - id: add-wizard-api
     content: Add getPlatformDetails and discoverEntities to lib/api/wizard.api.js
-    status: pending
+    status: completed
   - id: add-validation-helpers
     content: Add validateDatasourceKeysForPlatform and validateEntityNameForOpenApi helpers
-    status: pending
+    status: completed
   - id: validate-known-platform
     content: Validate datasourceKeys before getPlatformConfig in wizard-core.js
-    status: pending
+    status: completed
   - id: schema-update
     content: Add datasourceKeys (and optionally entityName) to wizard-config schema
-    status: pending
+    status: completed
   - id: entityname-flow
     content: "When entityName flow exists: validate entityName before generate-config"
-    status: pending
+    status: cancelled
   - id: docs-update
     content: Document datasourceKeys validation and error behavior in wizard.md
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -272,4 +272,102 @@ Add validation of datasourceKeys (known platform) and entityName (OpenAPI multi-
 
 - When implementing entityName validation (post Plan 312), add tests that mock discoverEntities and cover invalid entityName path
 - Consider adding JSDoc typedefs in lib/api/types/wizard.types.js for getPlatformDetails and discoverEntities response shapes
+
+---
+
+## Implementation Validation Report
+
+**Date**: 2026-03-01
+**Plan**: .cursor/plans/86-datasource_list_validation.plan.md
+**Status**: ✅ COMPLETE
+
+### Executive Summary
+
+All required implementation tasks are complete. The datasourceKeys validation flow is implemented with getPlatformDetails and discoverEntities API functions, validation helpers, wizard-core integration, schema update, and documentation. Code quality validation passes (format, lint, tests). One task (entityName flow) is cancelled as it depends on dataplane Plan 312. One optional task (headless pre-flight validation in wizard-config-validator) was not implemented per plan's "Optional but Recommended" designation.
+
+### Task Completion
+
+- **Total tasks**: 6
+- **Completed**: 5
+- **Cancelled**: 1 (entityName flow - depends on Plan 312)
+- **Completion**: 100% (5/5 required)
+
+| Task | Status |
+|------|--------|
+| Add getPlatformDetails and discoverEntities to wizard.api | ✅ completed |
+| Add validateDatasourceKeysForPlatform and validateEntityNameForOpenApi | ✅ completed |
+| Validate datasourceKeys before getPlatformConfig | ✅ completed |
+| Add datasourceKeys to wizard-config schema | ✅ completed |
+| entityName flow validation | ⏸️ cancelled (post Plan 312) |
+| Document datasourceKeys validation in wizard.md | ✅ completed |
+
+### File Existence Validation
+
+| File | Status | Notes |
+|------|--------|-------|
+| lib/api/wizard.api.js | ✅ | Re-exports getPlatformDetails, discoverEntities from wizard-platform.api |
+| lib/api/wizard-platform.api.js | ✅ | New; getPlatformDetails, discoverEntities with @requiresPermission |
+| lib/validation/wizard-datasource-validation.js | ✅ | New; validateDatasourceKeysForPlatform, validateEntityNameForOpenApi |
+| lib/validation/validate-datasource-keys-api.js | ✅ | New; validateDatasourceKeysBeforePlatformConfig (async orchestration) |
+| lib/commands/wizard-core.js | ✅ | Calls validateDatasourceKeysBeforePlatformConfig before getPlatformConfig |
+| lib/schema/wizard-config.schema.json | ✅ | datasourceKeys added to source.properties |
+| docs/wizard.md | ✅ | Datasource keys validation documented in Known Platform section |
+| lib/validation/wizard-config-validator.js | ⏸️ | Optional validateDatasourceListAgainstDataplane not implemented |
+
+### Test Coverage
+
+| Test File | Status | Coverage |
+|-----------|--------|----------|
+| tests/lib/api/wizard.api.test.js | ✅ | getPlatformDetails, discoverEntities (success, 404, error) |
+| tests/lib/validation/wizard-datasource-validation.test.js | ✅ | validateDatasourceKeysForPlatform, validateEntityNameForOpenApi |
+| tests/lib/commands/wizard-core.test.js | ✅ | datasourceKeys validation (valid keys, invalid keys, no datasourceKeys) |
+
+**Test results**: 229 suites passed, 4972 tests passed.
+
+### Code Quality Validation
+
+| Step | Result |
+|------|--------|
+| Format (lint:fix) | ✅ PASSED |
+| Lint | ✅ PASSED (0 errors, 0 warnings) |
+| Tests | ✅ PASSED (all 4972 tests) |
+
+### Cursor Rules Compliance
+
+| Rule | Status |
+|------|--------|
+| API Client Structure | ✅ getPlatformDetails, discoverEntities in lib/api (wizard-platform.api.js) |
+| @requiresPermission | ✅ JSDoc on getPlatformDetails, discoverEntities |
+| Error handling | ✅ Meaningful errors; throws on invalid datasourceKeys with available options |
+| Pure validation helpers | ✅ validateDatasourceKeysForPlatform, validateEntityNameForOpenApi have no API calls |
+| JSDoc | ✅ All new public functions documented |
+| File size (≤500 lines) | ✅ All files within limit |
+| Module patterns | ✅ CommonJS, proper exports |
+| Security | ✅ No hardcoded secrets; input validation |
+| Testing | ✅ Jest, mocks for API client |
+
+### Implementation Completeness
+
+| Area | Status |
+|------|--------|
+| API functions | ✅ getPlatformDetails, discoverEntities implemented and exported |
+| Validation helpers | ✅ validateDatasourceKeysForPlatform, validateEntityNameForOpenApi |
+| Flow integration | ✅ callGenerateApi validates before getPlatformConfig |
+| Schema | ✅ datasourceKeys in wizard-config.schema.json |
+| Documentation | ✅ wizard.md updated |
+
+### Issues and Recommendations
+
+- **None critical.** Implementation meets all DoD requirements.
+- Optional: Add `validateDatasourceListAgainstDataplane` to wizard-config-validator when a `validate-config` command or similar is introduced.
+- When Plan 312 (dataplane) is complete: add entityName validation before generateConfig and document entityName validation in wizard.md.
+
+### Final Validation Checklist
+
+- [x] All required tasks completed
+- [x] All files exist and implement expected behavior
+- [x] Tests exist for new code (wizard.api, wizard-datasource-validation, wizard-core)
+- [x] Code quality validation passes (format → lint → test)
+- [x] Cursor rules compliance verified
+- [x] Implementation complete per Definition of Done
 

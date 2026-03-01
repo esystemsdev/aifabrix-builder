@@ -59,6 +59,12 @@
           "type": "string",
           "description": "Known platform identifier (for known-platform type)",
           "enum": ["hubspot", "salesforce", "zendesk", "slack", "microsoft365"]
+        },
+        "datasourceKeys": {
+          "type": "array",
+          "description": "Datasource keys to include (validated against platform; omit for all)",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
         }
       },
       "allOf": [

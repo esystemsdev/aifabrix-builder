@@ -249,6 +249,7 @@ source:
   
   # For known-platform:
   # platform: hubspot  # 'hubspot' | 'salesforce' | 'zendesk' | 'slack' | 'microsoft365'
+  # datasourceKeys: [hubspot-contacts, hubspot-deals]  # Optional; validated against platform; omit for all
 
 # Optional: Credential configuration
 credential:
@@ -375,6 +376,8 @@ The wizard will test the connection before proceeding.
 ### Known Platform
 
 Select from pre-configured platforms (e.g. HubSpot, Salesforce, Zendesk, Slack, Microsoft 365). The wizard **automatically detects Known Platforms** from your **dataplane template library**; the list is **environment-specific** and may vary by environment or dataplane (10 items per page; scroll for more). The wizard uses platform-specific templates and configurations. **Known platform** supports adding multiple datasources to a single system; the preview summary shows all datasources.
+
+**Datasource keys validation (headless):** When using `datasourceKeys` in `wizard.yaml` for a known platform, the wizard validates each key against the platform's available datasources before calling the config endpoint. Invalid keys produce a clear error listing the available options (e.g. `Invalid datasource keys: [foo]. Available for platform 'hubspot': [hubspot-companies, hubspot-contacts, hubspot-deals].`). Omit `datasourceKeys` to include all datasources for the platform.
 
 ## Configuration Generation
 
