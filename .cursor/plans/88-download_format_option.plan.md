@@ -41,7 +41,10 @@ This plan must comply with [Project Rules](.cursor/rules/project-rules.mdc):
 - Review existing download command in setup-external-system.js and download.js
 - Review runConvert in lib/commands/convert.js (force, validation, executeConversion)
 - Review convert CLI in setup-utility.js (format handling)
-- Review tests for download, convert, config, dev commands
+- Review lib/external-system/generator.js (create flow; file extensions, writeConfigFile)
+- Review lib/generator/wizard.js (writeSystemYamlFile, writeDatasourceYamlFiles, generateOrUpdateVariablesYaml)
+- Review lib/commands/wizard-core.js (calls generateWizardFiles)
+- Review tests for download, convert, config, dev, create, wizard
 
 ## Definition of Done
 
@@ -198,46 +201,57 @@ With config default: `aifabrix dev set-format json` then `aifabrix download hubs
 | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [docs/commands/developer-isolation.md](docs/commands/developer-isolation.md)         | Add **aifabrix dev set-format** section (near dev config/set-id); describe that format is stored in config and used by download/convert when `--format` not passed |
 | [docs/commands/README.md](docs/commands/README.md)                                   | Add `aifabrix dev set-format` to dev commands list                                                                                                                 |
-| [docs/configuration/secrets-and-config.md](docs/configuration/secrets-and-config.md) | Add `format` to config.yaml key fields (developer preference for json/yaml; used by download, convert)                                                             |
+| [docs/configuration/secrets-and-config.md](docs/configuration/secrets-and-config.md) | Add `format` to config.yaml key fields (developer preference for json/yaml; used by download, convert, create external, wizard)                                     |
 | [docs/configuration/README.md](docs/configuration/README.md)                         | Mention format in config summary if applicable                                                                                                                     |
 | [docs/commands/utilities.md](docs/commands/utilities.md)                             | **convert**: Change "required" to "required unless config format is set"; add note about `dev set-format`                                                          |
 | [docs/commands/external-integration.md](docs/commands/external-integration.md)       | **download**: Add `--format`, document config fallback, examples                                                                                                   |
-| [docs/external-systems.md](docs/external-systems.md)                                 | Update download examples; mention config format in "Existing system" workflow                                                                                      |
-| [docs/developer-isolation.md](docs/developer-isolation.md)                           | Add `aifabrix dev set-format` where dev config is documented (optional, if this doc lists dev commands)                                                            |
-
+| [docs/external-systems.md](docs/external-systems.md)                                 | Update download examples; mention config format; document create/wizard use config format                                                                          |
+| [docs/developer-isolation.md](docs/developer-isolation.md)                           | Add `aifabrix dev set-format` where dev config is documented (optional)                                                                                            |
+| [docs/wizard.md](docs/wizard.md)                                                     | Mention wizard-generated files use config format when set                                                                                                          |
+| [docs/commands/application-development.md](docs/commands/application-development.md) | Document create external uses config format when set                                                                                                               |
 
 **Excluded:** `validate --format` (output format for validation results) – document as unchanged; does NOT use config format.
 
 ## Code paths summary (no coding yet – plan only)
 
 
-| Area                               | What changes                                                     |
-| ---------------------------------- | ---------------------------------------------------------------- |
-| `lib/core/config.js`               | New `getFormat()`, `setFormat(format)`; validate json/yaml       |
-| `lib/cli/setup-dev.js`             | New `dev set-format <format>`; add format to `displayDevConfig`  |
-| `lib/cli/setup-external-system.js` | Download: add `--format`, resolve via config, pass to download   |
-| `lib/cli/setup-utility.js`         | Convert: resolve format from options or config; error if neither |
-| `lib/external-system/download.js`  | Accept format; call runConvert when json                         |
-| `lib/commands/convert.js`          | No change (caller resolves format)                               |
+| Area                               | What changes                                                                 |
+| ---------------------------------- | ---------------------------------------------------------------------------- |
+| `lib/core/config.js`               | New `getFormat()`, `setFormat(format)`; validate json/yaml                   |
+| `lib/cli/setup-dev.js`             | New `dev set-format <format>`; add format to `displayDevConfig`              |
+| `lib/cli/setup-external-system.js` | Download: add `--format`, resolve via config, pass to download               |
+| `lib/cli/setup-utility.js`         | Convert: resolve format from options or config; error if neither             |
+| `lib/external-system/download.js`  | Accept format; call runConvert when json                                     |
+| `lib/external-system/generator.js` | Create external: accept format; use .yaml or .json for system/datasource/app |
+| `lib/app/index.js`                 | Pass config format to generateExternalSystemFiles when type external         |
+| `lib/generator/wizard.js`          | Wizard: accept format; use .yaml or .json for system/datasource/app          |
+| `lib/commands/wizard-core.js`      | Resolve config format, pass to generateWizardFiles                           |
+| `lib/commands/convert.js`          | No change (caller resolves format)                                           |
 
 
 ## File summary
 
 
-| File                                       | Change                                                                |
-| ------------------------------------------ | --------------------------------------------------------------------- |
-| `lib/core/config.js`                       | Add `getFormat`, `setFormat`; validate json/yaml                      |
-| `lib/cli/setup-dev.js`                     | Add `dev set-format <format>`; add format to `displayDevConfig`       |
-| `lib/cli/setup-external-system.js`         | Add `--format`, resolve from config, pass to download                 |
-| `lib/cli/setup-utility.js`                 | Convert: resolve format from CLI or config; update error when neither |
-| `lib/external-system/download.js`          | Accept format, call `runConvert` when format is json                  |
+| File                                       | Change                                                                 |
+| ------------------------------------------ | ---------------------------------------------------------------------- |
+| `lib/core/config.js`                       | Add `getFormat`, `setFormat`; validate json/yaml                       |
+| `lib/cli/setup-dev.js`                     | Add `dev set-format <format>`; add format to `displayDevConfig`        |
+| `lib/cli/setup-external-system.js`         | Add `--format`, resolve from config, pass to download                  |
+| `lib/cli/setup-utility.js`                 | Convert: resolve format from CLI or config; update error when neither  |
+| `lib/external-system/download.js`          | Accept format, call `runConvert` when format is json                   |
+| `lib/external-system/generator.js`         | Accept format; generate .yaml or .json for system/datasource/app       |
+| `lib/app/index.js`                         | Pass config format to external generator                               |
+| `lib/generator/wizard.js`                  | Accept format; generate .yaml or .json for system/datasource/app       |
+| `lib/commands/wizard-core.js`              | Resolve config format, pass to generateWizardFiles                     |
 | `docs/commands/developer-isolation.md`     | Document `dev set-format`                                             |
 | `docs/commands/README.md`                  | Add dev set-format to list                                            |
-| `docs/configuration/secrets-and-config.md` | Add format key to config                                              |
+| `docs/configuration/secrets-and-config.md` | Add format key; used by download, convert, create, wizard             |
 | `docs/commands/utilities.md`               | Convert: config fallback                                              |
 | `docs/commands/external-integration.md`    | Download: `--format`, config                                          |
-| `docs/external-systems.md`                 | Download examples, config                                             |
-| `tests/`                                   | Config format, dev set-format, download/convert resolution            |
+| `docs/external-systems.md`                 | Download, create, wizard: config format                               |
+| `docs/wizard.md`                           | Wizard uses config format when set                                    |
+| `docs/commands/application-development.md` | Create external uses config format when set                           |
+| `tests/`                                   | Config, dev set-format, download, convert, generator, wizard          |
 
 
 ## Example usage (post-implementation)
@@ -264,6 +278,11 @@ aifabrix download hubspot   # uses JSON from config
 # Convert uses config when --format not passed
 aifabrix dev set-format yaml
 aifabrix convert hubspot --force   # uses yaml from config
+
+# Create and wizard use config format for generated files
+aifabrix dev set-format json
+aifabrix create myapp --type external   # generates application.json, *-system.json, *-datasource-*.json
+aifabrix wizard myapp                   # wizard-generated files use JSON
 ```
 
 ---
