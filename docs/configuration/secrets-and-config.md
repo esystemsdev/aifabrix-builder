@@ -14,7 +14,7 @@ In production, AI Fabrix stores secrets in **Azure Key Vault**. Using `kv://` re
 
 Location: `~/.aifabrix/config.yaml`. Manages developer-id, aifabrix-home, aifabrix-secrets, aifabrix-env-config, traefik, controller, environment, device tokens, per-environment client tokens, and **remote development** when using a remote dev server.
 
-**Key fields:** `developer-id` (read by `aifabrix up-infra`), `traefik` (set by `aifabrix up-infra --traefik`), `controller` and `environment` (set by login/auth config), `device` (device flow tokens), `environments.<env>.clients.<app>` (client tokens). Tokens can be encrypted at rest when `secrets-encryption` is set.
+**Key fields:** `developer-id` (read by `aifabrix up-infra`), `format` (default output format: `json` or `yaml`; set via `aifabrix dev set-format`; used by download, convert, create external, wizard when `--format` is not passed), `traefik` (set by `aifabrix up-infra --traefik`), `controller` and `environment` (set by login/auth config), `device` (device flow tokens), `environments.<env>.clients.<app>` (client tokens). Tokens can be encrypted at rest when `secrets-encryption` is set.
 
 **Remote development (when `remote-server` is set):** `remote-server` (SSH host for remote Docker and Mutagen), `docker-endpoint` (Docker API endpoint on the remote host). All dev APIs (settings, secrets, sync) use **certificate (mTLS) authentication**. You can refresh config from the server with `aifabrix dev config` after `aifabrix dev init`. See [Commands: Developer isolation](../commands/developer-isolation.md) for `dev init` and remote setup.
 

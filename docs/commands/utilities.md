@@ -189,7 +189,7 @@ aifabrix convert hubspot --format json --force
 ```
 
 **Options:**
-- `--format <format>` - Target format: `json` or `yaml` (required)
+- `--format <format>` - Target format: `json` or `yaml` (required unless config format is set). When not passed, uses the format from `~/.aifabrix/config.yaml` (set via `aifabrix dev set-format`). If neither is set, the command fails with instructions.
 - `-f, --force` - Skip "Are you sure?" confirmation prompt
 
 **App path resolution:** The command resolves the app by checking **`integration/<app>`** first, then **`builder/<app>`**. If neither exists, it errors. There is no option to override this order.
@@ -202,7 +202,7 @@ aifabrix convert hubspot --format json --force
 5. Delete old files only after all writes succeed.
 
 **Issues:**
-- **"Option --format is required and must be 'json' or 'yaml'"** → Pass `--format json` or `--format yaml`
+- **"Option --format is required and must be 'json' or 'yaml'"** → Pass `--format json` or `--format yaml`, or set default with `aifabrix dev set-format json` (or `yaml`)
 - **"Validation failed"** → Fix validation errors (run `aifabrix validate <app>`) before converting
 - **"Convert cancelled"** → You answered no to the confirmation prompt; run again with `--force` to skip the prompt
 - **"App not found"** → Ensure the app exists in `integration/<app>` or `builder/<app>`

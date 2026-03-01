@@ -16,7 +16,7 @@ Generate correct secrets structure in the manifest so we have correct env.templa
 Per [Credential secrets push (automatic)](docs/commands/external-integration.md#aifabrix-upload-system-key):
 
 - **Naming:** `KV_<APPKEY>_<VAR>=my value` (e.g. `KV_HUBSPOT_CLIENTID=xxx`, `KV_HUBSPOT_CLIENTSECRET=yyy`)
-- **Mapping:** `KV_` + segments (underscores) → `kv://segment1/segment2/...` (lowercase)
+- **Mapping:** `KV`_ + segments (underscores) → `kv://segment1/segment2/...` (lowercase)
 - Example: `KV_HUBSPOT_CLIENTID` → `kv://hubspot/clientid`
 - Example: `KV_HUBSPOT_CLIENTSECRET` → `kv://hubspot/clientsecret`
 
@@ -43,10 +43,10 @@ This plan must comply with [Project Rules](.cursor/rules/project-rules.mdc):
 
 ## Before Development
 
-- [ ] Read Credential secrets push section in [docs/commands/external-integration.md](docs/commands/external-integration.md)
-- [ ] Review [lib/utils/credential-secrets-env.js](lib/utils/credential-secrets-env.js) kvEnvKeyToPath and pushCredentialSecrets
-- [ ] Review [lib/generator/wizard.js](lib/generator/wizard.js) addAuthenticationLines and generateEnvTemplate
-- [ ] Review [lib/app/config.js](lib/app/config.js) generateExternalSystemEnvTemplate
+- Read Credential secrets push section in [docs/commands/external-integration.md](docs/commands/external-integration.md)
+- Review [lib/utils/credential-secrets-env.js](lib/utils/credential-secrets-env.js) kvEnvKeyToPath and pushCredentialSecrets
+- Review [lib/generator/wizard.js](lib/generator/wizard.js) addAuthenticationLines and generateEnvTemplate
+- Review [lib/app/config.js](lib/app/config.js) generateExternalSystemEnvTemplate
 
 ## Definition of Done
 
@@ -111,7 +111,7 @@ Ensure `aifabrix resolve` works with env.template that has KV_* vars. KV_* vars 
 - [lib/core/secrets.js](lib/core/secrets.js) – generateEnvContent: handle KV_* lines (pass through if no kv:// in value)
 - [lib/utils/secrets-helpers.js](lib/utils/secrets-helpers.js) – ensure replaceKvInContent does not break KV_* lines that have no kv://
 
-### 4. aifabrix credential env 
+### 4. aifabrix credential env
 
 Prompts for credential values based on env.template, writes .env with KV_* vars.
 
@@ -129,7 +129,7 @@ Standalone command to push credential secrets from .env to dataplane. Reuses log
 - Requires dataplane URL and auth (same as upload)
 - Add `credential push` subcommand in [lib/cli/setup-credential-deployment.js](lib/cli/setup-credential-deployment.js)
 
-### 6. Add --debug to upload <external-system>
+### 6. Add --debug to upload 
 
 - [lib/cli/setup-external-system.js](lib/cli/setup-external-system.js) – add `--debug` option to upload command
 
@@ -176,7 +176,7 @@ Standalone command to push credential secrets from .env to dataplane. Reuses log
 
 ### Plan Purpose
 
-Generate correct manifest kv:// paths and env.template using KV_<APPKEY>_<VAR> convention so credential secrets push (wizard, upload, deploy) works. Add `aifabrix credential env <system-key>` and `aifabrix credential push <system-key>`.
+Generate correct manifest kv:// paths and env.template using KV__ convention so credential secrets push (wizard, upload, deploy) works. Add `aifabrix credential env <system-key>` and `aifabrix credential push <system-key>`.
 
 **Affected areas:** CLI commands, generators (wizard, config), env.template, credential secrets push, documentation.  
 **Plan type:** Development (CLI commands, generators, secret management).
@@ -209,3 +209,4 @@ Generate correct manifest kv:// paths and env.template using KV_<APPKEY>_<VAR> c
 
 - Ensure credential push reuses existing pushCredentialSecrets from [lib/utils/credential-secrets-env.js](lib/utils/credential-secrets-env.js)
 - Consider backward compatibility for existing integrations using hubspot-clientidKeyVault format (optional migration path)
+

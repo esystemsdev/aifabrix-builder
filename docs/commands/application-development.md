@@ -84,9 +84,11 @@ See `integration/hubspot/` for a complete HubSpot integration with companies, co
 - `--datasources <count>` - Number of datasources (required for non-interactive)
 
 When using `--type external`, the command creates an external system integration in `integration/<app>/`:
-- `integration/<app>/application.yaml` - App configuration with `app.type: "external"` and `externalIntegration` block
-- `integration/<app>/<systemKey>-system.yaml` - External system configuration
-- `integration/<app>/<systemKey>-datasource-<datasource-key>.yaml` - Datasource YAML files (all in same folder)
+- `integration/<app>/application.yaml` (or `application.json` if config format is `json`) - App configuration with `app.type: "external"` and `externalIntegration` block
+- `integration/<app>/<systemKey>-system.yaml` (or `*.json`) - External system configuration
+- `integration/<app>/<systemKey>-datasource-<datasource-key>.yaml` (or `*.json`) - Datasource files (all in same folder)
+
+When `format` is set in `~/.aifabrix/config.yaml` (via `aifabrix dev set-format`), the command generates files in that format.
 - `integration/<app>/<systemKey>-deploy.json` - Deployment manifest (generated)
 - `integration/<app>/env.template` - Environment variables template
 - `integration/<app>/README.md` - Application documentation

@@ -189,6 +189,28 @@ describe('Wizard Generator', () => {
       expect(datasourceFileCalls.length).toBe(datasourceConfigs.length);
     });
 
+    it('should generate .json files when format option is json', async() => {
+      await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, { format: 'json' });
+
+      const systemFileCall = configFormat.writeConfigFile.mock.calls.find(call =>
+        call[0] && String(call[0]).includes(`${appName}-system.json`)
+      );
+      expect(systemFileCall).toBeDefined();
+      expect(systemFileCall[2]).toBe('json');
+
+      const datasourceFileCalls = configFormat.writeConfigFile.mock.calls.filter(call =>
+        call[0] && String(call[0]).includes(`${appName}-datasource-`) && String(call[0]).endsWith('.json')
+      );
+      expect(datasourceFileCalls.length).toBe(datasourceConfigs.length);
+      datasourceFileCalls.forEach(call => expect(call[2]).toBe('json'));
+
+      const variablesCall = configFormat.writeConfigFile.mock.calls.find(call =>
+        call[0] && String(call[0]).includes('application.json')
+      );
+      expect(variablesCall).toBeDefined();
+      expect(variablesCall[1].externalIntegration.systems).toContain(`${appName}-system.json`);
+    });
+
     it('should generate application.yaml with appName-based system file', async() => {
       await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, {});
       const variablesCall = configFormat.writeConfigFile.mock.calls.find(call =>

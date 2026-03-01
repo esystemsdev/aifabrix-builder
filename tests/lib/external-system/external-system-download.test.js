@@ -71,6 +71,9 @@ jest.mock('../../../lib/generator', () => ({
     readme: 'README.md'
   })
 }));
+jest.mock('../../../lib/commands/convert', () => ({
+  runConvert: jest.fn().mockResolvedValue({ converted: [], deleted: [] })
+}));
 
 // Mock paths module
 jest.mock('../../../lib/utils/paths', () => {
@@ -462,6 +465,28 @@ describe('External System Download Module', () => {
 
       expect(getExternalSystemConfig).toHaveBeenCalled();
       expect(generator.splitDeployJson).toHaveBeenCalled();
+    });
+
+    it('should call runConvert when format is json', async() => {
+      getExternalSystemConfig.mockResolvedValue(mockDownloadResponse);
+
+      const { runConvert } = require('../../../lib/commands/convert');
+      const { downloadExternalSystem } = require('../../../lib/external-system/download');
+
+      await downloadExternalSystem(systemKey, { environment: 'dev', format: 'json' });
+
+      expect(runConvert).toHaveBeenCalledWith(systemKey, { format: 'json', force: true });
+    });
+
+    it('should not call runConvert when format is yaml', async() => {
+      getExternalSystemConfig.mockResolvedValue(mockDownloadResponse);
+
+      const { runConvert } = require('../../../lib/commands/convert');
+      const { downloadExternalSystem } = require('../../../lib/external-system/download');
+
+      await downloadExternalSystem(systemKey, { environment: 'dev', format: 'yaml' });
+
+      expect(runConvert).not.toHaveBeenCalled();
     });
   });
 });

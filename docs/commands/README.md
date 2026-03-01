@@ -25,6 +25,7 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix doctor`](infrastructure.md#aifabrix-doctor) - Check environment and configuration
 - [Developer Isolation Commands](developer-isolation.md) - Port isolation and remote development
   - [`aifabrix dev config`](developer-isolation.md#aifabrix-dev-config) - View or set developer ID; when remote and cert available, refresh config from server
+  - [`aifabrix dev set-format <format>`](developer-isolation.md#aifabrix-dev-set-format) - Set default output format (json \| yaml) for download, convert, create external, wizard
   - [`aifabrix dev init`](developer-isolation.md#aifabrix-dev-init) - (Remote only) Issue cert, fetch settings, register SSH keys for Mutagen
   - [`aifabrix dev refresh`](developer-isolation.md#aifabrix-dev-refresh) - (Remote only) Fetch settings from Builder Server and update config (e.g. when docker-endpoint or sync-ssh-host are empty)
   - [`aifabrix dev add`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev update`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev pin`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev delete`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev list`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) - (Remote only) Manage developers on server

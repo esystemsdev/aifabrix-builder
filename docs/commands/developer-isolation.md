@@ -134,6 +134,39 @@ aifabrix dev down --apps
 
 ---
 
+<a id="aifabrix-dev-set-format"></a>
+## aifabrix dev set-format
+
+Set default output format for commands that generate or convert external system files.
+
+**What:** Persists the default format (`json` or `yaml`) in `~/.aifabrix/config.yaml`. When `--format` is not passed, the following commands use this config value (or fall back to `yaml` if not set):
+
+| Command | Uses format when |
+| -------- | ----------------- |
+| `aifabrix download <system-key>` | `--format` not passed |
+| `aifabrix convert <app>` | `--format` not passed |
+| `aifabrix create <app> --type external` | Always (no CLI `--format`; config drives file extensions) |
+| `aifabrix wizard [app]` | Always (no CLI `--format`; config drives file extensions) |
+
+For `create --type external` and `wizard`, the format determines whether generated files use `.yaml` or `.json` (e.g. `application.yaml` vs `application.json`, `*-system.yaml` vs `*-system.json`, `*-datasource-*.yaml` vs `*-datasource-*.json`).
+
+**When:** Set your preferred format once; then `download`, `convert`, `create --type external`, and `wizard` will use it. Useful when you prefer JSON for all external system files.
+
+**Usage:**
+```bash
+aifabrix dev set-format json
+aifabrix dev set-format yaml
+```
+
+**Arguments:**
+- `<format>` - `json` or `yaml` (case-insensitive)
+
+**Output:** Confirms the format and displays full developer configuration (same as `aifabrix dev config`).
+
+**See Also:** [aifabrix dev config](#aifabrix-dev-config), [aifabrix download](external-integration.md#aifabrix-download-system-key), [aifabrix convert](utilities.md#aifabrix-convert-app), [aifabrix create](application-development.md#aifabrix-create-app), [aifabrix wizard](external-integration.md#aifabrix-wizard), [Secrets and config](../configuration/secrets-and-config.md).
+
+---
+
 <a id="aifabrix-dev-config"></a>
 ## aifabrix dev config
 
@@ -157,6 +190,8 @@ aifabrix dev config --set-id 02
 
 **Options:**
 - `--set-id <id>` - Set developer ID (non-negative integer). Developer ID 0 = default infrastructure (base ports), 1+ = developer-specific (offset ports). Updates `~/.aifabrix/config.yaml` and sets `AIFABRIX_DEVELOPERID` environment variable.
+
+**See Also:** [aifabrix dev set-format](#aifabrix-dev-set-format) (default output format for download/convert).
 
 **Output (view):**
 ```yaml
@@ -188,6 +223,7 @@ Ports:
 Configuration:
   environment: 'dev'
   controller: 'http://localhost:3100'
+  format: 'yaml'
   aifabrix-home: /workspace/.aifabrix
   aifabrix-secrets: /workspace/aifabrix-miso/builder/secrets.local.yaml
   aifabrix-env-config: /workspace/aifabrix-miso/builder/env-config.yaml

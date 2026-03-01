@@ -1010,7 +1010,7 @@ describe('Wizard Core Functions', () => {
         mockSystemConfig,
         mockDatasourceConfigs,
         'test-system',
-        { aiGeneratedReadme: null }
+        { aiGeneratedReadme: null, format: 'yaml' }
       );
       expect(wizardApi.postDeploymentDocs).toHaveBeenCalledWith(
         mockDataplaneUrl,
@@ -1047,7 +1047,7 @@ describe('Wizard Core Functions', () => {
         mockSystemConfig,
         mockDatasourceConfigs,
         'test-system',
-        { aiGeneratedReadme: null }
+        { aiGeneratedReadme: null, format: 'yaml' }
       );
       expect(fs.writeFile).not.toHaveBeenCalledWith(expect.stringContaining('README.md'), expect.any(String), 'utf8');
     });
@@ -1074,7 +1074,7 @@ describe('Wizard Core Functions', () => {
         mockSystemConfig,
         mockDatasourceConfigs,
         'test-system',
-        { aiGeneratedReadme: null }
+        { aiGeneratedReadme: null, format: 'yaml' }
       );
       expect(result).toEqual(mockGeneratedFiles);
     });

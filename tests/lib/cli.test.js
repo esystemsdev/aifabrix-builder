@@ -2954,5 +2954,70 @@ describe('CLI Commands', () => {
         expect(config.getAifabrixEnvConfigPath).toHaveBeenCalled();
       });
     });
+
+    describe('dev set-format command handler execution', () => {
+      it('should execute dev set-format json via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        config.setFormat.mockResolvedValue();
+        config.getDeveloperId.mockResolvedValue('0');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
+        config.getFormat.mockResolvedValue('json');
+        config.getAifabrixHomeOverride.mockResolvedValue(null);
+        config.getAifabrixSecretsPath.mockResolvedValue(null);
+        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
+        devConfig.getDevPorts.mockReturnValue({
+          app: 3000, postgres: 5432, redis: 6379,
+          pgadmin: 5050, redisCommander: 8081
+        });
+        chalk.green.mockImplementation((text) => text);
+
+        const handler = commandActions['dev set-format <format>'];
+        expect(handler).toBeDefined();
+
+        await handler('json');
+
+        expect(config.setFormat).toHaveBeenCalledWith('json');
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Format set to json'));
+      });
+
+      it('should execute dev set-format yaml via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        config.setFormat.mockResolvedValue();
+        config.getDeveloperId.mockResolvedValue('0');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
+        config.getFormat.mockResolvedValue('yaml');
+        config.getAifabrixHomeOverride.mockResolvedValue(null);
+        config.getAifabrixSecretsPath.mockResolvedValue(null);
+        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
+        devConfig.getDevPorts.mockReturnValue({
+          app: 3000, postgres: 5432, redis: 6379,
+          pgadmin: 5050, redisCommander: 8081
+        });
+        chalk.green.mockImplementation((text) => text);
+
+        const handler = commandActions['dev set-format <format>'];
+        await handler('yaml');
+
+        expect(config.setFormat).toHaveBeenCalledWith('yaml');
+      });
+
+      it('should handle invalid format via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        config.setFormat.mockRejectedValue(new Error('Option --format must be \'json\' or \'yaml\''));
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['dev set-format <format>'];
+        await handler('xml');
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'dev set-format');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+    });
   });
 });

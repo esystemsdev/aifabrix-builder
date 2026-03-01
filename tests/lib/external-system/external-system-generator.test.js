@@ -544,6 +544,22 @@ fieldMappings:
       expect(result.datasourcePaths).toHaveLength(1);
     });
 
+    it('should generate .json files when format is json', async() => {
+      const config = {
+        systemKey: 'test-system',
+        datasourceCount: 1
+      };
+
+      const { generateExternalSystemFiles } = require('../../../lib/external-system/generator');
+      const result = await generateExternalSystemFiles(appPath, appName, config, 'json');
+
+      expect(result.systemPath).toBe(path.join(appPath, 'test-system-system.json'));
+      expect(result.datasourcePaths[0]).toBe(path.join(appPath, 'test-system-datasource-entity1.json'));
+
+      const jsonWriteCalls = configFormat.writeConfigFile.mock.calls.filter(c => c[2] === 'json');
+      expect(jsonWriteCalls.length).toBeGreaterThanOrEqual(2);
+    });
+
     it('should propagate entityType from config to all datasources', async() => {
       const config = {
         systemKey: 'test-system',
@@ -633,7 +649,7 @@ fieldMappings:
           autopublish: true,
           version: '1.0.0'
         })
-      }));
+      }), 'yaml');
       const applicationYamlCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('application.yaml'));
       expect(applicationYamlCall).toBeDefined();
       const writtenVariables = applicationYamlCall[1];
@@ -712,7 +728,7 @@ fieldMappings:
           systems: [`${systemKey}-system.yaml`],
           dataSources: ['test-system-datasource-entity1.yaml', 'test-system-datasource-entity2.yaml']
         })
-      }));
+      }), 'yaml');
     });
 
     it('should preserve existing variables when updating', async() => {
@@ -743,7 +759,7 @@ fieldMappings:
       expect(writtenVariables.externalIntegration).toBeDefined();
     });
 
-    it('should throw error if application.yaml does not exist', async() => {
+    it('should create application config when it does not exist', async() => {
       configFormat.loadConfigFile.mockImplementation(() => {
         throw new Error('Application config not found');
       });
@@ -756,8 +772,9 @@ fieldMappings:
       fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
 
       const { generateExternalSystemFiles } = require('../../../lib/external-system/generator');
-      await expect(generateExternalSystemFiles(appPath, appName, { systemKey: 'test-system', datasourceCount: 1 }))
-        .rejects.toThrow('Failed to generate external system files');
+      const result = await generateExternalSystemFiles(appPath, appName, { systemKey: 'test-system', datasourceCount: 1 });
+      expect(result.systemPath).toBeDefined();
+      expect(result.datasourcePaths).toHaveLength(1);
     });
 
     it('should throw error if application.yaml is invalid YAML', async() => {
