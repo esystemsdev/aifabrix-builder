@@ -283,74 +283,86 @@ Plan 85 (Manual Generation Improvements) implementation is complete. All 8 imple
 
 ### Task Completion
 
-| Step | Description | Status |
-|------|-------------|--------|
-| 1 | Add entityType prompt and extend auth choices | ✅ Complete |
-| 2 | Create per-auth system template snippets (inline in generator) | ✅ Complete |
-| 3 | Rewrite external-system template | ✅ Complete |
-| 4 | Update env.template generation for all auth methods | ✅ Complete |
-| 5 | Update external-datasource template with CIP execution blocks | ✅ Complete |
-| 6 | Update generator to use entityType and schema auth | ✅ Complete |
-| 7 | Add CLI option --entity-type | ✅ Complete |
-| 8 | Update documentation | ✅ Complete |
+
+| Step | Description                                                    | Status     |
+| ---- | -------------------------------------------------------------- | ---------- |
+| 1    | Add entityType prompt and extend auth choices                  | ✅ Complete |
+| 2    | Create per-auth system template snippets (inline in generator) | ✅ Complete |
+| 3    | Rewrite external-system template                               | ✅ Complete |
+| 4    | Update env.template generation for all auth methods            | ✅ Complete |
+| 5    | Update external-datasource template with CIP execution blocks  | ✅ Complete |
+| 6    | Update generator to use entityType and schema auth             | ✅ Complete |
+| 7    | Add CLI option --entity-type                                   | ✅ Complete |
+| 8    | Update documentation                                           | ✅ Complete |
+
 
 ### File Existence Validation
 
-| File | Status | Notes |
-|------|--------|-------|
-| lib/app/prompts.js | ✅ Exists | entityType prompt, auth choices (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none) |
-| lib/cli/setup-app.js | ✅ Exists | --entity-type option, normalizeExternalOptions, validateNonInteractiveExternalOptions |
-| lib/external-system/generator.js | ✅ Exists | buildAuthenticationFromMethod, entityType propagation |
-| templates/external-system/external-system.json.hbs | ✅ Exists | New authentication (method, variables, security) |
-| templates/external-system/external-datasource.yaml.hbs | ✅ Exists | entityType-specific commented CIP sections |
-| lib/app/config.js | ✅ Exists | generateExternalSystemEnvTemplate for all auth methods |
-| docs/external-systems.md | ✅ Exists | entityType in "You'll be asked", --entity-type in non-interactive example |
-| docs/commands/application-development.md | ✅ Exists | entityType prompts, external flags including --entity-type |
+
+| File                                                   | Status   | Notes                                                                                      |
+| ------------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------ |
+| lib/app/prompts.js                                     | ✅ Exists | entityType prompt, auth choices (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none) |
+| lib/cli/setup-app.js                                   | ✅ Exists | --entity-type option, normalizeExternalOptions, validateNonInteractiveExternalOptions      |
+| lib/external-system/generator.js                       | ✅ Exists | buildAuthenticationFromMethod, entityType propagation                                      |
+| templates/external-system/external-system.json.hbs     | ✅ Exists | New authentication (method, variables, security)                                           |
+| templates/external-system/external-datasource.yaml.hbs | ✅ Exists | entityType-specific commented CIP sections                                                 |
+| lib/app/config.js                                      | ✅ Exists | generateExternalSystemEnvTemplate for all auth methods                                     |
+| docs/external-systems.md                               | ✅ Exists | entityType in "You'll be asked", --entity-type in non-interactive example                  |
+| docs/commands/application-development.md               | ✅ Exists | entityType prompts, external flags including --entity-type                                 |
+
 
 ### Test Coverage
 
-| Test Area | Status |
-|-----------|--------|
-| Auth methods (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none) | ✅ 8 tests in external-system-generator.test.js |
-| entityType propagation | ✅ propagate entityType, propagate vectorStore/none |
-| Commented sections | ✅ recordStorage, vectorStore, messageService, none |
-| generateExternalSystemEnvTemplate | ✅ OAuth2, apikey, basic, queryParam in app-config.test.js |
+
+| Test Area                                                               | Status                                                    |
+| ----------------------------------------------------------------------- | --------------------------------------------------------- |
+| Auth methods (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none) | ✅ 8 tests in external-system-generator.test.js            |
+| entityType propagation                                                  | ✅ propagate entityType, propagate vectorStore/none        |
+| Commented sections                                                      | ✅ recordStorage, vectorStore, messageService, none        |
+| generateExternalSystemEnvTemplate                                       | ✅ OAuth2, apikey, basic, queryParam in app-config.test.js |
+
 
 ### Code Quality Validation
 
-| Step | Result |
-|------|--------|
-| Format (`npm run lint:fix`) | ✅ PASSED |
-| Lint (`npm run lint`) | ✅ PASSED (0 errors, 0 warnings) |
-| Tests (`npm run build`) | ✅ PASSED |
+
+| Step                        | Result                          |
+| --------------------------- | ------------------------------- |
+| Format (`npm run lint:fix`) | ✅ PASSED                        |
+| Lint (`npm run lint`)       | ✅ PASSED (0 errors, 0 warnings) |
+| Tests (`npm run build`)     | ✅ PASSED                        |
+
 
 ### File Size Compliance
 
-| File | Lines | Limit | Status |
-|------|-------|-------|--------|
-| lib/app/prompts.js | 470 | 500 | ✅ |
-| lib/cli/setup-app.js | 418 | 500 | ✅ |
-| lib/external-system/generator.js | 283 | 500 | ✅ |
-| lib/app/config.js | 236 | 500 | ✅ |
+
+| File                             | Lines | Limit | Status |
+| -------------------------------- | ----- | ----- | ------ |
+| lib/app/prompts.js               | 470   | 500   | ✅      |
+| lib/cli/setup-app.js             | 418   | 500   | ✅      |
+| lib/external-system/generator.js | 283   | 500   | ✅      |
+| lib/app/config.js                | 236   | 500   | ✅      |
+
 
 ### Cursor Rules Compliance
 
-| Rule | Status |
-|------|--------|
+
+| Rule                    | Status                                      |
+| ----------------------- | ------------------------------------------- |
 | CLI Command Development | ✅ --entity-type option, prompts, validation |
-| Template Development | ✅ Handlebars, schema auth, CIP sections |
-| Generated Output | ✅ Fixes in generator/templates |
-| Security (kv:// only) | ✅ All auth security use kv:// pattern |
-| Quality Gates | ✅ Build, lint, test pass |
-| Code Quality | ✅ File size, JSDoc on new functions |
-| Testing Conventions | ✅ Jest, mocks, coverage |
+| Template Development    | ✅ Handlebars, schema auth, CIP sections     |
+| Generated Output        | ✅ Fixes in generator/templates              |
+| Security (kv:// only)   | ✅ All auth security use kv:// pattern       |
+| Quality Gates           | ✅ Build, lint, test pass                    |
+| Code Quality            | ✅ File size, JSDoc on new functions         |
+| Testing Conventions     | ✅ Jest, mocks, coverage                     |
+
 
 ### Final Validation Checklist
 
-- [x] All implementation steps completed
-- [x] All files exist with expected changes
-- [x] Tests exist for auth methods, entityType, commented sections
-- [x] Code quality validation passes (format, lint, test)
-- [x] Cursor rules compliance verified
-- [x] Implementation complete
+- All implementation steps completed
+- All files exist with expected changes
+- Tests exist for auth methods, entityType, commented sections
+- Code quality validation passes (format, lint, test)
+- Cursor rules compliance verified
+- Implementation complete
 
