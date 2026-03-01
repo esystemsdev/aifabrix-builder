@@ -169,7 +169,7 @@ aifabrix create myapp --github --github-steps npm
 ```bash
 aifabrix create hubspot-test --type external
 ```
-Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2/apikey/basic), number of datasources. Create fails if `integration/<name>` or `builder/<name>` already exists—use a different name or remove the existing directory.
+Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none), entity type (recordStorage, documentStorage, vectorStore, messageService, none), number of datasources. Create fails if `integration/<name>` or `builder/<name>` already exists—use a different name or remove the existing directory.
 
 **What gets created for external systems:**
 - `integration/<app>/application.yaml` - App configuration with `app.type: "external"` and `externalIntegration` block

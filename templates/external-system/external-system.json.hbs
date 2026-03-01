@@ -4,23 +4,7 @@
   "description": "{{systemDescription}}",
   "type": "{{systemType}}",
   "enabled": true,
-  "authentication": {
-    "type": "{{authType}}"{{#if (eq authType "oauth2")}},
-    "oauth2": {
-      "tokenUrl": "https://api.example.com/oauth/token",
-      "clientId": "kv://{{systemKey}}-oauth2-client-id",
-      "clientSecret": "kv://{{systemKey}}-oauth2-client-secret",
-      "scopes": []
-    }{{/if}}{{#if (eq authType "apikey")}},
-    "apikey": {
-      "headerName": "X-API-Key",
-      "key": "kv://{{systemKey}}-api-key"
-    }{{/if}}{{#if (eq authType "basic")}},
-    "basic": {
-      "username": "kv://{{systemKey}}-username",
-      "password": "kv://{{systemKey}}-password"
-    }{{/if}}
-  }{{#if (eq systemType "openapi")}},
+  "authentication": {{{json authentication}}}{{#if (eq systemType "openapi")}},
   "openapi": {
     "documentKey": "{{systemKey}}-api",
     "autoDiscoverEntities": false
@@ -51,4 +35,3 @@
     {{/each}}
   ]{{/if}}
 }
-

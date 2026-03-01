@@ -66,13 +66,7 @@ describe('External System Generator Module', () => {
   "description": "{{systemDescription}}",
   "type": "{{systemType}}",
   "enabled": true,
-  "authentication": {
-    "type": "{{authType}}"{{#if (eq authType "apikey")}},
-    "apikey": {
-      "headerName": "X-API-Key",
-      "key": "kv://{{systemKey}}-api-key"
-    }{{/if}}
-  }{{#if (eq systemType "openapi")}},
+  "authentication": {{{json authentication}}}{{#if (eq systemType "openapi")}},
   "openapi": {
     "documentKey": "{{systemKey}}-api",
     "autoDiscoverEntities": false
@@ -146,7 +140,9 @@ fieldMappings:
       const parsed = systemCall[1];
       expect(parsed.key).toBe('test-system');
       expect(parsed.type).toBe('openapi');
-      expect(parsed.authentication.type).toBe('apikey');
+      expect(parsed.authentication.method).toBe('apikey');
+      expect(parsed.authentication.variables).toBeDefined();
+      expect(parsed.authentication.security).toBeDefined();
       expect(Array.isArray(parsed.configuration)).toBe(true);
       expect(parsed.configuration).toHaveLength(0);
     });
@@ -208,6 +204,39 @@ fieldMappings:
       const { generateExternalSystemTemplate } = require('../../../lib/external-system/generator');
       await expect(generateExternalSystemTemplate(appPath, 'test-system', {}))
         .rejects.toThrow('Failed to generate external system template');
+    });
+
+    const authMethods = [
+      { method: 'oauth2', hasSecurity: true, securityKeys: ['clientId', 'clientSecret'] },
+      { method: 'aad', hasSecurity: true, securityKeys: ['clientId', 'clientSecret'] },
+      { method: 'apikey', hasSecurity: true, securityKeys: ['apiKey'] },
+      { method: 'basic', hasSecurity: true, securityKeys: ['username', 'password'] },
+      { method: 'queryParam', hasSecurity: true, securityKeys: ['paramValue'] },
+      { method: 'oidc', hasSecurity: false, securityKeys: [] },
+      { method: 'hmac', hasSecurity: true, securityKeys: ['signingSecret'] },
+      { method: 'none', hasSecurity: false, securityKeys: [] }
+    ];
+    authMethods.forEach(({ method, hasSecurity, securityKeys }) => {
+      it(`should emit schema-compliant auth for ${method}`, async() => {
+        fsPromises.readFile = jest.fn().mockResolvedValue(mockSystemTemplate);
+        configFormat.writeConfigFile.mockClear();
+
+        const { generateExternalSystemTemplate } = require('../../../lib/external-system/generator');
+        await generateExternalSystemTemplate(appPath, 'mysys', { authType: method });
+
+        const systemCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-system.yaml'));
+        const parsed = systemCall[1];
+        expect(parsed.authentication.method).toBe(method);
+        expect(parsed.authentication.variables).toBeDefined();
+        expect(parsed.authentication.security).toBeDefined();
+        if (hasSecurity) {
+          securityKeys.forEach((k) => {
+            expect(parsed.authentication.security[k]).toMatch(/^kv:\/\/mysys\//);
+          });
+        } else {
+          expect(Object.keys(parsed.authentication.security)).toHaveLength(0);
+        }
+      });
     });
   });
 
@@ -337,6 +366,89 @@ fieldMappings:
       });
     });
 
+    it('should include commented optional sections for recordStorage', async() => {
+      const realTemplate = fs.readFileSync(datasourceTemplatePath, 'utf8');
+      fsPromises.readFile = jest.fn().mockResolvedValue(realTemplate);
+      fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
+
+      const { generateExternalDataSourceTemplate } = require('../../../lib/external-system/generator');
+      await generateExternalDataSourceTemplate(appPath, 'test-ds', {
+        systemKey: 'test-system',
+        entityType: 'recordStorage',
+        resourceType: 'customer',
+        systemType: 'openapi'
+      });
+
+      const writeCall = fsPromises.writeFile.mock.calls.find(c => c[0] && String(c[0]).includes('-datasource-'));
+      const content = writeCall[1];
+      expect(content).toContain('# sync:');
+      expect(content).toContain('# execution:');
+      expect(content).toContain('# capabilities:');
+      expect(content).toContain('# config:');
+    });
+
+    it('should include commented optional sections for vectorStore', async() => {
+      const realTemplate = fs.readFileSync(datasourceTemplatePath, 'utf8');
+      fsPromises.readFile = jest.fn().mockResolvedValue(realTemplate);
+      fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
+
+      const { generateExternalDataSourceTemplate } = require('../../../lib/external-system/generator');
+      await generateExternalDataSourceTemplate(appPath, 'test-ds', {
+        systemKey: 'test-system',
+        entityType: 'vectorStore',
+        resourceType: 'document',
+        systemType: 'openapi'
+      });
+
+      const writeCall = fsPromises.writeFile.mock.calls.find(c => c[0] && String(c[0]).includes('-datasource-'));
+      const content = writeCall[1];
+      const parsed = yaml.load(writeCall[1]);
+      expect(parsed.entityType).toBe('vectorStore');
+      expect(content).toContain('# vectorStore:');
+      expect(content).toContain('# execution:');
+    });
+
+    it('should include commented optional sections for messageService', async() => {
+      const realTemplate = fs.readFileSync(datasourceTemplatePath, 'utf8');
+      fsPromises.readFile = jest.fn().mockResolvedValue(realTemplate);
+      fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
+
+      const { generateExternalDataSourceTemplate } = require('../../../lib/external-system/generator');
+      await generateExternalDataSourceTemplate(appPath, 'test-ds', {
+        systemKey: 'test-system',
+        entityType: 'messageService',
+        resourceType: 'contact',
+        systemType: 'openapi'
+      });
+
+      const writeCall = fsPromises.writeFile.mock.calls.find(c => c[0] && String(c[0]).includes('-datasource-'));
+      const content = writeCall[1];
+      const parsed = yaml.load(writeCall[1]);
+      expect(parsed.entityType).toBe('messageService');
+      expect(content).toContain('# messageService:');
+      expect(content).toContain('# execution:');
+    });
+
+    it('should include commented optional sections for entityType none', async() => {
+      const realTemplate = fs.readFileSync(datasourceTemplatePath, 'utf8');
+      fsPromises.readFile = jest.fn().mockResolvedValue(realTemplate);
+      fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
+
+      const { generateExternalDataSourceTemplate } = require('../../../lib/external-system/generator');
+      await generateExternalDataSourceTemplate(appPath, 'test-ds', {
+        systemKey: 'test-system',
+        entityType: 'none',
+        resourceType: 'generic',
+        systemType: 'openapi'
+      });
+
+      const writeCall = fsPromises.writeFile.mock.calls.find(c => c[0] && String(c[0]).includes('-datasource-'));
+      const content = writeCall[1];
+      const parsed = yaml.load(writeCall[1]);
+      expect(parsed.entityType).toBe('none');
+      expect(content).toContain('# execution:');
+    });
+
     it('should generate datasource YAML that validates against external-datasource schema', async() => {
       const Ajv = require('ajv');
       const realTemplate = fs.readFileSync(datasourceTemplatePath, 'utf8');
@@ -430,6 +542,54 @@ fieldMappings:
       const result = await generateExternalSystemFiles(appPath, appName, config);
 
       expect(result.datasourcePaths).toHaveLength(1);
+    });
+
+    it('should propagate entityType from config to all datasources', async() => {
+      const config = {
+        systemKey: 'test-system',
+        entityType: 'documentStorage',
+        datasourceCount: 2
+      };
+
+      fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
+        if (filePath === systemTemplatePath) return Promise.resolve(mockSystemTemplate);
+        if (filePath === datasourceTemplatePath) return Promise.resolve(mockDatasourceTemplate);
+        return Promise.reject(new Error('File not found'));
+      });
+
+      const { generateExternalSystemFiles } = require('../../../lib/external-system/generator');
+      await generateExternalSystemFiles(appPath, appName, config);
+
+      const writeCalls = fsPromises.writeFile.mock.calls.filter(c => c[0] && String(c[0]).includes('-datasource-'));
+      expect(writeCalls).toHaveLength(2);
+      writeCalls.forEach((call) => {
+        const parsed = yaml.load(call[1]);
+        expect(parsed.entityType).toBe('documentStorage');
+      });
+    });
+
+    it('should propagate vectorStore and none entityTypes to datasources', async() => {
+      const realTemplate = fs.readFileSync(datasourceTemplatePath, 'utf8');
+      fsPromises.readFile = jest.fn().mockImplementation((filePath) => {
+        if (filePath === systemTemplatePath) return Promise.resolve(mockSystemTemplate);
+        if (filePath === datasourceTemplatePath) return Promise.resolve(realTemplate);
+        return Promise.reject(new Error('File not found'));
+      });
+
+      for (const entityType of ['vectorStore', 'none']) {
+        fsPromises.writeFile.mockClear();
+        const { generateExternalSystemFiles } = require('../../../lib/external-system/generator');
+        await generateExternalSystemFiles(appPath, appName, {
+          systemKey: 'test-system',
+          entityType,
+          datasourceCount: 1
+        });
+
+        const writeCalls = fsPromises.writeFile.mock.calls.filter(c => c[0] && String(c[0]).includes('-datasource-'));
+        expect(writeCalls).toHaveLength(1);
+        const parsed = yaml.load(writeCalls[0][1]);
+        expect(parsed.entityType).toBe(entityType);
+      }
     });
 
     it('should cycle through resource types', async() => {

@@ -51,6 +51,8 @@ openapi:
 {{/if}}
 
 # --- Optional sections: uncomment or delete as needed ---
+# CIP (Custom Integration Pipeline) supports: fetch, paginate, map, filter, output, pythonInline steps.
+# Operations: list, get, create, update, delete. Pagination: cursor | page | offset.
 {{#if (eq schemaEntityType "recordStorage")}}
 # sync:
 #   pull:
@@ -74,3 +76,139 @@ openapi:
 #   enabled: true
 #   channels: []
 {{/if}}
+
+# --- execution: CIP pipeline ---
+# Steps: fetch (openapi/http) → paginate (cursor|page|offset) → map (useFieldMappings, inputPath) → filter (enforceAbac, expression) → output (mode: records)
+# Pagination: cursor=cursorField+cursorParam | page=pageParam+pageSizeParam | offset=offsetParam+pageSizeParam
+# Adjust inputPath to your API ($.results[*], $.items[*], $.value[*], etc.)
+{{#if (eq schemaEntityType "recordStorage")}}
+# execution:
+#   engine: cip
+#   cip:
+#     operations:
+#       list:
+#         enabled: true
+#         description: "List all records"
+#         steps:
+#           - fetch: { source: openapi, openapiRef: list, query: {} }
+#           - paginate: { strategy: cursor, cursorField: "$.paging.next.after", cursorParam: after, pageSize: 100, maxPages: 100 }
+#           # Alternative: page → pageParam, pageSizeParam | offset → offsetParam, pageSizeParam
+#           - map: { useFieldMappings: true, inputPath: "$.results[*]" }
+#           - filter: { enforceAbac: true }
+#           # Optional: filter.expression for SQL or JSON filter, e.g. expression: "status = 'active'"
+#           - output: { mode: records }
+#       get:
+#         enabled: true
+#         description: "Get record by ID"
+#         steps:
+#           - fetch: { source: openapi, openapiRef: get, query: {} }
+#           - map: { useFieldMappings: true, inputPath: "$" }
+#           - filter: { enforceAbac: true }
+#           - output: { mode: records }
+#       create:
+#         steps:
+#           - fetch: { source: openapi, openapiRef: create, bodyTemplate: "{{body}}" }
+#           - map: { useFieldMappings: true, inputPath: "$" }
+#           - output: { mode: records }
+#       update:
+#         steps:
+#           - fetch: { source: openapi, openapiRef: update, bodyTemplate: "{{body}}" }
+#           - map: { useFieldMappings: true, inputPath: "$" }
+#           - output: { mode: records }
+#       delete:
+#         steps:
+#           - fetch: { source: openapi, openapiRef: delete }
+#           - output: { mode: records }
+{{/if}}
+{{#if (eq schemaEntityType "documentStorage")}}
+# execution:
+#   engine: cip
+#   cip:
+#     operations:
+#       list:
+#         enabled: true
+#         description: "List documents"
+#         steps:
+#           - fetch: { source: openapi, openapiRef: list, query: {} }
+#           - paginate: { strategy: offset, offsetParam: skip, pageSizeParam: top, pageSize: 100, maxPages: 100 }
+#           - map: { useFieldMappings: true, inputPath: "$.value[*]" }
+#           - filter: { enforceAbac: true }
+#           - output: { mode: records }
+#       get:
+#         enabled: true
+#         description: "Get document by ID"
+#         steps:
+#           - fetch: { source: openapi, openapiRef: get, query: {} }
+#           - map: { useFieldMappings: true, inputPath: "$" }
+#           - filter: { enforceAbac: true }
+#           - output: { mode: records }
+#       create:
+#         enabled: true
+#         description: "Upload document"
+#         steps:
+#           - fetch: { source: openapi, openapiRef: create, bodyTemplate: "{{fileContent}}" }
+#           - map: { useFieldMappings: true, inputPath: "$" }
+#           - output: { mode: records }
+{{/if}}
+{{#if (eq schemaEntityType "vectorStore")}}
+# execution:
+#   engine: cip
+#   cip:
+#     operations:
+#       list:
+#         steps:
+#           - fetch: { source: openapi, openapiRef: list, query: {} }
+#           - map: { useFieldMappings: true, inputPath: "$" }
+#           - output: { mode: records }
+#       get:
+#         steps:
+#           - fetch: { source: openapi, openapiRef: get, query: {} }
+#           - map: { useFieldMappings: true, inputPath: "$" }
+#           - output: { mode: records }
+{{/if}}
+{{#if (eq schemaEntityType "messageService")}}
+# execution:
+#   engine: cip
+#   cip:
+#     operations:
+#       list:
+#         steps:
+#           - fetch: { source: openapi, openapiRef: list, query: {} }
+#           - map: { useFieldMappings: true, inputPath: "$" }
+#           - output: { mode: records }
+{{/if}}
+{{#if (eq schemaEntityType "none")}}
+# execution:
+#   engine: cip
+#   cip:
+#     operations:
+#       list:
+#         steps:
+#           - fetch: { source: openapi, openapiRef: list, query: {} }
+#           - map: { useFieldMappings: true, inputPath: "$" }
+#           - output: { mode: records }
+#       get:
+#         steps:
+#           - fetch: { source: openapi, openapiRef: get, query: {} }
+#           - map: { useFieldMappings: true, inputPath: "$" }
+#           - output: { mode: records }
+{{/if}}
+
+# config: ABAC cross-system filters (SQL or JSON)
+# config:
+#   abac:
+#     crossSystemSql: "country = '{{actor.country}}'"
+#     # crossSystemJson: { "dimensions.country": { "eq": "{{actor.country}}" } }
+
+# capabilities: [list, get, create, update, delete]
+
+# exposed: attributes to expose via MCP/OpenAPI
+# exposed:
+#   attributes: [id, name]
+
+# metadataSchema: JSON Schema for raw metadata validation
+# metadataSchema:
+#   type: object
+#   properties:
+#     id: { type: string }
+#     name: { type: string }

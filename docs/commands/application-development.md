@@ -46,7 +46,7 @@ aifabrix create myapp --github --github-steps npm
 ```bash
 aifabrix create hubspot --type external
 ```
-Creates in `integration/<app>/`. Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2/apikey/basic), number of datasources. For other commands (validate, json, deploy, delete, **resolve**), the CLI always resolves the app by checking `integration/<app>` first, then `builder/<app>`; if neither exists, it errors. There is no option to override this order. **Resolve** additionally supports **env-only** mode: if `integration/<app>/env.template` exists (even without `application.yaml`), resolve uses that directory and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
+Creates in `integration/<app>/`. Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none), entity type (recordStorage, documentStorage, vectorStore, messageService, none), number of datasources. For other commands (validate, json, deploy, delete, **resolve**), the CLI always resolves the app by checking `integration/<app>` first, then `builder/<app>`; if neither exists, it errors. There is no option to override this order. **Resolve** additionally supports **env-only** mode: if `integration/<app>/env.template` exists (even without `application.yaml`), resolve uses that directory and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
 
 **Complete HubSpot example:**
 See `integration/hubspot/` for a complete HubSpot integration with companies, contacts, and deals datasources. Includes OAuth2 authentication, field mappings, and OpenAPI operations.
@@ -76,6 +76,13 @@ See `integration/hubspot/` for a complete HubSpot integration with companies, co
 - `.github/workflows/` - GitHub Actions workflows (if --github specified)
 
 **External Type (`--type external`):**
+- `--display-name <name>` - External system display name (required for non-interactive)
+- `--description <desc>` - External system description (required for non-interactive)
+- `--system-type <type>` - openapi, mcp, or custom (required for non-interactive)
+- `--auth-type <type>` - oauth2, aad, apikey, basic, queryParam, oidc, hmac, or none (required for non-interactive)
+- `--entity-type <type>` - recordStorage, documentStorage, vectorStore, messageService, or none (required for non-interactive)
+- `--datasources <count>` - Number of datasources (required for non-interactive)
+
 When using `--type external`, the command creates an external system integration in `integration/<app>/`:
 - `integration/<app>/application.yaml` - App configuration with `app.type: "external"` and `externalIntegration` block
 - `integration/<app>/<systemKey>-system.yaml` - External system configuration

@@ -60,6 +60,7 @@ describe('Application Prompts Module', () => {
         systemDescription: 'Test description',
         systemType: 'openapi',
         authType: 'apikey',
+        entityType: 'recordStorage',
         datasourceCount: '1',
         github: false
       };

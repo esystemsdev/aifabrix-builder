@@ -11,6 +11,8 @@ isProject: false
 
 Manual creation uses `aifabrix create <app> --type external` which calls [lib/external-system/generator.js](lib/external-system/generator.js) and templates under [templates/external-system/](templates/external-system/). The external-system template uses an outdated auth format, and entityType is inferred from resourceType rather than being user-selected.
 
+**Related work:** Dataplane plan 311 (AI Generation Validation and Quality Improvements) added CIP example snippets and per-resourceType snippets for AI prompts. Manual generation should align: use entityType-appropriate CIP operation patterns in commented execution blocks so manual output is consistent with AI-generated configs.
+
 ## Current vs Target
 
 
@@ -49,10 +51,10 @@ This plan must comply with [Project Rules](.cursor/rules/project-rules.mdc):
 
 ## Before Development
 
-- [ ] Read CLI Command Development and Template Development sections from project-rules.mdc
-- [ ] Review [lib/external-system/generator.js](lib/external-system/generator.js) and [templates/external-system/](templates/external-system/)
-- [ ] Review [lib/schema/external-system.schema.json](lib/schema/external-system.schema.json) `$defs.authenticationVariablesByMethod`
-- [ ] Review [tests/lib/external-system/external-system-generator.test.js](tests/lib/external-system/external-system-generator.test.js) for existing patterns
+- Read CLI Command Development and Template Development sections from project-rules.mdc
+- Review [lib/external-system/generator.js](lib/external-system/generator.js) and [templates/external-system/](templates/external-system/)
+- Review [lib/schema/external-system.schema.json](lib/schema/external-system.schema.json) `$defs.authenticationVariablesByMethod`
+- Review [tests/lib/external-system/external-system-generator.test.js](tests/lib/external-system/external-system-generator.test.js) for existing patterns
 
 ---
 
@@ -126,6 +128,11 @@ Each snippet should output valid YAML/JSON matching the schema. Values for `secu
 - Pass `schemaEntityType` from config (from user-selected `entityType`, normalized to camelCase).
 - Keep existing entityType-specific commented blocks (sync, documentStorage, vectorStore, messageService).
 - Add commented blocks for other optional sections: `execution` (engine: cip, operations), `config`, `capabilities`, `exposed`, `metadataSchema` so developers can uncomment.
+- **Align execution examples with entityType**: The commented `execution` block should use entityType-appropriate CIP operation patterns, consistent with the dataplane's AI generation (see dataplane `prompt_templates/examples/cip_record_based.md`, `cip_document.md`, `cip_sharepoint.md`). For example:
+  - **recordStorage** → list, get, create with paginate (cursor/page/offset); typical CRUD
+  - **documentStorage** → list, get, upload with paginate (offset typical); document patterns
+  - **vectorStore** / **messageService** → per schema; keep minimal or reference schema
+  This ensures manual-generated configs align with AI-generated output and give developers useful starter snippets.
 
 ### 6. Update generator to use entityType and auth method
 
@@ -261,4 +268,89 @@ Improve manual external system/datasource generation: (1) use schema-compliant a
 
 - Ensure auth snippet templates use `kv://<systemKey>/...` pattern per schema
 - Add tests for non-interactive create with `--entity-type` when `--type external`
+
+---
+
+## Implementation Validation Report
+
+**Date**: 2026-03-01  
+**Plan**: `.cursor/plans/85-manual_generation_improvements.plan.md`  
+**Status**: ✅ COMPLETE
+
+### Executive Summary
+
+Plan 85 (Manual Generation Improvements) implementation is complete. All 8 implementation steps are done. Format, lint, and tests pass. All files exist with expected changes. Cursor rules compliance verified.
+
+### Task Completion
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Add entityType prompt and extend auth choices | ✅ Complete |
+| 2 | Create per-auth system template snippets (inline in generator) | ✅ Complete |
+| 3 | Rewrite external-system template | ✅ Complete |
+| 4 | Update env.template generation for all auth methods | ✅ Complete |
+| 5 | Update external-datasource template with CIP execution blocks | ✅ Complete |
+| 6 | Update generator to use entityType and schema auth | ✅ Complete |
+| 7 | Add CLI option --entity-type | ✅ Complete |
+| 8 | Update documentation | ✅ Complete |
+
+### File Existence Validation
+
+| File | Status | Notes |
+|------|--------|-------|
+| lib/app/prompts.js | ✅ Exists | entityType prompt, auth choices (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none) |
+| lib/cli/setup-app.js | ✅ Exists | --entity-type option, normalizeExternalOptions, validateNonInteractiveExternalOptions |
+| lib/external-system/generator.js | ✅ Exists | buildAuthenticationFromMethod, entityType propagation |
+| templates/external-system/external-system.json.hbs | ✅ Exists | New authentication (method, variables, security) |
+| templates/external-system/external-datasource.yaml.hbs | ✅ Exists | entityType-specific commented CIP sections |
+| lib/app/config.js | ✅ Exists | generateExternalSystemEnvTemplate for all auth methods |
+| docs/external-systems.md | ✅ Exists | entityType in "You'll be asked", --entity-type in non-interactive example |
+| docs/commands/application-development.md | ✅ Exists | entityType prompts, external flags including --entity-type |
+
+### Test Coverage
+
+| Test Area | Status |
+|-----------|--------|
+| Auth methods (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none) | ✅ 8 tests in external-system-generator.test.js |
+| entityType propagation | ✅ propagate entityType, propagate vectorStore/none |
+| Commented sections | ✅ recordStorage, vectorStore, messageService, none |
+| generateExternalSystemEnvTemplate | ✅ OAuth2, apikey, basic, queryParam in app-config.test.js |
+
+### Code Quality Validation
+
+| Step | Result |
+|------|--------|
+| Format (`npm run lint:fix`) | ✅ PASSED |
+| Lint (`npm run lint`) | ✅ PASSED (0 errors, 0 warnings) |
+| Tests (`npm run build`) | ✅ PASSED |
+
+### File Size Compliance
+
+| File | Lines | Limit | Status |
+|------|-------|-------|--------|
+| lib/app/prompts.js | 470 | 500 | ✅ |
+| lib/cli/setup-app.js | 418 | 500 | ✅ |
+| lib/external-system/generator.js | 283 | 500 | ✅ |
+| lib/app/config.js | 236 | 500 | ✅ |
+
+### Cursor Rules Compliance
+
+| Rule | Status |
+|------|--------|
+| CLI Command Development | ✅ --entity-type option, prompts, validation |
+| Template Development | ✅ Handlebars, schema auth, CIP sections |
+| Generated Output | ✅ Fixes in generator/templates |
+| Security (kv:// only) | ✅ All auth security use kv:// pattern |
+| Quality Gates | ✅ Build, lint, test pass |
+| Code Quality | ✅ File size, JSDoc on new functions |
+| Testing Conventions | ✅ Jest, mocks, coverage |
+
+### Final Validation Checklist
+
+- [x] All implementation steps completed
+- [x] All files exist with expected changes
+- [x] Tests exist for auth methods, entityType, commented sections
+- [x] Code quality validation passes (format, lint, test)
+- [x] Cursor rules compliance verified
+- [x] Implementation complete
 

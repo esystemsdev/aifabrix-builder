@@ -98,7 +98,8 @@ aifabrix create hubspot --type external
 - System display name? *HubSpot CRM*
 - System description? *HubSpot CRM integration*
 - System type? *OpenAPI / MCP / Custom* → Choose **OpenAPI**
-- Authentication type? *OAuth2 / API Key / Basic Auth* → Choose **OAuth2**
+- Authentication type? *OAuth2 / Azure AD / API Key / Basic Auth / Query Parameter / OpenID Connect / HMAC / None* → Choose **OAuth2**
+- Entity type? *Record storage (CRM) / Document storage / Vector store / Message service / None* → Choose **Record storage (CRM)** for companies, contacts, deals
 - Number of datasources? *(1-10)* → Enter **3** (for companies, contacts, deals)
 
 **What gets created:**
@@ -1452,6 +1453,7 @@ aifabrix create hubspot --type external \
   --description "HubSpot CRM integration" \
   --system-type openapi \
   --auth-type oauth2 \
+  --entity-type recordStorage \
   --datasources 2
 ```
 
