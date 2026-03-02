@@ -128,7 +128,10 @@
         }
       }
     },
-    "required": ["id", "properties"]
+    "required": [
+      "id",
+      "properties"
+    ]
   },
   "fieldMappings": {
     "dimensions": {
@@ -211,7 +214,20 @@
     }
   },
   "exposed": {
-    "attributes": ["id", "dealName", "amount", "currency", "stage", "pipeline", "closeDate", "dealType", "associatedCompany", "associatedContacts", "createdAt", "updatedAt"],
+    "attributes": [
+      "id",
+      "dealName",
+      "amount",
+      "currency",
+      "stage",
+      "pipeline",
+      "closeDate",
+      "dealType",
+      "associatedCompany",
+      "associatedContacts",
+      "createdAt",
+      "updatedAt"
+    ],
     "description": "Exposed fields for HubSpot deals"
   },
   "openapi": {
@@ -248,4 +264,3 @@
     "autoRbac": true
   }
 }
-

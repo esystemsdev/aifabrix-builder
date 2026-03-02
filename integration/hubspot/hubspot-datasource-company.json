@@ -91,7 +91,10 @@
         }
       }
     },
-    "required": ["id", "properties"]
+    "required": [
+      "id",
+      "properties"
+    ]
   },
   "fieldMappings": {
     "dimensions": {
@@ -162,7 +165,18 @@
     }
   },
   "exposed": {
-    "attributes": ["id", "name", "domain", "country", "city", "industry", "website", "phone", "createdAt", "updatedAt"],
+    "attributes": [
+      "id",
+      "name",
+      "domain",
+      "country",
+      "city",
+      "industry",
+      "website",
+      "phone",
+      "createdAt",
+      "updatedAt"
+    ],
     "description": "Exposed fields for HubSpot companies"
   },
   "openapi": {
@@ -199,5 +213,3 @@
     "autoRbac": true
   }
 }
-
-

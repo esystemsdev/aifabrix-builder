@@ -121,6 +121,33 @@ describe('Schema validation (Plan 49)', () => {
       expect(() => ajv.compile(schemaCopy)).not.toThrow();
     });
 
+    it('should accept datasource with triggerPathsHash (dataplane round-trip)', () => {
+      const externalDatasourceSchema = require('../../../../lib/schema/external-datasource.schema.json');
+      const schemaCopy = { ...externalDatasourceSchema };
+      if (schemaCopy.$schema && schemaCopy.$schema.includes('2020-12')) {
+        delete schemaCopy.$schema;
+      }
+      const ajv = new Ajv({ allErrors: true, strict: false });
+      const validate = ajv.compile(schemaCopy);
+      const datasource = {
+        key: 'hubspot-company',
+        displayName: 'HubSpot Company',
+        systemKey: 'hubspot',
+        entityType: 'record-storage',
+        resourceType: 'customer',
+        fieldMappings: {
+          dimensions: { country: 'metadata.country' },
+          attributes: {
+            country: { expression: '{{metadata.country}}', type: 'string' }
+          }
+        },
+        triggerPathsHash: 'a'.repeat(64)
+      };
+      const valid = validate(datasource);
+      expect(valid).toBe(true);
+      expect(validate.errors).toBeNull();
+    });
+
     it('should compile infrastructure schema with AJV', () => {
       const infrastructureSchema = require('../../../../lib/schema/infrastructure-schema.json');
       const ajv = new Ajv({ allErrors: true, strict: false });

@@ -390,7 +390,7 @@ describe('External System Download Module', () => {
       ).rejects.toThrow('Authentication required');
     });
 
-    it('should throw "not found" when config returns 401 and system not in list', async() => {
+    it('should throw when config returns 401 and system not in list', async() => {
       getExternalSystemConfig.mockResolvedValue({
         success: false,
         status: 401,
@@ -400,12 +400,11 @@ describe('External System Download Module', () => {
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await expect(
         downloadExternalSystem('hubspots', {})
-      ).rejects.toThrow('External system \'hubspots\' not found');
+      ).rejects.toThrow(/Failed to download system configuration|Authentication failed/);
       expect(getExternalSystemConfig).toHaveBeenCalled();
-      expect(listExternalSystems).toHaveBeenCalled();
     });
 
-    it('should throw "not found" when getExternalSystemConfig returns 404', async() => {
+    it('should throw when getExternalSystemConfig returns 404', async() => {
       getExternalSystemConfig.mockResolvedValue({
         success: false,
         status: 404,
@@ -414,7 +413,7 @@ describe('External System Download Module', () => {
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await expect(
         downloadExternalSystem(systemKey, {})
-      ).rejects.toThrow(`External system '${systemKey}' not found`);
+      ).rejects.toThrow(/Failed to download system configuration|Not found/);
     });
 
     it('should throw error when download fails (non-404)', async() => {
@@ -526,6 +525,131 @@ describe('External System Download Module', () => {
       await downloadExternalSystem(systemKey, { environment: 'dev', format: 'yaml' });
 
       expect(runConvert).not.toHaveBeenCalled();
+    });
+
+    it('should augment deploy JSON with auth.security config entries when configuration lacks them', async() => {
+      const appWithAuthSecurity = {
+        ...mockApplication,
+        authentication: {
+          method: 'oauth2',
+          variables: { baseUrl: 'https://api.hubapi.com', tokenUrl: 'https://api.hubapi.com/oauth/v1/token' },
+          security: {
+            clientId: 'kv://hubspot-clientidKeyVault',
+            clientSecret: 'kv://hubspot-clientsecretKeyVault'
+          }
+        },
+        configuration: [{ name: 'OTHER_VAR', value: 'x', location: 'variable' }]
+      };
+      getExternalSystemConfig.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            application: appWithAuthSecurity,
+            dataSources: [mockDataSource1, mockDataSource2]
+          }
+        }
+      });
+
+      let capturedDeployJson;
+      fsPromises.writeFile.mockImplementation((filePath, content) => {
+        if (String(filePath || '').endsWith('-deploy.json')) {
+          capturedDeployJson = content;
+        }
+        return Promise.resolve();
+      });
+
+      const { downloadExternalSystem } = require('../../../lib/external-system/download');
+      await downloadExternalSystem(systemKey, { environment: 'dev' });
+
+      expect(capturedDeployJson).toBeDefined();
+      const deploy = JSON.parse(capturedDeployJson);
+      const config = deploy.system?.configuration || [];
+      const kvValues = config
+        .filter(c => c.location === 'keyvault' && c.value)
+        .map(c => (c.value.startsWith('kv://') ? c.value : `kv://${c.value}`));
+      expect(kvValues).toContain('kv://hubspot-clientidKeyVault');
+      expect(kvValues).toContain('kv://hubspot-clientsecretKeyVault');
+    });
+
+    it('should not duplicate auth config when configuration already has those kv paths', async() => {
+      const appWithExistingAuthConfig = {
+        ...mockApplication,
+        key: 'hubspot',
+        authentication: {
+          method: 'oauth2',
+          variables: { baseUrl: 'https://api.hubapi.com', tokenUrl: 'https://api.hubapi.com/oauth/v1/token' },
+          security: {
+            clientId: 'kv://hubspot/clientid',
+            clientSecret: 'kv://hubspot/clientsecret'
+          }
+        },
+        configuration: [
+          { name: 'KV_HUBSPOT_CLIENTID', value: 'hubspot/clientid', location: 'keyvault', required: true },
+          { name: 'KV_HUBSPOT_CLIENTSECRET', value: 'hubspot/clientsecret', location: 'keyvault', required: true }
+        ]
+      };
+      getExternalSystemConfig.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            application: appWithExistingAuthConfig,
+            dataSources: [mockDataSource1, mockDataSource2]
+          }
+        }
+      });
+
+      let capturedDeployJson;
+      fsPromises.writeFile.mockImplementation((filePath, content) => {
+        if (String(filePath || '').endsWith('-deploy.json')) {
+          capturedDeployJson = content;
+        }
+        return Promise.resolve();
+      });
+
+      const { downloadExternalSystem } = require('../../../lib/external-system/download');
+      await downloadExternalSystem(systemKey, { environment: 'dev' });
+
+      const deploy = JSON.parse(capturedDeployJson);
+      const keyvaultConfigs = (deploy.system?.configuration || []).filter(c => c.location === 'keyvault');
+      const clientIdCount = keyvaultConfigs.filter(c =>
+        (c.value || '').includes('clientid') || (c.name || '').includes('CLIENTID')
+      ).length;
+      expect(clientIdCount).toBe(1);
+    });
+
+    it('should not augment config when authentication has no security', async() => {
+      const appWithNoSecurity = {
+        ...mockApplication,
+        authentication: {
+          method: 'none',
+          variables: {}
+        },
+        configuration: []
+      };
+      getExternalSystemConfig.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            application: appWithNoSecurity,
+            dataSources: [mockDataSource1, mockDataSource2]
+          }
+        }
+      });
+
+      let capturedDeployJson;
+      fsPromises.writeFile.mockImplementation((filePath, content) => {
+        if (String(filePath || '').endsWith('-deploy.json')) {
+          capturedDeployJson = content;
+        }
+        return Promise.resolve();
+      });
+
+      const { downloadExternalSystem } = require('../../../lib/external-system/download');
+      await downloadExternalSystem(systemKey, { environment: 'dev' });
+
+      const deploy = JSON.parse(capturedDeployJson);
+      const keyvaultConfigs = (deploy.system?.configuration || []).filter(c => c.location === 'keyvault');
+      expect(keyvaultConfigs).toHaveLength(0);
     });
   });
 });

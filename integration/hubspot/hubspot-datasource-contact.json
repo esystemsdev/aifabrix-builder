@@ -107,7 +107,10 @@
         }
       }
     },
-    "required": ["id", "properties"]
+    "required": [
+      "id",
+      "properties"
+    ]
   },
   "fieldMappings": {
     "dimensions": {
@@ -190,7 +193,20 @@
     }
   },
   "exposed": {
-    "attributes": ["id", "firstName", "lastName", "email", "phone", "company", "jobTitle", "address", "city", "country", "createdAt", "updatedAt"],
+    "attributes": [
+      "id",
+      "firstName",
+      "lastName",
+      "email",
+      "phone",
+      "company",
+      "jobTitle",
+      "address",
+      "city",
+      "country",
+      "createdAt",
+      "updatedAt"
+    ],
     "description": "Exposed fields for HubSpot contacts"
   },
   "openapi": {
@@ -227,5 +243,3 @@
     "autoRbac": true
   }
 }
-
-
