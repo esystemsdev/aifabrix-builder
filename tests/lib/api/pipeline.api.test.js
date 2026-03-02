@@ -195,11 +195,11 @@ describe('Pipeline API', () => {
       entityKey: 'test-entity'
     };
 
-    it('should publish datasource via dataplane pipeline endpoint', async() => {
+    it('should publish datasource via dataplane pipeline endpoint (POST .../upload)', async() => {
       await pipelineApi.publishDatasourceViaPipeline(dataplaneUrl, systemKey, authConfig, datasourceConfig);
 
       expect(mockClient.post).toHaveBeenCalledWith(
-        `/api/v1/pipeline/${systemKey}/publish`,
+        `/api/v1/pipeline/${systemKey}/upload`,
         { body: datasourceConfig }
       );
     });
@@ -313,147 +313,84 @@ describe('Pipeline API', () => {
     });
   });
 
-  describe('deployExternalSystemViaPipeline', () => {
-    const dataplaneUrl = 'https://dataplane.example.com';
-    const systemConfig = {
-      key: 'test-system',
-      displayName: 'Test System',
-      type: 'openapi'
-    };
-
-    it('should deploy external system via dataplane pipeline endpoint', async() => {
-      await pipelineApi.deployExternalSystemViaPipeline(dataplaneUrl, authConfig, systemConfig);
-
-      expect(mockClient.post).toHaveBeenCalledWith(
-        '/api/v1/pipeline/deploy',
-        { body: systemConfig }
-      );
-    });
-
-    it('should use dataplane URL as base URL', async() => {
-      await pipelineApi.deployExternalSystemViaPipeline(dataplaneUrl, authConfig, systemConfig);
-
-      expect(mockApiClient).toHaveBeenCalledWith(dataplaneUrl, authConfig);
-    });
-  });
-
-  describe('deployDatasourceViaPipeline', () => {
-    const dataplaneUrl = 'https://dataplane.example.com';
-    const systemKey = 'test-system';
-    const datasourceConfig = {
-      key: 'test-datasource',
-      systemKey: systemKey
-    };
-
-    it('should deploy datasource via dataplane pipeline endpoint', async() => {
-      await pipelineApi.deployDatasourceViaPipeline(dataplaneUrl, systemKey, authConfig, datasourceConfig);
-
-      expect(mockClient.post).toHaveBeenCalledWith(
-        `/api/v1/pipeline/${systemKey}/deploy`,
-        { body: datasourceConfig }
-      );
-    });
-
-    it('should use dataplane URL as base URL', async() => {
-      await pipelineApi.deployDatasourceViaPipeline(dataplaneUrl, systemKey, authConfig, datasourceConfig);
-
-      expect(mockApiClient).toHaveBeenCalledWith(dataplaneUrl, authConfig);
-    });
-  });
-
   describe('uploadApplicationViaPipeline', () => {
     const dataplaneUrl = 'https://dataplane.example.com';
-    const applicationSchema = {
-      key: 'test-app',
-      displayName: 'Test App'
+    const payload = {
+      version: '1.0.0',
+      application: { key: 'test-app', displayName: 'Test App' },
+      dataSources: []
     };
 
-    it('should upload application via dataplane pipeline endpoint', async() => {
-      await pipelineApi.uploadApplicationViaPipeline(dataplaneUrl, authConfig, applicationSchema);
+    it('should upload application via dataplane pipeline endpoint with status in body', async() => {
+      await pipelineApi.uploadApplicationViaPipeline(dataplaneUrl, authConfig, payload);
 
       expect(mockClient.post).toHaveBeenCalledWith(
         '/api/v1/pipeline/upload',
-        { body: applicationSchema }
+        { body: { ...payload, status: 'draft' } }
       );
     });
 
-    it('should use dataplane URL as base URL', async() => {
-      await pipelineApi.uploadApplicationViaPipeline(dataplaneUrl, authConfig, applicationSchema);
-
-      expect(mockApiClient).toHaveBeenCalledWith(dataplaneUrl, authConfig);
-    });
-  });
-
-  describe('validateUploadViaPipeline', () => {
-    const dataplaneUrl = 'https://dataplane.example.com';
-    const uploadId = 'upload-123';
-
-    it('should validate upload via dataplane pipeline endpoint', async() => {
-      await pipelineApi.validateUploadViaPipeline(dataplaneUrl, uploadId, authConfig);
+    it('should include explicit status when provided', async() => {
+      await pipelineApi.uploadApplicationViaPipeline(dataplaneUrl, authConfig, { ...payload, status: 'published' });
 
       expect(mockClient.post).toHaveBeenCalledWith(
-        `/api/v1/pipeline/upload/${uploadId}/validate`
+        '/api/v1/pipeline/upload',
+        { body: { ...payload, status: 'published' } }
       );
     });
 
     it('should use dataplane URL as base URL', async() => {
-      await pipelineApi.validateUploadViaPipeline(dataplaneUrl, uploadId, authConfig);
+      await pipelineApi.uploadApplicationViaPipeline(dataplaneUrl, authConfig, payload);
 
       expect(mockApiClient).toHaveBeenCalledWith(dataplaneUrl, authConfig);
     });
   });
 
-  describe('publishUploadViaPipeline', () => {
+  describe('validatePipelineConfig', () => {
     const dataplaneUrl = 'https://dataplane.example.com';
-    const uploadId = 'upload-123';
-
-    it('should publish upload via dataplane pipeline endpoint (no query; MCP from upload config)', async() => {
-      await pipelineApi.publishUploadViaPipeline(dataplaneUrl, uploadId, authConfig);
-
-      expect(mockClient.post).toHaveBeenCalledWith(
-        `/api/v1/pipeline/upload/${uploadId}/publish`
-      );
-    });
-
-    it('should use dataplane URL as base URL', async() => {
-      await pipelineApi.publishUploadViaPipeline(dataplaneUrl, uploadId, authConfig);
-
-      expect(mockApiClient).toHaveBeenCalledWith(dataplaneUrl, authConfig);
-    });
-  });
-
-  describe('publishSystemViaPipeline', () => {
-    const dataplaneUrl = 'https://dataplane.example.com';
-    const systemConfig = {
-      key: 'test-system',
-      displayName: 'Test System',
-      description: 'Test',
-      type: 'openapi',
-      authentication: { type: 'none' },
-      generateMcpContract: true
+    const config = {
+      version: '1.0.0',
+      application: { key: 'sys1', displayName: 'System 1' },
+      dataSources: []
     };
 
-    it('should publish one external system via POST /api/v1/pipeline/publish', async() => {
-      await pipelineApi.publishSystemViaPipeline(dataplaneUrl, authConfig, systemConfig);
+    it('should call POST /api/v1/pipeline/validate with config in body', async() => {
+      await pipelineApi.validatePipelineConfig(dataplaneUrl, authConfig, { config });
 
       expect(mockClient.post).toHaveBeenCalledWith(
-        '/api/v1/pipeline/publish',
-        { body: systemConfig }
+        '/api/v1/pipeline/validate',
+        { body: { config } }
       );
     });
 
-    it('should pass generateMcpContract and generateOpenApiContract in body only', async() => {
-      const configWithContracts = {
-        ...systemConfig,
-        generateMcpContract: false,
-        generateOpenApiContract: true
-      };
-      await pipelineApi.publishSystemViaPipeline(dataplaneUrl, authConfig, configWithContracts);
+    it('should use dataplane URL as base URL', async() => {
+      await pipelineApi.validatePipelineConfig(dataplaneUrl, authConfig, { config });
 
-      expect(mockClient.post).toHaveBeenCalledWith(
-        '/api/v1/pipeline/publish',
-        { body: configWithContracts }
-      );
+      expect(mockApiClient).toHaveBeenCalledWith(dataplaneUrl, authConfig);
+    });
+
+    it('should return validation result', async() => {
+      mockClient.post.mockResolvedValue({
+        success: true,
+        data: { isValid: true, errors: [], warnings: [] }
+      });
+
+      const result = await pipelineApi.validatePipelineConfig(dataplaneUrl, authConfig, { config });
+
+      expect(result.success).toBe(true);
+      expect(result.data.isValid).toBe(true);
+    });
+
+    it('should return invalid result when validation fails', async() => {
+      mockClient.post.mockResolvedValue({
+        success: true,
+        data: { isValid: false, errors: ['Invalid application key'], warnings: [] }
+      });
+
+      const result = await pipelineApi.validatePipelineConfig(dataplaneUrl, authConfig, { config });
+
+      expect(result.data.isValid).toBe(false);
+      expect(result.data.errors).toEqual(['Invalid application key']);
     });
   });
 });

@@ -31,15 +31,16 @@ jest.mock('../../../lib/utils/dataplane-resolver', () => ({
   resolveDataplaneUrl: jest.fn().mockResolvedValue('http://dataplane:4000')
 }));
 jest.mock('../../../lib/api/pipeline.api', () => ({
-  uploadApplicationViaPipeline: jest.fn(),
-  validateUploadViaPipeline: jest.fn(),
-  publishUploadViaPipeline: jest.fn()
+  uploadApplicationViaPipeline: jest.fn()
 }));
 jest.mock('../../../lib/utils/api-error-handler', () => ({
   formatApiError: jest.fn((r) => r?.formattedError || r?.error || 'Unknown error')
 }));
 jest.mock('../../../lib/utils/credential-secrets-env', () => ({
   pushCredentialSecrets: jest.fn().mockResolvedValue({ pushed: 0 })
+}));
+jest.mock('../../../lib/utils/dataplane-pipeline-warning', () => ({
+  logDataplanePipelineWarning: jest.fn()
 }));
 jest.mock('../../../lib/utils/logger', () => ({
   log: jest.fn()
@@ -59,11 +60,8 @@ const { validateExternalSystemComplete } = require('../../../lib/validation/vali
 const { generateControllerManifest } = require('../../../lib/generator/external-controller-manifest');
 const { getDeploymentAuth } = require('../../../lib/utils/token-manager');
 const { pushCredentialSecrets } = require('../../../lib/utils/credential-secrets-env');
-const {
-  uploadApplicationViaPipeline,
-  validateUploadViaPipeline,
-  publishUploadViaPipeline
-} = require('../../../lib/api/pipeline.api');
+const { uploadApplicationViaPipeline } = require('../../../lib/api/pipeline.api');
+const { logDataplanePipelineWarning } = require('../../../lib/utils/dataplane-pipeline-warning');
 
 describe('upload command', () => {
   const systemKey = 'my-hubspot';
@@ -80,13 +78,11 @@ describe('upload command', () => {
     generateControllerManifest.mockResolvedValue(mockManifest);
     getDeploymentAuth.mockResolvedValue({ type: 'bearer', token: 'token' });
     pushCredentialSecrets.mockResolvedValue({ pushed: 0 });
-    uploadApplicationViaPipeline.mockResolvedValue({ success: true, data: { uploadId: 'up-123' } });
-    validateUploadViaPipeline.mockResolvedValue({ success: true });
-    publishUploadViaPipeline.mockResolvedValue({ success: true });
+    uploadApplicationViaPipeline.mockResolvedValue({ success: true, data: { systemKey: 'my-hubspot' } });
   });
 
   describe('uploadExternalSystem', () => {
-    it('should validate, build payload, resolve dataplane, then upload → validate → publish', async() => {
+    it('should validate, build payload, resolve dataplane, then single pipeline upload', async() => {
       const { uploadExternalSystem } = require('../../../lib/commands/upload');
       await uploadExternalSystem(systemKey);
 
@@ -108,19 +104,11 @@ describe('upload command', () => {
         {
           version: '1.0.0',
           application: mockManifest.system,
-          dataSources: mockManifest.dataSources
+          dataSources: mockManifest.dataSources,
+          status: 'draft'
         }
       );
-      expect(validateUploadViaPipeline).toHaveBeenCalledWith(
-        'http://dataplane:4000',
-        'up-123',
-        { type: 'bearer', token: 'token' }
-      );
-      expect(publishUploadViaPipeline).toHaveBeenCalledWith(
-        'http://dataplane:4000',
-        'up-123',
-        { type: 'bearer', token: 'token' }
-      );
+      expect(logDataplanePipelineWarning).toHaveBeenCalledTimes(1);
     });
 
     it('should log success with keys when credential secrets are pushed', async() => {
@@ -152,8 +140,7 @@ describe('upload command', () => {
       expect(validateExternalSystemComplete).toHaveBeenCalledWith(systemKey, { type: 'external' });
       expect(generateControllerManifest).toHaveBeenCalledWith(systemKey, { type: 'external' });
       expect(uploadApplicationViaPipeline).not.toHaveBeenCalled();
-      expect(validateUploadViaPipeline).not.toHaveBeenCalled();
-      expect(publishUploadViaPipeline).not.toHaveBeenCalled();
+      expect(logDataplanePipelineWarning).not.toHaveBeenCalled();
     });
 
     it('should display validation errors and throw when validation fails', async() => {
@@ -202,55 +189,15 @@ describe('upload command', () => {
       expect(err.message).toContain('and 2 more');
     });
 
-    it('should throw when upload returns no uploadId', async() => {
-      uploadApplicationViaPipeline.mockResolvedValue({ success: true, data: {} });
-
-      const { uploadExternalSystem } = require('../../../lib/commands/upload');
-      await expect(uploadExternalSystem(systemKey)).rejects.toThrow(/upload ID|Upload did not return/);
-    });
-
-    it('should throw when validate upload fails', async() => {
-      validateUploadViaPipeline.mockResolvedValue({
+    it('should throw when upload returns success: false', async() => {
+      uploadApplicationViaPipeline.mockResolvedValue({
         success: false,
-        error: 'Invalid config',
-        formattedError: 'Invalid config'
+        error: 'Validation failed',
+        formattedError: 'Validation failed'
       });
 
       const { uploadExternalSystem } = require('../../../lib/commands/upload');
-      await expect(uploadExternalSystem(systemKey)).rejects.toThrow(/Upload validation failed/);
-      expect(publishUploadViaPipeline).not.toHaveBeenCalled();
-    });
-
-    it('should throw when validate returns 200 with success:false in body', async() => {
-      validateUploadViaPipeline.mockResolvedValue({
-        success: true,
-        data: { success: false, errors: ['Schema validation failed'] }
-      });
-
-      const { uploadExternalSystem } = require('../../../lib/commands/upload');
-      await expect(uploadExternalSystem(systemKey)).rejects.toThrow(/Upload validation failed/);
-      expect(publishUploadViaPipeline).not.toHaveBeenCalled();
-    });
-
-    it('should throw when publish upload fails', async() => {
-      publishUploadViaPipeline.mockResolvedValue({
-        success: false,
-        error: 'Publish error',
-        formattedError: 'Publish error'
-      });
-
-      const { uploadExternalSystem } = require('../../../lib/commands/upload');
-      await expect(uploadExternalSystem(systemKey)).rejects.toThrow(/Upload publish failed/);
-    });
-
-    it('should throw when publish returns 200 with success:false in body', async() => {
-      publishUploadViaPipeline.mockResolvedValue({
-        success: true,
-        data: { success: false, error: 'Dataplane internal error' }
-      });
-
-      const { uploadExternalSystem } = require('../../../lib/commands/upload');
-      await expect(uploadExternalSystem(systemKey)).rejects.toThrow(/Upload publish failed/);
+      await expect(uploadExternalSystem(systemKey)).rejects.toThrow(/Validation failed/);
     });
 
     it('should throw when upload API fails', async() => {
@@ -275,13 +222,14 @@ describe('upload command', () => {
   });
 
   describe('buildUploadPayload', () => {
-    it('should map manifest to { version, application, dataSources }', () => {
+    it('should map manifest to { version, application, dataSources, status: "draft" }', () => {
       const { buildUploadPayload } = require('../../../lib/commands/upload');
       const payload = buildUploadPayload(mockManifest);
       expect(payload).toEqual({
         version: '1.0.0',
         application: mockManifest.system,
-        dataSources: mockManifest.dataSources
+        dataSources: mockManifest.dataSources,
+        status: 'draft'
       });
     });
 
@@ -304,6 +252,36 @@ describe('upload command', () => {
       const { validateSystemKeyFormat } = require('../../../lib/commands/upload');
       expect(() => validateSystemKeyFormat('Uppercase')).toThrow(/lowercase/);
       expect(() => validateSystemKeyFormat('has space')).toThrow(/lowercase/);
+    });
+  });
+
+  describe('runUploadValidatePublish', () => {
+    it('should return publication result when upload succeeds', async() => {
+      const pubResult = { success: true, data: { systemKey: 'my-hubspot', datasourceKeys: ['ds1'] } };
+      uploadApplicationViaPipeline.mockResolvedValue(pubResult);
+
+      const { runUploadValidatePublish } = require('../../../lib/commands/upload');
+      const result = await runUploadValidatePublish(
+        'http://dataplane:4000',
+        { type: 'bearer', token: 't' },
+        { version: '1.0.0', application: {}, dataSources: [], status: 'draft' }
+      );
+
+      expect(result).toEqual(pubResult);
+      expect(uploadApplicationViaPipeline).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw with formatted message when upload returns success: false', async() => {
+      uploadApplicationViaPipeline.mockResolvedValue({
+        success: false,
+        error: 'Config invalid',
+        formattedError: 'Config invalid: missing required field'
+      });
+
+      const { runUploadValidatePublish } = require('../../../lib/commands/upload');
+      await expect(
+        runUploadValidatePublish('http://dp:4000', {}, { version: '1.0.0', application: {}, dataSources: [], status: 'draft' })
+      ).rejects.toThrow(/Config invalid: missing required field/);
     });
   });
 });

@@ -7,6 +7,10 @@
  * @version 2.0.0
  */
 
+// Use real fs so the deploy JSON is written to disk and split can find it
+// (other test files may mock fs, which would make writeFile a no-op in this worker)
+jest.unmock('fs');
+
 const path = require('path');
 const fs = require('fs').promises;
 

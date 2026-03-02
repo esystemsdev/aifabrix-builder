@@ -4,6 +4,8 @@
 
 Commands for creating, testing, and managing external system integrations. Commands that call the Dataplane require login and the appropriate Dataplane permissions (e.g. **external-system:read**, **external-system:create**, **credential:read**). See [Online Commands and Permissions](permissions.md). For detailed testing documentation (unit and integration tests, test payloads, troubleshooting), see [External Integration Testing](external-integration-testing.md).
 
+**Dataplane pipeline commands:** `aifabrix upload <system-key>` and `aifabrix datasource upload <app> <file>` send configuration to the Dataplane pipeline API. The CLI displays a warning before doing so—ensure you are targeting the correct environment and have the required permissions (see [Permissions](permissions.md)).
+
 **Resolve:** You can run `aifabrix resolve <app>` for external integrations when `integration/<app>/env.template` exists. If `application.yaml` is missing, resolve still runs in **env-only** mode and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
 
 **Repair:** If `application.yaml` gets out of sync with files on disk (e.g. after converting JSON ↔ YAML or adding/removing datasource files), run `aifabrix repair <app>`; see [Utility commands – repair](utilities.md#aifabrix-repair-app).
@@ -229,9 +231,11 @@ aifabrix upload my-hubspot --dry-run
 - Login or app credentials for the system: `aifabrix login` or `aifabrix app register <system-key>`
 - `integration/<system-key>/` with valid `application.yaml` and system/datasource files
 
+> **Dataplane pipeline warning:** Before sending data, the CLI displays a warning that configuration will be sent to the Dataplane pipeline API. Ensure you are targeting the correct environment and have the required permissions. See [Permissions](permissions.md).
+
 **Process:**
 1. Validate locally (`validateExternalSystemComplete`)
-2. Build payload from controller manifest (system with RBAC + datasources) → `{ version, application, dataSources }`
+2. Build payload from controller manifest (system with RBAC + datasources) → `{ version, application, dataSources, status: "draft" }`
 3. Resolve dataplane URL and auth (from controller + environment)
 4. **Credential secrets push (automatic):** The CLI reads `integration/<system-key>/.env` and sends any `KV_*` variables (values resolved from local/remote secrets if they are `kv://`). It also scans the upload payload (application + datasources) for `kv://` references that are **not** in `.env` and resolves their values from aifabrix secret systems (local file or remote), then sends all to the dataplane secret store. This stores secret *values* only; credential structure (type, fields) is created/updated by the publish step itself. So credentials in config can be satisfied from `.env` or from local/remote secrets without extra steps—the CLI handles it automatically.
 
@@ -240,9 +244,7 @@ aifabrix upload my-hubspot --dry-run
    **KV_* convention:** env.template and .env use `KV_<APPKEY>_<VAR>=value` (e.g. `KV_HUBSPOT_CLIENTID=xxx`, `KV_HUBSPOT_CLIENTSECRET=yyy`). Mapping: `KV_` + segments (underscores) → `kv://segment1/segment2/...` (lowercase). Example: `KV_HUBSPOT_CLIENTID` → `kv://hubspot/clientid`. The manifest must reference `kv://hubspot/clientid` (path style). Use `aifabrix credential env <system-key>` to prompt for values and write .env; use `aifabrix credential push <system-key>` to push .env secrets without a full upload.
 
    Dataplane permission **credential:create** is required for this automatic push; if the push fails (e.g. 403), upload still continues but secrets must be available elsewhere (e.g. env on dataplane). See [Secrets and config](../configuration/secrets-and-config.md) and [Permissions](permissions.md).
-5. Upload to dataplane → get upload ID
-6. Validate → on failure, show validation errors and exit
-7. Publish
+5. **Pipeline upload:** Sends the configuration to the Dataplane (upload, validate, and publish in one step). On failure, the CLI shows validation or publish errors and exits.
 
 **Output example:**
 ```text
@@ -250,6 +252,7 @@ Uploading external system to dataplane: my-hubspot
 Validation passed.
 Resolving dataplane URL...
 Dataplane: https://dataplane.example.com
+⚠ Configuration will be sent to the Dataplane pipeline API. Ensure you are targeting the correct environment and have the required permissions.
 
 Upload validated and published to dataplane.
 Environment: dev
@@ -530,7 +533,7 @@ Manage external data sources.
 - [aifabrix datasource validate](#aifabrix-datasource-validate-file)
 - [aifabrix datasource list](#aifabrix-datasource-list)
 - [aifabrix datasource diff](#aifabrix-datasource-diff-file1-file2)
-- [aifabrix datasource deploy](#aifabrix-datasource-deploy-myapp-file)
+- [aifabrix datasource upload](#aifabrix-datasource-upload-myapp-file)
 - [aifabrix datasource test-integration](#aifabrix-datasource-test-integration-datasourcekey)
 - [aifabrix datasource test-e2e](#aifabrix-datasource-test-e2e-datasourcekey)
 
@@ -589,7 +592,7 @@ aifabrix datasource validate schemas/my-datasource.yaml
 After validation:
 - Fix any validation errors
 - Use `aifabrix datasource diff` to compare versions
-- Deploy validated datasource: `aifabrix datasource deploy <app> <file>`
+- Upload validated datasource: `aifabrix datasource upload <app> <file>`
 
 **See Also:** [Validation Commands](validation.md) - Complete validation documentation including schema details and validation flow.
 
@@ -649,7 +652,7 @@ No datasources found in environment: dev
 **Next Steps:**
 After listing:
 - Validate datasource: `aifabrix datasource validate <file>`
-- Deploy datasource: `aifabrix datasource deploy <app> <file>`
+- Upload datasource: `aifabrix datasource upload <app> <file>`
 - Compare datasources: `aifabrix datasource diff <file1> <file2>`
 
 ---
@@ -737,25 +740,27 @@ Summary:
 After comparing:
 - Review dataplane-relevant changes
 - Validate new configuration: `aifabrix datasource validate <file2>`
-- Deploy updated datasource: `aifabrix datasource deploy <app> <file2>`
+- Upload updated datasource: `aifabrix datasource upload <app> <file2>`
 
 ---
 
-<a id="aifabrix-datasource-deploy-myapp-file"></a>
-### aifabrix datasource deploy <myapp> <file>
+<a id="aifabrix-datasource-upload-myapp-file"></a>
+### aifabrix datasource upload <myapp> <file>
 
-Deploy datasource to dataplane. Requires Dataplane access (authenticated; pipeline publish). See [Online Commands and Permissions](permissions.md).
+Upload datasource to dataplane. Requires Dataplane access (authenticated; pipeline publish). See [Online Commands and Permissions](permissions.md).
 
-**What:** Validates and deploys an external datasource configuration to the dataplane via the Miso Controller. Gets dataplane URL from controller, then deploys datasource configuration.
+**What:** Validates and uploads an external datasource configuration to the dataplane. Gets dataplane URL from controller, then publishes the datasource via the Dataplane pipeline.
 
-**When:** Deploying new datasource, updating existing datasource, or pushing datasource configuration changes to dataplane.
+> **Dataplane pipeline warning:** Before publishing, the CLI displays a warning that configuration will be sent to the Dataplane pipeline API. Ensure you are targeting the correct environment and have the required permissions. See [Permissions](permissions.md).
+
+**When:** Uploading new datasource, updating existing datasource, or pushing datasource configuration changes to dataplane.
 
 This command uses the active `controller` and `environment` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is always discovered from the controller.
 
 **Usage:**
 ```bash
-# Deploy datasource to dataplane
-aifabrix datasource deploy myapp ./schemas/hubspot-deal.yaml
+# Upload datasource to dataplane
+aifabrix datasource upload myapp ./schemas/hubspot-deal.yaml
 ```
 
 **Arguments:**
@@ -773,14 +778,13 @@ aifabrix datasource deploy myapp ./schemas/hubspot-deal.yaml
 3. Extracts systemKey from configuration
 4. Gets authentication (device token or client credentials)
 5. Gets dataplane URL from controller
-6. Publishes datasource to dataplane:
-   - Publishes the datasource to the dataplane
-   - Sends datasource configuration as request body
-7. Displays deployment results
+6. Displays Dataplane pipeline warning (configuration will be sent to Dataplane)
+7. Uploads datasource via pipeline API (sends datasource configuration to Dataplane)
+8. Displays results
 
 **Output:**
 ```yaml
-📋 Deploying datasource...
+📋 Uploading datasource...
 
 🔍 Validating datasource file...
 ✓ Datasource file is valid
@@ -790,6 +794,7 @@ aifabrix datasource deploy myapp ./schemas/hubspot-deal.yaml
 ✓ Dataplane URL: https://dataplane.aifabrix.dev
 
 🚀 Publishing datasource to dataplane...
+⚠ Configuration will be sent to the Dataplane pipeline API. Ensure you are targeting the correct environment and have the required permissions.
 
 ✓ Datasource published successfully!
 
@@ -809,10 +814,10 @@ Environment: dev
 - **"Not logged in"** → Run `aifabrix login` first
 - **"Failed to get application from controller"** → Check application is registered and controller URL is correct
 - **"Dataplane URL not found"** → Controller could not provide dataplane URL; check controller and network
-- **"Deployment failed"** → Check dataplane URL, authentication, and network connection
+- **"Upload failed"** → Check dataplane URL, authentication, and network connection
 
 **Next Steps:**
-After deployment:
+After upload:
 - Verify datasource: `aifabrix datasource list`
 - Run integration test: `aifabrix datasource test-integration <datasourceKey> --app <app>`
 - Run E2E test: `aifabrix datasource test-e2e <datasourceKey> --app <app>`

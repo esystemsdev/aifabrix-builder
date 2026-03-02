@@ -129,16 +129,16 @@ describe('Datasource Commands Module', () => {
       expect(diffCommand.command.description).toHaveBeenCalledWith('Compare two datasource configuration files (for dataplane)');
     });
 
-    it('should register deploy command', () => {
+    it('should register upload command', () => {
       setupDatasourceCommands(program);
 
       expect(program.command).toHaveBeenCalledWith('datasource');
       const datasourceGroup = program._datasourceGroup;
-      expect(datasourceGroup.command).toHaveBeenCalledWith('deploy <myapp> <file>');
+      expect(datasourceGroup.command).toHaveBeenCalledWith('upload <myapp> <file>');
       // Check that the subcommand's description was called (no flags)
-      const deployCommand = datasourceGroup._subCommands?.find(c => c.name === 'deploy <myapp> <file>');
-      expect(deployCommand).toBeDefined();
-      expect(deployCommand.command.description).toHaveBeenCalledWith('Deploy datasource to dataplane');
+      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <myapp> <file>');
+      expect(uploadCommand).toBeDefined();
+      expect(uploadCommand.command.description).toHaveBeenCalledWith('Upload datasource to dataplane');
     });
   });
 
@@ -302,19 +302,19 @@ describe('Datasource Commands Module', () => {
     });
   });
 
-  describe('deploy command action', () => {
-    it('should handle successful deployment', async() => {
+  describe('upload command action', () => {
+    it('should handle successful upload', async() => {
       jest.spyOn(process, 'exit').mockImplementation(() => {});
 
       deployDatasource.mockResolvedValue({ success: true });
 
       setupDatasourceCommands(program);
 
-      // Get the deploy command's action handler
+      // Get the upload command's action handler
       const datasourceGroup = program._datasourceGroup;
-      const deployCommand = datasourceGroup._subCommands?.find(c => c.name === 'deploy <myapp> <file>');
-      if (deployCommand) {
-        const actionCall = deployCommand.command.action.mock.calls[0];
+      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <myapp> <file>');
+      if (uploadCommand) {
+        const actionCall = uploadCommand.command.action.mock.calls[0];
         if (actionCall && typeof actionCall[0] === 'function') {
           await actionCall[0]('myapp', '/path/to/file.json', {
             controller: 'http://localhost:3010',
@@ -329,25 +329,25 @@ describe('Datasource Commands Module', () => {
       }
     });
 
-    it('should handle deployment errors', async() => {
+    it('should handle upload errors', async() => {
       jest.spyOn(process, 'exit').mockImplementation(() => {});
 
       deployDatasource.mockRejectedValue(new Error('Deployment failed'));
 
       setupDatasourceCommands(program);
 
-      // Get the deploy command's action handler
+      // Get the upload command's action handler
       const datasourceGroup = program._datasourceGroup;
-      const deployCommand = datasourceGroup._subCommands?.find(c => c.name === 'deploy <myapp> <file>');
-      if (deployCommand) {
-        const actionCall = deployCommand.command.action.mock.calls[0];
+      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <myapp> <file>');
+      if (uploadCommand) {
+        const actionCall = uploadCommand.command.action.mock.calls[0];
         if (actionCall && typeof actionCall[0] === 'function') {
           await actionCall[0]('myapp', '/path/to/file.json', {
             controller: 'http://localhost:3010',
             environment: 'dev'
           });
 
-          expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Deployment failed'), expect.anything());
+          expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Upload failed'), expect.anything());
           expect(process.exit).toHaveBeenCalledWith(1);
         }
       }

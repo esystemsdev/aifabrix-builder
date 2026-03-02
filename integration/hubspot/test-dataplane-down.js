@@ -24,7 +24,7 @@ const {
   testWizard,
   testDownload,
   testDelete,
-  testDatasourceDeploy,
+  testDatasourceUpload,
   testIntegration,
   testDataplaneDiscovery
 } = require('./test-dataplane-down-tests');
@@ -139,7 +139,7 @@ async function runTests() {
     testWizard,
     testDownload,
     testDelete,
-    testDatasourceDeploy,
+    testDatasourceUpload,
     testIntegration,
     testDataplaneDiscovery
   ];

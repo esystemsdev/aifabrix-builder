@@ -84,7 +84,7 @@ Complete command reference organized by concept with examples and troubleshootin
     - [`aifabrix datasource validate <file>`](external-integration.md#aifabrix-datasource-validate-file) - Validate datasource JSON file
     - [`aifabrix datasource list`](external-integration.md#aifabrix-datasource-list) - List datasources from environment
     - [`aifabrix datasource diff <file1> <file2>`](external-integration.md#aifabrix-datasource-diff-file1-file2) - Compare two datasource configuration files
-    - [`aifabrix datasource deploy <myapp> <file>`](external-integration.md#aifabrix-datasource-deploy-myapp-file) - Deploy datasource to dataplane
+    - [`aifabrix datasource upload <myapp> <file>`](external-integration.md#aifabrix-datasource-upload-myapp-file) - Upload datasource to dataplane
     - [`aifabrix datasource test-integration <datasourceKey>`](external-integration.md#aifabrix-datasource-test-integration-datasourcekey) - Integration test for one datasource
     - [`aifabrix datasource test-e2e <datasourceKey>`](external-integration.md#aifabrix-datasource-test-e2e-datasourcekey) - E2E test for one datasource (Bearer/API key only)
 

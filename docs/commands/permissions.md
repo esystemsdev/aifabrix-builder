@@ -33,8 +33,8 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | `aifabrix deployments` | Controller | `deployments:read` | List deployments for the environment. |
 | `aifabrix credential list` | Dataplane | `credential:read` | GET `/api/v1/credential` is a **Dataplane** endpoint. The Controller does not expose this path (see Controller OpenAPI). The CLI should target the Dataplane URL for this command. |
 | `aifabrix download [systemKey]` | Dataplane | `external-system:read` | Download external system config from Dataplane. |
-| `aifabrix upload [system-key]` | Dataplane | `external-system:publish`; **credential:create** (if using automatic push of KV_* from `.env`) | Uses POST `/api/v1/pipeline/upload`, POST `.../upload/{id}/validate`, POST `.../upload/{id}/publish`. Before publish, the CLI may push credential secrets from `integration/<system-key>/.env` (KV_* vars) and from `kv://` refs in the payload to the dataplane via POST `/api/v1/credential/secret`; **credential:create** is required for that push. If the push fails (e.g. 403), upload still runs but secrets are not pushed. **Bearer token required** (e.g. from `aifabrix login`); client id/secret are not accepted for these endpoints. |
-| `aifabrix datasource deploy` | Dataplane | `external-system:publish` | Uses pipeline publish. |
+| `aifabrix upload [system-key]` | Dataplane | `external-system:publish`; **credential:create** (if using automatic push of KV_* from `.env`) | Uses single POST `/api/v1/pipeline/upload` with `status: "draft"` (upload → validate → publish in one call). The CLI displays a **Dataplane pipeline warning** before sending configuration. Before upload, the CLI may push credential secrets from `integration/<system-key>/.env` (KV_* vars) and from `kv://` refs in the payload to the dataplane via POST `/api/v1/credential/secret`; **credential:create** is required for that push. If the push fails (e.g. 403), upload still runs but secrets are not pushed. **Bearer token required** (e.g. from `aifabrix login`); client id/secret are not accepted for this endpoint. |
+| `aifabrix datasource upload` | Dataplane | `external-system:publish` | Uses POST `/api/v1/pipeline/{systemKey}/upload` (datasource publish). The CLI displays a **Dataplane pipeline warning** before sending configuration. |
 | `aifabrix datasource test-integration` | Dataplane | `external-system:publish` or `external-data-source:read` | Calls pipeline test endpoint; supports **client credentials** (CI/CD). |
 | `aifabrix datasource test-e2e` | Dataplane | `external-data-source:read` | Calls external test-e2e endpoint; **Bearer or API key only** (no client credentials). |
 | `aifabrix test-integration` | Dataplane | `external-system:publish` or `external-data-source:read` | Calls pipeline test endpoint; supports **client credentials** (CI/CD). |
@@ -70,14 +70,14 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 - **external-system:create** – Create external system, from-template, wizard sessions and steps (parse, detect-type, generate-config, validate, etc.).
 - **external-system:update** – Update external system, publish, rollback, save-template, deployment docs POST.
 - **external-system:delete** – Delete (soft) external system.
-- **external-system:publish** – Dataplane **pipeline deployment** (mutating): POST `/api/v1/pipeline/publish`, POST `.../{systemIdOrKey}/publish`, POST `/upload`, POST `.../upload/{id}/validate`, POST `.../upload/{id}/publish` require **OAuth2 (Bearer) only**; client id/secret are **not** accepted. **Pipeline test** endpoints (POST `.../pipeline/{systemKey}/test`, POST `.../pipeline/{systemKey}/{datasourceKey}/test`) accept Bearer, API key, or **client credentials** (x-client-id/x-client-secret) for CI/CD.
+- **external-system:publish** – Dataplane **pipeline deployment** (mutating): POST `/api/v1/pipeline/upload` (with body `status: "draft"` or `"published"`), POST `.../pipeline/{systemKey}/upload` (datasource publish), and POST `.../pipeline/validate` (optional) require **OAuth2 (Bearer) only**; client id/secret are **not** accepted. **Pipeline test** endpoints (POST `.../pipeline/{systemKey}/test`, POST `.../pipeline/{systemKey}/{datasourceKey}/test`) accept Bearer, API key, or **client credentials** (x-client-id/x-client-secret) for CI/CD.
 - **external-data-source:read** – Dataplane pipeline test and external test endpoints. Can be used for pipeline test (alternative to `external-system:publish`). Required for `aifabrix datasource test-e2e` (external test-e2e endpoint; Bearer or API key only, no client credentials).
 - **credential:read** – List/get credentials, wizard credentials list.
 - **credential:create** – Create credential (if used by wizard).
 - **credential:update** – Update credential.
 - **credential:delete** – Delete credential.
 - **audit:read** – Execution logs, RBAC/ABAC queries (datasource executions when applicable).
-- **Pipeline auth split** – **POST `/api/v1/pipeline/publish-controller`** accepts **client credentials only** (x-client-id, x-client-secret); no Bearer. All **other** pipeline endpoints accept **OAuth2 (Bearer) or API_KEY only**; client id/secret are rejected. Use `aifabrix login` (or a client token with the right scope) for upload, publish, and test; use client credentials only for publish-controller (e.g. CI calling the dataplane to trigger controller deploy).
+- **Pipeline auth split** – **POST `/api/v1/pipeline/publish-controller`** accepts **client credentials only** (x-client-id, x-client-secret); no Bearer. **Upload** (POST `/api/v1/pipeline/upload`), **datasource upload** (POST `.../pipeline/{systemKey}/upload`), and **validate** (POST `.../pipeline/validate`) accept **OAuth2 (Bearer) or API_KEY only**; client id/secret are rejected. Use `aifabrix login` (or a client token with the right scope) for upload and datasource upload; use client credentials only for publish-controller (e.g. CI calling the dataplane to trigger controller deploy).
 
 ---
 
@@ -86,6 +86,6 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 - [Authentication Commands](authentication.md) – Login and token options.
 - [Application Management Commands](application-management.md) – Show, register, rotate.
 - [Deployment Commands](deployment.md) – Deploy and environment deploy.
-- [External Integration Commands](external-integration.md) – Download, datasource deploy, wizard.
+- [External Integration Commands](external-integration.md) – Download, datasource upload, wizard.
 - Miso Controller OpenAPI: `openapi-complete.yaml` in the miso-controller repo (operationId and security.oauth2 per path).
 - Dataplane OpenAPI: `openapi.yaml` in the dataplane repo (operationId and security.oauth2 per path).

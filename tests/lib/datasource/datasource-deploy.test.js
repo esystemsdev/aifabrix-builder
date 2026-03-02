@@ -1,7 +1,7 @@
 /**
  * Tests for AI Fabrix Builder Datasource Deploy Module
  *
- * @fileoverview Unit tests for datasource-deploy.js module
+ * @fileoverview Unit tests for datasource deploy module (used by aifabrix datasource upload command)
  * @author AI Fabrix Team
  * @version 2.0.0
  */
@@ -54,6 +54,9 @@ jest.mock('../../../lib/utils/dataplane-resolver', () => ({
 jest.mock('../../../lib/utils/command-header', () => ({
   displayCommandHeader: jest.fn()
 }));
+jest.mock('../../../lib/utils/dataplane-pipeline-warning', () => ({
+  logDataplanePipelineWarning: jest.fn()
+}));
 
 const fsSync = require('fs');
 const { getDeploymentAuth } = require('../../../lib/utils/token-manager');
@@ -63,6 +66,7 @@ const { formatApiError } = require('../../../lib/utils/api-error-handler');
 const logger = require('../../../lib/utils/logger');
 const { validateDatasourceFile } = require('../../../lib/datasource/validate');
 const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
+const { logDataplanePipelineWarning } = require('../../../lib/utils/dataplane-pipeline-warning');
 
 describe('Datasource Deploy Module', () => {
   beforeEach(() => {
@@ -273,6 +277,7 @@ describe('Datasource Deploy Module', () => {
         })
       );
       expect(publishDatasourceViaPipeline).toHaveBeenCalledTimes(1);
+      expect(logDataplanePipelineWarning).toHaveBeenCalledTimes(1);
     });
 
     it('should throw error if appKey is missing', async() => {
@@ -335,6 +340,7 @@ describe('Datasource Deploy Module', () => {
         })
       );
       expect(result.success).toBe(true);
+      expect(logDataplanePipelineWarning).toHaveBeenCalledTimes(1);
     });
 
     it('should throw error if validation fails', async() => {

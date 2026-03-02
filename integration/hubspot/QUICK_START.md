@@ -204,7 +204,7 @@ node bin/aifabrix.js deploy my-hubspot \
   --environment miso
 
 # Or deploy individual datasources
-node bin/aifabrix.js datasource deploy hubspot-company \
+node bin/aifabrix.js datasource upload hubspot-company \
   --environment miso \
   --file integration/my-hubspot/hubspot-datasource-company.json
 ```
