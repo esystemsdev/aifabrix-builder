@@ -10,6 +10,7 @@
 jest.mock('../../../lib/utils/logger');
 jest.mock('../../../lib/validation/wizard-config-validator');
 jest.mock('../../../lib/commands/wizard-core');
+jest.mock('../../../lib/api/wizard.api');
 jest.mock('chalk', () => {
   const createMockFn = (text) => text;
   const mockChalk = createMockFn;
@@ -23,6 +24,7 @@ const wizardHeadless = require('../../../lib/commands/wizard-headless');
 const logger = require('../../../lib/utils/logger');
 const wizardConfigValidator = require('../../../lib/validation/wizard-config-validator');
 const wizardCore = require('../../../lib/commands/wizard-core');
+const wizardApi = require('../../../lib/api/wizard.api');
 
 describe('Wizard Headless Mode Handler', () => {
   const mockDataplaneUrl = 'https://dataplane.example.com';
@@ -203,6 +205,80 @@ describe('Wizard Headless Mode Handler', () => {
           systemIdOrKey: 'existing-system'
         })
       );
+    });
+
+    it('should pass entityName to handleConfigurationGeneration when source.entityName provided', async() => {
+      const configWithEntityName = {
+        ...mockWizardConfig,
+        source: {
+          type: 'openapi-file',
+          filePath: './openapi.yaml',
+          entityName: 'companies'
+        }
+      };
+      wizardCore.handleModeSelection.mockResolvedValue({ sessionId: 'session-123' });
+      wizardCore.handleSourceSelection.mockResolvedValue({
+        sourceType: 'openapi-file',
+        sourceData: './openapi.yaml'
+      });
+      wizardCore.handleOpenApiParsing.mockResolvedValue({ openapi: '3.0.0' });
+      wizardCore.handleCredentialSelection.mockResolvedValue(null);
+      wizardCore.handleTypeDetection.mockResolvedValue({});
+      wizardApi.discoverEntities.mockResolvedValue({
+        data: { entities: [{ name: 'companies' }] }
+      });
+      wizardCore.handleConfigurationGeneration.mockResolvedValue({
+        systemConfig: mockSystemConfig,
+        datasourceConfigs: mockDatasourceConfigs
+      });
+      wizardCore.validateWizardConfiguration.mockResolvedValue(undefined);
+      wizardCore.handleFileSaving.mockResolvedValue(undefined);
+
+      await wizardHeadless.executeWizardFromConfig(
+        configWithEntityName,
+        mockDataplaneUrl,
+        mockAuthConfig
+      );
+
+      expect(wizardApi.discoverEntities).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        expect.any(Object)
+      );
+      expect(wizardCore.handleConfigurationGeneration).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        expect.objectContaining({ entityName: 'companies' })
+      );
+    });
+
+    it('should throw when entityName is invalid', async() => {
+      const configWithInvalidEntity = {
+        ...mockWizardConfig,
+        source: {
+          type: 'openapi-file',
+          filePath: './openapi.yaml',
+          entityName: 'invalid-entity'
+        }
+      };
+      wizardCore.handleModeSelection.mockResolvedValue({ sessionId: 'session-123' });
+      wizardCore.handleSourceSelection.mockResolvedValue({
+        sourceType: 'openapi-file',
+        sourceData: './openapi.yaml'
+      });
+      wizardCore.handleOpenApiParsing.mockResolvedValue({ openapi: '3.0.0' });
+      wizardCore.handleCredentialSelection.mockResolvedValue(null);
+      wizardCore.handleTypeDetection.mockResolvedValue({});
+      wizardApi.discoverEntities.mockResolvedValue({
+        data: { entities: [{ name: 'companies' }, { name: 'deals' }] }
+      });
+
+      await expect(wizardHeadless.executeWizardFromConfig(
+        configWithInvalidEntity,
+        mockDataplaneUrl,
+        mockAuthConfig
+      )).rejects.toThrow('Invalid entityName \'invalid-entity\'');
+      expect(wizardCore.handleConfigurationGeneration).not.toHaveBeenCalled();
     });
 
     it('should handle credential selection', async() => {

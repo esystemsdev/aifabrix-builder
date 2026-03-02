@@ -238,6 +238,31 @@ fieldMappings:
         }
       });
     });
+
+    it('should emit KV_*-compatible kv paths (no hyphens: clientid, apikey, etc.)', async() => {
+      fsPromises.readFile = jest.fn().mockResolvedValue(mockSystemTemplate);
+      configFormat.writeConfigFile.mockClear();
+
+      const { generateExternalSystemTemplate } = require('../../../lib/external-system/generator');
+      await generateExternalSystemTemplate(appPath, 'hubspot', { authType: 'oauth2' });
+
+      const systemCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-system.yaml'));
+      const parsed = systemCall[1];
+      expect(parsed.authentication.security.clientId).toBe('kv://hubspot/clientid');
+      expect(parsed.authentication.security.clientSecret).toBe('kv://hubspot/clientsecret');
+    });
+
+    it('should emit apikey path as kv://systemKey/apikey', async() => {
+      fsPromises.readFile = jest.fn().mockResolvedValue(mockSystemTemplate);
+      configFormat.writeConfigFile.mockClear();
+
+      const { generateExternalSystemTemplate } = require('../../../lib/external-system/generator');
+      await generateExternalSystemTemplate(appPath, 'mysys', { authType: 'apikey' });
+
+      const systemCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-system.yaml'));
+      const parsed = systemCall[1];
+      expect(parsed.authentication.security.apiKey).toBe('kv://mysys/apikey');
+    });
   });
 
   describe('generateExternalDataSourceTemplate', () => {

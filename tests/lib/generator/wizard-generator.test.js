@@ -231,8 +231,20 @@ describe('Wizard Generator', () => {
       );
       expect(envTemplateCall).toBeDefined();
       const templateContent = envTemplateCall[1];
-      expect(templateContent).toContain('API_KEY');
-      expect(templateContent).toContain('kv://secrets');
+      expect(templateContent).toContain('KV_');
+      expect(templateContent).toMatch(/KV_[A-Z_]+=/);
+    });
+
+    it('should generate env.template with KV_* for oauth2 (CLIENTID, CLIENTSECRET)', async() => {
+      const oauthConfig = { ...systemConfig, authentication: { type: 'oauth2' } };
+      await wizardGenerator.generateWizardFiles(appName, oauthConfig, datasourceConfigs, systemKey, {});
+      const envTemplateCall = fsPromises.writeFile.mock.calls.find(call =>
+        call[0].includes('env.template')
+      );
+      expect(envTemplateCall).toBeDefined();
+      const templateContent = envTemplateCall[1];
+      expect(templateContent).toContain('KV_TEST_APP_CLIENTID=');
+      expect(templateContent).toContain('KV_TEST_APP_CLIENTSECRET=');
     });
 
     it('should generate README.md with appName-based displayName', async() => {

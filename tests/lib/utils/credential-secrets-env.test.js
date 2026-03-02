@@ -19,6 +19,7 @@ const {
   collectKvRefsFromPayload,
   pushCredentialSecrets,
   kvEnvKeyToPath,
+  systemKeyToKvPrefix,
   isValidKvPath,
   resolveKvValue
 } = require('../../../lib/utils/credential-secrets-env');
@@ -29,6 +30,20 @@ describe('credential-secrets-env', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     loadSecrets.mockResolvedValue({});
+  });
+
+  describe('systemKeyToKvPrefix', () => {
+    it('should convert hubspot to HUBSPOT', () => {
+      expect(systemKeyToKvPrefix('hubspot')).toBe('HUBSPOT');
+    });
+    it('should convert my-hubspot to MY_HUBSPOT', () => {
+      expect(systemKeyToKvPrefix('my-hubspot')).toBe('MY_HUBSPOT');
+    });
+    it('should return empty string for empty or invalid', () => {
+      expect(systemKeyToKvPrefix('')).toBe('');
+      expect(systemKeyToKvPrefix(null)).toBe('');
+      expect(systemKeyToKvPrefix(undefined)).toBe('');
+    });
   });
 
   describe('kvEnvKeyToPath', () => {

@@ -19,9 +19,13 @@ jest.mock('../../../lib/utils/app-config-resolver', () => ({
   resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml'))
 }));
 const mockPromptForCredentialIdOrKeyRetry = jest.fn();
-jest.mock('../../../lib/generator/wizard-prompts', () => ({
-  promptForCredentialIdOrKeyRetry: (...args) => mockPromptForCredentialIdOrKeyRetry(...args)
-}));
+jest.mock('../../../lib/generator/wizard-prompts', () => {
+  const actual = jest.requireActual('../../../lib/generator/wizard-prompts');
+  return {
+    ...actual,
+    promptForCredentialIdOrKeyRetry: (...args) => mockPromptForCredentialIdOrKeyRetry(...args)
+  };
+});
 jest.mock('inquirer');
 jest.mock('ora', () => {
   const mockSpinner = {
@@ -602,6 +606,60 @@ describe('Wizard Core Functions', () => {
     });
   });
 
+  describe('handleEntitySelection', () => {
+    it('returns null when openapiSpec is null', async() => {
+      const result = await wizardCore.handleEntitySelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        null
+      );
+      expect(wizardApi.discoverEntities).not.toHaveBeenCalled();
+      expect(result).toBeNull();
+    });
+
+    it('returns null when discoverEntities returns empty entities', async() => {
+      wizardApi.discoverEntities.mockResolvedValue({ data: { entities: [] } });
+      const result = await wizardCore.handleEntitySelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        mockOpenApiSpec
+      );
+      expect(wizardApi.discoverEntities).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        mockOpenApiSpec
+      );
+      expect(result).toBeNull();
+    });
+
+    it('prompts and returns selected entity when entities found', async() => {
+      wizardApi.discoverEntities.mockResolvedValue({
+        data: { entities: [{ name: 'companies', pathCount: 12 }] }
+      });
+      inquirer.prompt.mockResolvedValue({ entityName: 'companies' });
+
+      const result = await wizardCore.handleEntitySelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        mockOpenApiSpec
+      );
+
+      expect(result).toBe('companies');
+      expect(inquirer.prompt).toHaveBeenCalled();
+    });
+
+    it('returns null and logs warning when discoverEntities fails', async() => {
+      wizardApi.discoverEntities.mockRejectedValue(new Error('API error'));
+      const result = await wizardCore.handleEntitySelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        mockOpenApiSpec
+      );
+      expect(result).toBeNull();
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Entity discovery failed'));
+    });
+  });
+
   describe('handleConfigurationGeneration', () => {
     const mockSystemConfig = { key: 'test-system', displayName: 'Test System' };
     const mockDatasourceConfigs = [{ key: 'ds1', systemKey: 'test-system' }];
@@ -686,6 +744,32 @@ describe('Wizard Core Functions', () => {
             enableRBAC: false
           }
         })
+      );
+    });
+
+    it('should pass entityName to generateConfig when provided', async() => {
+      wizardApi.generateConfig.mockResolvedValue({
+        success: true,
+        data: {
+          systemConfig: mockSystemConfig,
+          datasourceConfigs: mockDatasourceConfigs,
+          systemKey: 'test-system'
+        }
+      });
+      await wizardCore.handleConfigurationGeneration(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        {
+          mode: 'create-system',
+          openapiSpec: mockOpenApiSpec,
+          detectedType: { recommendedType: 'record-based' },
+          entityName: 'companies'
+        }
+      );
+      expect(wizardApi.generateConfig).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        expect.objectContaining({ entityName: 'companies' })
       );
     });
 

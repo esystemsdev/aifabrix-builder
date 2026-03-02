@@ -65,6 +65,11 @@
           "description": "Datasource keys to include (validated against platform; omit for all)",
           "items": { "type": "string", "minLength": 1 },
           "minItems": 1
+        },
+        "entityName": {
+          "type": "string",
+          "description": "Entity for multi-entity OpenAPI (validated against discover-entities; for openapi-file and openapi-url)",
+          "minLength": 1
         }
       },
       "allOf": [

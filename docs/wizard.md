@@ -85,17 +85,18 @@ This runs headless using **only** `integration/my-integration/wizard.yaml`. No p
 
 ## Wizard Workflow
 
-The wizard asks **mode first** (before app name or dataplane), then creates a session and follows the dataplane API workflow:
+The wizard asks **mode first** (before app name or system selection), creates a session, then runs seven steps. All operations use the dataplane wizard API internally; for API details, see the dataplane API knowledge base.
 
-```yaml
-Step 1: Mode → Create session   "Create new" → app name; "Add datasource" → system ID/key (validated on dataplane)
-Step 2: Source                  OpenAPI file/URL, MCP server, or Known platform (from dataplane when available)
-Step 3: Credential              Skip | Create new | Use existing (optional)
-Step 4: Detect Type             POST /api/v1/wizard/detect-type
-Step 5: User Preferences       Field onboarding level (full|standard|minimal), intent, MCP/ABAC/RBAC → POST /api/v1/wizard/generate-config or generate-config-stream (body: fieldOnboardingLevel, intent, etc.)
-Step 6: Review & Validate       Accept and save, or Cancel
-Step 7: Save Files              Local file generation; wizard.yaml written to integration/<appKey>/
-```
+| Step | Interactive | Headless |
+|------|-------------|----------|
+| 1 | Create Session (mode, app name or system) | Create Session |
+| 2 | Source Selection (OpenAPI file/URL, MCP server, or Known platform) | Source Selection & Parse (from wizard.yaml) |
+| 3 | Credential Selection (Skip / Create / Use existing) | Credential Selection |
+| 4 | Detect Type | Detect Type (skipped for known-platform when no OpenAPI spec) |
+| 4.5 | Select Entity (OpenAPI) | — (use `entityName` in wizard.yaml `source` for headless) |
+| 5 | User Preferences (intent, fieldOnboardingLevel, MCP/ABAC/RBAC) then Generate Config | Generate Configuration |
+| 6 | Review & Validate (preview, accept/cancel, validate) | Validate Configuration |
+| 7 | Save Files | Save Files |
 
 ### Quick Integration Flow
 
@@ -113,7 +114,7 @@ Step 7: Save Files              Local file generation; wizard.yaml written to in
 - **Create a new external system** – You are then prompted for application name. The folder `integration/<appKey>/` is created and used for wizard.yaml and error.log.
 - **Add datasource to existing system** – You are prompted to select or enter the existing system. The wizard lists systems with **Name** and **appKey** (e.g. `HubSpot CRM (hubspot-test-v4)`), 10 items per page. The builder validates that the system exists on the dataplane (and re-prompts if not). The integration folder is derived from the system key. **Note:** In add-datasource mode, "Known platform" is hidden in Step 2 because the system already exists on the dataplane and uses its existing OpenAPI/MCP source.
 
-After that, a wizard session is created via `POST /api/v1/wizard/sessions`.
+After that, a wizard session is created on the dataplane.
 
 ### Step 2: Source Selection
 
@@ -121,18 +122,17 @@ Select your source type; then the wizard parses OpenAPI or tests the connection 
 - **OpenAPI file** – Local OpenAPI specification file
 - **OpenAPI URL** – Remote OpenAPI specification URL
 - **MCP server** – Model Context Protocol server
-- **Known platform** – Pre-configured platform. Shown **only in create-system mode**. The wizard **automatically detects Known Platforms** from your **dataplane template library** (`GET /api/v1/wizard/platforms` when available). Templates are **environment-specific**—the list may vary by environment or dataplane. If the endpoint is missing or returns an empty list, the "Known platform" choice is hidden. **In add-datasource mode**, "Known platform" is not shown because the system already exists and uses its OpenAPI/MCP source from the dataplane.
+- **Known platform** – Pre-configured platform. Shown **only in create-system mode**. The wizard **automatically detects Known Platforms** from your **dataplane template library**. Templates are **environment-specific**—the list may vary by environment or dataplane. If no platforms are available, the "Known platform" choice is hidden. **In add-datasource mode**, "Known platform" is not shown because the system already exists and uses its OpenAPI/MCP source from the dataplane.
 
 ### Step 3: Credential Selection (Optional)
 
 Configure credentials for the external system:
 - **Skip** – No credentials yet; you can add them later in `env.template` or via the dataplane. Choose this if you don't have test credentials.
 - **Create** – Create a new credential on the dataplane
-- **Use existing** – Select or enter a credential ID or key that exists on the dataplane. The wizard can **list** credentials for selection (10 items per page; scroll for more). When the dataplane provides credential status, each choice shows a colored icon: ✓ (verified), ○ (pending), ✗ (failed), ⊘ (expired).
-  - **Dataplane API:** `GET /api/v1/wizard/credentials` (optional query e.g. `activeOnly=true`) returns credentials for "Use existing". Documented in the Dataplane Wizard API table below.
-  - **CLI:** Run `aifabrix credential list` to list credentials from the controller/dataplane (`GET /api/v1/credential`). Use the same controller URL and login as for other CLI commands.
+- **Use existing** – Select or enter a credential ID or key that exists on the dataplane. The wizard lists credentials for selection (10 items per page; scroll for more). When the dataplane provides credential status, each choice shows a colored icon: ✓ (verified), ○ (pending), ✗ (failed), ⊘ (expired).
+  - **CLI:** Run `aifabrix credential list` to list credentials from the controller/dataplane. Use the same controller URL and login as for other CLI commands.
 
-**Validation:** The dataplane validates credentials when you choose "Use existing" (POST `/api/v1/wizard/credential-selection`). If the credential is not found or invalid, the wizard re-prompts for another ID/key or lets you leave the field empty to skip.
+**Validation:** The dataplane validates credentials when you choose "Use existing". If the credential is not found or invalid, the wizard re-prompts for another ID/key or lets you leave the field empty to skip.
 
 ### Step 4: Detect API Type
 
@@ -142,6 +142,12 @@ The wizard automatically detects:
 - Recommended type based on analysis
 
 **Detected Types**: `record-based` (CRUD operations), `document-storage` (file/folder operations), `sharepoint` (SharePoint-specific), `teams-meetings` (Teams/Graph API patterns), `crm`, `project-management`, `communication`, `e-commerce`, `calendar`, `email`, `help-desk`, `accounting`, `hr`, `custom`.
+
+### Step 4.5: Select Entity (OpenAPI multi-entity)
+
+For OpenAPI sources (file or URL), the wizard calls the dataplane `discover-entities` endpoint to list available entities (e.g. companies, deals, contacts for HubSpot). If multiple entities are found, you can select which entity to generate a datasource for. The list is searchable (10 items per page; type to filter). If no entities are discovered or discovery fails, the wizard skips this step and uses the dataplane default (first path heuristic).
+
+**Headless:** Add `entityName` under `source` in `wizard.yaml` for openapi-file or openapi-url. The wizard validates it against discover-entities before generate-config; invalid values produce a clear error listing available entities.
 
 ### Step 5: User Preferences & Generate Configuration
 
@@ -153,7 +159,7 @@ The wizard automatically detects:
 - User intent (any descriptive text)
 - MCP, ABAC, RBAC toggles
 
-The value is saved in `wizard.yaml` under `preferences.fieldOnboardingLevel` and sent in the REST request body when calling `POST /api/v1/wizard/generate-config` or `POST /api/v1/wizard/generate-config-stream` as `fieldOnboardingLevel` (e.g. `fieldOnboardingLevel: "full"`).
+The value is saved in `wizard.yaml` under `preferences.fieldOnboardingLevel` and sent when generating configuration (e.g. `fieldOnboardingLevel: "full"`).
 
 The wizard then uses AI to generate configurations based on:
 - OpenAPI specification structure
@@ -166,7 +172,7 @@ The wizard then uses AI to generate configurations based on:
 
 ### Step 6: Review & Validate
 
-The wizard fetches a **configuration preview** from the dataplane (`GET /api/v1/wizard/preview/{sessionId}`) and displays a compact summary of what will be created—system, one or more datasources, CIP pipeline, field mappings, and estimates—instead of the full manifest. Known platform flows can create **multiple datasources**; all are shown in the preview. If the preview API is unavailable, the wizard falls back to showing the full YAML configuration.
+The wizard fetches a **configuration preview** from the dataplane and displays a compact summary of what will be created—system, one or more datasources, CIP pipeline, field mappings, and estimates—instead of the full manifest. Known platform flows can create **multiple datasources**; all are shown in the preview. If the preview API is unavailable, the wizard falls back to showing the full YAML configuration.
 
 **Preview summary example:**
 
@@ -205,9 +211,11 @@ After reviewing, choose **Accept and save** or **Cancel**. On accept, the wizard
 The wizard saves all files to `integration/<appKey>/`:
 - `wizard.yaml` - Saved wizard state (loaded on resume; saved on success or on error as partial state)
 - `error.log` - Errors appended here (timestamp + message; validation details when the API returns them)
-- `application.yaml` - Application variables and external integration configuration
-- `<systemKey>-system.yaml` - System configuration
-- `<systemKey>-datasource-*.jsyamlon` - Datasource configurations
+- `application.yaml` (or `application.json`) - Application variables and external integration configuration
+- `<systemKey>-system.yaml` (or `*.json`) - System configuration
+- `<systemKey>-datasource-*.yaml` (or `*.json`) - Datasource configurations
+
+When `format` is set in `~/.aifabrix/config.yaml` (via `aifabrix dev set-format`), the wizard generates files in that format (`.yaml` or `.json`); otherwise YAML is used.
 - `env.template` - Environment variable template
 - `README.md` - Documentation (AI-generated from dataplane when available)
 - `<systemKey>-deploy.json` - Single deployment file
@@ -433,9 +441,11 @@ integration/<appKey>/
 └── deploy.js                      # Node deployment script (check auth → login → deploy → test)
 ```
 
+For the full integration folder structure and configuration options, see [External Systems](external-systems.md).
+
 ### README.md Generation
 
-The wizard generates files (including `application.yaml` and `<systemKey>-deploy.json`), then calls the dataplane **POST** `/api/v1/wizard/deployment-docs/{systemKey}` with optional `variablesYaml` and `deployJson` in the request body. This produces higher-quality README.md content aligned with the integration folder. If the API is unavailable or returns no content, a basic README.md is used.
+The wizard generates files (including `application.yaml` and `<systemKey>-deploy.json`), then requests deployment docs from the dataplane. This produces higher-quality README.md content aligned with the integration folder. If deployment docs are unavailable or return no content, a basic README.md is used.
 
 ## Environment Variables
 
@@ -585,35 +595,8 @@ Create `wizard.yaml` in your repo (or under `integration/<app>/wizard.yaml` for 
 
 ## Reference
 
-- [External Systems Documentation](external-systems.md) - Manual external system creation
-- [CLI Reference](commands/external-integration.md) - All CLI commands
+- [External Systems Documentation](external-systems.md) - Configuration options, auth methods, deployment flow
+- [External Integration Commands](commands/external-integration.md) - All CLI commands
 - [Configuration Guide](configuration/README.md) - Configuration file formats
 
-## Dataplane Wizard API
-
-The wizard uses the following dataplane wizard API endpoints:
-
-| Endpoint | Description |
-| ---------- | ----------- |
-| `POST /api/v1/wizard/sessions` | Create wizard session |
-| `GET /api/v1/wizard/sessions/{id}` | Get session state |
-| `PUT /api/v1/wizard/sessions/{id}` | Update session |
-| `DELETE /api/v1/wizard/sessions/{id}` | Delete session |
-| `GET /api/v1/wizard/sessions/{id}/progress` | Get session progress |
-| `POST /api/v1/wizard/parse-openapi` | Parse OpenAPI file/URL |
-| `GET /api/v1/wizard/credentials` | List credentials for Step 3 (optional query: `activeOnly`) |
-| `POST /api/v1/wizard/credential-selection` | Credential selection |
-| `POST /api/v1/wizard/detect-type` | Detect API type |
-| `POST /api/v1/wizard/generate-config` | Generate configuration from OpenAPI (body: openapiSpec, detectedType, intent, mode, etc.). Do NOT use for known-platform. |
-| `POST /api/v1/wizard/generate-config-stream` | Generate config (streaming; same body including fieldOnboardingLevel) |
-| `POST /api/v1/wizard/platforms/{platformKey}/config` | Get configuration for a known platform (no OpenAPI). Use when `sourceType=known-platform`. |
-| `POST /api/v1/wizard/validate` | Validate configuration |
-| `GET /api/v1/wizard/sessions/{id}/validate` | Validate all steps |
-| `POST /api/v1/wizard/sessions/{id}/validate-step` | Validate specific step |
-| `GET /api/v1/wizard/preview/{id}` | Get configuration preview; used at Step 6 to show "what will be created" before save |
-| `POST /api/v1/wizard/test-mcp-connection` | Test MCP connection |
-| `GET /api/v1/wizard/deployment-docs/{key}` | Get deployment docs (DB only) |
-| `POST /api/v1/wizard/deployment-docs/{key}` | Generate deployment docs with optional `variablesYaml` and `deployJson` body for better README quality |
-| `GET /api/v1/wizard/platforms` | Get known platforms (optional; empty/404 hides "Known platform" in Step 2) |
-
-For detailed API documentation, see the dataplane API documentation.
+The wizard uses the dataplane wizard API for all operations. For API details, see the dataplane API knowledge base.

@@ -46,6 +46,10 @@ jest.mock('../../../lib/utils/dev-config', () => ({
 jest.mock('../../../lib/utils/secrets-path', () => ({
   getActualSecretsPath: jest.fn()
 }));
+jest.mock('../../../lib/generator/external', () => ({
+  loadExternalIntegrationConfig: jest.fn(),
+  loadSystemFile: jest.fn()
+}));
 jest.mock('../../../lib/utils/paths', () => {
   const pathMod = require('path');
   const actual = jest.requireActual('../../../lib/utils/paths');
@@ -419,6 +423,116 @@ frontDoorRouting:
       fs.existsSync.mockReturnValue(false);
 
       await expect(validator.validateEnvTemplate(appName)).rejects.toThrow(`env.template not found: ${templatePath}`);
+    });
+
+    describe('auth kv coverage (external integrations)', () => {
+      const externalAppPath = path.join(process.cwd(), 'integration', 'hubspot');
+      const pathsUtil = require('../../../lib/utils/paths');
+      const generatorExternal = require('../../../lib/generator/external');
+
+      it('should pass when env.template has all required auth kv paths', async() => {
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockResolvedValue({
+          schemaBasePath: './',
+          systemFiles: ['hubspot-system.json']
+        });
+        generatorExternal.loadSystemFile.mockResolvedValue({
+          authentication: {
+            security: {
+              clientId: 'kv://hubspot/client-id',
+              clientSecret: 'kv://hubspot/client-secret'
+            }
+          }
+        });
+
+        const template = 'CLIENT_ID=kv://hubspot/client-id\nCLIENT_SECRET=kv://hubspot/client-secret\nPORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('hubspot');
+
+        expect(result.valid).toBe(true);
+        expect(result.errors).toEqual([]);
+      });
+
+      it('should fail when env.template is missing required auth kv paths', async() => {
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockResolvedValue({
+          schemaBasePath: './',
+          systemFiles: ['hubspot-system.json']
+        });
+        generatorExternal.loadSystemFile.mockResolvedValue({
+          authentication: {
+            security: {
+              clientId: 'kv://hubspot/client-id',
+              clientSecret: 'kv://hubspot/client-secret'
+            }
+          }
+        });
+
+        const template = 'CLIENT_ID=kv://hubspot/client-id\nPORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('hubspot');
+
+        expect(result.valid).toBe(false);
+        expect(result.errors.some(e => e.includes('Missing required authentication secret'))).toBe(true);
+      });
+
+      it('should pass for oidc/none auth (empty security)', async() => {
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockResolvedValue({
+          schemaBasePath: './',
+          systemFiles: ['oidc-system.json']
+        });
+        generatorExternal.loadSystemFile.mockResolvedValue({
+          authentication: { method: 'oidc', variables: {}, security: {} }
+        });
+
+        const template = 'PORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('oidc-app');
+
+        expect(result.valid).toBe(true);
+        expect(result.errors).toEqual([]);
+      });
+
+      it('should add warning and skip auth check when config load fails', async() => {
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockRejectedValue(new Error('externalIntegration block not found'));
+
+        const template = 'PORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('hubspot');
+
+        expect(result.valid).toBe(true);
+        expect(result.warnings.some(w => w.includes('Could not validate auth kv coverage'))).toBe(true);
+      });
     });
   });
 

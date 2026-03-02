@@ -168,4 +168,45 @@ describe('Wizard Prompts Secondary', () => {
       expect(result.action).toBe('cancel');
     });
   });
+
+  describe('promptForEntitySelection', () => {
+    it('prompts and returns selected entity', async() => {
+      const entities = [
+        { name: 'companies', pathCount: 12 },
+        { name: 'deals', pathCount: 10 }
+      ];
+      inquirer.prompt.mockResolvedValue({ entityName: 'companies' });
+
+      const result = await wizardPromptsSecondary.promptForEntitySelection(entities);
+
+      expect(result).toBe('companies');
+      expect(inquirer.prompt).toHaveBeenCalledWith([
+        expect.objectContaining({
+          name: 'entityName',
+          message: 'Select entity for datasource generation:',
+          pageSize: 10,
+          choices: [
+            { name: 'companies (12 paths)', value: 'companies' },
+            { name: 'deals (10 paths)', value: 'deals' }
+          ]
+        })
+      ]);
+    });
+
+    it('formats choices without pathCount', async() => {
+      const entities = [{ name: 'contacts' }];
+      inquirer.prompt.mockResolvedValue({ entityName: 'contacts' });
+
+      await wizardPromptsSecondary.promptForEntitySelection(entities);
+
+      const call = inquirer.prompt.mock.calls[0][0][0];
+      expect(call.choices).toEqual([{ name: 'contacts', value: 'contacts' }]);
+    });
+
+    it('throws when entities is empty', async() => {
+      await expect(wizardPromptsSecondary.promptForEntitySelection([]))
+        .rejects.toThrow('At least one entity is required');
+      expect(inquirer.prompt).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -45,7 +45,8 @@ jest.mock('../../../lib/utils/token-manager', () => ({
   getDeploymentAuth: jest.fn()
 }));
 jest.mock('../../../lib/api/external-systems.api', () => ({
-  getExternalSystemConfig: jest.fn()
+  getExternalSystemConfig: jest.fn(),
+  listExternalSystems: jest.fn()
 }));
 jest.mock('../../../lib/core/config', () => ({
   getConfig: jest.fn(),
@@ -85,7 +86,7 @@ jest.mock('../../../lib/utils/paths', () => {
 });
 
 const { getDeploymentAuth } = require('../../../lib/utils/token-manager');
-const { getExternalSystemConfig } = require('../../../lib/api/external-systems.api');
+const { getExternalSystemConfig, listExternalSystems } = require('../../../lib/api/external-systems.api');
 const { getConfig } = require('../../../lib/core/config');
 const logger = require('../../../lib/utils/logger');
 const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
@@ -158,6 +159,16 @@ describe('External System Download Module', () => {
     }
   };
 
+  const mockListResponseWithHubspot = {
+    success: true,
+    data: { items: [{ key: 'hubspot', displayName: 'HubSpot CRM' }] }
+  };
+
+  const mockListResponseEmpty = {
+    success: true,
+    data: { items: [] }
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     fs.writeFileSync.mockImplementation(() => {});
@@ -166,6 +177,7 @@ describe('External System Download Module', () => {
       type: 'bearer',
       token: 'test-token'
     });
+    listExternalSystems.mockResolvedValue(mockListResponseWithHubspot);
     getConfig.mockResolvedValue({
       deployment: {
         controllerUrl: 'http://localhost:3000'
@@ -378,10 +390,37 @@ describe('External System Download Module', () => {
       ).rejects.toThrow('Authentication required');
     });
 
-    it('should throw error when download fails', async() => {
+    it('should throw "not found" when config returns 401 and system not in list', async() => {
       getExternalSystemConfig.mockResolvedValue({
         success: false,
-        error: 'System not found'
+        status: 401,
+        error: 'Authentication failed'
+      });
+      listExternalSystems.mockResolvedValue(mockListResponseEmpty);
+      const { downloadExternalSystem } = require('../../../lib/external-system/download');
+      await expect(
+        downloadExternalSystem('hubspots', {})
+      ).rejects.toThrow('External system \'hubspots\' not found');
+      expect(getExternalSystemConfig).toHaveBeenCalled();
+      expect(listExternalSystems).toHaveBeenCalled();
+    });
+
+    it('should throw "not found" when getExternalSystemConfig returns 404', async() => {
+      getExternalSystemConfig.mockResolvedValue({
+        success: false,
+        status: 404,
+        error: 'Not found'
+      });
+      const { downloadExternalSystem } = require('../../../lib/external-system/download');
+      await expect(
+        downloadExternalSystem(systemKey, {})
+      ).rejects.toThrow(`External system '${systemKey}' not found`);
+    });
+
+    it('should throw error when download fails (non-404)', async() => {
+      getExternalSystemConfig.mockResolvedValue({
+        success: false,
+        error: 'Internal server error'
       });
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await expect(

@@ -210,3 +210,108 @@ Generate correct manifest kv:// paths and env.template using KV__ convention so 
 - Ensure credential push reuses existing pushCredentialSecrets from [lib/utils/credential-secrets-env.js](lib/utils/credential-secrets-env.js)
 - Consider backward compatibility for existing integrations using hubspot-clientidKeyVault format (optional migration path)
 
+---
+
+## Implementation Validation Report
+
+**Date:** 2025-03-01  
+**Plan:** .cursor/plans/87-integration_credential_env_flow.plan.md  
+**Status:** ✅ COMPLETE
+
+### Executive Summary
+
+All implementation tasks from the Integration Credential Env Flow plan have been completed. The KV_* convention is implemented across manifest generation, env.template generation, and the new credential env/push commands. Code quality validation passes; lint reports 2 pre-existing warnings in an unrelated file (download.js).
+
+### Task Completion
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | Generate manifest with correct kv:// paths | ✅ Complete |
+| 2 | Generate env.template with KV_* variable names | ✅ Complete |
+| 3 | aifabrix resolve and generateEnvFile (KV_* pass through) | ✅ Complete |
+| 4 | aifabrix credential env | ✅ Complete |
+| 5 | aifabrix credential push | ✅ Complete |
+| 6 | Add --debug to upload | ✅ Complete |
+| 7 | Update documentation | ✅ Complete |
+
+**Completion: 7/7 (100%)**
+
+### File Existence Validation
+
+| File | Status |
+|------|--------|
+| lib/external-system/generator.js | ✅ Exists – kv paths (clientid, clientsecret, apikey, etc.) |
+| lib/generator/wizard.js | ✅ Exists – KV_* in addAuthenticationLines, generateEnvTemplate |
+| lib/app/config.js | ✅ Exists – generateExternalSystemEnvTemplate KV_* |
+| lib/commands/credential-env.js | ✅ Exists – New command |
+| lib/commands/credential-push.js | ✅ Exists – New command |
+| lib/cli/setup-credential-deployment.js | ✅ Exists – credential env, credential push wired |
+| lib/cli/setup-external-system.js | ✅ Exists – --debug on upload |
+| lib/utils/credential-secrets-env.js | ✅ Exists – systemKeyToKvPrefix, parseEnvToMap |
+| docs/commands/external-integration.md | ✅ Exists – KV_* docs, credential env/push |
+| docs/external-systems.md | ✅ Exists – env.template format, credential flow |
+
+### Test Coverage
+
+| Test File | Status |
+|-----------|--------|
+| tests/lib/commands/credential-env.test.js | ✅ Exists – validateSystemKeyFormat, extractKvVarsFromTemplate, buildEnvContent, runCredentialEnv, hyphen systemKey |
+| tests/lib/commands/credential-push.test.js | ✅ Exists – validateSystemKeyFormat, runCredentialPush |
+| tests/lib/utils/credential-secrets-env.test.js | ✅ Updated – systemKeyToKvPrefix |
+| tests/lib/external-system/external-system-generator.test.js | ✅ Updated – kv path format (clientid, apikey) |
+| tests/lib/generator/wizard-generator.test.js | ✅ Updated – KV_* env.template, oauth2 CLIENTID/CLIENTSECRET |
+| tests/lib/app/app-config.test.js | ✅ Updated – KV_* format assertions |
+| tests/lib/cli-uncovered-commands.test.js | ✅ Updated – credential env/push CLI handlers |
+
+### Code Quality Validation
+
+| Step | Result |
+|------|--------|
+| Format (lint:fix) | ✅ PASSED |
+| Lint | ✅ PASSED (0 errors; 2 warnings in lib/external-system/download.js, pre-existing) |
+| Tests | ✅ PASSED (all tests pass) |
+
+### File Size Compliance
+
+| File | Lines | Limit | Status |
+|------|-------|-------|--------|
+| lib/commands/credential-env.js | 162 | 500 | ✅ |
+| lib/commands/credential-push.js | 96 | 500 | ✅ |
+| lib/generator/wizard.js | 495 | 500 | ✅ |
+| lib/app/config.js | 238 | 500 | ✅ |
+| lib/external-system/generator.js | 356 | 500 | ✅ |
+
+### Cursor Rules Compliance
+
+| Rule | Status |
+|------|--------|
+| CLI Command Development | ✅ Input validation, chalk, error handling |
+| Security (ISO 27001) | ✅ password prompts for secrets, .env mode 0o600, no secret logging |
+| Code Quality Standards | ✅ File size, JSDoc on public functions |
+| Testing Conventions | ✅ Jest, mocks (inquirer, fs), tests mirror lib/ |
+| Generated Output | ✅ Generators (wizard, config) produce correct env.template |
+
+### Implementation Completeness
+
+- ✅ Manifest kv:// paths (clientid, clientsecret, apikey, etc.)
+- ✅ env.template KV_* variables
+- ✅ credential env command (prompt, write .env)
+- ✅ credential push command (pushCredentialSecrets)
+- ✅ CLI wiring
+- ✅ --debug on upload
+- ✅ Documentation updated
+
+### Issues and Recommendations
+
+- **Lint warnings:** 2 warnings in lib/external-system/download.js (max-statements, complexity) are pre-existing and outside this plan's scope.
+- **Task 3:** KV_* vars pass through resolve without kv:// resolution; collectMissingSecrets/replaceKvInContent already skip non-kv:// lines.
+
+### Final Validation Checklist
+
+- [x] All tasks completed
+- [x] All files exist and implemented
+- [x] Tests exist and pass
+- [x] Code quality validation passes
+- [x] Cursor rules compliance verified
+- [x] Implementation complete
+

@@ -195,3 +195,78 @@ Add validation in env.template to ensure all kv:// paths required by the authent
 - Ensure `collectRequiredAuthKvPaths` handles loadExternalIntegrationConfig throwing (e.g. missing externalIntegration) by returning empty set and optionally adding a warning rather than failing validation
 - Consider extracting `extractKvPathsFromEnvTemplate` to a small utility if validator.js approaches 500 lines
 
+---
+
+## Implementation Validation Report
+
+**Date**: 2025-03-01
+**Plan**: .cursor/plans/89-env.template_auth_kv_validation.plan.md
+**Status**: COMPLETE
+
+### Executive Summary
+
+Implementation is complete. All requirements from the plan have been implemented: env.template now validates that all kv:// paths required by authentication.security are present for external integrations. Code quality checks pass (lint, test). Helper logic was extracted to a new module `lib/validation/env-template-auth.js` to keep validator.js under 500 lines.
+
+### Task Completion
+
+- Implementation tasks (from plan): All complete
+- collectRequiredAuthKvPaths: Implemented in env-template-auth.js
+- extractKvPathsFromEnvTemplate: Implemented in env-template-auth.js
+- validateEnvTemplate extended: Branches on isExternal, calls validateAuthKvCoverage for external apps
+- loadExternalIntegrationConfig: Exported from generator/external.js
+- Tests: 4 auth kv coverage tests in validator.test.js
+
+### File Existence Validation
+
+- [lib/validation/validator.js](lib/validation/validator.js) - Exists, uses validateAuthKvCoverage from env-template-auth
+- [lib/validation/env-template-auth.js](lib/validation/env-template-auth.js) - Exists (new), contains extractKvPathsFromEnvTemplate, collectRequiredAuthKvPaths, validateAuthKvCoverage
+- [lib/generator/external.js](lib/generator/external.js) - loadExternalIntegrationConfig exported
+- [tests/lib/validation/validator.test.js](tests/lib/validation/validator.test.js) - Auth kv coverage tests added
+
+### Test Coverage
+
+- External app with matching paths - Tested
+- External app with missing paths - Tested
+- oidc/none (empty security) - Tested
+- Config load failure (warning path) - Tested
+- Builder app no-op - Implicit (default mock isExternal: false)
+- validator.test.js: 4 new tests in "auth kv coverage (external integrations)" describe block
+
+### Code Quality Validation
+
+- Format: N/A (project uses eslint only, no separate format step)
+- Lint: PASSED (0 errors; 2 pre-existing warnings in lib/external-system/download.js, unrelated to this plan)
+- Tests: PASSED (231 suites, 5021 tests)
+
+### Cursor Rules Compliance
+
+- Code reuse: PASSED - Uses loadExternalIntegrationConfig, loadSystemFile from generator/external
+- Error handling: PASSED - try-catch in collectRequiredAuthKvPaths, returns warning on failure
+- Logging: PASSED - No inappropriate logging
+- Type safety: PASSED - JSDoc on all new functions
+- Async patterns: PASSED - async/await used correctly
+- File operations: PASSED - path.join used
+- Input validation: PASSED - Parameters validated
+- Module patterns: PASSED - CommonJS, proper exports
+- Security: PASSED - No hardcoded secrets; error message includes kv path reference (not secret value) for usability
+
+### Implementation Completeness
+
+- Schema: N/A - No schema changes
+- Services/Modules: COMPLETE - env-template-auth.js, validator.js, generator/external.js
+- Documentation: JSDoc on all new functions
+
+### Issues and Recommendations
+
+- None blocking. Optional: add explicit test that loadExternalIntegrationConfig is not called when isExternal is false; add test for multiple systems.
+- env-template-auth.js has no dedicated test file; coverage is via validator.test.js mocks. Acceptable per plan.
+
+### Final Validation Checklist
+
+- [x] All implementation tasks completed
+- [x] All files exist (validator.js, env-template-auth.js, generator/external.js export, validator.test.js)
+- [x] Tests exist and pass
+- [x] Code quality validation passes (lint, test)
+- [x] Cursor rules compliance verified
+- [x] Implementation complete
+

@@ -79,6 +79,14 @@ jest.mock('../../lib/commands/secrets-set', () => ({
   handleSecretsSet: jest.fn()
 }));
 
+jest.mock('../../lib/commands/credential-env', () => ({
+  runCredentialEnv: jest.fn()
+}));
+
+jest.mock('../../lib/commands/credential-push', () => ({
+  runCredentialPush: jest.fn()
+}));
+
 const fs = require('fs');
 const app = require('../../lib/app');
 const environmentDeploy = require('../../lib/deployment/environment');
@@ -95,6 +103,8 @@ const cliUtils = require('../../lib/utils/cli-utils');
 const logger = require('../../lib/utils/logger');
 const { handleSecure } = require('../../lib/commands/secure');
 const { handleSecretsSet } = require('../../lib/commands/secrets-set');
+const { runCredentialEnv } = require('../../lib/commands/credential-env');
+const { runCredentialPush } = require('../../lib/commands/credential-push');
 const chalk = require('chalk');
 
 describe('CLI Uncovered Command Handlers', () => {
@@ -246,6 +256,88 @@ describe('CLI Uncovered Command Handlers', () => {
 
       await handler('testapp', {});
       expect(cliUtils.handleCommandError).toHaveBeenCalledWith(error, 'deploy');
+      expect(process.exit).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('credential env command handler', () => {
+    it('should handle credential env successfully', async() => {
+      runCredentialEnv.mockResolvedValue('/workspace/integration/hubspot/.env');
+
+      const handler = async(systemKey) => {
+        try {
+          const { runCredentialEnv } = require('../../lib/commands/credential-env');
+          await runCredentialEnv(systemKey);
+        } catch (error) {
+          logger.error(chalk.red(`Error: ${error.message}`));
+          cliUtils.handleCommandError(error, 'credential env');
+          process.exit(1);
+        }
+      };
+
+      await handler('hubspot');
+      expect(runCredentialEnv).toHaveBeenCalledWith('hubspot');
+      expect(process.exit).not.toHaveBeenCalled();
+    });
+
+    it('should handle credential env error', async() => {
+      const error = new Error('env.template not found');
+      runCredentialEnv.mockRejectedValue(error);
+
+      const handler = async(systemKey) => {
+        try {
+          const { runCredentialEnv } = require('../../lib/commands/credential-env');
+          await runCredentialEnv(systemKey);
+        } catch (err) {
+          logger.error(chalk.red(`Error: ${err.message}`));
+          cliUtils.handleCommandError(err, 'credential env');
+          process.exit(1);
+        }
+      };
+
+      await handler('hubspot');
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('env.template not found'));
+      expect(process.exit).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('credential push command handler', () => {
+    it('should handle credential push successfully', async() => {
+      runCredentialPush.mockResolvedValue({ pushed: 2 });
+
+      const handler = async(systemKey) => {
+        try {
+          const { runCredentialPush } = require('../../lib/commands/credential-push');
+          await runCredentialPush(systemKey);
+        } catch (error) {
+          logger.error(chalk.red(`Error: ${error.message}`));
+          cliUtils.handleCommandError(error, 'credential push');
+          process.exit(1);
+        }
+      };
+
+      await handler('hubspot');
+      expect(runCredentialPush).toHaveBeenCalledWith('hubspot');
+      expect(process.exit).not.toHaveBeenCalled();
+    });
+
+    it('should handle credential push error', async() => {
+      const error = new Error('Authentication required');
+      runCredentialPush.mockRejectedValue(error);
+
+      const handler = async(systemKey) => {
+        try {
+          const { runCredentialPush } = require('../../lib/commands/credential-push');
+          await runCredentialPush(systemKey);
+        } catch (err) {
+          logger.error(chalk.red(`Error: ${err.message}`));
+          cliUtils.handleCommandError(err, 'credential push');
+          process.exit(1);
+        }
+      };
+
+      await handler('hubspot');
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Authentication required'));
       expect(process.exit).toHaveBeenCalledWith(1);
     });
   });

@@ -49,23 +49,24 @@ aifabrix wizard hubspot-test-v2 --debug
 - `--silent` - Run headless using `integration/<app>/wizard.yaml` only (no prompts)
 - `--debug` - Enable debug output and save debug manifests on validation failure
 
-**Wizard Flow:**
-1. **Mode Selection** - Create new system or add datasource
-2. **Source Selection** - OpenAPI file/URL, MCP server, or known platform
-3. **Parse OpenAPI** - Parse specification (if applicable)
-4. **Detect Type** - Automatically detect API type and category
-5. **User Preferences** - Field onboarding level (full \| standard \| minimal), intent, and features (MCP, ABAC, RBAC). Saved in `wizard.yaml` under `preferences.fieldOnboardingLevel` and sent in the request body to `generate-config` / `generate-config-stream`.
-6. **Generate Config** - AI-powered configuration generation
-7. **Review & Validate** - Review and optionally edit configurations
-8. **Save Files** - Save all files to `integration/<app-name>/`
+**Wizard Flow (7 steps):**
+1. **Create Session** - Mode (create new system or add datasource), app name or system
+2. **Source Selection** - OpenAPI file/URL, MCP server, or known platform; parse if applicable
+3. **Credential Selection** - Skip, create new, or use existing (optional)
+4. **Detect Type** - Automatically detect API type and category (skipped for known-platform)
+5. **User Preferences & Generate Config** - Field onboarding level (full \| standard \| minimal), intent, MCP/ABAC/RBAC; AI-powered configuration generation
+6. **Review & Validate** - Preview, accept or cancel, validate configurations
+7. **Save Files** - Save all files to `integration/<app-name>/`
 
 **Files Created:**
-- `application.yaml` - Application variables and external integration configuration
-- `<systemKey>-system.yaml` - System configuration
-- `<systemKey>-datasource-*.yaml` - Datasource configurations
+- `application.yaml` (or `application.json` if config format is `json`) - Application variables and external integration configuration
+- `<systemKey>-system.yaml` (or `*.json`) - System configuration
+- `<systemKey>-datasource-*.yaml` (or `*.json`) - Datasource configurations
 - `env.template` - Environment variable template
 - `README.md` - Documentation
 - `<systemKey>-deploy.json` - Deployment manifest (generated)
+
+When `format` is set in `~/.aifabrix/config.yaml` (via `aifabrix dev set-format`), the wizard generates files in that format.
 
 **Examples:**
 ```bash
@@ -103,6 +104,9 @@ Download external system from dataplane to local development structure.
 # Download external system from dataplane (uses controller and environment from config.yaml)
 aifabrix download hubspot
 
+# Download and convert component files to JSON (one-step: download → split → convert)
+aifabrix download hubspot --format json
+
 # Dry run to see what would be downloaded
 aifabrix download hubspot --dry-run
 ```
@@ -111,6 +115,7 @@ aifabrix download hubspot --dry-run
 - `<system-key>` - External system key (identifier)
 
 **Options:**
+- `--format <format>` - Output format: `json` | `yaml` (default: `yaml` or config format). When `json`, runs the full pipeline: download → split → convert component files to JSON. When `yaml`, only splits into YAML components. If not passed, uses config format (set via `aifabrix dev set-format`) or `yaml`.
 - `--dry-run` - Show what would be downloaded without actually downloading
 
 Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`).
@@ -218,6 +223,7 @@ aifabrix upload my-hubspot --dry-run
 
 **Options:**
 - `--dry-run` – Validate locally and build payload only; no API calls
+- `--debug` – Include debug output
 
 **Prerequisites:**
 - Login or app credentials for the system: `aifabrix login` or `aifabrix app register <system-key>`
@@ -231,7 +237,7 @@ aifabrix upload my-hubspot --dry-run
 
    **Skip conditions:** If there is no `.env` file, no `KV_*` keys, or values are empty, the credential push step is skipped.
 
-   **Mapping:** If your external system uses `kv://test-hubspot/clientId` and `kv://test-hubspot/clientSecret`, ensure your `.env` contains corresponding `KV_*` variables (e.g. `KV_TEST_HUBSPOT_CLIENTID`, `KV_TEST_HUBSPOT_CLIENTSECRET`) or values are available in aifabrix secrets so upload maps them to the expected `kv://` paths. The prefix `KV_` plus segments separated by underscores map to `kv://segment1/segment2/...` (lowercase).
+   **KV_* convention:** env.template and .env use `KV_<APPKEY>_<VAR>=value` (e.g. `KV_HUBSPOT_CLIENTID=xxx`, `KV_HUBSPOT_CLIENTSECRET=yyy`). Mapping: `KV_` + segments (underscores) → `kv://segment1/segment2/...` (lowercase). Example: `KV_HUBSPOT_CLIENTID` → `kv://hubspot/clientid`. The manifest must reference `kv://hubspot/clientid` (path style). Use `aifabrix credential env <system-key>` to prompt for values and write .env; use `aifabrix credential push <system-key>` to push .env secrets without a full upload.
 
    Dataplane permission **credential:create** is required for this automatic push; if the push fails (e.g. 403), upload still continues but secrets must be available elsewhere (e.g. env on dataplane). See [Secrets and config](../configuration/secrets-and-config.md) and [Permissions](permissions.md).
 5. Upload to dataplane → get upload ID
@@ -257,6 +263,58 @@ Dataplane: https://dataplane.example.com
 - **Validation failed** – Fix errors shown (e.g. missing `application.yaml`, invalid system/datasource files) then run again.
 - **Authentication required** – Run `aifabrix login` or `aifabrix app register <system-key>`.
 - For full controller deployment and environment promotion, run `aifabrix deploy <app>` (or promote via the web interface).
+
+---
+
+## aifabrix credential env <system-key>
+
+Prompt for KV_* credential values and write `integration/<system-key>/.env`.
+
+**What:** Interactively prompts for each KV_* variable found in env.template (e.g. KV_HUBSPOT_CLIENTID, KV_HUBSPOT_CLIENTSECRET), using password-type prompts for secrets, and writes the values to `.env`.
+
+**When:** After creating or downloading an external system integration. Use before `aifabrix credential push` or `aifabrix upload` to supply credential values.
+
+**Usage:**
+```bash
+aifabrix credential env hubspot
+```
+
+**Arguments:** `<system-key>` – External system key (same as `integration/<system-key>/`).
+
+**Prerequisites:**
+- `integration/<system-key>/env.template` must exist (created by wizard, download, or create --type external)
+
+**Process:**
+1. Parses env.template for `KV_<APPKEY>_<VAR>=` lines
+2. Prompts for each variable (password type for CLIENTID, CLIENTSECRET, APIKEY, USERNAME, PASSWORD, etc.)
+3. Writes `.env` with mode 0o600
+
+**See also:** [aifabrix credential push](#aifabrix-credential-push-system-key), [aifabrix upload](#aifabrix-upload-system-key)
+
+---
+
+<a id="aifabrix-credential-push-system-key"></a>
+## aifabrix credential push <system-key>
+
+Push credential secrets from `.env` to the dataplane (no upload/validate/publish).
+
+**What:** Reads `integration/<system-key>/.env`, collects KV_* variables with non-empty values, and pushes them to the dataplane credential API. Same credential push logic as `aifabrix upload`, but without the manifest upload step.
+
+**When:** You have updated .env with new credential values and want to sync them to the dataplane without re-uploading the full system.
+
+**Usage:**
+```bash
+aifabrix credential push hubspot
+```
+
+**Arguments:** `<system-key>` – External system key.
+
+**Prerequisites:**
+- Must be logged in: `aifabrix login` or `aifabrix app register <system-key>`
+- `integration/<system-key>/.env` with KV_* variables (use `aifabrix credential env <system-key>` to populate)
+- Dataplane permission: **credential:create**
+
+**See also:** [aifabrix credential env](#aifabrix-credential-env-system-key), [aifabrix credential list](permissions.md), [aifabrix upload](#aifabrix-upload-system-key)
 
 ---
 

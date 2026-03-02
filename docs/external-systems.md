@@ -73,17 +73,52 @@ Dataplane --> AIModels[AI Models<br/>Query via MCP/OpenAPI]:::base
 
 ---
 
+## Full System with CLI
+
+End-to-end flow to get a complete working external system using only the CLI:
+
+1. **Login**
+   ```bash
+   aifabrix login --controller <url> --method device --environment <env>
+   ```
+
+2. **Create** (choose one)
+   - **Wizard (recommended):** `aifabrix wizard` or `aifabrix wizard <app>`
+   - **Manual:** `aifabrix create <app> --type external`
+   - **Existing system:** `aifabrix download <system-key>`
+
+3. **Configure credentials** – Set credential values via the Miso Controller or Dataplane portal (recommended). For local dev or `aifabrix upload`, use `env.template` with `kv://` references and ensure secrets are in `~/.aifabrix/secrets.local.yaml` or resolved via `aifabrix-secrets` in config.
+
+4. **Validate**
+   ```bash
+   aifabrix validate <app>
+   ```
+
+5. **Deploy**
+   ```bash
+   aifabrix deploy <app>
+   ```
+   Or from the integration folder: `node deploy.js` (runs auth check, validate, deploy, integration tests).
+
+6. **Verify**
+   ```bash
+   aifabrix datasource list
+   aifabrix test-integration <app>
+   ```
+
+For interactive or headless wizard setup, see the [Wizard Guide](wizard.md).
+
+---
+
 ## Quick Start: Create Your First External System
 
-**New to external systems?** Try the interactive wizard:
+**New to external systems?** Use the [Wizard](wizard.md):
 
 ```bash
 aifabrix wizard
 ```
 
-The wizard guides you through creating external systems with AI-powered configuration generation. See the [Wizard Guide](wizard.md) for details.
-
-**Next step:** Use the [Wizard](wizard.md) for interactive setup, or continue with the manual steps below.
+The wizard guides you through creating external systems with AI-powered configuration generation.
 
 **Prefer manual creation?** Follow the steps below to create a HubSpot integration manually.
 
@@ -1054,15 +1089,20 @@ See the complete example in `integration/hubspot/hubspot-datasource-company.yaml
 
 ### env.template
 
-```bash
-# HubSpot OAuth2 - Key Vault references for authentication.security
-# Values are stored in Key Vault and managed by the platform
+env.template uses the **KV_* convention**: `KV_<APPKEY>_<VAR>=value` (e.g. `KV_HUBSPOT_CLIENTID=`, `KV_HUBSPOT_CLIENTSECRET=`). Mapping: `KV_` + segments (underscores) → `kv://segment1/segment2/...` (lowercase). Example: `KV_HUBSPOT_CLIENTID` → `kv://hubspot/clientid`. The manifest references `kv://hubspot/clientid` (path style).
 
-# Optional: document kv:// keys used in authentication.security for local dev
-# hubspot-clientid, hubspot-clientsecret
+```bash
+# HubSpot OAuth2 Configuration
+# Use KV_* for credential push (aifabrix credential push)
+
+KV_HUBSPOT_CLIENTID=
+KV_HUBSPOT_CLIENTSECRET=
+TOKEN_URL=https://api.hubapi.com/oauth/v1/token
 ```
 
-Auth secrets are defined in `authentication.security` as `kv://` references. The platform creates the credential on deploy and resolves values at runtime.
+**Credential flow:**
+1. Run `aifabrix credential env hubspot` to prompt for values and write `.env`
+2. Run `aifabrix credential push hubspot` or `aifabrix upload hubspot` to push secrets to the dataplane
 
 ---
 
@@ -1082,9 +1122,14 @@ The AI Fabrix Builder supports a complete development workflow for external syst
 Download an existing external system from the dataplane to your local development environment:
 
 ```bash
-# Download external system
+# Download external system (YAML components; default)
 aifabrix download hubspot
+
+# Download and convert to JSON in one step
+aifabrix download hubspot --format json
 ```
+
+Use `--format json` to run the full pipeline (download → split → convert) in one command. When `format` is set in `~/.aifabrix/config.yaml` (via `aifabrix dev set-format`), download uses that default when `--format` is not passed. Create external and wizard also use the config format for generated files.
 
 **What happens:**
 - Downloads system configuration from dataplane API
@@ -1421,6 +1466,7 @@ status:
 
 ## Next Steps
 
+- [Wizard Guide](wizard.md) - Interactive or headless wizard setup
 - [Configuration: External integration](configuration/application-yaml.md#external-integration-and-external-system) - Detailed config options
 - [CLI Reference](commands/external-integration.md) - All commands for external systems
 - [Deploying](deploying.md) - Deployment flow and options

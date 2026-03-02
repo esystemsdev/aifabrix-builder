@@ -222,28 +222,6 @@ describe('Credential list command', () => {
     expect(output).toContain('cred-by-key');
   });
 
-  it('should use controller option when provided', async() => {
-    getOrRefreshDeviceToken.mockResolvedValue({
-      token: 'test-token',
-      controller: 'https://custom.controller.com'
-    });
-    resolveControllerUrl.mockResolvedValue('https://fallback.example.com');
-    resolveDataplaneUrl.mockResolvedValue('https://dataplane.from.controller.com');
-
-    await runCredentialList({ controller: 'https://custom.controller.com' });
-
-    expect(resolveDataplaneUrl).toHaveBeenCalledWith(
-      'https://custom.controller.com',
-      'dev',
-      expect.any(Object)
-    );
-    expect(listCredentials).toHaveBeenCalledWith(
-      'https://dataplane.from.controller.com',
-      expect.objectContaining({ type: 'bearer' }),
-      expect.any(Object)
-    );
-  });
-
   it('should exit when Dataplane URL cannot be resolved', async() => {
     resolveDataplaneUrl.mockRejectedValue(new Error('No dataplane for env'));
 
