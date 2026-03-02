@@ -251,50 +251,58 @@ All implementation requirements have been implemented. The Wizard Entity Selecti
 
 ### Task Completion
 
-| Task | Status | Evidence |
-|------|--------|----------|
-| 1. Add inquirer-autocomplete-prompt to package.json | Done | Dependency present |
-| 2. promptForEntitySelection in wizard-prompts-secondary | Done | Function in wizard-prompts-secondary.js, exported via wizard-prompts.js |
-| 3. handleEntitySelection | Done | lib/commands/wizard-entity-selection.js (extracted for file size) |
-| 4. Wire handleEntitySelection into wizard.js | Done | doWizardSteps calls it after handleTypeDetection |
-| 5. entityName in buildConfigPayload, callGenerateApi | Done | buildConfigPayload accepts entityName; callGenerateApi passes it |
-| 6. generateConfig JSDoc entityName | Done | JSDoc in wizard.api.js |
-| 7. Headless: schema, wizard-headless, validation | Done | entityName in schema; validateHeadlessEntityName; pass entityName |
-| 8. docs/wizard.md Step 4.5 | Done | Section added with headless entityName docs |
+
+| Task                                                    | Status | Evidence                                                                |
+| ------------------------------------------------------- | ------ | ----------------------------------------------------------------------- |
+| 1. Add inquirer-autocomplete-prompt to package.json     | Done   | Dependency present                                                      |
+| 2. promptForEntitySelection in wizard-prompts-secondary | Done   | Function in wizard-prompts-secondary.js, exported via wizard-prompts.js |
+| 3. handleEntitySelection                                | Done   | lib/commands/wizard-entity-selection.js (extracted for file size)       |
+| 4. Wire handleEntitySelection into wizard.js            | Done   | doWizardSteps calls it after handleTypeDetection                        |
+| 5. entityName in buildConfigPayload, callGenerateApi    | Done   | buildConfigPayload accepts entityName; callGenerateApi passes it        |
+| 6. generateConfig JSDoc entityName                      | Done   | JSDoc in wizard.api.js                                                  |
+| 7. Headless: schema, wizard-headless, validation        | Done   | entityName in schema; validateHeadlessEntityName; pass entityName       |
+| 8. docs/wizard.md Step 4.5                              | Done   | Section added with headless entityName docs                             |
+
 
 **Completion**: 100% (8/8)
 
 ### File Existence Validation
 
-| File | Status |
-|------|--------|
-| package.json | Done – inquirer-autocomplete-prompt added |
-| lib/generator/wizard-prompts-secondary.js | Done – promptForEntitySelection |
-| lib/commands/wizard-entity-selection.js | Done – handleEntitySelection (new file) |
-| lib/commands/wizard-core.js | Done – imports and exports handleEntitySelection |
-| lib/commands/wizard.js | Done – entity selection flow, entityName passed |
-| lib/commands/wizard-core-helpers.js | Done – buildConfigPayload(entityName) |
-| lib/commands/wizard-headless.js | Done – validateHeadlessEntityName, entityName passed |
-| lib/schema/wizard-config.schema.json | Done – entityName in source.properties |
-| lib/api/wizard.api.js | Done – JSDoc config.entityName |
-| docs/wizard.md | Done – Step 4.5 documentation |
+
+| File                                      | Status                                               |
+| ----------------------------------------- | ---------------------------------------------------- |
+| package.json                              | Done – inquirer-autocomplete-prompt added            |
+| lib/generator/wizard-prompts-secondary.js | Done – promptForEntitySelection                      |
+| lib/commands/wizard-entity-selection.js   | Done – handleEntitySelection (new file)              |
+| lib/commands/wizard-core.js               | Done – imports and exports handleEntitySelection     |
+| lib/commands/wizard.js                    | Done – entity selection flow, entityName passed      |
+| lib/commands/wizard-core-helpers.js       | Done – buildConfigPayload(entityName)                |
+| lib/commands/wizard-headless.js           | Done – validateHeadlessEntityName, entityName passed |
+| lib/schema/wizard-config.schema.json      | Done – entityName in source.properties               |
+| lib/api/wizard.api.js                     | Done – JSDoc config.entityName                       |
+| docs/wizard.md                            | Done – Step 4.5 documentation                        |
+
 
 ### Test Coverage
 
-| Test | Status |
-|------|--------|
-| promptForEntitySelection (choices, format, empty) | tests/lib/generator/wizard-prompts-secondary.test.js |
-| handleEntitySelection (null spec, empty entities, prompt, discover fails) | tests/lib/commands/wizard-core.test.js |
-| buildConfigPayload with entityName | tests/lib/commands/wizard-core.test.js |
-| Headless entityName (pass, invalid) | tests/lib/commands/wizard-headless.test.js |
+
+| Test                                                                      | Status                                               |
+| ------------------------------------------------------------------------- | ---------------------------------------------------- |
+| promptForEntitySelection (choices, format, empty)                         | tests/lib/generator/wizard-prompts-secondary.test.js |
+| handleEntitySelection (null spec, empty entities, prompt, discover fails) | tests/lib/commands/wizard-core.test.js               |
+| buildConfigPayload with entityName                                        | tests/lib/commands/wizard-core.test.js               |
+| Headless entityName (pass, invalid)                                       | tests/lib/commands/wizard-headless.test.js           |
+
 
 ### Code Quality Validation
 
-| Step | Result |
-|------|--------|
-| Format (npm run lint:fix) | PASSED |
-| Lint (npm run lint) | PASSED (0 errors, 0 warnings) |
-| Tests (npm test) | PASSED (232 suites, 5077 tests) |
+
+| Step                      | Result                          |
+| ------------------------- | ------------------------------- |
+| Format (npm run lint:fix) | PASSED                          |
+| Lint (npm run lint)       | PASSED (0 errors, 0 warnings)   |
+| Tests (npm test)          | PASSED (232 suites, 5077 tests) |
+
 
 ### Cursor Rules Compliance
 
@@ -308,9 +316,9 @@ All implementation requirements have been implemented. The Wizard Entity Selecti
 
 ### Final Validation Checklist
 
-- [x] All implementation tasks completed
-- [x] All files exist and contain expected changes
-- [x] Tests exist for new code
-- [x] Code quality validation passes (format, lint, test)
-- [x] Implementation complete
+- All implementation tasks completed
+- All files exist and contain expected changes
+- Tests exist for new code
+- Code quality validation passes (format, lint, test)
+- Implementation complete
 
