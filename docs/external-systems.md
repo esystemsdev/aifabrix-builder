@@ -389,8 +389,8 @@ authentication:
     tokenUrl: "https://api.hubapi.com/oauth/v1/token"
     scope: "crm.objects.companies.read crm.objects.contacts.read crm.objects.deals.read"
   security:
-    clientId: "kv://hubspot-clientid"
-    clientSecret: "kv://hubspot-clientsecret"
+    clientId: "kv://hubspot/clientid"
+    clientSecret: "kv://hubspot/clientsecret"
 openapi:
   documentKey: hubspot-v3
   autoDiscoverEntities: false
@@ -490,8 +490,8 @@ authentication:
     tokenUrl: "https://api.example.com/oauth/token"
     scope: "read write"
   security:
-    clientId: "kv://myapp-oauth2-client-id"
-    clientSecret: "kv://myapp-oauth2-client-secret"
+    clientId: "kv://myapp/clientid"
+    clientSecret: "kv://myapp/clientsecret"
 ```
 
 Register OAuth2 app in the external system, create Key Vault entries for `clientId` and `clientSecret`, and configure the dataplane callback URL. Redirect URI is managed by the dataplane.
@@ -505,7 +505,7 @@ authentication:
     baseUrl: "https://api.example.com"
     headerName: "X-API-Key"
   security:
-    apiKey: "kv://myapp-api-key"
+    apiKey: "kv://myapp/apikey"
 ```
 
 #### Basic Auth
@@ -516,8 +516,8 @@ authentication:
   variables:
     baseUrl: "https://api.example.com"
   security:
-    username: "kv://myapp-username"
-    password: "kv://myapp-password"
+    username: "kv://myapp/username"
+    password: "kv://myapp/password"
 ```
 
 #### Azure AD (AAD)
@@ -530,8 +530,8 @@ authentication:
     tenantId: "your-tenant-id"
     scope: "https://graph.microsoft.com/.default"
   security:
-    clientId: "kv://myapp-aad-client-id"
-    clientSecret: "kv://myapp-aad-client-secret"
+    clientId: "kv://myapp/clientid"
+    clientSecret: "kv://myapp/clientsecret"
 ```
 
 Register Azure AD app, create Key Vault entries, and configure API permissions.
@@ -1035,8 +1035,8 @@ authentication:
     tokenUrl: "https://api.hubapi.com/oauth/v1/token"
     scope: "crm.objects.companies.read crm.objects.contacts.read crm.objects.deals.read"
   security:
-    clientId: "kv://hubspot-clientid"
-    clientSecret: "kv://hubspot-clientsecret"
+    clientId: "kv://hubspot/clientid"
+    clientSecret: "kv://hubspot/clientsecret"
 configuration:
   - name: HUBSPOT_API_VERSION
     value: v3
@@ -1103,6 +1103,8 @@ TOKEN_URL=https://api.hubapi.com/oauth/v1/token
 **Credential flow:**
 1. Run `aifabrix credential env hubspot` to prompt for values and write `.env`
 2. Run `aifabrix credential push hubspot` or `aifabrix upload hubspot` to push secrets to the dataplane
+
+If env.template keys or values drift from the system file (e.g. wrong variable names or non–path-style kv refs), run `aifabrix repair <app>` to align env.template with the system.
 
 ---
 
@@ -1450,7 +1452,7 @@ status:
 → Check datasource is enabled: `"enabled": true`
 
 **"application.yaml out of sync with files"** or **"External datasource file not found"**
-→ Run `aifabrix repair <app>` to align `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files on disk.
+→ Run `aifabrix repair <app>` to align `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files on disk, and to repair env.template (KV_* names and path-style `kv://` values) to match the system file.
 
 **"OpenAPI operations not working"**
 → Verify `documentKey` matches registered OpenAPI spec

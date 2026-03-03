@@ -1,9 +1,23 @@
 {
   "app": {
     "key": "hubspot",
-    "displayName": "HubSpot CRM Integration",
-    "description": "HubSpot CRM external system integration with companies, contacts, and deals",
+    "displayName": "HubSpot CRM",
+    "description": "HubSpot CRM integration with OpenAPI support for companies, contacts, and deals",
     "type": "external"
+  },
+  "externalIntegration": {
+    "schemaBasePath": "./",
+    "systems": [
+      "hubspot-system.json"
+    ],
+    "dataSources": [
+      "hubspot-datasource-company.json",
+      "hubspot-datasource-contact.json",
+      "hubspot-datasource-deal.json",
+      "hubspot-datasource-users.json"
+    ],
+    "autopublish": true,
+    "version": "1.0.0"
   },
   "configuration": [
     {
@@ -36,18 +50,5 @@
         }
       }
     }
-  ],
-  "externalIntegration": {
-    "schemaBasePath": "./",
-    "systems": [
-      "hubspot-system.json"
-    ],
-    "dataSources": [
-      "hubspot-datasource-company.json",
-      "hubspot-datasource-contact.json",
-      "hubspot-datasource-deal.json"
-    ],
-    "autopublish": true,
-    "version": "1.0.0"
-  }
+  ]
 }

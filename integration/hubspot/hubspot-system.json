@@ -12,8 +12,8 @@
       "scope": "crm.objects.companies.read crm.objects.companies.write crm.objects.contacts.read crm.objects.contacts.write crm.objects.deals.read crm.objects.deals.write"
     },
     "security": {
-      "clientId": "kv://hubspot-clientidKeyVault",
-      "clientSecret": "kv://hubspot-clientsecretKeyVault"
+      "clientId": "kv://hubspot/clientid",
+      "clientSecret": "kv://hubspot/clientsecret"
     }
   },
   "configuration": [
@@ -63,5 +63,11 @@
     "sales",
     "marketing",
     "hubspot"
+  ],
+  "dataSources": [
+    "hubspot-company",
+    "hubspot-contact",
+    "hubspot-deal",
+    "hubspot-users-datasource"
   ]
 }

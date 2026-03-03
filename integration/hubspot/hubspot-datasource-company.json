@@ -162,6 +162,332 @@
         "description": "Last modification timestamp",
         "indexed": false
       }
+    },
+    "compiledAttributes": {
+      "id": {
+        "raw_path": [
+          "id"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Unique company identifier",
+        "indexed": true
+      },
+      "name": {
+        "raw_path": [
+          "properties",
+          "name",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Company name",
+        "indexed": false
+      },
+      "domain": {
+        "raw_path": [
+          "properties",
+          "domain",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "toLower",
+            "args": []
+          },
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Company domain for ABAC filtering",
+        "indexed": false
+      },
+      "country": {
+        "raw_path": [
+          "properties",
+          "country",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "toUpper",
+            "args": []
+          },
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Country code for ABAC filtering",
+        "indexed": false
+      },
+      "city": {
+        "raw_path": [
+          "properties",
+          "city",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "City name",
+        "indexed": false
+      },
+      "industry": {
+        "raw_path": [
+          "properties",
+          "industry",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Industry classification",
+        "indexed": false
+      },
+      "website": {
+        "raw_path": [
+          "properties",
+          "website",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Company website URL",
+        "indexed": false
+      },
+      "phone": {
+        "raw_path": [
+          "properties",
+          "phone",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Phone number",
+        "indexed": false
+      },
+      "createdAt": {
+        "raw_path": [
+          "properties",
+          "createdate",
+          "value"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Creation timestamp",
+        "indexed": false
+      },
+      "updatedAt": {
+        "raw_path": [
+          "properties",
+          "hs_lastmodifieddate",
+          "value"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Last modification timestamp",
+        "indexed": false
+      }
+    },
+    "compiledFields": {
+      "id": {
+        "raw_path": [
+          "id"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Unique company identifier",
+        "indexed": true
+      },
+      "name": {
+        "raw_path": [
+          "properties",
+          "name",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Company name",
+        "indexed": false
+      },
+      "domain": {
+        "raw_path": [
+          "properties",
+          "domain",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "toLower",
+            "args": []
+          },
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Company domain for ABAC filtering",
+        "indexed": false
+      },
+      "country": {
+        "raw_path": [
+          "properties",
+          "country",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "toUpper",
+            "args": []
+          },
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Country code for ABAC filtering",
+        "indexed": false
+      },
+      "city": {
+        "raw_path": [
+          "properties",
+          "city",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "City name",
+        "indexed": false
+      },
+      "industry": {
+        "raw_path": [
+          "properties",
+          "industry",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Industry classification",
+        "indexed": false
+      },
+      "website": {
+        "raw_path": [
+          "properties",
+          "website",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Company website URL",
+        "indexed": false
+      },
+      "phone": {
+        "raw_path": [
+          "properties",
+          "phone",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Phone number",
+        "indexed": false
+      },
+      "createdAt": {
+        "raw_path": [
+          "properties",
+          "createdate",
+          "value"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Creation timestamp",
+        "indexed": false
+      },
+      "updatedAt": {
+        "raw_path": [
+          "properties",
+          "hs_lastmodifieddate",
+          "value"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Last modification timestamp",
+        "indexed": false
+      }
     }
   },
   "exposed": {

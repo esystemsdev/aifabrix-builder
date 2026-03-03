@@ -190,6 +190,400 @@
         "description": "Last modification timestamp",
         "indexed": false
       }
+    },
+    "compiledAttributes": {
+      "id": {
+        "raw_path": [
+          "id"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Unique contact identifier",
+        "indexed": true
+      },
+      "firstName": {
+        "raw_path": [
+          "properties",
+          "firstname",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "First name",
+        "indexed": false
+      },
+      "lastName": {
+        "raw_path": [
+          "properties",
+          "lastname",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Last name",
+        "indexed": false
+      },
+      "email": {
+        "raw_path": [
+          "properties",
+          "email",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "toLower",
+            "args": []
+          },
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Email address for ABAC filtering",
+        "indexed": false
+      },
+      "phone": {
+        "raw_path": [
+          "properties",
+          "phone",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Phone number",
+        "indexed": false
+      },
+      "company": {
+        "raw_path": [
+          "properties",
+          "company",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Associated company name",
+        "indexed": false
+      },
+      "jobTitle": {
+        "raw_path": [
+          "properties",
+          "jobtitle",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Job title",
+        "indexed": false
+      },
+      "address": {
+        "raw_path": [
+          "properties",
+          "address",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Street address",
+        "indexed": false
+      },
+      "city": {
+        "raw_path": [
+          "properties",
+          "city",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "City name",
+        "indexed": false
+      },
+      "country": {
+        "raw_path": [
+          "properties",
+          "country",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "toUpper",
+            "args": []
+          },
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Country code for ABAC filtering",
+        "indexed": false
+      },
+      "createdAt": {
+        "raw_path": [
+          "properties",
+          "createdate",
+          "value"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Creation timestamp",
+        "indexed": false
+      },
+      "updatedAt": {
+        "raw_path": [
+          "properties",
+          "hs_lastmodifieddate",
+          "value"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Last modification timestamp",
+        "indexed": false
+      }
+    },
+    "compiledFields": {
+      "id": {
+        "raw_path": [
+          "id"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Unique contact identifier",
+        "indexed": true
+      },
+      "firstName": {
+        "raw_path": [
+          "properties",
+          "firstname",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "First name",
+        "indexed": false
+      },
+      "lastName": {
+        "raw_path": [
+          "properties",
+          "lastname",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Last name",
+        "indexed": false
+      },
+      "email": {
+        "raw_path": [
+          "properties",
+          "email",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "toLower",
+            "args": []
+          },
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Email address for ABAC filtering",
+        "indexed": false
+      },
+      "phone": {
+        "raw_path": [
+          "properties",
+          "phone",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Phone number",
+        "indexed": false
+      },
+      "company": {
+        "raw_path": [
+          "properties",
+          "company",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Associated company name",
+        "indexed": false
+      },
+      "jobTitle": {
+        "raw_path": [
+          "properties",
+          "jobtitle",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Job title",
+        "indexed": false
+      },
+      "address": {
+        "raw_path": [
+          "properties",
+          "address",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Street address",
+        "indexed": false
+      },
+      "city": {
+        "raw_path": [
+          "properties",
+          "city",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "City name",
+        "indexed": false
+      },
+      "country": {
+        "raw_path": [
+          "properties",
+          "country",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "toUpper",
+            "args": []
+          },
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Country code for ABAC filtering",
+        "indexed": false
+      },
+      "createdAt": {
+        "raw_path": [
+          "properties",
+          "createdate",
+          "value"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Creation timestamp",
+        "indexed": false
+      },
+      "updatedAt": {
+        "raw_path": [
+          "properties",
+          "hs_lastmodifieddate",
+          "value"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Last modification timestamp",
+        "indexed": false
+      }
     }
   },
   "exposed": {

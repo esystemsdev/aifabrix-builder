@@ -20,6 +20,7 @@ const {
   pushCredentialSecrets,
   kvEnvKeyToPath,
   systemKeyToKvPrefix,
+  securityKeyToVar,
   isValidKvPath,
   resolveKvValue
 } = require('../../../lib/utils/credential-secrets-env');
@@ -43,6 +44,21 @@ describe('credential-secrets-env', () => {
       expect(systemKeyToKvPrefix('')).toBe('');
       expect(systemKeyToKvPrefix(null)).toBe('');
       expect(systemKeyToKvPrefix(undefined)).toBe('');
+    });
+  });
+
+  describe('securityKeyToVar', () => {
+    it('should convert camelCase security key to UPPERCASE no underscores', () => {
+      expect(securityKeyToVar('clientId')).toBe('CLIENTID');
+      expect(securityKeyToVar('clientSecret')).toBe('CLIENTSECRET');
+    });
+    it('should handle keys with existing underscores', () => {
+      expect(securityKeyToVar('client_id')).toBe('CLIENTID');
+    });
+    it('should return empty string for empty or invalid', () => {
+      expect(securityKeyToVar('')).toBe('');
+      expect(securityKeyToVar(null)).toBe('');
+      expect(securityKeyToVar(undefined)).toBe('');
     });
   });
 

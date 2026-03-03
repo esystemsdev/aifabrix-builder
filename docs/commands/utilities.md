@@ -214,7 +214,7 @@ aifabrix convert hubspot --format json --force
 
 Repair external integration config when `application.yaml` drifts from files on disk.
 
-**What:** Aligns `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files, fixes `app.key` to match `system.key`, aligns datasource `systemKey` values to match the system key, creates a minimal `externalIntegration` block when missing, extracts `rbac.yaml` from system roles/permissions when absent, and regenerates `<systemKey>-deploy.json`.
+**What:** Aligns `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files, syncs the system file `dataSources` array to datasource keys from discovered files (add/delete/rename), removes authentication-only variables from the system `configuration` array (keeps keyvault auth entries), fixes `app.key` to match `system.key`, aligns datasource `systemKey` values to match the system key, creates a minimal `externalIntegration` block when missing, extracts `rbac.yaml` from system roles/permissions when absent, repairs env.template so KV_ variable names and path-style `kv://` values match the system file (adds missing auth vars, corrects names/values), and regenerates `<systemKey>-deploy.json`.
 
 **When:** After converting files (JSON ↔ YAML), after adding/removing datasource files, when validation reports "External datasource file not found", or when `application.yaml` gets out of sync with files on disk.
 
@@ -222,10 +222,13 @@ Repair external integration config when `application.yaml` drifts from files on 
 - **File list drift** — Config lists `.json` but files are `.yaml` (or vice versa)
 - **Deleted datasource** — Config lists a file that no longer exists
 - **Added datasource** — File exists on disk but not in config
+- **System file dataSources drift** — System file `dataSources` array updated to match datasource keys from discovered files (add/delete/rename)
+- **Authentication variables in configuration** — Standard auth variables (BASEURL, CLIENTID, CLIENTSECRET, TOKENURL, etc.) removed from `configuration`; they are supplied from the credential at runtime. Use the configuration array only for custom variables.
 - **Missing externalIntegration** — No block; repair creates it from discovered files
 - **Datasource systemKey mismatch** — Datasource file has `systemKey: X` but system file has `key: Y`; repair updates `systemKey` in each datasource file to match system key
 - **system.key mismatch** — System file has `key: X` but `app.key` is `Y`; repair updates `app.key`
 - **rbac.yaml missing** — System has roles/permissions but no `rbac.yaml`; repair creates it
+- **env.template key drift** — env.template has wrong or missing KV_* keys or non–path-style kv values; repair aligns names and values with the system's authentication.security and configuration
 - **Stale deploy manifest** — Regenerates `<systemKey>-deploy.json` after config changes
 
 **Usage:**
