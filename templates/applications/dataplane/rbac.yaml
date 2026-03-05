@@ -38,8 +38,8 @@ roles:
 permissions:
   # Credential management
   - name: "credential:create"
-    roles: ["aifabrix-platform-admin"]
-    description: "Create credentials"
+    roles: ["aifabrix-platform-admin", "aifabrix-deployment-admin", "aifabrix-developer"]
+    description: "Create credentials (and store kv:// secrets for upload/publish)"
   
   - name: "credential:read"
     roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-compliance-admin", "aifabrix-observer"]
