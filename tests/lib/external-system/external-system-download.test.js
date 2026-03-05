@@ -41,9 +41,13 @@ jest.mock('chalk', () => {
   mockChalk.gray = jest.fn((text) => text);
   return mockChalk;
 });
-jest.mock('../../../lib/utils/token-manager', () => ({
-  getDeploymentAuth: jest.fn()
-}));
+jest.mock('../../../lib/utils/token-manager', () => {
+  const actual = jest.requireActual('../../../lib/utils/token-manager');
+  return {
+    ...actual,
+    getDeploymentAuth: jest.fn()
+  };
+});
 jest.mock('../../../lib/api/external-systems.api', () => ({
   getExternalSystemConfig: jest.fn(),
   listExternalSystems: jest.fn()
@@ -388,6 +392,17 @@ describe('External System Download Module', () => {
       await expect(
         downloadExternalSystem(systemKey, {})
       ).rejects.toThrow('Authentication required');
+    });
+
+    it('should throw when auth has client credentials but no token (requireBearerForDataplanePipeline)', async() => {
+      getDeploymentAuth.mockResolvedValue({
+        clientId: 'client-id',
+        clientSecret: 'client-secret'
+      });
+      const { downloadExternalSystem } = require('../../../lib/external-system/download');
+      await expect(
+        downloadExternalSystem(systemKey, {})
+      ).rejects.toThrow('Dataplane pipeline endpoints require OAuth2 (Bearer token)');
     });
 
     it('should throw when config returns 401 and system not in list', async() => {

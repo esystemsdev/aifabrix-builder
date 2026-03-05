@@ -408,7 +408,7 @@ aifabrix deploy myapp
 
 4. **Sends to controller**
    - Sends manifest to controller for deploy
-   - Sends manifest only; uses Bearer or client credentials authentication
+   - Sends manifest only; uses Bearer token (Controller and Dataplane app endpoints accept token only; client-id/secret are used only to obtain the token)
 
 5. **Controller processes**
    - Validates manifest and computes deployment key internally
@@ -1059,8 +1059,8 @@ Poll -->|No| Complete
 - **Authentication Priority**: The deploy command automatically selects authentication method:
   1. Device token (if available) - for user-level audit
   2. Client token (if available) - for application-level authentication
-  3. Client credentials (fallback) - direct credential authentication
-- **Bearer token only when logged in**: When using a Bearer token (device or client), the CLI **does not send client ID or client secret**—only the `Authorization: Bearer <token>` header. The CLI validates the token with the controller before deploy; if the token is invalid or expired, you are prompted to run `aifabrix login`. Client ID and secret are sent only when using the client-credentials fallback (e.g. CI/CD with no stored token).
+  3. When no token is available: if client credentials exist in secrets, the CLI exchanges them for a client token and then uses Bearer only.
+- **Token-only for app endpoints**: User token (device from login) is sent as **`Authorization: Bearer <token>`**. Application token (client token from credentials exchange) is sent as **`x-client-token: <token>`** (not Bearer). The CLI never sends x-client-id or x-client-secret to app endpoints; those are used only at the token-issuing endpoint to obtain the client token.
 - **Credential Storage**: Client credentials displayed but not automatically saved (copy to GitHub Secrets)
 - **Token Management**: Bearer tokens auto-refresh with expiry tracking
 - **Deployment key**: Controller computes and stores the key from the manifest; see [Deployment key](configuration/deployment-key.md)
@@ -1118,12 +1118,12 @@ end
 Deploy[aifabrix deploy]:::base --> CheckDevice{Device Token<br/>Available?}
 CheckDevice -->|Yes| UseDevice[Use Device Token<br/>Bearer token]:::base
 CheckDevice -->|No| CheckClient{Client Token<br/>Available?}
-CheckClient -->|Yes| UseClient[Use Client Token<br/>Bearer token]:::base
-CheckClient -->|No| UseCreds[Use Client Credentials<br/>x-client-id<br/>x-client-secret]:::base
+CheckClient -->|Yes| UseClient[Use Client Token<br/>x-client-token]:::base
+CheckClient -->|No| ExchangeCreds[Exchange credentials<br/>for token → Bearer]:::base
 
 UseDevice --> Controller[Miso Controller]:::base
 UseClient --> Controller
-UseCreds --> Controller
+ExchangeCreds --> Controller
 ```
 
 ### API Endpoints
@@ -1138,10 +1138,9 @@ Headers:
   Authorization: Bearer <device-token>
 # Request body does not include clientId or clientSecret when using Bearer.
 
-# Option 2: Client credentials - for application-level audit
+# Option 2: Client token (application token; credentials exchanged at token endpoint)
 Headers:
-  x-client-id: <client-id>
-  x-client-secret: <client-secret>
+  x-client-token: <client-token>
 
 Body:
 {
@@ -1161,10 +1160,9 @@ GET https://controller.aifabrix.dev/api/v1/environments/{env}/deployments/{deplo
 Headers:
   Authorization: Bearer <device-token>
 
-# Option 2: Client credentials
+# Option 2: Client token (application token)
 Headers:
-  x-client-id: <client-id>
-  x-client-secret: <client-secret>
+  x-client-token: <client-token>
 
 Response: {
   "deploymentId": "deploy-123",

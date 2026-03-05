@@ -112,21 +112,23 @@ describe('ApiClient', () => {
       expect(headers['Authorization']).toBe('Bearer test-token');
     });
 
-    it('should add client credentials headers', () => {
+    it('should not add x-client-id or x-client-secret for app requests (token-only)', () => {
       const client = new ApiClient(baseUrl, {
         type: 'client-credentials',
         clientId: 'client-id',
         clientSecret: 'client-secret'
       });
       const headers = client._buildHeaders();
-      expect(headers['x-client-id']).toBe('client-id');
-      expect(headers['x-client-secret']).toBe('client-secret');
+      expect(headers['x-client-id']).toBeUndefined();
+      expect(headers['x-client-secret']).toBeUndefined();
+      expect(headers['Authorization']).toBeUndefined();
     });
 
-    it('should add Authorization header for client-token', () => {
-      const client = new ApiClient(baseUrl, { type: 'client-token', token: 'client-token' });
+    it('should add x-client-token header for client-token type (application token)', () => {
+      const client = new ApiClient(baseUrl, { type: 'client-token', token: 'app-token-123' });
       const headers = client._buildHeaders();
-      expect(headers['Authorization']).toBe('Bearer client-token');
+      expect(headers['x-client-token']).toBe('app-token-123');
+      expect(headers['Authorization']).toBeUndefined();
     });
 
     it('should not add Authorization header if bearer type but no token', () => {
@@ -141,24 +143,14 @@ describe('ApiClient', () => {
       expect(headers['Authorization']).toBeUndefined();
     });
 
-    it('should add only clientId if clientSecret is missing', () => {
+    it('should not add auth headers when client-credentials type has no token', () => {
       const client = new ApiClient(baseUrl, {
         type: 'client-credentials',
         clientId: 'client-id'
       });
       const headers = client._buildHeaders();
-      expect(headers['x-client-id']).toBe('client-id');
-      expect(headers['x-client-secret']).toBeUndefined();
-    });
-
-    it('should add only clientSecret if clientId is missing', () => {
-      const client = new ApiClient(baseUrl, {
-        type: 'client-credentials',
-        clientSecret: 'client-secret'
-      });
-      const headers = client._buildHeaders();
       expect(headers['x-client-id']).toBeUndefined();
-      expect(headers['x-client-secret']).toBe('client-secret');
+      expect(headers['x-client-secret']).toBeUndefined();
     });
   });
 
@@ -252,7 +244,7 @@ describe('ApiClient', () => {
       await expect(client.get('/api/v1/test')).rejects.toThrow('Authenticated GET failed');
     });
 
-    it('should handle GET with query params and client-credentials auth', async() => {
+    it('should use makeApiCall without x-client-id/x-client-secret when client-credentials type (token-only for app)', async() => {
       const client = new ApiClient(baseUrl, {
         type: 'client-credentials',
         clientId: 'client-id',
@@ -260,16 +252,10 @@ describe('ApiClient', () => {
       });
       await client.get('/api/v1/test', { params: { page: 1 } });
 
-      expect(makeApiCall).toHaveBeenCalledWith(
-        `${baseUrl}/api/v1/test?page=1`,
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            'x-client-id': 'client-id',
-            'x-client-secret': 'client-secret'
-          })
-        })
-      );
+      expect(makeApiCall).toHaveBeenCalled();
+      const [, options] = makeApiCall.mock.calls[0];
+      expect(options.headers['x-client-id']).toBeUndefined();
+      expect(options.headers['x-client-secret']).toBeUndefined();
     });
   });
 
@@ -385,6 +371,36 @@ describe('ApiClient', () => {
       authenticatedApiCall.mockRejectedValue(error);
 
       await expect(client.post('/api/v1/test', { body: { test: 'data' } })).rejects.toThrow('Authenticated POST failed');
+    });
+  });
+
+  describe('postFormData', () => {
+    it('should POST FormData with auth and no Content-Type (multipart boundary set by fetch)', async() => {
+      const formData = new FormData();
+      formData.append('file', 'mock');
+      const client = new ApiClient(baseUrl, { type: 'bearer', token: 'token' });
+      await client.postFormData('/api/v1/upload', formData);
+
+      expect(authenticatedApiCall).toHaveBeenCalledWith(
+        `${baseUrl}/api/v1/upload`,
+        expect.objectContaining({
+          method: 'POST',
+          body: formData
+        }),
+        expect.objectContaining({ type: 'bearer', token: 'token' })
+      );
+      const opts = authenticatedApiCall.mock.calls[0][1];
+      expect(opts.headers['Content-Type']).toBeUndefined();
+      expect(opts.headers['Authorization']).toBe('Bearer token');
+    });
+
+    it('should use makeApiCall when no token', async() => {
+      const formData = new FormData();
+      const client = new ApiClient(baseUrl, { type: 'bearer' });
+      await client.postFormData('/api/v1/upload', formData);
+
+      expect(makeApiCall).toHaveBeenCalled();
+      expect(authenticatedApiCall).not.toHaveBeenCalled();
     });
   });
 

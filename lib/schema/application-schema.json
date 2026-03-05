@@ -115,11 +115,6 @@
       "minimum": 1,
       "maximum": 65535
     },
-    "deploymentKey": {
-      "type": "string",
-      "description": "SHA256 hash of deployment manifest (excluding deploymentKey field)",
-      "pattern": "^[a-f0-9]{64}$"
-    },
     "requiresDatabase": {
       "type": "boolean",
       "description": "Whether application requires database"

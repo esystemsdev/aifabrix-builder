@@ -31,7 +31,6 @@ describe('Generator Validation Module', () => {
         image: 'testapp:latest',
         registryMode: 'acr', // Use 'acr' to avoid external registry requirements
         port: 3000,
-        deploymentKey: '0000000000000000000000000000000000000000000000000000000000000000',
         requiresDatabase: false,
         requiresRedis: false,
         requiresStorage: false,
@@ -164,7 +163,6 @@ describe('Generator Validation Module', () => {
         image: 'testapp:latest',
         registryMode: 'acr',
         port: 3000,
-        deploymentKey: '0000000000000000000000000000000000000000000000000000000000000000',
         requiresDatabase: false,
         requiresRedis: false,
         requiresStorage: false,

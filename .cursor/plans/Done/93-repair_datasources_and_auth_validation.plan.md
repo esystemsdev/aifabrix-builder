@@ -193,14 +193,16 @@ The plan has been implemented: `alignSystemFileDataSources` and `removeAuthVarsF
 
 ### File Existence Validation
 
-| File | Status |
-|------|--------|
-| lib/commands/repair.js | ✅ Exists; contains `alignSystemFileDataSources`, `removeAuthVarsFromConfiguration`, `normalizeSystemFileAuthAndConfig`, `normalizedAuthPartFromConfigName`, `buildAuthVarNames`, `deriveDatasourceKeyFromFileName`, `runRepairSteps` |
-| tests/lib/commands/repair.test.js | ✅ Exists; contains tests for datasource sync (new, removed, dry-run) and auth-var removal (plain BASEURL, keyvault removal, no dupes) |
-| lib/utils/credential-secrets-env.js | ✅ Exists; used for `systemKeyToKvPrefix`, `securityKeyToVar`, `kvEnvKeyToPath` |
-| docs/commands/utilities.md | ✅ Updated; repair section includes "System file dataSources drift" and "Authentication variables in configuration" |
-| docs/commands/external-integration.md | ✅ Updated; repair bullet mentions system file dataSources and auth/config validation |
-| docs/configuration/secrets-and-config.md | ✅ Updated; repair note for auth vars and configuration |
+
+| File                                     | Status                                                                                                                                                                                                                               |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| lib/commands/repair.js                   | ✅ Exists; contains `alignSystemFileDataSources`, `removeAuthVarsFromConfiguration`, `normalizeSystemFileAuthAndConfig`, `normalizedAuthPartFromConfigName`, `buildAuthVarNames`, `deriveDatasourceKeyFromFileName`, `runRepairSteps` |
+| tests/lib/commands/repair.test.js        | ✅ Exists; contains tests for datasource sync (new, removed, dry-run) and auth-var removal (plain BASEURL, keyvault removal, no dupes)                                                                                                |
+| lib/utils/credential-secrets-env.js      | ✅ Exists; used for `systemKeyToKvPrefix`, `securityKeyToVar`, `kvEnvKeyToPath`                                                                                                                                                       |
+| docs/commands/utilities.md               | ✅ Updated; repair section includes "System file dataSources drift" and "Authentication variables in configuration"                                                                                                                   |
+| docs/commands/external-integration.md    | ✅ Updated; repair bullet mentions system file dataSources and auth/config validation                                                                                                                                                 |
+| docs/configuration/secrets-and-config.md | ✅ Updated; repair note for auth vars and configuration                                                                                                                                                                               |
+
 
 ### Test Coverage
 
@@ -212,24 +214,28 @@ The plan has been implemented: `alignSystemFileDataSources` and `removeAuthVarsF
 
 ### Code Quality Validation
 
-| Step | Result |
-|------|--------|
-| Format (lint:fix) | ✅ `npm run lint:fix` exit code 0 |
-| Lint | ✅ lib/commands/repair.js and lib/commands/repair-env-template.js pass (0 errors, 0 warnings). Normalization logic moved to repair-env-template.js to keep repair.js ≤500 lines. |
-| Tests | ✅ `npm test` — all tests pass (234 suites, 5077 tests) |
+
+| Step              | Result                                                                                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Format (lint:fix) | ✅ `npm run lint:fix` exit code 0                                                                                                                                                |
+| Lint              | ✅ lib/commands/repair.js and lib/commands/repair-env-template.js pass (0 errors, 0 warnings). Normalization logic moved to repair-env-template.js to keep repair.js ≤500 lines. |
+| Tests             | ✅ `npm test` — all tests pass (234 suites, 5077 tests)                                                                                                                          |
+
 
 ### Cursor Rules Compliance
 
-| Rule | Status |
-|------|--------|
-| Architecture / paths | ✅ path.join, CommonJS, lib/commands/ |
-| CLI / error handling | ✅ chalk, try-catch, input validation |
-| File/function size | ✅ repair.js 422 lines (≤500); repair-env-template.js contains normalization helpers |
-| JSDoc | ✅ New functions have JSDoc (params, returns, description) |
-| Testing | ✅ Jest, repair.test.js, mocks for fs and config-format |
-| Security | ✅ No hardcoded secrets; auth vars only in authentication section; no secrets in messages |
-| Error/logging | ✅ Meaningful errors, chalk, no sensitive data in messages |
-| Validation | ✅ Config structure validated when mutating system/application config |
+
+| Rule                 | Status                                                                                   |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| Architecture / paths | ✅ path.join, CommonJS, lib/commands/                                                     |
+| CLI / error handling | ✅ chalk, try-catch, input validation                                                     |
+| File/function size   | ✅ repair.js 422 lines (≤500); repair-env-template.js contains normalization helpers      |
+| JSDoc                | ✅ New functions have JSDoc (params, returns, description)                                |
+| Testing              | ✅ Jest, repair.test.js, mocks for fs and config-format                                   |
+| Security             | ✅ No hardcoded secrets; auth vars only in authentication section; no secrets in messages |
+| Error/logging        | ✅ Meaningful errors, chalk, no sensitive data in messages                                |
+| Validation           | ✅ Config structure validated when mutating system/application config                     |
+
 
 ### Implementation Completeness
 
@@ -244,10 +250,10 @@ The plan has been implemented: `alignSystemFileDataSources` and `removeAuthVarsF
 
 ### Final Validation Checklist
 
-- [x] Described implementation complete (datasource sync, auth removal, normalization, single write)
-- [x] All referenced files exist and contain expected functions/changes
-- [x] Tests exist and pass for new behavior
-- [x] Code quality: format OK; lint 0 errors, 0 warnings (repair + repair-env-template); tests pass
-- [x] Cursor rules compliance verified
-- [x] Documentation updated (utilities, external-integration, secrets-and-config)
+- Described implementation complete (datasource sync, auth removal, normalization, single write)
+- All referenced files exist and contain expected functions/changes
+- Tests exist and pass for new behavior
+- Code quality: format OK; lint 0 errors, 0 warnings (repair + repair-env-template); tests pass
+- Cursor rules compliance verified
+- Documentation updated (utilities, external-integration, secrets-and-config)
 

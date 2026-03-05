@@ -14,7 +14,6 @@ jest.unmock('fs');
 const path = require('path');
 const fs = require('fs').promises;
 
-const generator = require('../../../lib/generator');
 const validate = require('../../../lib/validation/validate');
 const { getProjectRoot } = require('../../../lib/utils/paths');
 
@@ -98,7 +97,12 @@ describe('External System Download Roundtrip', () => {
     const deployPath = path.join(testDir, `${systemKey}-deploy.json`);
     await fs.writeFile(deployPath, JSON.stringify(deploy, null, 2), 'utf8');
 
-    await generator.splitDeployJson(deployPath, testDir);
+    // Force fresh require of generator so it uses real fs (not a cached mock from other tests)
+    let generatorLocal;
+    jest.isolateModules(() => {
+      generatorLocal = require('../../../lib/generator');
+    });
+    await generatorLocal.splitDeployJson(deployPath, testDir);
 
     const result = await validate.validateAppOrFile(systemKey);
 

@@ -122,35 +122,39 @@ Update the following docs so repair and the KV_* / path-style convention are cle
 
 ### Executive Summary
 
-All implementation requirements from the plan have been completed. The repair command now includes an env.template repair step that aligns `KV_*` variable names and path-style `kv://` values with the system file. A dedicated module `lib/commands/repair-env-template.js` implements build-effective-config and merge logic; `lib/commands/repair.js` integrates it and exposes `envTemplateRepaired` in the result. All listed documentation has been updated, and tests cover the required scenarios plus additional unit tests for the new module.
+All implementation requirements from the plan have been completed. The repair command now includes an env.template repair step that aligns `KV`_* variable names and path-style `kv://` values with the system file. A dedicated module `lib/commands/repair-env-template.js` implements build-effective-config and merge logic; `lib/commands/repair.js` integrates it and exposes `envTemplateRepaired` in the result. All listed documentation has been updated, and tests cover the required scenarios plus additional unit tests for the new module. **Re-validation (2025-03-03):** Format, lint, and tests all passed. Fixed `lib/commands/repair.js` require: was incorrectly requiring `normalizeSystemFileAuthAndConfig` from non-existent `./repair-auth-config`; now correctly imports both `repairEnvTemplate` and `normalizeSystemFileAuthAndConfig` from `./repair-env-template`.
 
 ### Task Completion
 
-| Requirement | Status |
-|-------------|--------|
-| 1. Build effective configuration from system (in memory) | ✅ Implemented in `repair-env-template.js` (`buildEffectiveConfiguration`, `addFromConfiguration`, `addFromAuthSecurity`, `normalizeKeyvaultEntry`) |
-| 2. Add env.template repair step (helper with create/merge logic) | ✅ `repairEnvTemplate` in `repair-env-template.js`; uses `extractEnvTemplate` from `lib/generator/split.js` |
-| 3. Integrate into `repairExternalIntegration` | ✅ Called after `createRbacFromSystemIfNeeded`; `envTemplateRepaired` in result; runs before `persistChangesAndRegenerate` |
-| 4. Preserve existing non-config lines | ✅ `mergeEnvTemplateContent` / `processLine` keep comments, blank lines, and vars not in effective config |
-| 5. Tests (missing → created; wrong kv path; missing auth var; dryRun; preserve comments) | ✅ All five in `repair.test.js`; plus unit tests in `repair-env-template.test.js` and extra integration cases |
-| Documentation updates (5 docs + QUICK_START) | ✅ All updated as specified |
+
+| Requirement                                                                              | Status                                                                                                                                             |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Build effective configuration from system (in memory)                                 | ✅ Implemented in `repair-env-template.js` (`buildEffectiveConfiguration`, `addFromConfiguration`, `addFromAuthSecurity`, `normalizeKeyvaultEntry`) |
+| 2. Add env.template repair step (helper with create/merge logic)                         | ✅ `repairEnvTemplate` in `repair-env-template.js`; uses `extractEnvTemplate` from `lib/generator/split.js`                                         |
+| 3. Integrate into `repairExternalIntegration`                                            | ✅ Called after `createRbacFromSystemIfNeeded`; `envTemplateRepaired` in result; runs before `persistChangesAndRegenerate`                          |
+| 4. Preserve existing non-config lines                                                    | ✅ `mergeEnvTemplateContent` / `processLine` keep comments, blank lines, and vars not in effective config                                           |
+| 5. Tests (missing → created; wrong kv path; missing auth var; dryRun; preserve comments) | ✅ All five in `repair.test.js`; plus unit tests in `repair-env-template.test.js` and extra integration cases                                       |
+| Documentation updates (5 docs + QUICK_START)                                             | ✅ All updated as specified                                                                                                                         |
+
 
 ### File Existence Validation
 
-| File | Status |
-|------|--------|
-| lib/commands/repair.js | ✅ Exists; calls `repairEnvTemplate`, returns `envTemplateRepaired` |
-| lib/commands/repair-env-template.js | ✅ Exists (new); `buildEffectiveConfiguration`, `repairEnvTemplate`, helpers |
-| lib/generator/split.js | ✅ No change; `extractEnvTemplate` reused |
-| lib/utils/credential-secrets-env.js | ✅ `systemKeyToKvPrefix`, `kvEnvKeyToPath`, `securityKeyToVar` (new) used |
-| tests/lib/commands/repair.test.js | ✅ Env.template repair cases: create when missing, wrong path, add missing auth, dryRun, preserve comments, already correct, non-keyvault vars |
-| tests/lib/commands/repair-env-template.test.js | ✅ Unit tests for `buildEffectiveConfiguration` and `repairEnvTemplate` |
-| tests/lib/utils/credential-secrets-env.test.js | ✅ Tests for `securityKeyToVar` |
-| docs/external-systems.md | ✅ env.template drift sentence after Credential flow; troubleshooting bullet expanded |
-| docs/commands/external-integration.md | ✅ Repair intro sentence (env.template drift) |
-| docs/commands/utilities.md | ✅ Repair What + Repairable issues (env.template key drift) |
-| docs/configuration/secrets-and-config.md | ✅ KV_ convention (path-style + repair note) |
-| integration/hubspot/QUICK_START.md | ✅ env.template example `KV_HUBSPOT_CLIENTID`/`CLIENTSECRET`, path-style, repair note |
+
+| File                                           | Status                                                                                                                                        |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| lib/commands/repair.js                         | ✅ Exists; calls `repairEnvTemplate`, returns `envTemplateRepaired`                                                                            |
+| lib/commands/repair-env-template.js            | ✅ Exists (new); `buildEffectiveConfiguration`, `repairEnvTemplate`, helpers                                                                   |
+| lib/generator/split.js                         | ✅ No change; `extractEnvTemplate` reused                                                                                                      |
+| lib/utils/credential-secrets-env.js            | ✅ `systemKeyToKvPrefix`, `kvEnvKeyToPath`, `securityKeyToVar` (new) used                                                                      |
+| tests/lib/commands/repair.test.js              | ✅ Env.template repair cases: create when missing, wrong path, add missing auth, dryRun, preserve comments, already correct, non-keyvault vars |
+| tests/lib/commands/repair-env-template.test.js | ✅ Unit tests for `buildEffectiveConfiguration` and `repairEnvTemplate`                                                                        |
+| tests/lib/utils/credential-secrets-env.test.js | ✅ Tests for `securityKeyToVar`                                                                                                                |
+| docs/external-systems.md                       | ✅ env.template drift sentence after Credential flow; troubleshooting bullet expanded                                                          |
+| docs/commands/external-integration.md          | ✅ Repair intro sentence (env.template drift)                                                                                                  |
+| docs/commands/utilities.md                     | ✅ Repair What + Repairable issues (env.template key drift)                                                                                    |
+| docs/configuration/secrets-and-config.md       | ✅ KV_ convention (path-style + repair note)                                                                                                   |
+| integration/hubspot/QUICK_START.md             | ✅ env.template example `KV_HUBSPOT_CLIENTID`/`CLIENTSECRET`, path-style, repair note                                                          |
+
 
 ### Test Coverage
 
@@ -160,23 +164,27 @@ All implementation requirements from the plan have been completed. The repair co
 
 ### Code Quality Validation
 
-| Step | Result |
-|------|--------|
-| Format (lint:fix) | ✅ PASSED (exit code 0) |
-| Lint | ✅ PASSED (0 errors, 0 warnings) |
-| Tests | ✅ PASSED (234 suites, 5069 tests) |
+
+| Step              | Result                            |
+| ----------------- | --------------------------------- |
+| Format (lint:fix) | ✅ PASSED (exit code 0)            |
+| Lint              | ✅ PASSED (0 errors, 0 warnings)   |
+| Tests             | ✅ PASSED (234 suites, 5075 tests) |
+
 
 ### Cursor Rules Compliance
 
-| Rule | Status |
-|------|--------|
-| Code reuse | ✅ Uses `credential-secrets-env.js` (`systemKeyToKvPrefix`, `kvEnvKeyToPath`, `securityKeyToVar`) and `extractEnvTemplate` from `split.js` |
-| Error handling | ✅ No hardcoded secrets; file ops in repair path are guarded (e.g. skip read when file missing and no effective config) |
-| Module patterns | ✅ CommonJS; `repair-env-template.js` has @fileoverview and JSDoc on exported and key helpers |
-| File operations | ✅ `path.join` for paths; encoding `utf8` on read/write |
-| Input validation | ✅ Effective config built from system structure; no direct user input in repair-env-template |
-| Security | ✅ No secrets in code; env.template holds keys/placeholders only |
-| File size / complexity | ✅ Logic split into `repair-env-template.js` to satisfy lint limits |
+
+| Rule                   | Status                                                                                                                                    |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Code reuse             | ✅ Uses `credential-secrets-env.js` (`systemKeyToKvPrefix`, `kvEnvKeyToPath`, `securityKeyToVar`) and `extractEnvTemplate` from `split.js` |
+| Error handling         | ✅ No hardcoded secrets; file ops in repair path are guarded (e.g. skip read when file missing and no effective config)                    |
+| Module patterns        | ✅ CommonJS; `repair-env-template.js` has @fileoverview and JSDoc on exported and key helpers                                              |
+| File operations        | ✅ `path.join` for paths; encoding `utf8` on read/write                                                                                    |
+| Input validation       | ✅ Effective config built from system structure; no direct user input in repair-env-template                                               |
+| Security               | ✅ No secrets in code; env.template holds keys/placeholders only                                                                           |
+| File size / complexity | ✅ Logic split into `repair-env-template.js` to satisfy lint limits                                                                        |
+
 
 ### Implementation Completeness
 
@@ -186,14 +194,15 @@ All implementation requirements from the plan have been completed. The repair co
 
 ### Notes
 
-- `integration/hubspot/env.template` in the repo still uses the old keys (`KV_HUBSPOT_CLIENT_ID` / `CLIENT_SECRET` and non–path-style values). Running `aifabrix repair hubspot` would align it to the new convention; the implementation and QUICK_START.md example are correct.
+- `integration/hubspot/env.template` in the repo may use legacy keys/values; running `aifabrix repair hubspot` aligns it to the convention; the implementation and QUICK_START.md example are correct.
+- **Validation fix:** `repair.js` had been requiring `normalizeSystemFileAuthAndConfig` from `./repair-auth-config` (nonexistent). Corrected to `const { repairEnvTemplate, normalizeSystemFileAuthAndConfig } = require('./repair-env-template');`.
 
 ### Final Validation Checklist
 
-- [x] All implementation plan items completed
-- [x] All key files exist and contain expected changes
-- [x] Tests exist for repair and repair-env-template and pass
-- [x] Code quality (format, lint, test) passes
-- [x] Cursor rules compliance verified
-- [x] Documentation updated as specified
+- All implementation plan items completed
+- All key files exist and contain expected changes
+- Tests exist for repair and repair-env-template and pass
+- Code quality (format, lint, test) passes
+- Cursor rules compliance verified
+- Documentation updated as specified
 
