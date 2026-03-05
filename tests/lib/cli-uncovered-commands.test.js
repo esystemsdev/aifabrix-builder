@@ -457,7 +457,7 @@ describe('CLI Uncovered Command Handlers', () => {
       generator.splitDeployJson.mockResolvedValue({
         envTemplate: '/test/app/env.template',
         variables: '/test/app/application.yaml',
-        rbac: '/test/app/rbac.yml',
+        rbac: '/test/app/rbac.yaml',
         readme: '/test/app/README.md'
       });
 
@@ -479,7 +479,7 @@ describe('CLI Uncovered Command Handlers', () => {
           logger.log(`  • env.template: ${result.envTemplate}`);
           logger.log(`  • application.yaml: ${result.variables}`);
           if (result.rbac) {
-            logger.log(`  • rbac.yml: ${result.rbac}`);
+            logger.log(`  • rbac.yaml: ${result.rbac}`);
           }
           logger.log(`  • README.md: ${result.readme}`);
         } catch (error) {

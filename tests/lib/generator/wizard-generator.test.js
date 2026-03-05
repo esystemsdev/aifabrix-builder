@@ -364,13 +364,14 @@ describe('Wizard Generator', () => {
             '#!/usr/bin/env node\n' +
             'const path = require(\'path\');\n' +
             'const scriptDir = __dirname;\n' +
+            'const projectRoot = path.join(scriptDir, \'..\', \'..\');\n' +
             'const appKey = \'{{systemKey}}\';\n' +
             '{{#each allJsonFiles}}\n' +
             'run(\'aifabrix validate "\' + path.join(scriptDir, \'{{this}}\') + \'"\');\n' +
             '{{/each}}\n' +
-            'run(\'aifabrix deploy \' + appKey);\n' +
+            'run(\'aifabrix deploy \' + appKey, { cwd: projectRoot });\n' +
             'if (process.env.RUN_TESTS !== \'false\') {\n' +
-            '  run(\'aifabrix test-integration \' + appKey);\n' +
+            '  run(\'aifabrix test-integration \' + appKey, { cwd: projectRoot });\n' +
             '}\n'
           );
         }
@@ -428,6 +429,27 @@ describe('Wizard Generator', () => {
       datasourceFileNames.forEach(fileName => {
         expect(scriptContent).toContain(fileName);
       });
+    });
+
+    it('should run deploy and test-integration from project root (cwd) so script works when run from integration/<app>/', async() => {
+      await wizardGenerator.generateDeployScripts(
+        appPath,
+        systemKey,
+        systemFileName,
+        datasourceFileNames
+      );
+
+      const deployJsCall = fsPromises.writeFile.mock.calls.find(call =>
+        call[0].includes('deploy.js')
+      );
+      expect(deployJsCall).toBeDefined();
+      const scriptContent = deployJsCall[1];
+      expect(scriptContent).toContain('projectRoot');
+      expect(scriptContent).toContain('path.join(scriptDir');
+      expect(scriptContent).toContain('{ cwd: projectRoot }');
+      // deploy and test-integration must pass cwd: projectRoot so CLI resolves integration/ and builder/ from repo root
+      expect(scriptContent).toContain("run('aifabrix deploy ' + appKey, { cwd: projectRoot })");
+      expect(scriptContent).toContain("run('aifabrix test-integration ' + appKey, { cwd: projectRoot })");
     });
 
     it('should handle errors when generating scripts', async() => {

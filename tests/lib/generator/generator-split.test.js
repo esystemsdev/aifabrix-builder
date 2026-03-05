@@ -247,7 +247,7 @@ describe('Generator Split Functions', () => {
       expect(() => generator.extractVariablesYaml(undefined)).toThrow('Deployment object is required');
     });
 
-    it('should not include roles or permissions in variables (they go only to rbac.yml)', () => {
+    it('should not include roles or permissions in variables (they go only to rbac.yaml)', () => {
       const deployment = {
         key: 'testapp',
         displayName: 'Test App',
@@ -340,6 +340,28 @@ describe('Generator Split Functions', () => {
       ]);
       expect(result.externalIntegration.autopublish).toBe(true);
       expect(result.externalIntegration.version).toBe('1.0.0');
+    });
+
+    it('should strip trailing -datasource from datasource key to avoid duplicate in filename', () => {
+      const deployment = {
+        system: {
+          key: 'hubspot',
+          displayName: 'HubSpot',
+          description: 'HubSpot CRM'
+        },
+        configuration: [],
+        dataSources: [
+          { key: 'hubspot-users-datasource', displayName: 'Users' },
+          { key: 'hubspot-company', displayName: 'Company' }
+        ]
+      };
+
+      const result = generator.extractVariablesYaml(deployment);
+
+      expect(result.externalIntegration.dataSources).toEqual([
+        'hubspot-datasource-users.yaml',
+        'hubspot-datasource-company.yaml'
+      ]);
     });
 
     it('should handle optional fields', () => {
@@ -571,7 +593,7 @@ describe('Generator Split Functions', () => {
       expect(variablesYaml.port).toBe(3000);
     });
 
-    it('should not include roles or permissions in application.yaml (only in rbac.yml)', async() => {
+    it('should not include roles or permissions in application.yaml (only in rbac.yaml)', async() => {
       await generator.splitDeployJson(deployJsonPath);
 
       const writeCalls = fs.promises.writeFile.mock.calls;
@@ -615,11 +637,11 @@ describe('Generator Split Functions', () => {
       expect(variablesYaml.configuration[0].value).toBeUndefined();
     });
 
-    it('should write rbac.yml when roles/permissions exist', async() => {
+    it('should write rbac.yaml when roles/permissions exist', async() => {
       await generator.splitDeployJson(deployJsonPath);
 
       const writeCalls = fs.promises.writeFile.mock.calls;
-      const rbacCall = writeCalls.find(call => call[0].endsWith('rbac.yml'));
+      const rbacCall = writeCalls.find(call => call[0].endsWith('rbac.yaml'));
 
       expect(rbacCall).toBeDefined();
       const rbacYaml = yaml.load(rbacCall[1]);
@@ -627,7 +649,7 @@ describe('Generator Split Functions', () => {
       expect(rbacYaml.permissions).toHaveLength(1);
     });
 
-    it('should not write rbac.yml when no roles/permissions', async() => {
+    it('should not write rbac.yaml when no roles/permissions', async() => {
       const deploymentWithoutRbac = { ...mockDeployment };
       delete deploymentWithoutRbac.roles;
       delete deploymentWithoutRbac.permissions;
@@ -728,6 +750,60 @@ describe('Generator Split Functions', () => {
       expect(result).toHaveProperty('variables');
       expect(result).toHaveProperty('readme');
       expect(result.rbac).toBeUndefined();
+    });
+
+    it('should merge env.template when splitOptions.mergeEnvTemplate is true and file exists', async() => {
+      const deploymentWithConfig = {
+        ...mockDeployment,
+        configuration: [
+          { name: 'PORT', value: '3001', location: 'variable', required: false },
+          { name: 'NEW_VAR', value: 'from-download', location: 'variable', required: false }
+        ]
+      };
+      fs.promises.readFile.mockImplementation((filePath, encoding) => {
+        const pathStr = String(filePath).replace(/\\/g, '/');
+        if (pathStr.includes('deploy.json') || pathStr.endsWith('deploy.json')) {
+          return Promise.resolve(JSON.stringify(deploymentWithConfig));
+        }
+        if (pathStr.endsWith('env.template')) {
+          return Promise.resolve('PORT=3000\n# keep comment\nEXISTING=preserve\n');
+        }
+        if (pathStr.includes('README.md.hbs')) {
+          return Promise.resolve(applicationsReadmeTemplateContent);
+        }
+        return Promise.reject(new Error(`ENOENT: ${filePath}`));
+      });
+      fs.existsSync.mockImplementation((filePath) => {
+        const pathStr = String(filePath).replace(/\\/g, '/');
+        if (pathStr.endsWith('env.template')) return true;
+        return true;
+      });
+
+      await generator.splitDeployJson(deployJsonPath, outputDir, { mergeEnvTemplate: true });
+
+      const envWriteCall = fs.promises.writeFile.mock.calls.find(call => String(call[0]).endsWith('env.template'));
+      expect(envWriteCall).toBeDefined();
+      const writtenContent = envWriteCall[1];
+      expect(writtenContent).toContain('PORT=3001');
+      expect(writtenContent).toContain('NEW_VAR=from-download');
+      expect(writtenContent).toContain('# keep comment');
+      expect(writtenContent).toContain('EXISTING=preserve');
+    });
+
+    it('should skip writing README when splitOptions.overwriteReadme is false and README exists', async() => {
+      fs.promises.readFile.mockResolvedValue(JSON.stringify(mockDeployment));
+      fs.existsSync.mockImplementation((filePath) => {
+        const pathStr = String(filePath).replace(/\\/g, '/');
+        if (pathStr.endsWith('README.md')) return true;
+        return true;
+      });
+
+      const result = await generator.splitDeployJson(deployJsonPath, outputDir, { overwriteReadme: false });
+
+      expect(result.readmeSkipped).toBeDefined();
+      expect(result.readmeSkipped).toContain('README.md');
+      const readmeWriteCall = fs.promises.writeFile.mock.calls.find(call => String(call[0]).endsWith('README.md'));
+      expect(readmeWriteCall).toBeUndefined();
     });
   });
 });

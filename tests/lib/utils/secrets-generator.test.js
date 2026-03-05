@@ -476,6 +476,76 @@ describe('Secrets Generator Module', () => {
     });
   });
 
+  describe('mergeSecretsIntoFile', () => {
+    it('should create file with secrets when file does not exist', () => {
+      const secrets = { 'new-key': 'new-value' };
+      fs.existsSync.mockReturnValue(false);
+
+      secretsGenerator.mergeSecretsIntoFile(mockSecretsPath, secrets);
+
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        mockSecretsPath,
+        expect.stringContaining('new-key'),
+        { mode: 0o600 }
+      );
+    });
+
+    it('should update existing key in place (no duplicate keys)', () => {
+      const existingContent = 'dataplane-client-idKeyVault: old-id\ndataplane-client-secretKeyVault: old-secret\n';
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(existingContent);
+
+      secretsGenerator.mergeSecretsIntoFile(mockSecretsPath, {
+        'dataplane-client-idKeyVault': 'new-id',
+        'dataplane-client-secretKeyVault': 'new-secret'
+      });
+
+      const writtenContent = fs.writeFileSync.mock.calls[0][1];
+      const parsed = yaml.load(writtenContent);
+      expect(parsed['dataplane-client-idKeyVault']).toBe('new-id');
+      expect(parsed['dataplane-client-secretKeyVault']).toBe('new-secret');
+      expect(Object.keys(parsed)).toHaveLength(2);
+    });
+
+    it('should do nothing when secrets object is empty', () => {
+      fs.existsSync.mockReturnValue(true);
+      secretsGenerator.mergeSecretsIntoFile(mockSecretsPath, {});
+      expect(fs.writeFileSync).not.toHaveBeenCalled();
+    });
+
+    it('should preserve other keys when merging one key', () => {
+      const existingContent = 'key1: val1\nkey2: val2-old\nkey3: val3\n';
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(existingContent);
+
+      secretsGenerator.mergeSecretsIntoFile(mockSecretsPath, { key2: 'val2-new' });
+
+      const writtenContent = fs.writeFileSync.mock.calls[0][1];
+      const parsed = yaml.load(writtenContent);
+      expect(parsed.key1).toBe('val1');
+      expect(parsed.key2).toBe('val2-new');
+      expect(parsed.key3).toBe('val3');
+      expect(Object.keys(parsed)).toHaveLength(3);
+    });
+
+    it('should deduplicate when existing file has duplicate keys (tolerant load)', () => {
+      const existingContent = 'dataplane-client-idKeyVault: old-id\ndataplane-client-idKeyVault: older-id\ndataplane-client-secretKeyVault: old-secret\n';
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(existingContent);
+
+      secretsGenerator.mergeSecretsIntoFile(mockSecretsPath, {
+        'dataplane-client-idKeyVault': 'new-id',
+        'dataplane-client-secretKeyVault': 'new-secret'
+      });
+
+      const writtenContent = fs.writeFileSync.mock.calls[0][1];
+      const parsed = yaml.load(writtenContent);
+      expect(parsed['dataplane-client-idKeyVault']).toBe('new-id');
+      expect(parsed['dataplane-client-secretKeyVault']).toBe('new-secret');
+      expect(Object.keys(parsed)).toHaveLength(2);
+    });
+  });
+
   describe('generateMissingSecrets', () => {
     beforeEach(() => {
       const logger = require('../../../lib/utils/logger');

@@ -244,6 +244,24 @@ describe('collectMissingSecrets', () => {
     expect(collectMissingSecrets(content, secrets)).toEqual([]);
   });
 
+  it('supports flat key with hyphens for path-style ref (e.g. hubspot-clientid for kv://hubspot/clientid)', () => {
+    const content = 'KV_HUBSPOT_CLIENTID=kv://hubspot/clientid\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret';
+    const secrets = {
+      'hubspot-clientid': 'my-client-id',
+      'hubspot-clientsecret': 'my-client-secret'
+    };
+    expect(collectMissingSecrets(content, secrets)).toEqual([]);
+  });
+
+  it('matches flat key case-insensitively (kv://hubspot/clientid matches hubspot/clientId in secrets)', () => {
+    const content = 'KV_HUBSPOT_CLIENTID=kv://hubspot/clientid\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret';
+    const secrets = {
+      'hubspot/clientId': 'my-client-id',
+      'hubspot/clientSecret': 'my-client-secret'
+    };
+    expect(collectMissingSecrets(content, secrets)).toEqual([]);
+  });
+
   it('skips comment and empty lines when collecting missing', () => {
     const content = '# comment\nHUBSPOT=kv://hubspot\n\nOTHER=kv://other';
     const secrets = { hubspot: 'ok' };
@@ -271,6 +289,22 @@ describe('replaceKvInContent', () => {
     const secrets = { 'hubspot/clientId': 'flat-value' };
     const result = replaceKvInContent(content, secrets, {});
     expect(result).toBe('KEY=flat-value');
+  });
+
+  it('replaces path-style kv refs using flat key with hyphens (hubspot-clientid)', () => {
+    const content = 'KV_HUBSPOT_CLIENTID=kv://hubspot/clientid\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret';
+    const secrets = { 'hubspot-clientid': 'id-value', 'hubspot-clientsecret': 'secret-value' };
+    const result = replaceKvInContent(content, secrets, {});
+    expect(result).toContain('KV_HUBSPOT_CLIENTID=id-value');
+    expect(result).toContain('KV_HUBSPOT_CLIENTSECRET=secret-value');
+  });
+
+  it('replaces path-style kv refs case-insensitively (clientid matches clientId in secrets)', () => {
+    const content = 'KV_HUBSPOT_CLIENTID=kv://hubspot/clientid\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret';
+    const secrets = { 'hubspot/clientId': 'id-val', 'hubspot/clientSecret': 'secret-val' };
+    const result = replaceKvInContent(content, secrets, {});
+    expect(result).toContain('KV_HUBSPOT_CLIENTID=id-val');
+    expect(result).toContain('KV_HUBSPOT_CLIENTSECRET=secret-val');
   });
 
   it('leaves single-segment kv ref when present in secrets', () => {
