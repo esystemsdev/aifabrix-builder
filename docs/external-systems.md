@@ -332,8 +332,8 @@ aifabrix deploy hubspot
 
 **What happens:**
 1. `aifabrix validate` - Validates components and generates full deployment manifest
-2. `aifabrix json` - Generates `<systemKey>-deploy.json` deployment manifest (combines system + datasources) for pipeline deployment
-3. `aifabrix deploy <app>` - Resolves app path (integration first, then builder); deploys from the resolved path via Miso Controller pipeline API (no app register needed for external; controller creates and deploys automatically)
+2. `aifabrix json` - Generates `<systemKey>-deploy.json` deployment manifest (combines system + datasources)
+3. `aifabrix deploy <app>` - Resolves app path (integration first, then builder); deploys from the resolved path via the Miso Controller (no app register needed for external; controller creates and deploys automatically)
 4. System is registered in the dataplane
 5. Datasources are published and available for querying
 
@@ -864,7 +864,7 @@ testPayload:
 
 **Using Test Payloads:**
 - **Unit tests** (`aifabrix test`): Validates field mappings against `payloadTemplate` and compares with `expectedResult` if provided
-- **Integration tests** (`aifabrix test-integration`): Sends `payloadTemplate` to dataplane pipeline test API for real validation
+- **Integration tests** (`aifabrix test-integration`): Sends `payloadTemplate` to the dataplane for validation
 
 **Benefits:**
 - Test field mappings locally without API calls
@@ -1116,28 +1116,35 @@ The AI Fabrix Builder supports a complete development workflow for external syst
 
 1. **Download** - Get existing system from dataplane
 2. **Unit Test** - Validate locally without API calls
-3. **Integration Test** - Test via dataplane pipeline API
+3. **Integration Test** - Test via the dataplane
 4. **Deploy** - Deploy using application-level workflow
 
 ### 1. Download External System from Dataplane
 
-Download an existing external system from the dataplane to your local development environment:
+Download an existing external system from the dataplane to your local development environment. **Authentication:** Download requires a **Bearer token** (use `aifabrix login` with device or interactive flow); client credentials alone are not sufficient.
 
 ```bash
 # Download external system (YAML components; default)
 aifabrix download hubspot
 
-# Download and convert to JSON in one step
+# Download and convert component files to JSON in one step
 aifabrix download hubspot --format json
+
+# See what would be downloaded without writing files
+aifabrix download hubspot --dry-run
+
+# Overwrite existing README.md without prompting (e.g. when re-downloading)
+aifabrix download hubspot --force
 ```
 
-Use `--format json` to run the full pipeline (download → split → convert) in one command. When `format` is set in `~/.aifabrix/config.yaml` (via `aifabrix dev set-format`), download uses that default when `--format` is not passed. Create external and wizard also use the config format for generated files.
+Use `--format json` to run download → split → convert in one command. When `format` is set in `~/.aifabrix/config.yaml` (via `aifabrix dev set-format`), download uses that default when `--format` is not passed.
 
 **What happens:**
-- Downloads system configuration from dataplane API
-- Downloads all datasource configurations
-- Creates `integration/<system-key>/` folder structure
-- Generates all development files (application.yaml, YAML files, env.template, README.md)
+- Fetches the **full manifest** from the dataplane (system + datasources + version)
+- Validates the response, builds deploy JSON (env.template gets `KV_*` entries from `authentication.security`)
+- Writes `<system-key>-deploy.json` and **splits** it into component files (application.yaml, system YAML, datasource YAMLs, env.template, README.md)
+- If the folder already exists: **env.template** is merged with the existing file; **README.md** is only replaced after a yes/no prompt unless you use `--force`
+- Ensures placeholder secrets from env.template; if `--format json`, converts component files to JSON
 
 **File structure created:**
 ```yaml
@@ -1187,7 +1194,7 @@ aifabrix test hubspot --verbose
 
 ### 4. Integration Test (Via Dataplane)
 
-Test your configuration against the real dataplane pipeline API:
+Test your configuration against the dataplane:
 
 ```bash
 # Test entire system
@@ -1201,10 +1208,10 @@ aifabrix test-integration hubspot --payload ./test-payload.json
 ```
 
 **What happens:**
-- Calls dataplane pipeline test API
-- Tests field mappings with real API responses
+- Calls the dataplane to run the test
+- Tests field mappings with the supplied payload
 - Validates metadata schemas
-- Tests endpoint connectivity
+- Tests connectivity
 - Returns detailed validation results
 
 ### 5. Deploy to Controller
@@ -1215,10 +1222,10 @@ Deploy using the application-level workflow:
 aifabrix deploy hubspot
 ```
 
-**What happens:** The CLI resolves the app path (integration first, then builder) and sends the deployment to the **Miso Controller** (pipeline API). When the app is in `integration/<app>/`, no app register is needed. The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates deployment.
+**What happens:** The CLI resolves the app path (integration first, then builder) and sends the deployment to the **Miso Controller**. When the app is in `integration/<app>/`, no app register is needed. The controller then deploys to the dataplane (or target environment). The controller orchestrates deployment; the CLI does not deploy directly to the dataplane for app-level deploy.
 
 1. Generates `<systemKey>-deploy.json` (combines one system + all datasources)
-2. Sends to controller via pipeline API (validate then deploy)
+2. Sends to controller (validate then deploy)
 3. Controller deploys to dataplane; validates and publishes
 4. System and datasources are deployed together
 
@@ -1265,17 +1272,17 @@ aifabrix deploy hubspot
 **What happens:** The CLI resolves the app path (integration first, then builder) and sends the deployment to the **Miso Controller**. The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates it.
 
 1. Generates controller manifest (if not already generated) via `aifabrix json` internally
-2. Uses the same controller pipeline as regular apps: Validate then Deploy
+2. Uses the same flow as regular apps: validate then deploy
 3. Controller deploys external system and datasources to the dataplane
 4. Field mappings are compiled; OpenAPI operations are registered; system is ready for querying
 
-**Controller pipeline benefits:** Same workflow as application deployment; validation before deploy; optional polling for deployment status.
+**Benefits:** Same workflow as application deployment; validation before deploy; optional polling for deployment status.
 
 **When do I get MCP/OpenAPI docs?** After publish (via deploy or upload), MCP and OpenAPI docs are served by the dataplane at standard URLs. See [Controller and Dataplane: What, Why, When](deploying.md#controller-and-dataplane-what-why-when) for when they become available and how to access them.
 
 ### 4a. Upload to dataplane (development)
 
-Use **`aifabrix upload <system-key>`** for fast development iteration. The command uses the dataplane pipeline **upload → validate → publish** flow. It publishes config (system + datasources) into the dataplane and **registers RBAC with the controller**. It does **not** send a manifest to the controller for container/restart deployment. Suited for testing (e.g. with `aifabrix test-integration`).
+Use **`aifabrix upload <system-key>`** for fast development iteration. The command validates and publishes config (system + datasources) to the dataplane and **registers RBAC with the controller**. It does **not** trigger controller-driven container/restart deployment. Suited for testing (e.g. with `aifabrix test-integration`).
 
 **When to use upload vs deploy:**
 - **`aifabrix upload <system-key>`** – Development: quick iteration, dataplane publish, RBAC registration with controller. No controller validate/deploy; no manifest sent for container deployment. Use when developing or when you have limited controller permissions (e.g. no `applications:deploy`). Promote to full platform later via **`aifabrix deploy <app>`** or the web interface.
@@ -1332,7 +1339,7 @@ aifabrix download hubspot
 # 3. Run unit tests (local validation, no API calls)
 aifabrix test hubspot
 
-# 4. Run integration tests (via dataplane pipeline API)
+# 4. Run integration tests (via the dataplane)
 aifabrix test-integration hubspot
 
 # 5. Deploy back to dataplane (via application-level workflow)
@@ -1481,14 +1488,13 @@ status:
 **Download external system:**
 ```bash
 aifabrix download <system-key>
+# Options: --format json|yaml, --dry-run, --force (overwrite README.md)
 ```
 
 **Delete external system:**
 ```bash
 aifabrix delete <system-key>
-
-# Skip confirmation prompt
-aifabrix delete <system-key> --yes
+# Options: --type <type> (default: external), --yes or --force (skip confirmation)
 ```
 
 **Create external system:**
@@ -1518,7 +1524,7 @@ aifabrix test <app> [--datasource <key>] [--verbose]
 
 **Integration test (via dataplane):**
 ```bash
-aifabrix test-integration <app> [--datasource <key>] [--payload <file>]
+aifabrix test-integration <app> [--datasource <key>] [--payload <file>] [-e|--env <env>] [-v|--verbose] [--debug] [--timeout <ms>]
 ```
 
 **Generate deployment JSON:**
@@ -1547,5 +1553,7 @@ aifabrix datasource list
 ```bash
 aifabrix datasource validate <datasource-key>
 ```
+
+For full option details, examples, and troubleshooting, see [External Integration Commands](commands/external-integration.md) and [External Integration Testing](commands/external-integration-testing.md).
 
 

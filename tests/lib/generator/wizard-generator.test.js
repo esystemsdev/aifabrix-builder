@@ -448,8 +448,8 @@ describe('Wizard Generator', () => {
       expect(scriptContent).toContain('path.join(scriptDir');
       expect(scriptContent).toContain('{ cwd: projectRoot }');
       // deploy and test-integration must pass cwd: projectRoot so CLI resolves integration/ and builder/ from repo root
-      expect(scriptContent).toContain("run('aifabrix deploy ' + appKey, { cwd: projectRoot })");
-      expect(scriptContent).toContain("run('aifabrix test-integration ' + appKey, { cwd: projectRoot })");
+      expect(scriptContent).toContain('run(\'aifabrix deploy \' + appKey, { cwd: projectRoot })');
+      expect(scriptContent).toContain('run(\'aifabrix test-integration \' + appKey, { cwd: projectRoot })');
     });
 
     it('should handle errors when generating scripts', async() => {

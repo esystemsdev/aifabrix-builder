@@ -13,6 +13,7 @@ jest.unmock('fs');
 
 const path = require('path');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 
 const validate = require('../../../lib/validation/validate');
 const { getProjectRoot } = require('../../../lib/utils/paths');
@@ -94,8 +95,13 @@ describe('External System Download Roundtrip', () => {
 
   it('should pass validate after split of deploy JSON with auth config', async() => {
     const deploy = buildRoundtripDeployJson();
-    const deployPath = path.join(testDir, `${systemKey}-deploy.json`);
-    await fs.writeFile(deployPath, JSON.stringify(deploy, null, 2), 'utf8');
+    const deployPath = path.resolve(path.join(testDir, `${systemKey}-deploy.json`));
+
+    // Write with sync fs so the file is on disk before isolateModules loads split (same fs split uses)
+    fsSync.writeFileSync(deployPath, JSON.stringify(deploy, null, 2), 'utf8');
+    if (!fsSync.existsSync(deployPath)) {
+      throw new Error(`Deploy JSON was not written (fs may be mocked): ${deployPath}`);
+    }
 
     // Force fresh require of generator so it uses real fs (not a cached mock from other tests)
     let generatorLocal;

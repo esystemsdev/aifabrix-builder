@@ -4,7 +4,9 @@
 
 Commands for creating, testing, and managing external system integrations. Commands that call the Dataplane require login and the appropriate Dataplane permissions (e.g. **external-system:read**, **external-system:create**, **credential:read**). See [Online Commands and Permissions](permissions.md). For detailed testing documentation (unit and integration tests, test payloads, troubleshooting), see [External Integration Testing](external-integration-testing.md).
 
-**Dataplane pipeline commands:** `aifabrix upload <system-key>` and `aifabrix datasource upload <app> <file>` send configuration to the Dataplane pipeline API. The CLI displays a warning before doing so—ensure you are targeting the correct environment and have the required permissions (see [Permissions](permissions.md)).
+**Implementation:** External system CLI commands (`download`, `upload`, `delete`, `test-integration`) are registered in `lib/cli/setup-external-system.js`.
+
+**Dataplane commands:** `aifabrix upload <system-key>` and `aifabrix datasource upload <app> <file>` send configuration to the dataplane. The CLI displays a warning before doing so—ensure you are targeting the correct environment and have the required permissions (see [Permissions](permissions.md)).
 
 **Resolve:** You can run `aifabrix resolve <app>` for external integrations when `integration/<app>/env.template` exists. If `application.yaml` is missing, resolve still runs in **env-only** mode and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
 
@@ -97,7 +99,7 @@ aifabrix delete hubspot
 
 Download external system from dataplane to local development structure.
 
-**What:** Downloads an external system configuration and all its datasources from the dataplane API to a local development folder structure. Creates all necessary files for local development and testing.
+**What:** Fetches the full running manifest (system + all datasources) from the dataplane in a single request, then writes `<system-key>-deploy.json` and splits it into component files (application.yaml, system YAML, datasource YAMLs, env.template, README.md). The generated env.template includes `KV_*` entries derived from the system's `authentication.security` so credential coverage validation passes. If the integration folder already exists, existing `env.template` is merged (not overwritten); README.md is only replaced after a prompt unless `--force` is used.
 
 **When:** Setting up local development for an existing external system, cloning a system from another environment, or retrieving a system configuration for modification.
 
@@ -111,6 +113,9 @@ aifabrix download hubspot --format json
 
 # Dry run to see what would be downloaded
 aifabrix download hubspot --dry-run
+
+# Overwrite existing README.md without prompting
+aifabrix download hubspot --force
 ```
 
 **Arguments:**
@@ -119,57 +124,45 @@ aifabrix download hubspot --dry-run
 **Options:**
 - `--format <format>` - Output format: `json` | `yaml` (default: `yaml` or config format). When `json`, runs the full pipeline: download → split → convert component files to JSON. When `yaml`, only splits into YAML components. If not passed, uses config format (set via `aifabrix dev set-format`) or `yaml`.
 - `--dry-run` - Show what would be downloaded without actually downloading
+- `--force` - Overwrite existing README.md without prompting
 
 Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`).
 
 **Prerequisites:**
-- Must be logged in: `aifabrix login`
+- Must be logged in: `aifabrix login` (**Bearer token** required; client credentials are not sufficient for download—use device or interactive login).
 - System must exist in the dataplane
 - Dataplane permission: **external-system:read**
 
 **Process:**
-1. Gets dataplane URL from controller
-2. Downloads system configuration from dataplane
-3. Downloads datasource configurations
-4. Validates downloaded data against schemas
-5. Creates `integration/<system-key>/` folder structure
-6. Generates development files:
-   - `<system-key>-deploy.json` - Deployment manifest (single file with inline system + datasources)
-   - `application.yaml` - Application configuration with externalIntegration block
-   - `env.template` - Environment variables template
-   - `README.md` - Documentation with setup instructions
-
-**Note:** The downloaded `<system-key>-deploy.json` can be split into component files using `aifabrix split-json <system-key>`, which creates:
-   - `<system-key>-system.yaml` - External system definition
-   - `<system-key>-datasource-<datasource-key>.yaml` - Datasource files (one per datasource)
+1. Resolves dataplane URL from controller and authenticates (Bearer required).
+2. Downloads the **full manifest** (system + all datasources) from the dataplane in one go.
+3. Validates the response, then builds deploy JSON. The generated env.template gets `KV_*` entries from the system’s `authentication.security` so credential validation passes.
+4. Writes `<system-key>-deploy.json` to `integration/<system-key>/` and **splits** it into component files:
+   - `application.yaml`, `<system-key>-system.yaml`, `<system-key>-datasource-<key>.yaml`, `env.template`, `README.md`
+5. If the folder already exists: **env.template** is merged with the existing file (local edits preserved). **README.md**: if it exists and `--force` is not set, the CLI prompts to replace (yes/no); with `--force`, README is overwritten without prompting.
+6. Ensures placeholder secrets from env.template (empty values for credentials).
+7. If `--format json`: runs convert so component files are JSON instead of YAML.
 
 **Output:**
 ```yaml
-📥 Downloading external system 'hubspot' from dataplane...
+📥 Downloading external system: hubspot
 
-🔐 Getting authentication...
-✓ Authentication successful
-🌐 Getting dataplane URL from controller...
+🌐 Resolving dataplane URL...
 ✓ Dataplane URL: https://dataplane.aifabrix.dev
 
-📥 Downloading system configuration...
-✓ System configuration downloaded
-📥 Downloading datasources...
-✓ Downloaded 3 datasource(s)
-
-📝 Generating development files...
-✓ Created integration/hubspot/hubspot-deploy.json
-✓ Created integration/hubspot/application.yaml
-✓ Created integration/hubspot/env.template
-✓ Created integration/hubspot/README.md
-
-💡 Tip: Split the deployment manifest into component files:
-   aifabrix split-json hubspot
-   # Creates: hubspot-system.yaml, hubspot-datasource-*.yaml
-
+📡 Downloading full manifest: hubspot
+🔍 Validating downloaded data...
+✓ System type: openapi
+✓ Found 3 datasource(s)
+📁 Creating directory: integration/hubspot
+✓ Created: integration/hubspot/hubspot-deploy.json
+📂 Splitting deploy JSON into component files...
 ✅ External system downloaded successfully!
-   Location: integration/hubspot/
+Location: integration/hubspot
+System: hubspot
+Datasources: 3
 ```
+With `--format json`, an extra line confirms conversion to JSON. If README.md already exists and `--force` is not set, you are prompted to replace it.
 
 **File Structure:**
 ```text
@@ -186,11 +179,11 @@ integration/
 
 **Issues:**
 - **"System key is required"** → Provide system key as argument
-- **"Not logged in"** → Run `aifabrix login` first
+- **"Not logged in"** / **"Authentication required"** → Run `aifabrix login` (device or interactive flow to get a Bearer token)
+- **Bearer token required** → Download requires a Bearer token; client credentials are not sufficient. Use `aifabrix login` (device or interactive flow) to obtain a Bearer token.
 - **"System not found"** → Check system key exists in the dataplane
 - **"Failed to download system"** → Check dataplane URL, authentication, and network connection
-- **"Partial download failed"** → Some datasources may have failed; check error messages
-- **"Validation failed"** → Downloaded data doesn't match expected schema
+- **"Validation failed"** → Downloaded data doesn't match expected schema (application key, datasource systemKey, etc.)
 
 **Next Steps:**
 After downloading:
@@ -206,7 +199,7 @@ After downloading:
 
 Upload full external system (system + all datasources + RBAC) to the dataplane for the current environment.
 
-**What:** Uploads the full manifest to the dataplane using the pipeline **upload → validate → publish** flow. Publishes config (system + datasources) into the dataplane and **registers RBAC with the controller**. Does **not** send a manifest to the controller for container/restart deployment. Suited for fast development iteration and testing (e.g. with `aifabrix test-integration`). Promote to full platform with `aifabrix deploy <app>` when ready.
+**What:** Uploads the full manifest (system + datasources) to the dataplane: the CLI validates, then publishes the config and **registers RBAC with the controller**. It does **not** trigger controller-driven container/restart deployment. Use for fast development iteration and testing (e.g. with `aifabrix test-integration`). Promote to full platform with `aifabrix deploy <app>` when ready.
 
 **When:** Develop and test on the dataplane; or when you have only dataplane access or limited controller permissions (e.g. no `applications:deploy` on the controller).
 
@@ -231,7 +224,7 @@ aifabrix upload my-hubspot --dry-run
 - Login or app credentials for the system: `aifabrix login` or `aifabrix app register <system-key>`
 - `integration/<system-key>/` with valid `application.yaml` and system/datasource files
 
-> **Dataplane pipeline warning:** Before sending data, the CLI displays a warning that configuration will be sent to the Dataplane pipeline API. Ensure you are targeting the correct environment and have the required permissions. See [Permissions](permissions.md).
+> **Warning:** Before sending data, the CLI displays a warning that configuration will be sent to the dataplane. Ensure you are targeting the correct environment and have the required permissions. See [Permissions](permissions.md).
 
 **Process:**
 1. Validate locally (`validateExternalSystemComplete`)
@@ -252,7 +245,7 @@ Uploading external system to dataplane: my-hubspot
 Validation passed.
 Resolving dataplane URL...
 Dataplane: https://dataplane.example.com
-⚠ Configuration will be sent to the Dataplane pipeline API. Ensure you are targeting the correct environment and have the required permissions.
+⚠ Configuration will be sent to the dataplane. Ensure you are targeting the correct environment and have the required permissions.
 
 Upload validated and published to dataplane.
 Environment: dev
@@ -345,6 +338,7 @@ aifabrix delete hubspot --yes
 - `<system-key>` - External system key (identifier)
 
 **Options:**
+- `--type <type>` - Application type (default: `external`). Use `external` to target `integration/<app>/` when resolving local path.
 - `--yes` - Skip confirmation prompt
 - `--force` - Skip confirmation prompt (alias for `--yes`)
 
@@ -477,9 +471,9 @@ For test payload configuration, examples, and troubleshooting, see [External Int
 <a id="aifabrix-test-integration-app"></a>
 ## aifabrix test-integration <app>
 
-Run integration tests via dataplane pipeline API. Requires Dataplane access (authenticated; pipeline test endpoint). See [Online Commands and Permissions](permissions.md).
+Run integration tests via the dataplane. Requires dataplane access (authenticated). See [Online Commands and Permissions](permissions.md).
 
-**What:** Tests external system configuration by calling the dataplane pipeline test API. Validates field mappings, metadata schemas, endpoint connectivity, and ABAC dimensions using real API calls.
+**What:** Tests external system configuration against the dataplane. Validates field mappings, metadata schemas, connectivity, and ABAC dimensions.
 
 **When:** After unit tests pass, when validating against the real dataplane, or when testing endpoint connectivity before deployment.
 
@@ -506,7 +500,7 @@ aifabrix test-integration hubspot --debug
 
 **Prerequisites:** Logged in (`aifabrix login`); dataplane accessible; system published or ready for testing.
 
-**Process:** (1) Resolve dataplane URL from controller. (2) For each datasource: load payload from datasource `testPayload.payloadTemplate` or `--payload` file; run pipeline test; parse validation, field mapping, and endpoint results. (3) Display and aggregate results. Includes retry with exponential backoff for transient failures.
+**Process:** (1) Resolve dataplane URL from controller. (2) For each datasource: load payload from datasource `testPayload.payloadTemplate` or `--payload` file; run the test; parse validation, field mapping, and connectivity results. (3) Display and aggregate results. Includes retry with exponential backoff for transient failures.
 
 For payload sources, response handling, and troubleshooting, see [External Integration Testing](external-integration-testing.md#integration-tests-aifabrix-test-integration).
 
@@ -747,11 +741,11 @@ After comparing:
 <a id="aifabrix-datasource-upload-myapp-file"></a>
 ### aifabrix datasource upload <myapp> <file>
 
-Upload datasource to dataplane. Requires Dataplane access (authenticated; pipeline publish). See [Online Commands and Permissions](permissions.md).
+Upload datasource to dataplane. Requires dataplane access (authenticated). See [Online Commands and Permissions](permissions.md).
 
-**What:** Validates and uploads an external datasource configuration to the dataplane. Gets dataplane URL from controller, then publishes the datasource via the Dataplane pipeline.
+**What:** Validates and uploads an external datasource configuration to the dataplane. Gets dataplane URL from controller, then publishes the datasource.
 
-> **Dataplane pipeline warning:** Before publishing, the CLI displays a warning that configuration will be sent to the Dataplane pipeline API. Ensure you are targeting the correct environment and have the required permissions. See [Permissions](permissions.md).
+> **Warning:** Before publishing, the CLI displays a warning that configuration will be sent to the dataplane. Ensure you are targeting the correct environment and have the required permissions. See [Permissions](permissions.md).
 
 **When:** Uploading new datasource, updating existing datasource, or pushing datasource configuration changes to dataplane.
 
@@ -778,8 +772,8 @@ aifabrix datasource upload myapp ./schemas/hubspot-deal.yaml
 3. Extracts systemKey from configuration
 4. Gets authentication (device token or client credentials)
 5. Gets dataplane URL from controller
-6. Displays Dataplane pipeline warning (configuration will be sent to Dataplane)
-7. Uploads datasource via pipeline API (sends datasource configuration to Dataplane)
+6. Displays warning (configuration will be sent to the dataplane)
+7. Uploads datasource to the dataplane
 8. Displays results
 
 **Output:**
@@ -794,7 +788,7 @@ aifabrix datasource upload myapp ./schemas/hubspot-deal.yaml
 ✓ Dataplane URL: https://dataplane.aifabrix.dev
 
 🚀 Publishing datasource to dataplane...
-⚠ Configuration will be sent to the Dataplane pipeline API. Ensure you are targeting the correct environment and have the required permissions.
+⚠ Configuration will be sent to the dataplane. Ensure you are targeting the correct environment and have the required permissions.
 
 ✓ Datasource published successfully!
 
@@ -829,9 +823,9 @@ After upload:
 <a id="aifabrix-datasource-test-integration-datasourcekey"></a>
 ### aifabrix datasource test-integration <datasourceKey>
 
-Run integration (config) test for one datasource via dataplane pipeline. Requires Dataplane access. See [Online Commands and Permissions](permissions.md).
+Run integration (config) test for one datasource via the dataplane. Requires dataplane access. See [Online Commands and Permissions](permissions.md).
 
-**What:** Tests a single datasource via the pipeline test endpoint. Validates field mappings, metadata schemas, and endpoint connectivity. Supports client credentials for CI/CD.
+**What:** Tests a single datasource against the dataplane. Validates field mappings, metadata schemas, and connectivity. Supports client credentials for CI/CD.
 
 **When:** Testing one datasource without running tests for the whole system; in CI pipelines; when inside `integration/<appKey>/` and running from that directory.
 
@@ -881,7 +875,7 @@ aifabrix datasource test-e2e hubspot-contacts -a hubspot -e tst --debug -v
 
 **Options:** `-a, --app <appKey>` – App key (required if not inside `integration/<appKey>/`). `-e, --env <env>` – Environment: dev, tst, or pro. `-v, --verbose` – Detailed step output. `--debug` – Include debug output and write log to `integration/<app>/logs/`.
 
-**Prerequisites:** Logged in (`aifabrix login`) or API key configured. E2E endpoints require Bearer token or API key; client credentials are not accepted. Run `aifabrix login` if you see "E2E tests require Bearer token or API key".
+**Prerequisites:** Logged in (`aifabrix login`) or API key configured. E2E tests require a Bearer token or API key; client credentials are not accepted. Run `aifabrix login` if you see "E2E tests require Bearer token or API key".
 
 For details, see [External Integration Testing](external-integration-testing.md#datasource-e2e-tests).
 

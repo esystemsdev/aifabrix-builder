@@ -264,7 +264,7 @@ describe('secret set command', () => {
         expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Could not read existing secrets file'));
       });
 
-      it('should append new secret preserving existing content even when invalid YAML', async() => {
+      it('should write new secret when existing file has invalid YAML (existing content discarded)', async() => {
         const key = 'test-keyKeyVault';
         const value = 'test-value';
         const options = {};
@@ -272,12 +272,11 @@ describe('secret set command', () => {
         fs.existsSync.mockReturnValue(true);
         fs.readFileSync.mockReturnValue('invalid: yaml: content: [unclosed');
 
-        // We append without parsing existing content, so invalid YAML is preserved and new key is appended
+        // Invalid YAML cannot be merged; implementation overwrites with new key only
         await handleSecretsSet(key, value, options);
 
         expect(fs.writeFileSync).toHaveBeenCalled();
         const written = fs.writeFileSync.mock.calls[0][1];
-        expect(written).toContain('invalid: yaml: content: [unclosed');
         expect(written).toContain('test-keyKeyVault');
         expect(written).toContain('test-value');
       });

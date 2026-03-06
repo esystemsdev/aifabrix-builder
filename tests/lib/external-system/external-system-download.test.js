@@ -356,7 +356,7 @@ describe('External System Download Module', () => {
       getExternalSystemConfig.mockResolvedValue(mockDownloadResponse);
       const generator = require('../../../lib/generator');
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
-      await downloadExternalSystem(systemKey, { environment: 'dev' });
+      await downloadExternalSystem(systemKey, { environment: 'dev', force: true });
 
       expect(getExternalSystemConfig).toHaveBeenCalledWith(
         'http://dataplane:8080',
@@ -367,7 +367,8 @@ describe('External System Download Module', () => {
       expect(fsPromises.writeFile).toHaveBeenCalled();
       expect(generator.splitDeployJson).toHaveBeenCalledWith(
         expect.stringContaining(`${systemKey}-deploy.json`),
-        appPath
+        appPath,
+        expect.objectContaining({ overwriteReadme: true })
       );
     });
 
@@ -390,7 +391,7 @@ describe('External System Download Module', () => {
       getDeploymentAuth.mockResolvedValue({});
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await expect(
-        downloadExternalSystem(systemKey, {})
+        downloadExternalSystem(systemKey, { force: true })
       ).rejects.toThrow('Authentication required');
     });
 
@@ -401,7 +402,7 @@ describe('External System Download Module', () => {
       });
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await expect(
-        downloadExternalSystem(systemKey, {})
+        downloadExternalSystem(systemKey, { force: true })
       ).rejects.toThrow('Dataplane pipeline endpoints require OAuth2 (Bearer token)');
     });
 
@@ -414,7 +415,7 @@ describe('External System Download Module', () => {
       listExternalSystems.mockResolvedValue(mockListResponseEmpty);
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await expect(
-        downloadExternalSystem('hubspots', {})
+        downloadExternalSystem('hubspots', { force: true })
       ).rejects.toThrow(/Failed to download system configuration|Authentication failed/);
       expect(getExternalSystemConfig).toHaveBeenCalled();
     });
@@ -427,7 +428,7 @@ describe('External System Download Module', () => {
       });
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await expect(
-        downloadExternalSystem(systemKey, {})
+        downloadExternalSystem(systemKey, { force: true })
       ).rejects.toThrow(/Failed to download system configuration|Not found/);
     });
 
@@ -438,7 +439,7 @@ describe('External System Download Module', () => {
       });
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await expect(
-        downloadExternalSystem(systemKey, {})
+        downloadExternalSystem(systemKey, { force: true })
       ).rejects.toThrow('Failed to download system configuration');
     });
 
@@ -449,7 +450,7 @@ describe('External System Download Module', () => {
 
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
       await expect(
-        downloadExternalSystem(systemKey, {})
+        downloadExternalSystem(systemKey, { force: true })
       ).rejects.toThrow(/Failed to download external system/);
     });
 
@@ -457,7 +458,7 @@ describe('External System Download Module', () => {
       getExternalSystemConfig.mockResolvedValue(mockDownloadResponse);
 
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
-      await downloadExternalSystem(systemKey, { environment: 'dev' });
+      await downloadExternalSystem(systemKey, { environment: 'dev', force: true });
 
       expect(resolveDataplaneUrl).toHaveBeenCalled();
       expect(getExternalSystemConfig).toHaveBeenCalled();
@@ -490,7 +491,7 @@ describe('External System Download Module', () => {
 
       const generator = require('../../../lib/generator');
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
-      await downloadExternalSystem(systemKey, { environment: 'dev' });
+      await downloadExternalSystem(systemKey, { environment: 'dev', force: true });
 
       expect(getExternalSystemConfig).toHaveBeenCalled();
       expect(generator.splitDeployJson).toHaveBeenCalled();
@@ -514,7 +515,7 @@ describe('External System Download Module', () => {
 
       const generator = require('../../../lib/generator');
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
-      await downloadExternalSystem(systemKey, { environment: 'dev' });
+      await downloadExternalSystem(systemKey, { environment: 'dev', force: true });
 
       expect(getExternalSystemConfig).toHaveBeenCalled();
       expect(generator.splitDeployJson).toHaveBeenCalled();
@@ -526,7 +527,7 @@ describe('External System Download Module', () => {
       const { runConvert } = require('../../../lib/commands/convert');
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
 
-      await downloadExternalSystem(systemKey, { environment: 'dev', format: 'json' });
+      await downloadExternalSystem(systemKey, { environment: 'dev', format: 'json', force: true });
 
       expect(runConvert).toHaveBeenCalledWith(systemKey, { format: 'json', force: true });
     });
@@ -537,7 +538,7 @@ describe('External System Download Module', () => {
       const { runConvert } = require('../../../lib/commands/convert');
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
 
-      await downloadExternalSystem(systemKey, { environment: 'dev', format: 'yaml' });
+      await downloadExternalSystem(systemKey, { environment: 'dev', format: 'yaml', force: true });
 
       expect(runConvert).not.toHaveBeenCalled();
     });
@@ -574,7 +575,7 @@ describe('External System Download Module', () => {
       });
 
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
-      await downloadExternalSystem(systemKey, { environment: 'dev' });
+      await downloadExternalSystem(systemKey, { environment: 'dev', force: true });
 
       expect(capturedDeployJson).toBeDefined();
       const deploy = JSON.parse(capturedDeployJson);
@@ -622,7 +623,7 @@ describe('External System Download Module', () => {
       });
 
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
-      await downloadExternalSystem(systemKey, { environment: 'dev' });
+      await downloadExternalSystem(systemKey, { environment: 'dev', force: true });
 
       const deploy = JSON.parse(capturedDeployJson);
       const keyvaultConfigs = (deploy.system?.configuration || []).filter(c => c.location === 'keyvault');
@@ -660,7 +661,7 @@ describe('External System Download Module', () => {
       });
 
       const { downloadExternalSystem } = require('../../../lib/external-system/download');
-      await downloadExternalSystem(systemKey, { environment: 'dev' });
+      await downloadExternalSystem(systemKey, { environment: 'dev', force: true });
 
       const deploy = JSON.parse(capturedDeployJson);
       const keyvaultConfigs = (deploy.system?.configuration || []).filter(c => c.location === 'keyvault');
