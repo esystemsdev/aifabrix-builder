@@ -10,7 +10,7 @@ Commands for creating, testing, and managing external system integrations. Comma
 
 **Resolve:** You can run `aifabrix resolve <app>` for external integrations when `integration/<app>/env.template` exists. If `application.yaml` is missing, resolve still runs in **env-only** mode and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
 
-**Repair:** If `application.yaml`, system file `dataSources`, or env.template gets out of sync with files on disk (e.g. after converting JSON ↔ YAML, adding/removing/renaming datasource files, auth variables wrongly listed in system `configuration`, or env.template having wrong KV_* keys), run `aifabrix repair <app>`; see [Utility commands – repair](utilities.md#aifabrix-repair-app).
+**Repair:** If `application.yaml`, system file `dataSources`, or env.template gets out of sync with files on disk (e.g. after converting JSON ↔ YAML, adding/removing/renaming datasource files, auth variables wrongly listed in system `configuration`, or env.template having wrong KV_* keys), run `aifabrix repair <app>`. Repair also aligns datasource files with the manifest (dimensions and metadataSchema from attributes as source of truth) and supports optional flags `--rbac`, `--expose`, `--sync`, and `--test`; see [Utility commands – repair](utilities.md#aifabrix-repair-app).
 
 ---
 

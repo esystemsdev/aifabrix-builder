@@ -1104,7 +1104,7 @@ TOKEN_URL=https://api.hubapi.com/oauth/v1/token
 1. Run `aifabrix credential env hubspot` to prompt for values and write `.env`
 2. Run `aifabrix credential push hubspot` or `aifabrix upload hubspot` to push secrets to the dataplane
 
-If env.template keys or values drift from the system file (e.g. wrong variable names or non–path-style kv refs), run `aifabrix repair <app>` to align env.template with the system.
+If env.template keys or values drift from the system file (e.g. wrong variable names or non–path-style kv refs), run `aifabrix repair <app>` to align env.template with the system. Repair also aligns datasource files (dimensions and metadataSchema with attributes as source of truth).
 
 ---
 
@@ -1459,7 +1459,7 @@ status:
 → Check datasource is enabled: `"enabled": true`
 
 **"application.yaml out of sync with files"** or **"External datasource file not found"**
-→ Run `aifabrix repair <app>` to align `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files on disk, and to repair env.template (KV_* names and path-style `kv://` values) to match the system file.
+→ Run `aifabrix repair <app>` to align `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files on disk, and to repair env.template (KV_* names and path-style `kv://` values) to match the system file. Repair also fixes datasource manifest alignment (dimensions, metadataSchema). Optional flags `--rbac`, `--expose`, `--sync`, and `--test` can add RBAC permissions and default roles, set exposed attributes, add a sync section, or generate test payloads.
 
 **"OpenAPI operations not working"**
 → Verify `documentKey` matches registered OpenAPI spec

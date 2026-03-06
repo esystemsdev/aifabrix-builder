@@ -94,7 +94,7 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix json <app>`](utilities.md#aifabrix-json-app) - Generate deployment JSON to disk
   - [`aifabrix split-json <app>`](utilities.md#aifabrix-split-json-app) - Split deployment JSON into component files
   - [`aifabrix convert <app>`](utilities.md#aifabrix-convert-app) - Convert integration/external system and datasource files between JSON and YAML
-  - [`aifabrix repair <app>`](utilities.md#aifabrix-repair-app) - Repair external integration config when application.yaml drifts from files on disk
+  - [`aifabrix repair <app>`](utilities.md#aifabrix-repair-app) - Repair external integration config when application.yaml drifts from files on disk; aligns datasource files (dimensions, metadataSchema) and supports optional flags for RBAC, expose, sync, and test payload
   - [`aifabrix secure`](utilities.md#aifabrix-secure) - Encrypt secrets in secrets.local.yaml files
   - [`aifabrix secret`](utilities.md#aifabrix-secret) - Manage secrets (local and shared; when aifabrix-secrets is URL, shared via API, never on disk)
     - [`aifabrix secret list`](utilities.md#aifabrix-secret-list) / [`secret list --shared`](utilities.md#aifabrix-secret-list) - List local or shared secrets

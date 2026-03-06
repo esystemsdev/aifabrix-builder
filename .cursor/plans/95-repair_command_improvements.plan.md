@@ -290,3 +290,96 @@ Extend `aifabrix repair <app>` with manifest-centric datasource repairs (attribu
 - Run `npm run build` (or lint then test) after each logical change to catch regressions early.
 - In docs, keep repair description command-centric and avoid mentioning pipeline/controller endpoints.
 
+---
+
+## Implementation Validation Report
+
+**Date**: 2026-03-06  
+**Plan**: .cursor/plans/95-repair_command_improvements.plan.md  
+**Status**: ✅ COMPLETE
+
+### Executive Summary
+
+All plan requirements have been implemented: core repair (dimensions, metadataSchema), optional flags (--rbac, --expose, --sync, --test), CLI wiring, tests for repair-datasource, repair-rbac, and repair integration, and documentation updates. Code quality validation (format → lint → test) passed. Cursor rules compliance verified.
+
+### Task Completion
+
+- **Plan structure**: Section-based (no checkboxes); all sections 1–7, Definition of Done, and Documentation to update are implemented.
+- **Core repair (§1)**: Dimensions prune and metadataSchema add/prune in `lib/commands/repair-datasource.js`; repair.js runs datasource repair for each file and persists before manifest regeneration.
+- **Optional flags (§2–5)**: --rbac (lib/commands/repair-rbac.js), --expose, --sync, --test in repair-datasource.js; gated by options in repair.js.
+- **CLI and wiring (§6)**: setup-utility.js has --rbac, --expose, --sync, --test and passes them to repairExternalIntegration.
+- **Files (§7)**: repair-datasource.js (new), repair-rbac.js (new, for RBAC merge and lint/size), repair.js (updated), setup-utility.js (updated).
+- **Docs**: All seven documents in § Documentation to update revised (utilities.md, external-integration.md, external-systems.md, secrets-and-config.md, commands/README.md, application-yaml.md, validation.md).
+
+### File Existence Validation
+
+| File | Status |
+|------|--------|
+| lib/commands/repair-datasource.js | ✅ Exists; contains repairDimensionsFromAttributes, repairMetadataSchemaFromAttributes, repairExposeFromAttributes, repairSyncSection, repairTestPayload, repairDatasourceFile |
+| lib/commands/repair-rbac.js | ✅ Exists; contains getCapabilitiesFromDatasource, mergeRbacFromDatasources (RBAC merge extracted for size/complexity) |
+| lib/commands/repair.js | ✅ Exists; calls repairDatasourceFile, runDatasourceRepairs, mergeRbacFromDatasources; passes options.rbac, .expose, .sync, .test |
+| lib/cli/setup-utility.js | ✅ Exists; repair command has .option('--rbac'), .option('--expose'), .option('--sync'), .option('--test') and pass-through to repairExternalIntegration |
+| tests/lib/commands/repair-datasource.test.js | ✅ Exists; tests getAttributeKeys, parsePathsFromExpressions, dimensions, metadataSchema, expose, sync, testPayload, repairDatasourceFile |
+| tests/lib/commands/repair-rbac.test.js | ✅ Exists; tests getCapabilitiesFromDatasource, mergeRbacFromDatasources (existing rbac, new rbac, dry-run, extractRbacFromSystem) |
+| tests/lib/commands/repair.test.js | ✅ Exists; tests datasource repair (dimensions + metadataSchema), --expose, --rbac, dry-run; “no changes” mocks updated for valid datasource |
+| docs/commands/utilities.md | ✅ Updated; repair section: datasource behavior, options --rbac/--expose/--sync/--test, repairable issues |
+| docs/commands/external-integration.md | ✅ Updated; repair bullet extended with datasource alignment and optional flags |
+| docs/external-systems.md | ✅ Updated; env.template sentence and Troubleshooting bullet |
+| docs/configuration/secrets-and-config.md | ✅ Updated; repair sentence + optional flags |
+| docs/commands/README.md | ✅ Updated; repair list item |
+| docs/configuration/application-yaml.md | ✅ Updated; repair sentence |
+| docs/commands/validation.md | ✅ Updated; troubleshooting bullet |
+
+### Test Coverage
+
+- **Unit tests**: repair-datasource.test.js (dimensions, metadataSchema, expose, sync, testPayload, repairDatasourceFile); repair-rbac.test.js (getCapabilitiesFromDatasource, mergeRbacFromDatasources scenarios).
+- **Integration tests**: repair.test.js (datasource repair writes file; --expose sets exposed.attributes; --rbac adds permissions/roles; dry-run does not write).
+- **Test count**: 236 test suites, 5127 tests passed (including 10 repair-rbac tests, repair-datasource tests, and extended repair.test.js cases).
+
+### Code Quality Validation
+
+| Step | Result |
+|------|--------|
+| **STEP 1 – Format** (npm run lint:fix) | ✅ PASSED (exit code 0) |
+| **STEP 2 – Lint** (npm run lint) | ✅ PASSED (exit code 0, 0 errors, 0 warnings) |
+| **STEP 3 – Test** (npm test) | ✅ PASSED (236 suites, 5127 passed) |
+
+### Cursor Rules Compliance
+
+| Rule | Status |
+|------|--------|
+| Code reuse | ✅ No duplication; repair-rbac extracted for single responsibility |
+| Error handling | ✅ try-catch in async paths; logger/chalk for repair and runDatasourceRepairs |
+| Logging | ✅ logger.log / chalk in repair and repair-rbac; no console.log in production paths |
+| Type safety | ✅ JSDoc @param, @returns on public functions in repair-datasource.js, repair-rbac.js, repair.js |
+| Async patterns | ✅ async/await in repairExternalIntegration |
+| File operations | ✅ path.join for paths; writeConfigFile/loadConfigFile; fs.writeFileSync for rbac.yaml |
+| Input validation | ✅ App name and file existence checks in repair flow |
+| Module patterns | ✅ CommonJS require/module.exports |
+| Security | ✅ No hardcoded secrets; RBAC uses system key/displayName from config only |
+| File size | ✅ Files ≤500 lines; functions ≤50 lines (repair-rbac split to satisfy max-lines-per-function) |
+| Docs (docs-rules.mdc) | ✅ User-facing, command-centric; no REST/HTTP details in updated docs |
+
+### Implementation Completeness
+
+- **Core repair**: ✅ Dimensions and metadataSchema (add if missing; prune top-level properties not in attribute paths).
+- **Optional flags**: ✅ --rbac, --expose, --sync, --test implemented and wired.
+- **CLI**: ✅ Options added and passed to repairExternalIntegration.
+- **Tests**: ✅ Unit and integration tests for new and modified code.
+- **Documentation**: ✅ All seven listed documents updated per plan.
+
+### Issues and Recommendations
+
+- None. Implementation meets Definition of Done and plan requirements.
+
+### Final Validation Checklist
+
+- [x] All plan tasks (sections 1–7, DoD, docs) completed
+- [x] All files exist and contain expected behavior
+- [x] Tests exist and pass (repair-datasource, repair-rbac, repair)
+- [x] Format (lint:fix) passed
+- [x] Lint passed (0 errors, 0 warnings)
+- [x] Tests passed (236 suites, 5127 tests)
+- [x] Cursor rules compliance verified
+- [x] Documentation updated (user-facing, no HTTP details)
+

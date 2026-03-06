@@ -214,7 +214,7 @@ aifabrix convert hubspot --format json --force
 
 Repair external integration config when `application.yaml` drifts from files on disk.
 
-**What:** Aligns `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files, syncs the system file `dataSources` array to datasource keys from discovered files (add/delete/rename), removes authentication-only variables from the system `configuration` array (keeps keyvault auth entries), fixes `app.key` to match `system.key`, aligns datasource `systemKey` values to match the system key, creates a minimal `externalIntegration` block when missing, extracts `rbac.yaml` from system roles/permissions when absent, repairs env.template so KV_ variable names and path-style `kv://` values match the system file (adds missing auth vars, corrects names/values), and regenerates `<systemKey>-deploy.json`.
+**What:** Aligns `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files, syncs the system file `dataSources` array to datasource keys from discovered files (add/delete/rename), removes authentication-only variables from the system `configuration` array (keeps keyvault auth entries), fixes `app.key` to match `system.key`, aligns datasource `systemKey` values to match the system key, creates a minimal `externalIntegration` block when missing, extracts `rbac.yaml` from system roles/permissions when absent, repairs env.template so KV_ variable names and path-style `kv://` values match the system file (adds missing auth vars, corrects names/values), and regenerates `<systemKey>-deploy.json`. Repair also runs on **datasource files**: it treats `fieldMappings.attributes` as the source of truth and aligns `fieldMappings.dimensions` (removes dimension entries whose `metadata.<attr>` is not in attributes) and `metadataSchema` (adds a minimal schema if missing; removes schema branches not referenced by any attribute expression).
 
 **When:** After converting files (JSON ↔ YAML), after adding/removing datasource files, when validation reports "External datasource file not found", or when `application.yaml` gets out of sync with files on disk.
 
@@ -227,9 +227,12 @@ Repair external integration config when `application.yaml` drifts from files on 
 - **Missing externalIntegration** — No block; repair creates it from discovered files
 - **Datasource systemKey mismatch** — Datasource file has `systemKey: X` but system file has `key: Y`; repair updates `systemKey` in each datasource file to match system key
 - **system.key mismatch** — System file has `key: X` but `app.key` is `Y`; repair updates `app.key`
+- **Dimensions not in attributes** — Dimension values like `metadata.<attr>` must reference an existing attribute key in `fieldMappings.attributes`; repair removes invalid dimension entries
+- **metadataSchema drift** — Repair adds a minimal metadataSchema when missing and removes schema fields not used by attribute expressions
 - **rbac.yaml missing** — System has roles/permissions but no `rbac.yaml`; repair creates it
 - **env.template key drift** — env.template has wrong or missing KV_* keys or non–path-style kv values; repair aligns names and values with the system's authentication.security and configuration
 - **Stale deploy manifest** — Regenerates `<systemKey>-deploy.json` after config changes
+- **Optional flags** — `--rbac` adds or merges RBAC permissions per datasource and default Admin/Reader roles if none exist; `--expose` sets `exposed.attributes` on each datasource to all attribute keys; `--sync` adds a default sync section to datasources that lack it; `--test` generates `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes
 
 **Usage:**
 ```bash
@@ -238,10 +241,17 @@ aifabrix repair hubspot
 
 # Preview changes without writing (--dry-run)
 aifabrix repair hubspot --dry-run
+
+# Optional: ensure RBAC, exposed attributes, sync section, or test payload
+aifabrix repair hubspot --rbac --expose --sync --test
 ```
 
 **Options:**
 - `--dry-run` — Report what would be changed; do not write
+- `--rbac` — Ensure RBAC has a permission per datasource endpoint (`<resourceType>:<capability>`) and add default Admin/Reader roles if none exist
+- `--expose` — Set `exposed.attributes` on each datasource to the list of all `fieldMappings.attributes` keys
+- `--sync` — Add a default sync section (mode, batchSize, maxParallelRequests) to datasources that lack it
+- `--test` — Generate `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes for each datasource
 
 **Issues:**
 - **"App not found"** → Ensure the app exists in `integration/<app>` or `builder/<app>`

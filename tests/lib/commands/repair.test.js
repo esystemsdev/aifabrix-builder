@@ -123,7 +123,15 @@ describe('repair', () => {
           return { key: appName, dataSources: [appName] };
         }
         if (s.endsWith('test-hubspot-datasource-record-storage.json')) {
-          return { key: appName, systemKey: appName };
+          return {
+            key: appName,
+            systemKey: appName,
+            metadataSchema: { type: 'object', properties: { metadata: {} } },
+            fieldMappings: {
+              attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } },
+              dimensions: { email: 'metadata.email' }
+            }
+          };
         }
         return { key: appName };
       });
@@ -424,7 +432,15 @@ describe('repair', () => {
           return { key: appName, displayName: 'Test', dataSources: ['record-storage'] };
         }
         if (base === 'test-hubspot-datasource-record-storage.json') {
-          return { key: 'record-storage', systemKey: appName };
+          return {
+            key: 'record-storage',
+            systemKey: appName,
+            metadataSchema: { type: 'object', properties: { metadata: {} } },
+            fieldMappings: {
+              attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } },
+              dimensions: { email: 'metadata.email' }
+            }
+          };
         }
         return {};
       });
@@ -1192,6 +1208,218 @@ describe('repair', () => {
       const written = writeConfigFile.mock.calls.find(c => c[0].endsWith('hubspot-system.yaml'));
       expect(written).toBeUndefined();
       writeFileSyncSpy.mockRestore();
+    });
+
+    it('repairs datasource dimensions and metadataSchema and writes datasource file', async() => {
+      const dsPath = path.join(appPath, 'hubspot-datasource-contact.json');
+      existsSyncSpy.mockImplementation((p) => {
+        const s = String(p);
+        return s === configPath || s === appPath ||
+          s.endsWith('hubspot-system.yaml') || s.endsWith('hubspot-datasource-contact.json') ||
+          s.includes('rbac');
+      });
+      readdirSyncSpy.mockReturnValue([
+        'hubspot-system.yaml',
+        'hubspot-datasource-contact.json',
+        'application.yaml'
+      ]);
+      loadConfigFile.mockImplementation((p) => {
+        const s = String(p);
+        if (s.endsWith('application.yaml') || s.endsWith('application.json')) {
+          return {
+            app: { key: 'hubspot', type: 'external' },
+            externalIntegration: {
+              schemaBasePath: './',
+              systems: ['hubspot-system.yaml'],
+              dataSources: ['hubspot-datasource-contact.json']
+            }
+          };
+        }
+        if (s.endsWith('hubspot-system.yaml')) {
+          return { key: 'hubspot', displayName: 'HubSpot', dataSources: ['hubspot-contact'] };
+        }
+        if (s.endsWith('hubspot-datasource-contact.json')) {
+          return {
+            key: 'hubspot-contact',
+            systemKey: 'hubspot',
+            fieldMappings: {
+              attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } },
+              dimensions: { email: 'metadata.email', country: 'metadata.country' }
+            }
+          };
+        }
+        return {};
+      });
+      generator.generateDeployJson.mockResolvedValue(path.join(appPath, 'hubspot-deploy.json'));
+
+      const result = await repairExternalIntegration('test-hubspot');
+
+      expect(result.updated).toBe(true);
+      const dsWrite = writeConfigFile.mock.calls.find(c => c[0] === dsPath);
+      expect(dsWrite).toBeDefined();
+      expect(dsWrite[1].fieldMappings.dimensions).not.toHaveProperty('country');
+      expect(dsWrite[1].fieldMappings.dimensions.email).toBe('metadata.email');
+      expect(dsWrite[1].metadataSchema).toBeDefined();
+      expect(dsWrite[1].metadataSchema.type).toBe('object');
+    });
+
+    it('with --expose sets exposed.attributes on datasource', async() => {
+      const dsPath = path.join(appPath, 'hubspot-datasource-contact.json');
+      existsSyncSpy.mockImplementation((p) => {
+        const s = String(p);
+        return s === configPath || s === appPath ||
+          s.endsWith('hubspot-system.yaml') || s.endsWith('hubspot-datasource-contact.json') ||
+          s.includes('rbac');
+      });
+      readdirSyncSpy.mockReturnValue([
+        'hubspot-system.yaml',
+        'hubspot-datasource-contact.json',
+        'application.yaml'
+      ]);
+      loadConfigFile.mockImplementation((p) => {
+        const s = String(p);
+        if (s.endsWith('application.yaml') || s.endsWith('application.json')) {
+          return {
+            app: { key: 'hubspot', type: 'external' },
+            externalIntegration: {
+              schemaBasePath: './',
+              systems: ['hubspot-system.yaml'],
+              dataSources: ['hubspot-datasource-contact.json']
+            }
+          };
+        }
+        if (s.endsWith('hubspot-system.yaml')) {
+          return { key: 'hubspot', displayName: 'HubSpot', dataSources: ['hubspot-contact'] };
+        }
+        if (s.endsWith('hubspot-datasource-contact.json')) {
+          return {
+            key: 'hubspot-contact',
+            systemKey: 'hubspot',
+            fieldMappings: {
+              attributes: { email: { expression: '{{ metadata.email }}', type: 'string' }, name: {} },
+              dimensions: { email: 'metadata.email' }
+            }
+          };
+        }
+        return {};
+      });
+      generator.generateDeployJson.mockResolvedValue(path.join(appPath, 'hubspot-deploy.json'));
+
+      await repairExternalIntegration('test-hubspot', { expose: true });
+
+      const dsWrite = writeConfigFile.mock.calls.find(c => c[0] === dsPath);
+      expect(dsWrite).toBeDefined();
+      expect(dsWrite[1].exposed).toBeDefined();
+      expect(dsWrite[1].exposed.attributes).toEqual(expect.arrayContaining(['email', 'name']));
+    });
+
+    it('with --rbac adds permissions and default Admin/Reader roles to rbac.yaml', async() => {
+      const rbacPath = path.join(appPath, 'rbac.yaml');
+      existsSyncSpy.mockImplementation((p) => {
+        const s = String(p);
+        if (s.endsWith('rbac.yaml') || s.endsWith('rbac.yml')) return false;
+        return s === configPath || s === appPath ||
+          s.endsWith('hubspot-system.yaml') || s.endsWith('hubspot-datasource-contact.json');
+      });
+      readdirSyncSpy.mockReturnValue([
+        'hubspot-system.yaml',
+        'hubspot-datasource-contact.json',
+        'application.yaml'
+      ]);
+      loadConfigFile.mockImplementation((p) => {
+        const s = String(p);
+        if (s.endsWith('application.yaml') || s.endsWith('application.json')) {
+          return {
+            app: { key: 'hubspot', type: 'external' },
+            externalIntegration: {
+              schemaBasePath: './',
+              systems: ['hubspot-system.yaml'],
+              dataSources: ['hubspot-datasource-contact.json']
+            }
+          };
+        }
+        if (s.endsWith('hubspot-system.yaml')) {
+          return { key: 'hubspot', displayName: 'HubSpot', dataSources: ['hubspot-contact'] };
+        }
+        if (s.endsWith('hubspot-datasource-contact.json')) {
+          return {
+            key: 'hubspot-contact',
+            systemKey: 'hubspot',
+            resourceType: 'contact',
+            capabilities: ['list', 'get'],
+            fieldMappings: { attributes: { email: {} }, dimensions: {} }
+          };
+        }
+        return {};
+      });
+      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+      generator.generateDeployJson.mockResolvedValue(path.join(appPath, 'hubspot-deploy.json'));
+
+      await repairExternalIntegration('test-hubspot', { rbac: true });
+
+      expect(writeFileSyncSpy).toHaveBeenCalledWith(
+        rbacPath,
+        expect.stringContaining('contact:list'),
+        expect.any(Object)
+      );
+      expect(writeFileSyncSpy).toHaveBeenCalledWith(
+        rbacPath,
+        expect.stringContaining('contact:get'),
+        expect.any(Object)
+      );
+      const yamlContent = writeFileSyncSpy.mock.calls.find(c => c[0] === rbacPath)[1];
+      expect(yamlContent).toMatch(/Admin|Reader|roles|permissions/);
+      writeFileSyncSpy.mockRestore();
+    });
+
+    it('dry-run does not write datasource or rbac when repair would change them', async() => {
+      const dsPath = path.join(appPath, 'hubspot-datasource-contact.json');
+      existsSyncSpy.mockImplementation((p) => {
+        const s = String(p);
+        return s === configPath || s === appPath ||
+          s.endsWith('hubspot-system.yaml') || s.endsWith('hubspot-datasource-contact.json') ||
+          s.includes('rbac');
+      });
+      readdirSyncSpy.mockReturnValue([
+        'hubspot-system.yaml',
+        'hubspot-datasource-contact.json',
+        'application.yaml'
+      ]);
+      loadConfigFile.mockImplementation((p) => {
+        const s = String(p);
+        if (s.endsWith('application.yaml') || s.endsWith('application.json')) {
+          return {
+            app: { key: 'hubspot', type: 'external' },
+            externalIntegration: {
+              schemaBasePath: './',
+              systems: ['hubspot-system.yaml'],
+              dataSources: ['hubspot-datasource-contact.json']
+            }
+          };
+        }
+        if (s.endsWith('hubspot-system.yaml')) {
+          return { key: 'hubspot', displayName: 'HubSpot', dataSources: ['hubspot-contact'] };
+        }
+        if (s.endsWith('hubspot-datasource-contact.json')) {
+          return {
+            key: 'hubspot-contact',
+            systemKey: 'hubspot',
+            fieldMappings: {
+              attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } },
+              dimensions: { country: 'metadata.country' }
+            }
+          };
+        }
+        return {};
+      });
+
+      const result = await repairExternalIntegration('test-hubspot', { dryRun: true, expose: true });
+
+      expect(result.updated).toBe(true);
+      expect(result.changes.length).toBeGreaterThan(0);
+      const dsWrite = writeConfigFile.mock.calls.find(c => c[0] === dsPath);
+      expect(dsWrite).toBeUndefined();
+      expect(generator.generateDeployJson).not.toHaveBeenCalled();
     });
   });
 });
