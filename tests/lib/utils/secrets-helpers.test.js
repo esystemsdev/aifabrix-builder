@@ -244,13 +244,16 @@ describe('collectMissingSecrets', () => {
     expect(collectMissingSecrets(content, secrets)).toEqual([]);
   });
 
-  it('supports flat key with hyphens for path-style ref (e.g. hubspot-clientid for kv://hubspot/clientid)', () => {
+  it('treats path-style and hyphen keys as different (hubspot/clientid vs hubspot-clientid)', () => {
     const content = 'KV_HUBSPOT_CLIENTID=kv://hubspot/clientid\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret';
     const secrets = {
       'hubspot-clientid': 'my-client-id',
       'hubspot-clientsecret': 'my-client-secret'
     };
-    expect(collectMissingSecrets(content, secrets)).toEqual([]);
+    const missing = collectMissingSecrets(content, secrets);
+    expect(missing).toContain('kv://hubspot/clientid');
+    expect(missing).toContain('kv://hubspot/clientsecret');
+    expect(missing).toHaveLength(2);
   });
 
   it('matches flat key case-insensitively (kv://hubspot/clientid matches hubspot/clientId in secrets)', () => {
@@ -291,12 +294,12 @@ describe('replaceKvInContent', () => {
     expect(result).toBe('KEY=flat-value');
   });
 
-  it('replaces path-style kv refs using flat key with hyphens (hubspot-clientid)', () => {
+  it('does not replace path-style refs when secrets only have hyphen keys (hubspot-clientid ≠ hubspot/clientid)', () => {
     const content = 'KV_HUBSPOT_CLIENTID=kv://hubspot/clientid\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret';
     const secrets = { 'hubspot-clientid': 'id-value', 'hubspot-clientsecret': 'secret-value' };
     const result = replaceKvInContent(content, secrets, {});
-    expect(result).toContain('KV_HUBSPOT_CLIENTID=id-value');
-    expect(result).toContain('KV_HUBSPOT_CLIENTSECRET=secret-value');
+    expect(result).toContain('KV_HUBSPOT_CLIENTID=kv://hubspot/clientid');
+    expect(result).toContain('KV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret');
   });
 
   it('replaces path-style kv refs case-insensitively (clientid matches clientId in secrets)', () => {

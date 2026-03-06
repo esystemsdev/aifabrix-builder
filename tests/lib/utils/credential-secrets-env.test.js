@@ -125,9 +125,9 @@ describe('credential-secrets-env', () => {
       const secrets = { 'secrets/foo': 'resolved' };
       expect(resolveKvValue(secrets, 'kv://secrets/foo')).toBe('resolved');
     });
-    it('should try path with slashes replaced by hyphen', () => {
+    it('does not resolve path-style ref via hyphen key (secrets/foo and secrets-foo are different)', () => {
       const secrets = { 'secrets-foo': 'resolved' };
-      expect(resolveKvValue(secrets, 'kv://secrets/foo')).toBe('resolved');
+      expect(resolveKvValue(secrets, 'kv://secrets/foo')).toBeNull();
     });
     it('should return null when kv ref cannot be resolved', () => {
       expect(resolveKvValue({}, 'kv://missing/key')).toBeNull();
