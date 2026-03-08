@@ -7,13 +7,12 @@
  * @version 2.0.0
  */
 
-// Use real fs so the deploy JSON is written to disk and split can find it
-// (other test files may mock fs, which would make writeFile a no-op in this worker)
-jest.unmock('fs');
-
 const path = require('path');
-const fs = require('fs').promises;
-const fsSync = require('fs');
+// Use real fs for this file so deploy JSON is written and split can find it
+// (other test files in the same worker may mock fs; requireActual bypasses the mock)
+const fsActual = jest.requireActual('fs');
+const fs = fsActual.promises;
+const fsSync = fsActual;
 
 const validate = require('../../../lib/validation/validate');
 const { getProjectRoot } = require('../../../lib/utils/paths');

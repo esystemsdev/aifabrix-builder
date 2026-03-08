@@ -38,55 +38,27 @@ describe('Manual API tests – environments.api (real Controller)', () => {
     expect(response.success).toBe(true);
   });
 
-  it('GET /api/v1/environments/{envKey} returns environment', async() => {
+  it('environment endpoints return responses (parallel)', async() => {
     if (!environment) {
       return;
     }
-    const response = await getEnvironment(controllerUrl, environment, authConfig);
-    expect(response).toBeDefined();
-    expect(response.success).toBe(true);
-  });
-
-  it('GET /api/v1/environments/{envKey}/status returns response', async() => {
-    if (!environment) {
-      return;
-    }
-    const response = await getEnvironmentStatus(controllerUrl, environment, authConfig);
-    expect(response).toBeDefined();
-  });
-
-  it('GET /api/v1/environments/{envKey}/applications returns list', async() => {
-    if (!environment) {
-      return;
-    }
-    const response = await listEnvironmentApplications(controllerUrl, environment, authConfig, { pageSize: 10 });
-    expect(response).toBeDefined();
-    expect(response.success).toBe(true);
-  });
-
-  it('GET /api/v1/environments/{envKey}/deployments returns list', async() => {
-    if (!environment) {
-      return;
-    }
-    const response = await listEnvironmentDeployments(controllerUrl, environment, authConfig, { pageSize: 5 });
-    expect(response).toBeDefined();
-    expect(response.success).toBe(true);
-  });
-
-  it('GET /api/v1/environments/{envKey}/roles returns response', async() => {
-    if (!environment) {
-      return;
-    }
-    const response = await listEnvironmentRoles(controllerUrl, environment, authConfig);
-    expect(response).toBeDefined();
-  });
-
-  it('GET /api/v1/environments/{envKey}/datasources returns response', async() => {
-    if (!environment) {
-      return;
-    }
-    const response = await listEnvironmentDatasources(controllerUrl, environment, authConfig);
-    expect(response).toBeDefined();
+    const [env, status, applications, deployments, roles, datasources] = await Promise.all([
+      getEnvironment(controllerUrl, environment, authConfig),
+      getEnvironmentStatus(controllerUrl, environment, authConfig),
+      listEnvironmentApplications(controllerUrl, environment, authConfig, { pageSize: 10 }),
+      listEnvironmentDeployments(controllerUrl, environment, authConfig, { pageSize: 5 }),
+      listEnvironmentRoles(controllerUrl, environment, authConfig),
+      listEnvironmentDatasources(controllerUrl, environment, authConfig)
+    ]);
+    expect(env).toBeDefined();
+    expect(env.success).toBe(true);
+    expect(status).toBeDefined();
+    expect(applications).toBeDefined();
+    expect(applications.success).toBe(true);
+    expect(deployments).toBeDefined();
+    expect(deployments.success).toBe(true);
+    expect(roles).toBeDefined();
+    expect(datasources).toBeDefined();
   });
 
   it('GET /api/v1/environments/{envKey}/applications/{appKey} returns app when exists', async() => {

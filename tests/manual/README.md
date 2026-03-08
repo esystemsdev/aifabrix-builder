@@ -10,6 +10,7 @@ The **tests/manual** directory contains tests that call **real** Controller and 
 - **api-external-systems.test.js** – external-systems.api (list, get, Dataplane)
 - **api-datasources.test.js** – datasources-core.api (list, executions, get, status, Dataplane)
 - **api-datasources-extended.test.js** – datasources-extended.api (records, grants, Dataplane)
+- **api-external-test-e2e.test.js** – external-test.api (test-e2e sync, getE2ETestRun; Dataplane; Bearer/API key only)
 - **api-wizard.test.js** – wizard.api (platforms, credentials, Dataplane)
 
 ## Important
@@ -17,6 +18,10 @@ The **tests/manual** directory contains tests that call **real** Controller and 
 - These tests are **manual** and **must not** be run in CI or as part of default `npm test`.
 - They are excluded from the default Jest run and from CI.
 - **Prerequisite: you must be logged in** before running them.
+
+## Duration
+
+Manual tests perform **real HTTP requests** to the Controller/Dataplane. Each request has network latency and server processing, so each test file typically takes **several seconds** (not milliseconds). For fast feedback (&lt;100ms per test), use the default unit tests: `npm test` (these use mocks and exclude `tests/manual/`). Within manual tests, independent API calls are run in parallel where possible to reduce wall-clock time.
 
 ## Prerequisite: authentication
 

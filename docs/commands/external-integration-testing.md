@@ -2,21 +2,23 @@
 
 ← [Documentation index](../README.md) · [Commands index](README.md) · [External Integration Commands](external-integration.md)
 
-Single source of truth for testing external integrations: unit tests (`aifabrix test`), integration tests (`aifabrix test-integration`), test payload configuration, list validation, and troubleshooting.
+Single source of truth for testing external integrations: unit tests (`aifabrix test`), integration tests (`aifabrix test-integration`), end-to-end tests (`aifabrix datasource test-e2e`), test payload configuration, list validation, and troubleshooting.
 
 ---
 
 ## Overview
 
-Testing external integrations happens in two ways:
+Testing external integrations happens in three tiers:
 
 1. **Unit tests** (`aifabrix test <app>`) – Local validation with no API calls. Validates syntax, schemas, field mappings, metadata schemas, and relationships using test payloads from the datasource configuration.
-2. **Integration tests** (`aifabrix test-integration <app>`) – Calls the dataplane pipeline test API. Validates field mappings, metadata schemas, endpoint connectivity, and ABAC dimensions using real API calls.
+2. **Integration tests** (`aifabrix test-integration <app>`) – Calls the dataplane to validate configuration only (no external system calls). Validates field mappings, metadata schemas, endpoint connectivity, and ABAC dimensions.
+3. **End-to-end (E2E) tests** (`aifabrix datasource test-e2e <datasourceKey>`) – Full flow against real external systems: config validation, credential connectivity, sync execution, data persistence, and CIP simulation. Uses real credentials and real external APIs (e.g. HubSpot, SharePoint).
 
 **When to use each:**
 
 - **Unit tests:** Before deploying, validating configuration locally, or testing field mappings without network access. Run first; no login required.
-- **Integration tests:** After unit tests pass, when validating against the real dataplane, or when testing endpoint connectivity. Requires login and dataplane access.
+- **Integration tests:** After unit tests pass, when validating against the dataplane without calling external systems. Requires login and dataplane access.
+- **E2E tests:** When you need to verify the full integration flow—credentials, sync, and data landing—before production. Requires the datasource to be published, credentials configured, and login with Bearer token or API key (client credentials are not accepted for E2E).
 
 **Prerequisites for integration tests:**
 
@@ -263,21 +265,78 @@ aifabrix datasource test-integration hubspot-company --app hubspot --debug
 
 <a id="datasource-e2e-tests"></a>
 
-Run full E2E test (config, credential, sync, data, CIP) for **one** datasource via the dataplane external API. The dataplane runs E2E steps in order: config, credential, sync, data, CIP. Credential status is validated as the second step in this sequence.
+Run a full end-to-end test for **one** datasource: the dataplane runs config validation, credential check, sync job, data verification, and CIP simulation in order. E2E tests call **real external systems** (e.g. HubSpot, SharePoint) and use **real credentials**—use test environments and test credentials, not production.
+
+### When to use E2E
+
+- Verify that your datasource works end-to-end against the external system.
+- Test credential connectivity before going to production.
+- Confirm sync runs and data lands in the database as expected.
+- Validate CIP simulation (list/get) with your field mappings.
+
+### What the E2E test does (steps)
+
+The dataplane runs these steps in sequence. All run by default; you can interpret the output to see which step failed.
+
+| Step   | What it does (user terms) |
+|--------|---------------------------|
+| Config | Validates payload against metadata schema and field mappings (no external calls). |
+| Credential | Tests that the configured credential can connect to the external API (e.g. OAuth/token). |
+| Sync   | Creates and runs a sync job, then waits until it completes. |
+| Data   | Checks that records or documents are stored and (where applicable) vectorized. |
+| CIP    | Runs list/get with capacity input to exercise the CIP pipeline. |
+
+Run the command, inspect the response (and optional debug log), fix configuration or credentials if a step fails, then run again until all steps pass.
+
+### Prerequisites
+
+- **Logged in** with Bearer token or API key (`aifabrix login`). Client credentials are not accepted for E2E.
+- **External system and datasource published** to the dataplane (e.g. via deploy/publish flow).
+- **Credential configured** for the external system (or datasource override) with access to the external API.
+
+### Async flow and polling
+
+By default the command starts the E2E run asynchronously, then polls the dataplane until the run completes or fails. This is recommended for long-running tests. Use `-v` to see progress (e.g. how many steps have completed so far). For short runs or when you prefer a single request/response, use `--no-async` (sync mode).
 
 **Command:**
 ```bash
 aifabrix datasource test-e2e <datasourceKey> [options]
 ```
 
-**Auth:** **Bearer token or API key only.** Client credentials are not accepted. Run `aifabrix login` first. If you see "E2E tests require Bearer token or API key", authenticate with `aifabrix login` or configure an API key.
+**Options:** `-a, --app <appKey>`, `-e, --env <env>`, `-v, --verbose`, `--debug`, `--test-crud`, `--record-id <id>`, `--no-cleanup`, `--primary-key-value <value|@path>`, `--no-async`.
 
-**Options:** `-a, --app <appKey>`, `-e, --env <env>`, `-v, --verbose`, `--debug`.
+**Option details:**
+- **`--test-crud`** – Enable full CRUD lifecycle test (create → get → update → delete) when the datasource supports it.
+- **`--record-id <id>`** – Use this record ID for get/update/delete when create is not supported or when targeting a specific record for CRUD.
+- **`--no-cleanup`** – Do not delete the created/test record at the end; leave it for inspection.
+- **`--primary-key-value <value|@path>`** – Primary key of an existing record. When set, the dataplane can fetch that record and use it as the payload template for create (no separate payload template needed). For composite keys, use a JSON file path (e.g. `@pk.json`).
+- **`--debug`** – Include debug information in the response and write a log file under `integration/<app>/logs/` for troubleshooting.
+
+**Datasource config – primaryKey:** The datasource configuration must include `primaryKey` (required by the schema). It is an array of normalized attribute names (e.g. `["id"]` or `["externalId"]`) used for CRUD operations and table indexing. Validation fails if `primaryKey` is missing.
 
 **Example:**
 ```bash
 aifabrix datasource test-e2e hubspot-contacts --app hubspot --verbose
+
+# Sync mode (no polling)
+aifabrix datasource test-e2e hubspot-contacts --app hubspot --no-async
 ```
+
+### Troubleshooting E2E
+
+- **Datasource not found** – Wrong datasource key or the datasource is not published to the dataplane. Publish the system/datasource and use the correct key.
+- **Permission denied** – E2E requires Bearer token or API key (not client credentials). Run `aifabrix login` or ensure your API key has the right access.
+- **Credential step fails** – The external credential is invalid or expired. Check the credential in your deploy manifest or credential store; refresh OAuth tokens if needed.
+- **Sync step fails** – Often credential or external API related. Check the step message and evidence in the output; verify external system credentials and connectivity.
+- **Config step fails (e.g. payload)** – If you omit a payload and the datasource has no test payload in config, validation may fail. Configure a test payload when publishing or supply one as appropriate for your run.
+
+### Data safety
+
+E2E tests use real external systems and credentials. Prefer:
+
+- **Test credentials** and **test environments** (e.g. HubSpot dev portal, SharePoint test site).
+- Avoid production data.
+- Run in isolated CI environments when possible.
 
 ---
 

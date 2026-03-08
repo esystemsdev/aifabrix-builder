@@ -47,8 +47,9 @@ tests/
 
 #### Integration Tests
 - Test module interactions and data flow
-- Test with real external services (Docker, APIs)
-- Validate end-to-end workflows
+- **tests/integration/** – Fixture-based: validate file layout, schema, and config (e.g. HubSpot integration folder, application.yaml, datasource files). No live API calls. Use when the feature has real fixture data to validate.
+- **tests/manual/** – Real API calls to Controller/Dataplane. Use for features that hit live endpoints (e.g. `datasource test-e2e`, external-test.api). Excluded from CI; run with `npm run test:manual` when logged in. See tests/manual/README.md.
+- For API-calling features (e.g. E2E test command): **unit tests** in tests/lib/ with mocks cover success and failure; **manual tests** cover real API smoke. **No tests/integration** test is required unless the feature also has fixture-based structure to validate.
 - Longer execution time acceptable
 
 #### Security Tests

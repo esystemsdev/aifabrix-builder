@@ -17,7 +17,8 @@ jest.mock('../../../lib/utils/logger', () => ({
 const logger = require('../../../lib/utils/logger');
 const {
   displayTestResults,
-  displayIntegrationTestResults
+  displayIntegrationTestResults,
+  displayE2EResults
 } = require('../../../lib/utils/external-system-display');
 
 describe('External System Display Helpers', () => {
@@ -451,6 +452,69 @@ describe('External System Display Helpers', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Validation: ✓ Valid'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Field mappings: 10 attributes'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Endpoint: ✓ Configured'));
+    });
+  });
+
+  describe('displayE2EResults', () => {
+    it('should display sync response with data.steps only', () => {
+      const data = {
+        steps: [
+          { name: 'config', success: true },
+          { name: 'credential', success: true }
+        ]
+      };
+      displayE2EResults(data, false);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ config'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ credential'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ E2E test passed!'));
+    });
+
+    it('should display poll response with status and completedActions (running)', () => {
+      const data = {
+        status: 'running',
+        completedActions: [{ name: 'config', success: true }]
+      };
+      displayE2EResults(data, true);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('running'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ config'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('step(s) completed so far'));
+    });
+
+    it('should display final poll response with status completed and steps', () => {
+      const data = {
+        status: 'completed',
+        steps: [{ name: 'config', success: true }, { name: 'credential', success: true }],
+        success: true
+      };
+      displayE2EResults(data, false);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('completed'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ config'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ E2E test passed!'));
+    });
+
+    it('should display failed E2E with status failed and error', () => {
+      const data = {
+        status: 'failed',
+        success: false,
+        error: 'Credential check failed'
+      };
+      displayE2EResults(data, false);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('failed'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Credential check failed'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('E2E test failed'));
+    });
+
+    it('should display step failure when a step has success false or error', () => {
+      const data = {
+        steps: [
+          { name: 'config', success: true },
+          { name: 'credential', success: false, error: 'Invalid token' }
+        ]
+      };
+      displayE2EResults(data, false);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✗ credential'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Invalid token'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('❌ E2E test failed'));
     });
   });
 });

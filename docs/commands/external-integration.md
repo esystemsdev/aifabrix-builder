@@ -860,22 +860,34 @@ For details, see [External Integration Testing](external-integration-testing.md#
 
 Run E2E test for one datasource via dataplane external API. Requires Bearer token or API key (client credentials not supported). See [Online Commands and Permissions](permissions.md).
 
-**What:** Runs full E2E test (config, credential, sync, data, CIP) via the dataplane. Reports per-step status. The dataplane runs E2E steps in order: config, credential, sync, data, CIP. Credential status is validated as the second step in this sequence.
+**What:** Runs full E2E test (config, credential, sync, data, CIP) via the dataplane. By default the command starts the run asynchronously, then polls until the run completes or fails; use `-v` to see poll progress (e.g. number of steps completed so far). Reports per-step status. The dataplane runs E2E steps in order: config, credential, sync, data, CIP. Credential status is validated as the second step in this sequence.
 
 **When:** End-to-end validation of a single datasource after integration tests pass; requires Bearer or API key authentication.
 
 **Usage:**
 ```bash
-# From integration/<appKey>/ or with explicit app
+# From integration/<appKey>/ or with explicit app (async + polling by default)
 aifabrix datasource test-e2e hubspot-contacts --app hubspot
 
-# With environment and debug
+# With environment, debug, and verbose (shows poll progress)
 aifabrix datasource test-e2e hubspot-contacts -a hubspot -e tst --debug -v
+
+# Sync mode (single request, no polling)
+aifabrix datasource test-e2e hubspot-contacts --app hubspot --no-async
 ```
 
 **Arguments:** `<datasourceKey>` – Datasource key used as sourceIdOrKey (e.g. hubspot-contacts).
 
-**Options:** `-a, --app <appKey>` – App key (required if not inside `integration/<appKey>/`). `-e, --env <env>` – Environment: dev, tst, or pro. `-v, --verbose` – Detailed step output. `--debug` – Include debug output and write log to `integration/<app>/logs/`.
+**Options:**
+- `-a, --app <appKey>` – App key (required if not inside `integration/<appKey>/`).
+- `-e, --env <env>` – Environment: dev, tst, or pro.
+- `-v, --verbose` – Detailed step output and, when polling, progress (e.g. steps completed so far).
+- `--debug` – Include debug output and write log to `integration/<app>/logs/`.
+- `--test-crud` – Enable CRUD lifecycle test.
+- `--record-id <id>` – Record ID to use for the test.
+- `--no-cleanup` – Disable cleanup after the test.
+- `--primary-key-value <value|@path>` – Primary key value, or path to a JSON file (prefix with `@`) for composite keys.
+- `--no-async` – Use sync mode: single request, no polling (useful for short runs or backward compatibility).
 
 **Prerequisites:** Logged in (`aifabrix login`) or API key configured. E2E tests require a Bearer token or API key; client credentials are not accepted. Run `aifabrix login` if you see "E2E tests require Bearer token or API key".
 
