@@ -57,6 +57,10 @@ jest.mock('../../../lib/utils/command-header', () => ({
 jest.mock('../../../lib/utils/dataplane-pipeline-warning', () => ({
   logDataplanePipelineWarning: jest.fn()
 }));
+jest.mock('../../../lib/utils/configuration-env-resolver', () => ({
+  buildResolvedEnvMapForIntegration: jest.fn().mockResolvedValue({ envMap: {}, secrets: {} }),
+  resolveConfigurationValues: jest.fn()
+}));
 
 const fsSync = require('fs');
 const { getDeploymentAuth } = require('../../../lib/utils/token-manager');
@@ -67,6 +71,10 @@ const logger = require('../../../lib/utils/logger');
 const { validateDatasourceFile } = require('../../../lib/datasource/validate');
 const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
 const { logDataplanePipelineWarning } = require('../../../lib/utils/dataplane-pipeline-warning');
+const {
+  buildResolvedEnvMapForIntegration,
+  resolveConfigurationValues
+} = require('../../../lib/utils/configuration-env-resolver');
 
 describe('Datasource Deploy Module', () => {
   beforeEach(() => {
@@ -368,6 +376,42 @@ describe('Datasource Deploy Module', () => {
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
       await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('systemKey is required');
+    });
+
+    it('should throw when configuration resolution fails (missing env var)', async() => {
+      const datasourceConfig = {
+        key: 'test-datasource',
+        systemKey: 'hubspot',
+        configuration: [{ name: 'API_KEY', value: '{{API_KEY}}', location: 'variable' }]
+      };
+      validateDatasourceFile.mockResolvedValue({ valid: true, errors: [], warnings: [] });
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
+      getDeploymentAuth.mockResolvedValue({ type: 'bearer', token: 'test-token' });
+      resolveDataplaneUrl.mockResolvedValue('http://dataplane:8080');
+      buildResolvedEnvMapForIntegration.mockResolvedValue({ envMap: {}, secrets: {} });
+      resolveConfigurationValues.mockImplementation(() => {
+        throw new Error('Missing configuration env var: API_KEY.');
+      });
+
+      const { deployDatasource } = require('../../../lib/datasource/deploy');
+      await expect(deployDatasource('myapp', '/path/to/datasource.json', {})).rejects.toThrow('Missing configuration env var');
+      expect(publishDatasourceViaPipeline).not.toHaveBeenCalled();
+    });
+
+    it('should throw when buildResolvedEnvMapForIntegration rejects for datasource with configuration', async() => {
+      const datasourceConfig = {
+        key: 'test-datasource',
+        systemKey: 'hubspot',
+        configuration: [{ name: 'X', value: '{{X}}', location: 'variable' }]
+      };
+      validateDatasourceFile.mockResolvedValue({ valid: true, errors: [], warnings: [] });
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
+      getDeploymentAuth.mockResolvedValue({ type: 'bearer', token: 'test-token' });
+      buildResolvedEnvMapForIntegration.mockRejectedValue(new Error('Secrets file not found'));
+
+      const { deployDatasource } = require('../../../lib/datasource/deploy');
+      await expect(deployDatasource('myapp', '/path/to/datasource.json', {})).rejects.toThrow('Secrets file not found');
+      expect(publishDatasourceViaPipeline).not.toHaveBeenCalled();
     });
 
     it('should throw error if datasource file is invalid JSON', async() => {

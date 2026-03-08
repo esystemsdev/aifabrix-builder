@@ -681,6 +681,268 @@ describe('Validation Module', () => {
     });
   });
 
+  describe('OAuth2/AAD grantType and authorizationUrl', () => {
+    const baseSystem = {
+      key: 'test',
+      displayName: 'Test',
+      description: 'Desc',
+      type: 'openapi',
+      authentication: { method: 'oauth2', variables: {} }
+    };
+
+    beforeEach(() => {
+      fsSync.existsSync.mockReturnValue(true);
+      loadExternalSystemSchema.mockReturnValue(jest.fn().mockReturnValue(true));
+      formatValidationErrors.mockReturnValue([]);
+    });
+
+    it('oauth2 with client_credentials and no authorizationUrl is valid', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'oauth2', variables: { grantType: 'client_credentials' } }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('oauth2 with authorization_code and authorizationUrl set is valid', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: {
+          method: 'oauth2',
+          variables: { grantType: 'authorization_code', authorizationUrl: 'https://auth.example.com/authorize' }
+        }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('oauth2 with no grantType and authorizationUrl set is valid (default authorization_code)', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: {
+          method: 'oauth2',
+          variables: { authorizationUrl: 'https://auth.example.com/authorize' }
+        }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('oauth2 with authorization_code and no authorizationUrl returns error', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'oauth2', variables: { grantType: 'authorization_code' } }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('authorizationUrl is required when grantType is authorization_code');
+    });
+
+    it('oauth2 with grantType omitted and no authorizationUrl returns error', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'oauth2', variables: {} }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('authorizationUrl is required when grantType is authorization_code');
+    });
+
+    it('oauth2 with invalid grantType returns error', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'oauth2', variables: { grantType: 'invalid_value' } }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('grantType must be one of: client_credentials, authorization_code');
+    });
+
+    it('aad with client_credentials and no authorizationUrl is valid', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'aad', variables: { grantType: 'client_credentials' } }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('apikey method does not trigger grantType/authorizationUrl errors', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'apikey', variables: { apiKey: 'x' } }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('none method does not trigger grantType/authorizationUrl errors', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'none', variables: {} }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+  });
+
+  describe('configuration and standard auth variables', () => {
+    const baseSystem = {
+      key: 'test',
+      displayName: 'Test',
+      description: 'Desc',
+      type: 'openapi',
+      authentication: { method: 'oauth2', variables: { grantType: 'client_credentials' } }
+    };
+
+    beforeEach(() => {
+      fsSync.existsSync.mockReturnValue(true);
+      loadExternalSystemSchema.mockReturnValue(jest.fn().mockReturnValue(true));
+      formatValidationErrors.mockReturnValue([]);
+    });
+
+    it('returns error when configuration contains CLIENTID (standard auth variable)', async() => {
+      const parsed = {
+        ...baseSystem,
+        configuration: [{ name: 'CLIENTID', value: '{{CLIENT_ID}}', location: 'variable' }]
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('must not contain standard auth variable \'CLIENTID\''))).toBe(true);
+      expect(result.errors.some(e => e.includes('supplied from the selected credential at runtime'))).toBe(true);
+    });
+
+    it('returns error when configuration contains BASEURL and auth method is not none', async() => {
+      const parsed = {
+        ...baseSystem,
+        configuration: [{ name: 'BASEURL', value: 'https://api.example.com', location: 'variable' }]
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('must not contain standard auth variable \'BASEURL\''))).toBe(true);
+      expect(result.errors.some(e => e.includes('authentication.method is \'none\''))).toBe(true);
+    });
+
+    it('is valid when authentication.method is none and configuration contains only BASEURL', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'none', variables: {} },
+        configuration: [{ name: 'BASEURL', value: 'https://api.example.com', location: 'variable' }]
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('returns error when authentication.method is none and configuration contains CLIENTID', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'none', variables: {} },
+        configuration: [
+          { name: 'BASEURL', value: 'https://api.example.com', location: 'variable' },
+          { name: 'CLIENTID', value: 'x', location: 'variable' }
+        ]
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('must not contain standard auth variable \'CLIENTID\''))).toBe(true);
+    });
+
+    it('returns error when configuration contains APIKEY (standard auth variable)', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'apikey', variables: {} },
+        configuration: [{ name: 'APIKEY', value: 'kv://key', location: 'keyvault' }]
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('must not contain standard auth variable \'APIKEY\''))).toBe(true);
+    });
+
+    it('is valid when configuration contains only non-auth variables', async() => {
+      const parsed = {
+        ...baseSystem,
+        configuration: [
+          { name: 'SITE_ID', value: '{{SITE_ID}}', location: 'variable' },
+          { name: 'API_BASE_PATH', value: '/v1', location: 'variable' }
+        ]
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+  });
+
   describe('validateExternalFilesForApp', () => {
     it('should validate multiple external files', async() => {
       const appName = 'myapp';

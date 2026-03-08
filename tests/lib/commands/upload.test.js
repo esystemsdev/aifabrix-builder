@@ -39,6 +39,10 @@ jest.mock('../../../lib/utils/api-error-handler', () => ({
 jest.mock('../../../lib/utils/credential-secrets-env', () => ({
   pushCredentialSecrets: jest.fn().mockResolvedValue({ pushed: 0 })
 }));
+jest.mock('../../../lib/utils/configuration-env-resolver', () => ({
+  buildResolvedEnvMapForIntegration: jest.fn().mockResolvedValue({ envMap: {}, secrets: {} }),
+  resolveConfigurationValues: jest.fn()
+}));
 jest.mock('../../../lib/utils/dataplane-pipeline-warning', () => ({
   logDataplanePipelineWarning: jest.fn()
 }));
@@ -61,6 +65,10 @@ const { generateControllerManifest } = require('../../../lib/generator/external-
 const { getDeploymentAuth } = require('../../../lib/utils/token-manager');
 const { pushCredentialSecrets } = require('../../../lib/utils/credential-secrets-env');
 const { uploadApplicationViaPipeline } = require('../../../lib/api/pipeline.api');
+const {
+  buildResolvedEnvMapForIntegration,
+  resolveConfigurationValues
+} = require('../../../lib/utils/configuration-env-resolver');
 const { logDataplanePipelineWarning } = require('../../../lib/utils/dataplane-pipeline-warning');
 
 describe('upload command', () => {
@@ -79,15 +87,17 @@ describe('upload command', () => {
     getDeploymentAuth.mockResolvedValue({ type: 'bearer', token: 'token' });
     pushCredentialSecrets.mockResolvedValue({ pushed: 0 });
     uploadApplicationViaPipeline.mockResolvedValue({ success: true, data: { systemKey: 'my-hubspot' } });
+    buildResolvedEnvMapForIntegration.mockResolvedValue({ envMap: {}, secrets: {} });
   });
 
   describe('uploadExternalSystem', () => {
-    it('should validate, build payload, resolve dataplane, then single pipeline upload', async() => {
+    it('should validate, build payload, resolve configuration, push secrets, then pipeline upload', async() => {
       const { uploadExternalSystem } = require('../../../lib/commands/upload');
       await uploadExternalSystem(systemKey);
 
       expect(validateExternalSystemComplete).toHaveBeenCalledWith(systemKey, { type: 'external' });
       expect(generateControllerManifest).toHaveBeenCalledWith(systemKey, { type: 'external' });
+      expect(buildResolvedEnvMapForIntegration).toHaveBeenCalledWith(systemKey);
       expect(getDeploymentAuth).toHaveBeenCalled();
       expect(pushCredentialSecrets).toHaveBeenCalledWith(
         'http://dataplane:4000',
@@ -109,6 +119,51 @@ describe('upload command', () => {
         }
       );
       expect(logDataplanePipelineWarning).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call configuration resolver for application and datasource configuration before upload', async() => {
+      const manifestWithConfig = {
+        key: 'my-hubspot',
+        version: '1.0.0',
+        system: {
+          key: 'my-hubspot',
+          type: 'openapi',
+          displayName: 'HubSpot',
+          configuration: [{ name: 'SITE_ID', value: '{{SITE_ID}}', location: 'variable' }]
+        },
+        dataSources: [{
+          key: 'ds1',
+          systemKey: 'my-hubspot',
+          configuration: [{ name: 'API_KEY', value: '{{API_KEY}}', location: 'variable' }]
+        }]
+      };
+      generateControllerManifest.mockResolvedValue(manifestWithConfig);
+      buildResolvedEnvMapForIntegration.mockResolvedValue({
+        envMap: { SITE_ID: '123', API_KEY: 'secret-key' },
+        secrets: {}
+      });
+      resolveConfigurationValues.mockImplementation((arr) => {
+        if (Array.isArray(arr)) {
+          for (const item of arr) {
+            if (item?.location === 'variable' && item.value === '{{SITE_ID}}') item.value = '123';
+            if (item?.location === 'variable' && item.value === '{{API_KEY}}') item.value = 'secret-key';
+          }
+        }
+      });
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await uploadExternalSystem(systemKey);
+
+      expect(buildResolvedEnvMapForIntegration).toHaveBeenCalledWith(systemKey);
+      expect(resolveConfigurationValues).toHaveBeenCalledWith(
+        expect.any(Array),
+        { SITE_ID: '123', API_KEY: 'secret-key' },
+        {},
+        systemKey
+      );
+      expect(resolveConfigurationValues).toHaveBeenCalledTimes(2);
+      const payload = uploadApplicationViaPipeline.mock.calls[0][2];
+      expect(payload.application.configuration[0].value).toBe('123');
+      expect(payload.dataSources[0].configuration[0].value).toBe('secret-key');
     });
 
     it('should log success with keys when credential secrets are pushed', async() => {
@@ -141,6 +196,69 @@ describe('upload command', () => {
       expect(generateControllerManifest).toHaveBeenCalledWith(systemKey, { type: 'external' });
       expect(uploadApplicationViaPipeline).not.toHaveBeenCalled();
       expect(logDataplanePipelineWarning).not.toHaveBeenCalled();
+    });
+
+    it('should throw when configuration resolution fails (missing env var)', async() => {
+      const manifestWithConfig = {
+        key: 'my-hubspot',
+        version: '1.0.0',
+        system: {
+          key: 'my-hubspot',
+          configuration: [{ name: 'MISSING_VAR', value: '{{MISSING_VAR}}', location: 'variable' }]
+        },
+        dataSources: []
+      };
+      generateControllerManifest.mockResolvedValue(manifestWithConfig);
+      buildResolvedEnvMapForIntegration.mockResolvedValue({ envMap: {}, secrets: {} });
+      resolveConfigurationValues.mockImplementation(() => {
+        throw new Error('Missing configuration env var: MISSING_VAR. Run \'aifabrix resolve my-hubspot\' or set the variable in .env.');
+      });
+
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await expect(uploadExternalSystem(systemKey)).rejects.toThrow('Missing configuration env var');
+      expect(uploadApplicationViaPipeline).not.toHaveBeenCalled();
+    });
+
+    it('should throw when buildResolvedEnvMapForIntegration rejects', async() => {
+      buildResolvedEnvMapForIntegration.mockRejectedValue(new Error('Secrets file not found'));
+
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await expect(uploadExternalSystem(systemKey)).rejects.toThrow('Secrets file not found');
+      expect(uploadApplicationViaPipeline).not.toHaveBeenCalled();
+    });
+
+    it('should throw when auth-section keyvault config entry fails to resolve and error must not expose secret', async() => {
+      const manifestWithAuthConfig = {
+        key: 'my-hubspot',
+        version: '1.0.0',
+        system: {
+          key: 'my-hubspot',
+          configuration: [
+            { name: 'KV_MY_HUBSPOT_CLIENTID', value: 'my-hubspot/clientid', location: 'keyvault' },
+            { name: 'KV_MY_HUBSPOT_CLIENTSECRET', value: 'my-hubspot/clientsecret', location: 'keyvault' }
+          ]
+        },
+        dataSources: []
+      };
+      generateControllerManifest.mockResolvedValue(manifestWithAuthConfig);
+      buildResolvedEnvMapForIntegration.mockResolvedValue({
+        envMap: {},
+        secrets: { 'my-hubspot/clientid': 'actual-secret' }
+      });
+      resolveConfigurationValues.mockImplementation(() => {
+        throw new Error('Unresolved keyvault reference for configuration \'KV_MY_HUBSPOT_CLIENTSECRET\'. Run \'aifabrix resolve my-hubspot\' and ensure the key exists in the secrets file.');
+      });
+
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      let err;
+      await uploadExternalSystem(systemKey).catch((e) => {
+        err = e;
+      });
+      expect(err).toBeDefined();
+      expect(err.message).toMatch(/Unresolved keyvault reference/);
+      expect(err.message).toMatch(/KV_MY_HUBSPOT_CLIENTSECRET/);
+      expect(err.message).not.toMatch(/actual-secret/);
+      expect(uploadApplicationViaPipeline).not.toHaveBeenCalled();
     });
 
     it('should display validation errors and throw when validation fails', async() => {

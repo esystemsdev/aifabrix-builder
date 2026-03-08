@@ -81,6 +81,8 @@ The validation system uses four core JSON schemas:
 - `key` must be unique and follow naming conventions
 - `type` must specify integration type
 - `authentication` configuration is required
+- For oauth2/aad: `grantType` (if present) must be `client_credentials` or `authorization_code`; when `authorization_code` or omitted, `authorizationUrl` is required
+- `rateLimit` (if present) must specify either `requestsPerWindow` + `windowSeconds` or `requestsPerSecond` + `burstSize`
 - OpenAPI/MCP bindings must be properly configured
 
 ### 3. External Datasource Schema
@@ -308,7 +310,7 @@ Validate application or external integration file.
 - [aifabrix test-integration](external-integration.md#aifabrix-test-integration-app) - Integration tests with online validation including ABAC dimensions
 - [aifabrix datasource validate](external-integration.md#aifabrix-datasource-validate-file) - Validate datasource files directly
 
-For test commands and test payload behavior in detail, see [External Integration Testing](external-integration-testing.md).
+For a full list of validation rules applied when validating an external system by name, see [Validation rules (configuration)](../configuration/validation-rules.md). For test commands and test payload behavior in detail, see [External Integration Testing](external-integration-testing.md).
 
 **Usage:**
 ```bash

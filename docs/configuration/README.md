@@ -12,6 +12,7 @@ Overview of AI Fabrix configuration files and where to find details.
 | [application.yaml](application-yaml.md) | Application config: app.key, app.displayName, port, image, build, requires, externalIntegration, etc. |
 | [env.template](env-template.md) | Environment variables template; kv:// references; `.env` generation. |
 | [External integration](application-yaml.md#external-integration-and-external-system) | externalIntegration block, schemaBasePath, systems, dataSources; validation. |
+| [Validation rules (external system)](validation-rules.md) | All validation rules applied when you run `aifabrix validate <external-system-key>`. |
 | [Secrets and config](secrets-and-config.md) | config.yaml, secrets.local.yaml, **auto-creation** of missing secrets (up-infra, app create, resolve --force, integration create), encryption (aifabrix secure); remote vs local secrets (aifabrix-secrets); `aifabrix secret validate`. |
 | [env-config](env-config.md) | Environment-specific variable interpolation (${MISO_HOST}, ${NODE_ENV}, etc.). |
 

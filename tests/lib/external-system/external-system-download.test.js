@@ -79,6 +79,9 @@ jest.mock('../../../lib/generator', () => ({
 jest.mock('../../../lib/commands/convert', () => ({
   runConvert: jest.fn().mockResolvedValue({ converted: [], deleted: [] })
 }));
+jest.mock('../../../lib/utils/configuration-env-resolver', () => ({
+  retemplateConfigurationForDownload: jest.fn().mockResolvedValue(false)
+}));
 
 // Mock paths module
 jest.mock('../../../lib/utils/paths', () => {
@@ -95,6 +98,7 @@ const { getConfig } = require('../../../lib/core/config');
 const logger = require('../../../lib/utils/logger');
 const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
 const { getIntegrationPath } = require('../../../lib/utils/paths');
+const { retemplateConfigurationForDownload } = require('../../../lib/utils/configuration-env-resolver');
 
 describe('External System Download Module', () => {
   const systemKey = 'hubspot';
@@ -370,6 +374,69 @@ describe('External System Download Module', () => {
         appPath,
         expect.objectContaining({ overwriteReadme: true })
       );
+    });
+
+    it('should call retemplate helper after split when systemFile is returned', async() => {
+      getExternalSystemConfig.mockResolvedValue(mockDownloadResponse);
+      const generator = require('../../../lib/generator');
+      const systemFilePath = path.join(appPath, `${systemKey}-system.yaml`);
+      const systemYaml = yaml.dump({
+        key: systemKey,
+        configuration: [{ name: 'SITE_ID', value: '123', location: 'variable' }]
+      });
+      generator.splitDeployJson.mockResolvedValue({
+        envTemplate: 'env.template',
+        variables: 'application.yaml',
+        systemFile: systemFilePath,
+        readme: 'README.md'
+      });
+      fsPromises.readFile.mockImplementation((filePath) => {
+        if (String(filePath).includes('-system.yaml')) return Promise.resolve(systemYaml);
+        return Promise.resolve('');
+      });
+      retemplateConfigurationForDownload.mockResolvedValue(true);
+
+      const { downloadExternalSystem } = require('../../../lib/external-system/download');
+      await downloadExternalSystem(systemKey, { environment: 'dev', force: true });
+
+      expect(retemplateConfigurationForDownload).toHaveBeenCalledWith(
+        systemKey,
+        expect.arrayContaining([expect.objectContaining({ name: 'SITE_ID', location: 'variable' })])
+      );
+    });
+
+    it('should not call retemplate when split returns no systemFile', async() => {
+      getExternalSystemConfig.mockResolvedValue(mockDownloadResponse);
+      const generator = require('../../../lib/generator');
+      generator.splitDeployJson.mockResolvedValue({
+        envTemplate: 'env.template',
+        variables: 'application.yaml',
+        readme: 'README.md'
+      });
+      retemplateConfigurationForDownload.mockClear();
+
+      const { downloadExternalSystem } = require('../../../lib/external-system/download');
+      await downloadExternalSystem(systemKey, { environment: 'dev', force: true });
+
+      expect(retemplateConfigurationForDownload).not.toHaveBeenCalled();
+    });
+
+    it('should fail when system file read fails after split', async() => {
+      getExternalSystemConfig.mockResolvedValue(mockDownloadResponse);
+      const generator = require('../../../lib/generator');
+      const systemFilePath = path.join(appPath, `${systemKey}-system.yaml`);
+      generator.splitDeployJson.mockResolvedValue({
+        envTemplate: 'env.template',
+        variables: 'application.yaml',
+        systemFile: systemFilePath,
+        readme: 'README.md'
+      });
+      fsPromises.readFile.mockRejectedValueOnce(new Error('ENOENT: no such file'));
+
+      const { downloadExternalSystem } = require('../../../lib/external-system/download');
+      await expect(
+        downloadExternalSystem(systemKey, { environment: 'dev', force: true })
+      ).rejects.toThrow(/Failed to download external system|ENOENT/);
     });
 
     it('should handle dry-run mode', async() => {

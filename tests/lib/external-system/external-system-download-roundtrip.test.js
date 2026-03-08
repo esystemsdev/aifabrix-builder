@@ -51,7 +51,8 @@ describe('External System Download Roundtrip', () => {
         method: 'oauth2',
         variables: {
           baseUrl: 'https://api.example.com',
-          tokenUrl: 'https://api.example.com/oauth/token'
+          tokenUrl: 'https://api.example.com/oauth/token',
+          authorizationUrl: 'https://api.example.com/oauth/authorize'
         },
         security: {
           clientId: 'kv://roundtrip-test/clientid',

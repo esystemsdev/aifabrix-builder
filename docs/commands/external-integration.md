@@ -139,9 +139,10 @@ Controller and environment come from `config.yaml` (set via `aifabrix login` or 
 3. Validates the response, then builds deploy JSON. The generated env.template gets `KV_*` entries from the system’s `authentication.security` so credential validation passes.
 4. Writes `<system-key>-deploy.json` to `integration/<system-key>/` and **splits** it into component files:
    - `application.yaml`, `<system-key>-system.yaml`, `<system-key>-datasource-<key>.yaml`, `env.template`, `README.md`
-5. If the folder already exists: **env.template** is merged with the existing file (local edits preserved). **README.md**: if it exists and `--force` is not set, the CLI prompts to replace (yes/no); with `--force`, README is overwritten without prompting.
-6. Ensures placeholder secrets from env.template (empty values for credentials).
-7. If `--format json`: runs convert so component files are JSON instead of YAML.
+5. **Re-templating (when env.template exists):** Configuration entries in the system file with `location: variable` whose **name** matches a variable in `env.template` have their **value** set to `{{name}}` (e.g. `{{SHAREPOINT_SITE_ID}}`) so the downloaded file stays template-based. Entries whose name is not in env.template keep the value returned by the server.
+6. If the folder already exists: **env.template** is merged with the existing file (local edits preserved). **README.md**: if it exists and `--force` is not set, the CLI prompts to replace (yes/no); with `--force`, README is overwritten without prompting.
+7. Ensures placeholder secrets from env.template (empty values for credentials).
+8. If `--format json`: runs convert so component files are JSON instead of YAML.
 
 **Output:**
 ```yaml
@@ -229,15 +230,16 @@ aifabrix upload my-hubspot --dry-run
 **Process:**
 1. Validate locally (`validateExternalSystemComplete`)
 2. Build payload from controller manifest (system with RBAC + datasources) → `{ version, application, dataSources, status: "draft" }`
-3. Resolve dataplane URL and auth (from controller + environment)
-4. **Credential secrets push (automatic):** The CLI reads `integration/<system-key>/.env` and sends any `KV_*` variables (values resolved from local/remote secrets if they are `kv://`). It also scans the upload payload (application + datasources) for `kv://` references that are **not** in `.env` and resolves their values from aifabrix secret systems (local file or remote), then sends all to the dataplane secret store. This stores secret *values* only; credential structure (type, fields) is created/updated by the publish step itself. So credentials in config can be satisfied from `.env` or from local/remote secrets without extra steps—the CLI handles it automatically.
+3. **Configuration resolution:** The CLI resolves the **configuration** section before sending. Entries with `location: variable` get `{{VAR}}` replaced from the integration’s `.env` (or from resolved env.template if .env is missing). Entries with `location: keyvault` get `kv://` references resolved from your secrets (same as credential push). The payload sent to the dataplane contains **literal values** in configuration. If a variable or keyvault value is missing, the command fails with a message suggesting `aifabrix resolve <system-key>` or setting the variable in .env / ensuring the key exists in the secrets file.
+4. Resolve dataplane URL and auth (from controller + environment)
+5. **Credential secrets push (automatic):** The CLI reads `integration/<system-key>/.env` and sends any `KV_*` variables (values resolved from local/remote secrets if they are `kv://`). It also scans the upload payload (application + datasources) for `kv://` references that are **not** in `.env` and resolves their values from aifabrix secret systems (local file or remote), then sends all to the dataplane secret store. This stores secret *values* only; credential structure (type, fields) is created/updated by the publish step itself. So credentials in config can be satisfied from `.env` or from local/remote secrets without extra steps—the CLI handles it automatically.
 
    **Skip conditions:** If there is no `.env` file, no `KV_*` keys, or values are empty, the credential push step is skipped.
 
    **KV_* convention:** env.template and .env use `KV_<APPKEY>_<VAR>=value` (e.g. `KV_HUBSPOT_CLIENTID=xxx`, `KV_HUBSPOT_CLIENTSECRET=yyy`). Mapping: `KV_` + segments (underscores) → `kv://segment1/segment2/...` (lowercase). Example: `KV_HUBSPOT_CLIENTID` → `kv://hubspot/clientid`. The manifest must reference `kv://hubspot/clientid` (path style). Use `aifabrix credential env <system-key>` to prompt for values and write .env; use `aifabrix credential push <system-key>` to push .env secrets without a full upload.
 
    Dataplane permission **credential:create** is required for this automatic push; if the push fails (e.g. 403), upload still continues but secrets must be available elsewhere (e.g. env on dataplane). See [Secrets and config](../configuration/secrets-and-config.md) and [Permissions](permissions.md).
-5. **Pipeline upload:** Sends the configuration to the Dataplane (upload, validate, and publish in one step). On failure, the CLI shows validation or publish errors and exits.
+6. **Pipeline upload:** Sends the configuration to the Dataplane (upload, validate, and publish in one step). On failure, the CLI shows validation or publish errors and exits.
 
 **Output example:**
 ```text

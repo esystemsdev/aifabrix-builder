@@ -28,14 +28,14 @@ isProject: false
 
 This plan must comply with the following rules from [Project Rules](.cursor/rules/project-rules.mdc):
 
-- **[CLI Command Development](.cursor/rules/project-rules.mdc)** – Adding options to `repair <app>`; command pattern, input validation, chalk output, user experience. Applies because the plan adds `--rbac`, `--expose`, `--sync`, `--test` and wires them in setup-utility.js.
-- **[Architecture Patterns](.cursor/rules/project-rules.mdc)** – Module structure (lib/commands/, CommonJS), file organization, fixes in generator/repair source not only generated artifacts. Applies because new `repair-datasource.js` and changes to repair.js live in lib/commands/.
-- **[Code Quality Standards](.cursor/rules/project-rules.mdc)** – File size (≤500 lines/file, ≤50 lines/function), JSDoc for all public functions, documentation requirements. Applies to new and modified modules.
-- **[Quality Gates](.cursor/rules/project-rules.mdc)** – Mandatory checks before commit: build, lint, test, coverage ≥80% for new code. Applies to all implementation.
-- **[Testing Conventions](.cursor/rules/project-rules.mdc)** – Jest, tests in tests/, mock fs and config, success and error paths. Applies because plan adds tests in tests/lib/commands/repair.test.js and possibly repair-datasource.test.js.
-- **[Security & Compliance (ISO 27001)](.cursor/rules/project-rules.mdc)** – No hardcoded secrets, input validation, no logging of sensitive data. Applies especially to RBAC and datasource repair touching permissions/roles.
-- **[Validation Patterns](.cursor/rules/project-rules.mdc)** – Schema validation (external-datasource schema), YAML/JSON handling. Applies to metadataSchema and datasource structure.
-- **[Error Handling & Logging](.cursor/rules/project-rules.mdc)** – try-catch for async, meaningful errors, chalk for output. Applies to repair and repair-datasource code paths.
+- **[CLI Command Development](.cursor/rules/project-rules.mdc#cli-command-development)** – Adding options to `repair <app>`; command pattern, input validation, chalk output, user experience. Applies because the plan adds `--rbac`, `--expose`, `--sync`, `--test` and wires them in setup-utility.js.
+- **[Architecture Patterns](.cursor/rules/project-rules.mdc#architecture-patterns)** – Module structure (lib/commands/, CommonJS), file organization, fixes in generator/repair source not only generated artifacts. Applies because new `repair-datasource.js` and changes to repair.js live in lib/commands/.
+- **[Code Quality Standards](.cursor/rules/project-rules.mdc#code-quality-standards)** – File size (≤500 lines/file, ≤50 lines/function), JSDoc for all public functions, documentation requirements. Applies to new and modified modules.
+- **[Quality Gates](.cursor/rules/project-rules.mdc#quality-gates)** – Mandatory checks before commit: build, lint, test, coverage ≥80% for new code. Applies to all implementation.
+- **[Testing Conventions](.cursor/rules/project-rules.mdc#testing-conventions)** – Jest, tests in tests/, mock fs and config, success and error paths. Applies because plan adds tests in tests/lib/commands/repair.test.js and possibly repair-datasource.test.js.
+- **[Security & Compliance (ISO 27001)](.cursor/rules/project-rules.mdc#security--compliance-iso-27001)** – No hardcoded secrets, input validation, no logging of sensitive data. Applies especially to RBAC and datasource repair touching permissions/roles.
+- **[Validation Patterns](.cursor/rules/project-rules.mdc#validation-patterns)** – Schema validation (external-datasource schema), YAML/JSON handling. Applies to metadataSchema and datasource structure.
+- **[Error Handling & Logging](.cursor/rules/project-rules.mdc#error-handling--logging)** – try-catch for async, meaningful errors, chalk for output. Applies to repair and repair-datasource code paths.
 - **[Documentation Rules](.cursor/rules/docs-rules.mdc)** – CLI user docs: command-centric, no REST/HTTP details; document what the command does, options, and outcomes. Applies to docs/ updates for repair.
 
 **Key requirements**
@@ -62,10 +62,10 @@ This plan must comply with the following rules from [Project Rules](.cursor/rule
 
 Before marking this plan complete, ensure:
 
-1. **Build**: Run `npm run build` FIRST (must complete successfully; runs lint + test:ci).
+1. **Build**: Run `npm run build` FIRST (must complete successfully; runs lint + test:ci). Do not skip this step.
 2. **Lint**: Run `npm run lint` (must pass with zero errors/warnings).
-3. **Test**: Run `npm test` or `npm run test:ci` AFTER lint (all tests must pass; ≥80% coverage for new code).
-4. **Validation order**: BUILD → LINT → TEST (mandatory sequence; do not skip steps).
+3. **Test**: Run `npm test` or `npm run test:ci` after lint (all tests must pass; ≥80% coverage for new code).
+4. **Validation order**: BUILD → LINT → TEST (mandatory sequence; never skip steps).
 5. **File size**: All files ≤500 lines; all functions ≤50 lines.
 6. **JSDoc**: All public functions have JSDoc (params, returns, throws where applicable).
 7. **Code quality**: Rule requirements met (error handling, path.join, no secrets in code/logs).
@@ -248,8 +248,8 @@ flowchart LR
 
 ## Plan Validation Report
 
-**Date**: 2026-03-06  
-**Plan**: .cursor/plans/95-repair_command_improvements.plan.md  
+**Date**: 2026-03-07  
+**Plan**: .cursor/plans/Done/95-repair_command_improvements.plan.md  
 **Status**: VALIDATED
 
 ### Plan Purpose
@@ -258,31 +258,31 @@ Extend `aifabrix repair <app>` with manifest-centric datasource repairs (attribu
 
 ### Applicable Rules
 
-- [CLI Command Development](.cursor/rules/project-rules.mdc) – New repair options and wiring; applies.
-- [Architecture Patterns](.cursor/rules/project-rules.mdc) – lib/commands/, CommonJS, generator/repair as fix location; applies.
-- [Code Quality Standards](.cursor/rules/project-rules.mdc) – File size, JSDoc; applies.
-- [Quality Gates](.cursor/rules/project-rules.mdc) – Build, lint, test, coverage; applies (mandatory).
-- [Testing Conventions](.cursor/rules/project-rules.mdc) – Jest, tests in tests/, mocks; applies.
-- [Security & Compliance (ISO 27001)](.cursor/rules/project-rules.mdc) – No secrets, RBAC handling; applies.
-- [Validation Patterns](.cursor/rules/project-rules.mdc) – Schema validation for datasource; applies.
-- [Error Handling & Logging](.cursor/rules/project-rules.mdc) – try-catch, chalk; applies.
+- [CLI Command Development](.cursor/rules/project-rules.mdc#cli-command-development) – New repair options and wiring; applies.
+- [Architecture Patterns](.cursor/rules/project-rules.mdc#architecture-patterns) – lib/commands/, CommonJS, generator/repair as fix location; applies.
+- [Code Quality Standards](.cursor/rules/project-rules.mdc#code-quality-standards) – File size, JSDoc; applies.
+- [Quality Gates](.cursor/rules/project-rules.mdc#quality-gates) – Build, lint, test, coverage; applies (mandatory).
+- [Testing Conventions](.cursor/rules/project-rules.mdc#testing-conventions) – Jest, tests in tests/, mocks; applies.
+- [Security & Compliance (ISO 27001)](.cursor/rules/project-rules.mdc#security--compliance-iso-27001) – No secrets, RBAC handling; applies.
+- [Validation Patterns](.cursor/rules/project-rules.mdc#validation-patterns) – Schema validation for datasource; applies.
+- [Error Handling & Logging](.cursor/rules/project-rules.mdc#error-handling--logging) – try-catch, chalk; applies.
 - [Documentation Rules](.cursor/rules/docs-rules.mdc) – User-facing docs, no HTTP details; applies.
 
 ### Rule Compliance
 
-- DoD requirements: Documented (build first, lint, test, order BUILD → LINT → TEST, file size, JSDoc, security, tasks).
-- CLI Command Development: Plan adds options and passes them; compliant.
-- Code Quality / Quality Gates: DoD includes file size, JSDoc, build/lint/test; compliant.
-- Testing: Plan lists new test cases and file; compliant.
-- Security: Plan references no hardcoded secrets and RBAC from config; compliant.
-- Docs: Plan references docs-rules (user terms, no HTTP); compliant.
+- **DoD requirements**: Documented (build first via `npm run build`, lint, test, order BUILD → LINT → TEST, file size ≤500/≤50, JSDoc, coverage ≥80% for new code, security, tasks, docs).
+- **CLI Command Development**: Plan adds options and passes them; compliant.
+- **Code Quality / Quality Gates**: DoD includes file size, JSDoc, build/lint/test; compliant.
+- **Testing**: Plan lists new test cases and file; compliant.
+- **Security**: Plan references no hardcoded secrets and RBAC from config; compliant.
+- **Docs**: Plan references docs-rules (user terms, no HTTP); compliant.
 
 ### Plan Updates Made
 
-- Added **Rules and Standards** section with links to project-rules.mdc and docs-rules.mdc and key requirements.
-- Added **Before Development** checklist (read rules, review repair.js, schemas, docs-rules, validation order).
-- Added **Definition of Done** (build, lint, test, order, file size, JSDoc, code quality, security, tasks, docs).
-- Appended this **Plan Validation Report**.
+- **Rules and Standards** section includes anchor links to project-rules.mdc sections (#cli-command-development, #architecture-patterns, #code-quality-standards, #quality-gates, #testing-conventions, #security--compliance-iso-27001, #validation-patterns, #error-handling--logging) and key requirements.
+- **Before Development** checklist (read rules, review repair.js, schemas, docs-rules, validation order).
+- **Definition of Done** (build, lint, test, order, file size, JSDoc, code quality, security, tasks, docs).
+- Plan Validation Report updated (date, anchor links in Applicable Rules).
 
 ### Recommendations
 
@@ -313,22 +313,24 @@ All plan requirements have been implemented: core repair (dimensions, metadataSc
 
 ### File Existence Validation
 
-| File | Status |
-|------|--------|
-| lib/commands/repair-datasource.js | ✅ Exists; contains repairDimensionsFromAttributes, repairMetadataSchemaFromAttributes, repairExposeFromAttributes, repairSyncSection, repairTestPayload, repairDatasourceFile |
-| lib/commands/repair-rbac.js | ✅ Exists; contains getCapabilitiesFromDatasource, mergeRbacFromDatasources (RBAC merge extracted for size/complexity) |
-| lib/commands/repair.js | ✅ Exists; calls repairDatasourceFile, runDatasourceRepairs, mergeRbacFromDatasources; passes options.rbac, .expose, .sync, .test |
-| lib/cli/setup-utility.js | ✅ Exists; repair command has .option('--rbac'), .option('--expose'), .option('--sync'), .option('--test') and pass-through to repairExternalIntegration |
-| tests/lib/commands/repair-datasource.test.js | ✅ Exists; tests getAttributeKeys, parsePathsFromExpressions, dimensions, metadataSchema, expose, sync, testPayload, repairDatasourceFile |
-| tests/lib/commands/repair-rbac.test.js | ✅ Exists; tests getCapabilitiesFromDatasource, mergeRbacFromDatasources (existing rbac, new rbac, dry-run, extractRbacFromSystem) |
-| tests/lib/commands/repair.test.js | ✅ Exists; tests datasource repair (dimensions + metadataSchema), --expose, --rbac, dry-run; “no changes” mocks updated for valid datasource |
-| docs/commands/utilities.md | ✅ Updated; repair section: datasource behavior, options --rbac/--expose/--sync/--test, repairable issues |
-| docs/commands/external-integration.md | ✅ Updated; repair bullet extended with datasource alignment and optional flags |
-| docs/external-systems.md | ✅ Updated; env.template sentence and Troubleshooting bullet |
-| docs/configuration/secrets-and-config.md | ✅ Updated; repair sentence + optional flags |
-| docs/commands/README.md | ✅ Updated; repair list item |
-| docs/configuration/application-yaml.md | ✅ Updated; repair sentence |
-| docs/commands/validation.md | ✅ Updated; troubleshooting bullet |
+
+| File                                         | Status                                                                                                                                                                        |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| lib/commands/repair-datasource.js            | ✅ Exists; contains repairDimensionsFromAttributes, repairMetadataSchemaFromAttributes, repairExposeFromAttributes, repairSyncSection, repairTestPayload, repairDatasourceFile |
+| lib/commands/repair-rbac.js                  | ✅ Exists; contains getCapabilitiesFromDatasource, mergeRbacFromDatasources (RBAC merge extracted for size/complexity)                                                         |
+| lib/commands/repair.js                       | ✅ Exists; calls repairDatasourceFile, runDatasourceRepairs, mergeRbacFromDatasources; passes options.rbac, .expose, .sync, .test                                              |
+| lib/cli/setup-utility.js                     | ✅ Exists; repair command has .option('--rbac'), .option('--expose'), .option('--sync'), .option('--test') and pass-through to repairExternalIntegration                       |
+| tests/lib/commands/repair-datasource.test.js | ✅ Exists; tests getAttributeKeys, parsePathsFromExpressions, dimensions, metadataSchema, expose, sync, testPayload, repairDatasourceFile                                      |
+| tests/lib/commands/repair-rbac.test.js       | ✅ Exists; tests getCapabilitiesFromDatasource, mergeRbacFromDatasources (existing rbac, new rbac, dry-run, extractRbacFromSystem)                                             |
+| tests/lib/commands/repair.test.js            | ✅ Exists; tests datasource repair (dimensions + metadataSchema), --expose, --rbac, dry-run; “no changes” mocks updated for valid datasource                                   |
+| docs/commands/utilities.md                   | ✅ Updated; repair section: datasource behavior, options --rbac/--expose/--sync/--test, repairable issues                                                                      |
+| docs/commands/external-integration.md        | ✅ Updated; repair bullet extended with datasource alignment and optional flags                                                                                                |
+| docs/external-systems.md                     | ✅ Updated; env.template sentence and Troubleshooting bullet                                                                                                                   |
+| docs/configuration/secrets-and-config.md     | ✅ Updated; repair sentence + optional flags                                                                                                                                   |
+| docs/commands/README.md                      | ✅ Updated; repair list item                                                                                                                                                   |
+| docs/configuration/application-yaml.md       | ✅ Updated; repair sentence                                                                                                                                                    |
+| docs/commands/validation.md                  | ✅ Updated; troubleshooting bullet                                                                                                                                             |
+
 
 ### Test Coverage
 
@@ -338,27 +340,31 @@ All plan requirements have been implemented: core repair (dimensions, metadataSc
 
 ### Code Quality Validation
 
-| Step | Result |
-|------|--------|
-| **STEP 1 – Format** (npm run lint:fix) | ✅ PASSED (exit code 0) |
-| **STEP 2 – Lint** (npm run lint) | ✅ PASSED (exit code 0, 0 errors, 0 warnings) |
-| **STEP 3 – Test** (npm test) | ✅ PASSED (236 suites, 5127 passed) |
+
+| Step                                   | Result                                       |
+| -------------------------------------- | -------------------------------------------- |
+| **STEP 1 – Format** (npm run lint:fix) | ✅ PASSED (exit code 0)                       |
+| **STEP 2 – Lint** (npm run lint)       | ✅ PASSED (exit code 0, 0 errors, 0 warnings) |
+| **STEP 3 – Test** (npm test)           | ✅ PASSED (236 suites, 5127 passed)           |
+
 
 ### Cursor Rules Compliance
 
-| Rule | Status |
-|------|--------|
-| Code reuse | ✅ No duplication; repair-rbac extracted for single responsibility |
-| Error handling | ✅ try-catch in async paths; logger/chalk for repair and runDatasourceRepairs |
-| Logging | ✅ logger.log / chalk in repair and repair-rbac; no console.log in production paths |
-| Type safety | ✅ JSDoc @param, @returns on public functions in repair-datasource.js, repair-rbac.js, repair.js |
-| Async patterns | ✅ async/await in repairExternalIntegration |
-| File operations | ✅ path.join for paths; writeConfigFile/loadConfigFile; fs.writeFileSync for rbac.yaml |
-| Input validation | ✅ App name and file existence checks in repair flow |
-| Module patterns | ✅ CommonJS require/module.exports |
-| Security | ✅ No hardcoded secrets; RBAC uses system key/displayName from config only |
-| File size | ✅ Files ≤500 lines; functions ≤50 lines (repair-rbac split to satisfy max-lines-per-function) |
-| Docs (docs-rules.mdc) | ✅ User-facing, command-centric; no REST/HTTP details in updated docs |
+
+| Rule                  | Status                                                                                          |
+| --------------------- | ----------------------------------------------------------------------------------------------- |
+| Code reuse            | ✅ No duplication; repair-rbac extracted for single responsibility                               |
+| Error handling        | ✅ try-catch in async paths; logger/chalk for repair and runDatasourceRepairs                    |
+| Logging               | ✅ logger.log / chalk in repair and repair-rbac; no console.log in production paths              |
+| Type safety           | ✅ JSDoc @param, @returns on public functions in repair-datasource.js, repair-rbac.js, repair.js |
+| Async patterns        | ✅ async/await in repairExternalIntegration                                                      |
+| File operations       | ✅ path.join for paths; writeConfigFile/loadConfigFile; fs.writeFileSync for rbac.yaml           |
+| Input validation      | ✅ App name and file existence checks in repair flow                                             |
+| Module patterns       | ✅ CommonJS require/module.exports                                                               |
+| Security              | ✅ No hardcoded secrets; RBAC uses system key/displayName from config only                       |
+| File size             | ✅ Files ≤500 lines; functions ≤50 lines (repair-rbac split to satisfy max-lines-per-function)   |
+| Docs (docs-rules.mdc) | ✅ User-facing, command-centric; no REST/HTTP details in updated docs                            |
+
 
 ### Implementation Completeness
 
@@ -374,12 +380,12 @@ All plan requirements have been implemented: core repair (dimensions, metadataSc
 
 ### Final Validation Checklist
 
-- [x] All plan tasks (sections 1–7, DoD, docs) completed
-- [x] All files exist and contain expected behavior
-- [x] Tests exist and pass (repair-datasource, repair-rbac, repair)
-- [x] Format (lint:fix) passed
-- [x] Lint passed (0 errors, 0 warnings)
-- [x] Tests passed (236 suites, 5127 tests)
-- [x] Cursor rules compliance verified
-- [x] Documentation updated (user-facing, no HTTP details)
+- All plan tasks (sections 1–7, DoD, docs) completed
+- All files exist and contain expected behavior
+- Tests exist and pass (repair-datasource, repair-rbac, repair)
+- Format (lint:fix) passed
+- Lint passed (0 errors, 0 warnings)
+- Tests passed (236 suites, 5127 tests)
+- Cursor rules compliance verified
+- Documentation updated (user-facing, no HTTP details)
 
