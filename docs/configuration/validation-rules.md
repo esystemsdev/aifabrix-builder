@@ -2,7 +2,7 @@
 
 ← [Configuration](README.md) · [Commands: Validation](../commands/validation.md)
 
-When you run `aifabrix validate <external-system-key>`, the CLI runs **three steps** in order: application configuration, component files, and the full deployment manifest. Each step applies the rules below. Validation is **offline** (no network or backend required).
+When you run `aifabrix validate <external-system-key>` (or a file path), the CLI runs **three steps** in order: application configuration, component files, and the full deployment manifest. Each step applies the rules below. Validation is **offline** (no network or backend required). You can also run validation for **all** integrations or builder apps in one call using **`aifabrix validate --integration`** or **`aifabrix validate --builder`**; see [Validation commands](../commands/validation.md#aifabrix-validate-apporfile).
 
 **Upload and download:** On **upload** (`aifabrix upload <system-key>`), configuration values are resolved before send: `location: variable` → `{{VAR}}` from the integration’s `.env`; `location: keyvault` → `kv://` from secrets. On **download** (`aifabrix download <system-key>`), when `env.template` exists, configuration entries whose `name` matches a variable in env.template have their `value` set to `{{name}}` so the downloaded file stays template-based.
 
@@ -10,10 +10,29 @@ When you run `aifabrix validate <external-system-key>`, the CLI runs **three ste
 
 ---
 
+## Relationship to dataplane validation
+
+Builder validation is **offline**: schema and structural checks only, no network or dimension catalog. The **dataplane** applies the same schemas at create/update and deploy, plus **referential checks** when a database session is available (dimension catalog lookup, OpenAPI keys, datasource existence). Aligning Builder rules with the dataplane (e.g. grantType/authorizationUrl, rateLimit shape, configuration vs auth variables) helps configs pass both local and deploy-time validation. For full dataplane behavior (dimensions, create/update rules, troubleshooting), see the dataplane knowledgebase.
+
+---
+
+## Dimensions and deploy-time behavior
+
+Builder does **not** validate dimension keys against a dimension catalog. At **deploy** the dataplane applies:
+
+| Check | Dataplane behavior |
+| ----- | ------------------ |
+| Dimension key exists in Dimension Catalog | **Warning** if missing; deploy can continue (catalog may be synced later). |
+| Dimension `dataType` vs attribute type | **Error** if mismatch; validation fails. |
+
+Local validation (`aifabrix validate`) checks dimension syntax and structure only. Use `aifabrix test-integration` or deployment to validate dimensions against the catalog.
+
+---
+
 ## Validation steps
 
 | Step | What is checked | Scope |
-|------|-----------------|--------|
+| ------ | ----------------- | ----- |
 | **1** | Application configuration | `application.yaml`, `rbac.yaml`, `env.template` in the app directory |
 | **2** | Component files | Each external system file and each external datasource file listed in `externalIntegration.systems` and `externalIntegration.dataSources` |
 | **3** | Deployment manifest | Generated manifest (structure, inline system, inline datasources, systemKey alignment) |
@@ -29,7 +48,7 @@ The validate command checks application config, RBAC (if present), and the envir
 ### application.yaml
 
 | Rule | Requirement |
-|------|-------------|
+| ------ | ----------- |
 | Application schema | The file must conform to the application schema (required fields, types, patterns). |
 | `app.key` | Required. Lowercase letters, numbers, hyphens only. |
 | `app.type` | Required. One of: `webapp`, `functionapp`, `api`, `service`, `external`. |
@@ -43,7 +62,7 @@ The validate command checks application config, RBAC (if present), and the envir
 ### externalIntegration block (when type is external)
 
 | Rule | Requirement |
-|------|-------------|
+| ------ | ----------- |
 | `schemaBasePath` | Required. Resolved relative to the application config directory; must exist and be a directory. |
 | `systems` | Non-empty array. Each entry is a file name under the schema base path (e.g. `hubspot-system.yaml`). |
 | `dataSources` | Optional array of datasource file names under the schema base path. |
@@ -51,7 +70,7 @@ The validate command checks application config, RBAC (if present), and the envir
 ### rbac.yaml (if present)
 
 | Rule | Requirement |
-|------|-------------|
+| ------ | ----------- |
 | `roles` | Must be an array. Each role must have `name`, `value`, and `description`. |
 | Role `value` | No duplicate values. Use `groups` (lowercase), not `Groups`. |
 | `permissions` | Must be an array. Each permission must have `name`, `roles`, and `description`. |
@@ -61,7 +80,7 @@ The validate command checks application config, RBAC (if present), and the envir
 ### env.template
 
 | Rule | Requirement |
-|------|-------------|
+| ------ | ----------- |
 | Variable lines | Non-empty, non-comment lines must contain `=`. Variable name (left of `=`) must be non-empty. |
 | `kv://` references | If present: path must be non-empty, must not start or end with `/`. Use form like `kv://secret-key` or `kv://path/to/key`. |
 
@@ -76,7 +95,7 @@ The command validates each file listed in `externalIntegration.systems` and `ext
 Files (e.g. `*-system.yaml` or `*-system.json`) are validated against the external system schema.
 
 | Field or section | Requirement |
-|------------------|-------------|
+| ----------------- | ----------- |
 | `key` | Required. String, pattern lowercase letters, numbers, hyphens only. Length 3–40. |
 | `displayName` | Required. String, length 1–100. |
 | `description` | Required. String, length 1–500. |
@@ -99,7 +118,7 @@ Files (e.g. `*-system.yaml` or `*-system.json`) are validated against the extern
 Files (e.g. `*-datasource-*.yaml` or `*-datasource-*.json`) are validated against the external datasource schema.
 
 | Field or section | Requirement |
-|------------------|-------------|
+| ----------------- | ----------- |
 | `key` | Required. String, pattern lowercase letters, numbers, hyphens. Min length 3. |
 | `displayName` | Required. String, min length 1. |
 | `systemKey` | Required. Must match the parent external system `key`. |
@@ -118,7 +137,7 @@ Files (e.g. `*-datasource-*.yaml` or `*-datasource-*.json`) are validated agains
 After component files pass, the command builds the deployment manifest and validates it. The manifest combines application identity, the inline system object, and the inline datasources.
 
 | Rule | Requirement |
-|------|-------------|
+| ------ | ----------- |
 | Manifest structure | The manifest must conform to the application schema (top-level shape and types). |
 | Required top-level fields | `key`, `displayName`, `description`, `type` must be present. |
 | Inline `system` | When present, must satisfy the external system schema in full. |
@@ -132,7 +151,7 @@ After component files pass, the command builds the deployment manifest and valid
 ## Rules at a glance
 
 | Category | Rule | When it applies |
-|----------|------|-----------------|
+| --------- | ---- | --------------- |
 | Application | application.yaml conforms to application schema | Step 1 |
 | Application | `externalIntegration` required when `app.type` is `external` | Step 1 |
 | Application | `externalIntegration.schemaBasePath` and `externalIntegration.systems` (non-empty) required | Step 1 |
@@ -147,6 +166,17 @@ After component files pass, the command builds the deployment manifest and valid
 | Manifest | Manifest structure and required top-level fields | Step 3 |
 | Manifest | Inline system and each datasource conform to their schemas | Step 3 |
 | Manifest | Each datasource `systemKey` matches application system key | Step 3 |
+
+---
+
+## Validation at create/update (dataplane)
+
+When you create or update an external system or datasource via the API or pipeline deploy, the dataplane applies additional rules beyond schema and Builder checks. Summary:
+
+- **External system:** Authentication (e.g. OAuth2/AAD grantType and authorizationUrl), rateLimit shape, OpenAPI/MCP key lookup when available, datasource key references and system ownership, RBAC structure.
+- **External datasource:** **primaryKey** required (non-empty array of field names from fieldMappings); **entityType** (e.g. `"none"` for no records tables); **field names** (letters, numbers, underscores only); no duplicate names in dimensions and attributes; metadata type changes and incompatible replacements can cause deploy to be rejected with a clear message.
+
+For full dataplane rules and troubleshooting (dimension catalog, pipeline deployment), see the dataplane documentation.
 
 ---
 

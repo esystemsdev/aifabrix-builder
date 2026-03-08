@@ -81,6 +81,7 @@ describe('External System Download Roundtrip', () => {
       systemKey,
       entityType: 'record-storage',
       resourceType: 'customer',
+      primaryKey: ['country'],
       fieldMappings: {
         dimensions: { country: 'metadata.country' },
         attributes: {

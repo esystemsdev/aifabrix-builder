@@ -419,6 +419,18 @@ frontDoorRouting:
       expect(result.errors).toEqual([]);
     });
 
+    it('should skip comment lines containing kv:// text (e.g. doc comments)', async() => {
+      const templateWithDocComment = '# Use kv:// references for secrets (resolved from .aifabrix/secrets.yaml)\nPORT=3000\nSECRET=kv://myapp/secret';
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(templateWithDocComment);
+
+      const result = await validator.validateEnvTemplate(appName);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
     it('should throw error if env.template not found', async() => {
       fs.existsSync.mockReturnValue(false);
 

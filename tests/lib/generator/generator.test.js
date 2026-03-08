@@ -2295,6 +2295,7 @@ NORMAL_VAR=value456`;
       systemKey: 'hubspot',
       entityType: 'recordStorage',
       resourceType: 'customer',
+      primaryKey: ['country'],
       fieldMappings: {
         dimensions: {
           country: 'metadata.country'
@@ -2314,6 +2315,7 @@ NORMAL_VAR=value456`;
       systemKey: 'hubspot',
       entityType: 'recordStorage',
       resourceType: 'contact',
+      primaryKey: ['email'],
       fieldMappings: {
         dimensions: {
           email: 'metadata.email'

@@ -4,6 +4,9 @@ description: "{{datasourceDescription}}"
 systemKey: "{{systemKey}}"
 entityType: "{{schemaEntityType}}"
 resourceType: "{{resourceType}}"
+primaryKey:
+{{#each primaryKey}}  - "{{this}}"
+{{/each}}
 enabled: true
 version: "1.0.0"
 fieldMappings:

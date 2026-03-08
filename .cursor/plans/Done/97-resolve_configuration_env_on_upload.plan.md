@@ -237,17 +237,19 @@ Implementation of plan 97 (Resolve configuration env on upload) has been validat
 
 ### File Existence Validation
 
-| File | Status |
-|------|--------|
-| lib/utils/configuration-env-resolver.js | Exists (179 lines); exports buildResolvedEnvMapForIntegration, resolveConfigurationValues, getEnvTemplateVariableNames, retemplateConfigurationFromEnvTemplate, retemplateConfigurationForDownload, substituteVarPlaceholders |
-| lib/commands/upload.js | Modified; resolvePayloadConfiguration, buildResolvedEnvMapForIntegration, resolveConfigurationValues used |
-| lib/external-system/download.js | Modified; applyRetemplateToSystemFile, retemplateConfigurationForDownload used after splitDeployJson |
-| lib/datasource/deploy.js | Modified; configuration resolution before publish when config has configuration array |
-| tests/lib/utils/configuration-env-resolver.test.js | Exists (212 lines); covers substituteVarPlaceholders, resolveConfigurationValues, getEnvTemplateVariableNames, retemplateConfigurationFromEnvTemplate, buildResolvedEnvMapForIntegration, retemplateConfigurationForDownload |
-| tests/lib/commands/upload.test.js | Modified; mocks configuration-env-resolver, test verifies configuration resolution before pipeline upload |
-| docs/commands/external-integration.md | Updated; upload process step 3 (configuration resolution), download process step 5 (re-templating) |
-| docs/configuration/env-template.md | Updated; configuration alignment paragraph |
-| docs/configuration/validation-rules.md | Updated; upload/download resolution note |
+
+| File                                               | Status                                                                                                                                                                                                                        |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| lib/utils/configuration-env-resolver.js            | Exists (179 lines); exports buildResolvedEnvMapForIntegration, resolveConfigurationValues, getEnvTemplateVariableNames, retemplateConfigurationFromEnvTemplate, retemplateConfigurationForDownload, substituteVarPlaceholders |
+| lib/commands/upload.js                             | Modified; resolvePayloadConfiguration, buildResolvedEnvMapForIntegration, resolveConfigurationValues used                                                                                                                     |
+| lib/external-system/download.js                    | Modified; applyRetemplateToSystemFile, retemplateConfigurationForDownload used after splitDeployJson                                                                                                                          |
+| lib/datasource/deploy.js                           | Modified; configuration resolution before publish when config has configuration array                                                                                                                                         |
+| tests/lib/utils/configuration-env-resolver.test.js | Exists (212 lines); covers substituteVarPlaceholders, resolveConfigurationValues, getEnvTemplateVariableNames, retemplateConfigurationFromEnvTemplate, buildResolvedEnvMapForIntegration, retemplateConfigurationForDownload  |
+| tests/lib/commands/upload.test.js                  | Modified; mocks configuration-env-resolver, test verifies configuration resolution before pipeline upload                                                                                                                     |
+| docs/commands/external-integration.md              | Updated; upload process step 3 (configuration resolution), download process step 5 (re-templating)                                                                                                                            |
+| docs/configuration/env-template.md                 | Updated; configuration alignment paragraph                                                                                                                                                                                    |
+| docs/configuration/validation-rules.md             | Updated; upload/download resolution note                                                                                                                                                                                      |
+
 
 ### Test Coverage
 
@@ -257,11 +259,13 @@ Implementation of plan 97 (Resolve configuration env on upload) has been validat
 
 ### Code Quality Validation
 
-| Step | Result |
-|------|--------|
-| Format (lint:fix) | PASSED |
-| Lint | PASSED (0 errors, 0 warnings) |
-| Tests | PASSED (all tests pass) |
+
+| Step              | Result                        |
+| ----------------- | ----------------------------- |
+| Format (lint:fix) | PASSED                        |
+| Lint              | PASSED (0 errors, 0 warnings) |
+| Tests             | PASSED (all tests pass)       |
+
 
 ### File Size and Standards
 
@@ -273,17 +277,19 @@ Implementation of plan 97 (Resolve configuration env on upload) has been validat
 
 ### Cursor Rules Compliance
 
-| Rule | Status |
-|------|--------|
-| Code reuse | Resolver uses parseEnvToMap, resolveKvValue from credential-secrets-env; loadSecrets, resolveKvReferences from core/secrets |
-| Error handling | throw new Error with actionable messages; no secret values in messages |
-| Logging | No logging of secrets; errors suggest aifabrix resolve without exposing values |
-| Type safety | JSDoc @param, @returns, @throws on public functions; @fileoverview on module |
-| Async patterns | async/await; loadSecrets, resolveKvReferences, getActualSecretsPath awaited |
-| File operations | path.join for paths; fs.readFileSync/fs.existsSync where used |
-| Input validation | systemKey validated (required, string); config arrays checked before resolve |
-| Module patterns | CommonJS require/module.exports |
-| Security | No hardcoded secrets; errors reference "configuration 'name'" or "keyvault reference", not values |
+
+| Rule             | Status                                                                                                                      |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Code reuse       | Resolver uses parseEnvToMap, resolveKvValue from credential-secrets-env; loadSecrets, resolveKvReferences from core/secrets |
+| Error handling   | throw new Error with actionable messages; no secret values in messages                                                      |
+| Logging          | No logging of secrets; errors suggest aifabrix resolve without exposing values                                              |
+| Type safety      | JSDoc @param, @returns, @throws on public functions; @fileoverview on module                                                |
+| Async patterns   | async/await; loadSecrets, resolveKvReferences, getActualSecretsPath awaited                                                 |
+| File operations  | path.join for paths; fs.readFileSync/fs.existsSync where used                                                               |
+| Input validation | systemKey validated (required, string); config arrays checked before resolve                                                |
+| Module patterns  | CommonJS require/module.exports                                                                                             |
+| Security         | No hardcoded secrets; errors reference "configuration 'name'" or "keyvault reference", not values                           |
+
 
 ### Implementation Completeness
 
@@ -296,9 +302,10 @@ Implementation of plan 97 (Resolve configuration env on upload) has been validat
 
 ### Final Validation Checklist
 
-- [x] All implementation tasks done (resolver, upload, download, datasource deploy, docs, tests)
-- [x] All mentioned files exist and contain expected behavior
-- [x] Tests exist for new resolver and upload configuration resolution; all tests pass
-- [x] Code quality: format and lint pass (0 errors, 0 warnings)
-- [x] Cursor rules compliance verified (error handling, no secrets in messages, JSDoc, path.join, CommonJS)
-- [x] Implementation complete
+- All implementation tasks done (resolver, upload, download, datasource deploy, docs, tests)
+- All mentioned files exist and contain expected behavior
+- Tests exist for new resolver and upload configuration resolution; all tests pass
+- Code quality: format and lint pass (0 errors, 0 warnings)
+- Cursor rules compliance verified (error handling, no secrets in messages, JSDoc, path.join, CommonJS)
+- Implementation complete
+

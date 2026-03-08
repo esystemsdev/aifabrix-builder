@@ -55,7 +55,9 @@ jest.mock('../../../lib/validation/external-manifest-validator', () => ({
 }));
 jest.mock('../../../lib/utils/paths', () => ({
   detectAppType: jest.fn(),
-  getProjectRoot: jest.fn(() => process.cwd())
+  getProjectRoot: jest.fn(() => process.cwd()),
+  listIntegrationAppNames: jest.fn(),
+  listBuilderAppNames: jest.fn()
 }));
 
 const fsSync = require('fs');
@@ -66,7 +68,7 @@ const { loadExternalSystemSchema, loadExternalDataSourceSchema, detectSchemaType
 const { formatValidationErrors } = require('../../../lib/utils/error-formatter');
 const { generateControllerManifest } = require('../../../lib/generator/external-controller-manifest');
 const { validateControllerManifest } = require('../../../lib/validation/external-manifest-validator');
-const { detectAppType } = require('../../../lib/utils/paths');
+const { detectAppType, listIntegrationAppNames, listBuilderAppNames } = require('../../../lib/utils/paths');
 
 describe('Validation Module', () => {
   beforeEach(() => {
@@ -405,6 +407,148 @@ describe('Validation Module', () => {
 
       expect(result.valid).toBe(true);
       expect(result.warnings).toBeDefined();
+    });
+  });
+
+  describe('validateAllIntegrations / validateAllBuilderApps / validateAll', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('validateAllIntegrations returns batch result with 0 results when list is empty', async() => {
+      listIntegrationAppNames.mockReturnValue([]);
+      const { validateAllIntegrations } = require('../../../lib/validation/validate');
+      const batch = await validateAllIntegrations({});
+      expect(batch.batch).toBe(true);
+      expect(batch.valid).toBe(true);
+      expect(batch.results).toEqual([]);
+      expect(batch.errors).toEqual([]);
+      expect(batch.warnings).toEqual([]);
+    });
+
+    it('validateAllIntegrations returns valid true when all apps pass', async() => {
+      listIntegrationAppNames.mockReturnValue(['app1', 'app2']);
+      detectAppType.mockResolvedValue({ isExternal: true, appPath: '/x' });
+      validator.validateApplication.mockResolvedValue({ valid: true, errors: [], warnings: [] });
+      resolveExternalFiles.mockResolvedValue([]);
+      generateControllerManifest.mockResolvedValue({});
+      validateControllerManifest.mockResolvedValue({ valid: true, errors: [], warnings: [] });
+      const validateMod = require('../../../lib/validation/validate');
+
+      const batch = await validateMod.validateAllIntegrations({});
+      expect(batch.batch).toBe(true);
+      expect(batch.valid).toBe(true);
+      expect(batch.results).toHaveLength(2);
+      expect(batch.results[0].appName).toBe('app1');
+      expect(batch.results[0].result).toBeDefined();
+      expect(batch.results[0].result.valid).toBe(true);
+      expect(batch.results[1].appName).toBe('app2');
+      expect(batch.results[1].result).toBeDefined();
+      expect(batch.results[1].result.valid).toBe(true);
+    });
+
+    it('validateAllIntegrations returns valid false when one app throws', async() => {
+      listIntegrationAppNames.mockReturnValue(['app1', 'app2']);
+      detectAppType
+        .mockResolvedValueOnce({ isExternal: true, appPath: '/x' })
+        .mockResolvedValueOnce({ isExternal: true, appPath: '/x' })
+        .mockRejectedValueOnce(new Error('Missing application.yaml'));
+      const { validateAllIntegrations } = require('../../../lib/validation/validate');
+
+      const batch = await validateAllIntegrations({});
+      expect(batch.batch).toBe(true);
+      expect(batch.valid).toBe(false);
+      expect(batch.results).toHaveLength(2);
+      expect(batch.results[0].appName).toBe('app1');
+      expect(batch.results[1].appName).toBe('app2');
+      expect(batch.results[1].error).toBeDefined();
+      expect(String(batch.results[1].error)).toContain('Missing application.yaml');
+    });
+
+    it('validateAllBuilderApps returns batch result with 0 results when list is empty', async() => {
+      listBuilderAppNames.mockReturnValue([]);
+      const { validateAllBuilderApps } = require('../../../lib/validation/validate');
+      const batch = await validateAllBuilderApps({});
+      expect(batch.batch).toBe(true);
+      expect(batch.valid).toBe(true);
+      expect(batch.results).toEqual([]);
+    });
+
+    it('validateAllBuilderApps returns valid false when one result is invalid', async() => {
+      listBuilderAppNames.mockReturnValue(['b1', 'b2']);
+      detectAppType.mockImplementation((appName) =>
+        Promise.resolve({ isExternal: false, appPath: path.join(process.cwd(), 'builder', appName) })
+      );
+      validator.validateApplication
+        .mockResolvedValueOnce({ valid: true, errors: [], warnings: [] })
+        .mockResolvedValueOnce({ valid: false, errors: ['Schema error'], warnings: [] });
+      resolveExternalFiles.mockResolvedValue([]);
+      fsSync.existsSync.mockImplementation((p) => (typeof p === 'string' && p.includes('application.yaml')));
+      fsSync.statSync.mockReturnValue({ isFile: () => false });
+      fsSync.readFileSync.mockReturnValue('key: b1\napp:\n  type: webapp');
+      const validateMod = require('../../../lib/validation/validate');
+
+      const batch = await validateMod.validateAllBuilderApps({});
+      expect(batch.batch).toBe(true);
+      expect(batch.valid).toBe(false);
+      expect(batch.results).toHaveLength(2);
+      expect(batch.results[1].appName).toBe('b2');
+      expect(batch.results[1].result).toBeDefined();
+      expect(batch.results[1].result.valid).toBe(false);
+      expect(batch.errors.length).toBeGreaterThan(0);
+    });
+
+    it('validateAll merges integration and builder results', async() => {
+      listIntegrationAppNames.mockReturnValue(['i1']);
+      listBuilderAppNames.mockReturnValue(['b1']);
+      detectAppType.mockImplementation((appName) =>
+        Promise.resolve(
+          appName === 'i1'
+            ? { isExternal: true, appPath: '/x' }
+            : { isExternal: false, appPath: path.join(process.cwd(), 'builder', appName) }
+        )
+      );
+      const validateMod = require('../../../lib/validation/validate');
+      const goodResult = { valid: true, errors: [], warnings: [] };
+      const spy = jest.spyOn(validateMod, 'validateExternalSystemComplete').mockResolvedValue(goodResult);
+      validator.validateApplication.mockResolvedValue({ valid: true, errors: [], warnings: [] });
+      resolveExternalFiles.mockResolvedValue([]);
+      fsSync.existsSync.mockImplementation((p) => typeof p === 'string' && p.includes('application.yaml'));
+      fsSync.statSync.mockReturnValue({ isFile: () => false });
+      fsSync.readFileSync.mockReturnValue('key: b1\napp:\n  type: webapp');
+
+      const batch = await validateMod.validateAll({});
+      expect(batch.batch).toBe(true);
+      expect(batch.results).toHaveLength(2);
+      const appNames = batch.results.map(r => r.appName);
+      expect(appNames).toContain('i1');
+      expect(appNames).toContain('b1');
+      spy.mockRestore();
+    });
+  });
+
+  describe('displayBatchValidationResults', () => {
+    it('displays per-app sections and summary', () => {
+      const { displayBatchValidationResults } = require('../../../lib/validation/validate');
+      const batchResult = {
+        batch: true,
+        results: [
+          { appName: 'app1', result: { valid: true, errors: [], warnings: [] } },
+          { appName: 'app2', error: 'File not found' }
+        ]
+      };
+      displayBatchValidationResults(batchResult);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('--- app1 ---'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('--- app2 ---'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/passed.*failed|failed/));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Summary'));
+    });
+
+    it('does nothing when batchResult has no results array', () => {
+      const { displayBatchValidationResults } = require('../../../lib/validation/validate');
+      logger.log.mockClear();
+      displayBatchValidationResults({ batch: true });
+      expect(logger.log).not.toHaveBeenCalled();
     });
   });
 
@@ -821,6 +965,50 @@ describe('Validation Module', () => {
       const parsed = {
         ...baseSystem,
         authentication: { method: 'none', variables: {} }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+  });
+
+  describe('rateLimit (schema-aligned with dataplane)', () => {
+    const baseSystem = {
+      key: 'test',
+      displayName: 'Test',
+      description: 'Desc',
+      type: 'openapi',
+      authentication: { method: 'oauth2', variables: { grantType: 'client_credentials' } }
+    };
+
+    beforeEach(() => {
+      fsSync.existsSync.mockReturnValue(true);
+      loadExternalSystemSchema.mockReturnValue(jest.fn().mockReturnValue(true));
+      formatValidationErrors.mockReturnValue([]);
+    });
+
+    it('accepts valid rateLimit with requestsPerWindow and windowSeconds', async() => {
+      const parsed = {
+        ...baseSystem,
+        rateLimit: { requestsPerWindow: 100, windowSeconds: 10 }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('accepts valid rateLimit with requestsPerSecond and burstSize', async() => {
+      const parsed = {
+        ...baseSystem,
+        rateLimit: { requestsPerSecond: 10, burstSize: 100 }
       };
       fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
 

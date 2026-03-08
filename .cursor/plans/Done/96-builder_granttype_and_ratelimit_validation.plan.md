@@ -287,3 +287,81 @@ All plan requirements have been implemented. Custom OAuth2/AAD grantType and aut
 - Cursor rules compliance verified
 - Implementation complete
 
+---
+
+## Validation Report (Knowledge Base)
+
+**Date**: 2025-03-08  
+**Plan**: .cursor/plans/Done/96-builder_granttype_and_ratelimit_validation.plan.md  
+**Document(s)**: docs/configuration/validation-rules.md, docs/commands/validation.md  
+**Status**: ✅ COMPLETE
+
+### Executive Summary
+
+Documentation referenced in the plan was validated for structure, references, schema alignment, and Markdown. Both docs pass; grantType and rateLimit are documented and align with `lib/schema/external-system.schema.json`. MarkdownLint passed after table-format fixes in `validation-rules.md`.
+
+### Documents Validated
+
+- **Total**: 2  
+- **Passed**: 2  
+- **Failed**: 0  
+- **Auto-fixed**: 1 (validation-rules.md table formatting for MD060)
+
+#### Document List
+
+- ✅ **docs/configuration/validation-rules.md** – Structure, cross-references, and schema-aligned content (external-system, application, external-datasource). Tables fixed for MarkdownLint compact style.
+- ✅ **docs/commands/validation.md** – Structure, cross-references, and schema-aligned content. No lint changes.
+
+### Structure Validation
+
+- **validation-rules.md**: Single `#` title, clear `##`/`###` hierarchy, required sections (Steps 1–3, external system/datasource rules, troubleshooting). Nav: Configuration README, Commands validation.
+- **validation.md**: Single `#` title, clear hierarchy (Overview, JSON Schemas, How validation works, Command sections, Examples, Troubleshooting). Nav: Documentation index, Commands index.
+
+### Reference Validation
+
+- **validation-rules.md**: Links to `README.md` (config), `../commands/validation.md#aifabrix-validate-apporfile` – all targets exist.
+- **validation.md**: Links to `../README.md`, `README.md`, `../wizard.md`, `external-integration.md`, `../external-systems.md`, `../configuration/validation-rules.md`, `external-integration-testing.md`, `../configuration/README.md` – all targets exist.
+- No broken internal links.
+
+### Schema-based Validation
+
+- **docs/configuration/validation-rules.md** ↔ **lib/schema/external-system.schema.json**: ✅  
+  - grantType (oauth2/aad): doc “client_credentials | authorization_code”; schema `$defs.authenticationVariablesByMethod` matches.  
+  - authorizationUrl: doc “required when authorization_code or omitted”; schema description matches.  
+  - rateLimit: doc “requestsPerWindow + windowSeconds or requestsPerSecond + burstSize”; schema `rateLimit` oneOf matches.  
+  - authentication.method enum: doc lists oauth2, apikey, basic, aad, none, queryParam, oidc, hmac; schema matches.  
+  - type: openapi, mcp, custom; key/displayName/description requirements; all consistent.
+- **docs/commands/validation.md** ↔ **lib/schema/external-system.schema.json**: ✅  
+  - External System Schema key requirements (grantType, authorizationUrl, rateLimit) match schema and validation-rules.md.  
+  - No YAML/JSON code blocks in these sections that require schema validation of payloads; prose and tables align with schema.
+
+### Markdown Validation
+
+- **MarkdownLint**: ✅ Passed (0 errors) after fixes.  
+- **validation-rules.md**: MD060 table-column-style resolved by using compact-style separator rows (space around pipes in separator lines).  
+- **validation.md**: No lint issues.
+
+### Project Rules Compliance
+
+- **Focus**: Both docs describe how to use the builder (CLI, `aifabrix validate`, rules, steps). No REST/API endpoint or HTTP details.  
+- **docs-rules**: Command-centric; auth described in user terms; no backend endpoint names.  
+- **Examples and structure**: Align with lib/schema (application, external-system, external-datasource) as above.
+
+### Automatic Fixes Applied
+
+- **docs/configuration/validation-rules.md**: Table separator rows updated for MD060 “compact” style (spaces around pipes in `| ------ | ... |` rows) in all tables (Validation steps; Step 1 application.yaml, externalIntegration, rbac, env.template; Step 2 external system, external datasource; Step 3 manifest; Rules at a glance).
+
+### Manual Fixes Required
+
+- None.
+
+### Final Checklist
+
+- [x] All listed docs validated  
+- [x] MarkdownLint passes (0 errors)  
+- [x] Cross-references within docs/ valid  
+- [x] No broken internal links  
+- [x] Examples and structure align with lib/schema (external-system, application, external-datasource)  
+- [x] Content focused on using the builder (external users)  
+- [x] Auto-fixes applied; no manual fixes outstanding
+

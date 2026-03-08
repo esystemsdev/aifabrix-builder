@@ -279,6 +279,54 @@ describe('Path Utilities - directory helpers', () => {
   });
 });
 
+describe('Path Utilities - listIntegrationAppNames / listBuilderAppNames', () => {
+  beforeEach(() => {
+    jest.resetModules();
+    jest.clearAllMocks();
+  });
+
+  it('listIntegrationAppNames returns [] when root does not exist', () => {
+    const paths = require('../../../lib/utils/paths');
+    const root = paths.getIntegrationRoot();
+    fs.existsSync.mockReturnValue(false);
+
+    const names = paths.listIntegrationAppNames();
+    expect(names).toEqual([]);
+  });
+
+  it('listBuilderAppNames returns [] when root does not exist', () => {
+    const paths = require('../../../lib/utils/paths');
+    const root = paths.getBuilderRoot();
+    fs.existsSync.mockReturnValue(false);
+
+    const names = paths.listBuilderAppNames();
+    expect(names).toEqual([]);
+  });
+
+  it('getIntegrationRoot returns path under base dir', () => {
+    const paths = require('../../../lib/utils/paths');
+    const projectRoot = paths.getProjectRoot();
+    expect(paths.getIntegrationRoot()).toBe(path.join(projectRoot, 'integration'));
+  });
+
+  it('getBuilderRoot returns path under base dir when AIFABRIX_BUILDER_DIR not set', () => {
+    const paths = require('../../../lib/utils/paths');
+    const projectRoot = paths.getProjectRoot();
+    expect(paths.getBuilderRoot()).toBe(path.join(projectRoot, 'builder'));
+  });
+
+  it('getBuilderRoot uses AIFABRIX_BUILDER_DIR when set', () => {
+    const customDir = '/custom/builder/root';
+    const orig = process.env.AIFABRIX_BUILDER_DIR;
+    process.env.AIFABRIX_BUILDER_DIR = customDir;
+    jest.resetModules();
+    fs.existsSync.mockImplementation((p) => typeof p === 'string' && p.endsWith('package.json'));
+    const paths = require('../../../lib/utils/paths');
+    expect(paths.getBuilderRoot()).toBe(path.resolve(customDir));
+    process.env.AIFABRIX_BUILDER_DIR = orig;
+  });
+});
+
 describe('Path Utilities - safeHomedir fallback', () => {
   beforeEach(() => {
     jest.resetModules();

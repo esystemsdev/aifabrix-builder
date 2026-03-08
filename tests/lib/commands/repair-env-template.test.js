@@ -252,5 +252,51 @@ describe('repair-env-template', () => {
       expect(changes).toContain('Repaired env.template (KV_* names and path-style kv:// values)');
       expect(writeFileSyncSpy).not.toHaveBeenCalled();
     });
+
+    it('preserves existing MISO_CONTROLLER_URL when repairing (only add when missing)', () => {
+      const envPath = path.join(appPath, 'env.template');
+      const existingContent = 'KV_HUBSPOT_CLIENTID=kv://hubspot/clientid\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret\nMISO_CONTROLLER_URL=http://my-controller:3010\n';
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockImplementation(p => (p === envPath ? existingContent : ''));
+      const systemParsed = {
+        key: 'hubspot',
+        authentication: {
+          security: { clientId: 'kv://hubspot/clientid', clientSecret: 'kv://hubspot/clientsecret' }
+        },
+        configuration: [
+          { name: 'MISO_CONTROLLER_URL', value: 'http://${MISO_HOST}:${MISO_PORT}', location: 'variable' }
+        ]
+      };
+      const changes = [];
+      const result = repairEnvTemplate(appPath, systemParsed, 'hubspot', false, changes);
+      expect(result).toBe(false);
+      expect(changes).toHaveLength(0);
+      expect(writeFileSyncSpy).not.toHaveBeenCalled();
+      expect(existingContent).toContain('MISO_CONTROLLER_URL=http://my-controller:3010');
+    });
+
+    it('preserves existing MISO_CONTROLLER_URL when repairing and other keys change', () => {
+      const envPath = path.join(appPath, 'env.template');
+      const existingContent = 'KV_HUBSPOT_CLIENTID=kv://wrong\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret\nMISO_CONTROLLER_URL=http://my-controller:3010\n';
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockImplementation(p => (p === envPath ? existingContent : ''));
+      const systemParsed = {
+        key: 'hubspot',
+        authentication: {
+          security: { clientId: 'kv://hubspot/clientid', clientSecret: 'kv://hubspot/clientsecret' }
+        },
+        configuration: [
+          { name: 'MISO_CONTROLLER_URL', value: 'http://${MISO_HOST}:${MISO_PORT}', location: 'variable' }
+        ]
+      };
+      const changes = [];
+      const result = repairEnvTemplate(appPath, systemParsed, 'hubspot', false, changes);
+      expect(result).toBe(true);
+      const written = writeFileSyncSpy.mock.calls.find(c => c[0] === envPath);
+      expect(written).toBeDefined();
+      expect(written[1]).toContain('KV_HUBSPOT_CLIENTID=kv://hubspot/clientid');
+      expect(written[1]).toContain('MISO_CONTROLLER_URL=http://my-controller:3010');
+      expect(written[1]).not.toContain('MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}');
+    });
   });
 });

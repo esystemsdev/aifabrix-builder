@@ -790,6 +790,39 @@ describe('Generator Split Functions', () => {
       expect(writtenContent).toContain('EXISTING=preserve');
     });
 
+    it('should preserve existing MISO_CONTROLLER_URL when merging env.template (only add when missing)', async() => {
+      const deploymentWithMisoController = {
+        ...mockDeployment,
+        configuration: [
+          { name: 'PORT', value: '3001', location: 'variable', required: false },
+          { name: 'MISO_CONTROLLER_URL', value: 'http://${MISO_HOST}:${MISO_PORT}', location: 'variable', required: false }
+        ]
+      };
+      fs.promises.readFile.mockImplementation((filePath, encoding) => {
+        const pathStr = String(filePath).replace(/\\/g, '/');
+        if (pathStr.includes('deploy.json') || pathStr.endsWith('deploy.json')) {
+          return Promise.resolve(JSON.stringify(deploymentWithMisoController));
+        }
+        if (pathStr.endsWith('env.template')) {
+          return Promise.resolve('PORT=3000\nMISO_CONTROLLER_URL=http://my-controller:3010\n');
+        }
+        if (pathStr.includes('README.md.hbs')) {
+          return Promise.resolve(applicationsReadmeTemplateContent);
+        }
+        return Promise.reject(new Error(`ENOENT: ${filePath}`));
+      });
+      fs.existsSync.mockImplementation(() => true);
+
+      await generator.splitDeployJson(deployJsonPath, outputDir, { mergeEnvTemplate: true });
+
+      const envWriteCall = fs.promises.writeFile.mock.calls.find(call => String(call[0]).endsWith('env.template'));
+      expect(envWriteCall).toBeDefined();
+      const writtenContent = envWriteCall[1];
+      expect(writtenContent).toContain('PORT=3001');
+      expect(writtenContent).toContain('MISO_CONTROLLER_URL=http://my-controller:3010');
+      expect(writtenContent).not.toContain('MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}');
+    });
+
     it('should skip writing README when splitOptions.overwriteReadme is false and README exists', async() => {
       fs.promises.readFile.mockResolvedValue(JSON.stringify(mockDeployment));
       fs.existsSync.mockImplementation((filePath) => {

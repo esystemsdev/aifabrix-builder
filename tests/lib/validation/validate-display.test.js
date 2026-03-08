@@ -285,6 +285,23 @@ describe('Validate Display Functions', () => {
         validate.displayValidationResults(result);
       }).not.toThrow();
     });
+
+    it('should show Overall: Failed when steps.application has errors (fallback)', () => {
+      const result = {
+        valid: false,
+        errors: [],
+        warnings: [],
+        steps: {
+          application: { valid: false, errors: ['env.template line 2: Invalid kv:// reference'], warnings: [] },
+          components: { valid: true, errors: [], warnings: [], files: [] },
+          manifest: { valid: true, errors: [], warnings: [] }
+        }
+      };
+
+      validate.displayValidationResults(result);
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Overall: Failed'));
+    });
   });
 });
 
