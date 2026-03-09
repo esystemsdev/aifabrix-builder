@@ -198,7 +198,7 @@ describe('repair-env-template', () => {
       expect(writeFileSyncSpy).not.toHaveBeenCalled();
     });
 
-    it('repairs and pushes change when content differs', () => {
+    it('adds missing keys and preserves existing key values', () => {
       const envPath = path.join(appPath, 'env.template');
       existsSyncSpy.mockReturnValue(true);
       readFileSyncSpy.mockImplementation(p => (p === envPath ? 'KV_HUBSPOT_CLIENTID=kv://wrong\n' : ''));
@@ -214,7 +214,7 @@ describe('repair-env-template', () => {
       expect(result).toBe(true);
       expect(changes).toContain('Repaired env.template (KV_* names and path-style kv:// values)');
       const written = writeFileSyncSpy.mock.calls.find(c => c[0] === envPath);
-      expect(written[1]).toContain('KV_HUBSPOT_CLIENTID=kv://hubspot/clientid');
+      expect(written[1]).toContain('KV_HUBSPOT_CLIENTID=kv://wrong');
       expect(written[1]).toContain('KV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret');
     });
 
@@ -275,7 +275,7 @@ describe('repair-env-template', () => {
       expect(existingContent).toContain('MISO_CONTROLLER_URL=http://my-controller:3010');
     });
 
-    it('preserves existing MISO_CONTROLLER_URL when repairing and other keys change', () => {
+    it('preserves all existing key values (no overwrite); only missing keys trigger write', () => {
       const envPath = path.join(appPath, 'env.template');
       const existingContent = 'KV_HUBSPOT_CLIENTID=kv://wrong\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret\nMISO_CONTROLLER_URL=http://my-controller:3010\n';
       existsSyncSpy.mockReturnValue(true);
@@ -291,12 +291,8 @@ describe('repair-env-template', () => {
       };
       const changes = [];
       const result = repairEnvTemplate(appPath, systemParsed, 'hubspot', false, changes);
-      expect(result).toBe(true);
-      const written = writeFileSyncSpy.mock.calls.find(c => c[0] === envPath);
-      expect(written).toBeDefined();
-      expect(written[1]).toContain('KV_HUBSPOT_CLIENTID=kv://hubspot/clientid');
-      expect(written[1]).toContain('MISO_CONTROLLER_URL=http://my-controller:3010');
-      expect(written[1]).not.toContain('MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}');
+      expect(result).toBe(false);
+      expect(writeFileSyncSpy).not.toHaveBeenCalled();
     });
   });
 });

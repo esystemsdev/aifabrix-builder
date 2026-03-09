@@ -232,12 +232,17 @@ Repair external integration config when `application.yaml` drifts from files on 
 - **rbac.yaml missing** — System has roles/permissions but no `rbac.yaml`; repair creates it
 - **env.template key drift** — env.template has wrong or missing KV_* keys or non–path-style kv values; repair aligns names and values with the system's authentication.security and configuration
 - **Stale deploy manifest** — Regenerates `<systemKey>-deploy.json` after config changes
+- **Datasource key and filename normalization** — Repair normalizes datasource keys to `<system-key>-<resourceType>` (or `<system-key>-<resourceType>-2`, `-3` for duplicates) and filenames to `<system-key>-datasource-<suffix>.<ext>`. Keys or filenames that already match the valid pattern (e.g. `customer-extra`, `customer-1`) are left unchanged.
 - **Optional flags** — `--rbac` adds or merges RBAC permissions per datasource and default Admin/Reader roles if none exist; `--expose` sets `exposed.attributes` on each datasource to all attribute keys; `--sync` adds a default sync section to datasources that lack it; `--test` generates `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes
+- **Authentication method** — When `--auth <method>` is provided, repair sets the integration’s authentication to that method (canonical variables and security) and updates env.template accordingly
 
 **Usage:**
 ```bash
 # Repair and write changes
 aifabrix repair hubspot
+
+# Set authentication method (updates system file and env.template)
+aifabrix repair hubspot-demo --auth apikey
 
 # Preview changes without writing (--dry-run)
 aifabrix repair hubspot --dry-run
@@ -247,6 +252,7 @@ aifabrix repair hubspot --rbac --expose --sync --test
 ```
 
 **Options:**
+- `--auth <method>` — Set authentication method (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none); updates the system file and env.template
 - `--dry-run` — Report what would be changed; do not write
 - `--rbac` — Ensure RBAC has a permission per datasource endpoint (`<resourceType>:<capability>`) and add default Admin/Reader roles if none exist
 - `--expose` — Set `exposed.attributes` on each datasource to the list of all `fieldMappings.attributes` keys

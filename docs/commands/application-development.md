@@ -449,13 +449,20 @@ aifabrix install myapp --env tst
 <a id="aifabrix-test-e2e-app"></a>
 ## aifabrix test-e2e <app>
 
-Run e2e tests inside the container for **builder** applications.
+Run e2e tests: **builder** apps in container; **external** systems run E2E for all datasources via the dataplane.
 
-**What:** Runs the app's test:e2e command (e.g. `pnpm test:e2e`, `make test:e2e`) inside the container. For **dev**: uses the running container; for **tst**: ephemeral container with resolved `.env`.
+**What:** For **builder** apps: runs the app's test:e2e command (e.g. `pnpm test:e2e`, `make test:e2e`) inside the container. For **dev**: uses the running container; for **tst**: ephemeral container with resolved `.env`. For **external** systems in `integration/<app>/`: runs E2E for every datasource of that system using each datasource's test payload (no extra parameters required); results are aggregated and the command exits with non-zero if any datasource fails.
 
-**Usage:** `aifabrix test-e2e myapp` or `aifabrix test-e2e myapp --env tst`
+**Usage (builder):** `aifabrix test-e2e myapp` or `aifabrix test-e2e myapp --env tst`
 
-**Options:** `--env <dev|tst>` — same as [aifabrix test](#aifabrix-test-app). Override with `build.scripts.test:e2e` or `build.scripts.testE2e`; see [Scripts and commands](#scripts-and-commands).
+**Usage (external system):**
+```bash
+aifabrix test-e2e hubspot-demo
+aifabrix test-e2e hubspot-demo --env tst -v --debug
+aifabrix test-e2e hubspot-demo --no-async
+```
+
+**Options:** `-e, --env <env>` — Environment (dev, tst, pro). `-v, --verbose` — Show detailed step output and poll progress. `--debug` — Include debug output and write log to `integration/<app>/logs/`. `--no-async` — Use sync mode (no polling). For builder apps, override the script with `build.scripts.test:e2e` or `build.scripts.testE2e`; see [Scripts and commands](#scripts-and-commands).
 
 ---
 

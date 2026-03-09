@@ -505,7 +505,8 @@ describe('Generator Split Functions', () => {
       expect(result).toContain('HubSpot CRM integration');
       expect(result).toContain('test-hubspot');
       expect(result).toContain('openapi');
-      expect(result).toContain('aifabrix create test-hubspot --type external');
+      expect(result).toContain('Extend External System');
+      expect(result).toContain('aifabrix wizard --app test-hubspot');
       expect(result).toContain('integration/test-hubspot');
       expect(result).toContain('Datasource: Companies Data');
       expect(result).toContain('Datasource: Deals Data');
