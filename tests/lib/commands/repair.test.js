@@ -17,7 +17,9 @@ jest.mock('../../../lib/utils/app-config-resolver', () => ({
 }));
 jest.mock('../../../lib/utils/config-format', () => ({
   loadConfigFile: jest.fn(),
-  writeConfigFile: jest.fn()
+  writeConfigFile: jest.fn(),
+  writeYamlPreservingComments: jest.fn(),
+  isYamlPath: jest.fn()
 }));
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn() }));
 jest.mock('../../../lib/generator', () => ({
@@ -26,7 +28,7 @@ jest.mock('../../../lib/generator', () => ({
 
 const { detectAppType } = require('../../../lib/utils/paths');
 const { resolveApplicationConfigPath } = require('../../../lib/utils/app-config-resolver');
-const { loadConfigFile, writeConfigFile } = require('../../../lib/utils/config-format');
+const { loadConfigFile, writeConfigFile, writeYamlPreservingComments, isYamlPath } = require('../../../lib/utils/config-format');
 const generator = require('../../../lib/generator');
 const {
   repairExternalIntegration,
@@ -48,13 +50,17 @@ describe('repair', () => {
     }
   };
 
+  const defaultApplicationYamlContent = 'app:\n  key: test-hubspot\nexternalIntegration:\n  systems: []\n  dataSources: []\n';
+
   let readdirSyncSpy;
   let existsSyncSpy;
+  let readFileSyncSpy;
 
   beforeEach(() => {
     jest.clearAllMocks();
     detectAppType.mockResolvedValue({ appPath, isExternal: true });
     resolveApplicationConfigPath.mockReturnValue(configPath);
+    isYamlPath.mockImplementation((p) => typeof p === 'string' && (p.endsWith('.yaml') || p.endsWith('.yml')));
     loadConfigFile.mockImplementation((p) => {
       const s = typeof p === 'string' ? p : '';
       if (s.endsWith('application.yaml') || s.endsWith('application.json') || s.endsWith('application.yml')) {
@@ -64,11 +70,18 @@ describe('repair', () => {
     });
     readdirSyncSpy = jest.spyOn(fs, 'readdirSync');
     existsSyncSpy = jest.spyOn(fs, 'existsSync');
+    readFileSyncSpy = jest.spyOn(fs, 'readFileSync').mockImplementation((filePath, enc) => {
+      if (filePath === configPath && (enc === 'utf8' || enc === undefined)) {
+        return defaultApplicationYamlContent;
+      }
+      return '';
+    });
   });
 
   afterEach(() => {
     readdirSyncSpy?.mockRestore();
     existsSyncSpy?.mockRestore();
+    readFileSyncSpy?.mockRestore();
   });
 
   describe('discoverIntegrationFiles', () => {
@@ -99,6 +112,19 @@ describe('repair', () => {
       expect(result.systemFiles).toEqual([]);
       expect(result.datasourceFiles).toEqual([]);
     });
+
+    it('discovers datasource-*.json style filenames (no system prefix)', () => {
+      readdirSyncSpy.mockReturnValue([
+        'test-hubspot-system.json',
+        'datasource-companies.json',
+        'datasource-deals.json',
+        'application.yaml'
+      ]);
+      existsSyncSpy.mockReturnValue(true);
+      const result = discoverIntegrationFiles(appPath);
+      expect(result.systemFiles).toEqual(['test-hubspot-system.json']);
+      expect(result.datasourceFiles).toEqual(['datasource-companies.json', 'datasource-deals.json']);
+    });
   });
 
   describe('repairExternalIntegration', () => {
@@ -126,7 +152,7 @@ describe('repair', () => {
           return {
             key: appName,
             systemKey: appName,
-            metadataSchema: { type: 'object', properties: { metadata: {} } },
+            metadataSchema: { type: 'object', properties: { email: { type: 'string' } } },
             fieldMappings: {
               attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } },
               dimensions: { email: 'metadata.email' }
@@ -147,6 +173,7 @@ describe('repair', () => {
         const s = typeof p === 'string' ? p : '';
         if (s === configPath || s === appPath) return true;
         if (s.endsWith('test-hubspot-system.yaml')) return true;
+        if (s.endsWith('test-hubspot-datasource-record-storage.yaml')) return true;
         return false;
       });
       readdirSyncSpy.mockReturnValue([
@@ -164,8 +191,9 @@ describe('repair', () => {
       expect(result.updated).toBe(true);
       expect(result.systemFiles).toEqual(['test-hubspot-system.yaml']);
       expect(result.datasourceFiles).toEqual(['test-hubspot-datasource-record-storage.yaml']);
-      expect(writeConfigFile).toHaveBeenCalledWith(
+      expect(writeYamlPreservingComments).toHaveBeenCalledWith(
         configPath,
+        defaultApplicationYamlContent,
         expect.objectContaining({
           externalIntegration: expect.objectContaining({
             systems: ['test-hubspot-system.yaml'],
@@ -197,6 +225,7 @@ describe('repair', () => {
         const s = typeof p === 'string' ? p : '';
         if (s === configPath || s === appPath) return true;
         if (s.endsWith('test-hubspot-system.yaml')) return true;
+        if (s.endsWith('test-hubspot-datasource-record-storage.yaml')) return true;
         return false;
       });
       readdirSyncSpy.mockReturnValue([
@@ -213,8 +242,9 @@ describe('repair', () => {
       const result = await repairExternalIntegration(appName);
       expect(result.updated).toBe(true);
       expect(result.changes.some(c => c.includes('externalIntegration'))).toBe(true);
-      expect(writeConfigFile).toHaveBeenCalledWith(
+      expect(writeYamlPreservingComments).toHaveBeenCalledWith(
         configPath,
+        defaultApplicationYamlContent,
         expect.objectContaining({
           externalIntegration: expect.objectContaining({
             schemaBasePath: './',
@@ -254,8 +284,9 @@ describe('repair', () => {
       const result = await repairExternalIntegration(appName);
       expect(result.updated).toBe(true);
       expect(result.appKeyFixed).toBe(true);
-      expect(writeConfigFile).toHaveBeenCalledWith(
+      expect(writeYamlPreservingComments).toHaveBeenCalledWith(
         configPath,
+        defaultApplicationYamlContent,
         expect.objectContaining({
           app: expect.objectContaining({ key: 'hubspot' })
         })
@@ -435,7 +466,7 @@ describe('repair', () => {
           return {
             key: 'record-storage',
             systemKey: appName,
-            metadataSchema: { type: 'object', properties: { metadata: {} } },
+            metadataSchema: { type: 'object', properties: { email: { type: 'string' } } },
             fieldMappings: {
               attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } },
               dimensions: { email: 'metadata.email' }
@@ -917,7 +948,7 @@ describe('repair', () => {
       generator.generateDeployJson.mockRejectedValue(new Error('Manifest failed'));
 
       const result = await repairExternalIntegration(appName);
-      expect(writeConfigFile).toHaveBeenCalled();
+      expect(writeYamlPreservingComments).toHaveBeenCalled();
       expect(result.manifestRegenerated).toBe(false);
     });
 

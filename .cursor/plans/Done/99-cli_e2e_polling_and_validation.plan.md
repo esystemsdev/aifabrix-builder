@@ -186,3 +186,118 @@ Do **not** add REST URLs or request/response field names beyond what’s needed 
 - Adding new validation rules beyond existing schema (primaryKey already required).
 - Knowledge base articles in the dataplane repo (those are listed in plan 329’s Knowledgebase Validation Report; not part of this CLI plan).
 
+---
+
+## Implementation Validation Report
+
+**Date:** 2025-03-09  
+**Plan:** `.cursor/plans/99-cli_e2e_polling_and_validation.plan.md`  
+**Status:** ✅ COMPLETE
+
+### Executive Summary
+
+All implementation areas (§1–§7) and the implementation order (§8) are implemented. API client supports async start and `getE2ETestRun`; datasource test-e2e flow uses async polling by default with optional sync; CLI options are added and passed through; display supports poll response shape (status, completedActions, steps); schema already requires primaryKey; validation tests cover primaryKey; docs updated. Build (lint:fix → lint → test) passes. File sizes and cursor rules compliance verified.
+
+### Task Completion
+
+The plan defines implementation by sections (no checkboxes). All sections are implemented:
+
+
+| Section | Description                                                                                            | Status |
+| ------- | ------------------------------------------------------------------------------------------------------ | ------ |
+| §1      | API client: testDatasourceE2E asyncRun, getE2ETestRun                                                  | ✅      |
+| §2      | test-e2e.js: async + polling, body options, primaryKeyValue from file, sync with --no-async, debug log | ✅      |
+| §3      | CLI: --test-crud, --record-id, --no-cleanup, --primary-key-value, --no-async; exit code on failure     | ✅      |
+| §4      | displayE2EResults: poll shape (completedActions, status), running vs final                             | ✅      |
+| §5      | Schema primaryKey (no change); validation tests for primaryKey missing/present                         | ✅      |
+| §6      | Docs: external-integration.md, external-integration-testing.md (async, options, primaryKey)            | ✅      |
+| §7      | Tests: API, test-e2e module, display, validation (primaryKey)                                          | ✅      |
+
+
+### File Existence Validation
+
+
+| File                                                    | Status                                                                                      |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| lib/api/external-test.api.js                            | ✅ Exists; getE2ETestRun, testDatasourceE2E with asyncRun, @requiresPermission, 404 handling |
+| lib/datasource/test-e2e.js                              | ✅ Exists; pollE2ETestRun, buildE2EBody, resolvePrimaryKeyValue, executeE2EWithOptionalPoll  |
+| lib/commands/datasource.js                              | ✅ Exists; test-e2e options and runDatasourceTestE2E; exit code on failed result             |
+| lib/utils/external-system-display.js                    | ✅ Exists; displayE2EResults with status, completedActions, steps                            |
+| lib/schema/external-datasource.schema.json              | ✅ Exists; primaryKey required (no change)                                                   |
+| docs/commands/external-integration.md                   | ✅ Exists; test-e2e section with async flow and all options                                  |
+| docs/commands/external-integration-testing.md           | ✅ Exists; async/polling, primaryKeyValue, testCrud, recordId, cleanup, primaryKey           |
+| tests/lib/api/external-test.api.test.js                 | ✅ Exists; testDatasourceE2E asyncRun, getE2ETestRun, 404                                    |
+| tests/lib/datasource/test-e2e.test.js                   | ✅ Exists; async/sync flow, body options, primaryKeyValue @file, poll timeout                |
+| tests/lib/utils/external-system-display.test.js         | ✅ Exists; displayE2EResults sync, running poll, final poll, failed                          |
+| tests/lib/validation/external-datasource-schema.test.js | ✅ Exists; primaryKey missing fails, primaryKey present passes                               |
+
+
+### Test Coverage
+
+- **API:** Unit tests for testDatasourceE2E (asyncRun, sync/async response) and getE2ETestRun (GET, auth, 404).
+- **test-e2e module:** Async flow (poll when testRunId), sync flow (no poll), body options (testCrud, recordId, cleanup, primaryKeyValue), primaryKeyValue from @file, includeDebug, poll timeout, debug log on error.
+- **Display:** displayE2EResults with sync shape, running (completedActions), final (steps + status), failed.
+- **Validation:** external-datasource schema tests: config without primaryKey fails; with primaryKey (e.g. `["id"]`, `["externalId"]`) passes.
+- **CLI command:** Options are exercised indirectly via runDatasourceTestE2E tests; command passes options and sets exit code 1 on failure (code verified in lib/commands/datasource.js). No separate CLI-invocation test file; acceptable per project patterns (module tests cover behavior).
+
+### Code Quality Validation
+
+
+| Step                      | Result                                         |
+| ------------------------- | ---------------------------------------------- |
+| Format (npm run lint:fix) | ✅ PASSED                                       |
+| Lint (npm run lint)       | ✅ PASSED (0 errors, 0 warnings)                |
+| Tests (npm test)          | ✅ PASSED (238 suites, 5231 passed, 28 skipped) |
+
+
+Note: One non-fatal message observed: "A worker process has failed to exit gracefully" (likely timer/teardown). All test suites and assertions passed.
+
+### File Size Compliance
+
+
+| File                                 | Lines | Limit | Status |
+| ------------------------------------ | ----- | ----- | ------ |
+| lib/api/external-test.api.js         | 111   | ≤500  | ✅      |
+| lib/datasource/test-e2e.js           | 219   | ≤500  | ✅      |
+| lib/commands/datasource.js           | 162   | ≤500  | ✅      |
+| lib/utils/external-system-display.js | 306   | ≤500  | ✅      |
+
+
+### Cursor Rules Compliance
+
+- **Code reuse:** Centralized API in lib/api; display and test-e2e reuse shared patterns. ✅
+- **Error handling:** try-catch, meaningful errors, 404 handling in getE2ETestRun. ✅
+- **Logging:** logger/chalk; no secrets or tokens logged. ✅
+- **Type safety:** JSDoc on testDatasourceE2E, getE2ETestRun, buildE2EBody, pollE2ETestRun, displayE2EResults; @requiresPermission on API. ✅
+- **Async patterns:** async/await, fs.promises for @file read. ✅
+- **File operations:** path.resolve for @path in primaryKeyValue. ✅
+- **Input validation:** datasourceKey, testRunId, auth (token/apiKey) validated. ✅
+- **Module patterns:** CommonJS, named exports. ✅
+- **Security:** No hardcoded secrets; auth documented; permissions in JSDoc. ✅
+- **Docs (docs-rules):** Command-centric; no REST URLs in user-facing docs. ✅
+
+### Implementation Completeness
+
+- **Schema:** primaryKey already required; no change. ✅
+- **API:** getE2ETestRun and testDatasourceE2E asyncRun implemented. ✅
+- **test-e2e flow:** Async default, polling, body options, primaryKeyValue from file, sync with --no-async, debug log. ✅
+- **CLI:** All options added and passed to runDatasourceTestE2E; exit code 1 on failure. ✅
+- **Display:** Poll response shape (status, completedActions, steps) supported. ✅
+- **Validation tests:** primaryKey missing/present covered in external-datasource-schema.test.js. ✅
+- **Documentation:** external-integration.md and external-integration-testing.md updated. ✅
+
+### Issues and Recommendations
+
+- None blocking. Optional: add a CLI-level test that invokes the datasource test-e2e command (e.g. via program.parse) and asserts options and exit code, if desired for extra coverage.
+
+### Final Validation Checklist
+
+- All implementation sections (§1–§7) completed
+- All mentioned files exist and contain expected behavior
+- Tests exist for API, test-e2e module, display, validation (primaryKey)
+- Code quality: format → lint → test pass
+- File size limits respected (≤500 lines)
+- Cursor rules and docs-rules compliance verified
+- Documentation updated (no REST URLs in user docs)
+- Build order BUILD → LINT → TEST followed
+

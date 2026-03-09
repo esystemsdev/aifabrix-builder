@@ -222,7 +222,7 @@ Repair external integration config when `application.yaml` drifts from files on 
 - **File list drift** — Config lists `.json` but files are `.yaml` (or vice versa)
 - **Deleted datasource** — Config lists a file that no longer exists
 - **Added datasource** — File exists on disk but not in config
-- **System file dataSources drift** — System file `dataSources` array updated to match datasource keys from discovered files (add/delete/rename)
+- **System file dataSources drift** — System file `dataSources` array updated to match datasource keys from discovered files (add/delete/rename). Each entry is a **logical key** (from that datasource file's `key` property, or derived from the filename when missing, e.g. `datasource-companies.json` → `test-hubspot-companies`), not the datasource filename.
 - **Authentication variables in configuration** — Standard auth variables (BASEURL, CLIENTID, CLIENTSECRET, TOKENURL, etc.) removed from `configuration`; they are supplied from the credential at runtime. Use the configuration array only for custom variables.
 - **Missing externalIntegration** — No block; repair creates it from discovered files
 - **Datasource systemKey mismatch** — Datasource file has `systemKey: X` but system file has `key: Y`; repair updates `systemKey` in each datasource file to match system key

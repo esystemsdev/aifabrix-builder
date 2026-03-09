@@ -40,23 +40,25 @@ describe('repair-datasource', () => {
   });
 
   describe('parsePathsFromExpressions', () => {
-    it('extracts paths from {{ path }} and top-level keys', () => {
+    it('extracts paths from {{ path }}, top-level keys, and referenced schema property names under metadata', () => {
       const attrs = {
         a: { expression: '{{ metadata.email }}', type: 'string' },
         b: { expression: '{{ properties.foo.value }}', type: 'string' }
       };
-      const { paths, topLevelKeys } = parsePathsFromExpressions(attrs);
+      const { paths, topLevelKeys, referencedSchemaPropertyNames } = parsePathsFromExpressions(attrs);
       expect(paths).toContain('metadata.email');
       expect(paths).toContain('properties.foo.value');
       expect(topLevelKeys).toEqual(new Set(['metadata', 'properties']));
+      expect(referencedSchemaPropertyNames).toEqual(new Set(['email']));
     });
     it('skips record_ref expressions', () => {
       const attrs = {
         ref: { expression: 'record_ref:customer', type: 'string' }
       };
-      const { paths, topLevelKeys } = parsePathsFromExpressions(attrs);
+      const { paths, topLevelKeys, referencedSchemaPropertyNames } = parsePathsFromExpressions(attrs);
       expect(paths).toHaveLength(0);
       expect(topLevelKeys.size).toBe(0);
+      expect(referencedSchemaPropertyNames.size).toBe(0);
     });
   });
 
@@ -112,26 +114,51 @@ describe('repair-datasource', () => {
       expect(parsed.metadataSchema).toEqual(MINIMAL_METADATA_SCHEMA);
       expect(changes.some(c => c.includes('Added minimal metadataSchema'))).toBe(true);
     });
-    it('prunes top-level properties not referenced by expressions', () => {
+    it('prunes schema properties not referenced by metadata.xxx expressions', () => {
       const changes = [];
       const parsed = {
         fieldMappings: {
           attributes: {
-            email: { expression: '{{ metadata.email }}', type: 'string' }
+            email: { expression: '{{ metadata.email }}', type: 'string' },
+            id: { expression: '{{ metadata.id }}', type: 'string' }
           }
         },
         metadataSchema: {
           type: 'object',
           properties: {
-            metadata: { type: 'object' },
-            unused: { type: 'string' }
-          }
+            id: { type: 'string' },
+            type: { type: 'string' },
+            email: { type: 'string' },
+            results: { type: 'array' },
+            notReferenced: { type: 'string' }
+          },
+          required: ['id']
         }
       };
       const updated = repairMetadataSchemaFromAttributes(parsed, changes);
       expect(updated).toBe(true);
-      expect(parsed.metadataSchema.properties).toHaveProperty('metadata');
-      expect(parsed.metadataSchema.properties).not.toHaveProperty('unused');
+      expect(parsed.metadataSchema.properties).toHaveProperty('id');
+      expect(parsed.metadataSchema.properties).toHaveProperty('email');
+      expect(parsed.metadataSchema.properties).not.toHaveProperty('notReferenced');
+      expect(parsed.metadataSchema.properties).not.toHaveProperty('type');
+      expect(parsed.metadataSchema.properties).not.toHaveProperty('results');
+    });
+    it('does not prune when no metadata.xxx paths exist (preserves full schema)', () => {
+      const changes = [];
+      const parsed = {
+        fieldMappings: { attributes: {} },
+        metadataSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            type: { type: 'string' }
+          }
+        }
+      };
+      const updated = repairMetadataSchemaFromAttributes(parsed, changes);
+      expect(updated).toBe(false);
+      expect(parsed.metadataSchema.properties).toHaveProperty('id');
+      expect(parsed.metadataSchema.properties).toHaveProperty('type');
     });
   });
 
