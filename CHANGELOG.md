@@ -1,3 +1,40 @@
+## [2.42.0] - 2026-03-09
+
+### Added
+- **Repair command for external integrations:** `aifabrix repair <app>` aligns external integration config with manifest and fixes common issues. **Steps:** datasource alignment (systemKey, file references, manifest vs disk), env.template and auth/kv validation, RBAC and auth-config repairs, and internal config repairs (format, paths). Subcommands and steps documented in [utilities](docs/commands/utilities.md). Plans 77, 78, 89, 92, 93, 95.
+- **Token-only API authentication:** Controller and Dataplane APIs accept **x-client-token** (bearer-style) in addition to client-id/client-secret. Enables token-based auth for scripts and CI. Plan 94.
+- **Pipeline deployment API migration:** Upload and publish flows use the pipeline deployment API; pipeline.api.js and deployer updated for new endpoints. Plan 91.
+- **Wizard entity selection for OpenAPI:** Wizard supports entity selection step for OpenAPI sources; inquirer-autocomplete-prompt for better UX; download format option and improved format handling. Plans 88, 90.
+- **Configuration resolution on upload/download:** External system upload and download resolve configuration and env (e.g. from env.template) so uploaded/downloaded config is consistent. Plan 97.
+- **Credential resolution (path vs hyphen keys):** Credential resolution distinguishes path-style keys (e.g. `secrets/foo`) from hyphen-style keys; refactored in credential-secrets-env and related utils.
+- **E2E testing and CLI polling/validation:** Enhanced E2E testing capabilities and CLI E2E polling/validation flow. Plan 99.
+- **Batch validation:** Validate integration and builder apps in batch. Plan 98.
+- **Credential status display and credential env:** Credential status in CLI output; `aifabrix credential env` and credential environment flow. Plans 83, 87.
+- **Dev init CA install:** `aifabrix dev init` supports CA install for certificate-based dev. Plan 79.
+- **Datasource list validation:** Single-source datasource list and validation for known platforms and OpenAPI entities. Plans 76, 86.
+- **Builder grant type and rate limit validation:** Validation for builder grant type and rate limit config. Plan 96.
+- **Config format preference:** Utility for preferred config format (YAML/JSON) when reading/writing app config.
+
+### Changed
+- **Repair:** Repair runs datasource alignment, env.template validation, RBAC/auth-config fixes, and internal repairs; config-format and path resolution used consistently.
+- **Upload/deployment:** Error handling improved in upload and deployment processes; credential push and validation aligned with pipeline API.
+- **Docs:** External systems, credentials, deployment, and utilities docs updated for repair, auth, and config resolution.
+
+### Fixed
+- **Repair datasource:** systemKey and file reference alignment between manifest and datasource files; validation and repair-datasource step correct mismatches.
+- **Config format:** Internal config (e.g. application.yaml/application.json) load/write uses config-format layer and preference; repair-internal normalizes format and paths.
+
+### Technical
+- **Repair:** `lib/commands/repair.js`, `lib/commands/repair-datasource.js`, `lib/commands/repair-env-template.js`, `lib/commands/repair-rbac.js`, `lib/commands/repair-auth-config.js`, `lib/commands/repair-internal.js`; `lib/utils/config-format.js`, `lib/utils/config-format-preference.js`, `lib/utils/configuration-env-resolver.js`; tests for repair and config-format.
+- **Auth:** `lib/utils/auth-headers.js`, `lib/utils/token-manager.js` — x-client-token support; `lib/api/index.js` — token-only auth path.
+- **Pipeline:** `lib/api/pipeline.api.js`, `lib/deployment/deployer.js` — pipeline deployment API usage.
+- **Wizard:** `lib/commands/wizard-entity-selection.js`, `lib/generator/wizard-prompts.js`, `lib/generator/wizard-prompts-secondary.js`; inquirer-autocomplete-prompt; download format handling in `lib/external-system/download.js`.
+- **Credentials:** `lib/commands/credential-env.js`, `lib/commands/credential-push.js`, `lib/utils/credential-secrets-env.js`, `lib/utils/credential-display.js`; credential resolution path/hyphen distinction.
+- **Validation:** `lib/validation/validate-batch.js`, `lib/validation/env-template-auth.js`, `lib/validation/env-template-kv.js`, `lib/validation/wizard-datasource-validation.js`; batch and datasource validation.
+- **Tests:** `tests/lib/commands/repair.test.js`, `tests/lib/commands/repair-datasource.test.js`, `tests/lib/utils/config-format.test.js`, `tests/lib/utils/configuration-env-resolver.test.js`; repair and config-format coverage.
+
+---
+
 ## [2.41.0] - 2026-02-22
 
 ### Added
