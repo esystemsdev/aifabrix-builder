@@ -10,6 +10,7 @@
   "scripts": {
     "test": "node tests/scripts/test-wrapper.js",
     "test:ci": "bash tests/scripts/ci-simulate.sh",
+    "test:same-as-github": "cross-env CI=true npm run lint && cross-env CI=true node tests/scripts/test-wrapper.js",
     "test:coverage": "cross-env RUN_COVERAGE=1 node tests/scripts/test-wrapper.js",
     "test:coverage:nyc": "nyc --reporter=text --reporter=lcov --reporter=html jest --config jest.config.coverage.js --runInBand",
     "test:watch": "jest --watch",
