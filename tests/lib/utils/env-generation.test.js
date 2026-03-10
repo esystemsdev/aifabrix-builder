@@ -1743,6 +1743,95 @@ MISO_PUBLIC_PORT=\${MISO_PUBLIC_PORT}`;
         expect(writtenPath).toBe(outEnvPath);
         expect(writtenContent).toMatch(/^PORT=3187$/m); // 3087 + 100
       });
+
+      it('should substitute /mnt/data when using patched path (appName not provided)', async() => {
+        const envPath = path.join(mockBuilderPath, '.env');
+        const variablesPath = mockVariablesPath;
+        const outDir = '/tmp/aifabrix-patched-out';
+        const outEnvPath = path.join(outDir, '.env');
+        const mountPath = path.join(outDir, 'mount');
+        const envFileContent = 'PORT=3087\nREDIS_HOST=redis\nLOG_PATH=/mnt/data/logs';
+
+        const variables = {
+          port: 3087,
+          build: {
+            envOutputPath: outDir
+          }
+        };
+
+        fs.existsSync.mockImplementation((filePath) => {
+          if (filePath === variablesPath) return true;
+          if (filePath === outDir) return true;
+          if (filePath === envPath) return true;
+          if (filePath === mountPath) return false;
+          return false;
+        });
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === variablesPath) return yaml.dump(variables);
+          if (filePath === envPath) return envFileContent;
+          return '';
+        });
+
+        fs.writeFileSync.mockImplementation(() => {});
+        fs.mkdirSync.mockImplementation(() => {});
+        fs.statSync.mockReturnValue({ isDirectory: () => false });
+
+        mockConfig.getDeveloperId.mockResolvedValue('0');
+
+        await processEnvVariables(envPath, variablesPath, null, null);
+
+        expect(fs.writeFileSync).toHaveBeenCalled();
+        const [, writtenContent] = fs.writeFileSync.mock.calls[0];
+        expect(writtenContent).not.toContain('/mnt/data');
+        expect(writtenContent).toContain(`${mountPath}/logs`);
+      });
+
+      it('should substitute /mnt/data with repo mount path in written local .env', async() => {
+        const envPath = path.join(mockBuilderPath, '.env');
+        const variablesPath = mockVariablesPath;
+        const outDir = '/tmp/aifabrix-out';
+        const outEnvPath = path.join(outDir, '.env');
+        const mountPath = path.join(outDir, 'mount');
+        const templateWithMntData = baseEnvTemplate + '\nLOG_FILE_PATH=/mnt/data/logs/app.log';
+
+        const variables = {
+          port: 3087,
+          build: {
+            envOutputPath: outDir
+          }
+        };
+
+        fs.existsSync.mockImplementation((filePath) => {
+          if (filePath === variablesPath) return true;
+          if (filePath === outDir) return true;
+          if (filePath === mockTemplatePath) return true;
+          if (filePath && filePath.includes('env-config.yaml')) return true;
+          if (filePath === mountPath) return false;
+          return false;
+        });
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockTemplatePath) return templateWithMntData;
+          if (filePath === variablesPath) return yaml.dump(variables);
+          if (filePath && filePath.includes('env-config.yaml')) return yaml.dump(mockEnvConfig);
+          return '';
+        });
+
+        fs.writeFileSync.mockImplementation(() => {});
+        fs.mkdirSync.mockImplementation(() => {});
+        fs.statSync.mockReturnValue({ isDirectory: () => false });
+
+        mockConfig.getDeveloperId.mockResolvedValue('0');
+
+        await processEnvVariables(envPath, variablesPath, mockAppName, null);
+
+        expect(fs.writeFileSync).toHaveBeenCalled();
+        const [, writtenContent] = fs.writeFileSync.mock.calls[0];
+        expect(writtenContent).not.toContain('/mnt/data');
+        expect(writtenContent).toContain(`${mountPath}/logs/app.log`);
+        expect(fs.mkdirSync).toHaveBeenCalledWith(mountPath, { recursive: true });
+      });
     });
 
     describe('Fallback behavior', () => {

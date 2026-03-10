@@ -104,6 +104,8 @@ Applies to builder apps (webapp, functionapp, api, service); external apps typic
 
 When `requires.database` is true, use `requires.databases` to list multiple databases (each with a `name`). Any database whose **name ends with `vector`** is treated as a vector store and gets the **pgvector** extension during db-init when you run the app locally. For Azure or managed Postgres, see [Running: Multiple Databases / Vector stores](../running.md#multiple-databases).
 
+- **`databases[].extensions`** (optional): List of PostgreSQL extension names to create in that database during db-init (e.g. `pgcrypto`, `uuid-ossp`, `vector`, `btree_gin`, `btree_gist`). If the database name ends with `vector`, the `vector` extension is still added automatically if not listed.
+
 ## Version and tag
 
 | Field | Purpose |

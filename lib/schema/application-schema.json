@@ -132,6 +132,14 @@
             "type": "string",
             "description": "Database name",
             "pattern": "^[a-z0-9_-]+$"
+          },
+          "extensions": {
+            "type": "array",
+            "description": "PostgreSQL extension names to create in this database during db-init (e.g. pgcrypto, uuid-ossp, vector, btree_gin, btree_gist). If the database name ends with 'vector', the vector extension is still added automatically if not listed.",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9_-]+$"
+            }
           }
         },
         "additionalProperties": false
