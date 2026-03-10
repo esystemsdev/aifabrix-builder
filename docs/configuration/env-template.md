@@ -6,6 +6,8 @@ Environment variables template. `aifabrix resolve <app>` and run/build generate 
 
 **kv:// references:** `kv://name` resolves from the secrets file (e.g. `~/.aifabrix/secrets.local.yaml`). Pattern: `<app>-client-idKeyVault`, `<app>-client-secretKeyVault`, or any `*KeyVault` key.
 
+**Configuration alignment:** For external systems, variable names in env.template align with `configuration[].name` for entries with `location: variable`. On **upload**, the CLI resolves those configuration values from .env (and keyvault entries from secrets) before sending to the dataplane. On **download**, when env.template exists, the CLI sets `configuration[].value` to `{{name}}` for each variable-location entry whose name matches a key in env.template, so the downloaded system file stays template-based.
+
 **Auto-added variables:** Database (if requires.database), Redis (if requires.redis), language-specific (NODE_ENV, PYTHON*), MISO_* (if controller enabled), ALLOWED_ORIGINS, WEB_SERVER_URL. Values like `${NODE_ENV}`, `${PORT}`, and `${MISO_HOST}` are resolved from [env-config](env-config.md) and application config (for `${PORT}`).
 
 ### Build, run, shell, and install

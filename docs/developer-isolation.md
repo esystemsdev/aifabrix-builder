@@ -158,16 +158,16 @@ Applications use:
 
 When using `frontDoorRouting` with Traefik, the `${DEV_USERNAME}` variable automatically resolves to developer-specific hostnames:
 
-- Developer ID 0: `dev.aifabrix.dev`
-- Developer ID 1: `dev01.aifabrix.dev`
-- Developer ID 2: `dev02.aifabrix.dev`
+- Developer ID 0: `dev.builder01.local`
+- Developer ID 1: `dev01.builder01.local`
+- Developer ID 2: `dev02.builder01.local`
 
 Example configuration:
 
 ```yaml
 frontDoorRouting:
   enabled: true
-  host: ${DEV_USERNAME}.aifabrix.dev
+  host: ${DEV_USERNAME}.builder01.local
   pattern: /api/*
   tls: true
   certStore: wildcard  # Optional: for wildcard certificates
@@ -407,7 +407,7 @@ aifabrix dev init --dev-id <id> --server <remote-server-url> --pin <pin>
 Example:
 
 ```bash
-aifabrix dev init --dev-id 01 --server https://builder.aifabrix.dev --pin 123456
+aifabrix dev init --dev-id 01 --server https://builder01.local --pin 123456
 ```
 
 This validates your PIN, obtains a client certificate and CA, and writes config (e.g. `remote-server`, `docker-endpoint`) and certs under `~/.aifabrix/certs/<id>/`. Use the developer ID and PIN provided by your team. After this, **renewal uses your existing certificate** (no PIN) and the CLI can auto-renew when the cert is near expiry.

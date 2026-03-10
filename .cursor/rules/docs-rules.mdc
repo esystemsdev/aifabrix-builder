@@ -1,0 +1,30 @@
+---
+alwaysApply: true
+---
+# Documentation Rules – CLI User Docs
+
+## Audience
+
+Documents under **docs/** (including **docs/commands/**) are **CLI developer / user documentation**. The audience is people who use the AI Fabrix Builder CLI or integrate it into workflows. They do not need to know how the CLI talks to the Controller or Dataplane over HTTP.
+
+## Do Not Include in CLI User Docs
+
+- **REST API details** – No HTTP methods, URL paths, or endpoint names (e.g. `GET /api/v1/...`, `POST .../pipeline/upload`).
+- **Request/response shapes** – No payload structures, status codes, or field names from backend APIs.
+- **Backend implementation terms** – Avoid referring to “pipeline config endpoint”, “upload endpoint”, or similar; describe what the **command** does from the user’s perspective.
+
+Keep these details in code (JSDoc, lib comments) or in separate API/implementation docs for contributors.
+
+## Do Include in CLI User Docs
+
+- **What the command does** – Outcome and behavior in user terms (e.g. “Downloads the full manifest from the dataplane”, “Uploads config and publishes to the dataplane”).
+- **Prerequisites** – Login, permissions, and auth in user terms (e.g. “Must be logged in with `aifabrix login`”; “Bearer token required” without naming the backend endpoint).
+- **Options and arguments** – All flags, arguments, and examples.
+- **What gets created or changed** – Files, folders, and config the user will see.
+- **Troubleshooting** – Common errors and fixes in CLI terms (e.g. “Run `aifabrix login`” instead of “Ensure the pipeline config endpoint receives a Bearer token”).
+
+## When Editing docs/
+
+- Prefer **command-centric** language: “the download command fetches…”, “upload publishes…”.
+- Describe **auth** by what the user must do (login, device flow) and whether a Bearer token is required, not by which backend endpoint is called.
+- If a command uses the dataplane or controller, say so in plain language (“from the dataplane”, “to the controller”) without exposing URLs or HTTP details.

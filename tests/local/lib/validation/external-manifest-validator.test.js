@@ -309,6 +309,132 @@ describe('External Manifest Validator Module', () => {
       expect(result.valid).toBe(true);
     });
 
+    it('should fail when datasource systemKey does not match system key', async() => {
+      const manifest = {
+        key: 'test-e2e-hubspot',
+        displayName: 'Test System',
+        description: 'Test Description',
+        type: 'external',
+        deploymentKey: 'test-deployment-key-12345',
+        system: {
+          key: 'test-e2e-hubspot',
+          displayName: 'Test System',
+          type: 'openapi',
+          authentication: { type: 'apikey', apiKey: 'test-key' }
+        },
+        dataSources: [
+          {
+            key: 'hubspot-deals-datasource',
+            systemKey: 'hubspot-deals-datasource',
+            entityKey: 'deal',
+            displayName: 'HubSpot Deals',
+            entityType: ' Deal',
+            resourceType: 'Deal'
+          }
+        ]
+      };
+
+      formatValidationErrors.mockReturnValue([]);
+
+      const { validateControllerManifest } = require('../../../../lib/validation/external-manifest-validator');
+      const result = await validateControllerManifest(manifest);
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e =>
+        e.includes('hubspot-deals-datasource') &&
+        e.includes('test-e2e-hubspot') &&
+        e.includes('systemKey does not match application system key')
+      )).toBe(true);
+    });
+
+    it('should identify mismatched datasource when multiple datasources', async() => {
+      const manifest = {
+        key: 'test-e2e-hubspot',
+        displayName: 'Test System',
+        description: 'Test Description',
+        type: 'external',
+        deploymentKey: 'test-deployment-key-12345',
+        system: {
+          key: 'test-e2e-hubspot',
+          displayName: 'Test System',
+          type: 'openapi',
+          authentication: { type: 'apikey', apiKey: 'test-key' }
+        },
+        dataSources: [
+          {
+            key: 'datasource-ok',
+            systemKey: 'test-e2e-hubspot',
+            entityKey: 'contact',
+            displayName: 'Contacts',
+            entityType: 'Contact',
+            resourceType: 'Contact'
+          },
+          {
+            key: 'datasource-wrong',
+            systemKey: 'wrong-key',
+            entityKey: 'deal',
+            displayName: 'Deals',
+            entityType: 'Deal',
+            resourceType: 'Deal'
+          }
+        ]
+      };
+
+      formatValidationErrors.mockReturnValue([]);
+
+      const { validateControllerManifest } = require('../../../../lib/validation/external-manifest-validator');
+      const result = await validateControllerManifest(manifest);
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e =>
+        e.includes('datasource-wrong') &&
+        e.includes('test-e2e-hubspot') &&
+        e.includes('wrong-key')
+      )).toBe(true);
+    });
+
+    it('should pass when all datasource systemKeys match system key', async() => {
+      const manifest = {
+        key: 'test-system',
+        displayName: 'Test System',
+        description: 'Test Description',
+        type: 'external',
+        deploymentKey: 'test-deployment-key-12345',
+        system: {
+          key: 'test-system',
+          displayName: 'Test System',
+          type: 'openapi',
+          authentication: { type: 'apikey', apiKey: 'test-key' }
+        },
+        dataSources: [
+          {
+            key: 'datasource1',
+            systemKey: 'test-system',
+            entityKey: 'entity1',
+            displayName: 'Datasource 1',
+            entityType: 'Entity1',
+            resourceType: 'Entity1'
+          },
+          {
+            key: 'datasource2',
+            systemKey: 'test-system',
+            entityKey: 'entity2',
+            displayName: 'Datasource 2',
+            entityType: 'Entity2',
+            resourceType: 'Entity2'
+          }
+        ]
+      };
+
+      formatValidationErrors.mockReturnValue([]);
+
+      const { validateControllerManifest } = require('../../../../lib/validation/external-manifest-validator');
+      const result = await validateControllerManifest(manifest);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
     it('should aggregate errors from manifest, system, and datasource validation', async() => {
       const manifest = {
         key: 'test-system',

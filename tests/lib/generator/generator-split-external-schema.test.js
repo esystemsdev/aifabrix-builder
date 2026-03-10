@@ -68,7 +68,7 @@ describe('splitExternalApplicationSchema', () => {
     expect(result.variables).toBe(path.join(outputDir, 'application.yaml'));
     expect(result.envTemplate).toBe(path.join(outputDir, 'env.template'));
     expect(result.readme).toBe(path.join(outputDir, 'README.md'));
-    expect(result.rbac).toBe(path.join(outputDir, 'rbac.yml'));
+    expect(result.rbac).toBe(path.join(outputDir, 'rbac.yaml'));
   });
 
   it('should throw when application is missing', async() => {

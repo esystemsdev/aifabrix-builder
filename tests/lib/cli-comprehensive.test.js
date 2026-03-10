@@ -158,6 +158,7 @@ describe('CLI Comprehensive Tests', () => {
               description: jest.fn().mockReturnThis(),
               option: jest.fn().mockReturnThis(),
               requiredOption: jest.fn().mockReturnThis(),
+              addHelpText: jest.fn().mockReturnThis(),
               action: jest.fn((action) => {
                 commandActions[fullCmdName] = action;
                 return mockSubCommand;
@@ -337,7 +338,7 @@ describe('CLI Comprehensive Tests', () => {
       const action = commandActions['up-infra'];
       await action({});
 
-      expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: false });
+      expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: false }));
     });
 
     it('should handle infrastructure start errors', async() => {

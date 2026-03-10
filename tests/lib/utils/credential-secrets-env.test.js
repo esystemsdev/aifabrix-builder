@@ -19,6 +19,8 @@ const {
   collectKvRefsFromPayload,
   pushCredentialSecrets,
   kvEnvKeyToPath,
+  systemKeyToKvPrefix,
+  securityKeyToVar,
   isValidKvPath,
   resolveKvValue
 } = require('../../../lib/utils/credential-secrets-env');
@@ -31,12 +33,55 @@ describe('credential-secrets-env', () => {
     loadSecrets.mockResolvedValue({});
   });
 
+  describe('systemKeyToKvPrefix', () => {
+    it('should convert hubspot to HUBSPOT', () => {
+      expect(systemKeyToKvPrefix('hubspot')).toBe('HUBSPOT');
+    });
+    it('should convert my-hubspot to MY_HUBSPOT', () => {
+      expect(systemKeyToKvPrefix('my-hubspot')).toBe('MY_HUBSPOT');
+    });
+    it('should return empty string for empty or invalid', () => {
+      expect(systemKeyToKvPrefix('')).toBe('');
+      expect(systemKeyToKvPrefix(null)).toBe('');
+      expect(systemKeyToKvPrefix(undefined)).toBe('');
+    });
+  });
+
+  describe('securityKeyToVar', () => {
+    it('should convert camelCase security key to UPPERCASE no underscores', () => {
+      expect(securityKeyToVar('clientId')).toBe('CLIENTID');
+      expect(securityKeyToVar('clientSecret')).toBe('CLIENTSECRET');
+    });
+    it('should handle keys with existing underscores', () => {
+      expect(securityKeyToVar('client_id')).toBe('CLIENTID');
+    });
+    it('should return empty string for empty or invalid', () => {
+      expect(securityKeyToVar('')).toBe('');
+      expect(securityKeyToVar(null)).toBe('');
+      expect(securityKeyToVar(undefined)).toBe('');
+    });
+  });
+
   describe('kvEnvKeyToPath', () => {
-    it('should convert KV_A_B to kv://a/b', () => {
+    it('should convert KV_A_B to kv://a/b (format kv://system-key/variable)', () => {
       expect(kvEnvKeyToPath('KV_A_B')).toBe('kv://a/b');
     });
-    it('should convert KV_SECRETS_CLIENT_SECRET to kv://secrets/client/secret', () => {
-      expect(kvEnvKeyToPath('KV_SECRETS_CLIENT_SECRET')).toBe('kv://secrets/client/secret');
+    it('should convert KV_SECRETS_CLIENT_SECRET to kv://secrets/clientSecret', () => {
+      expect(kvEnvKeyToPath('KV_SECRETS_CLIENT_SECRET')).toBe('kv://secrets/clientSecret');
+    });
+    it('should convert KV_MICROSOFT_TEAMS_CLIENT_ID to kv://microsoft-teams/clientId when systemKey not provided', () => {
+      expect(kvEnvKeyToPath('KV_MICROSOFT_TEAMS_CLIENT_ID')).toBe('kv://microsoft-teams/clientId');
+    });
+    it('should convert KV_MICROSOFT_TEAMS_CLIENTID to kv://microsoft-teams/clientId (inferred)', () => {
+      expect(kvEnvKeyToPath('KV_MICROSOFT_TEAMS_CLIENTID')).toBe('kv://microsoft-teams/clientId');
+    });
+    it('should use systemKey when provided (microsoft-teams)', () => {
+      expect(kvEnvKeyToPath('KV_MICROSOFT_TEAMS_CLIENT_ID', 'microsoft-teams')).toBe('kv://microsoft-teams/clientId');
+      expect(kvEnvKeyToPath('KV_MICROSOFT_TEAMS_CLIENTSECRET', 'microsoft-teams')).toBe('kv://microsoft-teams/clientSecret');
+    });
+    it('should use systemKey when provided (hubspot)', () => {
+      expect(kvEnvKeyToPath('KV_HUBSPOT_CLIENTID', 'hubspot')).toBe('kv://hubspot/clientId');
+      expect(kvEnvKeyToPath('KV_HUBSPOT_CLIENTSECRET', 'hubspot')).toBe('kv://hubspot/clientSecret');
     });
     it('should return null for non-KV_ key', () => {
       expect(kvEnvKeyToPath('OTHER_VAR')).toBeNull();
@@ -58,6 +103,17 @@ describe('credential-secrets-env', () => {
       expect(items).toEqual([
         { key: 'kv://secrets/foo', value: 'plainValue' },
         { key: 'kv://a/b', value: 'another' }
+      ]);
+    });
+    it('should use value as key when value is kv:// path (e.g. microsoft-teams)', () => {
+      const envMap = {
+        KV_MICROSOFT_TEAMS_CLIENT_ID: 'kv://microsoft-teams/clientId',
+        KV_MICROSOFT_TEAMS_CLIENT_SECRET: 'kv://microsoft-teams/clientSecret'
+      };
+      const items = collectKvEnvVarsAsSecretItems(envMap);
+      expect(items).toEqual([
+        { key: 'kv://microsoft-teams/clientId', value: 'kv://microsoft-teams/clientId' },
+        { key: 'kv://microsoft-teams/clientSecret', value: 'kv://microsoft-teams/clientSecret' }
       ]);
     });
     it('should omit non-KV_ keys', () => {
@@ -94,9 +150,9 @@ describe('credential-secrets-env', () => {
       const secrets = { 'secrets/foo': 'resolved' };
       expect(resolveKvValue(secrets, 'kv://secrets/foo')).toBe('resolved');
     });
-    it('should try path with slashes replaced by hyphen', () => {
+    it('does not resolve path-style ref via hyphen key (secrets/foo and secrets-foo are different)', () => {
       const secrets = { 'secrets-foo': 'resolved' };
-      expect(resolveKvValue(secrets, 'kv://secrets/foo')).toBe('resolved');
+      expect(resolveKvValue(secrets, 'kv://secrets/foo')).toBeNull();
     });
     it('should return null when kv ref cannot be resolved', () => {
       expect(resolveKvValue({}, 'kv://missing/key')).toBeNull();
@@ -136,9 +192,9 @@ describe('credential-secrets-env', () => {
   });
 
   describe('pushCredentialSecrets', () => {
-    it('should return { pushed: 0 } when no items and no .env', async() => {
+    it('should return { pushed: 0, skipped: true } when no items and no .env', async() => {
       const result = await pushCredentialSecrets('https://dp.example.com', { type: 'bearer', token: 't' }, {});
-      expect(result).toEqual({ pushed: 0 });
+      expect(result).toEqual({ pushed: 0, skipped: true });
       expect(storeCredentialSecrets).not.toHaveBeenCalled();
     });
 
@@ -277,7 +333,7 @@ describe('credential-secrets-env', () => {
       expect(result.pushed).toBe(3);
       const sent = storeCredentialSecrets.mock.calls[0][2];
       const keys = sent.map(({ key }) => key).sort();
-      expect(keys).toEqual(['kv://secrets/env/only', 'kv://secrets/payload-only', 'kv://secrets/shared']);
+      expect(keys).toEqual(['kv://secrets-env/only', 'kv://secrets/payload-only', 'kv://secrets/shared']);
       const sharedItem = sent.find(({ key }) => key === 'kv://secrets/shared');
       expect(sharedItem.value).toBe('from-env');
       fs.existsSync.mockRestore();

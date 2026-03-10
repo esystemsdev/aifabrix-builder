@@ -97,7 +97,7 @@ describe('External Controller Manifest Generator Module', () => {
       expect(result.system).toEqual(mockSystemJson);
       expect(result.dataSources).toEqual([mockDatasourceJson]);
       expect(loadSystemFile).toHaveBeenCalledWith(appPath, './', 'test-external-app-system.json');
-      expect(loadDatasourceFiles).toHaveBeenCalledWith(appPath, './', ['test-external-app-datasource-entity1.json']);
+      expect(loadDatasourceFiles).toHaveBeenCalledWith(appPath, './', ['test-external-app-datasource-entity1.json'], expect.any(Object));
     });
 
     it('should use appName as key if app.key not provided', async() => {
@@ -185,7 +185,7 @@ describe('External Controller Manifest Generator Module', () => {
       await generateControllerManifest(appName);
 
       expect(loadSystemFile).toHaveBeenCalledWith(appPath, './schemas', 'test-external-app-system.json');
-      expect(loadDatasourceFiles).toHaveBeenCalledWith(appPath, './schemas', ['test-external-app-datasource-entity1.json']);
+      expect(loadDatasourceFiles).toHaveBeenCalledWith(appPath, './schemas', ['test-external-app-datasource-entity1.json'], expect.any(Object));
     });
 
     it('should normalize schemaBasePath when it duplicates app path (integration/appName)', async() => {
@@ -202,7 +202,7 @@ describe('External Controller Manifest Generator Module', () => {
       await generateControllerManifest(appName);
 
       expect(loadSystemFile).toHaveBeenCalledWith(appPath, './', 'test-external-app-system.json');
-      expect(loadDatasourceFiles).toHaveBeenCalledWith(appPath, './', ['test-external-app-datasource-entity1.json']);
+      expect(loadDatasourceFiles).toHaveBeenCalledWith(appPath, './', ['test-external-app-datasource-entity1.json'], expect.any(Object));
     });
 
     it('should handle empty datasources array', async() => {
@@ -220,7 +220,7 @@ describe('External Controller Manifest Generator Module', () => {
       const result = await generateControllerManifest(appName);
 
       expect(result.dataSources).toEqual([]);
-      expect(loadDatasourceFiles).toHaveBeenCalledWith(appPath, './', []);
+      expect(loadDatasourceFiles).toHaveBeenCalledWith(appPath, './', [], expect.any(Object));
     });
 
     it('should handle multiple datasources', async() => {
@@ -346,6 +346,65 @@ describe('External Controller Manifest Generator Module', () => {
       const { generateControllerManifest } = require('../../../lib/generator/external-controller-manifest');
       await expect(generateControllerManifest(appName))
         .rejects.toThrow('Datasource file not found');
+    });
+
+    it('should pass skipMissingDatasourceFiles to loadDatasourceFiles when option set', async() => {
+      loadDatasourceFiles.mockResolvedValue([mockDatasourceJson]);
+
+      const { generateControllerManifest } = require('../../../lib/generator/external-controller-manifest');
+      await generateControllerManifest(appName, { skipMissingDatasourceFiles: true });
+
+      expect(loadDatasourceFiles).toHaveBeenCalledWith(
+        appPath,
+        './',
+        ['test-external-app-datasource-entity1.json'],
+        expect.objectContaining({ skipMissingDatasourceFiles: true })
+      );
+    });
+  });
+
+  describe('toDeployJsonShape', () => {
+    it('should return deploy-file shape without externalIntegration', () => {
+      const { generateControllerManifest, toDeployJsonShape } = require('../../../lib/generator/external-controller-manifest');
+      const fullManifest = {
+        key: 'test-external-app',
+        displayName: 'Test External App',
+        description: 'Test Description',
+        type: 'external',
+        version: '1.0.0',
+        externalIntegration: { schemaBasePath: './', systems: ['a.yaml'], dataSources: ['b.yaml'] },
+        system: mockSystemJson,
+        dataSources: [mockDatasourceJson],
+        requiresDatabase: false
+      };
+      const deployJson = toDeployJsonShape(fullManifest);
+      expect(deployJson.key).toBe('test-external-app');
+      expect(deployJson.displayName).toBe('Test External App');
+      expect(deployJson.description).toBe('Test Description');
+      expect(deployJson.type).toBe('external');
+      expect(deployJson.version).toBe('1.0.0');
+      expect(deployJson.system).toEqual(mockSystemJson);
+      expect(deployJson.dataSources).toEqual([mockDatasourceJson]);
+      expect(deployJson.externalIntegration).toBeUndefined();
+    });
+
+    it('should default type and version when missing', () => {
+      const { toDeployJsonShape } = require('../../../lib/generator/external-controller-manifest');
+      const deployJson = toDeployJsonShape({
+        key: 'app',
+        displayName: 'App',
+        description: 'Desc',
+        system: {},
+        dataSources: []
+      });
+      expect(deployJson.type).toBe('external');
+      expect(deployJson.version).toBe('1.0.0');
+    });
+
+    it('should throw if manifest is missing', () => {
+      const { toDeployJsonShape } = require('../../../lib/generator/external-controller-manifest');
+      expect(() => toDeployJsonShape(null)).toThrow('Manifest is required');
+      expect(() => toDeployJsonShape(undefined)).toThrow('Manifest is required');
     });
   });
 });

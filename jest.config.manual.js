@@ -10,6 +10,8 @@
 const baseProject = require('./jest.config').projects[0];
 
 module.exports = {
+  // Top-level so Jest actually applies it (project-level testTimeout is ignored in some Jest versions)
+  testTimeout: 60000,
   projects: [
     {
       ...baseProject,
@@ -22,7 +24,6 @@ module.exports = {
         '\\\\node_modules\\\\'
       ],
       setupFilesAfterEnv: ['<rootDir>/tests/manual/setup.js'],
-      testTimeout: 60000,
       maxWorkers: 1
     }
   ]

@@ -3,11 +3,11 @@
   "$id":"https://raw.githubusercontent.com/esystemsdev/aifabrix-builder/refs/heads/main/lib/schema/external-datasource.schema.json",
   "title":"External Data Source",
   "description":"Configuration for AI Fabrix ExternalDataSource entities. Includes metadata schema, data dimensions, transformation mappings, OpenAPI/MCP exposure, execution logic, and sync behavior.",
-     "metadata":{
+        "metadata":{
         "key":"external-datasource-schema",
         "name":"External Data Source Configuration Schema",
         "description":"JSON schema for validating ExternalDataSource configuration files",
-        "version":"2.1.0",
+        "version":"2.3.0",
         "type":"schema",
         "category":"integration",
         "author":"AI Fabrix Team",
@@ -91,6 +91,22 @@
               "Added contract versioning configuration to datasource root for CI/CD safety and agent stability"
            ],
            "breaking":false
+        },
+        {
+           "version":"2.2.0",
+           "date":"2026-02-26T00:00:00Z",
+           "changes":[
+              "capabilities: preferred format is array [\"list\",\"get\",...]. Schema oneOf accepts both array and legacy object; runtime accepts both for backward compatibility."
+           ],
+           "breaking":false
+        },
+        {
+           "version":"2.3.0",
+           "date":"2026-03-08T00:00:00Z",
+           "changes":[
+              "BREAKING: Added required primaryKey (array of normalized attribute names). Used for get/update/delete and table indexing. Migration: add primaryKey array (e.g. [\"id\"] or [\"externalId\"]) to each datasource config."
+           ],
+           "breaking":true
         }
      ]
   },
@@ -101,7 +117,8 @@
      "systemKey",
      "entityType",
      "resourceType",
-     "fieldMappings"
+     "fieldMappings",
+     "primaryKey"
   ],
   "properties":{
      "key":{
@@ -146,6 +163,16 @@
         "type":"object",
         "description":"Subset of JSON Schema used to validate raw input metadata.",
         "additionalProperties":true
+     },
+     "primaryKey":{
+        "type":"array",
+        "description":"Normalized field names that uniquely identify a record (used for get/update/delete and table indexing). Each element must exist in fieldMappings.dimensions or fieldMappings.attributes.",
+        "minItems":1,
+        "items":{
+           "type":"string",
+           "pattern":"^[a-zA-Z0-9_]+$"
+        },
+        "uniqueItems":true
      },
      "fieldMappings":{
         "type":"object",
@@ -764,31 +791,27 @@
         "additionalProperties":false
      },
      "capabilities":{
-        "type":"object",
-        "description":"Declares which logical operations are supported by this datasource.",
-        "properties":{
-           "list":{
-              "type":"boolean",
-              "default":true
+        "oneOf":[
+           {
+              "type":"array",
+              "description":"Preferred: list of supported operation names. Values: list, get, create, update, delete.",
+              "items":{"type":"string","enum":["list","get","create","update","delete"]},
+              "uniqueItems":true
            },
-           "get":{
-              "type":"boolean",
-              "default":false
-           },
-           "create":{
-              "type":"boolean",
-              "default":false
-           },
-           "update":{
-              "type":"boolean",
-              "default":false
-           },
-           "delete":{
-              "type":"boolean",
-              "default":false
+           {
+              "type":"object",
+              "description":"Legacy: object with boolean flags per operation. Accepted for backward compatibility.",
+              "properties":{
+                 "list":{"type":"boolean"},
+                 "get":{"type":"boolean"},
+                 "create":{"type":"boolean"},
+                 "update":{"type":"boolean"},
+                 "delete":{"type":"boolean"}
+              },
+              "additionalProperties":false
            }
-        },
-        "additionalProperties":false
+        ],
+        "description":"Supported operations. When omitted, derived from execution.engine (CIP operations or list-only for Python)."
      },
      "execution":{
         "type":"object",

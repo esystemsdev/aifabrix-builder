@@ -194,27 +194,27 @@ async function createTestDatasource(datasourcePath) {
 }
 
 /**
- * Builds datasource deploy command arguments
- * @function buildDatasourceDeployArgs
+ * Builds datasource upload command arguments
+ * @function buildDatasourceUploadArgs
  * @param {string} datasourcePath - Path to datasource file
  * @returns {string[]} Command arguments
  */
-function buildDatasourceDeployArgs(datasourcePath) {
+function buildDatasourceUploadArgs(datasourcePath) {
   return [
     'bin/aifabrix.js',
     'datasource',
-    'deploy',
+    'upload',
     'test-app',
     datasourcePath
   ];
 }
 
 /**
- * Gets expected error patterns for datasource deploy
- * @function getDatasourceDeployErrorPatterns
+ * Gets expected error patterns for datasource upload
+ * @function getDatasourceUploadErrorPatterns
  * @returns {string[]} Expected error patterns
  */
-function getDatasourceDeployErrorPatterns() {
+function getDatasourceUploadErrorPatterns() {
   return [
     'failed to connect',
     'connection refused',
@@ -224,24 +224,25 @@ function getDatasourceDeployErrorPatterns() {
     'timeout',
     'unreachable',
     'failed to publish',
+    'upload failed',
     'deployment failed'
   ];
 }
 
 /**
- * Test datasource deploy command with invalid dataplane
+ * Test datasource upload command with invalid dataplane
  * @async
- * @function testDatasourceDeploy
+ * @function testDatasourceUpload
  * @returns {Promise<Object>} Test result
  */
-async function testDatasourceDeploy() {
-  logInfo('\n🚀 Testing: datasource deploy command');
+async function testDatasourceUpload() {
+  logInfo('\n🚀 Testing: datasource upload command');
 
   const datasourcePath = path.join(process.cwd(), 'integration', 'test-datasource.json');
 
   try {
     await createTestDatasource(datasourcePath);
-    const args = buildDatasourceDeployArgs(datasourcePath);
+    const args = buildDatasourceUploadArgs(datasourcePath);
     const result = await runCommand('node', args);
     const output = `${result.stdout}\n${result.stderr}`;
 
@@ -252,18 +253,18 @@ async function testDatasourceDeploy() {
       // Ignore cleanup errors
     }
 
-    const expectedPatterns = getDatasourceDeployErrorPatterns();
+    const expectedPatterns = getDatasourceUploadErrorPatterns();
     const isValid = !result.success && validateError(output, expectedPatterns);
 
     return {
-      name: 'datasource deploy',
+      name: 'datasource upload',
       success: isValid,
       output,
       expectedPatterns
     };
   } catch (error) {
     return {
-      name: 'datasource deploy',
+      name: 'datasource upload',
       success: false,
       output: error.message,
       error: error.message
@@ -385,7 +386,7 @@ module.exports = {
   testWizard,
   testDownload,
   testDelete,
-  testDatasourceDeploy,
+  testDatasourceUpload,
   testIntegration,
   testDataplaneDiscovery
 };

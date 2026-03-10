@@ -137,7 +137,7 @@ aifabrix environment deploy dev --no-poll
 ✓ Authentication successful
 
 🚀 Deploying environment infrastructure...
-📤 Sending deployment request to https://controller.aifabrix.dev/api/v1/environments/dev/deploy...
+📤 Sending deployment request to controller...
 ⏳ Polling deployment status (5000ms intervals)...
 
 ✅ Environment deployed successfully
@@ -313,7 +313,7 @@ aifabrix deploy myapp --local
    Port: 3000
 
 🚀 Deploying to https://controller.aifabrix.dev (environment: miso)...
-📤 Sending deployment request to https://controller.aifabrix.dev/api/v1/pipeline/miso/deploy...
+📤 Sending deployment request to controller...
 ⏳ Polling deployment status (5000ms intervals)...
 
 ✅ Deployment initiated successfully
@@ -334,7 +334,7 @@ aifabrix deploy myapp --local
    Port: 3000
 
 🚀 Deploying to http://localhost:3000 (environment: dev)...
-📤 Sending deployment request to http://localhost:3000/api/v1/pipeline/dev/deploy...
+📤 Sending deployment request to controller...
 ⏳ Polling deployment status (5000ms intervals)...
 
 ✅ Deployment initiated successfully
@@ -354,16 +354,16 @@ aifabrix deploy myapp
 
 **Authentication:**
 
-When you are **logged in** (device token or client token), the CLI uses **only your Bearer token**: it does **not** send client ID or client secret. The CLI validates that your token is valid with the controller before sending the deployment request. If the token is invalid or expired, you are prompted to run `aifabrix login` again. When no token is available, the CLI falls back to client credentials (from `~/.aifabrix/secrets.local.yaml` or `--client-id` / `--client-secret`) and sends client ID and secret for pipeline validate/deploy.
+All Controller and Dataplane app endpoints accept **token-only** auth: **user token** (device from login) as `Authorization: Bearer <token>`, **application token** (client token) as `x-client-token: <token>`. The CLI never sends x-client-id or x-client-secret to app endpoints. When no token is available, the CLI exchanges credentials for a client token at the token endpoint, then sends it as `x-client-token`.
 
 The deploy command automatically:
 1. Gets controller and environment from `~/.aifabrix/config.yaml`
 2. Tries authentication in this order:
-   - **Device token** (from `aifabrix login --method device`): uses Bearer token only; no client ID/secret sent. Token is validated before deploy.
-   - **Client token** (from `aifabrix login --method credentials`): uses Bearer token only; no client ID/secret sent. Token is validated before deploy.
-   - **Client credentials** (fallback): reads clientId/secret from `~/.aifabrix/secrets.local.yaml` (or `--client-id` / `--client-secret`), obtains a token or sends credentials for pipeline validate/deploy.
+   - **Device token** (from `aifabrix login --method device`): sent as `Authorization: Bearer <token>` (user token).
+   - **Client token** (from credentials exchange): sent as `x-client-token: <token>` (application token; not Bearer).
+   - **Credentials fallback**: when no token is available, reads clientId/secret from `~/.aifabrix/secrets.local.yaml` (or `--client-id` / `--client-secret`), exchanges them for a token at the token endpoint, then uses Bearer for pipeline validate/deploy.
 3. If using a Bearer token: validates token with the controller; if invalid, errors with instructions to run `aifabrix login`.
-4. Sends deployment request (Bearer header only when token auth; client id/secret only when credentials fallback).
+4. Sends deployment request with Bearer token only (app endpoints never receive client id/secret).
 
 **Advanced options:**
 ```bash
@@ -397,7 +397,7 @@ aifabrix deploy myapp --client-id my-client-id --client-secret my-secret
 7. Loads rbac.yaml for roles and permissions
 8. Generates deployment manifest (e.g. `builder/<app>/<appKey>-deploy.json`)
 9. Validates manifest (checks required fields, format)
-10. Sends deployment request to controller API (Bearer token or client credentials; when Bearer, no client ID/secret in request body)
+10. Sends deployment request to controller API (Bearer token only; client id/secret are used only to obtain the token)
 11. **Controller receives manifest and:**
     - Determines deployment type (Azure or local Docker)
     - For Azure: Deploys to Azure Container Apps
@@ -405,7 +405,7 @@ aifabrix deploy myapp --client-id my-client-id --client-secret my-secret
 12. Polls deployment status (if enabled)
 13. Displays deployment results
 
-When you are logged in (e.g. `aifabrix auth status` shows "Authenticated"), the pipeline validate and deploy requests use only the `Authorization: Bearer <token>` header; client ID and client secret are not sent.
+Controller and Dataplane app endpoints accept token-only auth: user token as `Authorization: Bearer <token>`, application token as `x-client-token: <token>`. Client ID and client secret are never sent to app endpoints (only to the token-issuing endpoint to obtain the client token).
 
 **Generated Manifest Format:**
 ```json
@@ -446,7 +446,7 @@ When you are logged in (e.g. `aifabrix auth status` shows "Authenticated"), the 
 <a id="aifabrix-credential-list"></a>
 ## aifabrix credential list
 
-List credentials from the controller/dataplane (`GET /api/v1/credential`). Use this to see available credentials when choosing "Use existing" in the wizard (Step 3).
+Get credentials from Dataplane. Use this to see available credentials when choosing "Use existing" in the wizard (Step 3). When the dataplane provides credential status, the list shows a colored icon: ✓ (verified), ○ (pending), ✗ (failed), ⊘ (expired).
 
 **Example:**
 ```bash
@@ -454,15 +454,14 @@ aifabrix credential list
 aifabrix credential list --active-only --page-size 50
 ```
 
-**Options:** `--controller <url>`, `--active-only`, `--page-size <n>` (default 50).
+**Options:** `--active-only`, `--page-size <n>` (default 50).
 
 ---
 
 <a id="aifabrix-deployment-list"></a>
 ## aifabrix deployment list
 
-List **environment deployments** for the current environment (paginated; default page size 50). Returns both application and infrastructure deployments for that environment. Uses `GET /api/v1/environments/{envKey}/deployments`.
-
+List **environment deployments** for the current environment (paginated; default page size 50). Returns both application and infrastructure deployments for that environment. 
 **Example:**
 ```bash
 aifabrix deployment list
@@ -476,8 +475,7 @@ aifabrix deployment list --environment dev --page-size 50
 <a id="aifabrix-app-deployment-appkey"></a>
 ## aifabrix app deployment <appKey>
 
-List last N deployments for a specific application in the current environment (default pageSize=50). Uses `GET /api/v1/environments/{envKey}/applications/{appKey}/deployments`.
-
+List last N deployments for a specific application in the current environment (default pageSize=50). 
 **Example:**
 ```bash
 aifabrix app deployment myapp

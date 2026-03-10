@@ -135,12 +135,12 @@ externalIntegration:
 ```
 
 ### `env.template` (Environment Variables)
-Template for environment variables with Key Vault references:
+Template for environment variables with Key Vault references. Variable names follow `KV_<APPKEY>_<VAR>` and map to path-style `kv://` (e.g. `KV_HUBSPOT_CLIENTID` → `kv://hubspot/clientid`). Run `aifabrix repair hubspot` to fix env.template if it gets out of sync.
 
 ```yaml
-CLIENTID=kv://hubspot-clientidKeyVault
-CLIENTSECRET=kv://hubspot-clientsecretKeyVault
-TOKENURL=https://api.hubapi.com/oauth/v1/token
+KV_HUBSPOT_CLIENTID=kv://hubspot/clientid
+KV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret
+TOKEN_URL=https://api.hubapi.com/oauth/v1/token
 ```
 
 ### Datasource Files (`*-deploy-*.json`)
@@ -204,7 +204,7 @@ node bin/aifabrix.js deploy my-hubspot \
   --environment miso
 
 # Or deploy individual datasources
-node bin/aifabrix.js datasource deploy hubspot-company \
+node bin/aifabrix.js datasource upload hubspot-company \
   --environment miso \
   --file integration/my-hubspot/hubspot-datasource-company.json
 ```

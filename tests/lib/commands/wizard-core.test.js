@@ -19,9 +19,13 @@ jest.mock('../../../lib/utils/app-config-resolver', () => ({
   resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml'))
 }));
 const mockPromptForCredentialIdOrKeyRetry = jest.fn();
-jest.mock('../../../lib/generator/wizard-prompts', () => ({
-  promptForCredentialIdOrKeyRetry: (...args) => mockPromptForCredentialIdOrKeyRetry(...args)
-}));
+jest.mock('../../../lib/generator/wizard-prompts', () => {
+  const actual = jest.requireActual('../../../lib/generator/wizard-prompts');
+  return {
+    ...actual,
+    promptForCredentialIdOrKeyRetry: (...args) => mockPromptForCredentialIdOrKeyRetry(...args)
+  };
+});
 jest.mock('inquirer');
 jest.mock('ora', () => {
   const mockSpinner = {
@@ -602,6 +606,60 @@ describe('Wizard Core Functions', () => {
     });
   });
 
+  describe('handleEntitySelection', () => {
+    it('returns null when openapiSpec is null', async() => {
+      const result = await wizardCore.handleEntitySelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        null
+      );
+      expect(wizardApi.discoverEntities).not.toHaveBeenCalled();
+      expect(result).toBeNull();
+    });
+
+    it('returns null when discoverEntities returns empty entities', async() => {
+      wizardApi.discoverEntities.mockResolvedValue({ data: { entities: [] } });
+      const result = await wizardCore.handleEntitySelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        mockOpenApiSpec
+      );
+      expect(wizardApi.discoverEntities).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        mockOpenApiSpec
+      );
+      expect(result).toBeNull();
+    });
+
+    it('prompts and returns selected entity when entities found', async() => {
+      wizardApi.discoverEntities.mockResolvedValue({
+        data: { entities: [{ name: 'companies', pathCount: 12 }] }
+      });
+      inquirer.prompt.mockResolvedValue({ entityName: 'companies' });
+
+      const result = await wizardCore.handleEntitySelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        mockOpenApiSpec
+      );
+
+      expect(result).toBe('companies');
+      expect(inquirer.prompt).toHaveBeenCalled();
+    });
+
+    it('returns null and logs warning when discoverEntities fails', async() => {
+      wizardApi.discoverEntities.mockRejectedValue(new Error('API error'));
+      const result = await wizardCore.handleEntitySelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        mockOpenApiSpec
+      );
+      expect(result).toBeNull();
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Entity discovery failed'));
+    });
+  });
+
   describe('handleConfigurationGeneration', () => {
     const mockSystemConfig = { key: 'test-system', displayName: 'Test System' };
     const mockDatasourceConfigs = [{ key: 'ds1', systemKey: 'test-system' }];
@@ -686,6 +744,32 @@ describe('Wizard Core Functions', () => {
             enableRBAC: false
           }
         })
+      );
+    });
+
+    it('should pass entityName to generateConfig when provided', async() => {
+      wizardApi.generateConfig.mockResolvedValue({
+        success: true,
+        data: {
+          systemConfig: mockSystemConfig,
+          datasourceConfigs: mockDatasourceConfigs,
+          systemKey: 'test-system'
+        }
+      });
+      await wizardCore.handleConfigurationGeneration(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        {
+          mode: 'create-system',
+          openapiSpec: mockOpenApiSpec,
+          detectedType: { recommendedType: 'record-based' },
+          entityName: 'companies'
+        }
+      );
+      expect(wizardApi.generateConfig).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        expect.objectContaining({ entityName: 'companies' })
       );
     });
 
@@ -820,6 +904,100 @@ describe('Wizard Core Functions', () => {
       );
       expect(result.datasourceConfigs).toEqual([mockDatasourceConfigs[0]]);
     });
+
+    it('should call getPlatformConfig (not generate-config) when sourceType is known-platform', async() => {
+      wizardApi.getPlatformConfig.mockResolvedValue({
+        success: true,
+        data: {
+          systemConfig: mockSystemConfig,
+          datasourceConfigs: mockDatasourceConfigs,
+          systemKey: 'test-system'
+        }
+      });
+      const result = await wizardCore.handleConfigurationGeneration(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        {
+          mode: 'create-system',
+          sourceType: 'known-platform',
+          platformKey: 'hubspot',
+          credentialIdOrKey: 'cred-123'
+        }
+      );
+      expect(wizardApi.getPlatformDetails).not.toHaveBeenCalled();
+      expect(wizardApi.getPlatformConfig).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        'hubspot',
+        { credentialIdOrKey: 'cred-123' }
+      );
+      expect(wizardApi.generateConfig).not.toHaveBeenCalled();
+      expect(result.systemConfig).toEqual(mockSystemConfig);
+      expect(result.datasourceConfigs).toEqual(mockDatasourceConfigs);
+    });
+
+    it('should validate datasourceKeys before getPlatformConfig when provided', async() => {
+      wizardApi.getPlatformDetails.mockResolvedValue({
+        success: true,
+        data: {
+          datasources: [
+            { key: 'hubspot-contacts', displayName: 'Contacts' },
+            { key: 'hubspot-deals', displayName: 'Deals' }
+          ]
+        }
+      });
+      wizardApi.getPlatformConfig.mockResolvedValue({
+        success: true,
+        data: {
+          systemConfig: mockSystemConfig,
+          datasourceConfigs: mockDatasourceConfigs,
+          systemKey: 'test-system'
+        }
+      });
+      const result = await wizardCore.handleConfigurationGeneration(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        {
+          mode: 'create-system',
+          sourceType: 'known-platform',
+          platformKey: 'hubspot',
+          datasourceKeys: ['hubspot-contacts', 'hubspot-deals'],
+          credentialIdOrKey: 'cred-123'
+        }
+      );
+      expect(wizardApi.getPlatformDetails).toHaveBeenCalledWith(mockDataplaneUrl, mockAuthConfig, 'hubspot');
+      expect(wizardApi.getPlatformConfig).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        'hubspot',
+        expect.objectContaining({ datasourceKeys: ['hubspot-contacts', 'hubspot-deals'] })
+      );
+      expect(result.systemConfig).toEqual(mockSystemConfig);
+    });
+
+    it('should throw when datasourceKeys contains invalid keys', async() => {
+      wizardApi.getPlatformDetails.mockResolvedValue({
+        success: true,
+        data: {
+          datasources: [
+            { key: 'hubspot-contacts', displayName: 'Contacts' },
+            { key: 'hubspot-deals', displayName: 'Deals' }
+          ]
+        }
+      });
+      await expect(wizardCore.handleConfigurationGeneration(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        {
+          mode: 'create-system',
+          sourceType: 'known-platform',
+          platformKey: 'hubspot',
+          datasourceKeys: ['hubspot-contacts', 'hubspot-invalid']
+        }
+      )).rejects.toThrow(/Invalid datasource keys: \[hubspot-invalid\]/);
+      expect(wizardApi.getPlatformDetails).toHaveBeenCalledWith(mockDataplaneUrl, mockAuthConfig, 'hubspot');
+      expect(wizardApi.getPlatformConfig).not.toHaveBeenCalled();
+    });
   });
 
   describe('validateWizardConfiguration', () => {
@@ -898,9 +1076,10 @@ describe('Wizard Core Functions', () => {
         return Promise.reject(new Error('ENOENT'));
       });
       fs.writeFile.mockResolvedValue(undefined);
+      const longReadme = '# Test README\n\n' + 'x'.repeat(400);
       wizardApi.postDeploymentDocs.mockResolvedValue({
         success: true,
-        data: { content: '# Test README' }
+        data: { content: longReadme }
       });
       const result = await wizardCore.handleFileSaving(
         'test-app',
@@ -915,7 +1094,7 @@ describe('Wizard Core Functions', () => {
         mockSystemConfig,
         mockDatasourceConfigs,
         'test-system',
-        { aiGeneratedReadme: null }
+        { aiGeneratedReadme: null, format: 'yaml' }
       );
       expect(wizardApi.postDeploymentDocs).toHaveBeenCalledWith(
         mockDataplaneUrl,
@@ -925,7 +1104,7 @@ describe('Wizard Core Functions', () => {
       );
       expect(fs.writeFile).toHaveBeenCalledWith(
         expect.stringContaining('README.md'),
-        '# Test README',
+        longReadme,
         'utf8'
       );
       expect(result).toEqual(mockGeneratedFiles);
@@ -952,7 +1131,7 @@ describe('Wizard Core Functions', () => {
         mockSystemConfig,
         mockDatasourceConfigs,
         'test-system',
-        { aiGeneratedReadme: null }
+        { aiGeneratedReadme: null, format: 'yaml' }
       );
       expect(fs.writeFile).not.toHaveBeenCalledWith(expect.stringContaining('README.md'), expect.any(String), 'utf8');
     });
@@ -979,7 +1158,7 @@ describe('Wizard Core Functions', () => {
         mockSystemConfig,
         mockDatasourceConfigs,
         'test-system',
-        { aiGeneratedReadme: null }
+        { aiGeneratedReadme: null, format: 'yaml' }
       );
       expect(result).toEqual(mockGeneratedFiles);
     });
@@ -987,9 +1166,10 @@ describe('Wizard Core Functions', () => {
     it('should fall back to GET deployment-docs when application.yaml and deploy.json are unreadable', async() => {
       wizardGenerator.generateWizardFiles.mockResolvedValue(mockGeneratedFiles);
       fs.readFile.mockRejectedValue(new Error('ENOENT'));
+      const longFallbackReadme = '# Fallback README\n\n' + 'y'.repeat(400);
       wizardApi.getDeploymentDocs.mockResolvedValue({
         success: true,
-        data: { content: '# Fallback README' }
+        data: { content: longFallbackReadme }
       });
       const result = await wizardCore.handleFileSaving(
         'test-app',
@@ -1003,7 +1183,7 @@ describe('Wizard Core Functions', () => {
       expect(wizardApi.postDeploymentDocs).not.toHaveBeenCalled();
       expect(fs.writeFile).toHaveBeenCalledWith(
         expect.stringContaining('README.md'),
-        '# Fallback README',
+        longFallbackReadme,
         'utf8'
       );
       expect(result).toEqual(mockGeneratedFiles);

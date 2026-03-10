@@ -89,12 +89,20 @@ describe('File Upload Utility', () => {
       expect(mockAuthenticatedApiCall).toHaveBeenCalled();
     });
 
-    it('should use client credentials authentication', async() => {
-      const authConfig = {
-        type: 'client-credentials',
-        clientId: 'client-id',
-        clientSecret: 'client-secret'
-      };
+    it('should use authenticatedApiCall for client-token type with token', async() => {
+      const authConfig = { type: 'client-token', token: 'my-client-token' };
+      await uploadFile(url, filePath, 'file', authConfig);
+
+      expect(mockAuthenticatedApiCall).toHaveBeenCalledWith(
+        url,
+        expect.any(Object),
+        authConfig
+      );
+      expect(mockMakeApiCall).not.toHaveBeenCalled();
+    });
+
+    it('should use makeApiCall when authConfig has no token (token-only for app endpoints)', async() => {
+      const authConfig = { type: 'bearer' };
       await uploadFile(url, filePath, 'file', authConfig);
 
       expect(mockMakeApiCall).toHaveBeenCalled();

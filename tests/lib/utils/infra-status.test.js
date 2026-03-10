@@ -18,7 +18,8 @@ jest.mock('child_process', () => ({
 }));
 
 jest.mock('../../../lib/core/config', () => ({
-  getDeveloperId: jest.fn()
+  getDeveloperId: jest.fn(),
+  getConfig: jest.fn().mockResolvedValue({})
 }));
 
 jest.mock('../../../lib/utils/dev-config', () => ({
@@ -43,6 +44,7 @@ describe('Infrastructure Status Module', () => {
   describe('getInfraStatus', () => {
     it('should return status for all services when containers are running', async() => {
       config.getDeveloperId.mockResolvedValue('0');
+      config.getConfig.mockResolvedValue({ pgadmin: true, redisCommander: true, traefik: true });
       devConfig.getDevPorts.mockReturnValue({
         postgres: 5432,
         redis: 6379,
@@ -135,6 +137,7 @@ describe('Infrastructure Status Module', () => {
 
     it('should use developer-specific ports when developer ID is not 0', async() => {
       config.getDeveloperId.mockResolvedValue('1');
+      config.getConfig.mockResolvedValue({ pgadmin: true, redisCommander: true, traefik: true });
       devConfig.getDevPorts.mockReturnValue({
         postgres: 5532,
         redis: 6479,
@@ -152,6 +155,33 @@ describe('Infrastructure Status Module', () => {
       expect(result.pgadmin.port).toBe(5150);
       expect(result['redis-commander'].port).toBe(8181);
       expect(result.traefik.port).toBe('180, 543');
+    });
+
+    it('should exclude pgadmin and redis-commander when disabled in config', async() => {
+      config.getDeveloperId.mockResolvedValue('0');
+      config.getConfig.mockResolvedValue({ pgadmin: false, redisCommander: false });
+      devConfig.getDevPorts.mockReturnValue({
+        postgres: 5432,
+        redis: 6379,
+        pgadmin: 5050,
+        redisCommander: 8081,
+        traefikHttp: 80,
+        traefikHttps: 443
+      });
+      containerUtils.findContainer
+        .mockResolvedValueOnce('aifabrix-postgres')
+        .mockResolvedValueOnce('aifabrix-redis');
+      exec.mockImplementation((command, callback) => {
+        callback(null, { stdout: 'running' });
+      });
+
+      const result = await getInfraStatus();
+
+      expect(result).toHaveProperty('postgres');
+      expect(result).toHaveProperty('redis');
+      expect(result).not.toHaveProperty('pgadmin');
+      expect(result).not.toHaveProperty('redis-commander');
+      expect(result).not.toHaveProperty('traefik');
     });
 
     it('should handle non-numeric developer ID', async() => {

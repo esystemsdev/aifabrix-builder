@@ -114,9 +114,9 @@ describe('Application Configuration Module', () => {
       expect(envTemplateCall).toBeDefined();
       const envTemplateContent = envTemplateCall[1];
       expect(envTemplateContent).toContain('# test-external OAUTH2 Configuration');
-      expect(envTemplateContent).toContain('CLIENTID=kv://test-external-clientidKeyVault');
-      expect(envTemplateContent).toContain('CLIENTSECRET=kv://test-external-clientsecretKeyVault');
-      expect(envTemplateContent).toContain('TOKENURL=https://api.example.com/oauth/token');
+      expect(envTemplateContent).toContain('KV_TEST_EXTERNAL_CLIENTID=');
+      expect(envTemplateContent).toContain('KV_TEST_EXTERNAL_CLIENTSECRET=');
+      expect(envTemplateContent).toContain('TOKEN_URL=https://api.example.com/oauth/token');
     });
 
     it('should generate env.template for external system with API Key auth', async() => {
@@ -142,9 +142,9 @@ describe('Application Configuration Module', () => {
       expect(envTemplateCall).toBeDefined();
       const envTemplateContent = envTemplateCall[1];
       expect(envTemplateContent).toContain('# test-external APIKEY Configuration');
-      expect(envTemplateContent).toContain('API_KEY=kv://test-external-api-keyKeyVault');
-      expect(envTemplateContent).not.toContain('CLIENTID');
-      expect(envTemplateContent).not.toContain('CLIENTSECRET');
+      expect(envTemplateContent).toContain('KV_TEST_EXTERNAL_APIKEY=');
+      expect(envTemplateContent).not.toContain('KV_TEST_EXTERNAL_CLIENTID');
+      expect(envTemplateContent).not.toContain('KV_TEST_EXTERNAL_CLIENTSECRET');
     });
 
     it('should generate env.template for external system with Basic Auth', async() => {
@@ -170,8 +170,8 @@ describe('Application Configuration Module', () => {
       expect(envTemplateCall).toBeDefined();
       const envTemplateContent = envTemplateCall[1];
       expect(envTemplateContent).toContain('# test-external BASIC Configuration');
-      expect(envTemplateContent).toContain('USERNAME=kv://test-external-usernameKeyVault');
-      expect(envTemplateContent).toContain('PASSWORD=kv://test-external-passwordKeyVault');
+      expect(envTemplateContent).toContain('KV_TEST_EXTERNAL_USERNAME=');
+      expect(envTemplateContent).toContain('KV_TEST_EXTERNAL_PASSWORD=');
     });
 
     it('should use appName as fallback for systemKey in env.template', async() => {
@@ -197,7 +197,20 @@ describe('Application Configuration Module', () => {
       expect(envTemplateCall).toBeDefined();
       const envTemplateContent = envTemplateCall[1];
       expect(envTemplateContent).toContain('# test-external APIKEY Configuration');
-      expect(envTemplateContent).toContain('API_KEY=kv://test-external-api-keyKeyVault');
+      expect(envTemplateContent).toContain('KV_TEST_EXTERNAL_APIKEY=');
+    });
+
+    it('should generate env.template for queryParam and hmac auth', async() => {
+      const appPath = path.join(tempDir, 'integration', 'test-external');
+      const appName = 'test-external';
+      const config = { type: 'external', authType: 'queryParam', systemKey: 'test-external' };
+      fsPromises.access = jest.fn().mockRejectedValue(new Error('File not found'));
+
+      await generateConfigFiles(appPath, appName, config, null);
+
+      const writeCalls = fsPromises.writeFile.mock.calls;
+      const envCall = writeCalls.find(c => c[0] && c[0].includes('env.template'));
+      expect(envCall[1]).toContain('KV_TEST_EXTERNAL_PARAMVALUE=');
     });
 
     it('should not overwrite existing env.template file', async() => {

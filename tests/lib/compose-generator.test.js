@@ -707,12 +707,12 @@ describe('Compose Generator Module', () => {
       };
 
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
-      expect(result).toContain('CREATE EXTENSION IF NOT EXISTS vector');
+      expect(result).toContain('CREATE EXTENSION IF NOT EXISTS "vector";');
       expect(result).toContain('dataplane-vector');
-      expect(result).toContain('pgvector extension enabled on "dataplane-vector"');
+      expect(result).toContain('Extension "vector" enabled on "dataplane-vector"');
     });
 
-    it('should not include CREATE EXTENSION vector when no database name ends with vector', async() => {
+    it('should not include CREATE EXTENSION when no database name ends with vector and no extensions', async() => {
       const actualDevDir = await getAndEnsureDevDir('test-app');
       const envPath = path.join(actualDevDir, '.env');
       fsSync.writeFileSync(envPath, 'DB_0_PASSWORD=pass1\nDB_1_PASSWORD=pass2\n');
@@ -729,8 +729,54 @@ describe('Compose Generator Module', () => {
       };
 
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
-      expect(result).not.toContain('CREATE EXTENSION IF NOT EXISTS vector');
+      expect(result).not.toContain('CREATE EXTENSION');
     });
+
+    it('should include CREATE EXTENSION for each database extension (e.g. Flowise)', async() => {
+      const actualDevDir = await getAndEnsureDevDir('test-app');
+      const envPath = path.join(actualDevDir, '.env');
+      fsSync.writeFileSync(envPath, 'DB_0_PASSWORD=pass0\n');
+
+      const config = {
+        port: 3000,
+        requires: {
+          database: true,
+          databases: [
+            {
+              name: 'flowise',
+              extensions: ['pgcrypto', 'uuid-ossp', 'vector', 'btree_gin', 'btree_gist']
+            }
+          ]
+        }
+      };
+
+      const result = await composeGenerator.generateDockerCompose('test-app', config, {});
+      expect(result).toContain('flowise');
+      expect(result).toContain('CREATE EXTENSION IF NOT EXISTS "pgcrypto";');
+      expect(result).toContain('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+      expect(result).toContain('CREATE EXTENSION IF NOT EXISTS "vector";');
+      expect(result).toContain('CREATE EXTENSION IF NOT EXISTS "btree_gin";');
+      expect(result).toContain('CREATE EXTENSION IF NOT EXISTS "btree_gist";');
+    });
+
+    it('should add vector extension when database name ends with vector and extensions not listed', async() => {
+      const actualDevDir = await getAndEnsureDevDir('test-app');
+      const envPath = path.join(actualDevDir, '.env');
+      fsSync.writeFileSync(envPath, 'DB_0_PASSWORD=pass0\n');
+
+      const config = {
+        port: 3000,
+        requires: {
+          database: true,
+          databases: [{ name: 'dataplane-vector' }]
+        }
+      };
+
+      const result = await composeGenerator.generateDockerCompose('test-app', config, {});
+      expect(result).toContain('CREATE EXTENSION IF NOT EXISTS "vector";');
+      expect(result).toContain('dataplane-vector');
+    });
+
   });
 
   describe('generateDockerCompose', () => {

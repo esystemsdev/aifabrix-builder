@@ -299,7 +299,7 @@ describe('API Utilities Module', () => {
   });
 
   describe('authenticatedApiCall', () => {
-    it('should make authenticated API call with bearer token', async() => {
+    it('should make authenticated API call with bearer token (user token)', async() => {
       const mockResponse = {
         ok: true,
         status: 200,
@@ -325,6 +325,55 @@ describe('API Utilities Module', () => {
         })
       );
       expect(result.success).toBe(true);
+    });
+
+    it('should send x-client-token header for client-token type (application token)', async() => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        headers: { get: jest.fn().mockReturnValue('application/json') },
+        json: jest.fn().mockResolvedValue({ data: 'ok' }),
+        text: jest.fn()
+      };
+      global.fetch.mockResolvedValue(mockResponse);
+      jest.spyOn(Date, 'now').mockReturnValueOnce(1000).mockReturnValueOnce(2000);
+
+      await authenticatedApiCall('https://api.example.com/test', {}, { type: 'client-token', token: 'app-token-xyz' });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.example.com/test',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'x-client-token': 'app-token-xyz',
+            'Content-Type': 'application/json'
+          })
+        })
+      );
+      const callHeaders = global.fetch.mock.calls[0][1].headers;
+      expect(callHeaders['Authorization']).toBeUndefined();
+    });
+
+    it('should not attempt device token refresh on 401 when using client-token (application token)', async() => {
+      const mock401Response = {
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        text: jest.fn().mockResolvedValue('{"error": "Unauthorized"}')
+      };
+      global.fetch.mockResolvedValue(mock401Response);
+      parseErrorResponse.mockReturnValue({
+        type: 'authentication',
+        message: 'Unauthorized',
+        data: {},
+        formatted: 'Unauthorized'
+      });
+      jest.spyOn(Date, 'now').mockReturnValueOnce(1000).mockReturnValueOnce(2000);
+
+      const result = await authenticatedApiCall('https://api.example.com/test', {}, { type: 'client-token', token: 'app-token' });
+
+      expect(forceRefreshDeviceToken).not.toHaveBeenCalled();
+      expect(result.success).toBe(false);
+      expect(result.status).toBe(401);
     });
 
     it('should handle 401 error with token refresh', async() => {

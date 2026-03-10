@@ -21,7 +21,7 @@ Table of contents for all AI Fabrix Builder documentation.
 
 | Document                                                                    | Description                                                            |
 | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| [Infrastructure](infrastructure.md)                                         | Local infra (Postgres, Redis, Traefik), up-platform, up-miso, up-dataplane. |
+| [Infrastructure](infrastructure.md)                                         | Local Docker infra only (Postgres, Redis, optional pgAdmin/Redis Commander/Traefik). Azure via Marketplace. |
 | [Configuration reference](configuration/README.md)                          | env-config, env.template, application.yaml, secrets, deployment key.     |
 
 ---
@@ -75,4 +75,4 @@ Table of contents for all AI Fabrix Builder documentation.
 | [env.template](configuration/env-template.md)                               | Environment template and variables.                                    |
 | [application.yaml](configuration/application-yaml.md)                       | Application config.                                                    |
 | [Secrets and config](configuration/secrets-and-config.md)                   | Secrets and configuration.                                             |
-| [External integration config](configuration/external-integration.md)        | External system configuration.                                         |
+| [External integration config](configuration/application-yaml.md#external-integration-and-external-system) | External system configuration.                                         |

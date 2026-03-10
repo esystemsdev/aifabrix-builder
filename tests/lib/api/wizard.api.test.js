@@ -237,6 +237,98 @@ describe('Wizard API', () => {
     });
   });
 
+  describe('getPlatformDetails', () => {
+    it('should get platform details including datasources', async() => {
+      const platformData = {
+        key: 'hubspot',
+        displayName: 'HubSpot',
+        datasources: [
+          { key: 'hubspot-companies', displayName: 'Companies', entity: 'Company' },
+          { key: 'hubspot-contacts', displayName: 'Contacts', entity: 'Contact' },
+          { key: 'hubspot-deals', displayName: 'Deals', entity: 'Deal' }
+        ]
+      };
+      mockClient.get.mockResolvedValue({ success: true, data: platformData });
+
+      const result = await wizardApi.getPlatformDetails(dataplaneUrl, authConfig, 'hubspot');
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/wizard/platforms/hubspot');
+      expect(result.success).toBe(true);
+      expect(result.data.datasources).toHaveLength(3);
+    });
+
+    it('should throw on 404', async() => {
+      mockClient.get.mockResolvedValue({ success: false, status: 404, formattedError: 'Not found' });
+
+      await expect(wizardApi.getPlatformDetails(dataplaneUrl, authConfig, 'unknown')).rejects.toThrow(
+        'Platform \'unknown\' not found'
+      );
+    });
+
+    it('should throw on API error', async() => {
+      mockClient.get.mockResolvedValue({ success: false, formattedError: 'Server error', error: 'Server error' });
+
+      await expect(wizardApi.getPlatformDetails(dataplaneUrl, authConfig, 'hubspot')).rejects.toThrow('Server error');
+    });
+
+    it('should URL-encode platform key', async() => {
+      mockClient.get.mockResolvedValue({ success: true, data: {} });
+      await wizardApi.getPlatformDetails(dataplaneUrl, authConfig, 'my-platform');
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/wizard/platforms/my-platform');
+    });
+  });
+
+  describe('discoverEntities', () => {
+    it('should discover entities from OpenAPI spec', async() => {
+      const entities = [
+        { name: 'companies', pathCount: 5, schemaMatch: true },
+        { name: 'contacts', pathCount: 3, schemaMatch: true }
+      ];
+      mockClient.post.mockResolvedValue({ success: true, data: { entities } });
+
+      const openapiSpec = { openapi: '3.0.0', paths: {} };
+      const result = await wizardApi.discoverEntities(dataplaneUrl, authConfig, openapiSpec);
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/discover-entities', {
+        body: { openapiSpec }
+      });
+      expect(result.success).toBe(true);
+      expect(result.data.entities).toHaveLength(2);
+    });
+
+    it('should throw on API error', async() => {
+      mockClient.post.mockResolvedValue({ success: false, formattedError: 'Discovery failed' });
+
+      await expect(wizardApi.discoverEntities(dataplaneUrl, authConfig, {})).rejects.toThrow('Discovery failed');
+    });
+  });
+
+  describe('getPlatformConfig', () => {
+    it('should get platform config for known platform', async() => {
+      const platformKey = 'hubspot';
+      const config = {
+        mode: 'create-system',
+        intent: 'general integration',
+        fieldOnboardingLevel: 'full',
+        credentialIdOrKey: 'cred-123'
+      };
+
+      await wizardApi.getPlatformConfig(dataplaneUrl, authConfig, platformKey, config);
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/platforms/hubspot/config', {
+        body: config
+      });
+    });
+
+    it('should URL-encode platform key in path', async() => {
+      await wizardApi.getPlatformConfig(dataplaneUrl, authConfig, 'my-platform', { mode: 'create-system' });
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/wizard/platforms/my-platform/config', {
+        body: { mode: 'create-system' }
+      });
+    });
+  });
+
   describe('generateConfig', () => {
     it('should generate configuration with all options', async() => {
       const config = {
@@ -355,13 +447,38 @@ describe('Wizard API', () => {
   });
 
   describe('getPreview', () => {
-    it('should get configuration preview', async() => {
+    it('should get configuration preview with full summary shape', async() => {
       const mockPreview = {
         success: true,
         data: {
-          systemConfig: { key: 'test-system' },
-          datasourceConfig: { key: 'test-ds' },
-          systemSummary: { key: 'test-system', endpointCount: 10 }
+          systemSummary: {
+            key: 'hubspot',
+            displayName: 'HubSpot CRM',
+            type: 'openapi',
+            baseUrl: 'https://api.hubapi.com',
+            authenticationType: 'oauth2',
+            endpointCount: 12
+          },
+          datasourceSummary: {
+            key: 'hubspot-contacts',
+            entity: 'Contact',
+            resourceType: 'record-based',
+            cipStepCount: 3,
+            fieldMappingCount: 15,
+            exposedProfileCount: 2
+          },
+          cipPipelineSummary: {
+            stepCount: 3,
+            steps: ['fetch', 'transform', 'load'],
+            estimatedExecutionTime: '~45s'
+          },
+          fieldMappingsSummary: {
+            mappingCount: 15,
+            mappedFields: ['id', 'email', 'firstname', 'lastname'],
+            unmappedFields: ['custom_field_x']
+          },
+          estimatedRecords: '~10,000',
+          estimatedSyncTime: '~2 min'
         }
       };
       mockClient.get.mockResolvedValue(mockPreview);
@@ -369,7 +486,10 @@ describe('Wizard API', () => {
       const result = await wizardApi.getPreview(dataplaneUrl, 'session-123', authConfig);
 
       expect(mockClient.get).toHaveBeenCalledWith('/api/v1/wizard/preview/session-123');
-      expect(result.data.systemSummary.endpointCount).toBe(10);
+      expect(result.data.systemSummary.displayName).toBe('HubSpot CRM');
+      expect(result.data.datasourceSummary.entity).toBe('Contact');
+      expect(result.data.cipPipelineSummary.stepCount).toBe(3);
+      expect(result.data.fieldMappingsSummary.mappedFields).toContain('email');
     });
   });
 

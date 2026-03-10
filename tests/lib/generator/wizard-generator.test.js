@@ -189,6 +189,28 @@ describe('Wizard Generator', () => {
       expect(datasourceFileCalls.length).toBe(datasourceConfigs.length);
     });
 
+    it('should generate .json files when format option is json', async() => {
+      await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, { format: 'json' });
+
+      const systemFileCall = configFormat.writeConfigFile.mock.calls.find(call =>
+        call[0] && String(call[0]).includes(`${appName}-system.json`)
+      );
+      expect(systemFileCall).toBeDefined();
+      expect(systemFileCall[2]).toBe('json');
+
+      const datasourceFileCalls = configFormat.writeConfigFile.mock.calls.filter(call =>
+        call[0] && String(call[0]).includes(`${appName}-datasource-`) && String(call[0]).endsWith('.json')
+      );
+      expect(datasourceFileCalls.length).toBe(datasourceConfigs.length);
+      datasourceFileCalls.forEach(call => expect(call[2]).toBe('json'));
+
+      const variablesCall = configFormat.writeConfigFile.mock.calls.find(call =>
+        call[0] && String(call[0]).includes('application.json')
+      );
+      expect(variablesCall).toBeDefined();
+      expect(variablesCall[1].externalIntegration.systems).toContain(`${appName}-system.json`);
+    });
+
     it('should generate application.yaml with appName-based system file', async() => {
       await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, {});
       const variablesCall = configFormat.writeConfigFile.mock.calls.find(call =>
@@ -209,8 +231,20 @@ describe('Wizard Generator', () => {
       );
       expect(envTemplateCall).toBeDefined();
       const templateContent = envTemplateCall[1];
-      expect(templateContent).toContain('API_KEY');
-      expect(templateContent).toContain('kv://secrets');
+      expect(templateContent).toContain('KV_');
+      expect(templateContent).toMatch(/KV_[A-Z_]+=/);
+    });
+
+    it('should generate env.template with KV_* for oauth2 (CLIENTID, CLIENTSECRET)', async() => {
+      const oauthConfig = { ...systemConfig, authentication: { type: 'oauth2' } };
+      await wizardGenerator.generateWizardFiles(appName, oauthConfig, datasourceConfigs, systemKey, {});
+      const envTemplateCall = fsPromises.writeFile.mock.calls.find(call =>
+        call[0].includes('env.template')
+      );
+      expect(envTemplateCall).toBeDefined();
+      const templateContent = envTemplateCall[1];
+      expect(templateContent).toContain('KV_TEST_APP_CLIENTID=');
+      expect(templateContent).toContain('KV_TEST_APP_CLIENTSECRET=');
     });
 
     it('should generate README.md with appName-based displayName', async() => {
@@ -249,6 +283,37 @@ describe('Wizard Generator', () => {
       expect(variablesCall).toBeDefined();
       const writtenVars = variablesCall[1];
       expect(writtenVars.externalIntegration.dataSources).toEqual([]);
+    });
+
+    it('should use platform datasource keys and replace system key prefix (known-platform)', async() => {
+      const platformSystemKey = 'test-e2e-hubspot';
+      const platformSystemConfig = { ...systemConfig, key: platformSystemKey };
+      const platformDatasourceConfigs = [
+        { key: `${platformSystemKey}-companies`, entityType: 'company', displayName: 'Companies' },
+        { key: `${platformSystemKey}-contacts`, entityType: 'contact', displayName: 'Contacts' },
+        { key: `${platformSystemKey}-deals`, entityType: 'deal', displayName: 'Deals' }
+      ];
+      await wizardGenerator.generateWizardFiles(
+        appName,
+        platformSystemConfig,
+        platformDatasourceConfigs,
+        platformSystemKey,
+        {}
+      );
+      const datasourceFileCalls = configFormat.writeConfigFile.mock.calls.filter(call =>
+        call[0] && String(call[0]).includes(`${appName}-datasource-`) && String(call[0]).endsWith('.yaml')
+      );
+      expect(datasourceFileCalls.length).toBe(3);
+      const writtenKeys = datasourceFileCalls.map(c => c[1].key);
+      expect(writtenKeys).toEqual([
+        `${appName}-companies`,
+        `${appName}-contacts`,
+        `${appName}-deals`
+      ]);
+      const fileNames = datasourceFileCalls.map(c => path.basename(c[0]));
+      expect(fileNames).toContain(`${appName}-datasource-companies.yaml`);
+      expect(fileNames).toContain(`${appName}-datasource-contacts.yaml`);
+      expect(fileNames).toContain(`${appName}-datasource-deals.yaml`);
     });
   });
 
@@ -299,13 +364,14 @@ describe('Wizard Generator', () => {
             '#!/usr/bin/env node\n' +
             'const path = require(\'path\');\n' +
             'const scriptDir = __dirname;\n' +
+            'const projectRoot = path.join(scriptDir, \'..\', \'..\');\n' +
             'const appKey = \'{{systemKey}}\';\n' +
             '{{#each allJsonFiles}}\n' +
             'run(\'aifabrix validate "\' + path.join(scriptDir, \'{{this}}\') + \'"\');\n' +
             '{{/each}}\n' +
-            'run(\'aifabrix deploy \' + appKey);\n' +
+            'run(\'aifabrix deploy \' + appKey, { cwd: projectRoot });\n' +
             'if (process.env.RUN_TESTS !== \'false\') {\n' +
-            '  run(\'aifabrix test-integration \' + appKey);\n' +
+            '  run(\'aifabrix test-integration \' + appKey, { cwd: projectRoot });\n' +
             '}\n'
           );
         }
@@ -363,6 +429,27 @@ describe('Wizard Generator', () => {
       datasourceFileNames.forEach(fileName => {
         expect(scriptContent).toContain(fileName);
       });
+    });
+
+    it('should run deploy and test-integration from project root (cwd) so script works when run from integration/<app>/', async() => {
+      await wizardGenerator.generateDeployScripts(
+        appPath,
+        systemKey,
+        systemFileName,
+        datasourceFileNames
+      );
+
+      const deployJsCall = fsPromises.writeFile.mock.calls.find(call =>
+        call[0].includes('deploy.js')
+      );
+      expect(deployJsCall).toBeDefined();
+      const scriptContent = deployJsCall[1];
+      expect(scriptContent).toContain('projectRoot');
+      expect(scriptContent).toContain('path.join(scriptDir');
+      expect(scriptContent).toContain('{ cwd: projectRoot }');
+      // deploy and test-integration must pass cwd: projectRoot so CLI resolves integration/ and builder/ from repo root
+      expect(scriptContent).toContain('run(\'aifabrix deploy \' + appKey, { cwd: projectRoot })');
+      expect(scriptContent).toContain('run(\'aifabrix test-integration \' + appKey, { cwd: projectRoot })');
     });
 
     it('should handle errors when generating scripts', async() => {

@@ -6,25 +6,30 @@ Connect your AI Fabrix Dataplane to third-party APIs like HubSpot, Salesforce, o
 
 ## What Are External Systems?
 
-External systems are integrations that connect to third-party APIs and make their data available in your AI Fabrix Dataplane. Unlike regular applications, they:
+External systems are integrations that connect third-party APIs (HubSpot, Salesforce, Slack, and others) to your AI Fabrix Dataplane. They make external data available for AI models via MCP and OpenAPI—without building or running Docker containers.
 
-- **Don't need Docker images** - No containers to build or run
-- **Don't need ports** - They're API clients, not servers
-- **Sync data automatically** - Pull data from external APIs into your dataplane
-- **Expose via MCP/OpenAPI** - Make external data queryable by AI models
-- **Support field mappings** - Transform external API data into normalized schemas
+### Benefits for Developers
 
-**When to use external systems:**
-- Integrating with CRM systems (HubSpot, Salesforce)
-- Connecting to SaaS APIs (Slack, Teams, GitHub)
-- Syncing data from external databases
-- Making third-party data available to AI models
+- **Config-only integrations** – Ship integrations as YAML/JSON configuration. No Docker images, ports, or container orchestration.
+- **Ready-made templates** – Use templates tailored for **record-based** systems (CRM entities like companies, contacts, deals) or **document-based** systems (documents with metadata and optional vector storage for semantic search).
+- **Standardized auth and mappings** – Define authentication, field mappings, and MCP/OpenAPI exposure once. Credentials are managed by the platform.
+- **Local validation and testing** – Validate and test field mappings locally before deploy. Catch errors early.
 
-**When to use regular applications:**
-- Building custom APIs or services
-- Running background jobs or workers
-- Creating web applications
-- Anything that needs a containerized runtime
+### Record-Based vs Document-Based
+
+External systems can be:
+
+- **Record-based** – CRM-style entities (companies, contacts, deals). Use `entityType: recordStorage` for metadata sync and access rights.
+- **Document-based** – Documents with metadata and optional vector storage for semantic search. Use `entityType: documentStorage` or `vectorStore` for metadata-aware vector storage.
+
+### When to Use
+
+| Use external systems for | Use regular applications for |
+|--------------------------|------------------------------|
+| CRM integration (HubSpot, Salesforce) | Custom APIs or services |
+| SaaS APIs (Slack, Teams, GitHub) | Background jobs or workers |
+| Syncing data from external databases | Web applications |
+| Making third-party data available to AI models | Any containerized runtime |
 
 ```mermaid
 %%{init: {
@@ -68,17 +73,52 @@ Dataplane --> AIModels[AI Models<br/>Query via MCP/OpenAPI]:::base
 
 ---
 
+## Full System with CLI
+
+End-to-end flow to get a complete working external system using only the CLI:
+
+1. **Login**
+   ```bash
+   aifabrix login --controller <url> --method device --environment <env>
+   ```
+
+2. **Create** (choose one)
+   - **Wizard (recommended):** `aifabrix wizard` or `aifabrix wizard <app>`
+   - **Manual:** `aifabrix create <app> --type external`
+   - **Existing system:** `aifabrix download <system-key>`
+
+3. **Configure credentials** – Set credential values via the Miso Controller or Dataplane portal (recommended). For local dev or `aifabrix upload`, use `env.template` with `kv://` references and ensure secrets are in `~/.aifabrix/secrets.local.yaml` or resolved via `aifabrix-secrets` in config.
+
+4. **Validate**
+   ```bash
+   aifabrix validate <app>
+   ```
+
+5. **Deploy**
+   ```bash
+   aifabrix deploy <app>
+   ```
+   Or from the integration folder: `node deploy.js` (runs auth check, validate, deploy, integration tests).
+
+6. **Verify**
+   ```bash
+   aifabrix datasource list
+   aifabrix test-integration <app>
+   ```
+
+For interactive or headless wizard setup, see the [Wizard Guide](wizard.md).
+
+---
+
 ## Quick Start: Create Your First External System
 
-**New to external systems?** Try the interactive wizard:
+**New to external systems?** Use the [Wizard](wizard.md):
 
 ```bash
 aifabrix wizard
 ```
 
-The wizard guides you through creating external systems with AI-powered configuration generation. See the [Wizard Guide](wizard.md) for details.
-
-**Next step:** Use the [Wizard](wizard.md) for interactive setup, or continue with the manual steps below.
+The wizard guides you through creating external systems with AI-powered configuration generation.
 
 **Prefer manual creation?** Follow the steps below to create a HubSpot integration manually.
 
@@ -93,22 +133,29 @@ aifabrix create hubspot --type external
 - System display name? *HubSpot CRM*
 - System description? *HubSpot CRM integration*
 - System type? *OpenAPI / MCP / Custom* → Choose **OpenAPI**
-- Authentication type? *OAuth2 / API Key / Basic Auth* → Choose **OAuth2**
+- Authentication type? *OAuth2 / Azure AD / API Key / Basic Auth / Query Parameter / OpenID Connect / HMAC / None* → Choose **OAuth2**
+- Entity type? *Record storage (CRM) / Document storage / Vector store / Message service / None* → Choose **Record storage (CRM)** for companies, contacts, deals
 - Number of datasources? *(1-10)* → Enter **3** (for companies, contacts, deals)
 
 **What gets created:**
+
+File names follow `<systemKey>-system.{yaml|json}` and `<systemKey>-datasource-<suffix>.{yaml|json}`. The suffix comes from the datasource key (e.g. `hubspot-company` → `hubspot-datasource-company`). Both `.yaml` and `.json` are supported.
+
+- `aifabrix create --type external` generates `entity1`, `entity2`, etc. (e.g. `hubspot-datasource-entity1.yaml`).
+- The wizard can produce semantic names like `company`, `contact`, `deal` for known platforms.
+
 ```yaml
 integration/
   hubspot/
-    application.yaml                    # App configuration
-    hubspot-system.yaml              # External system definition
-    hubspot-datasource-company.yaml  # Companies datasource
-    hubspot-datasource-contact.yaml  # Contacts datasource
-    hubspot-datasource-deal.yaml     # Deals datasource
-    hubspot-deploy.json              # Deployment manifest (generated)
-    rbac.yaml                        # RBAC roles and permissions (optional)
-    env.template                     # Environment variables
-    README.md                        # Documentation
+    application.yaml                        # App configuration
+    hubspot-system.yaml                     # External system definition (or .json)
+    hubspot-datasource-entity1.yaml         # Datasource 1 (or company/contact/deal via wizard)
+    hubspot-datasource-entity2.yaml         # Datasource 2
+    hubspot-datasource-entity3.yaml         # Datasource 3
+    hubspot-deploy.json                     # Deployment manifest (generated)
+    rbac.yaml                               # RBAC roles and permissions (optional)
+    env.template                            # Environment variables
+    README.md                               # Documentation
 ```
 
 All files are in the same folder for easy viewing and management.
@@ -149,15 +196,15 @@ classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
 %% =======================
 Create[aifabrix create hubspot<br/>--type external]:::primary --> Variables[application.yaml<br/>App configuration<br/>externalIntegration block]:::base
 Create --> SystemYaml[hubspot-system.yaml<br/>External system definition]:::base
-Create --> Datasource1[hubspot-datasource-company.yaml<br/>Companies datasource]:::base
-Create --> Datasource2[hubspot-datasource-contact.yaml<br/>Contacts datasource]:::base
-Create --> Datasource3[hubspot-datasource-deal.yaml<br/>Deals datasource]:::base
+Create --> Datasource1[hubspot-datasource-entity1.yaml<br/>Datasource 1]:::base
+Create --> Datasource2[hubspot-datasource-entity2.yaml<br/>Datasource 2]:::base
+Create --> Datasource3[hubspot-datasource-entity3.yaml<br/>Datasource 3]:::base
 Create --> DeployManifest[hubspot-deploy.json<br/>Deployment manifest]:::base
 Create --> EnvTemplate[env.template<br/>Environment variables]:::base
 Create --> Readme[README.md<br/>Documentation]:::base
 
 Variables --> Deploy[Deploy Process]:::base
-SystemJson --> Deploy
+SystemYaml --> Deploy
 Datasource1 --> Deploy
 Datasource2 --> Deploy
 Datasource3 --> Deploy
@@ -165,54 +212,9 @@ Datasource3 --> Deploy
 
 ### Step 2: Configure Authentication
 
-Edit `integration/hubspot/hubspot-system.yaml` to configure OAuth2. Use standard environment variable references. For the API base URL, use the credential-backed variable `BASEURL` (see Standard Environment Variables).
+Edit the system file (e.g. `integration/hubspot/hubspot-system.yaml` or `hubspot-system.json`) to configure authentication. Auth is defined in the system file referenced by `externalIntegration.systems` in `application.yaml`.
 
-```yaml
-key: hubspot
-displayName: HubSpot CRM
-description: HubSpot CRM integration
-type: openapi
-authentication:
-  type: oauth2
-  oauth2:
-    tokenUrl: "{{TOKENURL}}"
-    clientId: "{{CLIENTID}}"
-    clientSecret: "{{CLIENTSECRET}}"
-    scopes:
-      - crm.objects.companies.read
-      - crm.objects.companies.write
-      - crm.objects.contacts.read
-      - crm.objects.contacts.write
-      - crm.objects.deals.read
-      - crm.objects.deals.write
-configuration: []   # Credential-backed variables (CLIENTID, CLIENTSECRET, TOKENURL, BASEURL) come from the selected credential; add only custom variables here if needed
-```
-
-**In auth block, reference standard variables:** `{{CLIENTID}}`, `{{CLIENTSECRET}}`, `{{TOKENURL}}`, and for base URL use `{{BASEURL}}` — values are injected at runtime from the credential. Example auth and base URL usage:
-
-```yaml
-authentication:
-  type: oauth2
-  oauth2:
-    tokenUrl: "{{TOKENURL}}"
-    clientId: "{{CLIENTID}}"
-    clientSecret: "{{CLIENTSECRET}}"
-    scopes: [...]
-# BASEURL is supplied from the selected credential; use {{BASEURL}} in OpenAPI baseUrl or other config as needed
-```
-
-**What this does:**
-- Base URL - Use the standard variable `BASEURL` from the selected credential (see Standard Environment Variables); its value is provided at runtime from credentials, not from the configuration section.
-- `tokenUrl` - OAuth2 token endpoint (uses `{{TOKENURL}}` variable)
-- `clientId` / `clientSecret` - References standard variables `{{CLIENTID}}` and `{{CLIENTSECRET}}`
-- `configuration` - For custom/non-credential variables only; credential-backed variables (CLIENTID, CLIENTSECRET, TOKENURL, BASEURL, etc.) are resolved from the selected credential and do not need to be listed in configuration.
-- `scopes` - Required OAuth2 permissions
-
-**Important:**
-- Standard variables (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`) are managed by the dataplane credentials system—no `portalInput` needed
-- Values are set via the Miso Controller or Dataplane portal interface
-- The platform automatically manages Key Vault storage—you don't need to manually store secrets
-- For custom variables, you can add `portalInput` to configure UI fields (see examples below)
+Authentication uses the **template-based** format from the schema (`authentication.method`, `authentication.variables`, `authentication.security`). See [Authentication](#authentication-methods) for full details.
 
 ### Step 3: Configure Datasources
 
@@ -223,7 +225,7 @@ Each datasource maps an external entity (company, contact, deal) to your datapla
 ```yaml
 key: hubspot-company
 systemKey: hubspot
-entityType: company
+entityType: recordStorage
 resourceType: customer
 fieldMappings:
   dimensions:
@@ -330,14 +332,14 @@ aifabrix deploy hubspot
 
 **What happens:**
 1. `aifabrix validate` - Validates components and generates full deployment manifest
-2. `aifabrix json` - Generates `<systemKey>-deploy.json` deployment manifest (combines system + datasources) for pipeline deployment
-3. `aifabrix deploy <app>` - Resolves app path (integration first, then builder); deploys from the resolved path via Miso Controller pipeline API (no app register needed for external; controller creates and deploys automatically)
+2. `aifabrix json` - Generates `<systemKey>-deploy.json` deployment manifest (combines system + datasources)
+3. `aifabrix deploy <app>` - Resolves app path (integration first, then builder); deploys from the resolved path via the Miso Controller (no app register needed for external; controller creates and deploys automatically)
 4. System is registered in the dataplane
 5. Datasources are published and available for querying
 
 **Note:** The `aifabrix json` command generates `<systemKey>-deploy.json` deployment manifest. Individual component files (`hubspot-system.yaml`, `hubspot-datasource-company.yaml`, etc.) remain in your `integration/` folder and are referenced in `application.yaml`.
 
-> **Note:** When an external integration is deployed and the controller expects a Docker image, the platform can use `internal: true` (in `application.yaml` under `externalIntegration`) so the system deploys on dataplane startup. This applies to template- or platform-maintained integrations; end customers do not add internal integrations by editing YAML—they use the template system. See [Troubleshooting](#troubleshooting).
+> **Note:** The `internal` property is a **top-level property of the external system object** in the system file (e.g. `hubspot-system.yaml` or `hubspot-system.json`). When `internal: true`, the integration is deployed at dataplane startup. This is for template- or platform-maintained integrations; customers typically use the template system rather than editing YAML manually. See [Troubleshooting](#troubleshooting).
 
 ### Step 6: Verify Deployment
 
@@ -363,17 +365,15 @@ aifabrix datasource validate hubspot-company
 
 ### External System Configuration
 
-The external system YAML (`<systemKey>-system.yaml`) defines the connection to the third-party API.
+The external system file (`<systemKey>-system.yaml` or `-system.json`) defines the connection to the third-party API. Auth is read from this system file, not from a separate file.
 
 **Required fields:**
 - `key` - Unique identifier (lowercase, alphanumeric, hyphens)
 - `displayName` - Human-readable name
 - `description` - Description of the external system integration (required)
 - `type` - `openapi`, `mcp`, or `custom`
-- `authentication` - Auth configuration (see below)
-- `configuration` - Array of configurable variables (see Configuration section)
-
-**Base URL:** Use the standard variable **`BASEURL`** from credentials. Its value is provided at runtime from the selected credential (per environment or per datasource). Reference it in your auth block or OpenAPI config as `{{BASEURL}}`. Do not add a separate base URL in the configuration array—credential-backed variables are injected from the selected credential.
+- `authentication` - Template-based auth (see [Authentication Methods](#authentication-methods))
+- `configuration` - Array of configurable variables for custom/non-credential settings (see [Configuration Array](#configuration-array))
 
 **Example structure:**
 ```yaml
@@ -382,8 +382,15 @@ displayName: HubSpot CRM
 description: HubSpot CRM integration
 type: openapi
 enabled: true
-authentication:  # see Authentication section
-configuration:   # see Configuration section; BASEURL comes from credential, not configuration
+authentication:
+  method: oauth2
+  variables:
+    baseUrl: "https://api.hubapi.com"
+    tokenUrl: "https://api.hubapi.com/oauth/v1/token"
+    scope: "crm.objects.companies.read crm.objects.contacts.read crm.objects.deals.read"
+  security:
+    clientId: "kv://hubspot/clientid"
+    clientSecret: "kv://hubspot/clientsecret"
 openapi:
   documentKey: hubspot-v3
   autoDiscoverEntities: false
@@ -395,7 +402,7 @@ tags:
 
 ### Configuration Array
 
-The `configuration` array defines variables that can be set via the Miso Controller or Dataplane portal interface. This allows users to configure authentication and other settings without editing YAML files.
+The `configuration` array defines **custom variables** (non-auth) that can be set via the Miso Controller or Dataplane portal. Auth secrets go in `authentication.security` as `kv://` references—they are not listed in `configuration`.
 
 **Configuration object structure:**
 ```yaml
@@ -408,86 +415,17 @@ portalInput:
   label: Display Label
   placeholder: Placeholder text
   masked: true
-  options:
-    - option1
-    - option2
-  validation:
-    required: true
-    minLength: 1
-    maxLength: 100
-    pattern: "^regex$"
+  options: [option1, option2]
+  validation: { required, minLength, maxLength, pattern }
 ```
 
-**Fields:**
-- `name` - Variable name (must match `{{VARIABLENAME}}` in authentication block)
-- `value` - Key Vault key name (for `location: "keyvault"`) or literal value (for `location: "variable"`)
-- `location` - `"keyvault"` (stored securely) or `"variable"` (literal value)
-- `required` - Whether the value must be provided
-- `portalInput` - **Optional** - UI configuration for custom variables (not needed for standard variables)
-  - `field` - Input type: `"password"`, `"text"`, `"textarea"`, `"select"`, `"json"`
-  - `label` - Display label in UI
-  - `placeholder` - Placeholder text
-  - `masked` - Whether to mask the input (for passwords/secrets)
-  - `options` - Array of options for `select` field type
-  - `validation` - Validation rules (required, minLength, maxLength, pattern, etc.)
+**Authentication vs configuration:** `authentication` uses `method`, `variables` (non-secret config), and `security` (kv:// refs only). Values in `security` are stored in Key Vault and managed by the platform. Custom integration settings (e.g. API version, page size) go in `configuration` with optional `portalInput` for UI fields.
 
-**URLs per environment:** URL variables are not set dynamically per environment in the integration config. Use a single key (e.g. `BASEURL`) from credentials; the Miso Controller promotes different values per environment (dev/tst/pro) when the credential or environment is selected.
-
-**Important distinctions:**
-- **Credential-backed standard variables** (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`, `APIKEY`, `USERNAME`, `PASSWORD`, `BASEURL`) are **not** listed in `configuration`. They are supplied from the selected credential at runtime; reference them in auth blocks (e.g. `{{CLIENTID}}`, `{{BASEURL}}`). Redirect URI for OAuth2 is managed by the dataplane and does not need to be configured in the integration.
-- **Custom variables** (any other variable name) go in the `configuration` array and can use `portalInput` to configure UI fields in the portal interface.
-
-**How it works:**
-1. Credential-backed variables are referenced in `authentication` (e.g. `{{CLIENTID}}`, `{{BASEURL}}`) and resolved from the selected credential at runtime—they are not defined in `configuration`.
-2. Custom variables are defined in `configuration` and can be referenced in `authentication` using `{{VARIABLENAME}}`.
-3. Custom variables with `portalInput` get UI fields in the portal interface.
-4. Users set credential values via the Miso Controller or Dataplane portal when configuring the credential; custom variable values are set via the portal or controller.
-5. Values are automatically stored in Key Vault where applicable.
-6. Values are resolved at deployment/runtime.
-
-### Standard Environment Variables
-
-External systems use standard variable names that are **supplied at runtime from the selected credential**. These variables are **not** listed in the `configuration` array—they are defined in credentials; the credential is selected per environment (and per datasource if needed). Their values are injected at runtime.
-
-<!-- markdownlint-disable MD060 -->
-| Variable Name      | Description              | Used For              | From credential |
-|-------------------|--------------------------|-----------------------|-----------------|
-| `{{CLIENTID}}`     | OAuth2 Client ID         | OAuth2 authentication | Yes (mandatory where applicable) |
-| `{{CLIENTSECRET}}` | OAuth2 Client Secret     | OAuth2 authentication | Yes (mandatory where applicable) |
-| `{{TOKENURL}}`     | OAuth2 Token URL         | OAuth2 token endpoint | Yes (mandatory where applicable) |
-| `{{APIKEY}}`       | API Key                  | API Key authentication| Yes (mandatory where applicable) |
-| `{{USERNAME}}`     | Basic Auth Username      | Basic authentication | Yes (mandatory where applicable) |
-| `{{PASSWORD}}`     | Basic Auth Password      | Basic authentication | Yes (mandatory where applicable) |
-| `{{BASEURL}}`     | API base URL        | Base URL for API calls | Yes (mandatory where applicable) |
-<!-- markdownlint-enable MD060 -->
-
-OAuth2 redirect URI is managed by the dataplane credentials system and is not configured as a variable in the integration. **REDIRECT_URI is auto-generated; you do not need to set it.**
-
-**Important:**
-- Standard variables (including BASEURL) come from the selected credential—do **not** add them to the `configuration` array
-- Reference them in auth blocks (e.g. `{{CLIENTID}}`, `{{BASEURL}}`); values are injected at runtime
-- Values are set via the Miso Controller or Dataplane portal when configuring the credential
-- The platform stores credential values in Key Vault; no `portalInput` is needed for standard variables
-
-**Environment promotions:** Configuration parameters support **environment promotions**: you can keep different values for different environments (static or `kv/key` Key Vault values). The platform manages enterprise promotions and overridable paths. **Read more:** [Deployment key](configuration/deployment-key.md).
-
-**Example - Auth block only (credential variables not in configuration):**
-```yaml
-authentication:
-  type: oauth2
-  oauth2:
-    tokenUrl: "{{TOKENURL}}"
-    clientId: "{{CLIENTID}}"
-    clientSecret: "{{CLIENTSECRET}}"
-# CLIENTID, CLIENTSECRET, TOKENURL, BASEURL are from the selected credential; do not add them to configuration
-configuration: []   # Add only custom (non-credential) variables here
-```
+**Environment promotions:** Different values per environment (dev/tst/pro) are managed by the controller. See [Deployment key](configuration/deployment-key.md).
 
 ### Custom Variables with Portal Input
 
-For **custom variables** (non-standard), you can use `portalInput` to configure UI fields in the portal interface. Use any variable name like `{{MYVAR}}` and configure it with `portalInput`.
-
-**Example - Custom variables with portalInput:**
+For **custom variables** (non-auth), use `portalInput` to configure UI fields in the portal:
 ```yaml
 configuration:
   - name: HUBSPOT_API_VERSION
@@ -538,93 +476,69 @@ configuration:
 
 ### Authentication Methods
 
-#### OAuth2
+Authentication uses the **template-based** format: `method`, `variables` (non-secret config), and `security` (secret-bearing keys as `kv://` references only). When `method` is not `none`, `variables` must include `baseUrl`. On deploy, a credential is created with key `authentication.credentialKey` or `<systemKey>-cred`.
 
-Best for production integrations with user consent flows.
+**Supported methods:** `oauth2`, `apikey`, `basic`, `aad`, `none`, `queryParam`, `oidc`, `hmac`
+
+#### OAuth2
 
 ```yaml
 authentication:
-  type: oauth2
-  oauth2:
-    tokenUrl: "{{TOKENURL}}"
-    clientId: "{{CLIENTID}}"
-    clientSecret: "{{CLIENTSECRET}}"
-    scopes:
-      - read
-      - write
-# CLIENTID, CLIENTSECRET, TOKENURL come from the selected credential; do not add them to configuration
-configuration: []
+  method: oauth2
+  variables:
+    baseUrl: "https://api.example.com"
+    tokenUrl: "https://api.example.com/oauth/token"
+    scope: "read write"
+  security:
+    clientId: "kv://myapp/clientid"
+    clientSecret: "kv://myapp/clientsecret"
 ```
 
-**Note:** Standard variables (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`) are supplied from the selected credential at runtime—they are not listed in `configuration`.
-
-**Setup steps:**
-1. Register OAuth2 app in external system (HubSpot, Salesforce, etc.)
-2. Get `clientId` and `clientSecret`
-3. Set values via Miso Controller or Dataplane portal interface
-4. Redirect URI is managed by the dataplane—configure the dataplane callback URL in the external system's OAuth2 app settings
-5. Add required scopes to `scopes` array
+Register OAuth2 app in the external system, create Key Vault entries for `clientId` and `clientSecret`, and configure the dataplane callback URL. Redirect URI is managed by the dataplane.
 
 #### API Key
 
-Simpler for testing or private APIs.
-
 ```yaml
 authentication:
-  type: apikey
-  apikey:
-    headerName: X-API-Key
-    key: "{{APIKEY}}"
-# APIKEY comes from the selected credential; do not add it to configuration
-configuration: []
+  method: apikey
+  variables:
+    baseUrl: "https://api.example.com"
+    headerName: "X-API-Key"
+  security:
+    apiKey: "kv://myapp/apikey"
 ```
-
-**Note:** Standard variable `APIKEY` is supplied from the selected credential at runtime—it is not listed in `configuration`.
-
-**Setup steps:**
-1. Generate API key in external system
-2. Set value via Miso Controller or Dataplane portal interface
-3. Configure header name (usually `X-API-Key` or `Authorization`)
 
 #### Basic Auth
 
-For simple username/password authentication.
-
 ```yaml
 authentication:
-  type: basic
-  basic:
-    username: "{{USERNAME}}"
-    password: "{{PASSWORD}}"
-# USERNAME, PASSWORD come from the selected credential; do not add them to configuration
-configuration: []
+  method: basic
+  variables:
+    baseUrl: "https://api.example.com"
+  security:
+    username: "kv://myapp/username"
+    password: "kv://myapp/password"
 ```
-
-**Note:** Standard variables (`USERNAME`, `PASSWORD`) are supplied from the selected credential at runtime—they are not listed in `configuration`.
 
 #### Azure AD (AAD)
 
-For Azure Active Directory authentication.
-
 ```yaml
 authentication:
-  type: aad
-  aad:
-    tenantId: "{{TENANTID}}"
-    clientId: "{{CLIENTID}}"
-    clientSecret: "{{CLIENTSECRET}}"
-    scope: https://graph.microsoft.com/.default
-# TENANTID, CLIENTID, CLIENTSECRET come from the selected credential; do not add them to configuration
-configuration: []
+  method: aad
+  variables:
+    baseUrl: "https://graph.microsoft.com"
+    tenantId: "your-tenant-id"
+    scope: "https://graph.microsoft.com/.default"
+  security:
+    clientId: "kv://myapp/clientid"
+    clientSecret: "kv://myapp/clientsecret"
 ```
 
-**Note:** Standard variables (`CLIENTID`, `CLIENTSECRET`, and for AAD `TENANTID`) are supplied from the selected credential at runtime—they are not listed in `configuration`.
+Register Azure AD app, create Key Vault entries, and configure API permissions.
 
-**Setup steps:**
-1. Register Azure AD application in Azure Portal
-2. Get `tenantId`, `clientId`, and `clientSecret`
-3. Set values via Miso Controller or Dataplane portal interface
-4. Configure required API permissions and scopes
+**Credential update policy:** Credential *structure* (type, fields) cannot be changed via the Credential API. Structure changes must go through upload/publish—update the authentication template in your system config and run `aifabrix upload`. Only secret *values* can be updated via the API. Updates are locked when the credential is attached to an external system. See the dataplane knowledgebase for the full policy.
+
+**Shared credentials:** Multiple systems can reference the same credential by key. When publishing with `writeOnce: false`, structure updates affect all systems using that credential. Use `writeOnce: true` when sharing to avoid accidental overwrite.
 
 ### RBAC Support (Roles and Permissions)
 
@@ -812,6 +726,18 @@ documentStorage:
 
 In this example, `entityType="documentStorage"` causes `documentStorage` to validate against `type/document-storage.json`.
 
+#### entityType and Datasource Generation
+
+The `entityType` field drives how datasource files are generated. When you create or add datasources (via `aifabrix create` or the wizard), generators produce YAML/JSON tailored to the chosen `entityType`:
+
+- **recordStorage** – Record-based entities (companies, contacts, deals). Generated content includes dimensions, attributes, and OpenAPI operation stubs.
+- **documentStorage** – Document entities with optional vector storage. Generated content includes documentStorage blocks and metadata schema stubs.
+- **vectorStore** – External vector storage. Generated content includes vector-specific configuration stubs.
+- **messageService** – Message services (Slack, Teams). Generated content includes message-related blocks.
+- **none** – Minimal structure; uses external data directly.
+
+Generated datasource files may include **commented-out optional sections** (e.g. `documentStorage`, `sync`, `capabilities`). You can uncomment the sections you need or delete the rest. This keeps generated files ready-made while letting you adapt them quickly.
+
 ### Field Mappings
 
 Field mappings transform external API data into normalized schemas.
@@ -907,7 +833,7 @@ Test payloads allow you to test field mappings and metadata schemas locally and 
 ```yaml
 key: hubspot-company
 systemKey: hubspot
-entityType: company
+entityType: recordStorage
 fieldMappings:
   dimensions:
     country: metadata.country
@@ -938,7 +864,7 @@ testPayload:
 
 **Using Test Payloads:**
 - **Unit tests** (`aifabrix test`): Validates field mappings against `payloadTemplate` and compares with `expectedResult` if provided
-- **Integration tests** (`aifabrix test-integration`): Sends `payloadTemplate` to dataplane pipeline test API for real validation
+- **Integration tests** (`aifabrix test-integration`): Sends `payloadTemplate` to the dataplane for validation
 
 **Benefits:**
 - Test field mappings locally without API calls
@@ -1103,20 +1029,15 @@ description: HubSpot CRM integration with OpenAPI support
 type: openapi
 enabled: true
 authentication:
-  type: oauth2
-  oauth2:
-    tokenUrl: "{{TOKENURL}}"
-    clientId: "{{CLIENTID}}"
-    clientSecret: "{{CLIENTSECRET}}"
-    scopes:
-      - crm.objects.companies.read
-      - crm.objects.companies.write
-      - crm.objects.contacts.read
-      - crm.objects.contacts.write
-      - crm.objects.deals.read
-      - crm.objects.deals.write
+  method: oauth2
+  variables:
+    baseUrl: "https://api.hubapi.com"
+    tokenUrl: "https://api.hubapi.com/oauth/v1/token"
+    scope: "crm.objects.companies.read crm.objects.contacts.read crm.objects.deals.read"
+  security:
+    clientId: "kv://hubspot/clientid"
+    clientSecret: "kv://hubspot/clientsecret"
 configuration:
-  # CLIENTID, CLIENTSECRET, TOKENURL, BASEURL come from the selected credential—do not list them here
   - name: HUBSPOT_API_VERSION
     value: v3
     location: variable
@@ -1155,9 +1076,8 @@ tags:
 ```
 
 **Key points:**
-- **Credential variables** (`CLIENTID`, `CLIENTSECRET`, `TOKENURL`, `BASEURL`) are not in `configuration`—they are supplied from the selected credential at runtime
-- **Custom variables** (`HUBSPOT_API_VERSION`, `MAX_PAGE_SIZE`) are in `configuration` and use `portalInput` to configure UI fields in the portal interface
-- Credential values are set via the dataplane credentials interface; custom variable values are set via the portal
+- Auth secrets (`clientId`, `clientSecret`) are in `authentication.security` as `kv://` references
+- Custom variables (`HUBSPOT_API_VERSION`, `MAX_PAGE_SIZE`) are in `configuration` with `portalInput` for portal UI
 
 ### hubspot-datasource-company.yaml
 
@@ -1169,20 +1089,22 @@ See the complete example in `integration/hubspot/hubspot-datasource-company.yaml
 
 ### env.template
 
+env.template uses the **KV_* convention**: `KV_<APPKEY>_<VAR>=value` (e.g. `KV_HUBSPOT_CLIENTID=`, `KV_HUBSPOT_CLIENTSECRET=`). Mapping: `KV_` + segments (underscores) → `kv://segment1/segment2/...` (lowercase). Example: `KV_HUBSPOT_CLIENTID` → `kv://hubspot/clientid`. The manifest references `kv://hubspot/clientid` (path style).
+
 ```bash
 # HubSpot OAuth2 Configuration
-# Values are set via Miso Controller or Dataplane portal interface
-# Key Vault storage is managed automatically by the platform
+# Use KV_* for credential push (aifabrix credential push)
 
-CLIENTID=kv://hubspot-clientidKeyVault
-CLIENTSECRET=kv://hubspot-clientsecretKeyVault
-TOKENURL=https://api.hubapi.com/oauth/v1/token
+KV_HUBSPOT_CLIENTID=
+KV_HUBSPOT_CLIENTSECRET=
+TOKEN_URL=https://api.hubapi.com/oauth/v1/token
 ```
 
-**Setup:**
-1. Credential values (CLIENTID, CLIENTSECRET, TOKENURL, BASEURL, etc.) are set via the Miso Controller or Dataplane portal when configuring the credential
-2. Key Vault storage is managed automatically by the platform
-3. Values are resolved at runtime from the selected credential
+**Credential flow:**
+1. Run `aifabrix credential env hubspot` to prompt for values and write `.env`
+2. Run `aifabrix credential push hubspot` or `aifabrix upload hubspot` to push secrets to the dataplane
+
+If env.template keys or values drift from the system file (e.g. wrong variable names or non–path-style kv refs), run `aifabrix repair <app>` to align env.template with the system. Repair also aligns datasource files (dimensions and metadataSchema with attributes as source of truth).
 
 ---
 
@@ -1194,23 +1116,35 @@ The AI Fabrix Builder supports a complete development workflow for external syst
 
 1. **Download** - Get existing system from dataplane
 2. **Unit Test** - Validate locally without API calls
-3. **Integration Test** - Test via dataplane pipeline API
+3. **Integration Test** - Test via the dataplane
 4. **Deploy** - Deploy using application-level workflow
 
 ### 1. Download External System from Dataplane
 
-Download an existing external system from the dataplane to your local development environment:
+Download an existing external system from the dataplane to your local development environment. **Authentication:** Download requires a **Bearer token** (use `aifabrix login` with device or interactive flow); client credentials alone are not sufficient.
 
 ```bash
-# Download external system
+# Download external system (YAML components; default)
 aifabrix download hubspot
+
+# Download and convert component files to JSON in one step
+aifabrix download hubspot --format json
+
+# See what would be downloaded without writing files
+aifabrix download hubspot --dry-run
+
+# Overwrite existing README.md without prompting (e.g. when re-downloading)
+aifabrix download hubspot --force
 ```
 
+Use `--format json` to run download → split → convert in one command. When `format` is set in `~/.aifabrix/config.yaml` (via `aifabrix dev set-format`), download uses that default when `--format` is not passed.
+
 **What happens:**
-- Downloads system configuration from dataplane API
-- Downloads all datasource configurations
-- Creates `integration/<system-key>/` folder structure
-- Generates all development files (application.yaml, YAML files, env.template, README.md)
+- Fetches the **full manifest** from the dataplane (system + datasources + version)
+- Validates the response, builds deploy JSON (env.template gets `KV_*` entries from `authentication.security`)
+- Writes `<system-key>-deploy.json` and **splits** it into component files (application.yaml, system YAML, datasource YAMLs, env.template, README.md)
+- If the folder already exists: **env.template** is merged with the existing file; **README.md** is only replaced after a yes/no prompt unless you use `--force`
+- Ensures placeholder secrets from env.template; if `--format json`, converts component files to JSON
 
 **File structure created:**
 ```yaml
@@ -1260,7 +1194,7 @@ aifabrix test hubspot --verbose
 
 ### 4. Integration Test (Via Dataplane)
 
-Test your configuration against the real dataplane pipeline API:
+Test your configuration against the dataplane:
 
 ```bash
 # Test entire system
@@ -1274,10 +1208,10 @@ aifabrix test-integration hubspot --payload ./test-payload.json
 ```
 
 **What happens:**
-- Calls dataplane pipeline test API
-- Tests field mappings with real API responses
+- Calls the dataplane to run the test
+- Tests field mappings with the supplied payload
 - Validates metadata schemas
-- Tests endpoint connectivity
+- Tests connectivity
 - Returns detailed validation results
 
 ### 5. Deploy to Controller
@@ -1288,10 +1222,10 @@ Deploy using the application-level workflow:
 aifabrix deploy hubspot
 ```
 
-**What happens:** The CLI resolves the app path (integration first, then builder) and sends the deployment to the **Miso Controller** (pipeline API). When the app is in `integration/<app>/`, no app register is needed. The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates deployment.
+**What happens:** The CLI resolves the app path (integration first, then builder) and sends the deployment to the **Miso Controller**. When the app is in `integration/<app>/`, no app register is needed. The controller then deploys to the dataplane (or target environment). The controller orchestrates deployment; the CLI does not deploy directly to the dataplane for app-level deploy.
 
 1. Generates `<systemKey>-deploy.json` (combines one system + all datasources)
-2. Sends to controller via pipeline API (validate then deploy)
+2. Sends to controller (validate then deploy)
 3. Controller deploys to dataplane; validates and publishes
 4. System and datasources are deployed together
 
@@ -1338,21 +1272,21 @@ aifabrix deploy hubspot
 **What happens:** The CLI resolves the app path (integration first, then builder) and sends the deployment to the **Miso Controller**. The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates it.
 
 1. Generates controller manifest (if not already generated) via `aifabrix json` internally
-2. Uses the same controller pipeline as regular apps: Validate then Deploy (`POST /api/v1/pipeline/{envKey}/validate`, `POST /api/v1/pipeline/{envKey}/deploy`)
+2. Uses the same flow as regular apps: validate then deploy
 3. Controller deploys external system and datasources to the dataplane
 4. Field mappings are compiled; OpenAPI operations are registered; system is ready for querying
 
-**Controller pipeline benefits:** Same workflow as application deployment; validation before deploy; optional polling for deployment status.
+**Benefits:** Same workflow as application deployment; validation before deploy; optional polling for deployment status.
 
 **When do I get MCP/OpenAPI docs?** After publish (via deploy or upload), MCP and OpenAPI docs are served by the dataplane at standard URLs. See [Controller and Dataplane: What, Why, When](deploying.md#controller-and-dataplane-what-why-when) for when they become available and how to access them.
 
-### 4a. Upload to dataplane (test without promoting)
+### 4a. Upload to dataplane (development)
 
-Use **`aifabrix upload <system-key>`** when you want to publish the full manifest (system + all datasources + RBAC) to the dataplane **without** going through the controller pipeline deploy. The command uses the dataplane pipeline **upload → validate → publish** flow; the controller is only used to resolve the dataplane URL and authentication.
+Use **`aifabrix upload <system-key>`** for fast development iteration. The command validates and publishes config (system + datasources) to the dataplane and **registers RBAC with the controller**. It does **not** trigger controller-driven container/restart deployment. Suited for testing (e.g. with `aifabrix test-integration`).
 
 **When to use upload vs deploy:**
-- **`aifabrix upload <system-key>`** – Test the full system on the dataplane without promoting; or when you have only dataplane access or limited controller permissions. The dataplane does **not** deploy RBAC to the controller—RBAC stays in the dataplane. Promote to the full platform later via the web interface or **`aifabrix deploy <app>`**.
-- **`aifabrix deploy <app>`** – Full deployment via the controller (validate + deploy); use when you want the system (and RBAC) promoted to the platform.
+- **`aifabrix upload <system-key>`** – Development: quick iteration, dataplane publish, RBAC registration with controller. No controller validate/deploy; no manifest sent for container deployment. Use when developing or when you have limited controller permissions (e.g. no `applications:deploy`). Promote to full platform later via **`aifabrix deploy <app>`** or the web interface.
+- **`aifabrix deploy <app>`** – Promotion: Dataplane builds the manifest and sends it to the controller; controller performs validate + deploy (containers, dataplane restart, etc.). Full versioning and manifest in miso-controller. Enables dev → tst → pro promotion and visibility in `af app list`.
 
 **When do I get MCP/OpenAPI docs?** After publish, the dataplane serves MCP and OpenAPI docs at standard URLs. See [Controller and Dataplane: What, Why, When](deploying.md#controller-and-dataplane-what-why-when) for details and the deploy-vs-upload diagram.
 
@@ -1364,7 +1298,7 @@ You can deploy and test individual datasources:
 
 ```bash
 # Deploy a single datasource
-aifabrix datasource deploy hubspot hubspot-datasource-company.yaml
+aifabrix datasource upload hubspot hubspot-datasource-company.yaml
 
 # This is useful for:
 # - Testing individual datasources
@@ -1405,7 +1339,7 @@ aifabrix download hubspot
 # 3. Run unit tests (local validation, no API calls)
 aifabrix test hubspot
 
-# 4. Run integration tests (via dataplane pipeline API)
+# 4. Run integration tests (via the dataplane)
 aifabrix test-integration hubspot
 
 # 5. Deploy back to dataplane (via application-level workflow)
@@ -1511,7 +1445,7 @@ status:
 → Review deployment logs in controller UI
 
 **"Application deployment requires image"**
-→ External systems do not use Docker images. Use `internal: true` in `application.yaml` (under `externalIntegration`) so the system deploys on dataplane startup; then restart the dataplane.
+→ External systems do not use Docker images. Add `internal: true` as a top-level property in the system file (e.g. `hubspot-system.yaml`) so the system deploys on dataplane startup; then restart the dataplane.
 
 **"Dataplane URL not found in application configuration"**
 → External systems do not have their own dataplane URL. Dataplane URL is discovered from the controller; ensure the controller is set via `aifabrix login` or `aifabrix auth config --set-controller`.
@@ -1524,13 +1458,16 @@ status:
 → Verify datasource YAML files are listed in `dataSources`
 → Check datasource is enabled: `"enabled": true`
 
+**"application.yaml out of sync with files"** or **"External datasource file not found"**
+→ Run `aifabrix repair <app>` to align `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files on disk, and to repair env.template (KV_* names and path-style `kv://` values) to match the system file. Repair also fixes datasource manifest alignment (dimensions, metadataSchema). Optional flags `--rbac`, `--expose`, `--sync`, and `--test` can add RBAC permissions and default roles, set exposed attributes, add a sync section, or generate test payloads.
+
 **"OpenAPI operations not working"**
 → Verify `documentKey` matches registered OpenAPI spec
 → Check `BASEURL` from the selected credential or OpenAPI base URL matches external API
 → Ensure `operationId` matches OpenAPI spec
 → Verify authentication is configured correctly
 
-**Datasource deploy:** Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is discovered from the controller. Example: `aifabrix datasource deploy hubspot integration/hubspot/hubspot-datasource-company.yaml`.
+**Datasource upload:** Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is discovered from the controller. Example: `aifabrix datasource upload hubspot integration/hubspot/hubspot-datasource-company.yaml`.
 
 **Validate individual files:** If `aifabrix validate <app>` fails, validate files directly: `aifabrix validate integration/hubspot/hubspot-system.yaml`, `aifabrix validate integration/hubspot/hubspot-datasource-company.yaml`.
 
@@ -1538,7 +1475,8 @@ status:
 
 ## Next Steps
 
-- [Configuration: External integration](configuration/external-integration.md) - Detailed config options
+- [Wizard Guide](wizard.md) - Interactive or headless wizard setup
+- [Configuration: External integration](configuration/application-yaml.md#external-integration-and-external-system) - Detailed config options
 - [CLI Reference](commands/external-integration.md) - All commands for external systems
 - [Deploying](deploying.md) - Deployment flow and options
 - [Field Mappings Guide](configuration/README.md) - Configuration index and variables
@@ -1550,14 +1488,13 @@ status:
 **Download external system:**
 ```bash
 aifabrix download <system-key>
+# Options: --format json|yaml, --dry-run, --force (overwrite README.md)
 ```
 
 **Delete external system:**
 ```bash
 aifabrix delete <system-key>
-
-# Skip confirmation prompt
-aifabrix delete <system-key> --yes
+# Options: --type <type> (default: external), --yes or --force (skip confirmation)
 ```
 
 **Create external system:**
@@ -1570,6 +1507,7 @@ aifabrix create hubspot --type external \
   --description "HubSpot CRM integration" \
   --system-type openapi \
   --auth-type oauth2 \
+  --entity-type recordStorage \
   --datasources 2
 ```
 
@@ -1586,7 +1524,7 @@ aifabrix test <app> [--datasource <key>] [--verbose]
 
 **Integration test (via dataplane):**
 ```bash
-aifabrix test-integration <app> [--datasource <key>] [--payload <file>]
+aifabrix test-integration <app> [--datasource <key>] [--payload <file>] [-e|--env <env>] [-v|--verbose] [--debug] [--timeout <ms>]
 ```
 
 **Generate deployment JSON:**
@@ -1603,7 +1541,7 @@ Path is resolved automatically: `integration/<app>/` first, then `builder/<app>/
 
 **Deploy individual datasource:** (uses controller and environment from config; dataplane is discovered from the controller)
 ```bash
-aifabrix datasource deploy <app-key> <datasource-file>
+aifabrix datasource upload <app-key> <datasource-file>
 ```
 
 **List datasources:**
@@ -1615,5 +1553,7 @@ aifabrix datasource list
 ```bash
 aifabrix datasource validate <datasource-key>
 ```
+
+For full option details, examples, and troubleshooting, see [External Integration Commands](commands/external-integration.md) and [External Integration Testing](commands/external-integration-testing.md).
 
 

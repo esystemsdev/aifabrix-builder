@@ -73,7 +73,8 @@ describe('External System Test Execution Module', () => {
         payloadTemplate,
         dataplaneUrl,
         authConfig,
-        timeout: 30000
+        timeout: 30000,
+        includeDebug: false
       });
       expect(result).toEqual(mockResult);
     });
@@ -136,7 +137,8 @@ describe('External System Test Execution Module', () => {
         payloadTemplate,
         dataplaneUrl,
         authConfig,
-        timeout: 30000
+        timeout: 30000,
+        includeDebug: false
       });
     });
 
@@ -170,7 +172,8 @@ describe('External System Test Execution Module', () => {
         payloadTemplate,
         dataplaneUrl,
         authConfig,
-        timeout: 60000
+        timeout: 60000,
+        includeDebug: false
       });
     });
 
@@ -204,7 +207,8 @@ describe('External System Test Execution Module', () => {
         payloadTemplate,
         dataplaneUrl,
         authConfig,
-        timeout: 45000
+        timeout: 45000,
+        includeDebug: false
       });
     });
   });
@@ -255,7 +259,8 @@ describe('External System Test Execution Module', () => {
         payloadTemplate,
         dataplaneUrl,
         authConfig,
-        timeout: 30000
+        timeout: 30000,
+        includeDebug: false
       });
       expect(result).toEqual(mockResult);
     });
@@ -449,7 +454,8 @@ describe('External System Test Execution Module', () => {
         payloadTemplate,
         dataplaneUrl,
         authConfig,
-        timeout: 60000
+        timeout: 60000,
+        includeDebug: false
       });
     });
   });

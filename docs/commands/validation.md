@@ -81,6 +81,8 @@ The validation system uses four core JSON schemas:
 - `key` must be unique and follow naming conventions
 - `type` must specify integration type
 - `authentication` configuration is required
+- For oauth2/aad: `grantType` (if present) must be `client_credentials` or `authorization_code`; when `authorization_code` or omitted, `authorizationUrl` is required
+- `rateLimit` (if present) must specify either `requestsPerWindow` + `windowSeconds` or `requestsPerSecond` + `burstSize`
 - OpenAPI/MCP bindings must be properly configured
 
 ### 3. External Datasource Schema
@@ -294,11 +296,11 @@ For more information about ABAC dimensions, see [External Systems Guide](../exte
 ---
 
 <a id="aifabrix-validate-apporfile"></a>
-## aifabrix validate <appOrFile>
+## aifabrix validate [appOrFile]
 
-Validate application or external integration file.
+Validate application or external integration file, or all apps under `integration/` or `builder/` in one run.
 
-**What:** Validates application configurations or external integration files against their JSON schemas. Supports both app name validation (including externalIntegration block and rbac.yaml for external systems) and direct file validation.
+**What:** Validates application configurations or external integration files against their JSON schemas. Supports both app name validation (including externalIntegration block and rbac.yaml for external systems) and direct file validation. With **`--integration`** or **`--builder`**, validates every app under that directory in a single run (batch mode).
 
 **When:** Before deployment, when troubleshooting configuration issues, validating external integration schemas, or checking configuration changes.
 
@@ -308,7 +310,7 @@ Validate application or external integration file.
 - [aifabrix test-integration](external-integration.md#aifabrix-test-integration-app) - Integration tests with online validation including ABAC dimensions
 - [aifabrix datasource validate](external-integration.md#aifabrix-datasource-validate-file) - Validate datasource files directly
 
-For test commands and test payload behavior in detail, see [External Integration Testing](external-integration-testing.md).
+For a full list of validation rules applied when validating an external system by name, see [Validation rules (configuration)](../configuration/validation-rules.md). For test commands and test payload behavior in detail, see [External Integration Testing](external-integration-testing.md).
 
 **Usage:**
 ```bash
@@ -323,12 +325,28 @@ aifabrix validate ./schemas/hubspot-datasource-company.yaml
 
 # Validate external system with complete validation (all steps; path resolved automatically)
 aifabrix validate my-hubspot
+
+# Batch: validate all applications under integration/
+aifabrix validate --integration
+
+# Batch: validate all applications under builder/
+aifabrix validate --builder
+
+# Batch: validate both integration and builder apps in one run
+aifabrix validate --integration --builder
 ```
 
 **Arguments:**
-- `<appOrFile>` - Application name or path to configuration file
+- `[appOrFile]` - Application name or path to configuration file. Optional when **`--integration`** or **`--builder`** is used; if provided with those flags it is ignored.
 
-**App path resolution:** The command resolves the app by checking **`integration/<app>`** first, then **`builder/<app>`**. If neither exists, it errors. There is no option to override this order. When the resolved app is in `integration/`, full external system validation (all steps) runs automatically.
+**Options:**
+- **`--integration`** — Validate every application under `integration/` in one run (each as external system). When used, `appOrFile` is optional.
+- **`--builder`** — Validate every application under `builder/` in one run. When used, `appOrFile` is optional.
+- **`--format <format>`** — Output format: `json` or `default` (human-readable). For batch mode, `json` prints the full batch result (per-app results and summary).
+
+**Batch mode:** When **`--integration`** or **`--builder`** (or both) is used, the command validates all apps under the corresponding directory(ies). Output shows per-app results and an overall summary (e.g. “N passed, M failed”). Exit code is **1** if any app fails; otherwise **0**. When using these options, `appOrFile` is not required and is ignored if provided.
+
+**App path resolution (single-app mode):** The command resolves the app by checking **`integration/<app>`** first, then **`builder/<app>`**. If neither exists, it errors. There is no option to override this order. When the resolved app is in `integration/`, full external system validation (all steps) runs automatically.
 
 **Process:**
 
@@ -441,6 +459,7 @@ Validation errors are formatted to be clear and actionable:
 
 **Issues:**
 - **"App name or file path is required"** → Provide application name or file path
+- **"External datasource file not found"** or wrong extension → Run `aifabrix repair <app>` to sync config with files on disk. Repair also fixes datasource manifest alignment (dimensions, metadataSchema) and can add RBAC, expose, sync, or test payload with the optional flags
 - **"File not found"** → Check file path is correct
 - **"Invalid JSON syntax"** → Fix JSON syntax errors in file
 - **"externalIntegration block not found"** → Add externalIntegration block to application.yaml or validate file directly

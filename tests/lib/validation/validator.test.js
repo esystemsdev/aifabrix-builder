@@ -46,6 +46,10 @@ jest.mock('../../../lib/utils/dev-config', () => ({
 jest.mock('../../../lib/utils/secrets-path', () => ({
   getActualSecretsPath: jest.fn()
 }));
+jest.mock('../../../lib/generator/external', () => ({
+  loadExternalIntegrationConfig: jest.fn(),
+  loadSystemFile: jest.fn()
+}));
 jest.mock('../../../lib/utils/paths', () => {
   const pathMod = require('path');
   const actual = jest.requireActual('../../../lib/utils/paths');
@@ -379,6 +383,18 @@ frontDoorRouting:
       expect(result.valid).toBe(true);
     });
 
+    it('should accept path-style kv:// references (e.g. kv://hubspot/clientId)', async() => {
+      const templateWithPathKv = 'HUBSPOT_CLIENT_ID=kv://hubspot/clientId\nHUBSPOT_CLIENT_SECRET=kv://hubspot/clientSecret\nPORT=3000';
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(templateWithPathKv);
+
+      const result = await validator.validateEnvTemplate(appName);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
     it('should allow empty values in environment variables', async() => {
       const templateWithEmptyValue = 'EMPTY_VAR=\nPORT=3000\nKEYCLOAK_PUBLIC_KEY=\n# Comment line';
 
@@ -403,10 +419,215 @@ frontDoorRouting:
       expect(result.errors).toEqual([]);
     });
 
+    it('should skip comment lines containing kv:// text (e.g. doc comments)', async() => {
+      const templateWithDocComment = '# Use kv:// references for secrets (resolved from .aifabrix/secrets.yaml)\nPORT=3000\nSECRET=kv://myapp/secret';
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(templateWithDocComment);
+
+      const result = await validator.validateEnvTemplate(appName);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
     it('should throw error if env.template not found', async() => {
       fs.existsSync.mockReturnValue(false);
 
       await expect(validator.validateEnvTemplate(appName)).rejects.toThrow(`env.template not found: ${templatePath}`);
+    });
+
+    describe('auth kv coverage (external integrations)', () => {
+      const externalAppPath = path.join(process.cwd(), 'integration', 'hubspot');
+      const pathsUtil = require('../../../lib/utils/paths');
+      const generatorExternal = require('../../../lib/generator/external');
+
+      it('should pass when env.template has all required auth kv paths', async() => {
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockResolvedValue({
+          schemaBasePath: './',
+          systemFiles: ['hubspot-system.json']
+        });
+        generatorExternal.loadSystemFile.mockResolvedValue({
+          authentication: {
+            security: {
+              clientId: 'kv://hubspot/client-id',
+              clientSecret: 'kv://hubspot/client-secret'
+            }
+          }
+        });
+
+        const template = 'CLIENT_ID=kv://hubspot/client-id\nCLIENT_SECRET=kv://hubspot/client-secret\nPORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('hubspot');
+
+        expect(result.valid).toBe(true);
+        expect(result.errors).toEqual([]);
+      });
+
+      it('should fail when env.template is missing required auth kv paths', async() => {
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockResolvedValue({
+          schemaBasePath: './',
+          systemFiles: ['hubspot-system.json']
+        });
+        generatorExternal.loadSystemFile.mockResolvedValue({
+          authentication: {
+            security: {
+              clientId: 'kv://hubspot/client-id',
+              clientSecret: 'kv://hubspot/client-secret'
+            }
+          }
+        });
+
+        const template = 'CLIENT_ID=kv://hubspot/client-id\nPORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('hubspot');
+
+        expect(result.valid).toBe(false);
+        expect(result.errors.some(e => e.includes('Missing required authentication secret'))).toBe(true);
+      });
+
+      it('should pass for oidc/none auth (empty security)', async() => {
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockResolvedValue({
+          schemaBasePath: './',
+          systemFiles: ['oidc-system.json']
+        });
+        generatorExternal.loadSystemFile.mockResolvedValue({
+          authentication: { method: 'oidc', variables: {}, security: {} }
+        });
+
+        const template = 'PORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('oidc-app');
+
+        expect(result.valid).toBe(true);
+        expect(result.errors).toEqual([]);
+      });
+
+      it('should add warning and skip auth check when config load fails', async() => {
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockRejectedValue(new Error('externalIntegration block not found'));
+
+        const template = 'PORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('hubspot');
+
+        expect(result.valid).toBe(true);
+        expect(result.warnings.some(w => w.includes('Could not validate auth kv coverage'))).toBe(true);
+      });
+
+      it('should pass when required auth path is only in a commented line (opted out)', async() => {
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockResolvedValue({
+          schemaBasePath: './',
+          systemFiles: ['avoma-system.json']
+        });
+        generatorExternal.loadSystemFile.mockResolvedValue({
+          authentication: {
+            security: {
+              apikey: 'kv://avoma/apikey'
+            }
+          }
+        });
+
+        const template = '# KV_AVOMA_APIKEY=kv://avoma/apikey\nPORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('avoma');
+
+        expect(result.valid).toBe(true);
+        expect(result.errors.some(e => e.includes('Missing required authentication secret'))).toBe(false);
+      });
+
+      it('should pass when required path is in commented line with different casing (apiKey vs apikey)', async() => {
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockResolvedValue({
+          schemaBasePath: './',
+          systemFiles: ['avoma-system.json']
+        });
+        generatorExternal.loadSystemFile.mockResolvedValue({
+          authentication: {
+            security: { apiKey: 'kv://avoma/apiKey' }
+          }
+        });
+
+        const template = '# KV_AVOMA_APIKEY=kv://avoma/apikey\nPORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('avoma');
+
+        expect(result.valid).toBe(true);
+        expect(result.errors.some(e => e.includes('Missing required authentication secret'))).toBe(false);
+      });
+
+      it('should pass when required path appears in comment without key=value form', async() => {
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockResolvedValue({
+          schemaBasePath: './',
+          systemFiles: ['avoma-system.json']
+        });
+        generatorExternal.loadSystemFile.mockResolvedValue({
+          authentication: {
+            security: { apiKey: 'kv://avoma/apiKey' }
+          }
+        });
+
+        const template = '# kv://avoma/apiKey (optional)\nPORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('avoma');
+
+        expect(result.valid).toBe(true);
+        expect(result.errors.some(e => e.includes('Missing required authentication secret'))).toBe(false);
+      });
     });
   });
 
@@ -578,8 +799,15 @@ frontDoorRouting:
 
   describe('validateApplication', () => {
     const appName = 'testapp';
+    const pathsUtil = require('../../../lib/utils/paths');
 
     it('should run complete validation suite', async() => {
+      pathsUtil.detectAppType.mockResolvedValue({
+        isExternal: false,
+        appPath: path.join(process.cwd(), 'builder', appName),
+        appType: 'regular',
+        baseDir: 'builder'
+      });
       const validVariables = {
         key: 'testapp',
         displayName: 'Test App',
@@ -682,7 +910,6 @@ permissions:
         image: 'myacr.azurecr.io/testapp:v1.0.0',
         registryMode: 'acr',
         port: 3000,
-        deploymentKey: '0000000000000000000000000000000000000000000000000000000000000000',
         requiresDatabase: true,
         requiresRedis: false,
         requiresStorage: false,
@@ -774,7 +1001,6 @@ permissions:
         image: 'myacr.azurecr.io/testapp:v1.0.0',
         registryMode: 'acr',
         port: 3000,
-        deploymentKey: '0000000000000000000000000000000000000000000000000000000000000000',
         requiresDatabase: true,
         databases: [{ name: 'testapp' }],
         configuration: [],

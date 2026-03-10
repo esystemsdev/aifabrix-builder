@@ -3,18 +3,18 @@
   "$id":"https://raw.githubusercontent.com/esystemsdev/aifabrix-builder/refs/heads/main/lib/schema/external-system.schema.json",
   "title":"AI Fabrix External System Configuration Schema",
   "description":"Schema for configuring an external system connected to the AI Fabrix Dataplane. This defines authentication, OpenAPI/MCP bindings, field mappings defaults, metadata handling and portal inputs.",
-  "metadata":{
+     "metadata":{
      "key":"external-system-schema",
      "name":"External System Configuration Schema",
      "description":"JSON schema for validating ExternalSystem configuration files",
-     "version":"1.3.0",
+     "version":"1.5.0",
      "type":"schema",
      "category":"integration",
      "author":"AI Fabrix Team",
      "createdAt":"2024-01-01T00:00:00Z",
-     "updatedAt":"2026-02-18T00:00:00Z",
+     "updatedAt":"2026-03-07T00:00:00Z",
      "compatibility":{
-        "minVersion":"1.3.0",
+        "minVersion":"1.4.0",
         "maxVersion":"2.0.0",
         "deprecated":false
      },
@@ -29,6 +29,20 @@
         
      ],
      "changelog":[
+        {
+           "version":"1.5.0",
+           "date":"2026-03-07T00:00:00Z",
+           "changes":[
+              "Optional rateLimit: outbound per-system rate limit (requestsPerWindow/windowSeconds or requestsPerSecond/burstSize); dataplane enforces and handles 429"
+           ]
+        },
+        {
+           "version":"1.4.0",
+           "date":"2026-03-07T00:00:00Z",
+           "changes":[
+              "Optional testEndpoint in authentication.variables for apikey: full URL or path (path resolved against baseUrl); credential test URL for E2E/credential step"
+           ]
+        },
         {
            "version":"1.3.0",
            "date":"2026-02-18T00:00:00Z",
@@ -70,6 +84,18 @@
            "breaking":false
         }
      ]
+  },
+  "$defs":{
+     "authenticationVariablesByMethod":{
+        "oauth2":{"variables":[{"key":"baseUrl","required":true,"description":"API base URL"},{"key":"tokenUrl","required":true,"description":"OAuth token endpoint. Full URL (https://...) or path (e.g. /oauth/v2/token); path is resolved against baseUrl."},{"key":"authorizationUrl","required":false,"description":"OAuth authorization endpoint. Full URL or path; path is resolved against baseUrl. Required when grantType is authorization_code or omitted."},{"key":"grantType","required":false,"description":"OAuth 2.0 grant type. One of: client_credentials, authorization_code. Default: authorization_code."},{"key":"scope","required":false},{"key":"tenantId","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."}],"security":[{"key":"clientId","required":true},{"key":"clientSecret","required":true}]},
+        "aad":{"variables":[{"key":"baseUrl","required":true},{"key":"tokenUrl","required":true,"description":"Token endpoint. Full URL or path (path resolved against baseUrl)."},{"key":"authorizationUrl","required":false,"description":"Authorization endpoint. Full URL or path (path resolved against baseUrl). Required when grantType is authorization_code or omitted."},{"key":"grantType","required":false,"description":"OAuth 2.0 grant type. One of: client_credentials, authorization_code. Default: authorization_code."},{"key":"tenantId","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."}],"security":[{"key":"clientId","required":true},{"key":"clientSecret","required":true}]},
+        "apikey":{"variables":[{"key":"baseUrl","required":true},{"key":"headerName","required":false},{"key":"prefix","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL (https://...) or path (e.g. /crm/v3/objects/contacts?limit=1); path is resolved against baseUrl. If omitted, baseUrl + /health is used."}],"security":[{"key":"apiKey","required":true}]},
+        "basic":{"variables":[{"key":"baseUrl","required":true},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."}],"security":[{"key":"username","required":true},{"key":"password","required":true}]},
+        "queryParam":{"variables":[{"key":"baseUrl","required":true},{"key":"paramName","required":true},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl). If omitted, baseUrl + /health is used."}],"security":[{"key":"paramValue","required":true}]},
+        "oidc":{"variables":[{"key":"openIdConfigUrl","required":true},{"key":"clientId","required":true},{"key":"expectedIssuer","required":false},{"key":"algorithms","required":false},{"key":"validateSignature","required":false},{"key":"clockSkewSeconds","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path. For OIDC, discovery URL is typically used if testEndpoint omitted."}],"security":[]},
+        "hmac":{"variables":[{"key":"baseUrl","required":false},{"key":"algorithm","required":false},{"key":"signatureHeader","required":false},{"key":"timestampHeader","required":false},{"key":"signaturePrefix","required":false},{"key":"testEndpoint","required":false,"description":"Optional URL used when testing the credential (GET). Full URL or path (path resolved against baseUrl when baseUrl present)."}],"security":[{"key":"signingSecret","required":true}]},
+        "none":{"variables":[],"security":[]}
+     }
   },
   "type":"object",
   "required":[
@@ -153,14 +179,14 @@
            },
            "variables":{
               "type":"object",
-              "description":"Non-secret config. Must include baseUrl for all methods except none. Common keys: baseUrl, tokenUrl, authorizationUrl, tenantId, audience, scope, headerName; queryParam: paramName; oidc: openIdConfigUrl, clientId, expectedIssuer; hmac: algorithm, signatureHeader, timestampHeader, signaturePrefix, timestampMaxAge.",
+              "description":"Non-secret config. See $defs.authenticationVariablesByMethod for per-method keys. oauth2/aad: baseUrl, tokenUrl, authorizationUrl (optional; required when grantType is authorization_code or omitted), grantType (optional, default authorization_code); apikey: baseUrl, headerName (optional), prefix (optional), testEndpoint (optional); basic: baseUrl; queryParam: baseUrl, paramName; oidc: openIdConfigUrl, clientId; hmac: optional; none: empty. URL-valued variables (tokenUrl, authorizationUrl, testEndpoint) accept full URL or path; paths are resolved against baseUrl by the backend.",
               "additionalProperties":{
                  "type":"string"
               }
            },
            "security":{
               "type":"object",
-              "description":"Secret-bearing keys only. Every value must be a Key Vault reference matching ^kv://.+$",
+              "description":"Secret-bearing keys only. Values must be kv:// references. See $defs.authenticationVariablesByMethod. oauth2/aad: clientId, clientSecret; apikey: apiKey; basic: username, password; queryParam: paramValue; oidc: none; hmac: signingSecret.",
               "additionalProperties":{
                  "type":"string",
                  "pattern":"^kv://.+$"
@@ -172,6 +198,17 @@
               "default":true
            }
         },
+        "examples":[
+           {"method":"oauth2","variables":{"baseUrl":"https://api.example.com","tokenUrl":"https://api.example.com/oauth/token","authorizationUrl":"https://api.example.com/oauth/authorize"},"security":{"clientId":"kv://example/clientId","clientSecret":"kv://example/clientSecret"}},
+           {"method":"oauth2","variables":{"baseUrl":"https://api.example.com","tokenUrl":"https://api.example.com/oauth/token","grantType":"client_credentials"},"security":{"clientId":"kv://example/clientId","clientSecret":"kv://example/clientSecret"}},
+           {"method":"apikey","variables":{"baseUrl":"https://api.example.com","headerName":"X-API-Key","testEndpoint":"https://api.example.com/health"},"security":{"apiKey":"kv://example/apiKey"}},
+           {"method":"apikey","variables":{"baseUrl":"https://api.example.com","headerName":"Authorization","prefix":"Bearer","testEndpoint":"/crm/v3/objects/contacts?limit=1"},"security":{"apiKey":"kv://example/apiKey"}},
+           {"method":"basic","variables":{"baseUrl":"https://api.example.com"},"security":{"username":"kv://example/username","password":"kv://example/password"}},
+           {"method":"queryParam","variables":{"baseUrl":"https://api.example.com","paramName":"api_key"},"security":{"paramValue":"kv://example/apiKey"}},
+           {"method":"oidc","variables":{"openIdConfigUrl":"https://example.com/.well-known/openid-configuration","clientId":"app-id"}},
+           {"method":"hmac","variables":{"signatureHeader":"X-Signature"},"security":{"signingSecret":"kv://example/signingSecret"}},
+           {"method":"none","variables":{}}
+        ],
         "additionalProperties":false
      },
      "openapi":{
@@ -446,6 +483,45 @@
         "type":"string",
         "description":"SHA256 hash of triggerPaths payload (64-char hex). Used to detect structural changes. Optional; Dataplane computes when absent.",
         "pattern":"^[a-f0-9]{64}$"
+     },
+     "rateLimit":{
+        "type":"object",
+        "description":"Outbound rate limit for requests from the dataplane to this external system. When set, the dataplane enforces the limit per base URL and handles HTTP 429 (wait and retry). When absent, global env defaults apply (CIP_EXECUTION_RATE_LIMIT_REQUESTS_PER_SECOND, CIP_EXECUTION_RATE_LIMIT_BURST_SIZE). Supports window-based (e.g. HubSpot 100/10s) or token-bucket style (requestsPerSecond + burstSize).",
+        "properties":{
+           "requestsPerWindow":{
+              "type":"integer",
+              "minimum":1,
+              "description":"Maximum requests allowed in the time window (window-based limit). Example: 100 for HubSpot's 100 requests per 10 seconds."
+           },
+           "windowSeconds":{
+              "type":"integer",
+              "minimum":1,
+              "description":"Time window in seconds. Used with requestsPerWindow. Example: 10 for HubSpot (100 requests per 10 seconds)."
+           },
+           "requestsPerSecond":{
+              "type":"number",
+              "minimum":0.1,
+              "description":"Sustained request rate (token-bucket style). When used with burstSize, allows short bursts up to burstSize while refilling at this rate."
+           },
+           "burstSize":{
+              "type":"integer",
+              "minimum":1,
+              "description":"Maximum burst size in tokens (token-bucket style). Used with requestsPerSecond."
+           }
+        },
+        "additionalProperties":false,
+        "oneOf":[
+           {
+              "required":["requestsPerWindow","windowSeconds"]
+           },
+           {
+              "required":["requestsPerSecond","burstSize"]
+           }
+        ],
+        "examples":[
+           {"requestsPerWindow":100,"windowSeconds":10},
+           {"requestsPerSecond":10,"burstSize":100}
+        ]
      }
   },
   "additionalProperties":false

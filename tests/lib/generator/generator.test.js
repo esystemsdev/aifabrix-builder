@@ -2295,6 +2295,7 @@ NORMAL_VAR=value456`;
       systemKey: 'hubspot',
       entityType: 'recordStorage',
       resourceType: 'customer',
+      primaryKey: ['country'],
       fieldMappings: {
         dimensions: {
           country: 'metadata.country'
@@ -2314,6 +2315,7 @@ NORMAL_VAR=value456`;
       systemKey: 'hubspot',
       entityType: 'recordStorage',
       resourceType: 'contact',
+      primaryKey: ['email'],
       fieldMappings: {
         dimensions: {
           email: 'metadata.email'
@@ -2407,6 +2409,30 @@ NORMAL_VAR=value456`;
       await expect(
         generator.generateExternalSystemApplicationSchema(externalAppName)
       ).rejects.toThrow('Datasource file not found');
+    });
+  });
+
+  describe('loadDatasourceFiles (external module)', () => {
+    it('should skip missing datasource files when skipMissingDatasourceFiles is true', async() => {
+      const { loadDatasourceFiles } = require('../../../lib/generator/external');
+      const appPath = path.join(process.cwd(), 'integration', 'test-app');
+      const existingPath = path.join(appPath, 'existing-datasource.json');
+      const missingPath = path.join(appPath, 'missing-datasource.json');
+
+      fs.existsSync.mockImplementation((filePath) => filePath === existingPath);
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === existingPath) {
+          return JSON.stringify({ key: 'existing-ds', systemKey: 'test-app' });
+        }
+        throw new Error('Unexpected read');
+      });
+
+      const result = await loadDatasourceFiles(appPath, '.', ['existing-datasource.json', 'missing-datasource.json'], {
+        skipMissingDatasourceFiles: true
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({ key: 'existing-ds', systemKey: 'test-app' });
     });
   });
 });

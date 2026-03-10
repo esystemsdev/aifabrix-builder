@@ -55,7 +55,9 @@ jest.mock('../../../lib/validation/external-manifest-validator', () => ({
 }));
 jest.mock('../../../lib/utils/paths', () => ({
   detectAppType: jest.fn(),
-  getProjectRoot: jest.fn(() => process.cwd())
+  getProjectRoot: jest.fn(() => process.cwd()),
+  listIntegrationAppNames: jest.fn(),
+  listBuilderAppNames: jest.fn()
 }));
 
 const fsSync = require('fs');
@@ -66,7 +68,7 @@ const { loadExternalSystemSchema, loadExternalDataSourceSchema, detectSchemaType
 const { formatValidationErrors } = require('../../../lib/utils/error-formatter');
 const { generateControllerManifest } = require('../../../lib/generator/external-controller-manifest');
 const { validateControllerManifest } = require('../../../lib/validation/external-manifest-validator');
-const { detectAppType } = require('../../../lib/utils/paths');
+const { detectAppType, listIntegrationAppNames, listBuilderAppNames } = require('../../../lib/utils/paths');
 
 describe('Validation Module', () => {
   beforeEach(() => {
@@ -408,6 +410,148 @@ describe('Validation Module', () => {
     });
   });
 
+  describe('validateAllIntegrations / validateAllBuilderApps / validateAll', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('validateAllIntegrations returns batch result with 0 results when list is empty', async() => {
+      listIntegrationAppNames.mockReturnValue([]);
+      const { validateAllIntegrations } = require('../../../lib/validation/validate');
+      const batch = await validateAllIntegrations({});
+      expect(batch.batch).toBe(true);
+      expect(batch.valid).toBe(true);
+      expect(batch.results).toEqual([]);
+      expect(batch.errors).toEqual([]);
+      expect(batch.warnings).toEqual([]);
+    });
+
+    it('validateAllIntegrations returns valid true when all apps pass', async() => {
+      listIntegrationAppNames.mockReturnValue(['app1', 'app2']);
+      detectAppType.mockResolvedValue({ isExternal: true, appPath: '/x' });
+      validator.validateApplication.mockResolvedValue({ valid: true, errors: [], warnings: [] });
+      resolveExternalFiles.mockResolvedValue([]);
+      generateControllerManifest.mockResolvedValue({});
+      validateControllerManifest.mockResolvedValue({ valid: true, errors: [], warnings: [] });
+      const validateMod = require('../../../lib/validation/validate');
+
+      const batch = await validateMod.validateAllIntegrations({});
+      expect(batch.batch).toBe(true);
+      expect(batch.valid).toBe(true);
+      expect(batch.results).toHaveLength(2);
+      expect(batch.results[0].appName).toBe('app1');
+      expect(batch.results[0].result).toBeDefined();
+      expect(batch.results[0].result.valid).toBe(true);
+      expect(batch.results[1].appName).toBe('app2');
+      expect(batch.results[1].result).toBeDefined();
+      expect(batch.results[1].result.valid).toBe(true);
+    });
+
+    it('validateAllIntegrations returns valid false when one app throws', async() => {
+      listIntegrationAppNames.mockReturnValue(['app1', 'app2']);
+      detectAppType
+        .mockResolvedValueOnce({ isExternal: true, appPath: '/x' })
+        .mockResolvedValueOnce({ isExternal: true, appPath: '/x' })
+        .mockRejectedValueOnce(new Error('Missing application.yaml'));
+      const { validateAllIntegrations } = require('../../../lib/validation/validate');
+
+      const batch = await validateAllIntegrations({});
+      expect(batch.batch).toBe(true);
+      expect(batch.valid).toBe(false);
+      expect(batch.results).toHaveLength(2);
+      expect(batch.results[0].appName).toBe('app1');
+      expect(batch.results[1].appName).toBe('app2');
+      expect(batch.results[1].error).toBeDefined();
+      expect(String(batch.results[1].error)).toContain('Missing application.yaml');
+    });
+
+    it('validateAllBuilderApps returns batch result with 0 results when list is empty', async() => {
+      listBuilderAppNames.mockReturnValue([]);
+      const { validateAllBuilderApps } = require('../../../lib/validation/validate');
+      const batch = await validateAllBuilderApps({});
+      expect(batch.batch).toBe(true);
+      expect(batch.valid).toBe(true);
+      expect(batch.results).toEqual([]);
+    });
+
+    it('validateAllBuilderApps returns valid false when one result is invalid', async() => {
+      listBuilderAppNames.mockReturnValue(['b1', 'b2']);
+      detectAppType.mockImplementation((appName) =>
+        Promise.resolve({ isExternal: false, appPath: path.join(process.cwd(), 'builder', appName) })
+      );
+      validator.validateApplication
+        .mockResolvedValueOnce({ valid: true, errors: [], warnings: [] })
+        .mockResolvedValueOnce({ valid: false, errors: ['Schema error'], warnings: [] });
+      resolveExternalFiles.mockResolvedValue([]);
+      fsSync.existsSync.mockImplementation((p) => (typeof p === 'string' && p.includes('application.yaml')));
+      fsSync.statSync.mockReturnValue({ isFile: () => false });
+      fsSync.readFileSync.mockReturnValue('key: b1\napp:\n  type: webapp');
+      const validateMod = require('../../../lib/validation/validate');
+
+      const batch = await validateMod.validateAllBuilderApps({});
+      expect(batch.batch).toBe(true);
+      expect(batch.valid).toBe(false);
+      expect(batch.results).toHaveLength(2);
+      expect(batch.results[1].appName).toBe('b2');
+      expect(batch.results[1].result).toBeDefined();
+      expect(batch.results[1].result.valid).toBe(false);
+      expect(batch.errors.length).toBeGreaterThan(0);
+    });
+
+    it('validateAll merges integration and builder results', async() => {
+      listIntegrationAppNames.mockReturnValue(['i1']);
+      listBuilderAppNames.mockReturnValue(['b1']);
+      detectAppType.mockImplementation((appName) =>
+        Promise.resolve(
+          appName === 'i1'
+            ? { isExternal: true, appPath: '/x' }
+            : { isExternal: false, appPath: path.join(process.cwd(), 'builder', appName) }
+        )
+      );
+      const validateMod = require('../../../lib/validation/validate');
+      const goodResult = { valid: true, errors: [], warnings: [] };
+      const spy = jest.spyOn(validateMod, 'validateExternalSystemComplete').mockResolvedValue(goodResult);
+      validator.validateApplication.mockResolvedValue({ valid: true, errors: [], warnings: [] });
+      resolveExternalFiles.mockResolvedValue([]);
+      fsSync.existsSync.mockImplementation((p) => typeof p === 'string' && p.includes('application.yaml'));
+      fsSync.statSync.mockReturnValue({ isFile: () => false });
+      fsSync.readFileSync.mockReturnValue('key: b1\napp:\n  type: webapp');
+
+      const batch = await validateMod.validateAll({});
+      expect(batch.batch).toBe(true);
+      expect(batch.results).toHaveLength(2);
+      const appNames = batch.results.map(r => r.appName);
+      expect(appNames).toContain('i1');
+      expect(appNames).toContain('b1');
+      spy.mockRestore();
+    });
+  });
+
+  describe('displayBatchValidationResults', () => {
+    it('displays per-app sections and summary', () => {
+      const { displayBatchValidationResults } = require('../../../lib/validation/validate');
+      const batchResult = {
+        batch: true,
+        results: [
+          { appName: 'app1', result: { valid: true, errors: [], warnings: [] } },
+          { appName: 'app2', error: 'File not found' }
+        ]
+      };
+      displayBatchValidationResults(batchResult);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('--- app1 ---'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('--- app2 ---'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/passed.*failed|failed/));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Summary'));
+    });
+
+    it('does nothing when batchResult has no results array', () => {
+      const { displayBatchValidationResults } = require('../../../lib/validation/validate');
+      logger.log.mockClear();
+      displayBatchValidationResults({ batch: true });
+      expect(logger.log).not.toHaveBeenCalled();
+    });
+  });
+
   describe('displayValidationResults', () => {
     it('should display success message for valid result', () => {
       const { displayValidationResults } = require('../../../lib/validation/validate');
@@ -535,6 +679,48 @@ describe('Validation Module', () => {
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('RBAC error 1'));
     });
+
+    it('should display step-by-step with manifest skipped when components failed', () => {
+      const { displayValidationResults } = require('../../../lib/validation/validate');
+      const result = {
+        valid: false,
+        errors: ['External datasource file not found: /path/to/missing.json'],
+        warnings: [],
+        steps: {
+          application: { valid: true, errors: [], warnings: ['rbac.yaml not found'] },
+          components: {
+            valid: false,
+            errors: ['External datasource file not found: /path/to/missing.json'],
+            warnings: [],
+            files: []
+          },
+          manifest: { valid: true, errors: [], warnings: [], skipped: true }
+        }
+      };
+
+      displayValidationResults(result);
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Skipped'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('External datasource file not found'));
+    });
+
+    it('should display deployment manifest failed with no error details when manifest.errors empty', () => {
+      const { displayValidationResults } = require('../../../lib/validation/validate');
+      const result = {
+        valid: false,
+        errors: ['Some error'],
+        warnings: [],
+        steps: {
+          application: { valid: true, errors: [], warnings: [] },
+          components: { valid: true, errors: [], warnings: [], files: [{ file: 'x', type: 'system', valid: true }] },
+          manifest: { valid: false, errors: [], warnings: [] }
+        }
+      };
+
+      displayValidationResults(result);
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('No error details available'));
+    });
   });
 
   describe('validateExternalFile edge cases', () => {
@@ -636,6 +822,312 @@ describe('Validation Module', () => {
 
       expect(result.type).toBe('external-datasource');
       expect(mockValidate).toHaveBeenCalled();
+    });
+  });
+
+  describe('OAuth2/AAD grantType and authorizationUrl', () => {
+    const baseSystem = {
+      key: 'test',
+      displayName: 'Test',
+      description: 'Desc',
+      type: 'openapi',
+      authentication: { method: 'oauth2', variables: {} }
+    };
+
+    beforeEach(() => {
+      fsSync.existsSync.mockReturnValue(true);
+      loadExternalSystemSchema.mockReturnValue(jest.fn().mockReturnValue(true));
+      formatValidationErrors.mockReturnValue([]);
+    });
+
+    it('oauth2 with client_credentials and no authorizationUrl is valid', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'oauth2', variables: { grantType: 'client_credentials' } }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('oauth2 with authorization_code and authorizationUrl set is valid', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: {
+          method: 'oauth2',
+          variables: { grantType: 'authorization_code', authorizationUrl: 'https://auth.example.com/authorize' }
+        }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('oauth2 with no grantType and authorizationUrl set is valid (default authorization_code)', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: {
+          method: 'oauth2',
+          variables: { authorizationUrl: 'https://auth.example.com/authorize' }
+        }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('oauth2 with authorization_code and no authorizationUrl returns error', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'oauth2', variables: { grantType: 'authorization_code' } }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('authorizationUrl is required when grantType is authorization_code');
+    });
+
+    it('oauth2 with grantType omitted and no authorizationUrl returns error', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'oauth2', variables: {} }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('authorizationUrl is required when grantType is authorization_code');
+    });
+
+    it('oauth2 with invalid grantType returns error', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'oauth2', variables: { grantType: 'invalid_value' } }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('grantType must be one of: client_credentials, authorization_code');
+    });
+
+    it('aad with client_credentials and no authorizationUrl is valid', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'aad', variables: { grantType: 'client_credentials' } }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('apikey method does not trigger grantType/authorizationUrl errors', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'apikey', variables: { apiKey: 'x' } }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('none method does not trigger grantType/authorizationUrl errors', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'none', variables: {} }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+  });
+
+  describe('rateLimit (schema-aligned with dataplane)', () => {
+    const baseSystem = {
+      key: 'test',
+      displayName: 'Test',
+      description: 'Desc',
+      type: 'openapi',
+      authentication: { method: 'oauth2', variables: { grantType: 'client_credentials' } }
+    };
+
+    beforeEach(() => {
+      fsSync.existsSync.mockReturnValue(true);
+      loadExternalSystemSchema.mockReturnValue(jest.fn().mockReturnValue(true));
+      formatValidationErrors.mockReturnValue([]);
+    });
+
+    it('accepts valid rateLimit with requestsPerWindow and windowSeconds', async() => {
+      const parsed = {
+        ...baseSystem,
+        rateLimit: { requestsPerWindow: 100, windowSeconds: 10 }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('accepts valid rateLimit with requestsPerSecond and burstSize', async() => {
+      const parsed = {
+        ...baseSystem,
+        rateLimit: { requestsPerSecond: 10, burstSize: 100 }
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+  });
+
+  describe('configuration and standard auth variables', () => {
+    const baseSystem = {
+      key: 'test',
+      displayName: 'Test',
+      description: 'Desc',
+      type: 'openapi',
+      authentication: { method: 'oauth2', variables: { grantType: 'client_credentials' } }
+    };
+
+    beforeEach(() => {
+      fsSync.existsSync.mockReturnValue(true);
+      loadExternalSystemSchema.mockReturnValue(jest.fn().mockReturnValue(true));
+      formatValidationErrors.mockReturnValue([]);
+    });
+
+    it('returns error when configuration contains CLIENTID (standard auth variable)', async() => {
+      const parsed = {
+        ...baseSystem,
+        configuration: [{ name: 'CLIENTID', value: '{{CLIENT_ID}}', location: 'variable' }]
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('must not contain standard auth variable \'CLIENTID\''))).toBe(true);
+      expect(result.errors.some(e => e.includes('supplied from the selected credential at runtime'))).toBe(true);
+    });
+
+    it('returns error when configuration contains BASEURL and auth method is not none', async() => {
+      const parsed = {
+        ...baseSystem,
+        configuration: [{ name: 'BASEURL', value: 'https://api.example.com', location: 'variable' }]
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('must not contain standard auth variable \'BASEURL\''))).toBe(true);
+      expect(result.errors.some(e => e.includes('authentication.method is \'none\''))).toBe(true);
+    });
+
+    it('is valid when authentication.method is none and configuration contains only BASEURL', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'none', variables: {} },
+        configuration: [{ name: 'BASEURL', value: 'https://api.example.com', location: 'variable' }]
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('returns error when authentication.method is none and configuration contains CLIENTID', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'none', variables: {} },
+        configuration: [
+          { name: 'BASEURL', value: 'https://api.example.com', location: 'variable' },
+          { name: 'CLIENTID', value: 'x', location: 'variable' }
+        ]
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('must not contain standard auth variable \'CLIENTID\''))).toBe(true);
+    });
+
+    it('returns error when configuration contains APIKEY (standard auth variable)', async() => {
+      const parsed = {
+        ...baseSystem,
+        authentication: { method: 'apikey', variables: {} },
+        configuration: [{ name: 'APIKEY', value: 'kv://key', location: 'keyvault' }]
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('must not contain standard auth variable \'APIKEY\''))).toBe(true);
+    });
+
+    it('is valid when configuration contains only non-auth variables', async() => {
+      const parsed = {
+        ...baseSystem,
+        configuration: [
+          { name: 'SITE_ID', value: '{{SITE_ID}}', location: 'variable' },
+          { name: 'API_BASE_PATH', value: '/v1', location: 'variable' }
+        ]
+      };
+      fsSync.readFileSync.mockReturnValue(JSON.stringify(parsed));
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile('/path/to/system.json', 'system');
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
     });
   });
 
@@ -988,6 +1480,24 @@ describe('Validation Module', () => {
       expect(result.steps.components.errors.some(e => e.includes('File not found') || e.includes('test-system.json')));
     });
 
+    it('when components step fails, manifest step is skipped and not run', async() => {
+      validator.validateApplication.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+      resolveExternalFiles.mockRejectedValue(new Error('External datasource file not found: /path/to/missing.json'));
+
+      const { validateExternalSystemComplete } = require('../../../lib/validation/validate');
+      const result = await validateExternalSystemComplete(appName);
+
+      expect(result.valid).toBe(false);
+      expect(result.steps.components.valid).toBe(false);
+      expect(result.steps.manifest.skipped).toBe(true);
+      expect(result.steps.manifest.valid).toBe(true);
+      expect(generateControllerManifest).not.toHaveBeenCalled();
+    });
+
     it('should aggregate errors from all steps', async() => {
       // Step 1: Application has warnings
       validator.validateApplication.mockResolvedValue({
@@ -1024,6 +1534,82 @@ describe('Validation Module', () => {
         .rejects.toThrow('App name is required and must be a string');
       await expect(validateExternalSystemComplete(''))
         .rejects.toThrow('App name is required and must be a string');
+    });
+
+    it('should fail on systemKey mismatch when datasource systemKey does not match system key', async() => {
+      validator.validateApplication.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: []
+      });
+
+      const systemFilePath = path.join(appPath, 'test-system.json');
+      const datasourceFilePath = path.join(appPath, 'test-datasource.json');
+
+      resolveExternalFiles.mockResolvedValue([
+        {
+          path: systemFilePath,
+          fileName: 'test-system.json',
+          type: 'external-system'
+        },
+        {
+          path: datasourceFilePath,
+          fileName: 'test-datasource.json',
+          type: 'external-datasource'
+        }
+      ]);
+
+      fsSync.existsSync.mockImplementation((filePath) => {
+        return filePath === systemFilePath ||
+               filePath === datasourceFilePath ||
+               filePath.includes('application.yaml') ||
+               filePath.includes('test-external-app');
+      });
+
+      fsSync.readFileSync.mockImplementation((filePath) => {
+        if (filePath === systemFilePath) {
+          return JSON.stringify({ key: 'test-e2e-hubspot', displayName: 'Test System', type: 'openapi' });
+        }
+        if (filePath === datasourceFilePath) {
+          return JSON.stringify({
+            key: 'hubspot-deals',
+            systemKey: 'hubspot-deals-datasource',
+            entityKey: 'deal',
+            displayName: 'Deals'
+          });
+        }
+        return '';
+      });
+
+      loadExternalSystemSchema.mockReturnValue(jest.fn().mockReturnValue(true));
+      loadExternalDataSourceSchema.mockReturnValue(jest.fn().mockReturnValue(true));
+      formatValidationErrors.mockReturnValue([]);
+
+      const mockManifest = {
+        key: 'test-external-app',
+        displayName: 'Test App',
+        type: 'external',
+        system: { key: 'test-e2e-hubspot' },
+        dataSources: [
+          { key: 'hubspot-deals', systemKey: 'hubspot-deals-datasource' }
+        ],
+        deploymentKey: 'test-key'
+      };
+      generateControllerManifest.mockResolvedValue(mockManifest);
+      validateControllerManifest.mockResolvedValue({
+        valid: false,
+        errors: [
+          'Data source \'hubspot-deals\' systemKey does not match application system key (expected \'test-e2e-hubspot\', got \'hubspot-deals-datasource\')'
+        ],
+        warnings: []
+      });
+
+      const { validateExternalSystemComplete } = require('../../../lib/validation/validate');
+      const result = await validateExternalSystemComplete(appName);
+
+      expect(result.valid).toBe(false);
+      expect(result.steps.manifest.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('systemKey') && e.includes('test-e2e-hubspot'))).toBe(true);
     });
   });
 });

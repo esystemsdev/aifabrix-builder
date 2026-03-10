@@ -59,6 +59,17 @@
           "type": "string",
           "description": "Known platform identifier (for known-platform type)",
           "enum": ["hubspot", "salesforce", "zendesk", "slack", "microsoft365"]
+        },
+        "datasourceKeys": {
+          "type": "array",
+          "description": "Datasource keys to include (validated against platform; omit for all)",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        },
+        "entityName": {
+          "type": "string",
+          "description": "Entity for multi-entity OpenAPI (validated against discover-entities; for openapi-file and openapi-url)",
+          "minLength": 1
         }
       },
       "allOf": [
@@ -193,6 +204,11 @@
         "enableRBAC": {
           "type": "boolean",
           "description": "Enable Role-Based Access Control",
+          "default": false
+        },
+        "debug": {
+          "type": "boolean",
+          "description": "When true, capture detailed generation steps and save to debug.log (dataplane returns debugLog)",
           "default": false
         }
       }

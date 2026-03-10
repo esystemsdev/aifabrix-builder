@@ -190,7 +190,22 @@ databases:
 
 Each database will be created automatically with its own user and permissions.
 
-**Vector stores (pgvector):** Databases whose name **ends with `vector`** (e.g. `dataplane-vector`) are treated as vector stores. The db-init service creates the **pgvector** extension in those databases automatically (`CREATE EXTENSION IF NOT EXISTS vector`). For Azure or managed PostgreSQL, if the application user cannot create extensions, a DBA must run `CREATE EXTENSION IF NOT EXISTS vector;` as superuser on the vector database(s)—see [Troubleshooting Database Creation](#troubleshooting-database-creation) below.
+**PostgreSQL extensions:** You can configure which extensions to create per database via `databases[].extensions` in `application.yaml`. Example for an app that needs pgcrypto, uuid-ossp, vector, btree_gin, and btree_gist (e.g. Flowise):
+
+```yaml
+requires:
+  database: true
+databases:
+  - name: flowise
+    extensions:
+      - pgcrypto
+      - uuid-ossp
+      - vector
+      - btree_gin
+      - btree_gist
+```
+
+**Vector stores (pgvector):** Databases whose name **ends with `vector`** (e.g. `dataplane-vector`) are treated as vector stores. The db-init service creates the **pgvector** extension in those databases automatically (`CREATE EXTENSION IF NOT EXISTS vector`) if not already in `extensions`. For Azure or managed PostgreSQL, if the application user cannot create extensions, a DBA must run the required `CREATE EXTENSION` commands as superuser—see [Troubleshooting Database Creation](#troubleshooting-database-creation) below.
 
 ### Troubleshooting Database Creation
 
@@ -411,7 +426,7 @@ fs.writeFileSync('/mnt/data/file.txt', 'content');
 ```
 
 ### On Your Machine
-Data is in Docker volume: `myapp_data`
+Data is in Docker volume: `myapp_data`. When you use the local `.env` written to `build.envOutputPath`, any `/mnt/data` paths in that file are rewritten to a `mount` folder next to the `.env` (created automatically), so paths work for local development.
 
 **View volume:**
 ```bash
@@ -446,6 +461,8 @@ aifabrix run myapp
 ```
 
 That resolves `env.template`, writes env to envOutputPath or temp, and (re)starts the container—no manual `.env` editing for normal use.
+
+**Local .env and storage paths:** When the builder writes the local `.env` to `build.envOutputPath` (e.g. repo root), it replaces every `/mnt/data` path with a `mount` directory next to that `.env` file and creates `mount` if missing. So variables like `LOG_PATH=/mnt/data/logs` or `STORAGE_PATH=/mnt/data/storage` in the written file point to `mount/logs` and `mount/storage` under the same directory as the `.env`, and the `mount` folder exists for local development.
 
 **View environment (masked):** Use `aifabrix logs myapp` for an env summary (secrets masked) at the top of the output. If you set `build.envOutputPath`, you can also view the file at that path (e.g. `cat /path/from/envOutputPath`).
 

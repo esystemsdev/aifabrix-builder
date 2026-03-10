@@ -1,7 +1,7 @@
 {
   "key": "hubspot",
-  "displayName": "HubSpot CRM Integration",
-  "description": "HubSpot CRM external system integration with companies, contacts, and deals",
+  "displayName": "HubSpot CRM",
+  "description": "HubSpot CRM integration with OpenAPI support for companies, contacts, and deals",
   "type": "external",
   "version": "1.0.0",
   "externalIntegration": {
@@ -12,7 +12,8 @@
     "dataSources": [
       "hubspot-datasource-company.json",
       "hubspot-datasource-contact.json",
-      "hubspot-datasource-deal.json"
+      "hubspot-datasource-deal.json",
+      "hubspot-datasource-users.json"
     ],
     "autopublish": true,
     "version": "1.0.0"
@@ -24,41 +25,18 @@
     "type": "openapi",
     "enabled": true,
     "authentication": {
-      "type": "oauth2",
-      "mode": "oauth2",
-      "oauth2": {
-        "tokenUrl": "{{TOKENURL}}",
-        "clientId": "{{CLIENTID}}",
-        "clientSecret": "{{CLIENTSECRET}}",
-        "scopes": [
-          "crm.objects.companies.read",
-          "crm.objects.companies.write",
-          "crm.objects.contacts.read",
-          "crm.objects.contacts.write",
-          "crm.objects.deals.read",
-          "crm.objects.deals.write"
-        ]
+      "method": "oauth2",
+      "variables": {
+        "baseUrl": "https://api.hubapi.com",
+        "tokenUrl": "https://api.hubapi.com/oauth/v1/token",
+        "scope": "crm.objects.companies.read crm.objects.companies.write crm.objects.contacts.read crm.objects.contacts.write crm.objects.deals.read crm.objects.deals.write"
+      },
+      "security": {
+        "clientId": "kv://hubspot/clientid",
+        "clientSecret": "kv://hubspot/clientsecret"
       }
     },
     "configuration": [
-      {
-        "name": "CLIENTID",
-        "value": "hubspot-clientidKeyVault",
-        "location": "keyvault",
-        "required": true
-      },
-      {
-        "name": "CLIENTSECRET",
-        "value": "hubspot-clientsecretKeyVault",
-        "location": "keyvault",
-        "required": true
-      },
-      {
-        "name": "TOKENURL",
-        "value": "https://api.hubapi.com/oauth/v1/token",
-        "location": "variable",
-        "required": true
-      },
       {
         "name": "HUBSPOT_API_VERSION",
         "value": "v3",
@@ -105,6 +83,12 @@
       "sales",
       "marketing",
       "hubspot"
+    ],
+    "dataSources": [
+      "hubspot-company",
+      "hubspot-contact",
+      "hubspot-deal",
+      "hubspot-users-datasource"
     ]
   },
   "dataSources": [
@@ -269,6 +253,332 @@
           "updatedAt": {
             "expression": "{{properties.hs_lastmodifieddate.value}}",
             "type": "string",
+            "description": "Last modification timestamp",
+            "indexed": false
+          }
+        },
+        "compiledAttributes": {
+          "id": {
+            "raw_path": [
+              "id"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Unique company identifier",
+            "indexed": true
+          },
+          "name": {
+            "raw_path": [
+              "properties",
+              "name",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Company name",
+            "indexed": false
+          },
+          "domain": {
+            "raw_path": [
+              "properties",
+              "domain",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "toLower",
+                "args": []
+              },
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Company domain for ABAC filtering",
+            "indexed": false
+          },
+          "country": {
+            "raw_path": [
+              "properties",
+              "country",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "toUpper",
+                "args": []
+              },
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Country code for ABAC filtering",
+            "indexed": false
+          },
+          "city": {
+            "raw_path": [
+              "properties",
+              "city",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "City name",
+            "indexed": false
+          },
+          "industry": {
+            "raw_path": [
+              "properties",
+              "industry",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Industry classification",
+            "indexed": false
+          },
+          "website": {
+            "raw_path": [
+              "properties",
+              "website",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Company website URL",
+            "indexed": false
+          },
+          "phone": {
+            "raw_path": [
+              "properties",
+              "phone",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Phone number",
+            "indexed": false
+          },
+          "createdAt": {
+            "raw_path": [
+              "properties",
+              "createdate",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Creation timestamp",
+            "indexed": false
+          },
+          "updatedAt": {
+            "raw_path": [
+              "properties",
+              "hs_lastmodifieddate",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Last modification timestamp",
+            "indexed": false
+          }
+        },
+        "compiledFields": {
+          "id": {
+            "raw_path": [
+              "id"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Unique company identifier",
+            "indexed": true
+          },
+          "name": {
+            "raw_path": [
+              "properties",
+              "name",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Company name",
+            "indexed": false
+          },
+          "domain": {
+            "raw_path": [
+              "properties",
+              "domain",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "toLower",
+                "args": []
+              },
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Company domain for ABAC filtering",
+            "indexed": false
+          },
+          "country": {
+            "raw_path": [
+              "properties",
+              "country",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "toUpper",
+                "args": []
+              },
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Country code for ABAC filtering",
+            "indexed": false
+          },
+          "city": {
+            "raw_path": [
+              "properties",
+              "city",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "City name",
+            "indexed": false
+          },
+          "industry": {
+            "raw_path": [
+              "properties",
+              "industry",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Industry classification",
+            "indexed": false
+          },
+          "website": {
+            "raw_path": [
+              "properties",
+              "website",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Company website URL",
+            "indexed": false
+          },
+          "phone": {
+            "raw_path": [
+              "properties",
+              "phone",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Phone number",
+            "indexed": false
+          },
+          "createdAt": {
+            "raw_path": [
+              "properties",
+              "createdate",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Creation timestamp",
+            "indexed": false
+          },
+          "updatedAt": {
+            "raw_path": [
+              "properties",
+              "hs_lastmodifieddate",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
             "description": "Last modification timestamp",
             "indexed": false
           }
@@ -512,6 +822,400 @@
           "updatedAt": {
             "expression": "{{properties.hs_lastmodifieddate.value}}",
             "type": "string",
+            "description": "Last modification timestamp",
+            "indexed": false
+          }
+        },
+        "compiledAttributes": {
+          "id": {
+            "raw_path": [
+              "id"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Unique contact identifier",
+            "indexed": true
+          },
+          "firstName": {
+            "raw_path": [
+              "properties",
+              "firstname",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "First name",
+            "indexed": false
+          },
+          "lastName": {
+            "raw_path": [
+              "properties",
+              "lastname",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Last name",
+            "indexed": false
+          },
+          "email": {
+            "raw_path": [
+              "properties",
+              "email",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "toLower",
+                "args": []
+              },
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Email address for ABAC filtering",
+            "indexed": false
+          },
+          "phone": {
+            "raw_path": [
+              "properties",
+              "phone",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Phone number",
+            "indexed": false
+          },
+          "company": {
+            "raw_path": [
+              "properties",
+              "company",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Associated company name",
+            "indexed": false
+          },
+          "jobTitle": {
+            "raw_path": [
+              "properties",
+              "jobtitle",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Job title",
+            "indexed": false
+          },
+          "address": {
+            "raw_path": [
+              "properties",
+              "address",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Street address",
+            "indexed": false
+          },
+          "city": {
+            "raw_path": [
+              "properties",
+              "city",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "City name",
+            "indexed": false
+          },
+          "country": {
+            "raw_path": [
+              "properties",
+              "country",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "toUpper",
+                "args": []
+              },
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Country code for ABAC filtering",
+            "indexed": false
+          },
+          "createdAt": {
+            "raw_path": [
+              "properties",
+              "createdate",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Creation timestamp",
+            "indexed": false
+          },
+          "updatedAt": {
+            "raw_path": [
+              "properties",
+              "hs_lastmodifieddate",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Last modification timestamp",
+            "indexed": false
+          }
+        },
+        "compiledFields": {
+          "id": {
+            "raw_path": [
+              "id"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Unique contact identifier",
+            "indexed": true
+          },
+          "firstName": {
+            "raw_path": [
+              "properties",
+              "firstname",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "First name",
+            "indexed": false
+          },
+          "lastName": {
+            "raw_path": [
+              "properties",
+              "lastname",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Last name",
+            "indexed": false
+          },
+          "email": {
+            "raw_path": [
+              "properties",
+              "email",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "toLower",
+                "args": []
+              },
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Email address for ABAC filtering",
+            "indexed": false
+          },
+          "phone": {
+            "raw_path": [
+              "properties",
+              "phone",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Phone number",
+            "indexed": false
+          },
+          "company": {
+            "raw_path": [
+              "properties",
+              "company",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Associated company name",
+            "indexed": false
+          },
+          "jobTitle": {
+            "raw_path": [
+              "properties",
+              "jobtitle",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Job title",
+            "indexed": false
+          },
+          "address": {
+            "raw_path": [
+              "properties",
+              "address",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Street address",
+            "indexed": false
+          },
+          "city": {
+            "raw_path": [
+              "properties",
+              "city",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "City name",
+            "indexed": false
+          },
+          "country": {
+            "raw_path": [
+              "properties",
+              "country",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "toUpper",
+                "args": []
+              },
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Country code for ABAC filtering",
+            "indexed": false
+          },
+          "createdAt": {
+            "raw_path": [
+              "properties",
+              "createdate",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Creation timestamp",
+            "indexed": false
+          },
+          "updatedAt": {
+            "raw_path": [
+              "properties",
+              "hs_lastmodifieddate",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
             "description": "Last modification timestamp",
             "indexed": false
           }
@@ -781,6 +1485,328 @@
             "description": "Last modification timestamp",
             "indexed": false
           }
+        },
+        "compiledAttributes": {
+          "id": {
+            "raw_path": [
+              "id"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Unique deal identifier",
+            "indexed": true
+          },
+          "dealName": {
+            "raw_path": [
+              "properties",
+              "dealname",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Deal name",
+            "indexed": false
+          },
+          "amount": {
+            "raw_path": [
+              "properties",
+              "amount",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Deal amount",
+            "indexed": false
+          },
+          "currency": {
+            "raw_path": [
+              "properties",
+              "deal_currency_code",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "toUpper",
+                "args": []
+              },
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Currency code",
+            "indexed": false
+          },
+          "stage": {
+            "raw_path": [
+              "properties",
+              "dealstage",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Deal stage for ABAC filtering",
+            "indexed": false
+          },
+          "pipeline": {
+            "raw_path": [
+              "properties",
+              "pipeline",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Pipeline name for ABAC filtering",
+            "indexed": false
+          },
+          "closeDate": {
+            "raw_path": [
+              "properties",
+              "closedate",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Expected close date",
+            "indexed": false
+          },
+          "dealType": {
+            "raw_path": [
+              "properties",
+              "dealtype",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Deal type",
+            "indexed": false
+          },
+          "associatedContacts": {
+            "raw_path": [
+              "associations",
+              "contacts",
+              "results"
+            ],
+            "functions": [],
+            "type": "array",
+            "required": false,
+            "description": "Array of associated contact IDs",
+            "indexed": false
+          },
+          "createdAt": {
+            "raw_path": [
+              "properties",
+              "createdate",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Creation timestamp",
+            "indexed": false
+          },
+          "updatedAt": {
+            "raw_path": [
+              "properties",
+              "hs_lastmodifieddate",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Last modification timestamp",
+            "indexed": false
+          }
+        },
+        "compiledFields": {
+          "id": {
+            "raw_path": [
+              "id"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Unique deal identifier",
+            "indexed": true
+          },
+          "dealName": {
+            "raw_path": [
+              "properties",
+              "dealname",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Deal name",
+            "indexed": false
+          },
+          "amount": {
+            "raw_path": [
+              "properties",
+              "amount",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Deal amount",
+            "indexed": false
+          },
+          "currency": {
+            "raw_path": [
+              "properties",
+              "deal_currency_code",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "toUpper",
+                "args": []
+              },
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Currency code",
+            "indexed": false
+          },
+          "stage": {
+            "raw_path": [
+              "properties",
+              "dealstage",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Deal stage for ABAC filtering",
+            "indexed": false
+          },
+          "pipeline": {
+            "raw_path": [
+              "properties",
+              "pipeline",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Pipeline name for ABAC filtering",
+            "indexed": false
+          },
+          "closeDate": {
+            "raw_path": [
+              "properties",
+              "closedate",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Expected close date",
+            "indexed": false
+          },
+          "dealType": {
+            "raw_path": [
+              "properties",
+              "dealtype",
+              "value"
+            ],
+            "functions": [
+              {
+                "name": "trim",
+                "args": []
+              }
+            ],
+            "type": "string",
+            "required": false,
+            "description": "Deal type",
+            "indexed": false
+          },
+          "associatedContacts": {
+            "raw_path": [
+              "associations",
+              "contacts",
+              "results"
+            ],
+            "functions": [],
+            "type": "array",
+            "required": false,
+            "description": "Array of associated contact IDs",
+            "indexed": false
+          },
+          "createdAt": {
+            "raw_path": [
+              "properties",
+              "createdate",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Creation timestamp",
+            "indexed": false
+          },
+          "updatedAt": {
+            "raw_path": [
+              "properties",
+              "hs_lastmodifieddate",
+              "value"
+            ],
+            "functions": [],
+            "type": "string",
+            "required": false,
+            "description": "Last modification timestamp",
+            "indexed": false
+          }
         }
       },
       "exposed": {
@@ -832,6 +1858,122 @@
           }
         },
         "autoRbac": true
+      }
+    },
+    {
+      "key": "hubspot-users-datasource",
+      "displayName": "HubSpot Users",
+      "resourceType": "person",
+      "systemKey": "hubspot",
+      "enabled": true,
+      "entityType": "recordStorage",
+      "description": "Comprehensive HubSpot users datasource with full CRUD operations, comprehensive metadata schema, ABAC dimensions, and OpenAPI support",
+      "metadataSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "HubSpot user ID"
+          },
+          "properties": {
+            "type": "object",
+            "description": "User properties object containing all CRM fields",
+            "additionalProperties": true,
+            "properties": {
+              "email": {
+                "type": "string",
+                "format": "email",
+                "description": "User email address"
+              },
+              "firstName": {
+                "type": "string",
+                "description": "User first name"
+              },
+              "lastName": {
+                "type": "string",
+                "description": "User last name"
+              },
+              "role": {
+                "type": "string",
+                "description": "User role"
+              },
+              "timezone": {
+                "type": "string",
+                "description": "User timezone"
+              }
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "User creation timestamp"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "User last update timestamp"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "Whether the user is archived"
+          },
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "User archive timestamp"
+          },
+          "associations": {
+            "type": "object",
+            "description": "Associated records",
+            "additionalProperties": true
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "HubSpot object URL"
+          },
+          "objectWriteTraceId": {
+            "type": "string",
+            "description": "Trace ID for tracking writes"
+          },
+          "propertiesWithHistory": {
+            "type": "object",
+            "description": "Properties with change history",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "fieldMappings": {
+        "attributes": {
+          "id": {
+            "expression": "{{id}}",
+            "type": "string",
+            "indexed": true
+          },
+          "department": {
+            "expression": "{{id}}",
+            "type": "string",
+            "indexed": true,
+            "description": "Default dimension for catalog compatibility"
+          }
+        },
+        "dimensions": {
+          "department": "metadata.department"
+        }
+      },
+      "sync": {
+        "mode": "pull",
+        "schedule": "0 */6 * * *",
+        "batchSize": 100,
+        "maxParallelRequests": 5,
+        "pagination": {
+          "strategy": "cursor",
+          "cursorField": "$.paging.next.after",
+          "cursorParam": "after"
+        }
       }
     }
   ],

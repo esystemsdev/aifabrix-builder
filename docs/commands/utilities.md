@@ -189,7 +189,7 @@ aifabrix convert hubspot --format json --force
 ```
 
 **Options:**
-- `--format <format>` - Target format: `json` or `yaml` (required)
+- `--format <format>` - Target format: `json` or `yaml` (required unless config format is set). When not passed, uses the format from `~/.aifabrix/config.yaml` (set via `aifabrix dev set-format`). If neither is set, the command fails with instructions.
 - `-f, --force` - Skip "Are you sure?" confirmation prompt
 
 **App path resolution:** The command resolves the app by checking **`integration/<app>`** first, then **`builder/<app>`**. If neither exists, it errors. There is no option to override this order.
@@ -202,10 +202,66 @@ aifabrix convert hubspot --format json --force
 5. Delete old files only after all writes succeed.
 
 **Issues:**
-- **"Option --format is required and must be 'json' or 'yaml'"** → Pass `--format json` or `--format yaml`
+- **"Option --format is required and must be 'json' or 'yaml'"** → Pass `--format json` or `--format yaml`, or set default with `aifabrix dev set-format json` (or `yaml`)
 - **"Validation failed"** → Fix validation errors (run `aifabrix validate <app>`) before converting
 - **"Convert cancelled"** → You answered no to the confirmation prompt; run again with `--force` to skip the prompt
 - **"App not found"** → Ensure the app exists in `integration/<app>` or `builder/<app>`
+
+---
+
+<a id="aifabrix-repair-app"></a>
+## aifabrix repair <app>
+
+Repair external integration config when `application.yaml` drifts from files on disk.
+
+**What:** Aligns `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files, syncs the system file `dataSources` array to datasource keys from discovered files (add/delete/rename), removes authentication-only variables from the system `configuration` array (keeps keyvault auth entries), fixes `app.key` to match `system.key`, aligns datasource `systemKey` values to match the system key, creates a minimal `externalIntegration` block when missing, extracts `rbac.yaml` from system roles/permissions when absent, repairs env.template so KV_ variable names and path-style `kv://` values match the system file (adds missing auth vars, corrects names/values), and regenerates `<systemKey>-deploy.json`. Repair also runs on **datasource files**: it treats `fieldMappings.attributes` as the source of truth and aligns `fieldMappings.dimensions` (removes dimension entries whose `metadata.<attr>` is not in attributes) and `metadataSchema` (adds a minimal schema if missing; removes schema branches not referenced by any attribute expression).
+
+**When:** After converting files (JSON ↔ YAML), after adding/removing datasource files, when validation reports "External datasource file not found", or when `application.yaml` gets out of sync with files on disk.
+
+**Repairable issues:**
+- **File list drift** — Config lists `.json` but files are `.yaml` (or vice versa)
+- **Deleted datasource** — Config lists a file that no longer exists
+- **Added datasource** — File exists on disk but not in config
+- **System file dataSources drift** — System file `dataSources` array updated to match datasource keys from discovered files (add/delete/rename). Each entry is a **logical key** (from that datasource file's `key` property, or derived from the filename when missing, e.g. `datasource-companies.json` → `test-hubspot-companies`), not the datasource filename.
+- **Authentication variables in configuration** — Standard auth variables (BASEURL, CLIENTID, CLIENTSECRET, TOKENURL, etc.) removed from `configuration`; they are supplied from the credential at runtime. Use the configuration array only for custom variables.
+- **Missing externalIntegration** — No block; repair creates it from discovered files
+- **Datasource systemKey mismatch** — Datasource file has `systemKey: X` but system file has `key: Y`; repair updates `systemKey` in each datasource file to match system key
+- **system.key mismatch** — System file has `key: X` but `app.key` is `Y`; repair updates `app.key`
+- **Dimensions not in attributes** — Dimension values like `metadata.<attr>` must reference an existing attribute key in `fieldMappings.attributes`; repair removes invalid dimension entries
+- **metadataSchema drift** — Repair adds a minimal metadataSchema when missing and removes schema fields not used by attribute expressions
+- **rbac.yaml missing** — System has roles/permissions but no `rbac.yaml`; repair creates it
+- **env.template key drift** — env.template has wrong or missing KV_* keys or non–path-style kv values; repair aligns names and values with the system's authentication.security and configuration
+- **Stale deploy manifest** — Regenerates `<systemKey>-deploy.json` after config changes
+- **Datasource key and filename normalization** — Repair normalizes datasource keys to `<system-key>-<resourceType>` (or `<system-key>-<resourceType>-2`, `-3` for duplicates) and filenames to `<system-key>-datasource-<suffix>.<ext>`. Keys or filenames that already match the valid pattern (e.g. `customer-extra`, `customer-1`) are left unchanged.
+- **Optional flags** — `--rbac` adds or merges RBAC permissions per datasource and default Admin/Reader roles if none exist; `--expose` sets `exposed.attributes` on each datasource to all attribute keys; `--sync` adds a default sync section to datasources that lack it; `--test` generates `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes
+- **Authentication method** — When `--auth <method>` is provided, repair sets the integration’s authentication to that method (canonical variables and security) and updates env.template accordingly
+
+**Usage:**
+```bash
+# Repair and write changes
+aifabrix repair hubspot
+
+# Set authentication method (updates system file and env.template)
+aifabrix repair hubspot-demo --auth apikey
+
+# Preview changes without writing (--dry-run)
+aifabrix repair hubspot --dry-run
+
+# Optional: ensure RBAC, exposed attributes, sync section, or test payload
+aifabrix repair hubspot --rbac --expose --sync --test
+```
+
+**Options:**
+- `--auth <method>` — Set authentication method (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none); updates the system file and env.template
+- `--dry-run` — Report what would be changed; do not write
+- `--rbac` — Ensure RBAC has a permission per datasource endpoint (`<resourceType>:<capability>`) and add default Admin/Reader roles if none exist
+- `--expose` — Set `exposed.attributes` on each datasource to the list of all `fieldMappings.attributes` keys
+- `--sync` — Add a default sync section (mode, batchSize, maxParallelRequests) to datasources that lack it
+- `--test` — Generate `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes for each datasource
+
+**Issues:**
+- **"App not found"** → Ensure the app exists in `integration/<app>` or `builder/<app>`
+- **"No system file found"** → Add a `*-system.yaml` or `*-system.json` file first
 
 ---
 
@@ -331,7 +387,7 @@ Manage secrets: local (project/user secrets file) and shared (file or remote API
 <a id="aifabrix-secret-list"></a>
 ### aifabrix secret list
 
-List secret **keys and values**. **Local:** list user's local secrets (project file from `aifabrix-secrets` or user secrets). **Shared:** `aifabrix secret list --shared` — when `aifabrix-secrets` is a file path, lists from that file; when it is an `http(s)://` URL, lists from GET `/api/dev/secrets` (cert required). Output format is `key: value` per line.
+List secret **keys and values**. **Local:** list user's local secrets (project file from `aifabrix-secrets` or user secrets). **Shared:** `aifabrix secret list --shared` — when `aifabrix-secrets` is a file path, lists from that file; when it is an `http(s)://` URL, lists from the remote server (cert required). Output format is `key: value` per line.
 
 **Usage:**
 ```bash
@@ -369,7 +425,7 @@ aifabrix secret set keycloak-server-url "https://keycloak.example.com/auth/realm
 ```
 
 **Options:**
-- `--shared` - Save to shared secrets: when `aifabrix-secrets` is a file path, write to that file; when it is an `http(s)://` URL, POST to `/api/dev/secrets` (cert required; admin/secret-manager for shared when remote)
+- `--shared` - Save to shared secrets: when `aifabrix-secrets` is a file path, write to that file; when it is an `http(s)://` URL, saves to the remote server (cert required; admin/secret-manager for shared when remote)
 
 **Secret Value Formats:**
 - **Full URLs**: Direct URL values (e.g., `https://mydomain.com/keycloak`)
@@ -410,7 +466,7 @@ aifabrix secret set api-keyKeyVault "\${API_KEY}"
 <a id="aifabrix-secret-remove"></a>
 ### aifabrix secret remove
 
-Remove a secret. **Local:** `aifabrix secret remove <key>` removes from user/project secrets file. **Shared:** `aifabrix secret remove <key> --shared` — when `aifabrix-secrets` is a file path, removes from that file; when it is an `http(s)://` URL, DELETE `/api/dev/secrets/{key}` (cert required).
+Remove a secret. **Local:** `aifabrix secret remove <key>` removes from user/project secrets file. **Shared:** `aifabrix secret remove <key> --shared` — when `aifabrix-secrets` is a file path, removes from that file; when it is an `http(s)://` URL, removes from the remote server (cert required).
 
 **Usage:**
 ```bash
@@ -428,5 +484,5 @@ aifabrix secret remove my-keyKeyVault --shared
 ## See also
 
 - [application.yaml (application config)](../configuration/application-yaml.md) — Application config format and options
-- [External integration](../configuration/external-integration.md) — System and datasource config files
+- [External integration](../configuration/application-yaml.md#external-integration-and-external-system) — System and datasource config files
 

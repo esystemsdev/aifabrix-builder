@@ -46,7 +46,7 @@ aifabrix create myapp --github --github-steps npm
 ```bash
 aifabrix create hubspot --type external
 ```
-Creates in `integration/<app>/`. Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2/apikey/basic), number of datasources. For other commands (validate, json, deploy, delete, **resolve**), the CLI always resolves the app by checking `integration/<app>` first, then `builder/<app>`; if neither exists, it errors. There is no option to override this order. **Resolve** additionally supports **env-only** mode: if `integration/<app>/env.template` exists (even without `application.yaml`), resolve uses that directory and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
+Creates in `integration/<app>/`. Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none), entity type (recordStorage, documentStorage, vectorStore, messageService, none), number of datasources. For other commands (validate, json, deploy, delete, **resolve**), the CLI always resolves the app by checking `integration/<app>` first, then `builder/<app>`; if neither exists, it errors. There is no option to override this order. **Resolve** additionally supports **env-only** mode: if `integration/<app>/env.template` exists (even without `application.yaml`), resolve uses that directory and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
 
 **Complete HubSpot example:**
 See `integration/hubspot/` for a complete HubSpot integration with companies, contacts, and deals datasources. Includes OAuth2 authentication, field mappings, and OpenAPI operations.
@@ -76,10 +76,19 @@ See `integration/hubspot/` for a complete HubSpot integration with companies, co
 - `.github/workflows/` - GitHub Actions workflows (if --github specified)
 
 **External Type (`--type external`):**
+- `--display-name <name>` - External system display name (required for non-interactive)
+- `--description <desc>` - External system description (required for non-interactive)
+- `--system-type <type>` - openapi, mcp, or custom (required for non-interactive)
+- `--auth-type <type>` - oauth2, aad, apikey, basic, queryParam, oidc, hmac, or none (required for non-interactive)
+- `--entity-type <type>` - recordStorage, documentStorage, vectorStore, messageService, or none (required for non-interactive)
+- `--datasources <count>` - Number of datasources (required for non-interactive)
+
 When using `--type external`, the command creates an external system integration in `integration/<app>/`:
-- `integration/<app>/application.yaml` - App configuration with `app.type: "external"` and `externalIntegration` block
-- `integration/<app>/<systemKey>-system.yaml` - External system configuration
-- `integration/<app>/<systemKey>-datasource-<datasource-key>.yaml` - Datasource YAML files (all in same folder)
+- `integration/<app>/application.yaml` (or `application.json` if config format is `json`) - App configuration with `app.type: "external"` and `externalIntegration` block
+- `integration/<app>/<systemKey>-system.yaml` (or `*.json`) - External system configuration
+- `integration/<app>/<systemKey>-datasource-<datasource-key>.yaml` (or `*.json`) - Datasource files (all in same folder)
+
+When `format` is set in `~/.aifabrix/config.yaml` (via `aifabrix dev set-format`), the command generates files in that format.
 - `integration/<app>/<systemKey>-deploy.json` - Deployment manifest (generated)
 - `integration/<app>/env.template` - Environment variables template
 - `integration/<app>/README.md` - Application documentation
@@ -440,13 +449,20 @@ aifabrix install myapp --env tst
 <a id="aifabrix-test-e2e-app"></a>
 ## aifabrix test-e2e <app>
 
-Run e2e tests inside the container for **builder** applications.
+Run e2e tests: **builder** apps in container; **external** systems run E2E for all datasources via the dataplane.
 
-**What:** Runs the app's test:e2e command (e.g. `pnpm test:e2e`, `make test:e2e`) inside the container. For **dev**: uses the running container; for **tst**: ephemeral container with resolved `.env`.
+**What:** For **builder** apps: runs the app's test:e2e command (e.g. `pnpm test:e2e`, `make test:e2e`) inside the container. For **dev**: uses the running container; for **tst**: ephemeral container with resolved `.env`. For **external** systems in `integration/<app>/`: runs E2E for every datasource of that system using each datasource's test payload (no extra parameters required); results are aggregated and the command exits with non-zero if any datasource fails.
 
-**Usage:** `aifabrix test-e2e myapp` or `aifabrix test-e2e myapp --env tst`
+**Usage (builder):** `aifabrix test-e2e myapp` or `aifabrix test-e2e myapp --env tst`
 
-**Options:** `--env <dev|tst>` — same as [aifabrix test](#aifabrix-test-app). Override with `build.scripts.test:e2e` or `build.scripts.testE2e`; see [Scripts and commands](#scripts-and-commands).
+**Usage (external system):**
+```bash
+aifabrix test-e2e hubspot-demo
+aifabrix test-e2e hubspot-demo --env tst -v --debug
+aifabrix test-e2e hubspot-demo --no-async
+```
+
+**Options:** `-e, --env <env>` — Environment (dev, tst, pro). `-v, --verbose` — Show detailed step output and poll progress. `--debug` — Include debug output and write log to `integration/<app>/logs/`. `--no-async` — Use sync mode (no polling). For builder apps, override the script with `build.scripts.test:e2e` or `build.scripts.testE2e`; see [Scripts and commands](#scripts-and-commands).
 
 ---
 
@@ -473,6 +489,7 @@ aifabrix test-integration myapp --env tst
 aifabrix test-integration hubspot
 aifabrix test-integration hubspot --env tst
 aifabrix test-integration hubspot --datasource hubspot-company --payload ./test-payload.json
+aifabrix test-integration hubspot --debug  # write log to integration/hubspot/logs/
 ```
 
 **Options:**
@@ -480,11 +497,12 @@ aifabrix test-integration hubspot --datasource hubspot-company --payload ./test-
 - `-d, --datasource <key>` — (External only) Test a specific datasource.
 - `-p, --payload <file>` — (External only) Path to custom test payload file.
 - `-v, --verbose` — (External only) Show detailed test output.
+- `--debug` — (External only) Include debug output and write log to `integration/<app>/logs/`.
 - `--timeout <ms>` — (External only) Request timeout in milliseconds (default 30000).
 
 **Script:** For builder apps, override with `build.scripts.test:integration` or `build.scripts.testIntegration` in application.yaml. When unset, the command used is the same as [aifabrix test-e2e](#aifabrix-test-e2e-app) (e.g. `pnpm test:e2e`, `make test:e2e`). See [Scripts and commands](#scripts-and-commands).
 
-**See also:** [External Integration Testing](external-integration-testing.md) for external system integration tests, payload configuration, and troubleshooting.
+**See also:** [External Integration Testing](external-integration-testing.md) for external system integration tests, payload configuration, and troubleshooting. For datasource-level E2E tests (including credential validation), use `aifabrix datasource test-e2e <datasourceKey>`; see [External Integration Commands](external-integration.md#aifabrix-datasource-test-e2e-datasourcekey).
 
 ---
 

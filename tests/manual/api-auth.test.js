@@ -43,51 +43,29 @@ describe('Manual API tests (real Controller)', () => {
       expect(response.data.authenticated).not.toBe(false);
     });
 
-    it('POST /api/v1/auth/client-token returns response', async() => {
-      const response = await getClientToken(controllerUrl, 'POST');
-      expect(response).toBeDefined();
-    });
-
-    it('GET /api/v1/auth/login returns response', async() => {
-      const response = await getAuthLogin(controllerUrl, 'http://localhost/callback', undefined, authConfig);
-      expect(response).toBeDefined();
-    });
-
-    it('GET /api/v1/auth/roles returns response', async() => {
-      const response = await getAuthRoles(controllerUrl, authConfig, environment, undefined);
-      expect(response).toBeDefined();
-    });
-
-    it('GET /api/v1/auth/roles/refresh returns response', async() => {
-      const response = await refreshAuthRoles(controllerUrl, authConfig);
-      expect(response).toBeDefined();
-    });
-
-    it('GET /api/v1/auth/permissions returns response', async() => {
-      const response = await getAuthPermissions(controllerUrl, authConfig, environment, undefined);
-      expect(response).toBeDefined();
-    });
-
-    it('GET /api/v1/auth/permissions/refresh returns response', async() => {
-      const response = await refreshAuthPermissions(controllerUrl, authConfig);
-      expect(response).toBeDefined();
-    });
-
-    it('POST /api/v1/auth/validate returns response', async() => {
+    it('auth endpoints return responses (parallel)', async() => {
       const token = authConfig.token || authConfig.bearer;
       expect(token).toBeDefined();
-      const response = await validateToken(token, controllerUrl, authConfig, environment, undefined);
-      expect(response).toBeDefined();
-    });
-
-    it('GET /api/v1/auth/login/diagnostics returns diagnostics', async() => {
-      const response = await getAuthLoginDiagnostics(controllerUrl, environment);
-      expect(response).toBeDefined();
-    });
-
-    it('POST /api/v1/auth/login (device code) initiates flow', async() => {
-      const response = await initiateDeviceCodeFlow(controllerUrl, environment);
-      expect(response).toBeDefined();
+      const [clientToken, login, roles, rolesRefresh, permissions, permissionsRefresh, validate, diagnostics, deviceCode] = await Promise.all([
+        getClientToken(controllerUrl, 'POST'),
+        getAuthLogin(controllerUrl, 'http://localhost/callback', undefined, authConfig),
+        getAuthRoles(controllerUrl, authConfig, environment, undefined),
+        refreshAuthRoles(controllerUrl, authConfig),
+        getAuthPermissions(controllerUrl, authConfig, environment, undefined),
+        refreshAuthPermissions(controllerUrl, authConfig),
+        validateToken(token, controllerUrl, authConfig, environment, undefined),
+        getAuthLoginDiagnostics(controllerUrl, environment),
+        initiateDeviceCodeFlow(controllerUrl, environment)
+      ]);
+      expect(clientToken).toBeDefined();
+      expect(login).toBeDefined();
+      expect(roles).toBeDefined();
+      expect(rolesRefresh).toBeDefined();
+      expect(permissions).toBeDefined();
+      expect(permissionsRefresh).toBeDefined();
+      expect(validate).toBeDefined();
+      expect(diagnostics).toBeDefined();
+      expect(deviceCode).toBeDefined();
     });
   });
 
@@ -99,7 +77,7 @@ describe('Manual API tests (real Controller)', () => {
       expect(Array.isArray(response.data) || (response.data && typeof response.data === 'object')).toBe(true);
     });
 
-    it('GET /api/v1/applications/{appKey} returns application when key exists', async() => {
+    it('GET application by key and status when app exists (parallel)', async() => {
       const listRes = await listApplications(controllerUrl, authConfig, { pageSize: 1 });
       expect(listRes).toBeDefined();
       expect(listRes.success).toBe(true);
@@ -111,29 +89,15 @@ describe('Manual API tests (real Controller)', () => {
       if (!appKey) {
         return;
       }
-      const response = await getApplication(controllerUrl, appKey, authConfig);
-      expect(response).toBeDefined();
-      expect(response.success).toBe(true);
-    });
-
-    it('GET /api/v1/environments/{envKey}/applications/{appKey}/status returns status when app exists', async() => {
-      if (!environment) {
-        return;
+      const [appResponse, statusResponse] = await Promise.all([
+        getApplication(controllerUrl, appKey, authConfig),
+        environment ? getApplicationStatus(controllerUrl, environment, appKey, authConfig) : Promise.resolve(null)
+      ]);
+      expect(appResponse).toBeDefined();
+      expect(appResponse.success).toBe(true);
+      if (environment && statusResponse !== null) {
+        expect(statusResponse).toBeDefined();
       }
-      const listRes = await listApplications(controllerUrl, authConfig, { pageSize: 1 });
-      if (!listRes?.success) {
-        return;
-      }
-      const items = Array.isArray(listRes.data) ? listRes.data : (listRes.data?.items ?? listRes.data?.data ?? []);
-      if (items.length === 0) {
-        return;
-      }
-      const appKey = items[0].key ?? items[0].appKey ?? items[0].id;
-      if (!appKey) {
-        return;
-      }
-      const response = await getApplicationStatus(controllerUrl, environment, appKey, authConfig);
-      expect(response).toBeDefined();
     });
   });
 });

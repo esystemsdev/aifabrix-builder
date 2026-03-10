@@ -42,6 +42,14 @@ jest.mock('../../lib/external-system/download', () => ({
   downloadExternalSystem: jest.fn()
 }));
 
+jest.mock('../../lib/core/config', () => ({
+  getFormat: jest.fn()
+}));
+
+jest.mock('../../lib/commands/convert', () => ({
+  runConvert: jest.fn()
+}));
+
 jest.mock('../../lib/external-system/test', () => ({
   testExternalSystem: jest.fn(),
   testExternalSystemIntegration: jest.fn(),
@@ -71,6 +79,14 @@ jest.mock('../../lib/commands/secrets-set', () => ({
   handleSecretsSet: jest.fn()
 }));
 
+jest.mock('../../lib/commands/credential-env', () => ({
+  runCredentialEnv: jest.fn()
+}));
+
+jest.mock('../../lib/commands/credential-push', () => ({
+  runCredentialPush: jest.fn()
+}));
+
 const fs = require('fs');
 const app = require('../../lib/app');
 const environmentDeploy = require('../../lib/deployment/environment');
@@ -80,11 +96,15 @@ const generator = require('../../lib/generator');
 const validate = require('../../lib/validation/validate');
 const diff = require('../../lib/core/diff');
 const download = require('../../lib/external-system/download');
+const config = require('../../lib/core/config');
+const convert = require('../../lib/commands/convert');
 const test = require('../../lib/external-system/test');
 const cliUtils = require('../../lib/utils/cli-utils');
 const logger = require('../../lib/utils/logger');
 const { handleSecure } = require('../../lib/commands/secure');
 const { handleSecretsSet } = require('../../lib/commands/secrets-set');
+const { runCredentialEnv } = require('../../lib/commands/credential-env');
+const { runCredentialPush } = require('../../lib/commands/credential-push');
 const chalk = require('chalk');
 
 describe('CLI Uncovered Command Handlers', () => {
@@ -240,6 +260,88 @@ describe('CLI Uncovered Command Handlers', () => {
     });
   });
 
+  describe('credential env command handler', () => {
+    it('should handle credential env successfully', async() => {
+      runCredentialEnv.mockResolvedValue('/workspace/integration/hubspot/.env');
+
+      const handler = async(systemKey) => {
+        try {
+          const { runCredentialEnv } = require('../../lib/commands/credential-env');
+          await runCredentialEnv(systemKey);
+        } catch (error) {
+          logger.error(chalk.red(`Error: ${error.message}`));
+          cliUtils.handleCommandError(error, 'credential env');
+          process.exit(1);
+        }
+      };
+
+      await handler('hubspot');
+      expect(runCredentialEnv).toHaveBeenCalledWith('hubspot');
+      expect(process.exit).not.toHaveBeenCalled();
+    });
+
+    it('should handle credential env error', async() => {
+      const error = new Error('env.template not found');
+      runCredentialEnv.mockRejectedValue(error);
+
+      const handler = async(systemKey) => {
+        try {
+          const { runCredentialEnv } = require('../../lib/commands/credential-env');
+          await runCredentialEnv(systemKey);
+        } catch (err) {
+          logger.error(chalk.red(`Error: ${err.message}`));
+          cliUtils.handleCommandError(err, 'credential env');
+          process.exit(1);
+        }
+      };
+
+      await handler('hubspot');
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('env.template not found'));
+      expect(process.exit).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('credential push command handler', () => {
+    it('should handle credential push successfully', async() => {
+      runCredentialPush.mockResolvedValue({ pushed: 2 });
+
+      const handler = async(systemKey) => {
+        try {
+          const { runCredentialPush } = require('../../lib/commands/credential-push');
+          await runCredentialPush(systemKey);
+        } catch (error) {
+          logger.error(chalk.red(`Error: ${error.message}`));
+          cliUtils.handleCommandError(error, 'credential push');
+          process.exit(1);
+        }
+      };
+
+      await handler('hubspot');
+      expect(runCredentialPush).toHaveBeenCalledWith('hubspot');
+      expect(process.exit).not.toHaveBeenCalled();
+    });
+
+    it('should handle credential push error', async() => {
+      const error = new Error('Authentication required');
+      runCredentialPush.mockRejectedValue(error);
+
+      const handler = async(systemKey) => {
+        try {
+          const { runCredentialPush } = require('../../lib/commands/credential-push');
+          await runCredentialPush(systemKey);
+        } catch (err) {
+          logger.error(chalk.red(`Error: ${err.message}`));
+          cliUtils.handleCommandError(err, 'credential push');
+          process.exit(1);
+        }
+      };
+
+      await handler('hubspot');
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Authentication required'));
+      expect(process.exit).toHaveBeenCalledWith(1);
+    });
+  });
+
   describe('doctor command infrastructure health check', () => {
     it('should check infrastructure health when Docker is available', async() => {
       validator.checkEnvironment.mockResolvedValue({
@@ -355,7 +457,7 @@ describe('CLI Uncovered Command Handlers', () => {
       generator.splitDeployJson.mockResolvedValue({
         envTemplate: '/test/app/env.template',
         variables: '/test/app/application.yaml',
-        rbac: '/test/app/rbac.yml',
+        rbac: '/test/app/rbac.yaml',
         readme: '/test/app/README.md'
       });
 
@@ -377,7 +479,7 @@ describe('CLI Uncovered Command Handlers', () => {
           logger.log(`  • env.template: ${result.envTemplate}`);
           logger.log(`  • application.yaml: ${result.variables}`);
           if (result.rbac) {
-            logger.log(`  • rbac.yml: ${result.rbac}`);
+            logger.log(`  • rbac.yaml: ${result.rbac}`);
           }
           logger.log(`  • README.md: ${result.readme}`);
         } catch (error) {
@@ -703,6 +805,128 @@ describe('CLI Uncovered Command Handlers', () => {
       await handler('test-system', {});
       expect(cliUtils.handleCommandError).toHaveBeenCalledWith(error, 'download');
       expect(process.exit).toHaveBeenCalledWith(1);
+    });
+
+    it('should pass format from options to download when using real setup', async() => {
+      config.getFormat.mockResolvedValue(null);
+      download.downloadExternalSystem.mockResolvedValue();
+
+      const { setupExternalSystemCommands } = require('../../lib/cli/setup-external-system');
+      const actions = {};
+      const prog = {
+        command: jest.fn((name) => ({
+          description: jest.fn().mockReturnThis(),
+          option: jest.fn().mockReturnThis(),
+          action: jest.fn((fn) => {
+            actions[name] = fn;
+            return {};
+          })
+        }))
+      };
+      setupExternalSystemCommands(prog);
+
+      const act = actions['download <system-key>'];
+      expect(act).toBeDefined();
+      await act('hubspot', { format: 'json' });
+      expect(download.downloadExternalSystem).toHaveBeenCalledWith('hubspot', expect.objectContaining({ format: 'json' }));
+    });
+
+    it('should use config format when options.format not passed', async() => {
+      config.getFormat.mockResolvedValue('json');
+      download.downloadExternalSystem.mockResolvedValue();
+
+      const { setupExternalSystemCommands } = require('../../lib/cli/setup-external-system');
+      const actions = {};
+      const prog = {
+        command: jest.fn((name) => ({
+          description: jest.fn().mockReturnThis(),
+          option: jest.fn().mockReturnThis(),
+          action: jest.fn((fn) => {
+            actions[name] = fn;
+            return {};
+          })
+        }))
+      };
+      setupExternalSystemCommands(prog);
+
+      await actions['download <system-key>']('hubspot', {});
+      expect(download.downloadExternalSystem).toHaveBeenCalledWith('hubspot', expect.objectContaining({ format: 'json' }));
+    });
+  });
+
+  describe('convert command handler', () => {
+    it('should use options.format when passed', async() => {
+      config.getFormat.mockResolvedValue(null);
+      convert.runConvert.mockResolvedValue({ converted: [], deleted: [] });
+
+      const { setupUtilityCommands } = require('../../lib/cli/setup-utility');
+      const actions = {};
+      const prog = {
+        command: jest.fn((name) => ({
+          description: jest.fn().mockReturnThis(),
+          option: jest.fn().mockReturnThis(),
+          action: jest.fn((fn) => {
+            actions[name] = fn;
+            return {};
+          })
+        }))
+      };
+      setupUtilityCommands(prog);
+
+      const act = actions['convert <app>'];
+      expect(act).toBeDefined();
+      await act('hubspot', { format: 'json', force: true });
+      expect(convert.runConvert).toHaveBeenCalledWith('hubspot', { format: 'json', force: true });
+    });
+
+    it('should use config format when options.format not passed', async() => {
+      config.getFormat.mockResolvedValue('yaml');
+      convert.runConvert.mockResolvedValue({ converted: [], deleted: [] });
+
+      const { setupUtilityCommands } = require('../../lib/cli/setup-utility');
+      const actions = {};
+      const prog = {
+        command: jest.fn((name) => ({
+          description: jest.fn().mockReturnThis(),
+          option: jest.fn().mockReturnThis(),
+          action: jest.fn((fn) => {
+            actions[name] = fn;
+            return {};
+          })
+        }))
+      };
+      setupUtilityCommands(prog);
+
+      await actions['convert <app>']('hubspot', { force: true });
+      expect(convert.runConvert).toHaveBeenCalledWith('hubspot', { format: 'yaml', force: true });
+    });
+
+    it('should exit when neither options.format nor config format is set', async() => {
+      config.getFormat.mockResolvedValue(null);
+
+      const { setupUtilityCommands } = require('../../lib/cli/setup-utility');
+      const actions = {};
+      const prog = {
+        command: jest.fn((name) => ({
+          description: jest.fn().mockReturnThis(),
+          option: jest.fn().mockReturnThis(),
+          action: jest.fn((fn) => {
+            actions[name] = fn;
+            return {};
+          })
+        }))
+      };
+      setupUtilityCommands(prog);
+
+      await actions['convert <app>']('hubspot', {});
+      expect(cliUtils.handleCommandError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringMatching(/Option --format is required.*or set default with aifabrix dev set-format/)
+        }),
+        'convert'
+      );
+      expect(process.exit).toHaveBeenCalledWith(1);
+      expect(convert.runConvert).not.toHaveBeenCalled();
     });
   });
 

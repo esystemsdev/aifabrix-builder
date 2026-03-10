@@ -10,6 +10,8 @@ jest.mock('chalk', () => {
   const mockChalk = (text) => text;
   mockChalk.red = (t) => t;
   mockChalk.gray = (t) => t;
+  mockChalk.green = (t) => t;
+  mockChalk.yellow = (t) => t;
   mockChalk.cyan = (t) => t;
   mockChalk.bold = (t) => t;
   return mockChalk;
@@ -146,6 +148,62 @@ describe('Credential list command', () => {
     expect(logger.log.mock.calls.some(c => String(c[0]).includes('item-1'))).toBe(true);
   });
 
+  it('should handle paginated API shape (meta + data array)', async() => {
+    listCredentials.mockResolvedValue({
+      success: true,
+      data: {
+        meta: { totalItems: 1, currentPage: 1, pageSize: 20, type: 'CredentialResponse' },
+        data: [
+          { id: 'c67fb7ae03c5844a59ada1558', key: 'test-hubspot-cred', displayName: 'Test E2E HubSpot OAuth2' }
+        ]
+      },
+      status: 200
+    });
+
+    await runCredentialList({});
+
+    expect(logger.log).toHaveBeenCalled();
+    expect(logger.log.mock.calls.some(c => String(c[0]).includes('test-hubspot-cred'))).toBe(true);
+    expect(logger.log.mock.calls.some(c => String(c[0]).includes('Test E2E HubSpot OAuth2'))).toBe(true);
+  });
+
+  it('should display status icon and label when credential has status', async() => {
+    listCredentials.mockResolvedValue({
+      data: {
+        credentials: [
+          { key: 'cred-ok', displayName: 'OK Cred', status: 'verified' },
+          { key: 'cred-fail', displayName: 'Fail Cred', status: 'failed' }
+        ]
+      }
+    });
+
+    await runCredentialList({});
+
+    expect(logger.log).toHaveBeenCalled();
+    const output = logger.log.mock.calls.map(c => String(c[0])).join('\n');
+    expect(output).toContain('cred-ok');
+    expect(output).toContain('cred-fail');
+    expect(output).toContain(' ✓');
+    expect(output).toContain(' ✗');
+    expect(output).toContain(' (Valid)');
+    expect(output).toContain(' (Connection failed)');
+  });
+
+  it('should display credentials without status icon when status is missing', async() => {
+    listCredentials.mockResolvedValue({
+      data: { credentials: [{ key: 'no-status', displayName: 'No Status Cred' }] }
+    });
+
+    await runCredentialList({});
+
+    expect(logger.log).toHaveBeenCalled();
+    const output = logger.log.mock.calls.map(c => String(c[0])).join('\n');
+    expect(output).toContain('no-status');
+    expect(output).toContain('No Status Cred');
+    expect(output).not.toContain(' ✓');
+    expect(output).not.toContain(' ✗');
+  });
+
   it('should display credentials with alternative field names (id, credentialKey, name)', async() => {
     listCredentials.mockResolvedValue({
       data: {
@@ -164,45 +222,12 @@ describe('Credential list command', () => {
     expect(output).toContain('cred-by-key');
   });
 
-  it('should use controller option when provided', async() => {
-    getOrRefreshDeviceToken.mockResolvedValue({
-      token: 'test-token',
-      controller: 'https://custom.controller.com'
-    });
-    resolveControllerUrl.mockResolvedValue('https://fallback.example.com');
-    resolveDataplaneUrl.mockResolvedValue('https://dataplane.from.controller.com');
-
-    await runCredentialList({ controller: 'https://custom.controller.com' });
-
-    expect(resolveDataplaneUrl).toHaveBeenCalledWith(
-      'https://custom.controller.com',
-      'dev',
-      expect.any(Object)
-    );
-    expect(listCredentials).toHaveBeenCalledWith(
-      'https://dataplane.from.controller.com',
-      expect.objectContaining({ type: 'bearer' }),
-      expect.any(Object)
-    );
-  });
-
-  it('should use dataplane option when provided (skip resolution)', async() => {
-    await runCredentialList({ dataplane: 'https://my-dataplane.local' });
-
-    expect(resolveDataplaneUrl).not.toHaveBeenCalled();
-    expect(listCredentials).toHaveBeenCalledWith(
-      'https://my-dataplane.local',
-      expect.objectContaining({ type: 'bearer' }),
-      expect.any(Object)
-    );
-  });
-
   it('should exit when Dataplane URL cannot be resolved', async() => {
     resolveDataplaneUrl.mockRejectedValue(new Error('No dataplane for env'));
 
     await expect(runCredentialList({})).rejects.toThrow('process.exit(1)');
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Could not resolve Dataplane URL'));
-    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('--dataplane'));
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Could not resolve Dataplane URL'));
     expect(listCredentials).not.toHaveBeenCalled();
   });
 });

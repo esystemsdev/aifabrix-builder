@@ -84,6 +84,18 @@ describe('Infrastructure services', () => {
     expect(fs.unlinkSync).toHaveBeenCalledWith(pgpassRunPath);
   });
 
+  it('startDockerServicesAndConfigure skips pgpass when pgadmin is disabled', async() => {
+    const infraDir = '/home/.aifabrix/infra';
+    const runEnvPath = path.join(infraDir, '.env.run');
+
+    await services.startDockerServicesAndConfigure('/path/compose.yaml', 0, 0, infraDir, { pgadmin: false });
+
+    expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
+    expect(fs.writeFileSync).toHaveBeenCalledWith(runEnvPath, expect.any(String), { mode: 0o600 });
+    expect(fs.unlinkSync).toHaveBeenCalledTimes(1);
+    expect(fs.unlinkSync).toHaveBeenCalledWith(runEnvPath);
+  });
+
   it('startDockerServicesAndConfigure unlinks .env.run even when startDockerServices throws', async() => {
     const infraDir = '/tmp/infra';
     const runEnvPath = path.join(infraDir, '.env.run');

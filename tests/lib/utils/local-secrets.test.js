@@ -57,21 +57,22 @@ describe('Local Secrets Module', () => {
       );
     });
 
-    it('should append new secret without changing existing file content', async() => {
-      const key = 'new-key';
-      const value = 'new-value';
+    it('should merge new secret and update existing key in place (no duplicate keys)', async() => {
+      const key = 'existing-key';
+      const value = 'updated-value';
       const secretsPath = path.join('/home/user/.aifabrix', 'secrets.local.yaml');
-      const existingContent = '# comment\nexisting-key: existing-value\n';
+      const existingContent = 'existing-key: old-value\nother-key: other-value\n';
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(existingContent);
 
       await saveLocalSecret(key, value);
 
       const writtenContent = fs.writeFileSync.mock.calls[0][1];
-      expect(writtenContent).toContain('# comment');
-      expect(writtenContent).toContain('existing-key: existing-value');
-      expect(writtenContent).toContain('new-key');
-      expect(writtenContent).toContain('new-value');
+      expect(writtenContent).toContain('existing-key');
+      expect(writtenContent).toContain('updated-value');
+      expect(writtenContent).toContain('other-key');
+      expect(writtenContent).toContain('other-value');
+      expect((writtenContent.match(/existing-key/g) || []).length).toBe(1);
     });
 
     it('should throw error if key is missing', async() => {
@@ -90,7 +91,7 @@ describe('Local Secrets Module', () => {
       await expect(saveLocalSecret('key', null)).rejects.toThrow('Secret value is required');
     });
 
-    it('should append new secret even when existing file has invalid YAML (preserves raw content)', async() => {
+    it('should write new secret when existing file has invalid YAML (overwrites with valid YAML)', async() => {
       const key = 'test-key';
       const value = 'test-value';
       const existingContent = 'invalid: yaml: content: [unclosed';
@@ -100,12 +101,11 @@ describe('Local Secrets Module', () => {
       await saveLocalSecret(key, value);
 
       const writtenContent = fs.writeFileSync.mock.calls[0][1];
-      expect(writtenContent).toContain(existingContent);
       expect(writtenContent).toContain('test-key');
       expect(writtenContent).toContain('test-value');
     });
 
-    it('should append new secret preserving existing non-object content', async() => {
+    it('should write new secret when existing content is non-object (merge treats as empty)', async() => {
       const key = 'test-key';
       const value = 'test-value';
       const existingContent = 'just a string';
@@ -115,7 +115,6 @@ describe('Local Secrets Module', () => {
       await saveLocalSecret(key, value);
 
       const writtenContent = fs.writeFileSync.mock.calls[0][1];
-      expect(writtenContent).toContain('just a string');
       expect(writtenContent).toContain('test-key');
       expect(writtenContent).toContain('test-value');
     });
@@ -162,21 +161,22 @@ describe('Local Secrets Module', () => {
       );
     });
 
-    it('should append new secret without changing existing file content', async() => {
-      const key = 'new-key';
-      const value = 'new-value';
+    it('should merge new secret and preserve existing keys (update in place)', async() => {
+      const key = 'existing-key';
+      const value = 'updated-value';
       const secretsPath = '/custom/path/secrets.yaml';
-      const existingContent = '# comment\nexisting-key: existing-value\n';
+      const existingContent = 'existing-key: old-value\nother-key: other-value\n';
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(existingContent);
 
       await saveSecret(key, value, secretsPath);
 
       const writtenContent = fs.writeFileSync.mock.calls[0][1];
-      expect(writtenContent).toContain('# comment');
-      expect(writtenContent).toContain('existing-key: existing-value');
-      expect(writtenContent).toContain('new-key');
-      expect(writtenContent).toContain('new-value');
+      expect(writtenContent).toContain('existing-key');
+      expect(writtenContent).toContain('updated-value');
+      expect(writtenContent).toContain('other-key');
+      expect(writtenContent).toContain('other-value');
+      expect((writtenContent.match(/existing-key/g) || []).length).toBe(1);
     });
 
     it('should throw error if key is missing', async() => {

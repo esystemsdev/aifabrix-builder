@@ -18,6 +18,7 @@ const {
   jsonToYaml,
   loadConfigFile,
   writeConfigFile,
+  writeYamlPreservingComments,
   isYamlPath,
   isJsonPath
 } = require('../../../lib/utils/config-format');
@@ -217,6 +218,49 @@ describe('config-format', () => {
       const yamlStr = jsonToYaml(obj);
       const back = yamlToJson(yamlStr);
       expect(back).toEqual(obj);
+    });
+  });
+
+  describe('writeYamlPreservingComments', () => {
+    const yamlPath = path.join('/app', 'application.yaml');
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('updates only externalIntegration and app, preserving other keys and comments', () => {
+      const originalContent = '# App config for integration\nname: myapp\nbuild:\n  language: typescript\napp:\n  key: old-key\nexternalIntegration:\n  systems: []\n  dataSources: []\n';
+      const repaired = {
+        name: 'myapp',
+        build: { language: 'typescript' },
+        app: { key: 'hubspot' },
+        externalIntegration: {
+          schemaBasePath: './',
+          systems: ['hubspot-system.yaml'],
+          dataSources: ['hubspot-datasource-contacts.yaml']
+        }
+      };
+      writeYamlPreservingComments(yamlPath, originalContent, repaired);
+      expect(fs.writeFileSync).toHaveBeenCalledWith(yamlPath, expect.any(String), 'utf8');
+      const written = fs.writeFileSync.mock.calls[0][1];
+      expect(written).toContain('# App config for integration');
+      expect(written).toContain('name: myapp');
+      expect(written).toContain('language: typescript');
+      expect(written).toContain('hubspot-system.yaml');
+      expect(written).toContain('hubspot-datasource-contacts.yaml');
+      expect(written).toContain('key: hubspot');
+    });
+
+    it('throws when originalContent is not a string', () => {
+      expect(() => writeYamlPreservingComments(yamlPath, null, {})).toThrow('writeYamlPreservingComments requires original content string');
+    });
+
+    it('throws when filePath is empty', () => {
+      expect(() => writeYamlPreservingComments('', 'app: {}', {})).toThrow('writeYamlPreservingComments requires a non-empty file path');
+    });
+
+    it('throws on invalid YAML in original content', () => {
+      expect(() => writeYamlPreservingComments(yamlPath, 'app: [unclosed', { app: {} })).toThrow(/Invalid YAML/);
     });
   });
 });

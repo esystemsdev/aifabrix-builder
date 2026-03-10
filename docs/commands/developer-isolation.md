@@ -15,7 +15,7 @@ When you run `dev add`, `dev update`, `dev pin`, or `dev delete` without a confi
 
 One-time setup for remote development: issue certificate, fetch server settings, and register SSH keys so Mutagen works without password.
 
-**What:** When a remote server exists (`remote-server` in config), runs: issue-cert, then GET `/api/dev/settings`, then POST ssh-keys so Mutagen sync works. Only when `remote-server` is set.
+**What:** When a remote server exists (`remote-server` in config), runs: issue-cert, fetch server settings, then register SSH keys so Mutagen sync works. Only when `remote-server` is set.
 
 **When:** First-time onboarding to a remote dev host, or after re-provisioning the server.
 
@@ -29,13 +29,18 @@ aifabrix dev init --developer-id 01 --server my-remote-host --pin 123456
 
 **Options:**
 - `--developer-id <id>` - Developer ID (same as `dev add`; e.g. 01)
-- `--server <url>` - Builder Server base URL (e.g. https://dev.aifabrix.dev)
+- `--server <url>` - Builder Server base URL (e.g. <https://builder.local>)
 - `--pin <pin>` - One-time PIN for onboarding (from your admin)
+- `-y, --yes` - Auto-install development CA without prompt when the server certificate is untrusted
+- `--no-install-ca` - Do not offer CA install; fail with manual instructions when the server certificate is untrusted
 
 **Process:**
-1. Issue or use existing client certificate (mTLS for dev APIs)
-2. GET `/api/dev/settings` (cert-authenticated) to receive sync and Docker parameters
-3. POST SSH keys so Mutagen can sync without password prompt
+1. Ensure server is reachable and trusted (see CA install below if certificate is untrusted)
+2. Issue or use existing client certificate (mTLS for dev APIs)
+3. Fetch sync and Docker parameters from the server (cert-authenticated)
+4. Register SSH keys so Mutagen can sync without password prompt
+
+**Untrusted certificate (dev Builder Server):** When the server uses a self-signed certificate (e.g. local dev servers like `https://builder02.local`), the initial health check may fail with an SSL verification error. The CLI will prompt: *"Server certificate not trusted. Download and install the development CA? (y/n)"*. On *y*, it fetches the Root CA from `{server}/install-ca`, installs it into your OS trust store (Windows user store, macOS login keychain, or Linux ca-certificates), then retries init. Use `--yes` to auto-install without prompting, or `--no-install-ca` to fail immediately with manual instructions. Manual install: download from `{server}/install-ca` and add the certificate to your system trust store. For Linux, see `{server}/install-ca-help` for steps.
 
 **See Also:** [Secrets and config](../configuration/secrets-and-config.md) (remote-server, docker-endpoint), [Developer Isolation Guide](../developer-isolation.md).
 
@@ -46,7 +51,7 @@ aifabrix dev init --developer-id 01 --server my-remote-host --pin 123456
 
 Fetch settings from the Builder Server and update config. Optionally refresh your client certificate.
 
-**What:** If your certificate expires **within 14 days** (or expiry cannot be read), the CLI automatically refreshes it: creates a new PIN (POST `/api/dev/users/<id>/pin` with your current cert), requests a new certificate (POST `/api/dev/issue-cert` with the PIN and a new CSR), saves the new cert and key, then fetches settings and merges into config. Otherwise it only calls GET `/api/dev/settings` (cert-authenticated) and updates `~/.aifabrix/config.yaml` (e.g. `user-mutagen-folder`, `docker-endpoint`, `sync-ssh-host`, `sync-ssh-user`). If the server does not return `docker-endpoint` or `sync-ssh-host`, the CLI derives them from `remote-server` (hostname and `tcp://<host>:2376`).
+**What:** If your certificate expires **within 14 days** (or expiry cannot be read), the CLI automatically refreshes it: creates a new PIN, requests a new certificate, saves the new cert and key, then fetches settings and merges into config. Otherwise it fetches settings from the server (cert-authenticated) and updates `~/.aifabrix/config.yaml` (e.g. `user-mutagen-folder`, `docker-endpoint`, `sync-ssh-host`, `sync-ssh-user`). If the server does not return `docker-endpoint` or `sync-ssh-host`, the CLI derives them from `remote-server` (hostname and `tcp://<host>:2376`).
 
 **When:** Use when `docker-endpoint` or `sync-ssh-host` are **(not set)** after `dev init`, after the server’s settings have changed, or to renew your certificate before it expires (automatic when < 14 days remaining, or use `--cert` to force).
 
@@ -129,12 +134,45 @@ aifabrix dev down --apps
 
 ---
 
+<a id="aifabrix-dev-set-format"></a>
+## aifabrix dev set-format
+
+Set default output format for commands that generate or convert external system files.
+
+**What:** Persists the default format (`json` or `yaml`) in `~/.aifabrix/config.yaml`. When `--format` is not passed, the following commands use this config value (or fall back to `yaml` if not set):
+
+| Command | Uses format when |
+| -------- | ----------------- |
+| `aifabrix download <system-key>` | `--format` not passed |
+| `aifabrix convert <app>` | `--format` not passed |
+| `aifabrix create <app> --type external` | Always (no CLI `--format`; config drives file extensions) |
+| `aifabrix wizard [app]` | Always (no CLI `--format`; config drives file extensions) |
+
+For `create --type external` and `wizard`, the format determines whether generated files use `.yaml` or `.json` (e.g. `application.yaml` vs `application.json`, `*-system.yaml` vs `*-system.json`, `*-datasource-*.yaml` vs `*-datasource-*.json`).
+
+**When:** Set your preferred format once; then `download`, `convert`, `create --type external`, and `wizard` will use it. Useful when you prefer JSON for all external system files.
+
+**Usage:**
+```bash
+aifabrix dev set-format json
+aifabrix dev set-format yaml
+```
+
+**Arguments:**
+- `<format>` - `json` or `yaml` (case-insensitive)
+
+**Output:** Confirms the format and displays full developer configuration (same as `aifabrix dev config`).
+
+**See Also:** [aifabrix dev config](#aifabrix-dev-config), [aifabrix download](external-integration.md#aifabrix-download-system-key), [aifabrix convert](utilities.md#aifabrix-convert-app), [aifabrix create](application-development.md#aifabrix-create-app), [aifabrix wizard](external-integration.md#aifabrix-wizard), [Secrets and config](../configuration/secrets-and-config.md).
+
+---
+
 <a id="aifabrix-dev-config"></a>
 ## aifabrix dev config
 
 View or set developer ID for port isolation.
 
-**What:** Displays current developer configuration (developer ID and calculated ports) or sets a new developer ID. When **remote-server** is set and a certificate is available, config can be **refreshed from the server** via GET `/api/dev/settings` (cert-authenticated), which provides sync and Docker parameters. Developer isolation allows multiple developers to run applications simultaneously on the same machine without port conflicts.
+**What:** Displays current developer configuration (developer ID and calculated ports) or sets a new developer ID. When **remote-server** is set and a certificate is available, config can be **refreshed from the server** (cert-authenticated) to get sync and Docker parameters. Developer isolation allows multiple developers to run applications simultaneously on the same machine without port conflicts.
 
 **When:** Setting up developer isolation, checking current port assignments, troubleshooting port conflicts.
 
@@ -152,6 +190,8 @@ aifabrix dev config --set-id 02
 
 **Options:**
 - `--set-id <id>` - Set developer ID (non-negative integer). Developer ID 0 = default infrastructure (base ports), 1+ = developer-specific (offset ports). Updates `~/.aifabrix/config.yaml` and sets `AIFABRIX_DEVELOPERID` environment variable.
+
+**See Also:** [aifabrix dev set-format](#aifabrix-dev-set-format) (default output format for download/convert).
 
 **Output (view):**
 ```yaml
@@ -183,6 +223,7 @@ Ports:
 Configuration:
   environment: 'dev'
   controller: 'http://localhost:3100'
+  format: 'yaml'
   aifabrix-home: /workspace/.aifabrix
   aifabrix-secrets: /workspace/aifabrix-miso/builder/secrets.local.yaml
   aifabrix-env-config: /workspace/aifabrix-miso/builder/env-config.yaml

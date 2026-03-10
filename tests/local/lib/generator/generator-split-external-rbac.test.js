@@ -58,7 +58,7 @@ describe('External System RBAC Split-JSON', () => {
   });
 
   describe('splitDeployJson with external system JSON containing roles/permissions', () => {
-    it('should extract roles and permissions from external system JSON to rbac.yml', async() => {
+    it('should extract roles and permissions from external system JSON to rbac.yaml', async() => {
       const deployJsonPath = path.join(process.cwd(), 'integration', 'testexternal', 'testexternal-deploy.json');
       const outputDir = path.join(process.cwd(), 'integration', 'testexternal');
 
@@ -102,14 +102,14 @@ describe('External System RBAC Split-JSON', () => {
       const result = await generator.splitDeployJson(deployJsonPath, outputDir);
 
       expect(result.rbac).toBeDefined();
-      expect(result.rbac).toContain('rbac.yml');
+      expect(result.rbac).toContain('rbac.yaml');
 
-      // Verify rbac.yml was written
+      // Verify rbac.yaml was written
       const writeCalls = fs.promises.writeFile.mock.calls;
-      const rbacWriteCall = writeCalls.find(call => call[0].includes('rbac.yml'));
+      const rbacWriteCall = writeCalls.find(call => call[0].includes('rbac.yaml'));
       expect(rbacWriteCall).toBeDefined();
 
-      // Parse written rbac.yml content
+      // Parse written rbac.yaml content
       const writtenRbac = yaml.load(rbacWriteCall[1]);
       expect(writtenRbac.roles).toEqual(externalSystemJson.roles);
       expect(writtenRbac.permissions).toEqual(externalSystemJson.permissions);
@@ -133,12 +133,12 @@ describe('External System RBAC Split-JSON', () => {
 
       const result = await generator.splitDeployJson(deployJsonPath, outputDir);
 
-      // Should not create rbac.yml if no roles/permissions
+      // Should not create rbac.yaml if no roles/permissions
       expect(result.rbac).toBeUndefined();
 
-      // Verify rbac.yml was not written
+      // Verify rbac.yaml was not written
       const writeCalls = fs.promises.writeFile.mock.calls;
-      const rbacWriteCall = writeCalls.find(call => call[0].includes('rbac.yml'));
+      const rbacWriteCall = writeCalls.find(call => call[0].includes('rbac.yaml'));
       expect(rbacWriteCall).toBeUndefined();
     });
 
@@ -169,9 +169,9 @@ describe('External System RBAC Split-JSON', () => {
 
       expect(result.rbac).toBeDefined();
 
-      // Verify rbac.yml was written with only roles
+      // Verify rbac.yaml was written with only roles
       const writeCalls = fs.promises.writeFile.mock.calls;
-      const rbacWriteCall = writeCalls.find(call => call[0].includes('rbac.yml'));
+      const rbacWriteCall = writeCalls.find(call => call[0].includes('rbac.yaml'));
       expect(rbacWriteCall).toBeDefined();
 
       const writtenRbac = yaml.load(rbacWriteCall[1]);
@@ -206,9 +206,9 @@ describe('External System RBAC Split-JSON', () => {
 
       expect(result.rbac).toBeDefined();
 
-      // Verify rbac.yml was written with only permissions
+      // Verify rbac.yaml was written with only permissions
       const writeCalls = fs.promises.writeFile.mock.calls;
-      const rbacWriteCall = writeCalls.find(call => call[0].includes('rbac.yml'));
+      const rbacWriteCall = writeCalls.find(call => call[0].includes('rbac.yaml'));
       expect(rbacWriteCall).toBeDefined();
 
       const writtenRbac = yaml.load(rbacWriteCall[1]);
@@ -253,7 +253,7 @@ describe('External System RBAC Split-JSON', () => {
 
       // Verify groups are preserved
       const writeCalls = fs.promises.writeFile.mock.calls;
-      const rbacWriteCall = writeCalls.find(call => call[0].includes('rbac.yml'));
+      const rbacWriteCall = writeCalls.find(call => call[0].includes('rbac.yaml'));
       const writtenRbac = yaml.load(rbacWriteCall[1]);
       expect(writtenRbac.roles[0].groups).toEqual(['admins@company.com', 'super-admins@company.com']);
     });

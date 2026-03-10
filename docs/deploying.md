@@ -34,10 +34,12 @@ A single place to understand the two platform components and when you get MCP/Op
 
 | Use case | Command | Path | Outcome |
 | -------- | ------- | ----- | ------- |
-| Promote to full platform (RBAC, Container Apps, etc.) | `aifabrix deploy <app>` | CLI → Controller → (Controller deploys / may call dataplane publish) | Full platform deployment; docs on dataplane after publish |
-| Test on dataplane only, or dataplane access but limited controller permissions | `aifabrix upload <system-key>` | CLI → Dataplane (upload → validate → publish) | System + datasources on dataplane; docs available after publish. No controller deploy; RBAC stays on dataplane until you promote via deploy or web UI |
+| **Promotion** (dev → tst → pro) | `aifabrix deploy <app>` | CLI → Dataplane → Controller (publish-controller); Controller validate + deploy | Full platform deployment; manifest in controller; container/restart deploy; docs on dataplane after publish |
+| **Development** (quick iteration) | `aifabrix upload <system-key>` | CLI → Dataplane (upload → validate → publish) | Config on dataplane; RBAC registered with controller; docs available after publish. No manifest sent for container deployment; promote via `aifabrix deploy` when ready |
 
-See [External systems: Deploy to Controller and Upload to dataplane](external-systems.md#4a-upload-to-dataplane-test-without-promoting) and [aifabrix upload](commands/external-integration.md#aifabrix-upload-system-key) for details.
+**Intended workflow:** Develop with `aifabrix upload` for fast iteration and testing. Promote with `aifabrix deploy <app>` when ready for full controller deployment and environment promotion.
+
+See [External systems: Deploy to Controller and Upload to dataplane](external-systems.md#4a-upload-to-dataplane-development) and [aifabrix upload](commands/external-integration.md#aifabrix-upload-system-key) for details.
 
 ### When MCP and OpenAPI docs are available
 
@@ -158,8 +160,8 @@ Visible -->|No| DocsHidden[Docs not visible]:::note
 
 ### External systems: deploy vs upload
 
-- **Deploy:** CLI → Controller → Controller deploys (and may call dataplane publish). Use when promoting to the full platform (RBAC on platform, Container Apps, etc.). Docs on dataplane after publish.
-- **Upload:** CLI → Dataplane pipeline only (upload → validate → publish). Use when testing on the dataplane or when you have dataplane access but limited controller permissions. Docs on dataplane after publish; promote to platform later via `aifabrix deploy` or web UI.
+- **Deploy (promotion):** Dataplane builds manifest and sends to controller; controller performs validate + deploy (containers, dataplane restart). Full versioning and manifest in miso-controller. Use when promoting (dev → tst → pro) and for full platform deployment. Docs on dataplane after publish.
+- **Upload (development):** CLI → Dataplane pipeline (upload → validate → publish). Publishes config to dataplane; registers RBAC with controller. Does not send manifest for container deployment. Use for fast iteration and testing. Docs on dataplane after publish; promote via `aifabrix deploy` when ready.
 
 ```mermaid
 %%{init: {
@@ -203,7 +205,7 @@ Choice --> UploadPath[Upload path]:::base
 DeployPath --> ViaController[CLI → Controller<br/>validate + deploy]:::medium
 ViaController --> OutcomeDeploy[RBAC on platform<br/>Docs on dataplane after publish]:::base
 UploadPath --> ViaDataplane[CLI → Dataplane<br/>upload → validate → publish]:::base
-ViaDataplane --> OutcomeUpload[Docs on dataplane<br/>after publish<br/>Promote later if needed]:::note
+ViaDataplane --> OutcomeUpload[Config on dataplane<br/>RBAC registered with controller<br/>Docs after publish; promote when ready]:::note
 ```
 
 ---
@@ -405,8 +407,8 @@ aifabrix deploy myapp
    - Builder does not generate or send a deployment key; the controller computes and manages it
 
 4. **Sends to controller**
-   - POST to `/api/v1/pipeline/{env}/deploy` (environment-aware endpoint)
-   - Sends manifest only; uses Bearer or client credentials authentication
+   - Sends manifest to controller for deploy
+   - Sends manifest only; uses Bearer token (Controller and Dataplane app endpoints accept token only; client-id/secret are used only to obtain the token)
 
 5. **Controller processes**
    - Validates manifest and computes deployment key internally
@@ -459,7 +461,7 @@ GenerateManifest --> LoadConfig[Load Config Files<br/>application.yaml<br/>env.t
 LoadConfig --> ParseEnv[Parse Environment Variables]:::base
 ParseEnv --> BuildManifest[Build JSON Manifest]:::base
 BuildManifest --> ValidateManifest[Validate Manifest]:::base
-ValidateManifest --> SendController[Send to Controller<br/>POST /api/v1/pipeline/env/deploy]:::medium
+ValidateManifest --> SendController[Send manifest<br/>to Controller]:::medium
 SendController --> ControllerProcess[Controller Validates<br/>Computes Key<br/>Deploys]:::base
 ControllerProcess --> DeployAzure[Azure Container Apps<br/>or Local Docker]:::base
 ```
@@ -719,7 +721,7 @@ aifabrix deploy myapp
 
 ## Rollback
 
-**Deployment** is immutable and uniquely identified by **deployment Id**. To rollback, use the controller’s rollback API (e.g. POST with `deploymentId`) when available, or redeploy a previous image as below.
+**Deployment** is immutable and uniquely identified by **deployment Id**. To rollback, use the controller’s rollback when available, or redeploy a previous image as below.
 
 ### Deploy Previous Version
 
@@ -979,13 +981,13 @@ The `aifabrix deploy` command performs the following steps:
    - Returns validation errors and warnings
 
 5. **Send to Controller**
-   - POST request sends manifest only to `<controller>/api/v1/pipeline/{env}/deploy` (environment-aware endpoint)
+   - Sends manifest to controller for deploy
    - Controller validates the manifest and computes the deployment key internally
    - HTTPS-only communication; retries with exponential backoff on transient failures
    - Uses Bearer token or ClientId/ClientSecret authentication
 
 6. **Poll Status**
-   - Polls `/api/v1/environments/{env}/deployments/{deploymentId}` endpoint
+   - Polls deployment status
    - Configurable interval (default: 5 seconds)
    - Maximum attempts (default: 60)
    - Terminal states: completed, failed, cancelled
@@ -1031,7 +1033,7 @@ Rbac[rbac.yaml<br/>Roles & permissions]:::base --> Load
 Load --> Parse[Parse Environment Variables<br/>Convert kv:// references]:::base
 Parse --> Build[Build Deployment Manifest<br/>Merge all configuration]:::base
 Build --> Validate[Validate Manifest<br/>Required fields<br/>Structure checks]:::base
-Validate --> Send[Send to Controller<br/>Controller computes key<br/>POST /api/v1/pipeline/env/deploy]:::medium
+Validate --> Send[Send manifest to Controller<br/>Controller computes key]:::medium
 
 Send --> Poll{Poll Status?}
 Poll -->|Yes| PollStatus[Poll Deployment Status<br/>Every 5 seconds]:::base
@@ -1057,8 +1059,8 @@ Poll -->|No| Complete
 - **Authentication Priority**: The deploy command automatically selects authentication method:
   1. Device token (if available) - for user-level audit
   2. Client token (if available) - for application-level authentication
-  3. Client credentials (fallback) - direct credential authentication
-- **Bearer token only when logged in**: When using a Bearer token (device or client), the CLI **does not send client ID or client secret**—only the `Authorization: Bearer <token>` header. The CLI validates the token with the controller before deploy; if the token is invalid or expired, you are prompted to run `aifabrix login`. Client ID and secret are sent only when using the client-credentials fallback (e.g. CI/CD with no stored token).
+  3. When no token is available: if client credentials exist in secrets, the CLI exchanges them for a client token and then uses Bearer only.
+- **Token-only for app endpoints**: User token (device from login) is sent as **`Authorization: Bearer <token>`**. Application token (client token from credentials exchange) is sent as **`x-client-token: <token>`** (not Bearer). The CLI never sends x-client-id or x-client-secret to app endpoints; those are used only at the token-issuing endpoint to obtain the client token.
 - **Credential Storage**: Client credentials displayed but not automatically saved (copy to GitHub Secrets)
 - **Token Management**: Bearer tokens auto-refresh with expiry tracking
 - **Deployment key**: Controller computes and stores the key from the manifest; see [Deployment key](configuration/deployment-key.md)
@@ -1116,12 +1118,12 @@ end
 Deploy[aifabrix deploy]:::base --> CheckDevice{Device Token<br/>Available?}
 CheckDevice -->|Yes| UseDevice[Use Device Token<br/>Bearer token]:::base
 CheckDevice -->|No| CheckClient{Client Token<br/>Available?}
-CheckClient -->|Yes| UseClient[Use Client Token<br/>Bearer token]:::base
-CheckClient -->|No| UseCreds[Use Client Credentials<br/>x-client-id<br/>x-client-secret]:::base
+CheckClient -->|Yes| UseClient[Use Client Token<br/>x-client-token]:::base
+CheckClient -->|No| ExchangeCreds[Exchange credentials<br/>for token → Bearer]:::base
 
 UseDevice --> Controller[Miso Controller]:::base
 UseClient --> Controller
-UseCreds --> Controller
+ExchangeCreds --> Controller
 ```
 
 ### API Endpoints
@@ -1136,10 +1138,9 @@ Headers:
   Authorization: Bearer <device-token>
 # Request body does not include clientId or clientSecret when using Bearer.
 
-# Option 2: Client credentials - for application-level audit
+# Option 2: Client token (application token; credentials exchanged at token endpoint)
 Headers:
-  x-client-id: <client-id>
-  x-client-secret: <client-secret>
+  x-client-token: <client-token>
 
 Body:
 {
@@ -1159,10 +1160,9 @@ GET https://controller.aifabrix.dev/api/v1/environments/{env}/deployments/{deplo
 Headers:
   Authorization: Bearer <device-token>
 
-# Option 2: Client credentials
+# Option 2: Client token (application token)
 Headers:
-  x-client-id: <client-id>
-  x-client-secret: <client-secret>
+  x-client-token: <client-token>
 
 Response: {
   "deploymentId": "deploy-123",

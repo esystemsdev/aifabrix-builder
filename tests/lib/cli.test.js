@@ -1794,6 +1794,7 @@ describe('CLI Commands', () => {
                 description: jest.fn().mockReturnThis(),
                 option: jest.fn().mockReturnThis(),
                 requiredOption: jest.fn().mockReturnThis(),
+                addHelpText: jest.fn().mockReturnThis(),
                 action: function(action) {
                   commandActions[fullCmdName] = action;
                   return this;
@@ -1836,6 +1837,7 @@ describe('CLI Commands', () => {
                 description: jest.fn().mockReturnThis(),
                 option: jest.fn().mockReturnThis(),
                 requiredOption: jest.fn().mockReturnThis(),
+                addHelpText: jest.fn().mockReturnThis(),
                 action: function(action) {
                   commandActions[fullCmdName] = action;
                   return this;
@@ -2246,6 +2248,7 @@ describe('CLI Commands', () => {
           redis: 'unknown',
           pgadmin: 'unhealthy'
         };
+        config.getConfig.mockResolvedValue({});
         validator.checkEnvironment.mockResolvedValue(mockEnvResult);
         infra.checkInfraHealth.mockResolvedValue(mockHealthResult);
 
@@ -2394,7 +2397,7 @@ describe('CLI Commands', () => {
         expect(config.setDeveloperId).toHaveBeenCalledWith(1);
         expect(process.env.AIFABRIX_DEVELOPERID).toBe('1');
         expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Developer ID set to 1'));
-        expect(infra.startInfra).toHaveBeenCalledWith(1, { traefik: false });
+        expect(infra.startInfra).toHaveBeenCalledWith(1, expect.objectContaining({ traefik: false }));
       });
 
       it('should handle up command with invalid developer ID via setupCommands', async() => {
@@ -2442,7 +2445,7 @@ describe('CLI Commands', () => {
         await handler(options);
 
         expect(config.setDeveloperId).not.toHaveBeenCalled();
-        expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: false });
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: false }));
       });
 
       it('should execute up with --traefik, persist to config, and start with traefik', async() => {
@@ -2456,7 +2459,7 @@ describe('CLI Commands', () => {
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ traefik: true }));
         expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Traefik enabled and saved to config'));
-        expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: true });
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: true }));
       });
 
       it('should execute up with --no-traefik, persist to config, and start without traefik', async() => {
@@ -2470,7 +2473,44 @@ describe('CLI Commands', () => {
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ traefik: false }));
         expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Traefik disabled and saved to config'));
-        expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: false });
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: false }));
+      });
+
+      it('should execute up with --pgAdmin and --redisAdmin, persist to config', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
+        config.saveConfig.mockResolvedValue();
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({ pgAdmin: true, redisAdmin: true });
+
+        expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ pgadmin: true, redisCommander: true }));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ pgAdmin enabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Redis Commander enabled and saved to config'));
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({
+          traefik: false,
+          pgadmin: true,
+          redisCommander: true
+        }));
+      });
+
+      it('should execute up with --no-pgAdmin and --no-redisAdmin, persist to config', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
+        config.saveConfig.mockResolvedValue();
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({ pgAdmin: false, redisAdmin: false });
+
+        expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ pgadmin: false, redisCommander: false }));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ pgAdmin disabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Redis Commander disabled and saved to config'));
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({
+          pgadmin: false,
+          redisCommander: false
+        }));
       });
 
       it('should execute up reading traefik from config when flags omitted', async() => {
@@ -2482,7 +2522,7 @@ describe('CLI Commands', () => {
         await handler({});
 
         expect(config.saveConfig).not.toHaveBeenCalled();
-        expect(infra.startInfra).toHaveBeenCalledWith(null, { traefik: true });
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: true }));
       });
 
       it('should handle up command error via setupCommands', async() => {
@@ -2912,6 +2952,71 @@ describe('CLI Commands', () => {
         expect(config.getAifabrixHomeOverride).toHaveBeenCalled();
         expect(config.getAifabrixSecretsPath).toHaveBeenCalled();
         expect(config.getAifabrixEnvConfigPath).toHaveBeenCalled();
+      });
+    });
+
+    describe('dev set-format command handler execution', () => {
+      it('should execute dev set-format json via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        config.setFormat.mockResolvedValue();
+        config.getDeveloperId.mockResolvedValue('0');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
+        config.getFormat.mockResolvedValue('json');
+        config.getAifabrixHomeOverride.mockResolvedValue(null);
+        config.getAifabrixSecretsPath.mockResolvedValue(null);
+        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
+        devConfig.getDevPorts.mockReturnValue({
+          app: 3000, postgres: 5432, redis: 6379,
+          pgadmin: 5050, redisCommander: 8081
+        });
+        chalk.green.mockImplementation((text) => text);
+
+        const handler = commandActions['dev set-format <format>'];
+        expect(handler).toBeDefined();
+
+        await handler('json');
+
+        expect(config.setFormat).toHaveBeenCalledWith('json');
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Format set to json'));
+      });
+
+      it('should execute dev set-format yaml via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        config.setFormat.mockResolvedValue();
+        config.getDeveloperId.mockResolvedValue('0');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
+        config.getFormat.mockResolvedValue('yaml');
+        config.getAifabrixHomeOverride.mockResolvedValue(null);
+        config.getAifabrixSecretsPath.mockResolvedValue(null);
+        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
+        devConfig.getDevPorts.mockReturnValue({
+          app: 3000, postgres: 5432, redis: 6379,
+          pgadmin: 5050, redisCommander: 8081
+        });
+        chalk.green.mockImplementation((text) => text);
+
+        const handler = commandActions['dev set-format <format>'];
+        await handler('yaml');
+
+        expect(config.setFormat).toHaveBeenCalledWith('yaml');
+      });
+
+      it('should handle invalid format via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        config.setFormat.mockRejectedValue(new Error('Option --format must be \'json\' or \'yaml\''));
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['dev set-format <format>'];
+        await handler('xml');
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'dev set-format');
+        expect(process.exit).toHaveBeenCalledWith(1);
       });
     });
   });

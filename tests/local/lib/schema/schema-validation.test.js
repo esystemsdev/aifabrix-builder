@@ -111,6 +111,24 @@ describe('Schema validation (Plan 49)', () => {
       expect(validate.errors.some(e => e.keyword === 'additionalProperties' && e.params.additionalProperty === 'environment')).toBe(true);
     });
 
+    it('should reject external-system with invalid rateLimit (missing windowSeconds)', () => {
+      const externalSystemSchema = require('../../../../lib/schema/external-system.schema.json');
+      const ajv = new Ajv({ allErrors: true, strict: false });
+      const validate = ajv.compile(externalSystemSchema);
+      const systemInvalidRateLimit = {
+        key: 'test',
+        displayName: 'Test',
+        description: 'Test',
+        type: 'openapi',
+        authentication: { type: 'apikey' },
+        rateLimit: { requestsPerWindow: 100 }
+      };
+      const valid = validate(systemInvalidRateLimit);
+      expect(valid).toBe(false);
+      expect(validate.errors).toBeDefined();
+      expect(validate.errors.length).toBeGreaterThan(0);
+    });
+
     it('should compile external-datasource schema with AJV', () => {
       const externalDatasourceSchema = require('../../../../lib/schema/external-datasource.schema.json');
       const schemaCopy = { ...externalDatasourceSchema };
@@ -119,6 +137,33 @@ describe('Schema validation (Plan 49)', () => {
       }
       const ajv = new Ajv({ allErrors: true, strict: false });
       expect(() => ajv.compile(schemaCopy)).not.toThrow();
+    });
+
+    it('should accept datasource with triggerPathsHash (dataplane round-trip)', () => {
+      const externalDatasourceSchema = require('../../../../lib/schema/external-datasource.schema.json');
+      const schemaCopy = { ...externalDatasourceSchema };
+      if (schemaCopy.$schema && schemaCopy.$schema.includes('2020-12')) {
+        delete schemaCopy.$schema;
+      }
+      const ajv = new Ajv({ allErrors: true, strict: false });
+      const validate = ajv.compile(schemaCopy);
+      const datasource = {
+        key: 'hubspot-company',
+        displayName: 'HubSpot Company',
+        systemKey: 'hubspot',
+        entityType: 'record-storage',
+        resourceType: 'customer',
+        fieldMappings: {
+          dimensions: { country: 'metadata.country' },
+          attributes: {
+            country: { expression: '{{metadata.country}}', type: 'string' }
+          }
+        },
+        triggerPathsHash: 'a'.repeat(64)
+      };
+      const valid = validate(datasource);
+      expect(valid).toBe(true);
+      expect(validate.errors).toBeNull();
     });
 
     it('should compile infrastructure schema with AJV', () => {

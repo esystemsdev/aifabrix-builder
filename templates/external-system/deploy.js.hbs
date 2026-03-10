@@ -10,6 +10,8 @@ const { execSync } = require('child_process');
 const path = require('path');
 
 const scriptDir = __dirname;
+// Project root (repo containing integration/ and builder/) so deploy/test-integration resolve app paths correctly
+const projectRoot = path.join(scriptDir, '..', '..');
 const appKey = '{{systemKey}}';
 const env = process.env.ENVIRONMENT || 'dev';
 // Controller URL: from config (aifabrix auth config) or set CONTROLLER env before running
@@ -57,12 +59,12 @@ run('aifabrix validate "' + path.join(scriptDir, '{{this}}') + '"');
 console.log('✅ Validation passed');
 
 console.log('🚀 Deploying ' + appKey + '...');
-run('aifabrix deploy ' + appKey);
+run('aifabrix deploy ' + appKey, { cwd: projectRoot });
 console.log('✅ Deployment complete');
 
 if (process.env.RUN_TESTS !== 'false') {
   console.log('🧪 Running integration tests...');
-  run('aifabrix test-integration ' + appKey);
+  run('aifabrix test-integration ' + appKey, { cwd: projectRoot });
   console.log('✅ Tests passed');
 }
 

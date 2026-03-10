@@ -14,6 +14,8 @@ jest.mock('../../../lib/datasource/deploy');
 jest.mock('../../../lib/commands/wizard-dataplane');
 jest.mock('../../../lib/utils/controller-url');
 jest.mock('../../../lib/api/wizard.api');
+jest.mock('../../../lib/api/credentials.api');
+jest.mock('../../../lib/api/external-systems.api');
 jest.mock('../../../lib/generator/wizard-prompts');
 jest.mock('../../../lib/generator/wizard');
 jest.mock('inquirer');
@@ -54,6 +56,8 @@ const datasourceDeploy = require('../../../lib/datasource/deploy');
 const wizardDataplane = require('../../../lib/commands/wizard-dataplane');
 const controllerUrl = require('../../../lib/utils/controller-url');
 const wizardApi = require('../../../lib/api/wizard.api');
+const credentialsApi = require('../../../lib/api/credentials.api');
+const externalSystemsApi = require('../../../lib/api/external-systems.api');
 const wizardPrompts = require('../../../lib/generator/wizard-prompts');
 const wizardGenerator = require('../../../lib/generator/wizard');
 const inquirer = require('inquirer');
@@ -125,9 +129,24 @@ describe('Wizard Command Handler', () => {
         systemKey: 'test-system'
       }
     });
+    wizardApi.getPlatformConfig.mockResolvedValue({
+      success: true,
+      data: {
+        systemConfig: mockSystemConfig,
+        datasourceConfigs: mockDatasourceConfigs,
+        systemKey: 'test-system'
+      }
+    });
     wizardApi.validateWizardConfig.mockResolvedValue({
       success: true,
       data: { valid: true, errors: [], warnings: [] }
+    });
+    wizardApi.getPreview.mockResolvedValue({
+      success: true,
+      data: {
+        systemSummary: { key: 'test-system', displayName: 'Test System', type: 'openapi', endpointCount: 10 },
+        datasourceSummary: { key: 'ds1', entity: 'Entity1', resourceType: 'record-based', cipStepCount: 2 }
+      }
     });
     wizardApi.testMcpConnection.mockResolvedValue({
       success: true,
@@ -136,6 +155,14 @@ describe('Wizard Command Handler', () => {
     wizardApi.credentialSelection.mockResolvedValue({
       success: true,
       data: { credentialIdOrKey: null }
+    });
+    credentialsApi.listCredentials.mockResolvedValue({
+      data: { credentials: [] }
+    });
+    externalSystemsApi.listExternalSystems.mockResolvedValue({ data: { items: [] } });
+    externalSystemsApi.getExternalSystem.mockResolvedValue({
+      data: { key: 'system-abc', systemKey: 'system-abc', type: 'openapi' },
+      success: true
     });
 
     // Wizard prompts mocks
@@ -180,8 +207,20 @@ describe('Wizard Command Handler', () => {
       await handleWizard(mockOptions);
 
       expect(wizardPrompts.promptForAppName).not.toHaveBeenCalled();
-      expect(wizardPrompts.promptForMode).toHaveBeenCalled();
+      expect(wizardPrompts.promptForMode).not.toHaveBeenCalled();
       expect(wizardApi.createWizardSession).toHaveBeenCalled();
+      expect(wizardApi.getPreview).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        'session-123',
+        mockAuthConfig
+      );
+      expect(wizardPrompts.promptForConfigReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          preview: expect.objectContaining({ systemSummary: expect.any(Object) }),
+          systemConfig: mockSystemConfig,
+          datasourceConfigs: mockDatasourceConfigs
+        })
+      );
       expect(wizardApi.generateConfig).toHaveBeenCalled();
       expect(wizardApi.validateWizardConfig).toHaveBeenCalled();
       expect(wizardGenerator.generateWizardFiles).toHaveBeenCalled();
@@ -260,6 +299,31 @@ describe('Wizard Command Handler', () => {
       expect(wizardPrompts.promptForKnownPlatform).toHaveBeenCalled();
     });
 
+    it('should list credentials when Use existing is selected', async() => {
+      wizardPrompts.promptForCredentialAction.mockResolvedValue({ action: 'select' });
+      credentialsApi.listCredentials.mockResolvedValue({
+        data: {
+          credentials: [
+            { key: 'cred-1', displayName: 'My HubSpot credential', status: 'verified' },
+            { key: 'cred-2', displayName: 'Other credential', status: 'pending' }
+          ]
+        }
+      });
+      wizardPrompts.promptForExistingCredential.mockResolvedValue({ credentialIdOrKey: 'cred-1' });
+
+      await handleWizard(mockOptions);
+
+      expect(credentialsApi.listCredentials).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        { activeOnly: true, pageSize: 100 }
+      );
+      expect(wizardPrompts.promptForExistingCredential).toHaveBeenCalledWith([
+        { key: 'cred-1', displayName: 'My HubSpot credential', status: 'verified' },
+        { key: 'cred-2', displayName: 'Other credential', status: 'pending' }
+      ]);
+    });
+
     it('should detect API type when OpenAPI spec is available', async() => {
       wizardPrompts.promptForSourceType.mockResolvedValue('openapi-file');
       wizardApi.parseOpenApi.mockResolvedValue({
@@ -285,19 +349,69 @@ describe('Wizard Command Handler', () => {
       );
     });
 
-    it('should prompt for systemIdOrKey in add-datasource mode', async() => {
+    it('should list external systems and prompt for selection in add-datasource mode', async() => {
       wizardPrompts.promptForMode.mockResolvedValue('add-datasource');
-      wizardPrompts.promptForSystemIdOrKey.mockResolvedValue('system-abc');
+      externalSystemsApi.listExternalSystems.mockResolvedValue({
+        data: { items: [{ key: 'system-abc', displayName: 'Test System ABC' }] }
+      });
+      wizardPrompts.promptForExistingSystem.mockResolvedValue('system-abc');
+      externalSystemsApi.getExternalSystem.mockResolvedValue({
+        data: { key: 'system-abc', systemKey: 'system-abc', type: 'openapi' },
+        success: true
+      });
 
-      await handleWizard(mockOptions);
+      await handleWizard({});
 
-      expect(wizardPrompts.promptForSystemIdOrKey).toHaveBeenCalled();
+      expect(externalSystemsApi.listExternalSystems).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        expect.objectContaining({ pageSize: 100 })
+      );
+      expect(wizardPrompts.promptForExistingSystem).toHaveBeenCalledWith(
+        [{ key: 'system-abc', displayName: 'Test System ABC' }],
+        undefined
+      );
       expect(wizardApi.createWizardSession).toHaveBeenCalledWith(
         mockDataplaneUrl,
         mockAuthConfig,
         'add-datasource',
         'system-abc'
       );
+    });
+
+    it('should fall back to input when listExternalSystems fails in add-datasource mode', async() => {
+      wizardPrompts.promptForMode.mockResolvedValue('add-datasource');
+      externalSystemsApi.listExternalSystems.mockRejectedValue(new Error('Network error'));
+      wizardPrompts.promptForExistingSystem.mockResolvedValue('typed-system');
+      externalSystemsApi.getExternalSystem.mockResolvedValue({
+        data: { key: 'typed-system', systemKey: 'typed-system', type: 'openapi' },
+        success: true
+      });
+
+      await handleWizard({});
+
+      expect(wizardPrompts.promptForExistingSystem).toHaveBeenCalledWith([], undefined);
+      expect(wizardApi.createWizardSession).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        'add-datasource',
+        'typed-system'
+      );
+    });
+
+    it('should fall back to input when listCredentials fails on Use existing', async() => {
+      wizardPrompts.promptForCredentialAction.mockResolvedValue({ action: 'select' });
+      credentialsApi.listCredentials.mockRejectedValue(new Error('Service unavailable'));
+      wizardPrompts.promptForExistingCredential.mockResolvedValue({ credentialIdOrKey: 'typed-cred' });
+      wizardApi.credentialSelection.mockResolvedValue({
+        success: true,
+        data: { credentialIdOrKey: 'typed-cred' }
+      });
+
+      await handleWizard(mockOptions);
+
+      expect(wizardPrompts.promptForExistingCredential).toHaveBeenCalledWith([]);
+      expect(wizardApi.credentialSelection).toHaveBeenCalled();
     });
 
     it('should handle config review with edit action', async() => {
@@ -329,6 +443,22 @@ describe('Wizard Command Handler', () => {
       expect(wizardGenerator.generateWizardFiles).not.toHaveBeenCalled();
     });
 
+    it('should fall back to YAML display when getPreview fails', async() => {
+      wizardApi.getPreview.mockRejectedValue(new Error('Preview API unavailable'));
+
+      await handleWizard(mockOptions);
+
+      expect(wizardApi.getPreview).toHaveBeenCalled();
+      expect(wizardPrompts.promptForConfigReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          preview: null,
+          systemConfig: mockSystemConfig,
+          datasourceConfigs: mockDatasourceConfigs
+        })
+      );
+      expect(logger.warn).toHaveBeenCalledWith('Preview unavailable, showing full configuration.');
+    });
+
     it('should handle validation errors', async() => {
       wizardApi.validateWizardConfig.mockResolvedValue({
         success: true,
@@ -354,6 +484,33 @@ describe('Wizard Command Handler', () => {
       await handleWizard(mockOptions);
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('⚠ Warnings:'));
+    });
+
+    it('should enable debug mode when options.debug is true', async() => {
+      await handleWizard({ ...mockOptions, debug: true });
+
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringMatching(/\[DEBUG\].*debug mode.*test-app/)
+      );
+      expect(wizardApi.generateConfig).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        expect.objectContaining({ debug: true })
+      );
+    });
+
+    it('should pass debug to configPrefs and save to wizard.yaml when --debug', async() => {
+      await handleWizard({ ...mockOptions, debug: true });
+
+      expect(wizardApi.generateConfig).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        expect.objectContaining({
+          debug: true,
+          intent: expect.any(String),
+          mode: 'create-system'
+        })
+      );
     });
   });
 

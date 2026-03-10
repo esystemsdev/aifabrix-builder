@@ -36,6 +36,8 @@ const {
   saveClientToken,
   encryptTokenValue,
   decryptTokenValue,
+  getFormat,
+  setFormat,
   CONFIG_DIR,
   CONFIG_FILE
 } = require('../../../lib/core/config');
@@ -467,6 +469,49 @@ describe('Config Module', () => {
       fsPromises.writeFile.mockRejectedValue(new Error('Write failed'));
 
       await expect(setDeveloperId(5)).rejects.toThrow('Failed to save config: Write failed');
+    });
+  });
+
+  describe('getFormat', () => {
+    it('should return format when set in config', async() => {
+      const yaml = require('js-yaml');
+      const mockConfig = { 'developer-id': '0', environment: 'dev', format: 'json' };
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+      const result = await getFormat();
+      expect(result).toBe('json');
+    });
+    it('should return yaml when set in config', async() => {
+      const yaml = require('js-yaml');
+      const mockConfig = { 'developer-id': '0', environment: 'dev', format: 'yaml' };
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+      const result = await getFormat();
+      expect(result).toBe('yaml');
+    });
+    it('should return null when format not set', async() => {
+      const yaml = require('js-yaml');
+      const mockConfig = { 'developer-id': '0', environment: 'dev' };
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+      const result = await getFormat();
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('setFormat', () => {
+    it('should set format successfully', async() => {
+      const yaml = require('js-yaml');
+      const mockConfig = { 'developer-id': '0', environment: 'dev' };
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+      fsPromises.mkdir.mockResolvedValue(undefined);
+      fsPromises.writeFile.mockResolvedValue(undefined);
+      fsPromises.open.mockResolvedValue({ sync: jest.fn(), close: jest.fn() });
+      await setFormat('json');
+      expect(fsPromises.writeFile).toHaveBeenCalled();
+      const written = yaml.load(fsPromises.writeFile.mock.calls[0][1]);
+      expect(written.format).toBe('json');
+    });
+    it('should reject invalid format', async() => {
+      await expect(setFormat('xml')).rejects.toThrow('Option --format must be');
+      await expect(setFormat('')).rejects.toThrow('Option --format must be');
     });
   });
 
