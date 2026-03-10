@@ -1,11 +1,12 @@
 name: Deploy to NPM
 
-# Disabled: no longer runs on push to main. Use "Run workflow" in Actions tab to run manually.
+# main: test + publish to NPM. release/*: test only (no NPM push).
 on:
   workflow_dispatch:
-  # push:
-  #   branches:
-  #     - main
+  push:
+    branches:
+      - main
+      - 'release/*'
 
 jobs:
   deploy:
@@ -34,6 +35,7 @@ jobs:
         
       - name: Check if version changed
         id: version-check
+        if: github.ref == 'refs/heads/main'
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "current_version=$VERSION" >> $GITHUB_OUTPUT
@@ -48,13 +50,13 @@ jobs:
           fi
         
       - name: Publish to NPM
-        if: steps.version-check.outputs.already_published == 'false'
+        if: github.ref == 'refs/heads/main' && steps.version-check.outputs.already_published == 'false'
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           
       - name: Create GitHub Release
-        if: steps.version-check.outputs.already_published == 'false'
+        if: github.ref == 'refs/heads/main' && steps.version-check.outputs.already_published == 'false'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.version-check.outputs.current_version }}

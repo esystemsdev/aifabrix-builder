@@ -29,20 +29,26 @@ jest.mock('../../../lib/validation/template', () => ({
   listAvailableTemplates: jest.fn().mockResolvedValue([])
 }));
 
+const { clearProjectRootCache } = require('../../../lib/utils/paths');
 const app = require('../../../lib/app');
 const templateValidator = require('../../../lib/validation/template');
 
-// Mock execAsync to avoid actual Docker builds
-jest.mock('util', () => ({
-  promisify: jest.fn(() => jest.fn().mockResolvedValue({
-    stdout: 'Build successful',
-    stderr: ''
-  }))
-}));
+// Mock only promisify so other util methods (inspect, etc.) still work in CI
+jest.mock('util', () => {
+  const actual = jest.requireActual('util');
+  return {
+    ...actual,
+    promisify: jest.fn(() => jest.fn().mockResolvedValue({
+      stdout: 'Build successful',
+      stderr: ''
+    }))
+  };
+});
 
 describe('Application Module', () => {
   let tempDir;
   let originalCwd;
+  let originalAifabrixBuilderDir;
 
   beforeEach(() => {
     // Create temporary directory for tests
@@ -50,14 +56,18 @@ describe('Application Module', () => {
     originalCwd = process.cwd();
     process.chdir(tempDir);
 
-    // Ensure global.PROJECT_ROOT is set (should be set by tests/setup.js)
-    // This ensures templates can be found even when tests change process.cwd()
-    // Use absolute path resolution to ensure it works in CI (from tests/lib/app, '..','..','..' = project root)
-    const projectRoot = global.PROJECT_ROOT || path.resolve(__dirname, '..', '..', '..');
+    // Use deterministic project root from test file location so path resolution works in CI
+    const projectRoot = path.resolve(__dirname, '..', '..', '..');
     global.PROJECT_ROOT = projectRoot;
+    clearProjectRootCache();
+
+    // Pin builder base to temp dir so path resolution does not depend on cwd in CI
+    const builderDir = path.join(tempDir, 'builder');
+    fsSync.mkdirSync(builderDir, { recursive: true });
+    originalAifabrixBuilderDir = process.env.AIFABRIX_BUILDER_DIR;
+    process.env.AIFABRIX_BUILDER_DIR = builderDir;
 
     // Verify README template exists (it should be in the repository)
-    // Use absolute path to avoid issues with process.cwd() changes
     const readmeTemplatePath = path.resolve(projectRoot, 'templates', 'applications', 'README.md.hbs');
     if (!fsSync.existsSync(readmeTemplatePath)) {
       throw new Error(`README template not found at ${readmeTemplatePath}. ` +
@@ -82,7 +92,11 @@ describe('Application Module', () => {
   });
 
   afterEach(async() => {
-    // Clean up temporary directory
+    if (originalAifabrixBuilderDir !== undefined) {
+      process.env.AIFABRIX_BUILDER_DIR = originalAifabrixBuilderDir;
+    } else {
+      delete process.env.AIFABRIX_BUILDER_DIR;
+    }
     process.chdir(originalCwd);
     await fs.rm(tempDir, { recursive: true, force: true });
   });

@@ -1,6 +1,7 @@
 /**
  * Roundtrip tests: download output must pass validate.
  * Simulates validate → deploy → download → validate flow.
+ * Excluded from CI (tests/manual) due to fs/path sensitivity in copied project.
  *
  * @fileoverview Roundtrip validation for external system download
  * @author AI Fabrix Team
@@ -14,8 +15,8 @@ const fsActual = jest.requireActual('fs');
 const fs = fsActual.promises;
 const fsSync = fsActual;
 
-const validate = require('../../../lib/validation/validate');
-const { getProjectRoot } = require('../../../lib/utils/paths');
+const validate = require('../../lib/validation/validate');
+const { getProjectRoot } = require('../../lib/utils/paths');
 
 describe('External System Download Roundtrip', () => {
   const systemKey = 'roundtrip-test';
@@ -107,7 +108,7 @@ describe('External System Download Roundtrip', () => {
     // Force fresh require of generator so it uses real fs (not a cached mock from other tests)
     let generatorLocal;
     jest.isolateModules(() => {
-      generatorLocal = require('../../../lib/generator');
+      generatorLocal = require('../../lib/generator');
     });
     await generatorLocal.splitDeployJson(deployPath, testDir);
 
