@@ -218,3 +218,98 @@ Add configurable PostgreSQL extensions in `application.yaml` (per-database `data
 - When implementing, run `npm run build` after changes and fix any lint or test failures before considering the task complete.
 - Ensure new helper or normalization logic in `compose-generator.js` has JSDoc and is covered in `tests/lib/compose-generator.test.js`.
 
+---
+
+## Implementation Validation Report
+
+**Date**: 2025-03-10  
+**Plan**: .cursor/plans/101-postgres_extensions_in_application.plan.md  
+**Status**: ⚠️ INCOMPLETE
+
+### Executive Summary
+
+The plan “Configurable PostgreSQL extensions in application.yaml” is **partially implemented**. Multi-database path (databases[].extensions, vector-by-name, Flowise-style extensions) is in place and tested. The single-database path (top-level `postgresExtensions`, normalization in compose-generator, and single-DB template block) is **not** implemented. Code quality checks (format, lint, test) all pass.
+
+### Task Completion
+
+The plan is structured by sections rather than checkboxes. Assessment by section:
+
+| Section | Status | Notes |
+|--------|--------|--------|
+| 1. Schema changes | Partial | `databases[].extensions` ✅; top-level `postgresExtensions` ❌ missing |
+| 2. Compose generator | Incomplete | `buildNetworksConfig(config)` has no `appName`, no normalization, no `postgresExtensions` in return |
+| 3. Template changes | Partial | Multi-DB extensions loop ✅; single-DB `postgresExtensions` loop ❌ missing |
+| 4. Documentation | Partial | `databases[].extensions` and running.md ✅; `postgresExtensions` in application-yaml.md ❌ |
+| 5. Tests | Partial | Multi-DB + vector-by-name ✅; single-DB `postgresExtensions` test ❌; schema validation test optional |
+
+### File Existence Validation
+
+| File | Exists | Implementation |
+|------|--------|----------------|
+| lib/schema/application-schema.json | ✅ | Has `databases[].extensions`; **missing** top-level `postgresExtensions` |
+| lib/utils/compose-generator.js | ✅ | `buildNetworksConfig(config)` only; no `appName`, no normalization, no `postgresExtensions` |
+| lib/utils/compose-handlebars-helpers.js | ✅ | `extensionsForDb`, `pgQuote` ✅ |
+| lib/utils/compose-vector-helper.js | ✅ | `isVectorDatabaseName` ✅ |
+| templates/typescript/docker-compose.hbs | ✅ | Multi-DB extensions loop ✅; single-DB **no** postgresExtensions loop |
+| templates/python/docker-compose.hbs | ✅ | Same as TypeScript |
+| docs/configuration/application-yaml.md | ✅ | `databases[].extensions` documented; **postgresExtensions** not documented |
+| docs/running.md | ✅ | Extensions note and Flowise example ✅ |
+| tests/lib/compose-generator.test.js | ✅ | Multi-DB and vector-by-name tests ✅; **no** single-DB postgresExtensions test |
+
+### Test Coverage
+
+- **Multi-DB extensions (Flowise)**: ✅ Test present; asserts CREATE EXTENSION for pgcrypto, uuid-ossp, vector, btree_gin, btree_gist.
+- **Vector by name (backward compat)**: ✅ Tests for “name ends with vector” and “no extensions when no vector name”.
+- **Single-DB postgresExtensions**: ❌ No test.
+- **Schema/validator**: No dedicated test that a config with `databases[].extensions` or `postgresExtensions` passes schema validation (optional per plan).
+
+### Code Quality Validation
+
+- **Format**: ✅ PASSED (`npm run lint:fix` exit 0).
+- **Lint**: ✅ PASSED (`npm run lint` exit 0, zero errors/warnings).
+- **Tests**: ✅ PASSED (all tests pass).
+
+### Cursor Rules Compliance
+
+- **Code reuse**: ✅ Helper `extensionsForDb` + `pgQuote` used in templates.
+- **Error handling**: ✅ No new unhandled paths identified.
+- **JSDoc**: ✅ New helper and schema descriptions present.
+- **Async patterns**: ✅ No change to async flow.
+- **File operations**: N/A.
+- **Input validation**: ✅ Extension names validated by schema pattern `^[a-z0-9_-]+$`.
+- **Module patterns**: ✅ CommonJS, exports correct.
+- **Security**: ✅ No secrets in config; extension names are identifiers only.
+
+### Implementation Completeness
+
+| Item | Status |
+|------|--------|
+| Schema: databases[].extensions | ✅ Complete |
+| Schema: postgresExtensions (top-level) | ❌ Missing |
+| Compose: buildNetworksConfig(config, appName) | ❌ Not implemented |
+| Compose: normalized databases (merged extensions) | ⚠️ Done in template via helper only; plan expected generator normalization |
+| Compose: postgresExtensions for single-DB | ❌ Not implemented |
+| Template: multi-DB extensions loop | ✅ Complete |
+| Template: single-DB postgresExtensions loop | ❌ Missing |
+| Docs: databases[].extensions | ✅ Complete |
+| Docs: postgresExtensions | ❌ Missing in application-yaml.md |
+| Tests: multi-DB + vector-by-name | ✅ Complete |
+| Tests: single-DB postgresExtensions | ❌ Missing |
+
+### Issues and Recommendations
+
+1. **Add top-level `postgresExtensions`** to `lib/schema/application-schema.json` (same array-of-strings pattern as databases[].extensions), with description for single-DB usage.
+2. **Update `buildNetworksConfig(config, appName)`** in `lib/utils/compose-generator.js`: accept `appName`; normalize each database with merged `extensions` (explicit + `vector` when name ends with `vector`); when `databases.length === 0`, set `postgresExtensions` from config or from app key (vector-by-name); pass `appName` from `generateDockerCompose` call site.
+3. **Add single-DB extension block** in both docker-compose templates: after “Database created successfully!” in the `{{else}}` branch, add `{{#each postgresExtensions}}` loop with `CREATE EXTENSION IF NOT EXISTS {{pgQuote this}};` (and ensure `postgresExtensions` is in template context from `buildNetworksConfig`).
+4. **Document `postgresExtensions`** in `docs/configuration/application-yaml.md` (Database requirements) and optionally reinforce in `docs/running.md`.
+5. **Add test** in `tests/lib/compose-generator.test.js` for single-DB path with `postgresExtensions: ['pgcrypto']` (and optionally app key ending with `vector`) and assert generated YAML contains the expected CREATE EXTENSION for the app-key database.
+
+### Final Validation Checklist
+
+- [ ] All plan sections completed (schema, generator, templates, docs, tests).
+- [x] All modified files exist and multi-DB path is implemented.
+- [x] Tests for multi-DB and vector-by-name exist and pass.
+- [x] Code quality (format, lint, test) passes.
+- [x] Cursor rules compliance verified for implemented parts.
+- [ ] Single-DB postgresExtensions path implemented and tested.
+

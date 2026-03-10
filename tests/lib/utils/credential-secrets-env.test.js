@@ -63,11 +63,25 @@ describe('credential-secrets-env', () => {
   });
 
   describe('kvEnvKeyToPath', () => {
-    it('should convert KV_A_B to kv://a/b', () => {
+    it('should convert KV_A_B to kv://a/b (format kv://system-key/variable)', () => {
       expect(kvEnvKeyToPath('KV_A_B')).toBe('kv://a/b');
     });
-    it('should convert KV_SECRETS_CLIENT_SECRET to kv://secrets/client/secret', () => {
-      expect(kvEnvKeyToPath('KV_SECRETS_CLIENT_SECRET')).toBe('kv://secrets/client/secret');
+    it('should convert KV_SECRETS_CLIENT_SECRET to kv://secrets/clientSecret', () => {
+      expect(kvEnvKeyToPath('KV_SECRETS_CLIENT_SECRET')).toBe('kv://secrets/clientSecret');
+    });
+    it('should convert KV_MICROSOFT_TEAMS_CLIENT_ID to kv://microsoft-teams/clientId when systemKey not provided', () => {
+      expect(kvEnvKeyToPath('KV_MICROSOFT_TEAMS_CLIENT_ID')).toBe('kv://microsoft-teams/clientId');
+    });
+    it('should convert KV_MICROSOFT_TEAMS_CLIENTID to kv://microsoft-teams/clientId (inferred)', () => {
+      expect(kvEnvKeyToPath('KV_MICROSOFT_TEAMS_CLIENTID')).toBe('kv://microsoft-teams/clientId');
+    });
+    it('should use systemKey when provided (microsoft-teams)', () => {
+      expect(kvEnvKeyToPath('KV_MICROSOFT_TEAMS_CLIENT_ID', 'microsoft-teams')).toBe('kv://microsoft-teams/clientId');
+      expect(kvEnvKeyToPath('KV_MICROSOFT_TEAMS_CLIENTSECRET', 'microsoft-teams')).toBe('kv://microsoft-teams/clientSecret');
+    });
+    it('should use systemKey when provided (hubspot)', () => {
+      expect(kvEnvKeyToPath('KV_HUBSPOT_CLIENTID', 'hubspot')).toBe('kv://hubspot/clientId');
+      expect(kvEnvKeyToPath('KV_HUBSPOT_CLIENTSECRET', 'hubspot')).toBe('kv://hubspot/clientSecret');
     });
     it('should return null for non-KV_ key', () => {
       expect(kvEnvKeyToPath('OTHER_VAR')).toBeNull();
@@ -89,6 +103,17 @@ describe('credential-secrets-env', () => {
       expect(items).toEqual([
         { key: 'kv://secrets/foo', value: 'plainValue' },
         { key: 'kv://a/b', value: 'another' }
+      ]);
+    });
+    it('should use value as key when value is kv:// path (e.g. microsoft-teams)', () => {
+      const envMap = {
+        KV_MICROSOFT_TEAMS_CLIENT_ID: 'kv://microsoft-teams/clientId',
+        KV_MICROSOFT_TEAMS_CLIENT_SECRET: 'kv://microsoft-teams/clientSecret'
+      };
+      const items = collectKvEnvVarsAsSecretItems(envMap);
+      expect(items).toEqual([
+        { key: 'kv://microsoft-teams/clientId', value: 'kv://microsoft-teams/clientId' },
+        { key: 'kv://microsoft-teams/clientSecret', value: 'kv://microsoft-teams/clientSecret' }
       ]);
     });
     it('should omit non-KV_ keys', () => {
@@ -308,7 +333,7 @@ describe('credential-secrets-env', () => {
       expect(result.pushed).toBe(3);
       const sent = storeCredentialSecrets.mock.calls[0][2];
       const keys = sent.map(({ key }) => key).sort();
-      expect(keys).toEqual(['kv://secrets/env/only', 'kv://secrets/payload-only', 'kv://secrets/shared']);
+      expect(keys).toEqual(['kv://secrets-env/only', 'kv://secrets/payload-only', 'kv://secrets/shared']);
       const sharedItem = sent.find(({ key }) => key === 'kv://secrets/shared');
       expect(sharedItem.value).toBe('from-env');
       fs.existsSync.mockRestore();

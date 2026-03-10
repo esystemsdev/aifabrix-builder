@@ -545,6 +545,89 @@ frontDoorRouting:
         expect(result.valid).toBe(true);
         expect(result.warnings.some(w => w.includes('Could not validate auth kv coverage'))).toBe(true);
       });
+
+      it('should pass when required auth path is only in a commented line (opted out)', async() => {
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockResolvedValue({
+          schemaBasePath: './',
+          systemFiles: ['avoma-system.json']
+        });
+        generatorExternal.loadSystemFile.mockResolvedValue({
+          authentication: {
+            security: {
+              apikey: 'kv://avoma/apikey'
+            }
+          }
+        });
+
+        const template = '# KV_AVOMA_APIKEY=kv://avoma/apikey\nPORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('avoma');
+
+        expect(result.valid).toBe(true);
+        expect(result.errors.some(e => e.includes('Missing required authentication secret'))).toBe(false);
+      });
+
+      it('should pass when required path is in commented line with different casing (apiKey vs apikey)', async() => {
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockResolvedValue({
+          schemaBasePath: './',
+          systemFiles: ['avoma-system.json']
+        });
+        generatorExternal.loadSystemFile.mockResolvedValue({
+          authentication: {
+            security: { apiKey: 'kv://avoma/apiKey' }
+          }
+        });
+
+        const template = '# KV_AVOMA_APIKEY=kv://avoma/apikey\nPORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('avoma');
+
+        expect(result.valid).toBe(true);
+        expect(result.errors.some(e => e.includes('Missing required authentication secret'))).toBe(false);
+      });
+
+      it('should pass when required path appears in comment without key=value form', async() => {
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockResolvedValue({
+          schemaBasePath: './',
+          systemFiles: ['avoma-system.json']
+        });
+        generatorExternal.loadSystemFile.mockResolvedValue({
+          authentication: {
+            security: { apiKey: 'kv://avoma/apiKey' }
+          }
+        });
+
+        const template = '# kv://avoma/apiKey (optional)\nPORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('avoma');
+
+        expect(result.valid).toBe(true);
+        expect(result.errors.some(e => e.includes('Missing required authentication secret'))).toBe(false);
+      });
     });
   });
 
@@ -716,8 +799,15 @@ frontDoorRouting:
 
   describe('validateApplication', () => {
     const appName = 'testapp';
+    const pathsUtil = require('../../../lib/utils/paths');
 
     it('should run complete validation suite', async() => {
+      pathsUtil.detectAppType.mockResolvedValue({
+        isExternal: false,
+        appPath: path.join(process.cwd(), 'builder', appName),
+        appType: 'regular',
+        baseDir: 'builder'
+      });
       const validVariables = {
         key: 'testapp',
         displayName: 'Test App',

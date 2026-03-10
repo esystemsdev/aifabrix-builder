@@ -643,12 +643,12 @@ describe('repair', () => {
       expect(result.changes.some(c => c.includes('env.template') && c.includes('Created'))).toBe(true);
       expect(writeFileSyncSpy).toHaveBeenCalledWith(
         envTemplatePath,
-        expect.stringContaining('KV_HUBSPOT_CLIENTID=kv://hubspot/clientid'),
+        expect.stringContaining('KV_HUBSPOT_CLIENTID=kv://hubspot/clientId'),
         expect.any(Object)
       );
       expect(writeFileSyncSpy).toHaveBeenCalledWith(
         envTemplatePath,
-        expect.stringContaining('KV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret'),
+        expect.stringContaining('KV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientSecret'),
         expect.any(Object)
       );
       writeFileSyncSpy.mockRestore();
@@ -749,7 +749,7 @@ describe('repair', () => {
 
       expect(result.envTemplateRepaired).toBe(true);
       const written = writeFileSyncSpy.mock.calls.find(c => c[0] === envTemplatePath);
-      expect(written[1]).toContain('KV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret');
+      expect(written[1]).toContain('KV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientSecret');
       writeFileSyncSpy.mockRestore();
     });
 
@@ -881,8 +881,8 @@ describe('repair', () => {
       expect(result.envTemplateRepaired).toBe(true);
       const written = writeFileSyncSpy.mock.calls.find(c => c[0] === envTemplatePath);
       expect(written).toBeDefined();
-      expect(written[1]).toContain('KV_HUBSPOT_CLIENTID=kv://hubspot/clientid');
-      expect(written[1]).toContain('KV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret');
+      expect(written[1]).toContain('KV_HUBSPOT_CLIENTID=kv://hubspot/clientId');
+      expect(written[1]).toContain('KV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientSecret');
       expect(written[1]).toContain('HUBSPOT_API_VERSION=v3');
       expect(written[1]).toContain('MAX_PAGE_SIZE=100');
       writeFileSyncSpy.mockRestore();
@@ -934,7 +934,7 @@ describe('repair', () => {
       expect(written[1]).toContain('# My comment');
       expect(written[1]).toContain('CUSTOM_VAR=keep-me');
       expect(written[1]).toContain('KV_HUBSPOT_CLIENTID=kv://wrong');
-      expect(written[1]).toContain('KV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret');
+      expect(written[1]).toContain('KV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientSecret');
       writeFileSyncSpy.mockRestore();
     });
 
@@ -1455,8 +1455,8 @@ describe('repair', () => {
               security: { clientId: 'kv://hubspot/clientid', clientSecret: 'kv://hubspot/clientsecret' }
             },
             configuration: [
-              { name: 'KV_HUBSPOT_CLIENTID', value: 'hubspot/clientid', location: 'keyvault' },
-              { name: 'KV_HUBSPOT_CLIENTSECRET', value: 'hubspot/clientsecret', location: 'keyvault' }
+              { name: 'KV_HUBSPOT_CLIENTID', value: 'hubspot/clientId', location: 'keyvault' },
+              { name: 'KV_HUBSPOT_CLIENTSECRET', value: 'hubspot/clientSecret', location: 'keyvault' }
             ]
           };
         }

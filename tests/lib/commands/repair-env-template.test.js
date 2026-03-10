@@ -43,8 +43,8 @@ describe('repair-env-template', () => {
       expect(effective).toHaveLength(2);
       expect(effective.map(e => e.name)).toContain('KV_HUBSPOT_CLIENTID');
       expect(effective.map(e => e.name)).toContain('KV_HUBSPOT_CLIENTSECRET');
-      expect(effective.find(e => e.name === 'KV_HUBSPOT_CLIENTID').value).toBe('hubspot/clientid');
-      expect(effective.find(e => e.name === 'KV_HUBSPOT_CLIENTSECRET').value).toBe('hubspot/clientsecret');
+      expect(effective.find(e => e.name === 'KV_HUBSPOT_CLIENTID').value).toBe('hubspot/clientId');
+      expect(effective.find(e => e.name === 'KV_HUBSPOT_CLIENTSECRET').value).toBe('hubspot/clientSecret');
     });
 
     it('includes non-keyvault configuration entries as-is', () => {
@@ -83,7 +83,7 @@ describe('repair-env-template', () => {
       const effective = buildEffectiveConfiguration(systemParsed, 'hubspot');
       expect(effective).toHaveLength(1);
       expect(effective[0].name).toBe('KV_HUBSPOT_CLIENTID');
-      expect(effective[0].value).toBe('hubspot/clientid');
+      expect(effective[0].value).toBe('hubspot/clientId');
       expect(effective[0].location).toBe('keyvault');
     });
 
@@ -111,7 +111,7 @@ describe('repair-env-template', () => {
           security: { clientId: 'kv://hubspot/clientid', clientSecret: 'kv://hubspot/clientsecret' }
         },
         configuration: [
-          { name: 'KV_HUBSPOT_CLIENTID', value: 'hubspot/clientid', location: 'keyvault' }
+          { name: 'KV_HUBSPOT_CLIENTID', value: 'hubspot/clientId', location: 'keyvault' }
         ]
       };
       const effective = buildEffectiveConfiguration(systemParsed, 'hubspot');
@@ -129,7 +129,24 @@ describe('repair-env-template', () => {
       const effective = buildEffectiveConfiguration(systemParsed, 'my-hubspot');
       expect(effective).toHaveLength(1);
       expect(effective[0].name).toBe('KV_MY_HUBSPOT_APIKEY');
-      expect(effective[0].value).toBe('my/hubspot/apikey');
+      expect(effective[0].value).toBe('my-hubspot/apiKey');
+    });
+
+    it('produces kv://microsoft-teams/clientId and clientSecret for multi-segment system key', () => {
+      const systemParsed = {
+        key: 'microsoft-teams',
+        authentication: {
+          security: {
+            clientId: 'kv://microsoft-teams/clientId',
+            clientSecret: 'kv://microsoft-teams/clientSecret'
+          }
+        },
+        configuration: []
+      };
+      const effective = buildEffectiveConfiguration(systemParsed, 'microsoft-teams');
+      expect(effective).toHaveLength(2);
+      expect(effective.find(e => e.name === 'KV_MICROSOFT_TEAMS_CLIENTID').value).toBe('microsoft-teams/clientId');
+      expect(effective.find(e => e.name === 'KV_MICROSOFT_TEAMS_CLIENTSECRET').value).toBe('microsoft-teams/clientSecret');
     });
   });
 
@@ -178,7 +195,7 @@ describe('repair-env-template', () => {
       expect(changes).toContain('Created env.template from system configuration');
       expect(writeFileSyncSpy).toHaveBeenCalledWith(
         envPath,
-        expect.stringContaining('KV_HUBSPOT_CLIENTID=kv://hubspot/clientid'),
+        expect.stringContaining('KV_HUBSPOT_CLIENTID=kv://hubspot/clientId'),
         expect.any(Object)
       );
     });
@@ -215,12 +232,12 @@ describe('repair-env-template', () => {
       expect(changes).toContain('Repaired env.template (KV_* names and path-style kv:// values)');
       const written = writeFileSyncSpy.mock.calls.find(c => c[0] === envPath);
       expect(written[1]).toContain('KV_HUBSPOT_CLIENTID=kv://wrong');
-      expect(written[1]).toContain('KV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret');
+      expect(written[1]).toContain('KV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientSecret');
     });
 
     it('returns false when file exists and content already correct', () => {
       const envPath = path.join(appPath, 'env.template');
-      const correctContent = 'KV_HUBSPOT_CLIENTID=kv://hubspot/clientid\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret\n';
+      const correctContent = 'KV_HUBSPOT_CLIENTID=kv://hubspot/clientId\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientSecret\n';
       existsSyncSpy.mockReturnValue(true);
       readFileSyncSpy.mockImplementation(p => (p === envPath ? correctContent : ''));
       const systemParsed = {
@@ -255,7 +272,7 @@ describe('repair-env-template', () => {
 
     it('preserves existing MISO_CONTROLLER_URL when repairing (only add when missing)', () => {
       const envPath = path.join(appPath, 'env.template');
-      const existingContent = 'KV_HUBSPOT_CLIENTID=kv://hubspot/clientid\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret\nMISO_CONTROLLER_URL=http://my-controller:3010\n';
+      const existingContent = 'KV_HUBSPOT_CLIENTID=kv://hubspot/clientId\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientSecret\nMISO_CONTROLLER_URL=http://my-controller:3010\n';
       existsSyncSpy.mockReturnValue(true);
       readFileSyncSpy.mockImplementation(p => (p === envPath ? existingContent : ''));
       const systemParsed = {
@@ -277,7 +294,7 @@ describe('repair-env-template', () => {
 
     it('preserves all existing key values (no overwrite); only missing keys trigger write', () => {
       const envPath = path.join(appPath, 'env.template');
-      const existingContent = 'KV_HUBSPOT_CLIENTID=kv://wrong\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientsecret\nMISO_CONTROLLER_URL=http://my-controller:3010\n';
+      const existingContent = 'KV_HUBSPOT_CLIENTID=kv://wrong\nKV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientSecret\nMISO_CONTROLLER_URL=http://my-controller:3010\n';
       existsSyncSpy.mockReturnValue(true);
       readFileSyncSpy.mockImplementation(p => (p === envPath ? existingContent : ''));
       const systemParsed = {
@@ -293,6 +310,38 @@ describe('repair-env-template', () => {
       const result = repairEnvTemplate(appPath, systemParsed, 'hubspot', false, changes);
       expect(result).toBe(false);
       expect(writeFileSyncSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not add expected keys when they appear only in commented lines', () => {
+      const envPath = path.join(appPath, 'env.template');
+      const existingContent = [
+        '# HubSpot credentials.',
+        '# KV_HUBSPOT_CLIENTID=kv://hubspot/clientId',
+        '# KV_HUBSPOT_CLIENTSECRET=kv://hubspot/clientSecret',
+        'PORT=3000',
+        ''
+      ].join('\n');
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockImplementation(p => (p === envPath ? existingContent : ''));
+      const systemParsed = {
+        key: 'hubspot',
+        authentication: {
+          security: { clientId: 'kv://hubspot/clientid', clientSecret: 'kv://hubspot/clientsecret' }
+        },
+        configuration: []
+      };
+      const changes = [];
+      const result = repairEnvTemplate(appPath, systemParsed, 'hubspot', false, changes);
+      expect(result).toBe(false);
+      expect(changes).toHaveLength(0);
+      expect(writeFileSyncSpy).not.toHaveBeenCalled();
+      const writtenCall = writeFileSyncSpy.mock.calls.find(c => c[0] === envPath);
+      if (writtenCall) {
+        const written = writtenCall[1];
+        const lines = written.split(/\r?\n/);
+        const activeKvLines = lines.filter(l => /^KV_HUBSPOT_(CLIENTID|CLIENTSECRET)=/.test(l.trim()));
+        expect(activeKvLines).toHaveLength(0);
+      }
     });
   });
 });
