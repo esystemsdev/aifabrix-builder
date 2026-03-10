@@ -280,25 +280,26 @@ describe('Path Utilities - directory helpers', () => {
 });
 
 describe('Path Utilities - listIntegrationAppNames / listBuilderAppNames', () => {
+  const projectRootFromTestFile = path.resolve(__dirname, '..', '..', '..');
+
   beforeEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
+    global.PROJECT_ROOT = projectRootFromTestFile;
+    // So getProjectRoot() uses global: hasPackageJson(globalRoot) must be true
+    fs.existsSync.mockImplementation((p) => p === path.join(projectRootFromTestFile, 'package.json'));
   });
 
   it('listIntegrationAppNames returns [] when root does not exist', () => {
-    const paths = require('../../../lib/utils/paths');
-    const root = paths.getIntegrationRoot();
     fs.existsSync.mockReturnValue(false);
-
+    const paths = require('../../../lib/utils/paths');
     const names = paths.listIntegrationAppNames();
     expect(names).toEqual([]);
   });
 
   it('listBuilderAppNames returns [] when root does not exist', () => {
-    const paths = require('../../../lib/utils/paths');
-    const root = paths.getBuilderRoot();
     fs.existsSync.mockReturnValue(false);
-
+    const paths = require('../../../lib/utils/paths');
     const names = paths.listBuilderAppNames();
     expect(names).toEqual([]);
   });
