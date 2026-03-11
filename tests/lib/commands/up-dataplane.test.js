@@ -26,7 +26,14 @@ jest.mock('chalk', () => {
 jest.mock('../../../lib/core/config', () => ({
   getConfig: jest.fn(),
   resolveEnvironment: jest.fn(),
-  getAifabrixBuilderDir: jest.fn().mockResolvedValue(null)
+  getAifabrixBuilderDir: jest.fn().mockResolvedValue(null),
+  setControllerUrl: jest.fn().mockResolvedValue()
+}));
+jest.mock('../../../lib/utils/health-check', () => ({
+  checkHealthEndpoint: jest.fn().mockResolvedValue(true)
+}));
+jest.mock('../../../lib/utils/auth-config-validator', () => ({
+  validateControllerUrl: jest.fn()
 }));
 jest.mock('../../../lib/utils/app-register-auth');
 jest.mock('../../../lib/utils/controller-url');
