@@ -46,7 +46,7 @@ Edit files in `integration/{{appName}}/`:
 - **Field mappings**: `{{systemKey}}-datasource-*-datasource{{fileExt}}` (dimensions, attributes, operations)
 - **Credential and configuration**: `env.template` (security settings and configuration variables)
 
-{{#if secretPaths.length}}
+{{#if secretPaths}}{{#if secretPaths.length}}
 ### Secrets
 
 Secrets are resolved from `.aifabrix` or key vault. Set them with:
@@ -56,7 +56,7 @@ Secrets are resolved from `.aifabrix` or key vault. Set them with:
 aifabrix secret set {{path}} <your value>   # {{description}}
 {{/each}}
 ```
-{{/if}}
+{{/if}}{{/if}}
 
 ### 3. Validate Configuration
 

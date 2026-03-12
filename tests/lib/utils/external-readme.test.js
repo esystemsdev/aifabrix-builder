@@ -108,6 +108,13 @@ describe('external-readme (context only)', () => {
   });
 
   describe('generateExternalReadmeContent with Secrets section', () => {
+    const fs = require('fs');
+    const templatePath = path.join(projectRoot, 'templates', 'external-system', 'README.md.hbs');
+
+    it('external-system README template exists (required for generateExternalReadmeContent tests)', () => {
+      expect(fs.existsSync(templatePath)).toBe(true);
+    });
+
     it('generated README contains Secrets section and aifabrix secret set with key (no kv://) when secretPaths present', () => {
       const content = generateExternalReadmeContent({
         systemKey: 'hubspot-test',
