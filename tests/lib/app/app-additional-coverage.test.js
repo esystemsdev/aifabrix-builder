@@ -117,8 +117,8 @@ describe('App.js Additional Coverage Tests', () => {
         });
       });
 
-      // Call createApp without port to trigger prompt
-      await app.createApp('test-app', { language: 'typescript' });
+      // Call createApp without port to trigger prompt (type webapp for builder app)
+      await app.createApp('test-app', { type: 'webapp', language: 'typescript' });
 
       expect(portValidationCalled).toBe(true);
       expect(validationResult).toBe('Port must be a number between 1 and 65535');
@@ -139,7 +139,7 @@ describe('App.js Additional Coverage Tests', () => {
         });
       });
 
-      await app.createApp('test-app', { port: 8080, language: 'typescript' });
+      await app.createApp('test-app', { type: 'webapp', port: 8080, language: 'typescript' });
 
       expect(inquirer.prompt).toHaveBeenCalled();
     });
@@ -163,6 +163,7 @@ describe('App.js Additional Coverage Tests', () => {
       });
 
       await app.createApp('test-app', {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         github: false
@@ -204,6 +205,7 @@ describe('App.js Additional Coverage Tests', () => {
       });
 
       await app.createApp('test-app', {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         github: true,
@@ -235,6 +237,7 @@ describe('App.js Additional Coverage Tests', () => {
       });
 
       await app.createApp('test-app', {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         github: true,
@@ -260,6 +263,7 @@ describe('App.js Additional Coverage Tests', () => {
       });
 
       await app.createApp('test-app-2', {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         github: true,
@@ -329,6 +333,7 @@ describe('App.js Additional Coverage Tests', () => {
       });
 
       const config = {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         database: false,

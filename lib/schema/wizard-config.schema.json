@@ -20,10 +20,16 @@
     },
     "systemIdOrKey": {
       "type": "string",
-      "description": "Existing system ID or key (required when mode='add-datasource')",
+      "description": "Application/system key (e.g. hubspot-demo), not a datasource or entity key. Required when mode='add-datasource'. Must be the system key from the dataplane, not an entity key (e.g. 'companies').",
       "pattern": "^[a-z0-9-]+$",
       "minLength": 1,
       "maxLength": 50
+    },
+    "systemDisplayName": {
+      "type": ["string", "null"],
+      "title": "Systemdisplayname",
+      "description": "System-level display name for the credential (e.g. 'Hubspot Demo'). When the OpenAPI title is entity-specific (e.g. 'Companies'), pass the system name here so authentication.displayName is system-level.",
+      "maxLength": 200
     },
     "source": {
       "type": "object",

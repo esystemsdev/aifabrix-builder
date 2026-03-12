@@ -1048,6 +1048,60 @@ describe('repair', () => {
         writeFileSyncSpy.mockRestore();
       });
 
+      it('preserves existing authentication.variables when switching auth method', async() => {
+        const envTemplatePath = path.join(appPath, 'env.template');
+        existsSyncSpy.mockImplementation((p) => {
+          const s = String(p);
+          if (s === envTemplatePath) return false;
+          if (s === configPath || s === appPath) return true;
+          if (s.endsWith('hubspot-system.yaml')) return true;
+          if (s.includes('rbac')) return false;
+          return false;
+        });
+        const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+        readdirSyncSpy.mockReturnValue(['hubspot-system.yaml', 'application.yaml']);
+        const existingVariables = {
+          baseUrl: 'https://custom.api.example.com',
+          tokenUrl: 'https://custom.api.example.com/oauth/token',
+          authorizationUrl: 'https://custom.api.example.com/authorize'
+        };
+        loadConfigFile.mockImplementation((p) => {
+          const s = String(p);
+          if (s.endsWith('application.yaml') || s.endsWith('application.json')) {
+            return {
+              app: { key: 'hubspot', type: 'external' },
+              externalIntegration: { schemaBasePath: './', systems: ['hubspot-system.yaml'], dataSources: [] }
+            };
+          }
+          if (s.endsWith('hubspot-system.yaml')) {
+            return {
+              key: 'hubspot',
+              authentication: {
+                method: 'oauth2',
+                variables: existingVariables,
+                security: { clientId: 'kv://hubspot/clientid', clientSecret: 'kv://hubspot/clientsecret' }
+              },
+              configuration: []
+            };
+          }
+          return {};
+        });
+        generator.generateDeployJson.mockResolvedValue(path.join(appPath, 'hubspot-deploy.json'));
+
+        const result = await repairExternalIntegration('test-hubspot', { auth: 'apikey' });
+
+        expect(result.updated).toBe(true);
+        const systemWrite = writeConfigFile.mock.calls.find(c => c[0].endsWith('hubspot-system.yaml'));
+        expect(systemWrite).toBeDefined();
+        const writtenAuth = systemWrite[1].authentication;
+        expect(writtenAuth.method).toBe('apikey');
+        expect(writtenAuth.variables).toBeDefined();
+        expect(writtenAuth.variables.baseUrl).toBe(existingVariables.baseUrl);
+        expect(writtenAuth.variables.tokenUrl).toBe(existingVariables.tokenUrl);
+        expect(writtenAuth.variables.authorizationUrl).toBe(existingVariables.authorizationUrl);
+        writeFileSyncSpy.mockRestore();
+      });
+
       it('throws when --auth is invalid with message listing allowed methods', async() => {
         existsSyncSpy.mockImplementation((p) => p === configPath || p === appPath || String(p).endsWith('hubspot-system.yaml'));
         readdirSyncSpy.mockReturnValue(['hubspot-system.yaml', 'application.yaml']);

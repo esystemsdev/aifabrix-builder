@@ -84,7 +84,7 @@ End-to-end flow to get a complete working external system using only the CLI:
 
 2. **Create** (choose one)
    - **Wizard (recommended):** `aifabrix wizard` or `aifabrix wizard <app>`
-   - **Manual:** `aifabrix create <app> --type external`
+   - **Manual:** `aifabrix create <app>` (external is the default type)
    - **Existing system:** `aifabrix download <system-key>`
 
 3. **Configure credentials** – Set credential values via the Miso Controller or Dataplane portal (recommended). For local dev or `aifabrix upload`, use `env.template` with `kv://` references and ensure secrets are in `~/.aifabrix/secrets.local.yaml` or resolved via `aifabrix-secrets` in config.
@@ -125,7 +125,7 @@ The wizard guides you through creating external systems with AI-powered configur
 ### Step 1: Create the External System
 
 ```bash
-aifabrix create hubspot --type external
+aifabrix create hubspot
 ```
 
 **You'll be asked:**
@@ -141,7 +141,7 @@ aifabrix create hubspot --type external
 
 File names follow `<systemKey>-system.{yaml|json}` and `<systemKey>-datasource-<suffix>.{yaml|json}`. The suffix comes from the datasource key (e.g. `hubspot-company` → `hubspot-datasource-company`). Both `.yaml` and `.json` are supported.
 
-- `aifabrix create --type external` generates `entity1`, `entity2`, etc. (e.g. `hubspot-datasource-entity1.yaml`).
+- `aifabrix create <app>` (default type is external) generates `entity1`, `entity2`, etc. (e.g. `hubspot-datasource-entity1.yaml`).
 - The wizard can produce semantic names like `company`, `contact`, `deal` for known platforms.
 
 ```yaml
@@ -194,7 +194,7 @@ classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
 %% =======================
 %% Flow
 %% =======================
-Create[aifabrix create hubspot<br/>--type external]:::primary --> Variables[application.yaml<br/>App configuration<br/>externalIntegration block]:::base
+Create[aifabrix create hubspot]:::primary --> Variables[application.yaml<br/>App configuration<br/>externalIntegration block]:::base
 Create --> SystemYaml[hubspot-system.yaml<br/>External system definition]:::base
 Create --> Datasource1[hubspot-datasource-entity1.yaml<br/>Datasource 1]:::base
 Create --> Datasource2[hubspot-datasource-entity2.yaml<br/>Datasource 2]:::base
@@ -1350,7 +1350,7 @@ aifabrix deploy hubspot
 
 ```bash
 # 1. Create new external system
-aifabrix create hubspot --type external
+aifabrix create hubspot
 
 # 2. Edit configuration files in integration/hubspot/
 #    - Configure authentication
@@ -1497,12 +1497,12 @@ aifabrix delete <system-key>
 # Options: --type <type> (default: external), --yes or --force (skip confirmation)
 ```
 
-**Create external system:**
+**Create external system:** (external is the default type; use `--type webapp` for builder apps)
 ```bash
-aifabrix create <app> --type external [--wizard]
+aifabrix create <app> [--wizard]
 
 # Non-interactive example
-aifabrix create hubspot --type external \
+aifabrix create hubspot \
   --display-name "HubSpot CRM" \
   --description "HubSpot CRM integration" \
   --system-type openapi \

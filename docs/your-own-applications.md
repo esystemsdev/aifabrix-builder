@@ -165,9 +165,9 @@ aifabrix create myapp --github --github-steps npm
 ```
 **Note:** Step templates must exist in `templates/github/steps/{step}.hbs`. The `npm` step adds NPM publishing to the release workflow.
 
-**Creating an External System Integration?** Use `--type external`:
+**Creating an External System Integration?** Use the default (external); use `--type webapp` for builder apps:
 ```bash
-aifabrix create hubspot-test --type external
+aifabrix create hubspot-test
 ```
 Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none), entity type (recordStorage, documentStorage, vectorStore, messageService, none), number of datasources. Create fails if `integration/<name>` or `builder/<name>` already exists—use a different name or remove the existing directory.
 
@@ -384,7 +384,7 @@ External systems integrate with third-party APIs (like HubSpot, Salesforce, etc.
 aifabrix login --controller https://controller.aifabrix.dev --environment dev
 
 # Create HubSpot external system
-aifabrix create hubspot-test --type external
+aifabrix create hubspot-test
 
 # Configure authentication and datasources in integration/hubspot/
 # See integration/hubspot/ for complete example

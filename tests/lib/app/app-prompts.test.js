@@ -87,7 +87,7 @@ describe('Application Prompts Module', () => {
         github: false
       });
 
-      const result = await promptForOptions('test-app', {});
+      const result = await promptForOptions('test-app', { type: 'webapp' });
 
       expect(result).toMatchObject({
         appName: 'test-app',
@@ -128,7 +128,7 @@ describe('Application Prompts Module', () => {
         controllerUrl: 'http://localhost:3000'
       });
 
-      const result = await promptForOptions('test-app', {});
+      const result = await promptForOptions('test-app', { type: 'webapp' });
 
       expect(result).toMatchObject({
         github: true,
@@ -179,7 +179,7 @@ describe('Application Prompts Module', () => {
         controller: false
       });
 
-      const result = await promptForOptions('test-app', {});
+      const result = await promptForOptions('test-app', { type: 'webapp' });
 
       expect(result).toMatchObject({
         github: true,
@@ -197,7 +197,7 @@ describe('Application Prompts Module', () => {
         authentication: false
       });
 
-      const result = await promptForOptions('test-app', { github: false });
+      const result = await promptForOptions('test-app', { type: 'webapp', github: false });
 
       expect(result.github).toBe(false);
       // Controller should not be prompted when github is false
@@ -238,6 +238,7 @@ describe('Application Prompts Module', () => {
       });
 
       const result = await promptForOptions('test-app', {
+        type: 'webapp',
         port: '3000',
         language: 'typescript',
         database: true
@@ -253,6 +254,7 @@ describe('Application Prompts Module', () => {
       inquirer.prompt.mockResolvedValue({});
 
       const result = await promptForOptions('test-app', {
+        type: 'webapp',
         port: '3000',
         language: 'typescript'
       });
@@ -274,7 +276,7 @@ describe('Application Prompts Module', () => {
         authentication: false
       });
 
-      const result = await promptForOptions('test-app', {});
+      const result = await promptForOptions('test-app', { type: 'webapp' });
 
       expect(result.github).toBe(false);
     });

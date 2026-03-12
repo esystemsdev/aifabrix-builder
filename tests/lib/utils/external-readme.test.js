@@ -3,11 +3,30 @@
  * Full template rendering tests are in tests/local/lib/utils/external-readme.test.js.
  */
 
+const path = require('path');
 const {
-  buildExternalReadmeContext
+  buildExternalReadmeContext,
+  generateExternalReadmeContent
 } = require('../../../lib/utils/external-readme');
 
+const projectRoot = path.resolve(__dirname, '..', '..', '..');
+
 describe('external-readme (context only)', () => {
+  let originalProjectRoot;
+
+  beforeEach(() => {
+    originalProjectRoot = global.PROJECT_ROOT;
+    global.PROJECT_ROOT = projectRoot;
+    const { clearProjectRootCache } = require('../../../lib/utils/paths');
+    clearProjectRootCache();
+  });
+
+  afterEach(() => {
+    global.PROJECT_ROOT = originalProjectRoot;
+    const { clearProjectRootCache } = require('../../../lib/utils/paths');
+    clearProjectRootCache();
+  });
+
   describe('buildExternalReadmeContext', () => {
     it('returns default fileExt .json when not provided', () => {
       const ctx = buildExternalReadmeContext({ systemKey: 'myapp' });
@@ -53,6 +72,74 @@ describe('external-readme (context only)', () => {
         datasources: [{ entityType: 'users', displayName: 'Users' }]
       });
       expect(ctx.datasources[0].fileName).toBe('myapp-datasource-users.yaml');
+    });
+
+    it('includes secretPaths for apikey authType with path and description (key without kv://)', () => {
+      const ctx = buildExternalReadmeContext({
+        systemKey: 'hubspot-test',
+        authType: 'apikey'
+      });
+      expect(ctx.secretPaths).toBeDefined();
+      expect(ctx.secretPaths.length).toBe(1);
+      expect(ctx.secretPaths[0]).toMatchObject({
+        path: 'hubspot-test/apiKey',
+        description: 'API Key'
+      });
+    });
+
+    it('includes secretPaths for oauth2 authType (clientId, clientSecret) with keys without kv://', () => {
+      const ctx = buildExternalReadmeContext({
+        systemKey: 'my-integration',
+        authType: 'oauth2'
+      });
+      expect(ctx.secretPaths).toBeDefined();
+      expect(ctx.secretPaths.length).toBe(2);
+      expect(ctx.secretPaths.map(p => p.path)).toContain('my-integration/clientId');
+      expect(ctx.secretPaths.map(p => p.path)).toContain('my-integration/clientSecret');
+    });
+
+    it('includes empty secretPaths for authType none', () => {
+      const ctx = buildExternalReadmeContext({
+        systemKey: 'no-auth-system',
+        authType: 'none'
+      });
+      expect(ctx.secretPaths).toEqual([]);
+    });
+  });
+
+  describe('generateExternalReadmeContent with Secrets section', () => {
+    it('generated README contains Secrets section and aifabrix secret set with key (no kv://) when secretPaths present', () => {
+      const content = generateExternalReadmeContent({
+        systemKey: 'hubspot-test',
+        displayName: 'HubSpot Test',
+        authType: 'apikey'
+      });
+      expect(content).toContain('### Secrets');
+      expect(content).toContain('aifabrix secret set');
+      expect(content).toContain('hubspot-test/apiKey');
+      expect(content).toContain('<your value>');
+      expect(content).not.toMatch(/aifabrix secret set kv:\/\//);
+    });
+
+    it('generated README shows aifabrix secret set with systemKey/key and <your value> for oauth2', () => {
+      const content = generateExternalReadmeContent({
+        systemKey: 'hubspot-demo',
+        displayName: 'HubSpot Demo',
+        authType: 'oauth2'
+      });
+      expect(content).toContain('aifabrix secret set hubspot-demo/clientId <your value>');
+      expect(content).toContain('aifabrix secret set hubspot-demo/clientSecret <your value>');
+      expect(content).not.toMatch(/aifabrix secret set kv:\/\//);
+    });
+
+    it('generated README omits Secrets section when authType none', () => {
+      const content = generateExternalReadmeContent({
+        systemKey: 'no-secrets',
+        displayName: 'No Secrets',
+        authType: 'none'
+      });
+      expect(content).not.toMatch(/### Secrets/);
+      expect(content).not.toContain('aifabrix secret set');
     });
   });
 });

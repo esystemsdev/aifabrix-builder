@@ -11,42 +11,52 @@ Commands for creating, building, and running applications locally.
 
 Create new application with configuration files.
 
-**What:** Generates `builder/` folder with `application.yaml`, `env.template`, `rbac.yaml`, and optional GitHub Actions workflows.
+**What:** Creates a new application. By default creates an **external** system in `integration/<app>/`. Use `--type webapp` to create a builder app in `builder/<app>/` with `application.yaml`, `env.template`, `rbac.yaml`, and optional GitHub Actions workflows.
 
 **When:** Starting a new application.
 
-**Example (interactive):**
-```bash
-aifabrix create myapp
-```
-Prompts for: port, database, redis, storage, authentication, language.
+**Default type:** The default application type is **external**. To create a web app (builder app), use `aifabrix create <app> --type webapp`.
 
-**Example (with flags):**
+**Example (external system, default):**
 ```bash
-aifabrix create myapp --port 3000 --database --language typescript
+aifabrix create hubspot
+```
+Creates `integration/hubspot/`. Use `--wizard` for the interactive wizard, or provide non-interactive options (e.g. `--display-name`, `--auth-type`).
+
+**Example (web app, interactive):**
+```bash
+aifabrix create myapp --type webapp
+```
+Creates `builder/myapp/`. Prompts for: port, database, redis, storage, authentication, language.
+
+**Example (web app with flags):**
+```bash
+aifabrix create myapp --type webapp --port 3000 --database --language typescript
 ```
 
 **Example (with GitHub workflows):**
 ```bash
-aifabrix create myapp --port 3000 --database --github --main-branch main
+aifabrix create myapp --port 3000 --database --github --main-branch main --type webapp
 ```
 
 **Example (with template):**
 ```bash
-aifabrix create myapp --template miso-controller --port 3000
+aifabrix create myapp --template miso-controller --port 3000 --type webapp
 ```
 
 **Example (with GitHub steps):**
 ```bash
-aifabrix create myapp --github --github-steps npm
+aifabrix create myapp --github --github-steps npm --type webapp
 ```
 **Note:** Step templates must exist in `templates/github/steps/{step}.hbs`. Currently available: `npm.hbs`
 
-**Example (external system):**
+**Example (external with wizard):**
 ```bash
-aifabrix create hubspot --type external
+aifabrix create hubspot --wizard
 ```
-Creates in `integration/<app>/`. Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none), entity type (recordStorage, documentStorage, vectorStore, messageService, none), number of datasources. For other commands (validate, json, deploy, delete, **resolve**), the CLI always resolves the app by checking `integration/<app>` first, then `builder/<app>`; if neither exists, it errors. There is no option to override this order. **Resolve** additionally supports **env-only** mode: if `integration/<app>/env.template` exists (even without `application.yaml`), resolve uses that directory and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
+Creates in `integration/<app>/` using the interactive wizard. For non-interactive external create, use `--display-name`, `--description`, `--system-type`, `--auth-type`, `--entity-type`, and `--datasources`. For other commands (validate, json, deploy, delete, **resolve**), the CLI always resolves the app by checking `integration/<app>` first, then `builder/<app>`; if neither exists, it errors. **Resolve** additionally supports **env-only** mode: if `integration/<app>/env.template` exists (even without `application.yaml`), resolve uses that directory and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
+
+**External output:** Generated `env.template` includes full `kv://` paths (e.g. `KV_HUBSPOT_APIKEY=kv://hubspot-test/apikey`) for credential secrets. The generated README includes a **Secrets** section listing `aifabrix secret set <systemKey>/<key> <your value>` per authentication type (the key has no `kv://` prefix).
 
 **Complete HubSpot example:**
 See `integration/hubspot/` for a complete HubSpot integration with companies, contacts, and deals datasources. Includes OAuth2 authentication, field mappings, and OpenAPI operations.
@@ -61,7 +71,7 @@ See `integration/hubspot/` for a complete HubSpot integration with companies, co
 - `-a, --authentication` - Requires authentication/RBAC (not used for external type)
 - `-l, --language <lang>` - typescript or python (not used for external type)
 - `-t, --template <name>` - Template to use (e.g., miso-controller, keycloak). Template folder must exist in `templates/{template}/`
-- `--type <type>` - Application type: `webapp`, `api`, `service`, `functionapp`, or `external` (default: webapp)
+- `--type <type>` - Application type: `webapp`, `api`, `service`, `functionapp`, or `external` (default: **external**; use `--type webapp` for builder apps)
 - `--app` - Generate minimal application files (package.json, index.ts or requirements.txt, main.py) (not used for external type)
 - `-g, --github` - (Optional) Generate GitHub Actions workflows
 - `--github-steps <steps>` - Extra GitHub workflow steps (comma-separated, e.g., `npm`). Step templates must exist in `templates/github/steps/{step}.hbs`. When included, these steps are rendered and injected into workflow files (e.g., `release.yaml`). Available step templates: `npm.hbs` (adds NPM publishing job)
@@ -75,7 +85,7 @@ See `integration/hubspot/` for a complete HubSpot integration with companies, co
 - `builder/<app>/README.md` - Application documentation
 - `.github/workflows/` - GitHub Actions workflows (if --github specified)
 
-**External Type (`--type external`):**
+**External type (default):** When `--type` is omitted or `--type external`:
 - `--display-name <name>` - External system display name (required for non-interactive)
 - `--description <desc>` - External system description (required for non-interactive)
 - `--system-type <type>` - openapi, mcp, or custom (required for non-interactive)

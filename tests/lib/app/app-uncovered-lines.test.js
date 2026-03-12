@@ -93,7 +93,7 @@ describe('App.js Uncovered Lines Tests', () => {
       });
 
       const appName = 'test-app';
-      const options = { github: true }; // github is not false
+      const options = { type: 'webapp', github: true }; // github is not false
 
       await app.createApp(appName, options);
 
@@ -113,7 +113,7 @@ describe('App.js Uncovered Lines Tests', () => {
       });
 
       const appName = 'test-app';
-      const options = { github: false }; // github is false
+      const options = { type: 'webapp', github: false }; // github is false
 
       await app.createApp(appName, options);
 
@@ -137,6 +137,7 @@ describe('App.js Uncovered Lines Tests', () => {
 
       const appName = 'test-app';
       const options = {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         database: true,
@@ -169,6 +170,7 @@ describe('App.js Uncovered Lines Tests', () => {
 
       const appName = 'test-app';
       const options = {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         database: false,
@@ -197,6 +199,7 @@ describe('App.js Uncovered Lines Tests', () => {
 
       const appName = 'test-app';
       const options = {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         database: false,
@@ -228,6 +231,7 @@ describe('App.js Uncovered Lines Tests', () => {
 
       const appName = 'test-app';
       const options = {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         database: false,
@@ -256,6 +260,7 @@ describe('App.js Uncovered Lines Tests', () => {
 
       const appName = 'test-app';
       const options = {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         database: false,
@@ -284,6 +289,7 @@ describe('App.js Uncovered Lines Tests', () => {
 
       const appName = 'test-app';
       const options = {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         database: false,

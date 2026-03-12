@@ -26,8 +26,10 @@ Optional: `rbac.yaml` – Roles and permissions merged into the system when pres
 ### 1. Create External System
 
 ```bash
-aifabrix create hubspot --type external
+aifabrix create hubspot
 ```
+
+(External is the default type. Use `aifabrix create <name> --type webapp` for a builder app.)
 
 Or use the interactive wizard:
 

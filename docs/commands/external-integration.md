@@ -10,7 +10,9 @@ Commands for creating, testing, and managing external system integrations. Comma
 
 **Resolve:** You can run `aifabrix resolve <app>` for external integrations when `integration/<app>/env.template` exists. If `application.yaml` is missing, resolve still runs in **env-only** mode and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
 
-**Repair:** If `application.yaml`, system file `dataSources`, or env.template gets out of sync with files on disk (e.g. after converting JSON ↔ YAML, adding/removing/renaming datasource files, auth variables wrongly listed in system `configuration`, or env.template having wrong KV_* keys), run `aifabrix repair <app>`. Repair supports `--auth <method>` to set the integration’s authentication method (canonical variables and security) and update env.template accordingly. It also aligns datasource files with the manifest (dimensions and metadataSchema from attributes as source of truth) and supports optional flags `--rbac`, `--expose`, `--sync`, and `--test`; see [Utility commands – repair](utilities.md#aifabrix-repair-app) for details.
+**Create:** To create an external system, run `aifabrix create <app>` (external is the default type). Use `aifabrix create <app> --type webapp` for a builder app. The generated README in `integration/<app>/` includes a **Secrets** section with `aifabrix secret set <systemKey>/<key> <your value>` commands per authentication type (key has no `kv://` prefix).
+
+**Repair:** If `application.yaml`, system file `dataSources`, or env.template gets out of sync with files on disk (e.g. after converting JSON ↔ YAML, adding/removing/renaming datasource files, auth variables wrongly listed in system `configuration`, or env.template having wrong KV_* keys), run `aifabrix repair <app>`. Repair supports `--auth <method>` to set the integration’s authentication method (canonical variables and security) and update env.template accordingly. When switching auth method, existing authentication variables (e.g. baseUrl, tokenUrl) are preserved. It also aligns datasource files with the manifest (dimensions and metadataSchema from attributes as source of truth) and supports optional flags `--rbac`, `--expose`, `--sync`, and `--test`; see [Utility commands – repair](utilities.md#aifabrix-repair-app) for details.
 
 ---
 
@@ -82,8 +84,8 @@ aifabrix wizard --app hubspot-integration
 aifabrix wizard --app my-api
 # Select: OpenAPI file > Provide path
 
-# Use wizard when creating external system
-aifabrix create my-integration --type external --wizard
+# Use wizard when creating external system (create defaults to external)
+aifabrix create my-integration --wizard
 # Delete (path resolved: integration first, then builder)
 aifabrix delete hubspot
 ```
@@ -280,7 +282,7 @@ aifabrix credential env hubspot
 **Arguments:** `<system-key>` – External system key (same as `integration/<system-key>/`).
 
 **Prerequisites:**
-- `integration/<system-key>/env.template` must exist (created by wizard, download, or create --type external)
+- `integration/<system-key>/env.template` must exist (created by wizard, download, or create)
 
 **Process:**
 1. Parses env.template for `KV_<APPKEY>_<VAR>=` lines
@@ -433,7 +435,7 @@ Deletion cancelled.
 After deletion:
 - System and datasources are permanently removed from dataplane
 - Local files in `integration/<system-key>/` are not deleted (preserved for reference)
-- To recreate: Use `aifabrix create <system-key> --type external` or `aifabrix wizard`
+- To recreate: Use `aifabrix create <system-key>` or `aifabrix wizard`
 
 ---
 

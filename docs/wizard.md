@@ -53,7 +53,7 @@ If `integration/<appName>/wizard.yaml` exists and is valid, the wizard shows a s
 You can also use the wizard when creating an external system:
 
 ```bash
-aifabrix create my-integration --type external --wizard
+aifabrix create my-integration --wizard
 ```
 
 ### Headless Mode (Non-Interactive)
