@@ -377,7 +377,7 @@ Set the default controller URL or environment in `config.yaml`. Use when you are
 
 **Usage:**
 ```bash
-# Set default controller URL (must be logged in for that controller)
+# Set default controller URL (allowed when logged out; then "aifabrix login" uses this URL)
 aifabrix auth config --set-controller https://controller.aifabrix.dev
 
 # Set default environment (must be logged in for current controller)
@@ -388,11 +388,11 @@ aifabrix auth status
 ```
 
 **Options:**
-- `--set-controller <url>` – Set default controller. URL is validated; command checks that a device token exists for that controller.
+- `--set-controller <url>` – Set default controller. URL is validated. You can set the controller when logged out (no stored credentials); then `aifabrix login` will use this URL. If you have credentials for another controller, the command fails with instructions to either log in to the new controller or run `aifabrix logout` first.
 - `--set-environment <env>` – Set default environment. Valid values: `miso`, `dev`, `tst`, `pro`, or custom (letters, numbers, hyphens, underscores). Requires being logged in to the current controller.
 
 **Validation:**
-- **--set-controller:** URL must be valid HTTP/HTTPS; you must have a device token for that controller (from `aifabrix login`).
+- **--set-controller:** URL must be valid HTTP/HTTPS. Allowed when: (1) no stored credentials, or (2) you already have a device token for that controller. If you have credentials for a different controller, run `aifabrix login` for the new URL or `aifabrix logout` first.
 - **--set-environment:** Environment format must be valid; you must be logged in to the controller in `config.controller`.
 
 **Examples:**
@@ -407,7 +407,7 @@ aifabrix deploy myapp
 ```
 
 **Issues:**
-- **"Not logged in to controller"** → Run `aifabrix login --controller <url>` for that controller first.
+- **"You have credentials for another controller"** → Run `aifabrix login` with the new controller URL, or run `aifabrix logout` first, then set the new controller with `--set-controller`.
 - **"Invalid URL"** → Use a valid `http://` or `https://` URL.
 - **"Invalid environment"** → Use `miso`, `dev`, `tst`, `pro`, or a custom key (letters, numbers, hyphens, underscores).
 

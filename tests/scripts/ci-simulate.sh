@@ -66,6 +66,30 @@ if [ ! -f "$TEST_PROJECT_DIR/babel.config.js" ]; then
   echo 'module.exports = { presets: [] };' > "$TEST_PROJECT_DIR/babel.config.js"
 fi
 
+# Ensure external-system README template exists (required by tests/lib/utils/external-readme.test.js)
+EXTERNAL_README_TEMPLATE="$TEST_PROJECT_DIR/templates/external-system/README.md.hbs"
+if [ ! -f "$EXTERNAL_README_TEMPLATE" ]; then
+  mkdir -p "$(dirname "$EXTERNAL_README_TEMPLATE")"
+  if [ -f "$PROJECT_ROOT/templates/external-system/README.md.hbs" ]; then
+    cp "$PROJECT_ROOT/templates/external-system/README.md.hbs" "$EXTERNAL_README_TEMPLATE"
+  else
+    # Minimal template with Secrets section so external-readme tests pass
+    cat > "$EXTERNAL_README_TEMPLATE" << 'EXTERNAL_README_EOF'
+# {{displayName}}
+{{description}}
+{{#if secretPaths}}{{#if secretPaths.length}}
+### Secrets
+Secrets are resolved from `.aifabrix` or key vault. Set them with:
+```bash
+{{#each secretPaths}}
+aifabrix secret set {{path}} <your value>   # {{description}}
+{{/each}}
+```
+{{/if}}{{/if}}
+EXTERNAL_README_EOF
+  fi
+fi
+
 if [ ! -f "$TEST_PROJECT_DIR/package.json" ]; then
     echo -e "${RED}✗ Failed to copy project${NC}"
     exit 1

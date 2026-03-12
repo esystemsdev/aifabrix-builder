@@ -90,6 +90,49 @@ describe('secret set command', () => {
         await expect(handleSecretsSet('key', undefined, {})).rejects.toThrow('Secret value is required');
         await expect(handleSecretsSet('key', '', {})).rejects.toThrow('Secret value is required');
       });
+
+      it('should throw error if key starts with kv://', async() => {
+        await expect(handleSecretsSet('kv://my-variable-name', 'value', {})).rejects.toThrow(
+          'Secret key must not start with kv://'
+        );
+        await expect(handleSecretsSet('kv://hubspot-demo/apikey', 'value', {})).rejects.toThrow(
+          'Secret key must not start with kv://'
+        );
+        const err = await handleSecretsSet('kv://my-app/clientSecret', 'x', {}).catch(e => e);
+        expect(err.message).toContain('Use the key path without the prefix');
+        expect(err.message).toMatch(/my-app\/clientSecret|hubspot-demo\/apiKey/);
+      });
+
+      it('should reject kv:// key when --shared is set', async() => {
+        config.getAifabrixSecretsPath.mockResolvedValue(mockGeneralSecretsPath);
+        await expect(handleSecretsSet('kv://app/secret', 'val', { shared: true })).rejects.toThrow(
+          'Secret key must not start with kv://'
+        );
+        expect(config.getAifabrixSecretsPath).not.toHaveBeenCalled();
+      });
+
+      it('should reject key that is exactly kv://', async() => {
+        await expect(handleSecretsSet('kv://', 'value', {})).rejects.toThrow(
+          'Secret key must not start with kv://'
+        );
+      });
+
+      it('should accept key that contains kv but does not start with kv://', async() => {
+        fs.existsSync.mockReturnValue(false);
+        await handleSecretsSet('my-kv-secret', 'value', {});
+        expect(fs.writeFileSync).toHaveBeenCalled();
+        const writeCall = fs.writeFileSync.mock.calls[0];
+        expect(writeCall[1]).toContain('my-kv-secret');
+      });
+
+      it('should accept valid path-style key without kv:// (e.g. hubspot-demo/clientSecret)', async() => {
+        fs.existsSync.mockReturnValue(false);
+        await handleSecretsSet('hubspot-demo/clientSecret', 'my-secret-value', {});
+        expect(fs.writeFileSync).toHaveBeenCalled();
+        const writeCall = fs.writeFileSync.mock.calls[0];
+        expect(writeCall[1]).toContain('hubspot-demo/clientSecret');
+        expect(writeCall[1]).toContain('my-secret-value');
+      });
     });
 
     describe('saving to user secrets file', () => {

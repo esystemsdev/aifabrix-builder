@@ -172,7 +172,7 @@ aifabrix up-platform --image keycloak=myreg/k:v1 --image miso-controller=myreg/m
 
 Register or rotate, deploy to the controller, then run the dataplane app locally in dev. **Always local deployment:** this command does not deploy dataplane to the cloud; it sends the manifest to the Miso Controller then runs the dataplane container locally (same as `aifabrix deploy dataplane --local`).
 
-**What:** If dataplane is already registered in the environment, rotates the app secret; otherwise registers the app. Then deploys via Miso Controller (sends manifest), then runs the dataplane app locally. Requires login and environment `dev`.
+**What:** If dataplane is already registered in the environment, rotates the app secret; otherwise registers the app. Then deploys via Miso Controller (sends manifest), then runs the dataplane app locally. Requires login and environment `dev`. Before checking auth, the command checks controller health (`/health`). If the controller is not available, you are prompted to enter a new controller URL; it is saved and used for this run.
 
 **When:** Setting up or refreshing dataplane in dev for pipeline development or testing.
 
@@ -196,6 +196,7 @@ aifabrix up-dataplane --image myreg/dataplane:latest
 **Issues:**
 - **"Login required"** → Run `aifabrix login` first
 - **"Dataplane is only supported in dev environment"** → Run `aifabrix auth config --set-environment dev`
+- **"Controller at … is not available"** → You are prompted to enter a controller URL; enter a valid URL where the controller is running, or set it beforehand with `aifabrix auth config --set-controller <url>`
 
 ---
 

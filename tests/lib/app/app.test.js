@@ -29,9 +29,14 @@ jest.mock('../../../lib/validation/template', () => ({
   listAvailableTemplates: jest.fn().mockResolvedValue([])
 }));
 
+jest.mock('../../../lib/external-system/generator', () => ({
+  generateExternalSystemFiles: jest.fn().mockResolvedValue(undefined)
+}));
+
 const { clearProjectRootCache } = require('../../../lib/utils/paths');
 const app = require('../../../lib/app');
 const templateValidator = require('../../../lib/validation/template');
+const externalGenerator = require('../../../lib/external-system/generator');
 
 // Mock only promisify so other util methods (inspect, etc.) still work in CI
 jest.mock('util', () => {
@@ -105,6 +110,7 @@ describe('Application Module', () => {
     it('should create application with scaffolded configuration files', async() => {
       const appName = 'test-app';
       const options = {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         database: true,
@@ -154,6 +160,28 @@ describe('Application Module', () => {
       expect(rbacContent).toContain('value: aifabrix-admin');
     });
 
+    it('should create under integration/ when type is external (default type)', async() => {
+      const appName = 'external-default-app';
+      const inquirer = require('inquirer');
+      inquirer.prompt.mockResolvedValue({
+        systemKey: appName,
+        systemDisplayName: 'External Default App',
+        systemDescription: 'Test external system',
+        systemType: 'openapi',
+        authType: 'apikey',
+        entityType: 'recordStorage',
+        datasourceCount: '1',
+        github: false
+      });
+
+      await app.createApp(appName, {});
+
+      expect(externalGenerator.generateExternalSystemFiles).toHaveBeenCalled();
+      const callPath = externalGenerator.generateExternalSystemFiles.mock.calls[0][0];
+      expect(callPath).toContain('integration');
+      expect(callPath).toContain(appName);
+    });
+
     it('should validate app name format', async() => {
       await expect(app.createApp('invalid app name'))
         .rejects.toThrow('Application name must be 3-40 characters, lowercase letters, numbers, and dashes only');
@@ -161,7 +189,7 @@ describe('Application Module', () => {
 
     it('should handle existing application conflicts', async() => {
       const appName = 'existing-app';
-      const options = { port: 3000, language: 'typescript' };
+      const options = { type: 'webapp', port: 3000, language: 'typescript' };
 
       // Create the app first time
       await app.createApp(appName, options);
@@ -173,6 +201,7 @@ describe('Application Module', () => {
     it('should generate GitHub workflows when requested', async() => {
       const appName = 'github-app';
       const options = {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         github: true
@@ -197,6 +226,7 @@ describe('Application Module', () => {
       // This test requires actual template folders, so we'll mock it
       const appName = 'template-app';
       const options = {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         template: 'controller'
@@ -226,6 +256,7 @@ describe('Application Module', () => {
     it('should handle existing .env file conversion', async() => {
       const appName = 'env-conversion-app';
       const options = {
+        type: 'webapp',
         port: 3000,
         language: 'typescript',
         database: true

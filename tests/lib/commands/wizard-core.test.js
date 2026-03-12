@@ -773,6 +773,32 @@ describe('Wizard Core Functions', () => {
       );
     });
 
+    it('should pass systemDisplayName to generateConfig when provided', async() => {
+      wizardApi.generateConfig.mockResolvedValue({
+        success: true,
+        data: {
+          systemConfig: mockSystemConfig,
+          datasourceConfigs: mockDatasourceConfigs,
+          systemKey: 'test-system'
+        }
+      });
+      await wizardCore.handleConfigurationGeneration(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        {
+          mode: 'create-system',
+          openapiSpec: mockOpenApiSpec,
+          detectedType: { recommendedType: 'record-based' },
+          systemDisplayName: 'Hubspot Demo'
+        }
+      );
+      expect(wizardApi.generateConfig).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        expect.objectContaining({ systemDisplayName: 'Hubspot Demo' })
+      );
+    });
+
     it('should throw error when generation fails', async() => {
       wizardApi.generateConfig.mockResolvedValue({
         success: false,

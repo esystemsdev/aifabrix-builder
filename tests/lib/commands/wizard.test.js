@@ -218,7 +218,8 @@ describe('Wizard Command Handler', () => {
         expect.objectContaining({
           preview: expect.objectContaining({ systemSummary: expect.any(Object) }),
           systemConfig: mockSystemConfig,
-          datasourceConfigs: mockDatasourceConfigs
+          datasourceConfigs: mockDatasourceConfigs,
+          appKey: 'test-app'
         })
       );
       expect(wizardApi.generateConfig).toHaveBeenCalled();
@@ -453,7 +454,8 @@ describe('Wizard Command Handler', () => {
         expect.objectContaining({
           preview: null,
           systemConfig: mockSystemConfig,
-          datasourceConfigs: mockDatasourceConfigs
+          datasourceConfigs: mockDatasourceConfigs,
+          appKey: 'test-app'
         })
       );
       expect(logger.warn).toHaveBeenCalledWith('Preview unavailable, showing full configuration.');

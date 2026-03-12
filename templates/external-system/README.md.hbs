@@ -46,6 +46,18 @@ Edit files in `integration/{{appName}}/`:
 - **Field mappings**: `{{systemKey}}-datasource-*-datasource{{fileExt}}` (dimensions, attributes, operations)
 - **Credential and configuration**: `env.template` (security settings and configuration variables)
 
+{{#if secretPaths}}{{#if secretPaths.length}}
+### Secrets
+
+Secrets are resolved from `.aifabrix` or key vault. Set them with:
+
+```bash
+{{#each secretPaths}}
+aifabrix secret set {{path}} <your value>   # {{description}}
+{{/each}}
+```
+{{/if}}{{/if}}
+
 ### 3. Validate Configuration
 
 ```bash
@@ -61,11 +73,12 @@ aifabrix repair {{appName}}
 ```
 
 Options:
-  --dry-run   Report changes only; do not write
-  --rbac      Ensure RBAC permissions per datasource and add default Admin/Reader roles if none exist
-  --expose    Set exposed.attributes on each datasource to all fieldMappings.attributes keys
-  --sync      Add default sync section to datasources that lack it
-  --test      Generate testPayload.payloadTemplate and testPayload.expectedResult from attributes
+  --auth <method>  Set authentication method (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none); updates system file and env.template
+  --dry-run        Report changes only; do not write
+  --rbac           Ensure RBAC permissions per datasource and add default Admin/Reader roles if none exist
+  --expose         Set exposed.attributes on each datasource to all fieldMappings.attributes keys
+  --sync           Add default sync section to datasources that lack it
+  --test           Generate testPayload.payloadTemplate and testPayload.expectedResult from attributes
 
 ### 5. Upload to dataplane
 

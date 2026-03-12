@@ -1,13 +1,29 @@
 /**
  * @fileoverview Tests for lib/utils/external-readme.js (context building only, no template).
- * Full template rendering tests are in tests/local/lib/utils/external-readme.test.js.
+ * Template rendering tests (generateExternalReadmeContent) are in tests/manual/external-readme-template.test.js (excluded from CI).
  */
 
-const {
-  buildExternalReadmeContext
-} = require('../../../lib/utils/external-readme');
+const path = require('path');
+const { buildExternalReadmeContext } = require('../../../lib/utils/external-readme');
+
+const projectRoot = path.resolve(__dirname, '..', '..', '..');
 
 describe('external-readme (context only)', () => {
+  let originalProjectRoot;
+
+  beforeEach(() => {
+    originalProjectRoot = global.PROJECT_ROOT;
+    global.PROJECT_ROOT = projectRoot;
+    const { clearProjectRootCache } = require('../../../lib/utils/paths');
+    clearProjectRootCache();
+  });
+
+  afterEach(() => {
+    global.PROJECT_ROOT = originalProjectRoot;
+    const { clearProjectRootCache } = require('../../../lib/utils/paths');
+    clearProjectRootCache();
+  });
+
   describe('buildExternalReadmeContext', () => {
     it('returns default fileExt .json when not provided', () => {
       const ctx = buildExternalReadmeContext({ systemKey: 'myapp' });
@@ -53,6 +69,38 @@ describe('external-readme (context only)', () => {
         datasources: [{ entityType: 'users', displayName: 'Users' }]
       });
       expect(ctx.datasources[0].fileName).toBe('myapp-datasource-users.yaml');
+    });
+
+    it('includes secretPaths for apikey authType with path and description (key without kv://)', () => {
+      const ctx = buildExternalReadmeContext({
+        systemKey: 'hubspot-test',
+        authType: 'apikey'
+      });
+      expect(ctx.secretPaths).toBeDefined();
+      expect(ctx.secretPaths.length).toBe(1);
+      expect(ctx.secretPaths[0]).toMatchObject({
+        path: 'hubspot-test/apiKey',
+        description: 'API Key'
+      });
+    });
+
+    it('includes secretPaths for oauth2 authType (clientId, clientSecret) with keys without kv://', () => {
+      const ctx = buildExternalReadmeContext({
+        systemKey: 'my-integration',
+        authType: 'oauth2'
+      });
+      expect(ctx.secretPaths).toBeDefined();
+      expect(ctx.secretPaths.length).toBe(2);
+      expect(ctx.secretPaths.map(p => p.path)).toContain('my-integration/clientId');
+      expect(ctx.secretPaths.map(p => p.path)).toContain('my-integration/clientSecret');
+    });
+
+    it('includes empty secretPaths for authType none', () => {
+      const ctx = buildExternalReadmeContext({
+        systemKey: 'no-auth-system',
+        authType: 'none'
+      });
+      expect(ctx.secretPaths).toEqual([]);
     });
   });
 });

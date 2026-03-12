@@ -82,7 +82,7 @@ Create and deploy an external system (e.g. HubSpot): wizard or manual setup, the
 
 **Example: HubSpot**
 
-- Create: `aifabrix create hubspot-test --type external` (or `aifabrix wizard` for guided setup).
+- Create: `aifabrix create hubspot` (external is the default; or `aifabrix wizard` for guided setup). For a web app use `aifabrix create my-app --type webapp`.
 - Configure auth and datasources under `integration/hubspot-test/`.
 - Validate: `aifabrix validate hubspot-test`
 - Deploy: `aifabrix deploy hubspot-test`

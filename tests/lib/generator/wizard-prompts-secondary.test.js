@@ -57,6 +57,53 @@ describe('Wizard Prompts Secondary', () => {
       expect(derived.datasourceSummaries[1].key).toBe('hubspot-company');
       expect(derived.datasourceSummary).toBeUndefined();
     });
+
+    it('should override system key and displayName and rewrite datasource keys when appKey is provided', () => {
+      const systemConfig = {
+        key: 'companies',
+        displayName: 'Companies',
+        type: 'openapi',
+        openapi: { operations: {} }
+      };
+      const datasourceConfigs = [{
+        key: 'companies-companies',
+        entityType: 'recordStorage',
+        resourceType: 'record',
+        fieldMappings: { attributes: { id: {}, name: {} } }
+      }];
+      const derived = wizardPromptsSecondary.derivePreviewFromConfig(systemConfig, datasourceConfigs, 'hubspot-demo');
+      expect(derived.systemSummary.key).toBe('hubspot-demo');
+      expect(derived.systemSummary.displayName).toBe('Hubspot Demo');
+      expect(derived.datasourceSummary.key).toBe('hubspot-demo-companies');
+      expect(derived.datasourceSummary.entity).toBe('recordStorage');
+    });
+
+    it('should keep existing behavior when appKey is not provided', () => {
+      const systemConfig = { key: 'companies', displayName: 'Companies', type: 'openapi' };
+      const datasourceConfigs = [{ key: 'companies-companies', entityType: 'recordStorage' }];
+      const derived = wizardPromptsSecondary.derivePreviewFromConfig(systemConfig, datasourceConfigs);
+      expect(derived.systemSummary.key).toBe('companies');
+      expect(derived.systemSummary.displayName).toBe('Companies');
+      expect(derived.datasourceSummary.key).toBe('companies-companies');
+    });
+
+    it('should derive baseUrl and auth from authentication.variables.baseUrl and authentication.method', () => {
+      const systemConfig = {
+        key: 'demo',
+        displayName: 'Demo',
+        type: 'openapi',
+        authentication: {
+          method: 'apikey',
+          variables: { baseUrl: 'https://api.demo.com' },
+          security: { apiKey: 'kv://demo/apiKey' }
+        },
+        openapi: { documentKey: 'demo-api' }
+      };
+      const datasourceConfigs = [{ key: 'demo-companies', entityType: 'recordStorage', resourceType: 'record' }];
+      const derived = wizardPromptsSecondary.derivePreviewFromConfig(systemConfig, datasourceConfigs);
+      expect(derived.systemSummary.baseUrl).toBe('https://api.demo.com');
+      expect(derived.systemSummary.authenticationType).toBe('apikey');
+    });
   });
 
   beforeEach(() => {
@@ -126,20 +173,41 @@ describe('Wizard Prompts Secondary', () => {
       expect(result.action).toBe('accept');
     });
 
+    it('should display appKey-based system and datasource keys when preview is null and appKey is provided', async() => {
+      inquirer.prompt.mockResolvedValue({ action: 'accept' });
+
+      const result = await wizardPromptsSecondary.promptForConfigReview({
+        preview: null,
+        systemConfig,
+        datasourceConfigs,
+        appKey: 'my-app'
+      });
+
+      expect(consoleLogSpy).toHaveBeenCalled();
+      const logged = consoleLogSpy.mock.calls.map(c => c[0]).join('\n');
+      expect(logged).toContain('Configuration Preview (what will be created)');
+      expect(logged).toContain('my-app');
+      expect(logged).toContain('My App');
+      expect(logged).toContain('my-app-entity1');
+      expect(result.action).toBe('accept');
+    });
+
     it('should display derived summary when preview lacks systemSummary and datasourceSummary', async() => {
       inquirer.prompt.mockResolvedValue({ action: 'cancel' });
 
       const result = await wizardPromptsSecondary.promptForConfigReview({
         preview: {},
         systemConfig,
-        datasourceConfigs
+        datasourceConfigs,
+        appKey: 'my-app'
       });
 
       expect(consoleLogSpy).toHaveBeenCalled();
       const logged = consoleLogSpy.mock.calls.map(c => c[0]).join('\n');
       expect(logged).toContain('Configuration Preview (what will be created)');
-      expect(logged).toContain('test-system');
-      expect(logged).toContain('ds1');
+      expect(logged).toContain('my-app');
+      expect(logged).toContain('My App');
+      expect(logged).toContain('my-app-entity1');
       expect(result.action).toBe('cancel');
     });
 

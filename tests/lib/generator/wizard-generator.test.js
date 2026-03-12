@@ -247,6 +247,38 @@ describe('Wizard Generator', () => {
       expect(templateContent).toContain('KV_TEST_APP_CLIENTSECRET=');
     });
 
+    it('should generate env.template with path-style kv:// values (fallback by auth type)', async() => {
+      await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, {});
+      const envTemplateCall = fsPromises.writeFile.mock.calls.find(call =>
+        call[0].includes('env.template')
+      );
+      expect(envTemplateCall).toBeDefined();
+      const templateContent = envTemplateCall[1];
+      expect(templateContent).toMatch(/KV_[A-Z_]+=kv:\/\/[a-z0-9-]+\/[a-zA-Z]+/);
+      expect(templateContent).toContain('kv://' + appName + '/apiKey');
+    });
+
+    it('should generate env.template from authentication.security when present (path-style kv://)', async() => {
+      const configWithSecurity = {
+        ...systemConfig,
+        authentication: {
+          type: 'oauth2',
+          security: {
+            clientId: 'kv://hubspot-demo/clientId',
+            clientSecret: 'kv://hubspot-demo/clientSecret'
+          }
+        }
+      };
+      await wizardGenerator.generateWizardFiles(appName, configWithSecurity, datasourceConfigs, systemKey, {});
+      const envTemplateCall = fsPromises.writeFile.mock.calls.find(call =>
+        call[0].includes('env.template')
+      );
+      expect(envTemplateCall).toBeDefined();
+      const templateContent = envTemplateCall[1];
+      expect(templateContent).toContain('KV_TEST_APP_CLIENTID=kv://hubspot-demo/clientId');
+      expect(templateContent).toContain('KV_TEST_APP_CLIENTSECRET=kv://hubspot-demo/clientSecret');
+    });
+
     it('should generate README.md with appName-based displayName', async() => {
       await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, {});
       const readmeCall = fsPromises.writeFile.mock.calls.find(call =>

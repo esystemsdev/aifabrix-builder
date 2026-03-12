@@ -1,3 +1,13 @@
+## [2.42.1] - 2026-03-12
+
+### Changed
+- **Authentication and controller management:** Documentation and code updated for auth-config and controller/dataplane management (auth-config command, up-dataplane, and related docs).
+
+### Technical
+- **Auth and infrastructure:** `lib/commands/auth-config.js`, `lib/commands/up-dataplane.js`; `docs/commands/authentication.md`, `docs/commands/infrastructure.md`; tests for auth-config and up-dataplane.
+
+---
+
 ## [2.42.0] - 2026-03-09
 
 ### Added
