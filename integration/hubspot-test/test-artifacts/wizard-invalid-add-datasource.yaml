@@ -1,0 +1,5 @@
+appName: wizard-e2e-negative-add-datasource
+mode: add-datasource
+source:
+  type: known-platform
+  platform: hubspot

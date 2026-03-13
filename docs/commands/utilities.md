@@ -85,7 +85,7 @@ aifabrix json myapp
 **Example (external system):**
 ```bash
 aifabrix json hubspot
-# Resolves integration/hubspot first, then builder/hubspot; generates <systemKey>-deploy.json in the resolved directory
+# Resolves integration/hubspot-test first, then builder/hubspot-test; generates <systemKey>-deploy.json in the resolved directory
 ```
 
 **Creates:**

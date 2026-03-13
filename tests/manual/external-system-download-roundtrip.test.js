@@ -55,20 +55,20 @@ describe('External System Download Roundtrip', () => {
           authorizationUrl: 'https://api.example.com/oauth/authorize'
         },
         security: {
-          clientId: 'kv://roundtrip-test/clientid',
-          clientSecret: 'kv://roundtrip-test/clientsecret'
+          clientId: 'kv://roundtrip-test/clientId',
+          clientSecret: 'kv://roundtrip-test/clientSecret'
         }
       },
       configuration: [
         {
           name: 'KV_ROUNDTRIP_TEST_CLIENTID',
-          value: 'roundtrip-test/clientid',
+          value: 'roundtrip-test/clientId',
           location: 'keyvault',
           required: true
         },
         {
           name: 'KV_ROUNDTRIP_TEST_CLIENTSECRET',
-          value: 'roundtrip-test/clientsecret',
+          value: 'roundtrip-test/clientSecret',
           location: 'keyvault',
           required: true
         }

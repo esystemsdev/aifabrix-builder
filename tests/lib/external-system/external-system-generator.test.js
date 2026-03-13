@@ -239,20 +239,20 @@ fieldMappings:
       });
     });
 
-    it('should emit KV_*-compatible kv paths (no hyphens: clientid, apikey, etc.)', async() => {
+    it('should emit canonical camelCase kv paths (clientId, clientSecret)', async() => {
       fsPromises.readFile = jest.fn().mockResolvedValue(mockSystemTemplate);
       configFormat.writeConfigFile.mockClear();
 
       const { generateExternalSystemTemplate } = require('../../../lib/external-system/generator');
-      await generateExternalSystemTemplate(appPath, 'hubspot', { authType: 'oauth2' });
+      await generateExternalSystemTemplate(appPath, 'hubspot-test', { authType: 'oauth2' });
 
       const systemCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-system.yaml'));
       const parsed = systemCall[1];
-      expect(parsed.authentication.security.clientId).toBe('kv://hubspot/clientid');
-      expect(parsed.authentication.security.clientSecret).toBe('kv://hubspot/clientsecret');
+      expect(parsed.authentication.security.clientId).toBe('kv://hubspot-test/clientId');
+      expect(parsed.authentication.security.clientSecret).toBe('kv://hubspot-test/clientSecret');
     });
 
-    it('should emit apikey path as kv://systemKey/apikey', async() => {
+    it('should emit apikey path as kv://systemKey/apiKey (canonical camelCase)', async() => {
       fsPromises.readFile = jest.fn().mockResolvedValue(mockSystemTemplate);
       configFormat.writeConfigFile.mockClear();
 
@@ -261,7 +261,26 @@ fieldMappings:
 
       const systemCall = configFormat.writeConfigFile.mock.calls.find(c => c[0] && String(c[0]).includes('-system.yaml'));
       const parsed = systemCall[1];
-      expect(parsed.authentication.security.apiKey).toBe('kv://mysys/apikey');
+      expect(parsed.authentication.security.apiKey).toBe('kv://mysys/apiKey');
+    });
+
+    it('buildAuthenticationFromMethod returns canonical paths for apikey and oauth2', () => {
+      const { buildAuthenticationFromMethod } = require('../../../lib/external-system/generator');
+      expect(buildAuthenticationFromMethod('demo', 'apikey').security.apiKey).toBe('kv://demo/apiKey');
+      const oauth2 = buildAuthenticationFromMethod('demo', 'oauth2');
+      expect(oauth2.security.clientId).toBe('kv://demo/clientId');
+      expect(oauth2.security.clientSecret).toBe('kv://demo/clientSecret');
+    });
+
+    it('buildAuthenticationFromMethod returns canonical paths for basic, queryParam, hmac', () => {
+      const { buildAuthenticationFromMethod } = require('../../../lib/external-system/generator');
+      const basic = buildAuthenticationFromMethod('demo', 'basic');
+      expect(basic.security.username).toBe('kv://demo/username');
+      expect(basic.security.password).toBe('kv://demo/password');
+      const queryParam = buildAuthenticationFromMethod('demo', 'queryParam');
+      expect(queryParam.security.paramValue).toBe('kv://demo/paramvalue');
+      const hmac = buildAuthenticationFromMethod('demo', 'hmac');
+      expect(hmac.security.signingSecret).toBe('kv://demo/signingSecret');
     });
   });
 

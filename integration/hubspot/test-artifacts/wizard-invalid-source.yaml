@@ -1,4 +1,0 @@
-appName: hubspot-test-negative-source
-mode: create-system
-source:
-  type: invalid-type

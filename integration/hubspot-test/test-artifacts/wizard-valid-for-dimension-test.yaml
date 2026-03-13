@@ -1,0 +1,5 @@
+appName: wizard-e2e-negative-dimension-missing
+mode: create-system
+source:
+  type: known-platform
+  platform: hubspot

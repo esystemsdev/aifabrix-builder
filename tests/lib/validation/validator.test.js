@@ -438,7 +438,7 @@ frontDoorRouting:
     });
 
     describe('auth kv coverage (external integrations)', () => {
-      const externalAppPath = path.join(process.cwd(), 'integration', 'hubspot');
+      const externalAppPath = path.join(process.cwd(), 'integration', 'hubspot-test');
       const pathsUtil = require('../../../lib/utils/paths');
       const generatorExternal = require('../../../lib/generator/external');
 
@@ -456,17 +456,17 @@ frontDoorRouting:
         generatorExternal.loadSystemFile.mockResolvedValue({
           authentication: {
             security: {
-              clientId: 'kv://hubspot/client-id',
-              clientSecret: 'kv://hubspot/client-secret'
+              clientId: 'kv://hubspot/clientId',
+              clientSecret: 'kv://hubspot/clientSecret'
             }
           }
         });
 
-        const template = 'CLIENT_ID=kv://hubspot/client-id\nCLIENT_SECRET=kv://hubspot/client-secret\nPORT=3000';
+        const template = 'CLIENT_ID=kv://hubspot/clientId\nCLIENT_SECRET=kv://hubspot/clientSecret\nPORT=3000';
         fs.existsSync.mockReturnValue(true);
         fs.readFileSync.mockReturnValue(template);
 
-        const result = await validator.validateEnvTemplate('hubspot');
+        const result = await validator.validateEnvTemplate('hubspot-test');
 
         expect(result.valid).toBe(true);
         expect(result.errors).toEqual([]);
@@ -486,17 +486,17 @@ frontDoorRouting:
         generatorExternal.loadSystemFile.mockResolvedValue({
           authentication: {
             security: {
-              clientId: 'kv://hubspot/client-id',
-              clientSecret: 'kv://hubspot/client-secret'
+              clientId: 'kv://hubspot/clientId',
+              clientSecret: 'kv://hubspot/clientSecret'
             }
           }
         });
 
-        const template = 'CLIENT_ID=kv://hubspot/client-id\nPORT=3000';
+        const template = 'CLIENT_ID=kv://hubspot/clientId\nPORT=3000';
         fs.existsSync.mockReturnValue(true);
         fs.readFileSync.mockReturnValue(template);
 
-        const result = await validator.validateEnvTemplate('hubspot');
+        const result = await validator.validateEnvTemplate('hubspot-test');
 
         expect(result.valid).toBe(false);
         expect(result.errors.some(e => e.includes('Missing required authentication secret'))).toBe(true);
@@ -540,7 +540,7 @@ frontDoorRouting:
         fs.existsSync.mockReturnValue(true);
         fs.readFileSync.mockReturnValue(template);
 
-        const result = await validator.validateEnvTemplate('hubspot');
+        const result = await validator.validateEnvTemplate('hubspot-test');
 
         expect(result.valid).toBe(true);
         expect(result.warnings.some(w => w.includes('Could not validate auth kv coverage'))).toBe(true);
@@ -559,13 +559,11 @@ frontDoorRouting:
         });
         generatorExternal.loadSystemFile.mockResolvedValue({
           authentication: {
-            security: {
-              apikey: 'kv://avoma/apikey'
-            }
+            security: { apiKey: 'kv://avoma/apiKey' }
           }
         });
 
-        const template = '# KV_AVOMA_APIKEY=kv://avoma/apikey\nPORT=3000';
+        const template = '# KV_AVOMA_APIKEY=kv://avoma/apiKey\nPORT=3000';
         fs.existsSync.mockReturnValue(true);
         fs.readFileSync.mockReturnValue(template);
 
@@ -627,6 +625,66 @@ frontDoorRouting:
 
         expect(result.valid).toBe(true);
         expect(result.errors.some(e => e.includes('Missing required authentication secret'))).toBe(false);
+      });
+
+      it('should fail when authentication.security path is non-canonical (run repair to normalize)', async() => {
+        const externalAppPath = path.join(process.cwd(), 'integration', 'demo');
+        const pathsUtil = require('../../../lib/utils/paths');
+        const generatorExternal = require('../../../lib/generator/external');
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockResolvedValue({
+          schemaBasePath: './',
+          systemFiles: ['demo-system.yaml']
+        });
+        generatorExternal.loadSystemFile.mockResolvedValue({
+          authentication: {
+            security: { apiKey: 'kv://demo/apikey' }
+          }
+        });
+
+        const template = 'KV_DEMO_APIKEY=kv://demo/apikey\nPORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('demo');
+
+        expect(result.valid).toBe(false);
+        expect(result.errors.some(e => e.includes('canonical path') && e.includes('Run `aifabrix repair'))).toBe(true);
+      });
+
+      it('should pass when authentication.security path is canonical (camelCase)', async() => {
+        const externalAppPath = path.join(process.cwd(), 'integration', 'demo');
+        const pathsUtil = require('../../../lib/utils/paths');
+        const generatorExternal = require('../../../lib/generator/external');
+        pathsUtil.detectAppType.mockResolvedValue({
+          isExternal: true,
+          appPath: externalAppPath,
+          appType: 'external',
+          baseDir: 'integration'
+        });
+        generatorExternal.loadExternalIntegrationConfig.mockResolvedValue({
+          schemaBasePath: './',
+          systemFiles: ['demo-system.yaml']
+        });
+        generatorExternal.loadSystemFile.mockResolvedValue({
+          authentication: {
+            security: { apiKey: 'kv://demo/apiKey' }
+          }
+        });
+
+        const template = 'KV_DEMO_APIKEY=kv://demo/apiKey\nPORT=3000';
+        fs.existsSync.mockReturnValue(true);
+        fs.readFileSync.mockReturnValue(template);
+
+        const result = await validator.validateEnvTemplate('demo');
+
+        expect(result.valid).toBe(true);
+        expect(result.errors.some(e => e.includes('canonical path'))).toBe(false);
       });
     });
   });

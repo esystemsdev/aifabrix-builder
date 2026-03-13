@@ -135,7 +135,7 @@ describe('Credential env command', () => {
 
     it('prompts and writes .env with KV_* values', async() => {
       fs.existsSync = jest.fn((p) =>
-        String(p).includes('env.template') || String(p).includes('integration/hubspot'));
+        String(p).includes('env.template') || String(p).includes('integration/hubspot-test'));
       fs.readFileSync = jest.fn().mockReturnValue('KV_HUBSPOT_CLIENTID=\nKV_HUBSPOT_CLIENTSECRET=\n');
       fs.writeFileSync = jest.fn();
       inquirer.prompt.mockResolvedValue({

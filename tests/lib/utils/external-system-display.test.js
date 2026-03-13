@@ -8,22 +8,38 @@
 
 const chalk = require('chalk');
 
+// Mock logger with plain functions and call arrays (no jest.fn()) to avoid Jest ModuleMocker
+// Symbol.hasInstance stack overflow when other suites (e.g. cli-utils.test.js) run in the same worker
+const loggerCallArrays = { log: [], warn: [], error: [] };
 jest.mock('../../../lib/utils/logger', () => ({
-  log: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn()
+  log: (...args) => loggerCallArrays.log.push(args),
+  warn: (...args) => loggerCallArrays.warn.push(args),
+  error: (...args) => loggerCallArrays.error.push(args)
 }));
 
-const logger = require('../../../lib/utils/logger');
 const {
   displayTestResults,
   displayIntegrationTestResults,
   displayE2EResults
 } = require('../../../lib/utils/external-system-display');
 
+function expectLogCalled() {
+  expect(loggerCallArrays.log.length).toBeGreaterThan(0);
+}
+
+function expectLogContains(...substrings) {
+  expectLogCalled();
+  const logCalls = loggerCallArrays.log.map(args => String(args[0]));
+  for (const sub of substrings) {
+    expect(logCalls.some(msg => msg.includes(sub))).toBe(true);
+  }
+}
+
 describe('External System Display Helpers', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    loggerCallArrays.log.length = 0;
+    loggerCallArrays.warn.length = 0;
+    loggerCallArrays.error.length = 0;
   });
 
   describe('displayTestResults', () => {
@@ -45,7 +61,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayTestResults(results, false);
-      expect(logger.log).toHaveBeenCalled();
+      expectLogCalled();
     });
 
     it('should display invalid system results', () => {
@@ -58,7 +74,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayTestResults(results, false);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✗'));
+      expectLogContains('✗');
     });
 
     it('should display invalid datasource results with errors in verbose mode', () => {
@@ -79,9 +95,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayTestResults(results, true);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✗'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Error 1'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Error 2'));
+      expectLogContains('✗', 'Error 1', 'Error 2');
     });
 
     it('should display invalid metadata schema in verbose mode', () => {
@@ -103,7 +117,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayTestResults(results, true);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Metadata schema: ✗ Invalid'));
+      expectLogContains('Metadata schema: ✗ Invalid');
     });
 
     it('should display errors array', () => {
@@ -116,9 +130,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayTestResults(results, false);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('❌ Errors:'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Error 1'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Error 2'));
+      expectLogContains('❌ Errors:', 'Error 1', 'Error 2');
     });
 
     it('should display warnings array', () => {
@@ -131,9 +143,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayTestResults(results, false);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('⚠ Warnings:'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Warning 1'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Warning 2'));
+      expectLogContains('⚠ Warnings:', 'Warning 1', 'Warning 2');
     });
 
     it('should display failed tests message', () => {
@@ -146,7 +156,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayTestResults(results, false);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('❌ Some tests failed'));
+      expectLogContains('❌ Some tests failed');
     });
 
     it('should display verbose output when requested', () => {
@@ -169,7 +179,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayTestResults(results, true);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Warning'));
+      expectLogContains('Warning');
     });
 
     it('should handle empty system results', () => {
@@ -182,7 +192,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayTestResults(results, false);
-      expect(logger.log).toHaveBeenCalled();
+      expectLogCalled();
     });
 
     it('should handle empty datasource results', () => {
@@ -195,7 +205,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayTestResults(results, false);
-      expect(logger.log).toHaveBeenCalled();
+      expectLogCalled();
     });
   });
 
@@ -214,7 +224,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, false);
-      expect(logger.log).toHaveBeenCalled();
+      expectLogCalled();
     });
 
     it('should display no datasources tested message', () => {
@@ -225,7 +235,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, false);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('No datasources tested'));
+      expectLogContains('No datasources tested');
     });
 
     it('should display skipped datasources', () => {
@@ -242,7 +252,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, false);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('No test payload'));
+      expectLogContains('No test payload');
     });
 
     it('should display failed datasource with error', () => {
@@ -260,8 +270,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, false);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✗'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Error: Connection failed'));
+      expectLogContains('✗', 'Error: Connection failed');
     });
 
     it('should display failed integration tests message', () => {
@@ -279,7 +288,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, false);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('❌ Some integration tests failed'));
+      expectLogContains('❌ Some integration tests failed');
     });
 
     it('should display verbose validation results when valid', () => {
@@ -301,7 +310,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, true);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Validation: ✓ Valid'));
+      expectLogContains('Validation: ✓ Valid');
     });
 
     it('should display verbose validation results when invalid', () => {
@@ -323,10 +332,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, true);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Validation: ✗ Invalid'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Validation error 1'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Validation error 2'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Warning 1'));
+      expectLogContains('Validation: ✗ Invalid', 'Validation error 1', 'Validation error 2', 'Warning 1');
     });
 
     it('should display verbose field mapping results', () => {
@@ -350,8 +356,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, true);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Field mappings: 5 attributes'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Dimensions: field1, field2, field3'));
+      expectLogContains('Field mappings: 5 attributes', 'Dimensions: field1, field2, field3');
     });
 
     it('should display verbose field mapping results without access fields', () => {
@@ -374,7 +379,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, true);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Field mappings: 3 attributes'));
+      expectLogContains('Field mappings: 3 attributes');
     });
 
     it('should display verbose endpoint test results when configured', () => {
@@ -397,7 +402,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, true);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Endpoint: ✓ Configured'));
+      expectLogContains('Endpoint: ✓ Configured');
     });
 
     it('should display verbose endpoint test results when not configured', () => {
@@ -420,7 +425,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, true);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Endpoint: Not configured'));
+      expectLogContains('Endpoint: Not configured');
     });
 
     it('should display all verbose information together', () => {
@@ -449,9 +454,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, true);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Validation: ✓ Valid'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Field mappings: 10 attributes'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Endpoint: ✓ Configured'));
+      expectLogContains('Validation: ✓ Valid', 'Field mappings: 10 attributes', 'Endpoint: ✓ Configured');
     });
   });
 
@@ -464,9 +467,7 @@ describe('External System Display Helpers', () => {
         ]
       };
       displayE2EResults(data, false);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ config'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ credential'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ E2E test passed!'));
+      expectLogContains('✓ config', '✓ credential', '✅ E2E test passed!');
     });
 
     it('should display poll response with status and completedActions (running)', () => {
@@ -475,9 +476,7 @@ describe('External System Display Helpers', () => {
         completedActions: [{ name: 'config', success: true }]
       };
       displayE2EResults(data, true);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('running'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ config'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('step(s) completed so far'));
+      expectLogContains('running', '✓ config', 'step(s) completed so far');
     });
 
     it('should display final poll response with status completed and steps', () => {
@@ -487,9 +486,7 @@ describe('External System Display Helpers', () => {
         success: true
       };
       displayE2EResults(data, false);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('completed'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ config'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ E2E test passed!'));
+      expectLogContains('completed', '✓ config', '✅ E2E test passed!');
     });
 
     it('should display failed E2E with status failed and error', () => {
@@ -499,9 +496,7 @@ describe('External System Display Helpers', () => {
         error: 'Credential check failed'
       };
       displayE2EResults(data, false);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('failed'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Credential check failed'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('E2E test failed'));
+      expectLogContains('failed', 'Credential check failed', 'E2E test failed');
     });
 
     it('should display step failure when a step has success false or error', () => {
@@ -512,9 +507,7 @@ describe('External System Display Helpers', () => {
         ]
       };
       displayE2EResults(data, false);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✗ credential'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Invalid token'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('❌ E2E test failed'));
+      expectLogContains('✗ credential', 'Invalid token', '❌ E2E test failed');
     });
   });
 });

@@ -502,7 +502,7 @@ Application:
 ### Example 2: Validating External System File
 
 ```bash
-aifabrix validate ./integration/hubspot/hubspot-system.yaml
+aifabrix validate ./integration/hubspot-test/hubspot-test-system.yaml
 ```
 
 **What happens:**
@@ -515,7 +515,7 @@ aifabrix validate ./integration/hubspot/hubspot-system.yaml
 ```yaml
 ✓ Validation passed!
 
-File: ./integration/hubspot/hubspot-system.yaml
+File: ./integration/hubspot-test/hubspot-test-system.yaml
 Type: external-system
   ✓ File is valid
 ```

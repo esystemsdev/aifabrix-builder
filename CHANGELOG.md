@@ -1,3 +1,17 @@
+## [2.42.2] - 2026-03-12
+
+### Changed
+- **HubSpot and wizard e2e naming:** Wizard e2e test app names renamed from `hubspot-test-*` to `wizard-e2e-*` (e.g. `wizard-e2e-e2e`, `wizard-e2e-platform`) so they do not overlap with the real HubSpot integration. HubSpot example integration folder is `integration/hubspot-test/` with system key `hubspot-test`. Docs and README use `hubspot` for validate/deploy where referring to the real app; unit test fixtures use `wizard-e2e-demo`. Plan: hubspot_test_naming_separation.
+- **Repair auth naming consistency:** Env.template and external system `authentication.security` now use a single canonical kv path (camelCase segment, e.g. `kv://demo/apiKey`). Generator and credential-secrets-env share path derivation; validation enforces consistency; repair normalizes legacy paths. Plan: 104-repair_auth_naming_consistency.
+- **Package scripts and wizard:** Updated package.json scripts; wizard functionality enhancements.
+
+### Technical
+- **HubSpot/wizard-e2e:** `integration/hubspot` → `integration/hubspot-test` (folder and key); wizard YAMLs and test-artifacts use `wizard-e2e-*` app names; `.gitignore` `integration/wizard-e2e-*/`; external-readme and external-system-test-auth tests use `wizard-e2e-demo` / `wizard-e2e-v1`; README, docs (wizard, application-development, external-integration, your-own-applications), `lib/cli/setup-app.js`, `lib/api/external-test.api.js`.
+- **Auth consistency:** `lib/utils/credential-secrets-env.js` — `getKvPathSegmentForSecurityKey` (canonical path segment); `lib/external-system/generator.js` — `buildAuthenticationFromMethod` uses canonical paths; `lib/validation/env-template-auth.js` — `validateAuthSecurityPathConsistency`; validator calls it for external integrations; repair tests and env-template-auth tests.
+- **Tests and CI:** Refactored README generation tests and external-readme tests for clarity; added external-system README template generation in CI script.
+
+---
+
 ## [2.42.1] - 2026-03-12
 
 ### Changed

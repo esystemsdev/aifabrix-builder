@@ -1,4 +1,0 @@
-appName: hubspot-test-negative-platform
-mode: create-system
-source:
-  type: known-platform

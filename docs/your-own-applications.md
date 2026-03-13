@@ -386,14 +386,14 @@ aifabrix login --controller https://controller.aifabrix.dev --environment dev
 # Create HubSpot external system
 aifabrix create hubspot-test
 
-# Configure authentication and datasources in integration/hubspot/
-# See integration/hubspot/ for complete example
+# Configure authentication and datasources in integration/hubspot-test/
+# See integration/hubspot-test/ for complete example
 
 # Validate configuration
-aifabrix validate hubspot
+aifabrix validate hubspot-test
 
 # Deploy to controller (uses config)
-aifabrix deploy hubspot
+aifabrix deploy hubspot-test
 ```
 
 **What gets created:**

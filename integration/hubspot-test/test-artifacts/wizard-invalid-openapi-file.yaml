@@ -1,0 +1,5 @@
+appName: wizard-e2e-negative-openapi
+mode: create-system
+source:
+  type: openapi-file
+  filePath: /tmp/does-not-exist.json

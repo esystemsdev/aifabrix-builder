@@ -1,0 +1,4 @@
+appName: wizard-e2e-negative-openapi-url
+mode: create-system
+source:
+  type: openapi-url

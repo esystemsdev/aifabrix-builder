@@ -1,5 +1,0 @@
-appName: hubspot-test-negative-add-datasource
-mode: add-datasource
-source:
-  type: known-platform
-  platform: hubspot

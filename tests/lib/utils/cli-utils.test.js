@@ -6,19 +6,41 @@
  * @version 2.0.0
  */
 
+// Mock logger with plain functions and call arrays (no jest.fn()) to avoid Jest ModuleMocker
+// Symbol.hasInstance stack overflow when other suites (e.g. external-system-display) run in the same worker
+const loggerCallArrays = { error: [], log: [], warn: [], info: [] };
 jest.mock('../../../lib/utils/logger', () => ({
-  error: jest.fn(),
-  log: jest.fn(),
-  warn: jest.fn(),
-  info: jest.fn()
+  error: (...args) => {
+    loggerCallArrays.error.push(args);
+  },
+  log: (...args) => {
+    loggerCallArrays.log.push(args);
+  },
+  warn: (...args) => {
+    loggerCallArrays.warn.push(args);
+  },
+  info: (...args) => {
+    loggerCallArrays.info.push(args);
+  }
 }));
 
 // Mock fs with plain functions and call arrays (no jest.fn()) to avoid Jest ModuleMocker
-// Symbol.hasInstance stack overflow when other suites run in the same worker
+// Symbol.hasInstance stack overflow when other suites run in the same worker.
+// Capture test helpers in a ref so tests use fsTestHelpersRef.current instead of fs.__test
+// (accessing fs.__test when fs is another file's Jest mock causes stack overflow).
+const fsTestHelpersRef = { current: null };
 jest.mock('fs', () => {
   const mkdirCalls = [];
   const appendFileCalls = [];
   let mkdirReject = false;
+  const helpers = {
+    mkdirCalls,
+    appendFileCalls,
+    setMkdirReject: (v) => {
+      mkdirReject = v;
+    }
+  };
+  fsTestHelpersRef.current = helpers;
   return {
     promises: {
       mkdir: (...args) => {
@@ -30,19 +52,12 @@ jest.mock('fs', () => {
         appendFileCalls.push(args);
         return Promise.resolve();
       }
-    },
-    __test: {
-      mkdirCalls,
-      appendFileCalls,
-      setMkdirReject: (v) => {
-        mkdirReject = v;
-      }
     }
   };
 });
 
-const logger = require('../../../lib/utils/logger');
 const fs = require('fs');
+const logger = require('../../../lib/utils/logger');
 const {
   validateCommand,
   handleCommandError,
@@ -53,7 +68,24 @@ const {
 
 describe('CLI Utils Module', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    loggerCallArrays.error.length = 0;
+    loggerCallArrays.log.length = 0;
+    loggerCallArrays.warn.length = 0;
+    loggerCallArrays.info.length = 0;
+    // Re-apply plain logger implementation so SUT uses our call arrays when this
+    // suite runs in the same worker as a file that mocks logger with jest.fn()
+    logger.error = (...args) => {
+      loggerCallArrays.error.push(args);
+    };
+    logger.log = (...args) => {
+      loggerCallArrays.log.push(args);
+    };
+    logger.warn = (...args) => {
+      loggerCallArrays.warn.push(args);
+    };
+    logger.info = (...args) => {
+      loggerCallArrays.info.push(args);
+    };
   });
 
   describe('validateCommand', () => {
@@ -123,11 +155,11 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'test-command');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in test-command command'));
-      expect(logger.error).toHaveBeenCalledWith('   Formatted');
-      expect(logger.error).toHaveBeenCalledWith('   Error');
-      expect(logger.error).toHaveBeenCalledWith('   Message');
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('doctor'));
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in test-command command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Formatted')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Error')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Message')).toBe(true);
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('doctor'))).toBe(true);
     });
 
     it('should handle configuration not found errors', () => {
@@ -135,8 +167,8 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'build');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in build command'));
-      expect(logger.error).toHaveBeenCalledWith('   Configuration not found');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in build command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Configuration not found')).toBe(true);
     });
 
     it('should handle schema validation errors', () => {
@@ -144,8 +176,8 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'validate');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in validate command'));
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('does not match schema'));
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in validate command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('does not match schema'))).toBe(true);
     });
 
     it('should handle Docker image not found errors', () => {
@@ -153,9 +185,9 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'run');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in run command'));
-      expect(logger.error).toHaveBeenCalledWith('   Docker image not found.');
-      expect(logger.error).toHaveBeenCalledWith('   Run: aifabrix build <app> first');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in run command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Docker image not found.')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Run: aifabrix build <app> first')).toBe(true);
     });
 
     it('should preserve template-app hint when Docker image not found (up-miso/up-dataplane)', () => {
@@ -165,10 +197,10 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'up-miso');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in up-miso command'));
-      expect(logger.error).toHaveBeenCalledWith('   Docker image aifabrix/keycloak:latest not found');
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Pull the image'));
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('use --image keycloak='));
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in up-miso command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Docker image aifabrix/keycloak:latest not found')).toBe(true);
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Pull the image'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('use --image keycloak='))).toBe(true);
     });
 
     it('should handle Docker not running errors', () => {
@@ -176,9 +208,9 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'build');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in build command'));
-      expect(logger.error).toHaveBeenCalledWith('   Docker is not running or not installed.');
-      expect(logger.error).toHaveBeenCalledWith('   Please start Docker Desktop and try again.');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in build command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Docker is not running or not installed.')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Please start Docker Desktop and try again.')).toBe(true);
     });
 
     it('should handle port conflict errors', () => {
@@ -186,9 +218,9 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'run');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in run command'));
-      expect(logger.error).toHaveBeenCalledWith('   Port conflict detected.');
-      expect(logger.error).toHaveBeenCalledWith('   Run "aifabrix doctor" to check which ports are in use.');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in run command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Port conflict detected.')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Run "aifabrix doctor" to check which ports are in use.')).toBe(true);
     });
 
     it('should handle API permission denied errors with hint', () => {
@@ -196,9 +228,9 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'build');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in build command'));
-      expect(logger.error).toHaveBeenCalledWith('   Permission denied: /path/to/file');
-      expect(logger.error).toHaveBeenCalledWith('   Ensure your token has the required permission (e.g. external-system:delete for delete).');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in build command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Permission denied: /path/to/file')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Ensure your token has the required permission (e.g. external-system:delete for delete).')).toBe(true);
     });
 
     it('should handle Docker permission denied errors', () => {
@@ -206,9 +238,9 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'run');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in run command'));
-      expect(logger.error).toHaveBeenCalledWith('   Permission denied.');
-      expect(logger.error).toHaveBeenCalledWith('   Make sure you have the necessary permissions to run Docker commands.');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in run command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Permission denied.')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Make sure you have the necessary permissions to run Docker commands.')).toBe(true);
     });
 
     it('should not match permission denied for permissions field validation', () => {
@@ -216,9 +248,9 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'validate');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in validate command'));
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in validate command'))).toBe(true);
       // Should not show permission denied message
-      expect(logger.error).not.toHaveBeenCalledWith('   Permission denied.');
+      expect(loggerCallArrays.error.some(a => a[0] === '   Permission denied.')).toBe(false);
     });
 
     it('should handle Azure CLI errors', () => {
@@ -226,10 +258,10 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'push');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in push command'));
-      expect(logger.error).toHaveBeenCalledWith('   Azure CLI is not installed or not working properly.');
-      expect(logger.error).toHaveBeenCalledWith('   Install from: https://docs.microsoft.com/cli/azure/install-azure-cli');
-      expect(logger.error).toHaveBeenCalledWith('   Run: az login');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in push command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Azure CLI is not installed or not working properly.')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Install from: https://docs.microsoft.com/cli/azure/install-azure-cli')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Run: az login')).toBe(true);
     });
 
     it('should handle ACR authentication errors', () => {
@@ -237,10 +269,10 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'push');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in push command'));
-      expect(logger.error).toHaveBeenCalledWith('   Azure Container Registry authentication failed.');
-      expect(logger.error).toHaveBeenCalledWith('   Run: az acr login --name <registry-name>');
-      expect(logger.error).toHaveBeenCalledWith('   Or login to Azure: az login');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in push command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Azure Container Registry authentication failed.')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Run: az acr login --name <registry-name>')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Or login to Azure: az login')).toBe(true);
     });
 
     it('should handle invalid ACR URL errors', () => {
@@ -248,9 +280,9 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'push');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in push command'));
-      expect(logger.error).toHaveBeenCalledWith('   Invalid registry URL format.');
-      expect(logger.error).toHaveBeenCalledWith('   Use format: *.azurecr.io (e.g., myacr.azurecr.io)');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in push command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Invalid registry URL format.')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Use format: *.azurecr.io (e.g., myacr.azurecr.io)')).toBe(true);
     });
 
     it('should handle missing registry URL errors', () => {
@@ -258,9 +290,9 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'push');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in push command'));
-      expect(logger.error).toHaveBeenCalledWith('   Registry URL is required.');
-      expect(logger.error).toHaveBeenCalledWith('   Provide via --registry flag or configure in application.yaml under image.registry');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in push command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Registry URL is required.')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Provide via --registry flag or configure in application.yaml under image.registry')).toBe(true);
     });
 
     it('should handle missing secrets errors with app name', () => {
@@ -268,10 +300,10 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'resolve');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in resolve command'));
-      expect(logger.error).toHaveBeenCalledWith('   Missing secrets: DATABASE_PASSWORD, API_KEY');
-      expect(logger.error).toHaveBeenCalledWith('   Secrets file location: /path/to/secrets.yaml');
-      expect(logger.error).toHaveBeenCalledWith('   Run: aifabrix resolve myapp to generate missing secrets.');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in resolve command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Missing secrets: DATABASE_PASSWORD, API_KEY')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Secrets file location: /path/to/secrets.yaml')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Run: aifabrix resolve myapp to generate missing secrets.')).toBe(true);
     });
 
     it('should handle missing secrets errors without app name', () => {
@@ -279,9 +311,9 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'resolve');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in resolve command'));
-      expect(logger.error).toHaveBeenCalledWith('   Missing secrets in secrets file.');
-      expect(logger.error).toHaveBeenCalledWith('   Run: aifabrix resolve <app-name> to generate missing secrets.');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in resolve command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Missing secrets in secrets file.')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Run: aifabrix resolve <app-name> to generate missing secrets.')).toBe(true);
     });
 
     it('should handle deployment retry errors', () => {
@@ -289,8 +321,8 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'deploy');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in deploy command'));
-      expect(logger.error).toHaveBeenCalledWith('   Connection timeout');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in deploy command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Connection timeout')).toBe(true);
     });
 
     it('should handle generic errors', () => {
@@ -298,9 +330,9 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'test-command');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in test-command command'));
-      expect(logger.error).toHaveBeenCalledWith('   Generic error message');
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('doctor'));
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in test-command command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Generic error message')).toBe(true);
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('doctor'))).toBe(true);
     });
 
     it('should handle errors without message', () => {
@@ -308,8 +340,8 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'test-command');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in test-command command'));
-      expect(logger.error).toHaveBeenCalledWith('   ');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in test-command command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   ')).toBe(true);
     });
 
     it('should handle formatted errors with empty lines', () => {
@@ -319,9 +351,9 @@ describe('CLI Utils Module', () => {
       handleCommandError(error, 'test-command');
 
       // Should skip empty lines
-      expect(logger.error).toHaveBeenCalledWith('   Line 1');
-      expect(logger.error).toHaveBeenCalledWith('   Line 2');
-      expect(logger.error).toHaveBeenCalledWith('   Line 3');
+      expect(loggerCallArrays.error.some(a => a[0] === '   Line 1')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Line 2')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Line 3')).toBe(true);
     });
 
     it('should always show doctor command suggestion', () => {
@@ -329,7 +361,7 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'any-command');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('doctor'));
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('doctor'))).toBe(true);
     });
 
     it('should log wizardResumeMessage when present on error', () => {
@@ -338,19 +370,29 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'wizard');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error in wizard command'));
-      expect(logger.log).toHaveBeenCalledWith('To resume: aifabrix wizard myapp');
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in wizard command'))).toBe(true);
+      // Use a safe check (loop + String) to avoid Symbol.hasInstance stack overflow when
+      // this suite runs in the same worker as a file that mocks logger with jest.fn()
+      let hasResumeMessage = false;
+      const logArr = loggerCallArrays.log;
+      for (let i = 0; i < logArr.length; i++) {
+        try {
+          const a = logArr[i];
+          const first = (a !== null && a !== undefined) && a[0];
+          if (String(first) === 'To resume: aifabrix wizard myapp') {
+            hasResumeMessage = true;
+            break;
+          }
+        } catch (_) { /* ignore */ }
+      }
+      expect(hasResumeMessage).toBe(true);
     });
   });
 
   describe('appendWizardError', () => {
-    const getFsTest = () => {
-      const mod = require('fs');
-      return mod.__test;
-    };
-
     beforeEach(() => {
-      const t = getFsTest();
+      const t = fsTestHelpersRef.current;
+      if (!t) return;
       t.mkdirCalls.length = 0;
       t.appendFileCalls.length = 0;
       t.setMkdirReject(false);
@@ -359,7 +401,8 @@ describe('CLI Utils Module', () => {
     it('should append error message to integration/<appKey>/error.log', async() => {
       await appendWizardError('myapp', new Error('Test error'));
 
-      const t = getFsTest();
+      const t = fsTestHelpersRef.current;
+      expect(t).toBeDefined();
       expect(t.mkdirCalls).toHaveLength(1);
       expect(t.mkdirCalls[0][0]).toMatch(/integration[\\/]myapp$/);
       expect(t.mkdirCalls[0][1]).toEqual({ recursive: true });
@@ -375,7 +418,7 @@ describe('CLI Utils Module', () => {
 
       await appendWizardError('myapp', err);
 
-      const written = getFsTest().appendFileCalls[0][1];
+      const written = fsTestHelpersRef.current.appendFileCalls[0][1];
       expect(written).toContain('Long validation message with details and field list');
       expect(written).not.toContain('\x1b[');
     });
@@ -383,7 +426,7 @@ describe('CLI Utils Module', () => {
     it('should write error.message when error.formatted is absent', async() => {
       await appendWizardError('myapp', new Error('Only message'));
 
-      const written = getFsTest().appendFileCalls[0][1];
+      const written = fsTestHelpersRef.current.appendFileCalls[0][1];
       expect(written).toContain('Only message');
     });
 
@@ -393,7 +436,7 @@ describe('CLI Utils Module', () => {
 
       await appendWizardError('myapp', err);
 
-      const written = getFsTest().appendFileCalls[0][1];
+      const written = fsTestHelpersRef.current.appendFileCalls[0][1];
       expect(written).toContain('Long error message here');
     });
 
@@ -401,17 +444,17 @@ describe('CLI Utils Module', () => {
       await appendWizardError('', new Error('x'));
       await appendWizardError('UPPERCASE', new Error('x'));
 
-      const t = getFsTest();
+      const t = fsTestHelpersRef.current;
       expect(t.mkdirCalls).toHaveLength(0);
       expect(t.appendFileCalls).toHaveLength(0);
     });
 
     it('should not throw when fs fails', async() => {
-      getFsTest().setMkdirReject(true);
+      fsTestHelpersRef.current.setMkdirReject(true);
 
       await appendWizardError('myapp', new Error('x'));
 
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Could not write wizard error.log'));
+      expect(loggerCallArrays.warn.some(a => String(a[0]).includes('Could not write wizard error.log'))).toBe(true);
     });
   });
 
@@ -421,7 +464,7 @@ describe('CLI Utils Module', () => {
     beforeEach(() => {
       origRelative = path.relative.bind(path);
       jest.spyOn(path, 'relative').mockImplementation((cwd, p) => {
-        if (typeof p === 'string' && p.includes('integration') && p.includes('hubspot')) return 'integration/hubspot';
+        if (typeof p === 'string' && p.includes('integration') && p.includes('hubspot-test')) return 'integration/hubspot-test';
         if (typeof p === 'string' && p.includes('builder') && p.includes('myapp')) return 'bar/builder/myapp';
         return origRelative(cwd, p);
       });
@@ -432,37 +475,37 @@ describe('CLI Utils Module', () => {
 
     it('should log "Using: <path>" when options.type is "app"', () => {
       logOfflinePathWhenType('/foo/bar/builder/myapp', { type: 'app' });
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Using:'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/builder[/\\]myapp/));
+      expect(loggerCallArrays.log.some(a => String(a[0]).includes('Using:'))).toBe(true);
+      expect(loggerCallArrays.log.some(a => /builder[/\\]myapp/.test(String(a[0])))).toBe(true);
     });
 
     it('should log "Using: <path>" when options.type is "external"', () => {
-      logOfflinePathWhenType('/foo/integration/hubspot', { type: 'external' });
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Using:'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/integration[/\\]hubspot/));
+      logOfflinePathWhenType('/foo/integration/hubspot-test', { type: 'external' });
+      expect(loggerCallArrays.log.some(a => String(a[0]).includes('Using:'))).toBe(true);
+      expect(loggerCallArrays.log.some(a => /integration[/\\]hubspot/.test(String(a[0])))).toBe(true);
     });
 
     it('should not log when options is missing', () => {
-      logger.log.mockClear();
+      loggerCallArrays.log.length = 0;
       logOfflinePathWhenType('/foo/builder/myapp', undefined);
-      expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('Using:'));
+      expect(loggerCallArrays.log.some(a => String(a[0]).includes('Using:'))).toBe(false);
     });
 
     it('should not log when options.type is not "app" or "external"', () => {
-      logger.log.mockClear();
+      loggerCallArrays.log.length = 0;
       logOfflinePathWhenType('/foo/builder/myapp', {});
       logOfflinePathWhenType('/foo/builder/myapp', { type: 'other' });
-      const calls = logger.log.mock.calls.map(c => c[0]);
+      const calls = loggerCallArrays.log.map(c => c[0]);
       const usingCalls = calls.filter(m => typeof m === 'string' && m.includes('Using:'));
       expect(usingCalls).toHaveLength(0);
     });
 
     it('should not log when appPath is falsy', () => {
-      logger.log.mockClear();
+      loggerCallArrays.log.length = 0;
       logOfflinePathWhenType(null, { type: 'app' });
       logOfflinePathWhenType(undefined, { type: 'external' });
       logOfflinePathWhenType('', { type: 'app' });
-      const calls = logger.log.mock.calls.map(c => c[0]);
+      const calls = loggerCallArrays.log.map(c => c[0]);
       const usingCalls = calls.filter(m => typeof m === 'string' && m.includes('Using:'));
       expect(usingCalls).toHaveLength(0);
     });

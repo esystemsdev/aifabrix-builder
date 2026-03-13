@@ -45,7 +45,7 @@ aifabrix wizard -a my-integration
 With debug output (saves debug manifests on validation failure):
 
 ```bash
-aifabrix wizard hubspot-test-v2 --debug
+aifabrix wizard hubspot-test --debug
 ```
 
 If `integration/<appName>/wizard.yaml` exists and is valid, the wizard shows a short summary and asks **Run with saved config?** — choose **Yes** to run headless with that config, or **No** to be told to edit the file and run `aifabrix wizard <appName>` again.
@@ -112,7 +112,7 @@ The wizard asks **mode first** (before app name or system selection), creates a 
 
 **When no app name is given** (`aifabrix wizard`), the first question is: **What would you like to do?**
 - **Create a new external system** – You are then prompted for application name. The folder `integration/<appKey>/` is created and used for wizard.yaml and error.log.
-- **Add datasource to existing system** – You are prompted to select or enter the existing system. The wizard lists systems with **Name** and **appKey** (e.g. `HubSpot CRM (hubspot-test-v4)`), 10 items per page. The builder validates that the system exists on the dataplane (and re-prompts if not). The integration folder is derived from the system key. **Note:** In add-datasource mode, "Known platform" is hidden in Step 2 because the system already exists on the dataplane and uses its existing OpenAPI/MCP source.
+- **Add datasource to existing system** – You are prompted to select or enter the existing system. The wizard lists systems with **Name** and **appKey** (e.g. `HubSpot CRM (hubspot-test)`), 10 items per page. The builder validates that the system exists on the dataplane (and re-prompts if not). The integration folder is derived from the system key. **Note:** In add-datasource mode, "Known platform" is hidden in Step 2 because the system already exists on the dataplane and uses its existing OpenAPI/MCP source.
 
 After that, a wizard session is created on the dataplane.
 

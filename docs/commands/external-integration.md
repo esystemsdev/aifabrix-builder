@@ -153,16 +153,16 @@ Controller and environment come from `config.yaml` (set via `aifabrix login` or 
 🌐 Resolving dataplane URL...
 ✓ Dataplane URL: https://dataplane.aifabrix.dev
 
-📡 Downloading full manifest: hubspot
+📡 Downloading full manifest: hubspot-test
 🔍 Validating downloaded data...
 ✓ System type: openapi
 ✓ Found 3 datasource(s)
-📁 Creating directory: integration/hubspot
-✓ Created: integration/hubspot/hubspot-deploy.json
+📁 Creating directory: integration/hubspot-test
+✓ Created: integration/hubspot-test/hubspot-test-deploy.json
 📂 Splitting deploy JSON into component files...
 ✅ External system downloaded successfully!
-Location: integration/hubspot
-System: hubspot
+Location: integration/hubspot-test
+System: hubspot-test
 Datasources: 3
 ```
 With `--format json`, an extra line confirms conversion to JSON. If README.md already exists and `--force` is not set, you are prompted to replace it.
@@ -375,7 +375,7 @@ aifabrix delete hubspot --yes
 Are you sure you want to delete external system 'hubspot'? (yes/no): yes
 
 🗑️  Deleting external system...
-✓ External system 'hubspot' deleted successfully
+✓ External system 'hubspot-test' deleted successfully
 ✓ All associated datasources have been removed
 ```
 
@@ -394,7 +394,7 @@ Are you sure you want to delete external system 'hubspot'? (yes/no): yes
  - hubspot-deal
 
 🗑️  Deleting external system...
-✓ External system 'hubspot' deleted successfully
+✓ External system 'hubspot-test' deleted successfully
 ✓ All associated datasources have been removed
 ```
 
@@ -427,7 +427,7 @@ Deletion cancelled.
 - **"System key is required"** → Provide system key as argument
 - **"External system not found in integration/..."** → Ensure the system exists in `integration/<system-key>/` or `builder/<system-key>/` (the CLI resolves integration first, then builder)
 - **"Not logged in"** → Run `aifabrix login` first
-- **"External system 'hubspot' not found"** → Check system key exists in the dataplane
+- **"External system 'hubspot-test' not found"** → Check system key exists in the dataplane
 - **"Failed to delete external system"** → Check dataplane URL, authentication, and network connection
 - **"Authentication required"** → Run `aifabrix login` or `aifabrix app register` first
 
@@ -797,7 +797,7 @@ aifabrix datasource upload myapp ./schemas/hubspot-deal.yaml
 ✓ Datasource published successfully!
 
 Datasource: hubspot-deal
-System: hubspot
+System: hubspot-test
 Environment: dev
 ```
 

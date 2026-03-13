@@ -73,13 +73,13 @@ describe('external-readme (context only)', () => {
 
     it('includes secretPaths for apikey authType with path and description (key without kv://)', () => {
       const ctx = buildExternalReadmeContext({
-        systemKey: 'hubspot-test',
+        systemKey: 'wizard-e2e-demo',
         authType: 'apikey'
       });
       expect(ctx.secretPaths).toBeDefined();
       expect(ctx.secretPaths.length).toBe(1);
       expect(ctx.secretPaths[0]).toMatchObject({
-        path: 'hubspot-test/apiKey',
+        path: 'wizard-e2e-demo/apiKey',
         description: 'API Key'
       });
     });
