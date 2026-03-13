@@ -9,11 +9,12 @@
     "variables": {
       "baseUrl": "https://api.hubapi.com",
       "tokenUrl": "https://api.hubapi.com/oauth/v1/token",
+      "authorizationUrl": "https://app.hubspot.com/oauth/authorize",
       "scope": "crm.objects.companies.read crm.objects.companies.write crm.objects.contacts.read crm.objects.contacts.write crm.objects.deals.read crm.objects.deals.write"
     },
     "security": {
-      "clientId": "kv://hubspot-test/clientid",
-      "clientSecret": "kv://hubspot-test/clientsecret"
+      "clientId": "kv://hubspot-test/clientId",
+      "clientSecret": "kv://hubspot-test/clientSecret"
     }
   },
   "configuration": [
@@ -68,6 +69,6 @@
     "hubspot-test-company",
     "hubspot-test-contact",
     "hubspot-test-deal",
-    "hubspot-test-users-datasource"
+    "hubspot-test-users"
   ]
 }

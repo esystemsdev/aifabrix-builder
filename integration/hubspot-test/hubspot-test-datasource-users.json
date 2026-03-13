@@ -1,10 +1,11 @@
 {
-  "key": "hubspot-test-users-datasource",
+  "key": "hubspot-test-users",
   "displayName": "HubSpot Users",
   "resourceType": "person",
   "systemKey": "hubspot-test",
   "enabled": true,
   "entityType": "recordStorage",
+  "primaryKey": ["id"],
   "description": "Comprehensive HubSpot users datasource with full CRUD operations, comprehensive metadata schema, ABAC dimensions, and OpenAPI support",
   "metadataSchema": {
     "type": "object",

@@ -51,3 +51,4 @@ apps/
 integration/my-hubspot/
 integration/wizard-e2e-*/
 integration/test-*/
+integration/pp/*

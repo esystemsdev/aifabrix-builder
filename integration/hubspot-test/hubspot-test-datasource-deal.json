@@ -7,6 +7,7 @@
   "resourceType": "deal",
   "enabled": true,
   "version": "1.0.0",
+  "primaryKey": ["id"],
   "metadataSchema": {
     "type": "object",
     "properties": {
