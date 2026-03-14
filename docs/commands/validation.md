@@ -104,6 +104,13 @@ The validation system uses four core JSON schemas:
 - `fieldMappings` must include dimensions and attributes
 - Field mapping expressions must follow correct syntax
 
+**Field reference and ABAC checks (offline):** After schema validation, the CLI runs procedural checks so that `aifabrix validate <file>` and `aifabrix validate <app>` Step 2 give the same quality as `aifabrix datasource validate <file>`:
+
+- **Field references** – Each of the following must reference only existing `fieldMappings.attributes` (or `fieldMappings.dimensions` for `primaryKey`): `indexing.embedding[]`, `indexing.uniqueKey`, `validation.repeatingValues[].field`, `quality.rejectIf[].field`, `primaryKey[]`, and `exposed.profiles.<name>[]`. Errors include a short hint (e.g. "Add the attribute or remove the reference").
+- **ABAC** – Dimension-to-attribute references in `config.abac.dimensions` or `fieldMappings.dimensions` are validated (keys and paths format; dimension values must reference existing attributes where applicable). `config.abac.crossSystemJson` is validated (path format, exactly one operator per path, allowed operators). Legacy `config.abac.crossSystem` is rejected with a message to use `crossSystemJson` or `crossSystemSql` instead.
+
+Local validation does **not** check dimension keys against the Dimension Catalog or parse `crossSystemSql`; those remain server-side. Use deployment or `aifabrix test-integration` for full dataplane checks.
+
 ### 4. Wizard Configuration Schema
 
 **Purpose:** Validates wizard configuration files.
@@ -684,6 +691,26 @@ When modifying configurations:
   - `key`: lowercase letters, numbers, and hyphens only
   - `version`: must match `^[0-9]+\.[0-9]+\.[0-9]+$` (e.g., `1.0.0`)
   - `port`: must be between 1 and 65535
+  - Dimension keys: letters, numbers, and underscores only
+  - Attribute paths: letters, numbers, underscores, and dots only
+
+### Field reference and ABAC errors (datasource)
+
+**Error:** `primaryKey[n]: field 'X' does not exist in fieldMappings.attributes or fieldMappings.dimensions`
+
+**Solution:** Each `primaryKey` entry must be a key from `fieldMappings.attributes` or `fieldMappings.dimensions`. Add the attribute or dimension, or remove the invalid entry from `primaryKey`.
+
+**Error:** `exposed.profiles.<name>[n]: field 'X' does not exist in fieldMappings.attributes`
+
+**Solution:** Each field listed under `exposed.profiles.<profileName>` must exist in `fieldMappings.attributes`. Add the attribute or remove the reference.
+
+**Error:** `config.abac.crossSystem is deprecated`
+
+**Solution:** Replace `config.abac.crossSystem` with `config.abac.crossSystemJson` (JSON filter) or `config.abac.crossSystemSql` (SQL expression).
+
+**Error:** `config.abac.crossSystemJson.<path>: must have exactly one operator per path`
+
+**Solution:** Each path in `crossSystemJson` must have an object with exactly one operator key (e.g. `eq`, `gte`, `in`). Use one of: eq, ne, gt, lt, gte, lte, in, nin, contains, like, isNull, isNotNull.
 
 ---
 

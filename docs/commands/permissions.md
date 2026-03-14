@@ -20,7 +20,7 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 ## Command → Service → Permissions
 
 | Command | Service | Required permission(s) | Notes |
-|--------|---------|------------------------|--------|
+| -------- | --------- | ------------------------ | -------- |
 | `aifabrix login` | Controller | None (device or client credentials) | Obtains token; subsequent commands use token scopes. |
 | `aifabrix logout` | Controller | None | Clears local tokens. |
 | `aifabrix show <appKey> --online` | Controller | `applications:read` or env-scoped app access | Fetches template app and/or environment application. For **external** (dataplane) apps, also calls Dataplane for system details → **Dataplane** `external-system:read` required in that case. |
@@ -40,6 +40,11 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | `aifabrix test-integration` | Dataplane | `external-system:publish` or `external-data-source:read` | Calls pipeline test endpoint; supports **client credentials** (CI/CD). |
 | `aifabrix wizard [appName]` | Dataplane | `external-system:create`, `external-system:read`, `credential:read` (for credential step) | Wizard sessions and steps use Dataplane wizard API. |
 | `aifabrix service-user create` | Controller | `service-user:create` | Create service user (username, email, redirectUris, groupNames); receive one-time clientSecret (save at creation time). |
+| `aifabrix service-user list` | Controller | `service-user:read` | List service users with optional pagination and search. |
+| `aifabrix service-user rotate-secret` | Controller | `service-user:update` | Regenerate client secret for a service user; new secret shown once only. |
+| `aifabrix service-user delete` | Controller | `service-user:delete` | Deactivate a service user. |
+| `aifabrix service-user update-groups` | Controller | `service-user:update` | Update group assignments for a service user. |
+| `aifabrix service-user update-redirect-uris` | Controller | `service-user:update` | Update redirect URIs for a service user (min 1). |
 
 ---
 
@@ -61,6 +66,9 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 - **auth:read** – User info, validate token, roles, permissions.
 - **dashboard:read** – Dashboard summary (if used by CLI or UI).
 - **service-user:create** – Create service users and API clients (one-time secret on create).
+- **service-user:read** – List service users.
+- **service-user:update** – Regenerate secret, update groups, update redirect URIs for service users.
+- **service-user:delete** – Deactivate service users.
 
 ---
 

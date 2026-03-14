@@ -34,7 +34,8 @@ jest.mock('../../../lib/utils/logger', () => ({
 }));
 
 jest.mock('../../../lib/utils/app-config-resolver', () => ({
-  resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml'))
+  resolveApplicationConfigPath: jest.fn((appPath) => require('path').join(appPath, 'application.yaml')),
+  resolveRbacPath: jest.fn(() => null)
 }));
 jest.mock('../../../lib/utils/config-format', () => ({
   loadConfigFile: jest.fn(),

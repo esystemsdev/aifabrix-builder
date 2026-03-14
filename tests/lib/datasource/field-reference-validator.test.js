@@ -27,6 +27,43 @@ describe('field-reference-validator', () => {
       expect(validateFieldReferences(parsed)).toEqual([]);
     });
 
+    it('returns error for invalid primaryKey reference', () => {
+      const parsed = {
+        fieldMappings: { attributes: { id: {} }, dimensions: {} },
+        primaryKey: ['id', 'nonexistent']
+      };
+      const errors = validateFieldReferences(parsed);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('primaryKey[1]');
+      expect(errors[0]).toContain('nonexistent');
+      expect(errors[0]).toContain('fieldMappings.attributes or fieldMappings.dimensions');
+    });
+
+    it('accepts primaryKey that references dimension key', () => {
+      const parsed = {
+        fieldMappings: { attributes: { id: {} }, dimensions: { region: 'metadata.region' } },
+        primaryKey: ['id', 'region']
+      };
+      expect(validateFieldReferences(parsed)).toEqual([]);
+    });
+
+    it('returns error for invalid exposed.profiles field reference', () => {
+      const parsed = {
+        fieldMappings: { attributes: { id: {}, name: {} } },
+        exposed: {
+          profiles: {
+            default: ['id', 'name', 'badField'],
+            minimal: ['id']
+          }
+        }
+      };
+      const errors = validateFieldReferences(parsed);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('exposed.profiles.default[2]');
+      expect(errors[0]).toContain('badField');
+      expect(errors[0]).toContain('fieldMappings.attributes');
+    });
+
     it('returns error for invalid indexing.embedding field', () => {
       const parsed = {
         fieldMappings: { attributes: { id: {}, name: {} } },
@@ -34,9 +71,9 @@ describe('field-reference-validator', () => {
       };
       const errors = validateFieldReferences(parsed);
       expect(errors).toHaveLength(1);
-      expect(errors[0]).toBe(
-        'indexing.embedding[1]: field \'missingField\' does not exist in fieldMappings.attributes'
-      );
+      expect(errors[0]).toContain('indexing.embedding[1]');
+      expect(errors[0]).toContain('missingField');
+      expect(errors[0]).toContain('Add the attribute or remove the reference');
     });
 
     it('returns error for invalid indexing.uniqueKey', () => {
@@ -46,9 +83,9 @@ describe('field-reference-validator', () => {
       };
       const errors = validateFieldReferences(parsed);
       expect(errors).toHaveLength(1);
-      expect(errors[0]).toBe(
-        'indexing.uniqueKey: field \'unknownKey\' does not exist in fieldMappings.attributes'
-      );
+      expect(errors[0]).toContain('indexing.uniqueKey');
+      expect(errors[0]).toContain('unknownKey');
+      expect(errors[0]).toContain('Add the attribute or remove the reference');
     });
 
     it('returns error for invalid validation.repeatingValues[].field', () => {
@@ -63,9 +100,9 @@ describe('field-reference-validator', () => {
       };
       const errors = validateFieldReferences(parsed);
       expect(errors).toHaveLength(1);
-      expect(errors[0]).toBe(
-        'validation.repeatingValues[1].field: field \'badField\' does not exist in fieldMappings.attributes'
-      );
+      expect(errors[0]).toContain('validation.repeatingValues[1].field');
+      expect(errors[0]).toContain('badField');
+      expect(errors[0]).toContain('Add the attribute or remove the reference');
     });
 
     it('returns error for invalid quality.rejectIf[].field', () => {
@@ -80,9 +117,9 @@ describe('field-reference-validator', () => {
       };
       const errors = validateFieldReferences(parsed);
       expect(errors).toHaveLength(1);
-      expect(errors[0]).toBe(
-        'quality.rejectIf[1].field: field \'invalidField\' does not exist in fieldMappings.attributes'
-      );
+      expect(errors[0]).toContain('quality.rejectIf[1].field');
+      expect(errors[0]).toContain('invalidField');
+      expect(errors[0]).toContain('Add the attribute or remove the reference');
     });
 
     it('returns [] when all references are valid', () => {
@@ -120,21 +157,11 @@ describe('field-reference-validator', () => {
       };
       const errors = validateFieldReferences(parsed);
       expect(errors).toHaveLength(5);
-      expect(errors).toContain(
-        'indexing.embedding[1]: field \'bad1\' does not exist in fieldMappings.attributes'
-      );
-      expect(errors).toContain(
-        'indexing.embedding[2]: field \'bad2\' does not exist in fieldMappings.attributes'
-      );
-      expect(errors).toContain(
-        'indexing.uniqueKey: field \'badUnique\' does not exist in fieldMappings.attributes'
-      );
-      expect(errors).toContain(
-        'validation.repeatingValues[0].field: field \'badRepeating\' does not exist in fieldMappings.attributes'
-      );
-      expect(errors).toContain(
-        'quality.rejectIf[0].field: field \'badReject\' does not exist in fieldMappings.attributes'
-      );
+      expect(errors.some(e => e.includes('indexing.embedding[1]') && e.includes('bad1'))).toBe(true);
+      expect(errors.some(e => e.includes('indexing.embedding[2]') && e.includes('bad2'))).toBe(true);
+      expect(errors.some(e => e.includes('indexing.uniqueKey') && e.includes('badUnique'))).toBe(true);
+      expect(errors.some(e => e.includes('validation.repeatingValues[0].field') && e.includes('badRepeating'))).toBe(true);
+      expect(errors.some(e => e.includes('quality.rejectIf[0].field') && e.includes('badReject'))).toBe(true);
     });
 
     it('ignores non-string embedding elements', () => {
@@ -166,9 +193,8 @@ describe('field-reference-validator', () => {
       };
       const errors = validateFieldReferences(parsed);
       expect(errors).toHaveLength(1);
-      expect(errors[0]).toBe(
-        'indexing.embedding[0]: field \'wrongFirst\' does not exist in fieldMappings.attributes'
-      );
+      expect(errors[0]).toContain('indexing.embedding[0]');
+      expect(errors[0]).toContain('wrongFirst');
     });
 
     it('reports multiple invalid embedding fields only', () => {
@@ -178,15 +204,9 @@ describe('field-reference-validator', () => {
       };
       const errors = validateFieldReferences(parsed);
       expect(errors).toHaveLength(3);
-      expect(errors).toContain(
-        'indexing.embedding[0]: field \'bad1\' does not exist in fieldMappings.attributes'
-      );
-      expect(errors).toContain(
-        'indexing.embedding[1]: field \'bad2\' does not exist in fieldMappings.attributes'
-      );
-      expect(errors).toContain(
-        'indexing.embedding[2]: field \'bad3\' does not exist in fieldMappings.attributes'
-      );
+      expect(errors.some(e => e.includes('embedding[0]') && e.includes('bad1'))).toBe(true);
+      expect(errors.some(e => e.includes('embedding[1]') && e.includes('bad2'))).toBe(true);
+      expect(errors.some(e => e.includes('embedding[2]') && e.includes('bad3'))).toBe(true);
     });
 
     it('skips repeatingValues items without string field', () => {

@@ -40,6 +40,11 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix app rotate-secret <appKey>`](application-management.md#aifabrix-app-rotate-secret) - Rotate pipeline ClientSecret
   - [`aifabrix app deployment <appKey>`](deployment.md#aifabrix-app-deployment-appkey) - List deployments for an application in current environment
   - [`aifabrix service-user create`](application-management.md#aifabrix-service-user-create) - Create service user (requires options: username, email, redirect-uris, group-names); get one-time secret (see [permissions](permissions.md))
+  - [`aifabrix service-user list`](application-management.md#aifabrix-service-user-list) - List service users (pagination and search)
+  - [`aifabrix service-user rotate-secret`](application-management.md#aifabrix-service-user-rotate-secret) - Rotate client secret for a service user (one-time display)
+  - [`aifabrix service-user delete`](application-management.md#aifabrix-service-user-delete) - Deactivate a service user
+  - [`aifabrix service-user update-groups`](application-management.md#aifabrix-service-user-update-groups) - Update group assignments for a service user
+  - [`aifabrix service-user update-redirect-uris`](application-management.md#aifabrix-service-user-update-redirect-uris) - Update redirect URIs for a service user
 
 ### Application Development
 - [Application Development Commands](application-development.md) - Local development

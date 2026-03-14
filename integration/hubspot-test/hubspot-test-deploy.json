@@ -29,11 +29,12 @@
       "variables": {
         "baseUrl": "https://api.hubapi.com",
         "tokenUrl": "https://api.hubapi.com/oauth/v1/token",
+        "authorizationUrl": "https://app.hubspot.com/oauth/authorize",
         "scope": "crm.objects.companies.read crm.objects.companies.write crm.objects.contacts.read crm.objects.contacts.write crm.objects.deals.read crm.objects.deals.write"
       },
       "security": {
-        "clientId": "kv://hubspot/clientId",
-        "clientSecret": "kv://hubspot/clientSecret"
+        "clientId": "kv://hubspot-test/clientId",
+        "clientSecret": "kv://hubspot-test/clientSecret"
       }
     },
     "configuration": [
@@ -89,6 +90,170 @@
       "hubspot-test-contact",
       "hubspot-test-deal",
       "hubspot-test-users"
+    ],
+    "roles": [
+      {
+        "name": "HubSpot CRM Admin",
+        "value": "hubspot-test-admin",
+        "description": "Full access to all HubSpot CRM operations",
+        "groups": []
+      },
+      {
+        "name": "HubSpot CRM Reader",
+        "value": "hubspot-test-reader",
+        "description": "Read-only access to all HubSpot CRM data",
+        "groups": []
+      }
+    ],
+    "permissions": [
+      {
+        "name": "customer:list",
+        "roles": [
+          "hubspot-test-reader",
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: customer:list"
+      },
+      {
+        "name": "customer:get",
+        "roles": [
+          "hubspot-test-reader",
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: customer:get"
+      },
+      {
+        "name": "customer:create",
+        "roles": [
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: customer:create"
+      },
+      {
+        "name": "customer:update",
+        "roles": [
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: customer:update"
+      },
+      {
+        "name": "customer:delete",
+        "roles": [
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: customer:delete"
+      },
+      {
+        "name": "contact:list",
+        "roles": [
+          "hubspot-test-reader",
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: contact:list"
+      },
+      {
+        "name": "contact:get",
+        "roles": [
+          "hubspot-test-reader",
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: contact:get"
+      },
+      {
+        "name": "contact:create",
+        "roles": [
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: contact:create"
+      },
+      {
+        "name": "contact:update",
+        "roles": [
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: contact:update"
+      },
+      {
+        "name": "contact:delete",
+        "roles": [
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: contact:delete"
+      },
+      {
+        "name": "deal:list",
+        "roles": [
+          "hubspot-test-reader",
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: deal:list"
+      },
+      {
+        "name": "deal:get",
+        "roles": [
+          "hubspot-test-reader",
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: deal:get"
+      },
+      {
+        "name": "deal:create",
+        "roles": [
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: deal:create"
+      },
+      {
+        "name": "deal:update",
+        "roles": [
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: deal:update"
+      },
+      {
+        "name": "deal:delete",
+        "roles": [
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: deal:delete"
+      },
+      {
+        "name": "person:list",
+        "roles": [
+          "hubspot-test-reader",
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: person:list"
+      },
+      {
+        "name": "person:get",
+        "roles": [
+          "hubspot-test-reader",
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: person:get"
+      },
+      {
+        "name": "person:create",
+        "roles": [
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: person:create"
+      },
+      {
+        "name": "person:update",
+        "roles": [
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: person:update"
+      },
+      {
+        "name": "person:delete",
+        "roles": [
+          "hubspot-test-admin"
+        ],
+        "description": "Permission: person:delete"
+      }
     ]
   },
   "dataSources": [
@@ -101,6 +266,9 @@
       "resourceType": "customer",
       "enabled": true,
       "version": "1.0.0",
+      "primaryKey": [
+        "id"
+      ],
       "metadataSchema": {
         "type": "object",
         "properties": {
@@ -642,6 +810,9 @@
       "resourceType": "contact",
       "enabled": true,
       "version": "1.0.0",
+      "primaryKey": [
+        "id"
+      ],
       "metadataSchema": {
         "type": "object",
         "properties": {
@@ -1281,6 +1452,9 @@
       "resourceType": "deal",
       "enabled": true,
       "version": "1.0.0",
+      "primaryKey": [
+        "id"
+      ],
       "metadataSchema": {
         "type": "object",
         "properties": {
@@ -1867,6 +2041,9 @@
       "systemKey": "hubspot-test",
       "enabled": true,
       "entityType": "recordStorage",
+      "primaryKey": [
+        "id"
+      ],
       "description": "Comprehensive HubSpot users datasource with full CRUD operations, comprehensive metadata schema, ABAC dimensions, and OpenAPI support",
       "metadataSchema": {
         "type": "object",

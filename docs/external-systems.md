@@ -25,7 +25,7 @@ External systems can be:
 ### When to Use
 
 | Use external systems for | Use regular applications for |
-|--------------------------|------------------------------|
+| ------------------------- | ----------------------------- |
 | CRM integration (HubSpot, Salesforce) | Custom APIs or services |
 | SaaS APIs (Slack, Teams, GitHub) | Background jobs or workers |
 | Syncing data from external databases | Web applications |
@@ -542,18 +542,18 @@ Register Azure AD app, create Key Vault entries, and configure API permissions.
 
 ### RBAC Support (Roles and Permissions)
 
-External systems support RBAC (Role-Based Access Control) configuration via `rbac.yaml`, similar to regular applications. This allows you to define roles and permissions for your external system integration.
+External systems support RBAC (Role-Based Access Control) configuration via **rbac.yaml**, **rbac.yml**, or **rbac.json** (same structure; format inferred from extension), similar to regular applications. This allows you to define roles and permissions for your external system integration.
 
 **RBAC Configuration:**
 
 External systems can define roles and permissions in two ways:
 
-1. **In `rbac.yaml` file** (recommended for separation of concerns)
+1. **In an RBAC file** (`rbac.yaml`, `rbac.yml`, or `rbac.json`) (recommended for separation of concerns)
 2. **Directly in the system YAML file** (`<systemKey>-system.yaml`)
 
-When generating deployment JSON with `aifabrix json`, roles/permissions from `rbac.yaml` are automatically merged into the system YAML. Priority: roles/permissions in system YAML > rbac.yaml (if both exist, prefer system YAML).
+When generating deployment JSON with `aifabrix json`, roles/permissions from the RBAC file are automatically merged into the system YAML. Priority: roles/permissions in system YAML > RBAC file (if both exist, prefer system YAML).
 
-**Example `rbac.yaml`:**
+**Example (rbac.yaml or rbac.json, same structure):**
 
 ```yaml
 roles:
@@ -629,7 +629,7 @@ permissions:
 **Validation:**
 
 When validating external systems with `aifabrix validate`, the builder:
-- Validates `rbac.yaml` structure (if present)
+- Validates RBAC file structure (rbac.yaml, rbac.yml, or rbac.json, if present)
 - Validates roles and permissions in system YAML (if present)
 - Checks that all role references in permissions exist in the roles array
 - Validates role value patterns (`^[a-z-]+$`)
@@ -704,7 +704,7 @@ Each datasource maps one entity type from the external system.
 The `entityType` field is validated against the schema enum. Allowed values (from `lib/schema/external-datasource.schema.json`):
 
 | Value | Description |
-|-------|-------------|
+| ------ | ------------ |
 | `document-storage`, `documentStorage` | Document storage with vector storage |
 | `vector-store`, `vectorStore` | External vector storage system |
 | `record-storage`, `recordStorage` | Record-based system with metadata sync and access rights |

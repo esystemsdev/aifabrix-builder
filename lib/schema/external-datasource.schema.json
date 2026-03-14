@@ -544,7 +544,7 @@
         "properties":{
            "rejectIf":{
               "type":"array",
-              "description":"List of conditions that cause a record to be rejected.",
+              "description":"List of conditions that cause a record to be rejected. For lessThan: missing field is treated as reject. For greaterThan: missing field is not rejected. See quality docs for operator semantics.",
               "items":{
                  "type":"object",
                  "required":[
@@ -659,6 +659,11 @@
               "default":true,
               "description":"Enable two-phase sync pattern. When true: validates metadata first (quality rules, comparison with DocumentRecords), then fetches binaries via CIP for changed/new documents. When false: fetches binaries directly without metadata validation phase (single-phase sync). Note: Files are never synced back to external systems (one-way sync only: external → dataplane)."
            },
+           "ingestAfterSync":{
+              "type":"boolean",
+              "default":false,
+              "description":"When true, chunk and embed each document after store during sync so vector search returns hits immediately. When false, ingestion runs later (e.g. Celery task or on approval). Set true for E2E tests that validate vector step."
+           },
            "binaryOperationRef":{
               "type":"string",
               "default":"get",
@@ -700,6 +705,11 @@
                  },
                  "notifications":{
                     "type":"object"
+                 },
+                 "ingestAfterSync":{
+                    "type":"boolean",
+                    "default":false,
+                    "description":"When true, chunk and embed each document after store during sync so vector search returns hits."
                  }
               },
               "additionalProperties":false

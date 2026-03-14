@@ -281,7 +281,7 @@ frontDoorRouting:
       const result = await validator.validateRbac(appName);
 
       expect(result.valid).toBe(true);
-      expect(result.warnings).toContain('rbac.yaml not found - authentication disabled');
+      expect(result.warnings).toContain('rbac file not found - authentication disabled');
     });
 
     it('should validate valid rbac.yml when rbac.yaml is missing', async() => {
@@ -340,7 +340,7 @@ frontDoorRouting:
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('invalid: yaml: content: [unclosed');
 
-      await expect(validator.validateRbac(appName)).rejects.toThrow('Invalid YAML syntax in rbac.yaml');
+      await expect(validator.validateRbac(appName)).rejects.toThrow(/Invalid syntax in rbac\.yaml/);
     });
   });
 

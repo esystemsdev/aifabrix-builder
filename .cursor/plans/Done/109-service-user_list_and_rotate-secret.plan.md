@@ -252,9 +252,189 @@ Add CLI subcommands under `aifabrix service-user`: **list**, **rotate-secret**, 
 - Updated Validation checklist to reference `npm run build` and coverage.
 - Appended this validation report.
 
-### Recommendations
+### Recommendations (plan)
 
 - When implementing rotate-secret, ensure the printed secret is never logged or written to disk beyond the single CLI output.
 - Reuse the same table or columnar display pattern used by other list commands (e.g. credential list, app list) for service-user list output.
-- For delete, consider a confirmation prompt (e.g. “Deactivate service user ? (y/N)”) if desired; plan currently assumes non-interactive unless you add it.
+- For delete, consider a confirmation prompt (e.g. "Deactivate service user ? (y/N)") if desired; plan currently assumes non-interactive unless you add it.
+
+---
+
+## Implementation Validation Report
+
+**Date:** 2025-03-14  
+**Plan:** .cursor/plans/109-service-user_list_and_rotate-secret.plan.md  
+**Status:** COMPLETE
+
+### Executive Summary
+
+All implementation requirements from the plan are implemented. API layer, command layer, CLI wiring, tests, and documentation are in place. Lint passes with zero errors/warnings. All tests pass (full suite passes with `npm test -- --runInBand`; 43 tests in service-user API and command suites). File sizes and function limits are within project rules.
+
+### Task Completion
+
+- **Structure:** Plan uses implementation sections (no checkbox tasks). All sections are implemented.
+- **API layer:** listServiceUsers, regenerateSecretServiceUser, deleteServiceUser, updateGroupsServiceUser, updateRedirectUrisServiceUser added with JSDoc and `@requiresPermission`.
+- **Types:** ListServiceUsersResponse, RegenerateSecretServiceUserResponse, UpdateGroupsServiceUserResponse, UpdateRedirectUrisServiceUserResponse in `lib/api/types/service-users.types.js`.
+- **Command layer:** runServiceUserList, runServiceUserRotateSecret, runServiceUserDelete, runServiceUserUpdateGroups, runServiceUserUpdateRedirectUris with auth resolution, validation, and error handling.
+- **CLI wiring:** list, rotate-secret, delete, update-groups, update-redirect-uris subcommands with options and handleCommandError.
+- **Tests:** API tests (list, regenerate, delete, update-groups, update-redirect-uris) and command tests (success and error paths for all five).
+- **Docs:** application-management.md (all five subcommands with anchors), permissions.md (table + summary), README.md (index links).
+
+### File Existence Validation
+
+
+| File                                    | Status                                                                          |
+| --------------------------------------- | ------------------------------------------------------------------------------- |
+| lib/api/service-users.api.js            | Present; all five new functions and exports                                     |
+| lib/api/types/service-users.types.js    | Present; all four new response types                                            |
+| lib/commands/service-user.js            | Present; all five run* functions                                                |
+| lib/cli/setup-service-user.js           | Present; all five subcommands and help text                                     |
+| tests/lib/api/service-users.api.test.js | Present; list, regenerate, delete, update-groups, update-redirect-uris tests    |
+| tests/lib/commands/service-user.test.js | Present; list, rotate-secret, delete, update-groups, update-redirect-uris tests |
+| docs/commands/application-management.md | Present; anchors and sections for all five subcommands                          |
+| docs/commands/permissions.md            | Present; table rows and Controller summary                                      |
+| docs/commands/README.md                 | Present; index links for all five subcommands                                   |
+
+
+### Test Coverage
+
+- **Unit tests:** tests/lib/api/service-users.api.test.js and tests/lib/commands/service-user.test.js exist and mirror source structure.
+- **Coverage:** List, regenerate, delete, update-groups, update-redirect-uris covered for API (URL, params, body) and commands (success, missing id, 403, 404, empty payload where applicable).
+- **Service-user tests:** 43 tests (API + command); all pass when run in isolation or with `--runInBand`.
+
+### Code Quality Validation
+
+
+| Step                      | Result                                             |
+| ------------------------- | -------------------------------------------------- |
+| Format (npm run lint:fix) | PASSED                                             |
+| Lint (npm run lint)       | PASSED (0 errors, 0 warnings)                      |
+| Tests (npm test)          | PASSED when run with `--runInBand`; see note below |
+
+
+**Note:** One full `npm run build` run saw a Jest worker SIGABRT on service-user.test.js in parallel mode. The same tests pass when run alone or with `npm test -- --runInBand`. This is treated as an environment/parallelism issue, not an implementation defect.
+
+### File and Function Size
+
+
+| File                                    | Lines | Limit |
+| --------------------------------------- | ----- | ----- |
+| lib/api/service-users.api.js            | 150   | 500   |
+| lib/commands/service-user.js            | 424   | 500   |
+| lib/cli/setup-service-user.js           | 187   | 500   |
+| tests/lib/commands/service-user.test.js | 481   | 500   |
+
+
+All within project limits (≤500 lines per file; functions ≤50 lines per project rules).
+
+### Cursor Rules Compliance
+
+
+| Rule                                                                         | Status |
+| ---------------------------------------------------------------------------- | ------ |
+| API Client Structure (lib/api, @requiresPermission, JSDoc)                   | Met    |
+| CLI Command Development (subcommands, validation, chalk, handleCommandError) | Met    |
+| Testing Conventions (tests in tests/lib/, mocks, success/error paths)        | Met    |
+| Code Quality (file/function size, JSDoc)                                     | Met    |
+| Security (no hardcoded secrets; one-time secret handling)                    | Met    |
+| Error Handling & Logging (try-catch, chalk, actionable messages)             | Met    |
+| Documentation Rules (command-centric; no REST in user docs)                  | Met    |
+
+
+### Implementation Completeness
+
+
+| Area                                     | Status   |
+| ---------------------------------------- | -------- |
+| API layer (service-users.api.js + types) | Complete |
+| Command layer (service-user.js)          | Complete |
+| CLI wiring (setup-service-user.js)       | Complete |
+| API tests                                | Complete |
+| Command tests                            | Complete |
+| application-management.md                | Complete |
+| permissions.md                           | Complete |
+| README.md index links                    | Complete |
+
+
+### Validation Checklist
+
+- list, rotate-secret, delete, update-groups, update-redirect-uris subcommands under `aifabrix service-user --help`
+- List supports pagination/search; rotate-secret requires --id and one-time secret warning; delete and update commands require --id and payload options where specified
+- Permissions: list → service-user:read; rotate-secret, update-groups, update-redirect-uris → service-user:update; delete → service-user:delete
+- Docs: application-management.md (all five), permissions.md (table + summary), README.md (index links)
+- Lint passes; new API and command tests added; tests pass (use `--runInBand` if parallel run is unstable)
+
+### Issues and Recommendations
+
+- **Optional:** If `npm run build` (parallel test run) continues to hit worker SIGABRT on service-user.test.js, consider running service-user tests with `--runInBand` in CI or adding a short delay/teardown to avoid process lifecycle issues.
+- No blocking issues; implementation is complete and validated.
+
+---
+
+## Documentation Validation Report (Knowledge Base)
+
+**Date:** 2025-03-14  
+**Plan:** .cursor/plans/109-service-user_list_and_rotate-secret.plan.md  
+**Documents validated:** docs/commands/application-management.md, docs/commands/permissions.md, docs/commands/README.md  
+**Status:** COMPLETE
+
+### Executive Summary
+
+All three docs mentioned in the plan were validated. Structure, cross-references, and Markdown pass. One auto-fix was applied (table separator spacing in permissions.md). Content is command-centric and focused on using the builder; no REST URLs or request/response shapes in user-facing prose. Schema-based validation is N/A for these command-reference docs (no application.yaml or external-system examples in the validated sections).
+
+### Documents Validated
+
+
+| Document                                | Status              |
+| --------------------------------------- | ------------------- |
+| docs/commands/application-management.md | Passed              |
+| docs/commands/permissions.md            | Passed (auto-fixed) |
+| docs/commands/README.md                 | Passed              |
+
+
+### Structure Validation
+
+- **application-management.md:** Single `#` title, `##` / `###` hierarchy; anchors for service-user list, rotate-secret, delete, update-groups, update-redirect-uris; nav back to Documentation index and Commands index; usage, options, permissions, issues per subcommand.
+- **permissions.md:** Title and sections; Command → Service → Permissions table; Controller and Dataplane permission summaries; See also links.
+- **README.md:** Table of contents; Application Management section includes all five service-user subcommands with descriptions and links to application-management.md anchors.
+
+### Reference Validation
+
+- Cross-references within docs/ use correct relative paths (e.g. `permissions.md`, `application-management.md#aifabrix-service-user-list`, `../README.md`, `../configuration/README.md`).
+- No broken internal links detected; linked targets exist under docs/.
+
+### Schema-Based Validation
+
+- **Relevance:** These docs are CLI command references. They do not contain YAML/JSON config examples (e.g. application.yaml, external-system, datasource, or infrastructure) in the service-user sections.
+- **Result:** N/A – no config examples in validated sections; no lib/schema validation required for this plan’s doc set.
+
+### Markdown Validation
+
+- **Before:** permissions.md had MD060 (table separator missing spaces around pipes).
+- **Auto-fix applied:** Separator row in permissions.md updated to use spaces around pipes for consistent table style.
+- **After:** `npx markdownlint` on all three files completes with 0 errors.
+
+### Project Rules Compliance
+
+- **Focus:** Content describes how to use the aifabrix builder (commands, options, permissions, troubleshooting).
+- **Docs rules:** Command-centric; auth and permissions described in user terms; no REST endpoint URLs or request/response shapes in user-facing prose.
+- **CLI:** Command names and options match the implementation (list, rotate-secret, delete, update-groups, update-redirect-uris with --id, --controller, etc.).
+
+### Automatic Fixes Applied
+
+- docs/commands/permissions.md: Table separator line (line 23) – added spaces around pipes to satisfy MD060.
+
+### Manual Fixes Required
+
+- None.
+
+### Final Checklist
+
+- All listed documents validated
+- MarkdownLint passes (0 errors)
+- Cross-references within docs/ valid
+- No broken internal links
+- Schema validation N/A (no config examples in these command docs)
+- Content focused on using the builder (external users)
+- Auto-fixes applied; no manual fixes needed
 

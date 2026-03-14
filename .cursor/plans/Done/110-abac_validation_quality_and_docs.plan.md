@@ -128,6 +128,7 @@ Before marking this plan complete:
 | **Offline validation** | primaryKey and exposed.profiles in field-reference-validator; validate.js datasource path runs full post-schema; manifest validator runs same post-schema per datasource. |
 | **Docs**               | validation.md and validation-rules.md: list all field-ref and ABAC rules, troubleshooting for new errors.                                                                 |
 
+
 ---
 
 ## Plan Validation Report
@@ -172,4 +173,181 @@ Add ABAC/datasource procedural validation (dimensions to attributes, crossSystem
 - Keep abac-validator.js and field-reference-validator.js under 500 lines; extract helpers if needed.
 - Add new error strings to docs/commands/validation.md Troubleshooting so users can look up messages.
 
+---
+
+## Implementation Validation Report
+
+**Date:** 2026-03-14  
+**Plan:** .cursor/plans/110-abac_validation_quality_and_docs.plan.md  
+**Status:** ✅ COMPLETE
+
+### Executive Summary
+
+All implementation requirements for plan 110 (ABAC validation quality and docs) have been completed. Code quality validation passed: format (lint:fix), lint (zero errors/warnings), and full test suite (247 suites, 5428 tests) all succeeded. All mentioned files exist, tests cover the new and modified code, and documentation was updated per the plan.
+
+### Task Completion
+
+The plan defines work via **Implementation order** (7 steps) and **Definition of Done** (9 items). All are satisfied:
+
+
+| #   | Task                                                                                          | Status |
+| --- | --------------------------------------------------------------------------------------------- | ------ |
+| 1   | Error-formatter: oneOf/anyOf, pattern descriptions, const                                     | ✅      |
+| 2   | Field-reference validator: primaryKey and exposed.profiles checks                             | ✅      |
+| 3   | ABAC validator: new module (dimensions, crossSystemJson, legacy crossSystem)                  | ✅      |
+| 4   | Integration: validate.js datasource path, validateDatasourceFile, external-manifest-validator | ✅      |
+| 5   | external-system-validators: human phrases for regex errors                                    | ✅      |
+| 6   | Tests: abac-validator, field-reference, validate and manifest integration                     | ✅      |
+| 7   | Docs: validation.md and validation-rules.md                                                   | ✅      |
+
+
+**Definition of Done:** Build/lint/test order followed; file size limits met (all files ≤500 lines); JSDoc on new public functions; no secrets in validation errors; docs updated with field-reference/ABAC rules and troubleshooting.
+
+### File Existence Validation
+
+
+| File                                          | Status | Notes                                                                                                                   |
+| --------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------- |
+| lib/datasource/abac-validator.js              | ✅      | New module; validateAbac, validateDimensionsObject, validateCrossSystemJson                                             |
+| lib/datasource/field-reference-validator.js   | ✅      | primaryKey + exposed.profiles checks; helpers under 60 lines                                                            |
+| lib/datasource/validate.js                    | ✅      | Calls validateFieldReferences + validateAbac after schema                                                               |
+| lib/utils/error-formatter.js                  | ✅      | oneOf/anyOf, const, PATTERN_DESCRIPTIONS for ^[a-zA-Z0-9_]+$ and ^[a-zA-Z0-9_.]+$                                       |
+| lib/validation/validate.js                    | ✅      | Datasource path runs field refs + ABAC after schema                                                                     |
+| lib/validation/external-manifest-validator.js | ✅      | Per-datasource field refs + ABAC after schema pass                                                                      |
+| lib/utils/external-system-validators.js       | ✅      | Human phrases for dimension key and attribute path                                                                      |
+| docs/commands/validation.md                   | ✅      | Field reference and ABAC checks section; Troubleshooting for primaryKey, exposed.profiles, crossSystem, crossSystemJson |
+| docs/configuration/validation-rules.md        | ✅      | Step 2 datasource table: field reference, primaryKey, exposed.profiles, ABAC rows                                       |
+
+
+### Test Coverage
+
+
+| Test File                                              | Status | Coverage                                                                                   |
+| ------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------ |
+| tests/lib/datasource/abac-validator.test.js            | ✅      | validateAbac (no config, legacy crossSystem, dimensions, crossSystemJson), helpers         |
+| tests/lib/datasource/field-reference-validator.test.js | ✅      | primaryKey, exposed.profiles, embedding, uniqueKey, repeatingValues, rejectIf, edge cases  |
+| tests/lib/datasource/datasource-validate.test.js       | ✅      | validateDatasourceFile with field ref and ABAC (crossSystemJson two operators) failures    |
+| tests/lib/utils/error-formatter.test.js                | ✅      | oneOf/anyOf, const, new pattern descriptions                                               |
+| tests/lib/validation/validate.test.js                  | ✅      | validateExternalFile: post-schema primaryKey and post-schema ABAC (crossSystemJson) errors |
+
+
+Tests mirror source structure; Jest; success and error paths covered. New code has unit tests; validate and datasource-validate integration paths covered.
+
+### Code Quality Validation
+
+
+| Step                | Result   | Details                                                  |
+| ------------------- | -------- | -------------------------------------------------------- |
+| **STEP 1 – Format** | ✅ PASSED | `npm run lint:fix` – exit code 0                         |
+| **STEP 2 – Lint**   | ✅ PASSED | `npm run lint` – exit code 0, zero errors, zero warnings |
+| **STEP 3 – Test**   | ✅ PASSED | `npm test` – 247 test suites passed, 5428 tests passed   |
+
+
+**File size:** All plan-related files ≤500 lines (largest: lib/validation/validate.js at 500 lines).
+
+### Cursor Rules Compliance
+
+
+| Rule                     | Status | Notes                                                                                                 |
+| ------------------------ | ------ | ----------------------------------------------------------------------------------------------------- |
+| Architecture patterns    | ✅      | CommonJS; new module in lib/datasource/; path.join not required in validators                         |
+| Validation patterns      | ✅      | formatValidationErrors for AJV; procedural checks with developer-friendly messages                    |
+| Code quality             | ✅      | File/function size limits; JSDoc on validateAbac, validateFieldReferences, formatters                 |
+| Error handling & logging | ✅      | Actionable messages; hints (“Add the attribute or remove the reference”); no sensitive data in errors |
+| Security & compliance    | ✅      | No hardcoded secrets; no sensitive data in validation output                                          |
+| Documentation            | ✅      | JSDoc on public functions; validation.md and validation-rules.md command-centric, no REST API details |
+| Testing conventions      | ✅      | Jest; tests in tests/lib/datasource/, tests/lib/validation/, tests/lib/utils/; mirror structure       |
+
+
+### Implementation Completeness
+
+- **ABAC validator:** Dimensions→attributes, crossSystemJson (one operator per path, allowed operators), legacy crossSystem rejected.
+- **Field-reference validator:** primaryKey (attributes or dimensions), exposed.profiles; existing embedding, uniqueKey, repeatingValues, rejectIf with hint text.
+- **Error formatter:** oneOf/anyOf (including capabilities), const, pattern descriptions for dimension/attribute patterns.
+- **Integration:** validate.js (datasource), validateDatasourceFile, external-manifest-validator all run field refs + ABAC after schema.
+- **Docs:** validation.md and validation-rules.md list field-ref and ABAC rules; troubleshooting for new errors.
+
+### Issues and Recommendations
+
+- **None.** Implementation meets the plan and DoD.
+- **Note:** Test run reported “A worker process has failed to exit gracefully and has been force exited” (likely test teardown/timers). All tests passed; this is a known Jest worker teardown warning, not a plan 110 regression.
+
+### Final Validation Checklist
+
+- All implementation-order tasks completed
+- All mentioned files exist and contain expected logic
+- Tests exist for abac-validator, field-reference, error-formatter, validate integration, datasource-validate
+- Format (lint:fix) passed
+- Lint passed (0 errors, 0 warnings)
+- Full test suite passed
+- Cursor rules compliance verified (architecture, validation, quality, error handling, security, docs, testing)
+- Documentation updated (validation.md, validation-rules.md)
+
+---
+
+## Validation Report
+
+**Date:** 2026-03-14  
+**Plan:** .cursor/plans/110-abac_validation_quality_and_docs.plan.md  
+**Document(s):** docs/commands/validation.md, docs/configuration/validation-rules.md  
+**Status:** ✅ COMPLETE
+
+### Executive Summary
+
+Both documents mentioned in plan 110 were validated. Structure, cross-references, schema alignment, and Markdown pass. Content is focused on how to use the aifabrix builder (CLI validation commands and rules). No broken links; no MarkdownLint errors.
+
+### Documents Validated
+
+
+| Document                               | Status   |
+| -------------------------------------- | -------- |
+| docs/commands/validation.md            | ✅ Passed |
+| docs/configuration/validation-rules.md | ✅ Passed |
+
+
+**Total:** 2 · **Passed:** 2 · **Failed:** 0 · **Auto-fixed:** 0
+
+### Structure Validation
+
+- **docs/commands/validation.md:** Single `#` title "Validation Commands"; clear hierarchy (Overview, What Gets Validated, JSON Schemas, How Schema Validation Works, aifabrix validate, Examples, Troubleshooting, Related Documentation). Nav: "← [Documentation index](../README.md) · [Commands index](README.md)". Sections appropriate for user docs (overview, schemas, command usage, examples, troubleshooting).
+- **docs/configuration/validation-rules.md:** Single `#` title; hierarchy (Relationship to dataplane, Dimensions, Validation steps, Step 1–3, Rules at a glance, Prerequisites, Troubleshooting). Nav: "← [Configuration](README.md) · [Commands: Validation](../commands/validation.md)". Content matches configuration/validation-rules focus.
+
+### Reference Validation
+
+- **docs/commands/validation.md:** Links to `../README.md`, `README.md`, `../wizard.md`, `external-integration.md`, `../external-systems.md`, `external-integration-testing.md`, `../configuration/README.md`, `../configuration/validation-rules.md` — all targets exist under `docs/`.
+- **docs/configuration/validation-rules.md:** Links to `README.md` (configuration), `../commands/validation.md` — both exist.
+- No broken internal links found.
+
+### Schema-based Validation
+
+- **docs/commands/validation.md:** Describes application, external-system, external-datasource, and wizard schemas; field reference and ABAC checks align with `lib/schema/external-datasource.schema.json` (primaryKey, fieldMappings.dimensions/attributes, config.abac.dimensions, crossSystemJson). JSON example (fieldMappings.dimensions with `country`, `department`) uses valid attribute-path pattern per schema. No full application/datasource examples that would require full schema validation; prose and tables match schema (entityType, primaryKey, fieldMappings, ABAC).
+- **docs/configuration/validation-rules.md:** Step 2 external datasource table lists key, displayName, systemKey, entityType, resourceType, fieldMappings, primaryKey, exposed.profiles, ABAC (config.abac) — all align with `external-datasource.schema.json` and plan 110 implementation. application.yaml and RBAC rules align with application schema and project behavior.
+
+### Markdown Validation
+
+- **MarkdownLint:** `npx markdownlint "docs/commands/validation.md" "docs/configuration/validation-rules.md"` — exit code 0, zero errors.
+- **MarkdownLint --fix:** No changes applied (no fixable issues).
+
+### Project Rules Compliance
+
+- **Focus on builder usage:** Both docs describe CLI validation (`aifabrix validate`, `aifabrix datasource validate`) and configuration rules for external users; no REST API or internal implementation details.
+- **CLI and config:** Command names and options match the tool; config structure and rules match `lib/schema` (application-schema.json, external-datasource.schema.json, external-system.schema.json) and plan 110 (field-reference and ABAC checks).
+
+### Automatic Fixes Applied
+
+None required.
+
+### Manual Fixes Required
+
+None.
+
+### Final Checklist
+
+- All listed documents validated
+- MarkdownLint passes (0 errors)
+- Cross-references within docs/ valid
+- No broken internal links
+- Examples and described structure align with lib/schema (external-datasource, application)
+- Content focused on using the builder (external users)
+- Auto-fixes applied; no manual fixes needed
 

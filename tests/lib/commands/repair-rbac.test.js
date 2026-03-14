@@ -11,10 +11,11 @@ const fs = require('fs');
 
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn() }));
 jest.mock('../../../lib/utils/config-format', () => ({
-  loadConfigFile: jest.fn()
+  loadConfigFile: jest.fn(),
+  writeConfigFile: jest.fn()
 }));
 
-const { loadConfigFile } = require('../../../lib/utils/config-format');
+const { loadConfigFile, writeConfigFile } = require('../../../lib/utils/config-format');
 const {
   getCapabilitiesFromDatasource,
   mergeRbacFromDatasources
@@ -60,12 +61,42 @@ describe('repair-rbac', () => {
     it('returns false when no permission names collected (no datasource files)', () => {
       const existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(false);
       const changes = [];
-      const result = mergeRbacFromDatasources(
-        appPath, {}, [], () => null, false, changes
-      );
+      const result = mergeRbacFromDatasources(appPath, {}, [], () => null, { format: 'yaml', dryRun: false, changes });
       expect(result).toBe(false);
       expect(changes).toHaveLength(0);
       existsSyncSpy.mockRestore();
+    });
+
+    it('writes back to rbac.json when existing file is rbac.json (preserves format)', () => {
+      const rbacJsonPath = path.join(appPath, 'rbac.json');
+      const dsPath = path.join(appPath, 'hubspot-datasource-contact.json');
+      const existingRbac = {
+        roles: [{ name: 'Admin', value: 'hubspot-admin', description: 'Admin', groups: [] }],
+        permissions: [{ name: 'contact:list', roles: ['hubspot-admin'], description: 'List' }]
+      };
+      jest.spyOn(fs, 'existsSync').mockImplementation((p) => {
+        const s = String(p);
+        return s === rbacJsonPath || s === dsPath;
+      });
+      loadConfigFile.mockImplementation((p) => {
+        if (p === rbacJsonPath) return existingRbac;
+        if (p === dsPath) return { resourceType: 'contact', capabilities: ['list', 'get'] };
+        return {};
+      });
+      writeConfigFile.mockImplementation(() => {});
+      const changes = [];
+
+      const result = mergeRbacFromDatasources(
+        appPath,
+        { key: 'hubspot', displayName: 'HubSpot' },
+        ['hubspot-datasource-contact.json'],
+        () => null,
+        { format: 'yaml', dryRun: false, changes }
+      );
+
+      expect(result).toBe(true);
+      expect(writeConfigFile).toHaveBeenCalledWith(rbacJsonPath, expect.any(Object));
+      expect(writeConfigFile.mock.calls[0][0]).toBe(rbacJsonPath);
     });
 
     it('adds missing permissions to existing rbac and does not add roles when roles exist', () => {
@@ -86,7 +117,7 @@ describe('repair-rbac', () => {
         }
         return {};
       });
-      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+      writeConfigFile.mockImplementation(() => {});
       const changes = [];
 
       const result = mergeRbacFromDatasources(
@@ -94,8 +125,7 @@ describe('repair-rbac', () => {
         { key: 'hubspot', displayName: 'HubSpot' },
         ['hubspot-datasource-contact.json'],
         () => null,
-        false,
-        changes
+        { format: 'yaml', dryRun: false, changes }
       );
 
       expect(result).toBe(true);
@@ -103,12 +133,11 @@ describe('repair-rbac', () => {
       expect(existingRbac.permissions.map(pr => pr.name).sort()).toEqual(['contact:get', 'contact:list']);
       expect(changes.some(c => c.includes('Added RBAC permission: contact:get'))).toBe(true);
       expect(changes.some(c => c.includes('Admin and Reader'))).toBe(false);
-      expect(writeFileSyncSpy).toHaveBeenCalledWith(rbacPath, expect.any(String), expect.any(Object));
-      writeFileSyncSpy.mockRestore();
+      expect(writeConfigFile).toHaveBeenCalledWith(rbacPath, expect.objectContaining({ roles: expect.any(Array), permissions: expect.any(Array) }));
     });
 
-    it('creates rbac with permissions and default Admin/Reader when no rbac file exists', () => {
-      const rbacPath = path.join(appPath, 'rbac.yaml');
+    it('creates rbac.json when no rbac file exists and format is json', () => {
+      const rbacJsonPath = path.join(appPath, 'rbac.json');
       const dsPath = path.join(appPath, 'hubspot-datasource-contact.json');
       jest.spyOn(fs, 'existsSync').mockImplementation((p) => {
         const s = String(p);
@@ -120,7 +149,7 @@ describe('repair-rbac', () => {
         }
         return {};
       });
-      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+      writeConfigFile.mockImplementation(() => {});
 
       const changes = [];
       const result = mergeRbacFromDatasources(
@@ -128,19 +157,50 @@ describe('repair-rbac', () => {
         { key: 'hubspot', displayName: 'HubSpot' },
         ['hubspot-datasource-contact.json'],
         () => null,
-        false,
-        changes
+        { format: 'json', dryRun: false, changes }
+      );
+
+      expect(result).toBe(true);
+      expect(writeConfigFile).toHaveBeenCalledWith(rbacJsonPath, expect.any(Object));
+      expect(writeConfigFile.mock.calls[0][0]).toBe(rbacJsonPath);
+      const writtenObj = writeConfigFile.mock.calls[0][1];
+      expect(writtenObj.permissions.some(p => p.name === 'contact:list')).toBe(true);
+      expect(writtenObj.permissions.some(p => p.name === 'contact:get')).toBe(true);
+    });
+
+    it('creates rbac with permissions and default Admin/Reader when no rbac file exists', () => {
+      const defaultRbacPath = path.join(appPath, 'rbac.yaml');
+      const dsPath = path.join(appPath, 'hubspot-datasource-contact.json');
+      jest.spyOn(fs, 'existsSync').mockImplementation((p) => {
+        const s = String(p);
+        return s === dsPath;
+      });
+      loadConfigFile.mockImplementation((p) => {
+        if (p === dsPath) {
+          return { resourceType: 'contact', capabilities: ['list', 'get'] };
+        }
+        return {};
+      });
+      writeConfigFile.mockImplementation(() => {});
+
+      const changes = [];
+      const result = mergeRbacFromDatasources(
+        appPath,
+        { key: 'hubspot', displayName: 'HubSpot' },
+        ['hubspot-datasource-contact.json'],
+        () => null,
+        { format: 'yaml', dryRun: false, changes }
       );
 
       expect(result).toBe(true);
       expect(changes.some(c => c.includes('contact:list'))).toBe(true);
       expect(changes.some(c => c.includes('contact:get'))).toBe(true);
       expect(changes.some(c => c.includes('Admin and Reader'))).toBe(true);
-      const written = writeFileSyncSpy.mock.calls[0][1];
-      expect(written).toContain('hubspot-admin');
-      expect(written).toContain('hubspot-reader');
-      expect(written).toContain('contact:list');
-      writeFileSyncSpy.mockRestore();
+      expect(writeConfigFile).toHaveBeenCalledWith(defaultRbacPath, expect.any(Object));
+      const writtenObj = writeConfigFile.mock.calls[0][1];
+      expect(JSON.stringify(writtenObj)).toContain('hubspot-admin');
+      expect(JSON.stringify(writtenObj)).toContain('hubspot-reader');
+      expect(writtenObj.permissions.some(p => p.name === 'contact:list')).toBe(true);
     });
 
     it('dry-run reports changes but does not write', () => {
@@ -152,7 +212,6 @@ describe('repair-rbac', () => {
         }
         return {};
       });
-      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
 
       const changes = [];
       const result = mergeRbacFromDatasources(
@@ -160,17 +219,16 @@ describe('repair-rbac', () => {
         { key: 'hubspot', displayName: 'HubSpot' },
         ['hubspot-datasource-deals.json'],
         () => null,
-        true,
-        changes
+        { format: 'yaml', dryRun: true, changes }
       );
 
       expect(result).toBe(true);
       expect(changes.length).toBeGreaterThan(0);
-      expect(writeFileSyncSpy).not.toHaveBeenCalled();
-      writeFileSyncSpy.mockRestore();
+      expect(writeConfigFile).not.toHaveBeenCalled();
     });
 
     it('uses extractRbacFromSystem when no rbac file exists', () => {
+      const defaultRbacPath = path.join(appPath, 'rbac.yaml');
       const dsPath = path.join(appPath, 'hubspot-datasource-contact.json');
       jest.spyOn(fs, 'existsSync').mockImplementation((p) => String(p) === dsPath);
       loadConfigFile.mockImplementation((p) => {
@@ -181,7 +239,7 @@ describe('repair-rbac', () => {
         roles: [{ name: 'Legacy', value: 'legacy', description: 'Legacy', groups: [] }],
         permissions: []
       });
-      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+      writeConfigFile.mockImplementation(() => {});
 
       const changes = [];
       mergeRbacFromDatasources(
@@ -189,15 +247,14 @@ describe('repair-rbac', () => {
         { key: 'hubspot', displayName: 'HubSpot' },
         ['hubspot-datasource-contact.json'],
         extractRbacFromSystem,
-        false,
-        changes
+        { format: 'yaml', dryRun: false, changes }
       );
 
       expect(extractRbacFromSystem).toHaveBeenCalledWith({ key: 'hubspot', displayName: 'HubSpot' });
-      const written = writeFileSyncSpy.mock.calls[0][1];
-      expect(written).toContain('Legacy');
-      expect(written).toContain('contact:list');
-      writeFileSyncSpy.mockRestore();
+      expect(writeConfigFile).toHaveBeenCalledWith(defaultRbacPath, expect.any(Object));
+      const writtenObj = writeConfigFile.mock.calls[0][1];
+      expect(writtenObj.roles.some(r => r.value === 'legacy')).toBe(true);
+      expect(writtenObj.permissions.some(p => p.name === 'contact:list')).toBe(true);
     });
   });
 });

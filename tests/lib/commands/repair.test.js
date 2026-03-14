@@ -23,7 +23,8 @@ jest.mock('../../../lib/utils/paths', () => ({
   getDeployJsonPath: jest.fn()
 }));
 jest.mock('../../../lib/utils/app-config-resolver', () => ({
-  resolveApplicationConfigPath: jest.fn()
+  resolveApplicationConfigPath: jest.fn(),
+  resolveRbacPath: jest.fn()
 }));
 jest.mock('../../../lib/utils/config-format', () => ({
   loadConfigFile: jest.fn(),
@@ -45,7 +46,7 @@ jest.mock('../../../lib/generator/split-readme', () => ({
 const { detectAppType, getDeployJsonPath } = require('../../../lib/utils/paths');
 const { generateReadmeFromDeployJson } = require('../../../lib/generator/split-readme');
 const { buildAuthenticationFromMethod } = require('../../../lib/external-system/generator');
-const { resolveApplicationConfigPath } = require('../../../lib/utils/app-config-resolver');
+const { resolveApplicationConfigPath, resolveRbacPath } = require('../../../lib/utils/app-config-resolver');
 const { loadConfigFile, writeConfigFile, writeYamlPreservingComments, isYamlPath } = require('../../../lib/utils/config-format');
 const generator = require('../../../lib/generator');
 const {
@@ -80,6 +81,7 @@ describe('repair', () => {
     jest.clearAllMocks();
     detectAppType.mockResolvedValue({ appPath, isExternal: true });
     resolveApplicationConfigPath.mockReturnValue(configPath);
+    resolveRbacPath.mockReturnValue(path.join(appPath, 'rbac.yaml'));
     isYamlPath.mockImplementation((p) => typeof p === 'string' && (p.endsWith('.yaml') || p.endsWith('.yml')));
     loadConfigFile.mockImplementation((p) => {
       const s = typeof p === 'string' ? p : '';
@@ -332,8 +334,27 @@ describe('repair', () => {
       );
     });
 
+    it('does not create rbac when rbac.json (or rbac.yaml/yml) already exists', async() => {
+      resolveRbacPath.mockReturnValue(path.join(appPath, 'rbac.json'));
+      existsSyncSpy.mockImplementation((p) => {
+        const s = typeof p === 'string' ? p : '';
+        return s === configPath || s === appPath || s.endsWith('test-hubspot-system.yaml') || s.endsWith('rbac.json');
+      });
+      readdirSyncSpy.mockReturnValue(['test-hubspot-system.yaml', 'application.yaml']);
+      loadConfigFile.mockImplementation((p) => {
+        if (p === configPath) return { ...mockVariables, externalIntegration: { ...mockVariables.externalIntegration, systems: ['test-hubspot-system.yaml'], dataSources: [] } };
+        return { key: appName, roles: [{ name: 'admin' }], permissions: [] };
+      });
+      generator.generateDeployJson.mockResolvedValue(path.join(appPath, 'test-hubspot-deploy.json'));
+
+      const result = await repairExternalIntegration(appName);
+      expect(result.rbacFileCreated).toBe(false);
+      const rbacWriteCalls = writeConfigFile.mock.calls.filter(c => String(c[0]).endsWith('rbac.yaml') || String(c[0]).endsWith('rbac.json'));
+      expect(rbacWriteCalls).toHaveLength(0);
+    });
+
     it('creates rbac.yaml when missing and system has roles', async() => {
-      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+      resolveRbacPath.mockReturnValue(null);
       existsSyncSpy.mockImplementation((p) => {
         const s = typeof p === 'string' ? p : '';
         if (s === configPath || s === appPath) return true;
@@ -353,12 +374,40 @@ describe('repair', () => {
 
       const result = await repairExternalIntegration(appName);
       expect(result.rbacFileCreated).toBe(true);
-      expect(writeFileSyncSpy).toHaveBeenCalledWith(
-        path.join(appPath, 'rbac.yaml'),
-        expect.stringContaining('roles'),
-        expect.any(Object)
-      );
-      writeFileSyncSpy.mockRestore();
+      const rbacYamlPath = path.join(appPath, 'rbac.yaml');
+      const rbacWriteCall = writeConfigFile.mock.calls.find(c => c[0] === rbacYamlPath || String(c[0]).endsWith('rbac.yaml'));
+      expect(rbacWriteCall).toBeDefined();
+      expect(rbacWriteCall[0]).toBe(rbacYamlPath);
+      expect(Array.isArray(rbacWriteCall[1].roles)).toBe(true);
+      expect(rbacWriteCall[1].permissions === undefined || Array.isArray(rbacWriteCall[1].permissions)).toBe(true);
+    });
+
+    it('creates rbac.json when missing, system has roles, and format is json', async() => {
+      resolveRbacPath.mockReturnValue(null);
+      existsSyncSpy.mockImplementation((p) => {
+        const s = typeof p === 'string' ? p : '';
+        if (s === configPath || s === appPath) return true;
+        if (s.includes('rbac')) return false;
+        if (s.endsWith('test-hubspot-system.yaml')) return true;
+        return false;
+      });
+      readdirSyncSpy.mockReturnValue([
+        'test-hubspot-system.yaml',
+        'application.yaml'
+      ]);
+      loadConfigFile.mockImplementation((p) => {
+        if (p === configPath) return { ...mockVariables, externalIntegration: { ...mockVariables.externalIntegration, systems: ['test-hubspot-system.yaml'], dataSources: [] } };
+        return { key: appName, roles: [{ name: 'admin' }], permissions: [] };
+      });
+      generator.generateDeployJson.mockResolvedValue(path.join(appPath, 'test-hubspot-deploy.json'));
+
+      const result = await repairExternalIntegration(appName, { format: 'json' });
+      expect(result.rbacFileCreated).toBe(true);
+      const rbacJsonPath = path.join(appPath, 'rbac.json');
+      const rbacWriteCall = writeConfigFile.mock.calls.find(c => c[0] === rbacJsonPath || String(c[0]).endsWith('rbac.json'));
+      expect(rbacWriteCall).toBeDefined();
+      expect(rbacWriteCall[0]).toBe(rbacJsonPath);
+      expect(Array.isArray(rbacWriteCall[1].roles)).toBe(true);
     });
 
     it('throws when app is not external', async() => {
@@ -1716,10 +1765,11 @@ describe('repair', () => {
 
     it('with --rbac adds permissions and default Admin/Reader roles to rbac.yaml', async() => {
       const rbacPath = path.join(appPath, 'rbac.yaml');
+      resolveRbacPath.mockReturnValue(null);
       // Use canonical names so normalization skips; mergeRbacFromDatasources then finds the datasource
       existsSyncSpy.mockImplementation((p) => {
         const s = String(p);
-        if (s.endsWith('rbac.yaml') || s.endsWith('rbac.yml')) return false;
+        if (s.endsWith('rbac.yaml') || s.endsWith('rbac.yml') || s.endsWith('rbac.json')) return false;
         return s === configPath || s === appPath ||
           s.endsWith('hubspot-system.yaml') || s.endsWith('hubspot-test-datasource-contact.json');
       });
@@ -1754,24 +1804,76 @@ describe('repair', () => {
         }
         return {};
       });
-      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
       generator.generateDeployJson.mockResolvedValue(path.join(appPath, 'hubspot-deploy.json'));
 
       await repairExternalIntegration('test-hubspot', { rbac: true });
 
-      expect(writeFileSyncSpy).toHaveBeenCalledWith(
+      expect(writeConfigFile).toHaveBeenCalledWith(
         rbacPath,
-        expect.stringContaining('contact:list'),
-        expect.any(Object)
+        expect.objectContaining({
+          roles: expect.any(Array),
+          permissions: expect.any(Array)
+        })
       );
-      expect(writeFileSyncSpy).toHaveBeenCalledWith(
-        rbacPath,
-        expect.stringContaining('contact:get'),
-        expect.any(Object)
-      );
-      const yamlContent = writeFileSyncSpy.mock.calls.find(c => c[0] === rbacPath)[1];
-      expect(yamlContent).toMatch(/Admin|Reader|roles|permissions/);
-      writeFileSyncSpy.mockRestore();
+      const rbacCall = writeConfigFile.mock.calls.find(c => String(c[0]) === rbacPath);
+      expect(rbacCall).toBeDefined();
+      const rbacObj = rbacCall[1];
+      expect(rbacObj.permissions.some(p => p.name === 'contact:list')).toBe(true);
+      expect(rbacObj.permissions.some(p => p.name === 'contact:get')).toBe(true);
+      expect(rbacObj.roles.some(r => /Admin|Reader/.test(r.name))).toBe(true);
+    });
+
+    it('with --rbac and format json creates rbac.json', async() => {
+      const rbacJsonPath = path.join(appPath, 'rbac.json');
+      resolveRbacPath.mockReturnValue(null);
+      existsSyncSpy.mockImplementation((p) => {
+        const s = String(p);
+        if (s.endsWith('rbac.yaml') || s.endsWith('rbac.yml') || s.endsWith('rbac.json')) return false;
+        return s === configPath || s === appPath ||
+          s.endsWith('hubspot-system.yaml') || s.endsWith('hubspot-test-datasource-contact.json');
+      });
+      readdirSyncSpy.mockReturnValue([
+        'hubspot-system.yaml',
+        'hubspot-test-datasource-contact.json',
+        'application.yaml'
+      ]);
+      loadConfigFile.mockImplementation((p) => {
+        const s = String(p);
+        if (s.endsWith('application.yaml') || s.endsWith('application.json')) {
+          return {
+            app: { key: 'hubspot-test', type: 'external' },
+            externalIntegration: {
+              schemaBasePath: './',
+              systems: ['hubspot-system.yaml'],
+              dataSources: ['hubspot-test-datasource-contact.json']
+            }
+          };
+        }
+        if (s.endsWith('hubspot-system.yaml')) {
+          return { key: 'hubspot-test', displayName: 'HubSpot', dataSources: ['hubspot-test-contact'] };
+        }
+        if (s.endsWith('hubspot-test-datasource-contact.json')) {
+          return {
+            key: 'hubspot-test-contact',
+            systemKey: 'hubspot-test',
+            resourceType: 'contact',
+            capabilities: ['list', 'get'],
+            fieldMappings: { attributes: { email: {} }, dimensions: {} }
+          };
+        }
+        return {};
+      });
+      generator.generateDeployJson.mockResolvedValue(path.join(appPath, 'hubspot-deploy.json'));
+
+      await repairExternalIntegration('test-hubspot', { rbac: true, format: 'json' });
+
+      const rbacCall = writeConfigFile.mock.calls.find(c => String(c[0]) === rbacJsonPath);
+      expect(rbacCall).toBeDefined();
+      expect(rbacCall[0]).toBe(rbacJsonPath);
+      const rbacObj = rbacCall[1];
+      expect(rbacObj.permissions.some(p => p.name === 'contact:list')).toBe(true);
+      expect(rbacObj.permissions.some(p => p.name === 'contact:get')).toBe(true);
+      expect(rbacObj.roles.some(r => /Admin|Reader/.test(r.name))).toBe(true);
     });
 
     it('dry-run does not write datasource or rbac when repair would change them', async() => {

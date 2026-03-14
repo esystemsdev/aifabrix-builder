@@ -109,6 +109,56 @@ describe('Validation Module', () => {
       expect(result.errors).toEqual([]);
     });
 
+    it('should return post-schema errors for datasource when field refs or ABAC fail', async() => {
+      const mockFilePath = '/path/to/datasource.json';
+      const mockContent = JSON.stringify({
+        key: 'test',
+        systemKey: 'hubspot',
+        primaryKey: ['nonexistent'],
+        fieldMappings: { attributes: {}, dimensions: {} }
+      });
+      const mockValidate = jest.fn().mockReturnValue(true);
+
+      fsSync.existsSync.mockImplementation((filePath) => filePath === mockFilePath);
+      fsSync.readFileSync.mockReturnValue(mockContent);
+      loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile(mockFilePath, 'datasource');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThanOrEqual(1);
+      expect(result.errors.some(e => e.includes('primaryKey') && e.includes('nonexistent'))).toBe(true);
+    });
+
+    it('should return post-schema ABAC errors for datasource when crossSystemJson is invalid', async() => {
+      const mockFilePath = '/path/to/datasource.json';
+      const mockContent = JSON.stringify({
+        key: 'test',
+        systemKey: 'hubspot',
+        primaryKey: ['id'],
+        fieldMappings: { attributes: { id: {} }, dimensions: {} },
+        config: {
+          abac: {
+            crossSystemJson: {
+              'ds.country': { eq: 'x', ne: 'y' }
+            }
+          }
+        }
+      });
+      const mockValidate = jest.fn().mockReturnValue(true);
+
+      fsSync.existsSync.mockImplementation((filePath) => filePath === mockFilePath);
+      fsSync.readFileSync.mockReturnValue(mockContent);
+      loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile(mockFilePath, 'datasource');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('crossSystemJson') && e.includes('exactly one operator'))).toBe(true);
+    });
+
     it('should return errors for invalid file', async() => {
       const mockFilePath = '/path/to/invalid.json';
       const mockContent = JSON.stringify({ key: 'test' });

@@ -1,0 +1,166 @@
+{
+  "roles": [
+    {
+      "name": "HubSpot CRM Admin",
+      "value": "hubspot-test-admin",
+      "description": "Full access to all HubSpot CRM operations",
+      "groups": []
+    },
+    {
+      "name": "HubSpot CRM Reader",
+      "value": "hubspot-test-reader",
+      "description": "Read-only access to all HubSpot CRM data",
+      "groups": []
+    }
+  ],
+  "permissions": [
+    {
+      "name": "customer:list",
+      "roles": [
+        "hubspot-test-reader",
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: customer:list"
+    },
+    {
+      "name": "customer:get",
+      "roles": [
+        "hubspot-test-reader",
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: customer:get"
+    },
+    {
+      "name": "customer:create",
+      "roles": [
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: customer:create"
+    },
+    {
+      "name": "customer:update",
+      "roles": [
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: customer:update"
+    },
+    {
+      "name": "customer:delete",
+      "roles": [
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: customer:delete"
+    },
+    {
+      "name": "contact:list",
+      "roles": [
+        "hubspot-test-reader",
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: contact:list"
+    },
+    {
+      "name": "contact:get",
+      "roles": [
+        "hubspot-test-reader",
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: contact:get"
+    },
+    {
+      "name": "contact:create",
+      "roles": [
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: contact:create"
+    },
+    {
+      "name": "contact:update",
+      "roles": [
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: contact:update"
+    },
+    {
+      "name": "contact:delete",
+      "roles": [
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: contact:delete"
+    },
+    {
+      "name": "deal:list",
+      "roles": [
+        "hubspot-test-reader",
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: deal:list"
+    },
+    {
+      "name": "deal:get",
+      "roles": [
+        "hubspot-test-reader",
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: deal:get"
+    },
+    {
+      "name": "deal:create",
+      "roles": [
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: deal:create"
+    },
+    {
+      "name": "deal:update",
+      "roles": [
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: deal:update"
+    },
+    {
+      "name": "deal:delete",
+      "roles": [
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: deal:delete"
+    },
+    {
+      "name": "person:list",
+      "roles": [
+        "hubspot-test-reader",
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: person:list"
+    },
+    {
+      "name": "person:get",
+      "roles": [
+        "hubspot-test-reader",
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: person:get"
+    },
+    {
+      "name": "person:create",
+      "roles": [
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: person:create"
+    },
+    {
+      "name": "person:update",
+      "roles": [
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: person:update"
+    },
+    {
+      "name": "person:delete",
+      "roles": [
+        "hubspot-test-admin"
+      ],
+      "description": "Permission: person:delete"
+    }
+  ]
+}

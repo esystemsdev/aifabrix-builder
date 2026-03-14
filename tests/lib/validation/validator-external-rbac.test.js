@@ -154,7 +154,7 @@ describe('External System RBAC Validation', () => {
       const result = await validator.validateRbac(appName);
 
       expect(result.valid).toBe(true);
-      expect(result.warnings).toContain('rbac.yaml not found - authentication disabled');
+      expect(result.warnings).toContain('rbac file not found - authentication disabled');
     });
 
     it('should validate role value pattern', async() => {
@@ -258,7 +258,7 @@ describe('External System RBAC Validation', () => {
         return '';
       });
 
-      await expect(validator.validateRbac(appName)).rejects.toThrow('Invalid YAML syntax');
+      await expect(validator.validateRbac(appName)).rejects.toThrow(/Invalid syntax in rbac\.yaml/);
     });
 
     it('should validate missing required fields in roles', async() => {
@@ -339,6 +339,61 @@ describe('External System RBAC Validation', () => {
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors.some(e => e.includes('missing required fields'))).toBe(true);
+    });
+
+    it('should validate rbac.json when present (same structure as YAML)', async() => {
+      const appName = 'testexternal';
+      const appPath = path.join(process.cwd(), 'integration', appName);
+      const rbacJsonPath = path.join(appPath, 'rbac.json');
+
+      detectAppType.mockResolvedValue({
+        isExternal: true,
+        appPath: appPath,
+        appType: 'external',
+        baseDir: 'integration'
+      });
+
+      // resolveRbacPath checks rbac.yaml, rbac.yml, rbac.json in order; only rbac.json exists
+      fs.existsSync.mockImplementation((filePath) => filePath === rbacJsonPath);
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === rbacJsonPath) {
+          return JSON.stringify({
+            roles: [
+              { name: 'Admin', value: 'admin', description: 'Admin role' }
+            ],
+            permissions: [
+              { name: 'read', roles: ['admin'], description: 'Read' }
+            ]
+          });
+        }
+        return '';
+      });
+
+      const result = await validator.validateRbac(appName);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('should throw with file basename when rbac.json has invalid JSON', async() => {
+      const appName = 'testexternal';
+      const appPath = path.join(process.cwd(), 'integration', appName);
+      const rbacJsonPath = path.join(appPath, 'rbac.json');
+
+      detectAppType.mockResolvedValue({
+        isExternal: true,
+        appPath: appPath,
+        appType: 'external',
+        baseDir: 'integration'
+      });
+
+      fs.existsSync.mockImplementation((filePath) => filePath === rbacJsonPath);
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === rbacJsonPath) return 'not valid json {';
+        return '';
+      });
+
+      await expect(validator.validateRbac(appName)).rejects.toThrow(/Invalid syntax in rbac\.json/);
     });
   });
 });

@@ -81,6 +81,17 @@ function resolveInSubprocess(appPath) {
   }
 }
 
+/** Resolve RBAC path in a subprocess (real fs). Returns path or "null" string when none. */
+function resolveRbacPathInSubprocess(appPath) {
+  const resolverPath = path.resolve(__dirname, '../../../lib/utils/app-config-resolver.js');
+  const script = 'const r=require(process.argv[2]); try { const p=r.resolveRbacPath(process.argv[1]); console.log(p===null?"null":p); } catch(e) { console.error(e.message); process.exit(1); }';
+  return execSync(nodeCmd() + ' -e ' + JSON.stringify(script) + ' ' + JSON.stringify(appPath) + ' ' + JSON.stringify(resolverPath), {
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+    shell: true
+  }).trim();
+}
+
 /** In-process resolver for validation-only tests (invalid appPath; no fs access). */
 function getResolver() {
   let resolveApplicationConfigPath;
@@ -188,5 +199,75 @@ describe('resolveApplicationConfigPath', () => {
   it('throws when appPath is not a string (number)', () => {
     const resolveApplicationConfigPath = getResolver();
     expect(() => resolveApplicationConfigPath(123)).toThrow(/App path is required/);
+  });
+});
+
+describe('resolveRbacPath', () => {
+  let tempDir;
+
+  beforeEach(() => {
+    tempDir = path.join(os.tmpdir(), `aifabrix-rbac-resolve-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+    createTempDirReal(tempDir);
+  });
+
+  afterEach(() => {
+    try {
+      if (tempDir && realFs.existsSync(tempDir)) {
+        realFs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    } catch {
+      // ignore
+    }
+  });
+
+  it('returns rbac.yaml path when only it exists', () => {
+    const rbacYaml = path.join(tempDir, 'rbac.yaml');
+    writeFileReal(rbacYaml, 'roles: []\npermissions: []');
+    const result = resolveRbacPathInSubprocess(tempDir);
+    expect(result).toBe(rbacYaml);
+  });
+
+  it('returns rbac.yml path when only it exists', () => {
+    const rbacYml = path.join(tempDir, 'rbac.yml');
+    writeFileReal(rbacYml, 'roles: []\npermissions: []');
+    const result = resolveRbacPathInSubprocess(tempDir);
+    expect(result).toBe(rbacYml);
+  });
+
+  it('returns rbac.json path when only it exists', () => {
+    const rbacJson = path.join(tempDir, 'rbac.json');
+    writeFileReal(rbacJson, '{"roles":[],"permissions":[]}');
+    const result = resolveRbacPathInSubprocess(tempDir);
+    expect(result).toBe(rbacJson);
+  });
+
+  it('prefers rbac.yaml over rbac.yml and rbac.json when multiple exist', () => {
+    writeFileReal(path.join(tempDir, 'rbac.yaml'), 'roles: []');
+    writeFileReal(path.join(tempDir, 'rbac.yml'), 'roles: []');
+    writeFileReal(path.join(tempDir, 'rbac.json'), '{"roles":[]}');
+    const result = resolveRbacPathInSubprocess(tempDir);
+    expect(result).toBe(path.join(tempDir, 'rbac.yaml'));
+  });
+
+  it('returns null when no rbac file exists', () => {
+    const result = resolveRbacPathInSubprocess(tempDir);
+    expect(result).toBe('null');
+  });
+
+  it('throws when appPath is empty', () => {
+    let resolveRbacPath;
+    jest.isolateModules(() => {
+      resolveRbacPath = require('../../../lib/utils/app-config-resolver').resolveRbacPath;
+    });
+    expect(() => resolveRbacPath('')).toThrow(/App path is required/);
+  });
+
+  it('throws when appPath is not a string', () => {
+    let resolveRbacPath;
+    jest.isolateModules(() => {
+      resolveRbacPath = require('../../../lib/utils/app-config-resolver').resolveRbacPath;
+    });
+    expect(() => resolveRbacPath(null)).toThrow(/App path is required/);
+    expect(() => resolveRbacPath(123)).toThrow(/App path is required/);
   });
 });
