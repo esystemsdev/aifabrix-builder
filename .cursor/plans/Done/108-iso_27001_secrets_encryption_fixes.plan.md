@@ -192,3 +192,150 @@ This keeps existing behavior when no key is configured (plaintext) while making 
 - [lib/app/rotate-secret.js](lib/app/rotate-secret.js) – before saving rotated credentials with saveLocalSecret.
 
 This way any path that writes to file-based secrets has the key (and config) available and will encrypt by default.
+
+---
+
+## Validation Report
+
+**Date:** 2025-03-14  
+**Plan:** .cursor/plans/108-iso_27001_secrets_encryption_fixes.plan.md  
+**Document(s):** docs/configuration/secrets-and-config.md, docs/commands/utilities.md  
+**Status:** ✅ COMPLETE
+
+### Executive Summary
+
+Both documents mentioned in the plan were validated. Structure, cross-references, and Markdown pass. No schema-applicable YAML/JSON examples in these docs (they describe runtime config and CLI usage); content is focused on using the builder for external users.
+
+### Documents Validated
+
+| Document | Status | Notes |
+|----------|--------|--------|
+| docs/configuration/secrets-and-config.md | ✅ Pass | Structure, nav, references OK; encryption/key behavior documented |
+| docs/commands/utilities.md | ✅ Pass | Structure, nav, references OK; secret set encryption note present |
+
+- **Total:** 2  
+- **Passed:** 2  
+- **Failed:** 0  
+- **Auto-fixed:** 0  
+
+### Structure Validation
+
+- **secrets-and-config.md:** Single `#` title, clear `##` sections (Why secure, config.yaml, aifabrix-secrets, secrets.local.yaml, admin-secrets.env, Encryption, External integrations). Nav: `← [Documentation index](../README.md) · [Configuration](README.md)`. Hierarchy correct.
+- **utilities.md:** Single `#` title, `##` for each command, `###` for sub-sections. Nav: `← [Documentation index](../README.md) · [Commands index](README.md)`. Hierarchy correct.
+
+### Reference Validation
+
+- **secrets-and-config.md:** Links to `../README.md`, `README.md` (config), `env-template.md`, `../commands/developer-isolation.md`, `../commands/utilities.md`, `../commands/permissions.md` — all targets exist under docs/.
+- **utilities.md:** Links to `../README.md`, `README.md` (commands), `../configuration/application-yaml.md` (and anchor `#external-integration-and-external-system` in application-yaml) — verified present.
+
+No broken internal links.
+
+### Schema-based Validation
+
+- **secrets-and-config.md:** No YAML/JSON code blocks for application, external-system, or datasource config. Describes runtime `config.yaml`, `secrets.local.yaml`, and `admin-secrets.env` (not defined in lib/schema). **N/A** for application-schema, external-system, external-datasource.
+- **utilities.md:** Contains bash examples and references to other docs; no config file examples to validate against lib/schema in the validated sections. **N/A** for schema validation.
+
+### Markdown Validation
+
+- Ran: `npx markdownlint "docs/configuration/secrets-and-config.md" "docs/commands/utilities.md"`
+- **Result:** 0 errors, 0 warnings (exit code 0).
+
+### Project Rules Compliance
+
+- **Focus:** Both docs describe how to use the aifabrix builder (CLI commands, config, secrets, encryption) for external users. No internal-only implementation details.
+- **CLI:** Command names and options match (e.g. `aifabrix secret set`, `secret list`, `secure`, `up-infra --adminPwd`).
+- **Plan alignment:** secrets-and-config states config/key creation on first secret use, default encryption for file-based stores and admin-secrets.env, and bootstrap key only in config; utilities.md states secret set creates config and encryption key if missing and writes encrypted values by default.
+
+### Automatic Fixes Applied
+
+None required.
+
+### Manual Fixes Required
+
+None.
+
+### Final Checklist
+
+- [x] All listed docs validated
+- [x] MarkdownLint passes (0 errors)
+- [x] Cross-references within docs/ valid
+- [x] No broken internal links
+- [x] Examples/structure N/A for lib/schema (runtime config only)
+- [x] Content focused on using the builder (external users)
+- [x] Auto-fixes applied; manual fixes documented (none)
+
+---
+
+## Implementation Validation Report
+
+**Date:** 2025-03-14  
+**Plan:** .cursor/plans/108-iso_27001_secrets_encryption_fixes.plan.md  
+**Status:** ✅ COMPLETE
+
+### Executive Summary
+
+Implementation is complete. All plan requirements are implemented: ensureSecretsEncryptionKey on secret/secure and register/rotate; encrypt-by-default in saveLocalSecret/saveSecret and generateAdminSecretsEnv/ensureAdminSecrets; bootstrap key only in config; prepareInfraDirectory async with readAndDecryptAdminSecrets; stopInfra/stopInfraWithVolumes/restartService use decrypted temp file. Docs updated. Tests added per plan §5. Format and lint fixes applied (eqeqeq, max-lines-per-function). One test mock fix: secrets-set.test.js now mocks config.getSecretsEncryptionKey. All tests pass.
+
+### Task Completion
+
+Plan is narrative (no checkboxes). All implementation steps from “Order of implementation” are done: (1) ensureSecretsEncryptionKey on all secret/secure and register/rotate, (2) encrypt in saveLocalSecret/saveSecret, (3) encrypt in generateAdminSecretsEnv and ensureAdminSecrets, (4) prepareInfraDirectory async + decrypted temp for down/restart, (5) bootstrap key only in config, (6) tests and docs updated.
+
+### File Existence Validation
+
+| File | Status |
+|------|--------|
+| lib/cli/setup-secrets.js | ✅ ensureSecretsEncryptionKey in list/set/remove/validate/secure |
+| lib/utils/local-secrets.js | ✅ resolveValueForWrite, encrypt in saveLocalSecret/saveSecret |
+| lib/core/secrets.js | ✅ formatAdminSecretsContent, generateAdminSecretsEnv encrypt |
+| lib/core/ensure-encryption-key.js | ✅ No saveLocalSecret for new key; setSecretsEncryptionKey only |
+| lib/app/register.js | ✅ ensureSecretsEncryptionKey at start |
+| lib/app/rotate-secret.js | ✅ ensureSecretsEncryptionKey at start |
+| lib/infrastructure/helpers.js | ✅ ensureAdminSecrets read/write via readAndDecrypt + formatAdminSecretsContent; prepareInfraDirectory async |
+| lib/infrastructure/index.js | ✅ stopInfra, stopInfraWithVolumes, restartService use decrypted .env.run temp |
+| docs/configuration/secrets-and-config.md | ✅ Updated |
+| docs/commands/utilities.md | ✅ Updated |
+
+### Test Coverage
+
+| Plan requirement | Test location | Status |
+|------------------|---------------|--------|
+| ensureSecretsEncryptionKey invoked from secret list/set/remove/validate and secure | tests/lib/cli/setup-secrets.test.js | ✅ 5 tests |
+| saveLocalSecret/saveSecret with encryption key → secure:// written | tests/lib/utils/local-secrets.test.js | ✅ 1 test |
+| generateAdminSecretsEnv with encryption key → secure:// in output | tests/lib/core/secrets.test.js | ✅ 1 test |
+| Bootstrap key not in secrets file | No test expected key in file after bootstrap | N/A |
+
+Additional: config mock in tests/lib/commands/secrets-set.test.js extended with getSecretsEncryptionKey so handleSecretsSet tests pass (local-secrets now calls it).
+
+### Code Quality Validation
+
+- **Format (lint:fix):** ✅ PASSED (after fixing eqeqeq in secrets.js and extracting setupSecureCommand in setup-secrets.js for max-lines-per-function).
+- **Lint:** ✅ PASSED (0 errors). 4 warnings remain: max-statements in lib/infrastructure/helpers.js ensureAdminSecrets, lib/infrastructure/index.js stopInfra, stopInfraWithVolumes, restartService.
+- **Tests:** ✅ PASSED (245 suites, 5353 tests; 28 skipped).
+
+### Cursor Rules Compliance
+
+- **Error handling:** try/catch and error handling in place.
+- **Async patterns:** async/await and config getSecretsEncryptionKey used correctly.
+- **Security:** No hardcoded secrets; encryption key from config; bootstrap key only in config.
+- **Module patterns:** CommonJS; proper requires and exports.
+- **Input validation:** Existing validation retained in touched code.
+
+### Implementation Completeness
+
+- All plan “files to touch” implemented.
+- Documentation updated per plan.
+- Tests added/extended per plan §5; no bootstrap-key-in-file tests required.
+
+### Issues and Recommendations
+
+- **Optional:** Reduce statement count in ensureAdminSecrets, stopInfra, stopInfraWithVolumes, restartService (extract helpers) to clear the 4 max-statements warnings.
+- **Tests:** Plan §5 test requirements are satisfied. Optional extras: ensureAdminSecrets encrypt path unit test; infra unit test that stopInfra/restartService use decrypted temp file (currently covered indirectly via infra tests).
+
+### Final Validation Checklist
+
+- [x] All implementation steps completed
+- [x] All touched files exist and contain expected changes
+- [x] Tests exist for ensureSecretsEncryptionKey invocation, encrypted saveLocalSecret/saveSecret, generateAdminSecretsEnv with encryption
+- [x] Code quality: format and lint pass (0 errors); tests pass
+- [x] Cursor rules compliance verified
+- [x] Documentation updated

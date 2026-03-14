@@ -12,7 +12,9 @@ Commands for creating, testing, and managing external system integrations. Comma
 
 **Create:** To create an external system, run `aifabrix create <app>` (external is the default type). Use `aifabrix create <app> --type webapp` for a builder app. The generated README in `integration/<app>/` includes a **Secrets** section with `aifabrix secret set <systemKey>/<key> <your value>` commands per authentication type (key has no `kv://` prefix).
 
-**Repair:** If `application.yaml`, system file `dataSources`, or env.template gets out of sync with files on disk (e.g. after converting JSON ↔ YAML, adding/removing/renaming datasource files, auth variables wrongly listed in system `configuration`, or env.template having wrong KV_* keys), run `aifabrix repair <app>`. Repair supports `--auth <method>` to set the integration’s authentication method (canonical variables and security) and update env.template accordingly. When switching auth method, existing authentication variables (e.g. baseUrl, tokenUrl) are preserved. It also aligns datasource files with the manifest (dimensions and metadataSchema from attributes as source of truth) and supports optional flags `--rbac`, `--expose`, `--sync`, and `--test`; see [Utility commands – repair](utilities.md#aifabrix-repair-app) for details.
+**Repair:** If `application.yaml`, system file `dataSources`, or env.template gets out of sync with files on disk (e.g. after converting JSON ↔ YAML, adding/removing/renaming datasource files, auth variables wrongly listed in system `configuration`, or env.template having wrong KV_* keys), run `aifabrix repair <app>`. Repair supports `--auth <method>` to set the integration’s authentication method (canonical variables and security) and update env.template accordingly. When switching auth method, existing authentication variables (e.g. baseUrl, tokenUrl) are preserved. Use `--doc` to regenerate `integration/<app>/README.md` from the current deployment manifest. It also aligns datasource files with the manifest (dimensions and metadataSchema from attributes as source of truth) and supports optional flags `--rbac`, `--expose`, `--sync`, and `--test`; see [Utility commands – repair](utilities.md#aifabrix-repair-app) for details.
+
+**env.template:** For external systems, `env.template` is generated with **Authentication** and **Configuration** sections and inline comments. Use `kv://` (or `aifabrix secret set`) for sensitive values; use plain values for non-sensitive configuration.
 
 ---
 
@@ -266,6 +268,7 @@ Dataplane: https://dataplane.example.com
 
 ---
 
+<a id="aifabrix-credential-env-system-key"></a>
 ## aifabrix credential env <system-key>
 
 Prompt for KV_* credential values and write `integration/<system-key>/.env`.
@@ -515,7 +518,7 @@ For payload sources, response handling, and troubleshooting, see [External Integ
 
 Manage external data sources.
 
-**What:** Command group for managing external datasource configurations. Includes validation, listing, comparison, deployment, and testing operations for datasources that integrate with external systems.
+**What:** Command group for managing external datasource configurations. Includes validation, listing, comparison, deployment, and testing operations for datasources that integrate with external systems. You can use `ds` as a shorthand: `aifabrix ds` is equivalent to `aifabrix datasource`.
 
 **Subcommands:**
 - `validate` - Validate external datasource JSON file
@@ -524,6 +527,8 @@ Manage external data sources.
 - `deploy` - Deploy datasource to dataplane
 - `test-integration` - Run integration (config) test for one datasource via dataplane
 - `test-e2e` - Run E2E test for one datasource (config, credential, sync, data, CIP) via dataplane
+- `log-e2e` - Display latest or specified E2E test log in readable format
+- `log-integration` - Display latest or specified integration test log in readable format
 
 **When:** Managing external integrations, deploying datasource configurations, validating datasource schemas, or running datasource-level tests.
 
@@ -534,6 +539,8 @@ Manage external data sources.
 - [aifabrix datasource upload](#aifabrix-datasource-upload-myapp-file)
 - [aifabrix datasource test-integration](#aifabrix-datasource-test-integration-datasourcekey)
 - [aifabrix datasource test-e2e](#aifabrix-datasource-test-e2e-datasourcekey)
+- [aifabrix datasource log-e2e](#aifabrix-datasource-log-e2e-datasourcekey)
+- [aifabrix datasource log-integration](#aifabrix-datasource-log-integration-datasourcekey)
 
 ---
 
@@ -817,8 +824,9 @@ Environment: dev
 **Next Steps:**
 After upload:
 - Verify datasource: `aifabrix datasource list`
-- Run integration test: `aifabrix datasource test-integration <datasourceKey> --app <app>`
-- Run E2E test: `aifabrix datasource test-e2e <datasourceKey> --app <app>`
+- Run integration test: `aifabrix datasource test-integration <datasourceKey>` (add `--app <app>` only if needed)
+- Run E2E test: `aifabrix datasource test-e2e <datasourceKey>` (add `--app <app>` only if needed)
+- View last E2E or integration log: `aifabrix datasource log-e2e <key>` or `aifabrix datasource log-integration <key>` (after a run with `--debug`)
 - Check datasource status in controller dashboard
 - Monitor dataplane for datasource activity
 
@@ -847,9 +855,9 @@ aifabrix datasource test-integration hubspot-company -a hubspot -e tst --timeout
 
 **Arguments:** `<datasourceKey>` – Datasource key (e.g. hubspot-company, hubspot-deal).
 
-**Options:** `-a, --app <appKey>` – App key (required if not inside `integration/<appKey>/`). `-p, --payload <file>` – Custom test payload file. `-e, --env <env>` – Environment: dev, tst, or pro. `--debug` – Include debug output and write log to `integration/<app>/logs/`. `--timeout <ms>` – Request timeout (default: 30000).
+**Options:** `-a, --app <appKey>` – App key (optional: resolved from current directory when inside `integration/<appKey>/`, or from datasource key when exactly one app has that datasource; use when multiple apps share the same datasource key). `-v, --verbose` – Show detailed validation, field mapping, and endpoint test output. `-p, --payload <file>` – Custom test payload file. `-e, --env <env>` – Environment: dev, tst, or pro. `--debug` – Include debug output and write log to `integration/<app>/logs/`. `--timeout <ms>` – Request timeout (default: 30000).
 
-**Context:** Resolve systemKey from `--app` or from current directory when inside `integration/<appKey>/`.
+**Context:** App is resolved from `--app`, from current directory when inside `integration/<appKey>/`, or by scanning integration apps for the datasource key (if exactly one app matches). System key is then derived from that app’s config.
 
 **Prerequisites:** Logged in (`aifabrix login`) or client credentials configured; dataplane accessible; system and datasource published or ready for testing.
 
@@ -862,7 +870,7 @@ For details, see [External Integration Testing](external-integration-testing.md#
 
 Run E2E test for one datasource via dataplane external API. Requires Bearer token or API key (client credentials not supported). See [Online Commands and Permissions](permissions.md).
 
-**What:** Runs full E2E test (config, credential, sync, data, CIP) via the dataplane. By default the command starts the run asynchronously, then polls until the run completes or fails; use `-v` to see poll progress (e.g. number of steps completed so far). Reports per-step status. The dataplane runs E2E steps in order: config, credential, sync, data, CIP. Credential status is validated as the second step in this sequence.
+**What:** Runs full E2E test (config, credential, sync, data, CIP) via the dataplane. By default the command starts the run asynchronously, then polls until the run completes or fails. With `-v, --verbose` the CLI shows managed record counts for the sync step (e.g. inserted/updated/deleted/totalProcessed) and a short CIP execution trace summary when the dataplane returns audit data; use `-v` also to see poll progress (e.g. number of steps completed so far). Reports per-step status. The dataplane runs E2E steps in order: config, credential, sync, data, CIP. Credential status is validated as the second step in this sequence.
 
 **When:** End-to-end validation of a single datasource after integration tests pass; requires Bearer or API key authentication.
 
@@ -881,9 +889,9 @@ aifabrix datasource test-e2e hubspot-contacts --app hubspot --no-async
 **Arguments:** `<datasourceKey>` – Datasource key used as sourceIdOrKey (e.g. hubspot-contacts).
 
 **Options:**
-- `-a, --app <appKey>` – App key (required if not inside `integration/<appKey>/`).
+- `-a, --app <appKey>` – App key (optional: resolved from cwd when inside `integration/<appKey>/`, or from datasource key when exactly one app has that datasource).
 - `-e, --env <env>` – Environment: dev, tst, or pro.
-- `-v, --verbose` – Detailed step output and, when polling, progress (e.g. steps completed so far).
+- `-v, --verbose` – Detailed step output: managed record counts for the sync step, CIP execution trace summary, and when polling, progress (e.g. steps completed so far).
 - `--debug` – Include debug output and write log to `integration/<app>/logs/`.
 - `--test-crud` – Enable CRUD lifecycle test.
 - `--record-id <id>` – Record ID to use for the test.
@@ -894,4 +902,62 @@ aifabrix datasource test-e2e hubspot-contacts --app hubspot --no-async
 **Prerequisites:** Logged in (`aifabrix login`) or API key configured. E2E tests require a Bearer token or API key; client credentials are not accepted. Run `aifabrix login` if you see "E2E tests require Bearer token or API key".
 
 For details, see [External Integration Testing](external-integration-testing.md#datasource-e2e-tests).
+
+---
+
+<a id="aifabrix-datasource-log-e2e-datasourcekey"></a>
+### aifabrix datasource log-e2e <datasourceKey>
+
+Display the latest E2E test log (or a specified log file) in a readable, formatted way. Useful after running `aifabrix datasource test-e2e <key> --debug`, which writes logs to `integration/<appKey>/logs/`.
+
+**What:** Reads a JSON log file produced by the E2E test (with `--debug`) and prints a summary: request (sourceIdOrKey, options), response status, steps with success/message, sync step job record counts (processed, inserted/updated/deleted), and CIP execution trace count when present. No backend URLs or raw payloads are shown.
+
+**When:** Inspecting the outcome of a recent E2E run, debugging sync or step failures, or checking record counts without re-running the test.
+
+**Usage:**
+```bash
+# Show latest E2E log for the datasource (app resolved from key or cwd)
+aifabrix datasource log-e2e hubspot-contacts
+
+# Show a specific log file
+aifabrix datasource log-e2e hubspot-contacts --file integration/hubspot/logs/test-e2e-2026-01-15T12-00-00-000Z.json
+
+# With explicit app
+aifabrix datasource log-e2e hubspot-contacts --app hubspot
+```
+
+**Arguments:** `<datasourceKey>` – Datasource key (used to resolve app when `--file` is not set).
+
+**Options:** `-a, --app <appKey>` – App key (optional; same resolution as test-e2e). `-f, --file <path>` – Path to the log file (relative to current directory). If omitted, the latest `test-e2e-*.json` in `integration/<appKey>/logs/` is used.
+
+**Prerequisites:** For “latest” mode: at least one E2E test run with `--debug` so a log exists in the app’s logs folder. For `--file`: the file must exist and be valid JSON.
+
+---
+
+<a id="aifabrix-datasource-log-integration-datasourcekey"></a>
+### aifabrix datasource log-integration <datasourceKey>
+
+Display the latest integration test log (or a specified log file) in a readable, formatted way. Useful after running `aifabrix datasource test-integration <key> --debug`, which writes logs to `integration/<appKey>/logs/`.
+
+**What:** Reads a JSON log file produced by the integration test (with `--debug`) and prints a summary: request (systemKey, datasourceKey), response status, validation result (isValid, errors), field mapping (mappingCount, dimensions), endpoint test, and normalized output summary. No backend URLs or raw payloads are shown.
+
+**When:** Inspecting the outcome of a recent integration test run, debugging validation or field mapping, or reviewing normalized output without re-running the test.
+
+**Usage:**
+```bash
+# Show latest integration log for the datasource (app resolved from key or cwd)
+aifabrix datasource log-integration hubspot-company
+
+# Show a specific log file
+aifabrix datasource log-integration hubspot-company --file integration/hubspot/logs/test-integration-2026-01-15T12-00-00-000Z.json
+
+# With explicit app
+aifabrix datasource log-integration hubspot-company --app hubspot
+```
+
+**Arguments:** `<datasourceKey>` – Datasource key (used to resolve app when `--file` is not set).
+
+**Options:** `-a, --app <appKey>` – App key (optional; same resolution as test-integration). `-f, --file <path>` – Path to the log file (relative to current directory). If omitted, the latest `test-integration-*.json` in `integration/<appKey>/logs/` is used.
+
+**Prerequisites:** For “latest” mode: at least one integration test run with `--debug` so a log exists in the app’s logs folder. For `--file`: the file must exist and be valid JSON.
 

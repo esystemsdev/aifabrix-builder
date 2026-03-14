@@ -249,10 +249,14 @@ aifabrix repair hubspot --dry-run
 
 # Optional: ensure RBAC, exposed attributes, sync section, or test payload
 aifabrix repair hubspot --rbac --expose --sync --test
+
+# Regenerate README.md from the current deployment manifest
+aifabrix repair hubspot --doc
 ```
 
 **Options:**
 - `--auth <method>` — Set authentication method (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none); updates the system file and env.template
+- `--doc` — Regenerate `README.md` from the deployment manifest
 - `--dry-run` — Report what would be changed; do not write
 - `--rbac` — Ensure RBAC has a permission per datasource endpoint (`<resourceType>:<capability>`) and add default Admin/Reader roles if none exist
 - `--expose` — Set `exposed.attributes` on each datasource to the list of all `fieldMappings.attributes` keys
@@ -368,7 +372,7 @@ Encrypted secrets are automatically decrypted when loaded by `aifabrix resolve`,
 - **ISO 27001 Compliance**: Encrypts secrets at rest for compliance requirements
 - **AES-256-GCM**: Uses authenticated encryption (confidentiality and integrity)
 - **Key Management**: Encryption key stored separately from encrypted data
-- **File Permissions**: Encrypted files set to 0o600 (owner read/write only)
+- **File Permissions**: Secrets and admin files are written with mode `600` (owner read/write only). When the CLI reads `secrets.local.yaml`, `admin-secrets.env`, or `config.yaml`, it enforces these permissions: if a file has looser permissions (e.g. group or other read), the CLI restricts it to `600` automatically.
 - **Backward Compatible**: Plaintext secrets still work if encryption key is not configured
 - **Key Rotation**: Re-run `aifabrix secure` with a new key to re-encrypt all values
 
@@ -403,7 +407,7 @@ aifabrix secret list --shared
 
 Set a secret value in secrets file.
 
-**What:** Dynamically sets a secret value in either the user secrets file (`~/.aifabrix/secrets.local.yaml`) or the general secrets file (from `config.yaml` `aifabrix-secrets`). Supports both full URLs and environment variable interpolation.
+**What:** Dynamically sets a secret value in either the user secrets file (`~/.aifabrix/secrets.local.yaml`) or the general secrets file (from `config.yaml` `aifabrix-secrets`). On first use, the CLI ensures `config.yaml` exists and a `secrets-encryption` key is available (creating one if missing). When an encryption key is set, values are stored **encrypted** (`secure://` format) in the secrets file by default. Supports both full URLs and environment variable interpolation.
 
 **When:** Setting up new secrets, updating existing secret values, or configuring environment-specific secrets.
 

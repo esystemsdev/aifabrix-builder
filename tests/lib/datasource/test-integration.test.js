@@ -7,8 +7,10 @@
 
 jest.mock('../../../lib/api/pipeline.api');
 jest.mock('../../../lib/utils/paths', () => ({
-  getIntegrationPath: jest.fn((app) => `/integration/${app}`),
-  resolveIntegrationAppKeyFromCwd: jest.fn()
+  getIntegrationPath: jest.fn((app) => `/integration/${app}`)
+}));
+jest.mock('../../../lib/datasource/resolve-app', () => ({
+  resolveAppKeyForDatasource: jest.fn()
 }));
 jest.mock('../../../lib/utils/app-config-resolver', () => ({
   resolveApplicationConfigPath: jest.fn((p) => `${p}/application.yaml`)
@@ -33,9 +35,9 @@ jest.mock('fs', () => ({
   }
 }));
 
-const { runDatasourceTestIntegration, resolveSystemKey } = require('../../../lib/datasource/test-integration');
+const { runDatasourceTestIntegration } = require('../../../lib/datasource/test-integration');
+const { resolveAppKeyForDatasource } = require('../../../lib/datasource/resolve-app');
 const pipelineApi = require('../../../lib/api/pipeline.api');
-const paths = require('../../../lib/utils/paths');
 const configFormat = require('../../../lib/utils/config-format');
 const testAuth = require('../../../lib/external-system/test-auth');
 const fs = require('fs').promises;
@@ -43,7 +45,7 @@ const fs = require('fs').promises;
 describe('Datasource Test Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    paths.resolveIntegrationAppKeyFromCwd.mockReturnValue(null);
+    resolveAppKeyForDatasource.mockResolvedValue({ appKey: 'myapp' });
     configFormat.loadConfigFile.mockReturnValue({
       externalIntegration: {
         systems: ['test-system.yaml'],
@@ -59,13 +61,6 @@ describe('Datasource Test Integration', () => {
     pipelineApi.testDatasourceViaPipeline.mockResolvedValue({
       success: true,
       data: { success: true }
-    });
-  });
-
-  describe('resolveSystemKey', () => {
-    it('should throw when no app context', async() => {
-      paths.resolveIntegrationAppKeyFromCwd.mockReturnValue(null);
-      await expect(resolveSystemKey()).rejects.toThrow('Could not determine app context');
     });
   });
 

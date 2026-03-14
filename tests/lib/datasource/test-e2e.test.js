@@ -7,8 +7,10 @@
 
 jest.mock('../../../lib/api/external-test.api');
 jest.mock('../../../lib/utils/paths', () => ({
-  getIntegrationPath: jest.fn((app) => `/integration/${app}`),
-  resolveIntegrationAppKeyFromCwd: jest.fn()
+  getIntegrationPath: jest.fn((app) => `/integration/${app}`)
+}));
+jest.mock('../../../lib/datasource/resolve-app', () => ({
+  resolveAppKeyForDatasource: jest.fn()
 }));
 jest.mock('../../../lib/utils/controller-url', () => ({
   resolveControllerUrl: jest.fn().mockResolvedValue('https://controller.example.com')
@@ -26,15 +28,15 @@ jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn(), warn: jest.fn(),
 jest.mock('fs', () => ({ promises: { readFile: jest.fn() } }));
 
 const fs = require('fs');
-const { runDatasourceTestE2E, resolveAppKey } = require('../../../lib/datasource/test-e2e');
+const { runDatasourceTestE2E } = require('../../../lib/datasource/test-e2e');
+const { resolveAppKeyForDatasource } = require('../../../lib/datasource/resolve-app');
 const externalTestApi = require('../../../lib/api/external-test.api');
-const paths = require('../../../lib/utils/paths');
 const tokenManager = require('../../../lib/utils/token-manager');
 
 describe('Datasource Test E2E', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    paths.resolveIntegrationAppKeyFromCwd.mockReturnValue(null);
+    resolveAppKeyForDatasource.mockResolvedValue({ appKey: 'myapp' });
     tokenManager.getDeviceOnlyAuth.mockResolvedValue({ type: 'bearer', token: 'test-token' });
     externalTestApi.testDatasourceE2E.mockResolvedValue({
       success: true,
@@ -47,25 +49,25 @@ describe('Datasource Test E2E', () => {
     });
   });
 
-  describe('resolveAppKey', () => {
-    it('should return explicit app key', () => {
-      expect(resolveAppKey('myapp')).toBe('myapp');
-    });
-
-    it('should resolve from cwd when no --app', () => {
-      paths.resolveIntegrationAppKeyFromCwd.mockReturnValue('from-cwd');
-      expect(resolveAppKey()).toBe('from-cwd');
-    });
-
-    it('should throw when no context', () => {
-      paths.resolveIntegrationAppKeyFromCwd.mockReturnValue(null);
-      expect(() => resolveAppKey()).toThrow('Could not determine app context');
-    });
-  });
-
   describe('runDatasourceTestE2E', () => {
     it('should throw when datasourceKey is missing', async() => {
       await expect(runDatasourceTestE2E('', { app: 'myapp' })).rejects.toThrow('Datasource key is required');
+    });
+
+    it('should call resolveAppKeyForDatasource with datasourceKey and options.app', async() => {
+      await runDatasourceTestE2E('hubspot-contacts', { app: 'myapp' });
+      expect(resolveAppKeyForDatasource).toHaveBeenCalledWith('hubspot-contacts', 'myapp');
+    });
+
+    it('should include audit true in body when verbose is true', async() => {
+      await runDatasourceTestE2E('hubspot-contacts', { app: 'myapp', verbose: true });
+      expect(externalTestApi.testDatasourceE2E).toHaveBeenCalledWith(
+        'https://dataplane.example.com',
+        'hubspot-contacts',
+        expect.any(Object),
+        expect.objectContaining({ audit: true }),
+        { asyncRun: true }
+      );
     });
 
     it('should call external E2E API with datasource key (default async)', async() => {
@@ -75,7 +77,7 @@ describe('Datasource Test E2E', () => {
         'https://dataplane.example.com',
         'hubspot-contacts',
         expect.objectContaining({ token: 'test-token' }),
-        {},
+        expect.any(Object),
         { asyncRun: true }
       );
       expect(result.steps).toHaveLength(1);

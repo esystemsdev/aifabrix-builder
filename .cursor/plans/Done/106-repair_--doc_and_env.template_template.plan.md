@@ -158,6 +158,7 @@ Before marking this plan complete:
 | Repair create       | When creating env.template from scratch, use the new template content.                                                                                                   |
 | Docs + tests        | Document `--doc` and new env.template structure; add tests for repair --doc and for external env.template context/generation.                                            |
 
+
 ---
 
 ## Plan Validation Report
@@ -201,4 +202,145 @@ Before marking this plan complete:
 
 - When implementing, ensure wizard.js uses the shared `generateExternalEnvTemplateContent(systemConfig)` so create and split/download produce identical structure.
 - Add a test that `aifabrix create <name>` (external) writes env.template with Authentication and Configuration sections when the system has auth and configuration.
+
+---
+
+## Validation Report
+
+**Date:** 2026-03-14  
+**Plan:** .cursor/plans/106-repair_--doc_and_env.template_template.plan.md  
+**Document(s):** docs/commands/external-integration.md, docs/commands/utilities.md, docs/configuration/env-template.md  
+**Status:** ✅ COMPLETE
+
+### Executive Summary
+
+All documentation referenced by plan 106 was validated. MarkdownLint passes with zero errors after one auto-fix. Cross-references within docs/ are valid. Content is focused on using the builder (CLI, repair --doc, env.template structure). No schema-validation issues for these docs (they describe commands and env.template usage; no YAML/JSON examples that require schema validation in the validated sections).
+
+### Documents Validated
+
+
+| Document                              | Status | Notes                                                                                                  |
+| ------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------ |
+| docs/commands/external-integration.md | ✅ Pass | Repair --doc and env.template (Authentication/Configuration) documented; nav and links valid           |
+| docs/commands/utilities.md            | ✅ Pass | Repair section includes --doc option and usage example; options list complete                          |
+| docs/configuration/env-template.md    | ✅ Pass | Heading hierarchy fixed (h3→h2); external systems note added for Authentication/Configuration sections |
+
+
+- **Total:** 3  
+- **Passed:** 3  
+- **Auto-fixed:** 1 (env-template.md: heading increment; added external-systems paragraph)
+
+### Structure Validation
+
+- **external-integration.md:** Single h1, clear sections (wizard, download, upload, repair, etc.). Nav back to Documentation index and Commands index. Repair paragraph mentions `--doc` and env.template structure.
+- **utilities.md:** Repair section has anchor `aifabrix-repair-app`, usage block with `--doc` example, options list including `--doc`.
+- **env-template.md:** Single h1, then ## for "Build, run, shell, and install". No skipped heading levels after fix.
+
+### Reference Validation
+
+- Links from external-integration.md to utilities.md#aifabrix-repair-app, permissions.md, external-integration-testing.md, etc. resolve within docs/.
+- env-template.md links to application-yaml.md, env-config.md, secrets-and-config.md (all under configuration/). No broken internal links found.
+
+### Schema-based Validation
+
+- These docs do not contain YAML/JSON code blocks that represent application.yaml, external-system, or datasource config; they describe CLI usage and env.template behavior. No schema validation was required for the validated excerpts. If env-template.md or external-systems.md later add full config examples, they should be validated against lib/schema (e.g. external-system.schema.json for system config).
+
+### Markdown Validation
+
+- **MarkdownLint:** Run on the three documents; **0 errors** after fix.
+- **Fix applied:** docs/configuration/env-template.md — heading level (MD001): changed `### Build, run, shell, and install` to `## Build, run, shell, and install` and added a short paragraph for external systems (Authentication/Configuration sections).
+
+### Project Rules Compliance
+
+- **Documentation focus:** Content is appropriate for external users (how to use the builder). No internal implementation details in user-facing prose.
+- **CLI and config:** Command names and options match the CLI (repair, --doc, --auth, etc.). env.template structure (Authentication, Configuration, kv://) is described without exposing backend endpoints.
+
+### Automatic Fixes Applied
+
+1. **docs/configuration/env-template.md**
+  - Fixed heading increment (h3 → h2) for "Build, run, shell, and install".
+  - Added one sentence: "For external integrations, env.template is generated with **Authentication** and **Configuration** sections and inline comments. Use kv:// (or aifabrix secret set) for sensitive values; use plain values for non-sensitive configuration."
+
+### Manual Fixes Required
+
+None.
+
+### Final Checklist
+
+- All listed documents validated
+- MarkdownLint passes (0 errors)
+- Cross-references within docs/ valid
+- No broken internal links
+- Content focused on using the builder (external users)
+- Auto-fixes applied; manual fixes documented (none required)
+
+---
+
+## Implementation Validation Report
+
+**Date:** 2026-03-14  
+**Plan:** .cursor/plans/106-repair_--doc_and_env.template_template.plan.md  
+**Status:** COMPLETE (plan 106 scope)
+
+### Executive Summary
+
+All plan 106 deliverables are implemented: repair `--doc`, `env.template.hbs`, `lib/utils/external-env-template.js`, wiring in create/split/repair, docs, and tests. Plan 106–related files pass lint and all plan 106–related tests pass. The repo has pre-existing lint issues in other files (setup-secrets.js, core/secrets.js, infrastructure) and one unrelated failing test suite (secrets-set.test.js – config mock). No additional tests are required for plan 106; coverage for the new/updated code is sufficient.
+
+### Task Completion
+
+| Item | Status | Notes |
+|------|--------|--------|
+| Repair `--doc` | Done | Option in setup-utility.js; repair.js uses getDeployJsonPath, generateReadmeFromDeployJson, returns readmeRegenerated |
+| env.template.hbs | Done | templates/external-system/env.template.hbs with intro, Authentication, Configuration |
+| Context + generator | Done | lib/utils/external-env-template.js: buildExternalEnvTemplateContext, generateExternalEnvTemplateContent |
+| Create (wizard) | Done | wizard.js uses generateExternalEnvTemplateContent(systemConfig) for env.template |
+| Split / download | Done | split.js uses generateExternalEnvTemplateContent(deployment.system) when system present; merge uses expectedByKey |
+| Repair create | Done | repair-env-template.js createEnvTemplateIfMissing uses generateExternalEnvTemplateContent(systemParsed) |
+| Docs + tests | Done | external-integration.md, utilities.md, env-template.md updated; repair --doc and external env.template tests added |
+
+### File Existence Validation
+
+- lib/cli/setup-utility.js – `--doc` option and readmeRegenerated handling present
+- lib/commands/repair.js – options.doc, regenerateReadmeIfRequested, readmeRegenerated in result
+- templates/external-system/env.template.hbs – exists
+- lib/utils/external-env-template.js – buildExternalEnvTemplateContext, generateExternalEnvTemplateContent, helpers
+- lib/generator/wizard.js – generateExternalEnvTemplateContent(systemConfig) for env.template
+- lib/generator/split.js – generateExternalEnvTemplateContent(deployment.system), buildExpectedByKeyFromEnvContent
+- lib/commands/repair-env-template.js – generateExternalEnvTemplateContent(systemParsed) in createEnvTemplateIfMissing
+- docs/commands/external-integration.md – repair --doc and env.template structure noted
+- docs/commands/utilities.md – repair section includes --doc
+- docs/configuration/env-template.md – Authentication/Configuration sections for external systems
+
+### Test Coverage (plan 106)
+
+- tests/lib/commands/repair.test.js – `--doc` (regenerate README, dry-run), readmeRegenerated asserted
+- tests/lib/utils/external-env-template.test.js – buildExternalEnvTemplateContext, generateExternalEnvTemplateContent (auth, security, configuration, edge cases)
+- tests/lib/generator/generator-split.test.js – env.template with Authentication and Configuration when deployment has system
+- tests/lib/generator/wizard-generator.test.js – env.template generation with new template
+- tests/lib/commands/repair-env-template.test.js – createEnvTemplateIfMissing with systemParsed
+
+All plan 106–related test suites pass.
+
+### Code Quality Validation
+
+- **Format:** `npm run lint:fix` run; plan 106 files have no format issues.
+- **Lint:** `npm run lint` – 2 errors and 4 warnings in files outside plan 106 (lib/cli/setup-secrets.js, lib/core/secrets.js, lib/infrastructure/*). Plan 106 files are lint-clean.
+- **Tests:** All tests in repair, external-env-template, generator-split, wizard-generator, repair-env-template, setup-utility pass. One failing suite: tests/lib/commands/secrets-set.test.js (config.getSecretsEncryptionKey mock) – unrelated to plan 106.
+
+### Cursor Rules Compliance (plan 106 code)
+
+- CLI command pattern, option definition, chalk output: compliant
+- Template in templates/external-system, Handlebars, context shape: compliant
+- File/function size and JSDoc: compliant in plan 106 files
+- Try/catch, input validation, no hardcoded secrets, kv:// in template only: compliant
+- Tests in tests/, Jest, mocks: compliant
+
+### Do We Need More Tests?
+
+**No.** Plan 106 requirements are covered:
+
+1. **Repair --doc:** repair.test.js has two tests: regenerates README and returns readmeRegenerated when deploy JSON exists; dry-run does not write but still returns readmeRegenerated.
+2. **External env.template:** external-env-template.test.js covers buildExternalEnvTemplateContext and generateExternalEnvTemplateContent with auth method, security vars, configuration, portalInput-style hints, and missing auth/configuration. generator-split.test.js covers split writing env.template with Authentication and Configuration for external deployments. wizard-generator and repair-env-template tests cover create and repair paths.
+
+Optional “create writes env.template with sections” is covered by wizard-generator tests and split tests. No additional tests are required for plan 106.
 

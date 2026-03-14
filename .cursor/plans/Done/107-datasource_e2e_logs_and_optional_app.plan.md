@@ -309,3 +309,170 @@ Status: completed
 - When implementing log viewer, keep output format aligned with the detailed spec (request, response, steps, sync counts, validation, CIP trace) so developers get consistent, actionable output.
 - Confirm Commander.js supports `.alias('ds')` on the parent `datasource` command; if not, register `ds` as a separate command that delegates to the same action.
 
+---
+
+## Validation Report
+
+**Date:** 2026-03-14  
+**Plan:** .cursor/plans/107-datasource_e2e_logs_and_optional_app.plan.md  
+**Document(s):** docs/commands/external-integration.md  
+**Status:** ✅ COMPLETE
+
+### Executive Summary
+
+Documentation referenced by plan 107 was validated. The primary doc **docs/commands/external-integration.md** passes structure, reference, and Markdown checks. One fix was applied (missing anchor for link fragment). No config YAML/JSON examples in this doc require schema validation (content is CLI usage and terminal output examples). **docs/commands/application-management.md** was checked; it does not reference datasource commands, so no updates required there per plan.
+
+### Documents Validated
+
+
+| Document                                | Status | Notes                                              |
+| --------------------------------------- | ------ | -------------------------------------------------- |
+| docs/commands/external-integration.md   | ✅ Pass | Structure, links, Markdown OK; anchor added        |
+| docs/commands/application-management.md | ✅ N/A  | No datasource command references; no change needed |
+
+
+- **Total:** 1 primary doc (plan target)
+- **Passed:** 1
+- **Auto-fixed:** 1 (anchor)
+
+### Structure Validation
+
+- **docs/commands/external-integration.md:** Single `#` title at top; consistent `##` / `###` hierarchy; nav back to Documentation index and Commands index present. Sections cover datasource overview, subcommands (validate, list, diff, upload, test-integration, test-e2e, **log-e2e**, **log-integration**), optional --app, and ds alias as specified in plan 8.
+
+### Reference Validation
+
+- **Cross-references within docs:** All checked links resolve:
+  - `../README.md`, `README.md`, `permissions.md`, `external-integration-testing.md`, `utilities.md`, `validation.md`, `../deploying.md`, `../configuration/secrets-and-config.md` — all exist.
+- **Fragment fix:** Link `[aifabrix credential env](#aifabrix-credential-env-system-key)` pointed to a missing anchor. Added `<a id="aifabrix-credential-env-system-key"></a>` before the "## aifabrix credential env " heading so the fragment is valid.
+
+### Schema-based Validation
+
+- **docs/commands/external-integration.md:** This doc is command-focused (CLI usage, options, examples). Code blocks are either **bash** (command examples) or **yaml** used for CLI output samples and file-structure examples (e.g. "Output (valid):", "File Structure:"). No full application.yaml, external-system, or external-datasource config examples are present that would need validation against **lib/schema** (application-schema.json, external-system.schema.json, external-datasource.schema.json). **Result:** N/A for schema validation; doc aligns with docs-rules (command-centric, no REST API details).
+
+### Markdown Validation
+
+- **MarkdownLint:** Run on `docs/commands/external-integration.md`. Before fix: 1 error (MD051 link-fragments — invalid fragment `#aifabrix-credential-env-system-key`). After adding the anchor: **0 errors**, 0 warnings.
+
+### Project Rules Compliance
+
+- **Focus:** Doc describes how to use the builder (CLI commands, workflows, options). No REST API details in user-facing prose.
+- **CLI/config:** Command names and options match the implementation (datasource, test-e2e, test-integration, log-e2e, log-integration, --app, --file, -v, ds alias).
+- **docs-rules.mdc:** Command-centric; optional --app and resolution behavior described without backend URLs.
+
+### Automatic Fixes Applied
+
+- Added anchor `<a id="aifabrix-credential-env-system-key"></a>` in docs/commands/external-integration.md so the "See also" link from credential push to credential env is valid.
+
+### Manual Fixes Required
+
+- None.
+
+### Final Checklist
+
+- Document(s) validated (external-integration.md)
+- MarkdownLint passes (0 errors) after fix
+- Cross-references within docs/ valid; broken fragment fixed
+- No broken internal links
+- Doc is command-focused; no config examples to validate against lib/schema in this file
+- Content focused on using the builder (external users)
+- Auto-fix applied; report attached to plan
+
+---
+
+## Implementation Validation Report
+
+**Date:** 2026-03-14  
+**Plan:** .cursor/plans/107-datasource_e2e_logs_and_optional_app.plan.md  
+**Status:** ✅ COMPLETE
+
+### Executive Summary
+
+Plan 107 (datasource E2E logs, optional --app, log-e2e/log-integration, ds alias) is implemented. All listed files exist; unit tests cover test-e2e (audit when verbose), test-integration (resolver), resolve-app, log-viewer, display (sync counts + auditLog), and CLI registration (including log-e2e and log-integration). Plan 107–related tests pass (156 tests in 11 suites). Full-repo lint reports pre-existing issues in other modules (setup-secrets, core/secrets, infrastructure); the files touched by this plan are lint-clean. Documentation (docs/commands/external-integration.md) was updated and validated separately.
+
+### Task Completion
+
+- **Definition of Done (plan section):** Build/lint/test order, manual test checklist, file size, JSDoc, security, documentation, and feature set (test-e2e -v, test-integration -v, log-e2e, log-integration, optional --app, ds alias) are addressed.
+- **No checkbox task list** in plan body; completion inferred from file existence, tests, and doc updates.
+- **Completion:** 100% for scope of this plan.
+
+### File Existence Validation
+
+
+| File                                  | Status                                                                                         |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| lib/datasource/test-e2e.js            | ✅ Exists; body.audit when verbose, uses resolveAppKeyForDatasource                             |
+| lib/datasource/test-integration.js    | ✅ Exists; uses resolveAppKeyForDatasource, getSystemKeyFromAppKey                              |
+| lib/datasource/log-viewer.js          | ✅ Exists; getLatestLogPath, formatLogContent, formatE2ELog, formatIntegrationLog, runLogViewer |
+| lib/datasource/resolve-app.js         | ✅ Exists; resolveAppKeyForDatasource, appHasDatasourceKey                                      |
+| lib/commands/datasource.js            | ✅ Exists; log-e2e, log-integration, alias ds (conditional), test-integration -v                |
+| lib/utils/external-system-display.js  | ✅ Exists; formatSyncStepEvidence, displayE2EResults verbose sync + auditLog                    |
+| lib/utils/paths.js                    | ✅ Exists; listIntegrationAppNames used by resolver                                             |
+| docs/commands/external-integration.md | ✅ Exists; log-e2e, log-integration, optional --app, ds, test-integration -v, test-e2e -v       |
+
+
+### Test Coverage
+
+
+| Test File                                       | Status | Coverage                                                                                                                      |
+| ----------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| tests/lib/datasource/test-e2e.test.js           | ✅      | resolveAppKeyForDatasource call, body.audit when verbose, E2E flow                                                            |
+| tests/lib/datasource/test-integration.test.js   | ✅      | Resolver mock, pipeline test flow                                                                                             |
+| tests/lib/datasource/resolve-app.test.js        | ✅      | Explicit app, empty key, cwd, scan one/many, parse fail, appHasDatasourceKey, fallback when explicit app path missing         |
+| tests/lib/datasource/log-viewer.test.js         | ✅      | getLatestLogPath, formatLogContent (E2E + integration), runLogViewer (--file, resolve app, no log, missing key, invalid JSON) |
+| tests/lib/utils/external-system-display.test.js | ✅      | displayE2EResults: sync step evidence (Managed records), auditLog (CIP execution trace)                                       |
+| tests/lib/commands/datasource.test.js           | ✅      | Registers validate, list, diff, upload, **log-e2e**, **log-integration** with options                                         |
+
+
+- **Unit tests:** Present for resolver, log-viewer, display, test-e2e, test-integration, and CLI registration.
+- **Manual tests:** Checklist in plan section 7; optional tests/manual/datasource-commands.test.js not required for validation.
+- **Plan 107–related tests:** 156 tests, 11 suites, all passing.
+
+### Code Quality Validation
+
+- **Format (lint:fix):** Run; pre-existing lint issues remain in **other** files (lib/cli/setup-secrets.js, lib/core/secrets.js, lib/infrastructure/*). Plan 107 files were not changed by lint:fix.
+- **Lint:** Full `npm run lint` reports 2 errors and 4 warnings in non–plan-107 files. **Plan 107 implementation files** (lib/datasource/*, lib/commands/datasource.js, lib/utils/external-system-display.js) are lint-clean (eslint-disable used only where justified for formatter complexity).
+- **Tests:** `npm test` for plan 107–related paths: **PASSED** (156 tests, 11 suites).
+
+### Cursor Rules Compliance
+
+- **Code reuse:** Resolver shared by test-e2e, test-integration, log-viewer; display helpers reused.
+- **Error handling:** try/catch in async paths; errors passed to CLI with process.exit(1).
+- **Logging:** logger/chalk used; no secrets in logs.
+- **Type safety:** JSDoc on new public functions (resolve-app, log-viewer, display additions).
+- **Async patterns:** async/await, fs.promises in log-viewer and resolve-app.
+- **File operations:** path.join, no hardcoded paths.
+- **Input validation:** datasource key and paths validated; empty key rejected.
+- **Module patterns:** CommonJS; named exports.
+- **Security:** No hardcoded secrets; no secrets in log output.
+
+### Implementation Completeness
+
+- **CLI:** test-e2e -v, test-integration -v, log-e2e, log-integration, optional --app, ds alias implemented.
+- **Resolver:** resolveAppKeyForDatasource (explicit → cwd → scan → parse) used by test-e2e, test-integration, log-viewer.
+- **Log viewer:** getLatestLogPath, format E2E/integration, runLogViewer with --file or latest.
+- **Display:** Sync step evidence and auditLog summary in displayE2EResults when verbose.
+- **Documentation:** docs/commands/external-integration.md updated (log-e2e, log-integration, optional --app, ds, -v).
+- **Database/schemas/migrations:** N/A for this plan.
+
+### Do We Need More Tests?
+
+**No.** The plan’s test requirements are satisfied:
+
+- **test-e2e body audit when verbose:** Covered in test-e2e.test.js.
+- **display auditLog and sync counts:** Covered in external-system-display.test.js (verbose sync step evidence, CIP execution trace).
+- **resolver:** resolve-app.test.js (explicit app, cwd, scan one/many/zero, parse fallback, appHasDatasourceKey, explicit app path missing).
+- **log-viewer:** log-viewer.test.js (getLatestLogPath, formatLogContent E2E/integration, runLogViewer with/without --file, no log, invalid JSON).
+- **CLI registration:** datasource.test.js now includes “should register log-e2e command” and “should register log-integration command” (added during this validation).
+
+Optional extras (not required by plan): parse-fallback success path (e.g. key `hubspot-companies` → app `hubspot`), or end-to-end action tests that invoke log-e2e/log-integration handlers with mocks. Manual test checklist in section 7 remains for human execution against a real integration app/dataplane.
+
+### Final Validation Checklist
+
+- All plan 107 tasks implemented (test-e2e -v, test-integration -v, log-e2e, log-integration, optional --app, ds alias, docs)
+- All listed files exist and contain expected logic
+- Unit tests exist for resolver, log-viewer, display, test-e2e, test-integration, CLI registration
+- Plan 107–related tests pass (156 tests)
+- Plan 107 code is lint-clean; full-repo lint has pre-existing issues elsewhere
+- Cursor rules compliance verified for new/changed code
+- Documentation updated and validated (see Validation Report above)
+

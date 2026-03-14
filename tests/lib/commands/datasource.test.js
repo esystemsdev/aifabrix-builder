@@ -140,6 +140,26 @@ describe('Datasource Commands Module', () => {
       expect(uploadCommand).toBeDefined();
       expect(uploadCommand.command.description).toHaveBeenCalledWith('Upload datasource to dataplane');
     });
+
+    it('should register log-e2e command', () => {
+      setupDatasourceCommands(program);
+      const datasourceGroup = program._datasourceGroup;
+      expect(datasourceGroup.command).toHaveBeenCalledWith('log-e2e <datasourceKey>');
+      const logE2e = datasourceGroup._subCommands?.find(c => c.name === 'log-e2e <datasourceKey>');
+      expect(logE2e).toBeDefined();
+      expect(logE2e.command.option).toHaveBeenCalledWith('-a, --app <appKey>', expect.any(String));
+      expect(logE2e.command.option).toHaveBeenCalledWith('-f, --file <path>', expect.any(String));
+    });
+
+    it('should register log-integration command', () => {
+      setupDatasourceCommands(program);
+      const datasourceGroup = program._datasourceGroup;
+      expect(datasourceGroup.command).toHaveBeenCalledWith('log-integration <datasourceKey>');
+      const logInt = datasourceGroup._subCommands?.find(c => c.name === 'log-integration <datasourceKey>');
+      expect(logInt).toBeDefined();
+      expect(logInt.command.option).toHaveBeenCalledWith('-a, --app <appKey>', expect.any(String));
+      expect(logInt.command.option).toHaveBeenCalledWith('-f, --file <path>', expect.any(String));
+    });
   });
 
   describe('validate command action', () => {

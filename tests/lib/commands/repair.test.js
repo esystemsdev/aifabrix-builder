@@ -9,8 +9,18 @@
 const path = require('path');
 const fs = require('fs');
 
+const envTemplateHbsPath = path.join(__dirname, '..', '..', '..', 'templates', 'external-system', 'env.template.hbs');
+const envTemplateHbsContent = (() => {
+  try {
+    return fs.readFileSync(envTemplateHbsPath, 'utf8');
+  } catch {
+    return '# Environment variables\n{{#each authSecureVars}}\n{{name}}={{value}}\n{{/each}}\n';
+  }
+})();
+
 jest.mock('../../../lib/utils/paths', () => ({
-  detectAppType: jest.fn()
+  detectAppType: jest.fn(),
+  getDeployJsonPath: jest.fn()
 }));
 jest.mock('../../../lib/utils/app-config-resolver', () => ({
   resolveApplicationConfigPath: jest.fn()
@@ -28,8 +38,12 @@ jest.mock('../../../lib/generator', () => ({
 jest.mock('../../../lib/external-system/generator', () => ({
   buildAuthenticationFromMethod: jest.fn()
 }));
+jest.mock('../../../lib/generator/split-readme', () => ({
+  generateReadmeFromDeployJson: jest.fn()
+}));
 
-const { detectAppType } = require('../../../lib/utils/paths');
+const { detectAppType, getDeployJsonPath } = require('../../../lib/utils/paths');
+const { generateReadmeFromDeployJson } = require('../../../lib/generator/split-readme');
 const { buildAuthenticationFromMethod } = require('../../../lib/external-system/generator');
 const { resolveApplicationConfigPath } = require('../../../lib/utils/app-config-resolver');
 const { loadConfigFile, writeConfigFile, writeYamlPreservingComments, isYamlPath } = require('../../../lib/utils/config-format');
@@ -60,6 +74,7 @@ describe('repair', () => {
   let existsSyncSpy;
   let readFileSyncSpy;
   let renameSyncSpy;
+  let writeFileSyncSpy;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -76,7 +91,11 @@ describe('repair', () => {
     readdirSyncSpy = jest.spyOn(fs, 'readdirSync');
     existsSyncSpy = jest.spyOn(fs, 'existsSync');
     renameSyncSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
+    writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
     readFileSyncSpy = jest.spyOn(fs, 'readFileSync').mockImplementation((filePath, enc) => {
+      if (String(filePath).includes('env.template.hbs') && (enc === 'utf8' || enc === undefined)) {
+        return envTemplateHbsContent;
+      }
       if (filePath === configPath && (enc === 'utf8' || enc === undefined)) {
         return defaultApplicationYamlContent;
       }
@@ -89,6 +108,7 @@ describe('repair', () => {
     existsSyncSpy?.mockRestore();
     renameSyncSpy?.mockRestore();
     readFileSyncSpy?.mockRestore();
+    writeFileSyncSpy?.mockRestore();
   });
 
   describe('discoverIntegrationFiles', () => {
@@ -1802,6 +1822,83 @@ describe('repair', () => {
       const dsWrite = writeConfigFile.mock.calls.find(c => c[0] === dsPath);
       expect(dsWrite).toBeUndefined();
       expect(generator.generateDeployJson).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('--doc (regenerate README)', () => {
+    it('regenerates README.md from deploy JSON and returns readmeRegenerated when --doc and deploy JSON exists', async() => {
+      const deployJsonPath = path.join(appPath, 'test-hubspot-deploy.json');
+      const readmePath = path.join(appPath, 'README.md');
+      const mockReadmeContent = '# test-hubspot\n\nRegenerated from deploy manifest.\n';
+      generateReadmeFromDeployJson.mockReturnValue(mockReadmeContent);
+      getDeployJsonPath.mockReturnValue(deployJsonPath);
+      existsSyncSpy.mockImplementation((p) => {
+        const s = String(p);
+        if (s === deployJsonPath) return true;
+        if (s === configPath || s === appPath) return true;
+        if (s.endsWith('test-hubspot-system.json')) return true;
+        if (s.endsWith('test-hubspot-datasource-record-storage.json')) return true;
+        return false;
+      });
+      readdirSyncSpy.mockReturnValue([
+        'test-hubspot-system.json',
+        'test-hubspot-datasource-record-storage.json',
+        'application.yaml'
+      ]);
+      readFileSyncSpy.mockImplementation((filePath, enc) => {
+        if (filePath === deployJsonPath && (enc === 'utf8' || enc === undefined)) {
+          return JSON.stringify({
+            key: 'test-hubspot',
+            system: { key: 'test-hubspot', displayName: 'Test HubSpot', type: 'openapi' },
+            dataSources: []
+          });
+        }
+        if (String(filePath).includes('env.template.hbs')) return envTemplateHbsContent;
+        if (filePath === configPath) return defaultApplicationYamlContent;
+        return '';
+      });
+      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+
+      const result = await repairExternalIntegration(appName, { doc: true });
+
+      expect(result.readmeRegenerated).toBe(true);
+      expect(result.changes.some(c => c.includes('README.md'))).toBe(true);
+      expect(generateReadmeFromDeployJson).toHaveBeenCalled();
+      const readmeCall = writeFileSyncSpy.mock.calls.find(c => c[0] === readmePath);
+      expect(readmeCall).toBeDefined();
+      expect(readmeCall[1]).toContain('test-hubspot');
+      writeFileSyncSpy.mockRestore();
+    });
+
+    it('with --doc and dry-run does not write README but still returns readmeRegenerated when deploy JSON exists', async() => {
+      const deployJsonPath = path.join(appPath, 'test-hubspot-deploy.json');
+      generateReadmeFromDeployJson.mockReturnValue('# test-hubspot\n');
+      getDeployJsonPath.mockReturnValue(deployJsonPath);
+      existsSyncSpy.mockImplementation((p) => {
+        const s = String(p);
+        return s === deployJsonPath || s === configPath || s === appPath ||
+          s.endsWith('test-hubspot-system.json') || s.endsWith('test-hubspot-datasource-record-storage.json');
+      });
+      readdirSyncSpy.mockReturnValue([
+        'test-hubspot-system.json',
+        'test-hubspot-datasource-record-storage.json',
+        'application.yaml'
+      ]);
+      readFileSyncSpy.mockImplementation((filePath) => {
+        if (String(filePath).includes('env.template.hbs')) return envTemplateHbsContent;
+        if (filePath === configPath) return defaultApplicationYamlContent;
+        if (filePath === deployJsonPath) return JSON.stringify({ key: 'test-hubspot', system: { key: 'test-hubspot' }, dataSources: [] });
+        return '';
+      });
+      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+
+      const result = await repairExternalIntegration(appName, { doc: true, dryRun: true });
+
+      expect(result.readmeRegenerated).toBe(true);
+      const readmePath = path.join(appPath, 'README.md');
+      const readmeCall = writeFileSyncSpy.mock.calls.find(c => c[0] === readmePath);
+      expect(readmeCall).toBeUndefined();
+      writeFileSyncSpy.mockRestore();
     });
   });
 });

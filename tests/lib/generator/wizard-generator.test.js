@@ -114,7 +114,7 @@ describe('Wizard Generator', () => {
     // Mock existsSync to return true for template files and written files
     fs.existsSync.mockImplementation((filePath) => {
       const normalizedPath = String(filePath || '').replace(/\\/g, '/');
-      if (normalizedPath.includes('templates/external-system/README.md.hbs')) {
+      if (normalizedPath.includes('templates/external-system/env.template.hbs') || normalizedPath.includes('templates/external-system/README.md.hbs')) {
         return true;
       }
       // Return true for files that have been written
@@ -127,6 +127,9 @@ describe('Wizard Generator', () => {
     // Mock readFileSync to return content for written files and templates
     fs.readFileSync.mockImplementation((filePath) => {
       const normalizedPath = String(filePath || '').replace(/\\/g, '/');
+      if (normalizedPath.includes('templates/external-system/env.template.hbs')) {
+        return '# Environment variables for external system integration\n# Use kv:// for sensitive values.\n\n{{#if authMethod}}\n# Authentication\n# Type: {{authMethod}}\n{{#each authSecureVars}}\n{{name}}={{value}}\n{{/each}}\n{{/if}}\n{{#if configuration.length}}\n# Configuration\n{{#each configuration}}\n# {{comment}}\n{{name}}={{value}}\n{{/each}}\n{{/if}}\n';
+      }
       if (normalizedPath.includes('templates/external-system/README.md.hbs')) {
         // Return the actual template content
         return '# {{displayName}}\n\n{{description}}\n\n## System Information\n\n- **System Key**: `{{systemKey}}`\n- **System Type**: `{{systemType}}`\n- **Datasources**: {{datasourceCount}}\n\n## Files\n\n- `application.yaml` - Application configuration with externalIntegration block\n- `{{systemKey}}-deploy.json` - External system definition\n{{#each datasources}}\n- `{{fileName}}` - Datasource: {{displayName}}\n{{/each}}\n- `env.template` - Environment variables template\n- `application-schema.json` - Combined system + datasources for deployment\n\n## Quick Start\n\n### 1. Create External System\n\n```bash\naifabrix create {{appName}} --type external\n```\n\n### 2. Configure Authentication and Datasources\n\nEdit configuration files in `integration/{{appName}}/`:\n\n- Update authentication in `{{systemKey}}-deploy.json`\n- Configure field mappings in datasource JSON files\n\n### 3. Validate Configuration\n\n```bash\naifabrix validate {{appName}} --type external\n```\n\n### 4. Generate Deployment JSON\n\n```bash\naifabrix json {{appName}} --type external\n```\n\n### 5. Deploy to Dataplane\n\n```bash\naifabrix deploy {{appName}} --controller <url> --environment dev\n```\n\n## Testing\n\n### Unit Tests (Local Validation)\n\n```bash\naifabrix test {{appName}}\n```\n\n### Integration Tests (Via Dataplane)\n\n```bash\naifabrix test-integration {{appName}} --environment dev\n```\n\n## Deployment\n\nDeploy to dataplane via miso-controller:\n\n```bash\naifabrix deploy {{appName}} --controller <url> --environment dev\n```\n\n## Troubleshooting\n\n- **Validation errors**: Run `aifabrix validate {{appName}} --type external` to check configuration\n- **Deployment issues**: Check controller URL and authentication\n- **File not found**: Ensure you\'re in the project root directory\n';
@@ -275,8 +278,8 @@ describe('Wizard Generator', () => {
       );
       expect(envTemplateCall).toBeDefined();
       const templateContent = envTemplateCall[1];
-      expect(templateContent).toContain('KV_TEST_APP_CLIENTID=kv://hubspot-demo/clientId');
-      expect(templateContent).toContain('KV_TEST_APP_CLIENTSECRET=kv://hubspot-demo/clientSecret');
+      expect(templateContent).toContain('KV_TEST_APP_CLIENTID=kv://test-app/clientId');
+      expect(templateContent).toContain('KV_TEST_APP_CLIENTSECRET=kv://test-app/clientSecret');
     });
 
     it('should generate README.md with appName-based displayName', async() => {

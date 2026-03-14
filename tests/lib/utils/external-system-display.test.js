@@ -509,5 +509,39 @@ describe('External System Display Helpers', () => {
       displayE2EResults(data, false);
       expectLogContains('✗ credential', 'Invalid token', '❌ E2E test failed');
     });
+
+    it('should display sync step evidence (managed records) when verbose', () => {
+      const data = {
+        steps: [
+          { name: 'config', success: true },
+          {
+            name: 'sync',
+            success: true,
+            evidence: {
+              jobs: [
+                {
+                  recordsProcessed: 96,
+                  totalRecords: 100,
+                  audit: { inserted: 0, updated: 96, deleted: 0, totalProcessed: 96 }
+                }
+              ]
+            }
+          }
+        ]
+      };
+      displayE2EResults(data, true);
+      expectLogContains('✓ sync', 'Managed records', '96', 'updated: 96');
+    });
+
+    it('should display CIP execution trace count when verbose and auditLog present', () => {
+      const data = {
+        steps: [{ name: 'config', success: true }],
+        auditLog: [
+          { executionId: 'abc123-def456-ghi789' }
+        ]
+      };
+      displayE2EResults(data, true);
+      expectLogContains('CIP execution trace(s)', '1', 'executionId');
+    });
   });
 });
