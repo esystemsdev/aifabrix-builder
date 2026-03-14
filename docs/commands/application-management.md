@@ -297,7 +297,7 @@ Create a service user for an integration and receive a **one-time** client secre
 
 **What:** Creates a service user in the Miso Controller with username, email, redirect URIs, and group IDs. The response includes `clientId` and `clientSecret`; the secret is returned only on create and must be saved immediately—no other endpoint returns it again.
 
-**When:** You need a dedicated service account (e.g. for CI, an integration, or an API client) with OAuth2 redirect URIs and group assignments.
+**When:** You need a dedicated service account (e.g. for CI, an integration, Postman OAuth2, or another API client) with OAuth2 redirect URIs and group assignments.
 
 **Usage:**
 ```bash
@@ -305,6 +305,11 @@ Create a service user for an integration and receive a **one-time** client secre
 aifabrix service-user create --username api-client-001 --email api@example.com \
   --redirect-uris "https://app.example.com/callback" \
   --group-names "AI-Fabrix-Developers"
+
+# Postman: create a service user for OAuth2 in Postman (use clientId/clientSecret in Postman's OAuth 2.0 settings)
+aifabrix service-user create -u postman -e postman@aifabrix.dev \
+  --redirect-uris https://oauth.pstmn.io/v1/callback \
+  --group-names AI-Fabrix-Platform-Admins
 
 # With optional description and multiple URIs/names (comma-separated)
 aifabrix service-user create -u "CI Pipeline" -e ci@example.com \

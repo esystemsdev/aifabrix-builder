@@ -315,54 +315,62 @@ All plan sections (1–8) are implemented. Code quality validation passed: forma
 
 ### Task Completion
 
-| Section | Description | Status |
-|--------|-------------|--------|
-| 1 | Change create default from webapp to external | Done – setup-app.js, app/index.js, app/prompts.js |
-| 2 | Generate env.template from authentication (kv:// paths) | Done – wizard.js addLinesFromSecurity, fallback, toPathStyleKv |
-| 3 | README template: Secrets section per auth type | Done – external-readme.js secretPaths, README.md.hbs |
-| 4 | Documentation updates | Done – application-development, external-integration, wizard, README, etc. |
-| 5 | Repair --auth: preserve authentication.variables | Done – repair.js merge existingAuth.variables |
-| 7 | Wizard systemDisplayName in config generation | Done – wizard-config.schema.json, wizard-core-helpers, wizard flows |
-| 8 | Tests | Done – app, wizard-generator, external-readme, repair, wizard-core |
+
+| Section | Description                                             | Status                                                                     |
+| ------- | ------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 1       | Change create default from webapp to external           | Done – setup-app.js, app/index.js, app/prompts.js                          |
+| 2       | Generate env.template from authentication (kv:// paths) | Done – wizard.js addLinesFromSecurity, fallback, toPathStyleKv             |
+| 3       | README template: Secrets section per auth type          | Done – external-readme.js secretPaths, README.md.hbs                       |
+| 4       | Documentation updates                                   | Done – application-development, external-integration, wizard, README, etc. |
+| 5       | Repair --auth: preserve authentication.variables        | Done – repair.js merge existingAuth.variables                              |
+| 7       | Wizard systemDisplayName in config generation           | Done – wizard-config.schema.json, wizard-core-helpers, wizard flows        |
+| 8       | Tests                                                   | Done – app, wizard-generator, external-readme, repair, wizard-core         |
+
 
 **Completion:** 7/7 implementation sections (section 6 not in plan numbering).
 
 ### File Existence Validation
 
-| File | Status |
-|------|--------|
-| lib/cli/setup-app.js | Present – default `external`, isExternalType, shouldUseWizard |
-| lib/app/index.js | Present – initialType `external`, getBaseDirForAppType |
-| lib/app/prompts.js | Present – appType default `external` |
-| lib/generator/wizard.js | Present – generateEnvTemplate from security + fallback, path-style kv:// |
-| lib/utils/external-readme.js | Present – buildSecretPaths, secretPaths in context |
-| templates/external-system/README.md.hbs | Present – Secrets section, secretPaths |
-| lib/commands/repair.js | Present – applyAuthMethod preserves variables |
-| lib/schema/wizard-config.schema.json | Present – systemDisplayName property |
-| lib/commands/wizard-core-helpers.js | Present – buildConfigPayload systemDisplayName |
-| lib/commands/wizard-core.js, wizard.js, wizard-headless.js | Present – systemDisplayName passed to API |
-| lib/api/wizard.api.js | Present – JSDoc systemDisplayName |
-| docs/commands/application-development.md | Present – default external, examples |
-| docs/commands/external-integration.md | Present – create without --type external |
-| docs/wizard.md, README.md, integration/hubspot/README.md | Present – updated create examples and secrets |
+
+| File                                                       | Status                                                                   |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------ |
+| lib/cli/setup-app.js                                       | Present – default `external`, isExternalType, shouldUseWizard            |
+| lib/app/index.js                                           | Present – initialType `external`, getBaseDirForAppType                   |
+| lib/app/prompts.js                                         | Present – appType default `external`                                     |
+| lib/generator/wizard.js                                    | Present – generateEnvTemplate from security + fallback, path-style kv:// |
+| lib/utils/external-readme.js                               | Present – buildSecretPaths, secretPaths in context                       |
+| templates/external-system/README.md.hbs                    | Present – Secrets section, secretPaths                                   |
+| lib/commands/repair.js                                     | Present – applyAuthMethod preserves variables                            |
+| lib/schema/wizard-config.schema.json                       | Present – systemDisplayName property                                     |
+| lib/commands/wizard-core-helpers.js                        | Present – buildConfigPayload systemDisplayName                           |
+| lib/commands/wizard-core.js, wizard.js, wizard-headless.js | Present – systemDisplayName passed to API                                |
+| lib/api/wizard.api.js                                      | Present – JSDoc systemDisplayName                                        |
+| docs/commands/application-development.md                   | Present – default external, examples                                     |
+| docs/commands/external-integration.md                      | Present – create without --type external                                 |
+| docs/wizard.md, README.md, integration/hubspot/README.md   | Present – updated create examples and secrets                            |
+
 
 ### Test Coverage
 
-| Area | Test File | Status |
-|------|-----------|--------|
-| Create default type | tests/lib/app/app.test.js | Present – "should create under integration/ when type is external (default type)" |
-| env.template path-style kv:// | tests/lib/generator/wizard-generator.test.js | Present – from authentication.security and fallback by auth type |
-| README secretPaths | tests/lib/utils/external-readme.test.js | Present – secretPaths for apikey/oauth2/none, Secrets section and aifabrix secret set |
-| Repair --auth preservation | tests/lib/commands/repair.test.js | Present – "preserves existing authentication.variables when switching auth method" |
-| Wizard systemDisplayName | tests/lib/commands/wizard-core.test.js | Present – "should pass systemDisplayName to generateConfig when provided" |
+
+| Area                          | Test File                                    | Status                                                                                |
+| ----------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Create default type           | tests/lib/app/app.test.js                    | Present – "should create under integration/ when type is external (default type)"     |
+| env.template path-style kv:// | tests/lib/generator/wizard-generator.test.js | Present – from authentication.security and fallback by auth type                      |
+| README secretPaths            | tests/lib/utils/external-readme.test.js      | Present – secretPaths for apikey/oauth2/none, Secrets section and aifabrix secret set |
+| Repair --auth preservation    | tests/lib/commands/repair.test.js            | Present – "preserves existing authentication.variables when switching auth method"    |
+| Wizard systemDisplayName      | tests/lib/commands/wizard-core.test.js       | Present – "should pass systemDisplayName to generateConfig when provided"             |
+
 
 ### Code Quality Validation
 
-| Step | Result | Notes |
-|------|--------|--------|
-| Format (lint:fix) | PASSED | Exit code 0 |
-| Lint | PASSED | Exit code 0; 1 warning in lib/commands/up-dataplane.js (max-statements, pre-existing) |
-| Tests | PASSED | 240 suites, 5287 tests, 28 skipped |
+
+| Step              | Result | Notes                                                                                 |
+| ----------------- | ------ | ------------------------------------------------------------------------------------- |
+| Format (lint:fix) | PASSED | Exit code 0                                                                           |
+| Lint              | PASSED | Exit code 0; 1 warning in lib/commands/up-dataplane.js (max-statements, pre-existing) |
+| Tests             | PASSED | 240 suites, 5287 tests, 28 skipped                                                    |
+
 
 ### Cursor Rules Compliance
 
@@ -392,11 +400,11 @@ All plan sections (1–8) are implemented. Code quality validation passed: forma
 
 ### Final Validation Checklist
 
-- [x] All plan sections (1–8) implemented
-- [x] All mentioned files exist with expected changes
-- [x] Tests exist and pass for create default, env.template, README secrets, repair --auth, wizard systemDisplayName
-- [x] Format (lint:fix) and lint pass
-- [x] Full test suite passes
-- [x] Cursor rules compliance verified for touched code
-- [x] Implementation complete; report appended to plan file
+- All plan sections (1–8) implemented
+- All mentioned files exist with expected changes
+- Tests exist and pass for create default, env.template, README secrets, repair --auth, wizard systemDisplayName
+- Format (lint:fix) and lint pass
+- Full test suite passes
+- Cursor rules compliance verified for touched code
+- Implementation complete; report appended to plan file
 

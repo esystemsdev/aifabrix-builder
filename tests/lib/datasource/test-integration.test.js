@@ -27,6 +27,7 @@ jest.mock('../../../lib/utils/test-log-writer', () => ({
 }));
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 jest.mock('fs', () => ({
+  existsSync: jest.fn(),
   promises: {
     readFile: jest.fn()
   }
@@ -74,22 +75,54 @@ describe('Datasource Test Integration', () => {
     });
 
     it('should call pipeline test when datasource found', async() => {
-      configFormat.loadConfigFile.mockReturnValue({
+      const appConfig = {
         externalIntegration: {
           systems: ['sys.yaml'],
           dataSources: ['my-ds-datasource.json'],
           schemaBasePath: './'
         }
+      };
+      const datasourceConfig = { key: 'my-ds', testPayload: { payloadTemplate: { x: 1 } } };
+      configFormat.loadConfigFile.mockImplementation((filePath) => {
+        if (filePath && filePath.endsWith('application.yaml')) return appConfig;
+        if (filePath && filePath.includes('my-ds-datasource')) return datasourceConfig;
+        return appConfig;
       });
       const yaml = require('js-yaml');
-      fs.readFile
-        .mockResolvedValueOnce(yaml.dump({ key: 'mysys' }))
-        .mockResolvedValueOnce(JSON.stringify({ key: 'my-ds', testPayload: { payloadTemplate: { x: 1 } } }));
+      fs.readFile.mockResolvedValueOnce(yaml.dump({ key: 'mysys' }));
 
       const result = await runDatasourceTestIntegration('my-ds', { app: 'myapp' });
 
       expect(pipelineApi.testDatasourceViaPipeline).toHaveBeenCalled();
       expect(result.key).toBe('my-ds');
+      expect(result.success).toBe(true);
+    });
+
+    it('should find datasource by key inside file when filename base does not match', async() => {
+      const fsSync = require('fs');
+      fsSync.existsSync.mockReturnValue(true);
+      const appConfig = {
+        externalIntegration: {
+          systems: ['hubspot-system.yaml'],
+          dataSources: ['hubspot-companies-datasource.json'],
+          schemaBasePath: './'
+        }
+      };
+      const datasourceConfig = { key: 'test-e2e-hubspot-companies', testPayload: { payloadTemplate: { x: 1 } } };
+      configFormat.loadConfigFile.mockImplementation((filePath) => {
+        if (filePath && filePath.endsWith('application.yaml')) return appConfig;
+        if (filePath && filePath.includes('hubspot-companies-datasource')) return datasourceConfig;
+        return appConfig;
+      });
+      const yaml = require('js-yaml');
+      fs.readFile.mockResolvedValue(yaml.dump({ key: 'hubspot' }));
+
+      const result = await runDatasourceTestIntegration('test-e2e-hubspot-companies', { app: 'test-e2e-hubspot' });
+
+      expect(pipelineApi.testDatasourceViaPipeline).toHaveBeenCalledWith(
+        expect.objectContaining({ datasourceKey: 'test-e2e-hubspot-companies' })
+      );
+      expect(result.key).toBe('test-e2e-hubspot-companies');
       expect(result.success).toBe(true);
     });
   });
