@@ -1,3 +1,34 @@
+## [2.42.3] - 2026-03-14
+
+### Added
+- **Repair --doc:** `aifabrix repair <app> --doc` regenerates `integration/<app>/README.md` from the current deployment manifest. Plan 106.
+- **External env.template template:** Handlebars-based env.template for external systems with **Authentication** and **Configuration** sections and inline comments. Create, download, split, and repair all use the same template; auth type, secure vars (kv paths), and configuration with portalInput hints. Plan 106.
+- **Datasource test-e2e -v:** With `aifabrix datasource test-e2e <key> --verbose`, the CLI shows managed record counts (inserted/updated/deleted/totalProcessed) for sync steps and CIP execution trace summary when the dataplane returns audit data. Plan 107.
+- **Datasource test-integration -v:** `aifabrix datasource test-integration <key> -v` shows detailed validation, field mapping, and endpoint test output. Plan 107.
+- **Datasource log commands:** `aifabrix datasource log-e2e <key>` and `aifabrix datasource log-integration <key>` display the latest (or `--file`) E2E or integration test log in a detailed terminal format (request, response, steps, sync counts, validation, CIP trace). Plan 107.
+- **Datasource --app optional:** For datasource test-e2e, test-integration, log-e2e, and log-integration, `--app` is optional: app is resolved from cwd, from scanning integration apps by datasource key, or from parsing the key; if multiple apps match, the user must pass `--app`. Plan 107.
+- **Datasource alias:** `aifabrix ds` is an alias for `aifabrix datasource`. Plan 107.
+- **ISO 27001 secrets encryption:** Config and encryption key are ensured on first use of any secret command (list, set, remove, validate, secure) and on app register and rotate-secret. All values written to user/shared secrets files and to admin-secrets.env are encrypted by default when a secrets-encryption key is set; bootstrap key is stored only in config.yaml. Plan 108.
+- **Service-user list, rotate-secret, delete, update:** `aifabrix service-user list` (pagination, search, sort, filter), `aifabrix service-user rotate-secret --id <uuid>`, `aifabrix service-user delete --id <uuid>`, `aifabrix service-user update-groups --id <uuid> --group-names <names>`, `aifabrix service-user update-redirect-uris --id <uuid> --redirect-uris <uris>`. Permissions: list → service-user:read; rotate/update → service-user:update; delete → service-user:delete. Plan 109.
+- **ABAC and datasource validation:** New `lib/datasource/abac-validator.js` validates dimensions→attributes, crossSystemJson (allowed operators, one per path), and rejects legacy crossSystem. Field-reference validator checks primaryKey and exposed.profiles references; human-readable error messages (oneOf/anyOf, pattern descriptions, hints). Same post-schema checks run for `validate <file>`, `validate <app>`, and manifest validation. Plan 110.
+- **RBAC format support:** RBAC config can be **rbac.yaml**, **rbac.yml**, or **rbac.json**. Single resolver `resolveRbacPath(appPath)`; all read/write use config-format layer; format preserved when updating existing file; new files default to rbac.yaml. Plan 111.
+
+### Changed
+- **Repair:** With `--doc`, repair regenerates README from deploy JSON after other repair steps; create/split/repair env.template use `generateExternalEnvTemplateContent(system)` for consistent Authentication/Configuration sections. Plan 106.
+- **Infrastructure and admin-secrets:** When admin-secrets.env is encrypted, down/restart use a decrypted temp file for compose; prepareInfraDirectory is async and uses readAndDecryptAdminSecrets; ensureAdminSecrets reads/writes with encryption when key is set. Plan 108.
+- **Validation:** Datasource validation (file and manifest) runs field-reference and ABAC checks after schema; error-formatter supports oneOf/anyOf and more pattern descriptions; external-system-validators use human phrases instead of raw regex in messages. Plan 110.
+- **RBAC loading:** Generator, validator, and repair use `resolveRbacPath` and `loadConfigFile`/`writeConfigFile` for RBAC; parse errors reference the actual file (e.g. rbac.json). Plan 111.
+
+### Technical
+- **Plan 106:** `lib/utils/external-env-template.js` (buildExternalEnvTemplateContext, generateExternalEnvTemplateContent); `templates/external-system/env.template.hbs`; repair.js `--doc` and readmeRegenerated; wizard.js, split.js, repair-env-template.js use new template; docs (external-integration, utilities, env-template).
+- **Plan 107:** `lib/datasource/log-viewer.js`, `lib/datasource/resolve-app.js` (resolveAppKeyForDatasource); test-e2e body.audit when verbose; display sync evidence and auditLog; log-e2e/log-integration commands and `ds` alias; docs (external-integration).
+- **Plan 108:** setup-secrets.js and register/rotate-secret call ensureSecretsEncryptionKey; local-secrets.js encrypt by default in saveLocalSecret/saveSecret; secrets.js generateAdminSecretsEnv and formatAdminSecretsContent; ensure-encryption-key.js bootstrap key only in config; infrastructure helpers/index decrypted temp for down/restart and prepareInfraDirectory async; docs (secrets-and-config, utilities).
+- **Plan 109:** lib/api/service-users.api.js (listServiceUsers, regenerateSecretServiceUser, deleteServiceUser, updateGroupsServiceUser, updateRedirectUrisServiceUser); lib/commands/service-user.js run*; setup-service-user.js subcommands; docs (application-management, permissions, README).
+- **Plan 110:** lib/datasource/abac-validator.js; field-reference-validator primaryKey and exposed.profiles; error-formatter oneOf/anyOf, const, PATTERN_DESCRIPTIONS; validate.js and external-manifest-validator run field refs + ABAC; docs (validation.md, validation-rules.md).
+- **Plan 111:** app-config-resolver.js resolveRbacPath; paths re-export; generator helpers loadRbac via loadConfigFile; generator index/external/external-controller-manifest and validator/repair/repair-rbac use resolver and writeConfigFile; docs (utilities, external-systems, validation-rules).
+
+---
+
 ## [2.42.2] - 2026-03-12
 
 ### Changed
