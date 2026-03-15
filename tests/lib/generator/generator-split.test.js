@@ -33,11 +33,22 @@ describe('Generator Split Functions', () => {
   const outputDir = path.join(process.cwd(), 'output');
 
   let applicationsReadmeTemplateContent;
+  let externalEnvTemplateContent;
   beforeAll(() => {
     const actualFs = jest.requireActual('fs');
     const projectRoot = path.join(__dirname, '..', '..', '..');
-    const templatePath = path.join(projectRoot, 'templates', 'applications', 'README.md.hbs');
-    applicationsReadmeTemplateContent = actualFs.readFileSync(templatePath, 'utf8');
+    applicationsReadmeTemplateContent = actualFs.readFileSync(
+      path.join(projectRoot, 'templates', 'applications', 'README.md.hbs'),
+      'utf8'
+    );
+    try {
+      externalEnvTemplateContent = actualFs.readFileSync(
+        path.join(projectRoot, 'templates', 'external-system', 'env.template.hbs'),
+        'utf8'
+      );
+    } catch {
+      externalEnvTemplateContent = '# Environment variables\n{{#each authSecureVars}}\n{{name}}={{value}}\n{{/each}}\n';
+    }
   });
 
   beforeEach(() => {
@@ -53,6 +64,9 @@ describe('Generator Split Functions', () => {
           path.join(path.join(__dirname, '..', '..', '..'), 'templates', 'external-system', 'README.md.hbs'),
           'utf8'
         );
+      }
+      if (pathStr.includes('external-system/env.template.hbs')) {
+        return externalEnvTemplateContent;
       }
       return undefined;
     });
@@ -579,6 +593,37 @@ describe('Generator Split Functions', () => {
       expect(envTemplateCall).toBeDefined();
       expect(envTemplateCall[1]).toContain('DATABASE_URL=kv://databases-testapp-0-urlKeyVault');
       expect(envTemplateCall[1]).toContain('PORT=3000');
+    });
+
+    it('should write env.template with Authentication and Configuration sections when deployment has system (external)', async() => {
+      const deploymentWithSystem = {
+        system: {
+          key: 'test-hubspot',
+          displayName: 'Test HubSpot',
+          authentication: {
+            method: 'oauth2',
+            security: { clientId: 'kv://test-hubspot/clientId', clientSecret: 'kv://test-hubspot/clientSecret' }
+          },
+          configuration: [
+            { name: 'API_VERSION', value: 'v3', location: 'variable', portalInput: { label: 'API Version', options: ['v1', 'v2', 'v3'] } }
+          ]
+        },
+        dataSources: []
+      };
+      fs.promises.readFile.mockResolvedValue(JSON.stringify(deploymentWithSystem));
+
+      await generator.splitDeployJson(deployJsonPath);
+
+      const writeCalls = fs.promises.writeFile.mock.calls;
+      const envTemplateCall = writeCalls.find(call => call[0].endsWith('env.template'));
+      expect(envTemplateCall).toBeDefined();
+      const content = envTemplateCall[1];
+      expect(content).toContain('# Authentication');
+      expect(content).toContain('Type: oauth2');
+      expect(content).toContain('# Configuration');
+      expect(content).toMatch(/KV_[A-Z_]+=kv:\/\/test-hubspot\/clientId/);
+      expect(content).toContain('API_VERSION=');
+      expect(content).toContain('API Version');
     });
 
     it('should write application.yaml correctly', async() => {

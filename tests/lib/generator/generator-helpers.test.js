@@ -7,14 +7,20 @@
  */
 
 const fs = require('fs');
+const path = require('path');
 const yaml = require('js-yaml');
 
-// Mock dependencies
+// Mock config-format so loadRbac uses it (loadConfigFile)
+jest.mock('../../../lib/utils/config-format', () => ({
+  loadConfigFile: jest.fn()
+}));
+
 jest.mock('fs', () => ({
   existsSync: jest.fn(),
   readFileSync: jest.fn()
 }));
 
+const { loadConfigFile } = require('../../../lib/utils/config-format');
 const {
   loadVariables,
   loadEnvTemplate,
@@ -36,20 +42,20 @@ describe('Generator Helpers Module', () => {
         image: { name: 'test-image' }
       };
 
-      fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue(yaml.dump(mockVariables));
+      loadConfigFile.mockReturnValue(mockVariables);
 
       const result = loadVariables(configPath);
 
-      expect(fs.existsSync).toHaveBeenCalledWith(configPath);
-      expect(fs.readFileSync).toHaveBeenCalledWith(configPath, 'utf8');
+      expect(loadConfigFile).toHaveBeenCalledWith(configPath);
       expect(result).toEqual({ parsed: mockVariables });
     });
 
     it('should throw error when config file does not exist', () => {
       const configPath = '/path/to/application.yaml';
 
-      fs.existsSync.mockReturnValue(false);
+      loadConfigFile.mockImplementation(() => {
+        throw new Error('Config file not found: ' + configPath);
+      });
 
       expect(() => loadVariables(configPath)).toThrow(/Config file not found/);
     });
@@ -57,8 +63,9 @@ describe('Generator Helpers Module', () => {
     it('should throw error when YAML is invalid', () => {
       const configPath = '/path/to/application.yaml';
 
-      fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue('invalid: yaml: content: [unclosed');
+      loadConfigFile.mockImplementation(() => {
+        throw new Error('Invalid YAML syntax: bad content');
+      });
 
       expect(() => loadVariables(configPath)).toThrow(/Invalid YAML syntax/);
     });
@@ -98,13 +105,19 @@ describe('Generator Helpers Module', () => {
       };
 
       fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue(yaml.dump(mockRbac));
+      loadConfigFile.mockReturnValue(mockRbac);
 
       const result = loadRbac(rbacPath);
 
       expect(fs.existsSync).toHaveBeenCalledWith(rbacPath);
-      expect(fs.readFileSync).toHaveBeenCalledWith(rbacPath, 'utf8');
+      expect(loadConfigFile).toHaveBeenCalledWith(rbacPath);
       expect(result).toEqual(mockRbac);
+    });
+
+    it('should return null when path is falsy', () => {
+      expect(loadRbac(null)).toBeNull();
+      expect(loadRbac('')).toBeNull();
+      expect(loadConfigFile).not.toHaveBeenCalled();
     });
 
     it('should return null when file does not exist', () => {
@@ -115,16 +128,31 @@ describe('Generator Helpers Module', () => {
       const result = loadRbac(rbacPath);
 
       expect(result).toBeNull();
-      expect(fs.readFileSync).not.toHaveBeenCalled();
+      expect(loadConfigFile).not.toHaveBeenCalled();
     });
 
-    it('should throw error when YAML is invalid', () => {
+    it('should throw with file basename when content is invalid', () => {
       const rbacPath = '/path/to/rbac.yaml';
 
       fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue('invalid: yaml: content: [unclosed');
+      loadConfigFile.mockImplementation(() => {
+        throw new Error('Invalid YAML syntax: bad content');
+      });
 
-      expect(() => loadRbac(rbacPath)).toThrow('Invalid YAML syntax in rbac.yaml:');
+      expect(() => loadRbac(rbacPath)).toThrow(/Invalid syntax in rbac\.yaml/);
+    });
+
+    it('should load rbac.json via loadConfigFile', () => {
+      const rbacPath = '/path/to/app/rbac.json';
+      const mockRbac = { roles: [], permissions: [] };
+
+      fs.existsSync.mockReturnValue(true);
+      loadConfigFile.mockReturnValue(mockRbac);
+
+      const result = loadRbac(rbacPath);
+
+      expect(loadConfigFile).toHaveBeenCalledWith(rbacPath);
+      expect(result).toEqual(mockRbac);
     });
   });
 

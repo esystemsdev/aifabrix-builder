@@ -297,7 +297,7 @@ Create a service user for an integration and receive a **one-time** client secre
 
 **What:** Creates a service user in the Miso Controller with username, email, redirect URIs, and group IDs. The response includes `clientId` and `clientSecret`; the secret is returned only on create and must be saved immediately—no other endpoint returns it again.
 
-**When:** You need a dedicated service account (e.g. for CI, an integration, or an API client) with OAuth2 redirect URIs and group assignments.
+**When:** You need a dedicated service account (e.g. for CI, an integration, Postman OAuth2, or another API client) with OAuth2 redirect URIs and group assignments.
 
 **Usage:**
 ```bash
@@ -305,6 +305,11 @@ Create a service user for an integration and receive a **one-time** client secre
 aifabrix service-user create --username api-client-001 --email api@example.com \
   --redirect-uris "https://app.example.com/callback" \
   --group-names "AI-Fabrix-Developers"
+
+# Postman: create a service user for OAuth2 in Postman (use clientId/clientSecret in Postman's OAuth 2.0 settings)
+aifabrix service-user create -u postman -e postman@aifabrix.dev \
+  --redirect-uris https://oauth.pstmn.io/v1/callback \
+  --group-names AI-Fabrix-Platform-Admins
 
 # With optional description and multiple URIs/names (comma-separated)
 aifabrix service-user create -u "CI Pipeline" -e ci@example.com \
@@ -328,4 +333,122 @@ aifabrix service-user create -u "CI Pipeline" -e ci@example.com \
 - **"redirect URI is required"** / **"group name is required"** → Provide `--redirect-uris` and `--group-names` (comma-separated)
 - **"No authentication token"** → Run `aifabrix login` first
 - **"Missing permission: service-user:create"** → Your account needs the service-user:create permission on the controller
+
+---
+
+<a id="aifabrix-service-user-list"></a>
+### aifabrix service-user list
+
+List service users with optional pagination and search.
+
+**What:** Fetches and displays service users from the controller in a table (id, username, email, clientId, active).
+
+**When:** To see existing service users, find an ID for rotate-secret or update commands, or audit assigned groups and clients.
+
+**Usage:**
+```bash
+aifabrix service-user list
+aifabrix service-user list --page 1 --page-size 20 --search "api"
+aifabrix service-user list --controller https://controller.example.com
+```
+
+**Options:** `--controller`, `--page`, `--page-size`, `--search`, `--sort`, `--filter`
+
+**Permissions:** Controller `service-user:read`. See [Online Commands and Permissions](permissions.md).
+
+**Issues:** **"No authentication token"** → Run `aifabrix login`. **"Missing permission: service-user:read"** → Your account needs the service-user:read permission on the controller.
+
+---
+
+<a id="aifabrix-service-user-rotate-secret"></a>
+### aifabrix service-user rotate-secret
+
+Rotate (regenerate) the client secret for a service user. The new secret is shown once only.
+
+**What:** Calls the controller to regenerate the secret for the given service user ID. The new `clientSecret` is printed once with the same one-time warning as on create.
+
+**When:** A secret was compromised, expired, or you need to rotate credentials without creating a new service user.
+
+**Usage:**
+```bash
+aifabrix service-user rotate-secret --id <uuid>
+aifabrix service-user rotate-secret --controller https://controller.example.com --id <uuid>
+```
+
+**Options:** `--controller`, `--id <uuid>` (required)
+
+**Permissions:** Controller `service-user:update`. See [Online Commands and Permissions](permissions.md).
+
+**Output:** On success, prints the new `clientSecret` and: *Save this secret now; it will not be shown again.*
+
+**Issues:** **"Service user ID is required"** → Use `--id <uuid>`. **"Service user not found"** → Check the ID. **"Missing permission: service-user:update"** → Your account needs the service-user:update permission on the controller.
+
+---
+
+<a id="aifabrix-service-user-delete"></a>
+### aifabrix service-user delete
+
+Deactivate a service user.
+
+**What:** Deactivates the service user with the given ID. The user can no longer be used for authentication.
+
+**When:** Retiring an integration, CI identity, or API client.
+
+**Usage:**
+```bash
+aifabrix service-user delete --id <uuid>
+aifabrix service-user delete --controller https://controller.example.com --id <uuid>
+```
+
+**Options:** `--controller`, `--id <uuid>` (required)
+
+**Permissions:** Controller `service-user:delete`. See [Online Commands and Permissions](permissions.md).
+
+**Issues:** **"Service user ID is required"** → Use `--id <uuid>`. **"Service user not found"** → Check the ID. **"Missing permission: service-user:delete"** → Your account needs the service-user:delete permission on the controller.
+
+---
+
+<a id="aifabrix-service-user-update-groups"></a>
+### aifabrix service-user update-groups
+
+Update group assignments for a service user.
+
+**What:** Sets the list of groups for the given service user (replaces existing group assignments).
+
+**When:** Changing which groups a service user belongs to (e.g. after a role change).
+
+**Usage:**
+```bash
+aifabrix service-user update-groups --id <uuid> --group-names Group1,Group2
+aifabrix service-user update-groups --controller https://controller.example.com --id <uuid> --group-names AI-Fabrix-Developers
+```
+
+**Options:** `--controller`, `--id <uuid>` (required), `--group-names <names>` (comma-separated, required)
+
+**Permissions:** Controller `service-user:update`. See [Online Commands and Permissions](permissions.md).
+
+**Issues:** **"Service user ID is required"** → Use `--id <uuid>`. **"At least one group name is required"** → Use `--group-names <name1,name2,...>`. **"Missing permission: service-user:update"** → Your account needs the service-user:update permission on the controller.
+
+---
+
+<a id="aifabrix-service-user-update-redirect-uris"></a>
+### aifabrix service-user update-redirect-uris
+
+Update redirect URIs for a service user.
+
+**What:** Sets the list of OAuth2 redirect URIs for the given service user (replaces existing URIs). The controller may merge in its own callback URL.
+
+**When:** Adding or changing allowed redirect URIs (e.g. new app URL or environment).
+
+**Usage:**
+```bash
+aifabrix service-user update-redirect-uris --id <uuid> --redirect-uris https://app.example.com/callback
+aifabrix service-user update-redirect-uris --controller https://controller.example.com --id <uuid> --redirect-uris https://a.com/cb,https://b.com/cb
+```
+
+**Options:** `--controller`, `--id <uuid>` (required), `--redirect-uris <uris>` (comma-separated, required, min 1)
+
+**Permissions:** Controller `service-user:update`. See [Online Commands and Permissions](permissions.md).
+
+**Issues:** **"Service user ID is required"** → Use `--id <uuid>`. **"At least one redirect URI is required"** → Use `--redirect-uris <uri1,uri2,...>`. **"Missing permission: service-user:update"** → Your account needs the service-user:update permission on the controller.
 

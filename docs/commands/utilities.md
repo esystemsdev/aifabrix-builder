@@ -73,9 +73,9 @@ This will generate the .env file without running validation checks afterward.
 
 Generate deployment JSON.
 
-**What:** Creates `<appKey>-deploy.json` (e.g. `builder/<app>/<appKey>-deploy.json`) from application config, env.template, and rbac for normal applications. Application config may be `application.yaml` or `application.json`; system/datasource config may be `.yaml` or `.json`. The deployment manifest is always **JSON only** (`<appKey>-deploy.json` or `<systemKey>-deploy.json`). For external type applications, generates `<systemKey>-deploy.json` by loading the component files (`<systemKey>-system.yaml`/`.json` and `<systemKey>-datasource-*.*`), combining them into a controller-compatible deployment manifest with inline system + datasources. This is the reverse operation of `aifabrix split-json` — it combines component files back into a deployment manifest. When you download an external system from the dataplane (via `aifabrix download`), you get `<systemKey>-deploy.json`, which can then be split into component files using `aifabrix split-json`. Merges rbac.yaml (if present) into the system JSON. **Note:** Only the first system from `externalIntegration.systems` is included in the generated `<systemKey>-deploy.json`. All data sources from `externalIntegration.dataSources` are included.
+**What:** Creates `<appKey>-deploy.json` (e.g. `builder/<app>/<appKey>-deploy.json`) from application config, env.template, and rbac for normal applications. Application config may be `application.yaml` or `application.json`; system/datasource config may be `.yaml` or `.json`. The deployment manifest is always **JSON only** (`<appKey>-deploy.json` or `<systemKey>-deploy.json`). For external type applications, generates `<systemKey>-deploy.json` by loading the component files (`<systemKey>-system.yaml`/`.json` and `<systemKey>-datasource-*.*`), combining them into a controller-compatible deployment manifest with inline system + datasources. This is the reverse operation of `aifabrix split-json` — it combines component files back into a deployment manifest. When you download an external system from the dataplane (via `aifabrix download`), you get `<systemKey>-deploy.json`, which can then be split into component files using `aifabrix split-json`. Merges RBAC config (rbac.yaml, rbac.yml, or rbac.json, if present) into the system JSON. **Note:** Only the first system from `externalIntegration.systems` is included in the generated `<systemKey>-deploy.json`. All data sources from `externalIntegration.dataSources` are included.
 
-**When:** Previewing deployment configuration, debugging deployments. For external systems, before deploying to generate the combined application schema file. For external systems with RBAC, ensures roles/permissions from rbac.yaml are merged into the system JSON.
+**When:** Previewing deployment configuration, debugging deployments. For external systems, before deploying to generate the combined application schema file. For external systems with RBAC, ensures roles/permissions from the RBAC file (rbac.yaml, rbac.yml, or rbac.json) are merged into the system JSON.
 
 **Example (normal app):**
 ```bash
@@ -85,7 +85,7 @@ aifabrix json myapp
 **Example (external system):**
 ```bash
 aifabrix json hubspot
-# Resolves integration/hubspot first, then builder/hubspot; generates <systemKey>-deploy.json in the resolved directory
+# Resolves integration/hubspot-test first, then builder/hubspot-test; generates <systemKey>-deploy.json in the resolved directory
 ```
 
 **Creates:**
@@ -93,9 +93,9 @@ aifabrix json hubspot
 - External systems: `integration/<app>/<systemKey>-deploy.json` (deployment manifest, JSON only; combines `<systemKey>-system.*` + `<systemKey>-datasource-*.*` files with rbac merged if present)
 
 **RBAC Support for External Systems:**
-- External systems can define roles and permissions in `rbac.yaml` (same format as regular apps)
-- When generating JSON, roles/permissions from rbac.yaml are merged into the system JSON
-- Priority: roles/permissions in system JSON > rbac.yaml (if both exist, prefer JSON)
+- External systems can define roles and permissions in **rbac.yaml**, **rbac.yml**, or **rbac.json** (same structure; format inferred from extension)
+- When generating JSON, roles/permissions from the RBAC file are merged into the system JSON
+- Priority: roles/permissions in system JSON > RBAC file (if both exist, prefer JSON)
 - Supports both `builder/` and `integration/` directories
 
 **Issues:**
@@ -110,7 +110,7 @@ aifabrix json hubspot
 
 Split deployment JSON into component files.
 
-**What:** Performs the reverse operation of `aifabrix json`. Reads a deployment JSON file (`<app-name>-deploy.json` or `<systemKey>-deploy.json`; deployment manifest is always JSON) and splits it into component files. For regular apps, extracts `env.template`, `application.yaml` (or `application.json`), `rbac.yml`, and `README.md`. For external systems, splits into `<systemKey>-system.*` (system config) and `<systemKey>-datasource-*.*` (one per datasource), plus application config, `env.template`, and `README.md`. Component config files may be written as YAML or JSON. This enables migration of existing deployment JSON back to the component file structure. For external systems, extracts roles/permissions from the system JSON into rbac.yml if present.
+**What:** Performs the reverse operation of `aifabrix json`. Reads a deployment JSON file (`<app-name>-deploy.json` or `<systemKey>-deploy.json`; deployment manifest is always JSON) and splits it into component files. For regular apps, extracts `env.template`, `application.yaml` (or `application.json`), RBAC file (`rbac.yaml`, `rbac.yml`, or `rbac.json`), and `README.md`. For external systems, splits into `<systemKey>-system.*` (system config) and `<systemKey>-datasource-*.*` (one per datasource), plus application config, `env.template`, and `README.md`. Component config files may be written as YAML or JSON. This enables migration of existing deployment JSON back to the component file structure. For external systems, extracts roles/permissions from the system JSON into an RBAC file (e.g. rbac.yml) if present.
 
 **When:** Migrating existing deployment JSON files to component-based structure, recovering component files from deployment JSON, or reverse-engineering deployment configurations.
 
@@ -249,10 +249,14 @@ aifabrix repair hubspot --dry-run
 
 # Optional: ensure RBAC, exposed attributes, sync section, or test payload
 aifabrix repair hubspot --rbac --expose --sync --test
+
+# Regenerate README.md from the current deployment manifest
+aifabrix repair hubspot --doc
 ```
 
 **Options:**
 - `--auth <method>` — Set authentication method (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none); updates the system file and env.template
+- `--doc` — Regenerate `README.md` from the deployment manifest
 - `--dry-run` — Report what would be changed; do not write
 - `--rbac` — Ensure RBAC has a permission per datasource endpoint (`<resourceType>:<capability>`) and add default Admin/Reader roles if none exist
 - `--expose` — Set `exposed.attributes` on each datasource to the list of all `fieldMappings.attributes` keys
@@ -368,7 +372,7 @@ Encrypted secrets are automatically decrypted when loaded by `aifabrix resolve`,
 - **ISO 27001 Compliance**: Encrypts secrets at rest for compliance requirements
 - **AES-256-GCM**: Uses authenticated encryption (confidentiality and integrity)
 - **Key Management**: Encryption key stored separately from encrypted data
-- **File Permissions**: Encrypted files set to 0o600 (owner read/write only)
+- **File Permissions**: Secrets and admin files are written with mode `600` (owner read/write only). When the CLI reads `secrets.local.yaml`, `admin-secrets.env`, or `config.yaml`, it enforces these permissions: if a file has looser permissions (e.g. group or other read), the CLI restricts it to `600` automatically.
 - **Backward Compatible**: Plaintext secrets still work if encryption key is not configured
 - **Key Rotation**: Re-run `aifabrix secure` with a new key to re-encrypt all values
 
@@ -403,7 +407,7 @@ aifabrix secret list --shared
 
 Set a secret value in secrets file.
 
-**What:** Dynamically sets a secret value in either the user secrets file (`~/.aifabrix/secrets.local.yaml`) or the general secrets file (from `config.yaml` `aifabrix-secrets`). Supports both full URLs and environment variable interpolation.
+**What:** Dynamically sets a secret value in either the user secrets file (`~/.aifabrix/secrets.local.yaml`) or the general secrets file (from `config.yaml` `aifabrix-secrets`). On first use, the CLI ensures `config.yaml` exists and a `secrets-encryption` key is available (creating one if missing). When an encryption key is set, values are stored **encrypted** (`secure://` format) in the secrets file by default. Supports both full URLs and environment variable interpolation.
 
 **When:** Setting up new secrets, updating existing secret values, or configuring environment-specific secrets.
 

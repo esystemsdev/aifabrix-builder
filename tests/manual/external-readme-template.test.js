@@ -40,13 +40,13 @@ describe('external-readme template (manual)', () => {
 
     it('generated README contains Secrets section and aifabrix secret set with key (no kv://) when secretPaths present', () => {
       const content = generateExternalReadmeContent({
-        systemKey: 'hubspot-test',
-        displayName: 'HubSpot Test',
+        systemKey: 'wizard-e2e-demo',
+        displayName: 'Wizard E2E Demo',
         authType: 'apikey'
       });
       expect(content).toContain('### Secrets');
       expect(content).toContain('aifabrix secret set');
-      expect(content).toContain('hubspot-test/apiKey');
+      expect(content).toContain('wizard-e2e-demo/apiKey');
       expect(content).toContain('<your value>');
       expect(content).not.toMatch(/aifabrix secret set kv:\/\//);
     });

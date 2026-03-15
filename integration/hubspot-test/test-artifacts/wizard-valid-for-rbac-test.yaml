@@ -1,0 +1,5 @@
+appName: wizard-e2e-negative-rbac-missing-role
+mode: create-system
+source:
+  type: known-platform
+  platform: hubspot

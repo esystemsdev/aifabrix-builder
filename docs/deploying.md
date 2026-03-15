@@ -487,7 +487,7 @@ Controller computes and manages the deployment key. Builder sends manifest only 
 
 The deployment manifest sent to the controller is named by app or system key:
 - **Regular apps (builder):** `builder/<app>/<appKey>-deploy.json` (e.g. `builder/myapp/myapp-deploy.json`)
-- **External systems (integration):** `integration/<app>/<systemKey>-deploy.json` (e.g. `integration/hubspot/hubspot-deploy.json`)
+- **External systems (integration):** `integration/<app>/<systemKey>-deploy.json` (e.g. `integration/hubspot-test/hubspot-test-deploy.json`)
 
 The controller uses the manifest to deploy to Azure Container Apps or to run containers locally (local Docker).
 

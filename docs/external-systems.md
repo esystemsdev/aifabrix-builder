@@ -25,7 +25,7 @@ External systems can be:
 ### When to Use
 
 | Use external systems for | Use regular applications for |
-|--------------------------|------------------------------|
+| ------------------------- | ----------------------------- |
 | CRM integration (HubSpot, Salesforce) | Custom APIs or services |
 | SaaS APIs (Slack, Teams, GitHub) | Background jobs or workers |
 | Syncing data from external databases | Web applications |
@@ -139,16 +139,16 @@ aifabrix create hubspot
 
 **What gets created:**
 
-File names follow `<systemKey>-system.{yaml|json}` and `<systemKey>-datasource-<suffix>.{yaml|json}`. The suffix comes from the datasource key (e.g. `hubspot-company` → `hubspot-datasource-company`). Both `.yaml` and `.json` are supported.
+File names follow `<systemKey>-system.{yaml|json}` and `<systemKey>-datasource-<suffix>.{yaml|json}`. The suffix comes from the datasource key (e.g. `hubspot-test-company` → `hubspot-datasource-company`). Both `.yaml` and `.json` are supported.
 
 - `aifabrix create <app>` (default type is external) generates `entity1`, `entity2`, etc. (e.g. `hubspot-datasource-entity1.yaml`).
 - The wizard can produce semantic names like `company`, `contact`, `deal` for known platforms.
 
 ```yaml
 integration/
-  hubspot/
+  hubspot-test/
     application.yaml                        # App configuration
-    hubspot-system.yaml                     # External system definition (or .json)
+    hubspot-test-system.yaml                     # External system definition (or .json)
     hubspot-datasource-entity1.yaml         # Datasource 1 (or company/contact/deal via wizard)
     hubspot-datasource-entity2.yaml         # Datasource 2
     hubspot-datasource-entity3.yaml         # Datasource 3
@@ -195,7 +195,7 @@ classDef primary fill:#0062FF,color:#ffffff,stroke-width:0px;
 %% Flow
 %% =======================
 Create[aifabrix create hubspot]:::primary --> Variables[application.yaml<br/>App configuration<br/>externalIntegration block]:::base
-Create --> SystemYaml[hubspot-system.yaml<br/>External system definition]:::base
+Create --> SystemYaml[hubspot-test-system.yaml<br/>External system definition]:::base
 Create --> Datasource1[hubspot-datasource-entity1.yaml<br/>Datasource 1]:::base
 Create --> Datasource2[hubspot-datasource-entity2.yaml<br/>Datasource 2]:::base
 Create --> Datasource3[hubspot-datasource-entity3.yaml<br/>Datasource 3]:::base
@@ -212,7 +212,7 @@ Datasource3 --> Deploy
 
 ### Step 2: Configure Authentication
 
-Edit the system file (e.g. `integration/hubspot/hubspot-system.yaml` or `hubspot-system.json`) to configure authentication. Auth is defined in the system file referenced by `externalIntegration.systems` in `application.yaml`.
+Edit the system file (e.g. `integration/hubspot-test/hubspot-test-system.yaml` or `hubspot-system.json`) to configure authentication. Auth is defined in the system file referenced by `externalIntegration.systems` in `application.yaml`.
 
 Authentication uses the **template-based** format from the schema (`authentication.method`, `authentication.variables`, `authentication.security`). See [Authentication](#authentication-methods) for full details.
 
@@ -220,10 +220,10 @@ Authentication uses the **template-based** format from the schema (`authenticati
 
 Each datasource maps an external entity (company, contact, deal) to your dataplane. Edit the datasource YAML files to configure field mappings.
 
-**Example: `hubspot-datasource-company.yaml`**
+**Example: `hubspot-test-datasource-company.yaml`**
 
 ```yaml
-key: hubspot-company
+key: hubspot-test-company
 systemKey: hubspot
 entityType: recordStorage
 resourceType: customer
@@ -303,13 +303,13 @@ DataplaneSchema --> Query[Query via<br/>MCP/OpenAPI]:::base
 
 ```bash
 # Validate entire integration (path resolved: integration first, then builder)
-aifabrix validate hubspot
+aifabrix validate hubspot-test
 
 # Validate individual files
-aifabrix validate integration/hubspot/hubspot-system.yaml
-aifabrix validate integration/hubspot/hubspot-datasource-company.yaml
-aifabrix validate integration/hubspot/hubspot-datasource-contact.yaml
-aifabrix validate integration/hubspot/hubspot-datasource-deal.yaml
+aifabrix validate integration/hubspot-test/hubspot-test-system.yaml
+aifabrix validate integration/hubspot-test/hubspot-test-datasource-company.yaml
+aifabrix validate integration/hubspot-test/hubspot-test-datasource-contact.yaml
+aifabrix validate integration/hubspot-test/hubspot-test-datasource-deal.yaml
 ```
 
 **What happens:**
@@ -327,7 +327,7 @@ aifabrix validate integration/hubspot/hubspot-datasource-deal.yaml
 aifabrix login --controller https://controller.aifabrix.dev --method device --environment dev
 
 # Deploy to controller (path resolved: integration first, then builder; no app register needed for external)
-aifabrix deploy hubspot
+aifabrix deploy hubspot-test
 ```
 
 **What happens:**
@@ -337,9 +337,9 @@ aifabrix deploy hubspot
 4. System is registered in the dataplane
 5. Datasources are published and available for querying
 
-**Note:** The `aifabrix json` command generates `<systemKey>-deploy.json` deployment manifest. Individual component files (`hubspot-system.yaml`, `hubspot-datasource-company.yaml`, etc.) remain in your `integration/` folder and are referenced in `application.yaml`.
+**Note:** The `aifabrix json` command generates `<systemKey>-deploy.json` deployment manifest. Individual component files (`hubspot-test-system.yaml`, `hubspot-test-datasource-company.yaml`, etc.) remain in your `integration/` folder and are referenced in `application.yaml`.
 
-> **Note:** The `internal` property is a **top-level property of the external system object** in the system file (e.g. `hubspot-system.yaml` or `hubspot-system.json`). When `internal: true`, the integration is deployed at dataplane startup. This is for template- or platform-maintained integrations; customers typically use the template system rather than editing YAML manually. See [Troubleshooting](#troubleshooting).
+> **Note:** The `internal` property is a **top-level property of the external system object** in the system file (e.g. `hubspot-test-system.yaml` or `hubspot-system.json`). When `internal: true`, the integration is deployed at dataplane startup. This is for template- or platform-maintained integrations; customers typically use the template system rather than editing YAML manually. See [Troubleshooting](#troubleshooting).
 
 ### Step 6: Verify Deployment
 
@@ -348,13 +348,13 @@ aifabrix deploy hubspot
 aifabrix datasource list
 
 # Validate deployed datasource
-aifabrix datasource validate hubspot-company
+aifabrix datasource validate hubspot-test-company
 ```
 
 **Expected output:**
 ```yaml
 ✓ External system 'hubspot' deployed
-✓ Datasource 'hubspot-company' published
+✓ Datasource 'hubspot-test-company' published
 ✓ Datasource 'hubspot-contact' published
 ✓ Datasource 'hubspot-deal' published
 ```
@@ -542,18 +542,18 @@ Register Azure AD app, create Key Vault entries, and configure API permissions.
 
 ### RBAC Support (Roles and Permissions)
 
-External systems support RBAC (Role-Based Access Control) configuration via `rbac.yaml`, similar to regular applications. This allows you to define roles and permissions for your external system integration.
+External systems support RBAC (Role-Based Access Control) configuration via **rbac.yaml**, **rbac.yml**, or **rbac.json** (same structure; format inferred from extension), similar to regular applications. This allows you to define roles and permissions for your external system integration.
 
 **RBAC Configuration:**
 
 External systems can define roles and permissions in two ways:
 
-1. **In `rbac.yaml` file** (recommended for separation of concerns)
+1. **In an RBAC file** (`rbac.yaml`, `rbac.yml`, or `rbac.json`) (recommended for separation of concerns)
 2. **Directly in the system YAML file** (`<systemKey>-system.yaml`)
 
-When generating deployment JSON with `aifabrix json`, roles/permissions from `rbac.yaml` are automatically merged into the system YAML. Priority: roles/permissions in system YAML > rbac.yaml (if both exist, prefer system YAML).
+When generating deployment JSON with `aifabrix json`, roles/permissions from the RBAC file are automatically merged into the system YAML. Priority: roles/permissions in system YAML > RBAC file (if both exist, prefer system YAML).
 
-**Example `rbac.yaml`:**
+**Example (rbac.yaml or rbac.json, same structure):**
 
 ```yaml
 roles:
@@ -629,7 +629,7 @@ permissions:
 **Validation:**
 
 When validating external systems with `aifabrix validate`, the builder:
-- Validates `rbac.yaml` structure (if present)
+- Validates RBAC file structure (rbac.yaml, rbac.yml, or rbac.json, if present)
 - Validates roles and permissions in system YAML (if present)
 - Checks that all role references in permissions exist in the roles array
 - Validates role value patterns (`^[a-z-]+$`)
@@ -642,7 +642,7 @@ When validating external systems with `aifabrix validate`, the builder:
 aifabrix json hubspot
 
 # Validate including rbac.yaml
-aifabrix validate hubspot
+aifabrix validate hubspot-test
 
 # Split JSON back to component files (extracts roles/permissions to rbac.yaml)
 aifabrix split-json hubspot
@@ -677,7 +677,7 @@ Each datasource maps one entity type from the external system.
 **Example:**
 ```json
 {
-  "key": "hubspot-company",
+  "key": "hubspot-test-company",
   "displayName": "HubSpot Company",
   "systemKey": "hubspot",
   "entityType": "company",
@@ -697,14 +697,14 @@ Each datasource maps one entity type from the external system.
 }
 ```
 
-**Note:** Datasource files are named using the datasource key: `<system-key>-datasource-<datasource-key>.yaml`. For example, a datasource with `key: "hubspot-company"` and `systemKey: "hubspot"` creates the file `hubspot-datasource-company.yaml`.
+**Note:** Datasource files are named using the datasource key: `<system-key>-datasource-<datasource-key>.yaml`. For example, a datasource with `key: "hubspot-test-company"` and `systemKey: "hubspot"` creates the file `hubspot-test-datasource-company.yaml`.
 
 #### entityType enum
 
 The `entityType` field is validated against the schema enum. Allowed values (from `lib/schema/external-datasource.schema.json`):
 
 | Value | Description |
-|-------|-------------|
+| ------ | ------------ |
 | `document-storage`, `documentStorage` | Document storage with vector storage |
 | `vector-store`, `vectorStore` | External vector storage system |
 | `record-storage`, `recordStorage` | Record-based system with metadata sync and access rights |
@@ -831,7 +831,7 @@ The `record_ref:` prefix must be followed by a valid entity type (pattern: `^[a-
 Test payloads allow you to test field mappings and metadata schemas locally and via integration tests. Add a `testPayload` property to your datasource configuration. For full detail on test payload format, unit vs integration tests, and troubleshooting, see [External Integration Testing](commands/external-integration-testing.md).
 
 ```yaml
-key: hubspot-company
+key: hubspot-test-company
 systemKey: hubspot
 entityType: recordStorage
 fieldMappings:
@@ -983,18 +983,18 @@ Here's a complete HubSpot integration with companies, contacts, and deals.
 integration/
   hubspot/
     application.yaml
-    hubspot-system.yaml                     # External system definition
-    hubspot-datasource-company.yaml         # Datasource: key="hubspot-company"
-    hubspot-datasource-contact.yaml         # Datasource: key="hubspot-contact"
-    hubspot-datasource-deal.yaml            # Datasource: key="hubspot-deal"
+    hubspot-test-system.yaml                     # External system definition
+    hubspot-test-datasource-company.yaml         # Datasource: key="hubspot-test-company"
+    hubspot-test-datasource-contact.yaml         # Datasource: key="hubspot-contact"
+    hubspot-test-datasource-deal.yaml            # Datasource: key="hubspot-deal"
     hubspot-deploy.json                     # Deployment manifest (generated)
     rbac.yaml                               # RBAC roles and permissions (optional)
     env.template
 ```
 
 **File Naming Convention:**
-- System file: `<system-key>-system.yaml` (e.g., `hubspot-system.yaml`)
-- Datasource files: `<system-key>-datasource-<datasource-key>.yaml` (e.g., `hubspot-datasource-company.yaml`)
+- System file: `<system-key>-system.yaml` (e.g., `hubspot-test-system.yaml`)
+- Datasource files: `<system-key>-datasource-<datasource-key>.yaml` (e.g., `hubspot-test-datasource-company.yaml`)
 - Deployment manifest: `<system-key>-deploy.json` (e.g., `hubspot-deploy.json`) - generated by `aifabrix json`
 - The `entityType` comes from the datasource's `entityType` field in the YAML
 
@@ -1009,18 +1009,18 @@ app:
 externalIntegration:
   schemaBasePath: ./
   systems:
-    - hubspot-system.yaml
+    - hubspot-test-system.yaml
   dataSources:
-    - hubspot-datasource-company.yaml
-    - hubspot-datasource-contact.yaml
-    - hubspot-datasource-deal.yaml
+    - hubspot-test-datasource-company.yaml
+    - hubspot-test-datasource-contact.yaml
+    - hubspot-test-datasource-deal.yaml
   autopublish: true
   version: 1.0.0
 ```
 
 **Important:** Only one system is supported per application. The `systems` array should contain a single entry. Only the first system in the array will be included in the generated `<systemKey>-deploy.json`. Multiple data sources are supported and all will be included.
 
-### hubspot-system.yaml
+### hubspot-test-system.yaml
 
 ```yaml
 key: hubspot
@@ -1079,9 +1079,9 @@ tags:
 - Auth secrets (`clientId`, `clientSecret`) are in `authentication.security` as `kv://` references
 - Custom variables (`HUBSPOT_API_VERSION`, `MAX_PAGE_SIZE`) are in `configuration` with `portalInput` for portal UI
 
-### hubspot-datasource-company.yaml
+### hubspot-test-datasource-company.yaml
 
-See the complete example in `integration/hubspot/hubspot-datasource-company.yaml` for:
+See the complete example in `integration/hubspot-test/hubspot-test-datasource-company.yaml` for:
 - Full metadata schema for HubSpot company properties
 - Field mappings with transformations
 - OpenAPI operations configuration
@@ -1151,10 +1151,10 @@ Use `--format json` to run download → split → convert in one command. When `
 integration/
   hubspot/
     application.yaml                   # App configuration with externalIntegration block
-    hubspot-system.yaml                # External system definition
-    hubspot-datasource-company.yaml    # Companies datasource
-    hubspot-datasource-contact.yaml    # Contacts datasource
-    hubspot-datasource-deal.yaml       # Deals datasource
+    hubspot-test-system.yaml                # External system definition
+    hubspot-test-datasource-company.yaml    # Companies datasource
+    hubspot-test-datasource-contact.yaml    # Contacts datasource
+    hubspot-test-datasource-deal.yaml       # Deals datasource
     hubspot-deploy.json                # Deployment manifest (generated)
     rbac.yaml                          # RBAC roles and permissions (optional)
     env.template                       # Environment variables template
@@ -1177,7 +1177,7 @@ Test your configuration locally without making API calls:
 aifabrix test hubspot
 
 # Test specific datasource
-aifabrix test hubspot --datasource hubspot-company
+aifabrix test hubspot --datasource hubspot-test-company
 
 # Verbose output
 aifabrix test hubspot --verbose
@@ -1201,7 +1201,7 @@ Test your configuration against the dataplane:
 aifabrix test-integration hubspot
 
 # Test specific datasource
-aifabrix test-integration hubspot --datasource hubspot-company
+aifabrix test-integration hubspot --datasource hubspot-test-company
 
 # Use custom test payload
 aifabrix test-integration hubspot --payload ./test-payload.json
@@ -1219,7 +1219,7 @@ aifabrix test-integration hubspot --payload ./test-payload.json
 Deploy using the application-level workflow:
 
 ```bash
-aifabrix deploy hubspot
+aifabrix deploy hubspot-test
 ```
 
 **What happens:** The CLI resolves the app path (integration first, then builder) and sends the deployment to the **Miso Controller**. When the app is in `integration/<app>/`, no app register is needed. The controller then deploys to the dataplane (or target environment). The controller orchestrates deployment; the CLI does not deploy directly to the dataplane for app-level deploy.
@@ -1247,7 +1247,7 @@ Set authentication credentials via the Miso Controller or Dataplane portal inter
 ### 2. Validate Configuration
 
 ```bash
-aifabrix validate hubspot
+aifabrix validate hubspot-test
 ```
 
 ### 3. Generate Deployment JSON
@@ -1266,7 +1266,7 @@ aifabrix json hubspot
 ### 4. Deploy to Controller
 
 ```bash
-aifabrix deploy hubspot
+aifabrix deploy hubspot-test
 ```
 
 **What happens:** The CLI resolves the app path (integration first, then builder) and sends the deployment to the **Miso Controller**. The controller then deploys to the dataplane (or target environment). We do not deploy directly to the dataplane from the CLI for app-level deploy; the controller orchestrates it.
@@ -1298,7 +1298,7 @@ You can deploy and test individual datasources:
 
 ```bash
 # Deploy a single datasource
-aifabrix datasource upload hubspot hubspot-datasource-company.yaml
+aifabrix datasource upload hubspot hubspot-test-datasource-company.yaml
 
 # This is useful for:
 # - Testing individual datasources
@@ -1313,7 +1313,7 @@ aifabrix datasource upload hubspot hubspot-datasource-company.yaml
 aifabrix datasource list
 
 # Validate specific datasource
-aifabrix datasource validate hubspot-company
+aifabrix datasource validate hubspot-test-company
 
 # Query via MCP
 # (Use MCP client to query hubspot.company.list, etc.)
@@ -1331,7 +1331,7 @@ Here's a complete workflow for developing an external system:
 # 1. Download external system from dataplane
 aifabrix download hubspot
 
-# 2. Edit configuration files in integration/hubspot/
+# 2. Edit configuration files in integration/hubspot-test/
 #    - Update field mappings
 #    - Add test payloads
 #    - Modify authentication
@@ -1343,7 +1343,7 @@ aifabrix test hubspot
 aifabrix test-integration hubspot
 
 # 5. Deploy back to dataplane (via application-level workflow)
-aifabrix deploy hubspot
+aifabrix deploy hubspot-test
 ```
 
 ### Create New System from Scratch
@@ -1352,7 +1352,7 @@ aifabrix deploy hubspot
 # 1. Create new external system
 aifabrix create hubspot
 
-# 2. Edit configuration files in integration/hubspot/
+# 2. Edit configuration files in integration/hubspot-test/
 #    - Configure authentication
 #    - Set up field mappings
 #    - Add test payloads
@@ -1364,7 +1364,7 @@ aifabrix test hubspot
 aifabrix test-integration hubspot
 
 # 5. Deploy to dataplane
-aifabrix deploy hubspot
+aifabrix deploy hubspot-test
 ```
 
 ---
@@ -1445,7 +1445,7 @@ status:
 → Review deployment logs in controller UI
 
 **"Application deployment requires image"**
-→ External systems do not use Docker images. Add `internal: true` as a top-level property in the system file (e.g. `hubspot-system.yaml`) so the system deploys on dataplane startup; then restart the dataplane.
+→ External systems do not use Docker images. Add `internal: true` as a top-level property in the system file (e.g. `hubspot-test-system.yaml`) so the system deploys on dataplane startup; then restart the dataplane.
 
 **"Dataplane URL not found in application configuration"**
 → External systems do not have their own dataplane URL. Dataplane URL is discovered from the controller; ensure the controller is set via `aifabrix login` or `aifabrix auth config --set-controller`.
@@ -1467,9 +1467,9 @@ status:
 → Ensure `operationId` matches OpenAPI spec
 → Verify authentication is configured correctly
 
-**Datasource upload:** Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is discovered from the controller. Example: `aifabrix datasource upload hubspot integration/hubspot/hubspot-datasource-company.yaml`.
+**Datasource upload:** Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is discovered from the controller. Example: `aifabrix datasource upload hubspot integration/hubspot-test/hubspot-test-datasource-company.yaml`.
 
-**Validate individual files:** If `aifabrix validate <app>` fails, validate files directly: `aifabrix validate integration/hubspot/hubspot-system.yaml`, `aifabrix validate integration/hubspot/hubspot-datasource-company.yaml`.
+**Validate individual files:** If `aifabrix validate <app>` fails, validate files directly: `aifabrix validate integration/hubspot-test/hubspot-test-system.yaml`, `aifabrix validate integration/hubspot-test/hubspot-test-datasource-company.yaml`.
 
 ---
 

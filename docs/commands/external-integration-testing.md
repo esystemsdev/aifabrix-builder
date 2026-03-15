@@ -168,7 +168,7 @@ aifabrix test-integration hubspot --payload ./test-payload.json
 # Verbose with custom timeout
 aifabrix test-integration hubspot --verbose --timeout 60000
 
-# Debug mode: write log to integration/hubspot/logs/
+# Debug mode: write log to integration/hubspot-test/logs/
 aifabrix test-integration hubspot --debug
 ```
 

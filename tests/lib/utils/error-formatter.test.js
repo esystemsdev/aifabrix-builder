@@ -208,6 +208,91 @@ describe('Error Formatter Module', () => {
 
       expect(result).toBe('Field "app/image/name": Missing required property "registry"');
     });
+
+    it('should format oneOf error for capabilities with actionable message', () => {
+      const error = {
+        instancePath: '/capabilities',
+        keyword: 'oneOf',
+        message: 'must match exactly one schema'
+      };
+
+      const result = formatSingleError(error);
+
+      expect(result).toContain('array of operation names');
+      expect(result).toContain('object with boolean flags');
+    });
+
+    it('should format oneOf error for other paths generically', () => {
+      const error = {
+        instancePath: '/otherField',
+        keyword: 'oneOf',
+        message: 'must match exactly one schema'
+      };
+
+      const result = formatSingleError(error);
+
+      expect(result).toContain('does not match any allowed shape');
+    });
+
+    it('should format anyOf error', () => {
+      const error = {
+        instancePath: '/config',
+        keyword: 'anyOf',
+        message: 'must match a schema'
+      };
+
+      const result = formatSingleError(error);
+
+      expect(result).toContain('does not match any allowed shape');
+    });
+
+    it('should format const error with allowed value', () => {
+      const error = {
+        instancePath: '/type',
+        keyword: 'const',
+        params: { allowedValue: 'external' },
+        message: 'must be equal to constant'
+      };
+
+      const result = formatSingleError(error);
+
+      expect(result).toBe('Field "type": must be exactly "external"');
+    });
+
+    it('should format const error without params', () => {
+      const error = {
+        instancePath: '/field',
+        keyword: 'const',
+        message: 'constraint violation'
+      };
+
+      const result = formatSingleError(error);
+
+      expect(result).toContain('invalid value (constraint violation)');
+    });
+
+    it('should use new pattern descriptions for dimension/attribute patterns', () => {
+      const error = {
+        instancePath: '/dimKey',
+        keyword: 'pattern',
+        params: { pattern: '^[a-zA-Z0-9_]+$' },
+        data: 'bad-key',
+        message: 'Invalid format'
+      };
+
+      const result = formatSingleError(error);
+
+      expect(result).toContain('letters, numbers, and underscores only');
+      const error2 = {
+        instancePath: '/path',
+        keyword: 'pattern',
+        params: { pattern: '^[a-zA-Z0-9_.]+$' },
+        data: 'x',
+        message: 'Invalid'
+      };
+      const result2 = formatSingleError(error2);
+      expect(result2).toContain('letters, numbers, underscores, and dots only');
+    });
   });
 
   describe('formatValidationErrors', () => {

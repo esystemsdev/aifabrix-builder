@@ -19,11 +19,17 @@ jest.mock('../../../lib/utils/paths', () => ({
   getAifabrixHome: jest.fn(() => '/home/user/.aifabrix')
 }));
 
+// Mock config so getSecretsEncryptionKey is controllable (default: no encryption for backward-compat tests)
+jest.mock('../../../lib/core/config', () => ({
+  getSecretsEncryptionKey: jest.fn().mockResolvedValue(null)
+}));
+
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 const logger = require('../../../lib/utils/logger');
 const pathsUtil = require('../../../lib/utils/paths');
+const config = require('../../../lib/core/config');
 const { saveLocalSecret, saveSecret, isLocalhost } = require('../../../lib/utils/local-secrets');
 
 describe('Local Secrets Module', () => {
@@ -117,6 +123,19 @@ describe('Local Secrets Module', () => {
       const writtenContent = fs.writeFileSync.mock.calls[0][1];
       expect(writtenContent).toContain('test-key');
       expect(writtenContent).toContain('test-value');
+    });
+
+    it('should write encrypted value (secure://) when encryption key is set', async() => {
+      config.getSecretsEncryptionKey.mockResolvedValueOnce('a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd');
+      const key = 'some-keyKeyVault';
+      const value = 'plain-value';
+      fs.existsSync.mockReturnValue(false);
+
+      await saveLocalSecret(key, value);
+
+      const writtenContent = fs.writeFileSync.mock.calls[0][1];
+      expect(writtenContent).toMatch(/secure:\/\//);
+      expect(writtenContent).toContain('some-keyKeyVault');
     });
   });
 

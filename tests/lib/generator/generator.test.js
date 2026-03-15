@@ -396,7 +396,7 @@ REDIS_URL=redis://localhost:6379`;
         return '';
       });
 
-      await expect(generator.generateDeployJson(appName)).rejects.toThrow('Invalid YAML syntax in rbac.yaml');
+      await expect(generator.generateDeployJson(appName)).rejects.toThrow(/Invalid syntax in rbac\.yaml/);
     });
   });
 

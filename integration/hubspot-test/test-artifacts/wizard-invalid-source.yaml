@@ -1,0 +1,4 @@
+appName: wizard-e2e-negative-source
+mode: create-system
+source:
+  type: invalid-type

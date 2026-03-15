@@ -262,7 +262,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
   describe('credential env command handler', () => {
     it('should handle credential env successfully', async() => {
-      runCredentialEnv.mockResolvedValue('/workspace/integration/hubspot/.env');
+      runCredentialEnv.mockResolvedValue('/workspace/integration/hubspot-test/.env');
 
       const handler = async(systemKey) => {
         try {

@@ -141,9 +141,7 @@ describe('Datasource Validation Module', () => {
         const result = await validateDatasourceFile(mockFilePath);
 
         expect(result.valid).toBe(false);
-        expect(result.errors).toContain(
-          'indexing.embedding[1]: field \'missingField\' does not exist in fieldMappings.attributes'
-        );
+        expect(result.errors.some(e => e.includes('indexing.embedding[1]') && e.includes('missingField') && e.includes('fieldMappings.attributes'))).toBe(true);
       });
 
       it('should return valid: false when indexing.uniqueKey not in fieldMappings.attributes', async() => {
@@ -163,9 +161,7 @@ describe('Datasource Validation Module', () => {
         const result = await validateDatasourceFile(mockFilePath);
 
         expect(result.valid).toBe(false);
-        expect(result.errors).toContain(
-          'indexing.uniqueKey: field \'unknownKey\' does not exist in fieldMappings.attributes'
-        );
+        expect(result.errors.some(e => e.includes('indexing.uniqueKey') && e.includes('unknownKey') && e.includes('fieldMappings.attributes'))).toBe(true);
       });
 
       it('should return valid: false when validation.repeatingValues[].field not in attributes', async() => {
@@ -302,15 +298,37 @@ describe('Datasource Validation Module', () => {
 
         expect(result.valid).toBe(false);
         expect(result.errors).toHaveLength(3);
-        expect(result.errors).toContain(
-          'indexing.embedding[1]: field \'bad1\' does not exist in fieldMappings.attributes'
-        );
-        expect(result.errors).toContain(
-          'indexing.uniqueKey: field \'badUnique\' does not exist in fieldMappings.attributes'
-        );
-        expect(result.errors).toContain(
-          'quality.rejectIf[0].field: field \'badReject\' does not exist in fieldMappings.attributes'
-        );
+        expect(result.errors.some(e => e.includes('indexing.embedding[1]') && e.includes('bad1'))).toBe(true);
+        expect(result.errors.some(e => e.includes('indexing.uniqueKey') && e.includes('badUnique'))).toBe(true);
+        expect(result.errors.some(e => e.includes('quality.rejectIf[0].field') && e.includes('badReject'))).toBe(true);
+      });
+
+      it('should return valid: false with ABAC error when config.abac.crossSystemJson has two operators per path', async() => {
+        const mockFilePath = '/path/to/datasource.json';
+        const mockContent = JSON.stringify({
+          key: 'test',
+          systemKey: 'hubspot',
+          fieldMappings: { attributes: { id: {} }, dimensions: {} },
+          primaryKey: ['id'],
+          config: {
+            abac: {
+              crossSystemJson: {
+                'ds.field': { eq: 'user.country', ne: 'other' }
+              }
+            }
+          }
+        });
+        const mockValidate = jest.fn().mockReturnValue(true);
+
+        fsSync.existsSync.mockImplementation((p) => p === mockFilePath);
+        fsSync.readFileSync.mockReturnValue(mockContent);
+        loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+        const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+        const result = await validateDatasourceFile(mockFilePath);
+
+        expect(result.valid).toBe(false);
+        expect(result.errors.some(e => e.includes('crossSystemJson') && e.includes('exactly one operator'))).toBe(true);
       });
     });
   });

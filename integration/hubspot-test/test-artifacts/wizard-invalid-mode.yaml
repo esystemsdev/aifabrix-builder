@@ -1,0 +1,5 @@
+appName: wizard-e2e-negative-mode
+mode: invalid-mode
+source:
+  type: known-platform
+  platform: hubspot

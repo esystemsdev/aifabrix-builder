@@ -21,7 +21,7 @@ Create new application with configuration files.
 ```bash
 aifabrix create hubspot
 ```
-Creates `integration/hubspot/`. Use `--wizard` for the interactive wizard, or provide non-interactive options (e.g. `--display-name`, `--auth-type`).
+Creates `integration/hubspot-test/`. Use `--wizard` for the interactive wizard, or provide non-interactive options (e.g. `--display-name`, `--auth-type`).
 
 **Example (web app, interactive):**
 ```bash
@@ -56,10 +56,10 @@ aifabrix create hubspot --wizard
 ```
 Creates in `integration/<app>/` using the interactive wizard. For non-interactive external create, use `--display-name`, `--description`, `--system-type`, `--auth-type`, `--entity-type`, and `--datasources`. For other commands (validate, json, deploy, delete, **resolve**), the CLI always resolves the app by checking `integration/<app>` first, then `builder/<app>`; if neither exists, it errors. **Resolve** additionally supports **env-only** mode: if `integration/<app>/env.template` exists (even without `application.yaml`), resolve uses that directory and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
 
-**External output:** Generated `env.template` includes full `kv://` paths (e.g. `KV_HUBSPOT_APIKEY=kv://hubspot-test/apikey`) for credential secrets. The generated README includes a **Secrets** section listing `aifabrix secret set <systemKey>/<key> <your value>` per authentication type (the key has no `kv://` prefix).
+**External output:** Generated `env.template` includes full `kv://` paths (e.g. `KV_HUBSPOT_APIKEY=kv://hubspot-demo/apikey`) for credential secrets. The generated README includes a **Secrets** section listing `aifabrix secret set <systemKey>/<key> <your value>` per authentication type (the key has no `kv://` prefix).
 
 **Complete HubSpot example:**
-See `integration/hubspot/` for a complete HubSpot integration with companies, contacts, and deals datasources. Includes OAuth2 authentication, field mappings, and OpenAPI operations.
+See `integration/hubspot-test/` for a complete HubSpot integration with companies, contacts, and deals datasources. Includes OAuth2 authentication, field mappings, and OpenAPI operations.
 
 → [External Systems Guide](../external-systems.md) - Complete guide with step-by-step instructions
 
@@ -499,7 +499,7 @@ aifabrix test-integration myapp --env tst
 aifabrix test-integration hubspot
 aifabrix test-integration hubspot --env tst
 aifabrix test-integration hubspot --datasource hubspot-company --payload ./test-payload.json
-aifabrix test-integration hubspot --debug  # write log to integration/hubspot/logs/
+aifabrix test-integration hubspot-test --debug  # write log to integration/hubspot-test/logs/
 ```
 
 **Options:**

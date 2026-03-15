@@ -1,0 +1,117 @@
+{
+  "key": "hubspot-test-users",
+  "displayName": "HubSpot Users",
+  "resourceType": "person",
+  "systemKey": "hubspot-test",
+  "enabled": true,
+  "entityType": "recordStorage",
+  "primaryKey": ["id"],
+  "description": "Comprehensive HubSpot users datasource with full CRUD operations, comprehensive metadata schema, ABAC dimensions, and OpenAPI support",
+  "metadataSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "HubSpot user ID"
+      },
+      "properties": {
+        "type": "object",
+        "description": "User properties object containing all CRM fields",
+        "additionalProperties": true,
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User email address"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "User first name"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "User last name"
+          },
+          "role": {
+            "type": "string",
+            "description": "User role"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "User timezone"
+          }
+        }
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "User creation timestamp"
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "User last update timestamp"
+      },
+      "archived": {
+        "type": "boolean",
+        "description": "Whether the user is archived"
+      },
+      "archivedAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "User archive timestamp"
+      },
+      "associations": {
+        "type": "object",
+        "description": "Associated records",
+        "additionalProperties": true
+      },
+      "url": {
+        "type": "string",
+        "format": "uri",
+        "description": "HubSpot object URL"
+      },
+      "objectWriteTraceId": {
+        "type": "string",
+        "description": "Trace ID for tracking writes"
+      },
+      "propertiesWithHistory": {
+        "type": "object",
+        "description": "Properties with change history",
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "id"
+    ]
+  },
+  "fieldMappings": {
+    "attributes": {
+      "id": {
+        "expression": "{{id}}",
+        "type": "string",
+        "indexed": true
+      },
+      "department": {
+        "expression": "{{id}}",
+        "type": "string",
+        "indexed": true,
+        "description": "Default dimension for catalog compatibility"
+      }
+    },
+    "dimensions": {
+      "department": "metadata.department"
+    }
+  },
+  "sync": {
+    "mode": "pull",
+    "schedule": "0 */6 * * *",
+    "batchSize": 100,
+    "maxParallelRequests": 5,
+    "pagination": {
+      "strategy": "cursor",
+      "cursorField": "$.paging.next.after",
+      "cursorParam": "after"
+    }
+  }
+}

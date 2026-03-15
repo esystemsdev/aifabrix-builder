@@ -1,6 +1,10 @@
+# Deploy to NPM: runs tests on every push; publishes and creates a release only on main.
 name: Deploy to NPM
 
-# main: test + publish to NPM. release/*: test only (no NPM push).
+# Triggers:
+# - workflow_dispatch: manual run from Actions tab
+# - push to main: full deploy (test + publish to NPM + GitHub release)
+# - push to release/*: test and validate only (no NPM publish)
 on:
   workflow_dispatch:
   push:
@@ -13,31 +17,34 @@ jobs:
     name: Deploy to NPM Registry
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      
+      contents: write  # needed for creating GitHub releases
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          
+          fetch-depth: 0  # full history for version/tag context
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           registry-url: 'https://registry.npmjs.org'
-          
+
       - name: Install dependencies
-        run: npm ci 
-        
+        run: npm ci
+
+      - name: Build and validate
+        run: npm run build:ci
+
+      # Only on main: decide whether this version is already on NPM (skip duplicate publish).
       - name: Check if version changed
         id: version-check
         if: github.ref == 'refs/heads/main'
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "current_version=$VERSION" >> $GITHUB_OUTPUT
-          
-          # Check if version was already published
+
           if npm view "@aifabrix/builder@$VERSION" version >/dev/null 2>&1; then
             echo "already_published=true" >> $GITHUB_OUTPUT
             echo "Version $VERSION is already published, skipping deployment"
@@ -45,13 +52,13 @@ jobs:
             echo "already_published=false" >> $GITHUB_OUTPUT
             echo "Version $VERSION will be published"
           fi
-        
+
       - name: Publish to NPM
         if: github.ref == 'refs/heads/main' && steps.version-check.outputs.already_published == 'false'
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          
+
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main' && steps.version-check.outputs.already_published == 'false'
         uses: softprops/action-gh-release@v1
@@ -60,7 +67,7 @@ jobs:
           name: Release v${{ steps.version-check.outputs.current_version }}
           body: |
             Automated deployment to npm
-            
+
             Version: ${{ steps.version-check.outputs.current_version }}
             Commit: ${{ github.sha }}
         env:

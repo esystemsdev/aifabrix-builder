@@ -60,7 +60,8 @@ jest.mock('chalk', () => {
 jest.mock('../../../lib/utils/secrets-encryption', () => {
   return {
     decryptSecret: jest.fn((val) => `decrypted(${val})`),
-    isEncrypted: (val) => typeof val === 'string' && val.startsWith('secure://')
+    isEncrypted: (val) => typeof val === 'string' && val.startsWith('secure://'),
+    encryptSecret: jest.fn((val) => `secure://enc:${val}`)
   };
 });
 
@@ -550,6 +551,23 @@ environments:
       await secrets.generateAdminSecretsEnv();
 
       expect(fs.mkdirSync).toHaveBeenCalledWith(path.join(mockHomeDir, '.aifabrix'), { recursive: true, mode: 0o700 });
+    });
+
+    it('should write secure:// values when encryption key is set', async() => {
+      const config = require('../../../lib/core/config');
+      const validKey = 'a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd';
+      config.getSecretsEncryptionKey.mockResolvedValue(validKey);
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('secrets.yaml') || filePath.includes('.aifabrix');
+      });
+
+      const result = await secrets.generateAdminSecretsEnv();
+
+      expect(result).toBe(mockAdminSecretsPath);
+      const writeCall = fs.writeFileSync.mock.calls.find(c => c[0] === mockAdminSecretsPath);
+      expect(writeCall).toBeDefined();
+      expect(writeCall[1]).toMatch(/secure:\/\//);
+      config.getSecretsEncryptionKey.mockResolvedValue(null);
     });
   });
 

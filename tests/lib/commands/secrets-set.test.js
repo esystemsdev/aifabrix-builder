@@ -28,9 +28,10 @@ jest.mock('../../../lib/utils/logger', () => ({
   info: jest.fn()
 }));
 
-// Mock config BEFORE requiring secrets-set command
+// Mock config BEFORE requiring secrets-set command (getSecretsEncryptionKey for local-secrets encrypt path)
 jest.mock('../../../lib/core/config', () => ({
-  getAifabrixSecretsPath: jest.fn()
+  getAifabrixSecretsPath: jest.fn(),
+  getSecretsEncryptionKey: jest.fn().mockResolvedValue(null)
 }));
 
 // Mock paths BEFORE requiring secrets-set command

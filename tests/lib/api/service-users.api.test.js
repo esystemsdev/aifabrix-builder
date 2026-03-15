@@ -7,13 +7,19 @@
  */
 
 const mockClient = {
-  post: jest.fn()
+  get: jest.fn(),
+  post: jest.fn(),
+  put: jest.fn(),
+  delete: jest.fn()
 };
 
 const mockApiClient = jest.fn().mockImplementation((baseUrl, authConfig) => ({
   baseUrl,
   authConfig,
-  post: mockClient.post
+  get: mockClient.get,
+  post: mockClient.post,
+  put: mockClient.put,
+  delete: mockClient.delete
 }));
 
 jest.mock('../../../lib/api/index', () => ({
@@ -32,6 +38,9 @@ describe('Service Users API', () => {
       success: true,
       data: { clientId: 'svc-1', clientSecret: 'one-time-secret' }
     });
+    mockClient.get.mockResolvedValue({ success: true, data: { data: [] } });
+    mockClient.put.mockResolvedValue({ success: true, data: {} });
+    mockClient.delete.mockResolvedValue({ success: true, data: null });
   });
 
   describe('createServiceUser', () => {
@@ -107,6 +116,100 @@ describe('Service Users API', () => {
 
       expect(result.success).toBe(false);
       expect(result.status).toBe(403);
+    });
+  });
+
+  describe('listServiceUsers', () => {
+    it('should call GET /api/v1/service-users with params', async() => {
+      mockClient.get.mockResolvedValue({
+        success: true,
+        data: { data: [{ id: 'uuid-1', username: 'u1', email: 'e1@x.com', clientId: 'c1', active: true }], meta: {}, links: {} }
+      });
+
+      await serviceUsersApi.listServiceUsers(baseUrl, authConfig, {
+        page: 1,
+        pageSize: 20,
+        search: 'foo',
+        sort: 'username',
+        filter: 'active:true'
+      });
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/service-users', {
+        params: { page: 1, pageSize: 20, search: 'foo', sort: 'username', filter: 'active:true' }
+      });
+    });
+
+    it('should call GET without params when options empty', async() => {
+      await serviceUsersApi.listServiceUsers(baseUrl, authConfig, {});
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/service-users', { params: {} });
+    });
+
+    it('should return response with data array', async() => {
+      const listData = [{ id: 'a', username: 'u', email: 'e@x.com', clientId: 'c', active: true }];
+      mockClient.get.mockResolvedValue({ success: true, data: { data: listData, meta: {}, links: {} } });
+
+      const result = await serviceUsersApi.listServiceUsers(baseUrl, authConfig, {});
+
+      expect(result.success).toBe(true);
+      expect(result.data.data).toEqual(listData);
+    });
+  });
+
+  describe('regenerateSecretServiceUser', () => {
+    it('should call POST .../regenerate-secret with id and no body', async() => {
+      mockClient.post.mockResolvedValue({ success: true, data: { data: { clientSecret: 'new-secret' } } });
+
+      await serviceUsersApi.regenerateSecretServiceUser(baseUrl, authConfig, 'svc-uuid-123');
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/service-users/svc-uuid-123/regenerate-secret');
+    });
+
+    it('should return response with clientSecret', async() => {
+      mockClient.post.mockResolvedValue({ success: true, data: { data: { clientSecret: 'rotated-secret' } } });
+
+      const result = await serviceUsersApi.regenerateSecretServiceUser(baseUrl, authConfig, 'id-1');
+
+      expect(result.success).toBe(true);
+      expect(result.data.data.clientSecret).toBe('rotated-secret');
+    });
+  });
+
+  describe('deleteServiceUser', () => {
+    it('should call DELETE .../service-users/{id}', async() => {
+      await serviceUsersApi.deleteServiceUser(baseUrl, authConfig, 'svc-uuid-456');
+
+      expect(mockClient.delete).toHaveBeenCalledWith('/api/v1/service-users/svc-uuid-456');
+    });
+
+    it('should return success response', async() => {
+      const result = await serviceUsersApi.deleteServiceUser(baseUrl, authConfig, 'id-1');
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('updateGroupsServiceUser', () => {
+    it('should call PUT .../groups with groupNames body', async() => {
+      await serviceUsersApi.updateGroupsServiceUser(baseUrl, authConfig, 'svc-uuid-789', {
+        groupNames: ['Group1', 'Group2']
+      });
+
+      expect(mockClient.put).toHaveBeenCalledWith('/api/v1/service-users/svc-uuid-789/groups', {
+        body: { groupNames: ['Group1', 'Group2'] }
+      });
+    });
+  });
+
+  describe('updateRedirectUrisServiceUser', () => {
+    it('should call PUT .../redirect-uris with redirectUris body', async() => {
+      await serviceUsersApi.updateRedirectUrisServiceUser(baseUrl, authConfig, 'svc-uuid-abc', {
+        redirectUris: ['https://app.example.com/callback']
+      });
+
+      expect(mockClient.put).toHaveBeenCalledWith('/api/v1/service-users/svc-uuid-abc/redirect-uris', {
+        body: { redirectUris: ['https://app.example.com/callback'] }
+      });
     });
   });
 });

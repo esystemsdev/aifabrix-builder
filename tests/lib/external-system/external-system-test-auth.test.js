@@ -37,7 +37,7 @@ describe('External System Test Authentication Module', () => {
 
   describe('setupIntegrationTestAuth', () => {
     it('should setup authentication and return authConfig and dataplaneUrl', async() => {
-      const appName = 'hubspot';
+      const appName = 'hubspot-test';
       const options = {
         environment: 'dev',
         controller: 'https://controller.example.com'
@@ -69,7 +69,7 @@ describe('External System Test Authentication Module', () => {
       expect(getDeploymentAuth).toHaveBeenCalledWith(
         'https://controller.example.com',
         'dev',
-        'hubspot'
+        'hubspot-test'
       );
       expect(resolveDataplaneUrl).toHaveBeenCalledWith(
         'https://controller.example.com',
@@ -83,7 +83,7 @@ describe('External System Test Authentication Module', () => {
     });
 
     it('should use default environment when not provided', async() => {
-      const appName = 'hubspot';
+      const appName = 'hubspot-test';
       const options = {
         controller: 'https://controller.example.com'
       };
@@ -109,12 +109,12 @@ describe('External System Test Authentication Module', () => {
       expect(getDeploymentAuth).toHaveBeenCalledWith(
         'https://controller.example.com',
         'dev',
-        'hubspot'
+        'hubspot-test'
       );
     });
 
     it('should use controller and environment from config', async() => {
-      const appName = 'hubspot';
+      const appName = 'hubspot-test';
       const options = {};
       const config = {};
 
@@ -138,7 +138,7 @@ describe('External System Test Authentication Module', () => {
       expect(getDeploymentAuth).toHaveBeenCalledWith(
         'https://custom-controller.example.com',
         'tst',
-        'hubspot'
+        'hubspot-test'
       );
       expect(resolveDataplaneUrl).toHaveBeenCalledWith(
         'https://custom-controller.example.com',
@@ -148,7 +148,7 @@ describe('External System Test Authentication Module', () => {
     });
 
     it('should use controller and environment from config (pro)', async() => {
-      const appName = 'hubspot';
+      const appName = 'hubspot-test';
       const options = {};
       const config = {};
 
@@ -172,7 +172,7 @@ describe('External System Test Authentication Module', () => {
       expect(getDeploymentAuth).toHaveBeenCalledWith(
         'https://config-controller.example.com',
         'pro',
-        'hubspot'
+        'hubspot-test'
       );
       expect(resolveDataplaneUrl).toHaveBeenCalledWith(
         'https://config-controller.example.com',
@@ -182,7 +182,7 @@ describe('External System Test Authentication Module', () => {
     });
 
     it('should use default controller URL when not provided', async() => {
-      const appName = 'hubspot';
+      const appName = 'hubspot-test';
       const options = {};
       const config = {};
 
@@ -207,7 +207,7 @@ describe('External System Test Authentication Module', () => {
       expect(getDeploymentAuth).toHaveBeenCalledWith(
         'http://localhost:3000',
         'dev',
-        'hubspot'
+        'hubspot-test'
       );
       expect(resolveDataplaneUrl).toHaveBeenCalledWith(
         'http://localhost:3000',
@@ -217,7 +217,7 @@ describe('External System Test Authentication Module', () => {
     });
 
     it('should throw error when authentication is missing', async() => {
-      const appName = 'hubspot';
+      const appName = 'hubspot-test';
       const options = {};
       const config = {};
 
@@ -236,7 +236,7 @@ describe('External System Test Authentication Module', () => {
     });
 
     it('should accept authConfig with clientId instead of token', async() => {
-      const appName = 'hubspot';
+      const appName = 'hubspot-test';
       const options = {};
       const config = {};
 
@@ -263,7 +263,7 @@ describe('External System Test Authentication Module', () => {
     });
 
     it('should pass authConfig to resolveDataplaneUrl', async() => {
-      const appName = 'hubspot';
+      const appName = 'hubspot-test';
       const options = {};
       const config = {};
 
@@ -291,7 +291,7 @@ describe('External System Test Authentication Module', () => {
     });
 
     it('should handle different environments', async() => {
-      const appName = 'hubspot';
+      const appName = 'hubspot-test';
       const environments = ['dev', 'tst', 'pro'];
 
       const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
@@ -316,13 +316,13 @@ describe('External System Test Authentication Module', () => {
         expect(getDeploymentAuth).toHaveBeenCalledWith(
           'https://controller.example.com',
           environment,
-          'hubspot'
+          'hubspot-test'
         );
       }
     });
 
     it('should handle getDeploymentAuth errors', async() => {
-      const appName = 'hubspot';
+      const appName = 'hubspot-test';
       const options = {};
       const config = {};
 
@@ -340,7 +340,7 @@ describe('External System Test Authentication Module', () => {
     });
 
     it('should handle resolveDataplaneUrl errors', async() => {
-      const appName = 'hubspot';
+      const appName = 'hubspot-test';
       const options = {};
       const config = {};
 
@@ -362,7 +362,7 @@ describe('External System Test Authentication Module', () => {
     });
 
     it('should use options.dataplane when provided (no discovery)', async() => {
-      const appName = 'hubspot-test-v1';
+      const appName = 'wizard-e2e-v1';
       const options = { dataplane: 'http://127.0.0.1:3611' };
       const config = {};
 

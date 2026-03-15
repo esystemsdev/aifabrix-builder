@@ -1,0 +1,542 @@
+{
+  "key": "hubspot-test-company",
+  "displayName": "HubSpot Company",
+  "description": "HubSpot companies datasource with field mappings for CRM company data",
+  "systemKey": "hubspot-test",
+  "entityType": "record-storage",
+  "resourceType": "customer",
+  "enabled": true,
+  "version": "1.0.0",
+  "primaryKey": ["id"],
+  "metadataSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "domain": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "country": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "city": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "industry": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "website": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "phone": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "createdate": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "hs_lastmodifieddate": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "required": [
+      "id",
+      "properties"
+    ]
+  },
+  "fieldMappings": {
+    "dimensions": {
+      "country": "metadata.country",
+      "domain": "metadata.domain"
+    },
+    "attributes": {
+      "id": {
+        "expression": "{{id}}",
+        "type": "string",
+        "description": "Unique company identifier",
+        "indexed": true
+      },
+      "name": {
+        "expression": "{{properties.name.value}} | trim",
+        "type": "string",
+        "description": "Company name",
+        "indexed": false
+      },
+      "domain": {
+        "expression": "{{properties.domain.value}} | toLower | trim",
+        "type": "string",
+        "description": "Company domain for ABAC filtering",
+        "indexed": false
+      },
+      "country": {
+        "expression": "{{properties.country.value}} | toUpper | trim",
+        "type": "string",
+        "description": "Country code for ABAC filtering",
+        "indexed": false
+      },
+      "city": {
+        "expression": "{{properties.city.value}} | trim",
+        "type": "string",
+        "description": "City name",
+        "indexed": false
+      },
+      "industry": {
+        "expression": "{{properties.industry.value}} | trim",
+        "type": "string",
+        "description": "Industry classification",
+        "indexed": false
+      },
+      "website": {
+        "expression": "{{properties.website.value}} | trim",
+        "type": "string",
+        "description": "Company website URL",
+        "indexed": false
+      },
+      "phone": {
+        "expression": "{{properties.phone.value}} | trim",
+        "type": "string",
+        "description": "Phone number",
+        "indexed": false
+      },
+      "createdAt": {
+        "expression": "{{properties.createdate.value}}",
+        "type": "string",
+        "description": "Creation timestamp",
+        "indexed": false
+      },
+      "updatedAt": {
+        "expression": "{{properties.hs_lastmodifieddate.value}}",
+        "type": "string",
+        "description": "Last modification timestamp",
+        "indexed": false
+      }
+    },
+    "compiledAttributes": {
+      "id": {
+        "raw_path": [
+          "id"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Unique company identifier",
+        "indexed": true
+      },
+      "name": {
+        "raw_path": [
+          "properties",
+          "name",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Company name",
+        "indexed": false
+      },
+      "domain": {
+        "raw_path": [
+          "properties",
+          "domain",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "toLower",
+            "args": []
+          },
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Company domain for ABAC filtering",
+        "indexed": false
+      },
+      "country": {
+        "raw_path": [
+          "properties",
+          "country",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "toUpper",
+            "args": []
+          },
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Country code for ABAC filtering",
+        "indexed": false
+      },
+      "city": {
+        "raw_path": [
+          "properties",
+          "city",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "City name",
+        "indexed": false
+      },
+      "industry": {
+        "raw_path": [
+          "properties",
+          "industry",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Industry classification",
+        "indexed": false
+      },
+      "website": {
+        "raw_path": [
+          "properties",
+          "website",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Company website URL",
+        "indexed": false
+      },
+      "phone": {
+        "raw_path": [
+          "properties",
+          "phone",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Phone number",
+        "indexed": false
+      },
+      "createdAt": {
+        "raw_path": [
+          "properties",
+          "createdate",
+          "value"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Creation timestamp",
+        "indexed": false
+      },
+      "updatedAt": {
+        "raw_path": [
+          "properties",
+          "hs_lastmodifieddate",
+          "value"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Last modification timestamp",
+        "indexed": false
+      }
+    },
+    "compiledFields": {
+      "id": {
+        "raw_path": [
+          "id"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Unique company identifier",
+        "indexed": true
+      },
+      "name": {
+        "raw_path": [
+          "properties",
+          "name",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Company name",
+        "indexed": false
+      },
+      "domain": {
+        "raw_path": [
+          "properties",
+          "domain",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "toLower",
+            "args": []
+          },
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Company domain for ABAC filtering",
+        "indexed": false
+      },
+      "country": {
+        "raw_path": [
+          "properties",
+          "country",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "toUpper",
+            "args": []
+          },
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Country code for ABAC filtering",
+        "indexed": false
+      },
+      "city": {
+        "raw_path": [
+          "properties",
+          "city",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "City name",
+        "indexed": false
+      },
+      "industry": {
+        "raw_path": [
+          "properties",
+          "industry",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Industry classification",
+        "indexed": false
+      },
+      "website": {
+        "raw_path": [
+          "properties",
+          "website",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Company website URL",
+        "indexed": false
+      },
+      "phone": {
+        "raw_path": [
+          "properties",
+          "phone",
+          "value"
+        ],
+        "functions": [
+          {
+            "name": "trim",
+            "args": []
+          }
+        ],
+        "type": "string",
+        "required": false,
+        "description": "Phone number",
+        "indexed": false
+      },
+      "createdAt": {
+        "raw_path": [
+          "properties",
+          "createdate",
+          "value"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Creation timestamp",
+        "indexed": false
+      },
+      "updatedAt": {
+        "raw_path": [
+          "properties",
+          "hs_lastmodifieddate",
+          "value"
+        ],
+        "functions": [],
+        "type": "string",
+        "required": false,
+        "description": "Last modification timestamp",
+        "indexed": false
+      }
+    }
+  },
+  "exposed": {
+    "attributes": [
+      "id",
+      "name",
+      "domain",
+      "country",
+      "city",
+      "industry",
+      "website",
+      "phone",
+      "createdAt",
+      "updatedAt"
+    ],
+    "description": "Exposed fields for HubSpot companies"
+  },
+  "openapi": {
+    "enabled": true,
+    "documentKey": "hubspot-v3",
+    "baseUrl": "https://api.hubapi.com",
+    "operations": {
+      "list": {
+        "operationId": "getCompanies",
+        "method": "GET",
+        "path": "/crm/v3/objects/companies"
+      },
+      "get": {
+        "operationId": "getCompany",
+        "method": "GET",
+        "path": "/crm/v3/objects/companies/{companyId}"
+      },
+      "create": {
+        "operationId": "createCompany",
+        "method": "POST",
+        "path": "/crm/v3/objects/companies"
+      },
+      "update": {
+        "operationId": "updateCompany",
+        "method": "PATCH",
+        "path": "/crm/v3/objects/companies/{companyId}"
+      },
+      "delete": {
+        "operationId": "deleteCompany",
+        "method": "DELETE",
+        "path": "/crm/v3/objects/companies/{companyId}"
+      }
+    },
+    "autoRbac": true
+  }
+}

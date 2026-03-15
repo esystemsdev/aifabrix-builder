@@ -19,6 +19,7 @@ const {
   collectKvRefsFromPayload,
   pushCredentialSecrets,
   kvEnvKeyToPath,
+  getKvPathSegmentForSecurityKey,
   systemKeyToKvPrefix,
   securityKeyToVar,
   isValidKvPath,
@@ -59,6 +60,25 @@ describe('credential-secrets-env', () => {
       expect(securityKeyToVar('')).toBe('');
       expect(securityKeyToVar(null)).toBe('');
       expect(securityKeyToVar(undefined)).toBe('');
+    });
+  });
+
+  describe('getKvPathSegmentForSecurityKey', () => {
+    it('should return camelCase path segment for security keys', () => {
+      expect(getKvPathSegmentForSecurityKey('apiKey')).toBe('apiKey');
+      expect(getKvPathSegmentForSecurityKey('clientId')).toBe('clientId');
+      expect(getKvPathSegmentForSecurityKey('clientSecret')).toBe('clientSecret');
+      expect(getKvPathSegmentForSecurityKey('username')).toBe('username');
+      expect(getKvPathSegmentForSecurityKey('password')).toBe('password');
+      expect(getKvPathSegmentForSecurityKey('signingSecret')).toBe('signingSecret');
+    });
+    it('should return paramvalue for paramValue (single-segment no suffix)', () => {
+      expect(getKvPathSegmentForSecurityKey('paramValue')).toBe('paramvalue');
+    });
+    it('should return empty string for empty or invalid', () => {
+      expect(getKvPathSegmentForSecurityKey('')).toBe('');
+      expect(getKvPathSegmentForSecurityKey(null)).toBe('');
+      expect(getKvPathSegmentForSecurityKey(undefined)).toBe('');
     });
   });
 

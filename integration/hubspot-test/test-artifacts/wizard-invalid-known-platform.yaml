@@ -1,0 +1,4 @@
+appName: wizard-e2e-negative-platform
+mode: create-system
+source:
+  type: known-platform

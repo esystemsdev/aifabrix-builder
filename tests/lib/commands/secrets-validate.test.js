@@ -23,18 +23,23 @@ jest.mock('../../../lib/utils/paths', () => ({
 jest.mock('../../../lib/utils/secrets-validation', () => ({
   validateSecretsFile: jest.fn()
 }));
+jest.mock('../../../lib/utils/token-manager', () => ({
+  validateDataplaneSecrets: jest.fn()
+}));
 jest.mock('../../../lib/core/secrets-ensure', () => ({
   resolveWriteTarget: jest.fn()
 }));
 
 const logger = require('../../../lib/utils/logger');
 const { validateSecretsFile } = require('../../../lib/utils/secrets-validation');
+const { validateDataplaneSecrets } = require('../../../lib/utils/token-manager');
 const secretsEnsure = require('../../../lib/core/secrets-ensure');
 const { handleSecretsValidate } = require('../../../lib/commands/secrets-validate');
 
 describe('secrets-validate command', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    validateDataplaneSecrets.mockReturnValue({ valid: true });
   });
 
   it('validates file at pathArg when pathArg is provided', async() => {
@@ -49,7 +54,8 @@ describe('secrets-validate command', () => {
     expect(validateSecretsFile).toHaveBeenCalledWith('/custom/secrets.yaml', {
       checkNaming: false
     });
-    expect(result).toEqual({ valid: true, errors: [] });
+    expect(validateDataplaneSecrets).toHaveBeenCalledWith('/custom/secrets.yaml');
+    expect(result).toEqual({ valid: true, errors: [], dataplaneValid: true });
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('valid'));
   });
 
@@ -118,11 +124,33 @@ describe('secrets-validate command', () => {
 
     expect(result).toEqual({
       valid: false,
-      errors: ['Key "x": recommended format is *KeyVault']
+      errors: ['Key "x": recommended format is *KeyVault'],
+      dataplaneValid: true
     });
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Validation failed'));
     expect(logger.log).toHaveBeenCalledWith(
       expect.stringContaining('Key "x": recommended format is *KeyVault')
+    );
+  });
+
+  it('fails validation and shows rotate-secret hint when dataplane credentials are missing', async() => {
+    validateSecretsFile.mockReturnValue({
+      valid: true,
+      errors: [],
+      path: '/home/.aifabrix/secrets.local.yaml'
+    });
+    validateDataplaneSecrets.mockReturnValue({
+      valid: false,
+      hint: 'Dataplane credentials are missing. Run: aifabrix app rotate-secret dataplane'
+    });
+
+    const result = await handleSecretsValidate(undefined, {});
+
+    expect(result.valid).toBe(false);
+    expect(result.dataplaneValid).toBe(false);
+    expect(result.errors).toContain('Dataplane credentials are missing. Run: aifabrix app rotate-secret dataplane');
+    expect(logger.log).toHaveBeenCalledWith(
+      expect.stringMatching(/Dataplane credentials are missing.*rotate-secret dataplane/)
     );
   });
 });

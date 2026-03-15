@@ -49,5 +49,6 @@ apps/
 
 # Integration files
 integration/my-hubspot/
-integration/hubspot-test-*/
+integration/wizard-e2e-*/
 integration/test-*/
+integration/pp/*

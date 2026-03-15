@@ -1368,5 +1368,67 @@ describe('Token Manager Module', () => {
       }).not.toThrow();
     });
   });
+
+  describe('validateDataplaneSecrets', () => {
+    const dataplaneHint = 'Dataplane credentials are missing. Run: aifabrix app rotate-secret dataplane';
+
+    it('returns valid: true when dataplane-client-idKeyVault and dataplane-client-secretKeyVault exist', () => {
+      const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump({
+        'dataplane-client-idKeyVault': 'cid',
+        'dataplane-client-secretKeyVault': 'csecret'
+      }));
+
+      const result = tokenManager.validateDataplaneSecrets(secretsPath);
+
+      expect(result).toEqual({ valid: true });
+    });
+
+    it('returns valid: false and hint when secrets file does not exist', () => {
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+      const result = tokenManager.validateDataplaneSecrets('/nonexistent/secrets.local.yaml');
+
+      expect(result).toEqual({ valid: false, hint: dataplaneHint });
+    });
+
+    it('returns valid: false and hint when dataplane-client-idKeyVault is missing', () => {
+      const secretsPath = '/some/secrets.local.yaml';
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump({
+        'dataplane-client-secretKeyVault': 'csecret'
+      }));
+
+      const result = tokenManager.validateDataplaneSecrets(secretsPath);
+
+      expect(result).toEqual({ valid: false, hint: dataplaneHint });
+    });
+
+    it('returns valid: false and hint when dataplane-client-secretKeyVault is missing', () => {
+      const secretsPath = '/some/secrets.local.yaml';
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump({
+        'dataplane-client-idKeyVault': 'cid'
+      }));
+
+      const result = tokenManager.validateDataplaneSecrets(secretsPath);
+
+      expect(result).toEqual({ valid: false, hint: dataplaneHint });
+    });
+
+    it('returns valid: false when values are empty strings', () => {
+      const secretsPath = '/some/secrets.local.yaml';
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump({
+        'dataplane-client-idKeyVault': '',
+        'dataplane-client-secretKeyVault': ''
+      }));
+
+      const result = tokenManager.validateDataplaneSecrets(secretsPath);
+
+      expect(result).toEqual({ valid: false, hint: dataplaneHint });
+    });
+  });
 });
 

@@ -33,7 +33,7 @@ Local validation (`aifabrix validate`) checks dimension syntax and structure onl
 
 | Step | What is checked | Scope |
 | ------ | ----------------- | ----- |
-| **1** | Application configuration | `application.yaml`, `rbac.yaml`, `env.template` in the app directory |
+| **1** | Application configuration | `application.yaml`, RBAC file (`rbac.yaml`, `rbac.yml`, or `rbac.json`), `env.template` in the app directory |
 | **2** | Component files | Each external system file and each external datasource file listed in `externalIntegration.systems` and `externalIntegration.dataSources` |
 | **3** | Deployment manifest | Generated manifest (structure, inline system, inline datasources, systemKey alignment) |
 
@@ -67,7 +67,7 @@ The validate command checks application config, RBAC (if present), and the envir
 | `systems` | Non-empty array. Each entry is a file name under the schema base path (e.g. `hubspot-system.yaml`). |
 | `dataSources` | Optional array of datasource file names under the schema base path. |
 
-### rbac.yaml (if present)
+### RBAC file (rbac.yaml, rbac.yml, or rbac.json — if present)
 
 | Rule | Requirement |
 | ------ | ----------- |
@@ -115,7 +115,7 @@ Files (e.g. `*-system.yaml` or `*-system.json`) are validated against the extern
 
 ### External datasource file(s)
 
-Files (e.g. `*-datasource-*.yaml` or `*-datasource-*.json`) are validated against the external datasource schema.
+Files (e.g. `*-datasource-*.yaml` or `*-datasource-*.json`) are validated against the external datasource schema. After schema validation, the CLI runs **field reference** and **ABAC** checks so that `aifabrix validate <file>` and Step 2 component validation match the same rules as `aifabrix datasource validate <file>`. Builder aligns with dataplane procedural checks where possible; dimension catalog lookup and `crossSystemSql` parsing remain server-side.
 
 | Field or section | Requirement |
 | ----------------- | ----------- |
@@ -126,6 +126,10 @@ Files (e.g. `*-datasource-*.yaml` or `*-datasource-*.json`) are validated agains
 | `resourceType` | Required. Pattern lowercase letters, numbers, hyphens (e.g. `document`, `customer`, `deal`). |
 | `fieldMappings` | Required. Object with `dimensions` (object) and `attributes` (object). |
 | `fieldMappings.attributes` | Each attribute must have `expression` and `type`. Expression must match the pipe-based DSL or `record_ref:` form; `type` one of: `string`, `number`, `integer`, `boolean`, `array`, `object`. |
+| **Field reference validation** | Each of `indexing.embedding[]`, `indexing.uniqueKey`, `validation.repeatingValues[].field`, `quality.rejectIf[].field` must reference a key in `fieldMappings.attributes`. |
+| **primaryKey** | Each element must exist in `fieldMappings.attributes` or `fieldMappings.dimensions`. |
+| **exposed.profiles** | Each field in `exposed.profiles.<name>[]` must exist in `fieldMappings.attributes`. |
+| **ABAC (config.abac)** | Dimension keys and attribute paths in `config.abac.dimensions` or `fieldMappings.dimensions` must follow pattern and (where applicable) reference existing attributes. `config.abac.crossSystemJson` must have one operator per path and allowed operators only. Legacy `config.abac.crossSystem` is rejected (use `crossSystemJson` or `crossSystemSql`). |
 | `exposed` | If present, must include `attributes` (array of normalized attribute names to expose). |
 | `execution` | If present, must include `engine`: `cip` or `python`; CIP definitions and Python entrypoints follow schema. |
 | Other sections | `metadataSchema`, `sync`, `openapi`, `validation`, `quality`, `indexing`, `context`, `documentStorage`, `capabilities`, `config`, `contract`, etc. follow schema. |
@@ -156,8 +160,8 @@ After component files pass, the command builds the deployment manifest and valid
 | Application | `externalIntegration` required when `app.type` is `external` | Step 1 |
 | Application | `externalIntegration.schemaBasePath` and `externalIntegration.systems` (non-empty) required | Step 1 |
 | Application | `frontDoorRouting`: if enabled, host required; pattern must start with `/` | Step 1 |
-| RBAC | `roles` and `permissions` structure; no duplicate role value or permission name | Step 1 (if rbac.yaml present) |
-| RBAC | Every `permissions[].roles` value must exist in `roles[].value` | Step 1 (if rbac.yaml present) |
+| RBAC | `roles` and `permissions` structure; no duplicate role value or permission name | Step 1 (if RBAC file present) |
+| RBAC | Every `permissions[].roles` value must exist in `roles[].value` | Step 1 (if RBAC file present) |
 | env.template | Valid variable lines; `kv://` path non-empty, no leading/trailing slash | Step 1 |
 | External system file | Required: key, displayName, description, type, authentication; patterns and enums per schema | Step 2 |
 | External system file | configuration must not contain standard auth variables (BASEURL, CLIENTID, CLIENTSECRET, TOKENURL, APIKEY, USERNAME, PASSWORD); BASEURL only when auth is none | Step 2 |
@@ -190,8 +194,8 @@ For full dataplane rules and troubleshooting (dimension catalog, pipeline deploy
 
 ## Troubleshooting
 
-- **Validation fails at Step 1** – Fix `application.yaml`, `rbac.yaml`, or `env.template` as reported. Ensure `externalIntegration` is present when `app.type` is `external`, and that `schemaBasePath` and `systems` are set.
-- **Role reference errors** – Ensure every role value used in `permissions[].roles` (in rbac.yaml or in external system files) exists in the corresponding `roles` array with that `value`.
+- **Validation fails at Step 1** – Fix `application.yaml`, the RBAC file (rbac.yaml / rbac.yml / rbac.json), or `env.template` as reported. Ensure `externalIntegration` is present when `app.type` is `external`, and that `schemaBasePath` and `systems` are set.
+- **Role reference errors** – Ensure every role value used in `permissions[].roles` (in the RBAC file or in external system files) exists in the corresponding `roles` array with that `value`.
 - **systemKey mismatch** – Ensure each datasource file’s `systemKey` matches the external system’s `key` (the same value used in the system file and in the generated manifest).
 - **File not found** – Run `aifabrix repair <app>` to sync config with files on disk, or add the missing system/datasource files under the schema base path.
 
