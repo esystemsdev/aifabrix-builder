@@ -234,7 +234,7 @@ Display authentication status for the current controller and environment.
 aifabrix auth status
 ```
 
-Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). There are no `--controller` or `--environment` options.
+Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth --set-controller` / `--set-environment`). There are no `--controller` or `--environment` options.
 
 **Controller URL Resolution:**
 
@@ -367,24 +367,27 @@ After checking status:
 
 ---
 
-## aifabrix auth config
+## aifabrix auth
 
-Set the default controller URL or environment in `config.yaml`. Use when you are already logged in and want to switch the active controller or environment without logging in again.
+Show authentication status (default) or set the default controller URL or environment in `config.yaml`.
 
-**What:** Updates `config.controller` or `config.environment` in `~/.aifabrix/config.yaml` with validation. Requires an existing device token for the target controller.
+**What:** When run with no options, displays authentication status (same as `aifabrix auth status`). With `--set-controller` or `--set-environment`, updates `config.controller` or `config.environment` in `~/.aifabrix/config.yaml` with validation.
 
-**When:** After login, to point all commands at a different controller or environment.
+**When:** To check status, or after login to point all commands at a different controller or environment.
 
 **Usage:**
 ```bash
+# Show authentication status (default)
+aifabrix auth
+
 # Set default controller URL (allowed when logged out; then "aifabrix login" uses this URL)
-aifabrix auth config --set-controller https://controller.aifabrix.dev
+aifabrix auth --set-controller https://controller.aifabrix.dev
 
 # Set default environment (must be logged in for current controller)
-aifabrix auth config --set-environment dev
+aifabrix auth --set-environment dev
 
-# Verify
-aifabrix auth status
+# Set both
+aifabrix auth --set-controller https://controller.aifabrix.dev --set-environment dev
 ```
 
 **Options:**
@@ -399,15 +402,15 @@ aifabrix auth status
 ```bash
 # Switch to production controller (after logging in to it)
 aifabrix login --controller https://prod.controller.aifabrix.dev --environment pro
-aifabrix auth config --set-controller https://prod.controller.aifabrix.dev
-aifabrix auth config --set-environment pro
+aifabrix auth --set-controller https://prod.controller.aifabrix.dev
+aifabrix auth --set-environment pro
 
 # Use config for subsequent commands
 aifabrix deploy myapp
 ```
 
 **Issues:**
-- **"You have credentials for another controller"** → Run `aifabrix login` with the new controller URL, or run `aifabrix logout` first, then set the new controller with `--set-controller`.
+- **"You have credentials for another controller"** → Run `aifabrix login` with the new controller URL, or run `aifabrix logout` first, then set the new controller with `aifabrix auth --set-controller <url>`.
 - **"Invalid URL"** → Use a valid `http://` or `https://` URL.
 - **"Invalid environment"** → Use `miso`, `dev`, `tst`, `pro`, or a custom key (letters, numbers, hyphens, underscores).
 

@@ -131,6 +131,7 @@ aifabrix up-miso --image keycloak=myreg/keycloak:v1 --image miso-controller=myre
 - `-r, --registry <url>` - Override registry for both apps (e.g. `myacr.azurecr.io`)
 - `--registry-mode <mode>` - Override registry mode (`acr` or `external`)
 - `-i, --image <key>=<value>` - Override image (e.g. `keycloak=reg/k:v1`, `miso-controller=reg/m:v1`); can be repeated
+- `-f, --force` - Clean builder/keycloak and builder/miso-controller and re-fetch from templates
 
 **Issues:**
 - **"Infrastructure is not up"** → Run `aifabrix up-infra` first
@@ -159,7 +160,7 @@ aifabrix up-platform --registry myacr.azurecr.io
 aifabrix up-platform --image keycloak=myreg/k:v1 --image miso-controller=myreg/m:v1 --image dataplane=myreg/d:v1
 ```
 
-**Options:** Same as [up-miso](#aifabrix-up-miso) (registry, registry-mode, image). Passed to both up-miso and up-dataplane steps.
+**Options:** Same as [up-miso](#aifabrix-up-miso) (registry, registry-mode, image), plus `-f, --force` to clean builder/keycloak, builder/miso-controller, and builder/dataplane and re-fetch from templates before starting. Passed to both up-miso and up-dataplane steps.
 
 **Issues:**
 - **"Infrastructure is not up"** → Run `aifabrix up-infra` first
@@ -192,11 +193,12 @@ aifabrix up-dataplane --image myreg/dataplane:latest
 - `-r, --registry <url>` - Override registry for dataplane image
 - `--registry-mode <mode>` - Override registry mode (`acr` or `external`)
 - `-i, --image <ref>` - Override dataplane image reference
+- `-f, --force` - Clean builder/dataplane and re-fetch from templates before registering/deploying
 
 **Issues:**
 - **"Login required"** → Run `aifabrix login` first
-- **"Dataplane is only supported in dev environment"** → Run `aifabrix auth config --set-environment dev`
-- **"Controller at … is not available"** → You are prompted to enter a controller URL; enter a valid URL where the controller is running, or set it beforehand with `aifabrix auth config --set-controller <url>`
+- **"Dataplane is only supported in dev environment"** → Run `aifabrix auth --set-environment dev`
+- **"Controller at … is not available"** → You are prompted to enter a controller URL; enter a valid URL where the controller is running, or set it beforehand with `aifabrix auth --set-controller <url>`
 
 ---
 

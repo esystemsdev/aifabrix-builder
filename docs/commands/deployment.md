@@ -93,8 +93,8 @@ Tags: v1.0.0, latest
 
 ---
 
-<a id="aifabrix-environment-deploy-env"></a>
-## aifabrix environment deploy <env>
+<a id="aifabrix-env-deploy-env"></a>
+## aifabrix env deploy <env>
 
 Deploy/setup environment in Miso Controller. Requires Controller permission **controller:deploy**. See [Online Commands and Permissions](permissions.md).
 
@@ -102,24 +102,21 @@ Deploy/setup environment in Miso Controller. Requires Controller permission **co
 
 **When:** Setting up a new environment for the first time, provisioning environment infrastructure, updating environment-level configuration, or before deploying applications to an environment. This should be done before deploying applications.
 
-This command uses the active `controller` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`).
+This command uses the active `controller` from `config.yaml` (set via `aifabrix login` or `aifabrix auth`).
 
 **Example:**
 ```bash
 # Deploy development environment
-aifabrix environment deploy dev
+aifabrix env deploy dev
 
 # Deploy testing environment
-aifabrix environment deploy tst
+aifabrix env deploy tst
 
 # Deploy production environment
-aifabrix environment deploy pro
+aifabrix env deploy pro
 
 # Deploy miso environment
-aifabrix environment deploy miso
-
-# Using alias
-aifabrix env deploy dev
+aifabrix env deploy miso
 
 # With size preset (default is s)
 aifabrix env deploy dev --preset s
@@ -127,7 +124,7 @@ aifabrix env deploy dev --preset m
 aifabrix env deploy dev --preset xl
 
 # Without status polling
-aifabrix environment deploy dev --no-poll
+aifabrix env deploy dev --no-poll
 ```
 
 **Output:**
@@ -150,14 +147,14 @@ aifabrix environment deploy dev --no-poll
 
 **Configuration:**
 
-The environment deploy command requires:
-- Controller URL from `config.controller` (set via `aifabrix login` or `aifabrix auth config --set-controller`)
+The env deploy command requires:
+- Controller URL from `config.controller` (set via `aifabrix login` or `aifabrix auth --set-controller`)
 - Valid environment key (miso, dev, tst, pro) as the command argument
 - Authentication token (device token, obtained via `aifabrix login`)
 
 **Authentication:**
 
-The environment deploy command automatically:
+The env deploy command automatically:
 1. Gets or refreshes device token for the controller
 2. Uses device token (not app-specific client credentials)
 3. Requires admin/operator privileges for environment deployment
@@ -168,17 +165,17 @@ The environment deploy command automatically:
 **Advanced options:**
 ```bash
 # Without status polling
-aifabrix environment deploy dev --no-poll
+aifabrix env deploy dev --no-poll
 
 # Size preset (s, m, l, xl); default is s when no --config is used
 aifabrix env deploy dev --preset s
 aifabrix env deploy dev --preset m
 
 # With environment configuration file (overrides preset)
-aifabrix environment deploy dev --config ./env-config.json
+aifabrix env deploy dev --config ./env-config.json
 
 # Skip validation checks
-aifabrix environment deploy dev --skip-validation
+aifabrix env deploy dev --skip-validation
 ```
 
 **Flags:**
@@ -213,7 +210,7 @@ aifabrix environment deploy dev --skip-validation
 
 **Differences from `aifabrix deploy <app>`:**
 
-| Aspect | `environment deploy <env>` | `deploy <app>` |
+| Aspect | `env deploy <env>` | `deploy <app>` |
 | ------ | ------------------------- | -------------- |
 | **Target** | Environment (dev, tst, pro, miso) | Application |
 | **Purpose** | Set up environment infrastructure | Deploy application to environment |
@@ -225,7 +222,7 @@ aifabrix environment deploy dev --skip-validation
 
 **When to Use:**
 
-- ✅ **Use `environment deploy`** when:
+- ✅ **Use `env deploy`** when:
   - Setting up a new environment for the first time
   - Provisioning environment infrastructure
   - Updating environment-level configuration
@@ -242,7 +239,7 @@ The typical deployment workflow:
 
 1. **Deploy Environment** (first)
    ```bash
-   aifabrix environment deploy dev
+   aifabrix env deploy dev
    ```
 
 2. **Deploy Applications** (second)
@@ -250,12 +247,12 @@ The typical deployment workflow:
    aifabrix deploy myapp
    ```
 
-   Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`).
+   Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth`).
 
 **Issues:**
 - **"Environment key is required"** → Provide environment key as argument (miso, dev, tst, pro)
 - **"Invalid environment key"** → Environment must be one of: miso, dev, tst, pro
-- **"Controller URL is required"** → Run `aifabrix login` or `aifabrix auth config --set-controller <url>`
+- **"Controller URL is required"** → Run `aifabrix login` or `aifabrix auth --set-controller <url>`
 - **"Controller URL must use HTTPS"** → Use `https://` when setting controller
 - **"Failed to get authentication token"** → Run `aifabrix login` first to get device token
 - **"Authentication failed"** → Token may be expired, run `aifabrix login` again
@@ -285,7 +282,7 @@ With `--local`, the command sends the deployment manifest to the controller (sam
 
 **When:** Deploying applications after pushing images to ACR (for Azure) or after building images locally (for local Docker). For external systems, after generating `<systemKey>-deploy.json` with `aifabrix json` or `aifabrix build`. Use `--local` when you want to deploy to the controller and then run the app locally (apps) or restart dataplane (external systems). For external systems, after deploy (or upload), MCP/OpenAPI docs are served by the dataplane—see [Controller and Dataplane: What, Why, When](../deploying.md#controller-and-dataplane-what-why-when).
 
-This command uses the active `controller` and `environment` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`).
+This command uses the active `controller` and `environment` from `config.yaml` (set via `aifabrix login` or `aifabrix auth`).
 
 **Example:**
 ```bash
@@ -293,7 +290,7 @@ This command uses the active `controller` and `environment` from `config.yaml` (
 aifabrix deploy myapp
 
 # Switch environment first if needed
-aifabrix auth config --set-environment pro
+aifabrix auth --set-environment pro
 aifabrix deploy myapp
 
 # External system in integration/<app> (resolved first; no app register needed)
@@ -347,7 +344,7 @@ aifabrix deploy myapp --local
 ```
 
 **Configuration:**  
-Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). Then run:
+Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth`). Then run:
 ```bash
 aifabrix deploy myapp
 ```
@@ -371,7 +368,7 @@ The deploy command automatically:
 aifabrix deploy myapp --no-poll
 
 # Deploy to specific environment: set it first, then deploy
-aifabrix auth config --set-environment pro
+aifabrix auth --set-environment pro
 aifabrix deploy myapp
 
 # Deploy with explicit client credentials (overrides config)
@@ -429,7 +426,7 @@ Controller and Dataplane app endpoints accept token-only auth: user token as `Au
 **Issues:**
 - **"App name is required"** → Provide app name as argument
 - **"Application not found in builder/"** → Run `aifabrix create <app>` first
-- **"Controller URL is required"** → Run `aifabrix login` or `aifabrix auth config --set-controller <url>`
+- **"Controller URL is required"** → Run `aifabrix login` or `aifabrix auth --set-controller <url>`
 - **"Controller URL must use HTTPS"** → Use `https://` when setting controller
 - **"Failed to get authentication token"** → Run `aifabrix login --method credentials --app <app>` first, or ensure credentials are in `~/.aifabrix/secrets.local.yaml` as `<app-name>-client-idKeyVault` and `<app-name>-client-secretKeyVault`
 - **"Client credentials not found for app"** → Add credentials to `~/.aifabrix/secrets.local.yaml` or run `aifabrix login` first

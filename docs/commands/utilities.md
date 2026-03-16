@@ -483,6 +483,26 @@ aifabrix secret remove my-keyKeyVault --shared
 
 **Security note:** When `aifabrix-secrets` is a URL, shared secret values are never stored on disk; they are fetched at resolution time when generating `.env`.
 
+<a id="aifabrix-secret-set-secrets-file"></a>
+### aifabrix secret set-secrets-file
+
+Set the path or URL for the secrets file in `config.yaml`.
+
+**What:** Writes `aifabrix-secrets` to `~/.aifabrix/config.yaml`. The value can be a local file path or an `https://` URL (for remote shared secrets). Only `https://` URLs are allowed; `http://` is rejected.
+
+**When:** Switching between local and remote secrets, or pointing the CLI at a different secrets file (e.g. team path or remote API).
+
+**Usage:**
+```bash
+# Local file path
+aifabrix secret set-secrets-file /path/to/secrets.local.yaml
+
+# Remote secrets (https only)
+aifabrix secret set-secrets-file https://builder.example.com/api/dev/secrets
+```
+
+**See also:** [Secrets and config](../configuration/secrets-and-config.md).
+
 ---
 
 ## See also

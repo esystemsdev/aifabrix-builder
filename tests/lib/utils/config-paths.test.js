@@ -10,6 +10,7 @@ const {
   getPathConfig,
   setPathConfig,
   createPathConfigFunctions,
+  getDefaultEnvConfigPath,
   SETTINGS_RESPONSE_KEYS
 } = require('../../../lib/utils/config-paths');
 
@@ -181,9 +182,10 @@ describe('Config Paths Module', () => {
         expect(result).toBe('/custom/env-config');
       });
 
-      it('should return null if aifabrix-env-config not in config', async() => {
+      it('should return default schema path if aifabrix-env-config not in config', async() => {
+        getConfigFn.mockResolvedValue({});
         const result = await pathConfigFunctions.getAifabrixEnvConfigPath();
-        expect(result).toBeNull();
+        expect(result).toBe(getDefaultEnvConfigPath());
       });
     });
 

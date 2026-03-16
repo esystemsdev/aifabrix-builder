@@ -1,3 +1,21 @@
+## [2.43.0] - 2026-03-16
+
+### Added
+- **Secret set-secrets-file:** `aifabrix secret set-secrets-file <path>` sets the `aifabrix-secrets` value in config (local file or https URL). Plan 112.
+- **Dev set-env-config and set-home:** `aifabrix dev set-env-config <filePath>` and `aifabrix dev set-home <path>` set `aifabrix-env-config` and `aifabrix-home` in config.yaml. Plan 112.
+- **--force for up-platform, up-miso, up-dataplane:** When `--force` is used, the builder app directory (or directories) used by the command is fully cleaned, then content is re-fetched from templates. up-platform cleans keycloak, miso-controller, dataplane; up-miso cleans keycloak, miso-controller; up-dataplane cleans dataplane. Plan 112.
+
+### Changed
+- **Dev config removed:** The `dev config` command has been removed. Use `aifabrix dev set-id <id>` to set developer ID and `aifabrix dev show` (or equivalent) to display config. Plan 112.
+- **Auth config folded into auth:** The `auth config` subcommand has been removed. Use `aifabrix auth --set-controller <url>` and `aifabrix auth --set-environment <env>` to set default controller and environment in config. Plan 112.
+- **Help categories:** "Application & Datasource Management" renamed to "Application & Management"; datasource moved to "External Systems"; test and test-integration removed from Applications category (they remain under External Systems). Plan 112.
+- **Docs:** Authentication, developer-isolation, infrastructure, utilities, and secrets-and-config docs updated for removed/renamed commands and new options. Plan 112.
+
+### Technical
+- **Plan 112:** lib/cli/setup-dev.js (remove dev config, add set-env-config, set-home); lib/cli/setup-auth.js (options on parent auth); lib/cli/setup-secrets.js (set-secrets-file); lib/cli/setup-infra.js (--force); lib/commands/up-common.js (cleanBuilderAppDirs); lib/commands/auth-config.js, up-dataplane.js, dev-init.js; lib/utils/help-builder.js; lib/core/config.js, lib/utils/config-paths.js; docs (commands/, configuration/); tests (cli, auth-config, up-dataplane, help-builder, config-paths).
+
+---
+
 ## [2.42.3] - 2026-03-14
 
 ### Added

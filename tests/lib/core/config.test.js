@@ -731,13 +731,14 @@ describe('Config Module', () => {
       await expect(setAifabrixEnvConfigPath(42)).rejects.toThrow('Env config path is required and must be a string');
     });
 
-    it('getAifabrixEnvConfigPath returns null when not set', async() => {
+    it('getAifabrixEnvConfigPath returns default schema path when not set', async() => {
       const yamlLib = require('js-yaml');
       fsPromises.readFile.mockResolvedValue(yamlLib.dump({ 'developer-id': '0' }));
 
+      const { getDefaultEnvConfigPath } = require('../../../lib/utils/config-paths');
       const { getAifabrixEnvConfigPath } = require('../../../lib/core/config');
       const value = await getAifabrixEnvConfigPath();
-      expect(value).toBeNull();
+      expect(value).toBe(getDefaultEnvConfigPath());
     });
   });
 

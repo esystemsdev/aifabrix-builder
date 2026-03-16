@@ -373,7 +373,7 @@ Tags: `v1.0.0`, `latest`, `stable`
 Before deploying applications, ensure the environment is set up in the Miso Controller. Run:
 
 ```bash
-aifabrix environment deploy dev
+aifabrix env deploy dev
 ```
 
 This validates the environment, authenticates (device token from `aifabrix login`), deploys environment infrastructure, and verifies readiness. Typically done once per environment.

@@ -107,7 +107,7 @@ describe('up-dataplane command', () => {
       config.getConfig.mockResolvedValue({ environment: 'tst' });
 
       await expect(handleUpDataplane({})).rejects.toThrow(
-        'Dataplane is only supported in dev environment. Set with: aifabrix auth config --set-environment dev.'
+        'Dataplane is only supported in dev environment. Set with: aifabrix auth --set-environment dev.'
       );
       expect(checkApplicationExists).not.toHaveBeenCalled();
       expect(registerApplication).not.toHaveBeenCalled();

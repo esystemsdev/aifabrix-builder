@@ -65,7 +65,7 @@ aifabrix dev refresh --cert   # Force certificate refresh even when cert is stil
 
 **Requirements:** `remote-server` must be set and a client certificate must exist (from a successful `aifabrix dev init`). Certificate refresh requires a **valid** current cert (so you can create your own PIN); if your cert is already expired, an admin must create a PIN for you and you use `aifabrix dev init --pin <pin>`.
 
-**See Also:** [aifabrix dev config](#aifabrix-dev-config) (view config after refresh), [aifabrix dev init](#aifabrix-dev-init).
+**See Also:** [aifabrix dev show](#aifabrix-dev-show) (view config after refresh), [aifabrix dev init](#aifabrix-dev-init).
 
 ---
 
@@ -161,37 +161,79 @@ aifabrix dev set-format yaml
 **Arguments:**
 - `<format>` - `json` or `yaml` (case-insensitive)
 
-**Output:** Confirms the format and displays full developer configuration (same as `aifabrix dev config`).
+**Output:** Confirms the format and displays full developer configuration (same as `aifabrix dev show`).
 
-**See Also:** [aifabrix dev config](#aifabrix-dev-config), [aifabrix download](external-integration.md#aifabrix-download-system-key), [aifabrix convert](utilities.md#aifabrix-convert-app), [aifabrix create](application-development.md#aifabrix-create-app), [aifabrix wizard](external-integration.md#aifabrix-wizard), [Secrets and config](../configuration/secrets-and-config.md).
+**See Also:** [aifabrix dev show](#aifabrix-dev-show), [aifabrix download](external-integration.md#aifabrix-download-system-key), [aifabrix convert](utilities.md#aifabrix-convert-app), [aifabrix create](application-development.md#aifabrix-create-app), [aifabrix wizard](external-integration.md#aifabrix-wizard), [Secrets and config](../configuration/secrets-and-config.md).
 
 ---
 
-<a id="aifabrix-dev-config"></a>
-## aifabrix dev config
+<a id="aifabrix-dev-show"></a>
+## aifabrix dev show
 
-View or set developer ID for port isolation.
+Show developer configuration (ports and config vars).
 
-**What:** Displays current developer configuration (developer ID and calculated ports) or sets a new developer ID. When **remote-server** is set and a certificate is available, config can be **refreshed from the server** (cert-authenticated) to get sync and Docker parameters. Developer isolation allows multiple developers to run applications simultaneously on the same machine without port conflicts.
+**What:** Displays current developer ID, calculated ports (app, Postgres, Redis, pgAdmin, Redis Commander), and config vars (environment, controller, aifabrix-home, aifabrix-secrets, aifabrix-env-config, etc.).
 
-**When:** Setting up developer isolation, checking current port assignments, troubleshooting port conflicts.
+**When:** After `dev refresh` or to verify your developer isolation settings.
 
 **Usage:**
 ```bash
-# View current developer configuration
-aifabrix dev config
-
-# Set developer ID
-aifabrix dev config --set-id 01
-
-# Set developer ID to 2
-aifabrix dev config --set-id 02
+aifabrix dev show
 ```
 
-**Options:**
-- `--set-id <id>` - Set developer ID (non-negative integer). Developer ID 0 = default infrastructure (base ports), 1+ = developer-specific (offset ports). Updates `~/.aifabrix/config.yaml` and sets `AIFABRIX_DEVELOPERID` environment variable.
+**See Also:** [aifabrix dev set-id](#aifabrix-dev-set-id), [aifabrix dev set-format](#aifabrix-dev-set-format).
 
-**See Also:** [aifabrix dev set-format](#aifabrix-dev-set-format) (default output format for download/convert).
+---
+
+<a id="aifabrix-dev-set-id"></a>
+## aifabrix dev set-id
+
+Set developer ID for port isolation.
+
+**What:** Sets the developer ID in `~/.aifabrix/config.yaml` and sets `AIFABRIX_DEVELOPERID` in the environment. Developer ID 0 = default infrastructure (base ports), 1+ = developer-specific (offset ports). After setting, displays the same output as `aifabrix dev show`.
+
+**When:** Setting up developer isolation or switching between developers on the same machine.
+
+**Usage:**
+```bash
+# Set developer ID to 01 (leading zeros preserved)
+aifabrix dev set-id 01
+
+# Set developer ID to 2
+aifabrix dev set-id 2
+```
+
+**See Also:** [aifabrix dev show](#aifabrix-dev-show), [aifabrix dev set-format](#aifabrix-dev-set-format).
+
+---
+
+<a id="aifabrix-dev-set-env-config"></a>
+## aifabrix dev set-env-config
+
+Set the path to the env-config file in `config.yaml`.
+
+**What:** Writes `aifabrix-env-config` to `~/.aifabrix/config.yaml`. This path is used by up-miso/up-dataplane to resolve `AIFABRIX_BUILDER_DIR` and load env config (e.g. for builder directory override).
+
+**Usage:**
+```bash
+aifabrix dev set-env-config /path/to/env-config.yaml
+```
+
+---
+
+<a id="aifabrix-dev-set-home"></a>
+## aifabrix dev set-home
+
+Set the aifabrix-home path in `config.yaml`.
+
+**What:** Writes `aifabrix-home` to `~/.aifabrix/config.yaml`. Overrides the default AI Fabrix home directory (used for applications base path when developer ID is set).
+
+**Usage:**
+```bash
+aifabrix dev set-home /path/to/aifabrix-home
+```
+
+**See Also:** [aifabrix dev show](#aifabrix-dev-show).
 
 **Output (view):**
 ```yaml
