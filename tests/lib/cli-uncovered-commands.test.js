@@ -158,47 +158,6 @@ describe('CLI Uncovered Command Handlers', () => {
     });
   });
 
-  describe('environment deploy command handler', () => {
-    it('should handle environment deploy successfully', async() => {
-      environmentDeploy.deployEnvironment.mockResolvedValue();
-      const envKey = 'dev';
-      const options = { controller: 'https://controller.example.com' };
-
-      const handler = async(envKey, options) => {
-        try {
-          const environmentDeploy = require('../../lib/deployment/environment');
-          await environmentDeploy.deployEnvironment(envKey, options);
-        } catch (error) {
-          cliUtils.handleCommandError(error, 'environment deploy');
-          process.exit(1);
-        }
-      };
-
-      await handler(envKey, options);
-      expect(environmentDeploy.deployEnvironment).toHaveBeenCalledWith(envKey, options);
-      expect(process.exit).not.toHaveBeenCalled();
-    });
-
-    it('should handle environment deploy error', async() => {
-      const error = new Error('Deployment failed');
-      environmentDeploy.deployEnvironment.mockRejectedValue(error);
-
-      const handler = async(envKey, options) => {
-        try {
-          const environmentDeploy = require('../../lib/deployment/environment');
-          await environmentDeploy.deployEnvironment(envKey, options);
-        } catch (error) {
-          cliUtils.handleCommandError(error, 'environment deploy');
-          process.exit(1);
-        }
-      };
-
-      await handler('dev', {});
-      expect(cliUtils.handleCommandError).toHaveBeenCalledWith(error, 'environment deploy');
-      expect(process.exit).toHaveBeenCalledWith(1);
-    });
-  });
-
   describe('env deploy command handler', () => {
     it('should handle env deploy successfully', async() => {
       environmentDeploy.deployEnvironment.mockResolvedValue();
@@ -210,7 +169,7 @@ describe('CLI Uncovered Command Handlers', () => {
           const environmentDeploy = require('../../lib/deployment/environment');
           await environmentDeploy.deployEnvironment(envKey, options);
         } catch (error) {
-          cliUtils.handleCommandError(error, 'environment deploy');
+          cliUtils.handleCommandError(error, 'env deploy');
           process.exit(1);
         }
       };
@@ -218,6 +177,25 @@ describe('CLI Uncovered Command Handlers', () => {
       await handler(envKey, options);
       expect(environmentDeploy.deployEnvironment).toHaveBeenCalledWith(envKey, options);
       expect(process.exit).not.toHaveBeenCalled();
+    });
+
+    it('should handle env deploy error', async() => {
+      const error = new Error('Deployment failed');
+      environmentDeploy.deployEnvironment.mockRejectedValue(error);
+
+      const handler = async(envKey, options) => {
+        try {
+          const environmentDeploy = require('../../lib/deployment/environment');
+          await environmentDeploy.deployEnvironment(envKey, options);
+        } catch (err) {
+          cliUtils.handleCommandError(err, 'env deploy');
+          process.exit(1);
+        }
+      };
+
+      await handler('dev', {});
+      expect(cliUtils.handleCommandError).toHaveBeenCalledWith(error, 'env deploy');
+      expect(process.exit).toHaveBeenCalledWith(1);
     });
   });
 

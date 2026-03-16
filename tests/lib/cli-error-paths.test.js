@@ -237,21 +237,6 @@ describe('CLI Error Paths', () => {
     });
   });
 
-  describe('environment deploy command error handling', () => {
-    beforeEach(() => {
-      cli.setupCommands(program);
-    });
-
-    it('should handle error when deployEnvironment fails', async() => {
-      const error = new Error('Environment deployment failed');
-      const environmentDeploy = require('../../lib/deployment/environment');
-      environmentDeploy.deployEnvironment = jest.fn().mockRejectedValue(error);
-
-      // The error should be caught and handled
-      expect(handleCommandError).toBeDefined();
-    });
-  });
-
   describe('env deploy command error handling', () => {
     beforeEach(() => {
       cli.setupCommands(program);

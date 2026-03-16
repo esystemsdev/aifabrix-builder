@@ -6,6 +6,46 @@
 const path = require('path');
 const fs = require('fs');
 
+// Mock fs so readFileSync returns the env template when the implementation reads it.
+// This isolates the test from other suites' fs mocks and from CI path/cwd differences.
+jest.mock('fs', () => {
+  const pathMod = require('path');
+  const actual = jest.requireActual('fs');
+  const externalEnvTemplate = `# Environment variables for external system integration
+# Use kv:// (or aifabrix secret set) for sensitive values; plain values for non-sensitive configuration.
+#
+
+{{#if authMethod}}
+# Authentication
+# Type: {{authMethod}}
+{{#each authSecureVars}}
+{{name}}={{value}}
+{{/each}}
+{{#if authNonSecureVarNames}}
+# Non-secure (e.g. URLs): {{#each authNonSecureVarNames}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+
+{{/if}}
+{{#if configuration.length}}
+# Configuration
+{{#each configuration}}
+# {{comment}}
+{{name}}={{value}}
+{{/each}}
+{{/if}}
+`;
+  return {
+    ...actual,
+    readFileSync: (filePath, encoding) => {
+      const p = pathMod.isAbsolute(filePath) ? filePath : pathMod.resolve(process.cwd(), filePath);
+      if (String(p).includes('env.template.hbs') && String(p).includes('external-system')) {
+        return externalEnvTemplate;
+      }
+      return actual.readFileSync(filePath, encoding);
+    }
+  };
+});
+
 jest.mock('../../../lib/utils/credential-secrets-env', () => ({
   systemKeyToKvPrefix: jest.fn((k) => (k || '').replace(/-/g, '_').toUpperCase()),
   kvEnvKeyToPath: jest.fn((envKey, systemKey) => {

@@ -10,16 +10,16 @@ Environment deploy provisions the target (dev, tst, pro, or miso) so the control
 
 ## How to deploy an environment
 
-Use the environment deploy command with the target environment key. Controller URL and auth come from your config (set via `aifabrix login` or `aifabrix auth config`).
+Use the env deploy command with the target environment key. Controller URL and auth come from your config (set via `aifabrix login` or `aifabrix auth`).
 
 **Minimal command (deploy with default preset):**
 
 ```bash
-aifabrix environment deploy dev
+aifabrix env deploy dev
 # or
 aifabrix env deploy dev --preset s
-aifabrix environment deploy tst
-aifabrix environment deploy pro
+aifabrix env deploy tst
+aifabrix env deploy pro
 ```
 
 By default the command uses preset **s** (small). You can pass `--preset s|m|l|xl` (case-insensitive) to choose size; for example `aifabrix env deploy dev --preset m`. No config file is required unless you need custom settings. For custom settings (e.g. Azure subscription, tenant, deployment type), use an environment configuration file and pass it with `--config <file>`.
@@ -27,7 +27,7 @@ By default the command uses preset **s** (small). You can pass `--preset s|m|l|x
 **With a custom config file:**
 
 ```bash
-aifabrix environment deploy dev --config ./my-environment-config.json
+aifabrix env deploy dev --config ./my-environment-config.json
 ```
 
 ## Where you deploy

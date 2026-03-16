@@ -28,7 +28,7 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | `aifabrix app register <appKey>` | Controller | `environments-applications:create` | Register app in environment and get client credentials. |
 | `aifabrix app list` | Controller | `environments-applications:read` | List applications in the configured environment. |
 | `aifabrix app rotate-secret <appKey>` | Controller | `environments-applications:update` | Rotate client secret for the app. |
-| `aifabrix environment deploy <env>` | Controller | `controller:deploy` | Deploy environment infrastructure. |
+| `aifabrix env deploy <env>` | Controller | `controller:deploy` | Deploy environment infrastructure. |
 | `aifabrix deploy [app]` | Controller | `applications:deploy` | Validate then deploy; uses pipeline validate + deploy. |
 | `aifabrix deployments` | Controller | `deployments:read` | List deployments for the environment. |
 | `aifabrix credential list` | Dataplane | `credential:read` | GET `/api/v1/credential` is a **Dataplane** endpoint. The Controller does not expose this path (see Controller OpenAPI). The CLI should target the Dataplane URL for this command. |
@@ -62,7 +62,7 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 - **environments-applications:read** – List/get environment applications, app status.
 - **environments-applications:update** – Rotate application secret.
 - **deployments:read** – List/get deployments and deployment logs.
-- **controller:deploy** – Deploy environment (environment deploy).
+- **controller:deploy** – Deploy environment (env deploy).
 - **auth:read** – User info, validate token, roles, permissions.
 - **dashboard:read** – Dashboard summary (if used by CLI or UI).
 - **service-user:create** – Create service users and API clients (one-time secret on create).
@@ -93,7 +93,7 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 
 - [Authentication Commands](authentication.md) – Login and token options.
 - [Application Management Commands](application-management.md) – Show, register, rotate.
-- [Deployment Commands](deployment.md) – Deploy and environment deploy.
+- [Deployment Commands](deployment.md) – Deploy and env deploy.
 - [External Integration Commands](external-integration.md) – Download, datasource upload, wizard.
 - Miso Controller OpenAPI: `openapi-complete.yaml` in the miso-controller repo (operationId and security.oauth2 per path).
 - Dataplane OpenAPI: `openapi.yaml` in the dataplane repo (operationId and security.oauth2 per path).

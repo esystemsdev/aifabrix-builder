@@ -28,7 +28,7 @@ function initializeCLI() {
 
   program.name('aifabrix')
     .version(packageJson.version)
-    .description('AI Fabrix Local Fabric & Deployment SDK');
+    .description('AI Fabrix Builder – Help and documentation');
 
   // Delegate command setup to lib/cli.js (order matches help categories for consistency)
   cli.setupCommands(program);

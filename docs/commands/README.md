@@ -10,10 +10,10 @@ Complete command reference organized by concept with examples and troubleshootin
 ## Table of Contents
 
 ### Authentication & Setup
-- [Authentication Commands](authentication.md) - Login, logout, and auth config
+- [Authentication Commands](authentication.md) - Login, logout, and auth (controller/environment)
   - [`aifabrix login`](authentication.md#aifabrix-login) - Authenticate with Miso Controller
   - [`aifabrix logout`](authentication.md#aifabrix-logout) - Clear authentication tokens
-  - [`aifabrix auth config --set-environment <env>`](authentication.md#aifabrix-auth-config) - Set default environment after login (e.g. dev, tst, pro)
+  - [`aifabrix auth --set-controller <url>`](authentication.md#aifabrix-auth) / [`aifabrix auth --set-environment <env>`](authentication.md#aifabrix-auth) - Set default controller or environment in config
 - [Infrastructure Commands](infrastructure.md) - Local infrastructure management (Docker containers and development only: up-infra, up-platform, up-miso, up-dataplane, down-infra, down-app)
   - [`aifabrix up-infra`](infrastructure.md#aifabrix-up-infra) - Start local infrastructure (Postgres, Redis, optional pgAdmin, Redis Commander, Traefik)
   - [`aifabrix up-platform`](infrastructure.md#aifabrix-up-platform) - Start platform (Keycloak, Miso Controller, Dataplane) from community images
@@ -24,7 +24,10 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix restart <service|app>`](infrastructure.md#aifabrix-restart-service) - Restart infrastructure service or Docker application (required)
   - [`aifabrix doctor`](infrastructure.md#aifabrix-doctor) - Check environment and configuration
 - [Developer Isolation Commands](developer-isolation.md) - Port isolation and remote development
-  - [`aifabrix dev config`](developer-isolation.md#aifabrix-dev-config) - View or set developer ID; when remote and cert available, refresh config from server
+  - [`aifabrix dev show`](developer-isolation.md#aifabrix-dev-show) - Show developer configuration (ports and config vars)
+  - [`aifabrix dev set-id <id>`](developer-isolation.md#aifabrix-dev-set-id) - Set developer ID (0 = default infra, > 0 = developer-specific)
+  - [`aifabrix dev set-env-config <filePath>`](developer-isolation.md#aifabrix-dev-set-env-config) - Set aifabrix-env-config path in config
+  - [`aifabrix dev set-home <path>`](developer-isolation.md#aifabrix-dev-set-home) - Set aifabrix-home path in config
   - [`aifabrix dev set-format <format>`](developer-isolation.md#aifabrix-dev-set-format) - Set default output format (json \| yaml) for download, convert, create external, wizard
   - [`aifabrix dev init`](developer-isolation.md#aifabrix-dev-init) - (Remote only) Issue cert, fetch settings, register SSH keys for Mutagen
   - [`aifabrix dev refresh`](developer-isolation.md#aifabrix-dev-refresh) - (Remote only) Fetch settings from Builder Server and update config (e.g. when docker-endpoint or sync-ssh-host are empty)
@@ -68,7 +71,7 @@ Complete command reference organized by concept with examples and troubleshootin
 ### Deployment
 - [Deployment Commands](deployment.md) - Deploy via Controller (Azure or local Docker)
   - [`aifabrix push <app>`](deployment.md#aifabrix-push-app) - Push image to Azure Container Registry
-  - [`aifabrix environment deploy dev|tst|pro`](deployment.md#aifabrix-environment-deploy-env) - Deploy environment with default preset (s) or `--preset s|m|l|xl`; use `--config <file>` for custom config
+  - [`aifabrix env deploy dev|tst|pro`](deployment.md#aifabrix-env-deploy-env) - Deploy environment with default preset (s) or `--preset s|m|l|xl`; use `--config <file>` for custom config
   - [`aifabrix deploy <app>`](deployment.md#aifabrix-deploy-app) - Deploy to Azure or locally via Miso Controller (use `--local` to send manifest then run app locally or restart dataplane for external; resolves `integration/<app>/` first, then `builder/<app>/`; no app register needed for external)
   - [`aifabrix deployment list`](deployment.md#aifabrix-deployment-list) - List environment deployments for current environment
 

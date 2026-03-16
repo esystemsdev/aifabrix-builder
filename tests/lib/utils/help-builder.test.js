@@ -11,15 +11,13 @@ const { buildCategorizedHelp, CATEGORIES } = require('../../../lib/utils/help-bu
 
 describe('help-builder', () => {
   describe('CATEGORIES', () => {
-    it('should include Applications category with run, shell, test, install, test-e2e, lint, logs, stop', () => {
+    it('should include Applications category with run, shell, install, lint, logs, stop', () => {
       const appCat = CATEGORIES.find(c => c.name === 'Applications (Create & Develop)');
       expect(appCat).toBeDefined();
       const names = appCat.commands.map(c => c.name);
       expect(names).toContain('run');
       expect(names).toContain('shell');
-      expect(names).toContain('test');
       expect(names).toContain('install');
-      expect(names).toContain('test-e2e');
       expect(names).toContain('lint');
       expect(names).toContain('logs');
       expect(names).toContain('stop');
@@ -37,15 +35,16 @@ describe('help-builder', () => {
       expect(cfgCat.commands.map(c => c.name)).toContain('show');
     });
 
-    it('should include service-user in Application & Datasource Management', () => {
-      const mgmtCat = CATEGORIES.find(c => c.name === 'Application & Datasource Management');
+    it('should include service-user in Application & Management', () => {
+      const mgmtCat = CATEGORIES.find(c => c.name === 'Application & Management');
       expect(mgmtCat).toBeDefined();
       expect(mgmtCat.commands.map(c => c.name)).toContain('service-user');
     });
 
-    it('should include test-integration in External Systems', () => {
+    it('should include test-e2e and test-integration in External Systems', () => {
       const extCat = CATEGORIES.find(c => c.name === 'External Systems');
       expect(extCat).toBeDefined();
+      expect(extCat.commands.map(c => c.name)).toContain('test-e2e');
       expect(extCat.commands.map(c => c.name)).toContain('test-integration');
     });
 
@@ -61,11 +60,17 @@ describe('help-builder', () => {
       expect(cfgCat.commands.map(c => c.name)).toContain('convert');
     });
 
-    it('should include credential and deployment in Application & Datasource Management', () => {
-      const mgmtCat = CATEGORIES.find(c => c.name === 'Application & Datasource Management');
+    it('should include credential and deployment in Application & Management', () => {
+      const mgmtCat = CATEGORIES.find(c => c.name === 'Application & Management');
       expect(mgmtCat).toBeDefined();
       expect(mgmtCat.commands.map(c => c.name)).toContain('credential');
       expect(mgmtCat.commands.map(c => c.name)).toContain('deployment');
+    });
+
+    it('should include only env in Environments category', () => {
+      const envCat = CATEGORIES.find(c => c.name === 'Environments');
+      expect(envCat).toBeDefined();
+      expect(envCat.commands.map(c => c.name)).toEqual(['env']);
     });
   });
 

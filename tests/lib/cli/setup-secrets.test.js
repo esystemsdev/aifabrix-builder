@@ -11,7 +11,8 @@ jest.mock('../../../lib/utils/cli-utils', () => ({
 }));
 
 jest.mock('../../../lib/core/config', () => ({
-  ensureSecretsEncryptionKey: jest.fn().mockResolvedValue(undefined)
+  ensureSecretsEncryptionKey: jest.fn().mockResolvedValue(undefined),
+  setSecretsPath: jest.fn().mockResolvedValue(undefined)
 }));
 
 jest.mock('../../../lib/commands/secrets-list', () => ({
@@ -118,5 +119,22 @@ describe('setup-secrets', () => {
     expect(action).toBeDefined();
     await action({});
     expect(config.ensureSecretsEncryptionKey).toHaveBeenCalled();
+  });
+
+  it('set-secrets-file action calls config.setSecretsPath and does not require ensureSecretsEncryptionKey', async() => {
+    const action = commandActions['secret set-secrets-file'];
+    expect(action).toBeDefined();
+    config.setSecretsPath.mockResolvedValue(undefined);
+    await action('/path/to/secrets.yaml');
+    expect(config.setSecretsPath).toHaveBeenCalledWith('/path/to/secrets.yaml');
+    expect(config.ensureSecretsEncryptionKey).not.toHaveBeenCalled();
+  });
+
+  it('set-secrets-file with empty string calls config.setSecretsPath to clear', async() => {
+    const action = commandActions['secret set-secrets-file'];
+    expect(action).toBeDefined();
+    config.setSecretsPath.mockResolvedValue(undefined);
+    await action('');
+    expect(config.setSecretsPath).toHaveBeenCalledWith('');
   });
 });

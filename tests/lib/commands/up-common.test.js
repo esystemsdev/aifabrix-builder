@@ -36,10 +36,14 @@ const path = require('path');
 const pathsUtil = require('../../../lib/utils/paths');
 const configFormat = require('../../../lib/utils/config-format');
 
-jest.mock('../../../lib/utils/paths', () => ({
-  getBuilderPath: jest.fn((appName) => require('path').join(process.cwd(), 'builder', appName)),
-  resolveApplicationConfigPath: jest.fn()
-}));
+jest.mock('../../../lib/utils/paths', () => {
+  const pathMod = require('path');
+  return {
+    getBuilderPath: jest.fn((appName) => pathMod.join(process.cwd(), 'builder', appName)),
+    getBuilderRoot: jest.fn(() => pathMod.join(process.cwd(), 'builder')),
+    resolveApplicationConfigPath: jest.fn()
+  };
+});
 
 jest.mock('../../../lib/utils/config-format', () => ({
   loadConfigFile: jest.fn(),
@@ -49,6 +53,7 @@ jest.mock('../../../lib/utils/config-format', () => ({
 
 const fs = require('fs');
 const {
+  cleanBuilderAppDirs,
   ensureAppFromTemplate,
   validateEnvOutputPathFolderOrNull,
   patchEnvOutputPathForDeployOnly,
@@ -246,5 +251,48 @@ describe('up-common patchEnvOutputPathForDeployOnly', () => {
     patchEnvOutputPathForDeployOnly('miso-controller');
     expect(configFormat.writeConfigFile).toHaveBeenCalled();
     expect(configFormat.writeConfigFile.mock.calls[0][1].build.envOutputPath).toBe(null);
+  });
+});
+
+describe('up-common cleanBuilderAppDirs', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(fs, 'existsSync');
+    jest.spyOn(fs, 'rmSync');
+    pathsUtil.getBuilderRoot.mockReturnValue(path.join(process.cwd(), 'builder'));
+    pathsUtil.getBuilderPath.mockImplementation((appName) => path.join(process.cwd(), 'builder', appName));
+  });
+
+  afterEach(() => {
+    fs.existsSync.mockRestore?.();
+    fs.rmSync.mockRestore?.();
+  });
+
+  it('does nothing for empty array or empty app names', async() => {
+    await cleanBuilderAppDirs([]);
+    await cleanBuilderAppDirs(['', null, undefined]);
+    expect(fs.rmSync).not.toHaveBeenCalled();
+  });
+
+  it('removes dir when it exists and is under builder root', async() => {
+    const dataplanePath = path.join(process.cwd(), 'builder', 'dataplane');
+    fs.existsSync.mockImplementation((p) => p === dataplanePath);
+    fs.rmSync.mockImplementation(() => {}); // no-op so we do not touch real fs
+    await cleanBuilderAppDirs(['dataplane']);
+    expect(pathsUtil.getBuilderPath).toHaveBeenCalledWith('dataplane');
+    expect(fs.rmSync).toHaveBeenCalledWith(dataplanePath, { recursive: true });
+  });
+
+  it('skips when dir does not exist', async() => {
+    fs.existsSync.mockReturnValue(false);
+    await cleanBuilderAppDirs(['keycloak']);
+    expect(fs.rmSync).not.toHaveBeenCalled();
+  });
+
+  it('throws when path is outside builder root (path traversal)', async() => {
+    pathsUtil.getBuilderRoot.mockReturnValue(path.join(process.cwd(), 'builder'));
+    pathsUtil.getBuilderPath.mockReturnValue('/tmp/other/dataplane');
+    await expect(cleanBuilderAppDirs(['dataplane'])).rejects.toThrow('outside builder root');
+    expect(fs.rmSync).not.toHaveBeenCalled();
   });
 });

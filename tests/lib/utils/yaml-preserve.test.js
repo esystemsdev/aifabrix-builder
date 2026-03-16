@@ -205,6 +205,22 @@ normal-key: value`;
       expect(result.encrypted).toBe(1); // Only normal-key should be encrypted
     });
 
+    it('should collapse YAML block scalar (key: >-) to single line and not create second key', () => {
+      const content = `databases-env-conversion-app-0-urlKeyVault: >-
+  secure://OXJZfg2A7+MOuGf7:I155/HtesLEmKnXb/8+YajCKISTgTYdfmCq7ZlFNN+qWzxeCoX/yYLADHlAkxvWDby0ZDNNYsNSg61FNp2S+40vTlIFGtcfFMm+wbFwNG887wxk9WdYB6xIx//yEZywoA+KFCsUcSoI=:ggu+o7pV42oFe3fgwQAA5w==
+
+other-key: other-value`;
+
+      const result = encryptYamlValues(content, validHexKey);
+
+      expect(result.content).toMatch(/^databases-env-conversion-app-0-urlKeyVault: /m);
+      expect(result.content).not.toMatch(/^\s+secure: /m);
+      const lines = result.content.split('\n').filter(l => l.trim().startsWith('databases-env-conversion-app-0-urlKeyVault'));
+      expect(lines.length).toBe(1);
+      expect(lines[0]).toMatch(/^databases-env-conversion-app-0-urlKeyVault: (secure:\/\/|[\s\S]+)/);
+      expect(result.content).toContain('other-key:');
+    });
+
     it('should handle complex YAML with all features', () => {
       // Store the encrypted value to check for it later (encryption produces different values each time)
       const alreadyEncryptedValue = encryptSecret('already-encrypted', validHexKey);
