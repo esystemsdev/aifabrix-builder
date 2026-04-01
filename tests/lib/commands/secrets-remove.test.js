@@ -62,7 +62,7 @@ describe('secrets-remove command', () => {
     getRemoteDevAuth.mockResolvedValue({ serverUrl: 'https://dev.example.com', clientCertPem: 'pem' });
     devApi.deleteSecret.mockResolvedValue(undefined);
     await handleSecretsRemove('KEY1', { shared: true });
-    expect(devApi.deleteSecret).toHaveBeenCalledWith('https://dev.example.com', 'pem', 'KEY1');
+    expect(devApi.deleteSecret).toHaveBeenCalledWith('https://dev.example.com', 'pem', 'KEY1', undefined);
   });
 
   it('throws when remote returns 404', async() => {

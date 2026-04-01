@@ -49,7 +49,7 @@ describe('dev-cli-handlers', () => {
         { id: '01', name: 'Bob', email: 'b@example.com', certificateIssued: true, certificateValidNotAfter: '2026-01-01', groups: ['admin'] }
       ]);
       await handleDevList();
-      expect(devApi.listUsers).toHaveBeenCalledWith('https://dev.example.com', 'pem');
+      expect(devApi.listUsers).toHaveBeenCalledWith('https://dev.example.com', 'pem', undefined);
       const logger = require('../../../lib/utils/logger').log;
       expect(logger).toHaveBeenCalledWith(expect.stringContaining('Developers:'));
       expect(logger).toHaveBeenCalledWith(expect.stringMatching(/^ID\s+Name\s+Email\s+Cert\s+Until\s+Groups$/));
@@ -87,7 +87,12 @@ describe('dev-cli-handlers', () => {
     it('creates user and logs success', async() => {
       devApi.createUser.mockResolvedValue({ id: '02' });
       await handleDevAdd({ developerId: '02', name: 'Two', email: 't@e.com' });
-      expect(devApi.createUser).toHaveBeenCalledWith('https://dev.example.com', 'pem', expect.objectContaining({ developerId: '02', name: 'Two', email: 't@e.com' }));
+      expect(devApi.createUser).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        expect.objectContaining({ developerId: '02', name: 'Two', email: 't@e.com' }),
+        undefined
+      );
     });
   });
 
@@ -108,13 +113,25 @@ describe('dev-cli-handlers', () => {
     it('calls updateUser with body (positional id)', async() => {
       devApi.updateUser.mockResolvedValue(undefined);
       await handleDevUpdate('01', { name: 'New Name' });
-      expect(devApi.updateUser).toHaveBeenCalledWith('https://dev.example.com', 'pem', '01', { name: 'New Name' });
+      expect(devApi.updateUser).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        '01',
+        { name: 'New Name' },
+        undefined
+      );
     });
 
     it('calls updateUser with --developer-id when provided', async() => {
       devApi.updateUser.mockResolvedValue(undefined);
       await handleDevUpdate(undefined, { developerId: '02', name: 'New Name' });
-      expect(devApi.updateUser).toHaveBeenCalledWith('https://dev.example.com', 'pem', '02', { name: 'New Name' });
+      expect(devApi.updateUser).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        '02',
+        { name: 'New Name' },
+        undefined
+      );
     });
   });
 
@@ -127,13 +144,13 @@ describe('dev-cli-handlers', () => {
     it('uses config developerId when no arg', async() => {
       devApi.createPin.mockResolvedValue({ pin: '123456', expiresAt: '2026-01-01' });
       await handleDevPin();
-      expect(devApi.createPin).toHaveBeenCalledWith('https://dev.example.com', 'pem', '01');
+      expect(devApi.createPin).toHaveBeenCalledWith('https://dev.example.com', 'pem', '01', undefined);
     });
 
     it('uses arg developerId when provided', async() => {
       devApi.createPin.mockResolvedValue({ pin: '654321', expiresAt: '2026-01-01' });
       await handleDevPin('02');
-      expect(devApi.createPin).toHaveBeenCalledWith('https://dev.example.com', 'pem', '02');
+      expect(devApi.createPin).toHaveBeenCalledWith('https://dev.example.com', 'pem', '02', undefined);
     });
   });
 
@@ -146,7 +163,7 @@ describe('dev-cli-handlers', () => {
     it('calls deleteUser and logs', async() => {
       devApi.deleteUser.mockResolvedValue(undefined);
       await handleDevDelete('02');
-      expect(devApi.deleteUser).toHaveBeenCalledWith('https://dev.example.com', 'pem', '02');
+      expect(devApi.deleteUser).toHaveBeenCalledWith('https://dev.example.com', 'pem', '02', undefined);
     });
   });
 });

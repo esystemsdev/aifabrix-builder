@@ -46,6 +46,7 @@ jest.mock('../../../lib/utils/logger', () => ({
   warn: jest.fn()
 }));
 
+const path = require('path');
 const fs = require('fs');
 jest.mock('fs', () => ({
   existsSync: jest.fn(() => true),
@@ -93,18 +94,19 @@ describe('secrets-ensure', () => {
       config.getSecretsPath.mockResolvedValue(null);
       pathsUtil.getAifabrixHome.mockReturnValue('/home/.aifabrix');
       const target = await resolveWriteTarget();
-      expect(target).toEqual({ type: 'file', filePath: '/home/.aifabrix/secrets.local.yaml' });
+      expect(target).toEqual({ type: 'file', filePath: path.join('/home/.aifabrix', 'secrets.local.yaml') });
     });
 
     it('returns remote target when config is URL and isRemoteSecretsUrl true', async() => {
       config.getSecretsPath.mockResolvedValue('https://dev.example.com/secrets/');
       isRemoteSecretsUrl.mockReturnValue(true);
-      getRemoteDevAuth.mockResolvedValue({ clientCertPem: 'pem' });
+      getRemoteDevAuth.mockResolvedValue({ clientCertPem: 'pem', serverCaPem: null });
       const target = await resolveWriteTarget();
       expect(target.type).toBe('remote');
       expect(target.serverUrl).toBe('https://dev.example.com/secrets');
       expect(target.clientCertPem).toBe('pem');
-      expect(target.filePath).toBe('/home/.aifabrix/secrets.local.yaml');
+      expect(target.serverCaPem).toBeNull();
+      expect(target.filePath).toBe(path.join('/home/.aifabrix', 'secrets.local.yaml'));
     });
 
     it('returns file target for absolute path in config', async() => {
@@ -136,7 +138,7 @@ describe('secrets-ensure', () => {
       };
       const result = await loadExistingFromTarget(target);
       expect(result).toEqual({ k1: 'v1', k2: 'v2' });
-      expect(devApi.listSecrets).toHaveBeenCalledWith('https://dev.example.com', 'pem');
+      expect(devApi.listSecrets).toHaveBeenCalledWith('https://dev.example.com', 'pem', undefined);
     });
 
     it('returns empty object when remote API throws', async() => {
@@ -306,7 +308,7 @@ describe('secrets-ensure', () => {
       await setSecretInStore('postgres-passwordKeyVault', 'mypwd');
 
       expect(secretsGenerator.saveSecretsFile).toHaveBeenCalledWith(
-        '/home/.aifabrix/secrets.local.yaml',
+        path.join('/home/.aifabrix', 'secrets.local.yaml'),
         expect.objectContaining({
           existing: 'v1',
           'postgres-passwordKeyVault': 'mypwd'
@@ -332,7 +334,7 @@ describe('secrets-ensure', () => {
     it('calls remote addSecret when target is remote', async() => {
       config.getSecretsPath.mockResolvedValue('https://dev.example.com/');
       isRemoteSecretsUrl.mockReturnValue(true);
-      getRemoteDevAuth.mockResolvedValue({ clientCertPem: 'pem' });
+      getRemoteDevAuth.mockResolvedValue({ clientCertPem: 'pem', serverCaPem: null });
       devApi.addSecret.mockResolvedValue({});
 
       await setSecretInStore('k', 'v');
@@ -340,7 +342,8 @@ describe('secrets-ensure', () => {
       expect(devApi.addSecret).toHaveBeenCalledWith(
         'https://dev.example.com',
         'pem',
-        { key: 'k', value: 'v' }
+        { key: 'k', value: 'v' },
+        undefined
       );
       expect(secretsGenerator.saveSecretsFile).not.toHaveBeenCalled();
     });

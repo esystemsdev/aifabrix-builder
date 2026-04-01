@@ -120,6 +120,23 @@ describe('Dev API', () => {
 
       await expect(devApi.getHealth(serverUrl)).rejects.toThrow();
     });
+
+    it('should set Error.cause from makeApiCall originalError when request fails', async() => {
+      const original = new Error('fetch failed');
+      original.code = 'DEPTH_ZERO_SELF_SIGNED_CERT';
+      mockMakeApiCall.mockResolvedValue({
+        success: false,
+        error: 'Network',
+        originalError: original
+      });
+
+      try {
+        await devApi.getHealth(serverUrl);
+        expect.fail('should throw');
+      } catch (e) {
+        expect(e.cause).toBe(original);
+      }
+    });
   });
 
   describe('getSettings', () => {
