@@ -2262,7 +2262,8 @@ environments:
       configMock.getSecretsPath.mockResolvedValue('https://dev.example.com/secrets');
       remoteDevAuth.getRemoteDevAuth.mockResolvedValue({
         serverUrl: 'https://dev.example.com',
-        clientCertPem: 'mock-pem'
+        clientCertPem: 'mock-pem',
+        serverCaPem: null
       });
       devApi.listSecrets.mockResolvedValue([
         { name: 'API_KEY', value: 'secret-from-api' },
@@ -2271,7 +2272,7 @@ environments:
 
       const result = await secrets.loadSecrets(undefined, 'myapp');
       expect(remoteDevAuth.getRemoteDevAuth).toHaveBeenCalled();
-      expect(devApi.listSecrets).toHaveBeenCalledWith('https://dev.example.com', 'mock-pem');
+      expect(devApi.listSecrets).toHaveBeenCalledWith('https://dev.example.com', 'mock-pem', undefined);
       expect(result.API_KEY).toBe('secret-from-api');
       expect(result.DB_PASS).toBe('db-from-api');
     });

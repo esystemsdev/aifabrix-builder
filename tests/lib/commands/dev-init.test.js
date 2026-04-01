@@ -23,9 +23,13 @@ jest.mock('../../../lib/utils/ssh-key-helper', () => ({ getOrCreatePublicKeyCont
 jest.mock('../../../lib/api/dev.api');
 jest.mock('../../../lib/utils/dev-ca-install', () => ({
   isSslUntrustedError: jest.fn(),
+  isSslHostnameMismatchError: jest.fn(),
   fetchInstallCa: jest.fn(),
   installCaPlatform: jest.fn(),
   promptInstallCa: jest.fn()
+}));
+jest.mock('../../../lib/utils/dev-hosts-helper', () => ({
+  runOptionalHostsSetup: jest.fn().mockResolvedValue(undefined)
 }));
 
 const fs = require('fs').promises;
@@ -35,6 +39,7 @@ const logger = require('../../../lib/utils/logger');
 const config = require('../../../lib/core/config');
 const devApi = require('../../../lib/api/dev.api');
 const devCaInstall = require('../../../lib/utils/dev-ca-install');
+const devHostsHelper = require('../../../lib/utils/dev-hosts-helper');
 const { generateCSR, readClientCertPem, readClientKeyPem, getCertValidNotAfter } = require('../../../lib/utils/dev-cert-helper');
 const { getRemoteDevAuth } = require('../../../lib/utils/remote-dev-auth');
 const { runDevInit, runDevRefresh } = require('../../../lib/commands/dev-init');
@@ -42,7 +47,9 @@ const { runDevInit, runDevRefresh } = require('../../../lib/commands/dev-init');
 describe('dev-init command', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    devHostsHelper.runOptionalHostsSetup.mockResolvedValue(undefined);
     devCaInstall.isSslUntrustedError.mockReturnValue(false);
+    devCaInstall.isSslHostnameMismatchError.mockReturnValue(false);
     config.setDeveloperId.mockResolvedValue(undefined);
     config.setRemoteServer.mockResolvedValue(undefined);
     config.getDeveloperId.mockResolvedValue('01');
@@ -72,11 +79,74 @@ describe('dev-init command', () => {
     await expect(runDevInit({ developerId: '01', server: 'https://dev.example.com' })).rejects.toThrow('--pin is required');
   });
 
+  it('when --add-hosts, runs hosts helper before health check', async() => {
+    await runDevInit({
+      developerId: '01',
+      server: 'https://builder02.local',
+      pin: '123456',
+      addHosts: true,
+      hostsIp: '192.168.1.25',
+      y: true
+    });
+    expect(devHostsHelper.runOptionalHostsSetup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseUrl: 'https://builder02.local',
+        hostsIp: '192.168.1.25',
+        skipConfirm: true
+      })
+    );
+    expect(devApi.getHealth).toHaveBeenCalled();
+  });
+
   it('throws when health check fails', async() => {
     devApi.getHealth.mockRejectedValue(new Error('ECONNREFUSED'));
-    devCaInstall.isSslUntrustedError.mockReturnValue(false);
     await expect(runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456' }))
       .rejects.toThrow('Cannot reach Builder Server');
+  });
+
+  it('when GET /health returns HTTP 503 without SSL issues, warns and continues init', async() => {
+    const e503 = new Error('Service Unavailable');
+    e503.status = 503;
+    devApi.getHealth.mockRejectedValueOnce(e503);
+    await runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456' });
+    expect(devApi.issueCert).toHaveBeenCalled();
+    const warn = logger.log.mock.calls.map(c => String(c[0])).find(s => s.includes('GET /health returned HTTP 503'));
+    expect(warn).toBeDefined();
+  });
+
+  it('when SSL then CA install then GET /health returns 503, warns and continues with server CA PEM', async() => {
+    const sslErr = new Error('UNABLE_TO_VERIFY_LEAF_SIGNATURE');
+    const e503 = new Error('Service Unavailable');
+    e503.status = 503;
+    devApi.getHealth.mockRejectedValueOnce(sslErr).mockRejectedValueOnce(e503);
+    devCaInstall.isSslUntrustedError.mockReturnValue(true);
+    devCaInstall.promptInstallCa.mockResolvedValue(true);
+    devCaInstall.fetchInstallCa.mockResolvedValue(Buffer.from('-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----'));
+    devCaInstall.installCaPlatform.mockResolvedValue(undefined);
+
+    await runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456' });
+
+    expect(devApi.issueCert).toHaveBeenCalledWith(
+      'https://dev.example.com',
+      expect.objectContaining({ developerId: '01', pin: '123456' }),
+      '-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----'
+    );
+  });
+
+  it('when GET /health returns HTTP 404, error mentions HTTP response not generic reachability', async() => {
+    const e404 = new Error('Not Found');
+    e404.status = 404;
+    devApi.getHealth.mockRejectedValue(e404);
+    await expect(runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456' }))
+      .rejects.toThrow(/returned HTTP 404/);
+  });
+
+  it('when TLS hostname mismatch, throws hint without CA install path', async() => {
+    devApi.getHealth.mockRejectedValue(new Error('TLS mismatch'));
+    devCaInstall.isSslHostnameMismatchError.mockReturnValue(true);
+    await expect(runDevInit({ developerId: '01', server: 'https://builder02.local', pin: '123456' }))
+      .rejects.toThrow('TLS hostname does not match');
+    expect(devCaInstall.fetchInstallCa).not.toHaveBeenCalled();
   });
 
   it('when SSL error and --no-install-ca, throws with manual instructions', async() => {
@@ -150,7 +220,11 @@ describe('dev-init command', () => {
 
     expect(devApi.getHealth).toHaveBeenCalledWith('https://dev.example.com');
     expect(generateCSR).toHaveBeenCalledWith('01');
-    expect(devApi.issueCert).toHaveBeenCalledWith('https://dev.example.com', expect.objectContaining({ developerId: '01', pin: '123456' }));
+    expect(devApi.issueCert).toHaveBeenCalledWith(
+      'https://dev.example.com',
+      expect.objectContaining({ developerId: '01', pin: '123456' }),
+      undefined
+    );
     expect(fs.mkdir).toHaveBeenCalled();
     expect(fs.writeFile).toHaveBeenCalled();
     expect(config.setDeveloperId).toHaveBeenCalledWith('01');
@@ -162,7 +236,11 @@ describe('dev-init command', () => {
   it('accepts developer-id via kebab-case option (developer-id)', async() => {
     await runDevInit({ 'developer-id': '02', server: 'https://dev.example.com', pin: '999888' });
     expect(generateCSR).toHaveBeenCalledWith('02');
-    expect(devApi.issueCert).toHaveBeenCalledWith('https://dev.example.com', expect.objectContaining({ developerId: '02', pin: '999888' }));
+    expect(devApi.issueCert).toHaveBeenCalledWith(
+      'https://dev.example.com',
+      expect.objectContaining({ developerId: '02', pin: '999888' }),
+      undefined
+    );
     expect(config.setDeveloperId).toHaveBeenCalledWith('02');
   });
 
@@ -214,7 +292,11 @@ describe('dev-init command', () => {
   describe('runDevRefresh', () => {
     beforeEach(() => {
       config.getDeveloperId.mockResolvedValue('01');
-      getRemoteDevAuth.mockResolvedValue({ serverUrl: 'https://builder01.aifabrix.dev', clientCertPem: 'cert-pem' });
+      getRemoteDevAuth.mockResolvedValue({
+        serverUrl: 'https://builder01.aifabrix.dev',
+        clientCertPem: 'cert-pem',
+        serverCaPem: null
+      });
       readClientCertPem.mockReturnValue('cert-pem');
       readClientKeyPem.mockReturnValue('key-pem');
       devApi.getSettings.mockResolvedValue({
@@ -237,7 +319,12 @@ describe('dev-init command', () => {
 
     it('fetches settings and merges when cert valid for 20+ days', async() => {
       await runDevRefresh();
-      expect(devApi.getSettings).toHaveBeenCalledWith('https://builder01.aifabrix.dev', 'cert-pem', 'key-pem');
+      expect(devApi.getSettings).toHaveBeenCalledWith(
+        'https://builder01.aifabrix.dev',
+        'cert-pem',
+        'key-pem',
+        undefined
+      );
       expect(config.mergeRemoteSettings).toHaveBeenCalledWith({
         'docker-endpoint': 'tcp://builder01.aifabrix.dev:2376',
         'sync-ssh-host': 'builder01.aifabrix.dev'
@@ -249,16 +336,24 @@ describe('dev-init command', () => {
     it('refreshes certificate when cert expires within 14 days', async() => {
       getCertValidNotAfter.mockReturnValue(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)); // 5 days
       await runDevRefresh();
-      expect(devApi.createPin).toHaveBeenCalledWith('https://builder01.aifabrix.dev', 'cert-pem', '01');
-      expect(devApi.issueCert).toHaveBeenCalledWith('https://builder01.aifabrix.dev', expect.objectContaining({ developerId: '01', pin: '654321' }));
+      expect(devApi.createPin).toHaveBeenCalledWith('https://builder01.aifabrix.dev', 'cert-pem', '01', undefined);
+      expect(devApi.issueCert).toHaveBeenCalledWith(
+        'https://builder01.aifabrix.dev',
+        expect.objectContaining({ developerId: '01', pin: '654321' }),
+        undefined
+      );
       expect(config.mergeRemoteSettings).toHaveBeenCalled();
       expect(devApi.getSettings).toHaveBeenCalled();
     });
 
     it('refreshes certificate when runDevRefresh called with --cert', async() => {
       await runDevRefresh({ cert: true });
-      expect(devApi.createPin).toHaveBeenCalledWith('https://builder01.aifabrix.dev', 'cert-pem', '01');
-      expect(devApi.issueCert).toHaveBeenCalledWith('https://builder01.aifabrix.dev', expect.objectContaining({ developerId: '01', pin: '654321' }));
+      expect(devApi.createPin).toHaveBeenCalledWith('https://builder01.aifabrix.dev', 'cert-pem', '01', undefined);
+      expect(devApi.issueCert).toHaveBeenCalledWith(
+        'https://builder01.aifabrix.dev',
+        expect.objectContaining({ developerId: '01', pin: '654321' }),
+        undefined
+      );
     });
 
     it('refreshes certificate when getCertValidNotAfter returns null (unknown expiry)', async() => {

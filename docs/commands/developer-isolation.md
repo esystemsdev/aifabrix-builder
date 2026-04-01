@@ -2,45 +2,51 @@
 
 ← [Documentation index](../README.md) · [Commands index](README.md)
 
-Commands for managing developer isolation, port configuration, and **remote development** (when a remote server is configured).
+Commands for managing developer isolation, port configuration, and **remote development**: onboard with **`dev init`**, then use **`dev refresh`**, **`dev add`**, and related commands once **`remote-server`** is set in config.
 
-**Remote-only commands:** `dev init`, `dev refresh`, `dev add`, `dev update`, `dev pin`, `dev delete`, `dev list`, and `dev down` are available **only when `remote-server` is set** in `~/.aifabrix/config.yaml`. Without a remote server, there is no dev user API or sync sessions to manage.
-
-When you run `dev add`, `dev update`, `dev pin`, or `dev delete` without a configured remote, the CLI shows: **"Remote server is not configured. Set remote-server and run \"aifabrix dev init\" first."**
+**Remote development:** `dev init` connects your machine to a Builder Server (using `--server`) and, on success, saves `remote-server` in `~/.aifabrix/config.yaml`. **`dev refresh`**, **`dev add`**, **`dev update`**, **`dev pin`**, **`dev delete`**, **`dev list`**, and **`dev down`** expect that onboarding has already completed (remote server URL and client certificate on disk). If you run those without a configured remote or certificate, the CLI shows: **"Remote server is not configured. Set remote-server and run \"aifabrix dev init\" first."**
 
 ---
 
 <a id="aifabrix-dev-init"></a>
-## aifabrix dev init (remote only)
+## aifabrix dev init
 
-One-time setup for remote development: issue certificate, fetch server settings, and register SSH keys so Mutagen works without password.
+One-time onboarding to a **Builder Server**: verify connectivity, issue a client certificate, fetch server settings, and register SSH keys so Mutagen can sync without a password. On success, the CLI writes `remote-server` and saves certificates under `~/.aifabrix/certs/<developer-id>/`.
 
-**What:** When a remote server exists (`remote-server` in config), runs: issue-cert, fetch server settings, then register SSH keys so Mutagen sync works. Only when `remote-server` is set.
-
-**When:** First-time onboarding to a remote dev host, or after re-provisioning the server.
+**When:** First connection to a dev Builder Server, or re-onboarding with a new PIN after your admin resets access.
 
 **Usage:**
 ```bash
-aifabrix dev init
+aifabrix dev init --developer-id 01 --server https://builder02.local --pin 123456
 
-# With options (same parameter names as dev add)
-aifabrix dev init --developer-id 01 --server my-remote-host --pin 123456
+# Optional: add the server hostname to this machine’s hosts file (see below)
+aifabrix dev init --developer-id 01 --server https://builder02.local --pin 123456 --add-hosts --hosts-ip 192.168.1.25
+
+# Skip interactive prompts (untrusted CA + hosts confirmation)
+aifabrix dev init --developer-id 01 --server https://builder02.local --pin 123456 -y --add-hosts --hosts-ip 192.168.1.25
 ```
 
 **Options:**
-- `--developer-id <id>` - Developer ID (same as `dev add`; e.g. 01)
-- `--server <url>` - Builder Server base URL (e.g. <https://builder.local>)
-- `--pin <pin>` - One-time PIN for onboarding (from your admin)
-- `-y, --yes` - Auto-install development CA without prompt when the server certificate is untrusted
+- `--developer-id <id>` - Developer ID (same as `dev add`; e.g. `01`)
+- `--server <url>` - Builder Server base URL (e.g. `https://builder02.local`)
+- `--pin <pin>` - One-time PIN from your admin (`aifabrix dev pin <id>` on an admin machine)
+- `-y, --yes` - When the server certificate is untrusted: auto-install the development CA without prompting. When combined with `--add-hosts`: also skip the confirmation before editing the hosts file
 - `--no-install-ca` - Do not offer CA install; fail with manual instructions when the server certificate is untrusted
+- `--add-hosts` - After showing brief guidance, optionally add **one line** to this computer’s **hosts file** so the hostname in `--server` resolves (e.g. to a LAN IP). Does **not** configure wildcard DNS; see below
+- `--hosts-ip <ip>` - IPv4 address to use for that hosts entry (skips DNS lookup and the interactive IP prompt when used with `--add-hosts`)
 
-**Process:**
-1. Ensure server is reachable and trusted (see CA install below if certificate is untrusted)
-2. Issue or use existing client certificate (mTLS for dev APIs)
-3. Fetch sync and Docker parameters from the server (cert-authenticated)
-4. Register SSH keys so Mutagen can sync without password prompt
+**Process (order):**
+1. **Optional (`--add-hosts`):** Explain wildcard DNS vs hosts file; resolve or ask for an IP; confirm **(y/n)** before appending to the hosts file (unless `-y`). Writing the hosts file often requires an **elevated** terminal (Administrator on Windows, `sudo` on macOS/Linux). If the write fails, the CLI prints a command you can run manually with admin rights.
+2. **Trust and reachability:** Health check to the Builder Server. If the certificate is not trusted, see **Untrusted certificate** below.
+3. **Certificate:** Request and save client cert and key; save **`ca.pem`** when the server provides a root CA (or reuse the CA fetched during install-ca) so later CLI commands and remote Docker can trust the same chain.
+4. **Config:** Merge remote settings into `~/.aifabrix/config.yaml` and set `remote-server`.
+5. **SSH key:** Register your public key for Mutagen sync when the server accepts it.
 
-**Untrusted certificate (dev Builder Server):** When the server uses a self-signed certificate (e.g. local dev servers like `https://builder02.local`), the initial health check may fail with an SSL verification error. The CLI will prompt: *"Server certificate not trusted. Download and install the development CA? (y/n)"*. On *y*, it fetches the Root CA from `{server}/install-ca`, installs it into your OS trust store (Windows user store, macOS login keychain, or Linux ca-certificates), then retries init. Use `--yes` to auto-install without prompting, or `--no-install-ca` to fail immediately with manual instructions. Manual install: download from `{server}/install-ca` and add the certificate to your system trust store. For Linux, see `{server}/install-ca-help` for steps.
+**Local name resolution (`--add-hosts`):** Subdomain names such as `*.builder02.local` must be pointed at your server IP in **real DNS** (home router, internal DNS, Pi-hole, etc.). The **hosts file only supports exact hostnames**, not wildcards. This option adds a single line mapping the **hostname from `--server`** (e.g. `builder02.local`) to the IP you supply or confirm. **Default `dev init` (without `--add-hosts`) does not change the hosts file and does not require administrator rights for that step.**
+
+**Untrusted certificate (typical on local Builder Servers):** If the health check fails because the certificate is self-signed or signed by a private root, the CLI can offer to download the development root CA from **`{server}/install-ca`**, install it into the **OS trust store** (helps browsers and some tools), and retry. Separately, the CLI keeps a copy as **`ca.pem`** next to your client cert so **its own** connections to that Builder Server keep working (the OS store alone is not always enough for the Node-based CLI). Use `--yes` to auto-accept CA install, or `--no-install-ca` to stop with instructions to install the CA manually. On Linux, full trust-store install may need `sudo`; see **`{server}/install-ca-help`** if offered.
+
+**Administrator rights:** Ordinary `dev init` **does not require admin**. Admin (or `sudo`) may be needed only if you use **`--add-hosts`** and the OS blocks writing the hosts file, or on some Linux setups when installing the CA into the system bundle.
 
 **See Also:** [Secrets and config](../configuration/secrets-and-config.md) (remote-server, docker-endpoint), [Developer Isolation Guide](../developer-isolation.md).
 

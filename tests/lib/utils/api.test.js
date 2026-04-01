@@ -156,6 +156,7 @@ describe('API Utilities Module', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('Network error');
       expect(result.network).toBe(true);
+      expect(result.originalError).toBe(networkError);
       expect(auditLogger.logApiCall).toHaveBeenCalledWith({
         url: 'https://api.example.com/test',
         options: {},
@@ -168,6 +169,30 @@ describe('API Utilities Module', () => {
           network: true
         }
       });
+    });
+
+    it('should pass flattened error.cause detail to parseErrorResponse for fetch TLS failures', async() => {
+      const inner = new Error('unable to verify the first certificate');
+      inner.code = 'DEPTH_ZERO_SELF_SIGNED_CERT';
+      const outer = new TypeError('fetch failed');
+      outer.cause = inner;
+      global.fetch.mockRejectedValue(outer);
+      parseErrorResponse.mockReturnValue({
+        type: 'network',
+        message: 'fetch failed DEPTH_ZERO_SELF_SIGNED_CERT',
+        data: {},
+        formatted: 'formatted'
+      });
+      jest.spyOn(Date, 'now').mockReturnValueOnce(1000).mockReturnValueOnce(2000);
+
+      const result = await makeApiCall('https://api.example.com/test');
+
+      expect(parseErrorResponse).toHaveBeenCalledWith(
+        expect.stringContaining('DEPTH_ZERO_SELF_SIGNED_CERT'),
+        0,
+        true
+      );
+      expect(result.originalError).toBe(outer);
     });
 
     it('should pass options to fetch', async() => {
