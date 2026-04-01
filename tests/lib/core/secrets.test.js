@@ -2086,7 +2086,7 @@ environments:
   });
 
   describe('generateAdminSecretsEnv - branch coverage', () => {
-    it('should handle error when secrets file does not exist but path exists', async() => {
+    it('when secrets.yaml exists but is unreadable, uses empty merged secrets and default admin password', async() => {
       const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
       fs.existsSync.mockImplementation((filePath) => {
         return filePath === secretsPath;
@@ -2094,8 +2094,13 @@ environments:
       fs.readFileSync.mockImplementation(() => {
         throw new Error('Permission denied');
       });
+      fs.mkdirSync.mockImplementation(() => {});
+      fs.writeFileSync.mockImplementation(() => {});
 
-      await expect(secrets.generateAdminSecretsEnv()).rejects.toThrow();
+      const result = await secrets.generateAdminSecretsEnv();
+
+      expect(result).toBe(mockAdminSecretsPath);
+      expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
     it('should create default secrets when file does not exist', async() => {
@@ -2529,10 +2534,21 @@ environments:
       expect(result).toEqual(defaultSecrets);
     });
 
-    it('should throw error if no secrets file found', async() => {
+    it('when no secrets files exist, bootstraps primary secrets.local.yaml and returns empty object', async() => {
       fs.existsSync.mockReturnValue(false);
+      fs.mkdirSync.mockImplementation(() => {});
+      fs.writeFileSync.mockImplementation(() => {});
 
-      await expect(secrets.loadSecrets(undefined, 'myapp')).rejects.toThrow('No secrets file found');
+      const primaryPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const result = await secrets.loadSecrets(undefined, 'myapp');
+
+      expect(result).toEqual({});
+      expect(fs.mkdirSync).toHaveBeenCalledWith(path.dirname(primaryPath), { recursive: true, mode: 0o700 });
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        primaryPath,
+        expect.stringContaining('# Local secrets for AI Fabrix CLI'),
+        { mode: 0o600 }
+      );
     });
   });
 

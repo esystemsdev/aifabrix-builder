@@ -22,6 +22,7 @@ jest.mock('../../../lib/utils/logger', () => ({
 jest.mock('js-yaml', () => {
   const actualYaml = jest.requireActual('js-yaml');
   return {
+    ...actualYaml,
     load: jest.fn((content) => {
       // Default implementation that actually parses YAML
       return actualYaml.load(content);
@@ -777,6 +778,34 @@ build:
       const result = secretsUtils.resolveUrlPort(protocol, misoHostname, '3010', urlPath, misoHostnameToService);
 
       expect(result).toBe(`${protocol}${misoHostname}:3000${urlPath}`);
+    });
+  });
+
+  describe('ensurePrimaryUserSecretsFileExists', () => {
+    it('does nothing when file already exists', () => {
+      fs.existsSync.mockReturnValue(true);
+
+      secretsUtils.ensurePrimaryUserSecretsFileExists();
+
+      expect(fs.writeFileSync).not.toHaveBeenCalled();
+      expect(fs.mkdirSync).not.toHaveBeenCalled();
+    });
+
+    it('creates config directory and secrets.local.yaml when missing', () => {
+      fs.existsSync.mockReturnValue(false);
+      fs.mkdirSync.mockImplementation(() => {});
+      fs.writeFileSync.mockImplementation(() => {});
+
+      secretsUtils.ensurePrimaryUserSecretsFileExists();
+
+      const dirPath = path.join(mockHomeDir, '.aifabrix');
+      const primaryPath = path.join(dirPath, 'secrets.local.yaml');
+      expect(fs.mkdirSync).toHaveBeenCalledWith(dirPath, { recursive: true, mode: 0o700 });
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        primaryPath,
+        expect.stringContaining('# Local secrets for AI Fabrix CLI'),
+        { mode: 0o600 }
+      );
     });
   });
 });
