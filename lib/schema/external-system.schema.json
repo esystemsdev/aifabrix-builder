@@ -1,6 +1,6 @@
 {
   "$schema":"http://json-schema.org/draft-07/schema#",
-  "$id":"https://raw.githubusercontent.com/esystemsdev/aifabrix-builder/refs/heads/main/lib/schema/external-system.schema.json",
+  "$id":"aifabrix://schema/external-system.schema.json",
   "title":"AI Fabrix External System Configuration Schema",
   "description":"Schema for configuring an external system connected to the AI Fabrix Dataplane. This defines authentication, OpenAPI/MCP bindings, field mappings defaults, metadata handling and portal inputs.",
      "metadata":{
@@ -522,6 +522,68 @@
            {"requestsPerWindow":100,"windowSeconds":10},
            {"requestsPerSecond":10,"burstSize":100}
         ]
+     },
+     "performance":{
+        "type":"object",
+        "description":"Performance defaults for runtime paths in this external system.",
+        "properties":{
+           "cacheDefaults":{
+              "type":"object",
+              "description":"Default cache policy inherited by datasources unless overridden under sync.cache.",
+              "properties":{
+                 "enabled":{
+                    "type":"boolean",
+                    "default":true
+                 },
+                 "ttlSeconds":{
+                    "type":"integer",
+                    "minimum":1,
+                    "maximum":604800,
+                    "default":1800
+                 }
+              },
+              "additionalProperties":false
+           }
+        },
+        "additionalProperties":false
+     },
+     "certification":{
+        "type":"object",
+        "description":"Public certification settings for external system version verification.",
+        "required":[
+           "enabled",
+           "publicKey",
+           "algorithm",
+           "issuer",
+           "version"
+        ],
+        "properties":{
+           "enabled":{
+              "type":"boolean",
+              "description":"Enable public certification metadata for this external system."
+           },
+           "publicKey":{
+              "type":"string",
+              "minLength":1,
+              "description":"Public key used to verify RS256 signatures. Private key must never appear in schema."
+           },
+           "algorithm":{
+              "type":"string",
+              "const":"RS256",
+              "description":"Signing algorithm. Must be RS256."
+           },
+           "issuer":{
+              "type":"string",
+              "minLength":1,
+              "description":"Certificate issuer identifier."
+           },
+           "version":{
+              "type":"string",
+              "minLength":1,
+              "description":"Certification version identifier; must align with external system versioning."
+           }
+        },
+        "additionalProperties":false
      }
   },
   "additionalProperties":false

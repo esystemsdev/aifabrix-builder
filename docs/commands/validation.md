@@ -8,11 +8,11 @@ Commands for validating and comparing configuration files.
 
 ## Overview
 
-The AI Fabrix Builder validates all configuration files using **JSON Schema validation**. The validation system works in two modes:
+The AI Fabrix Builder validates configuration files using **JSON Schema validation plus semantic checks** (a validation engine that layers contract rules on top of schemas). The validation system works in two modes:
 
-1. **Offline Validation (Local)** - Validation runs **completely offline** on your machine before deployment. No network access or backend connection is required. This catches configuration errors early in your development workflow.
+1. **Offline Validation (Local)** - Validation runs **completely offline** on your machine before deployment. No network access or backend connection is required. This catches configuration errors early in your development workflow, including **freeze-contract** rules for external datasources (v2.4+).
 
-2. **Online Validation (Service)** - The dataplane service validates configurations using the **same JSON schemas** when you deploy. This ensures consistency between local and service-side validation. Additionally, the service performs **online validation of ABAC dimensions** to verify dimension keys exist in the Dimension Catalog and are properly configured for access control.
+2. **Online Validation (Service)** - The dataplane service validates configurations when you deploy and during integration tests. This ensures consistency between local and service-side validation. Additionally, the service performs **online validation of ABAC dimensions** to verify dimension keys exist in the Dimension Catalog and are properly configured for access control.
 
 ### What Gets Validated
 
@@ -93,7 +93,7 @@ The validation system uses four core JSON schemas:
 - Datasource identifier (`key`)
 - Parent system reference (`systemKey`)
 - Entity type (`entityType`)
-- Field mappings (dimensions and attributes)
+- Field mappings (`fieldMappings.attributes`) and root **`dimensions`** (v2.4)
 - Metadata schema
 - Custom Integration Pipeline (CIP) configuration
 
@@ -101,13 +101,14 @@ The validation system uses four core JSON schemas:
 - `key` must be unique within the system
 - `systemKey` must reference a valid external system
 - `entityType` must be specified
-- `fieldMappings` must include dimensions and attributes
+- `fieldMappings` must include **`attributes`**; **dimensions** are top-level, not under `fieldMappings`
 - Field mapping expressions must follow correct syntax
 
 **Field reference and ABAC checks (offline):** After schema validation, the CLI runs procedural checks so that `aifabrix validate <file>` and `aifabrix validate <app>` Step 2 give the same quality as `aifabrix datasource validate <file>`:
 
-- **Field references** – Each of the following must reference only existing `fieldMappings.attributes` (or `fieldMappings.dimensions` for `primaryKey`): `indexing.embedding[]`, `indexing.uniqueKey`, `validation.repeatingValues[].field`, `quality.rejectIf[].field`, `primaryKey[]`, and `exposed.profiles.<name>[]`. Errors include a short hint (e.g. "Add the attribute or remove the reference").
-- **ABAC** – Dimension-to-attribute references in `config.abac.dimensions` or `fieldMappings.dimensions` are validated (keys and paths format; dimension values must reference existing attributes where applicable). `config.abac.crossSystemJson` is validated (path format, exactly one operator per path, allowed operators). Legacy `config.abac.crossSystem` is rejected with a message to use `crossSystemJson` or `crossSystemSql` instead.
+- **Field references** – Each of the following must reference only existing `fieldMappings.attributes`, except **`primaryKey[]`**, which may use an attribute key **or a key of root `dimensions`**: `indexing.embedding[]`, `indexing.uniqueKey`, `validation.repeatingValues[].field`, `quality.rejectIf[].field`, `primaryKey[]`, and `exposed.profiles.<name>[]`. Errors include a short hint (e.g. "Add the attribute or remove the reference").
+- **ABAC** – Dimension-to-attribute references in **`config.abac.dimensions`** are validated (keys and paths format; dimension values must reference existing attributes where applicable). `config.abac.crossSystemJson` is validated (path format, exactly one operator per path, allowed operators). Legacy `config.abac.crossSystem` is rejected with a message to use `crossSystemJson` or `crossSystemSql` instead.
+- **Storage `metadataSchema`** – For **`entityType`** `recordStorage` or `documentStorage`, schema validation requires **`metadataSchema.properties.externalId`** with **`type: string`** and **`index: true`**. Align **`fieldMappings.attributes.externalId`** with that contract.
 
 Local validation does **not** check dimension keys against the Dimension Catalog or parse `crossSystemSql`; those remain server-side. Use deployment or `aifabrix test-integration` for full dataplane checks.
 
@@ -275,25 +276,32 @@ Validate --> Success
 
 When deploying external datasources to the dataplane, the service performs **online validation of ABAC dimensions**. This validation happens during deployment and verifies:
 
-1. **Dimension Key Existence** - All dimension keys referenced in `fieldMappings.dimensions` or `abac.dimensions` must exist in the Dimension Catalog
-2. **Dimension Mapping Validity** - Dimension mappings must reference valid attribute paths in the metadata schema
+1. **Dimension Key Existence** - All dimension keys used for ABAC (e.g. root **`dimensions`** bindings and **`config.abac.dimensions`**) must exist in the Dimension Catalog when the dataplane enforces catalog registration
+2. **Dimension Mapping Validity** - Local dimension bindings reference indexed metadata fields; FK-based bindings must resolve via declared **`foreignKeys`**
 3. **ABAC Configuration** - ABAC configuration blocks are validated for proper structure
 
-**Example:**
+**Example (v2.4 root dimensions):**
 ```json
 {
+  "dimensions": {
+    "country": {
+      "type": "local",
+      "field": "country",
+      "actor": "displayName",
+      "operator": "eq"
+    }
+  },
   "fieldMappings": {
-    "dimensions": {
-      "country": "metadata.country",
-      "department": "metadata.department"
+    "attributes": {
+      "country": { "expression": "{{ raw.region }}" }
     }
   }
 }
 ```
 
-During deployment, the service validates:
-- `country` and `department` dimension keys exist in the Dimension Catalog
-- `metadata.country` and `metadata.department` are valid attribute paths
+During deployment, the service validates (where applicable):
+- Dimension keys exist in the Dimension Catalog
+- Paths used for visibility / policy resolve against **`metadataSchema`** and storage rules
 - Dimensions are properly configured for ABAC filtering
 
 **Note:** Dimension validation requires network access to the dataplane service. Local validation (`aifabrix validate`) checks dimension syntax and structure but cannot verify dimension keys against the Dimension Catalog. Use `aifabrix test-integration` or deployment to validate dimensions online.
@@ -696,9 +704,9 @@ When modifying configurations:
 
 ### Field reference and ABAC errors (datasource)
 
-**Error:** `primaryKey[n]: field 'X' does not exist in fieldMappings.attributes or fieldMappings.dimensions`
+**Error:** `primaryKey[n]: field 'X' does not exist in fieldMappings.attributes or root dimensions`
 
-**Solution:** Each `primaryKey` entry must be a key from `fieldMappings.attributes` or `fieldMappings.dimensions`. Add the attribute or dimension, or remove the invalid entry from `primaryKey`.
+**Solution:** Each `primaryKey` entry must be a key from **`fieldMappings.attributes`** or a **key of root `dimensions`**. Add the attribute or dimension binding, or remove the invalid entry from `primaryKey`.
 
 **Error:** `exposed.profiles.<name>[n]: field 'X' does not exist in fieldMappings.attributes`
 

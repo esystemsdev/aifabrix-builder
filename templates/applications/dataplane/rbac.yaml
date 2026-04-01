@@ -184,6 +184,10 @@ permissions:
   - name: "document-record:approve"
     roles: ["aifabrix-platform-admin", "aifabrix-compliance-admin"]
     description: "Approve document records"
+
+  - name: "document-record:triage-unowned"
+    roles: ["aifabrix-platform-admin", "aifabrix-compliance-admin"]
+    description: "Include unowned pending documents (createdBy null) in the pending validation queue"
   
   # External record management
   - name: "external-record:create"

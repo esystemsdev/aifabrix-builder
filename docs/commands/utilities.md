@@ -214,7 +214,7 @@ aifabrix convert hubspot --format json --force
 
 Repair external integration config when `application.yaml` drifts from files on disk.
 
-**What:** Aligns `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files, syncs the system file `dataSources` array to datasource keys from discovered files (add/delete/rename), removes authentication-only variables from the system `configuration` array (keeps keyvault auth entries), fixes `app.key` to match `system.key`, aligns datasource `systemKey` values to match the system key, creates a minimal `externalIntegration` block when missing, extracts `rbac.yaml` from system roles/permissions when absent, repairs env.template so KV_ variable names and path-style `kv://` values match the system file (adds missing auth vars, corrects names/values), and regenerates `<systemKey>-deploy.json`. Repair also runs on **datasource files**: it treats `fieldMappings.attributes` as the source of truth and aligns `fieldMappings.dimensions` (removes dimension entries whose `metadata.<attr>` is not in attributes) and `metadataSchema` (adds a minimal schema if missing; removes schema branches not referenced by any attribute expression).
+**What:** Aligns `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files, syncs the system file `dataSources` array to datasource keys from discovered files (add/delete/rename), removes authentication-only variables from the system `configuration` array (keeps keyvault auth entries), fixes `app.key` to match `system.key`, aligns datasource `systemKey` values to match the system key, creates a minimal `externalIntegration` block when missing, extracts `rbac.yaml` from system roles/permissions when absent, repairs env.template so KV_ variable names and path-style `kv://` values match the system file (adds missing auth vars, corrects names/values), and regenerates `<systemKey>-deploy.json`. Repair also runs on **datasource files** (v2.4 model): it treats `fieldMappings.attributes` as the source of truth and, for entity types other than `none`, normalizes **root `dimensions`** (local bindings: drops invalid `via`, fixes FK/local shape; removes local dimensions whose `field` is not an attribute key), prunes or extends **`metadataSchema`** (adds a minimal schema if missing; removes `properties` entries not referenced by `metadata.*` in attribute expressions; adds minimal string stubs for referenced paths). It does **not** migrate legacy `fieldMappings.dimensions`; use `aifabrix convert` or edit files to v2.4 first. For **`entityType: none`**, datasource repair skips `metadataSchema`, root-dimension, and default **sync** changes so orchestration configs stay valid.
 
 **When:** After converting files (JSON ↔ YAML), after adding/removing datasource files, when validation reports "External datasource file not found", or when `application.yaml` gets out of sync with files on disk.
 
@@ -227,13 +227,13 @@ Repair external integration config when `application.yaml` drifts from files on 
 - **Missing externalIntegration** — No block; repair creates it from discovered files
 - **Datasource systemKey mismatch** — Datasource file has `systemKey: X` but system file has `key: Y`; repair updates `systemKey` in each datasource file to match system key
 - **system.key mismatch** — System file has `key: X` but `app.key` is `Y`; repair updates `app.key`
-- **Dimensions not in attributes** — Dimension values like `metadata.<attr>` must reference an existing attribute key in `fieldMappings.attributes`; repair removes invalid dimension entries
-- **metadataSchema drift** — Repair adds a minimal metadataSchema when missing and removes schema fields not used by attribute expressions
+- **Root dimensions vs attributes** — For **local** dimension bindings, `field` must match a key in `fieldMappings.attributes`; repair removes orphan local dimensions. **FK** bindings are not removed by that rule.
+- **metadataSchema drift** — For non-`none` entity types, repair adds a minimal metadataSchema when missing, prunes unreferenced `properties`, and adds minimal stubs for `metadata.*` paths used in expressions. **`recordStorage`** and **`documentStorage`** must also satisfy the schema rule **`metadataSchema.properties.externalId`** (`type: string`, `index: true`); add **`fieldMappings.attributes.externalId`** and keep that property when editing so validation and repair stay aligned.
 - **rbac.yaml missing** — System has roles/permissions but no `rbac.yaml`; repair creates it
 - **env.template key drift** — env.template has wrong or missing KV_* keys or non–path-style kv values; repair aligns names and values with the system's authentication.security and configuration
 - **Stale deploy manifest** — Regenerates `<systemKey>-deploy.json` after config changes
 - **Datasource key and filename normalization** — Repair normalizes datasource keys to `<system-key>-<resourceType>` (or `<system-key>-<resourceType>-2`, `-3` for duplicates) and filenames to `<system-key>-datasource-<suffix>.<ext>`. Keys or filenames that already match the valid pattern (e.g. `customer-extra`, `customer-1`) are left unchanged.
-- **Optional flags** — `--rbac` adds or merges RBAC permissions per datasource and default Admin/Reader roles if none exist; `--expose` sets `exposed.attributes` on each datasource to all attribute keys; `--sync` adds a default sync section to datasources that lack it; `--test` generates `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes
+- **Optional flags** — `--rbac` adds or merges RBAC permissions per datasource and default Admin/Reader roles if none exist; `--expose` sets **`exposed.schema`** on each datasource (each key maps to `metadata.<key>` for every `fieldMappings.attributes` key) and removes deprecated `exposed.attributes` if present; `--sync` adds a default sync section (`mode`, `batchSize`) to datasources that lack it (not applied when `entityType` is `none`); `--test` rebuilds `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes and strips unknown top-level `testPayload` keys
 - **Authentication method** — When `--auth <method>` is provided, repair sets the integration’s authentication to that method (canonical variables and security) and updates env.template accordingly
 
 **Usage:**
@@ -247,7 +247,7 @@ aifabrix repair hubspot-demo --auth apikey
 # Preview changes without writing (--dry-run)
 aifabrix repair hubspot --dry-run
 
-# Optional: ensure RBAC, exposed attributes, sync section, or test payload
+# Optional: ensure RBAC, exposed.schema, sync section, or test payload
 aifabrix repair hubspot --rbac --expose --sync --test
 
 # Regenerate README.md from the current deployment manifest
@@ -259,8 +259,8 @@ aifabrix repair hubspot --doc
 - `--doc` — Regenerate `README.md` from the deployment manifest
 - `--dry-run` — Report what would be changed; do not write
 - `--rbac` — Ensure RBAC has a permission per datasource endpoint (`<resourceType>:<capability>`) and add default Admin/Reader roles if none exist
-- `--expose` — Set `exposed.attributes` on each datasource to the list of all `fieldMappings.attributes` keys
-- `--sync` — Add a default sync section (mode, batchSize, maxParallelRequests) to datasources that lack it
+- `--expose` — Set `exposed.schema` on each datasource from all `fieldMappings.attributes` keys (`metadata.<key>` values); removes deprecated `exposed.attributes` if present
+- `--sync` — Add a default sync section (`mode: pull`, `batchSize: 500`) to datasources that lack it (skipped for `entityType: none`)
 - `--test` — Generate `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes for each datasource
 
 **Issues:**

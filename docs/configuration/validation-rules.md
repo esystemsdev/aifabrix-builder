@@ -122,15 +122,16 @@ Files (e.g. `*-datasource-*.yaml` or `*-datasource-*.json`) are validated agains
 | `key` | Required. String, pattern lowercase letters, numbers, hyphens. Min length 3. |
 | `displayName` | Required. String, min length 1. |
 | `systemKey` | Required. Must match the parent external system `key`. |
-| `entityType` | Required. One of: `document-storage`, `documentStorage`, `vector-store`, `vectorStore`, `record-storage`, `recordStorage`, `message-service`, `messageService`, `none`. |
+| `entityType` | Required. Canonical values (see `external-datasource.schema.json`): `documentStorage`, `vectorStore`, `recordStorage`, `messageService`, `none`. |
 | `resourceType` | Required. Pattern lowercase letters, numbers, hyphens (e.g. `document`, `customer`, `deal`). |
-| `fieldMappings` | Required. Object with `dimensions` (object) and `attributes` (object). |
-| `fieldMappings.attributes` | Each attribute must have `expression` and `type`. Expression must match the pipe-based DSL or `record_ref:` form; `type` one of: `string`, `number`, `integer`, `boolean`, `array`, `object`. |
+| `fieldMappings` | Required. Object with **`attributes`** (object) only at this level; **`dimensions` live at the datasource root** (v2.4), not under `fieldMappings`. |
+| `fieldMappings.attributes` | Each attribute must include **`expression`** (DSL: `raw.*`, `fk.*`, `dimension.*`). Optional metadata (`description`, `semantic`, etc.) follows the schema; there is no separate `type` property on attributes in the strict v2.4 attribute shape—typing is defined in **`metadataSchema.properties`**. |
 | **Field reference validation** | Each of `indexing.embedding[]`, `indexing.uniqueKey`, `validation.repeatingValues[].field`, `quality.rejectIf[].field` must reference a key in `fieldMappings.attributes`. |
-| **primaryKey** | Each element must exist in `fieldMappings.attributes` or `fieldMappings.dimensions`. |
+| **primaryKey** | Each element must be a key in **`fieldMappings.attributes`** or a **key of root `dimensions`** (dimension binding name). |
+| **`metadataSchema` (storage)** | For **`entityType`** `recordStorage` or `documentStorage`, JSON Schema requires **`metadataSchema.properties.externalId`**: `type: string`, **`index: true`** (stable join / external identity). You should define a matching **`fieldMappings.attributes.externalId`** expression. |
 | **exposed.profiles** | Each field in `exposed.profiles.<name>[]` must exist in `fieldMappings.attributes`. |
-| **ABAC (config.abac)** | Dimension keys and attribute paths in `config.abac.dimensions` or `fieldMappings.dimensions` must follow pattern and (where applicable) reference existing attributes. `config.abac.crossSystemJson` must have one operator per path and allowed operators only. Legacy `config.abac.crossSystem` is rejected (use `crossSystemJson` or `crossSystemSql`). |
-| `exposed` | If present, must include `attributes` (array of normalized attribute names to expose). |
+| **ABAC (config.abac)** | Dimension keys and attribute paths in **`config.abac.dimensions`** must follow pattern and (where applicable) reference existing attributes. `config.abac.crossSystemJson` must have one operator per path and allowed operators only. Legacy `config.abac.crossSystem` is rejected (use `crossSystemJson` or `crossSystemSql`). |
+| `exposed` | v2.4 public contract uses **`exposed.schema`** (object: response field → expression). Optional **`exposed.readonly`** / **`exposed.omit`** arrays. Legacy **`exposed.attributes`** is deprecated. |
 | `execution` | If present, must include `engine`: `cip` or `python`; CIP definitions and Python entrypoints follow schema. |
 | Other sections | `metadataSchema`, `sync`, `openapi`, `validation`, `quality`, `indexing`, `context`, `documentStorage`, `capabilities`, `config`, `contract`, etc. follow schema. |
 
@@ -166,7 +167,7 @@ After component files pass, the command builds the deployment manifest and valid
 | External system file | Required: key, displayName, description, type, authentication; patterns and enums per schema | Step 2 |
 | External system file | configuration must not contain standard auth variables (BASEURL, CLIENTID, CLIENTSECRET, TOKENURL, APIKEY, USERNAME, PASSWORD); BASEURL only when auth is none | Step 2 |
 | External system file | Role references in permissions must exist in roles | Step 2 |
-| External datasource file | Required: key, displayName, systemKey, entityType, resourceType, fieldMappings; structure per schema | Step 2 |
+| External datasource file | Required: key, displayName, systemKey, entityType, resourceType, fieldMappings (`attributes`); storage types need **`metadataSchema.properties.externalId`** per schema; structure per schema | Step 2 |
 | Manifest | Manifest structure and required top-level fields | Step 3 |
 | Manifest | Inline system and each datasource conform to their schemas | Step 3 |
 | Manifest | Each datasource `systemKey` matches application system key | Step 3 |
@@ -178,7 +179,7 @@ After component files pass, the command builds the deployment manifest and valid
 When you create or update an external system or datasource via the API or pipeline deploy, the dataplane applies additional rules beyond schema and Builder checks. Summary:
 
 - **External system:** Authentication (e.g. OAuth2/AAD grantType and authorizationUrl), rateLimit shape, OpenAPI/MCP key lookup when available, datasource key references and system ownership, RBAC structure.
-- **External datasource:** **primaryKey** required (non-empty array of field names from fieldMappings); **entityType** (e.g. `"none"` for no records tables); **field names** (letters, numbers, underscores only); no duplicate names in dimensions and attributes; metadata type changes and incompatible replacements can cause deploy to be rejected with a clear message.
+- **External datasource:** **primaryKey** required for storage entity types (non-empty array of attribute or root-dimension keys); **entityType** (e.g. `none` for orchestration-only datasources); **`externalId`** in **`metadataSchema`** for **`recordStorage`/`documentStorage`**; **field names** (letters, numbers, underscores only); root **dimensions** vs **attributes** must not reuse the same logical surface inconsistently; metadata type changes and incompatible replacements can cause deploy to be rejected with a clear message.
 
 For full dataplane rules and troubleshooting (dimension catalog, pipeline deployment), see the dataplane documentation.
 

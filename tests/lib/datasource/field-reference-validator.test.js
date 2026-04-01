@@ -29,19 +29,20 @@ describe('field-reference-validator', () => {
 
     it('returns error for invalid primaryKey reference', () => {
       const parsed = {
-        fieldMappings: { attributes: { id: {} }, dimensions: {} },
+        fieldMappings: { attributes: { id: {} } },
         primaryKey: ['id', 'nonexistent']
       };
       const errors = validateFieldReferences(parsed);
       expect(errors).toHaveLength(1);
       expect(errors[0]).toContain('primaryKey[1]');
       expect(errors[0]).toContain('nonexistent');
-      expect(errors[0]).toContain('fieldMappings.attributes or fieldMappings.dimensions');
+      expect(errors[0]).toContain('fieldMappings.attributes or root dimensions');
     });
 
-    it('accepts primaryKey that references dimension key', () => {
+    it('accepts primaryKey that references root dimension key', () => {
       const parsed = {
-        fieldMappings: { attributes: { id: {} }, dimensions: { region: 'metadata.region' } },
+        fieldMappings: { attributes: { id: {} } },
+        dimensions: { region: { type: 'local', field: 'country' } },
         primaryKey: ['id', 'region']
       };
       expect(validateFieldReferences(parsed)).toEqual([]);

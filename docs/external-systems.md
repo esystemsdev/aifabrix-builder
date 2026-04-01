@@ -657,9 +657,9 @@ Each datasource maps one entity type from the external system.
 **Required fields:**
 - `key` - Unique datasource identifier
 - `systemKey` - Must match external system `key`
-- `entityType` - Entity type identifier; validated against the schema enum. Allowed values (from `lib/schema/external-datasource.schema.json`): `document-storage`, `documentStorage`, `vector-store`, `vectorStore`, `record-storage`, `recordStorage`, `message-service`, `messageService`, `none`. Defines storage semantics and which type schema is used for validation (e.g. `documentStorage` → document-storage schema).
+- `entityType` - Entity type identifier; validated against `external-datasource.schema.json` (canonical values: `documentStorage`, `vectorStore`, `recordStorage`, `messageService`, `none`). Defines storage semantics and validation rules (e.g. **`recordStorage`** / **`documentStorage`** require **`metadataSchema.properties.externalId`** with `type: string` and `index: true`).
 - `resourceType` - Resource type classification (pattern: `^[a-z0-9-]+$`, e.g., "customer", "contact", "deal")
-- `fieldMappings` - Field transformation rules with dimensions and attributes
+- `fieldMappings` - Normalization rules: required **`attributes`** object; **dimensions** are a separate **root** property (v2.4), not nested under `fieldMappings`
 
 **Resource types (common values):**
 - `customer` - Company/organization data
@@ -1459,7 +1459,7 @@ status:
 → Check datasource is enabled: `"enabled": true`
 
 **"application.yaml out of sync with files"** or **"External datasource file not found"**
-→ Run `aifabrix repair <app>` to align `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files on disk, and to repair env.template (KV_* names and path-style `kv://` values) to match the system file. Repair also fixes datasource manifest alignment (dimensions, metadataSchema). Optional flags `--rbac`, `--expose`, `--sync`, and `--test` can add RBAC permissions and default roles, set exposed attributes, add a sync section, or generate test payloads.
+→ Run `aifabrix repair <app>` to align `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files on disk, and to repair env.template (KV_* names and path-style `kv://` values) to match the system file. Repair also fixes datasource manifest alignment (dimensions, metadataSchema). Optional flags `--rbac`, `--expose`, `--sync`, and `--test` can add RBAC permissions and default roles, set **`exposed.schema`**, add a sync section, or generate test payloads.
 
 **"OpenAPI operations not working"**
 → Verify `documentKey` matches registered OpenAPI spec

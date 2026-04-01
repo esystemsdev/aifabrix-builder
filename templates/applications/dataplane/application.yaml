@@ -98,6 +98,47 @@ configuration:
         - detailed
         - explain
 
+  - name: TRUST_CUSTOMER_POLICY_LEVEL
+    portalInput:
+      field: select
+      label: "Trust policy level (no-policy defaults)"
+      options:
+        - strict
+        - standard
+        - relaxed
+
+  - name: TRUST_PUBLISH_GATE_ENABLED
+    portalInput:
+      field: select
+      label: "Enforce trust gate on datasource publish"
+      options:
+        - "false"
+        - "true"
+
+  - name: TRUST_PROMOTE_GATE_ENABLED
+    portalInput:
+      field: select
+      label: "Enforce trust gate on external system publish (promote scope)"
+      options:
+        - "false"
+        - "true"
+
+  - name: TRUST_RUNTIME_GATE_ENABLED
+    portalInput:
+      field: select
+      label: "Enforce trust gate on CIP execution (runtime scope)"
+      options:
+        - "false"
+        - "true"
+
+  - name: TRUST_AI_EXPOSURE_GATE_ENABLED
+    portalInput:
+      field: select
+      label: "Enforce trust gate on AI document-storage prompt generation"
+      options:
+        - "false"
+        - "true"
+
   # -------------------------------------------------------------------------
   # CIP Execution - Resource Limits
   # -------------------------------------------------------------------------

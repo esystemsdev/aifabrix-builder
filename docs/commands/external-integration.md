@@ -549,7 +549,7 @@ Manage external data sources.
 
 Validate external datasource JSON file.
 
-**What:** Validates an external datasource JSON file against the external-datasource schema. Checks required fields, data types, and schema compliance.
+**What:** Validates an external datasource YAML/JSON file (or a directory of datasource files) against the external-datasource schema **plus freeze-contract semantic checks** (removed legacy keys, entityType gating, expression constraints, required storage fields, etc.).
 
 **When:** Before deploying datasource, troubleshooting configuration issues, or validating schema changes.
 
@@ -562,17 +562,40 @@ aifabrix datasource validate ./schemas/hubspot-deal.yaml
 
 # Validate with relative path
 aifabrix datasource validate schemas/my-datasource.yaml
+
+# Validate a directory (recursively)
+aifabrix datasource validate ./integration/myapp/schemas
+
+# Machine-readable output
+aifabrix datasource validate ./schemas --json
+
+# Treat warnings as errors
+aifabrix datasource validate ./schemas --fail-on-warning
+
+# Strict mode (fail on freeze-removed legacy shapes)
+aifabrix datasource validate ./schemas --strict
+
+# Attempt safe auto-fixes (preview)
+aifabrix datasource validate ./schemas --fix --dry-run
 ```
 
 **Arguments:**
-- `<file>` - Path to external datasource JSON file
+- `<file>` - Path to an external datasource YAML/JSON file or a directory
+
+**Options:**
+- `--json` - Emit stable JSON output (for CI automation)
+- `--strict` - Fail validation for freeze-removed legacy keys and deprecated shapes
+- `--fail-on-warning` - Treat warnings as errors (exit code 1)
+- `--fix` - Attempt safe auto-fixes (never invents missing dimensions or guesses FK targets)
+- `--dry-run` - With `--fix`, preview changes without writing files
 
 **Process:**
-1. Reads datasource JSON file
-2. Parses JSON content
+1. Reads datasource file(s)
+2. Parses YAML/JSON content
 3. Loads external-datasource schema
-4. Validates file against schema
-5. Displays validation results
+4. Validates against schema and semantic rules
+5. (Optional) Applies safe fixes when `--fix` is enabled
+6. Displays validation results
 
 **Output (valid):**
 ```yaml

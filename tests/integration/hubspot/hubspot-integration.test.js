@@ -40,6 +40,28 @@ describe('HubSpot Integration Tests', () => {
   let contactJson;
   let dealJson;
 
+  /** Root `dimensions` keys, or legacy `fieldMappings.dimensions` keys (fixture transition). */
+  function listDimensionKeys(ds) {
+    if (ds.dimensions && typeof ds.dimensions === 'object' && !Array.isArray(ds.dimensions)) {
+      return Object.keys(ds.dimensions);
+    }
+    if (ds.fieldMappings?.dimensions && typeof ds.fieldMappings.dimensions === 'object') {
+      return Object.keys(ds.fieldMappings.dimensions);
+    }
+    return [];
+  }
+
+  /** v2.4 `exposed.schema` keys or legacy `exposed.attributes` entries. */
+  function listExposedFieldKeys(ds) {
+    if (ds.exposed?.schema && typeof ds.exposed.schema === 'object') {
+      return Object.keys(ds.exposed.schema);
+    }
+    if (Array.isArray(ds.exposed?.attributes)) {
+      return [...ds.exposed.attributes];
+    }
+    return [];
+  }
+
   // Helper function to create test payloads matching HubSpot API structure
   function createTestPayload(type) {
     const basePayload = {
@@ -844,60 +866,58 @@ describe('HubSpot Integration Tests', () => {
 
   describe('Access Fields Tests', () => {
     it('should have dimensions defined for company datasource', () => {
-      expect(companyJson.fieldMappings.dimensions).toBeDefined();
-      expect(typeof companyJson.fieldMappings.dimensions).toBe('object');
-      expect(companyJson.fieldMappings.dimensions).toHaveProperty('country');
-      expect(companyJson.fieldMappings.dimensions).toHaveProperty('domain');
+      const keys = listDimensionKeys(companyJson);
+      expect(keys.length).toBeGreaterThan(0);
+      expect(keys).toContain('country');
+      expect(keys).toContain('domain');
     });
 
     it('should have dimensions defined for contact datasource', () => {
-      if (contactJson.fieldMappings.dimensions) {
-        expect(typeof contactJson.fieldMappings.dimensions).toBe('object');
-        expect(contactJson.fieldMappings.dimensions).toHaveProperty('email');
-        expect(contactJson.fieldMappings.dimensions).toHaveProperty('country');
+      const keys = listDimensionKeys(contactJson);
+      if (keys.length > 0) {
+        expect(keys).toContain('email');
+        expect(keys).toContain('country');
       }
     });
 
     it('should have dimensions defined for deal datasource', () => {
-      if (dealJson.fieldMappings.dimensions) {
-        expect(typeof dealJson.fieldMappings.dimensions).toBe('object');
-        expect(dealJson.fieldMappings.dimensions).toHaveProperty('stage');
-        expect(dealJson.fieldMappings.dimensions).toHaveProperty('pipeline');
+      const keys = listDimensionKeys(dealJson);
+      if (keys.length > 0) {
+        expect(keys).toContain('stage');
+        expect(keys).toContain('pipeline');
       }
     });
 
-    it('should have dimensions in exposed fields for company', () => {
-      if (companyJson.fieldMappings.dimensions) {
-        Object.keys(companyJson.fieldMappings.dimensions).forEach(accessField => {
-          expect(companyJson.exposed.attributes).toContain(accessField);
-        });
-      }
+    it('should have dimensions reflected in exposed fields for company', () => {
+      const dimKeys = listDimensionKeys(companyJson);
+      const exposedKeys = listExposedFieldKeys(companyJson);
+      dimKeys.forEach(accessField => {
+        expect(exposedKeys).toContain(accessField);
+      });
     });
 
-    it('should have dimensions in exposed fields for contact', () => {
-      if (contactJson.fieldMappings.dimensions) {
-        Object.keys(contactJson.fieldMappings.dimensions).forEach(accessField => {
-          expect(contactJson.exposed.attributes).toContain(accessField);
-        });
-      }
+    it('should have dimensions reflected in exposed fields for contact', () => {
+      const dimKeys = listDimensionKeys(contactJson);
+      const exposedKeys = listExposedFieldKeys(contactJson);
+      dimKeys.forEach(accessField => {
+        expect(exposedKeys).toContain(accessField);
+      });
     });
 
-    it('should have dimensions in exposed fields for deal', () => {
-      if (dealJson.fieldMappings.dimensions) {
-        Object.keys(dealJson.fieldMappings.dimensions).forEach(accessField => {
-          expect(dealJson.exposed.attributes).toContain(accessField);
-        });
-      }
+    it('should have dimensions reflected in exposed fields for deal', () => {
+      const dimKeys = listDimensionKeys(dealJson);
+      const exposedKeys = listExposedFieldKeys(dealJson);
+      dimKeys.forEach(accessField => {
+        expect(exposedKeys).toContain(accessField);
+      });
     });
 
     it('should have accessField expressions defined in fieldMappings', () => {
       const checkAccessFields = (datasource) => {
-        if (datasource.fieldMappings.dimensions) {
-          Object.keys(datasource.fieldMappings.dimensions).forEach(accessField => {
-            expect(datasource.fieldMappings.attributes[accessField]).toBeDefined();
-            expect(datasource.fieldMappings.attributes[accessField].expression).toBeDefined();
-          });
-        }
+        listDimensionKeys(datasource).forEach(accessField => {
+          expect(datasource.fieldMappings.attributes[accessField]).toBeDefined();
+          expect(datasource.fieldMappings.attributes[accessField].expression).toBeDefined();
+        });
       };
 
       checkAccessFields(companyJson);

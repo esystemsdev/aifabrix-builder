@@ -2296,14 +2296,30 @@ NORMAL_VAR=value456`;
       entityType: 'recordStorage',
       resourceType: 'customer',
       primaryKey: ['country'],
+      labelKey: ['country'],
+      metadataSchema: {
+        type: 'object',
+        required: ['country', 'externalId'],
+        properties: {
+          country: { type: 'string', index: true },
+          externalId: { type: 'string', index: true }
+        }
+      },
+      dimensions: {
+        country: {
+          type: 'local',
+          field: 'country',
+          actor: 'displayName',
+          operator: 'eq'
+        }
+      },
       fieldMappings: {
-        dimensions: {
-          country: 'metadata.country'
-        },
         attributes: {
           country: {
-            expression: '{{properties.country.value}} | toUpper',
-            type: 'string'
+            expression: '{{raw.properties.country.value}} | toUpper'
+          },
+          externalId: {
+            expression: '{{raw.id}}'
           }
         }
       }
@@ -2316,14 +2332,30 @@ NORMAL_VAR=value456`;
       entityType: 'recordStorage',
       resourceType: 'contact',
       primaryKey: ['email'],
+      labelKey: ['email'],
+      metadataSchema: {
+        type: 'object',
+        required: ['email', 'externalId'],
+        properties: {
+          email: { type: 'string', index: true },
+          externalId: { type: 'string', index: true }
+        }
+      },
+      dimensions: {
+        email: {
+          type: 'local',
+          field: 'email',
+          actor: 'displayName',
+          operator: 'eq'
+        }
+      },
       fieldMappings: {
-        dimensions: {
-          email: 'metadata.email'
-        },
         attributes: {
           email: {
-            expression: '{{properties.email.value}} | trim',
-            type: 'string'
+            expression: '{{raw.properties.email.value}} | trim'
+          },
+          externalId: {
+            expression: '{{raw.id}}'
           }
         }
       }

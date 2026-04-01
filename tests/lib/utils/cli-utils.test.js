@@ -24,39 +24,10 @@ jest.mock('../../../lib/utils/logger', () => ({
   }
 }));
 
-// Mock fs with plain functions and call arrays (no jest.fn()) to avoid Jest ModuleMocker
-// Symbol.hasInstance stack overflow when other suites run in the same worker.
-// Capture test helpers in a ref so tests use fsTestHelpersRef.current instead of fs.__test
-// (accessing fs.__test when fs is another file's Jest mock causes stack overflow).
-const fsTestHelpersRef = { current: null };
-jest.mock('fs', () => {
-  const mkdirCalls = [];
-  const appendFileCalls = [];
-  let mkdirReject = false;
-  const helpers = {
-    mkdirCalls,
-    appendFileCalls,
-    setMkdirReject: (v) => {
-      mkdirReject = v;
-    }
-  };
-  fsTestHelpersRef.current = helpers;
-  return {
-    promises: {
-      mkdir: (...args) => {
-        mkdirCalls.push(args);
-        if (mkdirReject) return Promise.reject(new Error('Permission denied'));
-        return Promise.resolve();
-      },
-      appendFile: (...args) => {
-        appendFileCalls.push(args);
-        return Promise.resolve();
-      }
-    }
-  };
-});
+// Do not jest.mock('fs') at module scope: Jest's mock + instanceof can recurse infinitely
+// (Symbol.hasInstance stack overflow) when this file shares a worker with other suites.
+// appendWizardError tests spy on fs.promises only inside their describe block.
 
-const fs = require('fs');
 const logger = require('../../../lib/utils/logger');
 const {
   validateCommand,
@@ -390,26 +361,43 @@ describe('CLI Utils Module', () => {
   });
 
   describe('appendWizardError', () => {
+    const fs = require('fs');
+    let mkdirSpy;
+    let appendFileSpy;
+    const mkdirCalls = [];
+    const appendFileCalls = [];
+    let mkdirReject = false;
+
     beforeEach(() => {
-      const t = fsTestHelpersRef.current;
-      if (!t) return;
-      t.mkdirCalls.length = 0;
-      t.appendFileCalls.length = 0;
-      t.setMkdirReject(false);
+      mkdirCalls.length = 0;
+      appendFileCalls.length = 0;
+      mkdirReject = false;
+      mkdirSpy = jest.spyOn(fs.promises, 'mkdir').mockImplementation((p, opts) => {
+        mkdirCalls.push([p, opts]);
+        if (mkdirReject) return Promise.reject(new Error('Permission denied'));
+        return Promise.resolve();
+      });
+      appendFileSpy = jest.spyOn(fs.promises, 'appendFile').mockImplementation((p, data, enc) => {
+        appendFileCalls.push([p, data, enc]);
+        return Promise.resolve();
+      });
+    });
+
+    afterEach(() => {
+      mkdirSpy.mockRestore();
+      appendFileSpy.mockRestore();
     });
 
     it('should append error message to integration/<appKey>/error.log', async() => {
       await appendWizardError('myapp', new Error('Test error'));
 
-      const t = fsTestHelpersRef.current;
-      expect(t).toBeDefined();
-      expect(t.mkdirCalls).toHaveLength(1);
-      expect(t.mkdirCalls[0][0]).toMatch(/integration[\\/]myapp$/);
-      expect(t.mkdirCalls[0][1]).toEqual({ recursive: true });
-      expect(t.appendFileCalls).toHaveLength(1);
-      expect(t.appendFileCalls[0][0]).toMatch(/integration[\\/]myapp[\\/]error\.log$/);
-      expect(t.appendFileCalls[0][1]).toMatch(/^\d{4}-\d{2}-\d{2}T.* Test error\n$/);
-      expect(t.appendFileCalls[0][2]).toBe('utf8');
+      expect(mkdirCalls).toHaveLength(1);
+      expect(mkdirCalls[0][0]).toMatch(/integration[\\/]myapp$/);
+      expect(mkdirCalls[0][1]).toEqual({ recursive: true });
+      expect(appendFileCalls).toHaveLength(1);
+      expect(appendFileCalls[0][0]).toMatch(/integration[\\/]myapp[\\/]error\.log$/);
+      expect(appendFileCalls[0][1]).toMatch(/^\d{4}-\d{2}-\d{2}T.* Test error\n$/);
+      expect(appendFileCalls[0][2]).toBe('utf8');
     });
 
     it('should write stripped error.formatted to error.log when formatted is longer than message', async() => {
@@ -418,7 +406,7 @@ describe('CLI Utils Module', () => {
 
       await appendWizardError('myapp', err);
 
-      const written = fsTestHelpersRef.current.appendFileCalls[0][1];
+      const written = appendFileCalls[0][1];
       expect(written).toContain('Long validation message with details and field list');
       expect(written).not.toContain('\x1b[');
     });
@@ -426,7 +414,7 @@ describe('CLI Utils Module', () => {
     it('should write error.message when error.formatted is absent', async() => {
       await appendWizardError('myapp', new Error('Only message'));
 
-      const written = fsTestHelpersRef.current.appendFileCalls[0][1];
+      const written = appendFileCalls[0][1];
       expect(written).toContain('Only message');
     });
 
@@ -436,7 +424,7 @@ describe('CLI Utils Module', () => {
 
       await appendWizardError('myapp', err);
 
-      const written = fsTestHelpersRef.current.appendFileCalls[0][1];
+      const written = appendFileCalls[0][1];
       expect(written).toContain('Long error message here');
     });
 
@@ -444,13 +432,12 @@ describe('CLI Utils Module', () => {
       await appendWizardError('', new Error('x'));
       await appendWizardError('UPPERCASE', new Error('x'));
 
-      const t = fsTestHelpersRef.current;
-      expect(t.mkdirCalls).toHaveLength(0);
-      expect(t.appendFileCalls).toHaveLength(0);
+      expect(mkdirCalls).toHaveLength(0);
+      expect(appendFileCalls).toHaveLength(0);
     });
 
     it('should not throw when fs fails', async() => {
-      fsTestHelpersRef.current.setMkdirReject(true);
+      mkdirReject = true;
 
       await appendWizardError('myapp', new Error('x'));
 

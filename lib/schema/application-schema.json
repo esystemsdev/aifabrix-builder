@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/esystemsdev/aifabrix-builder/refs/heads/main/lib/schema/application-schema.json",
+  "$id": "aifabrix://schema/application-schema.json",
   "title": "AI Fabrix Application Configuration Schema",
   "description": "Schema for AI Fabrix applications deployed via the API-Driven Deployment System",
   "metadata": {
@@ -799,14 +799,14 @@
     "system": {
       "type": "object",
       "description": "Optional: Inline external system configuration for atomic deployment. Uses external-system.schema.json structure via $ref. Alternative to externalIntegration.systems file-based approach.",
-      "$ref": "https://raw.githubusercontent.com/esystemsdev/aifabrix-builder/refs/heads/main/lib/schema/external-system.schema.json"
+      "$ref": "aifabrix://schema/external-system.schema.json"
     },
     "dataSources": {
       "type": "array",
       "description": "Optional: Inline external data source configurations for atomic deployment. Uses external-datasource.schema.json structure via $ref. Alternative to externalIntegration.dataSources file-based approach.",
       "minItems": 0,
       "items": {
-        "$ref": "https://raw.githubusercontent.com/esystemsdev/aifabrix-builder/refs/heads/main/lib/schema/external-datasource.schema.json"
+        "$ref": "aifabrix://schema/external-datasource.schema.json"
       }
     },
     "externalIntegration": {

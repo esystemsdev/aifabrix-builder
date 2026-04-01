@@ -1,0 +1,8 @@
+appName: test
+mode: create-system
+source:
+  type: openapi-file
+  filePath: /workspace/aifabrix-builder/integration/hubspot-test/companies.json
+credential:
+  action: create
+preferences: {}

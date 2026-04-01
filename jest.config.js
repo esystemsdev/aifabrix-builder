@@ -52,7 +52,11 @@ module.exports = {
           // Exclude isolated suites so they never run in default worker (avoids
           // Symbol.hasInstance stack overflow when logger is mocked with jest.fn() elsewhere).
           'lib/utils/cli-utils.test.js',
-          'lib/utils/external-system-display.test.js'
+          'lib/utils/external-system-display.test.js',
+          '/tests/lib/utils/cli-utils.test.js',
+          '/tests/lib/utils/external-system-display.test.js',
+          '\\\\tests\\\\lib\\\\utils\\\\cli-utils.test.js',
+          '\\\\tests\\\\lib\\\\utils\\\\external-system-display.test.js'
         ];
         if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
           patterns.push('/tests/local/');
