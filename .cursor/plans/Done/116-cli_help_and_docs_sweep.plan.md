@@ -171,7 +171,7 @@ Standardize and improve all `aifabrix` `--help` output (Commander descriptions a
 
 ### Executive Summary
 
-All **seven** YAML todos in plan frontmatter are marked **completed**. Referenced CLI, help-builder, and `docs/commands/` files **exist**. Targeted tests for this effort (**help-builder**, **bin entry**, **dev-cert-helper**, **app/datasource** command registration, **setup-secrets** mocks) are in place. **Final verification (mandatory order):** `npm run lint:fix` **passed**, `npm run lint` **passed**, `npm test` **passed**. Therefore **`npm run build`** (= lint + test) **passes**, satisfying **Definition of Done §1** in this plan.
+All **seven** YAML todos in plan frontmatter are marked **completed**. Referenced CLI, help-builder, and `docs/commands/` files **exist**. Targeted tests for this effort (**help-builder**, **bin entry**, **dev-cert-helper**, **app/datasource** command registration, **setup-secrets** mocks) are in place. **Final verification (mandatory order):** `npm run lint:fix` **passed**, `npm run lint` **passed**, `npm test` **passed**. Therefore `**npm run build`** (= lint + test) **passes**, satisfying **Definition of Done §1** in this plan.
 
 ### Task Completion
 
@@ -225,7 +225,7 @@ All **seven** YAML todos in plan frontmatter are marked **completed**. Reference
 | **STEP 1 — Format** `npm run lint:fix` | ✅ PASSED (exit 0)                   |
 | **STEP 2 — Lint** `npm run lint`       | ✅ PASSED (0 ESLint errors reported) |
 | **STEP 3 — Test** `npm test`           | ✅ PASSED                            |
-| **`npm run build`** (= lint + test)   | ✅ PASSED                            |
+| `**npm run build`** (= lint + test)    | ✅ PASSED                            |
 
 
 ### Cursor Rules Compliance
@@ -244,7 +244,7 @@ Automated enforcement of every bullet in `.cursor/rules/project-rules.mdc` was *
 | -------------------------------- | ---------------------------------- |
 | Database / API / migrations      | N/A (CLI + docs plan)              |
 | CLI help + docs sync             | ✅ Files and tests present per plan |
-| **`npm run build` before merge** | ✅ Satisfied (final verification)   |
+| `**npm run build` before merge** | ✅ Satisfied (final verification)   |
 
 
 ### Issues and Recommendations
@@ -254,12 +254,13 @@ Automated enforcement of every bullet in `.cursor/rules/project-rules.mdc` was *
 
 ### Final Validation Checklist
 
-- [x] All plan YAML todos completed
-- [x] Referenced files exist
-- [x] Plan-related unit tests exist
-- [x] `npm run lint:fix` passed
-- [x] `npm run lint` passed (0 errors)
-- [x] `npm test` — all tests pass
-- [x] `npm run build` passes
-- [x] Final verification order: lint:fix → lint → test — passed
-- [x] Cursor rules — spot-check / structural compliance only (no full static audit)
+- All plan YAML todos completed
+- Referenced files exist
+- Plan-related unit tests exist
+- `npm run lint:fix` passed
+- `npm run lint` passed (0 errors)
+- `npm test` — all tests pass
+- `npm run build` passes
+- Final verification order: lint:fix → lint → test — passed
+- Cursor rules — spot-check / structural compliance only (no full static audit)
+
