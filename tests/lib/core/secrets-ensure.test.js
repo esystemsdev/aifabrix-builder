@@ -100,10 +100,15 @@ describe('secrets-ensure', () => {
     it('returns remote target when config is URL and isRemoteSecretsUrl true', async() => {
       config.getSecretsPath.mockResolvedValue('https://dev.example.com/secrets/');
       isRemoteSecretsUrl.mockReturnValue(true);
-      getRemoteDevAuth.mockResolvedValue({ clientCertPem: 'pem', serverCaPem: null });
+      getRemoteDevAuth.mockResolvedValue({
+        serverUrl: 'https://dev.example.com',
+        clientCertPem: 'pem',
+        serverCaPem: null
+      });
       const target = await resolveWriteTarget();
       expect(target.type).toBe('remote');
-      expect(target.serverUrl).toBe('https://dev.example.com/secrets');
+      expect(target.serverUrl).toBe('https://dev.example.com');
+      expect(target.secretsEndpointUrl).toBe('https://dev.example.com/secrets');
       expect(target.clientCertPem).toBe('pem');
       expect(target.serverCaPem).toBeNull();
       expect(target.filePath).toBe(path.join('/home/.aifabrix', 'secrets.local.yaml'));
@@ -134,11 +139,17 @@ describe('secrets-ensure', () => {
       const target = {
         type: 'remote',
         serverUrl: 'https://dev.example.com',
+        secretsEndpointUrl: 'https://dev.example.com/api/dev/secrets',
         clientCertPem: 'pem'
       };
       const result = await loadExistingFromTarget(target);
       expect(result).toEqual({ k1: 'v1', k2: 'v2' });
-      expect(devApi.listSecrets).toHaveBeenCalledWith('https://dev.example.com', 'pem', undefined);
+      expect(devApi.listSecrets).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        undefined,
+        'https://dev.example.com/api/dev/secrets'
+      );
     });
 
     it('returns empty object when remote API throws', async() => {
@@ -146,6 +157,7 @@ describe('secrets-ensure', () => {
       const target = {
         type: 'remote',
         serverUrl: 'https://dev.example.com',
+        secretsEndpointUrl: 'https://dev.example.com/api/dev/secrets',
         clientCertPem: 'pem'
       };
       const result = await loadExistingFromTarget(target);
@@ -334,7 +346,11 @@ describe('secrets-ensure', () => {
     it('calls remote addSecret when target is remote', async() => {
       config.getSecretsPath.mockResolvedValue('https://dev.example.com/');
       isRemoteSecretsUrl.mockReturnValue(true);
-      getRemoteDevAuth.mockResolvedValue({ clientCertPem: 'pem', serverCaPem: null });
+      getRemoteDevAuth.mockResolvedValue({
+        serverUrl: 'https://dev.example.com',
+        clientCertPem: 'pem',
+        serverCaPem: null
+      });
       devApi.addSecret.mockResolvedValue({});
 
       await setSecretInStore('k', 'v');
@@ -343,7 +359,8 @@ describe('secrets-ensure', () => {
         'https://dev.example.com',
         'pem',
         { key: 'k', value: 'v' },
-        undefined
+        undefined,
+        'https://dev.example.com'
       );
       expect(secretsGenerator.saveSecretsFile).not.toHaveBeenCalled();
     });

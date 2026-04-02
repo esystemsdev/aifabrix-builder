@@ -2272,7 +2272,12 @@ environments:
 
       const result = await secrets.loadSecrets(undefined, 'myapp');
       expect(remoteDevAuth.getRemoteDevAuth).toHaveBeenCalled();
-      expect(devApi.listSecrets).toHaveBeenCalledWith('https://dev.example.com', 'mock-pem', undefined);
+      expect(devApi.listSecrets).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'mock-pem',
+        undefined,
+        'https://dev.example.com/secrets'
+      );
       expect(result.API_KEY).toBe('secret-from-api');
       expect(result.DB_PASS).toBe('db-from-api');
     });

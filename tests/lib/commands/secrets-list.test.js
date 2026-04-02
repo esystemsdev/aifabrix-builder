@@ -65,7 +65,12 @@ describe('secrets-list command', () => {
     getRemoteDevAuth.mockResolvedValue({ serverUrl: 'https://dev.example.com', clientCertPem: 'pem' });
     devApi.listSecrets.mockResolvedValue([{ name: 'S1', value: 'val1' }, { name: 'S2', value: 'val2' }]);
     await handleSecretsList({ shared: true });
-    expect(devApi.listSecrets).toHaveBeenCalledWith('https://dev.example.com', 'pem', undefined);
+    expect(devApi.listSecrets).toHaveBeenCalledWith(
+      'https://dev.example.com',
+      'pem',
+      undefined,
+      'https://dev.example.com/secrets'
+    );
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Shared secrets (remote)'));
     expect(logger.log).toHaveBeenCalledWith('S1'.padEnd(45) + 'val1');
     expect(logger.log).toHaveBeenCalledWith('S2'.padEnd(45) + 'val2');

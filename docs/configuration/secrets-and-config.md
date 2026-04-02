@@ -30,6 +30,8 @@ Location: `~/.aifabrix/config.yaml`. Manages developer-id, aifabrix-home, aifabr
 
 **When `aifabrix-secrets` is an `http(s)://` URL:** Shared secrets are served by the remote API. `secret list --shared`, `secret set --shared`, and `secret remove --shared` call the API (cert-authenticated). Shared values are **never stored on disk**; they are fetched at resolution time when generating `.env`. Local (non-shared) secrets can still use a local file if configured. Admin or secret-manager role is required for shared set/remove when using the remote API.
 
+**`BASH_` shared keys (HTTPS store):** If you set a shared secret whose key starts with **`BASH_`**, the remote service maps it so the value is available in your **terminal as an exported environment variable**: the variable name is the suffix after `BASH_` (e.g. **`BASH_NPM_TOKEN`** → **`NPM_TOKEN`**). Invalid suffixes (not valid shell identifiers) are not exposed. Use `aifabrix secret set BASH_<VAR> '<value>' --shared`. Details of how your session picks up those variables depend on your remote dev setup; the naming rule is what you use from the CLI. See [Utilities: aifabrix secret](../commands/utilities.md#aifabrix-secret).
+
 ## secrets.local.yaml (file-based secrets)
 
 **Single place:** When using a file for secrets, one `secrets.local.yaml` (local or shared) holds the secrets the CLI needs. Use the path from **`aifabrix-secrets`** in `config.yaml` to set a custom location (e.g. a shared drive or team path).

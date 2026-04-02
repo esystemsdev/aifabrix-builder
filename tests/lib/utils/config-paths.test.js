@@ -261,6 +261,19 @@ describe('Config Paths Module', () => {
         );
       });
 
+      it('should remove legacy aifabrix-secrets-path on merge', async() => {
+        getConfigFn.mockResolvedValue({
+          'aifabrix-secrets-path': '/old/path.yaml',
+          existing: 'x'
+        });
+        await pathConfigFunctions.mergeRemoteSettings({
+          'remote-server': 'https://builder01.aifabrix.dev'
+        });
+        const saved = saveConfigFn.mock.calls[0][0];
+        expect(saved['aifabrix-secrets-path']).toBeUndefined();
+        expect(saved.existing).toBe('x');
+      });
+
       it('should not override aifabrix-secrets when already an https URL', async() => {
         getConfigFn.mockResolvedValue({});
         const url = 'https://builder01.aifabrix.dev/api/custom/secrets';

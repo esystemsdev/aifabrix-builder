@@ -54,7 +54,12 @@ describe('remote-secrets-loader', () => {
       ]);
       const result = await loadRemoteSharedSecrets();
       expect(result).toEqual({ KEY1: 'v1', KEY2: '123' });
-      expect(devApi.listSecrets).toHaveBeenCalledWith('https://dev.example.com', 'pem', undefined);
+      expect(devApi.listSecrets).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        undefined,
+        'https://dev.example.com/secrets'
+      );
     });
 
     it('returns null on API error', async() => {

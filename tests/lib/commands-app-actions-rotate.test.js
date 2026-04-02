@@ -98,6 +98,7 @@ describe('Application Commands - Rotate Secret Action', () => {
       command: jest.fn().mockImplementation((cmdName) => {
         const cmdObj = {
           description: jest.fn().mockReturnThis(),
+          addHelpText: jest.fn().mockReturnThis(),
           requiredOption: jest.fn().mockReturnThis(),
           option: jest.fn().mockReturnThis(),
           action: jest.fn((handler) => {
@@ -110,6 +111,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         return cmdObj;
       }),
       description: jest.fn().mockReturnThis(),
+      addHelpText: jest.fn().mockReturnThis(),
       requiredOption: jest.fn().mockReturnThis(),
       option: jest.fn().mockReturnThis(),
       action: jest.fn().mockReturnThis()
@@ -122,7 +124,8 @@ describe('Application Commands - Rotate Secret Action', () => {
         }
         return mockAppCommand;
       }),
-      description: jest.fn().mockReturnThis()
+      description: jest.fn().mockReturnThis(),
+      addHelpText: jest.fn().mockReturnThis()
     };
 
     setupAppCommands(mockProgram);

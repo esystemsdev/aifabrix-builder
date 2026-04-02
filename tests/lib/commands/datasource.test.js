@@ -53,6 +53,7 @@ describe('Datasource Commands Module', () => {
       const group = {
         command: jest.fn(),
         description: jest.fn().mockReturnThis(),
+        addHelpText: jest.fn().mockReturnThis(),
         action: jest.fn().mockReturnThis(),
         requiredOption: jest.fn().mockReturnThis(),
         option: jest.fn().mockReturnThis()
@@ -77,6 +78,7 @@ describe('Datasource Commands Module', () => {
         return createCommandGroup();
       }),
       description: jest.fn().mockReturnThis(),
+      addHelpText: jest.fn().mockReturnThis(),
       action: jest.fn().mockReturnThis(),
       requiredOption: jest.fn().mockReturnThis(),
       option: jest.fn().mockReturnThis(),
@@ -102,7 +104,7 @@ describe('Datasource Commands Module', () => {
       // Check that the subcommand's description was called
       const validateCommand = datasourceGroup._subCommands?.find(c => c.name === 'validate <file>');
       expect(validateCommand).toBeDefined();
-      expect(validateCommand.command.description).toHaveBeenCalledWith('Validate external datasource JSON file');
+      expect(validateCommand.command.description).toHaveBeenCalledWith('Validate datasource JSON file');
     });
 
     it('should register list command', () => {
@@ -114,7 +116,7 @@ describe('Datasource Commands Module', () => {
       // Check that the subcommand's description was called (no flags)
       const listCommand = datasourceGroup._subCommands?.find(c => c.name === 'list');
       expect(listCommand).toBeDefined();
-      expect(listCommand.command.description).toHaveBeenCalledWith('List datasources from environment (uses environment from config.yaml)');
+      expect(listCommand.command.description).toHaveBeenCalledWith('List datasources for environment in config');
     });
 
     it('should register diff command', () => {
@@ -126,7 +128,7 @@ describe('Datasource Commands Module', () => {
       // Check that the subcommand's description was called
       const diffCommand = datasourceGroup._subCommands?.find(c => c.name === 'diff <file1> <file2>');
       expect(diffCommand).toBeDefined();
-      expect(diffCommand.command.description).toHaveBeenCalledWith('Compare two datasource configuration files (for dataplane)');
+      expect(diffCommand.command.description).toHaveBeenCalledWith('Diff two datasource JSON files');
     });
 
     it('should register upload command', () => {
@@ -138,7 +140,7 @@ describe('Datasource Commands Module', () => {
       // Check that the subcommand's description was called (no flags)
       const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <myapp> <file>');
       expect(uploadCommand).toBeDefined();
-      expect(uploadCommand.command.description).toHaveBeenCalledWith('Upload datasource to dataplane');
+      expect(uploadCommand.command.description).toHaveBeenCalledWith('Deploy datasource file to dataplane');
     });
 
     it('should register log-e2e command', () => {

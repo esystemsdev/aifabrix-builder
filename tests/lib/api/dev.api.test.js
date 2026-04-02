@@ -319,6 +319,26 @@ describe('Dev API', () => {
     });
   });
 
+  describe('resolveSecretsEndpoint', () => {
+    it('uses default /api/dev/secrets under serverUrl when no endpoint override', () => {
+      expect(devApi.resolveSecretsEndpoint(serverUrl, undefined)).toBe(
+        'https://builder-server.example.com/api/dev/secrets'
+      );
+    });
+
+    it('appends /api/dev/secrets when override is base URL with path /', () => {
+      expect(devApi.resolveSecretsEndpoint(serverUrl, 'https://other.example.com/')).toBe(
+        'https://other.example.com/api/dev/secrets'
+      );
+    });
+
+    it('uses full override URL when path is not only root', () => {
+      expect(
+        devApi.resolveSecretsEndpoint(serverUrl, 'https://builder-server.example.com/api/custom/secrets')
+      ).toBe('https://builder-server.example.com/api/custom/secrets');
+    });
+  });
+
   describe('listSecrets', () => {
     it('should GET /api/dev/secrets and return array', async() => {
       const secrets = [{ name: 'KEY1', value: '***' }];
@@ -330,6 +350,17 @@ describe('Dev API', () => {
         'https://builder-server.example.com/api/dev/secrets',
         expect.objectContaining({ method: 'GET' })
       );
+      expect(result).toEqual(secrets);
+    });
+
+    it('should GET configured secrets URL when secretsEndpointUrl provided', async() => {
+      const secrets = [{ name: 'K', value: 'v' }];
+      mockMakeApiCall.mockResolvedValue({ success: true, data: secrets });
+      const endpoint = 'https://builder-server.example.com/api/custom/secrets';
+
+      const result = await devApi.listSecrets(serverUrl, clientCertPem, undefined, endpoint);
+
+      expect(mockMakeApiCall).toHaveBeenCalledWith(endpoint, expect.objectContaining({ method: 'GET' }));
       expect(result).toEqual(secrets);
     });
 
@@ -366,6 +397,18 @@ describe('Dev API', () => {
 
       expect(mockMakeApiCall).toHaveBeenCalledWith(
         'https://builder-server.example.com/api/dev/secrets/MY_KEY',
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+
+    it('should DELETE under configured endpoint when secretsEndpointUrl provided', async() => {
+      mockMakeApiCall.mockResolvedValue({ success: true, data: {} });
+      const base = 'https://builder-server.example.com/api/custom/secrets';
+
+      await devApi.deleteSecret(serverUrl, clientCertPem, 'MY_KEY', undefined, base);
+
+      expect(mockMakeApiCall).toHaveBeenCalledWith(
+        'https://builder-server.example.com/api/custom/secrets/MY_KEY',
         expect.objectContaining({ method: 'DELETE' })
       );
     });

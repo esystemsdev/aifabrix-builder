@@ -386,7 +386,9 @@ Encrypted secrets are automatically decrypted when loaded by `aifabrix resolve`,
 
 ## aifabrix secret
 
-Manage secrets: local (project/user secrets file) and shared (file or remote API). When `aifabrix-secrets` in config is an **http(s)://** URL, shared secrets are served by the remote API; shared values are **never stored on disk** and are fetched at resolution time. When it is a file path, use the project secret file as today.
+Manage secrets: local (project/user secrets file) and shared (file or remote API). When `aifabrix-secrets` in config is an **http(s)://** URL, shared secrets are served by the remote API (typically **Builder Server**); shared values are **never stored on disk** on the developer machine and are fetched at resolution time. When it is a file path, use the project secret file as today.
+
+**Shared secrets over HTTPS — `BASH_` keys:** If you store a shared secret with `aifabrix secret set <key> <value> --shared` and the **key name starts with `BASH_`**, the remote secrets service turns it into a **normal environment variable in your terminal**: the variable name is whatever comes **after** `BASH_`, and the value is your secret. Example: key **`BASH_NPM_TOKEN`** → you get **`NPM_TOKEN`** exported with that value, ready to use in the shell (build tools, package managers, and so on). If the part after `BASH_` is not a valid shell variable name, that key is skipped. The CLI only sends the key and value; making them show up in the session is handled by the remote environment together with that naming rule.
 
 <a id="aifabrix-secret-list"></a>
 ### aifabrix secret list
@@ -421,6 +423,9 @@ aifabrix secret set keycloak-server-url "https://mydomain.com/keycloak"
 # Set secret in general secrets file (shared across projects)
 aifabrix secret set keycloak-server-url "https://mydomain.com/keycloak" --shared
 
+# Shared over HTTPS: BASH_ prefix → same value available in terminal as NPM_TOKEN (exported)
+aifabrix secret set BASH_NPM_TOKEN "your-token" --shared
+
 # Set secret with environment variable interpolation
 aifabrix secret set keycloak-server-url "https://\${KEYCLOAK_HOST}:\${KEYCLOAK_PORT}"
 
@@ -429,7 +434,7 @@ aifabrix secret set keycloak-server-url "https://keycloak.example.com/auth/realm
 ```
 
 **Options:**
-- `--shared` - Save to shared secrets: when `aifabrix-secrets` is a file path, write to that file; when it is an `http(s)://` URL, saves to the remote server (cert required; admin/secret-manager for shared when remote)
+- `--shared` - Save to shared secrets: when `aifabrix-secrets` is a file path, write to that file; when it is an `http(s)://` URL, saves to the remote server (cert required; admin/secret-manager for shared when remote). With an **HTTPS** shared store, a key named **`BASH_<NAME>`** is how you request that **`NAME`** appear in your terminal as an exported variable with that value (see introduction under [aifabrix secret](#aifabrix-secret)).
 
 **Secret Value Formats:**
 - **Full URLs**: Direct URL values (e.g., `https://mydomain.com/keycloak`)

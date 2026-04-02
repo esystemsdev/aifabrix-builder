@@ -28,14 +28,23 @@ function initializeCLI() {
 
   program.name('aifabrix')
     .version(packageJson.version)
-    .description('AI Fabrix Builder – Help and documentation');
+    .description(
+      'Local Docker infra, app scaffolding, validation, and deploy to Azure (or local) via Miso Controller'
+    );
 
   // Delegate command setup to lib/cli.js (order matches help categories for consistency)
   cli.setupCommands(program);
 
-  // Use categorized help for a more user-friendly command list
+  // Custom help replaces Commander default; append footer here (program.addHelpText is not applied)
+  const ROOT_HELP_FOOTER = `
+
+More:
+  aifabrix <command> --help    Options and examples for one command
+  docs/commands/README.md     Command reference in the repo
+`;
+
   program.helpInformation = function() {
-    return buildCategorizedHelp(program);
+    return buildCategorizedHelp(program) + ROOT_HELP_FOOTER;
   };
 
   // Parse command line arguments

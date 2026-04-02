@@ -842,6 +842,7 @@ describe('CLI Uncovered Command Handlers', () => {
       const prog = {
         command: jest.fn((name) => ({
           description: jest.fn().mockReturnThis(),
+          addHelpText: jest.fn().mockReturnThis(),
           option: jest.fn().mockReturnThis(),
           action: jest.fn((fn) => {
             actions[name] = fn;
@@ -866,6 +867,7 @@ describe('CLI Uncovered Command Handlers', () => {
       const prog = {
         command: jest.fn((name) => ({
           description: jest.fn().mockReturnThis(),
+          addHelpText: jest.fn().mockReturnThis(),
           option: jest.fn().mockReturnThis(),
           action: jest.fn((fn) => {
             actions[name] = fn;
@@ -887,6 +889,7 @@ describe('CLI Uncovered Command Handlers', () => {
       const prog = {
         command: jest.fn((name) => ({
           description: jest.fn().mockReturnThis(),
+          addHelpText: jest.fn().mockReturnThis(),
           option: jest.fn().mockReturnThis(),
           action: jest.fn((fn) => {
             actions[name] = fn;

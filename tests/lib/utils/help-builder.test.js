@@ -113,6 +113,8 @@ describe('help-builder', () => {
       const help = buildCategorizedHelp(program);
       expect(help).toContain('Help:');
       expect(help).toContain('help [command]');
+      expect(help).toContain('Tip:');
+      expect(help).toContain('aifabrix <command> --help');
     });
 
     it('should include upload, convert, credential, deployment when those commands are registered', () => {
@@ -148,6 +150,34 @@ describe('help-builder', () => {
         .filter((c) => !inHelp.has(c.name()) && !allowedOmissions.has(c.name()))
         .map((c) => c.name());
       expect(missing).toEqual([]);
+    });
+  });
+
+  describe('CLI command descriptions', () => {
+    /**
+     * @param {import('commander').Command} cmd
+     * @param {string[]} lineage
+     * @param {string[]} issues
+     */
+    function assertNonEmptyDescriptions(cmd, lineage, issues) {
+      for (const sub of cmd.commands || []) {
+        const next = [...lineage, sub.name()].filter(Boolean);
+        const desc = sub.description();
+        if (!desc || !String(desc).trim()) {
+          issues.push(next.join(' '));
+        }
+        assertNonEmptyDescriptions(sub, next, issues);
+      }
+    }
+
+    it('should give every registered command and subcommand a non-empty description', () => {
+      const program = new Command();
+      program.name('aifabrix').description('Test');
+      const cli = require('../../../lib/cli');
+      cli.setupCommands(program);
+      const issues = [];
+      assertNonEmptyDescriptions(program, [], issues);
+      expect(issues).toEqual([]);
     });
   });
 });

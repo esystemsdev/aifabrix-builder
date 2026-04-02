@@ -85,6 +85,7 @@ describe('App Commands Module', () => {
       const group = {
         command: jest.fn(),
         description: jest.fn().mockReturnThis(),
+        addHelpText: jest.fn().mockReturnThis(),
         action: jest.fn().mockReturnThis(),
         requiredOption: jest.fn().mockReturnThis(),
         option: jest.fn().mockReturnThis()
@@ -109,6 +110,7 @@ describe('App Commands Module', () => {
         return createCommandGroup();
       }),
       description: jest.fn().mockReturnThis(),
+      addHelpText: jest.fn().mockReturnThis(),
       action: jest.fn().mockReturnThis(),
       requiredOption: jest.fn().mockReturnThis(),
       option: jest.fn().mockReturnThis(),
@@ -184,7 +186,7 @@ describe('App Commands Module', () => {
       setupAppCommands(program);
 
       expect(program.command).toHaveBeenCalledWith('app');
-      expect(program._appGroup.description).toHaveBeenCalledWith('Manage applications');
+      expect(program._appGroup.description).toHaveBeenCalledWith('Controller apps: register, list, secrets, deploy history');
     });
 
     it('should setup register command', () => {
@@ -193,7 +195,7 @@ describe('App Commands Module', () => {
       const appGroup = program._appGroup;
       const registerCommand = appGroup._subCommands?.find(c => c.name === 'register <appKey>');
       expect(registerCommand).toBeDefined();
-      expect(registerCommand.command.description).toHaveBeenCalledWith('Register application and get pipeline credentials');
+      expect(registerCommand.command.description).toHaveBeenCalledWith('Register app; receive pipeline credentials');
       expect(registerCommand.command.option).toHaveBeenCalledWith('-p, --port <port>', 'Application port (default: from application.yaml)');
       expect(registerCommand.command.option).toHaveBeenCalledWith('-n, --name <name>', 'Override display name');
       expect(registerCommand.command.option).toHaveBeenCalledWith('-d, --description <desc>', 'Override description');
@@ -206,7 +208,7 @@ describe('App Commands Module', () => {
       const appGroup = program._appGroup;
       const listCommand = appGroup._subCommands?.find(c => c.name === 'list');
       expect(listCommand).toBeDefined();
-      expect(listCommand.command.description).toHaveBeenCalledWith('List applications');
+      expect(listCommand.command.description).toHaveBeenCalledWith('List apps in current environment');
       expect(listCommand.command.requiredOption).not.toHaveBeenCalled();
       expect(listCommand.command.option).not.toHaveBeenCalled();
     });
@@ -217,7 +219,7 @@ describe('App Commands Module', () => {
       const appGroup = program._appGroup;
       const rotateCommand = appGroup._subCommands?.find(c => c.name === 'rotate-secret <appKey>');
       expect(rotateCommand).toBeDefined();
-      expect(rotateCommand.command.description).toHaveBeenCalledWith('Rotate pipeline ClientSecret for an application');
+      expect(rotateCommand.command.description).toHaveBeenCalledWith('Rotate pipeline ClientSecret (one-time display)');
       expect(rotateCommand.command.requiredOption).not.toHaveBeenCalled();
       expect(rotateCommand.command.option).not.toHaveBeenCalled();
     });
@@ -229,7 +231,7 @@ describe('App Commands Module', () => {
       const deploymentCommand = appGroup._subCommands?.find(c => c.name === 'deployment <appKey>');
       expect(deploymentCommand).toBeDefined();
       expect(deploymentCommand.command.description).toHaveBeenCalledWith(
-        expect.stringContaining('List last N deployments')
+        'List recent deployments for app in current environment'
       );
       expect(deploymentCommand.command.option).toHaveBeenCalledWith('--controller <url>', expect.any(String));
       expect(deploymentCommand.command.option).toHaveBeenCalledWith('--page-size <n>', expect.any(String), '50');

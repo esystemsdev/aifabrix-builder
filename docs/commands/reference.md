@@ -125,9 +125,20 @@ fi
 
 ## Getting Help
 
-**Command help:**
+**All commands (grouped by category):**
+```bash
+aifabrix --help
+```
+
+**One command (options and examples):**
 ```bash
 aifabrix <command> --help
+```
+
+**Nested commands (e.g. secret, app, env):**
+```bash
+aifabrix secret --help
+aifabrix env deploy --help
 ```
 
 **Check environment:**

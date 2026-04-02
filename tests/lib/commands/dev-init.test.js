@@ -8,16 +8,23 @@ jest.mock('../../../lib/core/config', () => ({
   setDeveloperId: jest.fn().mockResolvedValue(undefined),
   setRemoteServer: jest.fn().mockResolvedValue(undefined),
   getDeveloperId: jest.fn().mockResolvedValue('01'),
+  getSyncSshHost: jest.fn().mockResolvedValue(null),
+  getSyncSshUser: jest.fn().mockResolvedValue(null),
   mergeRemoteSettings: jest.fn().mockResolvedValue(undefined)
 }));
 jest.mock('../../../lib/utils/paths', () => ({ getConfigDirForPaths: jest.fn(() => '/config') }));
-jest.mock('../../../lib/utils/dev-cert-helper', () => ({
-  generateCSR: jest.fn(),
-  getCertDir: jest.fn((dir, id) => `${dir}/certs/${id}`),
-  readClientCertPem: jest.fn(),
-  readClientKeyPem: jest.fn(),
-  getCertValidNotAfter: jest.fn()
-}));
+jest.mock('../../../lib/utils/dev-cert-helper', () => {
+  const actual = jest.requireActual('../../../lib/utils/dev-cert-helper');
+  return {
+    generateCSR: jest.fn(),
+    getCertDir: jest.fn((dir, id) => `${dir}/certs/${id}`),
+    readClientCertPem: jest.fn(),
+    readClientKeyPem: jest.fn(),
+    getCertValidNotAfter: jest.fn(),
+    normalizePemNewlines: actual.normalizePemNewlines,
+    mergeCaPemBlocks: actual.mergeCaPemBlocks
+  };
+});
 jest.mock('../../../lib/utils/remote-dev-auth', () => ({ getRemoteDevAuth: jest.fn() }));
 jest.mock('../../../lib/utils/ssh-key-helper', () => ({ getOrCreatePublicKeyContent: jest.fn(() => 'ssh-ed25519 AAAA key') }));
 jest.mock('../../../lib/api/dev.api');
@@ -31,6 +38,13 @@ jest.mock('../../../lib/utils/dev-ca-install', () => ({
 jest.mock('../../../lib/utils/dev-hosts-helper', () => ({
   runOptionalHostsSetup: jest.fn().mockResolvedValue(undefined)
 }));
+jest.mock('../../../lib/utils/dev-ssh-config-helper', () => ({
+  ensureDevSshConfigBlock: jest.fn().mockResolvedValue({
+    ok: true,
+    configPath: '/home/user/.ssh/config',
+    hostAlias: 'dev01.dev.example.com'
+  })
+}));
 
 const fs = require('fs').promises;
 jest.mock('fs', () => ({ promises: { mkdir: jest.fn(), writeFile: jest.fn() } }));
@@ -40,6 +54,7 @@ const config = require('../../../lib/core/config');
 const devApi = require('../../../lib/api/dev.api');
 const devCaInstall = require('../../../lib/utils/dev-ca-install');
 const devHostsHelper = require('../../../lib/utils/dev-hosts-helper');
+const devSshConfigHelper = require('../../../lib/utils/dev-ssh-config-helper');
 const { generateCSR, readClientCertPem, readClientKeyPem, getCertValidNotAfter } = require('../../../lib/utils/dev-cert-helper');
 const { getRemoteDevAuth } = require('../../../lib/utils/remote-dev-auth');
 const { runDevInit, runDevRefresh } = require('../../../lib/commands/dev-init');
@@ -48,6 +63,11 @@ describe('dev-init command', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     devHostsHelper.runOptionalHostsSetup.mockResolvedValue(undefined);
+    devSshConfigHelper.ensureDevSshConfigBlock.mockResolvedValue({
+      ok: true,
+      configPath: '/home/user/.ssh/config',
+      hostAlias: 'dev01.dev.example.com'
+    });
     devCaInstall.isSslUntrustedError.mockReturnValue(false);
     devCaInstall.isSslHostnameMismatchError.mockReturnValue(false);
     config.setDeveloperId.mockResolvedValue(undefined);
@@ -231,6 +251,25 @@ describe('dev-init command', () => {
     expect(config.setRemoteServer).toHaveBeenCalledWith('https://dev.example.com');
     expect(config.mergeRemoteSettings).toHaveBeenCalled();
     expect(devApi.addSshKey).toHaveBeenCalled();
+    expect(devSshConfigHelper.ensureDevSshConfigBlock).toHaveBeenCalled();
+    const sshHint = logger.log.mock.calls.map(c => String(c[0])).find(s => s.includes('ssh dev01.dev.example.com'));
+    expect(sshHint).toBeDefined();
+  });
+
+  it('when SSH config already has the same user@host, logs unchanged and suggests existing Host alias', async() => {
+    devSshConfigHelper.ensureDevSshConfigBlock.mockResolvedValue({
+      ok: true,
+      configPath: '/home/user/.ssh/config',
+      hostAlias: 'mybuilder',
+      skippedDuplicate: true
+    });
+    await runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456' });
+    const unchanged = logger.log.mock.calls.map(c => String(c[0])).find(s => s.includes('already has'));
+    expect(unchanged).toBeDefined();
+    expect(unchanged).toContain('dev01@dev.example.com');
+    expect(unchanged).toContain('mybuilder');
+    const sshHint = logger.log.mock.calls.map(c => String(c[0])).find(s => s.includes('ssh mybuilder'));
+    expect(sshHint).toBeDefined();
   });
 
   it('accepts developer-id via kebab-case option (developer-id)', async() => {
@@ -252,6 +291,30 @@ describe('dev-init command', () => {
     await runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456' });
     const writeCalls = fs.writeFile.mock.calls.map(c => c[0]);
     expect(writeCalls.some(p => String(p).endsWith('ca.pem'))).toBe(true);
+  });
+
+  it('merges install-ca TLS PEM with issue-cert caCertificate in ca.pem (both trust roots)', async() => {
+    const sslErr = new Error('UNABLE_TO_VERIFY_LEAF_SIGNATURE');
+    devApi.getHealth
+      .mockRejectedValueOnce(sslErr)
+      .mockResolvedValueOnce(undefined);
+    devCaInstall.isSslUntrustedError.mockReturnValue(true);
+    devCaInstall.fetchInstallCa.mockResolvedValue(
+      Buffer.from('-----BEGIN CERTIFICATE-----\ntls-dev-root\n-----END CERTIFICATE-----')
+    );
+    devCaInstall.installCaPlatform.mockResolvedValue(undefined);
+    devCaInstall.promptInstallCa.mockResolvedValue(true);
+    devApi.issueCert.mockResolvedValue({
+      certificate: '-----BEGIN CERTIFICATE-----\ncert\n-----END CERTIFICATE-----',
+      caCertificate: '-----BEGIN CERTIFICATE-----\ninternal-signing-ca\n-----END CERTIFICATE-----'
+    });
+
+    await runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456' });
+
+    const caCall = fs.writeFile.mock.calls.find(c => String(c[0]).endsWith('ca.pem'));
+    expect(caCall).toBeDefined();
+    expect(caCall[1]).toContain('tls-dev-root');
+    expect(caCall[1]).toContain('internal-signing-ca');
   });
 
   it('normalizes escaped newlines in certificate and caCertificate when saving', async() => {

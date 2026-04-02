@@ -47,6 +47,10 @@ jest.mock('../../lib/utils/logger', () => ({
   info: jest.fn()
 }));
 
+jest.mock('../../lib/utils/help-builder', () => ({
+  buildCategorizedHelp: jest.fn(() => '')
+}));
+
 // Mock package.json to avoid Jest JSON transform issues
 jest.mock('../../package.json', () => ({
   name: '@aifabrix/builder',
@@ -56,6 +60,8 @@ jest.mock('../../package.json', () => ({
 
 const aifabrix = require('../../bin/aifabrix');
 const logger = require('../../lib/utils/logger');
+const { buildCategorizedHelp } = require('../../lib/utils/help-builder');
+const { Command } = require('commander');
 
 describe('AI Fabrix CLI Entry Point', () => {
   describe('initializeCLI', () => {
@@ -73,6 +79,23 @@ describe('AI Fabrix CLI Entry Point', () => {
 
       // Verify parse was called
       expect(mockParse).toHaveBeenCalled();
+    });
+
+    it('sets helpInformation to categorized help plus root footer', () => {
+      mockParse.mockClear();
+      buildCategorizedHelp.mockReturnValue('Usage: aifabrix test\n');
+
+      aifabrix.initializeCLI();
+
+      const program = Command.mock.results[Command.mock.results.length - 1].value;
+      expect(typeof program.helpInformation).toBe('function');
+      const text = program.helpInformation();
+
+      expect(buildCategorizedHelp).toHaveBeenCalledWith(program);
+      expect(text.startsWith('Usage: aifabrix test\n')).toBe(true);
+      expect(text).toContain('More:');
+      expect(text).toContain('aifabrix <command> --help');
+      expect(text).toContain('docs/commands/README.md');
     });
 
     it('should be exported as module', () => {

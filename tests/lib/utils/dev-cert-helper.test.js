@@ -10,7 +10,15 @@ const os = require('os');
 jest.mock('fs');
 jest.mock('child_process', () => ({ execSync: jest.fn() }));
 
-const { getCertDir, readClientCertPem, readClientKeyPem, getCertValidNotAfter } = require('../../../lib/utils/dev-cert-helper');
+const {
+  getCertDir,
+  readClientCertPem,
+  readClientKeyPem,
+  readServerCaPem,
+  getCertValidNotAfter,
+  normalizePemNewlines,
+  mergeCaPemBlocks
+} = require('../../../lib/utils/dev-cert-helper');
 const { execSync } = require('child_process');
 
 describe('dev-cert-helper', () => {
@@ -49,6 +57,33 @@ describe('dev-cert-helper', () => {
         throw new Error('EACCES');
       });
       expect(() => readClientCertPem('/certs/01')).toThrow('EACCES');
+    });
+  });
+
+  describe('readServerCaPem', () => {
+    it('returns ca content when ca.pem exists', () => {
+      const certDir = '/certs/01';
+      const caPath = path.join(certDir, 'ca.pem');
+      const content = '-----BEGIN CERTIFICATE-----\nCA\n-----END CERTIFICATE-----';
+      fs.readFileSync.mockReturnValue(content);
+      expect(readServerCaPem(certDir)).toBe(content);
+      expect(fs.readFileSync).toHaveBeenCalledWith(caPath, 'utf8');
+    });
+
+    it('returns null when ca.pem does not exist', () => {
+      fs.readFileSync.mockImplementation(() => {
+        const err = new Error('ENOENT');
+        err.code = 'ENOENT';
+        throw err;
+      });
+      expect(readServerCaPem('/certs/01')).toBeNull();
+    });
+
+    it('rethrows when read fails for non-ENOENT', () => {
+      fs.readFileSync.mockImplementation(() => {
+        throw new Error('EACCES');
+      });
+      expect(() => readServerCaPem('/certs/01')).toThrow('EACCES');
     });
   });
 
@@ -151,6 +186,55 @@ describe('dev-cert-helper', () => {
       fs.existsSync.mockReturnValue(true);
       execSync.mockReturnValue('invalid output');
       expect(getCertValidNotAfter('/certs/01')).toBeNull();
+    });
+  });
+
+  describe('normalizePemNewlines', () => {
+    it('returns non-strings unchanged', () => {
+      expect(normalizePemNewlines(null)).toBeNull();
+      expect(normalizePemNewlines(undefined)).toBeUndefined();
+      expect(normalizePemNewlines(42)).toBe(42);
+    });
+
+    it('replaces JSON-style escaped newlines with real newlines', () => {
+      const input = '-----BEGIN X-----\\nLINE\\n-----END X-----';
+      expect(normalizePemNewlines(input)).toBe('-----BEGIN X-----\nLINE\n-----END X-----');
+    });
+
+    it('leaves already-normal PEM unchanged', () => {
+      const pem = 'A\nB\nC';
+      expect(normalizePemNewlines(pem)).toBe(pem);
+    });
+  });
+
+  describe('mergeCaPemBlocks', () => {
+    const blockA = '-----BEGIN CERTIFICATE-----\nAAA\n-----END CERTIFICATE-----';
+    const blockB = '-----BEGIN CERTIFICATE-----\nBBB\n-----END CERTIFICATE-----';
+
+    it('returns null when no usable PEMs', () => {
+      expect(mergeCaPemBlocks()).toBeNull();
+      expect(mergeCaPemBlocks(null, undefined, '')).toBeNull();
+      expect(mergeCaPemBlocks('   ')).toBeNull();
+    });
+
+    it('returns a single trimmed block unchanged', () => {
+      expect(mergeCaPemBlocks(`  ${blockA}  `)).toBe(blockA);
+    });
+
+    it('joins distinct blocks with a blank line', () => {
+      const out = mergeCaPemBlocks(blockA, blockB);
+      expect(out).toBe(`${blockA}\n\n${blockB}`);
+    });
+
+    it('deduplicates identical blocks after trim and newline normalization', () => {
+      const escaped = '-----BEGIN CERTIFICATE-----\\nSAME\\n-----END CERTIFICATE-----';
+      const plain = '-----BEGIN CERTIFICATE-----\nSAME\n-----END CERTIFICATE-----';
+      expect(mergeCaPemBlocks(escaped, plain)).toBe(plain);
+    });
+
+    it('preserves first-seen order when merging multiple unique blocks', () => {
+      const out = mergeCaPemBlocks(blockB, blockA, blockB);
+      expect(out).toBe(`${blockB}\n\n${blockA}`);
     });
   });
 });
