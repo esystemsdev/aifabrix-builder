@@ -32,17 +32,17 @@ aifabrix dev init --developer-id 01 --server https://builder02.local --pin 12345
 - `--pin <pin>` - One-time PIN from your admin (`aifabrix dev pin <id>` on an admin machine)
 - `-y, --yes` - When the server certificate is untrusted: auto-install the development CA without prompting. When combined with `--add-hosts`: also skip the confirmation before editing the hosts file
 - `--no-install-ca` - Do not offer CA install; fail with manual instructions when the server certificate is untrusted
-- `--add-hosts` - After showing brief guidance, optionally add **one line** to this computer’s **hosts file** so the hostname in `--server` resolves (e.g. to a LAN IP). Does **not** configure wildcard DNS; see below
+- `--add-hosts` - After showing brief guidance, optionally append to this computer’s **hosts file** so names resolve (e.g. to a LAN IP). Adds the hostname from `--server` and **`dev` + your `--developer-id` + `.` + that hostname** (e.g. `dev02.builder02.local` for id `02` and server `https://builder02.local`) on one line when applicable. Does **not** support wildcard entries (`*.zone`); see below
 - `--hosts-ip <ip>` - IPv4 address to use for that hosts entry (skips DNS lookup and the interactive IP prompt when used with `--add-hosts`)
 
 **Process (order):**
-1. **Optional (`--add-hosts`):** Explain wildcard DNS vs hosts file; resolve or ask for an IP; confirm **(y/n)** before appending to the hosts file (unless `-y`). Writing the hosts file often requires an **elevated** terminal (Administrator on Windows, `sudo` on macOS/Linux). If the write fails, the CLI prints a command you can run manually with admin rights.
+1. **Optional (`--add-hosts`):** Explain wildcard DNS vs hosts file; resolve or ask for an IP; confirm **(y/n)** before appending to the hosts file (unless `-y`). Writing the hosts file often requires an **elevated** terminal (Administrator on Windows, `sudo` on macOS/Linux). If the write fails, the CLI prints a command you can run manually with admin rights. After this step, the CLI prints **your per-developer URL** (e.g. `https://dev02.builder02.local` when `--developer-id` is `02`), using the same scheme and port as `--server`.
 2. **Trust and reachability:** Health check to the Builder Server. If the certificate is not trusted, see **Untrusted certificate** below.
 3. **Certificate:** Request and save client cert and key; save **`ca.pem`** when the server provides a root CA (or reuse the CA fetched during install-ca) so later CLI commands and remote Docker can trust the same chain.
 4. **Config:** Merge remote settings into `~/.aifabrix/config.yaml` and set `remote-server`.
 5. **SSH key:** Register your public key for Mutagen sync when the server accepts it.
 
-**Local name resolution (`--add-hosts`):** Subdomain names such as `*.builder02.local` must be pointed at your server IP in **real DNS** (home router, internal DNS, Pi-hole, etc.). The **hosts file only supports exact hostnames**, not wildcards. This option adds a single line mapping the **hostname from `--server`** (e.g. `builder02.local`) to the IP you supply or confirm. **Default `dev init` (without `--add-hosts`) does not change the hosts file and does not require administrator rights for that step.**
+**Local name resolution (`--add-hosts`):** Wildcard names such as `*.builder02.local` cannot be represented in the hosts file; use **real DNS** (router, internal DNS, Pi-hole, etc.) for that. This option adds a line mapping the **hostname from `--server`** and, when you use `--developer-id`, **`devNN` + that hostname** (e.g. `192.168.1.25 builder02.local dev02.builder02.local`) so per-developer hostnames resolve without wildcard DNS. **Default `dev init` (without `--add-hosts`) does not change the hosts file and does not require administrator rights for that step.**
 
 **Untrusted certificate (typical on local Builder Servers):** If the health check fails because the certificate is self-signed or signed by a private root, the CLI can offer to download the development root CA from **`{server}/install-ca`**, install it into the **OS trust store** (helps browsers and some tools), and retry. Separately, the CLI keeps a copy as **`ca.pem`** next to your client cert so **its own** connections to that Builder Server keep working (the OS store alone is not always enough for the Node-based CLI). Use `--yes` to auto-accept CA install, or `--no-install-ca` to stop with instructions to install the CA manually. On Linux, full trust-store install may need `sudo`; see **`{server}/install-ca-help`** if offered.
 
@@ -82,7 +82,7 @@ Manage developers on the remote server. **Only when `remote-server` is set**; no
 
 - **dev add** – Create a new developer (profile on server).
 - **dev update** – Patch an existing developer's profile.
-- **dev pin** – Set or display a one-time PIN for onboarding (e.g. for `aifabrix dev init --pin`).
+- **dev pin** – Create a one-time PIN for onboarding. The CLI prints **two copy-paste commands** for the developer: a **standard** `dev init` line (when DNS or hosts already resolve the server hostname), and a **hosts-file** variant with `--add-hosts` (when the hostname does not resolve and DNS is not provided by the organisation). Optional **`--hosts-ip <IPv4>`** fills in the server’s LAN IP in that second command.
 - **dev delete** – Remove a developer from the server.
 - **dev list** – List developers (as returned by the API).
 
@@ -91,7 +91,7 @@ Manage developers on the remote server. **Only when `remote-server` is set**; no
 aifabrix dev list
 aifabrix dev add --developer-id <id> --name <name> --email <email> [--groups <items>]
 aifabrix dev update [developerId] [--name <name>] [--email <email>] [--groups <items>]
-aifabrix dev pin [developerId]
+aifabrix dev pin [developerId] [--hosts-ip <IPv4>]
 aifabrix dev delete <developer-id>
 ```
 

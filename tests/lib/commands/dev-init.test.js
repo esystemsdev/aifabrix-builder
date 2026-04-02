@@ -111,6 +111,7 @@ describe('dev-init command', () => {
     expect(devHostsHelper.runOptionalHostsSetup).toHaveBeenCalledWith(
       expect.objectContaining({
         baseUrl: 'https://builder02.local',
+        developerId: '01',
         hostsIp: '192.168.1.25',
         skipConfirm: true
       })

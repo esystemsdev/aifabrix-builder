@@ -8,6 +8,8 @@ const os = require('os');
 
 const {
   hostnameFromServerUrl,
+  hostsNamesForDevInit,
+  perDeveloperServerDisplayUrl,
   isValidIpv4,
   hostsFileHasHostname,
   runOptionalHostsSetup
@@ -53,6 +55,43 @@ describe('dev-hosts-helper', () => {
     it('returns false for missing file', () => {
       const p = path.join(os.tmpdir(), `no-hosts-${Date.now()}`);
       expect(hostsFileHasHostname(p, 'x')).toBe(false);
+    });
+  });
+
+  describe('hostsNamesForDevInit', () => {
+    it('returns primary only when developerId is missing', () => {
+      expect(hostsNamesForDevInit(undefined, 'builder02.local')).toEqual(['builder02.local']);
+      expect(hostsNamesForDevInit('', 'builder02.local')).toEqual(['builder02.local']);
+    });
+
+    it('appends devNN.primary when id set and primary is not already devNN', () => {
+      expect(hostsNamesForDevInit('02', 'builder02.local')).toEqual([
+        'builder02.local',
+        'dev02.builder02.local'
+      ]);
+    });
+
+    it('does not append when primary is an IPv4', () => {
+      expect(hostsNamesForDevInit('02', '192.168.1.25')).toEqual(['192.168.1.25']);
+    });
+
+    it('does not double-prefix when primary already looks like devNN.zone', () => {
+      expect(hostsNamesForDevInit('02', 'dev02.builder02.local')).toEqual(['dev02.builder02.local']);
+    });
+  });
+
+  describe('perDeveloperServerDisplayUrl', () => {
+    it('returns https URL with devNN host when applicable', () => {
+      expect(perDeveloperServerDisplayUrl('02', 'https://builder02.local')).toBe('https://dev02.builder02.local');
+    });
+
+    it('preserves non-default port', () => {
+      expect(perDeveloperServerDisplayUrl('02', 'https://builder02.local:8443')).toBe('https://dev02.builder02.local:8443');
+    });
+
+    it('returns null when no per-dev hostname', () => {
+      expect(perDeveloperServerDisplayUrl(undefined, 'https://builder02.local')).toBeNull();
+      expect(perDeveloperServerDisplayUrl('02', 'https://192.168.1.25')).toBeNull();
     });
   });
 

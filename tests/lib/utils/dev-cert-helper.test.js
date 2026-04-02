@@ -8,7 +8,7 @@ const fs = require('fs');
 const os = require('os');
 
 jest.mock('fs');
-jest.mock('child_process', () => ({ execSync: jest.fn() }));
+jest.mock('child_process', () => ({ execFileSync: jest.fn() }));
 
 const {
   getCertDir,
@@ -19,7 +19,7 @@ const {
   normalizePemNewlines,
   mergeCaPemBlocks
 } = require('../../../lib/utils/dev-cert-helper');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 describe('dev-cert-helper', () => {
   beforeEach(() => {
@@ -132,18 +132,19 @@ describe('dev-cert-helper', () => {
       expect(result).toHaveProperty('keyPem');
       expect(result.keyPem).toContain('PRIVATE KEY');
       expect(result.csrPem).toContain('CERTIFICATE REQUEST');
-      expect(execSync).toHaveBeenCalledWith(
-        expect.stringContaining('openssl req'),
-        expect.any(Object)
+      expect(execFileSync).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.arrayContaining(['req', '-new', '-newkey', 'rsa:2048', '-nodes', '-subj', '/CN=dev-01']),
+        expect.objectContaining({ encoding: 'utf8' })
       );
-      expect(execSync.mock.calls[0][0]).toContain('/CN=dev-01');
     });
 
     it('throws user-friendly error when openssl not found', () => {
       fs.mkdirSync.mockReturnValue(undefined);
-      execSync.mockImplementation(() => {
+      execFileSync.mockImplementation(() => {
         const err = new Error('openssl not found');
         err.message = 'openssl not found';
+        err.code = 'ENOENT';
         throw err;
       });
       fs.unlinkSync.mockImplementation(() => {});
@@ -157,34 +158,38 @@ describe('dev-cert-helper', () => {
     it('returns null when cert.pem does not exist', () => {
       fs.existsSync.mockReturnValue(false);
       expect(getCertValidNotAfter('/certs/01')).toBeNull();
-      expect(execSync).not.toHaveBeenCalled();
+      expect(execFileSync).not.toHaveBeenCalled();
     });
 
     it('returns Date when openssl returns notAfter', () => {
-      fs.existsSync.mockReturnValue(true);
-      execSync.mockReturnValue('notAfter=Dec 31 23:59:59 2026 GMT\n');
+      const certPath = path.join('/certs/01', 'cert.pem');
+      fs.existsSync.mockImplementation((p) => path.normalize(String(p)) === path.normalize(certPath));
+      execFileSync.mockReturnValue('notAfter=Dec 31 23:59:59 2026 GMT\n');
       const result = getCertValidNotAfter('/certs/01');
       expect(result).toBeInstanceOf(Date);
       expect(result.getUTCFullYear()).toBe(2026);
       expect(result.getUTCMonth()).toBe(11);
       expect(result.getUTCDate()).toBe(31);
-      expect(execSync).toHaveBeenCalledWith(
-        expect.stringContaining('openssl x509 -enddate -noout'),
-        expect.any(Object)
+      expect(execFileSync).toHaveBeenCalledWith(
+        expect.any(String),
+        ['x509', '-enddate', '-noout', '-in', path.normalize(certPath)],
+        expect.objectContaining({ encoding: 'utf8' })
       );
     });
 
     it('returns null when openssl throws', () => {
-      fs.existsSync.mockReturnValue(true);
-      execSync.mockImplementation(() => {
+      const certPath = path.join('/certs/01', 'cert.pem');
+      fs.existsSync.mockImplementation((p) => path.normalize(String(p)) === path.normalize(certPath));
+      execFileSync.mockImplementation(() => {
         throw new Error('openssl failed');
       });
       expect(getCertValidNotAfter('/certs/01')).toBeNull();
     });
 
     it('returns null when output has no notAfter line', () => {
-      fs.existsSync.mockReturnValue(true);
-      execSync.mockReturnValue('invalid output');
+      const certPath = path.join('/certs/01', 'cert.pem');
+      fs.existsSync.mockImplementation((p) => path.normalize(String(p)) === path.normalize(certPath));
+      execFileSync.mockReturnValue('invalid output');
       expect(getCertValidNotAfter('/certs/01')).toBeNull();
     });
   });
