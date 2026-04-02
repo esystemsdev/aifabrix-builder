@@ -55,8 +55,11 @@ module.exports = {
           'lib/utils/external-system-display.test.js',
           '/tests/lib/utils/cli-utils.test.js',
           '/tests/lib/utils/external-system-display.test.js',
+          '/tests/lib/utils/dev-hosts-helper.test.js',
           '\\\\tests\\\\lib\\\\utils\\\\cli-utils.test.js',
-          '\\\\tests\\\\lib\\\\utils\\\\external-system-display.test.js'
+          '\\\\tests\\\\lib\\\\utils\\\\external-system-display.test.js',
+          '\\\\tests\\\\lib\\\\utils\\\\dev-hosts-helper.test.js',
+          'lib/utils/dev-hosts-helper.test.js'
         ];
         if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
           patterns.push('/tests/local/');
@@ -70,6 +73,7 @@ module.exports = {
       maxWorkers: isCI ? 2 : '50%'
     },
     makeIsolatedProject('cli-utils', ['**/tests/lib/utils/cli-utils.test.js']),
-    makeIsolatedProject('external-system-display', ['**/tests/lib/utils/external-system-display.test.js'])
+    makeIsolatedProject('external-system-display', ['**/tests/lib/utils/external-system-display.test.js']),
+    makeIsolatedProject('dev-hosts-helper', ['**/tests/lib/utils/dev-hosts-helper.test.js'])
   ]
 };
