@@ -218,7 +218,7 @@ flowchart TD
 
 **Summary:** Refactoring and hardening the external-integration `**aifabrix repair`** flow for **v2.4.1** / Plan 346: remove legacy migration code, entityType-aware datasource repair, dimension and testPayload improvements, documentation and CLI help alignment, optional validator cleanup.
 
-**Affected areas:** CLI (`lib/cli/setup-utility.js`, `lib/commands/repair*.js`), validation (`lib/datasource/*`, `lib/validation/*`, `lib/utils/external-system-validators.js`), tests under `tests/lib/commands/` and possibly integration tests, user docs (`docs/commands/utilities.md`), JSON schema reference (`lib/schema/external-datasource.schema.json`).
+**Affected areas:** CLI (`lib/cli/setup-utility.js`, `lib/commands/repair*.js`), validation (`lib/datasource/`*, `lib/validation/*`, `lib/utils/external-system-validators.js`), tests under `tests/lib/commands/` and possibly integration tests, user docs (`docs/commands/utilities.md`), JSON schema reference (`lib/schema/external-datasource.schema.json`).
 
 **Plan type:** Development + refactoring + documentation (multi-type).
 
@@ -250,7 +250,7 @@ flowchart TD
 - Added **Overview**, **Rules and standards** (with table + key requirements), **Before development**, and **Definition of done**.
 - Linked [docs-rules.mdc](.cursor/rules/docs-rules.mdc) for `docs/commands/utilities.md` edits.
 - Corrected **Definition of done** to match [package.json](package.json) scripts (`build` vs `build:ci`).
-- Fixed markdown typos in **Documentation (required)**, `metadata.*`, `fk.*` / `dimension.*`, and §2 CLI/docs line.
+- Fixed markdown typos in **Documentation (required)**, `metadata.`*, `fk.*` / `dimension.*`, and §2 CLI/docs line.
 
 ### Recommendations
 

@@ -1121,4 +1121,21 @@ describe('Compose Generator Module', () => {
       });
     });
   });
+
+  describe('resolveMisoEnvironment', () => {
+    const { resolveMisoEnvironment } = composeGenerator;
+
+    it('defaults to dev', () => {
+      expect(resolveMisoEnvironment({})).toBe('dev');
+    });
+
+    it('returns tst or pro when env matches (case-insensitive)', () => {
+      expect(resolveMisoEnvironment({ env: 'TST' })).toBe('tst');
+      expect(resolveMisoEnvironment({ env: 'pro' })).toBe('pro');
+    });
+
+    it('maps unknown env to dev', () => {
+      expect(resolveMisoEnvironment({ env: 'staging' })).toBe('dev');
+    });
+  });
 });

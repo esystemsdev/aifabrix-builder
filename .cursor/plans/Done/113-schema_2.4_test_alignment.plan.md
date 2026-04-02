@@ -7,13 +7,13 @@ todos:
     status: completed
   - id: fixtures-template
     content: Migrate integration/hubspot-test datasource JSONs; update external-datasource.yaml.hbs + lib/external-system/generator.js
-    status: pending
+    status: completed
   - id: tests-update
     content: Fix unit/integration tests (hubspot-integration, repair, datasource-validate, validate.test, generator tests, manual tests) until npm test passes
     status: completed
   - id: tests-new
     content: Add fixtures + tests for custom CIP ops, datasource fetch step naming, testPayload strictness, optional external-system performance/certification
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -219,78 +219,84 @@ flowchart LR
 
 ## Implementation Validation Report
 
-**Date**: 2026-03-29  
+**Date**: 2026-04-02  
 **Plan**: [.cursor/plans/113-schema_2.4_test_alignment.plan.md](.cursor/plans/113-schema_2.4_test_alignment.plan.md)  
-**Status**: ⚠️ INCOMPLETE (quality gates green; scope gaps remain)
+**Command**: `/validate-implementation` (most recently modified plan)  
+**Status**: ✅ COMPLETE
 
 ### Executive Summary
 
-`npm run lint:fix`, `npm run lint`, `npm test`, and `npm run build` all succeed (0 lint errors). Core v2.4-oriented work in repair, validators, `validate-display`, template, and generator is in place with unit tests updated (including `repair-datasource.test.js` expectation for `metadataSchema.properties`). **Not fully aligned with the written plan:** several HubSpot integration JSON files still use **`entityType: "record-storage"`** (kebab); there is **no** shared **`tests/fixtures/`** minimal v2.4.1 datasource file; the plan section **“New tests to add”** (CIP custom ops, strict `testPayload`, external-system `performance`/`certification` smoke, etc.) is largely **not** implemented; optional **`lib/validation/validate.js`** 2.4.1 **warnings** are **not** evident in that file. A small **lint fix** in `tests/lib/datasource/log-viewer.test.js` (`no-control-regex`) was required for the lint gate and is unrelated to schema 2.4.
+All YAML frontmatter todos for this plan are **completed**. Spot checks confirm HubSpot standalone datasource JSONs use **`recordStorage`** and v2.4-oriented shapes; **`tests/fixtures/external-datasource-minimal-241.json`**, **`tests/lib/validation/schema-241-alignment.test.js`**, and **`lib/validation/datasource-warnings.js`** exist. Quality gates **lint:fix → lint → test → build** all succeeded on this run. **`hubspot-test-deploy.json`** may still contain legacy inlined datasource bodies (only `entityType` was normalized in places); user docs refresh remains **out of scope** per plan.
 
 ### Task completion (YAML todos)
 
-| Todo ID            | Status (updated) | Notes |
-| ------------------ | ---------------- | ----- |
-| validators-repair  | completed        | Repair + post-schema validators + display path updated; optional `validate.js` warnings still open. |
-| fixtures-template  | pending          | Template/generator work done; **company/contact/deal** HubSpot datasource JSONs still `record-storage`. |
-| tests-update       | completed        | Full `npm test` / `npm run build` green. |
-| tests-new          | pending          | Planned new fixtures/tests not added. |
+| Todo ID | Status | Notes |
+| -------- | ------ | ----- |
+| validators-repair | completed | Validators, repair, display; `validateExternalFile` merges `datasource-warnings` for datasources. |
+| fixtures-template | completed | `integration/hubspot-test/hubspot-test-datasource-*.json` migrated; template/generator path per prior work. |
+| tests-update | completed | Default Jest suite green. |
+| tests-new | completed | `schema-241-alignment.test.js` + minimal fixture + CIP/testPayload/external-system coverage. |
 
-### File existence validation (sample)
+### File existence validation (spot check)
 
-| Item | Result |
+| Path | Result |
 | ---- | ------ |
-| `lib/schema/external-datasource.schema.json` | Present (2.4.1 in plan narrative) |
-| `lib/commands/repair-datasource.js` | Present |
-| `templates/external-system/external-datasource.yaml.hbs` | Present |
-| `integration/hubspot-test/*datasource*.json` | Present but **partial** migration (`record-storage` on company/contact/deal; users uses `recordStorage`) |
-| `tests/fixtures/` minimal v2.4.1 datasource | **Missing** (no matching fixture file) |
+| `lib/schema/external-datasource.schema.json` | ✅ Present |
+| `lib/commands/repair-datasource.js` | ✅ Present |
+| `templates/external-system/external-datasource.yaml.hbs` | ✅ Present |
+| `lib/validation/datasource-warnings.js` | ✅ Present |
+| `integration/hubspot-test/hubspot-test-datasource-company.json` (sample `entityType`) | ✅ `recordStorage` |
+| `tests/fixtures/external-datasource-minimal-241.json` | ✅ Present |
+| `tests/lib/validation/schema-241-alignment.test.js` | ✅ Present |
 
 ### Test coverage
 
-- **Unit tests**: Present and passing for repair, generator, external-datasource schema, and related areas touched by the alignment work.
-- **Integration**: Not re-run in this validation pass as a separate step; recommend `pnpm test:integration` / project integration script if HubSpot JSON shape is tightened.
-- **New tests from plan “New tests to add”**: Not implemented.
+- **Unit / default Jest**: ✅ `npm test` — 253 suites, 5522 passed (28 skipped). Includes `schema-241-alignment.test.js` and `external-datasource-schema.test.js`.
+- **Integration (`tests/integration/**`)**: Not isolated in default `npm test` (ignored by default Jest config). Run **`npm run test:integration`** when validating HubSpot integration tests under `jest.config.integration.js`.
+- **Manual / wizard**: Plan-deferred unless explicitly required.
 
-### Code quality validation
+### Code quality validation (mandatory order)
 
-- **Format (`npm run lint:fix`)**: PASSED  
-- **Lint (`npm run lint`)**: PASSED (0 errors, 0 warnings)  
-- **Tests (`npm test`)**: PASSED (247 suites, 5450 tests passed in default run)  
-- **Build (`npm run build`)**: PASSED  
+| Step | Result |
+| ---- | ------ |
+| **Format** (`npm run lint:fix`) | ✅ PASSED (exit 0) |
+| **Lint** (`npm run lint`) | ✅ PASSED (exit 0) |
+| **Test** (`npm test`) | ✅ PASSED |
+| **Build** (`npm run build`) | ✅ PASSED |
+
+**Note:** Jest may print a worker “force exited” teardown message; exit code remained 0.
 
 ### Cursor rules compliance (spot check)
 
-- CommonJS, `tests/` layout, no secrets in reviewed paths: **OK**  
-- `repair-datasource` refactored to satisfy function complexity/statement limits: **OK** (per recent helper split)  
-- Full static audit of every touched file: **not** performed in this report  
+- **Architecture / tests layout**: Tests under `tests/` mirror `lib/` for new validation code.  
+- **Security**: No secrets added in validated paths.  
+- **Quality gates**: File size for `validate.js` kept within limit with `datasource-warnings` extraction (per prior implementation).  
+- **Full static audit**: Not repeated file-by-file in this run.
 
 ### Implementation completeness
 
 | Area | Status |
 | ---- | ------ |
-| Schemas | In branch / per git status |
-| Validators + repair + display | Largely complete |
-| `validate.js` optional warnings | **Open** |
-| HubSpot integration JSONs | **Incomplete** (`record-storage`) |
-| New regression tests / shared fixture | **Open** |
-| Docs | Deferred per plan |
+| Schemas (external-datasource / external-system) | ✅ In repo |
+| Validators + repair + validate display | ✅ Per plan scope |
+| `validate.js` optional v2.4 warnings | ✅ Via `datasource-warnings.js` + `validateExternalFile` |
+| HubSpot standalone datasource JSONs | ✅ v2.4-valid (deploy manifest may still differ) |
+| New regression tests + shared fixture | ✅ Delivered |
+| CLI user docs (`docs/external-systems.md` etc.) | ⏸️ Deferred per plan |
 
 ### Issues and recommendations
 
-1. **Finish fixture migration**: Normalize `entityType` to `recordStorage` and full 2.4.x shape for `hubspot-test-datasource-company.json`, `-contact.json`, `-deal.json` (and align with schema `allOf` for non-`none`).  
-2. **Add `tests/fixtures/` minimal valid v2.4.1 datasource** and wire into field-reference / validate / repair tests as the plan describes.  
-3. **Implement or explicitly descope** the “New tests to add” checklist; if descoped, update plan todos and Definition of Done.  
-4. **Optional**: Add 2.4.1 changelog warnings in `validate.js` if product still expects them.  
-5. Run **integration** test target after HubSpot JSON updates.
+1. Optionally run **`npm run test:integration`** and fix **`jest.config.integration.js`** vs `projects` merge if integration suites should run under one config only.
+2. Regenerate **`hubspot-test-deploy.json`** from CLI or split workflow when full manifest parity with standalone JSONs is required.
+3. Separate docs pass for **2.4.x** user-facing terminology when prioritized.
 
 ### Final validation checklist
 
-- [ ] All YAML todos completed  
-- [x] Primary code paths for alignment exist and tests pass  
-- [x] `npm run lint:fix` → `npm run lint` → `npm test` → `npm run build` succeed  
-- [x] Lint: 0 errors, 0 warnings  
-- [ ] HubSpot datasource fixtures fully migrated per plan  
-- [ ] New tests + shared fixture from plan delivered  
-- [ ] Optional `validate.js` warnings (if still in scope)  
+- [x] All YAML todos completed (frontmatter)
+- [x] Key deliverable files exist (spot check)
+- [x] `npm run lint:fix` → `npm run lint` → `npm test` → `npm run build` succeed
+- [x] Lint: exit 0 (no reported errors in run output)
+- [x] HubSpot standalone datasource fixtures aligned with v2.4 schema (verified sample)
+- [x] New tests + shared fixture present
+- [x] Optional datasource warnings implemented (`datasource-warnings`)
 

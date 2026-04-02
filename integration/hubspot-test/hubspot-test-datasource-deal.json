@@ -3,555 +3,112 @@
   "displayName": "HubSpot Deal",
   "description": "HubSpot deals datasource with field mappings for CRM deal data",
   "systemKey": "hubspot-test",
-  "entityType": "record-storage",
+  "entityType": "recordStorage",
   "resourceType": "deal",
   "enabled": true,
   "version": "1.0.0",
-  "primaryKey": ["id"],
+  "primaryKey": [
+    "id"
+  ],
+  "labelKey": [
+    "dealName"
+  ],
   "metadataSchema": {
     "type": "object",
+    "required": [
+      "id",
+      "externalId",
+      "properties"
+    ],
     "properties": {
       "id": {
-        "type": "string"
+        "type": "string",
+        "index": true
+      },
+      "externalId": {
+        "type": "string",
+        "index": true
+      },
+      "dealName": {
+        "type": "string",
+        "filter": true
       },
       "properties": {
         "type": "object",
-        "properties": {
-          "dealname": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "amount": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "deal_currency_code": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "dealstage": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "pipeline": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "closedate": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "dealtype": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "createdate": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "hs_lastmodifieddate": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          }
-        }
+        "additionalProperties": true
       },
       "associations": {
         "type": "object",
-        "properties": {
-          "companies": {
-            "type": "object",
-            "properties": {
-              "results": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "contacts": {
-            "type": "object",
-            "properties": {
-              "results": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+        "additionalProperties": true
       }
+    }
+  },
+  "dimensions": {
+    "stage": {
+      "type": "local",
+      "field": "stage"
     },
-    "required": [
-      "id",
-      "properties"
-    ]
+    "pipeline": {
+      "type": "local",
+      "field": "pipeline"
+    }
   },
   "fieldMappings": {
-    "dimensions": {
-      "stage": "metadata.stage",
-      "pipeline": "metadata.pipeline"
-    },
     "attributes": {
       "id": {
-        "expression": "{{id}}",
-        "type": "string",
-        "description": "Unique deal identifier",
-        "indexed": true
+        "expression": "{{raw.id}}"
+      },
+      "externalId": {
+        "expression": "{{raw.id}}"
       },
       "dealName": {
-        "expression": "{{properties.dealname.value}} | trim",
-        "type": "string",
-        "description": "Deal name",
-        "indexed": false
+        "expression": "{{raw.properties.dealname.value}} | trim"
       },
       "amount": {
-        "expression": "{{properties.amount.value}}",
-        "type": "string",
-        "description": "Deal amount",
-        "indexed": false
+        "expression": "{{raw.properties.amount.value}}"
       },
       "currency": {
-        "expression": "{{properties.deal_currency_code.value}} | toUpper | trim",
-        "type": "string",
-        "description": "Currency code",
-        "indexed": false
+        "expression": "{{raw.properties.deal_currency_code.value}} | toUpper | trim"
       },
       "stage": {
-        "expression": "{{properties.dealstage.value}} | trim",
-        "type": "string",
-        "description": "Deal stage for ABAC filtering",
-        "indexed": false
+        "expression": "{{raw.properties.dealstage.value}} | trim"
       },
       "pipeline": {
-        "expression": "{{properties.pipeline.value}} | trim",
-        "type": "string",
-        "description": "Pipeline name for ABAC filtering",
-        "indexed": false
+        "expression": "{{raw.properties.pipeline.value}} | trim"
       },
       "closeDate": {
-        "expression": "{{properties.closedate.value}}",
-        "type": "string",
-        "description": "Expected close date",
-        "indexed": false
+        "expression": "{{raw.properties.closedate.value}}"
       },
       "dealType": {
-        "expression": "{{properties.dealtype.value}} | trim",
-        "type": "string",
-        "description": "Deal type",
-        "indexed": false
-      },
-      "associatedCompany": {
-        "expression": "record_ref:customer",
-        "type": "string",
-        "description": "Associated company reference (record reference)",
-        "indexed": false
+        "expression": "{{raw.properties.dealtype.value}} | trim"
       },
       "associatedContacts": {
-        "expression": "{{associations.contacts.results}}",
-        "type": "array",
-        "description": "Array of associated contact IDs",
-        "indexed": false
+        "expression": "{{raw.associations.contacts.results}}"
       },
       "createdAt": {
-        "expression": "{{properties.createdate.value}}",
-        "type": "string",
-        "description": "Creation timestamp",
-        "indexed": false
+        "expression": "{{raw.properties.createdate.value}}"
       },
       "updatedAt": {
-        "expression": "{{properties.hs_lastmodifieddate.value}}",
-        "type": "string",
-        "description": "Last modification timestamp",
-        "indexed": false
-      }
-    },
-    "compiledAttributes": {
-      "id": {
-        "raw_path": [
-          "id"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Unique deal identifier",
-        "indexed": true
-      },
-      "dealName": {
-        "raw_path": [
-          "properties",
-          "dealname",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Deal name",
-        "indexed": false
-      },
-      "amount": {
-        "raw_path": [
-          "properties",
-          "amount",
-          "value"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Deal amount",
-        "indexed": false
-      },
-      "currency": {
-        "raw_path": [
-          "properties",
-          "deal_currency_code",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "toUpper",
-            "args": []
-          },
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Currency code",
-        "indexed": false
-      },
-      "stage": {
-        "raw_path": [
-          "properties",
-          "dealstage",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Deal stage for ABAC filtering",
-        "indexed": false
-      },
-      "pipeline": {
-        "raw_path": [
-          "properties",
-          "pipeline",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Pipeline name for ABAC filtering",
-        "indexed": false
-      },
-      "closeDate": {
-        "raw_path": [
-          "properties",
-          "closedate",
-          "value"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Expected close date",
-        "indexed": false
-      },
-      "dealType": {
-        "raw_path": [
-          "properties",
-          "dealtype",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Deal type",
-        "indexed": false
-      },
-      "associatedContacts": {
-        "raw_path": [
-          "associations",
-          "contacts",
-          "results"
-        ],
-        "functions": [],
-        "type": "array",
-        "required": false,
-        "description": "Array of associated contact IDs",
-        "indexed": false
-      },
-      "createdAt": {
-        "raw_path": [
-          "properties",
-          "createdate",
-          "value"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Creation timestamp",
-        "indexed": false
-      },
-      "updatedAt": {
-        "raw_path": [
-          "properties",
-          "hs_lastmodifieddate",
-          "value"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Last modification timestamp",
-        "indexed": false
-      }
-    },
-    "compiledFields": {
-      "id": {
-        "raw_path": [
-          "id"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Unique deal identifier",
-        "indexed": true
-      },
-      "dealName": {
-        "raw_path": [
-          "properties",
-          "dealname",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Deal name",
-        "indexed": false
-      },
-      "amount": {
-        "raw_path": [
-          "properties",
-          "amount",
-          "value"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Deal amount",
-        "indexed": false
-      },
-      "currency": {
-        "raw_path": [
-          "properties",
-          "deal_currency_code",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "toUpper",
-            "args": []
-          },
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Currency code",
-        "indexed": false
-      },
-      "stage": {
-        "raw_path": [
-          "properties",
-          "dealstage",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Deal stage for ABAC filtering",
-        "indexed": false
-      },
-      "pipeline": {
-        "raw_path": [
-          "properties",
-          "pipeline",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Pipeline name for ABAC filtering",
-        "indexed": false
-      },
-      "closeDate": {
-        "raw_path": [
-          "properties",
-          "closedate",
-          "value"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Expected close date",
-        "indexed": false
-      },
-      "dealType": {
-        "raw_path": [
-          "properties",
-          "dealtype",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Deal type",
-        "indexed": false
-      },
-      "associatedContacts": {
-        "raw_path": [
-          "associations",
-          "contacts",
-          "results"
-        ],
-        "functions": [],
-        "type": "array",
-        "required": false,
-        "description": "Array of associated contact IDs",
-        "indexed": false
-      },
-      "createdAt": {
-        "raw_path": [
-          "properties",
-          "createdate",
-          "value"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Creation timestamp",
-        "indexed": false
-      },
-      "updatedAt": {
-        "raw_path": [
-          "properties",
-          "hs_lastmodifieddate",
-          "value"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Last modification timestamp",
-        "indexed": false
+        "expression": "{{raw.properties.hs_lastmodifieddate.value}}"
       }
     }
   },
   "exposed": {
-    "attributes": [
-      "id",
-      "dealName",
-      "amount",
-      "currency",
-      "stage",
-      "pipeline",
-      "closeDate",
-      "dealType",
-      "associatedCompany",
-      "associatedContacts",
-      "createdAt",
-      "updatedAt"
-    ],
-    "description": "Exposed fields for HubSpot deals"
+    "description": "Exposed fields for HubSpot deals",
+    "schema": {
+      "id": "metadata.id",
+      "externalId": "metadata.externalId",
+      "dealName": "metadata.dealName",
+      "amount": "metadata.amount",
+      "currency": "metadata.currency",
+      "stage": "metadata.stage",
+      "pipeline": "metadata.pipeline",
+      "closeDate": "metadata.closeDate",
+      "dealType": "metadata.dealType",
+      "associatedContacts": "metadata.associatedContacts",
+      "createdAt": "metadata.createdAt",
+      "updatedAt": "metadata.updatedAt"
+    }
   },
   "openapi": {
     "enabled": true,

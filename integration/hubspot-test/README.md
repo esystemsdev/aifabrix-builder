@@ -8,6 +8,37 @@ HubSpot CRM integration with OpenAPI support for companies, contacts, and deals
 - **System Type**: `openapi`
 - **Datasources**: 4
 
+## Regenerating files with the CLI (recommended)
+
+Datasource and system JSON under this folder are **normally produced by the Builder**, not edited by hand for structural/schema changes. Use one of these flows (from the **repository root**):
+
+1. **Interactive wizard** (writes to `integration/hubspot-test/` when the app key is `hubspot-test`):
+
+   ```bash
+   aifabrix wizard hubspot-test
+   ```
+
+2. **Headless wizard – known platform HubSpot** (same folder; needs dataplane + auth):
+
+   ```bash
+   node bin/aifabrix.js wizard \
+     --config integration/hubspot-test/wizard-hubspot-test-headless.yaml \
+     --controller <YOUR_CONTROLLER_URL> \
+     --environment <YOUR_ENV>
+   ```
+
+   Edit `deployment.controller` / `deployment.environment` in that YAML if you prefer not to pass flags.
+
+3. **Helper script** (generates a temporary wizard config and runs the CLI; defaults OpenAPI to `companies.json` in this directory):
+
+   ```bash
+   node integration/hubspot-test/create-hubspot.js --name hubspot-test --keep-wizard-files
+   ```
+
+After regeneration, run `aifabrix validate hubspot-test --type external` and the HubSpot integration tests as needed.
+
+Committed copies may still be **trimmed or adjusted** for repo tests (e.g. deterministic fields); prefer changing **generators/templates** in `lib/` and `templates/` when defaults should change for everyone.
+
 ## Files
 
 - `application.yaml` – Application configuration with `app` and `externalIntegration` blocks

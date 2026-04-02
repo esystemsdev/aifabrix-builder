@@ -128,6 +128,7 @@ jest.mock('fs', () => {
 
 const secretsEnvWrite = require('../../../lib/core/secrets-env-write');
 const composeGenerator = require('../../../lib/utils/compose-generator');
+const dockerUtils = require('../../../lib/utils/docker');
 const { prepareEnvironment, checkPrerequisites, startContainer } = require('../../../lib/app/run-helpers');
 const fs = require('fs');
 const { resolveVersionForApp } = require('../../../lib/utils/image-version');
@@ -239,6 +240,44 @@ describe('prepareEnvironment - port for run vs run --reload', () => {
 });
 
 describe('startContainer', () => {
+  beforeEach(() => {
+    dockerUtils.ensureDockerAndCompose.mockResolvedValue('docker compose');
+  });
+
+  it('uses docker run when Compose is missing and app opts out of database/redis', async() => {
+    const childExec = require('child_process').exec;
+    dockerUtils.ensureDockerAndCompose.mockRejectedValueOnce(new Error('Docker Compose is not available'));
+    const appConfig = {
+      developerId: 0,
+      port: 3000,
+      requires: { database: false, redis: false, storage: true },
+      image: { name: 'builder-server', tag: 'latest' },
+      healthCheck: { path: '/health' }
+    };
+    await startContainer('builder-server', '/tmp/compose.yaml', 3000, appConfig, {
+      runEnvPath: '/tmp/.env.run',
+      runOptions: {},
+      misoEnvironment: 'dev'
+    });
+    expect(childExec).toHaveBeenCalledWith(
+      expect.stringMatching(/docker run -d[\s\S]*builder-server:latest/),
+      expect.any(Function)
+    );
+  });
+
+  it('rethrows compose error when app needs database', async() => {
+    dockerUtils.ensureDockerAndCompose.mockRejectedValueOnce(new Error('Docker Compose is not available'));
+    const appConfig = {
+      developerId: 0,
+      requires: { database: true, redis: false, databases: [{ name: 'myapp' }] },
+      image: { name: 'myapp', tag: 'latest' },
+      healthCheck: { path: '/health' }
+    };
+    await expect(
+      startContainer('myapp', '/tmp/compose.yaml', 3000, appConfig, { runOptions: {} })
+    ).rejects.toThrow('Docker Compose is not available');
+  });
+
   it('deletes runEnvPath (.env.run) after successful start (ISO 27K)', async() => {
     const runEnvPath = '/home/.aifabrix/applications/.env.run';
     const appConfig = { developerId: 0, healthCheck: { path: '/health' } };
@@ -334,6 +373,131 @@ describe('checkPrerequisites - version resolution', () => {
 
     await expect(checkPrerequisites('myapp', appConfig, false, true))
       .rejects.toThrow(/Run 'aifabrix build myapp' first/);
+  });
+});
+
+describe('checkPrerequisites - infra health from application.yaml requires', () => {
+  const infra = require('../../../lib/infrastructure');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    checkImageExists.mockResolvedValue(true);
+    resolveVersionForApp.mockResolvedValue({ version: '1.0.0', fromImage: false, updated: false });
+  });
+
+  it('skips checkInfraHealth when requires.database and requires.redis are false', async() => {
+    const cfg = {
+      port: 3000,
+      image: { name: 'aifabrix/builder-server', tag: 'latest' },
+      requires: { database: false, redis: false }
+    };
+    await checkPrerequisites('builder-server', cfg, false, false, {});
+    expect(infra.checkInfraHealth).not.toHaveBeenCalled();
+  });
+
+  it('calls checkInfraHealth with postgres only when database true and redis false', async() => {
+    infra.checkInfraHealth.mockResolvedValue({ postgres: 'healthy', pgadmin: 'healthy' });
+    const cfg = {
+      port: 3000,
+      image: { name: 'aifabrix/myapp', tag: 'latest' },
+      requires: { database: true, redis: false, databases: [{ name: 'myapp' }] }
+    };
+    await checkPrerequisites('myapp', cfg, false, false, {});
+    expect(infra.checkInfraHealth).toHaveBeenCalledWith(null, { postgres: true, redis: false });
+  });
+
+  it('calls checkInfraHealth with redis only when requires.redis true and database false', async() => {
+    infra.checkInfraHealth.mockResolvedValue({ redis: 'healthy', 'redis-commander': 'healthy' });
+    const cfg = {
+      port: 3000,
+      image: { name: 'aifabrix/myapp', tag: 'latest' },
+      requires: { database: false, redis: true }
+    };
+    await checkPrerequisites('myapp', cfg, false, false, {});
+    expect(infra.checkInfraHealth).toHaveBeenCalledWith(null, { postgres: false, redis: true });
+  });
+
+  it('calls checkInfraHealth with empty options when requires block is absent', async() => {
+    const cfg = {
+      port: 3000,
+      image: { name: 'aifabrix/myapp', tag: 'latest' }
+    };
+    await checkPrerequisites('myapp', cfg, false, false, {});
+    expect(infra.checkInfraHealth).toHaveBeenCalledWith(null, {});
+  });
+
+  it('requires postgres when requires.databases is non-empty even if database flag is false', async() => {
+    infra.checkInfraHealth.mockResolvedValue({ postgres: 'healthy', pgadmin: 'healthy' });
+    const cfg = {
+      port: 3000,
+      image: { name: 'aifabrix/myapp', tag: 'latest' },
+      requires: { database: false, redis: false, databases: [{ name: 'legacy' }] }
+    };
+    await checkPrerequisites('myapp', cfg, false, false, {});
+    expect(infra.checkInfraHealth).toHaveBeenCalledWith(null, { postgres: true, redis: false });
+  });
+
+  it('skips infra when requires is an empty object', async() => {
+    const cfg = {
+      port: 3000,
+      image: { name: 'aifabrix/myapp', tag: 'latest' },
+      requires: {}
+    };
+    await checkPrerequisites('myapp', cfg, false, false, {});
+    expect(infra.checkInfraHealth).not.toHaveBeenCalled();
+  });
+
+  it('calls checkInfraHealth with postgres and redis when both are required', async() => {
+    infra.checkInfraHealth.mockResolvedValue({
+      postgres: 'healthy',
+      redis: 'healthy',
+      pgadmin: 'healthy',
+      'redis-commander': 'healthy'
+    });
+    const cfg = {
+      port: 3000,
+      image: { name: 'aifabrix/myapp', tag: 'latest' },
+      requires: { database: true, redis: true, databases: [{ name: 'myapp' }] }
+    };
+    await checkPrerequisites('myapp', cfg, false, false, {});
+    expect(infra.checkInfraHealth).toHaveBeenCalledWith(null, { postgres: true, redis: true });
+  });
+
+  it('treats requires.database true as needing postgres without databases array', async() => {
+    infra.checkInfraHealth.mockResolvedValue({ postgres: 'healthy', pgadmin: 'healthy' });
+    const cfg = {
+      port: 3000,
+      image: { name: 'aifabrix/myapp', tag: 'latest' },
+      requires: { database: true, redis: false }
+    };
+    await checkPrerequisites('myapp', cfg, false, false, {});
+    expect(infra.checkInfraHealth).toHaveBeenCalledWith(null, { postgres: true, redis: false });
+  });
+
+  it('does not call checkInfraHealth when skipInfraCheck is true', async() => {
+    const cfg = {
+      port: 3000,
+      image: { name: 'aifabrix/myapp', tag: 'latest' },
+      requires: { database: false, redis: false }
+    };
+    await checkPrerequisites('myapp', cfg, false, true, {});
+    expect(infra.checkInfraHealth).not.toHaveBeenCalled();
+  });
+
+  it('throws when selective infra reports an unhealthy required service', async() => {
+    infra.checkInfraHealth.mockResolvedValue({
+      redis: 'unhealthy',
+      'redis-commander': 'healthy'
+    });
+    const cfg = {
+      port: 3000,
+      image: { name: 'aifabrix/myapp', tag: 'latest' },
+      requires: { database: false, redis: true }
+    };
+    await expect(checkPrerequisites('myapp', cfg, false, false, {})).rejects.toThrow(
+      'Infrastructure services not healthy'
+    );
+    expect(infra.checkInfraHealth).toHaveBeenCalledWith(null, { postgres: false, redis: true });
   });
 });
 

@@ -12,7 +12,39 @@
 
 const { execSync } = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+
+const PACKAGE_NAME = '@aifabrix/builder';
+/** Primary CLI name used for “current version” before link */
+const PRIMARY_BIN = 'aifabrix';
+
+/**
+ * Default PNPM_HOME when not set in the environment (matches `pnpm setup` on Linux/macOS; Windows uses LOCALAPPDATA).
+ * @returns {string} Resolved PNPM global bin home directory
+ */
+function defaultPnpmHome() {
+  if (process.env.PNPM_HOME) {
+    return process.env.PNPM_HOME;
+  }
+  if (process.platform === 'win32' && process.env.LOCALAPPDATA) {
+    return path.join(process.env.LOCALAPPDATA, 'pnpm');
+  }
+  return path.join(os.homedir(), '.local', 'share', 'pnpm');
+}
+
+/**
+ * Environment with PNPM_HOME and PATH set so `pnpm link --global` can find the global bin dir
+ * (same idea as aifabrix-setup/scripts/install-local.js).
+ * @returns {NodeJS.ProcessEnv} Copy of process.env with pnpm paths prepended
+ */
+function pnpmEnv() {
+  const env = { ...process.env };
+  const pnpmHome = defaultPnpmHome();
+  env.PNPM_HOME = pnpmHome;
+  env.PATH = [pnpmHome, env.PATH].filter(Boolean).join(path.delimiter);
+  return env;
+}
 
 /**
  * Detect which package manager is being used (pnpm or npm)
@@ -20,26 +52,72 @@ const path = require('path');
  */
 function detectPackageManager() {
   try {
-    // Check if pnpm is available
     execSync('which pnpm', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     return 'pnpm';
   } catch {
-    // Fall back to npm
     return 'npm';
   }
 }
 
 /**
- * Get currently installed version of aifabrix CLI
- * @returns {string|null} Version string or null if not installed
+ * Reads package.json `bin` keys (or default primary bin).
+ * @returns {string[]} CLI executable names published by this package
  */
-function getCurrentVersion() {
+function listCliBinNames() {
   try {
-    const version = execSync('aifabrix --version', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-    return version;
+    const packageJsonPath = path.join(__dirname, '..', 'package.json');
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    const bin = packageJson.bin;
+    if (!bin) return [PRIMARY_BIN];
+    if (typeof bin === 'string') return [PRIMARY_BIN];
+    return Object.keys(bin);
+  } catch {
+    return [PRIMARY_BIN];
+  }
+}
+
+/**
+ * @param {string} binName - CLI name on PATH
+ * @param {NodeJS.ProcessEnv} [env] - Optional env (e.g. pnpm-adjusted PATH)
+ * @returns {string|null} Trimmed `--version` output or null if command fails
+ */
+function getBinVersion(binName, env) {
+  try {
+    return execSync(`${binName} --version`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      env: env || process.env
+    }).trim();
   } catch {
     return null;
   }
+}
+
+/**
+ * @param {string} binName - CLI name on PATH
+ * @param {NodeJS.ProcessEnv} [env] - Optional env for `which`
+ * @returns {string|null} First resolved path or null
+ */
+function getBinPath(binName, env) {
+  try {
+    const which = execSync(`which ${binName}`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      env: env || process.env
+    }).trim();
+    return which || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get currently installed version of primary CLI (aifabrix)
+ * @param {NodeJS.ProcessEnv} [env] - Optional env for the version probe
+ * @returns {string|null} Trimmed version or null if not on PATH
+ */
+function getCurrentVersion(env) {
+  return getBinVersion(PRIMARY_BIN, env);
 }
 
 /**
@@ -82,52 +160,109 @@ function displayVersionInfo(currentVersion, packageVersion) {
 }
 
 /**
+ * If another bin name (e.g. `af`) resolves earlier on PATH to an old install, warn.
+ * @param {string|null} expectedVersion - Version from the linked package (pnpm env)
+ * @param {string[]} binNames - All bin entries from package.json
+ * @returns {void}
+ */
+function warnStaleAliasBinsOnPath(expectedVersion, binNames) {
+  if (!expectedVersion) return;
+  const stale = [];
+  for (const name of binNames) {
+    const v = getBinVersion(name, process.env);
+    if (v !== null && v !== undefined && v !== expectedVersion) {
+      stale.push({ name, version: v, path: getBinPath(name, process.env) });
+    }
+  }
+  if (!stale.length) return;
+  console.log('\n⚠️  Some CLI aliases still point at a different install than this link:');
+  for (const row of stale) {
+    console.log(`   ${row.name} --version → ${row.version}  (${row.path || 'unknown'})`);
+  }
+  console.log(`   Linked package is ${expectedVersion}. Usually another copy is earlier on PATH (often from an old npm global).`);
+  console.log('   Try:  which -a af   which -a aifabrix');
+  console.log(`   Then: npm uninstall -g ${PACKAGE_NAME}   (or remove the stale path that is not under pnpm)`);
+  console.log('   Or:  hash -r  and open a new terminal after fixing PATH.');
+}
+
+/**
+ * Prints pnpm-specific hints when shell PATH still resolves an old binary.
+ * @param {boolean} usedPnpm - Whether link used pnpm
+ * @param {string|null} newVersion - Version after link
+ * @param {Object} [pathInfo] - Shell vs linked path probe
+ * @param {string|null} [pathInfo.versionInShell] - Version from default shell env
+ * @param {string|null} [pathInfo.linkedPath] - Path under pnpm env
+ * @returns {void}
+ */
+function printPnpmPathHints(usedPnpm, newVersion, pathInfo) {
+  if (!usedPnpm) return;
+  const shellVersion = pathInfo && pathInfo.versionInShell;
+  const linkedPath = pathInfo && pathInfo.linkedPath;
+  if (newVersion && shellVersion !== newVersion) {
+    console.log(`\n⚠️  Your shell is still running an older ${PRIMARY_BIN} (${shellVersion || 'unknown'}).`);
+    console.log(`   The linked binary is at: ${linkedPath || 'unknown'}`);
+    console.log('   Fix: run  source ~/.bashrc  (or open a new terminal).');
+    console.log('   If it still shows the old version, put pnpm\'s global bin first in PATH, or run:');
+    console.log(`   npm uninstall -g ${PACKAGE_NAME}`);
+  } else {
+    console.log('If you still see an old version, run: source ~/.bashrc  (or open a new terminal)');
+  }
+}
+
+/**
  * Display success message with version information
  * @param {string|null} currentVersion - Version before linking
  * @param {string|null} newVersion - Version after linking
+ * @param {boolean} [usedPnpm] - Link used pnpm
+ * @param {Object} [pathInfo] - Optional shell vs linked path info
+ * @param {string|null} [pathInfo.versionInShell] - Version from default shell env
+ * @param {string|null} [pathInfo.linkedPath] - Path under pnpm env
+ * @param {string[]} [binNames] - Bin names from package.json
  * @returns {void}
  */
-function displaySuccessMessage(currentVersion, newVersion) {
+function displaySuccessMessage(currentVersion, newVersion, usedPnpm, pathInfo, binNames) {
+  const bins = binNames && binNames.length ? binNames : [PRIMARY_BIN];
   console.log('\n✅ Successfully linked!');
   if (currentVersion && newVersion && currentVersion !== newVersion) {
     console.log(`📊 Version updated: ${currentVersion} → ${newVersion}`);
   } else if (newVersion) {
     console.log(`📊 Installed version: ${newVersion}`);
   }
-  console.log('Run "aifabrix --version" to verify.');
+  const verifyHint =
+    bins.length > 1
+      ? bins.map((b) => `${b} --version`).join('" or "')
+      : `${bins[0]} --version`;
+  console.log(`Run "${verifyHint}" to verify.`);
+
+  printPnpmPathHints(usedPnpm, newVersion, pathInfo);
+  warnStaleAliasBinsOnPath(newVersion, bins);
 }
 
 /**
- * Run pnpm link --global and npm link from project root (handles pnpm global bin not set).
- * @param {string} projectRoot - Path to project root
+ * Runs global link and reports success (throws on failure).
+ * @param {string} pm - 'pnpm' or 'npm'
+ * @param {string|null} currentVersion - Version before link
+ * @param {string[]} binNames - CLI bin names
  * @returns {void}
- * @throws {Error} If linking fails when pnpm global bin is not configured
  */
-function runPnpmLink(projectRoot) {
-  let pnpmLinked = false;
-  try {
-    execSync('pnpm link --global', { stdio: 'inherit', cwd: projectRoot });
-    pnpmLinked = true;
-  } catch (pnpmErr) {
-    const msg = (pnpmErr.message || String(pnpmErr));
-    if (msg.includes('global bin directory') || msg.includes('ERR_PNPM_NO_GLOBAL_BIN_DIR')) {
-      console.log(
-        '⚠️  pnpm global bin is not set up. Run "pnpm setup" and add PNPM_HOME to PATH, or we will use npm link.\n'
-      );
-    } else {
-      throw pnpmErr;
-    }
-  }
-  try {
+function runGlobalLink(pm, currentVersion, binNames) {
+  const projectRoot = path.join(__dirname, '..');
+  const env = pm === 'pnpm' ? pnpmEnv() : undefined;
+  if (pm === 'pnpm') {
+    execSync('pnpm link --global', { stdio: 'inherit', cwd: projectRoot, env });
+  } else {
     execSync('npm link', { stdio: 'inherit', cwd: projectRoot });
-  } catch {
-    if (!pnpmLinked) {
-      console.error(
-        '\n💡 To fix: run "pnpm setup" and add the suggested line to your shell config, then run install:local again.'
-      );
-      throw new Error('Linking failed. pnpm global bin not configured and npm link failed.');
-    }
   }
+
+  const newVersion = getCurrentVersion(env);
+  let pathInfo;
+  if (pm === 'pnpm') {
+    pathInfo = {
+      versionInShell: getCurrentVersion(),
+      linkedPath: getBinPath(PRIMARY_BIN, env)
+    };
+  }
+  displaySuccessMessage(currentVersion, newVersion, pm === 'pnpm', pathInfo, binNames);
 }
 
 /**
@@ -137,21 +272,15 @@ function runPnpmLink(projectRoot) {
 function installLocal() {
   const pm = detectPackageManager();
   const packageVersion = getPackageVersion();
+  const binNames = listCliBinNames();
   const currentVersion = getCurrentVersion();
 
   console.log(`Detected package manager: ${pm}\n`);
   displayVersionInfo(currentVersion, packageVersion);
-  console.log('Linking @aifabrix/builder globally...\n');
+  console.log(`Linking ${PACKAGE_NAME} globally...\n`);
 
   try {
-    const projectRoot = path.join(__dirname, '..');
-    if (pm === 'pnpm') {
-      runPnpmLink(projectRoot);
-    } else {
-      execSync('npm link', { stdio: 'inherit', cwd: projectRoot });
-    }
-    const newVersion = getCurrentVersion();
-    displaySuccessMessage(currentVersion, newVersion);
+    runGlobalLink(pm, currentVersion, binNames);
   } catch (error) {
     console.error('\n❌ Failed to link package:', error.message);
     process.exit(1);
@@ -208,18 +337,15 @@ function uninstallLocal() {
   const packageVersion = getPackageVersion();
 
   console.log(`Detected package manager: ${pm}\n`);
-
-  // Show version information before unlinking
   displayUninstallVersionInfo(currentVersion, packageVersion);
-
-  console.log('Unlinking @aifabrix/builder globally...\n');
+  console.log(`Unlinking ${PACKAGE_NAME} globally...\n`);
 
   try {
     if (pm === 'pnpm') {
-      execSync('pnpm unlink --global @aifabrix/builder', { stdio: 'inherit' });
+      execSync(`pnpm unlink --global ${PACKAGE_NAME}`, { stdio: 'inherit', env: pnpmEnv() });
       displayUninstallSuccess(pm, currentVersion);
     } else {
-      execSync('npm unlink -g @aifabrix/builder', { stdio: 'inherit' });
+      execSync(`npm unlink -g ${PACKAGE_NAME}`, { stdio: 'inherit' });
       displayUninstallSuccess(pm, currentVersion);
     }
   } catch (error) {

@@ -62,16 +62,21 @@ describe('HubSpot Integration Tests', () => {
     return [];
   }
 
-  // Helper function to create test payloads matching HubSpot API structure
+  /**
+   * HubSpot-shaped API record for metadata + field-mapping checks.
+   * Duplicates the record under `raw` so v2.4 `{{raw....}}` expressions resolve in validateFieldMappings.
+   */
   function createTestPayload(type) {
     const basePayload = {
       id: 'test-id-123',
+      externalId: 'test-id-123',
       properties: {}
     };
 
+    let inner;
     switch (type) {
     case 'company':
-      return {
+      inner = {
         ...basePayload,
         properties: {
           name: { value: 'Acme Corp' },
@@ -85,9 +90,10 @@ describe('HubSpot Integration Tests', () => {
           hs_lastmodifieddate: { value: '2024-01-02T00:00:00Z' }
         }
       };
+      break;
 
     case 'contact':
-      return {
+      inner = {
         ...basePayload,
         properties: {
           firstname: { value: 'John' },
@@ -103,9 +109,10 @@ describe('HubSpot Integration Tests', () => {
           hs_lastmodifieddate: { value: '2024-01-02T00:00:00Z' }
         }
       };
+      break;
 
     case 'deal':
-      return {
+      inner = {
         ...basePayload,
         properties: {
           dealname: { value: 'Enterprise Deal' },
@@ -130,10 +137,13 @@ describe('HubSpot Integration Tests', () => {
           }
         }
       };
+      break;
 
     default:
-      return basePayload;
+      inner = basePayload;
     }
+
+    return { ...inner, raw: inner };
   }
 
   // Load files before all tests
@@ -310,13 +320,7 @@ describe('HubSpot Integration Tests', () => {
 
       it('should validate company datasource against external-datasource schema', () => {
         const valid = datasourceValidator(companyJson);
-        if (!valid) {
-          const errors = datasourceValidator.errors.map(err =>
-            `${err.instancePath || err.schemaPath} ${err.message}`
-          ).join(', ');
-          console.warn(`Schema validation warnings for company datasource: ${errors}`);
-        }
-        expect(datasourceValidator).toBeDefined();
+        expect(valid).toBe(true);
       });
 
       it('should have required company datasource fields', () => {
@@ -324,7 +328,7 @@ describe('HubSpot Integration Tests', () => {
         expect(companyJson.displayName).toBeDefined();
         expect(companyJson.description).toBeDefined();
         expect(companyJson.systemKey).toBe('hubspot-test');
-        expect(companyJson.entityType).toBe('record-storage');
+        expect(companyJson.entityType).toBe('recordStorage');
         expect(companyJson.resourceType).toBe('customer');
         expect(companyJson.enabled).toBe(true);
         expect(companyJson.version).toBeDefined();
@@ -341,10 +345,10 @@ describe('HubSpot Integration Tests', () => {
         expect(companyJson.metadataSchema.type).toBe('object');
       });
 
-      it('should have exposed fields for company', () => {
+      it('should have exposed schema for company', () => {
         expect(companyJson.exposed).toBeDefined();
-        expect(Array.isArray(companyJson.exposed.attributes)).toBe(true);
-        expect(companyJson.exposed.attributes.length).toBeGreaterThan(0);
+        expect(companyJson.exposed.schema).toBeDefined();
+        expect(Object.keys(companyJson.exposed.schema).length).toBeGreaterThan(0);
       });
 
       it('should have OpenAPI operations for company', () => {
@@ -367,13 +371,7 @@ describe('HubSpot Integration Tests', () => {
 
       it('should validate contact datasource against external-datasource schema', () => {
         const valid = datasourceValidator(contactJson);
-        if (!valid) {
-          const errors = datasourceValidator.errors.map(err =>
-            `${err.instancePath || err.schemaPath} ${err.message}`
-          ).join(', ');
-          console.warn(`Schema validation warnings for contact datasource: ${errors}`);
-        }
-        expect(datasourceValidator).toBeDefined();
+        expect(valid).toBe(true);
       });
 
       it('should have required contact datasource fields', () => {
@@ -381,7 +379,7 @@ describe('HubSpot Integration Tests', () => {
         expect(contactJson.displayName).toBeDefined();
         expect(contactJson.description).toBeDefined();
         expect(contactJson.systemKey).toBe('hubspot-test');
-        expect(contactJson.entityType).toBe('record-storage');
+        expect(contactJson.entityType).toBe('recordStorage');
         expect(contactJson.resourceType).toBe('contact');
         expect(contactJson.enabled).toBe(true);
         expect(contactJson.version).toBeDefined();
@@ -398,10 +396,10 @@ describe('HubSpot Integration Tests', () => {
         expect(contactJson.metadataSchema.type).toBe('object');
       });
 
-      it('should have exposed fields for contact', () => {
+      it('should have exposed schema for contact', () => {
         expect(contactJson.exposed).toBeDefined();
-        expect(Array.isArray(contactJson.exposed.attributes)).toBe(true);
-        expect(contactJson.exposed.attributes.length).toBeGreaterThan(0);
+        expect(contactJson.exposed.schema).toBeDefined();
+        expect(Object.keys(contactJson.exposed.schema).length).toBeGreaterThan(0);
       });
 
       it('should have OpenAPI operations for contact', () => {
@@ -424,13 +422,7 @@ describe('HubSpot Integration Tests', () => {
 
       it('should validate deal datasource against external-datasource schema', () => {
         const valid = datasourceValidator(dealJson);
-        if (!valid) {
-          const errors = datasourceValidator.errors.map(err =>
-            `${err.instancePath || err.schemaPath} ${err.message}`
-          ).join(', ');
-          console.warn(`Schema validation warnings for deal datasource: ${errors}`);
-        }
-        expect(datasourceValidator).toBeDefined();
+        expect(valid).toBe(true);
       });
 
       it('should have required deal datasource fields', () => {
@@ -438,7 +430,7 @@ describe('HubSpot Integration Tests', () => {
         expect(dealJson.displayName).toBeDefined();
         expect(dealJson.description).toBeDefined();
         expect(dealJson.systemKey).toBe('hubspot-test');
-        expect(dealJson.entityType).toBe('record-storage');
+        expect(dealJson.entityType).toBe('recordStorage');
         expect(dealJson.resourceType).toBe('deal');
         expect(dealJson.enabled).toBe(true);
         expect(dealJson.version).toBeDefined();
@@ -455,10 +447,10 @@ describe('HubSpot Integration Tests', () => {
         expect(dealJson.metadataSchema.type).toBe('object');
       });
 
-      it('should have exposed fields for deal', () => {
+      it('should have exposed schema for deal', () => {
         expect(dealJson.exposed).toBeDefined();
-        expect(Array.isArray(dealJson.exposed.attributes)).toBe(true);
-        expect(dealJson.exposed.attributes.length).toBeGreaterThan(0);
+        expect(dealJson.exposed.schema).toBeDefined();
+        expect(Object.keys(dealJson.exposed.schema).length).toBeGreaterThan(0);
       });
 
       it('should have OpenAPI operations for deal', () => {
@@ -568,23 +560,15 @@ describe('HubSpot Integration Tests', () => {
     describe('deal datasource field mappings', () => {
       it('should validate all field mapping expressions for deal', () => {
         const fields = dealJson.fieldMappings.attributes;
-        const errors = [];
         for (const [fieldName, fieldConfig] of Object.entries(fields)) {
           if (fieldConfig.expression) {
-            // Skip validation for record references (record_ref:xxx format)
-            if (fieldConfig.expression.startsWith('record_ref:')) {
-              continue;
-            }
             const validation = validateFieldMappingExpression(fieldConfig.expression);
+            expect(validation.isValid).toBe(true);
             if (!validation.isValid) {
-              errors.push(`Field '${fieldName}' has invalid expression: ${validation.error || 'Unknown error'}`);
+              throw new Error(`Field '${fieldName}' has invalid expression: ${validation.error}`);
             }
           }
         }
-        if (errors.length > 0) {
-          throw new Error(errors.join('; '));
-        }
-        expect(errors.length).toBe(0);
       });
 
       it('should validate field mappings against test payload for deal', () => {
@@ -689,11 +673,11 @@ describe('HubSpot Integration Tests', () => {
     });
 
     it('should have correct entityType and resourceType values', () => {
-      expect(companyJson.entityType).toBe('record-storage');
+      expect(companyJson.entityType).toBe('recordStorage');
       expect(companyJson.resourceType).toBe('customer');
-      expect(contactJson.entityType).toBe('record-storage');
+      expect(contactJson.entityType).toBe('recordStorage');
       expect(contactJson.resourceType).toBe('contact');
-      expect(dealJson.entityType).toBe('record-storage');
+      expect(dealJson.entityType).toBe('recordStorage');
       expect(dealJson.resourceType).toBe('deal');
     });
 
