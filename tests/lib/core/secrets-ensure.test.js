@@ -17,7 +17,8 @@ jest.mock('../../../lib/utils/paths', () => ({
 
 jest.mock('../../../lib/utils/remote-dev-auth', () => ({
   isRemoteSecretsUrl: jest.fn(),
-  getRemoteDevAuth: jest.fn()
+  getRemoteDevAuth: jest.fn(),
+  resolveSharedSecretsEndpoint: jest.fn(async(p) => p)
 }));
 
 jest.mock('../../../lib/api/dev.api', () => ({

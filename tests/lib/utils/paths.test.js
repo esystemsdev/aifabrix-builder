@@ -328,6 +328,44 @@ describe('Path Utilities - listIntegrationAppNames / listBuilderAppNames', () =>
   });
 });
 
+describe('Path Utilities - getAifabrixWork', () => {
+  let savedWork;
+
+  beforeEach(() => {
+    savedWork = process.env.AIFABRIX_WORK;
+    delete process.env.AIFABRIX_WORK;
+    jest.resetModules();
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    if (savedWork === undefined) {
+      delete process.env.AIFABRIX_WORK;
+    } else {
+      process.env.AIFABRIX_WORK = savedWork;
+    }
+  });
+
+  it('returns null when AIFABRIX_WORK unset in test env', () => {
+    const paths = require('../../../lib/utils/paths');
+    expect(paths.getAifabrixWork()).toBeNull();
+  });
+
+  it('returns resolved path from AIFABRIX_WORK when set', () => {
+    process.env.AIFABRIX_WORK = '  /tmp/my-work  ';
+    jest.resetModules();
+    const paths = require('../../../lib/utils/paths');
+    expect(paths.getAifabrixWork()).toBe(path.resolve('/tmp/my-work'));
+  });
+
+  it('returns null for whitespace-only AIFABRIX_WORK', () => {
+    process.env.AIFABRIX_WORK = '   ';
+    jest.resetModules();
+    const paths = require('../../../lib/utils/paths');
+    expect(paths.getAifabrixWork()).toBeNull();
+  });
+});
+
 describe('Path Utilities - safeHomedir fallback', () => {
   beforeEach(() => {
     jest.resetModules();

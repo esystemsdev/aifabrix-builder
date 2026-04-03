@@ -2805,6 +2805,43 @@ describe('CLI Commands', () => {
         expect(logger.log).toHaveBeenCalledWith('  aifabrix-env-config: /workspace/aifabrix-miso/builder/env-config.yaml');
       });
 
+      it('should show aifabrix-secrets (effective) when resolved API URL differs from config path', async() => {
+        setupCommandsAndResetLogger();
+
+        const remoteDevAuth = require('../../lib/utils/remote-dev-auth');
+        jest.spyOn(remoteDevAuth, 'resolveSharedSecretsEndpoint').mockResolvedValue('http://builder02.local:3000/api/dev/secrets');
+
+        config.getDeveloperId.mockResolvedValue('1');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
+        config.getFormat.mockResolvedValue(null);
+        config.getAifabrixHomeOverride.mockResolvedValue(null);
+        config.getAifabrixWorkOverride.mockResolvedValue(null);
+        config.getRemoteServer.mockResolvedValue(null);
+        config.getDockerEndpoint.mockResolvedValue(null);
+        config.getDockerTlsSkipVerify.mockResolvedValue(false);
+        config.getUserMutagenFolder.mockResolvedValue(null);
+        config.getSyncSshUser.mockResolvedValue(null);
+        config.getSyncSshHost.mockResolvedValue(null);
+        config.getAifabrixSecretsPath.mockResolvedValue('/aifabrix-miso/builder/secrets.local.yaml');
+        config.getAifabrixEnvConfigPath.mockResolvedValue('/workspace/aifabrix-miso/builder/env-config.yaml');
+        devConfig.getDevPorts.mockReturnValue({
+          app: 3100,
+          postgres: 5532,
+          redis: 6479,
+          pgadmin: 5150,
+          redisCommander: 8181
+        });
+
+        const handler = commandActions['dev show'];
+        expect(handler).toBeDefined();
+
+        await handler();
+
+        expect(logger.log).toHaveBeenCalledWith('  aifabrix-secrets: /aifabrix-miso/builder/secrets.local.yaml');
+        expect(logger.log).toHaveBeenCalledWith('  aifabrix-secrets (effective): http://builder02.local:3000/api/dev/secrets');
+      });
+
       it('should display partial configuration variables via dev show when only some are set', async() => {
         setupCommandsAndResetLogger();
 

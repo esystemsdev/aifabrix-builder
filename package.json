@@ -1,6 +1,6 @@
 {
   "name": "@aifabrix/builder",
-  "version": "2.43.1",
+  "version": "2.43.3",
   "description": "AI Fabrix Local Fabric & Deployment SDK",
   "main": "lib/index.js",
   "bin": {
@@ -32,8 +32,8 @@
     "validate": "npm run build",
     "prepublishOnly": "npm run validate",
     "precommit": "npm run lint:fix && npm run test",
-    "install:local": "node scripts/install-local.js",
-    "uninstall:local": "node scripts/install-local.js uninstall",
+    "install:local": "node scripts/install-local.js && which aifabrix && which af",
+    "uninstall:local": "node scripts/install-local.js uninstall && which aifabrix && which af",
     "diagnose:cli": "node scripts/diagnose-cli.js"
   },
   "keywords": [

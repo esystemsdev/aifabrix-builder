@@ -7,7 +7,6 @@
  */
 
 const { exec } = require('child_process');
-const { promisify } = require('util');
 const config = require('../../../lib/core/config');
 const devConfig = require('../../../lib/utils/dev-config');
 const containerUtils = require('../../../lib/utils/infra-containers');
@@ -15,6 +14,19 @@ const containerUtils = require('../../../lib/utils/infra-containers');
 // Mock dependencies
 jest.mock('child_process', () => ({
   exec: jest.fn()
+}));
+
+jest.mock('../../../lib/utils/docker-exec', () => ({
+  execWithDockerEnv(command, options = {}) {
+    const { exec } = require('child_process');
+    const env = { ...process.env, ...(options.env || {}) };
+    return new Promise((resolve, reject) => {
+      exec(command, { ...options, env }, (err, stdout, stderr) => {
+        if (err) reject(err);
+        else resolve({ stdout: stdout || '', stderr: stderr || '' });
+      });
+    });
+  }
 }));
 
 jest.mock('../../../lib/core/config', () => ({
@@ -30,7 +42,22 @@ jest.mock('../../../lib/utils/infra-containers', () => ({
   findContainer: jest.fn()
 }));
 
-const execAsync = promisify(exec);
+/** Matches promisify(exec)(cmd, { env }, cb) — used with jest docker-exec mock that promisifies the same exec mock */
+function mockDockerExecStdout(stdoutLike) {
+  const stdoutStr = Array.isArray(stdoutLike) ? stdoutLike.join('\n') : stdoutLike;
+  return (command, optionsOrCb, cb) => {
+    const callback = typeof optionsOrCb === 'function' ? optionsOrCb : cb;
+    callback(null, stdoutStr, '');
+  };
+}
+
+function mockDockerExecError(err) {
+  return (command, optionsOrCb, cb) => {
+    const callback = typeof optionsOrCb === 'function' ? optionsOrCb : cb;
+    callback(err, '', '');
+  };
+}
+
 const {
   getInfraStatus,
   getAppStatus
@@ -59,9 +86,7 @@ describe('Infrastructure Status Module', () => {
         .mockResolvedValueOnce('aifabrix-pgadmin')
         .mockResolvedValueOnce('aifabrix-redis-commander')
         .mockResolvedValueOnce('aifabrix-traefik');
-      exec.mockImplementation((command, callback) => {
-        callback(null, { stdout: 'running' });
-      });
+      exec.mockImplementation(mockDockerExecStdout('running'));
 
       const result = await getInfraStatus();
 
@@ -106,9 +131,7 @@ describe('Infrastructure Status Module', () => {
         traefikHttps: 443
       });
       containerUtils.findContainer.mockResolvedValue('aifabrix-postgres');
-      exec.mockImplementation((command, callback) => {
-        callback(new Error('Docker error'), null);
-      });
+      exec.mockImplementation(mockDockerExecError(new Error('Docker error')));
 
       const result = await getInfraStatus();
 
@@ -126,9 +149,7 @@ describe('Infrastructure Status Module', () => {
         traefikHttps: 443
       });
       containerUtils.findContainer.mockResolvedValue('aifabrix-postgres');
-      exec.mockImplementation((command, callback) => {
-        callback(null, { stdout: '  "running"  ' });
-      });
+      exec.mockImplementation(mockDockerExecStdout('  "running"  '));
 
       const result = await getInfraStatus();
 
@@ -171,9 +192,7 @@ describe('Infrastructure Status Module', () => {
       containerUtils.findContainer
         .mockResolvedValueOnce('aifabrix-postgres')
         .mockResolvedValueOnce('aifabrix-redis');
-      exec.mockImplementation((command, callback) => {
-        callback(null, { stdout: 'running' });
-      });
+      exec.mockImplementation(mockDockerExecStdout('running'));
 
       const result = await getInfraStatus();
 
@@ -205,10 +224,7 @@ describe('Infrastructure Status Module', () => {
   describe('getAppStatus', () => {
     it('should return app status for developer ID 0', async() => {
       config.getDeveloperId.mockResolvedValue('0');
-      exec.mockImplementation((command, callback) => {
-        const output = 'aifabrix-myapp\t0.0.0.0:3100->3000/tcp\trunning';
-        callback(null, { stdout: output });
-      });
+      exec.mockImplementation(mockDockerExecStdout('aifabrix-myapp\t0.0.0.0:3100->3000/tcp\trunning'));
 
       const result = await getAppStatus();
 
@@ -224,10 +240,7 @@ describe('Infrastructure Status Module', () => {
 
     it('should return app status for non-zero developer ID', async() => {
       config.getDeveloperId.mockResolvedValue('1');
-      exec.mockImplementation((command, callback) => {
-        const output = 'aifabrix-dev1-myapp\t0.0.0.0:3200->3000/tcp\trunning';
-        callback(null, { stdout: output });
-      });
+      exec.mockImplementation(mockDockerExecStdout('aifabrix-dev1-myapp\t0.0.0.0:3200->3000/tcp\trunning'));
 
       const result = await getAppStatus();
 
@@ -243,14 +256,13 @@ describe('Infrastructure Status Module', () => {
 
     it('should filter out infrastructure containers', async() => {
       config.getDeveloperId.mockResolvedValue('0');
-      exec.mockImplementation((command, callback) => {
-        const output = [
+      exec.mockImplementation(
+        mockDockerExecStdout([
           'aifabrix-postgres\t0.0.0.0:5432->5432/tcp\trunning',
           'aifabrix-myapp\t0.0.0.0:3100->3000/tcp\trunning',
           'aifabrix-redis\t0.0.0.0:6379->6379/tcp\trunning'
-        ].join('\n');
-        callback(null, { stdout: output });
-      });
+        ])
+      );
 
       const result = await getAppStatus();
 
@@ -261,10 +273,7 @@ describe('Infrastructure Status Module', () => {
 
     it('should handle containers without port mapping', async() => {
       config.getDeveloperId.mockResolvedValue('0');
-      exec.mockImplementation((command, callback) => {
-        const output = 'aifabrix-myapp\t\trunning';
-        callback(null, { stdout: output });
-      });
+      exec.mockImplementation(mockDockerExecStdout('aifabrix-myapp\t\trunning'));
 
       const result = await getAppStatus();
 
@@ -275,13 +284,12 @@ describe('Infrastructure Status Module', () => {
 
     it('should handle multiple apps', async() => {
       config.getDeveloperId.mockResolvedValue('0');
-      exec.mockImplementation((command, callback) => {
-        const output = [
+      exec.mockImplementation(
+        mockDockerExecStdout([
           'aifabrix-app1\t0.0.0.0:3100->3000/tcp\trunning',
           'aifabrix-app2\t0.0.0.0:3101->3000/tcp\trunning'
-        ].join('\n');
-        callback(null, { stdout: output });
-      });
+        ])
+      );
 
       const result = await getAppStatus();
 
@@ -292,9 +300,7 @@ describe('Infrastructure Status Module', () => {
 
     it('should return empty array on error', async() => {
       config.getDeveloperId.mockResolvedValue('0');
-      exec.mockImplementation((command, callback) => {
-        callback(new Error('Docker error'), null);
-      });
+      exec.mockImplementation(mockDockerExecError(new Error('Docker error')));
 
       const result = await getAppStatus();
 
@@ -303,9 +309,7 @@ describe('Infrastructure Status Module', () => {
 
     it('should handle empty output', async() => {
       config.getDeveloperId.mockResolvedValue('0');
-      exec.mockImplementation((command, callback) => {
-        callback(null, { stdout: '' });
-      });
+      exec.mockImplementation(mockDockerExecStdout(''));
 
       const result = await getAppStatus();
 
@@ -314,10 +318,9 @@ describe('Infrastructure Status Module', () => {
 
     it('should handle whitespace-only lines', async() => {
       config.getDeveloperId.mockResolvedValue('0');
-      exec.mockImplementation((command, callback) => {
-        const output = 'aifabrix-myapp\t0.0.0.0:3100->3000/tcp\trunning\n   \n';
-        callback(null, { stdout: output });
-      });
+      exec.mockImplementation(
+        mockDockerExecStdout('aifabrix-myapp\t0.0.0.0:3100->3000/tcp\trunning\n   \n')
+      );
 
       const result = await getAppStatus();
 
@@ -326,10 +329,9 @@ describe('Infrastructure Status Module', () => {
 
     it('should skip containers that do not match pattern', async() => {
       config.getDeveloperId.mockResolvedValue('0');
-      exec.mockImplementation((command, callback) => {
-        const output = 'other-container\t0.0.0.0:3100->3000/tcp\trunning';
-        callback(null, { stdout: output });
-      });
+      exec.mockImplementation(
+        mockDockerExecStdout('other-container\t0.0.0.0:3100->3000/tcp\trunning')
+      );
 
       const result = await getAppStatus();
 
@@ -338,10 +340,7 @@ describe('Infrastructure Status Module', () => {
 
     it('should extract host port from port mapping', async() => {
       config.getDeveloperId.mockResolvedValue('0');
-      exec.mockImplementation((command, callback) => {
-        const output = 'aifabrix-myapp\t0.0.0.0:8080->3000/tcp\trunning';
-        callback(null, { stdout: output });
-      });
+      exec.mockImplementation(mockDockerExecStdout('aifabrix-myapp\t0.0.0.0:8080->3000/tcp\trunning'));
 
       const result = await getAppStatus();
 
@@ -350,10 +349,11 @@ describe('Infrastructure Status Module', () => {
 
     it('should handle port mapping with path', async() => {
       config.getDeveloperId.mockResolvedValue('0');
-      exec.mockImplementation((command, callback) => {
-        const output = 'aifabrix-myapp\t0.0.0.0:3100->3000/tcp, 0.0.0.0:3101->3001/tcp\trunning';
-        callback(null, { stdout: output });
-      });
+      exec.mockImplementation(
+        mockDockerExecStdout(
+          'aifabrix-myapp\t0.0.0.0:3100->3000/tcp, 0.0.0.0:3101->3001/tcp\trunning'
+        )
+      );
 
       const result = await getAppStatus();
 
@@ -362,13 +362,12 @@ describe('Infrastructure Status Module', () => {
 
     it('should exclude init/helper containers (e.g. keycloak-db-init) from running applications', async() => {
       config.getDeveloperId.mockResolvedValue('0');
-      exec.mockImplementation((command, callback) => {
-        const output = [
+      exec.mockImplementation(
+        mockDockerExecStdout([
           'aifabrix-keycloak\t0.0.0.0:8082->8080/tcp\tUp 5 minutes',
           'aifabrix-keycloak-db-init\t5432/tcp\tUp 5 minutes'
-        ].join('\n');
-        callback(null, { stdout: output });
-      });
+        ])
+      );
 
       const result = await getAppStatus();
 

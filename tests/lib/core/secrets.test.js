@@ -82,7 +82,8 @@ jest.mock('../../../lib/core/config', () => ({
 
 jest.mock('../../../lib/utils/remote-dev-auth', () => ({
   isRemoteSecretsUrl: jest.fn((v) => typeof v === 'string' && (v.startsWith('http://') || v.startsWith('https://'))),
-  getRemoteDevAuth: jest.fn().mockResolvedValue(null)
+  getRemoteDevAuth: jest.fn().mockResolvedValue(null),
+  resolveSharedSecretsEndpoint: jest.fn(async(p) => p)
 }));
 
 jest.mock('../../../lib/api/dev.api', () => ({
@@ -2232,6 +2233,11 @@ environments:
     beforeEach(() => {
       jest.clearAllMocks();
       os.homedir.mockReturnValue(mockHomeDir);
+      const remoteDevAuth = require('../../../lib/utils/remote-dev-auth');
+      remoteDevAuth.resolveSharedSecretsEndpoint.mockImplementation(async(p) => p);
+      remoteDevAuth.getRemoteDevAuth.mockResolvedValue(null);
+      const devApi = require('../../../lib/api/dev.api');
+      devApi.listSecrets.mockResolvedValue([]);
     });
 
     it('should use canonical aifabrix-secrets when user and build secrets are absent', async() => {
@@ -2280,6 +2286,33 @@ environments:
       );
       expect(result.API_KEY).toBe('secret-from-api');
       expect(result.DB_PASS).toBe('db-from-api');
+    });
+
+    it('when aifabrix-secrets is a file path but remote dev resolves to API, merges from API not local path', async() => {
+      const configMock = require('../../../lib/core/config');
+      const remoteDevAuth = require('../../../lib/utils/remote-dev-auth');
+      const devApi = require('../../../lib/api/dev.api');
+      const serverSidePath = path.join(process.cwd(), 'aifabrix-miso', 'builder', 'secrets.local.yaml');
+
+      configMock.getSecretsPath.mockResolvedValue(serverSidePath);
+      remoteDevAuth.resolveSharedSecretsEndpoint.mockResolvedValue('http://dev.example.com/api/dev/secrets');
+      remoteDevAuth.getRemoteDevAuth.mockResolvedValue({
+        serverUrl: 'http://dev.example.com',
+        clientCertPem: 'mock-pem',
+        serverCaPem: null
+      });
+      devApi.listSecrets.mockResolvedValue([{ name: 'SHARED_KEY', value: 'from-remote-api' }]);
+
+      const result = await secrets.loadSecrets(undefined, 'myapp');
+      expect(devApi.listSecrets).toHaveBeenCalledWith(
+        'http://dev.example.com',
+        'mock-pem',
+        undefined,
+        'http://dev.example.com/api/dev/secrets'
+      );
+      expect(result.SHARED_KEY).toBe('from-remote-api');
+      const readsConfiguredPath = fs.readFileSync.mock.calls.filter((c) => c[0] === serverSidePath);
+      expect(readsConfiguredPath.length).toBe(0);
     });
 
     it('when config has aifabrix-secrets, local (user) file is strongest and overrides project for same key', async() => {

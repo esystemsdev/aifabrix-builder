@@ -1,0 +1,488 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aifabrix.ai/schemas/datasource-test-run.schema.json",
+  "title": "DatasourceTestRun",
+  "description": "Canonical datasource-root test report (plans 362/365). Public success shape for POST /api/v1/validation/run (and async poll GET /validation/run/{testRunId}). runType=test|integration|e2e; CLI/docs may say test | test-integration | test-e2e; public JSON uses runType only. Includes validation layer (machine/explain), certificate snapshot, optional integration pipeline results, capability E2Es, debug by reference, plural audit refs, developer summaries. Forward-compatible: minor reportVersion bumps may add fields.",
+  "type": "object",
+  "required": ["reportVersion", "datasourceKey", "systemKey", "runType", "status"],
+  "properties": {
+    "reportVersion": {
+      "type": "string",
+      "description": "Semver-style contract version for this envelope. Policy: additive fields => minor bump within same major; removed/renamed fields => major bump. Route migrations must cite target reportVersion.",
+      "example": "1.1.0"
+    },
+    "runType": {
+      "type": "string",
+      "description": "Kind of run. Maps to CLI/commands: test=test, test-integration=integration, test-e2e=e2e. Do not use kebab strings inside runType.",
+      "enum": ["test", "integration", "e2e"]
+    },
+    "status": {
+      "type": "string",
+      "description": "Root rollup across validation, integration, certificate, and capabilities for this datasource run: ok | warn | fail | skipped.",
+      "enum": ["ok", "warn", "fail", "skipped"]
+    },
+    "reportCompleteness": {
+      "type": "string",
+      "description": "How much of the report is populated: full=all sections populated for this runType; partial=in progress or degraded fill; minimal=async accept or early poll (use testRunId/runId to continue).",
+      "enum": ["full", "partial", "minimal"]
+    },
+    "runId": {
+      "type": "string",
+      "description": "Server-issued stable id for this logical report run (correlation)."
+    },
+    "testRunId": {
+      "type": "string",
+      "description": "Compatibility id for async E2E polling (POST /validation/run with runType=e2e and asyncRun=true, then GET /validation/run/{testRunId}); may equal runId per implementation."
+    },
+    "systemKey": {
+      "type": "string",
+      "description": "External system key this datasource belongs to."
+    },
+    "datasourceKey": {
+      "type": "string",
+      "description": "External datasource key within the system."
+    },
+    "validation": {
+      "$ref": "#/$defs/ValidationLayerResult"
+    },
+    "integration": {
+      "$ref": "#/$defs/IntegrationResult"
+    },
+    "certificate": {
+      "$ref": "#/$defs/CertificateResult"
+    },
+    "capabilitySummary": {
+      "$ref": "#/$defs/CapabilitySummary"
+    },
+    "capabilities": {
+      "type": "array",
+      "description": "Per-capability results; optional nested e2e object per item (see CapabilityResult). Capability discovery precedence (highest first): request.capabilities > datasource.capabilities > execution.cip.operations > openapi.operations. Custom operation keys are permitted; CIP/OpenAPI keys use canonical CRUD names where applicable.",
+      "items": {
+        "$ref": "#/$defs/CapabilityResult"
+      }
+    },
+    "debug": {
+      "$ref": "#/$defs/DebugTrace"
+    },
+    "audit": {
+      "$ref": "#/$defs/AuditRefs"
+    },
+    "developer": {
+      "$ref": "#/$defs/DeveloperSummary"
+    }
+  },
+  "$defs": {
+    "ValidationLayerResult": {
+      "type": "object",
+      "required": ["status"],
+      "description": "Structural validation outcome and explain-oriented machine outputs (ICC/PDS/DTS-shaped metrics, certification machine payloads, issues). Separate from developer narrative under developer.*",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Validation layer rollup: ok | warn | fail.",
+          "enum": ["ok", "warn", "fail"]
+        },
+        "summary": {
+          "type": "string",
+          "description": "Short human summary of validation outcome."
+        },
+        "issues": {
+          "type": "array",
+          "description": "Structured issues with optional codes, severity, and remediation hints.",
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        },
+        "dataReadiness": {
+          "type": "string",
+          "description": "Normalized data readiness for downstream use.",
+          "enum": ["ready", "partial", "not_ready"]
+        },
+        "metricsOutput": {
+          "type": "object",
+          "description": "Explain-oriented metrics payload (e.g. ICC/PDS/DTS-shaped); align with ValidationRunService / engine—not CLI narrative.",
+          "additionalProperties": true
+        },
+        "certificationOutput": {
+          "type": "object",
+          "description": "Explain-oriented certification payload from validation/certify path—machine layer; not developer executive copy.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "IntegrationResult": {
+      "type": "object",
+      "required": ["status"],
+      "description": "Pipeline/integration layer (test-integration); ordered step outcomes—not per-capability E2E (see capabilities[].e2e).",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Integration layer rollup: ok | warn | fail | skipped.",
+          "enum": ["ok", "warn", "fail", "skipped"]
+        },
+        "summary": {
+          "type": "string",
+          "description": "Short human summary of the integration run."
+        },
+        "stepResults": {
+          "type": "array",
+          "description": "Ordered integration step outcomes (fetch, map, normalize, etc.).",
+          "items": {
+            "$ref": "#/$defs/IntegrationStepResult"
+          }
+        }
+      }
+    },
+    "IntegrationStepResult": {
+      "type": "object",
+      "required": ["name", "success"],
+      "description": "Single step in an integration pipeline run.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Step identifier (e.g. fetch, map, normalize)."
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Whether this step completed without failure."
+        },
+        "message": {
+          "type": "string",
+          "description": "Optional step-level message."
+        },
+        "order": {
+          "type": "integer",
+          "description": "Optional ordering index within the pipeline."
+        },
+        "evidence": {
+          "type": "object",
+          "description": "Structured evidence (timings, counts, IDs); shape is implementation-defined.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "CertificateResult": {
+      "type": "object",
+      "required": ["status"],
+      "description": "Certification layer for the datasource: tier, blockers, and optional capability coverage counts.",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Whether certification passed at the reported level.",
+          "enum": ["passed", "not_passed"]
+        },
+        "level": {
+          "type": "string",
+          "description": "Achieved certification tier when applicable.",
+          "enum": ["bronze", "silver", "gold"]
+        },
+        "summary": {
+          "type": "string",
+          "description": "Short human summary of certification outcome."
+        },
+        "blockers": {
+          "type": "array",
+          "description": "Issues preventing a higher tier or pass.",
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        },
+        "capabilityCoverage": {
+          "$ref": "#/$defs/CapabilitySummary"
+        }
+      }
+    },
+    "CapabilitySummary": {
+      "type": "object",
+      "description": "Aggregate pass/fail counts across capabilities (e.g. for certificate coverage or dashboards).",
+      "properties": {
+        "total": {
+          "type": "integer",
+          "description": "Total capabilities considered."
+        },
+        "passed": {
+          "type": "integer",
+          "description": "Capabilities that passed."
+        },
+        "failed": {
+          "type": "integer",
+          "description": "Capabilities that failed or errored."
+        }
+      }
+    },
+    "CapabilityResult": {
+      "type": "object",
+      "required": ["key", "status"],
+      "description": "Result for one capability or CIP operation key; may include E2E detail and dependency refs.",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Capability or operation key (e.g. deal.list).",
+          "example": "deal.create"
+        },
+        "type": {
+          "type": "string",
+          "description": "Class of capability: read | write | sync | custom.",
+          "enum": ["read", "write", "sync", "custom"]
+        },
+        "permission": {
+          "type": "string",
+          "description": "RBAC permission name when relevant to this capability."
+        },
+        "status": {
+          "type": "string",
+          "description": "Capability rollup: ok | warn | fail | skipped.",
+          "enum": ["ok", "warn", "fail", "skipped"]
+        },
+        "e2e": {
+          "$ref": "#/$defs/E2EResult"
+        },
+        "dependsOn": {
+          "type": "array",
+          "description": "Upstream validation or integration dependencies for this capability.",
+          "items": {
+            "$ref": "#/$defs/Dependency"
+          }
+        }
+      }
+    },
+    "E2EResult": {
+      "type": "object",
+      "description": "End-to-end test outcome for a single capability or strategy. Optional debug and auditRefs point at trace material for this E2E slice.",
+      "properties": {
+        "supported": {
+          "type": "boolean",
+          "description": "Whether E2E is supported for this capability in the current configuration."
+        },
+        "strategy": {
+          "type": "string",
+          "description": "E2E strategy used: read | writeRead | crudLifecycle | custom.",
+          "enum": ["read", "writeRead", "crudLifecycle", "custom"]
+        },
+        "status": {
+          "type": "string",
+          "description": "E2E rollup for this capability: ok | warn | fail | skipped.",
+          "enum": ["ok", "warn", "fail", "skipped"]
+        },
+        "steps": {
+          "type": "array",
+          "description": "Ordered execution steps for this E2E run.",
+          "items": {
+            "$ref": "#/$defs/ExecutionStep"
+          }
+        },
+        "debug": {
+          "$ref": "#/$defs/DebugTrace"
+        },
+        "auditRefs": {
+          "$ref": "#/$defs/AuditRefs"
+        }
+      }
+    },
+    "ExecutionStep": {
+      "type": "object",
+      "required": ["stage", "status"],
+      "description": "Single stage within an execution or E2E trace.",
+      "properties": {
+        "stage": {
+          "type": "string",
+          "description": "Pipeline stage name.",
+          "enum": [
+            "fetch",
+            "transform",
+            "normalize",
+            "execute",
+            "verify",
+            "sync"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "description": "Step outcome: ok | warn | fail.",
+          "enum": ["ok", "warn", "fail"]
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "Wall-clock duration for this step in milliseconds."
+        },
+        "error": {
+          "$ref": "#/$defs/Error"
+        }
+      }
+    },
+    "Issue": {
+      "type": "object",
+      "required": ["message"],
+      "description": "Structured issue or blocker (validation, certificate, or policy).",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Stable code: DP-VAL-* (structural/config), DP-CIP-* (execution/CIP), DP-SEC-* (auth/RBAC/exposure), DP-CONN-* (REST/MCP/connectivity), DP-E2E-* (end-to-end live); warnings DP-*-Wnn. Mapped from engine errorCode in DatasourceTestRun builders.",
+          "example": "DP-CIP-010"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable description."
+        },
+        "severity": {
+          "type": "string",
+          "description": "blocking | warning | info.",
+          "enum": ["blocking", "warning", "info"]
+        },
+        "hint": {
+          "type": "string",
+          "description": "Remediation or next-step hint."
+        }
+      }
+    },
+    "Error": {
+      "type": "object",
+      "description": "Compact error object for execution steps and debug traces.",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Optional stable error code."
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error text."
+        },
+        "hint": {
+          "type": "string",
+          "description": "Remediation or next-step hint."
+        }
+      }
+    },
+    "Dependency": {
+      "type": "object",
+      "description": "Reference to an upstream validation or integration dependency.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Kind of dependency.",
+          "enum": ["validation", "integration"]
+        },
+        "ref": {
+          "type": "string",
+          "description": "Opaque reference to the dependent run or artifact."
+        }
+      }
+    },
+    "DebugTrace": {
+      "type": "object",
+      "description": "Debug material for the run. Prefer summaries and payloadRefs; embed large request/response bodies only when mode=raw and after redaction—deep trace remains on existing audit/trace APIs.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "description": "Verbosity: summary | full | raw (raw may include redacted payloads).",
+          "enum": ["summary", "full", "raw"]
+        },
+        "executionSummary": {
+          "type": "string",
+          "description": "Human-readable summary of executed work."
+        },
+        "executionIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "CIP execution ids tied to this debug slice (opaque correlation)."
+        },
+        "steps": {
+          "type": "array",
+          "description": "Execution steps included in this trace.",
+          "items": {
+            "$ref": "#/$defs/ExecutionStep"
+          }
+        },
+        "errors": {
+          "type": "array",
+          "description": "Errors collected during the traced run.",
+          "items": {
+            "$ref": "#/$defs/Error"
+          }
+        },
+        "recommendations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Suggested remediations or follow-ups."
+        },
+        "payloadRefs": {
+          "type": "array",
+          "description": "Pointers to full payloads via audit/trace APIs when authorized.",
+          "items": {
+            "$ref": "#/$defs/PayloadRef"
+          }
+        }
+      }
+    },
+    "PayloadRef": {
+      "type": "object",
+      "description": "Reference to stored or audit-linked payload; avoids bloating the report envelope.",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Logical name (e.g. lastRequest, normalizedSnapshot)."
+        },
+        "ref": {
+          "type": "string",
+          "description": "Opaque id or URL to retrieve via audit/trace APIs when authorized."
+        }
+      }
+    },
+    "AuditRefs": {
+      "type": "object",
+      "description": "Plural by design: one datasource-root run can fan out to multiple executions. Resolve traces via these refs—no parallel trace store.",
+      "properties": {
+        "executionIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Opaque execution identifiers."
+        },
+        "traceRefs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "URLs or opaque refs to execution trace endpoints."
+        },
+        "rbacTraceRefs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "RBAC decision or trace refs."
+        },
+        "abacTraceRefs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "ABAC decision or trace refs."
+        }
+      }
+    },
+    "DeveloperSummary": {
+      "type": "object",
+      "description": "CLI-oriented narrative strings only; keep ICC/PDS/DTS and raw metrics in validation.metricsOutput / certificate / debug machine paths.",
+      "properties": {
+        "executiveSummary": {
+          "type": "string",
+          "description": "High-level narrative for developers."
+        },
+        "whatPassed": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Bullets describing what succeeded."
+        },
+        "whatFailed": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Bullets describing what failed."
+        },
+        "whatNeedsAttention": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Bullets for warnings or follow-ups."
+        },
+        "nextActions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Suggested next steps."
+        }
+      }
+    }
+  }
+}

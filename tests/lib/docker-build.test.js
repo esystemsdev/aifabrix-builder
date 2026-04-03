@@ -8,7 +8,10 @@
 
 jest.mock('child_process');
 jest.mock('ora');
-jest.mock('../../lib/utils/remote-docker-env', () => ({ getRemoteDockerEnv: jest.fn().mockResolvedValue({}) }));
+jest.mock('../../lib/utils/remote-docker-env', () => ({
+  getRemoteDockerEnv: jest.fn().mockResolvedValue({}),
+  getDockerExecEnv: jest.fn().mockImplementation(async() => ({ ...process.env }))
+}));
 const { spawn } = require('child_process');
 const path = require('path');
 const ora = require('ora');

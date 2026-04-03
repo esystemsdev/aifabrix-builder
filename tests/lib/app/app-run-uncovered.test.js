@@ -48,6 +48,8 @@ jest.mock('../../../lib/core/config', () => ({
   getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }),
   saveConfig: jest.fn().mockResolvedValue(),
   clearConfig: jest.fn().mockResolvedValue(),
+  getDockerEndpoint: jest.fn().mockResolvedValue(null),
+  getDockerTlsSkipVerify: jest.fn().mockResolvedValue(false),
   CONFIG_DIR: '/mock/config/dir',
   CONFIG_FILE: '/mock/config/dir/config.yaml'
 }));
@@ -827,7 +829,11 @@ describe('App-Run Uncovered Code Paths', () => {
         callback(null, '', '');
       });
       await expect(appRun.restartApp('myapp')).resolves.not.toThrow();
-      expect(exec).toHaveBeenCalledWith(expect.stringContaining('docker restart'), expect.any(Function));
+      expect(exec).toHaveBeenCalledWith(
+        expect.stringContaining('docker restart'),
+        expect.objectContaining({ env: expect.any(Object) }),
+        expect.any(Function)
+      );
     });
 
     it('should throw when app name is missing', async() => {

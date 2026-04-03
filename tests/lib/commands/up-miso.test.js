@@ -104,5 +104,30 @@ describe('up-miso command', () => {
       expect(app.runApp).toHaveBeenNthCalledWith(1, 'keycloak', expect.objectContaining({ image: 'myreg/keycloak:v1' }));
       expect(app.runApp).toHaveBeenNthCalledWith(2, 'miso-controller', expect.objectContaining({ image: 'myreg/miso:v2' }));
     });
+
+    it('should pass --registry and registryMode to runApp', async() => {
+      await handleUpMiso({ registry: 'cli.reg.io', registryMode: 'acr' });
+
+      expect(app.runApp).toHaveBeenNthCalledWith(
+        1,
+        'keycloak',
+        expect.objectContaining({
+          registry: 'cli.reg.io',
+          registryMode: 'acr',
+          skipEnvOutputPath: true,
+          skipInfraCheck: true
+        })
+      );
+      expect(app.runApp).toHaveBeenNthCalledWith(
+        2,
+        'miso-controller',
+        expect.objectContaining({
+          registry: 'cli.reg.io',
+          registryMode: 'acr',
+          skipEnvOutputPath: true,
+          skipInfraCheck: true
+        })
+      );
+    });
   });
 });

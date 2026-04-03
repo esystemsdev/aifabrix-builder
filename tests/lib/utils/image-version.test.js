@@ -48,8 +48,8 @@ jest.mock('fs', () => {
     }
   };
 });
-jest.mock('child_process', () => ({
-  exec: jest.fn()
+jest.mock('../../../lib/utils/docker-exec', () => ({
+  execWithDockerEnv: jest.fn()
 }));
 jest.mock('../../../lib/utils/paths', () => {
   const pathMod = require('path');
@@ -57,16 +57,11 @@ jest.mock('../../../lib/utils/paths', () => {
     getBuilderPath: jest.fn((appName) => pathMod.join(process.cwd(), 'builder', appName))
   };
 });
-jest.mock('../../../lib/utils/compose-generator', () => ({
-  getImageName: jest.fn((config, appName) => config?.image?.name || config?.app?.key || appName)
-}));
 jest.mock('../../../lib/utils/app-run-containers', () => ({
   checkImageExists: jest.fn()
 }));
 
-const { exec } = require('child_process');
-const { promisify } = require('util');
-const execAsync = promisify(exec);
+const { execWithDockerEnv } = require('../../../lib/utils/docker-exec');
 
 const {
   getVersionFromImage,
@@ -84,33 +79,25 @@ describe('image-version', () => {
 
   describe('getVersionFromImage', () => {
     it('should return OCI label when present', async() => {
-      exec.mockImplementation((cmd, opts, cb) => {
-        cb(null, { stdout: '1.2.3', stderr: '' });
-      });
+      execWithDockerEnv.mockResolvedValue({ stdout: '1.2.3', stderr: '' });
       const result = await getVersionFromImage('myapp', 'latest');
       expect(result).toBe('1.2.3');
     });
 
     it('should return null when OCI label empty and tag not semver', async() => {
-      exec.mockImplementation((cmd, opts, cb) => {
-        cb(null, { stdout: '', stderr: '' });
-      });
+      execWithDockerEnv.mockResolvedValue({ stdout: '', stderr: '' });
       const result = await getVersionFromImage('myapp', 'latest');
       expect(result).toBeNull();
     });
 
     it('should parse semver from tag when OCI label empty', async() => {
-      exec.mockImplementation((cmd, opts, cb) => {
-        cb(null, { stdout: '', stderr: '' });
-      });
+      execWithDockerEnv.mockResolvedValue({ stdout: '', stderr: '' });
       const result = await getVersionFromImage('myapp', 'v1.0.0');
       expect(result).toBe('1.0.0');
     });
 
     it('should parse semver from tag without v prefix', async() => {
-      exec.mockImplementation((cmd, opts, cb) => {
-        cb(null, { stdout: '', stderr: '' });
-      });
+      execWithDockerEnv.mockResolvedValue({ stdout: '', stderr: '' });
       const result = await getVersionFromImage('myapp', '2.3.4');
       expect(result).toBe('2.3.4');
     });
@@ -121,9 +108,7 @@ describe('image-version', () => {
     });
 
     it('should return null when docker inspect fails', async() => {
-      exec.mockImplementation((cmd, opts, cb) => {
-        cb(new Error('docker failed'), { stdout: '', stderr: '' });
-      });
+      execWithDockerEnv.mockRejectedValue(new Error('docker failed'));
       const result = await getVersionFromImage('myapp', 'latest');
       expect(result).toBeNull();
     });
@@ -182,6 +167,16 @@ describe('image-version', () => {
       expect(result).toEqual({ version: '1.0.0', fromImage: false, updated: false });
     });
 
+    it('should call checkImageExists with registry-prefixed name when image.registry set', async() => {
+      checkImageExists.mockResolvedValue(false);
+      const variables = {
+        app: {},
+        image: { name: 'aifabrix/dataplane', tag: 'latest', registry: 'acr.example.io' }
+      };
+      await resolveVersionForApp('dataplane', variables);
+      expect(checkImageExists).toHaveBeenCalledWith('acr.example.io/aifabrix/dataplane', 'latest');
+    });
+
     it('should use template version when image not found and template has version', async() => {
       checkImageExists.mockResolvedValue(false);
       const variables = {
@@ -194,9 +189,7 @@ describe('image-version', () => {
 
     it('should use image version when image exists and template empty', async() => {
       checkImageExists.mockResolvedValue(true);
-      exec.mockImplementation((cmd, opts, cb) => {
-        cb(null, { stdout: '2.1.0', stderr: '' });
-      });
+      execWithDockerEnv.mockResolvedValue({ stdout: '2.1.0', stderr: '' });
       const variables = {
         app: {},
         image: { name: 'myapp', tag: 'latest' }
@@ -206,11 +199,19 @@ describe('image-version', () => {
       expect(result.fromImage).toBe(true);
     });
 
+    it('should check prefixed image when manifest has image.registry', async() => {
+      checkImageExists.mockResolvedValue(false);
+      const variables = {
+        app: {},
+        image: { name: 'myapp', tag: 'latest', registry: 'my.azurecr.io' }
+      };
+      await resolveVersionForApp('myapp', variables);
+      expect(checkImageExists).toHaveBeenCalledWith('my.azurecr.io/myapp', 'latest');
+    });
+
     it('should use template when template version greater than image', async() => {
       checkImageExists.mockResolvedValue(true);
-      exec.mockImplementation((cmd, opts, cb) => {
-        cb(null, { stdout: '1.0.0', stderr: '' });
-      });
+      execWithDockerEnv.mockResolvedValue({ stdout: '1.0.0', stderr: '' });
       const variables = {
         app: { version: '2.0.0' },
         image: { name: 'myapp', tag: 'latest' }
@@ -221,9 +222,7 @@ describe('image-version', () => {
 
     it('should use image version when image version greater than template', async() => {
       checkImageExists.mockResolvedValue(true);
-      exec.mockImplementation((cmd, opts, cb) => {
-        cb(null, { stdout: '2.1.0', stderr: '' });
-      });
+      execWithDockerEnv.mockResolvedValue({ stdout: '2.1.0', stderr: '' });
       const variables = {
         app: { version: '1.0.0' },
         image: { name: 'myapp', tag: 'latest' }
@@ -241,9 +240,7 @@ describe('image-version', () => {
       mockFileStore.set(path.resolve(yamlPath), yaml.dump(initial));
 
       checkImageExists.mockResolvedValue(true);
-      exec.mockImplementation((cmd, opts, cb) => {
-        cb(null, { stdout: '3.0.0', stderr: '' });
-      });
+      execWithDockerEnv.mockResolvedValue({ stdout: '3.0.0', stderr: '' });
       const variables = {
         app: { key: 'myapp' },
         image: { name: 'myapp', tag: 'latest' }

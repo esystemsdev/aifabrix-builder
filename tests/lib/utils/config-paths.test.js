@@ -6,6 +6,9 @@
  * @version 2.0.0
  */
 
+const pathMod = require('path');
+const os = require('os');
+
 const {
   getPathConfig,
   setPathConfig,
@@ -13,6 +16,7 @@ const {
   getDefaultEnvConfigPath,
   SETTINGS_RESPONSE_KEYS
 } = require('../../../lib/utils/config-paths');
+const pathsModule = require('../../../lib/utils/paths');
 
 /** GET /api/dev/settings response parameter names per .cursor/plans/builder-cli.md §1 */
 const BUILDER_CLI_SETTINGS_KEYS = [
@@ -22,6 +26,7 @@ const BUILDER_CLI_SETTINGS_KEYS = [
   'aifabrix-env-config',
   'remote-server',
   'docker-endpoint',
+  'docker-tls-skip-verify',
   'sync-ssh-user',
   'sync-ssh-host'
 ];
@@ -150,6 +155,38 @@ describe('Config Paths Module', () => {
       });
     });
 
+    describe('getAifabrixWorkOverride / setAifabrixWorkOverride', () => {
+      it('should get aifabrix-work from config', async() => {
+        getConfigFn.mockResolvedValue({ 'aifabrix-work': '/workspace/repos' });
+        const result = await pathConfigFunctions.getAifabrixWorkOverride();
+        expect(result).toBe('/workspace/repos');
+      });
+
+      it('should return null if aifabrix-work not in config', async() => {
+        const result = await pathConfigFunctions.getAifabrixWorkOverride();
+        expect(result).toBeNull();
+      });
+
+      it('should set aifabrix-work as resolved absolute path', async() => {
+        const pathMod = require('path');
+        await pathConfigFunctions.setAifabrixWorkOverride('relative-work');
+        expect(saveConfigFn).toHaveBeenCalledWith({
+          'aifabrix-work': pathMod.resolve('relative-work')
+        });
+      });
+
+      it('should clear aifabrix-work when empty string', async() => {
+        getConfigFn.mockResolvedValue({ 'aifabrix-work': '/old' });
+        await pathConfigFunctions.setAifabrixWorkOverride('  ');
+        expect(saveConfigFn).toHaveBeenCalledWith({ 'aifabrix-work': undefined });
+      });
+
+      it('should throw if work path is not a string', async() => {
+        await expect(pathConfigFunctions.setAifabrixWorkOverride(null))
+          .rejects.toThrow('Work path is required and must be a string');
+      });
+    });
+
     describe('getAifabrixSecretsPath', () => {
       it('should get aifabrix-secrets path from config', async() => {
         getConfigFn.mockResolvedValue({ 'aifabrix-secrets': '/custom/secrets' });
@@ -180,6 +217,59 @@ describe('Config Paths Module', () => {
         getConfigFn.mockResolvedValue({ 'aifabrix-env-config': '/custom/env-config' });
         const result = await pathConfigFunctions.getAifabrixEnvConfigPath();
         expect(result).toBe('/custom/env-config');
+      });
+
+      it('should resolve relative aifabrix-env-config against aifabrix-work (independent of cwd)', async() => {
+        const fakeWork = pathMod.join(os.tmpdir(), `af-work-${process.pid}-${Date.now()}`);
+        const rel = 'aifabrix-miso/builder/env-config.yaml';
+        getConfigFn.mockResolvedValue({
+          'aifabrix-work': fakeWork,
+          'aifabrix-env-config': rel
+        });
+        const cwdBefore = process.cwd();
+        try {
+          process.chdir(os.tmpdir());
+          const envPath = await pathConfigFunctions.getAifabrixEnvConfigPath();
+          const builderDir = await pathConfigFunctions.getAifabrixBuilderDir();
+          const expected = pathMod.normalize(pathMod.resolve(fakeWork, rel));
+          expect(envPath).toBe(expected);
+          expect(builderDir).toBe(pathMod.dirname(expected));
+        } finally {
+          process.chdir(cwdBefore);
+        }
+      });
+
+      it('should prefer aifabrix-work over aifabrix-home when both set', async() => {
+        const fakeWork = pathMod.join(os.tmpdir(), 'work-root');
+        const fakeHome = pathMod.join(os.tmpdir(), 'home-root');
+        getConfigFn.mockResolvedValue({
+          'aifabrix-work': fakeWork,
+          'aifabrix-home': fakeHome,
+          'aifabrix-env-config': 'sub/env.yaml'
+        });
+        const expected = pathMod.normalize(pathMod.resolve(fakeWork, 'sub/env.yaml'));
+        expect(await pathConfigFunctions.getAifabrixEnvConfigPath()).toBe(expected);
+      });
+
+      it('should fall back to aifabrix-home when aifabrix-work unset', async() => {
+        const fakeHome = pathMod.join(os.tmpdir(), `af-home-fb-${process.pid}-${Date.now()}`);
+        getConfigFn.mockResolvedValue({
+          'aifabrix-home': fakeHome,
+          'aifabrix-env-config': 'rel/env.yaml'
+        });
+        const expected = pathMod.normalize(pathMod.resolve(fakeHome, 'rel/env.yaml'));
+        expect(await pathConfigFunctions.getAifabrixEnvConfigPath()).toBe(expected);
+      });
+
+      it('should resolve relative path using getAifabrixHome when work and home unset in config', async() => {
+        const spyWork = jest.spyOn(pathsModule, 'getAifabrixWork').mockReturnValue(null);
+        const spyHome = jest.spyOn(pathsModule, 'getAifabrixHome').mockReturnValue('/fallback/aifabrix');
+        getConfigFn.mockResolvedValue({ 'aifabrix-env-config': 'rel/env.yaml' });
+        const expected = pathMod.normalize(pathMod.resolve('/fallback/aifabrix', 'rel/env.yaml'));
+        expect(await pathConfigFunctions.getAifabrixEnvConfigPath()).toBe(expected);
+        expect(await pathConfigFunctions.getAifabrixBuilderDir()).toBe(pathMod.dirname(expected));
+        spyWork.mockRestore();
+        spyHome.mockRestore();
       });
 
       it('should return default schema path if aifabrix-env-config not in config', async() => {
@@ -321,6 +411,70 @@ describe('Config Paths Module', () => {
             'docker-endpoint': 'tcp://docker.aifabrix.dev:2376'
           })
         );
+      });
+
+      it('should merge docker-tls-skip-verify from server', async() => {
+        getConfigFn.mockResolvedValue({});
+        await pathConfigFunctions.mergeRemoteSettings({
+          'remote-server': 'https://builder.aifabrix.dev',
+          'docker-tls-skip-verify': true
+        });
+        expect(saveConfigFn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            'docker-tls-skip-verify': true
+          })
+        );
+      });
+    });
+
+    describe('getDockerTlsSkipVerify', () => {
+      const envKey = 'AIFABRIX_DOCKER_TLS_SKIP_VERIFY';
+
+      afterEach(() => {
+        delete process.env[envKey];
+      });
+
+      it('should return false when unset in config and env', async() => {
+        getConfigFn.mockResolvedValue({});
+        const result = await pathConfigFunctions.getDockerTlsSkipVerify();
+        expect(result).toBe(false);
+      });
+
+      it('should honor truthy config values', async() => {
+        getConfigFn.mockResolvedValue({ 'docker-tls-skip-verify': '1' });
+        expect(await pathConfigFunctions.getDockerTlsSkipVerify()).toBe(true);
+        getConfigFn.mockResolvedValue({ 'docker-tls-skip-verify': true });
+        expect(await pathConfigFunctions.getDockerTlsSkipVerify()).toBe(true);
+      });
+
+      it('should prefer env over config when env is non-empty', async() => {
+        getConfigFn.mockResolvedValue({ 'docker-tls-skip-verify': false });
+        process.env[envKey] = '1';
+        expect(await pathConfigFunctions.getDockerTlsSkipVerify()).toBe(true);
+      });
+
+      it('should not infer skip-verify from .local docker-endpoint alone', async() => {
+        getConfigFn.mockResolvedValue({
+          'docker-endpoint': 'tcp://engine.local:2376'
+        });
+        expect(await pathConfigFunctions.getDockerTlsSkipVerify()).toBe(false);
+      });
+
+      it('should not infer skip-verify from multi-label .local host without flag', async() => {
+        getConfigFn.mockResolvedValue({
+          'docker-endpoint': 'tcp://docker.dev.local:2376'
+        });
+        expect(await pathConfigFunctions.getDockerTlsSkipVerify()).toBe(false);
+      });
+    });
+
+    describe('setDockerTlsSkipVerify', () => {
+      it('should persist boolean and clear on null', async() => {
+        await pathConfigFunctions.setDockerTlsSkipVerify(true);
+        expect(saveConfigFn).toHaveBeenCalledWith({ 'docker-tls-skip-verify': true });
+        getConfigFn.mockResolvedValue({ 'docker-tls-skip-verify': true });
+        await pathConfigFunctions.setDockerTlsSkipVerify(null);
+        expect(saveConfigFn).toHaveBeenLastCalledWith({ 'docker-tls-skip-verify': undefined });
       });
     });
   });

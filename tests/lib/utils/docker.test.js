@@ -14,6 +14,19 @@ jest.mock('child_process', () => ({
   exec: jest.fn()
 }));
 
+jest.mock('../../../lib/utils/docker-exec', () => ({
+  execWithDockerEnv(command) {
+    const { exec } = require('child_process');
+    return new Promise((resolve, reject) => {
+      // Match legacy tests: mocked exec uses (command, callback) only
+      exec(command, (error, stdout, stderr) => {
+        if (error) reject(error);
+        else resolve({ stdout: stdout || '', stderr: stderr || '' });
+      });
+    });
+  }
+}));
+
 const execAsync = promisify(exec);
 const {
   checkDockerCli,
@@ -101,11 +114,29 @@ describe('Docker Utilities Module', () => {
       });
 
       await expect(getComposeCommand()).rejects.toThrow(
-        /Docker Compose is not available[\s\S]*docker-compose-plugin/
+        /Docker Compose is not available[\s\S]*Compose v2 plugin/
       );
       expect(exec).toHaveBeenCalledWith('docker compose version', expect.any(Function));
       expect(exec).toHaveBeenCalledWith('docker-compose --version', expect.any(Function));
       expect(exec).toHaveBeenCalledWith('podman compose version', expect.any(Function));
+    });
+
+    it('should include docker compose failure detail and TLS hint when v2 fails with cert error', async() => {
+      exec.mockImplementation((command, callback) => {
+        if (command === 'docker compose version') {
+          callback(new Error('tls: failed to verify certificate: x509'), null);
+        } else {
+          callback(new Error('not found'), null);
+        }
+      });
+
+      try {
+        await getComposeCommand();
+        expect.fail('should throw');
+      } catch (err) {
+        expect(err.message).toMatch(/docker compose version.*failed:/);
+        expect(err.message).toMatch(/cert\.pem|client auth|TLS/i);
+      }
     });
 
     it('should return AIFABRIX_COMPOSE_CMD when set and version succeeds', async() => {

@@ -8,6 +8,7 @@ jest.mock('../../../lib/core/config', () => ({
   setDeveloperId: jest.fn().mockResolvedValue(undefined),
   setRemoteServer: jest.fn().mockResolvedValue(undefined),
   getDeveloperId: jest.fn().mockResolvedValue('01'),
+  getRemoteServer: jest.fn().mockResolvedValue('https://config-server.example.com'),
   getSyncSshHost: jest.fn().mockResolvedValue(null),
   getSyncSshUser: jest.fn().mockResolvedValue(null),
   mergeRemoteSettings: jest.fn().mockResolvedValue(undefined)
@@ -28,13 +29,17 @@ jest.mock('../../../lib/utils/dev-cert-helper', () => {
 jest.mock('../../../lib/utils/remote-dev-auth', () => ({ getRemoteDevAuth: jest.fn() }));
 jest.mock('../../../lib/utils/ssh-key-helper', () => ({ getOrCreatePublicKeyContent: jest.fn(() => 'ssh-ed25519 AAAA key') }));
 jest.mock('../../../lib/api/dev.api');
-jest.mock('../../../lib/utils/dev-ca-install', () => ({
-  isSslUntrustedError: jest.fn(),
-  isSslHostnameMismatchError: jest.fn(),
-  fetchInstallCa: jest.fn(),
-  installCaPlatform: jest.fn(),
-  promptInstallCa: jest.fn()
-}));
+jest.mock('../../../lib/utils/dev-ca-install', () => {
+  const actual = jest.requireActual('../../../lib/utils/dev-ca-install');
+  return {
+    isSslUntrustedError: jest.fn(),
+    isSslHostnameMismatchError: jest.fn(),
+    fetchInstallCa: jest.fn(),
+    installCaPlatform: jest.fn(),
+    promptInstallCa: jest.fn(),
+    isLinuxCaSudoRequiredError: actual.isLinuxCaSudoRequiredError
+  };
+});
 jest.mock('../../../lib/utils/dev-hosts-helper', () => ({
   runOptionalHostsSetup: jest.fn().mockResolvedValue(undefined)
 }));
@@ -73,6 +78,7 @@ describe('dev-init command', () => {
     config.setDeveloperId.mockResolvedValue(undefined);
     config.setRemoteServer.mockResolvedValue(undefined);
     config.getDeveloperId.mockResolvedValue('01');
+    config.getRemoteServer.mockResolvedValue('https://config-server.example.com');
     config.mergeRemoteSettings.mockResolvedValue(undefined);
     devApi.getHealth.mockResolvedValue(undefined);
     generateCSR.mockReturnValue({ csrPem: '-----BEGIN CERTIFICATE REQUEST-----\n-----END CERTIFICATE REQUEST-----', keyPem: '-----BEGIN PRIVATE KEY-----\n-----END PRIVATE KEY-----' });
@@ -83,20 +89,38 @@ describe('dev-init command', () => {
     fs.writeFile.mockResolvedValue(undefined);
   });
 
-  it('throws when --developer-id is missing', async() => {
-    await expect(runDevInit({ server: 'https://dev.example.com', pin: '123456' })).rejects.toThrow('--developer-id is required');
+  it('throws when developer-id from config is 0 and --developer-id not passed', async() => {
+    config.getDeveloperId.mockResolvedValue('0');
+    await expect(runDevInit({ server: 'https://dev.example.com', pin: '123456' }))
+      .rejects.toThrow(/default developer-id 0/);
   });
 
   it('throws when --developer-id is not digit string', async() => {
-    await expect(runDevInit({ developerId: 'abc', server: 'https://dev.example.com', pin: '123' })).rejects.toThrow('digit string');
+    await expect(runDevInit({ developerId: 'abc', server: 'https://dev.example.com', pin: '123' })).rejects.toThrow(
+      /Pass --developer-id|digits only/
+    );
   });
 
-  it('throws when --server is missing', async() => {
-    await expect(runDevInit({ developerId: '01', pin: '123456' })).rejects.toThrow('--server is required');
+  it('throws when --server missing and remote-server not in config', async() => {
+    config.getRemoteServer.mockResolvedValue(null);
+    await expect(runDevInit({ developerId: '01', pin: '123456' }))
+      .rejects.toThrow(/Pass --server|remote-server/);
   });
 
   it('throws when --pin is missing', async() => {
-    await expect(runDevInit({ developerId: '01', server: 'https://dev.example.com' })).rejects.toThrow('--pin is required');
+    await expect(runDevInit({ developerId: '01', server: 'https://dev.example.com' }))
+      .rejects.toThrow(/--pin is required/);
+  });
+
+  it('uses developer-id and remote-server from config when only --pin is passed', async() => {
+    config.getDeveloperId.mockResolvedValue('02');
+    config.getRemoteServer.mockResolvedValue('https://from-yaml.example.com');
+    await runDevInit({ pin: 'abc123' });
+    expect(devApi.issueCert).toHaveBeenCalledWith(
+      'https://from-yaml.example.com',
+      expect.objectContaining({ developerId: '02', pin: 'abc123' }),
+      undefined
+    );
   });
 
   it('when --add-hosts, runs hosts helper before health check', async() => {
@@ -210,6 +234,35 @@ describe('dev-init command', () => {
     expect(devCaInstall.installCaPlatform).toHaveBeenCalledWith(expect.any(Buffer), 'https://dev.example.com');
     expect(devApi.getHealth).toHaveBeenCalledTimes(2);
     expect(devApi.issueCert).toHaveBeenCalled();
+  });
+
+  it('when Linux CA install needs sudo, logs warning and continues with in-process CA', async() => {
+    const sslErr = new Error('UNABLE_TO_VERIFY_LEAF_SIGNATURE');
+    devApi.getHealth
+      .mockRejectedValueOnce(sslErr)
+      .mockResolvedValueOnce(undefined);
+    devCaInstall.isSslUntrustedError.mockReturnValue(true);
+    devCaInstall.promptInstallCa.mockResolvedValue(true);
+    devCaInstall.fetchInstallCa.mockResolvedValue(Buffer.from('-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----'));
+    devCaInstall.installCaPlatform.mockRejectedValue(
+      new Error(
+        'Linux CA install requires sudo. Save CA manually from https://dev.example.com/install-ca-help to ' +
+          '/usr/local/share/ca-certificates/aifabrix-root-ca.crt and run: sudo update-ca-certificates'
+      )
+    );
+
+    await runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456' });
+
+    expect(devApi.getHealth).toHaveBeenCalledTimes(2);
+    expect(devApi.getHealth).toHaveBeenNthCalledWith(2, 'https://dev.example.com', '-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----');
+    expect(devApi.issueCert).toHaveBeenCalledWith(
+      'https://dev.example.com',
+      expect.any(Object),
+      '-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----'
+    );
+    const sudoHint = logger.log.mock.calls.map(c => String(c[0])).join('\n');
+    expect(sudoHint).toMatch(/system trust store \(sudo\/root required\)/);
+    expect(sudoHint).toMatch(/Linux CA install requires sudo/);
   });
 
   it('when SSL error and --yes, auto-installs CA without prompt', async() => {

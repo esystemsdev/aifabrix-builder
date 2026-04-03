@@ -66,7 +66,8 @@ jest.mock('../../../lib/utils/health-check', () => ({
 }));
 
 jest.mock('../../../lib/utils/remote-docker-env', () => ({
-  getRemoteDockerEnv: jest.fn().mockResolvedValue({})
+  getRemoteDockerEnv: jest.fn().mockResolvedValue({}),
+  getDockerExecEnv: jest.fn().mockImplementation(async() => ({ ...process.env }))
 }));
 
 jest.mock('../../../lib/utils/env-copy', () => ({
@@ -261,6 +262,7 @@ describe('startContainer', () => {
     });
     expect(childExec).toHaveBeenCalledWith(
       expect.stringMatching(/docker run -d[\s\S]*builder-server:latest/),
+      expect.objectContaining({ env: expect.any(Object) }),
       expect.any(Function)
     );
   });
@@ -355,6 +357,26 @@ describe('checkPrerequisites - version resolution', () => {
     await checkPrerequisites('keycloak', templateAppConfig, false, true, { image: 'myreg/keycloak:v1' });
 
     expect(checkImageExists).toHaveBeenCalledWith('myreg/keycloak', 'v1', false);
+  });
+
+  it('should prefix image check with manifest image.registry when set', async() => {
+    const templateAppConfig = {
+      port: 8082,
+      image: { name: 'aifabrix/keycloak', tag: 'latest', registry: 'reg.example.io' }
+    };
+    await checkPrerequisites('keycloak', templateAppConfig, false, true, {});
+
+    expect(checkImageExists).toHaveBeenCalledWith('reg.example.io/aifabrix/keycloak', 'latest', false);
+  });
+
+  it('should prefer runOptions.registry over manifest image.registry', async() => {
+    const templateAppConfig = {
+      port: 8082,
+      image: { name: 'kc', tag: 't1', registry: 'manifest.io' }
+    };
+    await checkPrerequisites('keycloak', templateAppConfig, false, true, { registry: 'cli.io' });
+
+    expect(checkImageExists).toHaveBeenCalledWith('cli.io/kc', 't1', false);
   });
 
   it('should throw template-app hint when image not found for keycloak', async() => {

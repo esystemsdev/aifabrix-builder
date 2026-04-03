@@ -27,11 +27,13 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix dev show`](developer-isolation.md#aifabrix-dev-show) - Show dev ports and ~/.aifabrix config
   - [`aifabrix dev set-id <id>`](developer-isolation.md#aifabrix-dev-set-id) - Set developer ID (0 = default infra, &gt;0 = dev-specific ports)
   - [`aifabrix dev set-env-config <filePath>`](developer-isolation.md#aifabrix-dev-set-env-config) - Set or clear aifabrix-env-config in config (path not validated)
-  - [`aifabrix dev set-home <path>`](developer-isolation.md#aifabrix-dev-set-home) - Set or clear aifabrix-home override in config.yaml
+  - [`aifabrix dev set-home <path>`](developer-isolation.md#aifabrix-dev-set-home) - Set or clear aifabrix-home; optional shell/user env registration
+  - [`aifabrix dev set-work <path>`](developer-isolation.md#aifabrix-dev-set-work) - Set or clear aifabrix-work (workspace root); optional `AIFABRIX_WORK` registration
+  - [`aifabrix dev print-home`](developer-isolation.md#aifabrix-dev-print-home) / [`print-work`](developer-isolation.md#aifabrix-dev-print-work) - Script-friendly resolved paths (stdout only)
   - [`aifabrix dev set-format <format>`](developer-isolation.md#aifabrix-dev-set-format) - Default json|yaml when `--format` is omitted (download/convert)
   - [`aifabrix dev init`](developer-isolation.md#aifabrix-dev-init) - Onboard with Builder Server (cert, settings, SSH for Mutagen)
   - [`aifabrix dev refresh`](developer-isolation.md#aifabrix-dev-refresh) - Pull server settings into config; renew cert if due or `--cert`
-  - [`aifabrix dev add`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev update`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev pin`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev delete`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev list`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) - Remote Builder Server admin: manage developers (see each command’s `--help` for examples)
+  - [`aifabrix dev add`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev update`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev pin`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev delete`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) / [`dev list`](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) - Remote Builder Server: manage developers and groups (admin for add/update/pin/delete; [roles table](developer-isolation.md#aifabrix-dev-add-update-pin-delete-list) includes **docker** host flag)
   - [`aifabrix dev down`](developer-isolation.md#aifabrix-dev-down) - Stop Mutagen sync; `--apps` also stops app containers
 
 ### Application Management
