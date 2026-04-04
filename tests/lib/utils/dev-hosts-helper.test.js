@@ -43,13 +43,15 @@ describe('dev-hosts-helper', () => {
 
   describe('hostsFileHasHostname', () => {
     it('detects existing mapping', () => {
-      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-hosts-'));
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), `aifabrix-hosts-${process.pid}-`));
       const p = path.join(dir, 'hosts');
-      fs.writeFileSync(p, '# comment\n192.168.1.1 gateway\n192.168.1.25 builder02.local\n', 'utf8');
-      expect(hostsFileHasHostname(p, 'builder02.local')).toBe(true);
-      expect(hostsFileHasHostname(p, 'other.local')).toBe(false);
-      fs.unlinkSync(p);
-      fs.rmdirSync(dir);
+      try {
+        fs.writeFileSync(p, '# comment\n192.168.1.1 gateway\n192.168.1.25 builder02.local\n', 'utf8');
+        expect(hostsFileHasHostname(p, 'builder02.local')).toBe(true);
+        expect(hostsFileHasHostname(p, 'other.local')).toBe(false);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
     });
 
     it('returns false for missing file', () => {

@@ -2,6 +2,7 @@
  * @fileoverview Tests for lib/utils/datasource-test-run-schema-sync.js
  */
 
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -11,7 +12,8 @@ const {
 } = require('../../../lib/utils/datasource-test-run-schema-sync');
 
 function withSchemaSyncTempDir(fn) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `schema-sync-${process.pid}-`));
+  const unique = `${process.pid}-${Date.now()}-${crypto.randomBytes(8).toString('hex')}`;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `schema-sync-${unique}-`));
   try {
     return fn(dir);
   } finally {
@@ -35,7 +37,7 @@ describe('datasource-test-run-schema-sync', () => {
     withSchemaSyncTempDir(dir => {
       const b = path.join(dir, 'b.json');
       fs.writeFileSync(b, '{}', 'utf8');
-      const d = path.join(dir, 'missing.json');
+      const d = path.join(dir, `absent-dataplane-${crypto.randomUUID()}.json`);
       const r = assertDatasourceTestRunSchemasInSync(b, d);
       expect(r.skipped).toBe(true);
     });

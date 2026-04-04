@@ -875,11 +875,14 @@ aifabrix datasource test hubspot-company -a hubspot -e tst --json
 
 # Single response, no async polling (fails if the report is not complete in the first response)
 aifabrix datasource test hubspot-company -a hubspot --no-async
+
+# Re-run when files under the integration folder change (local watch)
+aifabrix datasource test hubspot-company -a hubspot --watch
 ```
 
 **Arguments:** `<datasourceKey>` – Datasource key (e.g. hubspot-company).
 
-**Options:** `-a, --app <app>` – Integration folder (optional: resolved from cwd when inside `integration/<systemKey>/`, or when exactly one integration owns the datasource). `-e, --env <env>` – Environment: dev, tst, or pro. `-p, --payload <file>` – Optional custom payload merged into the request as `payloadTemplate`. `-v, --verbose` – Sets explain-oriented flags on the request. `--debug [level]` – Richer debug from the dataplane and an optional terminal appendix: **`summary`** (default), **`full`**, or **`raw`** (see [External Integration Testing – Debug output](external-integration-testing.md#debug-output-datasource-commands)); no appendix with `--json`. `--timeout <ms>` – Aggregate budget for the initial request and any async polling (default: 30000). `--no-async` – Do not poll; exit with an error if the server returns a partial report. `--json` – Print raw report JSON to stdout. `--summary` – Compact summary line. `--warnings-as-errors` – Exit 1 when root status is warn. `--require-cert` – Exit 2 when certificate checks are missing or not passed.
+**Options:** `-a, --app <app>` – Integration folder (optional: resolved from cwd when inside `integration/<systemKey>/`, or when exactly one integration owns the datasource). `-e, --env <env>` – Environment: dev, tst, or pro. `-p, --payload <file>` – Optional custom payload merged into the request as `payloadTemplate`. `-v, --verbose` – Sets explain-oriented flags on the request. `--debug [level]` – Richer debug from the dataplane and an optional terminal appendix: **`summary`** (default), **`full`**, or **`raw`** (see [External Integration Testing – Debug output](external-integration-testing.md#debug-output-datasource-commands)); no appendix with `--json`. `--timeout <ms>` – Aggregate budget for the initial request and any async polling (default: 30000). `--no-async` – Do not poll; exit with an error if the server returns a partial report. `--json` – Print raw report JSON to stdout. `--summary` – Compact summary line. `--warnings-as-errors` – Exit 1 when root status is warn. `--require-cert` – Exit 2 when certificate checks are missing or not passed. **`--watch`**, **`--watch-path`**, **`--watch-application-yaml`**, **`--watch-ci`**, **`--watch-full-diff`** – Re-run when local files change; see [External Integration Testing – Watch mode](external-integration-testing.md#watch-mode-datasource-commands).
 
 **Prerequisites:** Same deployment authentication as `test-integration`; dataplane reachable; datasource published (or otherwise resolvable for the target environment).
 
@@ -910,7 +913,7 @@ aifabrix datasource test-integration hubspot-company -a hubspot -e tst --timeout
 
 **Arguments:** `<datasourceKey>` – Datasource key (e.g. hubspot-company, hubspot-deal).
 
-**Options:** `-a, --app <app>` – Integration folder (optional: resolved from current directory when inside `integration/<systemKey>/`, or from datasource key when exactly one integration has that datasource; use when multiple integrations share the same datasource key). `-v, --verbose` – Explain-oriented request flags and detailed human output where available. `-p, --payload <file>` – Custom test payload file. `-e, --env <env>` – Environment: dev, tst, or pro. `--debug [level]` – Richer debug, optional terminal appendix (**`summary`** / **`full`** / **`raw`**), and a log under `integration/<systemKey>/logs/` (see [External Integration Testing – Debug output](external-integration-testing.md#debug-output-datasource-commands)); no appendix with `--json`. `--timeout <ms>` – Aggregate budget for the initial request and any async polling (default: 30000). `--json` – Print the raw report JSON to stdout. `--summary` – Print a compact summary line. `--warnings-as-errors` – Exit with status 1 when the root status is warn. `--require-cert` – Exit with status 2 when certificate checks are missing or not passed.
+**Options:** `-a, --app <app>` – Integration folder (optional: resolved from current directory when inside `integration/<systemKey>/`, or from datasource key when exactly one integration has that datasource; use when multiple integrations share the same datasource key). `-v, --verbose` – Explain-oriented request flags and detailed human output where available. `-p, --payload <file>` – Custom test payload file. `-e, --env <env>` – Environment: dev, tst, or pro. `--debug [level]` – Richer debug, optional terminal appendix (**`summary`** / **`full`** / **`raw`**), and a log under `integration/<systemKey>/logs/` (see [External Integration Testing – Debug output](external-integration-testing.md#debug-output-datasource-commands)); no appendix with `--json`. `--timeout <ms>` – Aggregate budget for the initial request and any async polling (default: 30000). `--json` – Print the raw report JSON to stdout. `--summary` – Print a compact summary line. `--warnings-as-errors` – Exit with status 1 when the root status is warn. `--require-cert` – Exit with status 2 when certificate checks are missing or not passed. **`--watch`**, **`--watch-path`**, **`--watch-application-yaml`**, **`--watch-ci`**, **`--watch-full-diff`** – Re-run when local files change; see [External Integration Testing – Watch mode](external-integration-testing.md#watch-mode-datasource-commands).
 
 **Context:** The integration folder is resolved from `--app`, from the current directory when inside `integration/<systemKey>/`, or by scanning `integration/*` for the datasource key (if exactly one matches). The system key sent to the dataplane is then derived from that integration’s config.
 
@@ -958,10 +961,12 @@ aifabrix datasource test-e2e hubspot-contacts --app hubspot --capability read
 - `--no-async` – Use sync mode: single request, no polling (useful for short runs or backward compatibility).
 - `--timeout <ms>` – Aggregate budget for the initial request and any async polling (default fifteen minutes).
 - `--capability <key>` – Optional single-capability scope when the server supports filtering the E2E run.
+- `--strict-capability-scope` – With `--capability`, exit with status 1 if the report still lists multiple capability rows (client check; see [External Integration Testing](external-integration-testing.md#datasource-e2e-tests)).
 - `--json` – Print the raw **DatasourceTestRun** JSON to stdout.
 - `--summary` – Print a compact summary line.
 - `--warnings-as-errors` – Exit with status 1 when the root status is warn.
 - `--require-cert` – Exit with status 2 when certificate checks are missing or not passed.
+- `--watch`, `--watch-path`, `--watch-application-yaml`, `--watch-ci`, `--watch-full-diff` – Re-run when local files change; see [External Integration Testing – Watch mode](external-integration-testing.md#watch-mode-datasource-commands).
 
 **Prerequisites:** Same as `test-integration`: run `aifabrix login`, or configure the app’s client credentials so the CLI can obtain a deployment token. If authentication fails, follow the message from the CLI (e.g. register the app or fix secrets).
 

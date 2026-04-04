@@ -176,6 +176,29 @@ describe('Datasource Commands Module', () => {
       );
     });
 
+    it('should register watch flags on test, test-integration, and test-e2e', () => {
+      setupDatasourceCommands(program);
+      const datasourceGroup = program._datasourceGroup;
+      for (const name of [
+        'test <datasourceKey>',
+        'test-integration <datasourceKey>',
+        'test-e2e <datasourceKey>'
+      ]) {
+        const cmd = datasourceGroup._subCommands?.find(c => c.name === name);
+        expect(cmd).toBeDefined();
+        expect(cmd.command.option).toHaveBeenCalledWith('--watch', expect.any(String));
+        expect(cmd.command.option).toHaveBeenCalledWith(
+          '--watch-path <path>',
+          expect.any(String),
+          expect.any(Function),
+          []
+        );
+        expect(cmd.command.option).toHaveBeenCalledWith('--watch-application-yaml', expect.any(String));
+        expect(cmd.command.option).toHaveBeenCalledWith('--watch-ci', expect.any(String));
+        expect(cmd.command.option).toHaveBeenCalledWith('--watch-full-diff', expect.any(String));
+      }
+    });
+
     it('should register log-e2e command', () => {
       setupDatasourceCommands(program);
       const datasourceGroup = program._datasourceGroup;
