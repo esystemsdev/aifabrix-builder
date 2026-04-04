@@ -63,18 +63,52 @@ describe('Build Helpers Module', () => {
       };
       const generateDockerfileFn = jest.fn();
       const templateDockerfilePath = path.join(process.cwd(), 'builder', appName, 'Dockerfile');
-      dockerfileUtils.checkTemplateDockerfile.mockReturnValue(templateDockerfilePath);
       dockerfileUtils.checkProjectDockerfile.mockReturnValue(null);
+      dockerfileUtils.checkTemplateDockerfile.mockReturnValue(templateDockerfilePath);
 
       const result = await determineDockerfile(appName, options, generateDockerfileFn);
 
       expect(result).toBe(templateDockerfilePath);
+      expect(dockerfileUtils.checkProjectDockerfile).toHaveBeenCalled();
       expect(dockerfileUtils.checkTemplateDockerfile).toHaveBeenCalledWith(
         path.join(process.cwd(), 'builder', appName),
         appName,
         false
       );
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ Using existing Dockerfile:'));
+      expect(generateDockerfileFn).not.toHaveBeenCalled();
+    });
+
+    it('should prefer build.dockerfile over devDir Dockerfile when both exist', async() => {
+      const appName = 'builder-server';
+      const devDir = '/home/user/.aifabrix/applications';
+      const contextPath = '/home/user/aifabrix-setup';
+      const canonicalDockerfile = path.join(contextPath, 'builder/builder-server/Dockerfile');
+      const staleDevDirDockerfile = path.join(devDir, 'Dockerfile');
+      const options = {
+        language: 'typescript',
+        config: {},
+        buildConfig: { dockerfile: 'builder/builder-server/Dockerfile', context: '../..' },
+        contextPath,
+        devDir,
+        forceTemplate: false
+      };
+      const generateDockerfileFn = jest.fn();
+      dockerfileUtils.checkProjectDockerfile.mockReturnValue(canonicalDockerfile);
+      dockerfileUtils.checkTemplateDockerfile.mockReturnValue(staleDevDirDockerfile);
+
+      const result = await determineDockerfile(appName, options, generateDockerfileFn);
+
+      expect(result).toBe(canonicalDockerfile);
+      expect(dockerfileUtils.checkProjectDockerfile).toHaveBeenCalledWith(
+        devDir,
+        appName,
+        options.buildConfig,
+        contextPath,
+        false
+      );
+      expect(dockerfileUtils.checkTemplateDockerfile).not.toHaveBeenCalled();
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ Using custom Dockerfile:'));
       expect(generateDockerfileFn).not.toHaveBeenCalled();
     });
 

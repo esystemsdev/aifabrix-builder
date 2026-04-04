@@ -283,8 +283,26 @@ describe('Infrastructure Compose Module', () => {
     it('resolves relative segments and uses forward slashes', () => {
       const base = path.join(os.tmpdir(), 'aifabrix-bind-mount-test');
       const rel = path.join(base, 'init-scripts');
-      const expected = path.resolve(rel).split(path.sep).join('/');
+      let expected = path.resolve(rel).split(path.sep).join('/');
+      if (process.platform === 'win32') {
+        const m = /^([a-zA-Z]):(\/.*)$/.exec(expected);
+        if (m) expected = `/${m[1].toLowerCase()}${m[2]}`;
+      }
       expect(compose.toDockerBindMountSource(rel)).toBe(expected);
+    });
+
+    it('on win32 maps C:/ style paths to /c/ for Docker volume parsing', () => {
+      const origPlatform = process.platform;
+      const spy = jest.spyOn(path, 'resolve').mockReturnValue('C:\\Users\\test\\infra\\init-scripts');
+      Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' });
+      try {
+        expect(compose.toDockerBindMountSource('C:\\Users\\test\\infra\\init-scripts')).toBe(
+          '/c/Users/test/infra/init-scripts'
+        );
+      } finally {
+        spy.mockRestore();
+        Object.defineProperty(process, 'platform', { configurable: true, value: origPlatform });
+      }
     });
 
     it('returns empty string unchanged', () => {

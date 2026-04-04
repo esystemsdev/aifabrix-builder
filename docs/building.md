@@ -246,8 +246,13 @@ build:
 
 ### When SDK Uses Your Dockerfile
 
-- ✓ Dockerfile exists at specified path
-- ✓ You haven't used `--force-template`
+Resolution order:
+
+1. **`build.dockerfile` in `application.yaml`** (path resolved from `build.context`, e.g. repo-root `builder/builder-server/Dockerfile`) when the file exists and you did not pass `--force-template`.
+2. Otherwise **`Dockerfile` in the developer app directory** (e.g. `~/.aifabrix/applications/Dockerfile` after a copy).
+3. Otherwise generate from the language template.
+
+So a monorepo app that sets `build.dockerfile` always uses that canonical Dockerfile, even if an older `Dockerfile` was left in `~/.aifabrix/...` from a previous build.
 
 ### Force Regenerate Template
 
