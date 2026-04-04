@@ -6,12 +6,12 @@ Application management commands for registering and managing applications with t
 
 ---
 
-<a id="aifabrix-show-appkey"></a>
-## aifabrix show <appKey>
+<a id="aifabrix-show-app"></a>
+## aifabrix show <app>
 
 Show application info from local builder/ or integration/ folder (offline) or from the controller (with `--online`).
 
-**What:** By default loads and displays app info from the local **builder/** or **integration/** folder (offline). The CLI resolves the app path by checking **`integration/<appKey>`** first, then **`builder/<appKey>`**; if neither exists, it errors. With `--online` it fetches application data from the controller. Output clearly indicates whether the source is offline or online. Does not run schema validation — use `aifabrix validate` for that.
+**What:** By default loads and displays app info from the local **builder/** or **integration/** folder (offline). The CLI resolves the app path by checking **`integration/<systemKey>`** first, then **`builder/<appKey>`**; if neither exists, it errors. With `--online` it fetches application data from the controller. Output clearly indicates whether the source is offline or online. Does not run schema validation — use `aifabrix validate` for that.
 
 **When:** To inspect application key, type, roles, permissions, authentication, portal input configurations, and databases; or to compare local config with what is on the controller.
 
@@ -38,12 +38,12 @@ aifabrix show myapp --online --json
 **Permissions (online):** Controller access and `applications:read` (or environment-scoped application read). See [Online Commands and Permissions](permissions.md).
 
 **Output:**
-- **Offline:** First line is `Source: offline (builder/myapp/application.yaml)` or the actual path (e.g. `integration/myapp/application.yaml`). Then Application (key, display name, description, type, deployment, image, registry, port, health, build), Roles, Authentication, Portal input configurations, Databases. Permissions are not shown by default; use `aifabrix app show <appKey> --permissions` to see only permissions. For type **external**, also shows External integration (schemaBasePath, systems, dataSources) and a hint to run `aifabrix show <appKey> --online` or `aifabrix app show <appKey>` for dataplane data.
+- **Offline:** First line is `Source: offline (builder/myapp/application.yaml)` or the actual path (e.g. `integration/myapp/application.yaml`). Then Application (key, display name, description, type, deployment, image, registry, port, health, build), Roles, Authentication, Portal input configurations, Databases. Permissions are not shown by default; use `aifabrix app show <app> --permissions` to see only permissions. For type **external**, also shows External integration (schemaBasePath, systems, dataSources) and a hint to run `aifabrix show <app> --online` or `aifabrix app show <app>` for dataplane data.
 - **Online:** First line is `Source: online (https://controller.example.com)`. Then application details from the controller API. For type **external**, the Application section shows **Status** (application status from the controller), **Dataplane Status** (from the dataplane system endpoint), and **Version** when available; it omits port, image, registry, build, URL, and internal URL. For type **external**, a section **External system (dataplane)** shows: credentialId, status, version, showOpenApiDocs, mcpServerUrl, apiDocumentUrl, openApiDocsPageUrl, dataSources, application summary, OpenAPI files/endpoints when available, and **Service links** (OpenAPI docs page URL when provided by dataplane, plus REST OpenAPI and MCP docs URLs). Online external data is fetched from the controller and from the dataplane.
 
 **Exit codes:** `0` on success; `1` if application.yaml not found or invalid YAML (offline), or on auth failure / 404 / API error (online).
 
-**See also:** To show application data from the controller only (online), you can use [aifabrix app show \<appKey\>](#aifabrix-app-show-appkey), which is equivalent to `aifabrix show <appKey> --online`.
+**See also:** To show application data from the controller only (online), you can use [aifabrix app show \<appKey\>](#aifabrix-app-show-appkey), which is equivalent to `aifabrix show <app> --online`.
 
 ---
 
@@ -52,9 +52,9 @@ aifabrix show myapp --online --json
 Application management commands for registering and managing applications with the Miso Controller.
 
 <a id="aifabrix-app-show-appkey"></a>
-### aifabrix app show <appKey>
+### aifabrix app show <app>
 
-Show application from the controller (online). Same as `aifabrix show <appKey> --online`.
+Show application from the controller (online). Same as `aifabrix show <app> --online`.
 
 **What:** Fetches and displays application data from the controller. Use this when you want to see the registered app and, for **external** type, dataplane details (External system section, dataSources, OpenAPI/MCP links) without using the top-level `show` command with `--online`.
 
@@ -79,13 +79,13 @@ aifabrix app show dataplane --permissions --json
 - `<appKey>` - Application key (e.g. `dataplane`, or any registered app key)
 
 **Options:**
-- `--online` - Fetch from controller (default for this command; accepted for UX parity with `aifabrix show <appKey> --online`)
+- `--online` - Fetch from controller (default for this command; accepted for UX parity with `aifabrix show <app> --online`)
 - `--json` - Output a single JSON object to stdout
 - `--permissions` - Show only list of permissions
 
 **Permissions:** Controller access and `applications:read` (or environment-scoped app access). For external type, Dataplane may be called and requires `external-system:read`. See [Online Commands and Permissions](permissions.md).
 
-**Output:** Same as [aifabrix show \<appKey\>](#aifabrix-show-appkey) with `--online`: source line `Source: online (controller URL)`, Application details (for type **external**: Status, Dataplane Status, and Version when present; deployment-related fields omitted), and for type **external** the **External system (dataplane)** section with credentialId, status, version, showOpenApiDocs, mcpServerUrl, apiDocumentUrl, openApiDocsPageUrl, dataSources, and service links. The **Permissions** section is shown only when `--permissions` is set.
+**Output:** Same as [aifabrix show \<appKey\>](#aifabrix-show-app) with `--online`: source line `Source: online (controller URL)`, Application details (for type **external**: Status, Dataplane Status, and Version when present; deployment-related fields omitted), and for type **external** the **External system (dataplane)** section with credentialId, status, version, showOpenApiDocs, mcpServerUrl, apiDocumentUrl, openApiDocsPageUrl, dataSources, and service links. The **Permissions** section is shown only when `--permissions` is set.
 
 **Exit codes:** `0` on success; `1` on auth failure, 404, or API error (requires `aifabrix login`).
 
@@ -206,7 +206,7 @@ When applications are found:
 ✓ myapp - My Application (active) (URL: https://myapp.example.com, Port: 8080)
 ✗ otherapp - Other Application (inactive) (URL: https://otherapp.example.com)
 ✓ anotherapp - Another Application (running) (Port: 3000)
-  To show details for an app: aifabrix app show <appKey>
+  To show details for an app: aifabrix app show <app>
 ```
 
 When no applications are found:
@@ -223,7 +223,7 @@ When no applications are found:
 - Status is shown in parentheses (active, inactive, running, unknown, etc.)
 - URL and Port are shown in blue if available (format: `(URL: {url}, Port: {port})`)
 - Environment name is included in the header
-- A hint line shows how to view details: `aifabrix app show <appKey>`
+- A hint line shows how to view details: `aifabrix app show <app>`
 
 **Issues:**
 - **"Not logged in"** → Run `aifabrix login` first

@@ -217,7 +217,7 @@ describe('CLI Utils Module', () => {
     });
 
     it('should not label plain EACCES as Docker (e.g. bogus filesystem path)', () => {
-      const error = new Error("EACCES: permission denied, mkdir '/aifabrix-miso'");
+      const error = new Error('EACCES: permission denied, mkdir \'/aifabrix-miso\'');
 
       handleCommandError(error, 'secret set');
 
@@ -421,7 +421,7 @@ describe('CLI Utils Module', () => {
       appendFileSpy.mockRestore();
     });
 
-    it('should append error message to integration/<appKey>/error.log', async() => {
+    it('should append error message to integration/<systemKey>/error.log', async() => {
       await appendWizardError('myapp', new Error('Test error'));
 
       expect(mkdirCalls).toHaveLength(1);

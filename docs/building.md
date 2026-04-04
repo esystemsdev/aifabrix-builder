@@ -21,7 +21,7 @@ aifabrix build myapp
    - If not found, generates from template
 4. **Builds Docker image** with proper context (`build.context` is the canonical app code directory; it is also used for `run --reload` as the local mount path and, for remote Docker, as the Mutagen local path)
 5. **Builds image as** `myapp-dev<developerId>:<tag>` and also tags `myapp:<tag>` for compatibility
-6. **Resolves env** from env.template + secrets in memory; the **only** persisted `.env` is written to `build.envOutputPath` when set (for run, compose uses this path or a temp path; no `.env` under `builder/<app>/` or `integration/<app>/`)
+6. **Resolves env** from env.template + secrets in memory; the **only** persisted `.env` is written to `build.envOutputPath` when set (for run, compose uses this path or a temp path; no `.env` under `builder/<appKey>/` or `integration/<systemKey>/`)
    - Container runtime: compose's `env_file` points to that single path (envOutputPath or temp for run)
    - Uses `port` from application.yaml; uses docker service names (redis, postgres) for container-to-container; all ports get developer-id adjustment where applicable
 
@@ -313,7 +313,7 @@ docker images | grep myapp-dev
 
 ### .env (single file)
 
-Secrets are resolved in memory; the **only** persisted `.env` is written to `build.envOutputPath` when set. For run, compose uses this path or a temp path; there is no `.env` under `builder/<app>/` or `integration/<app>/`.
+Secrets are resolved in memory; the **only** persisted `.env` is written to `build.envOutputPath` when set. For run, compose uses this path or a temp path; there is no `.env` under `builder/<appKey>/` or `integration/<systemKey>/`.
 
 **When `build.envOutputPath` is set:**  
 **Location:** Path specified in `build.envOutputPath` (e.g., `../../apps/myapp/.env`)  

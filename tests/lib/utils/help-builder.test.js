@@ -94,14 +94,14 @@ describe('help-builder', () => {
       program.command('shell <app>').description('Open interactive shell');
       program.command('logs <app>').description('Show application container logs');
       program.command('stop <app>').description('Stop and remove application container');
-      program.command('show <appKey>').description('Show application info');
+      program.command('show <app>').description('Show application info');
       program.command('service-user').description('Create and manage service users');
 
       const help = buildCategorizedHelp(program);
       expect(help).toContain('shell <app>');
       expect(help).toContain('logs <app>');
       expect(help).toContain('stop <app>');
-      expect(help).toContain('show <appKey>');
+      expect(help).toContain('show <app>');
       expect(help).toContain('service-user');
     });
 
@@ -120,13 +120,13 @@ describe('help-builder', () => {
     it('should include upload, convert, credential, deployment when those commands are registered', () => {
       const program = new Command();
       program.name('aifabrix').description('Test');
-      program.command('upload <system-key>').description('Upload external system to dataplane');
+      program.command('upload <systemKey>').description('Upload external system to dataplane');
       program.command('convert <app>').description('Convert config between JSON and YAML');
       program.command('credential').description('Manage credentials');
       program.command('deployment').description('List deployments');
 
       const help = buildCategorizedHelp(program);
-      expect(help).toContain('upload <system-key>');
+      expect(help).toContain('upload <systemKey>');
       expect(help).toContain('convert <app>');
       expect(help).toContain('credential');
       expect(help).toContain('deployment');

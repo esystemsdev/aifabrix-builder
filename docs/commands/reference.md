@@ -36,7 +36,7 @@ aifabrix push myapp --registry myacr.azurecr.io --tag v1.0.0
 # Deploy (uses controller and environment from config)
 aifabrix deploy myapp
 
-# Deploy external system from integration/<app>/ (resolved first by default; no app register needed)
+# Deploy external system from integration/<systemKey>/ (resolved first by default; no app register needed)
 aifabrix deploy myapp
 ```
 

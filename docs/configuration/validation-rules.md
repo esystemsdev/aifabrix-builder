@@ -4,7 +4,7 @@
 
 When you run `aifabrix validate <external-system-key>` (or a file path), the CLI runs **three steps** in order: application configuration, component files, and the full deployment manifest. Each step applies the rules below. Validation is **offline** (no network or backend required). You can also run validation for **all** integrations or builder apps in one call using **`aifabrix validate --integration`** or **`aifabrix validate --builder`**; see [Validation commands](../commands/validation.md#aifabrix-validate-apporfile).
 
-**Upload and download:** On **upload** (`aifabrix upload <system-key>`), configuration values are resolved before send: `location: variable` → `{{VAR}}` from the integration’s `.env`; `location: keyvault` → `kv://` from secrets. On **download** (`aifabrix download <system-key>`), when `env.template` exists, configuration entries whose `name` matches a variable in env.template have their `value` set to `{{name}}` so the downloaded file stays template-based.
+**Upload and download:** On **upload** (`aifabrix upload <systemKey>`), configuration values are resolved before send: `location: variable` → `{{VAR}}` from the integration’s `.env`; `location: keyvault` → `kv://` from secrets. On **download** (`aifabrix download <systemKey>`), when `env.template` exists, configuration entries whose `name` matches a variable in env.template have their `value` set to `{{name}}` so the downloaded file stays template-based.
 
 **Note:** If you pass a **file path** instead of an app name, the command validates that single file against the appropriate schema (external-system or external-datasource). The same schema rules apply; see [Validation commands](../commands/validation.md#aifabrix-validate-apporfile) for usage.
 
@@ -198,6 +198,6 @@ For full dataplane rules and troubleshooting (dimension catalog, pipeline deploy
 - **Validation fails at Step 1** – Fix `application.yaml`, the RBAC file (rbac.yaml / rbac.yml / rbac.json), or `env.template` as reported. Ensure `externalIntegration` is present when `app.type` is `external`, and that `schemaBasePath` and `systems` are set.
 - **Role reference errors** – Ensure every role value used in `permissions[].roles` (in the RBAC file or in external system files) exists in the corresponding `roles` array with that `value`.
 - **systemKey mismatch** – Ensure each datasource file’s `systemKey` matches the external system’s `key` (the same value used in the system file and in the generated manifest).
-- **File not found** – Run `aifabrix repair <app>` to sync config with files on disk, or add the missing system/datasource files under the schema base path.
+- **File not found** – Run `aifabrix repair <systemKey>` to sync config with files on disk, or add the missing system/datasource files under the schema base path.
 
 For full command usage, examples, and error messages, see [Validation commands](../commands/validation.md#aifabrix-validate-apporfile). Local validation does not run online checks (e.g. ABAC dimension catalog); those occur during deployment or when using test-integration.

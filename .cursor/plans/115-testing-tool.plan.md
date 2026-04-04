@@ -253,7 +253,7 @@ Snapshot tests **must** use fixtures with deterministic order.
 
 | Aspect | Behavior |
 |--------|----------|
-| Trigger | Rerun when watched files change: default glob **datasource JSON** for resolved app (`integration/<appKey>/**/*datasource*.json` or explicit `--watch-path`); **application.yaml** optional second watch |
+| Trigger | Rerun when watched files change: default glob **datasource JSON** for resolved app (`integration/<systemKey>/**/*datasource*.json` or explicit `--watch-path`); **application.yaml** optional second watch |
 | Debounce | **500 ms** coalescing from last FS event |
 | Diff | On rerun, if previous report cached, print **unified diff** of **root `status`**, **certificate.status**, and **capability key list + statuses** only (not full JSON) unless `--watch-full-diff` |
 | Exit | **does not exit** on test failure by default (developer loop); **`--watch-ci`** exits with normal matrix after first run |

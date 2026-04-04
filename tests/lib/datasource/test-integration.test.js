@@ -5,62 +5,46 @@
  * @version 2.0.0
  */
 
-jest.mock('../../../lib/api/pipeline.api');
-jest.mock('../../../lib/utils/paths', () => ({
-  getIntegrationPath: jest.fn((app) => `/integration/${app}`)
+jest.mock('../../../lib/datasource/unified-validation-run', () => ({
+  runUnifiedDatasourceValidation: jest.fn()
+}));
+jest.mock('../../../lib/datasource/integration-context', () => ({
+  getSystemKeyFromAppKey: jest.fn(),
+  findDatasourceFileByKey: jest.fn()
 }));
 jest.mock('../../../lib/datasource/resolve-app', () => ({
   resolveAppKeyForDatasource: jest.fn()
-}));
-jest.mock('../../../lib/utils/app-config-resolver', () => ({
-  resolveApplicationConfigPath: jest.fn((p) => `${p}/application.yaml`)
-}));
-jest.mock('../../../lib/utils/config-format', () => ({
-  loadConfigFile: jest.fn()
-}));
-jest.mock('../../../lib/external-system/test-auth', () => ({
-  setupIntegrationTestAuth: jest.fn()
-}));
-jest.mock('../../../lib/core/config', () => ({
-  getConfig: jest.fn().mockResolvedValue({})
 }));
 jest.mock('../../../lib/utils/test-log-writer', () => ({
   writeTestLog: jest.fn().mockResolvedValue('/path/to/log.json')
 }));
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn(), warn: jest.fn(), error: jest.fn() }));
-jest.mock('fs', () => ({
-  existsSync: jest.fn(),
-  promises: {
-    readFile: jest.fn()
-  }
-}));
 
 const { runDatasourceTestIntegration } = require('../../../lib/datasource/test-integration');
 const { resolveAppKeyForDatasource } = require('../../../lib/datasource/resolve-app');
-const pipelineApi = require('../../../lib/api/pipeline.api');
-const configFormat = require('../../../lib/utils/config-format');
-const testAuth = require('../../../lib/external-system/test-auth');
-const fs = require('fs').promises;
+const { runUnifiedDatasourceValidation } = require('../../../lib/datasource/unified-validation-run');
+const { getSystemKeyFromAppKey } = require('../../../lib/datasource/integration-context');
+const { writeTestLog } = require('../../../lib/utils/test-log-writer');
+
+function passEnvelope(overrides = {}) {
+  return {
+    status: 'pass',
+    systemKey: 'mysys',
+    reportCompleteness: 'full',
+    ...overrides
+  };
+}
 
 describe('Datasource Test Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resolveAppKeyForDatasource.mockResolvedValue({ appKey: 'myapp' });
-    configFormat.loadConfigFile.mockReturnValue({
-      externalIntegration: {
-        systems: ['test-system.yaml'],
-        dataSources: ['ds1-datasource.json'],
-        schemaBasePath: './'
-      }
-    });
-    fs.readFile.mockResolvedValue(JSON.stringify({ key: 'my-ds', testPayload: { payloadTemplate: {} } }));
-    testAuth.setupIntegrationTestAuth.mockResolvedValue({
-      authConfig: { token: 't' },
-      dataplaneUrl: 'https://dp.example.com'
-    });
-    pipelineApi.testDatasourceViaPipeline.mockResolvedValue({
-      success: true,
-      data: { success: true }
+    getSystemKeyFromAppKey.mockResolvedValue('mysys');
+    runUnifiedDatasourceValidation.mockResolvedValue({
+      envelope: passEnvelope(),
+      apiError: null,
+      pollTimedOut: false,
+      incompleteNoAsync: false
     });
   });
 
@@ -69,56 +53,74 @@ describe('Datasource Test Integration', () => {
       await expect(runDatasourceTestIntegration('', { app: 'myapp' })).rejects.toThrow('Datasource key is required');
     });
 
-    it('should call pipeline test when datasource found', async() => {
-      const appConfig = {
-        externalIntegration: {
-          systems: ['sys.yaml'],
-          dataSources: ['my-ds-datasource.json'],
-          schemaBasePath: './'
-        }
-      };
-      const datasourceConfig = { key: 'my-ds', testPayload: { payloadTemplate: { x: 1 } } };
-      configFormat.loadConfigFile.mockImplementation((filePath) => {
-        if (filePath && filePath.endsWith('application.yaml')) return appConfig;
-        if (filePath && filePath.includes('my-ds-datasource')) return datasourceConfig;
-        return appConfig;
+    it('should call unified validation with runType integration', async() => {
+      const result = await runDatasourceTestIntegration('my-ds', { app: 'myapp' });
+
+      expect(runUnifiedDatasourceValidation).toHaveBeenCalledWith(
+        'my-ds',
+        expect.objectContaining({
+          app: 'myapp',
+          runType: 'integration',
+          async: true,
+          noAsync: false
+        })
+      );
+      expect(result.key).toBe('my-ds');
+      expect(result.systemKey).toBe('mysys');
+      expect(result.success).toBe(true);
+      expect(result.datasourceTestRun).toEqual(passEnvelope());
+    });
+
+    it('should return failure object when POST fails (apiError)', async() => {
+      runUnifiedDatasourceValidation.mockResolvedValue({
+        envelope: null,
+        apiError: { formattedError: 'Unauthorized', success: false },
+        pollTimedOut: false,
+        incompleteNoAsync: false
       });
-      const yaml = require('js-yaml');
-      fs.readFile.mockResolvedValueOnce(yaml.dump({ key: 'mysys' }));
 
       const result = await runDatasourceTestIntegration('my-ds', { app: 'myapp' });
 
-      expect(pipelineApi.testDatasourceViaPipeline).toHaveBeenCalled();
-      expect(result.key).toBe('my-ds');
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Unauthorized');
+      expect(result.datasourceTestRun).toBeNull();
+      expect(result.runMeta.apiError).toEqual({ formattedError: 'Unauthorized', success: false });
     });
 
-    it('should find datasource by key inside file when filename base does not match', async() => {
-      const fsSync = require('fs');
-      fsSync.existsSync.mockReturnValue(true);
-      const appConfig = {
-        externalIntegration: {
-          systems: ['hubspot-system.yaml'],
-          dataSources: ['hubspot-companies-datasource.json'],
-          schemaBasePath: './'
-        }
-      };
-      const datasourceConfig = { key: 'test-e2e-hubspot-companies', testPayload: { payloadTemplate: { x: 1 } } };
-      configFormat.loadConfigFile.mockImplementation((filePath) => {
-        if (filePath && filePath.endsWith('application.yaml')) return appConfig;
-        if (filePath && filePath.includes('hubspot-companies-datasource')) return datasourceConfig;
-        return appConfig;
+    it('should write debug log on apiError when debug is true', async() => {
+      runUnifiedDatasourceValidation.mockResolvedValue({
+        envelope: null,
+        apiError: { error: 'boom' },
+        pollTimedOut: false,
+        incompleteNoAsync: false
       });
-      const yaml = require('js-yaml');
-      fs.readFile.mockResolvedValue(yaml.dump({ key: 'hubspot' }));
 
-      const result = await runDatasourceTestIntegration('test-e2e-hubspot-companies', { app: 'test-e2e-hubspot' });
+      await runDatasourceTestIntegration('my-ds', { app: 'myapp', debug: true });
 
-      expect(pipelineApi.testDatasourceViaPipeline).toHaveBeenCalledWith(
-        expect.objectContaining({ datasourceKey: 'test-e2e-hubspot-companies' })
+      expect(writeTestLog).toHaveBeenCalledWith(
+        'myapp',
+        expect.objectContaining({
+          request: expect.objectContaining({ systemKey: 'mysys', datasourceKey: 'my-ds' }),
+          error: 'boom'
+        }),
+        'test-integration'
       );
-      expect(result.key).toBe('test-e2e-hubspot-companies');
-      expect(result.success).toBe(true);
+    });
+
+    it('should surface poll timeout as failure with partial envelope', async() => {
+      const partial = passEnvelope({ reportCompleteness: 'partial' });
+      runUnifiedDatasourceValidation.mockResolvedValue({
+        envelope: partial,
+        apiError: null,
+        pollTimedOut: true,
+        incompleteNoAsync: false
+      });
+
+      const result = await runDatasourceTestIntegration('my-ds', { app: 'myapp' });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/timeout/i);
+      expect(result.datasourceTestRun).toEqual(partial);
     });
   });
 });

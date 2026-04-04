@@ -6,13 +6,13 @@ Commands for creating, testing, and managing external system integrations. Comma
 
 **Implementation:** External system CLI commands (`download`, `upload`, `delete`, `test-integration`) are registered in `lib/cli/setup-external-system.js`.
 
-**Dataplane commands:** `aifabrix upload <system-key>` and `aifabrix datasource upload <app> <file>` send configuration to the dataplane. The CLI displays a warning before doing so—ensure you are targeting the correct environment and have the required permissions (see [Permissions](permissions.md)).
+**Dataplane commands:** `aifabrix upload <systemKey>` and `aifabrix datasource upload <app> <file>` send configuration to the dataplane. The CLI displays a warning before doing so—ensure you are targeting the correct environment and have the required permissions (see [Permissions](permissions.md)).
 
-**Resolve:** You can run `aifabrix resolve <app>` for external integrations when `integration/<app>/env.template` exists. If `application.yaml` is missing, resolve still runs in **env-only** mode and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
+**Resolve:** You can run `aifabrix resolve <app>` for external integrations when `integration/<systemKey>/env.template` exists. If `application.yaml` is missing, resolve still runs in **env-only** mode and writes `integration/<systemKey>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
 
-**Create:** To create an external system, run `aifabrix create <app>` (external is the default type). Use `aifabrix create <app> --type webapp` for a builder app. The generated README in `integration/<app>/` includes a **Secrets** section with `aifabrix secret set <systemKey>/<key> <your value>` commands per authentication type (key has no `kv://` prefix).
+**Create:** To create an external system, run `aifabrix create <app>` (external is the default type). Use `aifabrix create <app> --type webapp` for a builder app. The generated README in `integration/<systemKey>/` includes a **Secrets** section with `aifabrix secret set <systemKey>/<key> <your value>` commands per authentication type (key has no `kv://` prefix).
 
-**Repair:** If `application.yaml`, system file `dataSources`, or env.template gets out of sync with files on disk (e.g. after converting JSON ↔ YAML, adding/removing/renaming datasource files, auth variables wrongly listed in system `configuration`, or env.template having wrong KV_* keys), run `aifabrix repair <app>`. Repair supports `--auth <method>` to set the integration’s authentication method (canonical variables and security) and update env.template accordingly. When switching auth method, existing authentication variables (e.g. baseUrl, tokenUrl) are preserved. Use `--doc` to regenerate `integration/<app>/README.md` from the current deployment manifest. It also aligns datasource files with the manifest (dimensions and metadataSchema from attributes as source of truth) and supports optional flags `--rbac`, `--expose`, `--sync`, and `--test`; see [Utility commands – repair](utilities.md#aifabrix-repair-app) for details.
+**Repair:** If `application.yaml`, system file `dataSources`, or env.template gets out of sync with files on disk (e.g. after converting JSON ↔ YAML, adding/removing/renaming datasource files, auth variables wrongly listed in system `configuration`, or env.template having wrong KV_* keys), run `aifabrix repair <systemKey>`. Repair supports `--auth <method>` to set the integration’s authentication method (canonical variables and security) and update env.template accordingly. When switching auth method, existing authentication variables (e.g. baseUrl, tokenUrl) are preserved. Use `--doc` to regenerate `integration/<systemKey>/README.md` from the current deployment manifest. It also aligns datasource files with the manifest (dimensions and metadataSchema from attributes as source of truth) and supports optional flags `--rbac`, `--expose`, `--sync`, and `--test`; see [Utility commands – repair](utilities.md#aifabrix-repair-app) for details.
 
 **env.template:** For external systems, `env.template` is generated with **Authentication** and **Configuration** sections and inline comments. Use `kv://` (or `aifabrix secret set`) for sensitive values; use plain values for non-sensitive configuration.
 
@@ -37,7 +37,7 @@ This command uses the active `controller` and `environment` from `config.yaml` (
 # Interactive wizard (mode first, then prompts)
 aifabrix wizard
 
-# Wizard for an app (loads/saves integration/<appName>/wizard.yaml and error.log)
+# Wizard for an app (loads/saves integration/<systemKey>/wizard.yaml and error.log)
 aifabrix wizard my-integration
 # or
 aifabrix wizard -a my-integration
@@ -49,12 +49,12 @@ aifabrix wizard --config path/to/wizard.yaml
 aifabrix wizard hubspot-test-v2 --debug
 ```
 
-**Resume:** After an error, if an app key is known, state is saved to `integration/<appKey>/wizard.yaml` and the error is appended to `integration/<appKey>/error.log`. Run `aifabrix wizard <appKey>` to resume.
+**Resume:** After an error, if the system key is known, state is saved to `integration/<systemKey>/wizard.yaml` and the error is appended to `integration/<systemKey>/error.log`. Run `aifabrix wizard <systemKey>` to resume.
 
 **Options:**
 - `-a, --app <app>` - Application name (if not provided, will prompt)
 - `--config <file>` - Run headless from a wizard config file
-- `--silent` - Run headless using `integration/<app>/wizard.yaml` only (no prompts)
+- `--silent` - Run headless using `integration/<systemKey>/wizard.yaml` only (no prompts)
 - `--debug` - Enable debug output and save debug manifests on validation failure
 
 **Wizard Flow (7 steps):**
@@ -64,7 +64,7 @@ aifabrix wizard hubspot-test-v2 --debug
 4. **Detect Type** - Automatically detect API type and category (skipped for known-platform)
 5. **User Preferences & Generate Config** - Field onboarding level (full \| standard \| minimal), intent, MCP/ABAC/RBAC; AI-powered configuration generation
 6. **Review & Validate** - Preview, accept or cancel, validate configurations
-7. **Save Files** - Save all files to `integration/<app-name>/`
+7. **Save Files** - Save all files to `integration/<systemKey>/`
 
 **Files Created:**
 - `application.yaml` (or `application.json` if config format is `json`) - Application variables and external integration configuration
@@ -99,11 +99,11 @@ aifabrix delete hubspot
 
 ---
 
-## aifabrix download <system-key>
+## aifabrix download <systemKey>
 
 Download external system from dataplane to local development structure.
 
-**What:** Fetches the full running manifest (system + all datasources) from the dataplane in a single request, then writes `<system-key>-deploy.json` and splits it into component files (application.yaml, system YAML, datasource YAMLs, env.template, README.md). The generated env.template includes `KV_*` entries derived from the system's `authentication.security` so credential coverage validation passes. If the integration folder already exists, existing `env.template` is merged (not overwritten); README.md is only replaced after a prompt unless `--force` is used.
+**What:** Fetches the full running manifest (system + all datasources) from the dataplane in a single request, then writes `<systemKey>-deploy.json` and splits it into component files (application.yaml, system YAML, datasource YAMLs, env.template, README.md). The generated env.template includes `KV_*` entries derived from the system's `authentication.security` so credential coverage validation passes. If the integration folder already exists, existing `env.template` is merged (not overwritten); README.md is only replaced after a prompt unless `--force` is used.
 
 **When:** Setting up local development for an existing external system, cloning a system from another environment, or retrieving a system configuration for modification.
 
@@ -123,7 +123,7 @@ aifabrix download hubspot --force
 ```
 
 **Arguments:**
-- `<system-key>` - External system key (identifier)
+- `<systemKey>` - External system key (identifier)
 
 **Options:**
 - `--format <format>` - Output format: `json` | `yaml` (default: `yaml` or config format). When `json`, runs the full pipeline: download → split → convert component files to JSON. When `yaml`, only splits into YAML components. If not passed, uses config format (set via `aifabrix dev set-format`) or `yaml`.
@@ -141,8 +141,8 @@ Controller and environment come from `config.yaml` (set via `aifabrix login` or 
 1. Resolves dataplane URL from controller and authenticates (Bearer required).
 2. Downloads the **full manifest** (system + all datasources) from the dataplane in one go.
 3. Validates the response, then builds deploy JSON. The generated env.template gets `KV_*` entries from the system’s `authentication.security` so credential validation passes.
-4. Writes `<system-key>-deploy.json` to `integration/<system-key>/` and **splits** it into component files:
-   - `application.yaml`, `<system-key>-system.yaml`, `<system-key>-datasource-<key>.yaml`, `env.template`, `README.md`
+4. Writes `<systemKey>-deploy.json` to `integration/<systemKey>/` and **splits** it into component files:
+   - `application.yaml`, `<systemKey>-system.yaml`, `<systemKey>-datasource-<key>.yaml`, `env.template`, `README.md`
 5. **Re-templating (when env.template exists):** Configuration entries in the system file with `location: variable` whose **name** matches a variable in `env.template` have their **value** set to `{{name}}` (e.g. `{{SHAREPOINT_SITE_ID}}`) so the downloaded file stays template-based. Entries whose name is not in env.template keep the value returned by the server.
 6. If the folder already exists: **env.template** is merged with the existing file (local edits preserved). **README.md**: if it exists and `--force` is not set, the CLI prompts to replace (yes/no); with `--force`, README is overwritten without prompting.
 7. Ensures placeholder secrets from env.template (empty values for credentials).
@@ -172,12 +172,12 @@ With `--format json`, an extra line confirms conversion to JSON. If README.md al
 **File Structure:**
 ```text
 integration/
-  <system-key>/
-    <system-key>-deploy.json                # Deployment manifest (downloaded, can be split)
+  <systemKey>/
+    <systemKey>-deploy.json                # Deployment manifest (downloaded, can be split)
     application.yaml                        # App configuration with externalIntegration block
-    <system-key>-system.yaml                # External system definition
-    <system-key>-datasource-<ds-key1>.yaml  # Datasource 1
-    <system-key>-datasource-<ds-key2>.yaml  # Datasource 2
+    <systemKey>-system.yaml                # External system definition
+    <systemKey>-datasource-<ds-key1>.yaml  # Datasource 1
+    <systemKey>-datasource-<ds-key2>.yaml  # Datasource 2
     env.template                            # Environment variables template
     README.md                               # Documentation
 ```
@@ -192,15 +192,15 @@ integration/
 
 **Next Steps:**
 After downloading:
-- Review configuration files in `integration/<system-key>/`
-- Run unit tests: `aifabrix test <system-key>`
-- Run integration tests: `aifabrix test-integration <system-key>`
-- Deploy changes: `aifabrix deploy <system-key>` (resolves `integration/<system-key>/` first; no app register needed). After deploy (or upload), MCP/OpenAPI docs are served by the dataplane—see [Controller and Dataplane: What, Why, When](../deploying.md#controller-and-dataplane-what-why-when).
+- Review configuration files in `integration/<systemKey>/`
+- Run unit tests: `aifabrix test <systemKey>`
+- Run integration tests: `aifabrix test-integration <systemKey>`
+- Deploy changes: `aifabrix deploy <systemKey>` (resolves `integration/<systemKey>/` first; no app register needed). After deploy (or upload), MCP/OpenAPI docs are served by the dataplane—see [Controller and Dataplane: What, Why, When](../deploying.md#controller-and-dataplane-what-why-when).
 
 ---
 
 <a id="aifabrix-upload-system-key"></a>
-## aifabrix upload <system-key>
+## aifabrix upload <systemKey>
 
 Upload full external system (system + all datasources + RBAC) to the dataplane for the current environment.
 
@@ -219,28 +219,28 @@ aifabrix upload my-hubspot
 aifabrix upload my-hubspot --dry-run
 ```
 
-**Arguments:** `<system-key>` – External system key (same as `integration/<system-key>/`).
+**Arguments:** `<systemKey>` – External system key (same as `integration/<systemKey>/`).
 
 **Options:**
 - `--dry-run` – Validate locally and build payload only; no API calls
 - `--debug` – Include debug output
 
 **Prerequisites:**
-- Login or app credentials for the system: `aifabrix login` or `aifabrix app register <system-key>`
-- `integration/<system-key>/` with valid `application.yaml` and system/datasource files
+- Login or app credentials for the system: `aifabrix login` or `aifabrix app register <systemKey>`
+- `integration/<systemKey>/` with valid `application.yaml` and system/datasource files
 
 > **Warning:** Before sending data, the CLI displays a warning that configuration will be sent to the dataplane. Ensure you are targeting the correct environment and have the required permissions. See [Permissions](permissions.md).
 
 **Process:**
 1. Validate locally (`validateExternalSystemComplete`)
 2. Build payload from controller manifest (system with RBAC + datasources) → `{ version, application, dataSources, status: "draft" }`
-3. **Configuration resolution:** The CLI resolves the **configuration** section before sending. Entries with `location: variable` get `{{VAR}}` replaced from the integration’s `.env` (or from resolved env.template if .env is missing). Entries with `location: keyvault` get `kv://` references resolved from your secrets (same as credential push). The payload sent to the dataplane contains **literal values** in configuration. If a variable or keyvault value is missing, the command fails with a message suggesting `aifabrix resolve <system-key>` or setting the variable in .env / ensuring the key exists in the secrets file.
+3. **Configuration resolution:** The CLI resolves the **configuration** section before sending. Entries with `location: variable` get `{{VAR}}` replaced from the integration’s `.env` (or from resolved env.template if .env is missing). Entries with `location: keyvault` get `kv://` references resolved from your secrets (same as credential push). The payload sent to the dataplane contains **literal values** in configuration. If a variable or keyvault value is missing, the command fails with a message suggesting `aifabrix resolve <systemKey>` or setting the variable in .env / ensuring the key exists in the secrets file.
 4. Resolve dataplane URL and auth (from controller + environment)
-5. **Credential secrets push (automatic):** The CLI reads `integration/<system-key>/.env` and sends any `KV_*` variables (values resolved from local/remote secrets if they are `kv://`). It also scans the upload payload (application + datasources) for `kv://` references that are **not** in `.env` and resolves their values from aifabrix secret systems (local file or remote), then sends all to the dataplane secret store. This stores secret *values* only; credential structure (type, fields) is created/updated by the publish step itself. So credentials in config can be satisfied from `.env` or from local/remote secrets without extra steps—the CLI handles it automatically.
+5. **Credential secrets push (automatic):** The CLI reads `integration/<systemKey>/.env` and sends any `KV_*` variables (values resolved from local/remote secrets if they are `kv://`). It also scans the upload payload (application + datasources) for `kv://` references that are **not** in `.env` and resolves their values from aifabrix secret systems (local file or remote), then sends all to the dataplane secret store. This stores secret *values* only; credential structure (type, fields) is created/updated by the publish step itself. So credentials in config can be satisfied from `.env` or from local/remote secrets without extra steps—the CLI handles it automatically.
 
    **Skip conditions:** If there is no `.env` file, no `KV_*` keys, or values are empty, the credential push step is skipped.
 
-   **KV_* convention:** env.template and .env use `KV_<APPKEY>_<VAR>=value` (e.g. `KV_HUBSPOT_CLIENTID=xxx`, `KV_HUBSPOT_CLIENTSECRET=yyy`). Mapping: `KV_` + segments (underscores) → `kv://segment1/segment2/...` (lowercase). Example: `KV_HUBSPOT_CLIENTID` → `kv://hubspot/clientid`. The manifest must reference `kv://hubspot/clientid` (path style). Use `aifabrix credential env <system-key>` to prompt for values and write .env; use `aifabrix credential push <system-key>` to push .env secrets without a full upload.
+   **KV_* convention:** env.template and .env use `KV_<APPKEY>_<VAR>=value` (e.g. `KV_HUBSPOT_CLIENTID=xxx`, `KV_HUBSPOT_CLIENTSECRET=yyy`). Mapping: `KV_` + segments (underscores) → `kv://segment1/segment2/...` (lowercase). Example: `KV_HUBSPOT_CLIENTID` → `kv://hubspot/clientid`. The manifest must reference `kv://hubspot/clientid` (path style). Use `aifabrix credential env <systemKey>` to prompt for values and write .env; use `aifabrix credential push <systemKey>` to push .env secrets without a full upload.
 
    Dataplane permission **credential:create** is required for this automatic push; if the push fails (e.g. 403), upload still continues but secrets must be available elsewhere (e.g. env on dataplane). See [Secrets and config](../configuration/secrets-and-config.md) and [Permissions](permissions.md).
 6. **Pipeline upload:** Sends the configuration to the Dataplane (upload, validate, and publish in one step). On failure, the CLI shows validation or publish errors and exits.
@@ -263,15 +263,15 @@ Dataplane: https://dataplane.example.com
 
 **Issues / next steps:**
 - **Validation failed** – Fix errors shown (e.g. missing `application.yaml`, invalid system/datasource files) then run again.
-- **Authentication required** – Run `aifabrix login` or `aifabrix app register <system-key>`.
+- **Authentication required** – Run `aifabrix login` or `aifabrix app register <systemKey>`.
 - For full controller deployment and environment promotion, run `aifabrix deploy <app>` (or promote via the web interface).
 
 ---
 
 <a id="aifabrix-credential-env-system-key"></a>
-## aifabrix credential env <system-key>
+## aifabrix credential env <systemKey>
 
-Prompt for KV_* credential values and write `integration/<system-key>/.env`.
+Prompt for KV_* credential values and write `integration/<systemKey>/.env`.
 
 **What:** Interactively prompts for each KV_* variable found in env.template (e.g. KV_HUBSPOT_CLIENTID, KV_HUBSPOT_CLIENTSECRET), using password-type prompts for secrets, and writes the values to `.env`.
 
@@ -282,10 +282,10 @@ Prompt for KV_* credential values and write `integration/<system-key>/.env`.
 aifabrix credential env hubspot
 ```
 
-**Arguments:** `<system-key>` – External system key (same as `integration/<system-key>/`).
+**Arguments:** `<systemKey>` – External system key (same as `integration/<systemKey>/`).
 
 **Prerequisites:**
-- `integration/<system-key>/env.template` must exist (created by wizard, download, or create)
+- `integration/<systemKey>/env.template` must exist (created by wizard, download, or create)
 
 **Process:**
 1. Parses env.template for `KV_<APPKEY>_<VAR>=` lines
@@ -297,11 +297,11 @@ aifabrix credential env hubspot
 ---
 
 <a id="aifabrix-credential-push-system-key"></a>
-## aifabrix credential push <system-key>
+## aifabrix credential push <systemKey>
 
 Push credential secrets from `.env` to the dataplane (no upload/validate/publish).
 
-**What:** Reads `integration/<system-key>/.env`, collects KV_* variables with non-empty values, and pushes them to the dataplane credential API. Same credential push logic as `aifabrix upload`, but without the manifest upload step.
+**What:** Reads `integration/<systemKey>/.env`, collects KV_* variables with non-empty values, and pushes them to the dataplane credential API. Same credential push logic as `aifabrix upload`, but without the manifest upload step.
 
 **When:** You have updated .env with new credential values and want to sync them to the dataplane without re-uploading the full system.
 
@@ -310,11 +310,11 @@ Push credential secrets from `.env` to the dataplane (no upload/validate/publish
 aifabrix credential push hubspot
 ```
 
-**Arguments:** `<system-key>` – External system key.
+**Arguments:** `<systemKey>` – External system key.
 
 **Prerequisites:**
-- Must be logged in: `aifabrix login` or `aifabrix app register <system-key>`
-- `integration/<system-key>/.env` with KV_* variables (use `aifabrix credential env <system-key>` to populate)
+- Must be logged in: `aifabrix login` or `aifabrix app register <systemKey>`
+- `integration/<systemKey>/.env` with KV_* variables (use `aifabrix credential env <systemKey>` to populate)
 - Dataplane permission: **credential:create**
 
 **See also:** [aifabrix credential env](#aifabrix-credential-env-system-key), [aifabrix credential list](permissions.md), [aifabrix upload](#aifabrix-upload-system-key)
@@ -322,7 +322,7 @@ aifabrix credential push hubspot
 ---
 
 <a id="aifabrix-delete-system-key"></a>
-## aifabrix delete <system-key>
+## aifabrix delete <systemKey>
 
 Delete external system from dataplane (also deletes all associated datasources).
 
@@ -334,7 +334,7 @@ This command uses the active `controller` and `environment` from `config.yaml` (
 
 **Usage:**
 ```bash
-# Delete external system with confirmation prompt (defaults to integration/<app>)
+# Delete external system with confirmation prompt (defaults to integration/<systemKey>)
 aifabrix delete hubspot
 
 # Delete without confirmation prompt (for automation)
@@ -342,10 +342,10 @@ aifabrix delete hubspot --yes
 ```
 
 **Arguments:**
-- `<system-key>` - External system key (identifier)
+- `<systemKey>` - External system key (identifier)
 
 **Options:**
-- `--type <type>` - Application type (default: `external`). Use `external` to target `integration/<app>/` when resolving local path.
+- `--type <type>` - Application type (default: `external`). Use `external` to target `integration/<systemKey>/` when resolving local path.
 - `--yes` - Skip confirmation prompt
 - `--force` - Skip confirmation prompt (alias for `--yes`)
 
@@ -428,7 +428,7 @@ Deletion cancelled.
 
 **Issues:**
 - **"System key is required"** → Provide system key as argument
-- **"External system not found in integration/..."** → Ensure the system exists in `integration/<system-key>/` or `builder/<system-key>/` (the CLI resolves integration first, then builder)
+- **"External system not found in integration/..."** → Ensure the system exists in `integration/<systemKey>/` or `builder/<systemKey>/` (the CLI resolves integration first, then builder)
 - **"Not logged in"** → Run `aifabrix login` first
 - **"External system 'hubspot-test' not found"** → Check system key exists in the dataplane
 - **"Failed to delete external system"** → Check dataplane URL, authentication, and network connection
@@ -437,8 +437,8 @@ Deletion cancelled.
 **Next Steps:**
 After deletion:
 - System and datasources are permanently removed from dataplane
-- Local files in `integration/<system-key>/` are not deleted (preserved for reference)
-- To recreate: Use `aifabrix create <system-key>` or `aifabrix wizard`
+- Local files in `integration/<systemKey>/` are not deleted (preserved for reference)
+- To recreate: Use `aifabrix create <systemKey>` or `aifabrix wizard`
 
 ---
 
@@ -497,13 +497,13 @@ aifabrix test-integration hubspot --payload ./test-payload.json
 # Verbose with custom timeout
 aifabrix test-integration hubspot --verbose --timeout 60000
 
-# Debug mode: include debug in response and write log to integration/<app>/logs/
+# Debug mode: include debug in response and write log to integration/<systemKey>/logs/
 aifabrix test-integration hubspot --debug
 ```
 
 **Arguments:** `<app>` – Application name (external system).
 
-**Options:** `-e, --env <env>` – Environment: dev, tst, or pro (default: from aifabrix auth config). `-d, --datasource <key>` – Test specific datasource only. `-p, --payload <file>` – Custom test payload file (overrides datasource testPayload). `-v, --verbose` – Detailed output. `--debug` – Include debug output in response and write log to `integration/<app>/logs/`. `--timeout <ms>` – Request timeout (default: 30000). Dataplane URL is always resolved from the controller.
+**Options:** `-e, --env <env>` – Environment: dev, tst, or pro (default: from aifabrix auth config). `-d, --datasource <key>` – Test specific datasource only. `-p, --payload <file>` – Custom test payload file (overrides datasource testPayload). `-v, --verbose` – Detailed output. `--debug` – Write diagnostic logs to `integration/<systemKey>/logs/` (no **`summary`** / **`full`** / **`raw`** levels on this app-wide command; those apply to **`datasource test`** / **`datasource test-integration`** / **`datasource test-e2e`**). `--timeout <ms>` – Request timeout (default: 30000). Dataplane URL is always resolved from the controller.
 
 **Prerequisites:** Logged in (`aifabrix login`); dataplane accessible; system published or ready for testing.
 
@@ -525,8 +525,9 @@ Manage external data sources.
 - `list` - List datasources from environment
 - `diff` - Compare two datasource configuration files
 - `deploy` - Deploy datasource to dataplane
-- `test-integration` - Run integration (config) test for one datasource via dataplane
-- `test-e2e` - Run E2E test for one datasource (config, credential, sync, data, CIP) via dataplane
+- `test` - Run structural/policy validation for one datasource (unified dataplane validation API)
+- `test-integration` - Run integration validation for one datasource (same unified API, run type integration)
+- `test-e2e` - Run E2E validation for one datasource (same unified API, run type e2e; config, credential, sync, data, CIP)
 - `log-e2e` - Display latest or specified E2E test log in readable format
 - `log-integration` - Display latest or specified integration test log in readable format
 
@@ -537,6 +538,7 @@ Manage external data sources.
 - [aifabrix datasource list](#aifabrix-datasource-list)
 - [aifabrix datasource diff](#aifabrix-datasource-diff-file1-file2)
 - [aifabrix datasource upload](#aifabrix-datasource-upload-myapp-file)
+- [aifabrix datasource test](#aifabrix-datasource-test-datasourcekey)
 - [aifabrix datasource test-integration](#aifabrix-datasource-test-integration-datasourcekey)
 - [aifabrix datasource test-e2e](#aifabrix-datasource-test-e2e-datasourcekey)
 - [aifabrix datasource log-e2e](#aifabrix-datasource-log-e2e-datasourcekey)
@@ -773,7 +775,7 @@ After comparing:
 ---
 
 <a id="aifabrix-datasource-upload-myapp-file"></a>
-### aifabrix datasource upload <myapp> <file>
+### aifabrix datasource upload <systemKey> <file>
 
 Upload datasource to dataplane. Requires dataplane access (authenticated). See [Online Commands and Permissions](permissions.md).
 
@@ -847,6 +849,7 @@ Environment: dev
 **Next Steps:**
 After upload:
 - Verify datasource: `aifabrix datasource list`
+- Run structural dataplane validation: `aifabrix datasource test <datasourceKey>` (add `--app <app>` only if needed)
 - Run integration test: `aifabrix datasource test-integration <datasourceKey>` (add `--app <app>` only if needed)
 - Run E2E test: `aifabrix datasource test-e2e <datasourceKey>` (add `--app <app>` only if needed)
 - View last E2E or integration log: `aifabrix datasource log-e2e <key>` or `aifabrix datasource log-integration <key>` (after a run with `--debug`)
@@ -855,18 +858,47 @@ After upload:
 
 ---
 
-<a id="aifabrix-datasource-test-integration-datasourcekey"></a>
-### aifabrix datasource test-integration <datasourceKey>
+<a id="aifabrix-datasource-test-datasourcekey"></a>
+### aifabrix datasource test <datasourceKey>
 
-Run integration (config) test for one datasource via the dataplane. Requires dataplane access. See [Online Commands and Permissions](permissions.md).
+Run a **test** (structural / policy) validation job for one datasource already known to the dataplane, using the **unified validation API** with run type **test**. See [Online Commands and Permissions](permissions.md).
 
-**What:** Tests a single datasource against the dataplane. Validates field mappings, metadata schemas, and connectivity. Supports client credentials for CI/CD.
+**What:** The dataplane runs the validation engine for the datasource key and returns a **DatasourceTestRun**-style report (status, issues, report completeness). This is lighter than `test-integration` (integration-style checks) and `test-e2e` (full external pipeline). Use `datasource validate <file>` for **offline** schema and freeze-contract checks on disk before you publish.
 
-**When:** Testing one datasource without running tests for the whole system; in CI pipelines; when inside `integration/<appKey>/` and running from that directory.
+**When:** Quick post-publish checks, CI gates, or machine-readable output (`--json`, `--summary`) with stricter exit codes (`--warnings-as-errors`, `--require-cert`).
 
 **Usage:**
 ```bash
-# From integration/<appKey>/ or with explicit app
+aifabrix datasource test hubspot-company --app hubspot
+
+aifabrix datasource test hubspot-company -a hubspot -e tst --json
+
+# Single response, no async polling (fails if the report is not complete in the first response)
+aifabrix datasource test hubspot-company -a hubspot --no-async
+```
+
+**Arguments:** `<datasourceKey>` – Datasource key (e.g. hubspot-company).
+
+**Options:** `-a, --app <app>` – Integration folder (optional: resolved from cwd when inside `integration/<systemKey>/`, or when exactly one integration owns the datasource). `-e, --env <env>` – Environment: dev, tst, or pro. `-p, --payload <file>` – Optional custom payload merged into the request as `payloadTemplate`. `-v, --verbose` – Sets explain-oriented flags on the request. `--debug [level]` – Richer debug from the dataplane and an optional terminal appendix: **`summary`** (default), **`full`**, or **`raw`** (see [External Integration Testing – Debug output](external-integration-testing.md#debug-output-datasource-commands)); no appendix with `--json`. `--timeout <ms>` – Aggregate budget for the initial request and any async polling (default: 30000). `--no-async` – Do not poll; exit with an error if the server returns a partial report. `--json` – Print raw report JSON to stdout. `--summary` – Compact summary line. `--warnings-as-errors` – Exit 1 when root status is warn. `--require-cert` – Exit 2 when certificate checks are missing or not passed.
+
+**Prerequisites:** Same deployment authentication as `test-integration`; dataplane reachable; datasource published (or otherwise resolvable for the target environment).
+
+For a comparison with integration and E2E runs, see [External Integration Testing](external-integration-testing.md).
+
+---
+
+<a id="aifabrix-datasource-test-integration-datasourcekey"></a>
+### aifabrix datasource test-integration <datasourceKey>
+
+Run an integration validation job for one datasource on the dataplane (unified validation API, integration run type). Requires dataplane access. See [Online Commands and Permissions](permissions.md).
+
+**What:** Exercises integration-style checks for a single datasource (field mappings, metadata schema, connectivity) and returns a **DatasourceTestRun**-style report. Uses the same deployment authentication as deploy/publish flows (login or app credentials). Supports CI/CD when client credentials are configured for the app.
+
+**When:** Testing one datasource without running tests for the whole system; in CI pipelines; when inside `integration/<systemKey>/` and running from that directory.
+
+**Usage:**
+```bash
+# From integration/<systemKey>/ or with explicit app
 aifabrix datasource test-integration hubspot-company --app hubspot
 
 # With custom payload and debug
@@ -878,9 +910,9 @@ aifabrix datasource test-integration hubspot-company -a hubspot -e tst --timeout
 
 **Arguments:** `<datasourceKey>` – Datasource key (e.g. hubspot-company, hubspot-deal).
 
-**Options:** `-a, --app <appKey>` – App key (optional: resolved from current directory when inside `integration/<appKey>/`, or from datasource key when exactly one app has that datasource; use when multiple apps share the same datasource key). `-v, --verbose` – Show detailed validation, field mapping, and endpoint test output. `-p, --payload <file>` – Custom test payload file. `-e, --env <env>` – Environment: dev, tst, or pro. `--debug` – Include debug output and write log to `integration/<app>/logs/`. `--timeout <ms>` – Request timeout (default: 30000).
+**Options:** `-a, --app <app>` – Integration folder (optional: resolved from current directory when inside `integration/<systemKey>/`, or from datasource key when exactly one integration has that datasource; use when multiple integrations share the same datasource key). `-v, --verbose` – Explain-oriented request flags and detailed human output where available. `-p, --payload <file>` – Custom test payload file. `-e, --env <env>` – Environment: dev, tst, or pro. `--debug [level]` – Richer debug, optional terminal appendix (**`summary`** / **`full`** / **`raw`**), and a log under `integration/<systemKey>/logs/` (see [External Integration Testing – Debug output](external-integration-testing.md#debug-output-datasource-commands)); no appendix with `--json`. `--timeout <ms>` – Aggregate budget for the initial request and any async polling (default: 30000). `--json` – Print the raw report JSON to stdout. `--summary` – Print a compact summary line. `--warnings-as-errors` – Exit with status 1 when the root status is warn. `--require-cert` – Exit with status 2 when certificate checks are missing or not passed.
 
-**Context:** App is resolved from `--app`, from current directory when inside `integration/<appKey>/`, or by scanning integration apps for the datasource key (if exactly one app matches). System key is then derived from that app’s config.
+**Context:** The integration folder is resolved from `--app`, from the current directory when inside `integration/<systemKey>/`, or by scanning `integration/*` for the datasource key (if exactly one matches). The system key sent to the dataplane is then derived from that integration’s config.
 
 **Prerequisites:** Logged in (`aifabrix login`) or client credentials configured; dataplane accessible; system and datasource published or ready for testing.
 
@@ -891,15 +923,15 @@ For details, see [External Integration Testing](external-integration-testing.md#
 <a id="aifabrix-datasource-test-e2e-datasourcekey"></a>
 ### aifabrix datasource test-e2e <datasourceKey>
 
-Run E2E test for one datasource via dataplane external API. Requires Bearer token or API key (client credentials not supported). See [Online Commands and Permissions](permissions.md).
+Run an E2E validation job for one datasource on the dataplane (unified validation API, E2E run type). Uses the same deployment authentication as `test-integration`. See [Online Commands and Permissions](permissions.md).
 
-**What:** Runs full E2E test (config, credential, sync, data, CIP) via the dataplane. By default the command starts the run asynchronously, then polls until the run completes or fails. With `-v, --verbose` the CLI shows managed record counts for the sync step (e.g. inserted/updated/deleted/totalProcessed) and a short CIP execution trace summary when the dataplane returns audit data; use `-v` also to see poll progress (e.g. number of steps completed so far). Reports per-step status. The dataplane runs E2E steps in order: config, credential, sync, data, CIP. Credential status is validated as the second step in this sequence.
+**What:** Runs the full E2E flow (config, credential, sync, data, CIP) orchestrated by the dataplane. By default the command starts the run asynchronously, then polls until the run completes or fails. With `-v, --verbose` the CLI shows managed record counts for the sync step (e.g. inserted/updated/deleted/totalProcessed) and a short CIP execution trace summary when the dataplane returns audit data; use `-v` also to see poll progress (e.g. number of steps completed so far). Per-step status comes from the returned report. The dataplane runs E2E steps in order: config, credential, sync, data, CIP. Credential status is validated as the second step in this sequence.
 
-**When:** End-to-end validation of a single datasource after integration tests pass; requires Bearer or API key authentication.
+**When:** End-to-end validation of a single datasource after integration runs pass; use when you need the full pipeline against real external systems (see [External Integration Testing](external-integration-testing.md#datasource-e2e-tests)).
 
 **Usage:**
 ```bash
-# From integration/<appKey>/ or with explicit app (async + polling by default)
+# From integration/<systemKey>/ or with explicit app (async + polling by default)
 aifabrix datasource test-e2e hubspot-contacts --app hubspot
 
 # With environment, debug, and verbose (shows poll progress)
@@ -907,22 +939,31 @@ aifabrix datasource test-e2e hubspot-contacts -a hubspot -e tst --debug -v
 
 # Sync mode (single request, no polling)
 aifabrix datasource test-e2e hubspot-contacts --app hubspot --no-async
+
+# Scope to one capability when the dataplane supports it
+aifabrix datasource test-e2e hubspot-contacts --app hubspot --capability read
 ```
 
-**Arguments:** `<datasourceKey>` – Datasource key used as sourceIdOrKey (e.g. hubspot-contacts).
+**Arguments:** `<datasourceKey>` – Datasource key (e.g. hubspot-contacts).
 
 **Options:**
-- `-a, --app <appKey>` – App key (optional: resolved from cwd when inside `integration/<appKey>/`, or from datasource key when exactly one app has that datasource).
+- `-a, --app <app>` – Integration folder (optional: resolved from cwd when inside `integration/<systemKey>/`, or from datasource key when exactly one integration has that datasource).
 - `-e, --env <env>` – Environment: dev, tst, or pro.
 - `-v, --verbose` – Detailed step output: managed record counts for the sync step, CIP execution trace summary, and when polling, progress (e.g. steps completed so far).
-- `--debug` – Include debug output and write log to `integration/<app>/logs/`.
+- `--debug [level]` – Richer debug, optional terminal appendix, and log under `integration/<systemKey>/logs/` (levels: **`summary`**, **`full`**, **`raw`**; see [External Integration Testing](external-integration-testing.md#debug-output-datasource-commands)); no appendix with `--json`.
 - `--test-crud` – Enable CRUD lifecycle test.
 - `--record-id <id>` – Record ID to use for the test.
 - `--no-cleanup` – Disable cleanup after the test.
 - `--primary-key-value <value|@path>` – Primary key value, or path to a JSON file (prefix with `@`) for composite keys.
 - `--no-async` – Use sync mode: single request, no polling (useful for short runs or backward compatibility).
+- `--timeout <ms>` – Aggregate budget for the initial request and any async polling (default fifteen minutes).
+- `--capability <key>` – Optional single-capability scope when the server supports filtering the E2E run.
+- `--json` – Print the raw **DatasourceTestRun** JSON to stdout.
+- `--summary` – Print a compact summary line.
+- `--warnings-as-errors` – Exit with status 1 when the root status is warn.
+- `--require-cert` – Exit with status 2 when certificate checks are missing or not passed.
 
-**Prerequisites:** Logged in (`aifabrix login`) or API key configured. E2E tests require a Bearer token or API key; client credentials are not accepted. Run `aifabrix login` if you see "E2E tests require Bearer token or API key".
+**Prerequisites:** Same as `test-integration`: run `aifabrix login`, or configure the app’s client credentials so the CLI can obtain a deployment token. If authentication fails, follow the message from the CLI (e.g. register the app or fix secrets).
 
 For details, see [External Integration Testing](external-integration-testing.md#datasource-e2e-tests).
 
@@ -931,7 +972,7 @@ For details, see [External Integration Testing](external-integration-testing.md#
 <a id="aifabrix-datasource-log-e2e-datasourcekey"></a>
 ### aifabrix datasource log-e2e <datasourceKey>
 
-Display the latest E2E test log (or a specified log file) in a readable, formatted way. Useful after running `aifabrix datasource test-e2e <key> --debug`, which writes logs to `integration/<appKey>/logs/`.
+Display the latest E2E test log (or a specified log file) in a readable, formatted way. Useful after running `aifabrix datasource test-e2e <key> --debug`, which writes logs to `integration/<systemKey>/logs/`.
 
 **What:** Reads a JSON log file produced by the E2E test (with `--debug`) and prints a summary: request (sourceIdOrKey, options), response status, steps with success/message, sync step job record counts (processed, inserted/updated/deleted), and CIP execution trace count when present. No backend URLs or raw payloads are shown.
 
@@ -951,7 +992,7 @@ aifabrix datasource log-e2e hubspot-contacts --app hubspot
 
 **Arguments:** `<datasourceKey>` – Datasource key (used to resolve app when `--file` is not set).
 
-**Options:** `-a, --app <appKey>` – App key (optional; same resolution as test-e2e). `-f, --file <path>` – Path to the log file (relative to current directory). If omitted, the latest `test-e2e-*.json` in `integration/<appKey>/logs/` is used.
+**Options:** `-a, --app <app>` – Integration folder (optional; same resolution as test-e2e). `-f, --file <path>` – Path to the log file (relative to current directory). If omitted, the latest `test-e2e-*.json` in `integration/<systemKey>/logs/` is used.
 
 **Prerequisites:** For “latest” mode: at least one E2E test run with `--debug` so a log exists in the app’s logs folder. For `--file`: the file must exist and be valid JSON.
 
@@ -960,7 +1001,7 @@ aifabrix datasource log-e2e hubspot-contacts --app hubspot
 <a id="aifabrix-datasource-log-integration-datasourcekey"></a>
 ### aifabrix datasource log-integration <datasourceKey>
 
-Display the latest integration test log (or a specified log file) in a readable, formatted way. Useful after running `aifabrix datasource test-integration <key> --debug`, which writes logs to `integration/<appKey>/logs/`.
+Display the latest integration test log (or a specified log file) in a readable, formatted way. Useful after running `aifabrix datasource test-integration <key> --debug`, which writes logs to `integration/<systemKey>/logs/`.
 
 **What:** Reads a JSON log file produced by the integration test (with `--debug`) and prints a summary: request (systemKey, datasourceKey), response status, validation result (isValid, errors), field mapping (mappingCount, dimensions), endpoint test, and normalized output summary. No backend URLs or raw payloads are shown.
 
@@ -980,7 +1021,7 @@ aifabrix datasource log-integration hubspot-company --app hubspot
 
 **Arguments:** `<datasourceKey>` – Datasource key (used to resolve app when `--file` is not set).
 
-**Options:** `-a, --app <appKey>` – App key (optional; same resolution as test-integration). `-f, --file <path>` – Path to the log file (relative to current directory). If omitted, the latest `test-integration-*.json` in `integration/<appKey>/logs/` is used.
+**Options:** `-a, --app <app>` – Integration folder (optional; same resolution as test-integration). `-f, --file <path>` – Path to the log file (relative to current directory). If omitted, the latest `test-integration-*.json` in `integration/<systemKey>/logs/` is used.
 
 **Prerequisites:** For “latest” mode: at least one integration test run with `--debug` so a log exists in the app’s logs folder. For `--file`: the file must exist and be valid JSON.
 

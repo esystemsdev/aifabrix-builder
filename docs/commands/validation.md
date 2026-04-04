@@ -361,7 +361,7 @@ aifabrix validate --integration --builder
 
 **Batch mode:** When **`--integration`** or **`--builder`** (or both) is used, the command validates all apps under the corresponding directory(ies). Output shows per-app results and an overall summary (e.g. “N passed, M failed”). Exit code is **1** if any app fails; otherwise **0**. When using these options, `appOrFile` is not required and is ignored if provided.
 
-**App path resolution (single-app mode):** The command resolves the app by checking **`integration/<app>`** first, then **`builder/<app>`**. If neither exists, it errors. There is no option to override this order. When the resolved app is in `integration/`, full external system validation (all steps) runs automatically.
+**App path resolution (single-app mode):** The command resolves the app by checking **`integration/<systemKey>`** first, then **`builder/<appKey>`**. If neither exists, it errors. There is no option to override this order. When the resolved app is in `integration/`, full external system validation (all steps) runs automatically.
 
 **Process:**
 
@@ -370,7 +370,7 @@ aifabrix validate --integration --builder
    - If app name → Application validation
 
 2. **Application Validation (app name):**
-   - Resolves app path: `integration/<app-name>/` first, then `builder/<app-name>/`; if neither exists, errors.
+   - Resolves app path: `integration/<systemKey>/` first, then `builder/<appKey>/`; if neither exists, errors.
    - Loads `application.yaml` from the resolved path
    - Validates against application schema
    - If `type: external`:
@@ -474,7 +474,7 @@ Validation errors are formatted to be clear and actionable:
 
 **Issues:**
 - **"App name or file path is required"** → Provide application name or file path
-- **"External datasource file not found"** or wrong extension → Run `aifabrix repair <app>` to sync config with files on disk. Repair also fixes datasource manifest alignment (dimensions, metadataSchema) and can add RBAC, expose, sync, or test payload with the optional flags
+- **"External datasource file not found"** or wrong extension → Run `aifabrix repair <systemKey>` to sync config with files on disk. Repair also fixes datasource manifest alignment (dimensions, metadataSchema) and can add RBAC, expose, sync, or test payload with the optional flags
 - **"File not found"** → Check file path is correct
 - **"Invalid JSON syntax"** → Fix JSON syntax errors in file
 - **"externalIntegration block not found"** → Add externalIntegration block to application.yaml or validate file directly
@@ -622,7 +622,7 @@ aifabrix validate ./schemas/hubspot-system.yaml
 
 ### 2. Use Complete Validation for External Systems
 
-For external systems in `integration/<app>/`, running `aifabrix validate <app>` performs complete validation that checks:
+For external systems in `integration/<systemKey>/`, running `aifabrix validate <app>` performs complete validation that checks:
 - Application configuration
 - Component files (system + datasources)
 - Generated deployment manifest

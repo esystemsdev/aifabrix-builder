@@ -2171,7 +2171,7 @@ describe('CLI Commands', () => {
         infra.stopInfraWithVolumes.mockResolvedValue();
         cliUtils.handleCommandError.mockImplementation(() => {});
 
-        const handler = commandActions['down-infra [app]'];
+        const handler = commandActions['down-infra [service|app]'];
         expect(handler).toBeDefined();
 
         await handler(undefined, options);
@@ -2187,7 +2187,7 @@ describe('CLI Commands', () => {
         infra.stopInfra.mockResolvedValue();
         cliUtils.handleCommandError.mockImplementation(() => {});
 
-        const handler = commandActions['down-infra [app]'];
+        const handler = commandActions['down-infra [service|app]'];
         expect(handler).toBeDefined();
 
         await handler(undefined, options);
@@ -2205,7 +2205,7 @@ describe('CLI Commands', () => {
         cliUtils.handleCommandError.mockImplementation(() => {});
         process.exit.mockImplementation(() => {});
 
-        const handler = commandActions['down-infra [app]'];
+        const handler = commandActions['down-infra [service|app]'];
         expect(handler).toBeDefined();
 
         await handler(undefined, options);
@@ -2222,7 +2222,7 @@ describe('CLI Commands', () => {
         app.downApp.mockResolvedValue();
         cliUtils.handleCommandError.mockImplementation(() => {});
 
-        const handler = commandActions['down-infra [app]'];
+        const handler = commandActions['down-infra [service|app]'];
         expect(handler).toBeDefined();
 
         await handler(appName, options);

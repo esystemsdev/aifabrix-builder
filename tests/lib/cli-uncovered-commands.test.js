@@ -803,7 +803,7 @@ describe('CLI Uncovered Command Handlers', () => {
       };
       setupExternalSystemCommands(prog);
 
-      const act = actions['download <system-key>'];
+      const act = actions['download <systemKey>'];
       expect(act).toBeDefined();
       await act('hubspot', { format: 'json' });
       expect(download.downloadExternalSystem).toHaveBeenCalledWith('hubspot', expect.objectContaining({ format: 'json' }));
@@ -827,7 +827,7 @@ describe('CLI Uncovered Command Handlers', () => {
       };
       setupExternalSystemCommands(prog);
 
-      await actions['download <system-key>']('hubspot', {});
+      await actions['download <systemKey>']('hubspot', {});
       expect(download.downloadExternalSystem).toHaveBeenCalledWith('hubspot', expect.objectContaining({ format: 'json' }));
     });
   });

@@ -106,7 +106,7 @@ describe('dev-ssh-config-helper', () => {
     let tmpSshDir;
 
     beforeEach(async() => {
-      tmpSshDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aifabrix-ssh-'));
+      tmpSshDir = await fs.mkdtemp(path.join(os.tmpdir(), `aifabrix-ssh-${process.pid}-`));
     });
 
     afterEach(async() => {

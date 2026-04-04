@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validation run CLI flag map",
+  "description": "Machine-readable mapping from CLI flags to ValidationRunRequest intent (plan §4). Exact JSON field names are defined in Dataplane OpenAPI.",
+  "operationId": "runValidation",
+  "flags": [
+    { "cliFlag": "test | test-integration | test-e2e (subcommand)", "requestField": "runType", "values": ["test", "integration", "e2e"] },
+    { "cliFlag": "-a, --app <app>", "requestField": null, "note": "Resolution only; paths and auth context" },
+    { "cliFlag": "-e, --env <env>", "requestField": null, "note": "Controller/dataplane URL and token selection" },
+    { "cliFlag": "-p, --payload <file>", "requestField": "payloadTemplate", "note": "Loaded object merged into request when integration-style test" },
+    { "cliFlag": "--timeout <ms>", "requestField": null, "note": "Client aggregate HTTP budget (POST + polls)" },
+    { "cliFlag": "--debug [level]", "requestField": "includeDebug", "default": false, "note": "summary|full|raw affects TTY appendix only; any presence sets includeDebug" },
+    { "cliFlag": "--no-async", "requestField": "asyncRun", "note": "When true on CLI, omit asyncRun or set false; sync-only POST" },
+    { "cliFlag": "--test-crud", "requestField": "e2eOptions.testCrud", "runType": "e2e" },
+    { "cliFlag": "--record-id", "requestField": "e2eOptions.recordId", "runType": "e2e" },
+    { "cliFlag": "--no-cleanup", "requestField": "e2eOptions.cleanup", "runType": "e2e" },
+    { "cliFlag": "--primary-key-value", "requestField": "e2eOptions.primaryKeyValue", "runType": "e2e" },
+    { "cliFlag": "--capability <key>", "requestField": "e2eOptions.capabilityKeys", "runType": "e2e", "note": "Single key forwarded as capabilityKeys array in request body when set" },
+    { "cliFlag": "--require-cert", "requestField": null, "note": "Client-only exit code 2 gate" },
+    { "cliFlag": "--warnings-as-errors", "requestField": null, "note": "Client-only exit code 1 on warn" },
+    { "cliFlag": "--json", "requestField": null, "note": "Stdout prints raw DatasourceTestRun" },
+    { "cliFlag": "--summary", "requestField": null, "note": "Compact machine-oriented lines (plan §16.9)" },
+    { "cliFlag": "-v, --verbose", "requestField": "e2eOptions.audit", "runType": "e2e", "note": "Also poll progress in legacy E2E path" }
+  ]
+}

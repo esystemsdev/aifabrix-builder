@@ -153,10 +153,10 @@ Set default output format for commands that generate or convert external system 
 
 | Command | Uses format when |
 | -------- | ----------------- |
-| `aifabrix download <system-key>` | `--format` not passed |
+| `aifabrix download <systemKey>` | `--format` not passed |
 | `aifabrix convert <app>` | `--format` not passed |
 | `aifabrix create <app> --type external` | Always (no CLI `--format`; config drives file extensions) |
-| `aifabrix wizard [app]` | Always (no CLI `--format`; config drives file extensions) |
+| `aifabrix wizard [system-key]` | Always (no CLI `--format`; config drives file extensions) |
 
 For `create --type external` and `wizard`, the format determines whether generated files use `.yaml` or `.json` (e.g. `application.yaml` vs `application.json`, `*-system.yaml` vs `*-system.json`, `*-datasource-*.yaml` vs `*-datasource-*.json`).
 

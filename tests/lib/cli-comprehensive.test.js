@@ -181,7 +181,7 @@ describe('CLI Comprehensive Tests', () => {
       setupCommands(mockProgram);
       expect(mockProgram.command).toHaveBeenCalledWith('login');
       expect(mockProgram.command).toHaveBeenCalledWith('up-infra');
-      expect(mockProgram.command).toHaveBeenCalledWith('down-infra [app]');
+      expect(mockProgram.command).toHaveBeenCalledWith('down-infra [service|app]');
       expect(mockProgram.command).toHaveBeenCalledWith('create <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('build <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('run <app>');
@@ -193,7 +193,7 @@ describe('CLI Comprehensive Tests', () => {
       expect(deployCmdMock.option).toHaveBeenCalledWith('--local', expect.any(String));
       expect(mockProgram.command).toHaveBeenCalledWith('doctor');
       expect(mockProgram.command).toHaveBeenCalledWith('status');
-      expect(mockProgram.command).toHaveBeenCalledWith('restart <service>');
+      expect(mockProgram.command).toHaveBeenCalledWith('restart <service|app>');
       expect(mockProgram.command).toHaveBeenCalledWith('resolve <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('json <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('dockerfile <app>');
@@ -360,7 +360,7 @@ describe('CLI Comprehensive Tests', () => {
     it('should stop infrastructure without volumes', async() => {
       infra.stopInfra.mockResolvedValue();
 
-      const action = commandActions['down-infra [app]'];
+      const action = commandActions['down-infra [service|app]'];
       await action(undefined, {});
 
       expect(infra.stopInfra).toHaveBeenCalled();
@@ -370,7 +370,7 @@ describe('CLI Comprehensive Tests', () => {
     it('should stop infrastructure with volumes', async() => {
       infra.stopInfraWithVolumes = jest.fn().mockResolvedValue();
 
-      const action = commandActions['down-infra [app]'];
+      const action = commandActions['down-infra [service|app]'];
       await action(undefined, { volumes: true });
 
       expect(infra.stopInfraWithVolumes).toHaveBeenCalled();
@@ -379,7 +379,7 @@ describe('CLI Comprehensive Tests', () => {
     it('should handle stop errors', async() => {
       infra.stopInfra.mockRejectedValue(new Error('Stop failed'));
 
-      const action = commandActions['down-infra [app]'];
+      const action = commandActions['down-infra [service|app]'];
       await action(undefined, {});
 
       expect(console.error).toHaveBeenCalled();
