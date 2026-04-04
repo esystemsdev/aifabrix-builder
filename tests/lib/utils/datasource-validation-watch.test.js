@@ -9,12 +9,21 @@ const os = require('os');
 jest.mock('../../../lib/utils/paths', () => ({
   getIntegrationPath: jest.fn()
 }));
+jest.mock('../../../lib/utils/logger', () => ({
+  log: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn()
+}));
 
 const { getIntegrationPath } = require('../../../lib/utils/paths');
+const logger = require('../../../lib/utils/logger');
 const {
   fingerprintForWatchDiff,
   formatWatchFingerprintDiff,
-  buildWatchTargetList
+  buildWatchTargetList,
+  debounce,
+  startWatchers,
+  runDatasourceValidationWatchLoop
 } = require('../../../lib/utils/datasource-validation-watch');
 
 describe('datasource-validation-watch', () => {
@@ -32,6 +41,8 @@ describe('datasource-validation-watch', () => {
       // ignore
     }
     jest.clearAllMocks();
+    jest.restoreAllMocks();
+    jest.useRealTimers();
   });
 
   it('fingerprintForWatchDiff captures status, certificate, sorted capabilities', () => {
@@ -92,5 +103,77 @@ describe('datasource-validation-watch', () => {
     const targets = buildWatchTargetList('myapp', [], true);
     const fileTargets = targets.filter(t => t.kind === 'file').map(t => t.path);
     expect(fileTargets).toContain(yamlPath);
+  });
+
+  it('buildWatchTargetList does not recurse into node_modules', () => {
+    const intRoot = path.join(tmp, 'integration-app');
+    const nm = path.join(intRoot, 'node_modules', 'pkg');
+    fs.mkdirSync(nm, { recursive: true });
+    fs.writeFileSync(path.join(nm, 'x.js'), '', 'utf8');
+
+    const targets = buildWatchTargetList('myapp', [], false);
+    const paths = targets.map(t => t.path);
+    expect(paths.some(p => p.includes('node_modules'))).toBe(false);
+    expect(paths).toContain(intRoot);
+  });
+
+  it('debounce coalesces rapid calls into one execution after delay', () => {
+    jest.useFakeTimers();
+    const fn = jest.fn();
+    const d = debounce(fn, 100);
+    d();
+    d();
+    d();
+    expect(fn).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(100);
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('startWatchers invokes onEvent and close() stops watchers', () => {
+    const close = jest.fn();
+    const watchSpy = jest.spyOn(fs, 'watch').mockImplementation((_p, listener) => {
+      if (typeof listener === 'function') {
+        listener('change', 'f');
+      }
+      return { close };
+    });
+    const onEvent = jest.fn();
+    const stop = startWatchers([{ kind: 'dir', path: path.join(tmp, 'w') }], onEvent);
+    expect(onEvent).toHaveBeenCalled();
+    stop();
+    expect(close).toHaveBeenCalled();
+    watchSpy.mockRestore();
+  });
+
+  it('runDatasourceValidationWatchLoop exits 4 when there is nothing to watch', async() => {
+    getIntegrationPath.mockReturnValue(path.join(tmp, 'nonexistent-integration'));
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    await runDatasourceValidationWatchLoop({
+      appKey: 'app',
+      runOnce: async() => ({ exitCode: 0, envelope: null })
+    });
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Watch: no directories'));
+    expect(exitSpy).toHaveBeenCalledWith(4);
+    exitSpy.mockRestore();
+  });
+
+  it('runDatasourceValidationWatchLoop with watchCi calls process.exit with run exit code after first run', async() => {
+    const intRoot = path.join(tmp, 'integration-app');
+    fs.mkdirSync(intRoot, { recursive: true });
+    getIntegrationPath.mockReturnValue(intRoot);
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    const watchSpy = jest.spyOn(fs, 'watch').mockImplementation(() => ({ close: jest.fn() }));
+    const runOnce = jest.fn().mockResolvedValue({ exitCode: 2, envelope: { status: 'fail' } });
+    await runDatasourceValidationWatchLoop({
+      appKey: 'app',
+      watchCi: true,
+      runOnce
+    });
+    expect(runOnce).toHaveBeenCalledTimes(1);
+    expect(exitSpy).toHaveBeenCalledWith(2);
+    process.removeAllListeners('SIGINT');
+    process.removeAllListeners('SIGTERM');
+    watchSpy.mockRestore();
+    exitSpy.mockRestore();
   });
 });
