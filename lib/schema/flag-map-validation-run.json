@@ -16,10 +16,16 @@
     { "cliFlag": "--no-cleanup", "requestField": "e2eOptions.cleanup", "runType": "e2e" },
     { "cliFlag": "--primary-key-value", "requestField": "e2eOptions.primaryKeyValue", "runType": "e2e" },
     { "cliFlag": "--capability <key>", "requestField": "e2eOptions.capabilityKeys", "runType": "e2e", "note": "Single key forwarded as capabilityKeys array in request body when set" },
+    { "cliFlag": "--strict-capability-scope", "requestField": null, "runType": "e2e", "note": "Client-only: exit ≥1 when capabilities[] has >1 row while --capability is set (plan §2.3)" },
     { "cliFlag": "--require-cert", "requestField": null, "note": "Client-only exit code 2 gate" },
     { "cliFlag": "--warnings-as-errors", "requestField": null, "note": "Client-only exit code 1 on warn" },
     { "cliFlag": "--json", "requestField": null, "note": "Stdout prints raw DatasourceTestRun" },
     { "cliFlag": "--summary", "requestField": null, "note": "Compact machine-oriented lines (plan §16.9)" },
-    { "cliFlag": "-v, --verbose", "requestField": "e2eOptions.audit", "runType": "e2e", "note": "Also poll progress in legacy E2E path" }
+    { "cliFlag": "-v, --verbose", "requestField": "e2eOptions.audit", "runType": "e2e", "note": "Also poll progress in legacy E2E path" },
+    { "cliFlag": "--watch", "requestField": null, "note": "Client-only: re-run test / test-integration / test-e2e when watched paths change (debounced; plan §3.14)" },
+    { "cliFlag": "--watch-path <path>", "requestField": null, "note": "Client-only: extra file or dir to watch (repeatable)" },
+    { "cliFlag": "--watch-application-yaml", "requestField": null, "note": "Client-only: ensure integration/<app>/application.yaml is in the watch set" },
+    { "cliFlag": "--watch-ci", "requestField": null, "note": "Client-only: exit after first validation run (normal exit code) for CI-style one-shot" },
+    { "cliFlag": "--watch-full-diff", "requestField": null, "note": "Client-only: print full before/after fingerprint lines on change" }
   ]
 }

@@ -36,6 +36,17 @@ For **`aifabrix datasource test`**, **`datasource test-integration`**, and **`da
 
 App-wide **`aifabrix test-integration <app>`** only supports **`--debug`** as a simple flag (for an external system, log files under **`integration/<systemKey>/logs/`**; no **`summary`** / **`full`** / **`raw`** there).
 
+<a id="watch-mode-datasource-commands"></a>
+### Watch mode (`datasource` commands)
+
+For **`aifabrix datasource test`**, **`datasource test-integration`**, and **`datasource test-e2e`**, you can add **`--watch`** so the CLI runs the same validation again when relevant files on disk change—useful while editing datasource JSON or integration config.
+
+**What is watched:** By default, the CLI watches the resolved integration app folder (the same folder **`--app`** would point to, or the folder inferred from your current working directory or datasource key). Optional **`--watch-path <path>`** (repeatable) adds another file or directory. **`--watch-application-yaml`** ensures **`integration/<app>/application.yaml`** is part of the watch set (it is usually already under the integration tree).
+
+**Behavior:** The first run behaves like a normal invocation (same exit codes and output modes). After that, file-change events are **debounced** (about half a second) so rapid saves trigger a single re-run. When the validation **report fingerprint** changes (overall status, certificate status, and per-capability statuses), the CLI prints a short **watch diff** line; use **`--watch-full-diff`** for a two-line before/after fingerprint. **`--watch-ci`** runs **once** and then exits with the usual exit code—handy in scripts that only need a single run but want the same watch-oriented output. Without **`--watch-ci`**, the process keeps waiting; stop with **Ctrl+C** (exit **130**).
+
+**Not covered:** Watch mode only reacts to local filesystem changes. It does not replace publishing to the dataplane; if your workflow requires an upload before the server sees new config, run **`aifabrix upload`** (or your usual publish step) separately.
+
 ---
 
 ## Unit tests (`aifabrix test`)
@@ -315,7 +326,7 @@ The same unified flow is used for **`datasource test`** and **`datasource test-i
 aifabrix datasource test-e2e <datasourceKey> [options]
 ```
 
-**Options:** `-a, --app <app>`, `-e, --env <env>`, `-v, --verbose`, `--debug [level]`, `--test-crud`, `--record-id <id>`, `--no-cleanup`, `--primary-key-value <value|@path>`, `--no-async`, `--timeout <ms>`, `--capability <key>`, `--json`, `--summary`, `--warnings-as-errors`, `--require-cert`.
+**Options:** `-a, --app <app>`, `-e, --env <env>`, `-v, --verbose`, `--debug [level]`, `--test-crud`, `--record-id <id>`, `--no-cleanup`, `--primary-key-value <value|@path>`, `--no-async`, `--timeout <ms>`, `--capability <key>`, `--strict-capability-scope`, `--json`, `--summary`, `--warnings-as-errors`, `--require-cert`.
 
 **Option details:**
 - **`--test-crud`** – Enable full CRUD lifecycle test (create → get → update → delete) when the datasource supports it.
@@ -324,7 +335,8 @@ aifabrix datasource test-e2e <datasourceKey> [options]
 - **`--primary-key-value <value|@path>`** – Primary key of an existing record. When set, the dataplane can fetch that record and use it as the payload template for create (no separate payload template needed). For composite keys, use a JSON file path (e.g. `@pk.json`).
 - **`--debug [level]`** – Richer debug from the dataplane, optional appendix on the terminal, and (for this command) a log file under **`integration/<systemKey>/logs/`**. Levels: **`summary`** (default), **`full`**, **`raw`** (see [Debug output](#debug-output-datasource-commands)). Omit the appendix with **`--json`**.
 - **`--timeout <ms>`** – Aggregate time budget for the POST and any polling (default fifteen minutes in the CLI).
-- **`--capability <key>`** – Ask the dataplane to focus the run on one capability when that contract is supported.
+- **`--capability <key>`** – Ask the dataplane to focus the run on one capability when that contract is supported. Human output (default TTY and **`--summary`**) highlights **that** capability’s status and any per-capability E2E steps when the report includes them. If the report still lists **more than one** capability row, the CLI prints a **warning** to stderr; use **`--strict-capability-scope`** to exit with status **1** in that case (plan §2.3).
+- **`--strict-capability-scope`** – Only with **`--capability`**: fail the process when the envelope lists multiple capability rows (client contract check).
 - **`--json` / `--summary` / `--warnings-as-errors` / `--require-cert`** – Machine-oriented output and stricter exit codes; see `aifabrix datasource test-e2e --help`.
 
 **Datasource config – primaryKey:** The datasource configuration must include `primaryKey` (required by the schema). It is an array of normalized attribute names (e.g. `["id"]` or `["externalId"]`) used for CRUD operations and table indexing. Validation fails if `primaryKey` is missing.

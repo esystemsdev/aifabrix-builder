@@ -47,6 +47,8 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | `aifabrix service-user update-groups` | Controller | `service-user:update` | Update group assignments for a service user. |
 | `aifabrix service-user update-redirect-uris` | Controller | `service-user:update` | Update redirect URIs for a service user (min 1). |
 
+For `aifabrix datasource test`, `datasource test-integration`, and `datasource test-e2e`, flags such as `--watch` only re-run the same command when local files change; permissions and Dataplane scopes are unchanged per invocation.
+
 ---
 
 ## Controller permissions (summary)
