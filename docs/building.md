@@ -254,6 +254,16 @@ Resolution order:
 
 So a monorepo app that sets `build.dockerfile` always uses that canonical Dockerfile, even if an older `Dockerfile` was left in `~/.aifabrix/...` from a previous build.
 
+### Force a full image rebuild
+
+Docker may reuse cached layers (`CACHED` in build output) so the image id does not change even when you expect new code. Run:
+
+```bash
+aifabrix build <app> --no-cache
+```
+
+That passes `docker build --no-cache` (slower, but guarantees layers re-run).
+
 ### Force Regenerate Template
 
 Have a Dockerfile but want fresh template:

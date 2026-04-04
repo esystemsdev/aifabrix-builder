@@ -354,6 +354,71 @@ describe('Docker Build Utilities', () => {
         expect.any(Object)
       );
     });
+
+    it('should pass --no-cache when sixth argument is true', async() => {
+      const imageName = 'test-image';
+      const dockerfilePath = './Dockerfile';
+      const contextPath = './';
+      const tag = 'latest';
+
+      let closeCallback;
+      mockProcess.on.mockImplementation((event, callback) => {
+        if (event === 'close') closeCallback = callback;
+      });
+
+      const buildPromise = dockerBuild.executeDockerBuild(
+        imageName,
+        dockerfilePath,
+        contextPath,
+        tag,
+        {},
+        true
+      );
+      if (closeCallback) closeCallback(0);
+      await buildPromise;
+
+      const expectedDockerfilePath = path.resolve(dockerfilePath);
+      const expectedContextPath = path.resolve(contextPath);
+      expect(mockSpawn).toHaveBeenCalledWith(
+        'docker',
+        [
+          'build', '-t', `${imageName}:${tag}`, '-f', expectedDockerfilePath,
+          '--no-cache',
+          expectedContextPath
+        ],
+        expect.any(Object)
+      );
+    });
+
+    it('executeBuild passes --no-cache when options.cache is false (Commander --no-cache)', async() => {
+      const imageName = 'test-image';
+      const dockerfilePath = './Dockerfile';
+      const contextPath = './';
+      const tag = 'latest';
+
+      let closeCallback;
+      mockProcess.on.mockImplementation((event, callback) => {
+        if (event === 'close') closeCallback = callback;
+      });
+
+      const buildPromise = dockerBuild.executeBuild(imageName, dockerfilePath, contextPath, tag, {
+        cache: false
+      });
+      if (closeCallback) closeCallback(0);
+      await buildPromise;
+
+      const expectedDockerfilePath = path.resolve(dockerfilePath);
+      const expectedContextPath = path.resolve(contextPath);
+      expect(mockSpawn).toHaveBeenCalledWith(
+        'docker',
+        [
+          'build', '-t', `${imageName}:${tag}`, '-f', expectedDockerfilePath,
+          '--no-cache',
+          expectedContextPath
+        ],
+        expect.any(Object)
+      );
+    });
     it('should handle build failure with error code', async() => {
       const imageName = 'test-image';
       const dockerfilePath = './Dockerfile';
