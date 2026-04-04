@@ -16,6 +16,9 @@ const {
   readClientKeyPem,
   readServerCaPem,
   getCertValidNotAfter,
+  getCertSubjectDeveloperId,
+  parseDeveloperIdFromX509SubjectOutput,
+  developerIdsMatchNumeric,
   normalizePemNewlines,
   mergeCaPemBlocks
 } = require('../../../lib/utils/dev-cert-helper');
@@ -151,6 +154,66 @@ describe('dev-cert-helper', () => {
       fs.rmdirSync.mockImplementation(() => {});
 
       expect(() => devCertHelper.generateCSR('01')).toThrow('OpenSSL is required');
+    });
+  });
+
+  describe('parseDeveloperIdFromX509SubjectOutput', () => {
+    it('parses CN = dev-01 style', () => {
+      expect(parseDeveloperIdFromX509SubjectOutput('subject=C = US, CN = dev-01, O = Test')).toBe('01');
+    });
+
+    it('parses CN=dev-02 without spaces', () => {
+      expect(parseDeveloperIdFromX509SubjectOutput('subject=CN=dev-02\n')).toBe('02');
+    });
+
+    it('returns null when CN dev-* missing', () => {
+      expect(parseDeveloperIdFromX509SubjectOutput('subject=CN=example.com')).toBeNull();
+      expect(parseDeveloperIdFromX509SubjectOutput('')).toBeNull();
+      expect(parseDeveloperIdFromX509SubjectOutput(null)).toBeNull();
+    });
+  });
+
+  describe('developerIdsMatchNumeric', () => {
+    it('treats 2 and 02 as equal', () => {
+      expect(developerIdsMatchNumeric('2', '02')).toBe(true);
+      expect(developerIdsMatchNumeric('02', '2')).toBe(true);
+    });
+
+    it('returns false when integers differ', () => {
+      expect(developerIdsMatchNumeric('1', '02')).toBe(false);
+    });
+
+    it('returns false for non-digit strings', () => {
+      expect(developerIdsMatchNumeric('ab', '01')).toBe(false);
+    });
+  });
+
+  describe('getCertSubjectDeveloperId', () => {
+    it('returns null when cert.pem missing', () => {
+      fs.existsSync.mockReturnValue(false);
+      expect(getCertSubjectDeveloperId('/certs/01')).toBeNull();
+      expect(execFileSync).not.toHaveBeenCalled();
+    });
+
+    it('returns developer id when openssl prints subject with CN', () => {
+      const certPath = path.join('/certs/01', 'cert.pem');
+      fs.existsSync.mockImplementation((p) => path.normalize(String(p)) === path.normalize(certPath));
+      execFileSync.mockReturnValue('subject=C = US, CN = dev-07, O = Builder\n');
+      expect(getCertSubjectDeveloperId('/certs/01')).toBe('07');
+      expect(execFileSync).toHaveBeenCalledWith(
+        expect.any(String),
+        ['x509', '-subject', '-noout', '-in', path.normalize(certPath)],
+        expect.objectContaining({ encoding: 'utf8' })
+      );
+    });
+
+    it('returns null when openssl throws', () => {
+      const certPath = path.join('/certs/01', 'cert.pem');
+      fs.existsSync.mockImplementation((p) => path.normalize(String(p)) === path.normalize(certPath));
+      execFileSync.mockImplementation(() => {
+        throw new Error('bad cert');
+      });
+      expect(getCertSubjectDeveloperId('/certs/01')).toBeNull();
     });
   });
 

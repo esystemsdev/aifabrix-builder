@@ -29,6 +29,9 @@ jest.mock('../../../lib/utils/dev-cert-helper', () => {
 jest.mock('../../../lib/utils/remote-dev-auth', () => ({ getRemoteDevAuth: jest.fn() }));
 jest.mock('../../../lib/utils/ssh-key-helper', () => ({ getOrCreatePublicKeyContent: jest.fn(() => 'ssh-ed25519 AAAA key') }));
 jest.mock('../../../lib/api/dev.api');
+jest.mock('../../../lib/commands/dev-show-display', () => ({
+  displayDevConfig: jest.fn().mockResolvedValue(undefined)
+}));
 jest.mock('../../../lib/utils/dev-ca-install', () => {
   const actual = jest.requireActual('../../../lib/utils/dev-ca-install');
   return {
@@ -62,6 +65,7 @@ const devHostsHelper = require('../../../lib/utils/dev-hosts-helper');
 const devSshConfigHelper = require('../../../lib/utils/dev-ssh-config-helper');
 const { generateCSR, readClientCertPem, readClientKeyPem, getCertValidNotAfter } = require('../../../lib/utils/dev-cert-helper');
 const { getRemoteDevAuth } = require('../../../lib/utils/remote-dev-auth');
+const devShowDisplay = require('../../../lib/commands/dev-show-display');
 const { runDevInit, runDevRefresh } = require('../../../lib/commands/dev-init');
 
 describe('dev-init command', () => {
@@ -147,6 +151,8 @@ describe('dev-init command', () => {
     devApi.getHealth.mockRejectedValue(new Error('ECONNREFUSED'));
     await expect(runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456' }))
       .rejects.toThrow('Cannot reach Builder Server');
+    expect(config.setDeveloperId).toHaveBeenCalledWith('01');
+    expect(config.setRemoteServer).toHaveBeenCalledWith('https://dev.example.com');
   });
 
   it('when GET /health returns HTTP 503 without SSL issues, warns and continues init', async() => {
@@ -192,6 +198,8 @@ describe('dev-init command', () => {
     await expect(runDevInit({ developerId: '01', server: 'https://builder02.local', pin: '123456' }))
       .rejects.toThrow('TLS hostname does not match');
     expect(devCaInstall.fetchInstallCa).not.toHaveBeenCalled();
+    expect(config.setDeveloperId).toHaveBeenCalledWith('01');
+    expect(config.setRemoteServer).toHaveBeenCalledWith('https://builder02.local');
   });
 
   it('when SSL error and --no-install-ca, throws with manual instructions', async() => {
@@ -287,6 +295,8 @@ describe('dev-init command', () => {
     devApi.issueCert.mockRejectedValue(err);
     await expect(runDevInit({ developerId: '01', server: 'https://dev.example.com', pin: '123456' }))
       .rejects.toThrow('Invalid or expired PIN');
+    expect(config.setDeveloperId).toHaveBeenCalledWith('01');
+    expect(config.setRemoteServer).toHaveBeenCalledWith('https://dev.example.com');
   });
 
   it('saves cert, updates config, fetches settings, registers SSH key on success', async() => {
@@ -448,6 +458,7 @@ describe('dev-init command', () => {
       });
       expect(devApi.createPin).not.toHaveBeenCalled();
       expect(devApi.issueCert).not.toHaveBeenCalled();
+      expect(devShowDisplay.displayDevConfig).toHaveBeenCalledWith('01');
     });
 
     it('refreshes certificate when cert expires within 14 days', async() => {
@@ -461,6 +472,7 @@ describe('dev-init command', () => {
       );
       expect(config.mergeRemoteSettings).toHaveBeenCalled();
       expect(devApi.getSettings).toHaveBeenCalled();
+      expect(devShowDisplay.displayDevConfig).toHaveBeenCalledWith('01');
     });
 
     it('refreshes certificate when runDevRefresh called with --cert', async() => {
@@ -471,6 +483,7 @@ describe('dev-init command', () => {
         expect.objectContaining({ developerId: '01', pin: '654321' }),
         undefined
       );
+      expect(devShowDisplay.displayDevConfig).toHaveBeenCalledWith('01');
     });
 
     it('refreshes certificate when getCertValidNotAfter returns null (unknown expiry)', async() => {
@@ -478,6 +491,7 @@ describe('dev-init command', () => {
       await runDevRefresh();
       expect(devApi.createPin).toHaveBeenCalled();
       expect(devApi.issueCert).toHaveBeenCalled();
+      expect(devShowDisplay.displayDevConfig).toHaveBeenCalledWith('01');
     });
   });
 });

@@ -30,7 +30,7 @@ describe('checkDockerAvailability', () => {
       expect.fail('should throw');
     } catch (err) {
       expect(err.message).toMatch(/Docker Compose check failed/);
-      expect(err.message).not.toMatch(/dev activate/);
+      expect(err.message).not.toMatch(/dev init --pin/);
     }
   });
 
@@ -44,7 +44,7 @@ describe('checkDockerAvailability', () => {
       expect.fail('should throw');
     } catch (err) {
       expect(err.message).toMatch(/AIFABRIX_COMPOSE_CMD failed/);
-      expect(err.message).not.toMatch(/dev activate/);
+      expect(err.message).not.toMatch(/dev init --pin/);
     }
   });
 

@@ -159,7 +159,7 @@ describe('dev-cli-handlers', () => {
       expect(devApi.createPin).not.toHaveBeenCalled();
     });
 
-    it('logs standard, hosts, and activate/init --pin commands', async() => {
+    it('logs standard, hosts, and dev init --pin commands', async() => {
       const logger = require('../../../lib/utils/logger');
       devApi.createPin.mockResolvedValue({ pin: '888888', expiresAt: '2026-04-03T13:00:00.000Z' });
       await handleDevPin('02');
@@ -169,7 +169,6 @@ describe('dev-cli-handlers', () => {
       );
       expect(joined).toContain('--add-hosts');
       expect(joined).toContain('<server-LAN-IPv4>');
-      expect(joined).toContain('aifabrix dev activate --pin 888888');
       expect(joined).toContain('aifabrix dev init --pin 888888');
     });
 
