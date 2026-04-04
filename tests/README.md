@@ -75,6 +75,16 @@ npm run test:watch
 npm test -- tests/lib/validator.test.js
 ```
 
+### Jest “worker failed to exit gracefully”
+
+After **`npm test`** or **`npm run build`**, you may see:
+
+`A worker process has failed to exit gracefully and has been force exited...`
+
+When **all suites and tests still passed**, this is usually **benign**: Jest runs several [projects](../jest.config.js) (default plus a few isolated suites), and some combination of **timers, mocks, or async teardown** can keep a worker from exiting cleanly. It does not mean your changes failed validation.
+
+To dig deeper (optional): run **`npx jest --detectOpenHandles`** against **one** suite or test file first (for example `npx jest tests/lib/cli.test.js --detectOpenHandles --runInBand`). Running **`--detectOpenHandles`** on the **entire** default project can take a long time or appear to stall while Jest waits on open handles.
+
 ### Continuous Integration
 ```bash
 # Run tests with coverage (for CI/build)
