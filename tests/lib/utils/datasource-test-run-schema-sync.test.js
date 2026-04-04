@@ -17,7 +17,11 @@ function withSchemaSyncTempDir(fn) {
   try {
     return fn(dir);
   } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
+    try {
+      fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
+    } catch {
+      // best-effort
+    }
   }
 }
 

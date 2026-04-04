@@ -2,7 +2,7 @@
  * @fileoverview Tests for datasource-validation-watch.js
  */
 
-const fs = require('fs');
+const fs = require('node:fs');
 const path = require('path');
 const os = require('os');
 
@@ -36,12 +36,13 @@ describe('datasource-validation-watch', () => {
 
   afterEach(() => {
     try {
-      fs.rmSync(tmp, { recursive: true, force: true });
+      fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 3, retryDelay: 15 });
     } catch {
       // ignore
     }
     jest.clearAllMocks();
-    jest.restoreAllMocks();
+    // Do not call jest.restoreAllMocks() here: it resets the jest.mock('./paths') factory fn
+    // between tests and drops mockReturnValue, leaving getIntegrationPath undefined → flaky targets.
     jest.useRealTimers();
   });
 

@@ -56,10 +56,16 @@ module.exports = {
           '/tests/lib/utils/cli-utils.test.js',
           '/tests/lib/utils/external-system-display.test.js',
           '/tests/lib/utils/dev-hosts-helper.test.js',
+          '/tests/lib/utils/datasource-validation-watch.test.js',
           '\\\\tests\\\\lib\\\\utils\\\\cli-utils.test.js',
           '\\\\tests\\\\lib\\\\utils\\\\external-system-display.test.js',
           '\\\\tests\\\\lib\\\\utils\\\\dev-hosts-helper.test.js',
-          'lib/utils/dev-hosts-helper.test.js'
+          '\\\\tests\\\\lib\\\\utils\\\\datasource-validation-watch.test.js',
+          'lib/utils/dev-hosts-helper.test.js',
+          'lib/utils/datasource-validation-watch.test.js',
+          '/tests/lib/utils/datasource-test-run-schema-sync.test.js',
+          '\\\\tests\\\\lib\\\\utils\\\\datasource-test-run-schema-sync.test.js',
+          'lib/utils/datasource-test-run-schema-sync.test.js'
         ];
         if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
           patterns.push('/tests/local/');
@@ -74,6 +80,12 @@ module.exports = {
     },
     makeIsolatedProject('cli-utils', ['**/tests/lib/utils/cli-utils.test.js']),
     makeIsolatedProject('external-system-display', ['**/tests/lib/utils/external-system-display.test.js']),
-    makeIsolatedProject('dev-hosts-helper', ['**/tests/lib/utils/dev-hosts-helper.test.js'])
+    makeIsolatedProject('dev-hosts-helper', ['**/tests/lib/utils/dev-hosts-helper.test.js']),
+    makeIsolatedProject('datasource-validation-watch', [
+      '**/tests/lib/utils/datasource-validation-watch.test.js'
+    ]),
+    makeIsolatedProject('datasource-test-run-schema-sync', [
+      '**/tests/lib/utils/datasource-test-run-schema-sync.test.js'
+    ])
   ]
 };

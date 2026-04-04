@@ -293,10 +293,11 @@ describe('Infrastructure Compose Module', () => {
 
     it('on win32 maps C:/ style paths to /c/ for Docker volume parsing', () => {
       const origPlatform = process.platform;
-      const spy = jest.spyOn(path, 'resolve').mockReturnValue('C:\\Users\\test\\infra\\init-scripts');
+      // Forward slashes after resolve: implementation normalizes with path.sep then regex /^([a-zA-Z]):(\/.*)$/
+      const spy = jest.spyOn(path, 'resolve').mockReturnValue('C:/Users/test/infra/init-scripts');
       Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' });
       try {
-        expect(compose.toDockerBindMountSource('C:\\Users\\test\\infra\\init-scripts')).toBe(
+        expect(compose.toDockerBindMountSource('C:/Users/test/infra/init-scripts')).toBe(
           '/c/Users/test/infra/init-scripts'
         );
       } finally {

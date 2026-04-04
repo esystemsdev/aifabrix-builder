@@ -53,7 +53,11 @@ describe('dev-hosts-helper', () => {
         expect(hostsFileHasHostname(p, 'builder02.local')).toBe(true);
         expect(hostsFileHasHostname(p, 'other.local')).toBe(false);
       } finally {
-        fs.rmSync(dir, { recursive: true, force: true });
+        try {
+          fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+        } catch {
+          // best-effort: parallel workers / tmp races can rarely leave ENOTEMPTY
+        }
       }
     });
 
