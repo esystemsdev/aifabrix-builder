@@ -722,7 +722,7 @@ describe('Config Module', () => {
       }));
 
       const value = await getAifabrixEnvConfigPath();
-      expect(value).toBe('/custom/env-config.yaml');
+      expect(value).toBe(path.normalize(path.resolve('/custom/env-config.yaml')));
     });
 
     it('setAifabrixEnvConfigPath validates input type', async() => {

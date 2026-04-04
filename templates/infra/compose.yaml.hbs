@@ -17,7 +17,9 @@ services:
       - "{{postgresPort}}:5432"
     volumes:
       - {{#if (eq devId 0)}}postgres_data{{else}}dev{{devId}}_postgres_data{{/if}}:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d
+      - type: bind
+        source: "{{initScriptsBind}}"
+        target: /docker-entrypoint-initdb.d
     networks:
       - {{networkName}}
     healthcheck:
@@ -61,7 +63,10 @@ services:
       - "{{pgadminPort}}:80"
     volumes:
       - {{#if (eq devId 0)}}pgadmin_data{{else}}dev{{devId}}_pgadmin_data{{/if}}:/var/lib/pgadmin
-      - {{infraDir}}:/host-config:ro
+      - type: bind
+        source: "{{infraDirBind}}"
+        target: /host-config
+        read_only: true
     command: >
       sh -c "
       if [ -f /host-config/servers.json ]; then
@@ -126,10 +131,16 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 {{#if traefik.certFile}}
-      - {{traefik.certFile}}:{{traefik.certFile}}:ro
+      - type: bind
+        source: "{{traefik.certFile}}"
+        target: "{{traefik.certFile}}"
+        read_only: true
 {{/if}}
 {{#if traefik.keyFile}}
-      - {{traefik.keyFile}}:{{traefik.keyFile}}:ro
+      - type: bind
+        source: "{{traefik.keyFile}}"
+        target: "{{traefik.keyFile}}"
+        read_only: true
 {{/if}}
     networks:
       - {{networkName}}

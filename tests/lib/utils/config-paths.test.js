@@ -216,7 +216,7 @@ describe('Config Paths Module', () => {
       it('should get aifabrix-env-config path from config', async() => {
         getConfigFn.mockResolvedValue({ 'aifabrix-env-config': '/custom/env-config' });
         const result = await pathConfigFunctions.getAifabrixEnvConfigPath();
-        expect(result).toBe('/custom/env-config');
+        expect(result).toBe(pathMod.normalize(pathMod.resolve('/custom/env-config')));
       });
 
       it('should resolve relative aifabrix-env-config against aifabrix-work (independent of cwd)', async() => {

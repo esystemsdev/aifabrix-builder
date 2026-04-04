@@ -4,6 +4,9 @@
 
 'use strict';
 
+// jest.mock('fs') in other suites in this worker leaves an auto-mocked fs; this file needs real fs.promises.
+jest.unmock('fs');
+
 const fs = require('fs').promises;
 const os = require('os');
 const path = require('path');
