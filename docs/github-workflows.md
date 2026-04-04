@@ -899,11 +899,11 @@ If validation fails, the workflow stops immediately with clear error messages, p
 
 ## External systems deployment via GitHub Actions
 
-External systems (integrations in `integration/<app>/`) can be validated and deployed from GitHub Actions using the same controller URL and credentials as application deployment.
+External systems (integrations in `integration/<systemKey>/`) can be validated and deployed from GitHub Actions using the same controller URL and credentials as application deployment.
 
 **Workflow:**
 1. **Validate** – `aifabrix validate <app>` (validates YAML and schemas; use app/integration key)
-2. **Upload or deploy** – `aifabrix upload <system-key>` to publish to the dataplane without promoting through the full controller pipeline, or `aifabrix deploy <app>` to deploy via the controller (validate + deploy)
+2. **Upload or deploy** – `aifabrix upload <systemKey>` to publish to the dataplane without promoting through the full controller pipeline, or `aifabrix deploy <app>` to deploy via the controller (validate + deploy)
 3. **Credentials** – Use the same `MISO_CONTROLLER_URL` and application/client credentials as for app deployment; the controller and (if needed) dataplane client id/secret are used for pipeline and upload
 4. **Controller URL** – Use a public controller URL (e.g. `https://controller.aifabrix.dev`) so runners can reach the API
 

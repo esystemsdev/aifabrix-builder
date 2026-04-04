@@ -48,7 +48,7 @@ tests/
 #### Integration Tests
 - Test module interactions and data flow
 - **tests/integration/** – Fixture-based: validate file layout, schema, and config (e.g. HubSpot integration folder, application.yaml, datasource files). No live API calls. Use when the feature has real fixture data to validate.
-- **tests/manual/** – Real API calls to Controller/Dataplane. Use for features that hit live endpoints (e.g. `datasource test-e2e`, external-test.api). Excluded from CI; run with `npm run test:manual` when logged in. See tests/manual/README.md.
+- **tests/manual/** – Real API calls to Controller/Dataplane. Use for features that hit live endpoints (e.g. `datasource test-e2e`, `validation-run.api`, legacy external-test.api). Excluded from CI; run with `npm run test:manual` when logged in. See tests/manual/README.md.
 - For API-calling features (e.g. E2E test command): **unit tests** in tests/lib/ with mocks cover success and failure; **manual tests** cover real API smoke. **No tests/integration** test is required unless the feature also has fixture-based structure to validate.
 - Longer execution time acceptable
 
@@ -74,6 +74,16 @@ npm run test:watch
 # Run specific test file
 npm test -- tests/lib/validator.test.js
 ```
+
+### Jest “worker failed to exit gracefully”
+
+After **`npm test`** or **`npm run build`**, you may see:
+
+`A worker process has failed to exit gracefully and has been force exited...`
+
+When **all suites and tests still passed**, this is usually **benign**: Jest runs several [projects](../jest.config.js) (default plus a few isolated suites), and some combination of **timers, mocks, or async teardown** can keep a worker from exiting cleanly. It does not mean your changes failed validation.
+
+To dig deeper (optional): run **`npx jest --detectOpenHandles`** against **one** suite or test file first (for example `npx jest tests/lib/cli.test.js --detectOpenHandles --runInBand`). Running **`--detectOpenHandles`** on the **entire** default project can take a long time or appear to stall while Jest waits on open handles.
 
 ### Continuous Integration
 ```bash

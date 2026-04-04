@@ -3,7 +3,7 @@
  */
 
 const tls = require('tls');
-const { mergedCaForDevServer } = require('../../../lib/api/dev-server-https');
+const { mergedCaForDevServer, shouldUseMtlsForUrl } = require('../../../lib/api/dev-server-https');
 
 describe('dev-server-https', () => {
   describe('mergedCaForDevServer', () => {
@@ -19,6 +19,20 @@ describe('dev-server-https', () => {
       expect(Array.isArray(merged)).toBe(true);
       expect(merged.length).toBe(tls.rootCertificates.length + 1);
       expect(merged[merged.length - 1]).toBe(extra);
+    });
+  });
+
+  describe('shouldUseMtlsForUrl', () => {
+    it('is false without key or for http URL', () => {
+      expect(shouldUseMtlsForUrl('https://x/api', '')).toBe(false);
+      expect(shouldUseMtlsForUrl('http://x/api', '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----')).toBe(
+        false
+      );
+    });
+
+    it('is true for https URL when key is non-empty string', () => {
+      const key = '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----';
+      expect(shouldUseMtlsForUrl('https://builder.example.com/api/dev/settings', key)).toBe(true);
     });
   });
 });

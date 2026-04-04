@@ -241,7 +241,7 @@ describe('App Commands Module', () => {
       setupAppCommands(program);
 
       const appGroup = program._appGroup;
-      const showCommand = appGroup._subCommands?.find(c => c.name === 'show <appKey>');
+      const showCommand = appGroup._subCommands?.find(c => c.name === 'show <app>');
       expect(showCommand).toBeDefined();
       expect(showCommand.command.option).toHaveBeenCalledWith('--online', 'Fetch from controller (default for this command)');
       expect(showCommand.command.option).toHaveBeenCalledWith('--json', 'Output as JSON');

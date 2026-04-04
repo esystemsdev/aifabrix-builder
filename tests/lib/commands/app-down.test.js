@@ -4,7 +4,10 @@
  */
 
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn() }));
-jest.mock('../../../lib/core/config', () => ({ getDeveloperId: jest.fn().mockResolvedValue(0) }));
+jest.mock('../../../lib/core/config', () => ({
+  getDeveloperId: jest.fn().mockResolvedValue(0),
+  getDockerEndpoint: jest.fn().mockResolvedValue(null)
+}));
 jest.mock('../../../lib/utils/app-run-containers', () => ({ getContainerName: jest.fn((app) => `aifabrix-${app}`) }));
 jest.mock('../../../lib/app/down', () => ({ downApp: jest.fn().mockResolvedValue(undefined) }));
 

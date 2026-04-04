@@ -1,5 +1,5 @@
 /**
- * Tests for upload command (aifabrix upload <system-key>)
+ * Tests for upload command (aifabrix upload <systemKey>)
  *
  * @fileoverview Unit tests for lib/commands/upload.js
  * @author AI Fabrix Team

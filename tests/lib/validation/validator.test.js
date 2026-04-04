@@ -33,7 +33,9 @@ if (!global.fetch || typeof global.fetch.mockResolvedValue !== 'function') {
 jest.mock('fs');
 jest.mock('os');
 jest.mock('../../../lib/core/config', () => ({
-  getDeveloperId: jest.fn().mockResolvedValue('0')
+  getDeveloperId: jest.fn().mockResolvedValue('0'),
+  getDockerEndpoint: jest.fn().mockResolvedValue(null),
+  getDockerTlsSkipVerify: jest.fn().mockResolvedValue(false)
 }));
 jest.mock('../../../lib/utils/dev-config', () => ({
   getDevPorts: jest.fn((id) => ({
@@ -94,8 +96,8 @@ jest.mock('child_process', () => {
     exec: jest.fn((command, options, callback) => {
       const cb = typeof options === 'function' ? options : callback;
       if (typeof cb === 'function') {
-        // Default: return success for docker commands
-        setImmediate(() => cb(null, { stdout: 'Docker version 20.10.0', stderr: '' }));
+        // Default: return success for docker commands (exec callback: err, stdout, stderr strings)
+        setImmediate(() => cb(null, 'Docker version 20.10.0', ''));
       }
       return { stdout: 'Docker version 20.10.0', stderr: '' };
     })
@@ -129,8 +131,8 @@ describe('Validator Module', () => {
     exec.mockImplementation((command, options, callback) => {
       const cb = typeof options === 'function' ? options : callback;
       if (typeof cb === 'function') {
-        // Default: return success for docker commands
-        setImmediate(() => cb(null, { stdout: 'Docker version 20.10.0', stderr: '' }));
+        // Default: return success for docker commands (exec callback: err, stdout, stderr strings)
+        setImmediate(() => cb(null, 'Docker version 20.10.0', ''));
       }
       return { stdout: 'Docker version 20.10.0', stderr: '' };
     });
@@ -691,8 +693,11 @@ frontDoorRouting:
 
   describe('checkEnvironment', () => {
     it('should return ok status when everything is working', async() => {
-      exec.mockImplementation((command, callback) => {
-        callback(null, 'Docker version 20.10.0', '');
+      exec.mockImplementation((command, options, callback) => {
+        const cb = typeof options === 'function' ? options : callback;
+        if (typeof cb === 'function') {
+          cb(null, 'Docker version 20.10.0', '');
+        }
       });
 
       const mockServer = {
@@ -722,8 +727,11 @@ frontDoorRouting:
     }, 10000);
 
     it('should return error when Docker is not available', async() => {
-      exec.mockImplementation((command, callback) => {
-        callback(new Error('Command not found'), '', '');
+      exec.mockImplementation((command, options, callback) => {
+        const cb = typeof options === 'function' ? options : callback;
+        if (typeof cb === 'function') {
+          cb(new Error('Command not found'), '', '');
+        }
       });
 
       const result = await validator.checkEnvironment();
@@ -733,8 +741,11 @@ frontDoorRouting:
     }, 10000);
 
     it('should return warning when ports are in use', async() => {
-      exec.mockImplementation((command, callback) => {
-        callback(null, 'Docker version 20.10.0', '');
+      exec.mockImplementation((command, options, callback) => {
+        const cb = typeof options === 'function' ? options : callback;
+        if (typeof cb === 'function') {
+          cb(null, 'Docker version 20.10.0', '');
+        }
       });
 
       const mockServer = {
@@ -763,8 +774,11 @@ frontDoorRouting:
     }, 10000);
 
     it('should return missing when secrets file not found', async() => {
-      exec.mockImplementation((command, callback) => {
-        callback(null, 'Docker version 20.10.0', '');
+      exec.mockImplementation((command, options, callback) => {
+        const cb = typeof options === 'function' ? options : callback;
+        if (typeof cb === 'function') {
+          cb(null, 'Docker version 20.10.0', '');
+        }
       });
 
       const mockServer = {

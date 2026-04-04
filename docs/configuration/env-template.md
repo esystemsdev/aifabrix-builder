@@ -2,7 +2,7 @@
 
 ← [Documentation index](../README.md) · [Configuration](README.md)
 
-Environment variables template. `aifabrix resolve <app>` and run/build generate `.env` from this file plus secrets. **Resolve for external integrations:** You can run `aifabrix resolve <app>` for external integrations in `integration/<app>/` when only `env.template` is present (no `application.yaml` required); resolve then writes `integration/<app>/.env`. When full application config exists, the only persisted `.env` is written to `build.envOutputPath` when set (or to a temp path for run).
+Environment variables template. `aifabrix resolve <app>` and run/build generate `.env` from this file plus secrets. **Resolve for external integrations:** You can run `aifabrix resolve <app>` for external integrations in `integration/<systemKey>/` when only `env.template` is present (no `application.yaml` required); resolve then writes `integration/<systemKey>/.env`. When full application config exists, the only persisted `.env` is written to `build.envOutputPath` when set (or to a temp path for run).
 
 **kv:// references:** `kv://name` resolves from the secrets file (e.g. `~/.aifabrix/secrets.local.yaml`). Pattern: `<app>-client-idKeyVault`, `<app>-client-secretKeyVault`, or any `*KeyVault` key.
 

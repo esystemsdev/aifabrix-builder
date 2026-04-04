@@ -161,6 +161,44 @@ describe('Dev API', () => {
       await expect(devApi.getSettings(serverUrl, '')).rejects.toThrow('Client certificate PEM is required');
       await expect(devApi.getSettings(serverUrl, null)).rejects.toThrow('Client certificate PEM is required');
     });
+
+    it('should use X-Client-Cert via fetch when URL is http even if clientKeyPem is set (mTLS needs https)', async() => {
+      const httpBase = 'http://builder02.local:3000';
+      const keyPem = '-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----';
+      const settings = { dataDir: '/data' };
+      mockMakeApiCall.mockResolvedValue({ success: true, data: settings });
+
+      const result = await devApi.getSettings(httpBase, clientCertPem, keyPem);
+
+      const expectedCertHeader = Buffer.from(clientCertPem, 'utf8').toString('base64');
+      expect(mockMakeApiCall).toHaveBeenCalledWith(
+        'http://builder02.local:3000/api/dev/settings',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ 'X-Client-Cert': expectedCertHeader })
+        })
+      );
+      expect(result).toEqual(settings);
+    });
+
+    it('should use fetch for http URL even when serverCaPem is set (dev CA is for https only)', async() => {
+      const httpBase = 'http://builder02.local:3000';
+      const settings = { dataDir: '/data' };
+      mockMakeApiCall.mockResolvedValue({ success: true, data: settings });
+      const caPem = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----';
+
+      const result = await devApi.getSettings(httpBase, clientCertPem, undefined, caPem);
+
+      const expectedCertHeader = Buffer.from(clientCertPem, 'utf8').toString('base64');
+      expect(mockMakeApiCall).toHaveBeenCalledWith(
+        'http://builder02.local:3000/api/dev/settings',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ 'X-Client-Cert': expectedCertHeader })
+        })
+      );
+      expect(result).toEqual(settings);
+    });
   });
 
   describe('listUsers', () => {
@@ -296,6 +334,26 @@ describe('Dev API', () => {
       const expectedCertHeader = Buffer.from(clientCertPem, 'utf8').toString('base64');
       expect(mockMakeApiCall).toHaveBeenCalledWith(
         'https://builder-server.example.com/api/dev/users/user-1/ssh-keys',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ 'X-Client-Cert': expectedCertHeader }),
+          body: JSON.stringify(body)
+        })
+      );
+      expect(result.fingerprint).toBe('fp1');
+    });
+
+    it('should POST ssh-keys with X-Client-Cert via fetch when URL is http even if clientKeyPem is set', async() => {
+      const httpBase = 'http://builder02.local:3000';
+      const keyPem = '-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----';
+      const body = { publicKey: 'ssh-ed25519 AAAA', label: 'laptop' };
+      mockMakeApiCall.mockResolvedValue({ success: true, data: { fingerprint: 'fp1', ...body } });
+
+      const result = await devApi.addSshKey(httpBase, clientCertPem, 'user-1', body, keyPem);
+
+      const expectedCertHeader = Buffer.from(clientCertPem, 'utf8').toString('base64');
+      expect(mockMakeApiCall).toHaveBeenCalledWith(
+        'http://builder02.local:3000/api/dev/users/user-1/ssh-keys',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({ 'X-Client-Cert': expectedCertHeader }),

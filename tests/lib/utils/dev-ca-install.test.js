@@ -18,7 +18,8 @@ const {
   isSslHostnameMismatchError,
   fetchInstallCa,
   installCaPlatform,
-  promptInstallCa
+  promptInstallCa,
+  isLinuxCaSudoRequiredError
 } = require('../../../lib/utils/dev-ca-install');
 
 describe('dev-ca-install', () => {
@@ -73,6 +74,23 @@ describe('dev-ca-install', () => {
       const outer = new Error('request failed');
       outer.cause = inner;
       expect(isSslUntrustedError(outer)).toBe(true);
+    });
+  });
+
+  describe('isLinuxCaSudoRequiredError', () => {
+    it('returns true for installCaPlatform Linux sudo message', () => {
+      expect(
+        isLinuxCaSudoRequiredError(
+          new Error(
+            'Linux CA install requires sudo. Save CA manually from https://x/install-ca-help to /usr/local/share/ca-certificates/aifabrix-root-ca.crt and run: sudo update-ca-certificates'
+          )
+        )
+      ).toBe(true);
+    });
+
+    it('returns false for other errors', () => {
+      expect(isLinuxCaSudoRequiredError(new Error('EACCES'))).toBe(false);
+      expect(isLinuxCaSudoRequiredError(null)).toBe(false);
     });
   });
 

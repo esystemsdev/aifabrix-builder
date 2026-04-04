@@ -23,8 +23,8 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | -------- | --------- | ------------------------ | -------- |
 | `aifabrix login` | Controller | None (device or client credentials) | Obtains token; subsequent commands use token scopes. |
 | `aifabrix logout` | Controller | None | Clears local tokens. |
-| `aifabrix show <appKey> --online` | Controller | `applications:read` or env-scoped app access | Fetches template app and/or environment application. For **external** (dataplane) apps, also calls Dataplane for system details → **Dataplane** `external-system:read` required in that case. |
-| `aifabrix app show <appKey>` | Controller + Dataplane (if external) | Controller: `applications:read` or env-scoped app. If external: **Dataplane** `external-system:read` | Same as `show --online`. For external type, also calls Dataplane for system details (get external system, config, OpenAPI files/endpoints). |
+| `aifabrix show <app> --online` | Controller | `applications:read` or env-scoped app access | Fetches template app and/or environment application. For **external** (dataplane) apps, also calls Dataplane for system details → **Dataplane** `external-system:read` required in that case. |
+| `aifabrix app show <app>` | Controller + Dataplane (if external) | Controller: `applications:read` or env-scoped app. If external: **Dataplane** `external-system:read` | Same as `show --online`. For external type, also calls Dataplane for system details (get external system, config, OpenAPI files/endpoints). |
 | `aifabrix app register <appKey>` | Controller | `environments-applications:create` | Register app in environment and get client credentials. |
 | `aifabrix app list` | Controller | `environments-applications:read` | List applications in the configured environment. |
 | `aifabrix app rotate-secret <appKey>` | Controller | `environments-applications:update` | Rotate client secret for the app. |
@@ -33,18 +33,21 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | `aifabrix deployments` | Controller | `deployments:read` | List deployments for the environment. |
 | `aifabrix credential list` | Dataplane | `credential:read` | GET `/api/v1/credential` is a **Dataplane** endpoint. The Controller does not expose this path (see Controller OpenAPI). The CLI should target the Dataplane URL for this command. |
 | `aifabrix download [systemKey]` | Dataplane | `external-system:read` | Download external system config from Dataplane. |
-| `aifabrix upload [system-key]` | Dataplane | `external-system:publish`; **credential:create** (if using automatic push of KV_* from `.env`) | Uses single POST `/api/v1/pipeline/upload` with `status: "draft"` (upload → validate → publish in one call). The CLI displays a **Dataplane pipeline warning** before sending configuration. Before upload, the CLI may push credential secrets from `integration/<system-key>/.env` (KV_* vars) and from `kv://` refs in the payload to the dataplane via POST `/api/v1/credential/secret`; **credential:create** is required for that push. If the push fails (e.g. 403), upload still runs but secrets are not pushed. **Bearer token required** (e.g. from `aifabrix login`); client id/secret are not accepted for this endpoint. |
+| `aifabrix upload [system-key]` | Dataplane | `external-system:publish`; **credential:create** (if using automatic push of KV_* from `.env`) | Uses single POST `/api/v1/pipeline/upload` with `status: "draft"` (upload → validate → publish in one call). The CLI displays a **Dataplane pipeline warning** before sending configuration. Before upload, the CLI may push credential secrets from `integration/<systemKey>/.env` (KV_* vars) and from `kv://` refs in the payload to the dataplane via POST `/api/v1/credential/secret`; **credential:create** is required for that push. If the push fails (e.g. 403), upload still runs but secrets are not pushed. **Bearer token required** (e.g. from `aifabrix login`); client id/secret are not accepted for this endpoint. |
 | `aifabrix datasource upload` | Dataplane | `external-system:publish` | Uses POST `/api/v1/pipeline/{systemKey}/upload` (datasource publish). The CLI displays a **Dataplane pipeline warning** before sending configuration. |
-| `aifabrix datasource test-integration` | Dataplane | `external-system:publish` or `external-data-source:read` | Calls pipeline test endpoint; supports **client credentials** (CI/CD). |
-| `aifabrix datasource test-e2e` | Dataplane | `external-data-source:read` | Calls external test-e2e endpoint; **Bearer or API key only** (no client credentials). |
+| `aifabrix datasource test` | Dataplane | `external-system:publish` or `external-data-source:read` | Unified validation run (test run type) on the dataplane; same deployment auth as `test-integration`. |
+| `aifabrix datasource test-integration` | Dataplane | `external-system:publish` or `external-data-source:read` | Unified validation run (integration) on the dataplane; supports deployment auth including **client credentials** exchanged for an app token (CI/CD). |
+| `aifabrix datasource test-e2e` | Dataplane | `external-data-source:read` | Unified validation run (E2E) on the dataplane; uses the **same deployment auth** as `test-integration` (e.g. `aifabrix login` or app credentials). |
 | `aifabrix test-integration` | Dataplane | `external-system:publish` or `external-data-source:read` | Calls pipeline test endpoint; supports **client credentials** (CI/CD). |
-| `aifabrix wizard [appName]` | Dataplane | `external-system:create`, `external-system:read`, `credential:read` (for credential step) | Wizard sessions and steps use Dataplane wizard API. |
+| `aifabrix wizard [systemKey]` | Dataplane | `external-system:create`, `external-system:read`, `credential:read` (for credential step) | Wizard sessions and steps use Dataplane wizard API. |
 | `aifabrix service-user create` | Controller | `service-user:create` | Create service user (username, email, redirectUris, groupNames); receive one-time clientSecret (save at creation time). |
 | `aifabrix service-user list` | Controller | `service-user:read` | List service users with optional pagination and search. |
 | `aifabrix service-user rotate-secret` | Controller | `service-user:update` | Regenerate client secret for a service user; new secret shown once only. |
 | `aifabrix service-user delete` | Controller | `service-user:delete` | Deactivate a service user. |
 | `aifabrix service-user update-groups` | Controller | `service-user:update` | Update group assignments for a service user. |
 | `aifabrix service-user update-redirect-uris` | Controller | `service-user:update` | Update redirect URIs for a service user (min 1). |
+
+For `aifabrix datasource test`, `datasource test-integration`, and `datasource test-e2e`, flags such as `--watch` only re-run the same command when local files change; permissions and Dataplane scopes are unchanged per invocation.
 
 ---
 
@@ -79,7 +82,7 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 - **external-system:update** – Update external system, publish, rollback, save-template, deployment docs POST.
 - **external-system:delete** – Delete (soft) external system.
 - **external-system:publish** – Dataplane **pipeline deployment** (mutating): POST `/api/v1/pipeline/upload` (with body `status: "draft"` or `"published"`), POST `.../pipeline/{systemKey}/upload` (datasource publish), and POST `.../pipeline/validate` (optional) require **OAuth2 (Bearer) only**; client id/secret are **not** accepted. **Pipeline test** endpoints (POST `.../pipeline/{systemKey}/test`, POST `.../pipeline/{systemKey}/{datasourceKey}/test`) accept Bearer, API key, or **client credentials** (x-client-id/x-client-secret) for CI/CD.
-- **external-data-source:read** – Dataplane pipeline test and external test endpoints. Can be used for pipeline test (alternative to `external-system:publish`). Required for `aifabrix datasource test-e2e` (external test-e2e endpoint; Bearer or API key only, no client credentials).
+- **external-data-source:read** – Dataplane pipeline test and datasource validation runs. Can be used for pipeline test (alternative to `external-system:publish`). Covers `aifabrix datasource test` and `test-integration` when not using `external-system:publish`, and is required for `aifabrix datasource test-e2e` (unified E2E validation run; same login or app-token style auth as `test-integration`).
 - **credential:read** – List/get credentials, wizard credentials list.
 - **credential:create** – Create credential (if used by wizard).
 - **credential:update** – Update credential.

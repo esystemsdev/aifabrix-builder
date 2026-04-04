@@ -70,7 +70,7 @@ The **externalIntegration** block defines external systems and datasources for p
 | `autopublish` | No | If true, pipeline publishes to Dataplane after deployment (default: true) |
 | `version` | No | Integration version for schema diffing (e.g. `1.0.0`). Defaults to `1.0.0` when absent. If `app.version` is set, it overrides this value. |
 
-Paths are relative to the application.yaml file or absolute. External system files are validated against `external-system.schema.json`, datasource files against `external-datasource.schema.json` when you run `aifabrix validate <app>`. If `application.yaml` gets out of sync with files on disk, run `aifabrix repair <app>` to fix. Repair also aligns datasource files with the manifest (dimensions and metadataSchema from attributes) when config drifts.
+Paths are relative to the application.yaml file or absolute. External system files are validated against `external-system.schema.json`, datasource files against `external-datasource.schema.json` when you run `aifabrix validate <app>`. If `application.yaml` gets out of sync with files on disk, run `aifabrix repair <systemKey>` to fix. Repair also aligns datasource files with the manifest (dimensions and metadataSchema from attributes) when config drifts.
 
 ### External system structure
 
@@ -113,7 +113,7 @@ When `requires.database` is true, use `requires.databases` to list multiple data
 | **app.version** | Semantic version (e.g. `1.0.0`). Auto-resolved from image (OCI label `org.opencontainers.image.version` or semver tag) when empty. Defaults to `1.0.0` when no image or no version in image. |
 | **image.tag** | Docker image tag (which image to pull). Represents the container artifact. |
 
-When running the image, `builder/<app>/application.yaml` is updated with the discovered version. **version** = product/change semantics; **tag** = container artifact.
+When running the image, `builder/<appKey>/application.yaml` is updated with the discovered version. **version** = product/change semantics; **tag** = container artifact.
 
 ## Examples
 

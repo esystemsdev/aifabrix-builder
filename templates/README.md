@@ -8,7 +8,7 @@ The templates directory is organized as follows:
 
 ### Application Templates (for `--template` flag)
 
-Application templates are folder-based and located under `templates/applications/`. When you use `--template <name>`, the tool looks for `templates/applications/<name>/` and copies all files from that folder to `builder/<app>/`.
+Application templates are folder-based and located under `templates/applications/`. When you use `--template <name>`, the tool looks for `templates/applications/<name>/` and copies all files from that folder to `builder/<appKey>/`.
 
 **Example:**
 - `templates/applications/miso-controller/` - Miso Controller application template
@@ -18,7 +18,7 @@ Application templates are folder-based and located under `templates/applications
 - Template folder must exist in `templates/applications/<name>/`
 - Template folder must contain at least one file
 - Hidden files (starting with `.`) are skipped
-- If a template includes a `Dockerfile`, it will be copied to `builder/<app>/Dockerfile` along with other files
+- If a template includes a `Dockerfile`, it will be copied to `builder/<appKey>/Dockerfile` along with other files
 
 ### Language Templates
 

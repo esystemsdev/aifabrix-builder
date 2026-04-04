@@ -452,7 +452,7 @@ aifabrix logout --environment dev --app myapp
    - Universal per controller (not environment-specific)
 
 2. **Client Tokens** (per environment and app)
-   - Stored at `config.environments[env].clients[appName]`
+   - Stored at `config.environments[env].clients[<appKey>]`
    - Cleared with `--environment` and/or `--app` options or when no options provided
    - Environment and app-specific
 

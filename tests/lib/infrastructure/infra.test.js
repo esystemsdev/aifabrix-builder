@@ -92,6 +92,9 @@ jest.mock('util', () => ({
 jest.mock('../../../lib/core/config', () => ({
   getDeveloperId: jest.fn().mockResolvedValue(1),
   setDeveloperId: jest.fn().mockResolvedValue(),
+  getDockerEndpoint: jest.fn().mockResolvedValue(null),
+  getRemoteServer: jest.fn().mockResolvedValue(null),
+  getDockerTlsSkipVerify: jest.fn().mockResolvedValue(false),
   getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }),
   saveConfig: jest.fn().mockResolvedValue(),
   clearConfig: jest.fn().mockResolvedValue(),
@@ -255,7 +258,7 @@ describe('Infrastructure Module', () => {
 
       util.promisify = mockPromisify;
 
-      await expect(infra.startInfra()).rejects.toThrow('Docker or Docker Compose is not available');
+      await expect(infra.startInfra()).rejects.toThrow(/Cannot use Docker for infrastructure/);
     });
 
     it.skip('should throw error if compose template not found', async() => {

@@ -11,6 +11,7 @@ jest.mock('chalk', () => {
   m.cyan = (s) => s;
   m.gray = (s) => s;
   m.bold = (s) => s;
+  m.white = (s) => s;
   return m;
 });
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn() }));
@@ -151,6 +152,33 @@ describe('dev-cli-handlers', () => {
       devApi.createPin.mockResolvedValue({ pin: '654321', expiresAt: '2026-01-01' });
       await handleDevPin('02');
       expect(devApi.createPin).toHaveBeenCalledWith('https://dev.example.com', 'pem', '02', undefined);
+    });
+
+    it('rejects invalid --hosts-ip before calling API', async() => {
+      await expect(handleDevPin('02', { hostsIp: 'not-an-ip' })).rejects.toThrow('Invalid --hosts-ip');
+      expect(devApi.createPin).not.toHaveBeenCalled();
+    });
+
+    it('logs standard, hosts, and dev init --pin commands', async() => {
+      const logger = require('../../../lib/utils/logger');
+      devApi.createPin.mockResolvedValue({ pin: '888888', expiresAt: '2026-04-03T13:00:00.000Z' });
+      await handleDevPin('02');
+      const joined = logger.log.mock.calls.map((c) => c.join(' ')).join('\n');
+      expect(joined).toContain(
+        'aifabrix dev init --developer-id 02 --server https://dev.example.com --pin 888888'
+      );
+      expect(joined).toContain('--add-hosts');
+      expect(joined).toContain('<server-LAN-IPv4>');
+      expect(joined).toContain('aifabrix dev init --pin 888888');
+    });
+
+    it('embeds --hosts-ip in hosts variant when provided', async() => {
+      const logger = require('../../../lib/utils/logger');
+      devApi.createPin.mockResolvedValue({ pin: '111222', expiresAt: '2026-01-01' });
+      await handleDevPin('02', { hostsIp: '192.168.1.25' });
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('--add-hosts --hosts-ip 192.168.1.25')
+      );
     });
   });
 

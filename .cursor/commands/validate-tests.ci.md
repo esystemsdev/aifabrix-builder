@@ -5,7 +5,7 @@ When the `/validate-tests-ci` command is used, the agent must run CI test valida
 **Execution Process:**
 
 1. **CI Simulation**:
-   - Run `pnpm test:ci` to execute the CI simulation script
+   - Run `npm run test:ci` to execute the CI simulation script (from the `aifabrix-builder` repo root)
    - This simulates the GitHub CI environment by:
      - Copying the project to a temporary directory
      - Installing dependencies with `npm ci`
@@ -16,8 +16,7 @@ When the `/validate-tests-ci` command is used, the agent must run CI test valida
 2. **Result Analysis**:
    - Check if CI simulation passed or failed
    - If failed, analyze the failure report:
-     - Read `/workspace/aifabrix-builder/temp/ci-reports/last-run-summary.txt`
-     - Read `/workspace/aifabrix-builder/temp/ci-reports/last-run-failures.txt`
+   - Read `temp/ci-reports/last-run-summary.txt` and `temp/ci-reports/last-run-failures.txt` under the repo root (or the path your CI simulation writes)
      - Identify which tests failed and why
    - Report the status clearly to the user
 
@@ -37,7 +36,8 @@ When the `/validate-tests-ci` command is used, the agent must run CI test valida
 **Important Notes:**
 
 - This command runs tests in a clean environment similar to GitHub CI
-- Local tests in `tests/local/` are automatically excluded in CI environments (see `jest.config.js` when `INCLUDE_LOCAL_TESTS` is not `'true'`). This includes complex tests such as `app-coverage-uncovered.test.js` that rely on temp-dir and path resolution and are kept out of CI scope.
+- **Local machine parity with CI:** `tests/setup.js` clears `AIFABRIX_HOME`, `AIFABRIX_WORK`, and `AIFABRIX_CONFIG` before and between tests (unless `PRESERVE_AIFABRIX_TEST_ENV=true`). That matches typical CI agents and avoids failures when your shell exports those variables (`lib/core/config.js` fixes config paths at first load). You do **not** need to move ordinary unit tests to `tests/local/` for this reason.
+- **`tests/local/`** — Opt-in heavy or environment-sensitive suites are excluded from default runs when `INCLUDE_LOCAL_TESTS` is not `'true'` (see `jest.config.js`). That is separate from Fabrix env sanitization; it keeps long-running or temp-dir-heavy tests out of CI scope.
 - The CI simulation may take several minutes to complete
 - Test results are saved to `temp/ci-reports/` for review
 - This validation is more strict than local testing and catches environment-specific issues

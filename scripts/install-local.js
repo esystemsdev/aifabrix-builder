@@ -10,7 +10,7 @@
  * @version 2.0.0
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -112,6 +112,47 @@ function getBinPath(binName, env) {
 }
 
 /**
+ * First executable `binName` on PATH (same resolution order as a POSIX shell).
+ * @param {string} binName - CLI name
+ * @param {string} pathString - PATH value (e.g. process.env.PATH)
+ * @returns {{ candidate: string, real: string }|null} First hit or null
+ */
+function firstExecutableOnPath(binName, pathString) {
+  if (process.platform === 'win32') {
+    return null;
+  }
+  const dirs = (pathString || '').split(path.delimiter).filter(Boolean);
+  for (const dir of dirs) {
+    const candidate = path.join(dir, binName);
+    try {
+      const st = fs.lstatSync(candidate);
+      if (!st.isFile() && !st.isSymbolicLink()) continue;
+      fs.accessSync(candidate, fs.constants.X_OK);
+      const real = fs.realpathSync(candidate);
+      return { candidate, real };
+    } catch {
+      // continue
+    }
+  }
+  return null;
+}
+
+/**
+ * @param {string} executablePath - Absolute path to CLI
+ * @returns {string|null} Trimmed --version or null
+ */
+function versionAtExecutablePath(executablePath) {
+  try {
+    return execFileSync(executablePath, ['--version'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Get currently installed version of primary CLI (aifabrix)
  * @param {NodeJS.ProcessEnv} [env] - Optional env for the version probe
  * @returns {string|null} Trimmed version or null if not on PATH
@@ -160,29 +201,106 @@ function displayVersionInfo(currentVersion, packageVersion) {
 }
 
 /**
- * If another bin name (e.g. `af`) resolves earlier on PATH to an old install, warn.
- * @param {string|null} expectedVersion - Version from the linked package (pnpm env)
+ * @typedef {{ name: string, path: string|null, real: string|null, version: string|null }} PathBinRow
+ */
+
+/**
+ * @param {string[]} binNames - CLI names from package.json
+ * @returns {PathBinRow[]} Resolution rows for current PATH
+ */
+function collectPathResolutionRows(binNames) {
+  const rows = [];
+  if (process.platform === 'win32') {
+    for (const name of binNames) {
+      const p = getBinPath(name, process.env);
+      const version = p
+        ? versionAtExecutablePath(p) || getBinVersion(name, process.env)
+        : getBinVersion(name, process.env);
+      rows.push({ name, path: p, real: p, version });
+    }
+    return rows;
+  }
+  for (const name of binNames) {
+    const hit = firstExecutableOnPath(name, process.env.PATH);
+    if (!hit) {
+      rows.push({ name, path: null, real: null, version: null });
+      continue;
+    }
+    const version =
+      versionAtExecutablePath(hit.candidate) || getBinVersion(name, process.env);
+    rows.push({ name, path: hit.candidate, real: hit.real, version });
+  }
+  return rows;
+}
+
+/**
+ * @param {PathBinRow[]} rows - Rows from collectPathResolutionRows
+ * @param {boolean} multipleBins - Whether package exposes more than one CLI name
+ * @returns {void}
+ */
+function printPathResolutionTable(rows, multipleBins) {
+  const label = multipleBins
+    ? 'First match on your PATH for each command (what new programs see):'
+    : 'First match on your PATH (what new programs see):';
+  console.log(`\n${label}`);
+  for (const r of rows) {
+    if (!r.path) {
+      console.log(`   ${r.name}: (not found on PATH)`);
+      continue;
+    }
+    const ver = r.version !== null && r.version !== undefined ? r.version : '(could not run --version)';
+    const arrow = r.real !== r.path ? ` → ${r.real}` : '';
+    console.log(`   ${r.name}: ${r.path}${arrow}  →  ${ver}`);
+  }
+}
+
+/**
+ * @param {PathBinRow[]} rows - Rows from collectPathResolutionRows
+ * @param {string|null} expectedVersion - Linked package version
+ * @param {string[]} binNames - Bin names (length for multi-alias tip)
+ * @returns {void}
+ */
+function printPathResolutionWarnings(rows, expectedVersion, binNames) {
+  const versions = rows
+    .map((r) => r.version)
+    .filter((v) => v !== null && v !== undefined && v !== '(could not run --version)');
+  const uniq = [...new Set(versions)];
+  const mismatchAliases = uniq.length > 1;
+  const hasStaleVers =
+    Boolean(expectedVersion) &&
+    rows.some(
+      (r) => r.version !== null && r.version !== undefined && r.version !== expectedVersion
+    );
+
+  if (hasStaleVers) {
+    console.log(`\n⚠️  At least one command above is not ${expectedVersion} (linked package version).`);
+    console.log('   Another install is winning on PATH for that name — often an old npm global copy.');
+    console.log('   Try:  pnpm run diagnose:cli');
+    console.log(`   Then: npm uninstall -g ${PACKAGE_NAME}`);
+    console.log('   Put PNPM_HOME (or ~/.local/share/pnpm) before other global bin dirs in PATH if needed.');
+  }
+
+  if (mismatchAliases) {
+    console.log('\n⚠️  `af` and `aifabrix` resolve to different installs on PATH.');
+    console.log('   Fix PATH as above, or if PATH looks correct, your shell may be using a stale location for one of them.');
+    console.log('   Bash: hash -r    Zsh: rehash    Then run both with --version again.');
+  } else if (binNames.length > 1 && expectedVersion && uniq.length === 1 && uniq[0] === expectedVersion) {
+    console.log('\nTip: Bash caches `af` and `aifabrix` separately. If your terminal shows a wrong version for only one, run: hash -r');
+  }
+}
+
+/**
+ * Report first PATH hit per bin (matches new subprocesses). Warn on mismatch vs link or between aliases.
+ * Bash/zsh cache each command name separately — `af` can stay stale while `aifabrix` updates; suggest hash -r.
+ * @param {string|null} expectedVersion - Version from the linked package (pnpm env probe)
  * @param {string[]} binNames - All bin entries from package.json
  * @returns {void}
  */
-function warnStaleAliasBinsOnPath(expectedVersion, binNames) {
-  if (!expectedVersion) return;
-  const stale = [];
-  for (const name of binNames) {
-    const v = getBinVersion(name, process.env);
-    if (v !== null && v !== undefined && v !== expectedVersion) {
-      stale.push({ name, version: v, path: getBinPath(name, process.env) });
-    }
-  }
-  if (!stale.length) return;
-  console.log('\n⚠️  Some CLI aliases still point at a different install than this link:');
-  for (const row of stale) {
-    console.log(`   ${row.name} --version → ${row.version}  (${row.path || 'unknown'})`);
-  }
-  console.log(`   Linked package is ${expectedVersion}. Usually another copy is earlier on PATH (often from an old npm global).`);
-  console.log('   Try:  which -a af   which -a aifabrix');
-  console.log(`   Then: npm uninstall -g ${PACKAGE_NAME}   (or remove the stale path that is not under pnpm)`);
-  console.log('   Or:  hash -r  and open a new terminal after fixing PATH.');
+function reportCliAliasesOnPath(expectedVersion, binNames) {
+  if (!binNames.length) return;
+  const rows = collectPathResolutionRows(binNames);
+  printPathResolutionTable(rows, binNames.length > 1);
+  printPathResolutionWarnings(rows, expectedVersion, binNames);
 }
 
 /**
@@ -233,9 +351,14 @@ function displaySuccessMessage(currentVersion, newVersion, usedPnpm, pathInfo, b
       ? bins.map((b) => `${b} --version`).join('" or "')
       : `${bins[0]} --version`;
   console.log(`Run "${verifyHint}" to verify.`);
+  if (bins.length > 1) {
+    console.log(
+      'If only one alias shows the wrong version in your terminal, clear the shell command cache (bash: hash -r, zsh: rehash).'
+    );
+  }
 
   printPnpmPathHints(usedPnpm, newVersion, pathInfo);
-  warnStaleAliasBinsOnPath(newVersion, bins);
+  reportCliAliasesOnPath(newVersion, bins);
 }
 
 /**

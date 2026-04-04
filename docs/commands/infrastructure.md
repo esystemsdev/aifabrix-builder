@@ -232,7 +232,7 @@ aifabrix down-infra myapp --volumes
 - App volumes are named per developer ID:
   - Dev 0: `aifabrix_<app>_data`
   - Dev > 0: `aifabrix_dev<id>_<app>_data`
-- `--volumes` for apps removes only the Docker named volume. It does not delete files in `builder/<app>` or `apps/<app>`.
+- `--volumes` for apps removes only the Docker named volume. It does not delete files in `builder/<appKey>` or `apps/<appKey>`.
 
 **Issues:** None common.
 

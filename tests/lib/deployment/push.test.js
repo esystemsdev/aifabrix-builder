@@ -15,6 +15,10 @@ jest.mock('child_process', () => ({
   exec: jest.fn()
 }));
 
+jest.mock('../../../lib/utils/remote-docker-env', () => ({
+  getDockerExecEnv: jest.fn().mockImplementation(async() => ({ ...process.env }))
+}));
+
 jest.mock('util', () => ({
   promisify: jest.fn((fn) => fn)
 }));
@@ -278,7 +282,8 @@ describe('Push Utilities', () => {
 
       expect(result).toBe(true);
       expect(execAsync).toHaveBeenCalledWith(
-        'docker images --format "{{.Repository}}:{{.Tag}}" --filter "reference=myapp:latest"'
+        'docker images --format "{{.Repository}}:{{.Tag}}" --filter "reference=myapp:latest"',
+        expect.objectContaining({ env: expect.any(Object) })
       );
     });
 
@@ -307,7 +312,8 @@ describe('Push Utilities', () => {
       await pushUtils.tagImage('myapp:latest', 'myacr.azurecr.io/myapp:latest');
 
       expect(execAsync).toHaveBeenCalledWith(
-        'docker tag myapp:latest myacr.azurecr.io/myapp:latest'
+        'docker tag myapp:latest myacr.azurecr.io/myapp:latest',
+        expect.objectContaining({ env: expect.any(Object) })
       );
       expect(console.log).toHaveBeenCalled();
     });
@@ -333,7 +339,10 @@ describe('Push Utilities', () => {
 
       await pushUtils.pushImage('myacr.azurecr.io/myapp:latest');
 
-      expect(execAsync).toHaveBeenCalledWith('docker push myacr.azurecr.io/myapp:latest');
+      expect(execAsync).toHaveBeenCalledWith(
+        'docker push myacr.azurecr.io/myapp:latest',
+        expect.objectContaining({ env: expect.any(Object) })
+      );
       expect(console.log).toHaveBeenCalled();
     });
 

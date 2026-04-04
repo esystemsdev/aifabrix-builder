@@ -136,11 +136,67 @@ describe('Datasource Commands Module', () => {
 
       expect(program.command).toHaveBeenCalledWith('datasource');
       const datasourceGroup = program._datasourceGroup;
-      expect(datasourceGroup.command).toHaveBeenCalledWith('upload <myapp> <file>');
+      expect(datasourceGroup.command).toHaveBeenCalledWith('upload <systemKey> <file>');
       // Check that the subcommand's description was called (no flags)
-      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <myapp> <file>');
+      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <systemKey> <file>');
       expect(uploadCommand).toBeDefined();
       expect(uploadCommand.command.description).toHaveBeenCalledWith('Deploy datasource file to dataplane');
+    });
+
+    it('should register test command (unified validation, runType=test)', () => {
+      setupDatasourceCommands(program);
+      const datasourceGroup = program._datasourceGroup;
+      expect(datasourceGroup.command).toHaveBeenCalledWith('test <datasourceKey>');
+      const testCmd = datasourceGroup._subCommands?.find(c => c.name === 'test <datasourceKey>');
+      expect(testCmd).toBeDefined();
+      expect(testCmd.command.description).toHaveBeenCalledWith(
+        'Structural/policy validation for one datasource (unified dataplane API, runType=test)'
+      );
+    });
+
+    it('should register test-integration command', () => {
+      setupDatasourceCommands(program);
+      const datasourceGroup = program._datasourceGroup;
+      expect(datasourceGroup.command).toHaveBeenCalledWith('test-integration <datasourceKey>');
+      const cmd = datasourceGroup._subCommands?.find(c => c.name === 'test-integration <datasourceKey>');
+      expect(cmd).toBeDefined();
+      expect(cmd.command.description).toHaveBeenCalledWith(
+        'Integration test one datasource (unified validation API, runType=integration)'
+      );
+    });
+
+    it('should register test-e2e command', () => {
+      setupDatasourceCommands(program);
+      const datasourceGroup = program._datasourceGroup;
+      expect(datasourceGroup.command).toHaveBeenCalledWith('test-e2e <datasourceKey>');
+      const cmd = datasourceGroup._subCommands?.find(c => c.name === 'test-e2e <datasourceKey>');
+      expect(cmd).toBeDefined();
+      expect(cmd.command.description).toHaveBeenCalledWith(
+        'E2E test one datasource (unified validation API, runType=e2e)'
+      );
+    });
+
+    it('should register watch flags on test, test-integration, and test-e2e', () => {
+      setupDatasourceCommands(program);
+      const datasourceGroup = program._datasourceGroup;
+      for (const name of [
+        'test <datasourceKey>',
+        'test-integration <datasourceKey>',
+        'test-e2e <datasourceKey>'
+      ]) {
+        const cmd = datasourceGroup._subCommands?.find(c => c.name === name);
+        expect(cmd).toBeDefined();
+        expect(cmd.command.option).toHaveBeenCalledWith('--watch', expect.any(String));
+        expect(cmd.command.option).toHaveBeenCalledWith(
+          '--watch-path <path>',
+          expect.any(String),
+          expect.any(Function),
+          []
+        );
+        expect(cmd.command.option).toHaveBeenCalledWith('--watch-application-yaml', expect.any(String));
+        expect(cmd.command.option).toHaveBeenCalledWith('--watch-ci', expect.any(String));
+        expect(cmd.command.option).toHaveBeenCalledWith('--watch-full-diff', expect.any(String));
+      }
     });
 
     it('should register log-e2e command', () => {
@@ -149,7 +205,7 @@ describe('Datasource Commands Module', () => {
       expect(datasourceGroup.command).toHaveBeenCalledWith('log-e2e <datasourceKey>');
       const logE2e = datasourceGroup._subCommands?.find(c => c.name === 'log-e2e <datasourceKey>');
       expect(logE2e).toBeDefined();
-      expect(logE2e.command.option).toHaveBeenCalledWith('-a, --app <appKey>', expect.any(String));
+      expect(logE2e.command.option).toHaveBeenCalledWith('-a, --app <app>', expect.any(String));
       expect(logE2e.command.option).toHaveBeenCalledWith('-f, --file <path>', expect.any(String));
     });
 
@@ -159,7 +215,7 @@ describe('Datasource Commands Module', () => {
       expect(datasourceGroup.command).toHaveBeenCalledWith('log-integration <datasourceKey>');
       const logInt = datasourceGroup._subCommands?.find(c => c.name === 'log-integration <datasourceKey>');
       expect(logInt).toBeDefined();
-      expect(logInt.command.option).toHaveBeenCalledWith('-a, --app <appKey>', expect.any(String));
+      expect(logInt.command.option).toHaveBeenCalledWith('-a, --app <app>', expect.any(String));
       expect(logInt.command.option).toHaveBeenCalledWith('-f, --file <path>', expect.any(String));
     });
   });
@@ -334,7 +390,7 @@ describe('Datasource Commands Module', () => {
 
       // Get the upload command's action handler
       const datasourceGroup = program._datasourceGroup;
-      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <myapp> <file>');
+      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <systemKey> <file>');
       if (uploadCommand) {
         const actionCall = uploadCommand.command.action.mock.calls[0];
         if (actionCall && typeof actionCall[0] === 'function') {
@@ -360,7 +416,7 @@ describe('Datasource Commands Module', () => {
 
       // Get the upload command's action handler
       const datasourceGroup = program._datasourceGroup;
-      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <myapp> <file>');
+      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <systemKey> <file>');
       if (uploadCommand) {
         const actionCall = uploadCommand.command.action.mock.calls[0];
         if (actionCall && typeof actionCall[0] === 'function') {

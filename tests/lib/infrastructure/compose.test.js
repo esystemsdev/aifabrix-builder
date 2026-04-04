@@ -279,6 +279,23 @@ describe('Infrastructure Compose Module', () => {
     });
   });
 
+  describe('toDockerBindMountSource', () => {
+    it('resolves relative segments and uses forward slashes', () => {
+      const base = path.join(os.tmpdir(), 'aifabrix-bind-mount-test');
+      const rel = path.join(base, 'init-scripts');
+      const expected = path.resolve(rel).split(path.sep).join('/');
+      expect(compose.toDockerBindMountSource(rel)).toBe(expected);
+    });
+
+    it('returns empty string unchanged', () => {
+      expect(compose.toDockerBindMountSource('')).toBe('');
+    });
+
+    it('returns null unchanged', () => {
+      expect(compose.toDockerBindMountSource(null)).toBe(null);
+    });
+  });
+
   describe('generateComposeFile', () => {
     const mockTemplatePath = '/path/to/template.hbs';
     const mockInfraDir = '/tmp/infra';
@@ -364,12 +381,14 @@ describe('Infrastructure Compose Module', () => {
       );
     });
 
-    it('should pass infraDir to template', () => {
+    it('should pass infraDir and Docker-safe bind paths to template', () => {
       compose.generateComposeFile(mockTemplatePath, '0', 0, mockPorts, mockInfraDir);
 
       expect(mockCompiledTemplate).toHaveBeenCalledWith(
         expect.objectContaining({
-          infraDir: mockInfraDir
+          infraDir: mockInfraDir,
+          initScriptsBind: compose.toDockerBindMountSource(path.join(mockInfraDir, 'init-scripts')),
+          infraDirBind: compose.toDockerBindMountSource(mockInfraDir)
         })
       );
     });
@@ -410,7 +429,12 @@ describe('Infrastructure Compose Module', () => {
 
       expect(mockCompiledTemplate).toHaveBeenCalledWith(
         expect.objectContaining({
-          traefik: traefikConfig
+          traefik: expect.objectContaining({
+            enabled: true,
+            certStore: 'wildcard',
+            certFile: compose.toDockerBindMountSource('/path/to/cert.crt'),
+            keyFile: compose.toDockerBindMountSource('/path/to/key.key')
+          })
         })
       );
     });
@@ -439,8 +463,8 @@ describe('Infrastructure Compose Module', () => {
           traefik: expect.objectContaining({
             enabled: true,
             certStore: 'wildcard',
-            certFile: '/path/to/cert.crt',
-            keyFile: '/path/to/key.key'
+            certFile: compose.toDockerBindMountSource('/path/to/cert.crt'),
+            keyFile: compose.toDockerBindMountSource('/path/to/key.key')
           })
         })
       );

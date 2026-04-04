@@ -27,7 +27,7 @@ Generate `.env` file from template.
 
 **When:** After secrets change, troubleshooting environment issues.
 
-**App path:** Resolve works for **builder** apps and for **external integrations** in `integration/<app>/`. If `integration/<app>/env.template` exists (even without `application.yaml`), that directory is used and resolve runs in **env-only** mode; otherwise the CLI resolves the app via integration then builder using full config (application.yaml or application.json).
+**App path:** Resolve works for **builder** apps and for **external integrations** in `integration/<systemKey>/`. If `integration/<systemKey>/env.template` exists (even without `application.yaml`), that directory is used and resolve runs in **env-only** mode; otherwise the CLI resolves the app via integration then builder using full config (application.yaml or application.json).
 
 **Example:**
 ```bash
@@ -56,7 +56,7 @@ This will generate the .env file without running validation checks afterward.
 - `-f, --force` - Generate missing secret keys in secrets file
 - `--skip-validation` - Skip file validation after generating .env
 
-**Output:** When the app is in **integration** with **env-only** (only `env.template` present, no `application.yaml`), `.env` is written to `integration/<app>/.env`. When the app has full config (builder or integration with `application.yaml`) and `build.envOutputPath` is set, `.env` is written to that path; otherwise behaviour is as documented for run/build (e.g. temp or run-only).
+**Output:** When the app is in **integration** with **env-only** (only `env.template` present, no `application.yaml`), `.env` is written to `integration/<systemKey>/.env`. When the app has full config (builder or integration with `application.yaml`) and `build.envOutputPath` is set, `.env` is written to that path; otherwise behaviour is as documented for run/build (e.g. temp or run-only).
 
 **Env-only mode:** When resolving in **env-only** mode (integration + `env.template` only), post-resolve validation is skipped because there is no `application.yaml` to validate. Run `aifabrix validate <app>` separately when you add full config later.
 
@@ -73,7 +73,7 @@ This will generate the .env file without running validation checks afterward.
 
 Generate deployment JSON.
 
-**What:** Creates `<appKey>-deploy.json` (e.g. `builder/<app>/<appKey>-deploy.json`) from application config, env.template, and rbac for normal applications. Application config may be `application.yaml` or `application.json`; system/datasource config may be `.yaml` or `.json`. The deployment manifest is always **JSON only** (`<appKey>-deploy.json` or `<systemKey>-deploy.json`). For external type applications, generates `<systemKey>-deploy.json` by loading the component files (`<systemKey>-system.yaml`/`.json` and `<systemKey>-datasource-*.*`), combining them into a controller-compatible deployment manifest with inline system + datasources. This is the reverse operation of `aifabrix split-json` — it combines component files back into a deployment manifest. When you download an external system from the dataplane (via `aifabrix download`), you get `<systemKey>-deploy.json`, which can then be split into component files using `aifabrix split-json`. Merges RBAC config (rbac.yaml, rbac.yml, or rbac.json, if present) into the system JSON. **Note:** Only the first system from `externalIntegration.systems` is included in the generated `<systemKey>-deploy.json`. All data sources from `externalIntegration.dataSources` are included.
+**What:** Creates `<appKey>-deploy.json` (e.g. `builder/<appKey>/<appKey>-deploy.json`) from application config, env.template, and rbac for normal applications. Application config may be `application.yaml` or `application.json`; system/datasource config may be `.yaml` or `.json`. The deployment manifest is always **JSON only** (`<appKey>-deploy.json` or `<systemKey>-deploy.json`). For external type applications, generates `<systemKey>-deploy.json` by loading the component files (`<systemKey>-system.yaml`/`.json` and `<systemKey>-datasource-*.*`), combining them into a controller-compatible deployment manifest with inline system + datasources. This is the reverse operation of `aifabrix split-json` — it combines component files back into a deployment manifest. When you download an external system from the dataplane (via `aifabrix download`), you get `<systemKey>-deploy.json`, which can then be split into component files using `aifabrix split-json`. Merges RBAC config (rbac.yaml, rbac.yml, or rbac.json, if present) into the system JSON. **Note:** Only the first system from `externalIntegration.systems` is included in the generated `<systemKey>-deploy.json`. All data sources from `externalIntegration.dataSources` are included.
 
 **When:** Previewing deployment configuration, debugging deployments. For external systems, before deploying to generate the combined application schema file. For external systems with RBAC, ensures roles/permissions from the RBAC file (rbac.yaml, rbac.yml, or rbac.json) are merged into the system JSON.
 
@@ -89,8 +89,8 @@ aifabrix json hubspot
 ```
 
 **Creates:**
-- Normal apps: `builder/<app>/<appKey>-deploy.json` (e.g. `builder/myapp/myapp-deploy.json`)
-- External systems: `integration/<app>/<systemKey>-deploy.json` (deployment manifest, JSON only; combines `<systemKey>-system.*` + `<systemKey>-datasource-*.*` files with rbac merged if present)
+- Normal apps: `builder/<appKey>/<appKey>-deploy.json` (e.g. `builder/myapp/myapp-deploy.json`)
+- External systems: `integration/<systemKey>/<systemKey>-deploy.json` (deployment manifest, JSON only; combines `<systemKey>-system.*` + `<systemKey>-datasource-*.*` files with rbac merged if present)
 
 **RBAC Support for External Systems:**
 - External systems can define roles and permissions in **rbac.yaml**, **rbac.yml**, or **rbac.json** (same structure; format inferred from extension)
@@ -129,7 +129,7 @@ aifabrix split-json hubspot
 **Options:**
 - `-o, --output <dir>` - Output directory for component files (defaults to same directory as JSON file)
 
-**App path resolution:** The command resolves the app by checking **`integration/<app>`** first, then **`builder/<app>`**. If neither exists, it errors. There is no option to override this order.
+**App path resolution:** The command resolves the app by checking **`integration/<systemKey>`** first, then **`builder/<appKey>`**. If neither exists, it errors. There is no option to override this order.
 
 **Process:**
 1. Locates `<app-name>-deploy.json` (regular apps) or `<systemKey>-deploy.json` (external systems) in the application directory
@@ -192,7 +192,7 @@ aifabrix convert hubspot --format json --force
 - `--format <format>` - Target format: `json` or `yaml` (required unless config format is set). When not passed, uses the format from `~/.aifabrix/config.yaml` (set via `aifabrix dev set-format`). If neither is set, the command fails with instructions.
 - `-f, --force` - Skip "Are you sure?" confirmation prompt
 
-**App path resolution:** The command resolves the app by checking **`integration/<app>`** first, then **`builder/<app>`**. If neither exists, it errors. There is no option to override this order.
+**App path resolution:** The command resolves the app by checking **`integration/<systemKey>`** first, then **`builder/<appKey>`**. If neither exists, it errors. There is no option to override this order.
 
 **Process:**
 1. Validate the app; abort if validation fails.
@@ -205,12 +205,12 @@ aifabrix convert hubspot --format json --force
 - **"Option --format is required and must be 'json' or 'yaml'"** → Pass `--format json` or `--format yaml`, or set default with `aifabrix dev set-format json` (or `yaml`)
 - **"Validation failed"** → Fix validation errors (run `aifabrix validate <app>`) before converting
 - **"Convert cancelled"** → You answered no to the confirmation prompt; run again with `--force` to skip the prompt
-- **"App not found"** → Ensure the app exists in `integration/<app>` or `builder/<app>`
+- **"App not found"** → Ensure the app exists in `integration/<systemKey>` or `builder/<appKey>`
 
 ---
 
 <a id="aifabrix-repair-app"></a>
-## aifabrix repair <app>
+## aifabrix repair <systemKey>
 
 Repair external integration config when `application.yaml` drifts from files on disk.
 
@@ -232,7 +232,7 @@ Repair external integration config when `application.yaml` drifts from files on 
 - **rbac.yaml missing** — System has roles/permissions but no `rbac.yaml`; repair creates it
 - **env.template key drift** — env.template has wrong or missing KV_* keys or non–path-style kv values; repair aligns names and values with the system's authentication.security and configuration
 - **Stale deploy manifest** — Regenerates `<systemKey>-deploy.json` after config changes
-- **Datasource key and filename normalization** — Repair normalizes datasource keys to `<system-key>-<resourceType>` (or `<system-key>-<resourceType>-2`, `-3` for duplicates) and filenames to `<system-key>-datasource-<suffix>.<ext>`. Keys or filenames that already match the valid pattern (e.g. `customer-extra`, `customer-1`) are left unchanged.
+- **Datasource key and filename normalization** — Repair normalizes datasource keys to `<systemKey>-<resourceType>` (or `<systemKey>-<resourceType>-2`, `-3` for duplicates) and filenames to `<systemKey>-datasource-<suffix>.<ext>`. Keys or filenames that already match the valid pattern (e.g. `customer-extra`, `customer-1`) are left unchanged.
 - **Optional flags** — `--rbac` adds or merges RBAC permissions per datasource and default Admin/Reader roles if none exist; `--expose` sets **`exposed.schema`** on each datasource (each key maps to `metadata.<key>` for every `fieldMappings.attributes` key) and removes deprecated `exposed.attributes` if present; `--sync` adds a default sync section (`mode`, `batchSize`) to datasources that lack it (not applied when `entityType` is `none`); `--test` rebuilds `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes and strips unknown top-level `testPayload` keys
 - **Authentication method** — When `--auth <method>` is provided, repair sets the integration’s authentication to that method (canonical variables and security) and updates env.template accordingly
 
@@ -264,7 +264,7 @@ aifabrix repair hubspot --doc
 - `--test` — Generate `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes for each datasource
 
 **Issues:**
-- **"App not found"** → Ensure the app exists in `integration/<app>` or `builder/<app>`
+- **"App not found"** → Ensure the app exists in `integration/<systemKey>` or `builder/<appKey>`
 - **"No system file found"** → Add a `*-system.yaml` or `*-system.json` file first
 
 ---

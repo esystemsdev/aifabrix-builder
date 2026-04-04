@@ -37,6 +37,10 @@ jest.mock('chalk', () => {
   return mockChalk;
 });
 
+jest.mock('../../../lib/utils/remote-docker-env', () => ({
+  getDockerExecEnv: jest.fn().mockResolvedValue({ ...process.env })
+}));
+
 describe('Push Error Paths', () => {
   let mockSpawnInstance;
   let mockStdin;
@@ -84,11 +88,9 @@ describe('Push Error Paths', () => {
       });
 
       const promise = pushUtils.authenticateExternalRegistry(registry, username, password);
-
-      // Simulate successful close
-      setTimeout(() => {
-        closeHandler(0);
-      }, 10);
+      await Promise.resolve();
+      expect(typeof closeHandler).toBe('function');
+      closeHandler(0);
 
       await expect(promise).resolves.toBeUndefined();
       expect(mockStdin.write).toHaveBeenCalledWith(password);
@@ -113,18 +115,11 @@ describe('Push Error Paths', () => {
       });
 
       const promise = pushUtils.authenticateExternalRegistry(registry, username, password);
-
-      // Simulate stderr output
-      setTimeout(() => {
-        if (stderrHandler) {
-          stderrHandler(Buffer.from('Authentication failed'));
-        }
-      }, 5);
-
-      // Simulate failed close
-      setTimeout(() => {
-        closeHandler(1);
-      }, 10);
+      await Promise.resolve();
+      if (stderrHandler) {
+        stderrHandler(Buffer.from('Authentication failed'));
+      }
+      closeHandler(1);
 
       await expect(promise).rejects.toThrow('Docker login failed');
       expect(mockStdin.write).toHaveBeenCalledWith(password);
@@ -143,11 +138,8 @@ describe('Push Error Paths', () => {
       mockStderr.on.mockImplementation(() => {});
 
       const promise = pushUtils.authenticateExternalRegistry(registry, username, password);
-
-      // Simulate failed close without stderr
-      setTimeout(() => {
-        closeHandler(1);
-      }, 10);
+      await Promise.resolve();
+      closeHandler(1);
 
       await expect(promise).rejects.toThrow('Docker login failed');
       expect(mockStdin.write).toHaveBeenCalledWith(password);
@@ -163,11 +155,8 @@ describe('Push Error Paths', () => {
       });
 
       const promise = pushUtils.authenticateExternalRegistry(registry, username, password);
-
-      // Simulate spawn error
-      setTimeout(() => {
-        errorHandler(new Error('Spawn failed'));
-      }, 10);
+      await Promise.resolve();
+      errorHandler(new Error('Spawn failed'));
 
       await expect(promise).rejects.toThrow('Failed to execute docker login');
     });

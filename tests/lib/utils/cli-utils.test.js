@@ -175,13 +175,15 @@ describe('CLI Utils Module', () => {
     });
 
     it('should handle Docker not running errors', () => {
+      const { getDockerDaemonStartHintSentence } = require('../../../lib/utils/docker-not-running-hint');
       const error = new Error('Docker is not running');
 
       handleCommandError(error, 'build');
 
       expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in build command'))).toBe(true);
       expect(loggerCallArrays.error.some(a => a[0] === '   Docker is not running or not installed.')).toBe(true);
-      expect(loggerCallArrays.error.some(a => a[0] === '   Please start Docker Desktop and try again.')).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === `   ${getDockerDaemonStartHintSentence()}`)).toBe(true);
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('docker-endpoint'))).toBe(true);
     });
 
     it('should handle port conflict errors', () => {
@@ -210,8 +212,28 @@ describe('CLI Utils Module', () => {
       handleCommandError(error, 'run');
 
       expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in run command'))).toBe(true);
-      expect(loggerCallArrays.error.some(a => a[0] === '   Permission denied.')).toBe(true);
-      expect(loggerCallArrays.error.some(a => a[0] === '   Make sure you have the necessary permissions to run Docker commands.')).toBe(true);
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Permission denied when using Docker'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('docker-endpoint'))).toBe(true);
+    });
+
+    it('should not label plain EACCES as Docker (e.g. bogus filesystem path)', () => {
+      const error = new Error('EACCES: permission denied, mkdir \'/aifabrix-miso\'');
+
+      handleCommandError(error, 'secret set');
+
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Permission denied when using Docker'))).toBe(false);
+    });
+
+    it('should append docker-endpoint hints to infrastructure Docker failure message', () => {
+      const error = new Error(
+        'Cannot use Docker for infrastructure: Docker Compose check failed (see Cause below).\n\nCause: x'
+      );
+
+      handleCommandError(error, 'up-infra');
+
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('up-infra'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Cannot use Docker for infrastructure'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('docker-endpoint'))).toBe(true);
     });
 
     it('should not match permission denied for permissions field validation', () => {
@@ -233,6 +255,17 @@ describe('CLI Utils Module', () => {
       expect(loggerCallArrays.error.some(a => a[0] === '   Azure CLI is not installed or not working properly.')).toBe(true);
       expect(loggerCallArrays.error.some(a => a[0] === '   Install from: https://docs.microsoft.com/cli/azure/install-azure-cli')).toBe(true);
       expect(loggerCallArrays.error.some(a => a[0] === '   Run: az login')).toBe(true);
+    });
+
+    it('should not misclassify Docker/build failures that happen to contain substring "az" as Azure CLI', () => {
+      const error = new Error(
+        'Build failed: Docker build failed: lazy evaluation in build step failed'
+      );
+
+      handleCommandError(error, 'build');
+
+      expect(loggerCallArrays.error.some(a => String(a[0]).includes('Error in build command'))).toBe(true);
+      expect(loggerCallArrays.error.some(a => a[0] === '   Azure CLI is not installed or not working properly.')).toBe(false);
     });
 
     it('should handle ACR authentication errors', () => {
@@ -388,7 +421,7 @@ describe('CLI Utils Module', () => {
       appendFileSpy.mockRestore();
     });
 
-    it('should append error message to integration/<appKey>/error.log', async() => {
+    it('should append error message to integration/<systemKey>/error.log', async() => {
       await appendWizardError('myapp', new Error('Test error'));
 
       expect(mkdirCalls).toHaveLength(1);
