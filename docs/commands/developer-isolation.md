@@ -46,6 +46,8 @@ aifabrix dev init --developer-id 01 --server https://builder02.local --pin 12345
 
 **Untrusted certificate (typical on local Builder Servers):** If the health check fails because the certificate is self-signed or signed by a private root, the CLI can offer to download the development root CA from **`{server}/install-ca`**, install it into the **OS trust store** (helps browsers and some tools), and retry. Separately, the CLI keeps a copy as **`ca.pem`** next to your client cert so **its own** connections to that Builder Server keep working (the OS store alone is not always enough for the Node-based CLI). Use `--yes` to auto-accept CA install, or `--no-install-ca` to stop with instructions to install the CA manually. On Linux, full trust-store install may need `sudo`; see **`{server}/install-ca-help`** if offered.
 
+**Shared builder VMs:** If admins run **`sudo af-server install-server`** (local bootstrap) on the host, the server setup installs the same dev root PEM into the system CA bundle (**`aifabrix-root-ca.crt`** + **`update-ca-certificates`**). SSH users on that host then usually **do not** need **`sudo`** for the CLI’s CA install prompt when using **`https://<builder-host>`** from the server itself.
+
 **Administrator rights:** Ordinary `dev init` **does not require admin**. Admin (or `sudo`) may be needed only if you use **`--add-hosts`** and the OS blocks writing the hosts file, or on some Linux setups when installing the CA into the system bundle.
 
 **See Also:** [Secrets and config](../configuration/secrets-and-config.md) (remote-server, docker-endpoint), [Developer Isolation Guide](../developer-isolation.md).
