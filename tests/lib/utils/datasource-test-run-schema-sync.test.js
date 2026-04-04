@@ -2,6 +2,8 @@
  * @fileoverview Tests for lib/utils/datasource-test-run-schema-sync.js
  */
 
+jest.unmock('fs');
+
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');

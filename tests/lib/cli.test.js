@@ -118,7 +118,6 @@ jest.mock('../../lib/utils/paths', () => {
 const chalk = require('chalk');
 const secrets = require('../../lib/core/secrets');
 const generator = require('../../lib/generator');
-const keyGenerator = require('../../lib/core/key-generator');
 const validator = require('../../lib/validation/validator');
 const validate = require('../../lib/validation/validate');
 const infra = require('../../lib/infrastructure');
@@ -166,9 +165,6 @@ describe('CLI Commands', () => {
         externalFiles: []
       });
       validate.displayValidationResults.mockImplementation(() => {});
-
-      // Import CLI module after mocking
-      const cli = require('../../lib/cli');
 
       // Simulate the command action: getResolveAppPath then generateEnvFile with options
       const paths = require('../../lib/utils/paths');
@@ -924,14 +920,6 @@ describe('CLI Commands', () => {
   });
 
   describe('CLI command handlers - direct execution', () => {
-    let cli;
-
-    beforeEach(() => {
-      // Clear module cache to get fresh instance
-      jest.resetModules();
-      cli = require('../../lib/cli');
-    });
-
     describe('create command handler', () => {
       it('should execute create command handler successfully', async() => {
         const appName = 'testapp';
@@ -1816,9 +1804,7 @@ describe('CLI Commands', () => {
 
     // Helper function to setup commands and reset logger
     function setupCommandsAndResetLogger() {
-      // Reset commandActions to ensure clean state
       commandActions = {};
-      // Recreate mockProgram to ensure fresh action handlers
       mockProgram = {
         command: jest.fn((cmdName) => {
           const mockCommand = {
@@ -1830,7 +1816,6 @@ describe('CLI Commands', () => {
               commandActions[cmdName] = action;
               return this;
             },
-            // Support nested commands for command groups (e.g., 'secret set')
             command: jest.fn((subCmdName) => {
               const fullCmdName = `${cmdName} ${subCmdName}`;
               const mockSubCommand = {
@@ -1850,52 +1835,14 @@ describe('CLI Commands', () => {
         })
       };
 
-      // Reset modules to ensure fresh logger reference is captured by handlers
-      jest.resetModules();
-
-      // Re-require logger after resetModules to get fresh mock
-      const freshLogger = require('../../lib/utils/logger');
-      // Set up logger mock functions
-      freshLogger.log = jest.fn();
-      freshLogger.error = jest.fn();
-      freshLogger.warn = jest.fn();
-      freshLogger.info = jest.fn();
-
-      // Update the outer scope logger reference
-      Object.assign(logger, freshLogger);
-
-      // Re-require other mocked modules that CLI depends on
-      const freshKeyGenerator = require('../../lib/core/key-generator');
-      const freshApp = require('../../lib/app');
-      const freshSecrets = require('../../lib/core/secrets');
-      const freshGenerator = require('../../lib/generator');
-      const freshValidator = require('../../lib/validation/validator');
-      const freshInfra = require('../../lib/infrastructure');
-      const freshCliUtils = require('../../lib/utils/cli-utils');
-      const freshHandleLoginModule = require('../../lib/commands/login');
-      const freshConfig = require('../../lib/core/config');
-      const freshDevConfig = require('../../lib/utils/dev-config');
-
-      // Update outer scope references
-      Object.assign(keyGenerator, freshKeyGenerator);
-      Object.assign(app, freshApp);
-      Object.assign(secrets, freshSecrets);
-      Object.assign(generator, freshGenerator);
-      Object.assign(validator, freshValidator);
-      Object.assign(infra, freshInfra);
-      Object.assign(cliUtils, freshCliUtils);
-      Object.assign(config, freshConfig);
-      Object.assign(devConfig, freshDevConfig);
-      // handleLogin is a destructured export, so update the module's handleLogin property
-      // This ensures the fresh module has the mocked handleLogin
-      if (freshHandleLoginModule.handleLogin) {
-        freshHandleLoginModule.handleLogin = handleLogin;
-      }
+      logger.log = jest.fn();
+      logger.error = jest.fn();
+      logger.warn = jest.fn();
+      logger.info = jest.fn();
 
       const { setupCommands } = require('../../lib/cli');
       setupCommands(mockProgram);
 
-      // Clear mock calls after setupCommands so we can track new calls from handlers
       logger.log.mockClear();
       logger.error.mockClear();
       logger.warn.mockClear();
