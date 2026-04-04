@@ -91,9 +91,63 @@ describe('dev-cli-handlers', () => {
       expect(devApi.createUser).toHaveBeenCalledWith(
         'https://dev.example.com',
         'pem',
-        expect.objectContaining({ developerId: '02', name: 'Two', email: 't@e.com' }),
+        expect.objectContaining({
+          developerId: '02',
+          name: 'Two',
+          email: 't@e.com',
+          groups: ['developer']
+        }),
         undefined
       );
+    });
+
+    it('rejects unknown group', async() => {
+      await expect(
+        handleDevAdd({ developerId: '02', name: 'Two', email: 't@e.com', groups: 'admin,badgroup' })
+      ).rejects.toThrow(/Invalid group/);
+      expect(devApi.createUser).not.toHaveBeenCalled();
+    });
+
+    it('sends docker in groups when provided', async() => {
+      devApi.createUser.mockResolvedValue({ id: '02' });
+      await handleDevAdd({
+        developerId: '02',
+        name: 'Two',
+        email: 't@e.com',
+        groups: 'admin,developer,docker'
+      });
+      expect(devApi.createUser).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        expect.objectContaining({
+          groups: ['admin', 'developer', 'docker']
+        }),
+        undefined
+      );
+    });
+
+    it('defaults to developer when groups is empty string', async() => {
+      devApi.createUser.mockResolvedValue({ id: '03' });
+      await handleDevAdd({ developerId: '03', name: 'Three', email: '3@e.com', groups: '' });
+      expect(devApi.createUser).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        expect.objectContaining({ groups: ['developer'] }),
+        undefined
+      );
+    });
+
+    it('augments server validation error when docker was requested on create', async() => {
+      const serverMsg = 'each value in groups must be one of the following values: admin, secret-manager, developer';
+      devApi.createUser.mockRejectedValue(new Error(serverMsg));
+      await expect(
+        handleDevAdd({
+          developerId: '02',
+          name: 'Two',
+          email: 't@e.com',
+          groups: 'developer,docker'
+        })
+      ).rejects.toThrow(/does not accept/);
     });
   });
 
@@ -133,6 +187,55 @@ describe('dev-cli-handlers', () => {
         { name: 'New Name' },
         undefined
       );
+    });
+
+    it('calls updateUser with normalized groups including docker', async() => {
+      devApi.updateUser.mockResolvedValue(undefined);
+      await handleDevUpdate('02', { groups: 'admin,developer,docker' });
+      expect(devApi.updateUser).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        '02',
+        { groups: ['admin', 'developer', 'docker'] },
+        undefined
+      );
+    });
+
+    it('parses space-separated groups (PowerShell-style argv)', async() => {
+      devApi.updateUser.mockResolvedValue(undefined);
+      await handleDevUpdate('02', { groups: 'admin developer docker' });
+      expect(devApi.updateUser).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        '02',
+        { groups: ['admin', 'developer', 'docker'] },
+        undefined
+      );
+    });
+
+    it('rejects unknown group on update', async() => {
+      await expect(handleDevUpdate('02', { groups: 'docker,invalid' })).rejects.toThrow(/Invalid group/);
+      expect(devApi.updateUser).not.toHaveBeenCalled();
+    });
+
+    it('throws when --groups is only delimiters', async() => {
+      await expect(handleDevUpdate('02', { groups: '  ,  ' })).rejects.toThrow('--groups must list at least one valid group');
+      expect(devApi.updateUser).not.toHaveBeenCalled();
+    });
+
+    it('augments server validation error when docker was requested on update', async() => {
+      const serverMsg = 'each value in groups must be one of the following values: admin, secret-manager, developer';
+      devApi.updateUser.mockRejectedValue(new Error(serverMsg));
+      await expect(handleDevUpdate('02', { groups: 'admin,docker' })).rejects.toThrow(/does not accept/);
+    });
+
+    it('rethrows server error unchanged when docker was not in PATCH body', async() => {
+      const serverMsg = 'each value in groups must be one of the following values: admin, secret-manager, developer';
+      devApi.updateUser.mockRejectedValue(new Error(serverMsg));
+      const err = await handleDevUpdate('02', { groups: 'admin,developer' }).catch((e) => e);
+      expect(err).toBeInstanceOf(Error);
+      expect(err.message).toBe(serverMsg);
+      expect(err.message).not.toContain('does not accept');
     });
   });
 

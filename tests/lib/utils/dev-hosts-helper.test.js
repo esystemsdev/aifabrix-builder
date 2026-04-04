@@ -2,6 +2,9 @@
  * @fileoverview Tests for dev-hosts-helper
  */
 
+// Other suites in this worker use jest.mock('fs'); need real fs for tempdir + rmSync cleanup.
+jest.unmock('fs');
+
 const fs = require('fs');
 const path = require('path');
 const os = require('os');

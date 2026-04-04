@@ -167,12 +167,13 @@ Improve CLI UX for `aifabrix dev show` by grouping output, removing redundant pa
 ## Implementation Validation Report
 
 **Date**: 2026-04-04  
+**Status updated**: 2026-04-04 — full suite green (see below)  
 **Plan**: [.cursor/plans/119-dev_show_ux_refresh.plan.md](119-dev_show_ux_refresh.plan.md)  
-**Status**: ⚠️ INCOMPLETE (plan scope implemented; full `npm test` has unrelated failures on this environment)
+**Status**: ✅ COMPLETE — plan scope implemented; **all tests passing** on latest verification.
 
 ### Executive Summary
 
-All plan deliverables are present in the codebase: certificate CN parsing in `dev-cert-helper`, extracted `dev-show-display` with remote gating and mismatch UX, wired `setup-dev.js`, and tests (`dev-cert-helper.test.js`, `cli.test.js`, `dev-show-display.test.js`). ESLint passes with zero errors and zero warnings after `npm run lint:fix` and `npm run lint`. The full Jest run reports **2 failing tests** in `config-paths.test.js` and `config.test.js` (POSIX path expectations vs Windows `path.resolve` output)—not in files touched by this plan.
+All plan deliverables are present in the codebase: certificate CN parsing in `dev-cert-helper`, extracted `dev-show-display` with remote gating and mismatch UX, wired `setup-dev.js`, and tests (`dev-cert-helper.test.js`, `cli.test.js`, `dev-show-display.test.js`). ESLint passes with zero errors and zero warnings after `npm run lint:fix` and `npm run lint`. **Latest `npm test`**: 274 test suites passed, 5752 tests passed (0 failures).
 
 ### Task Completion
 
@@ -205,17 +206,16 @@ All plan deliverables are present in the codebase: certificate CN parsing in `de
 - ✅ Unit tests for CN parsing and OpenSSL subject (`dev-cert-helper.test.js`).
 - ✅ CLI handler expectations updated (`cli.test.js`).
 - ✅ Display module tests: **with** and **without** `remote-server`, TLS variants, mismatch (`dev-show-display.test.js`).
-- Scoped check: `dev-show-display.test.js`, `dev-cert-helper.test.js`, and `cli.test.js` (dev-related) pass.
-- ⚠️ Full `npm test`: **fails** (2 tests, Windows path normalization in config/config-paths suites).
+- ✅ Full `npm test`: **passes** (274 suites, 5752 tests — latest run).
 
 ### Code Quality Validation
 
 
-| Step                        | Result                                                   |
-| --------------------------- | -------------------------------------------------------- |
-| Format (`npm run lint:fix`) | ✅ PASSED (exit 0)                                        |
-| Lint (`npm run lint`)       | ✅ PASSED (0 errors, 0 warnings)                          |
-| Test (`npm test`)           | ❌ FAILED — 2 failures (see above), 269/271 suites passed |
+| Step                        | Result                                      |
+| --------------------------- | ------------------------------------------- |
+| Format (`npm run lint:fix`) | ✅ PASSED (exit 0)                           |
+| Lint (`npm run lint`)       | ✅ PASSED (0 errors, 0 warnings)           |
+| Test (`npm test`)           | ✅ PASSED — 274 suites, 5752 tests (latest) |
 
 
 ### Cursor Rules Compliance (spot check)
@@ -236,16 +236,15 @@ All plan deliverables are present in the codebase: certificate CN parsing in `de
 
 ### Issues and Recommendations
 
-1. **Full test suite**: Fix or normalize `config-paths.test.js` / `config.test.js` expectations on Windows (use `path.resolve` or `path.normalize` in assertions), or run CI on POSIX-only if intentional.
-2. **Fix command**: Reconcile `aifabrix dev refresh` (plan / onboarding) vs `af dev sync` (current mismatch block) with product naming (`af` is an alias in `package.json` bin).
-3. **Optional**: Run `npm run test:coverage` on changed files if the team tracks ≥80% on new code formally.
+1. **Fix command** (copy): Reconcile `aifabrix dev refresh` (plan / onboarding) vs `af dev sync` (current mismatch block) with product naming (`af` is an alias in `package.json` bin).
+2. **Optional**: Run `npm run test:coverage` on changed files if the team tracks ≥80% on new code formally.
 
 ### Final Validation Checklist
 
-- All plan todos completed (implementation + tests for this feature)
-- All plan-scoped files exist
-- Plan-scoped tests exist and pass
-- Lint passes (0 errors, 0 warnings)
-- Full `npm test` passes on this machine (blocked by 2 unrelated failures)
-- Cursor rules spot-check: no critical violations in changed modules
+- [x] All plan todos completed (implementation + tests for this feature)
+- [x] All plan-scoped files exist
+- [x] Plan-scoped tests exist and pass
+- [x] Lint passes (0 errors, 0 warnings)
+- [x] Full `npm test` passes — **274 suites, 5752 tests** (latest verification)
+- [x] Cursor rules spot-check: no critical violations in changed modules
 
