@@ -119,7 +119,7 @@ aifabrix dev add --developer-id 07 --name "Jane" --email jane@example.com --grou
 | **admin** | All dev and secrets endpoints (list/create/update/delete users, create PIN for any user, list/add/delete secrets). |
 | **secret-manager** | Secrets only: list, add, delete. No user management or PIN creation. |
 | **developer** | List users (read-only), create PIN for **self** only, get own settings, manage own SSH keys. No create/update/delete users, no secrets. |
-| **docker** | Not an API capability: optional flag on a user so the host sync job adds the OS user `dev<id>` to the Linux `docker` group (socket-level Docker on the server). Does not grant extra HTTP routes; combine with **developer** (or another API group). Host membership in `docker` is highly sensitive—treat like root. |
+| **docker** | Not an API capability: optional flag on a user so the host sync job adds the OS user `dev<id>` to the Linux `docker` group (socket-level Docker on the server). Converges on the next cron run (typically within a few minutes); the server needs **`jq`** on the host for that step. **Reconnect SSH** (or run `newgrp docker`) after grant—existing sessions do not pick up the new group. Does not grant extra HTTP routes; combine with **developer** (or another API group). Host membership in `docker` is highly sensitive—treat like root. |
 
 **See Also:** [Developer Isolation Guide](../developer-isolation.md), [Secrets and config](../configuration/secrets-and-config.md).
 
