@@ -7,12 +7,12 @@
         "key":"external-datasource-schema",
         "name":"External Data Source Configuration Schema",
         "description":"JSON schema for validating ExternalDataSource configuration files",
-        "version":"2.4.2",
+        "version":"2.4.4",
         "type":"schema",
         "category":"integration",
         "author":"AI Fabrix Team",
         "createdAt":"2024-01-01T00:00:00Z",
-        "updatedAt":"2026-03-31T00:00:00Z",
+        "updatedAt":"2026-04-06T00:00:00Z",
         "compatibility":{
            "minVersion":"1.0.0",
            "maxVersion":"3.0.0",
@@ -151,6 +151,22 @@
               "Application validator enforces externalId field mapping and FK join semantics in lockstep with JSON Schema."
            ],
            "breaking":true
+        },
+        {
+           "version":"2.4.3",
+           "date":"2026-04-04T00:00:00Z",
+           "changes":[
+              "BREAKING: Removed CIP filter.enforceAbac from cipStepFilter.filter (WP-H / 346.13 matrix 18). Use filter.abac.mode (mandatory | optional | disabled) instead."
+           ],
+           "breaking":true
+        },
+        {
+           "version":"2.4.4",
+           "date":"2026-04-06T00:00:00Z",
+           "changes":[
+              "Added optional root mcpContract object for embedded MCP securityModel (tools/abac policy buckets). Required for integration manifests when CIP filter.abac uses mandatory datasource-scoped policies (static readiness vs runtime ExternalDataSource.mcpContract)."
+           ],
+           "breaking":false
         }
      ]
   },
@@ -759,6 +775,11 @@
      },
      "contract":{
         "$ref":"#/$defs/contractConfig"
+     },
+     "mcpContract":{
+        "type":"object",
+        "description":"Optional embedded MCP contract material (e.g. securityModel.tools and securityModel.abac) for manifest validation and CIP filter.abac policy-scope readiness. Persisted on ExternalDataSource.mcpContract when published.",
+        "additionalProperties":true
      }
   },
   "allOf":[
@@ -1963,11 +1984,6 @@
                        }
                     },
                     "additionalProperties":false
-                 },
-                 "enforceAbac":{
-                    "type":"boolean",
-                    "description":"Legacy compatibility flag; prefer filter.abac.mode.",
-                    "default":true
                  },
                  "expression":{
                     "type":"string",

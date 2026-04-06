@@ -254,6 +254,10 @@ permissions:
   - name: "record-relation:create"
     roles: ["aifabrix-platform-admin", "aifabrix-developer"]
     description: "Create record relations"
+
+  - name: "record-relation:update"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Update mutable fields on record relations (direction, confidence, catalogId, createdBy)"
   
   - name: "record-relation:read"
     roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
