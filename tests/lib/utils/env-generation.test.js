@@ -281,8 +281,8 @@ DB_PORT=\${DB_PORT}`;
   });
 
   describe('generateEnvContent - Local Environment', () => {
-    describe('Local with build.localPort set', () => {
-      it('should use build.localPort when developer-id is null', async() => {
+    describe('Local manifest port + localHostPort offset', () => {
+      it('should use port+10 when developer-id is null', async() => {
         const variables = {
           port: 3087,
           build: {}
@@ -300,11 +300,11 @@ DB_PORT=\${DB_PORT}`;
 
         const result = await generateEnvContent(mockAppName, null, 'local', false);
 
-        expect(result).toMatch(/^PORT=3087$/m);
+        expect(result).toMatch(/^PORT=3097$/m);
         expect(result).toContain('REDIS_HOST=localhost');
       });
 
-      it('should use build.localPort when developer-id is 0', async() => {
+      it('should use port+10 when developer-id is 0', async() => {
         const variables = {
           port: 3087,
           build: {}
@@ -322,10 +322,10 @@ DB_PORT=\${DB_PORT}`;
 
         const result = await generateEnvContent(mockAppName, null, 'local', false);
 
-        expect(result).toMatch(/^PORT=3087$/m);
+        expect(result).toMatch(/^PORT=3097$/m);
       });
 
-      it('should use build.localPort + 100 when developer-id is 1', async() => {
+      it('should use port+10+100 when developer-id is 1', async() => {
         const variables = {
           port: 3087,
           build: {}
@@ -343,10 +343,10 @@ DB_PORT=\${DB_PORT}`;
 
         const result = await generateEnvContent(mockAppName, null, 'local', false);
 
-        expect(result).toMatch(/^PORT=3187$/m); // 3087 + 100
+        expect(result).toMatch(/^PORT=3197$/m);
       });
 
-      it('should use build.localPort + 200 when developer-id is 2', async() => {
+      it('should use port+10+200 when developer-id is 2', async() => {
         const variables = {
           port: 3087,
           build: {}
@@ -364,59 +364,15 @@ DB_PORT=\${DB_PORT}`;
 
         const result = await generateEnvContent(mockAppName, null, 'local', false);
 
-        expect(result).toMatch(/^PORT=3287$/m); // 3087 + 200
-      });
-
-      it('should use build.localPort when set (overrides port)', async() => {
-        const variables = {
-          port: 3087,
-          build: { localPort: 3010 }
-        };
-
-        fs.readFileSync.mockImplementation((filePath) => {
-          if (filePath === mockTemplatePath) return baseEnvTemplate;
-          if (filePath === mockVariablesPath) return yaml.dump(variables);
-          if (filePath && filePath.includes('env-config.yaml')) return yaml.dump(mockEnvConfig);
-          return '';
-        });
-
-        mockConfig.getDeveloperId.mockResolvedValue(null);
-        process.env.AIFABRIX_DEVELOPERID = undefined;
-
-        const result = await generateEnvContent(mockAppName, null, 'local', false);
-
-        expect(result).toMatch(/^PORT=3010$/m);
-      });
-
-      it('should use build.localPort + 100 when set and developer-id is 1', async() => {
-        const variables = {
-          port: 3087,
-          build: { localPort: 3010 }
-        };
-
-        fs.readFileSync.mockImplementation((filePath) => {
-          if (filePath === mockTemplatePath) return baseEnvTemplate;
-          if (filePath === mockVariablesPath) return yaml.dump(variables);
-          if (filePath && filePath.includes('env-config.yaml')) return yaml.dump(mockEnvConfig);
-          return '';
-        });
-
-        mockConfig.getDeveloperId.mockResolvedValue('1');
-        process.env.AIFABRIX_DEVELOPERID = undefined;
-
-        const result = await generateEnvContent(mockAppName, null, 'local', false);
-
-        expect(result).toMatch(/^PORT=3110$/m); // 3010 + 100
+        expect(result).toMatch(/^PORT=3297$/m);
       });
     });
 
-    describe('Local with build.localPort null/undefined', () => {
-      it('should use port when build.localPort is null and developer-id is null', async() => {
+    describe('Local manifest port only (no build.localPort)', () => {
+      it('should use port+10 when developer-id is null', async() => {
         const variables = {
           port: 3077,
-          build: {
-            localPort: null
-          }
+          build: {}
         };
 
         fs.readFileSync.mockImplementation((filePath) => {
@@ -431,15 +387,13 @@ DB_PORT=\${DB_PORT}`;
 
         const result = await generateEnvContent(mockAppName, null, 'local', false);
 
-        expect(result).toMatch(/^PORT=3077$/m);
+        expect(result).toMatch(/^PORT=3087$/m);
       });
 
-      it('should use port when build.localPort is null and developer-id is 0', async() => {
+      it('should use port+10 when developer-id is 0', async() => {
         const variables = {
           port: 3077,
-          build: {
-            localPort: null
-          }
+          build: {}
         };
 
         fs.readFileSync.mockImplementation((filePath) => {
@@ -454,15 +408,13 @@ DB_PORT=\${DB_PORT}`;
 
         const result = await generateEnvContent(mockAppName, null, 'local', false);
 
-        expect(result).toMatch(/^PORT=3077$/m);
+        expect(result).toMatch(/^PORT=3087$/m);
       });
 
-      it('should use port + 100 when build.localPort is null and developer-id is 1', async() => {
+      it('should use port+10+100 when developer-id is 1', async() => {
         const variables = {
           port: 3077,
-          build: {
-            localPort: null
-          }
+          build: {}
         };
 
         fs.readFileSync.mockImplementation((filePath) => {
@@ -477,7 +429,7 @@ DB_PORT=\${DB_PORT}`;
 
         const result = await generateEnvContent(mockAppName, null, 'local', false);
 
-        expect(result).toMatch(/^PORT=3177$/m); // 3077 + 100
+        expect(result).toMatch(/^PORT=3187$/m);
       });
     });
 
@@ -799,9 +751,32 @@ DB_PORT=\${DB_PORT}`;
 
   describe('adjustLocalEnvPortsInContent - Port Calculation', () => {
     describe('Base port selection', () => {
-      it('should use build.localPort when set', async() => {
+      it('should use manifest port for local host port (dev 0 → +10)', async() => {
         const variables = {
           port: 3087,
+          build: {}
+        };
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockVariablesPath) return yaml.dump(variables);
+          return '';
+        });
+
+        fs.existsSync.mockImplementation((filePath) => {
+          return filePath === mockVariablesPath;
+        });
+
+        mockConfig.getDeveloperId.mockResolvedValue('0');
+
+        const envContent = 'PORT=3000\nREDIS_HOST=localhost';
+        const result = await adjustLocalEnvPortsInContent(envContent, mockVariablesPath);
+
+        expect(result).toMatch(/^PORT=3097$/m);
+      });
+
+      it('should use manifest port when build has no localPort', async() => {
+        const variables = {
+          port: 3077,
           build: {}
         };
 
@@ -822,32 +797,7 @@ DB_PORT=\${DB_PORT}`;
         expect(result).toMatch(/^PORT=3087$/m);
       });
 
-      it('should use port when build.localPort is null', async() => {
-        const variables = {
-          port: 3077,
-          build: {
-            localPort: null
-          }
-        };
-
-        fs.readFileSync.mockImplementation((filePath) => {
-          if (filePath === mockVariablesPath) return yaml.dump(variables);
-          return '';
-        });
-
-        fs.existsSync.mockImplementation((filePath) => {
-          return filePath === mockVariablesPath;
-        });
-
-        mockConfig.getDeveloperId.mockResolvedValue('0');
-
-        const envContent = 'PORT=3000\nREDIS_HOST=localhost';
-        const result = await adjustLocalEnvPortsInContent(envContent, mockVariablesPath);
-
-        expect(result).toMatch(/^PORT=3077$/m);
-      });
-
-      it('should use default 3000 when both port and build.localPort are null', async() => {
+      it('should use default 3000 when port is null', async() => {
         const variables = {
           port: null
         };
@@ -866,32 +816,7 @@ DB_PORT=\${DB_PORT}`;
         const envContent = 'PORT=3000\nREDIS_HOST=localhost';
         const result = await adjustLocalEnvPortsInContent(envContent, mockVariablesPath);
 
-        expect(result).toMatch(/^PORT=3000$/m);
-      });
-
-      it('should use port when build.localPort is 0 (not > 0)', async() => {
-        const variables = {
-          port: 3077,
-          build: {
-            localPort: 0
-          }
-        };
-
-        fs.readFileSync.mockImplementation((filePath) => {
-          if (filePath === mockVariablesPath) return yaml.dump(variables);
-          return '';
-        });
-
-        fs.existsSync.mockImplementation((filePath) => {
-          return filePath === mockVariablesPath;
-        });
-
-        mockConfig.getDeveloperId.mockResolvedValue('0');
-
-        const envContent = 'PORT=3000\nREDIS_HOST=localhost';
-        const result = await adjustLocalEnvPortsInContent(envContent, mockVariablesPath);
-
-        expect(result).toMatch(/^PORT=3077$/m);
+        expect(result).toMatch(/^PORT=3010$/m);
       });
     });
 
@@ -916,7 +841,7 @@ DB_PORT=\${DB_PORT}`;
         const envContent = 'PORT=3000\nREDIS_HOST=localhost';
         const result = await adjustLocalEnvPortsInContent(envContent, mockVariablesPath);
 
-        expect(result).toMatch(/^PORT=3187$/m); // 3087 + 100
+        expect(result).toMatch(/^PORT=3197$/m);
       });
 
     });
@@ -928,7 +853,7 @@ DB_PORT=\${DB_PORT}`;
         // env-config.yaml → PORT: 3000
         // config.yaml → PORT: 3010
         // application.yaml → port: 3015 (strongest)
-        // Expected: 3015 + 100 = 3115
+        // Expected local host: 3015 + 10 + 100 = 3125
 
         const variables = {
           port: 3015,
@@ -952,7 +877,7 @@ DB_PORT=\${DB_PORT}`;
         const envContent = 'PORT=3000';
         const result = await adjustLocalEnvPortsInContent(envContent, mockVariablesPath);
 
-        expect(result).toMatch(/^PORT=3115$/m); // 3015 + 100
+        expect(result).toMatch(/^PORT=3125$/m);
       });
     });
 
@@ -977,7 +902,7 @@ DB_PORT=\${DB_PORT}`;
         const envContent = 'PORT=3000';
         const result = await adjustLocalEnvPortsInContent(envContent, mockVariablesPath);
 
-        expect(result).toMatch(/^PORT=3110$/m); // 3010 + 100
+        expect(result).toMatch(/^PORT=3120$/m);
       });
     });
 
@@ -1001,12 +926,12 @@ DB_PORT=\${DB_PORT}`;
         const envContent = 'PORT=3000';
         const result = await adjustLocalEnvPortsInContent(envContent, mockVariablesPath);
 
-        expect(result).toMatch(/^PORT=3100$/m); // 3000 + 100
+        expect(result).toMatch(/^PORT=3110$/m);
       });
     });
 
-    describe('Scenario 4: Only env-config.yaml present', () => {
-      it('should use env-config.yaml PORT when application.yaml missing (dev-id 1)', async() => {
+    describe('Scenario 4: No application.yaml (env template PORT only)', () => {
+      it('should use env content PORT when variablesPath null (dev-id 1)', async() => {
         fs.readFileSync.mockImplementation((filePath) => {
           return '';
         });
@@ -1020,8 +945,7 @@ DB_PORT=\${DB_PORT}`;
         const envContent = 'PORT=3000';
         const result = await adjustLocalEnvPortsInContent(envContent, null);
 
-        // Should use env content PORT as fallback: 3000 + 100 = 3100
-        expect(result).toMatch(/^PORT=3100$/m);
+        expect(result).toMatch(/^PORT=3110$/m);
       });
     });
   });
@@ -1444,8 +1368,8 @@ MISO_PORT=\${MISO_PORT}`;
         const { generateEnvContent } = require('../../../lib/core/secrets');
         const result = await generateEnvContent(mockAppName, null, 'local', false);
 
-        // Verify PORT uses build.localPort + adjustment: 3010 + 100 = 3110
-        expect(result).toMatch(/^PORT=3110$/m);
+        // App listen 3010 → local host port 3010 + 10 + 100 = 3120
+        expect(result).toMatch(/^PORT=3120$/m);
         // Verify DB_PORT uses env-config + adjustment: 5432 + 100 = 5532
         expect(result).toMatch(/^DB_PORT=5532$/m);
         // Verify REDIS_PORT uses env-config + adjustment: 6379 + 100 = 6479
@@ -1485,8 +1409,7 @@ REDIS_PORT=\${REDIS_PORT}`;
         const { generateEnvContent } = require('../../../lib/core/secrets');
         const result = await generateEnvContent(mockAppName, null, 'local', false);
 
-        // Verify PORT: 3010 + 200 = 3210
-        expect(result).toMatch(/^PORT=3210$/m);
+        expect(result).toMatch(/^PORT=3220$/m);
         // Verify DB_PORT: 5432 + 200 = 5632
         expect(result).toMatch(/^DB_PORT=5632$/m);
         // Verify REDIS_PORT: 6379 + 200 = 6579
@@ -1700,7 +1623,7 @@ MISO_PUBLIC_PORT=\${MISO_PUBLIC_PORT}`;
         const [writtenPath, writtenContent] = fs.writeFileSync.mock.calls[0];
         expect(writtenPath).toBe(outEnvPath);
         expect(writtenContent).toContain('REDIS_HOST=localhost'); // Should be localhost, not docker service
-        expect(writtenContent).toMatch(/^PORT=3087$/m);
+        expect(writtenContent).toMatch(/^PORT=3097$/m);
       });
 
       it('should use port and apply developer-id offset', async() => {
@@ -1741,7 +1664,7 @@ MISO_PUBLIC_PORT=\${MISO_PUBLIC_PORT}`;
         expect(fs.writeFileSync).toHaveBeenCalled();
         const [writtenPath, writtenContent] = fs.writeFileSync.mock.calls[0];
         expect(writtenPath).toBe(outEnvPath);
-        expect(writtenContent).toMatch(/^PORT=3187$/m); // 3087 + 100
+        expect(writtenContent).toMatch(/^PORT=3197$/m);
       });
 
       it('should substitute /mnt/data when using patched path (appName not provided)', async() => {
@@ -1874,7 +1797,7 @@ MISO_PUBLIC_PORT=\${MISO_PUBLIC_PORT}`;
         expect(fs.writeFileSync).toHaveBeenCalled();
         const [writtenPath, writtenContent] = fs.writeFileSync.mock.calls[0];
         expect(writtenPath).toBe(outEnvPath);
-        expect(writtenContent).toMatch(/^PORT=3187$/m); // 3087 + 100
+        expect(writtenContent).toMatch(/^PORT=3197$/m);
       });
 
       it('should read developer-id from config file when env var not set', async() => {

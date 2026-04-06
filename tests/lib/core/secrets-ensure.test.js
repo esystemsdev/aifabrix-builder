@@ -12,7 +12,11 @@ jest.mock('../../../lib/core/config', () => ({
 }));
 
 jest.mock('../../../lib/utils/paths', () => ({
-  getAifabrixHome: jest.fn(() => '/home/.aifabrix')
+  getAifabrixHome: jest.fn(() => '/home/.aifabrix'),
+  listBuilderAppNames: jest.fn(() => []),
+  listIntegrationAppNames: jest.fn(() => []),
+  getBuilderPath: jest.fn((n) => `/builder/${n}`),
+  getIntegrationPath: jest.fn((n) => `/integration/${n}`)
 }));
 
 jest.mock('../../../lib/utils/remote-dev-auth', () => ({
@@ -60,7 +64,9 @@ const pathsUtil = require('../../../lib/utils/paths');
 const { isRemoteSecretsUrl, getRemoteDevAuth } = require('../../../lib/utils/remote-dev-auth');
 const devApi = require('../../../lib/api/dev.api');
 const secretsGenerator = require('../../../lib/utils/secrets-generator');
+const { clearInfraParameterCatalogCache } = require('../../../lib/parameters/infra-parameter-catalog');
 
+const secretsEnsure = require('../../../lib/core/secrets-ensure');
 const {
   ensureSecretsForKeys,
   ensureSecretsFromEnvTemplate,
@@ -68,25 +74,47 @@ const {
   setSecretInStore,
   resolveWriteTarget,
   loadExistingFromTarget,
-  INFRA_SECRET_KEYS
-} = require('../../../lib/core/secrets-ensure');
+  getInfraSecretKeysForUpInfra
+} = secretsEnsure;
 
 describe('secrets-ensure', () => {
   beforeEach(() => {
+    clearInfraParameterCatalogCache();
     jest.clearAllMocks();
     config.getSecretsPath.mockResolvedValue(null);
     config.getSecretsEncryptionKey.mockResolvedValue(null);
     isRemoteSecretsUrl.mockReturnValue(false);
     secretsGenerator.loadExistingSecrets.mockReturnValue({});
     fs.existsSync.mockReturnValue(true);
+    const realFs = jest.requireActual('fs');
+    fs.readFileSync.mockImplementation((filepath, enc) => {
+      const s = String(filepath);
+      if (s.includes('infra.parameter.yaml') || s.includes('infra-parameter.schema.json')) {
+        return realFs.readFileSync(filepath, enc);
+      }
+      return Buffer.alloc(0);
+    });
   });
 
   describe('INFRA_SECRET_KEYS', () => {
-    it('includes expected infra secret keys', () => {
-      expect(INFRA_SECRET_KEYS).toContain('postgres-passwordKeyVault');
-      expect(INFRA_SECRET_KEYS).toContain('redis-passwordKeyVault');
-      expect(INFRA_SECRET_KEYS).toContain('databases-miso-controller-0-passwordKeyVault');
-      expect(Array.isArray(INFRA_SECRET_KEYS)).toBe(true);
+    it('includes expected infra secret keys from infra.parameter.yaml (getter; read after fs mock)', () => {
+      const keys = secretsEnsure.INFRA_SECRET_KEYS;
+      expect(keys).toContain('postgres-passwordKeyVault');
+      expect(keys).toContain('redis-passwordKeyVault');
+      expect(keys).toContain('databases-miso-controller-0-passwordKeyVault');
+      expect(keys).toContain('databases-miso-controller-1-urlKeyVault');
+      expect(Array.isArray(keys)).toBe(true);
+    });
+  });
+
+  describe('getInfraSecretKeysForUpInfra', () => {
+    it('includes postgres, redis, keycloak-internal, and miso-controller DB indices 0 and 1', () => {
+      const keys = getInfraSecretKeysForUpInfra();
+      expect(keys).toContain('postgres-passwordKeyVault');
+      expect(keys).toContain('redis-url');
+      expect(keys).toContain('keycloak-internal-server-url');
+      expect(keys).toContain('databases-miso-controller-0-urlKeyVault');
+      expect(keys).toContain('databases-miso-controller-1-passwordKeyVault');
     });
   });
 

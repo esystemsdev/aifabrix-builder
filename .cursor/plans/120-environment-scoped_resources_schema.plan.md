@@ -253,7 +253,7 @@ Before marking this plan complete:
 
 ## Codebase validation (2026-04-05)
 
-**Verdict:** The plan is **implementable** and aligns with the current Builder layout. **Canonical filename:** `.cursor/plans/117-environment-scoped_resources_schema.plan.md`.
+**Verdict:** The plan is **implementable** and aligns with the current Builder layout. **Canonical filename:** `.cursor/plans/120-environment-scoped_resources_schema.plan.md`.
 
 
 | Check                                                | Result                                                                                                                                       |
@@ -268,7 +268,7 @@ Before marking this plan complete:
 | `aifabrix run --env`                                 | Implemented in `setup-app.js` with default `dev`.                                                                                            |
 | Prerequisite plan 65                                 | Present as `.cursor/plans/Archive/65-remote-docker-validated.plan.md`; prerequisite link updated.                                            |
 | Docs §8a                                             | All listed paths exist under `docs/commands/` and `docs/configuration/`.                                                                     |
-| Downstream                                           | [118-declarative_url_resolution.plan.md](118-declarative_url_resolution.plan.md) already depends on this plan’s flags—keep formulas in sync. |
+| Downstream                                           | [122-declarative_url_resolution.plan.md](122-declarative_url_resolution.plan.md) already depends on this plan’s flags—keep formulas in sync. |
 
 
 **Residual risks for implementers:** (1) Define one authoritative **Redis DB index** map and reuse everywhere. (2) Any command that resolves secrets outside `run` must receive the same **effective** boolean + env key as compose. (3) Traefik example in Purpose uses `/dev/api`; §5 shows `/${envKey}${pattern}`—confirm double-slash rules with `frontDoor.pattern` in code.
@@ -276,7 +276,7 @@ Before marking this plan complete:
 ## Plan validation report (`/validate-plan`)
 
 **Date:** 2026-04-05  
-**Plan:** `.cursor/plans/117-environment-scoped_resources_schema.plan.md`  
+**Plan:** `.cursor/plans/120-environment-scoped_resources_schema.plan.md`  
 **Status:** ✅ VALIDATED
 
 ### Plan purpose
@@ -313,4 +313,89 @@ Per-app `**environmentScopedResources`** plus user gate `**useEnvironmentScopedR
 - Implement after prerequisite plan **65** (Archive).
 - Centralize Redis index mapping; wire **effective** + **envKey** through every resolve path that touches kv or compose.
 - Keep **118** `url://` prefix math aligned with `**baseEffective`** here.
+
+## Implementation Validation Report
+
+**Date:** 2026-04-05 (re-validated after `max-params` fix)  
+**Plan:** `.cursor/plans/120-environment-scoped_resources_schema.plan.md`  
+**Status:** ✅ COMPLETE
+
+### Executive Summary
+
+Implementation matches plan §1–§8a (required docs). `npm test` passes (278 suites, 5820 tests). `npm run lint` exits **0** with **zero errors and zero warnings** (including `resolveComposePathsAndSecrets` refactored to a single `ctx` object in `lib/utils/compose-generate-docker-compose.js`). Plan §8a optional row (`docs/configuration/README.md` index mention) was **not** required and is **unchanged**. Stale pre-implementation row in **Codebase validation (2026-04-05)** above still says schema lacked the property—ignore that table; implementation superseded it.
+
+### Task completion
+
+- Plan frontmatter `todos: []`; sections **1–9** and **Definition of Done §1–9** treated as the checklist.
+- **Completed:** schema property; config defaults + `getUseEnvironmentScopedResources` / `setUseEnvironmentScopedResources`; CLI `dev set-scoped-resources` + `dev show` line; secrets/redis/compose/run wiring; deploy manifest flag in `builders.js`; split-variables; required docs §8a (four files).
+- **Optional / partial:** `docs/configuration/README.md` one-line mention (plan marked optional)—**not** added. Plan §9 “schema” test as explicit `environmentScopedResources` in a validator test—**not** found as a named assertion; behavior covered by `tests/lib/environment-scoped-resources.test.js` + `env-generation` / CLI / config tests.
+
+### File existence validation
+
+
+| Area                | Path                                                                                                                                                                                                                                        | Status                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Schema              | `lib/schema/application-schema.json`                                                                                                                                                                                                        | ✅ `environmentScopedResources` present + changelog |
+| Config              | `lib/core/config.js`, `lib/core/config-attach-extensions.js`                                                                                                                                                                                | ✅                                                  |
+| User gate helpers   | `lib/utils/config-scoped-resources-preference.js`                                                                                                                                                                                           | ✅                                                  |
+| CLI                 | `lib/cli/setup-dev.js`, `lib/commands/dev-show-display.js`                                                                                                                                                                                  | ✅                                                  |
+| Secrets / kv        | `lib/core/secrets.js`, `lib/utils/secrets-helpers.js`, `lib/utils/secrets-kv-scope.js`                                                                                                                                                      | ✅                                                  |
+| Redis               | `lib/utils/redis-env-scope.js`                                                                                                                                                                                                              | ✅                                                  |
+| App flag read       | `lib/utils/app-scoped-config.js`                                                                                                                                                                                                            | ✅                                                  |
+| Compose             | `lib/utils/compose-generator.js`, `lib/utils/compose-generate-docker-compose.js`                                                                                                                                                            | ✅                                                  |
+| Run                 | `lib/app/run.js`, `lib/app/run-helpers.js`, `lib/app/run-env-compose.js`, `lib/app/run-container-start.js`                                                                                                                                  | ✅                                                  |
+| Generator           | `lib/generator/builders.js`, `lib/generator/split-variables.js`                                                                                                                                                                             | ✅                                                  |
+| Docs §8a (required) | `docs/commands/developer-isolation.md`, `docs/commands/README.md`, `docs/configuration/secrets-and-config.md`, `docs/configuration/application-yaml.md`                                                                                     | ✅                                                  |
+| Docs §8a (optional) | `docs/configuration/README.md`                                                                                                                                                                                                              | ⚪ Optional per plan—not updated                    |
+| Tests               | `tests/lib/environment-scoped-resources.test.js`, `tests/lib/core/config.test.js`, `tests/lib/cli.test.js`, `tests/lib/commands/dev-show-display.test.js`, `tests/lib/app/run-env-compose.test.js`, `tests/lib/app/app-run-helpers.test.js` | ✅                                                  |
+
+
+### Test coverage
+
+- ✅ Unit tests: effective-flag matrix, kv scoped resolution, Redis content rewrite, container/Traefik helpers, config getters/setters, CLI `dev set-scoped-resources` + `dev show` expectations, `buildMergedRunEnvAndWrite` `runEnvKey`.
+- ⚪ Plan §9 “compose string contains prefixed container/path”: **not** a dedicated snapshot test; logic covered via helpers + `generateDockerCompose` factory wiring.
+- ⚪ Dedicated **AJV/schema** test file asserting property name `environmentScopedResources`: **not** located; low risk if global schema tests accept new optional keys.
+
+### Code quality validation
+
+
+| Step                 | Result                             |
+| -------------------- | ---------------------------------- |
+| `npm run lint:fix`   | ✅ Exit 0                           |
+| `npm run lint`       | ✅ Exit 0, **0 errors, 0 warnings** |
+| `npm test` (wrapper) | ✅ All passed                       |
+
+
+### Cursor rules compliance (spot check)
+
+- ✅ CommonJS, `path.join`, secrets via kv flow, CLI patterns (`setup-dev.js`), `docs-rules.mdc` (command-centric docs, no REST detail in user docs).
+- ✅ No new `lib/api` calls requiring `@requiresPermission` for this feature.
+- ✅ Project file/function size and **max-params**: `compose-generate-docker-compose.js` uses a single-parameter `resolveComposePathsAndSecrets(ctx)`; splits include `config-attach-extensions.js`, `secrets-kv-scope.js`.
+
+### Implementation completeness
+
+
+| Item                         | Status                  |
+| ---------------------------- | ----------------------- |
+| Database migrations          | N/A (Builder-only plan) |
+| Controller/Dataplane runtime | Out of scope per plan   |
+| Documentation §8a required   | ✅                       |
+| Tests passing                | ✅                       |
+
+
+### Issues and recommendations
+
+1. **Optional:** Add `docs/configuration/README.md` quick link if product wants index discoverability.
+2. **Optional:** Add one schema/validator test that includes `environmentScopedResources: true` in minimal valid application YAML if regression sensitivity is desired.
+3. **Housekeeping:** Update or remove the outdated **Codebase validation (2026-04-05)** table rows that claim the schema property is missing (historical only).
+
+### Final validation checklist
+
+- Implementation matches plan sections 1–9 (required items)
+- Required §8a documentation files updated
+- Tests exist and pass (`npm test`)
+- `npm run lint` passes (exit 0, **0 warnings**)
+- Strict zero ESLint warnings
+- No hardcoded secrets introduced in scoped resolution paths
+- `npm run build` equivalent: `lint` + `test` both succeed
 

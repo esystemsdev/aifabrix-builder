@@ -2,7 +2,7 @@
  * @fileoverview Tests for ensure-dev-certs-for-remote-docker
  */
 
-const fs = require('fs');
+const fs = require('node:fs');
 const path = require('path');
 const os = require('os');
 

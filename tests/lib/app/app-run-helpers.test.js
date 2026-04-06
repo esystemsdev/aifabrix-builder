@@ -27,7 +27,8 @@ jest.mock('../../../lib/infrastructure', () => ({
 }));
 
 jest.mock('../../../lib/core/config', () => ({
-  getDeveloperId: jest.fn().mockResolvedValue(0)
+  getDeveloperId: jest.fn().mockResolvedValue(0),
+  getConfig: jest.fn().mockResolvedValue({ useEnvironmentScopedResources: false })
 }));
 
 jest.mock('../../../lib/utils/build-copy', () => ({

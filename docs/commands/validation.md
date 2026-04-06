@@ -40,6 +40,7 @@ The validation system validates:
 - [Wizard Guide](../wizard.md) - Wizard validation and configuration
 - [External Integration Commands](external-integration.md) - External system validation commands
 - [External Systems Guide](../external-systems.md) - ABAC dimensions and field mappings
+- [Infra parameters catalog](../configuration/infra-parameters.md) - `infra.parameter.yaml`, local `kv://` vs Azure naming, workspace discovery
 
 ---
 
@@ -307,6 +308,27 @@ During deployment, the service validates (where applicable):
 **Note:** Dimension validation requires network access to the dataplane service. Local validation (`aifabrix validate`) checks dimension syntax and structure but cannot verify dimension keys against the Dimension Catalog. Use `aifabrix test-integration` or deployment to validate dimensions online.
 
 For more information about ABAC dimensions, see [External Systems Guide](../external-systems.md#field-mappings).
+
+---
+
+<a id="aifabrix-parameters-validate"></a>
+## aifabrix parameters validate
+
+Check the **infra parameter catalog** and workspace **`kv://` usage** in app `env.template` files. This is separate from `aifabrix validate` (which validates application and external-integration schemas).
+
+**What:** Loads the shipped catalog `lib/schema/infra.parameter.yaml` (unless you override it), validates catalog internal rules (including generator coverage for entries that require local materialization), then scans discovered `builder/<appKey>/env.template` files for `kv://` references and fails if any key is not covered by the catalog (exact match or pattern). Exits with a non-zero status when validation fails.
+
+**When:** After adding or renaming `kv://` keys in templates, in CI for repos that use the Builder workspace layout, or when troubleshooting missing secret generation for a new key.
+
+**Prerequisites:** None (fully offline). Uses the Builder workspace / `AIFABRIX_BUILDER_DIR` rules described in [Infra parameters](../configuration/infra-parameters.md#workspace-discovery-limits).
+
+**Usage:**
+```bash
+aifabrix parameters validate
+aifabrix parameters validate --catalog /path/to/custom/infra.parameter.yaml
+```
+
+**Related:** [Infra parameters (configuration)](../configuration/infra-parameters.md), [Secrets and config](../configuration/secrets-and-config.md), [Infrastructure commands](infrastructure.md) (`up-infra` ensures many catalog keys automatically).
 
 ---
 

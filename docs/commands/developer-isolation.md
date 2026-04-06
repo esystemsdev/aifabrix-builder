@@ -146,6 +146,31 @@ aifabrix dev down --apps
 
 ---
 
+<a id="aifabrix-dev-set-scoped-resources"></a>
+## aifabrix dev set-scoped-resources
+
+Activate or passivate **environment-scoped resource names** in local Builder behavior (secrets resolution, Redis DB index, Docker container names, Traefik path prefixes when your app uses ingress).
+
+**What:** Writes `useEnvironmentScopedResources` to `~/.aifabrix/config.yaml` as `true` or `false`. When **activated** (`true`), the Builder honors each app’s optional `environmentScopedResources` flag in `application.yaml` **only** for run/deploy resolution when the target environment is **dev** or **tst** (for example `aifabrix run <app> --env dev`). **pro** never uses these prefixes. When **passivated** (`false`, or key omitted), every app is treated as if `environmentScopedResources` were off for **local** resolution and compose generation. The per-app flag may still appear in generated deploy manifests for controller alignment.
+
+**Effective behavior** is: user gate **and** app flag **and** dev/tst. You normally set the app flag on apps that share Postgres/Docker across dev/tst (for example dataplane); you toggle the user gate when your machine should use prefixed keys and names.
+
+**When:** Turning shared-infrastructure mode on for your workspace, or reverting to classic single-env naming without editing YAML by hand.
+
+**Usage:**
+```bash
+aifabrix dev set-scoped-resources true
+aifabrix dev set-scoped-resources false
+```
+
+**Arguments:** `<value>` must be `true` or `false` (case-insensitive).
+
+**Output:** Confirmation and the same summary as `aifabrix dev show` (including **Scoped resources** on/off).
+
+**See also:** [aifabrix dev show](#aifabrix-dev-show), [Application configuration – application.yaml](../configuration/application-yaml.md), [Secrets and config](../configuration/secrets-and-config.md).
+
+---
+
 <a id="aifabrix-dev-set-format"></a>
 ## aifabrix dev set-format
 
@@ -184,7 +209,7 @@ aifabrix dev set-format yaml
 
 Show developer configuration (ports and config vars).
 
-**What:** Displays current developer ID, calculated ports (app, Postgres, Redis, pgAdmin, Redis Commander), and config vars (environment, controller, aifabrix-home, resolved home path, aifabrix-work, resolved `AIFABRIX_WORK`, aifabrix-secrets, aifabrix-env-config, etc.).
+**What:** Displays current developer ID, calculated ports (app, Postgres, Redis, pgAdmin, Redis Commander), and config vars (environment, controller, scoped resources on/off, aifabrix-home, resolved home path, aifabrix-work, resolved `AIFABRIX_WORK`, aifabrix-secrets, aifabrix-env-config, etc.).
 
 **When:** After `dev refresh` or to verify your developer isolation settings.
 
@@ -193,7 +218,7 @@ Show developer configuration (ports and config vars).
 aifabrix dev show
 ```
 
-**See Also:** [aifabrix dev set-id](#aifabrix-dev-set-id), [aifabrix dev set-format](#aifabrix-dev-set-format).
+**See Also:** [aifabrix dev set-id](#aifabrix-dev-set-id), [aifabrix dev set-scoped-resources](#aifabrix-dev-set-scoped-resources), [aifabrix dev set-format](#aifabrix-dev-set-format).
 
 ---
 
@@ -215,7 +240,7 @@ aifabrix dev set-id 01
 aifabrix dev set-id 2
 ```
 
-**See Also:** [aifabrix dev show](#aifabrix-dev-show), [aifabrix dev set-format](#aifabrix-dev-set-format).
+**See Also:** [aifabrix dev show](#aifabrix-dev-show), [aifabrix dev set-scoped-resources](#aifabrix-dev-set-scoped-resources), [aifabrix dev set-format](#aifabrix-dev-set-format).
 
 ---
 

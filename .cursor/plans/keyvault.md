@@ -1,3 +1,7 @@
+**Builder catalog (local development):** The AI Fabrix Builder ships [`lib/schema/infra.parameter.yaml`](../../lib/schema/infra.parameter.yaml) (JSON Schema: [`infra-parameter.schema.json`](../../lib/schema/infra-parameter.schema.json)) as the **source of truth** for which `kv://` keys the CLI knows about, how values are generated, and optional Azure naming hints. **Local** secret keys in `env.template` / `secrets.local.yaml` often use suffixes like `databases-{appKey}-{index}-urlKeyVault` / `passwordKeyVault`. **Azure** Key Vault secret names for the same logical secret usually use the **`{app-key}-` prefix** on those suffixes (see the database rows below). The two forms are not interchangeable. To verify workspace templates against the catalog, run **`aifabrix parameters validate`**. User-facing overview: [Infra parameters (configuration)](../../docs/configuration/infra-parameters.md).
+
+---
+
 **Key Vault Architecture:**
 
 - **Shared Key Vault**: One Key Vault supports multiple applications
@@ -41,3 +45,14 @@
 | Session Secrets                | `secrets.sessionKeyVault`              | `keyvault`     | 32-character random string     | `{app-key}-secrets-sessionKeyVault`            |
 | JWT Secrets                    | `secrets.jwtKeyVault`                  | `keyvault`     | 64-character random string     | `{app-key}-secrets-jwtKeyVault`                |
 | Unique Tokens                  | `secrets.tokenKeyVault`                | `keyvault`     | UUID v4 identifier             | `{app-key}-secrets-tokenKeyVault`              |
+
+### Miso install Bicep vs local `KeyVault` suffix
+
+Some Azure deploy templates use a **different secret name shape** than local `kv://` keys for the same logical value:
+
+| Local / `secrets.local.yaml` (Builder) | Azure Key Vault secret name (Miso Bicep) | Source |
+| --------------------------------------- | ------------------------------------------ | ------ |
+| `keycloak-admin-passwordKeyVault` | `{app-key}-keycloak-admin-password` | `05_miso-webapp.bicep`, `07_keycloak-webapp.bicep` |
+| `postgres-passwordKeyVault` (Docker infra admin) | `{app-key}-postgres-admin-password` | `07_keycloak-webapp.bicep` only — **not** the same role as shared `postgres-passwordKeyVault` in local infra |
+
+Unprefixed names that **match** between Bicep and local env include `keycloak-server-url`, `keycloak-internal-server-url`, `miso-controller-web-server-url`, `miso-controller-internal-server-url`, and `miso-controller-client-secretKeyVault`. A full line-by-line list is maintained in [Infra parameters — Bicep audit](../../docs/configuration/infra-parameters.md#audit-miso-install-bicep-vs-local-keys).

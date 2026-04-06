@@ -1,0 +1,6 @@
+app:
+  key: myapp
+requires:
+  databases:
+    - name: first
+    - name: second-db

@@ -6,6 +6,8 @@
 
 The AI Fabrix Builder supports developer isolation, allowing multiple developers to run applications simultaneously on the same machine without port conflicts. Each developer has a unique numeric ID (1, 2, 3, etc.) that determines their port assignments and infrastructure resources.
 
+**Infra secrets and `kv://` keys:** Port and controller URLs here are separate from **secret key naming**. For where secrets live (`config.yaml`, `secrets.local.yaml`, `builder/<appKey>/env.template`), how **`aifabrix up-infra`** and **`aifabrix resolve`** create keys, and how **local** key suffixes relate to **Azure** Key Vault names, see [Infra parameters (configuration)](configuration/infra-parameters.md).
+
 ## Port Calculation
 
 Ports are calculated using the formula: `basePort + (developer-id * 100)`

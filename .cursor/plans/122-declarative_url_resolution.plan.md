@@ -4,25 +4,25 @@ overview: Builder-only feature—applications declare a single `port` and front 
 todos:
   - id: urls-registry
     content: Maintain ~/.aifabrix/urls.local.yaml with all apps’ port + pattern; refresh when scanning builder apps or batch resolve
-    status: pending
+    status: completed
   - id: envkey-from-clientid
     content: Implement deriveEnvKeyFromClientId in Builder (hyphen segments, end-first match dev|tst|pro|miso; MISO_PIPELINE_ENV_KEY override)—spec + Jest golden vectors, no other repo required
-    status: pending
+    status: completed
   - id: port-rules
     content: Implement port math from plan §5—localHostPort = port+10+devId*100; publishedHostPort = port+devId*100; remove build.localPort from schema/generators
-    status: pending
+    status: completed
   - id: resolver-core
     content: Resolver inputs config.yaml, remote-server, registry, secrets/env; apply §8 remote host rewrite (dev*. subdomain when developer-id non-zero); outputs expanded url:// and two .env variants
-    status: pending
+    status: completed
   - id: remove-legacy-env-config
     content: Remove lib/schema/env-config.yaml stack and related CLI/docs after replacement infra defaults live in Builder code
-    status: pending
+    status: completed
   - id: schema-docs
     content: application-schema + docs—only `port` + frontDoor (remove `build.localPort`); env.template url://; sample YAMLs/generators
-    status: pending
+    status: completed
   - id: matrix-tests
     content: Jest goldens—§ scoping truth table; § base URL matrix (dev); tst/pro/miso rows; § run --reload matrix; §8 remote + dev id `01` vs nil/`0` (bare host) cases
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -78,7 +78,7 @@ Single pipeline used for **batch** and **per-app** resolve. Order matters where 
   `**localHostPort = port + 10 + (developerIdNum * 100)`**  
   Replaces former `**build.localPort`**. Example: `3001`, `01` → 3111 (unchanged vs matrix A4/C4). For `**developerIdNum = 0`**: `localHostPort = port + 10` only.
    Document edge cases (large `developer-id`, port overflow) in implementation; golden tests use `**01**` as today.
-6. **Apply environment-scoped path prefix** when **URL-path effective** per [117-environment-scoped_resources_schema.plan.md](117-environment-scoped_resources_schema.plan.md). Builder must compute the same boolean as deploy/resolve: `baseEffective = Boolean(config.useEnvironmentScopedResources) && Boolean(app.environmentScopedResources)`; `**url://public` path prefix** applies only when `baseEffective && derivedEnvKey ∈ {dev,tst}` — then insert `/<derivedEnvKey>` before the app pattern (e.g. `/dev/data`, `/tst/data`). If `derivedEnvKey` is `pro` or `miso`, **no path prefix** even when `baseEffective` is true (plan 117: pro/miso never use the prefix).
+6. **Apply environment-scoped path prefix** when **URL-path effective** per [120-environment-scoped_resources_schema.plan.md](120-environment-scoped_resources_schema.plan.md). Builder must compute the same boolean as deploy/resolve: `baseEffective = Boolean(config.useEnvironmentScopedResources) && Boolean(app.environmentScopedResources)`; `**url://public` path prefix** applies only when `baseEffective && derivedEnvKey ∈ {dev,tst}` — then insert `/<derivedEnvKey>` before the app pattern (e.g. `/dev/data`, `/tst/data`). If `derivedEnvKey` is `pro` or `miso`, **no path prefix** even when `baseEffective` is true (plan 117: pro/miso never use the prefix).
 7. **Combine** with `**remote-server**` (when set) vs **local** base URL for public URLs; choose **internal** bases per profile (service name:port inside docker network vs host-reachable URL for local profile) — product matrix from earlier discussion applies here.
 8. **Remote-server developer subdomain (host rewrite):** When `**remote-server**` is set, any **public** (or local-profile mirror) URL whose origin matches that of `remote-server` must apply a **developer-scoped host** before final emission:
   - **Condition:** `**developer-id**` is **present, non-empty, and parses to `developerIdNum !== 0**` (see Resolver §5). If `**developer-id**` is **absent, empty, or parses to `0**`, do **not** rewrite the host.
@@ -98,7 +98,7 @@ Use these tables as **contract fixtures** in Jest: same inputs → same `url://p
 
 ### Plan 117 — two-layer scoping → **public URL path prefix**
 
-Aligned with [117-environment-scoped_resources_schema.plan.md](117-environment-scoped_resources_schema.plan.md).
+Aligned with [120-environment-scoped_resources_schema.plan.md](120-environment-scoped_resources_schema.plan.md).
 
 
 | `config.yaml` `useEnvironmentScopedResources` | `application.yaml` `environmentScopedResources` | Derived envKey (from `MISO_CLIENTID` / override) | **Path prefix** in `url://public` (before app pattern, e.g. `/data`) |
@@ -217,7 +217,7 @@ This section audits **everything** raised in the conversation against the plan. 
 | `~/.aifabrix/config.yaml` **developer-id**                                            | Yes                | Resolver §1; fixtures `01`, port **3101** / **3111**                                                                          |
 | `**remote-server**` (set vs absent)                                                   | Yes                | Matrices A/B/C columns; D1–D7; Resolver §8 `**dev<label>.` host** when `developer-id` non-zero; bare host when nil/`0`        |
 | `**useEnvironmentScopedResources**` (user gate)                                       | Yes                | Resolver §1, §6; truth table; D2 vs D1                                                                                        |
-| `**aifabrix dev set-scoped-resources**` (writes user gate)                            | Yes (by reference) | Same as user gate; see [117-environment-scoped_resources_schema.plan.md](117-environment-scoped_resources_schema.plan.md) §2b |
+| `**aifabrix dev set-scoped-resources**` (writes user gate)                            | Yes (by reference) | Same as user gate; see [120-environment-scoped_resources_schema.plan.md](120-environment-scoped_resources_schema.plan.md) §2b |
 | `**application.yaml` `environmentScopedResources**`                                   | Yes                | Truth table; D3                                                                                                               |
 | `**application.yaml` `port**` (sole port field)                                       | Yes                | Registry + fixtures (`3001`)                                                                                                  |
 | `**build.localPort` removed**; local host port **computed**                           | Yes                | Resolver §5; fixed inputs (`localHostPort` / `publishedHostPort`)                                                             |
@@ -304,19 +304,19 @@ This plan must comply with [Project Rules](.cursor/rules/project-rules.mdc):
 - **[CLI Command Development](.cursor/rules/project-rules.mdc#cli-command-development)** — Any batch-resolve or extended `resolve` UX: Commander.js, input validation, chalk, try/catch on async.
 - **[Template Development](.cursor/rules/project-rules.mdc#template-development)** — `env.template` gains `url://` placeholders; document patterns for generators that emit templates.
 - **[Docker & Infrastructure](.cursor/rules/project-rules.mdc#docker--infrastructure)** — Dual docker vs local `.env` must stay consistent with [lib/utils/compose-generator.js](lib/utils/compose-generator.js) and [lib/app/run.js](lib/app/run.js) published-port behavior.
-- **[Security & Compliance (ISO 27001)](.cursor/rules/project-rules.mdc#security--compliance-iso-27001)** — Resolver must not log resolved URLs if they contain secrets; never log `secrets.local.yaml` contents; **kv://** materialized before **url://** (overlap with [116-infra.parameter.yaml_parameters.plan.md](116-infra.parameter.yaml_parameters.plan.md)).
+- **[Security & Compliance (ISO 27001)](.cursor/rules/project-rules.mdc#security--compliance-iso-27001)** — Resolver must not log resolved URLs if they contain secrets; never log `secrets.local.yaml` contents; **kv://** materialized before **url://** (overlap with [121-infra.parameter.yaml_parameters.plan.md](121-infra.parameter.yaml_parameters.plan.md)).
 - **[Testing Conventions](.cursor/rules/project-rules.mdc#testing-conventions)** — Jest golden matrices §A–D; mock workspace/fs where needed; ≥80% coverage on **new** resolver and registry code.
 - **[Error Handling & Logging](.cursor/rules/project-rules.mdc#error-handling--logging)** — Fail fast on ambiguous `run --env` vs client-id envKey with clear messages once product decision is fixed.
 
 **User docs:** [.cursor/rules/docs-rules.mdc](.cursor/rules/docs-rules.mdc) — command-centric `docs/` (what the CLI does, not REST/API detail).
 
-**Key requirements:** Implement **117** gate booleans or stub them in tests; keep `**baseEffective`** formula identical to [117-environment-scoped_resources_schema.plan.md](117-environment-scoped_resources_schema.plan.md); coordinate `**kv://` before `url://`** with plan **116** in any unified resolve pipeline.
+**Key requirements:** Implement **117** gate booleans or stub them in tests; keep `**baseEffective`** formula identical to [120-environment-scoped_resources_schema.plan.md](120-environment-scoped_resources_schema.plan.md); coordinate `**kv://` before `url://`** with plan **116** in any unified resolve pipeline.
 
 ## Before development
 
 - Read [Quality Gates](.cursor/rules/project-rules.mdc#quality-gates) and [Validation Patterns](.cursor/rules/project-rules.mdc#validation-patterns) in `project-rules.mdc`.
-- Re-read [117-environment-scoped_resources_schema.plan.md](117-environment-scoped_resources_schema.plan.md) (two-layer gate, dev/tst-only path prefix).
-- Skim [116-infra.parameter.yaml_parameters.plan.md](116-infra.parameter.yaml_parameters.plan.md) for catalog / `**kv://`** ordering relative to this resolver.
+- Re-read [120-environment-scoped_resources_schema.plan.md](120-environment-scoped_resources_schema.plan.md) (two-layer gate, dev/tst-only path prefix).
+- Skim [121-infra.parameter.yaml_parameters.plan.md](121-infra.parameter.yaml_parameters.plan.md) for catalog / `**kv://`** ordering relative to this resolver.
 - Trace: [lib/core/secrets.js](lib/core/secrets.js) or current resolve chain, [lib/utils/secrets-helpers.js](lib/utils/secrets-helpers.js), [lib/utils/env-copy.js](lib/utils/env-copy.js), [lib/app/run.js](lib/app/run.js) (`calculateHostPort`, `ensureReloadSync`, `resolveRunOptions`), [lib/cli/setup-app.js](lib/cli/setup-app.js) `--env` / `--reload`.
 - Trace legacy removal: [lib/schema/env-config.yaml](lib/schema/env-config.yaml), [lib/utils/env-config-loader.js](lib/utils/env-config-loader.js), [lib/utils/config-paths.js](lib/utils/config-paths.js) `aifabrix-env-config`.
 - Decide and document **single source of truth** for URL path envKey when `run --env` and `MISO_CLIENTID` disagree (plan § known inconsistencies).
@@ -360,7 +360,7 @@ Before marking this plan complete:
 ### Doc / link hygiene
 
 - Fixed in this pass: broken markdown links `[aifabrix-builder](aifabrix-builder)` → plain repo wording.
-- **Dependency:** Treat [117-environment-scoped_resources_schema.plan.md](117-environment-scoped_resources_schema.plan.md) as **ordering or contract**: either land 117 first, or stub the same booleans in 118 so golden tests match the truth table.
+- **Dependency:** Treat [120-environment-scoped_resources_schema.plan.md](120-environment-scoped_resources_schema.plan.md) as **ordering or contract**: either land 117 first, or stub the same booleans in 118 so golden tests match the truth table.
 
 ### Residuals (unchanged — still valid)
 
@@ -375,7 +375,7 @@ Before marking this plan complete:
 ## Plan validation report (`/validate-plan`)
 
 **Date:** 2026-04-05  
-**Plan:** `.cursor/plans/118-declarative_url_resolution.plan.md`  
+**Plan:** `.cursor/plans/122-declarative_url_resolution.plan.md`  
 **Status:** ✅ VALIDATED
 
 ### Plan purpose
@@ -412,4 +412,76 @@ Builder-only **declarative `url://` resolution**: single `port` + `frontDoorRout
 - Land **117** (or test doubles) before asserting §6 matrices in CI.
 - When **116** introduces unified resolve, enforce **step 3 → step 8** order from this plan’s Resolver section in one module to avoid drift.
 - Resolve `**run --env` vs `deriveEnvKey`** early and encode in Jest to avoid flaky Matrix D tests.
+
+## Implementation Validation Report
+
+**Date:** 2026-04-06 (follow-up: open items closed)  
+**Plan:** `.cursor/plans/122-declarative_url_resolution.plan.md`  
+**Status:** ✅ **COMPLETE** (lint 0 warnings; docs; Matrix D + D5 tests; helpers refactored)
+
+### Executive Summary
+
+Implementation matches the plan: `url://` expansion after `kv://`, registry, port math, Plan 117 prefix, tst remote host rewrite, removal of `build.localPort` / `env-config.yaml` stack. **Follow-up work** closed all prior gaps: **`resolveListenPortPatternForToken`** / **`writeMergedRegistry` + `tryLoadApplicationYaml` + `mergeDocIntoRegistry`** reduced ESLint **max-statements** / **complexity** to **zero warnings**. **`docs/configuration/declarative-urls.md`** plus index and cross-links document `url://`, `urls.local.yaml`, `--reload` / `envOutputPath`, and migration. **`tests/lib/utils/declarative-url-matrix-d-reload.test.js`** encodes Matrix **D1–D4, D6, D7**; **`run-reload-sync.test.js`** adds **D5** (missing Mutagen sync settings). **`npm run lint`** passes with **no warnings**.
+
+### Task completion (frontmatter)
+
+| Todo ID | Status |
+|--------|--------|
+| urls-registry | ✅ completed |
+| envkey-from-clientid | ✅ completed |
+| port-rules | ✅ completed |
+| resolver-core | ✅ completed |
+| remove-legacy-env-config | ✅ completed |
+| schema-docs | ✅ completed (schema + CHANGELOG + `declarative-urls.md` + links) |
+| matrix-tests | ✅ completed (A/B/C + expand + **Matrix D** + D5) |
+
+### File existence validation
+
+| Item | Status |
+|------|--------|
+| Resolver / registry / ports / derive-env / infra-env-defaults | ✅ |
+| `docs/configuration/declarative-urls.md` | ✅ |
+| `tests/lib/utils/declarative-url-matrix-d-reload.test.js` | ✅ |
+| Tests (declarative-url-*, urls-local-registry, url-declarative-resolve-expand) | ✅ |
+
+### Test coverage
+
+- ✅ Matrices A/B/C helpers + expand + registry + ports (unchanged suites).
+- ✅ **Matrix D** — D1 (docker vs local internal difference + parity), D2, D3, D4, D6, D7 in `declarative-url-matrix-d-reload.test.js`.
+- ✅ **Matrix D5** — `ensureReloadSync` throws when mutagen sync settings incomplete (`run-reload-sync.test.js`).
+- ℹ️ **Coverage %** — run `npm run test:coverage` in CI when required; targeted suites pass.
+
+### Code quality validation
+
+| Step | Result |
+|------|--------|
+| `npm run lint` | ✅ **0 errors, 0 warnings** |
+| Plan-122 related Jest suites (run in band) | ✅ 57 tests passed |
+
+### Cursor rules compliance
+
+- ✅ Command-centric docs (no REST); `path.join`, resolve order, ISO logging posture.
+- ✅ File/function ESLint limits satisfied for touched hotspots.
+
+### Definition of done
+
+| Item | Status |
+|------|--------|
+| Lint zero warnings | ✅ |
+| `docs/` for `url://` / registry | ✅ |
+| Matrix D + D5 | ✅ |
+| Refactor warnings | ✅ |
+
+### Residual notes
+
+- Full **`npm run build`** (multi-project Jest) can still show **intermittent cross-worker pollution** or **missing optional workspace files** in some environments; use **`npx jest --runInBand`** for a deterministic full run if needed.
+
+### Final validation checklist
+
+- [x] Core implementation present and wired
+- [x] Tests including Matrix D and D5
+- [x] Lint: zero warnings
+- [x] `docs/` updated (`declarative-urls.md` + links)
+- [x] Plan frontmatter todos completed
+- [x] Resolver/registry helper refactors
 

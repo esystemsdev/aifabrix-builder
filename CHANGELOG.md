@@ -1,3 +1,10 @@
+## [Unreleased]
+
+### Breaking
+- **Application schema 1.4.0:** `build.localPort` removed from `application-schema.json`. Use root `port` only for listen/container and local dev port math; declarative `url://` references in env templates replace separate local publish ports. See schema `metadata.changelog` and docs (plan 122).
+
+---
+
 ## [2.43.0] - 2026-03-16
 
 ### Added

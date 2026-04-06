@@ -125,7 +125,8 @@ describe('run-env-compose', () => {
       expect(secretsEnvWrite.resolveAndGetEnvMap).toHaveBeenCalledWith('myapp', {
         environment: 'docker',
         secretsPath: null,
-        force: false
+        force: false,
+        runEnvKey: 'dev'
       });
       expect(adminSecrets.envObjectToContent).toHaveBeenCalledTimes(2);
       const appOnlyCall = adminSecrets.envObjectToContent.mock.calls[0][0];

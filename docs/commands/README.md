@@ -26,6 +26,7 @@ Complete command reference organized by concept with examples and troubleshootin
 - [Developer Isolation Commands](developer-isolation.md) - Local dev config, Builder onboarding, remote admin, Mutagen/sync
   - [`aifabrix dev show`](developer-isolation.md#aifabrix-dev-show) - Show dev ports and ~/.aifabrix config
   - [`aifabrix dev set-id <id>`](developer-isolation.md#aifabrix-dev-set-id) - Set developer ID (0 = default infra, &gt;0 = dev-specific ports)
+  - [`aifabrix dev set-scoped-resources <true|false>`](developer-isolation.md#aifabrix-dev-set-scoped-resources) - Set useEnvironmentScopedResources (shared dev/tst Postgres/Docker naming)
   - [`aifabrix dev set-env-config <filePath>`](developer-isolation.md#aifabrix-dev-set-env-config) - Set or clear aifabrix-env-config in config (path not validated)
   - [`aifabrix dev set-home <path>`](developer-isolation.md#aifabrix-dev-set-home) - Set or clear aifabrix-home; optional shell/user env registration
   - [`aifabrix dev set-work <path>`](developer-isolation.md#aifabrix-dev-set-work) - Set or clear aifabrix-work (workspace root); optional `AIFABRIX_WORK` registration
@@ -83,6 +84,7 @@ Complete command reference organized by concept with examples and troubleshootin
 ### Validation & Comparison
 - [Validation Commands](validation.md) - Configuration validation
   - [`aifabrix validate <appOrFile>`](validation.md#aifabrix-validate-apporfile) - Validate one app/file or all under `integration/` or `builder/` (`--integration` / `--builder`)
+  - [`aifabrix parameters validate`](validation.md#aifabrix-parameters-validate) - Check `builder/*/env.template` `kv://` keys against shipped `infra.parameter.yaml` (optional `--catalog <path>`)
   - [`aifabrix diff <file1> <file2>`](validation.md#aifabrix-diff-file1-file2) - Diff two config files (optional schema validate)
 
 ### External Integration

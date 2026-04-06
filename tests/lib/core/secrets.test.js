@@ -388,8 +388,8 @@ environments:
       expect(call).toBeDefined();
       const written = call[1];
       expect(written).toContain('DATABASE_URL=admin123');
-      // With dev-id 1 mocked in this test file, PORT should be appended (+100)
-      expect(written).toMatch(/^PORT=3100$/m);
+      // With dev-id 1 mocked: local host port = listen + 10 + 100
+      expect(written).toMatch(/^PORT=3110$/m);
       expect(result).toBe(path.join(builderPath, '.env'));
     });
 
@@ -1827,7 +1827,6 @@ environments:
 port: 8082
 build:
   containerPort: 8080
-  localPort: 8082
 `;
         }
         if (filePath.includes('env-config.yaml')) {
@@ -1897,8 +1896,6 @@ environments:
         if (filePath.includes('keycloak') && filePath.includes('application.yaml')) {
           return `
 port: 8080
-build:
-  localPort: 8082
 `;
         }
         if (filePath.includes('env-config.yaml')) {
@@ -3000,10 +2997,10 @@ port: 4000
       const writeCalls = fs.writeFileSync.mock.calls;
       const outputCall = writeCalls.find(call => call[0] === outputPath);
       expect(outputCall).toBeDefined();
-      expect(outputCall[1]).toContain('PORT=4000');
+      expect(outputCall[1]).toContain('PORT=4010');
     });
 
-    it('should use port when localPort not specified', async() => {
+    it('should derive PORT from manifest port for envOutputPath copy (dev id 0)', async() => {
       // Set developer-id to 0 for this test to avoid offset
       // Reset the mock first, then set it to return 0
       config.getDeveloperId.mockReset();
@@ -3052,7 +3049,7 @@ environments:
       const outputPath = path.resolve(builderPath, '../app/.env');
       const outputCall = writeCalls.find(call => call[0] === outputPath);
       expect(outputCall).toBeDefined();
-      expect(outputCall[1]).toContain('PORT=5000');
+      expect(outputCall[1]).toContain('PORT=5010');
     });
 
     it('should not copy when envOutputPath is null', async() => {

@@ -1852,6 +1852,10 @@ describe('CLI Commands', () => {
     /** After setupCommandsAndResetLogger, re-prime config getters used by dev show display. */
     function primeDevShowConfigMocks() {
       config.getFormat.mockResolvedValue(null);
+      if (typeof config.getUseEnvironmentScopedResources !== 'function') {
+        config.getUseEnvironmentScopedResources = jest.fn();
+      }
+      config.getUseEnvironmentScopedResources.mockResolvedValue(false);
       config.getRemoteServer.mockResolvedValue(null);
       config.getDockerEndpoint.mockResolvedValue(null);
       config.getDockerTlsSkipVerify.mockResolvedValue(false);
@@ -2600,7 +2604,6 @@ describe('CLI Commands', () => {
         config.getCurrentEnvironment.mockResolvedValue('dev');
         config.getControllerUrl.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
-        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
         devConfig.getDevPorts.mockReturnValue({
           app: 3100,
           postgres: 5532,
@@ -2630,7 +2633,6 @@ describe('CLI Commands', () => {
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('pgAdmin', '5150'));
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Redis Commander', '8181'));
         expect(config.getAifabrixSecretsPath).toHaveBeenCalled();
-        expect(config.getAifabrixEnvConfigPath).toHaveBeenCalled();
       });
 
       it('should execute dev set-id with id 2 via setupCommands', async() => {
@@ -2641,7 +2643,6 @@ describe('CLI Commands', () => {
         config.getCurrentEnvironment.mockResolvedValue('dev');
         config.getControllerUrl.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
-        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
         devConfig.getDevPorts.mockReturnValue({
           app: 3200,
           postgres: 5632,
@@ -2661,7 +2662,6 @@ describe('CLI Commands', () => {
         expect(devConfig.getDevPorts).toHaveBeenCalledWith(2);
         expect(config.getRemoteServer).toHaveBeenCalled();
         expect(config.getAifabrixSecretsPath).toHaveBeenCalled();
-        expect(config.getAifabrixEnvConfigPath).toHaveBeenCalled();
       });
 
       it('should preserve leading zeros in developer ID (e.g., "01") via dev set-id', async() => {
@@ -2672,7 +2672,6 @@ describe('CLI Commands', () => {
         config.getCurrentEnvironment.mockResolvedValue('dev');
         config.getControllerUrl.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
-        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
         devConfig.getDevPorts.mockReturnValue({
           app: 3100,
           postgres: 5532,
@@ -2695,7 +2694,6 @@ describe('CLI Commands', () => {
         expect(logger.log).toHaveBeenCalledWith(devShowHeader);
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('ID', '01'));
         expect(config.getAifabrixSecretsPath).toHaveBeenCalled();
-        expect(config.getAifabrixEnvConfigPath).toHaveBeenCalled();
       });
 
       it('should execute dev show command via setupCommands', async() => {
@@ -2706,7 +2704,6 @@ describe('CLI Commands', () => {
         config.getCurrentEnvironment.mockResolvedValue('dev');
         config.getControllerUrl.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
-        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
         devConfig.getDevPorts.mockReturnValue({
           app: 3000,
           postgres: 5432,
@@ -2733,7 +2730,6 @@ describe('CLI Commands', () => {
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('pgAdmin', '5050'));
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Redis Commander', '8081'));
         expect(config.getAifabrixSecretsPath).toHaveBeenCalled();
-        expect(config.getAifabrixEnvConfigPath).toHaveBeenCalled();
       });
 
       it('should display configuration variables when running dev show via setupCommands', async() => {
@@ -2744,7 +2740,6 @@ describe('CLI Commands', () => {
         config.getCurrentEnvironment.mockResolvedValue('dev');
         config.getControllerUrl.mockResolvedValue('http://localhost:3610');
         config.getAifabrixSecretsPath.mockResolvedValue('/workspace/aifabrix-miso/builder/secrets.local.yaml');
-        config.getAifabrixEnvConfigPath.mockResolvedValue('/workspace/aifabrix-miso/builder/env-config.yaml');
         devConfig.getDevPorts.mockReturnValue({
           app: 3100,
           postgres: 5532,
@@ -2769,8 +2764,9 @@ describe('CLI Commands', () => {
           paddedDevRow('Controller', 'http://localhost:3610')
         );
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Format', EM));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Scoped resources', 'off (default)'));
         expect(logger.log).toHaveBeenCalledWith(
-          paddedDevRow('Env Config', '/workspace/aifabrix-miso/builder/env-config.yaml')
+          paddedDevRow('URLs registry', path.join(mockHomeDir, '.aifabrix', 'urls.local.yaml'))
         );
         expect(logger.log).toHaveBeenCalledWith('📁 Paths');
         expect(logger.log).toHaveBeenCalledWith(
@@ -2802,7 +2798,6 @@ describe('CLI Commands', () => {
         config.getSyncSshUser.mockResolvedValue(null);
         config.getSyncSshHost.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue('/aifabrix-miso/builder/secrets.local.yaml');
-        config.getAifabrixEnvConfigPath.mockResolvedValue('/workspace/aifabrix-miso/builder/env-config.yaml');
         devConfig.getDevPorts.mockReturnValue({
           app: 3100,
           postgres: 5532,
@@ -2829,7 +2824,6 @@ describe('CLI Commands', () => {
         config.getCurrentEnvironment.mockResolvedValue('dev');
         config.getControllerUrl.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
-        config.getAifabrixEnvConfigPath.mockResolvedValue('/workspace/aifabrix-miso/builder/env-config.yaml');
         devConfig.getDevPorts.mockReturnValue({
           app: 3100,
           postgres: 5532,
@@ -2847,8 +2841,9 @@ describe('CLI Commands', () => {
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Environment', 'dev'));
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Controller', EM));
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Format', EM));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Scoped resources', 'off (default)'));
         expect(logger.log).toHaveBeenCalledWith(
-          paddedDevRow('Env Config', '/workspace/aifabrix-miso/builder/env-config.yaml')
+          paddedDevRow('URLs registry', path.join(mockHomeDir, '.aifabrix', 'urls.local.yaml'))
         );
         expect(logger.log).toHaveBeenCalledWith(
           paddedDevRow('Home', path.join(mockHomeDir, '.aifabrix'))
@@ -2899,7 +2894,6 @@ describe('CLI Commands', () => {
         config.getFormat.mockResolvedValue('json');
         config.getAifabrixHomeOverride.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
-        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
         devConfig.getDevPorts.mockReturnValue({
           app: 3000, postgres: 5432, redis: 6379,
           pgadmin: 5050, redisCommander: 8081
@@ -2926,7 +2920,6 @@ describe('CLI Commands', () => {
         config.getFormat.mockResolvedValue('yaml');
         config.getAifabrixHomeOverride.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
-        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
         devConfig.getDevPorts.mockReturnValue({
           app: 3000, postgres: 5432, redis: 6379,
           pgadmin: 5050, redisCommander: 8081
@@ -2950,6 +2943,57 @@ describe('CLI Commands', () => {
         await handler('xml');
 
         expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'dev set-format');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+    });
+
+    describe('dev set-scoped-resources command handler execution', () => {
+      it('should execute dev set-scoped-resources true via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+        primeDevShowConfigMocks();
+
+        config.setUseEnvironmentScopedResources.mockResolvedValue();
+        config.getDeveloperId.mockResolvedValue('0');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
+        config.getAifabrixSecretsPath.mockResolvedValue(null);
+        config.getUseEnvironmentScopedResources.mockResolvedValue(true);
+        devConfig.getDevPorts.mockReturnValue({
+          app: 3000,
+          postgres: 5432,
+          redis: 6379,
+          pgadmin: 5050,
+          redisCommander: 8081
+        });
+        chalk.green.mockImplementation((text) => text);
+        chalk.gray.mockImplementation((text) => text);
+
+        const handler = commandActions['dev set-scoped-resources <value>'];
+        expect(handler).toBeDefined();
+
+        await handler('true');
+
+        expect(config.setUseEnvironmentScopedResources).toHaveBeenCalledWith(true);
+        expect(logger.log).toHaveBeenCalledWith(
+          chalk.green('✓ Environment-scoped resources activated in ~/.aifabrix/config.yaml')
+        );
+      });
+
+      it('should handle invalid value via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['dev set-scoped-resources <value>'];
+        expect(handler).toBeDefined();
+
+        await handler('maybe');
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(
+          expect.any(Error),
+          'dev set-scoped-resources'
+        );
         expect(process.exit).toHaveBeenCalledWith(1);
       });
     });

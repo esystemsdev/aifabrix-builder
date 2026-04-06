@@ -27,6 +27,7 @@ Application config can be **application.yaml**, **application.yml**, or **applic
 | `scaling`, `frontDoorRouting` | Deployment and routing config |
 | `deployment.environment` | Target environment |
 | `repository`, `startupCommand`, `runtimeVersion` | Build and run config |
+| `environmentScopedResources` | Optional boolean (default off). When **true**, this app **supports** env-scoped resource naming when the user activates `useEnvironmentScopedResources` in `~/.aifabrix/config.yaml` (see `aifabrix dev set-scoped-resources`) and you run or resolve for **dev** or **tst**. Does not apply to **pro**. Included in deploy manifest for controller alignment. See [Secrets and config](secrets-and-config.md). |
 
 ## Parameters by type: webapp vs external
 

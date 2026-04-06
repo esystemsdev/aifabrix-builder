@@ -183,6 +183,24 @@ describe('Secrets Generator Module', () => {
       expect(result).toBe('postgresql://miso_user:miso_pass123@${DB_HOST}:${DB_PORT}/miso');
     });
 
+    it('should generate miso_logs_user / miso-logs URL for miso-controller database index 1', () => {
+      const key = 'databases-miso-controller-1-urlKeyVault';
+
+      const result = secretsGenerator.generateSecretValue(key);
+
+      expect(result).toBe(
+        'postgresql://miso_logs_user:miso_logs_pass123@${DB_HOST}:${DB_PORT}/miso-logs'
+      );
+    });
+
+    it('should generate miso_logs_pass123 for miso-controller database index 1 password', () => {
+      const key = 'databases-miso-controller-1-passwordKeyVault';
+
+      const result = secretsGenerator.generateSecretValue(key);
+
+      expect(result).toBe('miso_logs_pass123');
+    });
+
     it('should return empty string for URL keys that are not database URLs', () => {
       const key = 'some-url-key';
 

@@ -1,28 +1,28 @@
 ---
 name: infra.parameter.yaml parameters
-overview: Introduce a single Builder-side parameter catalog (`infra.parameter.yaml`) that defines local `kv://` keys, generation rules, and Azure Key Vault name alignment (reconciled with `.cursor/plans/keyvault.md`); drive `up-infra` and app/database changes to auto-ensure secrets and add validation. Aligns with `.cursor/plans/118-declarative_url_resolution.plan.md` on resolve order (materialize `kv://` before expanding `url://`); 116 does not own `url://` or `urls.local.yaml`.
+overview: Introduce a single Builder-side parameter catalog (`infra.parameter.yaml`) that defines local `kv://` keys, generation rules, and Azure Key Vault name alignment (reconciled with `.cursor/plans/keyvault.md`); drive `up-infra` and app/database changes to auto-ensure secrets and add validation. Aligns with `.cursor/plans/122-declarative_url_resolution.plan.md` on resolve order (materialize `kv://` before expanding `url://`); 116 does not own `url://` or `urls.local.yaml`.
 todos:
   - id: audit-azure-names
     content: Audit Miso Bicep + docs/schemas/application.md + keyvault.md table vs actual kv:// suffixes in env.template; record local vs Azure secret names in catalog `azure` / `vaultSecretName` (explicit mapping where patterns differ).
-    status: pending
+    status: completed
   - id: schema-catalog
     content: Add infra.parameter.schema.json + default infra.parameter.yaml and AJV-backed loader module with tests.
-    status: pending
+    status: completed
   - id: refactor-generate
     content: Route generateSecretValue through catalog; fix miso-controller index-aware DB URL/password rules.
-    status: pending
+    status: completed
   - id: up-infra-discover
     content: Extend up-infra to discover required kv keys from workspace env.templates + application.yaml databases arrays; replace static INFRA_SECRET_KEYS where possible.
-    status: pending
+    status: completed
   - id: validate-cli
     content: "Add or extend validate command: kv:// refs vs catalog coverage + generator presence."
-    status: pending
+    status: completed
   - id: docs-keyvault
     content: "Extend .cursor/plans/keyvault.md (and contributor docs under docs/) for dual naming where needed: local kv:// = databases-{appKey}-{index}-* (Builder templates); Azure KV secret names = {app-key}-databases-{index}-* per existing keyvault.md table; infra.parameter.yaml is source of truth for mapping. No separate 116-parameters.md."
-    status: pending
+    status: completed
   - id: docs-onboarding
     content: Copy plan sections "Onboarding file structure" + "Variables keys and naming" into docs/developer-isolation.md or docs/configuration/infra-parameters.md.
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -46,7 +46,7 @@ isProject: false
 
 ## Alignment with Plan 118 (declarative `url://` resolution)
 
-- **[118-declarative_url_resolution.plan.md](aifabrix-builder/.cursor/plans/118-declarative_url_resolution.plan.md)** defines `url://` placeholders, `~/.aifabrix/urls.local.yaml` (ports + front-door **pattern** only), and resolve order: load config → refresh URL registry → **resolve `kv://` (and other secret rules)** → derive env key → expand `url://` → emit Docker vs Local `.env`.
+- **[122-declarative_url_resolution.plan.md](aifabrix-builder/.cursor/plans/122-declarative_url_resolution.plan.md)** defines `url://` placeholders, `~/.aifabrix/urls.local.yaml` (ports + front-door **pattern** only), and resolve order: load config → refresh URL registry → **resolve `kv://` (and other secret rules)** → derive env key → expand `url://` → emit Docker vs Local `.env`.
 - **This plan (116)** owns **secret key catalog + generation + `kv://` coverage validation**. It does **not** define `url://`, host port math, or `urls.local.yaml`.
 - **Shared pipeline constraint:** any implementation of 118 must keep **secrets/materialized `kv://` values available before `url://` expansion** (118 § Resolver step 3). The catalog feeds `generateSecretValue` / ensure steps that populate `secrets.local.yaml` (or equivalent); the 118 resolver consumes that store when building final `.env` files.
 - **Plan 118 legacy removal** (`env-config.yaml`, `build.localPort`) is **orthogonal** to `infra.parameter.yaml`: 118 replaces URL/host-port config; 116 replaces ad hoc infra key lists and documents KV naming. Avoid introducing a second user-edited YAML for URLs (118) while introducing the catalog (116) — both should converge on **Builder code + small number of user-global files** (`config.yaml`, `secrets.local.yaml`, `urls.local.yaml`).
@@ -77,8 +77,8 @@ This plan must comply with [Project Rules](.cursor/rules/project-rules.mdc):
 - Read [Quality Gates](.cursor/rules/project-rules.mdc#quality-gates) and [Validation Patterns](.cursor/rules/project-rules.mdc#validation-patterns) in `project-rules.mdc`.
 - Trace: [lib/cli/setup-infra.js](lib/cli/setup-infra.js) → [lib/infrastructure/index.js](lib/infrastructure/index.js) → [lib/core/secrets-ensure.js](lib/core/secrets-ensure.js); [lib/utils/secrets-generator.js](lib/utils/secrets-generator.js); [lib/utils/secrets-validation.js](lib/utils/secrets-validation.js) (if extended).
 - Re-read [.cursor/plans/keyvault.md](keyvault.md) and lock catalog `azure` field semantics before implementation.
-- Confirm **resolve order** with [118-declarative_url_resolution.plan.md](118-declarative_url_resolution.plan.md): `**kv://` materialized before `url://`** in any unified pipeline.
-- If [117-environment-scoped_resources_schema.plan.md](117-environment-scoped_resources_schema.plan.md) is implemented, re-read plan § “Interaction with Plan 117” for optional prefixed secret keys in validation.
+- Confirm **resolve order** with [122-declarative_url_resolution.plan.md](122-declarative_url_resolution.plan.md): `**kv://` materialized before `url://`** in any unified pipeline.
+- If [120-environment-scoped_resources_schema.plan.md](120-environment-scoped_resources_schema.plan.md) is implemented, re-read plan § “Interaction with Plan 117” for optional prefixed secret keys in validation.
 
 ## Definition of done
 
@@ -147,7 +147,7 @@ Before marking this plan complete:
 
 ## Interaction with Plan 117 (environment-scoped resources)
 
-If `[useEnvironmentScopedResources](aifabrix-builder/.cursor/plans/117-environment-scoped_resources_schema.plan.md)` is implemented, the catalog should define **base** keys only; runtime prefixing stays in resolution (per 117). Validation should accept either base or effective `dev-` prefixed keys when scoping is on.
+If `[useEnvironmentScopedResources](aifabrix-builder/.cursor/plans/120-environment-scoped_resources_schema.plan.md)` is implemented, the catalog should define **base** keys only; runtime prefixing stays in resolution (per 117). Validation should accept either base or effective `dev-` prefixed keys when scoping is on.
 
 **Interaction with Plan 117 + 118:** URL path prefixes for `url://public` (`/dev`, `/tst`, or none) come from 117’s two-layer gate and client-id-derived env key (118 §6). **Secret keys in the catalog are not path-prefixed by 117** unless a separate product decision adds env-scoped secret names; today `kv://` names are stable base keys.
 
@@ -198,7 +198,7 @@ flowchart LR
 | Topic                                          | 116                                                                    | keyvault.md                         | 118                                                                  |
 | ---------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------- |
 | **Database secret naming**                     | Catalog maps local `databases-{app}-`* ↔ Azure `{app-key}-databases-`* | Azure column is vault secret name   | —                                                                    |
-| **Infra-shared keys** (`redis-*`, `smtp-*`, …) | Catalog entries + `ensureOn: upInfra` where applicable                 | Table rows for infra-level KV names | —                                                                    |
+| **Infra-shared keys** (`redis-`*, `smtp-`*, …) | Catalog entries + `ensureOn: upInfra` where applicable                 | Table rows for infra-level KV names | —                                                                    |
 | `**env.template`**                             | `kv://` refs must match catalog                                        | —                                   | Also `url://*`; expand after `kv://`                                 |
 | **Global files under `~/.aifabrix/`**          | `secrets.local.yaml` / config paths for secrets                        | —                                   | `urls.local.yaml`, `config.yaml` for dev-id, remote-server, 117 gate |
 | **Resolve order**                              | Generation/ensure before URL step                                      | —                                   | Explicit in 118 Resolver §3 → §8                                     |
@@ -207,7 +207,7 @@ flowchart LR
 ## Plan validation report
 
 **Date:** 2026-04-05  
-**Plan:** `.cursor/plans/116-infra.parameter.yaml_parameters.plan.md`  
+**Plan:** `.cursor/plans/121-infra.parameter.yaml_parameters.plan.md`  
 **Status:** ✅ VALIDATED
 
 ### Plan purpose
@@ -248,4 +248,100 @@ Introduce **Builder-owned** `infra.parameter.yaml` (JSON Schema + default catalo
 - Implement **index-aware** miso-controller generation (Phase 2) before fully replacing `INFRA_SECRET_KEYS` so regressions are visible early.
 - When unifying resolve with Plan 118, keep **catalog-backed `kv://` completion before `url://`** expansion.
 - Document **workspace discovery limits** (`AIFABRIX_BUILDER_DIR`, monorepo layout) in user-facing docs as already flagged under Risks.
+
+## Implementation Validation Report
+
+**Date:** 2026-04-06 (updated 2026-04-06)  
+**Plan:** `.cursor/plans/121-infra.parameter.yaml_parameters.plan.md`  
+**Status:** ✅ COMPLETE (all plan frontmatter todos completed, including Bicep/schema audit recorded in docs + catalog)
+
+### Executive Summary
+
+Phases **1–5** and `**audit-azure-names`** are done: **Bicep cross-check** is documented in `docs/configuration/infra-parameters.md` (Bicep audit table), `.cursor/plans/keyvault.md` (exceptions subsection), and `**lib/schema/infra.parameter.yaml`** (`azure` notes / patterns for Keycloak admin, Keycloak URLs, Postgres disambiguation). Miso `docs/schemas/application.md` aligns with database `urlKeyVault` / `passwordKeyVault` → `{app-key}-databases-{index}-*` as in the existing keyvault matrix. Re-run `**npm run lint` / `npm test`** after changes before merge.
+
+### Task completion (plan frontmatter)
+
+
+| Todo id           | Content (short)                           | Frontmatter status | Implementation note                                                             |
+| ----------------- | ----------------------------------------- | ------------------ | ------------------------------------------------------------------------------- |
+| audit-azure-names | Audit Bicep + keyvault.md vs kv://        | `completed`        | Table in `infra-parameters.md`; keyvault.md exceptions; catalog `azure` updates |
+| schema-catalog    | Schema + YAML + loader + tests            | `completed`        | ✅ Delivered (`lib/schema/`, `lib/parameters/infra-parameter-catalog.js`, tests) |
+| refactor-generate | Catalog routing + index-aware DB          | `completed`        | ✅ `secrets-generator.js` + `database-secret-values.js` + tests                  |
+| up-infra-discover | Discovery; replace static list            | `completed`        | ✅ `infra-kv-discovery.js`, `secrets-ensure.js`                                  |
+| validate-cli      | parameters validate                       | `completed`        | ✅ `lib/commands/parameters-validate.js`, CLI wiring                             |
+| docs-keyvault     | Extend keyvault.md                        | `completed`        | Intro block + links to catalog and `docs/configuration/infra-parameters.md`     |
+| docs-onboarding   | developer-isolation / infra-parameters.md | `completed`        | `infra-parameters.md` + link from `docs/developer-isolation.md`                 |
+
+
+**Recommendation:** Update plan frontmatter `todos[].status` to `completed` (or `cancelled` with reason) per item so the plan matches reality.
+
+### File existence validation
+
+- ✅ `lib/schema/infra-parameter.schema.json`
+- ✅ `lib/schema/infra.parameter.yaml`
+- ✅ `lib/parameters/infra-parameter-catalog.js`
+- ✅ `lib/parameters/infra-parameter-validate.js`
+- ✅ `lib/parameters/infra-kv-discovery.js`
+- ✅ `lib/parameters/database-secret-values.js`
+- ✅ `lib/core/secrets-ensure.js` (wired to `getAllInfraEnsureKeys`, relaxed fallback)
+- ✅ `lib/utils/secrets-generator.js` (catalog-first via `tryGenerateSecretValueFromCatalog`)
+- ✅ `lib/commands/parameters-validate.js`
+- ✅ `lib/cli/setup-parameters.js`
+- ✅ `lib/cli/index.js` (registers parameters commands)
+- ✅ `lib/utils/help-builder.js` (parameters in help)
+
+### Test coverage (mirrors `lib/`)
+
+- ✅ `tests/lib/parameters/infra-parameter-catalog.test.js`
+- ✅ `tests/lib/parameters/infra-kv-discovery.test.js`
+- ✅ `tests/lib/parameters/infra-parameter-validate.test.js`
+- ✅ `tests/lib/parameters/database-secret-values.test.js`
+- ✅ `tests/lib/commands/parameters-validate.test.js`
+- ✅ `tests/lib/core/secrets-ensure.test.js`
+- ✅ `tests/lib/core/secrets-ensure-catalog-fallback.test.js`
+- ✅ `tests/lib/utils/secrets-generator.test.js` (includes catalog / index cases where present)
+
+**Branch coverage ≥80%** on new modules was **not** re-measured in this run; run `npm run test:coverage` or `nyc` locally if required for merge evidence.
+
+### Code quality validation
+
+
+| Step                  | Command            | Result                                 |
+| --------------------- | ------------------ | -------------------------------------- |
+| 1 Format (ESLint fix) | `npm run lint:fix` | ✅ PASSED                               |
+| 2 Lint                | `npm run lint`     | ✅ PASSED (0 errors reported)           |
+| 3 Test                | `npm test`         | ✅ PASSED (full suite via test wrapper) |
+
+
+**Note:** Repository `npm run build` is `lint` + `test`; same gate satisfied by the above.
+
+### Cursor rules compliance (spot check)
+
+- ✅ CommonJS, schemas under `lib/schema/`, parameters under `lib/parameters/`
+- ✅ AJV + JSON Schema for catalog; js-yaml with error paths in loader paths
+- ✅ CLI: Commander subcommand pattern for `parameters validate`
+- ✅ No new `lib/api` network calls → no new `@requiresPermission` required
+- ✅ **Docs rules:** Phase 5 user/contributor docs added (`infra-parameters.md`, `validation.md`, `README.md` indexes, cross-links)
+
+### Implementation completeness vs Definition of done
+
+- ✅ Build/lint/test order satisfied for prior run (re-verify after doc edits)
+- ✅ Core success criteria (catalog, discovery, validate, index 0/1 in catalog + generation tests) addressed in code
+- ✅ **Documentation** (DoD §8, Phase 5): `docs/commands/README.md`, `validation.md`, `configuration/infra-parameters.md`, `keyvault.md` intro, `developer-isolation.md` pointer
+- ✅ **Frontmatter todos** (DoD §10): all items **completed**, including `**audit-azure-names`**
+
+### Issues and recommendations
+
+1. **Coverage:** Run `npm run test:coverage` before merge if policy requires explicit ≥80% on new files.
+2. **When Bicep changes:** Update the audit table in `docs/configuration/infra-parameters.md` and catalog `azure` fields in lockstep.
+
+### Final validation checklist
+
+- Plan frontmatter tasks completed (including `audit-azure-names`)
+- Core implementation files exist and are wired
+- Unit tests exist for catalog, discovery, validate command, secrets-ensure, generator paths
+- `npm run lint:fix` and `npm run lint` pass (re-run after this doc pass)
+- `npm test` passes (re-run after this doc pass)
+- User/contributor documentation updated (Phase 5)
+- No blocking findings in implemented code paths from this validation run
 

@@ -10,8 +10,8 @@ jest.mock('../../../lib/core/config', () => ({
   getCurrentEnvironment: jest.fn(),
   getControllerUrl: jest.fn(),
   getFormat: jest.fn(),
+  getUseEnvironmentScopedResources: jest.fn(),
   getAifabrixSecretsPath: jest.fn(),
-  getAifabrixEnvConfigPath: jest.fn(),
   getRemoteServer: jest.fn(),
   getDockerEndpoint: jest.fn(),
   getDockerTlsSkipVerify: jest.fn(),
@@ -65,8 +65,8 @@ describe('dev-show-display', () => {
     config.getCurrentEnvironment.mockResolvedValue('dev');
     config.getControllerUrl.mockResolvedValue(null);
     config.getFormat.mockResolvedValue('yaml');
+    config.getUseEnvironmentScopedResources.mockResolvedValue(false);
     config.getAifabrixSecretsPath.mockResolvedValue(null);
-    config.getAifabrixEnvConfigPath.mockResolvedValue('/env.yaml');
     config.getRemoteServer.mockResolvedValue(null);
     config.getDockerEndpoint.mockResolvedValue(null);
     config.getDockerTlsSkipVerify.mockResolvedValue(false);

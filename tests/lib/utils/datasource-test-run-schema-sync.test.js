@@ -1,23 +1,35 @@
 /**
  * @fileoverview Tests for lib/utils/datasource-test-run-schema-sync.js
+ *
+ * Reset modules before each test so this suite never inherits a `node:fs` binding
+ * from another project that ran in the same Jest worker with jest.mock('fs').
  */
 
-jest.unmock('fs');
-
 const crypto = require('crypto');
-const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const {
-  sha256FileSync,
-  assertDatasourceTestRunSchemasInSync
-} = require('../../../lib/utils/datasource-test-run-schema-sync');
+
+let sha256FileSync;
+let assertDatasourceTestRunSchemasInSync;
+
+function loadSut() {
+  ({
+    sha256FileSync,
+    assertDatasourceTestRunSchemasInSync
+  } = require('../../../lib/utils/datasource-test-run-schema-sync'));
+}
+
+beforeEach(() => {
+  jest.resetModules();
+  loadSut();
+});
 
 function withSchemaSyncTempDir(fn) {
+  const fs = require('node:fs');
   const unique = `${process.pid}-${Date.now()}-${crypto.randomBytes(8).toString('hex')}`;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `schema-sync-${unique}-`));
   try {
-    return fn(dir);
+    return fn(dir, fs);
   } finally {
     try {
       fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
@@ -29,7 +41,7 @@ function withSchemaSyncTempDir(fn) {
 
 describe('datasource-test-run-schema-sync', () => {
   it('sha256FileSync is stable for same bytes', () => {
-    withSchemaSyncTempDir(dir => {
+    withSchemaSyncTempDir((dir, fs) => {
       const f = path.join(dir, 'a.json');
       fs.writeFileSync(f, '{"a":1}', 'utf8');
       const h1 = sha256FileSync(f);
@@ -40,7 +52,7 @@ describe('datasource-test-run-schema-sync', () => {
   });
 
   it('assertDatasourceTestRunSchemasInSync skips when dataplane missing', () => {
-    withSchemaSyncTempDir(dir => {
+    withSchemaSyncTempDir((dir, fs) => {
       const b = path.join(dir, 'b.json');
       fs.writeFileSync(b, '{}', 'utf8');
       const d = path.join(dir, `absent-dataplane-${crypto.randomUUID()}.json`);
@@ -50,7 +62,7 @@ describe('datasource-test-run-schema-sync', () => {
   });
 
   it('assertDatasourceTestRunSchemasInSync throws on drift', () => {
-    withSchemaSyncTempDir(dir => {
+    withSchemaSyncTempDir((dir, fs) => {
       const b = path.join(dir, 'b.json');
       const d = path.join(dir, 'd.json');
       fs.writeFileSync(b, '{"x":1}', 'utf8');
@@ -60,7 +72,7 @@ describe('datasource-test-run-schema-sync', () => {
   });
 
   it('assertDatasourceTestRunSchemasInSync ok when equal', () => {
-    withSchemaSyncTempDir(dir => {
+    withSchemaSyncTempDir((dir, fs) => {
       const b = path.join(dir, 'b.json');
       const d = path.join(dir, 'd.json');
       const content = '{"same":true}\n';

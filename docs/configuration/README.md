@@ -11,9 +11,11 @@ Overview of AI Fabrix configuration files and where to find details.
 | [Deployment key](deployment-key.md) | How deployment key is calculated (SHA256 of manifest); why Miso Controller and Dataplane use the same key. |
 | [application.yaml](application-yaml.md) | Application config: app.key, app.displayName, port, image, build, requires, externalIntegration, etc. |
 | [env.template](env-template.md) | Environment variables template; kv:// references; `.env` generation. |
+| [Declarative url://](declarative-urls.md) | `url://public` / `url://internal` expansion, `urls.local.yaml`, ports vs `build.localPort`, `--reload` and `envOutputPath`. |
 | [External integration](application-yaml.md#external-integration-and-external-system) | externalIntegration block, schemaBasePath, systems, dataSources; validation. |
 | [Validation rules (external system)](validation-rules.md) | All validation rules applied when you run `aifabrix validate <external-system-key>`. |
 | [Secrets and config](secrets-and-config.md) | config.yaml, secrets.local.yaml, **auto-creation** of missing secrets (up-infra, app create, resolve --force, integration create), encryption (aifabrix secure); remote vs local secrets (aifabrix-secrets); `aifabrix secret validate`. |
+| [Infra parameters](infra-parameters.md) | Shipped `infra.parameter.yaml` catalog: `kv://` keys, generators, Azure naming hints; `aifabrix parameters validate`; local vs Azure secret names. |
 | [env-config](env-config.md) | Environment-specific variable interpolation (${MISO_HOST}, ${NODE_ENV}, etc.). |
 
 ## Version
@@ -35,5 +37,5 @@ When using a remote dev server, set `remote-server`, and `docker-endpoint` in `c
 
 - [Commands: Utilities](../commands/utilities.md) – resolve, json, split-json, secret list/set/remove/validate, secure
 - [Commands: Developer isolation](../commands/developer-isolation.md) – dev init, dev config, remote setup
-- [Commands: Validation](../commands/validation.md) – validate, diff
+- [Commands: Validation](../commands/validation.md) – validate, parameters validate, diff
 - [External systems](../external-systems.md) – External system and datasource JSON
