@@ -5,7 +5,7 @@
 
 /**
  * Default unit/integration Jest runs should match CI: no inherited Fabrix path env.
- * lib/core/config.js resolves CONFIG_DIR at module load; a developer shell exporting
+ * lib/core/config.js resolves CONFIG_DIR from env on each read; a developer shell exporting
  * AIFABRIX_HOME breaks tests that expect ~/.aifabrix.
  * Set PRESERVE_AIFABRIX_TEST_ENV=true to skip (rare; e.g. debugging config path behavior).
  */
