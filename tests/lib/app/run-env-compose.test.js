@@ -26,8 +26,12 @@ jest.mock('../../../lib/infrastructure', () => ({
   ensureAdminSecrets: jest.fn().mockResolvedValue('/home/.aifabrix/admin-secrets.env')
 }));
 
-const fsSync = require('fs');
-const fs = require('fs').promises;
+jest.mock('../../../lib/infrastructure/helpers', () => ({
+  resolveInfraStatePaths: jest.fn(() => ({
+    infraDir: '/config/.aifabrix/infra-dev-02',
+    adminSecretsPath: '/config/.aifabrix/admin-secrets.env'
+  }))
+}));
 
 jest.mock('fs', () => ({
   existsSync: jest.fn(),
@@ -35,14 +39,19 @@ jest.mock('fs', () => ({
   readFileSync: jest.fn(),
   unlinkSync: jest.fn(),
   promises: {
-    writeFile: jest.fn().mockResolvedValue(undefined)
+    writeFile: jest.fn().mockResolvedValue(undefined),
+    readFile: jest.fn()
   }
 }));
+
+const fsSync = require('fs');
+const fs = require('fs').promises;
 
 const runEnvCompose = require('../../../lib/app/run-env-compose');
 const pathsUtil = require('../../../lib/utils/paths');
 const adminSecrets = require('../../../lib/core/admin-secrets');
 const secretsEnvWrite = require('../../../lib/core/secrets-env-write');
+const infraHelpers = require('../../../lib/infrastructure/helpers');
 
 describe('run-env-compose', () => {
   beforeEach(() => {
@@ -171,6 +180,32 @@ describe('run-env-compose', () => {
       expect(appOnlyCall.KC_DB_URL_DATABASE).toBe('keycloak');
       expect(appOnlyCall.KC_DB_USERNAME).toBe('keycloak_user');
       expect(appOnlyCall.KC_DB_PASSWORD).toBe('keycloak_pass123');
+    });
+
+    it('when developerId is set, uses POSTGRES_PASSWORD from pgpass beside active infra dir only', async() => {
+      const infraDir = '/config/.aifabrix/infra-dev-02';
+      const pgpassPath = path.join(infraDir, 'pgpass');
+      infraHelpers.resolveInfraStatePaths.mockReturnValueOnce({
+        infraDir,
+        adminSecretsPath: '/config/.aifabrix/admin-secrets.env'
+      });
+      fsSync.existsSync.mockImplementation((p) => p === pgpassPath);
+      fs.readFile.mockResolvedValueOnce('postgres:5432:postgres:pgadmin:frompgpass\n');
+      await runEnvCompose.buildMergedRunEnvAndWrite('myapp', {}, '/tmp/apps', 2);
+      const dbInitCall = adminSecrets.envObjectToContent.mock.calls[1][0];
+      expect(dbInitCall.POSTGRES_PASSWORD).toBe('frompgpass');
+      expect(infraHelpers.resolveInfraStatePaths).toHaveBeenCalledWith(2);
+    });
+
+    it('when developerId is set but pgpass is missing, db-init keeps admin POSTGRES_PASSWORD', async() => {
+      infraHelpers.resolveInfraStatePaths.mockReturnValueOnce({
+        infraDir: '/config/.aifabrix/infra-dev-02',
+        adminSecretsPath: '/config/.aifabrix/admin-secrets.env'
+      });
+      fsSync.existsSync.mockReturnValue(false);
+      await runEnvCompose.buildMergedRunEnvAndWrite('myapp', {}, '/tmp/apps', 2);
+      const dbInitCall = adminSecrets.envObjectToContent.mock.calls[1][0];
+      expect(dbInitCall.POSTGRES_PASSWORD).toBe('admin');
     });
 
     it('sets PORT and template port var (e.g. MISO_PORT) to container port from application.yaml, not localPort', async() => {

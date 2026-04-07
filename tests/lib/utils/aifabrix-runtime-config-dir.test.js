@@ -3,7 +3,8 @@
  */
 
 // Real disk I/O; workers can retain jest.mock('fs') from other suites in the same process.
-const fs = jest.requireActual('node:fs');
+jest.unmock('fs');
+const fs = require('fs');
 const path = require('path');
 const os = require('os');
 

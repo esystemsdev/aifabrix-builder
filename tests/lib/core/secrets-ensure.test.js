@@ -369,6 +369,35 @@ describe('secrets-ensure', () => {
       expect(wrote).toBe(true);
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('{{adminEmail}}'));
     });
+
+    it('applies full up-infra-style CLI bundle to secrets store (admin, user, email) and TLS placeholder context', async() => {
+      secretsGenerator.loadExistingSecrets.mockReturnValue({});
+      config.getSecretsPath.mockResolvedValue(null);
+      config.getSecretsEncryptionKey.mockResolvedValue(null);
+
+      await ensureInfraSecrets({
+        adminPassword: 'admin1234',
+        adminEmail: 'admin@esystems.fi',
+        userPassword: 'user1234',
+        tlsEnabled: false
+      });
+
+      const merged = Object.assign({}, ...secretsGenerator.saveSecretsFile.mock.calls.map((c) => c[1] || {}));
+      expect(merged['postgres-passwordKeyVault']).toBe('admin1234');
+      expect(merged['keycloak-default-passwordKeyVault']).toBe('user1234');
+      expect(merged['miso-controller-admin-emailKeyVault']).toBe('admin@esystems.fi');
+
+      expect(secretsGenerator.generateSecretValue).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          TLS_ENABLED: 'false',
+          HTTP_ENABLED: 'true',
+          adminPassword: 'admin1234',
+          adminEmail: 'admin@esystems.fi',
+          userPassword: 'user1234'
+        })
+      );
+    });
   });
 
   describe('ensureSecretsFromEnvTemplate', () => {

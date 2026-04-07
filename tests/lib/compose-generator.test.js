@@ -172,6 +172,19 @@ describe('Compose Generator Module', () => {
       const t = buildTraefikConfig(cfg, 0, null, 'https://builder02.local');
       expect(t.host).toBe('builder02.local');
     });
+
+    it('buildTraefikConfig treats tls string "false" like boolean false', () => {
+      const cfg = {
+        frontDoorRouting: {
+          enabled: true,
+          pattern: '/data/*',
+          host: 'dev01.builder02.local',
+          tls: 'false'
+        }
+      };
+      const t = buildTraefikConfig(cfg, 1, null, 'https://builder02.local');
+      expect(t.tls).toBe(false);
+    });
   });
 
   beforeEach(() => {

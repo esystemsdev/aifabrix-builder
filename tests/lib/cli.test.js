@@ -2528,20 +2528,6 @@ describe('CLI Commands', () => {
         );
       });
 
-      it('should reject --tls with --no-tls', async() => {
-        setupCommandsAndResetLogger();
-        config.getConfig.mockResolvedValue({});
-        cliUtils.handleCommandError.mockImplementation(() => {});
-        process.exit.mockImplementation(() => {});
-
-        const handler = commandActions['up-infra'];
-        await handler({ tls: true, notls: true });
-
-        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'up-infra');
-        expect(process.exit).toHaveBeenCalledWith(1);
-        expect(infra.startInfra).not.toHaveBeenCalled();
-      });
-
       it('should persist tlsEnabled with --tls and pass tlsEnabled to startInfra', async() => {
         setupCommandsAndResetLogger();
         config.getConfig.mockResolvedValue({});
@@ -2562,10 +2548,52 @@ describe('CLI Commands', () => {
         infra.startInfra.mockResolvedValue();
 
         const handler = commandActions['up-infra'];
-        await handler({ notls: true });
+        await handler({ tls: false });
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ tlsEnabled: false }));
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ tlsEnabled: false }));
+      });
+
+      it('should persist combined up-infra flags to config.yaml and pass all credentials to startInfra', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
+        config.saveConfig.mockResolvedValue();
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({
+          traefik: false,
+          tls: false,
+          pgAdmin: true,
+          adminPassword: 'admin1234',
+          adminEmail: 'admin@esystems.fi',
+          userPassword: 'user1234'
+        });
+
+        const saves = config.saveConfig.mock.calls.map((c) => c[0]);
+        expect(saves.length).toBeGreaterThanOrEqual(3);
+        const lastSaved = saves[saves.length - 1];
+        expect(lastSaved).toEqual(
+          expect.objectContaining({
+            traefik: false,
+            pgadmin: true,
+            tlsEnabled: false
+          })
+        );
+
+        expect(infra.startInfra).toHaveBeenCalledWith(
+          null,
+          expect.objectContaining({
+            traefik: false,
+            pgadmin: true,
+            redisCommander: true,
+            tlsEnabled: false,
+            adminPassword: 'admin1234',
+            adminPwd: 'admin1234',
+            adminEmail: 'admin@esystems.fi',
+            userPassword: 'user1234'
+          })
+        );
       });
 
       it('should pass tlsEnabled from config when tls flags omitted', async() => {

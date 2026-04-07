@@ -104,6 +104,15 @@ parameters:
       notes: >-
         Default OAuth client id for controller ↔ Keycloak when resolved from secrets; override per environment.
 
+  - key: keycloak-client-secretKeyVault
+    scope: shared-service
+    generator:
+      type: randomBytes32
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretName: keycloak-client-secretKeyVault
+      notes: Per-app OAuth client secret from Keycloak registration; generated on first ensure.
+
   - key: keycloak-default-passwordKeyVault
     scope: shared-service
     generator:
@@ -227,6 +236,35 @@ parameters:
       notes: >-
         Per-app OAuth client id from controller registration; literal default matches local Keycloak client naming.
 
+  - key: miso-controller-secretKeyVault
+    scope: app
+    generator:
+      type: randomBytes32
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretName: miso-controller-client-secretKeyVault
+      notes: Per-app OAuth client secret from controller registration; generated on first ensure.
+
+  # Dataplane ↔ controller OAuth (builder/dataplane env.template MISO_CLIENTID / MISO_CLIENTSECRET).
+  - key: dataplane-client-idKeyVault
+    scope: app
+    generator:
+      type: literal
+      value: 'miso-controller-dev-dataplane'
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: >-
+        Per-app OAuth client id from controller registration; literal default matches local Keycloak client naming
+        (override for environments such as miso-controller-dev-dataplane).
+
+  - key: dataplane-client-secretKeyVault
+    scope: app
+    generator:
+      type: randomBytes32
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretName: dataplane-client-secretKeyVault
+      notes: Per-app OAuth client secret for dataplane; generated on first ensure.
 
   # Mori / telemetry: optional locally (LICENSE_JWT=DEVELOPMENT skips Mori); empty until integrated.
   - key: mori-controller-api-keyKeyVault
@@ -262,6 +300,31 @@ parameters:
       vaultSecretName: appinsights-connectionStringKeyVault
       notes: >-
         Aligns with keyvault.md / Azure naming (appinsights.connectionStringKeyVault). Empty locally until set from Azure Portal.
+
+  # Dataplane builder/dataplane env.template (AI/LLM); optional until OpenAI or Azure OpenAI is configured.
+  - key: secrets-openaiApiKeyVault
+    scope: app
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Empty until set; user-supplied OpenAI API key (not auto-generated).
+
+  - key: azure-openaiapi-urlKeyVault
+    scope: app
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Empty until set; Azure OpenAI endpoint URL.
+
+  - key: secrets-azureOpenaiApiKeyVault
+    scope: app
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Empty until set; user-supplied Azure OpenAI API key (not auto-generated).
 
   # Legacy unprefixed name (scaffold / old env.template); prefer *KeyVault suffix or {appKey}-secrets-apiKeyVault (keyvault.md).
   - key: api-key

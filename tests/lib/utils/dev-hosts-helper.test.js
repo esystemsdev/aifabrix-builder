@@ -44,14 +44,16 @@ describe('dev-hosts-helper', () => {
 
   describe('hostsFileHasHostname', () => {
     it('detects existing mapping', () => {
-      // Other Jest projects in the same worker can leave `fs` mocked; isolate + real fs for disk I/O.
+      // Write with nodeFs() so the file is visible to hostsFileHasHostname (reads via node-fs), avoiding
+      // jest.requireActual('fs') vs node:fs / worker snapshot mismatches.
       jest.isolateModules(() => {
-        const fsActual = jest.requireActual('fs');
+        const fsActual = jest.requireActual('node:fs');
+        const { nodeFs } = require('../../../lib/internal/node-fs');
         const { hostsFileHasHostname: hasHost } = require('../../../lib/utils/dev-hosts-helper');
         const dir = fsActual.mkdtempSync(path.join(os.tmpdir(), `aifabrix-hosts-${process.pid}-`));
         const p = path.join(dir, 'hosts');
         try {
-          fsActual.writeFileSync(p, '# comment\n192.168.1.1 gateway\n192.168.1.25 builder02.local\n', 'utf8');
+          nodeFs().writeFileSync(p, '# comment\n192.168.1.1 gateway\n192.168.1.25 builder02.local\n', 'utf8');
           expect(hasHost(p, 'builder02.local')).toBe(true);
           expect(hasHost(p, 'other.local')).toBe(false);
         } finally {

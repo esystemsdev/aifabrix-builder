@@ -201,6 +201,7 @@ parameters:
       ['postgres-passwordKeyVault', 'admin123'],
       ['keycloak-client-idKeyVault', 'miso-controller-miso-keycloak'],
       ['miso-controller-client-idKeyVault', 'miso-controller-miso-miso-controller'],
+      ['dataplane-client-idKeyVault', 'miso-controller-dev-dataplane'],
       ['keycloak-default-passwordKeyVault', 'user123'],
       ['keycloak-admin-passwordKeyVault', 'admin123'],
       ['miso-controller-admin-emailKeyVault', 'admin@aifabrix.dev'],
@@ -222,6 +223,8 @@ parameters:
     for (const key of [
       'miso-controller-secrets-encryptionKeyVault',
       'miso-controller-jwt-secretKeyVault',
+      'miso-controller-secretKeyVault',
+      'dataplane-client-secretKeyVault',
       'dataplane-secrets-encryptionKeyVault',
       'api-key'
     ]) {
@@ -230,7 +233,7 @@ parameters:
       expect(e.generator.type).toBe('randomBytes32');
       expect(generateValueFromCatalogEntry(key, e, cryptoStub)).toHaveLength(44);
     }
-    expect(cryptoStub.randomBytes).toHaveBeenCalledTimes(4);
+    expect(cryptoStub.randomBytes).toHaveBeenCalledTimes(6);
     expect(cryptoStub.randomBytes).toHaveBeenCalledWith(32);
   });
 

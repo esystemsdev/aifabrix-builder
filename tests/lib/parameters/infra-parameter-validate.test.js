@@ -10,9 +10,40 @@ const {
   validateWorkspaceKvRefsAgainstCatalog,
   validateCatalogRequiredGenerators
 } = require('../../../lib/parameters/infra-parameter-validate');
-const { loadInfraParameterCatalog } = require('../../../lib/parameters/infra-parameter-catalog');
+const {
+  loadInfraParameterCatalog,
+  clearInfraParameterCatalogCache
+} = require('../../../lib/parameters/infra-parameter-catalog');
+
+/**
+ * Bundled catalog path: prefer repo tree next to this test (isolated Jest projects / builder VM
+ * layouts may resolve lib/*.js elsewhere without lib/schema/*.yaml alongside).
+ */
+function resolveBundledInfraCatalogPath() {
+  const fromTestTree = path.resolve(__dirname, '../../../lib/schema/infra.parameter.yaml');
+  if (fs.existsSync(fromTestTree)) {
+    return fromTestTree;
+  }
+  const fromModuleDir = path.join(
+    path.dirname(require.resolve('../../../lib/parameters/infra-parameter-catalog.js')),
+    '..',
+    'schema',
+    'infra.parameter.yaml'
+  );
+  const resolved = path.resolve(fromModuleDir);
+  if (fs.existsSync(resolved)) {
+    return resolved;
+  }
+  throw new Error(`infra.parameter.yaml not found (tried ${fromTestTree} and ${resolved})`);
+}
+
+const BUNDLED_CATALOG_PATH = resolveBundledInfraCatalogPath();
 
 describe('infra-parameter-validate', () => {
+  beforeEach(() => {
+    clearInfraParameterCatalogCache();
+  });
+
   describe('validateCatalogRequiredGenerators', () => {
     it('passes when no parameters use requiredForLocal', () => {
       const r = validateCatalogRequiredGenerators({ parameters: [{ generator: { type: 'x' } }] });
@@ -53,7 +84,7 @@ describe('infra-parameter-validate', () => {
         'X=kv://this-key-does-not-exist-in-catalog-zzzzz\n',
         'utf8'
       );
-      const catalog = loadInfraParameterCatalog();
+      const catalog = loadInfraParameterCatalog(BUNDLED_CATALOG_PATH);
       const pathsUtil = {
         listBuilderAppNames: () => ['app1'],
         listIntegrationAppNames: () => [],
@@ -83,7 +114,7 @@ describe('infra-parameter-validate', () => {
         'PG=kv://postgres-passwordKeyVault\nJWT=kv://miso-controller-jwt-secretKeyVault\n',
         'utf8'
       );
-      const catalog = loadInfraParameterCatalog();
+      const catalog = loadInfraParameterCatalog(BUNDLED_CATALOG_PATH);
       const pathsUtil = {
         listBuilderAppNames: () => ['app2'],
         listIntegrationAppNames: () => [],
