@@ -15,6 +15,16 @@
       "items": { "type": "string", "minLength": 1 },
       "description": "Extra keys always merged on up-infra (e.g. default miso-controller DB pair when no workspace template lists them)."
     },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Default values for {{adminPassword}}, {{adminEmail}}, {{userPassword}} in literal generator values; overridden by aifabrix up-infra flags.",
+      "properties": {
+        "adminEmail": { "type": "string" },
+        "adminPassword": { "type": "string" },
+        "userPassword": { "type": "string" }
+      }
+    },
     "parameters": {
       "type": "array",
       "items": { "$ref": "#/definitions/parameterEntry" }
@@ -38,6 +48,8 @@
           "type": "string",
           "enum": [
             "randomBytes32",
+            "randomAlphanumeric",
+            "password",
             "emptyString",
             "emptyAllowed",
             "literal",
@@ -47,6 +59,12 @@
         },
         "value": {
           "type": "string"
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 512,
+          "description": "For randomAlphanumeric: character count (default 32). For password: default 8. Charset [a-zA-Z0-9]."
         }
       }
     },

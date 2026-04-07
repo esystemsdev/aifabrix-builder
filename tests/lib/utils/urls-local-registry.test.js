@@ -4,13 +4,17 @@
 
 'use strict';
 
-const fs = require('fs');
+// Prefer real fs if this worker loaded jest.mock('fs') from another suite.
+jest.unmock('fs');
+
+const fs = require('node:fs');
 const path = require('path');
 const os = require('os');
 
 jest.mock('../../../lib/utils/paths', () => ({
   ...jest.requireActual('../../../lib/utils/paths'),
   getAifabrixHome: jest.fn(),
+  getConfigDirForPaths: jest.fn(),
   getProjectRoot: jest.fn()
 }));
 
@@ -36,6 +40,7 @@ describe('urls-local-registry', () => {
     fs.mkdirSync(fakeHome, { recursive: true });
     fs.mkdirSync(path.join(fakeProject, 'builder', 'alpha'), { recursive: true });
     pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
+    pathsUtil.getConfigDirForPaths.mockReturnValue(fakeHome);
     pathsUtil.getProjectRoot.mockReturnValue(fakeProject);
   });
 
@@ -45,7 +50,8 @@ describe('urls-local-registry', () => {
     } catch {
       /* ignore */
     }
-    jest.clearAllMocks();
+    // Do not jest.clearAllMocks() here — it can clear mockReturnValue on paths before the next
+    // beforeEach runs in the same tick as other suites, breaking getAifabrixHome/getProjectRoot.
   });
 
   describe('normalizePatternForUrl', () => {
@@ -95,6 +101,27 @@ describe('urls-local-registry', () => {
       const doc = readUrlsLocalRegistrySync();
       expect(doc['myapp-port']).toBe(3000);
       expect(doc.note).toBe('x');
+    });
+
+    it('reads legacy file under getAifabrixHome when config-dir file is missing', () => {
+      const cfgDir = path.join(fakeHome, 'dot-aifabrix');
+      fs.mkdirSync(cfgDir, { recursive: true });
+      pathsUtil.getConfigDirForPaths.mockReturnValue(cfgDir);
+      pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
+      const legacyPath = path.join(fakeHome, 'urls.local.yaml');
+      fs.writeFileSync(legacyPath, 'migrated-port: 7777\n', 'utf8');
+      expect(getUrlsLocalYamlPath()).toBe(path.join(cfgDir, 'urls.local.yaml'));
+      expect(readUrlsLocalRegistrySync()).toEqual({ 'migrated-port': 7777 });
+    });
+
+    it('prefers config-dir urls.local.yaml over legacy when both exist', () => {
+      const cfgDir = path.join(fakeHome, 'dot-aifabrix');
+      fs.mkdirSync(cfgDir, { recursive: true });
+      pathsUtil.getConfigDirForPaths.mockReturnValue(cfgDir);
+      pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
+      fs.writeFileSync(path.join(fakeHome, 'urls.local.yaml'), 'legacy: 1\n', 'utf8');
+      fs.writeFileSync(path.join(cfgDir, 'urls.local.yaml'), 'primary: 2\n', 'utf8');
+      expect(readUrlsLocalRegistrySync()).toEqual({ primary: 2 });
     });
   });
 

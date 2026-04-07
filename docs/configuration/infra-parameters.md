@@ -4,12 +4,44 @@
 
 The Builder maintains a **shipped catalog** of infrastructure-related `kv://` secret keys: how values are generated, when they are auto-created (`up-infra`, app resolve, and related flows), and optional **Azure Key Vault naming hints**. This keeps local `env.template` references, secret generation, and Azure naming aligned without scattering magic key lists in code.
 
-## Where the catalog lives (repository)
+## Where the catalog lives
 
-- **Data:** `lib/schema/infra.parameter.yaml` (default catalog the CLI loads).
-- **Schema:** `lib/schema/infra-parameter.schema.json` (AJV validation when the catalog is loaded).
+The infra parameter catalog ships **with the Builder CLI** as `infra.parameter.yaml`, together with a JSON schema used when the catalog is loaded. You do not need to edit these files for normal use.
 
-Contributors who add or rename `kv://` keys in app `env.template` files should update the catalog and run **`aifabrix parameters validate`** (see [Validation commands: parameters validate](../commands/validation.md#aifabrix-parameters-validate)).
+If you maintain app `env.template` files and add or rename `kv://` keys, keep them aligned with the shipped catalog and run **`aifabrix parameters validate`** (see [Validation commands: parameters validate](../commands/validation.md#aifabrix-parameters-validate)).
+
+## How local `.env` values are resolved
+
+`env.template` mixes two kinds of placeholders:
+
+### `${VAR}` (not secrets)
+
+Examples: `KEYCLOAK_PUBLIC_PORT`, `REDIS_HOST`, `DB_HOST`, `KEYCLOAK_HOST`, `MISO_HOST`.
+
+- Defaults come from the Builder’s built-in **docker** vs **local** host/port map, merged with your **`developer-id`** from `~/.aifabrix/config.yaml` for published/local host ports.
+- The Builder interpolates these **before** it substitutes `kv://` values when generating `.env` files.
+
+### `kv://secret-key` (secrets store)
+
+Examples: `API_KEY=kv://miso-controller-api-key-secretKeyVault`, `ENCRYPTION_KEY=kv://secrets-encryptionKeyVault`, database URLs.
+
+- Values live in your secrets file (often **`~/.aifabrix/secrets.local.yaml`**, or the path set by **`aifabrix-secrets`** in config).
+- **`aifabrix up-infra`** ensures infra-related keys (catalog `ensureOn: upInfra`, **`standardUpInfraEnsureKeys`**, and keys discovered from workspace `env.template` / `requires.databases`).
+- **`aifabrix resolve <app> --force`** (and some run paths) create any **missing** keys using **`infra.parameter.yaml`** generators (`randomBytes32`, `databaseUrl`, `literal`, `emptyString`, `emptyAllowed`, etc.).
+- **Shared keys:** the same secret name can appear in more than one app template (for example **`miso-controller-api-key-secretKeyVault`** in both miso-controller and dataplane). One entry in the secrets file applies everywhere.
+
+### Local database passwords (dev)
+
+For `databases-<appKey>-<index>-passwordKeyVault`, local defaults use the same rule as Docker infra init: PostgreSQL role **`<db_name>_user`** with password **`<db_name_without_user_suffix>_pass123`**, where `<db_name>` comes from **`requires.databases`** in **`application.yaml`**. If **`builder/<appKey>/`** does not exist yet, the Builder falls back to the shipped template under **`templates/applications/<appKey>/application.yaml`**.
+
+### Gaps to know (zero-touch install)
+
+- **Service public/internal URLs** in shipped **miso-controller** and **dataplane** `env.template` files use **`url://…`** (resolved after `kv://`) so local `.env` gets computed URLs from the registry — see [Declarative `url://` placeholders](declarative-urls.md). Catalog rows such as **`keycloak-server-url`** / **`miso-controller-web-server-url`** remain for **Azure/Bicep** and any legacy secrets file; they are not required in templates that already use `url://`.
+- **Azure-related `kv://` lines** may hold generated placeholders locally when you use **`DEPLOYMENT=database`**; deployed Azure environments use Key Vault secret names that often differ from local `kv://` key names. The catalog’s Azure-related entries describe naming where that matters.
+
+### Suggested platform sequence
+
+For Keycloak + Miso Controller + Dataplane on one machine: **`aifabrix up-infra`** → **`aifabrix up-miso`** → **`aifabrix up-dataplane`** (requires login for the last step). Ensure missing secrets with **`aifabrix resolve <app> --force`** if a command reports missing `kv://` keys.
 
 ## Onboarding: file structure (secrets-related)
 
@@ -30,16 +62,16 @@ See [Secrets and config](secrets-and-config.md) for encryption, remote vs local 
 - **Local `kv://` and `secrets.local.yaml` keys** follow the suffixes used in Builder templates, e.g. `databases-<appKey>-<index>-urlKeyVault` and `databases-<appKey>-<index>-passwordKeyVault`, plus shared infra keys such as `postgres-passwordKeyVault`, `redis-passwordKeyVault`, etc.
 - **Azure Key Vault secret names** for the same logical values are often **prefixed with the application key**, e.g. `{app-key}-databases-{index}-urlKeyVault`. The two strings are **not** always identical; do not assume one name works in both places.
 
-The **human-readable matrix** for Azure-side names remains [.cursor/plans/keyvault.md](../../.cursor/plans/keyvault.md) (contributor reference). The **Builder catalog** records explicit `azure.vaultSecretName` or notes per entry where that helps.
+For Azure deployments, prefer the **`azure`** section on each catalog entry (`vaultSecretName`, `vaultSecretNamePattern`, and notes). Local `kv://` keys and Azure secret names are related but not always identical.
 
 ## Audit: Miso install Bicep vs local keys
 
 This section records a **point-in-time cross-check** between:
 
 - **Local** `kv://` / `secrets.local.yaml` keys (Builder templates and `infra.parameter.yaml`), and  
-- **`@Microsoft.KeyVault(...;SecretName=...)`** references in **aifabrix-miso** `infrastructure/bicep/modules/05_miso-webapp.bicep` and `07_keycloak-webapp.bicep` (`prefix` = app install key, e.g. `miso-controller`).
+- **`@Microsoft.KeyVault(...;SecretName=...)`** references in the **Miso Controller** Azure install (Bicep; install prefix is the app key, e.g. `miso-controller`).
 
-Miso **application** manifest schema (`docs/schemas/application.md`) still describes configuration entries as `databases[i].urlKeyVault` / `passwordKeyVault`, which map to **`{app-key}-databases-{index}-urlKeyVault`** style names in Azure — aligned with the catalog `vaultSecretNamePattern` rows for database secrets.
+The Miso application manifest still describes configuration entries as `databases[i].urlKeyVault` / `passwordKeyVault`, which map to **`{app-key}-databases-{index}-urlKeyVault`** style names in Azure — aligned with the catalog `vaultSecretNamePattern` rows for database secrets.
 
 | Azure `SecretName` (Bicep) | Local / Builder secret key (typical) | Notes |
 | -------------------------- | ------------------------------------ | ----- |
@@ -56,11 +88,17 @@ Miso **application** manifest schema (`docs/schemas/application.md`) still descr
 | `${prefix}-miso-clientIdKeyVault` | Pattern `*KeyVault` / app manifest | Client ID secret for controller install. |
 | `miso-controller-client-secretKeyVault` | `miso-controller-client-secretKeyVault` | Unprefixed secret name in Bicep for this reference. |
 
-When you change Bicep `SecretName` values or Builder `kv://` keys, update **`lib/schema/infra.parameter.yaml`**, this table, and [.cursor/plans/keyvault.md](../../.cursor/plans/keyvault.md) if the user-facing matrix changes.
+When Bicep `SecretName` values or Builder `kv://` keys change, the shipped infra parameter catalog and this table should be updated together so local and Azure naming stay documented in one place.
+
+## CLI flags and existing `kv://` values
+
+`ensure` only **creates** missing or empty keys. When you pass **`--adminPassword`**, **`--userPassword`**, or **`--adminEmail`** on **`aifabrix up-infra`**, the CLI also **overwrites** every secrets-store key whose catalog row is a **`literal`** generator containing the matching placeholder (`{{adminPassword}}`, `{{userPassword}}`, or `{{adminEmail}}`). Those keys are discovered from **`infra.parameter.yaml`**—not hardcoded in the ensure module—so new literals stay in sync automatically.
+
+Shared scalar defaults for those placeholders live under the catalog root **`defaults:`** (shipped values for local dev). **`admin-secrets.env`** (Postgres / pgAdmin / Redis Commander) uses the same defaults when fields are empty, via a relaxed read of the catalog file so behavior stays aligned even if full schema validation were to fail.
 
 ## What uses the catalog
 
-- **`aifabrix up-infra`** — Ensures infra-related keys (catalog `ensureOn` / `standardUpInfraEnsureKeys`, plus keys discovered from workspace `env.template` and `application.yaml` database lists).
+- **`aifabrix up-infra`** — Ensures infra-related keys (catalog `ensureOn` / `standardUpInfraEnsureKeys`, plus keys discovered from workspace `env.template` and `application.yaml` database lists). Applies the CLI placeholder overwrite behavior above when flags are set.
 - **`aifabrix resolve <app> --force`** (and other flows that generate missing secrets) — Uses catalog-driven generators where defined (e.g. index-aware database URL/password for multi-DB apps).
 - **`aifabrix parameters validate`** — Loads the catalog, checks internal generator rules, then checks that `kv://` keys referenced under discovered app directories are covered by the catalog (exact or pattern).
 
@@ -70,8 +108,10 @@ Discovery scans app directories under the configured Builder workspace (for exam
 
 ## Related commands and docs
 
+- Plan: [123 — up-miso / up-dataplane and parameter consolidation](../../.cursor/plans/123-up-miso-dataplane-and-parameter-consolidation.plan.md) (tracking doc for local resolve order, gaps, and alignment with the parameter catalog)
 - [aifabrix parameters validate](../commands/validation.md#aifabrix-parameters-validate)
+- [Declarative `url://` placeholders](declarative-urls.md)
 - [Secrets and config](secrets-and-config.md)
 - [env.template](env-template.md)
-- [Commands: Infrastructure](../commands/infrastructure.md) (`up-infra`)
+- [Commands: Infrastructure](../commands/infrastructure.md) (`up-infra`, `up-miso`, `up-dataplane`)
 - [Commands: Utilities](../commands/utilities.md) (`resolve`, `secret validate`)

@@ -16,6 +16,8 @@ function clearFabrixPathEnvForTests() {
   delete process.env.AIFABRIX_HOME;
   delete process.env.AIFABRIX_WORK;
   delete process.env.AIFABRIX_CONFIG;
+  // Inherited per-repo builder dir breaks database secret + infra contract tests (generateSecretValue).
+  delete process.env.AIFABRIX_BUILDER_DIR;
 }
 
 clearFabrixPathEnvForTests();

@@ -244,6 +244,28 @@ frontDoorRouting:
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('frontDoorRouting.pattern must start with "/"');
     });
+
+    it('should accept frontDoorRouting host with ${DEV_USERNAME}.${REMOTE_HOST} placeholders', async() => {
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(`key: testapp
+displayName: Test App
+description: A test application
+type: webapp
+image: testapp:latest
+registryMode: public
+port: 3000
+requiresDatabase: false
+requiresRedis: false
+requiresStorage: false
+frontDoorRouting:
+  enabled: true
+  host: \${DEV_USERNAME}.\${REMOTE_HOST}
+  pattern: /api/*`);
+
+      const result = await validator.validateVariables(appName);
+
+      expect(result.valid).toBe(true);
+    });
   });
 
   describe('validateRbac', () => {
@@ -1163,6 +1185,29 @@ permissions:
       expect(validator.findUnresolvedVariablesInObject(null)).toEqual([]);
       expect(validator.findUnresolvedVariablesInObject(undefined)).toEqual([]);
     });
+
+    it('allows only DEV_USERNAME and REMOTE_HOST placeholders under frontDoorRouting.host', () => {
+      expect(
+        validator.findUnresolvedVariablesInObject({
+          frontDoorRouting: { host: '${DEV_USERNAME}.${REMOTE_HOST}', enabled: true }
+        })
+      ).toEqual([]);
+      expect(
+        validator.findUnresolvedVariablesInObject({
+          frontDoorRouting: { host: '${DEV_USERNAME}${REMOTE_HOST}' }
+        })
+      ).toEqual([]);
+      expect(
+        validator.findUnresolvedVariablesInObject({
+          frontDoorRouting: { host: '${DEV_USERNAME}.aifabrix.dev' }
+        })
+      ).toEqual([]);
+      const bad = validator.findUnresolvedVariablesInObject({
+        frontDoorRouting: { host: '${DEV_USERNAME}.${REMOTE_HOST}.${OTHER}' }
+      });
+      expect(bad.length).toBeGreaterThan(0);
+      expect(bad.some((s) => s.includes('${OTHER}'))).toBe(true);
+    });
   });
 
   describe('validateNoUnresolvedVariablesInDeployment', () => {
@@ -1191,6 +1236,21 @@ permissions:
       expect(() => validator.validateNoUnresolvedVariablesInDeployment(deployment)).toThrow(
         /Deployment manifest contains unresolved variables/
       );
+    });
+
+    it('does not throw when only frontDoorRouting.host uses DEV_USERNAME/REMOTE_HOST templates', () => {
+      const deployment = {
+        port: 3000,
+        key: 'app',
+        configuration: [],
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.${REMOTE_HOST}',
+          pattern: '/miso/*',
+          tls: false
+        }
+      };
+      expect(() => validator.validateNoUnresolvedVariablesInDeployment(deployment)).not.toThrow();
     });
   });
 });

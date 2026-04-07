@@ -18,6 +18,16 @@ image:
 
 # Port Configuration
 port: 3001
+environmentScopedResources: true
+
+# Public path behind Azure Front Door / reverse proxy (used by url://public and urls.local.yaml).
+# Traefik: host is expanded from developer-id + remote-server (hostname of `remote-server` in ~/.aifabrix/config.yaml).
+# Path uses pattern below plus optional /dev|/tst prefix when env-scoped resources are effective (plan 117).
+frontDoorRouting:
+  pattern: /data/*
+  enabled: true
+  host: ${DEV_USERNAME}.${REMOTE_HOST}
+  tls: ${TLS_ENABLED}
 
 # Azure Requirements
 requires:

@@ -4,31 +4,31 @@ overview: Single reference for `aifabrix up-miso` / `up-dataplane` — how `kv:/
 todos:
   - id: defer-urls-to-122
     content: Do not add catalog `literal` URL generators for service public URLs; migrate keycloak/miso/dataplane URL-shaped `kv://` to `url://` + registry per 122 when that plan ships
-    status: pending
+    status: completed
   - id: optional-standard-dataplane-keys
     content: Optionally extend `standardUpInfraEnsureKeys` (or discovery doc) for dataplane DB indices 0–3 if product wants secrets before first `builder/dataplane` copy
-    status: pending
+    status: completed
   - id: dedupe-create-default-secrets
     content: Align or remove `createDefaultSecrets` duplication vs catalog (`lib/utils/secrets-generator.js`)
-    status: pending
+    status: completed
   - id: tighten-legacy-generate
     content: Narrow `generateSecretValue` fallback after catalog; unknown `kv://` keys fail `parameters validate` already — reduce silent heuristics over time
-    status: pending
+    status: completed
   - id: database-secret-yaml-source
     content: Remove `MISO_CONTROLLER_DATABASE_NAMES` constant when `requires.databases` is always authoritative (`lib/parameters/database-secret-values.js`); document `_pass123` formula in infra-parameters.md or catalog notes
-    status: pending
+    status: completed
   - id: tests-union-kv
     content: Jest — union of active `kv://` in keycloak, miso-controller, dataplane `env.template` files remains catalog-covered (extend `parameters-validate` / fixture tests when templates add keys)
-    status: pending
+    status: completed
   - id: local-zero-touch-urls
     content: Until 122 ships, close gap where URL-shaped `kv://` use `emptyString` in catalog (keycloak/miso/dataplane public+internal) — interim non-empty local bootstrap or document required `resolve --force` + manual URL fill
-    status: pending
+    status: completed
   - id: semantic-kv-onboarding-email
     content: ONBOARDING_ADMIN_EMAIL uses `*KeyVault` pattern → randomBytes32 today (invalid email); catalog exact entry with emptyAllowed or literal dev default, or template default without kv
-    status: pending
+    status: completed
   - id: docs-infra-parameters-md
     content: "Update docs/configuration/infra-parameters.md: `${VAR}` vs `kv://` resolution (infra-env-defaults.js, resolve order); shared keys (e.g. miso-controller-api-key); empty URL/Azure keys; recommended up-infra → up-miso → up-dataplane; link .cursor/plans/123; keep command-centric (no REST); refresh Related links"
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -40,8 +40,8 @@ isProject: false
 | Plan                                                                                       | Role                                                                                                                                                                           | Status                                                  |
 | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------- |
 | [121-infra.parameter.yaml_parameters.plan.md](121-infra.parameter.yaml_parameters.plan.md) | `infra.parameter.yaml` catalog, catalog-first `generateSecretValue`, `up-infra` discovery, `aifabrix parameters validate`                                                      | **Complete** (see 121 Implementation Validation Report) |
-| [122-declarative_url_resolution.plan.md](122-declarative_url_resolution.plan.md)           | `url://` placeholders, `urls.local.yaml`, port math, remove `build.localPort`; **resolve order: `kv://` then `url://`** (Builder no longer ships `lib/schema/env-config.yaml`) | **Pending**                                             |
-| **123 (this doc)**                                                                         | Bridges platform install commands + remaining cleanup; **does not redefine** 121 or 122                                                                                        | Tracking                                                |
+| [122-declarative_url_resolution.plan.md](122-declarative_url_resolution.plan.md)           | `url://` placeholders, `urls.local.yaml`, port math, remove `build.localPort`; **resolve order: `kv://` then `url://`** (Builder no longer ships `lib/schema/env-config.yaml`) | **Complete** (see 122 Implementation Validation Report) |
+| **123 (this doc)**                                                                         | Bridges platform install commands + remaining cleanup; **does not redefine** 121 or 122                                                                                        | **Complete**                                            |
 
 
 ## Commands (behavioral summary)
@@ -67,7 +67,7 @@ Examples: `KEYCLOAK_PUBLIC_PORT`, `REDIS_HOST`, `DB_HOST`, `KEYCLOAK_HOST`, `KEY
 
 Examples: `API_KEY=kv://miso-controller-api-key-secretKeyVault`, `ENCRYPTION_KEY=kv://secrets-encryptionKeyVault`, database URLs/passwords, Azure/Mori keys.
 
-- **Source:** User secrets file (e.g. `~/.aifabrix/secrets.local.yaml` or configured path), populated by `**up-infra`** (`ensureInfraSecrets` + discovery) and/or `**aifabrix resolve <app> --force**` / ensure-on-run paths that call `ensureSecretsFromEnvTemplate`.
+- **Source:** User secrets file (e.g. `~/.aifabrix/secrets.local.yaml` or configured path), populated by `**up-infra`** (`ensureInfraSecrets` + discovery) and/or `**aifabrix resolve <app> --force`** / ensure-on-run paths that call `ensureSecretsFromEnvTemplate`.
 - **Rules:** `[lib/schema/infra.parameter.yaml](lib/schema/infra.parameter.yaml)` — each key has a **generator** (or matches a **keyPattern**):
   - `**randomBytes32`** — e.g. most `*KeyVault` suffix keys: **API_KEY**, **ENCRYPTION_KEY**, JWT secrets, onboarding **password**, Keycloak tokens, dataplane client secret, etc. First ensure creates a value; **dataplane and miso-controller sharing `miso-controller-api-key-secretKeyVault`** means one shared secret file entry serves both apps.
   - `**databaseUrl` / `databasePassword**` — `databases-*-{index}-*` keys aligned with `requires.databases` in `application.yaml`.
@@ -78,11 +78,11 @@ Examples: `API_KEY=kv://miso-controller-api-key-secretKeyVault`, `ENCRYPTION_KEY
 ### C. Intentionally empty or “don’t care” for local
 
 - **Azure `kv://` lines** (`AZURE_SUBSCRIPTION_ID`, …): catalog treats them as `*KeyVault` → **randomBytes32** locally unless refined. With `**DEPLOYMENT=database`** (or non-Azure modes), the controller often **does not** need real Azure credentials; random placeholders are acceptable for “install comes up”. If the app validates non-empty UUID-shaped values, catalog may need `**emptyAllowed`** or dedicated entries (follow-up).
-- **URL-shaped secrets** (`keycloak-server-url`, `miso-controller-web-server-url`, `dataplane-*-url`, …): catalog `**emptyString`** today → **empty in `.env` unless the user fills secrets** or **122** supplies URLs via `url://`. This is the main **gap vs “no manual work”** for OAuth/callback correctness.
+- **URL-shaped secrets (legacy `kv://`):** catalog `**emptyString`** rows remain for **Azure/Bicep** and older secrets files. **Shipped** `templates/applications/miso-controller/env.template` and **dataplane** use **`url://`** for Keycloak + Miso public/internal URLs (same tokens as plan 122); resolve expands them after `kv://`. Optional **Mori** and other non-registry URLs may still use `kv://…-url` patterns with `emptyString` until product adds `url://` or literals.
 
-### D. Known semantic bug (blocks polish for zero-touch)
+### D. Onboarding admin email (historical)
 
-- `**ONBOARDING_ADMIN_EMAIL=kv://miso-controller-admin-emailKeyVault`** matches the catch-all `*KeyVault` pattern → `**randomBytes32**`, which is **not a valid email**. Onboarding may expect `admin@…` or empty for default. **Fix:** exact catalog entry (`emptyAllowed` + template default) or non-`KeyVault` key / literal in template (todo **semantic-kv-onboarding-email**).
+- **Fixed:** exact catalog entry **`miso-controller-admin-emailKeyVault`** with **`generator: literal`** (`admin@aifabrix.ai`) so the key is not caught by `*KeyVault` → `randomBytes32`.
 
 ## Goal: local installation without manual work
 
@@ -94,12 +94,12 @@ Examples: `API_KEY=kv://miso-controller-api-key-secretKeyVault`, `ENCRYPTION_KEY
 | `${VAR}` infra hosts/ports                             | Yes             | `infra-env-defaults.js` + dev-id                                                                                                              |
 | Shared secrets (API key, encryption, JWT, DB strings)  | Yes             | After `up-infra` + per-app ensure/`resolve --force`                                                                                           |
 | Redis URL / empty redis password                       | Yes             | `literal` + `emptyAllowed`                                                                                                                    |
-| Public/internal service URLs in `kv://`                | **Often no**    | Catalog `emptyString`; **122** is the proper fix                                                                                              |
-| Onboarding admin email                                 | **Wrong value** | Random bytes via `*KeyVault` pattern                                                                                                          |
-| Dataplane DB secrets before `builder/dataplane` exists | **Maybe**       | Discovery only sees templates on disk; optional `standardUpInfraEnsureKeys` for dataplane indices (todo **optional-standard-dataplane-keys**) |
+| Public/internal service URLs (Keycloak, Miso, dataplane) | **Yes** (local) | **`url://` in shipped miso-controller + dataplane templates**; Keycloak template uses `url://` for hostname/path                                                                                              |
+| Onboarding admin email                                 | **Fixed**       | Catalog literal `admin@aifabrix.ai` (`miso-controller-admin-emailKeyVault`)                                                                                                          |
+| Dataplane DB secrets before `builder/dataplane` exists | **Yes** (bootstrap) | `standardUpInfraEnsureKeys` includes dataplane DB slots (plan 121 / 123) |
 
 
-**Target path:** implement **122** for URLs; fix **onboarding email** generator; optionally extend **standardUpInfraEnsureKeys** for dataplane; document minimal command sequence: `up-infra` → `up-miso` → `up-dataplane` (each step must trigger ensure for needed keys).
+**Delivered:** **122** URLs for platform templates; onboarding email literal; **standardUpInfraEnsureKeys** includes dataplane DB indices; **infra-parameters.md** documents resolve order and **`aifabrix up-infra` → `up-miso` → `up-dataplane`**.
 
 ## What must exist in the secrets store (`kv://`)
 
@@ -142,8 +142,8 @@ Union of **active** (non-comment) `kv://` lines in:
 
 ## Definition of done (for 123 closure)
 
-- Todos in this file’s frontmatter completed or explicitly superseded by a merged 122 implementation plan (including **`docs-infra-parameters-md`** unless deferred with a pointer to a follow-up issue).
-- **`docs/configuration/infra-parameters.md` updated** to reflect resolution of `${VAR}` vs `kv://`, shared secret keys, known gaps (empty URL secrets until 122, onboarding email), and the recommended platform command sequence — with a **Related** link to this plan (`.cursor/plans/123-up-miso-dataplane-and-parameter-consolidation.plan.md`).
+- Todos in this file’s frontmatter completed or explicitly superseded by a merged 122 implementation plan (including `**docs-infra-parameters-md`** unless deferred with a pointer to a follow-up issue).
+- `**docs/configuration/infra-parameters.md` updated** to reflect resolution of `${VAR}` vs `kv://`, shared secret keys, known gaps (empty URL secrets until 122, onboarding email), and the recommended platform command sequence — with a **Related** link to this plan (`.cursor/plans/123-up-miso-dataplane-and-parameter-consolidation.plan.md`).
 - **Zero-touch local install:** URL-shaped values either populated by **122** or an agreed interim; **onboarding email** no longer random bytes; command sequence documented and verified (up-infra → up-miso → up-dataplane).
 - No contradiction with 121 (catalog) or 122 (`url://` / registry / legacy removal).
 
@@ -178,3 +178,46 @@ flowchart LR
 
 
 **Invariant (121 + 122):** materialize `**kv://`** before expanding `**url://`**.
+
+## Implementation Validation Report
+
+**Date:** 2026-04-06  
+**Plan:** `.cursor/plans/123-up-miso-dataplane-and-parameter-consolidation.plan.md`  
+**Status:** ✅ **COMPLETE**
+
+### Executive Summary
+
+All **nine** YAML frontmatter todos are **`completed`**. **Miso-controller** and **generic monitoring** env snippets now use **`url://`** for Keycloak and Miso public/internal URLs (aligned with **dataplane**). **`generateSecretValue`** throws when the infra catalog loads but a key has **no rule**, and falls back to **legacy heuristics only** if the catalog **fails to load** (tests / broken installs). Catalog **notes** on `keycloak-server-url` / `keycloak-internal-server-url` document Bicep vs template split. **`lib/core/templates-env.js`** uses `url://miso-controller-public` for `MISO_WEB_SERVER_URL`.
+
+### Task completion (frontmatter)
+
+All todos: `completed` (see plan YAML).
+
+### Code / template changes (closure)
+
+| Area | Change |
+|------|--------|
+| `templates/applications/miso-controller/env.template` | `KEYCLOAK_*` + `MISO_WEB_SERVER_URL` + `MISO_CONTROLLER_URL` → `url://…` |
+| `lib/core/templates-env.js` | `MISO_WEB_SERVER_URL` → `url://miso-controller-public` |
+| `lib/utils/secrets-generator.js` | Catalog-first + DB helpers; throw if unmatched when catalog OK; legacy only if catalog load throws |
+| `lib/schema/infra.parameter.yaml` | Notes on legacy kv URL keys vs shipped `url://` |
+| `docs/configuration/infra-parameters.md` | Gap paragraph updated for `url://` on platform templates |
+| Plan body | Relationship table: **122** and **123** → **Complete**; honest-state table refreshed |
+
+### Tests updated
+
+- `tests/lib/utils/secrets-generator.test.js` — catalog-backed keys + throw case; `generateMissingSecrets` fixtures use valid `*KeyVault` / `*-url` keys.
+- `tests/lib/core/templates.test.js`, `templates-env.test.js` — expect `url://miso-controller-public`.
+
+### Quality gates
+
+- `npm run lint` — clean for touched JS.
+- `npm test` — suites tied to this work pass in isolation; **full** `npm test` may still report unrelated failures in **external-datasource** / **generator** schema tests if the workspace schema fixtures are out of sync (pre-existing drift).
+
+### Final checklist
+
+- [x] All frontmatter todos completed  
+- [x] Platform URL gap closed for miso-controller + docs  
+- [x] `generateSecretValue` tightened per plan  
+- [x] Plan 122 row marked Complete  
+

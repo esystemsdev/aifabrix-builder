@@ -12,6 +12,7 @@ jest.unmock('fs');
 
 const path = require('path');
 const fs = require('fs');
+const realFs = jest.requireActual('fs');
 const { validateFieldReferences } = require('../../../lib/datasource/field-reference-validator');
 const { collectExternalDatasourceWarnings } = require('../../../lib/validation/datasource-warnings');
 
@@ -20,6 +21,10 @@ delete require.cache[schemaLoaderPath];
 const { loadExternalDataSourceSchema, loadExternalSystemSchema } = require('../../../lib/utils/schema-loader');
 
 describe('Schema 2.4.x alignment', () => {
+  beforeAll(() => {
+    fs.existsSync = realFs.existsSync;
+    fs.readFileSync = realFs.readFileSync;
+  });
   const fixturePath = path.join(__dirname, '../../fixtures/external-datasource-minimal-241.json');
 
   it('loads minimal v2.4 fixture and passes field-reference validation', () => {
@@ -97,7 +102,8 @@ describe('Schema 2.4.x alignment', () => {
         documentKey: 'doc',
         baseUrl: 'https://api.example.com',
         operations: {
-          list: { operationId: 'listOp', method: 'GET', path: '/items' }
+          list: { operationId: 'listOp', method: 'GET', path: '/items' },
+          customSearch: { operationId: 'searchOp', method: 'GET', path: '/search' }
         }
       }
     };

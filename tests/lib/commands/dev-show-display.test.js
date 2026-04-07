@@ -8,6 +8,7 @@ jest.mock('fs');
 jest.mock('../../../lib/utils/logger');
 jest.mock('../../../lib/core/config', () => ({
   getCurrentEnvironment: jest.fn(),
+  getTlsEnabled: jest.fn(),
   getControllerUrl: jest.fn(),
   getFormat: jest.fn(),
   getUseEnvironmentScopedResources: jest.fn(),
@@ -27,7 +28,8 @@ jest.mock('../../../lib/utils/dev-config', () => ({
 
 jest.mock('../../../lib/utils/paths', () => ({
   getAifabrixHome: jest.fn(() => '/mock/home'),
-  getAifabrixWork: jest.fn(() => null)
+  getAifabrixWork: jest.fn(() => null),
+  getConfigDirForPaths: jest.fn(() => '/mock/.aifabrix')
 }));
 
 jest.mock('../../../lib/utils/dev-cert-helper', () => ({
@@ -63,6 +65,7 @@ describe('dev-show-display', () => {
       redisCommander: 8181
     });
     config.getCurrentEnvironment.mockResolvedValue('dev');
+    config.getTlsEnabled.mockResolvedValue(false);
     config.getControllerUrl.mockResolvedValue(null);
     config.getFormat.mockResolvedValue('yaml');
     config.getUseEnvironmentScopedResources.mockResolvedValue(false);
@@ -84,6 +87,7 @@ describe('dev-show-display', () => {
       expect(logger.log).toHaveBeenCalledWith(row('ID', '02'));
       expect(logger.log).toHaveBeenCalledWith('🚀 Ports');
       expect(logger.log).toHaveBeenCalledWith('⚙️ Configuration');
+      expect(logger.log).toHaveBeenCalledWith(row('TLS/SSL', 'OFF 🕐'));
       expect(logger.log).toHaveBeenCalledWith('📁 Paths');
       expect(logger.log).toHaveBeenCalledWith('🔗 Integrations');
 

@@ -49,6 +49,11 @@ const {
 } = require('../../../lib/utils/ensure-dev-certs-for-remote-docker');
 
 describe('ensure-dev-certs-for-remote-docker', () => {
+  beforeEach(() => {
+    // Spies on node:fs from other test files in this worker leak into nodeFs() / requireActual.
+    jest.restoreAllMocks();
+  });
+
   describe('readIssueCertPin', () => {
     afterEach(() => {
       delete process.env.AIFABRIX_DEV_ISSUE_PIN;
@@ -63,14 +68,15 @@ describe('ensure-dev-certs-for-remote-docker', () => {
     });
 
     it('reads first non-empty line from AIFABRIX_DEV_ISSUE_PIN_FILE', () => {
+      const disk = jest.requireActual('node:fs');
       const tmp = path.join(os.tmpdir(), `pin-${Date.now()}.txt`);
-      fs.writeFileSync(tmp, '\n  abc123  \n', 'utf8');
+      disk.writeFileSync(tmp, '\n  abc123  \n', 'utf8');
       process.env.AIFABRIX_DEV_ISSUE_PIN_FILE = tmp;
       try {
         expect(readIssueCertPin()).toBe('abc123');
       } finally {
         try {
-          fs.unlinkSync(tmp);
+          disk.unlinkSync(tmp);
         } catch {
           // ignore
         }
@@ -79,6 +85,10 @@ describe('ensure-dev-certs-for-remote-docker', () => {
   });
 
   describe('ensureDevCertsIfNeededForRemoteDocker', () => {
+    /** Spies on node:fs.promises — nodeFs() rebinds each call, so spy the real module. */
+    let mkdirSpy;
+    let writeFileSpy;
+
     beforeEach(() => {
       jest.clearAllMocks();
       config.getDockerEndpoint.mockResolvedValue(null);
@@ -90,14 +100,14 @@ describe('ensure-dev-certs-for-remote-docker', () => {
         caCertificate: 'CA-PEM'
       });
       jest.spyOn(fs, 'existsSync').mockReturnValue(false);
-      jest.spyOn(fs.promises, 'mkdir').mockResolvedValue(undefined);
-      jest.spyOn(fs.promises, 'writeFile').mockResolvedValue(undefined);
+      mkdirSpy = jest.spyOn(fs.promises, 'mkdir').mockResolvedValue(undefined);
+      writeFileSpy = jest.spyOn(fs.promises, 'writeFile').mockResolvedValue(undefined);
     });
 
     afterEach(() => {
       fs.existsSync.mockRestore();
-      fs.promises.mkdir.mockRestore();
-      fs.promises.writeFile.mockRestore();
+      mkdirSpy.mockRestore();
+      writeFileSpy.mockRestore();
       delete process.env.AIFABRIX_DEV_ISSUE_PIN;
     });
 
@@ -135,7 +145,7 @@ describe('ensure-dev-certs-for-remote-docker', () => {
         expect.objectContaining({ developerId: '02', pin: 'one-time', csr: 'CSR' }),
         undefined
       );
-      expect(fs.promises.writeFile).toHaveBeenCalled();
+      expect(writeFileSpy).toHaveBeenCalled();
       expect(config.setDeveloperId).toHaveBeenCalledWith('02');
     });
   });

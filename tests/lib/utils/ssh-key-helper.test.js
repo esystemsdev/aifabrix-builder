@@ -11,15 +11,22 @@ jest.mock('fs');
 jest.mock('os');
 jest.mock('child_process', () => ({ execSync: jest.fn() }));
 
-const osReal = jest.requireActual('os');
+jest.mock('../../../lib/internal/node-fs', () => ({
+  nodeFs: jest.fn(() => jest.requireActual('../../../lib/internal/node-fs').nodeFs())
+}));
+
 os.homedir.mockReturnValue('/home/user');
 
+const nodeFsLib = require('../../../lib/internal/node-fs');
 const sshKeyHelper = require('../../../lib/utils/ssh-key-helper');
 
 describe('ssh-key-helper', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     os.homedir.mockReturnValue('/home/user');
+    nodeFsLib.nodeFs.mockImplementation(() =>
+      jest.requireActual('../../../lib/internal/node-fs').nodeFs()
+    );
   });
 
   describe('getDefaultSshDir', () => {
@@ -42,15 +49,17 @@ describe('ssh-key-helper', () => {
 
   describe('ensureSshDir', () => {
     it('returns dir when it exists', () => {
-      fs.existsSync.mockReturnValue(true);
+      const sync = { existsSync: jest.fn().mockReturnValue(true), mkdirSync: jest.fn() };
+      nodeFsLib.nodeFs.mockReturnValue(sync);
       expect(sshKeyHelper.ensureSshDir('/existing')).toBe('/existing');
-      expect(fs.mkdirSync).not.toHaveBeenCalled();
+      expect(sync.mkdirSync).not.toHaveBeenCalled();
     });
 
     it('creates dir when it does not exist', () => {
-      fs.existsSync.mockReturnValue(false);
+      const sync = { existsSync: jest.fn().mockReturnValue(false), mkdirSync: jest.fn() };
+      nodeFsLib.nodeFs.mockReturnValue(sync);
       expect(sshKeyHelper.ensureSshDir('/new')).toBe('/new');
-      expect(fs.mkdirSync).toHaveBeenCalledWith('/new', { recursive: true, mode: 0o700 });
+      expect(sync.mkdirSync).toHaveBeenCalledWith('/new', { recursive: true, mode: 0o700 });
     });
   });
 
@@ -95,6 +104,10 @@ describe('ssh-key-helper', () => {
 
     it('calls ssh-keygen when key does not exist', () => {
       fs.existsSync.mockReturnValue(false);
+      nodeFsLib.nodeFs.mockReturnValue({
+        existsSync: jest.fn().mockReturnValue(false),
+        mkdirSync: jest.fn()
+      });
       const { execSync } = require('child_process');
       execSync.mockReturnValue(undefined);
       const pubPath = path.join('/home/user', '.ssh', 'id_ed25519.pub');

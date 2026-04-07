@@ -6,36 +6,43 @@
  * @version 2.0.0
  */
 
-const fs = require('fs');
 const path = require('path');
+const nodeFsLib = require('../../../lib/internal/node-fs');
 
-// Mock fs BEFORE requiring modules
-jest.mock('fs');
-const fsSync = require('fs');
+const SCHEMA_LOADER = '../../../lib/utils/schema-loader';
 
 describe('Schema Loader Utilities', () => {
   const mockSystemSchemaPath = path.join(__dirname, '../../../lib/schema/external-system.schema.json');
   const mockDatasourceSchemaPath = path.join(__dirname, '../../../lib/schema/external-datasource.schema.json');
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    // Clear module cache to reset validators
-    delete require.cache[require.resolve('../../../lib/utils/schema-loader')];
-    // Also reset validators if module is already loaded
+  function freshFsMock() {
+    return {
+      existsSync: jest.fn(),
+      readFileSync: jest.fn()
+    };
+  }
+
+  function resetLoaderModule() {
+    delete require.cache[require.resolve(SCHEMA_LOADER)];
     try {
-      const loader = require('../../../lib/utils/schema-loader');
+      const loader = require(SCHEMA_LOADER);
       if (loader.resetValidators) {
         loader.resetValidators();
       }
-    } catch (e) {
-      // Module not loaded yet, that's fine
+    } catch {
+      // not loaded yet
     }
+  }
+
+  beforeEach(() => {
+    resetLoaderModule();
   });
 
   describe('loadExternalSystemSchema', () => {
     it('should load and compile external system schema', () => {
-      // Clear cache first
-      delete require.cache[require.resolve('../../../lib/utils/schema-loader')];
+      resetLoaderModule();
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
       const mockSchema = {
         $schema: 'http://json-schema.org/draft-07/schema#',
         type: 'object',
@@ -45,63 +52,72 @@ describe('Schema Loader Utilities', () => {
           displayName: { type: 'string' }
         }
       };
-
-      fsSync.existsSync.mockImplementation((filePath) => filePath === mockSystemSchemaPath);
-      fsSync.readFileSync.mockReturnValue(JSON.stringify(mockSchema));
-
-      const { loadExternalSystemSchema } = require('../../../lib/utils/schema-loader');
-      const validate = loadExternalSystemSchema();
-
-      expect(validate).toBeInstanceOf(Function);
-      expect(fsSync.existsSync).toHaveBeenCalledWith(mockSystemSchemaPath);
-      expect(fsSync.readFileSync).toHaveBeenCalledWith(mockSystemSchemaPath, 'utf8');
+      try {
+        fsM.existsSync.mockImplementation((filePath) => filePath === mockSystemSchemaPath);
+        fsM.readFileSync.mockReturnValue(JSON.stringify(mockSchema));
+        const { loadExternalSystemSchema } = require(SCHEMA_LOADER);
+        const validate = loadExternalSystemSchema();
+        expect(validate).toBeInstanceOf(Function);
+        expect(fsM.existsSync).toHaveBeenCalledWith(mockSystemSchemaPath);
+        expect(fsM.readFileSync).toHaveBeenCalledWith(mockSystemSchemaPath, 'utf8');
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should cache compiled validator', () => {
-      // Clear cache first to start fresh
-      delete require.cache[require.resolve('../../../lib/utils/schema-loader')];
+      resetLoaderModule();
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
       const mockSchema = {
         $schema: 'http://json-schema.org/draft-07/schema#',
         type: 'object',
         properties: {}
       };
-
-      fsSync.existsSync.mockImplementation((filePath) => filePath === mockSystemSchemaPath);
-      fsSync.readFileSync.mockReturnValue(JSON.stringify(mockSchema));
-
-      const { loadExternalSystemSchema } = require('../../../lib/utils/schema-loader');
-      // First call should read the file
-      const validate1 = loadExternalSystemSchema();
-      // Second call should use cache (not read file again)
-      const validate2 = loadExternalSystemSchema();
-
-      expect(validate1).toBe(validate2);
-      // Should only read file once due to caching
-      expect(fsSync.readFileSync).toHaveBeenCalledTimes(1);
+      try {
+        fsM.existsSync.mockImplementation((filePath) => filePath === mockSystemSchemaPath);
+        fsM.readFileSync.mockReturnValue(JSON.stringify(mockSchema));
+        const { loadExternalSystemSchema } = require(SCHEMA_LOADER);
+        const validate1 = loadExternalSystemSchema();
+        const validate2 = loadExternalSystemSchema();
+        expect(validate1).toBe(validate2);
+        expect(fsM.readFileSync).toHaveBeenCalledTimes(1);
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should throw error if schema file not found', () => {
-      // Clear cache first
-      delete require.cache[require.resolve('../../../lib/utils/schema-loader')];
-      fsSync.existsSync.mockImplementation(() => false);
-
-      const { loadExternalSystemSchema } = require('../../../lib/utils/schema-loader');
-      expect(() => loadExternalSystemSchema()).toThrow('External system schema not found');
+      resetLoaderModule();
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
+      try {
+        fsM.existsSync.mockImplementation(() => false);
+        const { loadExternalSystemSchema } = require(SCHEMA_LOADER);
+        expect(() => loadExternalSystemSchema()).toThrow('External system schema not found');
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should throw error on invalid JSON', () => {
-      // Clear cache first
-      delete require.cache[require.resolve('../../../lib/utils/schema-loader')];
-      fsSync.existsSync.mockImplementation((filePath) => filePath === mockSystemSchemaPath);
-      fsSync.readFileSync.mockReturnValue('invalid json {');
-
-      const { loadExternalSystemSchema } = require('../../../lib/utils/schema-loader');
-      expect(() => loadExternalSystemSchema()).toThrow('Invalid JSON in external-system.schema.json');
+      resetLoaderModule();
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
+      try {
+        fsM.existsSync.mockImplementation((filePath) => filePath === mockSystemSchemaPath);
+        fsM.readFileSync.mockReturnValue('invalid json {');
+        const { loadExternalSystemSchema } = require(SCHEMA_LOADER);
+        expect(() => loadExternalSystemSchema()).toThrow('Invalid JSON in external-system.schema.json');
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should validate data correctly', () => {
-      // Clear cache first
-      delete require.cache[require.resolve('../../../lib/utils/schema-loader')];
+      resetLoaderModule();
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
       const mockSchema = {
         $schema: 'http://json-schema.org/draft-07/schema#',
         type: 'object',
@@ -110,20 +126,23 @@ describe('Schema Loader Utilities', () => {
           key: { type: 'string' }
         }
       };
-
-      fsSync.existsSync.mockImplementation((filePath) => filePath === mockSystemSchemaPath);
-      fsSync.readFileSync.mockReturnValue(JSON.stringify(mockSchema));
-
-      const { loadExternalSystemSchema } = require('../../../lib/utils/schema-loader');
-      const validate = loadExternalSystemSchema();
-
-      expect(validate({ key: 'test' })).toBe(true);
-      expect(validate({})).toBe(false);
+      try {
+        fsM.existsSync.mockImplementation((filePath) => filePath === mockSystemSchemaPath);
+        fsM.readFileSync.mockReturnValue(JSON.stringify(mockSchema));
+        const { loadExternalSystemSchema } = require(SCHEMA_LOADER);
+        const validate = loadExternalSystemSchema();
+        expect(validate({ key: 'test' })).toBe(true);
+        expect(validate({})).toBe(false);
+      } finally {
+        spy.mockRestore();
+      }
     });
   });
 
   describe('loadExternalDataSourceSchema', () => {
     it('should load and compile external datasource schema', () => {
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
       const mockSchema = {
         $schema: 'https://json-schema.org/draft/2020-12/schema',
         type: 'object',
@@ -133,99 +152,121 @@ describe('Schema Loader Utilities', () => {
           systemKey: { type: 'string' }
         }
       };
-
-      fsSync.existsSync.mockImplementation((filePath) => filePath === mockDatasourceSchemaPath);
-      fsSync.readFileSync.mockReturnValue(JSON.stringify(mockSchema));
-
-      const { loadExternalDataSourceSchema } = require('../../../lib/utils/schema-loader');
-      const validate = loadExternalDataSourceSchema();
-
-      expect(validate).toBeInstanceOf(Function);
-      expect(fsSync.existsSync).toHaveBeenCalledWith(mockDatasourceSchemaPath);
-      expect(fsSync.readFileSync).toHaveBeenCalledWith(mockDatasourceSchemaPath, 'utf8');
+      try {
+        fsM.existsSync.mockImplementation((filePath) => filePath === mockDatasourceSchemaPath);
+        fsM.readFileSync.mockReturnValue(JSON.stringify(mockSchema));
+        const { loadExternalDataSourceSchema } = require(SCHEMA_LOADER);
+        const validate = loadExternalDataSourceSchema();
+        expect(validate).toBeInstanceOf(Function);
+        expect(fsM.existsSync).toHaveBeenCalledWith(mockDatasourceSchemaPath);
+        expect(fsM.readFileSync).toHaveBeenCalledWith(mockDatasourceSchemaPath, 'utf8');
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should cache compiled validator', () => {
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
       const mockSchema = {
         $schema: 'https://json-schema.org/draft/2020-12/schema',
         type: 'object',
         properties: {}
       };
-
-      fsSync.existsSync.mockImplementation((filePath) => filePath === mockDatasourceSchemaPath);
-      fsSync.readFileSync.mockReturnValue(JSON.stringify(mockSchema));
-
-      const { loadExternalDataSourceSchema } = require('../../../lib/utils/schema-loader');
-      const validate1 = loadExternalDataSourceSchema();
-      const validate2 = loadExternalDataSourceSchema();
-
-      expect(validate1).toBe(validate2);
-      expect(fsSync.readFileSync).toHaveBeenCalledTimes(1);
+      try {
+        fsM.existsSync.mockImplementation((filePath) => filePath === mockDatasourceSchemaPath);
+        fsM.readFileSync.mockReturnValue(JSON.stringify(mockSchema));
+        const { loadExternalDataSourceSchema } = require(SCHEMA_LOADER);
+        const validate1 = loadExternalDataSourceSchema();
+        const validate2 = loadExternalDataSourceSchema();
+        expect(validate1).toBe(validate2);
+        expect(fsM.readFileSync).toHaveBeenCalledTimes(1);
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should throw error if schema file not found', () => {
-      fsSync.existsSync.mockReturnValue(false);
-
-      const { loadExternalDataSourceSchema } = require('../../../lib/utils/schema-loader');
-      expect(() => loadExternalDataSourceSchema()).toThrow('External datasource schema not found');
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
+      try {
+        fsM.existsSync.mockReturnValue(false);
+        const { loadExternalDataSourceSchema } = require(SCHEMA_LOADER);
+        expect(() => loadExternalDataSourceSchema()).toThrow('External datasource schema not found');
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should throw error on invalid JSON', () => {
-      fsSync.existsSync.mockImplementation((filePath) => filePath === mockDatasourceSchemaPath);
-      fsSync.readFileSync.mockReturnValue('invalid json {');
-
-      const { loadExternalDataSourceSchema } = require('../../../lib/utils/schema-loader');
-      expect(() => loadExternalDataSourceSchema()).toThrow('Invalid JSON in external-datasource.schema.json');
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
+      try {
+        fsM.existsSync.mockImplementation((filePath) => filePath === mockDatasourceSchemaPath);
+        fsM.readFileSync.mockReturnValue('invalid json {');
+        const { loadExternalDataSourceSchema } = require(SCHEMA_LOADER);
+        expect(() => loadExternalDataSourceSchema()).toThrow('Invalid JSON in external-datasource.schema.json');
+      } finally {
+        spy.mockRestore();
+      }
     });
   });
 
   describe('detectSchemaType', () => {
     it('should detect external-system from $id', () => {
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
       const content = JSON.stringify({
         $id: 'https://aifabrix.dev/schemas/external-system.schema.json'
       });
       const filePath = '/path/to/file.json';
-
-      fsSync.existsSync.mockImplementation((path) => path === filePath);
-      fsSync.readFileSync.mockReturnValue(content);
-
-      const { detectSchemaType } = require('../../../lib/utils/schema-loader');
-      const result = detectSchemaType(filePath);
-
-      expect(result).toBe('external-system');
+      try {
+        fsM.existsSync.mockImplementation((p) => p === filePath);
+        fsM.readFileSync.mockReturnValue(content);
+        const { detectSchemaType } = require(SCHEMA_LOADER);
+        expect(detectSchemaType(filePath)).toBe('external-system');
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should detect external-datasource from $id', () => {
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
       const content = JSON.stringify({
         $id: 'https://aifabrix.dev/schemas/external-datasource.schema.json'
       });
       const filePath = '/path/to/file.json';
-
-      fsSync.existsSync.mockImplementation((path) => path === filePath);
-      fsSync.readFileSync.mockReturnValue(content);
-
-      const { detectSchemaType } = require('../../../lib/utils/schema-loader');
-      const result = detectSchemaType(filePath);
-
-      expect(result).toBe('external-datasource');
+      try {
+        fsM.existsSync.mockImplementation((p) => p === filePath);
+        fsM.readFileSync.mockReturnValue(content);
+        const { detectSchemaType } = require(SCHEMA_LOADER);
+        expect(detectSchemaType(filePath)).toBe('external-datasource');
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should detect external-system from title', () => {
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
       const content = JSON.stringify({
         title: 'External System Configuration'
       });
       const filePath = '/path/to/file.json';
-
-      fsSync.existsSync.mockImplementation((path) => path === filePath);
-      fsSync.readFileSync.mockReturnValue(content);
-
-      const { detectSchemaType } = require('../../../lib/utils/schema-loader');
-      const result = detectSchemaType(filePath);
-
-      expect(result).toBe('external-system');
+      try {
+        fsM.existsSync.mockImplementation((p) => p === filePath);
+        fsM.readFileSync.mockReturnValue(content);
+        const { detectSchemaType } = require(SCHEMA_LOADER);
+        expect(detectSchemaType(filePath)).toBe('external-system');
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should detect external-datasource from required fields', () => {
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
       const content = JSON.stringify({
         key: 'test',
         displayName: 'Test',
@@ -234,17 +275,19 @@ describe('Schema Loader Utilities', () => {
         fieldMappings: {}
       });
       const filePath = '/path/to/file.json';
-
-      fsSync.existsSync.mockImplementation((path) => path === filePath);
-      fsSync.readFileSync.mockReturnValue(content);
-
-      const { detectSchemaType } = require('../../../lib/utils/schema-loader');
-      const result = detectSchemaType(filePath);
-
-      expect(result).toBe('external-datasource');
+      try {
+        fsM.existsSync.mockImplementation((p) => p === filePath);
+        fsM.readFileSync.mockReturnValue(content);
+        const { detectSchemaType } = require(SCHEMA_LOADER);
+        expect(detectSchemaType(filePath)).toBe('external-datasource');
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should detect external-system from type and authentication', () => {
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
       const content = JSON.stringify({
         key: 'test',
         displayName: 'Test',
@@ -252,111 +295,129 @@ describe('Schema Loader Utilities', () => {
         authentication: {}
       });
       const filePath = '/path/to/file.json';
-
-      fsSync.existsSync.mockImplementation((path) => path === filePath);
-      fsSync.readFileSync.mockReturnValue(content);
-
-      const { detectSchemaType } = require('../../../lib/utils/schema-loader');
-      const result = detectSchemaType(filePath);
-
-      expect(result).toBe('external-system');
+      try {
+        fsM.existsSync.mockImplementation((p) => p === filePath);
+        fsM.readFileSync.mockReturnValue(content);
+        const { detectSchemaType } = require(SCHEMA_LOADER);
+        expect(detectSchemaType(filePath)).toBe('external-system');
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should detect from filename pattern', () => {
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
       const filePaths = [
         '/path/to/external-system.json',
         '/path/to/external_datasource.json',
         '/path/to/datasource.json',
         '/path/to/application.json'
       ];
-
-      fsSync.existsSync.mockImplementation((path) => filePaths.includes(path));
-      fsSync.readFileSync.mockReturnValue('{}');
-
-      const { detectSchemaType } = require('../../../lib/utils/schema-loader');
-
-      expect(detectSchemaType('/path/to/external-system.json')).toBe('external-system');
-      expect(detectSchemaType('/path/to/external_datasource.json')).toBe('external-datasource');
-      expect(detectSchemaType('/path/to/datasource.json')).toBe('external-datasource');
-      expect(detectSchemaType('/path/to/application.json')).toBe('application');
+      try {
+        fsM.existsSync.mockImplementation((p) => filePaths.includes(p));
+        fsM.readFileSync.mockReturnValue('{}');
+        const { detectSchemaType } = require(SCHEMA_LOADER);
+        expect(detectSchemaType('/path/to/external-system.json')).toBe('external-system');
+        expect(detectSchemaType('/path/to/external_datasource.json')).toBe('external-datasource');
+        expect(detectSchemaType('/path/to/datasource.json')).toBe('external-datasource');
+        expect(detectSchemaType('/path/to/application.json')).toBe('application');
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should use provided content instead of reading file', () => {
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
       const content = JSON.stringify({
         $id: 'https://aifabrix.dev/schemas/external-system.schema.json'
       });
-
-      const { detectSchemaType } = require('../../../lib/utils/schema-loader');
-      const result = detectSchemaType('/path/to/file.json', content);
-
-      expect(result).toBe('external-system');
-      expect(fsSync.readFileSync).not.toHaveBeenCalled();
+      try {
+        const { detectSchemaType } = require(SCHEMA_LOADER);
+        expect(detectSchemaType('/path/to/file.json', content)).toBe('external-system');
+        expect(fsM.readFileSync).not.toHaveBeenCalled();
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should throw error if file not found and no content provided', () => {
-      fsSync.existsSync.mockReturnValue(false);
-
-      const { detectSchemaType } = require('../../../lib/utils/schema-loader');
-      expect(() => detectSchemaType('/path/to/nonexistent.json')).toThrow('File not found');
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
+      try {
+        fsM.existsSync.mockReturnValue(false);
+        const { detectSchemaType } = require(SCHEMA_LOADER);
+        expect(() => detectSchemaType('/path/to/nonexistent.json')).toThrow('File not found');
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should throw error on invalid JSON', () => {
-      fsSync.existsSync.mockReturnValue(true);
-      fsSync.readFileSync.mockReturnValue('invalid json {');
-
-      const { detectSchemaType } = require('../../../lib/utils/schema-loader');
-      expect(() => detectSchemaType('/path/to/file.json')).toThrow('Invalid JSON in file');
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
+      try {
+        fsM.existsSync.mockReturnValue(true);
+        fsM.readFileSync.mockReturnValue('invalid json {');
+        const { detectSchemaType } = require(SCHEMA_LOADER);
+        expect(() => detectSchemaType('/path/to/file.json')).toThrow('Invalid JSON in file');
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('should default to application if cannot determine', () => {
+      const fsM = freshFsMock();
+      const spy = jest.spyOn(nodeFsLib, 'nodeFs').mockReturnValue(fsM);
       const filePath = '/path/to/unknown.json';
-      fsSync.existsSync.mockImplementation((path) => path === filePath);
-      fsSync.readFileSync.mockReturnValue('{}');
-
-      const { detectSchemaType } = require('../../../lib/utils/schema-loader');
-      const result = detectSchemaType(filePath);
-
-      expect(result).toBe('application');
+      try {
+        fsM.existsSync.mockImplementation((p) => p === filePath);
+        fsM.readFileSync.mockReturnValue('{}');
+        const { detectSchemaType } = require(SCHEMA_LOADER);
+        expect(detectSchemaType(filePath)).toBe('application');
+      } finally {
+        spy.mockRestore();
+      }
     });
   });
 
   describe('detectSchemaTypeFromParsed', () => {
     it('should detect application from parsed object (application fields)', () => {
       const parsed = { image: 'img', registryMode: 'acr', port: 8080 };
-      const { detectSchemaTypeFromParsed } = require('../../../lib/utils/schema-loader');
+      const { detectSchemaTypeFromParsed } = require(SCHEMA_LOADER);
       expect(detectSchemaTypeFromParsed(parsed, '/path/to/file.json')).toBe('application');
     });
 
     it('should detect external-system from parsed object ($id)', () => {
       const parsed = { $id: 'https://aifabrix.dev/schemas/external-system.schema.json' };
-      const { detectSchemaTypeFromParsed } = require('../../../lib/utils/schema-loader');
+      const { detectSchemaTypeFromParsed } = require(SCHEMA_LOADER);
       expect(detectSchemaTypeFromParsed(parsed, '/path/to/file.json')).toBe('external-system');
     });
 
     it('should detect external-datasource from parsed object (datasource fields)', () => {
       const parsed = { systemKey: 's', entityType: 'Deal', fieldMappings: {} };
-      const { detectSchemaTypeFromParsed } = require('../../../lib/utils/schema-loader');
+      const { detectSchemaTypeFromParsed } = require(SCHEMA_LOADER);
       expect(detectSchemaTypeFromParsed(parsed, '/path/to/file.json')).toBe('external-datasource');
     });
 
     it('should use filename when content does not determine type', () => {
       const parsed = { unknown: true };
-      const { detectSchemaTypeFromParsed } = require('../../../lib/utils/schema-loader');
+      const { detectSchemaTypeFromParsed } = require(SCHEMA_LOADER);
       expect(detectSchemaTypeFromParsed(parsed, '/path/to/external-system.json')).toBe('external-system');
       expect(detectSchemaTypeFromParsed(parsed, '/path/to/application.yaml')).toBe('application');
     });
 
     it('should default to application when detection returns null', () => {
       const parsed = { foo: 'bar' };
-      const { detectSchemaTypeFromParsed } = require('../../../lib/utils/schema-loader');
+      const { detectSchemaTypeFromParsed } = require(SCHEMA_LOADER);
       expect(detectSchemaTypeFromParsed(parsed, '/path/to/other.txt')).toBe('application');
     });
 
     it('should handle non-object parsed (default to application)', () => {
-      const { detectSchemaTypeFromParsed } = require('../../../lib/utils/schema-loader');
+      const { detectSchemaTypeFromParsed } = require(SCHEMA_LOADER);
       expect(detectSchemaTypeFromParsed(null, '/path/to/file.json')).toBe('application');
       expect(detectSchemaTypeFromParsed(undefined, '/path/to/file.json')).toBe('application');
     });
   });
 });
-

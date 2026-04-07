@@ -1862,6 +1862,10 @@ describe('CLI Commands', () => {
       config.getUserMutagenFolder.mockResolvedValue(null);
       config.getSyncSshUser.mockResolvedValue(null);
       config.getSyncSshHost.mockResolvedValue(null);
+      if (typeof config.getTlsEnabled !== 'function') {
+        config.getTlsEnabled = jest.fn();
+      }
+      config.getTlsEnabled.mockResolvedValue(false);
     }
 
     describe('dockerfile command handler execution', () => {
@@ -2487,6 +2491,95 @@ describe('CLI Commands', () => {
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: true }));
       });
 
+      it('should pass adminPassword adminEmail userPassword through to startInfra', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({
+          adminPassword: 'sec1',
+          adminEmail: 'admin@test.dev',
+          userPassword: 'userSec'
+        });
+
+        expect(infra.startInfra).toHaveBeenCalledWith(
+          null,
+          expect.objectContaining({
+            adminPassword: 'sec1',
+            adminPwd: 'sec1',
+            adminEmail: 'admin@test.dev',
+            userPassword: 'userSec'
+          })
+        );
+      });
+
+      it('should treat adminPwd as alias for adminPassword', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({ adminPwd: 'alias1' });
+
+        expect(infra.startInfra).toHaveBeenCalledWith(
+          null,
+          expect.objectContaining({ adminPassword: 'alias1', adminPwd: 'alias1' })
+        );
+      });
+
+      it('should reject --tls with --no-tls', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['up-infra'];
+        await handler({ tls: true, notls: true });
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'up-infra');
+        expect(process.exit).toHaveBeenCalledWith(1);
+        expect(infra.startInfra).not.toHaveBeenCalled();
+      });
+
+      it('should persist tlsEnabled with --tls and pass tlsEnabled to startInfra', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
+        config.saveConfig.mockResolvedValue();
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({ tls: true });
+
+        expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ tlsEnabled: true }));
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ tlsEnabled: true }));
+      });
+
+      it('should persist tlsEnabled with --no-tls', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({ tlsEnabled: true });
+        config.saveConfig.mockResolvedValue();
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({ notls: true });
+
+        expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ tlsEnabled: false }));
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ tlsEnabled: false }));
+      });
+
+      it('should pass tlsEnabled from config when tls flags omitted', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({ tlsEnabled: true });
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({});
+
+        expect(config.saveConfig).not.toHaveBeenCalled();
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ tlsEnabled: true }));
+      });
+
       it('should handle up command error via setupCommands', async() => {
         setupCommandsAndResetLogger();
 
@@ -2759,6 +2852,7 @@ describe('CLI Commands', () => {
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('ID', '1'));
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('App', '3100'));
         expect(logger.log).toHaveBeenCalledWith('⚙️ Configuration');
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('TLS/SSL', 'OFF 🕐'));
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Environment', 'dev'));
         expect(logger.log).toHaveBeenCalledWith(
           paddedDevRow('Controller', 'http://localhost:3610')
@@ -2838,6 +2932,7 @@ describe('CLI Commands', () => {
         await handler();
 
         expect(logger.log).toHaveBeenCalledWith('⚙️ Configuration');
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('TLS/SSL', 'OFF 🕐'));
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Environment', 'dev'));
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Controller', EM));
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Format', EM));
@@ -2849,6 +2944,29 @@ describe('CLI Commands', () => {
           paddedDevRow('Home', path.join(mockHomeDir, '.aifabrix'))
         );
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Secrets API', EM));
+      });
+
+      it('should show TLS/SSL ON when tlsEnabled is true in config', async() => {
+        setupCommandsAndResetLogger();
+        primeDevShowConfigMocks();
+        config.getTlsEnabled.mockResolvedValue(true);
+
+        config.getDeveloperId.mockResolvedValue('1');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
+        config.getAifabrixSecretsPath.mockResolvedValue(null);
+        devConfig.getDevPorts.mockReturnValue({
+          app: 3100,
+          postgres: 5532,
+          redis: 6479,
+          pgadmin: 5150,
+          redisCommander: 8181
+        });
+
+        const handler = commandActions['dev show'];
+        await handler();
+
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('TLS/SSL', 'ON 🔒'));
       });
 
       it('should handle dev set-id command with invalid id via setupCommands', async() => {

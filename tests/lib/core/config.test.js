@@ -26,6 +26,7 @@ const {
   setDeveloperId,
   loadDeveloperId,
   getCurrentEnvironment,
+  getTlsEnabled,
   setCurrentEnvironment,
   resolveEnvironment,
   isTokenExpired,
@@ -683,6 +684,43 @@ describe('Config Module', () => {
       const result = await getCurrentEnvironment();
 
       expect(result).toBe('dev');
+    });
+  });
+
+  describe('getTlsEnabled', () => {
+    it('should return true when tlsEnabled is true', async() => {
+      const mockConfig = {
+        'developer-id': '0',
+        environments: {},
+        tlsEnabled: true
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      await expect(getTlsEnabled()).resolves.toBe(true);
+    });
+
+    it('should return false when tlsEnabled is false', async() => {
+      const mockConfig = {
+        'developer-id': '0',
+        environments: {},
+        tlsEnabled: false
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      await expect(getTlsEnabled()).resolves.toBe(false);
+    });
+
+    it('should return false when tlsEnabled is omitted', async() => {
+      const mockConfig = {
+        'developer-id': '0',
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      await expect(getTlsEnabled()).resolves.toBe(false);
     });
   });
 

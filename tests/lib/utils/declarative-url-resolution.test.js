@@ -139,12 +139,17 @@ describe('url-declarative-resolve helpers (matrix fixtures)', () => {
   it('cross-app token parsing', () => {
     expect(parseUrlToken('miso-controller-internal')).toEqual({
       targetKey: 'miso-controller',
-      kind: 'internal'
+      kind: 'internal',
+      surface: 'full'
     });
   });
 
   it('parseUrlToken treats unknown token as public (current app)', () => {
-    expect(parseUrlToken('weird')).toEqual({ targetKey: '', kind: 'public' });
+    expect(parseUrlToken('weird')).toEqual({
+      targetKey: '',
+      kind: 'public',
+      surface: 'full'
+    });
   });
 
   it('applyTstRemoteDeveloperHost does not rewrite when URL origin differs from remote base', () => {

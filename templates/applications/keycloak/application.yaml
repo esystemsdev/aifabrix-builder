@@ -16,6 +16,14 @@ image:
 # Port Configuration (base for host; host port = 8082 + developer_id*100 from ~/.aifabrix/config.yaml)
 port: 8082
 
+# Public path behind Azure Front Door / reverse proxy (used by url://public and urls.local.yaml).
+# Traefik: `${DEV_USERNAME}.${REMOTE_HOST}` → e.g. dev01.builder02.local when remote-server is set (see config.yaml).
+frontDoorRouting:
+  pattern: /auth/*
+  enabled: true
+  host: ${DEV_USERNAME}.${REMOTE_HOST}
+  tls: false
+
 # Azure Requirements
 requires:
   database: true

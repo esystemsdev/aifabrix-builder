@@ -25,6 +25,7 @@ function makeIsolatedProject(displayName, testMatch) {
     transform: sharedTransform,
     testMatch,
     testPathIgnorePatterns: ['/node_modules/', '\\\\node_modules\\\\'],
+    setupFiles: ['<rootDir>/tests/capture-real-fs.js'],
     setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
     testTimeout: isCI ? 10000 : 5000,
     maxWorkers: 1
@@ -56,16 +57,61 @@ module.exports = {
           '/tests/lib/utils/cli-utils.test.js',
           '/tests/lib/utils/external-system-display.test.js',
           '/tests/lib/utils/dev-hosts-helper.test.js',
+          '/tests/lib/utils/declarative-url-matrix-d-reload.test.js',
           '/tests/lib/utils/datasource-validation-watch.test.js',
           '\\\\tests\\\\lib\\\\utils\\\\cli-utils.test.js',
           '\\\\tests\\\\lib\\\\utils\\\\external-system-display.test.js',
           '\\\\tests\\\\lib\\\\utils\\\\dev-hosts-helper.test.js',
+          '\\\\tests\\\\lib\\\\utils\\\\declarative-url-matrix-d-reload.test.js',
           '\\\\tests\\\\lib\\\\utils\\\\datasource-validation-watch.test.js',
           'lib/utils/dev-hosts-helper.test.js',
+          'lib/utils/declarative-url-matrix-d-reload.test.js',
           'lib/utils/datasource-validation-watch.test.js',
+          // Match nested / renamed workspace roots (e.g. pnpm) where full path may not contain tests/lib/utils/
+          'dev-hosts-helper\\.test\\.js',
+          'declarative-url-matrix-d-reload\\.test\\.js',
+          '/tests/lib/commands/parameters-validate.test.js',
+          '\\\\tests\\\\lib\\\\commands\\\\parameters-validate.test.js',
+          'lib/commands/parameters-validate.test.js',
+          'parameters-validate\\.test\\.js',
           '/tests/lib/utils/datasource-test-run-schema-sync.test.js',
           '\\\\tests\\\\lib\\\\utils\\\\datasource-test-run-schema-sync.test.js',
-          'lib/utils/datasource-test-run-schema-sync.test.js'
+          'lib/utils/datasource-test-run-schema-sync.test.js',
+          '/tests/lib/parameters/infra-platform-contract.test.js',
+          '\\\\tests\\\\lib\\\\parameters\\\\infra-platform-contract.test.js',
+          'lib/parameters/infra-platform-contract.test.js',
+          '/tests/lib/parameters/database-secret-values.test.js',
+          '\\\\tests\\\\lib\\\\parameters\\\\database-secret-values.test.js',
+          'lib/parameters/database-secret-values.test.js',
+          'database-secret-values\\.test\\.js',
+          '/tests/lib/parameters/infra-parameter-validate.test.js',
+          '\\\\tests\\\\lib\\\\parameters\\\\infra-parameter-validate.test.js',
+          'lib/parameters/infra-parameter-validate.test.js',
+          'infra-parameter-validate\\.test\\.js',
+          '/tests/lib/utils/urls-local-registry.test.js',
+          '\\\\tests\\\\lib\\\\utils\\\\urls-local-registry.test.js',
+          'lib/utils/urls-local-registry.test.js',
+          'urls-local-registry\\.test\\.js',
+          '/tests/lib/utils/aifabrix-runtime-config-dir.test.js',
+          '\\\\tests\\\\lib\\\\utils\\\\aifabrix-runtime-config-dir.test.js',
+          'lib/utils/aifabrix-runtime-config-dir.test.js',
+          'aifabrix-runtime-config-dir\\.test\\.js',
+          '/tests/lib/parameters/platform-env-template-kv-catalog.test.js',
+          '\\\\tests\\\\lib\\\\parameters\\\\platform-env-template-kv-catalog.test.js',
+          'lib/parameters/platform-env-template-kv-catalog.test.js',
+          'platform-env-template-kv-catalog\\.test\\.js',
+          '/tests/lib/infrastructure/resolve-infra-state-paths.test.js',
+          '\\\\tests\\\\lib\\\\infrastructure\\\\resolve-infra-state-paths.test.js',
+          'lib/infrastructure/resolve-infra-state-paths.test.js',
+          'resolve-infra-state-paths\\.test\\.js',
+          '/tests/lib/utils/dev-ssh-config-helper.test.js',
+          '\\\\tests\\\\lib\\\\utils\\\\dev-ssh-config-helper.test.js',
+          'lib/utils/dev-ssh-config-helper.test.js',
+          'dev-ssh-config-helper\\.test\\.js',
+          '/tests/lib/core/secrets-ensure-catalog-fallback.test.js',
+          '\\\\tests\\\\lib\\\\core\\\\secrets-ensure-catalog-fallback.test.js',
+          'lib/core/secrets-ensure-catalog-fallback.test.js',
+          'secrets-ensure-catalog-fallback\\.test\\.js'
         ];
         if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
           patterns.push('/tests/local/');
@@ -73,19 +119,50 @@ module.exports = {
         }
         return patterns;
       })(),
+      setupFiles: ['<rootDir>/tests/capture-real-fs.js'],
       setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
       testTimeout: isCI ? 10000 : 5000,
       detectOpenHandles: true,
-      maxWorkers: isCI ? 2 : '50%'
+      // Serial default project limits fs spy leakage between files in the same worker.
+      maxWorkers: 1
     },
     makeIsolatedProject('cli-utils', ['**/tests/lib/utils/cli-utils.test.js']),
     makeIsolatedProject('external-system-display', ['**/tests/lib/utils/external-system-display.test.js']),
     makeIsolatedProject('dev-hosts-helper', ['**/tests/lib/utils/dev-hosts-helper.test.js']),
+    makeIsolatedProject('declarative-url-matrix-d-reload', [
+      '**/tests/lib/utils/declarative-url-matrix-d-reload.test.js'
+    ]),
+    makeIsolatedProject('parameters-validate', ['**/tests/lib/commands/parameters-validate.test.js']),
     makeIsolatedProject('datasource-validation-watch', [
       '**/tests/lib/utils/datasource-validation-watch.test.js'
     ]),
     makeIsolatedProject('datasource-test-run-schema-sync', [
       '**/tests/lib/utils/datasource-test-run-schema-sync.test.js'
+    ]),
+    makeIsolatedProject('infra-platform-contract', [
+      '**/tests/lib/parameters/infra-platform-contract.test.js'
+    ]),
+    makeIsolatedProject('database-secret-values', [
+      '**/tests/lib/parameters/database-secret-values.test.js'
+    ]),
+    makeIsolatedProject('infra-parameter-validate', [
+      '**/tests/lib/parameters/infra-parameter-validate.test.js'
+    ]),
+    makeIsolatedProject('urls-local-registry', ['**/tests/lib/utils/urls-local-registry.test.js']),
+    makeIsolatedProject('aifabrix-runtime-config-dir', [
+      '**/tests/lib/utils/aifabrix-runtime-config-dir.test.js'
+    ]),
+    makeIsolatedProject('platform-env-template-kv-catalog', [
+      '**/tests/lib/parameters/platform-env-template-kv-catalog.test.js'
+    ]),
+    makeIsolatedProject('resolve-infra-state-paths', [
+      '**/tests/lib/infrastructure/resolve-infra-state-paths.test.js'
+    ]),
+    makeIsolatedProject('dev-ssh-config-helper', [
+      '**/tests/lib/utils/dev-ssh-config-helper.test.js'
+    ]),
+    makeIsolatedProject('secrets-ensure-catalog-fallback', [
+      '**/tests/lib/core/secrets-ensure-catalog-fallback.test.js'
     ])
   ]
 };

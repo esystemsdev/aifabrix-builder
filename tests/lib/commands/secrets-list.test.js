@@ -19,7 +19,7 @@ jest.mock('../../../lib/core/config', () => ({
   getDeveloperId: jest.fn().mockResolvedValue('1')
 }));
 jest.mock('../../../lib/utils/paths', () => ({
-  getAifabrixHome: jest.fn(() => '/home/.aifabrix'),
+  getPrimaryUserSecretsLocalPath: jest.fn(() => '/home/.aifabrix/secrets.local.yaml'),
   getAifabrixWork: jest.fn(() => null)
 }));
 jest.mock('../../../lib/utils/remote-dev-auth', () => {

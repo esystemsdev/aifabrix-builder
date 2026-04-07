@@ -11,7 +11,8 @@ jest.mock('../../../lib/core/config', () => ({
 }));
 
 jest.mock('../../../lib/utils/paths', () => ({
-  getAifabrixHome: jest.fn(() => '/home/.aifabrix')
+  getAifabrixHome: jest.fn(() => '/home/user'),
+  getAifabrixSystemDir: jest.fn(() => '/home/.aifabrix')
 }));
 
 jest.mock('../../../lib/utils/secrets-encryption', () => ({
@@ -59,6 +60,17 @@ describe('admin-secrets', () => {
     it('throws when file does not exist', async() => {
       fs.existsSync.mockReturnValue(false);
       await expect(adminSecrets.readAndDecryptAdminSecrets()).rejects.toThrow(/Admin secrets file not found/);
+    });
+
+    it('uses legacy aifabrix-home admin-secrets.env when system dir file is missing', async() => {
+      const pathsMod = require('../../../lib/utils/paths');
+      fs.existsSync.mockImplementation((p) => p === '/home/user/admin-secrets.env');
+      fs.readFileSync.mockReturnValue('POSTGRES_PASSWORD=legacy\n');
+
+      const result = await adminSecrets.readAndDecryptAdminSecrets();
+      expect(result.POSTGRES_PASSWORD).toBe('legacy');
+      expect(fs.readFileSync).toHaveBeenCalledWith('/home/user/admin-secrets.env', 'utf8');
+      expect(pathsMod.getAifabrixSystemDir).toHaveBeenCalled();
     });
 
     it('throws when encrypted value present but no encryption key', async() => {

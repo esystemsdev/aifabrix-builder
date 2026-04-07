@@ -165,8 +165,10 @@ aifabrix build myapp --force-template
 - `-f, --force-template` - Force rebuild from template
 - `-t, --tag <tag>` - Image tag (default: latest)
 
+**Image repository name:** Taken from `application.yaml` when `image` is set (same rules as run: optional `image.registry`, `image.name`, `image.tag`, or a string `image: repo:tag`). If `image` is omitted, blank, or an empty object, the CLI lists **local Docker images** and reuses a matching repository, stripping common dev suffixes (`-dev<N>`, `-extra`) so the next build tags the base name (for example a listed `myorg/app-dev2:latest` → build target `myorg/app`). When your developer id is set, a repository ending in `-dev<id>` is preferred if several lines match. If nothing in Docker matches, the name falls back to `app.key` or the app folder name.
+
 **Creates:**
-- Docker image: `myapp:latest`
+- Docker image: `<resolved-repository>:<tag>` (default tag `latest`)
 - Env is resolved in memory; the only persisted `.env` is written to `build.envOutputPath` when configured (run uses the same single .env path or temp).
 
 **Environment and tokens:** Build passes `NPM_TOKEN` and `PYPI_TOKEN` as Docker build-args when they are in `env.template` (e.g. `NPM_TOKEN=kv://npm-tokenKeyVault`) or in your secrets file, so private npm/pypi registries work during `RUN npm install` / `pip install`. Add them to `env.template` as `kv://` references; see [env.template](../configuration/env-template.md#build-run-shell-and-install). The TypeScript Dockerfile uses `NODE_AUTH_TOKEN=$NPM_TOKEN` so npm install can authenticate; for Python, use a custom Dockerfile or run `aifabrix install <app>` after build if you need private PyPI during install. Note: build-args can appear in image history; for maximum security use Docker build secrets or install-after-build.

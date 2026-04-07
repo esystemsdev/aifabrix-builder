@@ -521,12 +521,13 @@
         },
         "host": {
           "type": "string",
-          "description": "Hostname for Traefik routing. Supports ${DEV_USERNAME} variable interpolation (e.g., '${DEV_USERNAME}.aifabrix.dev'). Required if enabled is true.",
-          "pattern": "^[a-z0-9.$\\{\\}-]+$"
+          "description": "Hostname template for Traefik (no path). Placeholders: ${DEV_USERNAME} (from developer-id; empty when id is 0 or unset), ${REMOTE_HOST} (hostname from remote-server in config). For id 0, host is bare remote hostname. Non-zero: dev01, dev02, … Adjacent ${DEV_USERNAME}${REMOTE_HOST} is normalized to insert a dot. Required if enabled is true.",
+          "pattern": "^[a-zA-Z0-9.$\\{\\}_-]+$"
         },
         "tls": {
-          "type": "boolean",
+          "type": "string",
           "description": "Enable TLS/HTTPS for Traefik (local development)",
+          "pattern": "^[a-zA-Z.$\\{\\}_-]+$",
           "default": true
         },
         "certStore": {

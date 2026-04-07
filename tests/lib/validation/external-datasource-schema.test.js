@@ -112,10 +112,10 @@ describe('External datasource schema – v2.4', () => {
     expect(valid).toBe(true);
   });
 
-  it('should fail when fieldMappings includes legacy dimensions', () => {
+  it('should fail when fieldMappings.dimensions is not an object', () => {
     const config = minimalRecordStorage({
       fieldMappings: {
-        dimensions: {},
+        dimensions: [],
         attributes: {
           id: { expression: '{{raw.id}}' },
           externalId: { expression: '{{raw.id}}' }

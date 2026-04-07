@@ -1,8 +1,11 @@
 /**
  * @fileoverview Tests for datasource-validation-watch.js
+ *
+ * resetModules + re-require each test so this file stays correct when Jest reuses a worker
+ * that previously loaded lib/utils/paths under another suite's mock (multi-project runs).
  */
 
-const fs = require('node:fs');
+const fs = jest.requireActual('node:fs');
 const path = require('path');
 const os = require('os');
 
@@ -15,21 +18,29 @@ jest.mock('../../../lib/utils/logger', () => ({
   error: jest.fn()
 }));
 
-const { getIntegrationPath } = require('../../../lib/utils/paths');
-const logger = require('../../../lib/utils/logger');
-const {
-  fingerprintForWatchDiff,
-  formatWatchFingerprintDiff,
-  buildWatchTargetList,
-  debounce,
-  startWatchers,
-  runDatasourceValidationWatchLoop
-} = require('../../../lib/utils/datasource-validation-watch');
-
 describe('datasource-validation-watch', () => {
   let tmp;
+  let getIntegrationPath;
+  let logger;
+  let fingerprintForWatchDiff;
+  let formatWatchFingerprintDiff;
+  let buildWatchTargetList;
+  let debounce;
+  let startWatchers;
+  let runDatasourceValidationWatchLoop;
 
   beforeEach(() => {
+    jest.resetModules();
+    ({
+      fingerprintForWatchDiff,
+      formatWatchFingerprintDiff,
+      buildWatchTargetList,
+      debounce,
+      startWatchers,
+      runDatasourceValidationWatchLoop
+    } = require('../../../lib/utils/datasource-validation-watch'));
+    getIntegrationPath = require('../../../lib/utils/paths').getIntegrationPath;
+    logger = require('../../../lib/utils/logger');
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dvwatch-'));
     getIntegrationPath.mockReturnValue(path.join(tmp, 'integration-app'));
   });
@@ -41,8 +52,6 @@ describe('datasource-validation-watch', () => {
       // ignore
     }
     jest.clearAllMocks();
-    // Do not call jest.restoreAllMocks() here: it resets the jest.mock('./paths') factory fn
-    // between tests and drops mockReturnValue, leaving getIntegrationPath undefined → flaky targets.
     jest.useRealTimers();
   });
 
@@ -131,8 +140,9 @@ describe('datasource-validation-watch', () => {
   });
 
   it('startWatchers invokes onEvent and close() stops watchers', () => {
+    const fsLive = require('node:fs');
     const close = jest.fn();
-    const watchSpy = jest.spyOn(fs, 'watch').mockImplementation((_p, listener) => {
+    const watchSpy = jest.spyOn(fsLive, 'watch').mockImplementation((_p, listener) => {
       if (typeof listener === 'function') {
         listener('change', 'f');
       }
@@ -149,13 +159,16 @@ describe('datasource-validation-watch', () => {
   it('runDatasourceValidationWatchLoop exits 4 when there is nothing to watch', async() => {
     getIntegrationPath.mockReturnValue(path.join(tmp, 'nonexistent-integration'));
     const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
-    await runDatasourceValidationWatchLoop({
-      appKey: 'app',
-      runOnce: async() => ({ exitCode: 0, envelope: null })
-    });
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Watch: no directories'));
-    expect(exitSpy).toHaveBeenCalledWith(4);
-    exitSpy.mockRestore();
+    try {
+      await runDatasourceValidationWatchLoop({
+        appKey: 'app',
+        runOnce: async() => ({ exitCode: 0, envelope: null })
+      });
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Watch: no directories'));
+      expect(exitSpy).toHaveBeenCalledWith(4);
+    } finally {
+      exitSpy.mockRestore();
+    }
   });
 
   it('runDatasourceValidationWatchLoop with watchCi calls process.exit with run exit code after first run', async() => {
@@ -163,18 +176,19 @@ describe('datasource-validation-watch', () => {
     fs.mkdirSync(intRoot, { recursive: true });
     getIntegrationPath.mockReturnValue(intRoot);
     const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
-    const watchSpy = jest.spyOn(fs, 'watch').mockImplementation(() => ({ close: jest.fn() }));
     const runOnce = jest.fn().mockResolvedValue({ exitCode: 2, envelope: { status: 'fail' } });
-    await runDatasourceValidationWatchLoop({
-      appKey: 'app',
-      watchCi: true,
-      runOnce
-    });
-    expect(runOnce).toHaveBeenCalledTimes(1);
-    expect(exitSpy).toHaveBeenCalledWith(2);
-    process.removeAllListeners('SIGINT');
-    process.removeAllListeners('SIGTERM');
-    watchSpy.mockRestore();
-    exitSpy.mockRestore();
+    try {
+      await runDatasourceValidationWatchLoop({
+        appKey: 'app',
+        watchCi: true,
+        runOnce
+      });
+      expect(runOnce).toHaveBeenCalledTimes(1);
+      expect(exitSpy).toHaveBeenCalledWith(2);
+    } finally {
+      process.removeAllListeners('SIGINT');
+      process.removeAllListeners('SIGTERM');
+      exitSpy.mockRestore();
+    }
   });
 });

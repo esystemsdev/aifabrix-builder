@@ -13,6 +13,7 @@ jest.mock('../../../lib/core/config', () => ({
 
 jest.mock('../../../lib/utils/paths', () => ({
   getAifabrixHome: jest.fn(() => '/home/.aifabrix'),
+  getPrimaryUserSecretsLocalPath: jest.fn(() => '/home/.aifabrix/secrets.local.yaml'),
   listBuilderAppNames: jest.fn(() => []),
   listIntegrationAppNames: jest.fn(() => []),
   getBuilderPath: jest.fn((n) => `/builder/${n}`),
@@ -64,6 +65,7 @@ const pathsUtil = require('../../../lib/utils/paths');
 const { isRemoteSecretsUrl, getRemoteDevAuth } = require('../../../lib/utils/remote-dev-auth');
 const devApi = require('../../../lib/api/dev.api');
 const secretsGenerator = require('../../../lib/utils/secrets-generator');
+const logger = require('../../../lib/utils/logger');
 const { clearInfraParameterCatalogCache } = require('../../../lib/parameters/infra-parameter-catalog');
 
 const secretsEnsure = require('../../../lib/core/secrets-ensure');
@@ -74,7 +76,8 @@ const {
   setSecretInStore,
   resolveWriteTarget,
   loadExistingFromTarget,
-  getInfraSecretKeysForUpInfra
+  getInfraSecretKeysForUpInfra,
+  buildInfraPlaceholderContext
 } = secretsEnsure;
 
 describe('secrets-ensure', () => {
@@ -116,14 +119,27 @@ describe('secrets-ensure', () => {
       expect(keys).toContain('databases-miso-controller-0-urlKeyVault');
       expect(keys).toContain('databases-miso-controller-1-passwordKeyVault');
     });
+
+    it('includes every standardUpInfraEnsureKeys entry from shipped infra.parameter.yaml', () => {
+      const realFs = jest.requireActual('fs');
+      const yaml = require('js-yaml');
+      const catPath = path.join(__dirname, '../../../lib/schema/infra.parameter.yaml');
+      const doc = yaml.load(realFs.readFileSync(catPath, 'utf8'));
+      const bootstrap = doc.standardUpInfraEnsureKeys || [];
+      expect(bootstrap.length).toBeGreaterThan(0);
+      const keys = getInfraSecretKeysForUpInfra();
+      for (const k of bootstrap) {
+        expect(keys).toContain(k);
+      }
+    });
   });
 
   describe('resolveWriteTarget', () => {
     it('returns file target with user path when no config', async() => {
       config.getSecretsPath.mockResolvedValue(null);
-      pathsUtil.getAifabrixHome.mockReturnValue('/home/.aifabrix');
+      pathsUtil.getPrimaryUserSecretsLocalPath.mockReturnValue('/home/.aifabrix/secrets.local.yaml');
       const target = await resolveWriteTarget();
-      expect(target).toEqual({ type: 'file', filePath: path.join('/home/.aifabrix', 'secrets.local.yaml') });
+      expect(target).toEqual({ type: 'file', filePath: '/home/.aifabrix/secrets.local.yaml' });
     });
 
     it('returns remote target when config is URL and isRemoteSecretsUrl true', async() => {
@@ -286,16 +302,72 @@ describe('secrets-ensure', () => {
       expect(Array.isArray(result)).toBe(true);
     });
 
-    it('passes adminPwd as suggested value for postgres-passwordKeyVault when provided', async() => {
+    it('passes merged placeholderContext so adminPwd overrides {{adminPassword}}', async() => {
       secretsGenerator.loadExistingSecrets.mockReturnValue({});
       config.getSecretsPath.mockResolvedValue(null);
 
       await ensureInfraSecrets({ adminPwd: 'my-admin-pwd' });
 
-      expect(secretsGenerator.appendSecretsToFile).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({ 'postgres-passwordKeyVault': 'my-admin-pwd' })
+      expect(secretsGenerator.generateSecretValue).toHaveBeenCalledWith(
+        'postgres-passwordKeyVault',
+        expect.objectContaining({ adminPassword: 'my-admin-pwd' })
       );
+    });
+
+    it('buildInfraPlaceholderContext merges CLI flags with catalog defaults', () => {
+      const ctx = buildInfraPlaceholderContext({
+        adminPassword: 'cliPwd',
+        adminEmail: 'cli@example.com',
+        userPassword: 'cliUser'
+      });
+      expect(ctx.adminPassword).toBe('cliPwd');
+      expect(ctx.adminEmail).toBe('cli@example.com');
+      expect(ctx.userPassword).toBe('cliUser');
+    });
+
+    it('overwrites keycloak default user password in store when userPassword CLI is set', async() => {
+      secretsGenerator.loadExistingSecrets.mockReturnValue({});
+      config.getSecretsPath.mockResolvedValue(null);
+      config.getSecretsEncryptionKey.mockResolvedValue(null);
+
+      await ensureInfraSecrets({ userPassword: 'cliUserPwd' });
+
+      const wroteUserPwd = secretsGenerator.saveSecretsFile.mock.calls.some(
+        (call) => call[1] && call[1]['keycloak-default-passwordKeyVault'] === 'cliUserPwd'
+      );
+      expect(wroteUserPwd).toBe(true);
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('{{userPassword}}')
+      );
+    });
+
+    it('syncs every catalog literal using {{adminPassword}} when adminPwd CLI is set', async() => {
+      secretsGenerator.loadExistingSecrets.mockReturnValue({});
+      config.getSecretsPath.mockResolvedValue(null);
+      config.getSecretsEncryptionKey.mockResolvedValue(null);
+
+      await ensureInfraSecrets({ adminPwd: 'cli-admin-sync' });
+
+      const calls = secretsGenerator.saveSecretsFile.mock.calls;
+      const hasKey = (k) => calls.some((c) => c[1] && c[1][k] === 'cli-admin-sync');
+      expect(hasKey('postgres-passwordKeyVault')).toBe(true);
+      expect(hasKey('keycloak-admin-passwordKeyVault')).toBe(true);
+      expect(hasKey('miso-controller-admin-passwordKeyVault')).toBe(true);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('{{adminPassword}}'));
+    });
+
+    it('syncs miso-controller-admin-emailKeyVault when adminEmail CLI is set', async() => {
+      secretsGenerator.loadExistingSecrets.mockReturnValue({});
+      config.getSecretsPath.mockResolvedValue(null);
+      config.getSecretsEncryptionKey.mockResolvedValue(null);
+
+      await ensureInfraSecrets({ adminEmail: 'sync@example.com' });
+
+      const wrote = secretsGenerator.saveSecretsFile.mock.calls.some(
+        (c) => c[1] && c[1]['miso-controller-admin-emailKeyVault'] === 'sync@example.com'
+      );
+      expect(wrote).toBe(true);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('{{adminEmail}}'));
     });
   });
 

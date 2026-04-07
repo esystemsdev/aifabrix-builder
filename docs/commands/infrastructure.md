@@ -6,7 +6,7 @@ Commands for managing local infrastructure services (Postgres, Redis, pgAdmin, R
 
 **Docker and development only:** All `up-xxx` and `down-xxx` commands (`up-infra`, `up-platform`, `up-miso`, `up-dataplane`, `down-infra`, `down-app`) operate on Docker containers and are for local development only. They do not deploy the builder's own services to the cloud.
 
-**Secrets on disk:** Generated `.env` files used for compose (e.g. `.env.run` in the applications or infra folder) are **temporary** and are **deleted after a successful run** so passwords are not stored on disk (ISO 27K). See [Secrets and config](configuration/secrets-and-config.md#admin-secretsenv-and-run-env-iso-27k).
+**Secrets on disk:** Generated `.env` files used for compose (e.g. `.env.run` in the applications or infra folder) are **temporary** and are **deleted after a successful run** so passwords are not stored on disk (ISO 27K). See [Secrets and config](../configuration/secrets-and-config.md#admin-secretsenv-and-run-env-iso-27k).
 
 ---
 
@@ -15,7 +15,7 @@ Commands for managing local infrastructure services (Postgres, Redis, pgAdmin, R
 
 Start local infrastructure (Postgres, Redis, optional Traefik).
 
-**What:** Starts PostgreSQL and Redis in Docker. Optionally includes pgAdmin, Redis Commander, and Traefik. Supports developer isolation with developer-specific ports and infrastructure resources.
+**What:** Starts PostgreSQL and Redis in Docker. Optionally includes pgAdmin, Redis Commander, and Traefik. Supports developer isolation with developer-specific ports and infrastructure resources. When the CLI ensures missing bootstrap secrets (for example Postgres password, Keycloak-related defaults, and platform template defaults), it uses the builder **infra parameter catalog**: shipped default values can be overridden for this run with the flags below so one password or email applies everywhere those defaults are wired.
 
 **When:** First time setup, after system restart, when infrastructure is down.
 
@@ -27,8 +27,9 @@ aifabrix up-infra
 # Full stack: pgAdmin, Redis Commander, Traefik
 aifabrix up-infra --pgAdmin --redisAdmin --traefik
 
-# Override default admin password for new install (Postgres, pgAdmin, Redis Commander)
-aifabrix up-infra --adminPwd mySecurePassword
+# Override shared bootstrap defaults (admin password, optional email and Keycloak default user password)
+aifabrix up-infra --adminPassword mySecurePassword
+aifabrix up-infra --adminEmail dev@example.com --userPassword defaultUserSecret
 
 # Set developer ID and start infrastructure (developer-specific ports)
 aifabrix up-infra --developer 1
@@ -41,17 +42,37 @@ aifabrix up-infra --traefik
 
 # Exclude Traefik and save to config
 aifabrix up-infra --no-traefik
+
+# TLS mode for application.yaml / deployment manifest (${TLS_ENABLED}, ${HTTP_ENABLED})
+aifabrix up-infra --tls
+aifabrix up-infra --no-tls
+
+# One-shot: Traefik + TLS in config + catalog overrides (same values as shipped defaults in infra.parameter.yaml)
+aifabrix up-infra --traefik --tls --adminPassword admin123 --adminEmail admin@aifabrix.dev --userPassword user123 --pgAdmin
 ```
+
+Use `aifabrix` or your shell alias (for example `af`) the same way.
+
+**TLS / HTTP manifest flags (`${TLS_ENABLED}`, `${HTTP_ENABLED}`):** **`${HTTP_ENABLED}`** is always the opposite of **`${TLS_ENABLED}`** (both are the strings **`true`** or **`false`**): when TLS mode is off, **`${HTTP_ENABLED}`** is **`true`** (plain HTTP); when TLS mode is on, **`${HTTP_ENABLED}`** is **`false`**. In the infra parameter catalog, **`{{HTTP_ENABLED}}`** mirrors **`{{TLS_ENABLED}}`** the same way.
+
+Default **`${TLS_ENABLED}`** is **`false`**, so default **`${HTTP_ENABLED}`** is **`true`**. Until you run **`aifabrix up-infra --tls`**, those defaults apply in deployment JSON and in catalog placeholder expansion. Use **`aifabrix up-infra --tls`** or **`aifabrix up-infra --no-tls`** to store **`tlsEnabled: true`** or **`tlsEnabled: false`** in **`~/.aifabrix/config.yaml`**. When you generate deployment JSON (for example **`aifabrix json <app>`**), string fields in **`application.yaml`** that contain **`${TLS_ENABLED}`** or **`${HTTP_ENABLED}`** are replaced the same way as **`${REDIS_HOST}`**, **`${PORT}`**, etc. This is independent of Traefik: **`--traefik`** only adds the reverse-proxy service; **`--tls`** only drives these interpolation flags. You cannot pass **`--tls`** and **`--no-tls`** on the same command.
+
+**Bootstrap defaults (catalog):** Shipped defaults for shared placeholders (for example admin password, admin email, and default user password) live in the builder infra parameter catalog (`defaults` in `infra.parameter.yaml`). For details, CLI overwrite of existing `kv://` literals, and Azure naming hints, see [Infra parameters](../configuration/infra-parameters.md). Values such as controller JWT and app encryption keys are **generated** when first ensured, not taken from those shared defaults.
 
 **Options:**
 - `-d, --developer <id>` - Set developer ID and start infrastructure with developer-specific ports. Developer ID must be a non-negative integer (0 = default infra, 1+ = developer-specific). When provided, sets the developer ID in `~/.aifabrix/config.yaml` and starts infrastructure with isolated ports.
-- `--adminPwd <password>` - Set or update the admin password in `~/.aifabrix/admin-secrets.env` for Postgres, pgAdmin, and Redis Commander. If the file already exists, its password fields are overwritten with this value; otherwise they are backfilled. Use a strong password in shared environments. **Note:** The Postgres container sets the `pgadmin` user password only when the data volume is first created. If you change the password after Postgres was already initialized, login to Postgres will fail until you reset the volume: run `cd ~/.aifabrix/infra && docker compose -f compose.yaml -p aifabrix down -v`, then run `aifabrix up-infra --adminPwd <password>` again.
+- `--adminPassword <password>` - Override the catalog default for the shared admin password for this run and when filling missing bootstrap secrets that use that default (Postgres admin password, pgAdmin and Redis Commander wiring, Keycloak admin password bootstrap, controller onboarding admin password, and other catalog entries tied to the same placeholder). Also written to `admin-secrets.env` in the **same directory as `config.yaml`** (often `~/.aifabrix/`, not plain `$HOME` when `aifabrix-home` points at `$HOME`) when that file is created or updated for infra admin access. Use a strong password in shared environments.
+- `--adminEmail <email>` - Override the catalog default admin email for this run (for example pgAdmin login email and controller onboarding email bootstrap where the catalog maps it).
+- `--userPassword <password>` - Override the catalog default for the Keycloak default end-user password bootstrap where the catalog maps it.
+- **Postgres volume caveat:** The Postgres container applies the superuser password when the data volume is **first** created. If you change `--adminPassword` after Postgres was already initialized, database login can fail until you reset the volume: `cd ~/.aifabrix/infra && docker compose -f compose.yaml -p aifabrix down -v`, then run `aifabrix up-infra --adminPassword <password>` again (use your developer-specific compose project name if you use `--developer`).
 - `--pgAdmin` - Include pgAdmin web UI and save to config (default: enabled).
 - `--no-pgAdmin` - Exclude pgAdmin and save to config.
 - `--redisAdmin` - Include Redis Commander web UI and save to config (default: enabled).
 - `--no-redisAdmin` - Exclude Redis Commander and save to config.
 - `--traefik` - Include Traefik reverse proxy and save `traefik: true` to `~/.aifabrix/config.yaml` (used for this run and when neither flag is passed).
 - `--no-traefik` - Exclude Traefik and save `traefik: false` to config. When neither `--traefik` nor `--no-traefik` is passed, the value is read from config.
+- `--tls` - Save `tlsEnabled: true` so **`${TLS_ENABLED}`** is **`true`** and **`${HTTP_ENABLED}`** is **`false`** when building deployment JSON.
+- `--no-tls` - Save `tlsEnabled: false` so **`${TLS_ENABLED}`** is **`false`** and **`${HTTP_ENABLED}`** is **`true`**. Mutually exclusive with `--tls`.
 
 **Port Calculation:**
 Ports are calculated using: `basePort + (developer-id * 100)`
@@ -91,7 +112,7 @@ Set environment variables before running `aifabrix up-infra --traefik`:
 
 **Developer Isolation (one network per developer):**
 When using `--developer`, each developer gets:
-- Separate Docker Compose project: `infra-dev{id}`
+- Separate Docker Compose project: `infra-dev{id}` (compose and infra working files live under that folder **next to `config.yaml`**, e.g. `~/.aifabrix/infra-dev02`, not under `$HOME` when that differs from the config directory)
 - **One network per developer:** `infra-dev{id}-aifabrix-network` — dev, tst, and pro **share this same developer network** on the host (no separate networks per environment).
 - Isolated volumes: `dev{id}_postgres_data`, `dev{id}_redis_data`
 - Isolated containers: `aifabrix-dev{id}-postgres`, `aifabrix-dev{id}-redis`, etc.

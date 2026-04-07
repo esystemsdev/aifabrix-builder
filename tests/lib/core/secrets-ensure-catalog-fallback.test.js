@@ -10,6 +10,7 @@ jest.mock('../../../lib/core/config', () => ({
 
 jest.mock('../../../lib/utils/paths', () => ({
   getAifabrixHome: jest.fn(() => '/tmp/.aifabrix'),
+  getPrimaryUserSecretsLocalPath: jest.fn(() => '/tmp/.aifabrix/secrets.local.yaml'),
   listBuilderAppNames: jest.fn(() => []),
   listIntegrationAppNames: jest.fn(() => []),
   getBuilderPath: jest.fn((n) => `/builder/${n}`),

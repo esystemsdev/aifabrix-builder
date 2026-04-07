@@ -112,6 +112,68 @@ describe('Compose Generator Module', () => {
     });
   });
 
+  describe('expandFrontDoorHostPlaceholders', () => {
+    const { expandFrontDoorHostPlaceholders, buildTraefikConfig } = composeGenerator;
+
+    it('inserts dot between adjacent DEV_USERNAME and REMOTE_HOST tokens', () => {
+      expect(
+        expandFrontDoorHostPlaceholders('${DEV_USERNAME}${REMOTE_HOST}', 1, 'https://builder02.local/path')
+      ).toBe('dev01.builder02.local');
+    });
+
+    it('expands explicit dotted template from remote-server URL', () => {
+      expect(
+        expandFrontDoorHostPlaceholders('${DEV_USERNAME}.${REMOTE_HOST}', 2, 'https://x.example.com:8443')
+      ).toBe('dev02.x.example.com');
+    });
+
+    it('trims trailing dots when remote-server is missing or empty', () => {
+      expect(expandFrontDoorHostPlaceholders('${DEV_USERNAME}.${REMOTE_HOST}', 1, null)).toBe('dev01');
+      expect(expandFrontDoorHostPlaceholders('${DEV_USERNAME}${REMOTE_HOST}', 1, '')).toBe('dev01');
+    });
+
+    it('omits dev label for developer-id 0 or empty so host is bare REMOTE_HOST (no leading dot)', () => {
+      expect(
+        expandFrontDoorHostPlaceholders('${DEV_USERNAME}.${REMOTE_HOST}', 0, 'https://builder02.local')
+      ).toBe('builder02.local');
+      expect(
+        expandFrontDoorHostPlaceholders('${DEV_USERNAME}.${REMOTE_HOST}', '0', 'https://builder02.local')
+      ).toBe('builder02.local');
+      expect(
+        expandFrontDoorHostPlaceholders('${DEV_USERNAME}${REMOTE_HOST}', 0, 'https://x.example.com')
+      ).toBe('x.example.com');
+      expect(expandFrontDoorHostPlaceholders('${DEV_USERNAME}.${REMOTE_HOST}', '', null)).toBe('');
+    });
+
+    it('uses expanded host in buildTraefikConfig when frontDoor enabled', () => {
+      const cfg = {
+        frontDoorRouting: {
+          enabled: true,
+          pattern: '/data/*',
+          host: '${DEV_USERNAME}.${REMOTE_HOST}',
+          tls: false
+        }
+      };
+      const t = buildTraefikConfig(cfg, 1, null, 'https://builder02.local');
+      expect(t.enabled).toBe(true);
+      expect(t.host).toBe('dev01.builder02.local');
+      expect(t.path).toBe('/data');
+    });
+
+    it('buildTraefikConfig uses bare remote hostname when developer-id is 0', () => {
+      const cfg = {
+        frontDoorRouting: {
+          enabled: true,
+          pattern: '/data/*',
+          host: '${DEV_USERNAME}.${REMOTE_HOST}',
+          tls: false
+        }
+      };
+      const t = buildTraefikConfig(cfg, 0, null, 'https://builder02.local');
+      expect(t.host).toBe('builder02.local');
+    });
+  });
+
   beforeEach(() => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-compose-test-'));
     originalCwd = process.cwd();
@@ -299,6 +361,15 @@ describe('Compose Generator Module', () => {
   });
 
   describe('Traefik configuration helpers', () => {
+    it('buildDevUsernameForFrontDoorHost is empty for id 0 and non-zero padded otherwise', () => {
+      expect(composeGenerator.buildDevUsernameForFrontDoorHost(0)).toBe('');
+      expect(composeGenerator.buildDevUsernameForFrontDoorHost('0')).toBe('');
+      expect(composeGenerator.buildDevUsernameForFrontDoorHost(null)).toBe('');
+      expect(composeGenerator.buildDevUsernameForFrontDoorHost('')).toBe('');
+      expect(composeGenerator.buildDevUsernameForFrontDoorHost(1)).toBe('dev01');
+      expect(composeGenerator.buildDevUsernameForFrontDoorHost(12)).toBe('dev12');
+    });
+
     it('should derive base path from pattern', () => {
       expect(composeGenerator.derivePathFromPattern('/api/*')).toBe('/api');
       expect(composeGenerator.derivePathFromPattern('/api/v1/*')).toBe('/api/v1');

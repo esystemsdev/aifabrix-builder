@@ -2,7 +2,7 @@
  * @fileoverview Tests for workspace kv:// validation vs catalog
  */
 
-const fs = require('fs');
+const fs = require('node:fs');
 const path = require('path');
 const os = require('os');
 
@@ -11,8 +11,6 @@ const {
   validateCatalogRequiredGenerators
 } = require('../../../lib/parameters/infra-parameter-validate');
 const { loadInfraParameterCatalog } = require('../../../lib/parameters/infra-parameter-catalog');
-
-const BUNDLED_CATALOG = path.join(__dirname, '../../../lib/schema/infra.parameter.yaml');
 
 describe('infra-parameter-validate', () => {
   describe('validateCatalogRequiredGenerators', () => {
@@ -36,6 +34,13 @@ describe('infra-parameter-validate', () => {
       });
       expect(r).toEqual({ valid: true, errors: [] });
     });
+
+    it('passes when requiredForLocal uses password generator type', () => {
+      const r = validateCatalogRequiredGenerators({
+        parameters: [{ requiredForLocal: true, generator: { type: 'password' } }]
+      });
+      expect(r).toEqual({ valid: true, errors: [] });
+    });
   });
 
   describe('validateWorkspaceKvRefsAgainstCatalog', () => {
@@ -48,7 +53,7 @@ describe('infra-parameter-validate', () => {
         'X=kv://this-key-does-not-exist-in-catalog-zzzzz\n',
         'utf8'
       );
-      const catalog = loadInfraParameterCatalog(BUNDLED_CATALOG);
+      const catalog = loadInfraParameterCatalog();
       const pathsUtil = {
         listBuilderAppNames: () => ['app1'],
         listIntegrationAppNames: () => [],
@@ -78,7 +83,7 @@ describe('infra-parameter-validate', () => {
         'PG=kv://postgres-passwordKeyVault\nJWT=kv://miso-controller-jwt-secretKeyVault\n',
         'utf8'
       );
-      const catalog = loadInfraParameterCatalog(BUNDLED_CATALOG);
+      const catalog = loadInfraParameterCatalog();
       const pathsUtil = {
         listBuilderAppNames: () => ['app2'],
         listIntegrationAppNames: () => [],

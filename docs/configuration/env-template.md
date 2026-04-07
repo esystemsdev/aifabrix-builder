@@ -6,7 +6,7 @@ Environment variables template. `aifabrix resolve <app>` and run/build generate 
 
 **kv:// references:** `kv://name` resolves from the secrets file (e.g. `~/.aifabrix/secrets.local.yaml`). Pattern: `<app>-client-idKeyVault`, `<app>-client-secretKeyVault`, or any `*KeyVault` key.
 
-**url:// placeholders:** After `kv://` values are resolved, the Builder expands declarative URL tokens such as `url://public` and `url://internal` (and cross-app `url://<appKey>-public`). Behavior depends on `application.yaml` (`port`, `frontDoorRouting`), `config.yaml` (`developer-id`, `remote-server`, optional environment-scoped resource flags), and the shared registry `~/.aifabrix/urls.local.yaml`. See [Declarative url://](declarative-urls.md).
+**url:// placeholders:** After `kv://` values are resolved, the Builder expands declarative URL tokens (full URL, **host-only** origin, and **vdir** path). Shapes include **`url://public`**, **`url://internal`**, **`url://<appKey>-public`**, **`url://<appKey>-internal`**, plus **`url://host-public`**, **`url://vdir-public`**, and cross-app **`url://<appKey>-host-public`**, **`url://<appKey>-vdir-public`**, etc. See [Declarative url://](declarative-urls.md).
 
 **Configuration alignment:** For external systems, variable names in env.template align with `configuration[].name` for entries with `location: variable`. On **upload**, the CLI resolves those configuration values from .env (and keyvault entries from secrets) before sending to the dataplane. On **download**, when env.template exists, the CLI sets `configuration[].value` to `{{name}}` for each variable-location entry whose name matches a key in env.template, so the downloaded system file stays template-based.
 

@@ -10,6 +10,7 @@
 jest.mock('chalk', () => {
   const mockChalk = (text) => text;
   mockChalk.green = jest.fn((text) => text);
+  mockChalk.blue = jest.fn((text) => text);
   return mockChalk;
 });
 
@@ -37,11 +38,20 @@ jest.mock('../../../lib/validation/validator', () => ({
   validateVariables: jest.fn()
 }));
 
+jest.mock('../../../lib/core/config', () => ({
+  getDeveloperId: jest.fn().mockResolvedValue(2)
+}));
+
+jest.mock('../../../lib/utils/docker-exec', () => ({
+  execWithDockerEnv: jest.fn().mockResolvedValue({ stdout: '', stderr: '' })
+}));
+
 const path = require('path');
 const logger = require('../../../lib/utils/logger');
 const dockerfileUtils = require('../../../lib/utils/dockerfile-utils');
 const { loadVariablesYaml } = require('../../../lib/build');
 const validator = require('../../../lib/validation/validator');
+const { execWithDockerEnv } = require('../../../lib/utils/docker-exec');
 const {
   determineDockerfile,
   loadAndValidateConfig
@@ -218,6 +228,25 @@ describe('Build Helpers Module', () => {
   });
 
   describe('loadAndValidateConfig', () => {
+    it('should resolve image from local Docker when image omitted', async() => {
+      const appName = 'keycloak';
+      const variables = {
+        app: { key: 'keycloak' },
+        build: {}
+      };
+      loadVariablesYaml.mockResolvedValue(variables);
+      validator.validateVariables.mockResolvedValue({ valid: true, errors: [] });
+      execWithDockerEnv.mockResolvedValueOnce({
+        stdout: 'aifabrix/keycloak-dev2:latest\n',
+        stderr: ''
+      });
+
+      const result = await loadAndValidateConfig(appName);
+
+      expect(result.imageName).toBe('aifabrix/keycloak');
+      expect(execWithDockerEnv).toHaveBeenCalled();
+    });
+
     it('should load and validate config successfully', async() => {
       const appName = 'test-app';
       const variables = {

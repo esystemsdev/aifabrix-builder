@@ -5,7 +5,6 @@
 // Other suites in this worker use jest.mock('fs'); need real fs for tempdir + rmSync cleanup.
 jest.unmock('fs');
 
-const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
@@ -14,7 +13,6 @@ const {
   hostsNamesForDevInit,
   perDeveloperServerDisplayUrl,
   isValidIpv4,
-  hostsFileHasHostname,
   runOptionalHostsSetup
 } = require('../../../lib/utils/dev-hosts-helper');
 
@@ -46,24 +44,32 @@ describe('dev-hosts-helper', () => {
 
   describe('hostsFileHasHostname', () => {
     it('detects existing mapping', () => {
-      const dir = fs.mkdtempSync(path.join(os.tmpdir(), `aifabrix-hosts-${process.pid}-`));
-      const p = path.join(dir, 'hosts');
-      try {
-        fs.writeFileSync(p, '# comment\n192.168.1.1 gateway\n192.168.1.25 builder02.local\n', 'utf8');
-        expect(hostsFileHasHostname(p, 'builder02.local')).toBe(true);
-        expect(hostsFileHasHostname(p, 'other.local')).toBe(false);
-      } finally {
+      // Other Jest projects in the same worker can leave `fs` mocked; isolate + real fs for disk I/O.
+      jest.isolateModules(() => {
+        const fsActual = jest.requireActual('fs');
+        const { hostsFileHasHostname: hasHost } = require('../../../lib/utils/dev-hosts-helper');
+        const dir = fsActual.mkdtempSync(path.join(os.tmpdir(), `aifabrix-hosts-${process.pid}-`));
+        const p = path.join(dir, 'hosts');
         try {
-          fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
-        } catch {
-          // best-effort: parallel workers / tmp races can rarely leave ENOTEMPTY
+          fsActual.writeFileSync(p, '# comment\n192.168.1.1 gateway\n192.168.1.25 builder02.local\n', 'utf8');
+          expect(hasHost(p, 'builder02.local')).toBe(true);
+          expect(hasHost(p, 'other.local')).toBe(false);
+        } finally {
+          try {
+            fsActual.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+          } catch {
+            // best-effort: parallel workers / tmp races can rarely leave ENOTEMPTY
+          }
         }
-      }
+      });
     });
 
     it('returns false for missing file', () => {
-      const p = path.join(os.tmpdir(), `no-hosts-${Date.now()}`);
-      expect(hostsFileHasHostname(p, 'x')).toBe(false);
+      jest.isolateModules(() => {
+        const { hostsFileHasHostname: hasHost } = require('../../../lib/utils/dev-hosts-helper');
+        const p = path.join(os.tmpdir(), `no-hosts-${Date.now()}`);
+        expect(hasHost(p, 'x')).toBe(false);
+      });
     });
   });
 

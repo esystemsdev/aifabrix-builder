@@ -5,7 +5,11 @@
 
 'use strict';
 
-const fs = require('fs');
+// Other suites in the same worker use jest.mock('fs'); real fs is required for
+// application.yaml + urls.local.yaml refresh during url:// expansion.
+jest.unmock('fs');
+
+const fs = require('node:fs');
 const path = require('path');
 const os = require('os');
 

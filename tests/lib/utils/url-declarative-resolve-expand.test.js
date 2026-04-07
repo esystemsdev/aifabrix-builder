@@ -17,8 +17,46 @@ jest.mock('../../../lib/utils/paths', () => ({
 const pathsUtil = require('../../../lib/utils/paths');
 const {
   expandDeclarativeUrlsInEnvContent,
-  parseSimpleEnvMap
+  parseSimpleEnvMap,
+  parseUrlToken
 } = require('../../../lib/utils/url-declarative-resolve');
+
+describe('parseUrlToken', () => {
+  it('parses full, host, and vdir variants (current and cross-app)', () => {
+    expect(parseUrlToken('public')).toEqual({ targetKey: '', kind: 'public', surface: 'full' });
+    expect(parseUrlToken('internal')).toEqual({ targetKey: '', kind: 'internal', surface: 'full' });
+    expect(parseUrlToken('dataplane-public')).toEqual({
+      targetKey: 'dataplane',
+      kind: 'public',
+      surface: 'full'
+    });
+    expect(parseUrlToken('miso-controller-internal')).toEqual({
+      targetKey: 'miso-controller',
+      kind: 'internal',
+      surface: 'full'
+    });
+    expect(parseUrlToken('host-public')).toEqual({ targetKey: '', kind: 'public', surface: 'host' });
+    expect(parseUrlToken('vdir-internal')).toEqual({ targetKey: '', kind: 'internal', surface: 'vdir' });
+    expect(parseUrlToken('keycloak-host-public')).toEqual({
+      targetKey: 'keycloak',
+      kind: 'public',
+      surface: 'host'
+    });
+    expect(parseUrlToken('keycloak-vdir-public')).toEqual({
+      targetKey: 'keycloak',
+      kind: 'public',
+      surface: 'vdir'
+    });
+  });
+
+  it('does not treat public-<appKey> as cross-app', () => {
+    expect(parseUrlToken('public-dataplane')).toEqual({
+      targetKey: '',
+      kind: 'public',
+      surface: 'full'
+    });
+  });
+});
 
 describe('parseSimpleEnvMap', () => {
   it('skips blanks and comments; takes first = as delimiter', () => {
@@ -149,6 +187,79 @@ X=url://internal
       developerIdRaw: 2
     });
     expect(out).toContain('X=http://dp:3001');
+  });
+
+  it('resolves url://vdir-public from current app pattern', async() => {
+    writeApp(
+      'kc',
+      `port: 8082
+frontDoorRouting:
+  pattern: /auth/*
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'kc', 'application.yaml');
+    const content = `MISO_CLIENTID=z
+VDIR=url://vdir-public
+`;
+    const out = await expandDeclarativeUrlsInEnvContent(content, {
+      profile: 'local',
+      currentAppKey: 'kc',
+      variablesPath,
+      useEnvironmentScopedResources: false,
+      appEnvironmentScopedResources: false,
+      remoteServer: null,
+      developerIdRaw: 0
+    });
+    expect(out).toContain('VDIR=/auth');
+  });
+
+  it('resolves url://host-public to origin without path', async() => {
+    writeApp(
+      'kc',
+      `port: 8082
+frontDoorRouting:
+  pattern: /auth/*
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'kc', 'application.yaml');
+    const content = `MISO_CLIENTID=z
+H=url://host-public
+`;
+    const out = await expandDeclarativeUrlsInEnvContent(content, {
+      profile: 'local',
+      currentAppKey: 'kc',
+      variablesPath,
+      useEnvironmentScopedResources: false,
+      appEnvironmentScopedResources: false,
+      remoteServer: null,
+      developerIdRaw: 0
+    });
+    expect(out).toMatch(/^H=http:\/\/localhost:8092$/m);
+  });
+
+  it('resolves url://keycloak-internal for docker to service:listen port plus /auth', async() => {
+    writeApp(
+      'keycloak',
+      `port: 8080
+frontDoorRouting:
+  pattern: /auth/*
+`
+    );
+    writeApp('dp', 'port: 3001\n');
+    const variablesPath = path.join(fakeProject, 'builder', 'dp', 'application.yaml');
+    const content = `MISO_CLIENTID=z
+K=url://keycloak-internal
+`;
+    const out = await expandDeclarativeUrlsInEnvContent(content, {
+      profile: 'docker',
+      currentAppKey: 'dp',
+      variablesPath,
+      useEnvironmentScopedResources: false,
+      appEnvironmentScopedResources: false,
+      remoteServer: null,
+      developerIdRaw: 0
+    });
+    expect(out).toContain('K=http://keycloak:8080/auth');
   });
 
   it('leaves lines without url:// and comment lines untouched', async() => {

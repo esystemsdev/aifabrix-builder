@@ -23,7 +23,8 @@ const {
   formatMissingSecretsFileInfo,
   applyCanonicalSecretsOverride,
   collectMissingSecrets,
-  replaceKvInContent
+  replaceKvInContent,
+  resolveBashKvFromProcessEnv
 } = require('../../../lib/utils/secrets-helpers');
 
 describe('formatMissingSecretsFileInfo', () => {
@@ -271,9 +272,20 @@ describe('collectMissingSecrets', () => {
     const missing = collectMissingSecrets(content, secrets);
     expect(missing).toEqual(['kv://other']);
   });
+
+  it('does not list catalog emptyAllowed keys as missing when absent (e.g. redis-passwordKeyVault)', () => {
+    const content = 'REDIS_PASSWORD=kv://redis-passwordKeyVault';
+    expect(collectMissingSecrets(content, {})).toEqual([]);
+  });
 });
 
 describe('replaceKvInContent', () => {
+  it('replaces emptyAllowed kv ref with empty string when key absent', () => {
+    const content = 'REDIS_PASSWORD=kv://redis-passwordKeyVault';
+    const result = replaceKvInContent(content, {}, {});
+    expect(result).toBe('REDIS_PASSWORD=');
+  });
+
   it('replaces path-style kv refs using nested secrets', () => {
     const content = 'HUBSPOT_CLIENT_ID=kv://hubspot/clientId\nHUBSPOT_CLIENT_SECRET=kv://hubspot/clientSecret';
     const secrets = {
@@ -323,6 +335,56 @@ describe('replaceKvInContent', () => {
     const envVars = { HOST: 'localhost', PORT: '3000' };
     const result = replaceKvInContent(content, secrets, envVars);
     expect(result).toContain('http://localhost:3000');
+  });
+});
+
+describe('kv://BASH_* process.env fallback', () => {
+  let origNpm;
+  let origBashNpm;
+
+  beforeEach(() => {
+    origNpm = process.env.NPM_TOKEN;
+    origBashNpm = process.env.BASH_NPM_TOKEN;
+  });
+
+  afterEach(() => {
+    if (origNpm === undefined) delete process.env.NPM_TOKEN;
+    else process.env.NPM_TOKEN = origNpm;
+    if (origBashNpm === undefined) delete process.env.BASH_NPM_TOKEN;
+    else process.env.BASH_NPM_TOKEN = origBashNpm;
+  });
+
+  it('resolveBashKvFromProcessEnv maps BASH_NPM_TOKEN to NPM_TOKEN in process.env', () => {
+    process.env.NPM_TOKEN = 'from-npm';
+    expect(resolveBashKvFromProcessEnv('BASH_NPM_TOKEN')).toBe('from-npm');
+  });
+
+  it('resolveBashKvFromProcessEnv falls back to BASH_* key when suffix unset', () => {
+    delete process.env.NPM_TOKEN;
+    process.env.BASH_NPM_TOKEN = 'direct-bash';
+    expect(resolveBashKvFromProcessEnv('BASH_NPM_TOKEN')).toBe('direct-bash');
+  });
+
+  it('collectMissingSecrets treats kv://BASH_* as present when process.env has suffix', () => {
+    process.env.NPM_TOKEN = 'tok';
+    const content = 'NPM_TOKEN=kv://BASH_NPM_TOKEN';
+    expect(collectMissingSecrets(content, {})).toEqual([]);
+  });
+
+  it('replaceKvInContent substitutes kv://BASH_* from process.env', () => {
+    process.env.NPM_TOKEN = 'secret-token';
+    const result = replaceKvInContent('NPM_TOKEN=kv://BASH_NPM_TOKEN', {}, {});
+    expect(result).toBe('NPM_TOKEN=secret-token');
+  });
+
+  it('secrets file wins over process.env for BASH_* key', () => {
+    process.env.NPM_TOKEN = 'from-env';
+    const result = replaceKvInContent(
+      'NPM_TOKEN=kv://BASH_NPM_TOKEN',
+      { BASH_NPM_TOKEN: 'from-file' },
+      {}
+    );
+    expect(result).toBe('NPM_TOKEN=from-file');
   });
 });
 

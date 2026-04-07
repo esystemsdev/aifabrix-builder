@@ -60,7 +60,8 @@ function mockDockerExecError(err) {
 
 const {
   getInfraStatus,
-  getAppStatus
+  getAppStatus,
+  listAppContainerNamesForDeveloper
 } = require('../../../lib/utils/infra-status');
 
 describe('Infrastructure Status Module', () => {
@@ -374,6 +375,58 @@ describe('Infrastructure Status Module', () => {
       expect(result).toHaveLength(1);
       expect(result[0].name).toBe('keycloak');
       expect(result.map(a => a.name)).not.toContain('keycloak-db-init');
+    });
+
+    it('should not treat aifabrix-devNN-* as apps when developer ID is 0 (missing developer-id default)', async() => {
+      config.getDeveloperId.mockResolvedValue('0');
+      exec.mockImplementation(
+        mockDockerExecStdout([
+          'aifabrix-dev02-postgres\t0.0.0.0:5432->5432/tcp\trunning',
+          'aifabrix-dev01-myapp\t0.0.0.0:3200->3000/tcp\trunning',
+          'aifabrix-myapp\t0.0.0.0:3100->3000/tcp\trunning'
+        ])
+      );
+
+      const result = await getAppStatus();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].container).toBe('aifabrix-myapp');
+    });
+  });
+
+  describe('listAppContainerNamesForDeveloper', () => {
+    it('excludes aifabrix-devNN-* when devId is 0 so down-infra does not wipe other developers', async() => {
+      exec.mockImplementation((command, optionsOrCb, cb) => {
+        const callback = typeof optionsOrCb === 'function' ? optionsOrCb : cb;
+        expect(command).toContain('docker ps');
+        expect(command).toContain('name=aifabrix-');
+        callback(
+          null,
+          [
+            'aifabrix-postgres',
+            'aifabrix-dev02-postgres',
+            'aifabrix-builder-server',
+            'aifabrix-myapp'
+          ].join('\n'),
+          ''
+        );
+      });
+
+      const names = await listAppContainerNamesForDeveloper('0', { includeExited: true });
+
+      expect(names).toEqual(['aifabrix-builder-server', 'aifabrix-myapp']);
+    });
+
+    it('still scopes non-zero devId to aifabrix-dev{id}-* only', async() => {
+      exec.mockImplementation((command, optionsOrCb, cb) => {
+        const callback = typeof optionsOrCb === 'function' ? optionsOrCb : cb;
+        expect(command).toContain('name=aifabrix-dev2-');
+        callback(null, 'aifabrix-dev2-miso-controller\naifabrix-dev2-postgres', '');
+      });
+
+      const names = await listAppContainerNamesForDeveloper('2', { includeExited: false });
+
+      expect(names).toEqual(['aifabrix-dev2-miso-controller']);
     });
   });
 });

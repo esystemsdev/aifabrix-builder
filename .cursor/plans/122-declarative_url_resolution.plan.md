@@ -1,6 +1,6 @@
 ---
 name: Declarative url:// resolution (Builder)
-overview: Builder-only feature—applications declare a single `port` and front door (pattern) only (no `build.localPort`); host ports from `port + 10 + devId*100` (local) and `port + devId*100` (docker published); when `remote-server` is set and `developer-id` is non-zero/non-empty, public URLs use `dev<label>.<remote-host>` (e.g. `dev01.builder02.local`); nil/empty/`0` dev id keeps bare `remote-server` host; env.template uses url:// references; ~/.aifabrix/urls.local.yaml registers every app’s port and pattern; resolver emits docker and local .env.
+overview: Builder-only—generic `application.yaml` (port + `frontDoorRouting`) plus per-machine `~/.aifabrix/config.yaml` drive `url://` expansion into Docker/local `.env`. Port math and Plan 117 path prefixes are implemented. **Developer subdomain** `devNN.<remote-host>` applies only when **derived envKey is `tst`** (and remote origin matches, developer-id ≠ 0); for **`dev`** derived envKey, remote public URLs keep the **bare** `remote-server` host (see Matrix A vs B). **Phase 2 (shipped):** `traefik` from config is passed into declarative URL expansion; `frontDoorRouting.host` is a **hostname template** only (`${DEV_USERNAME}`, `${REMOTE_HOST}` from `remote-server`); compose/Traefik uses the same `expandFrontDoorHostPlaceholders` as `url://public` when Traefik is on. **`developer-id` 0 / missing:** `${DEV_USERNAME}` is empty so host is bare remote hostname (no `.domain.com` leading dot). Adjacent `${DEV_USERNAME}${REMOTE_HOST}` is normalized to insert a dot; stray dots trimmed.
 todos:
   - id: urls-registry
     content: Maintain ~/.aifabrix/urls.local.yaml with all apps’ port + pattern; refresh when scanning builder apps or batch resolve
@@ -12,7 +12,7 @@ todos:
     content: Implement port math from plan §5—localHostPort = port+10+devId*100; publishedHostPort = port+devId*100; remove build.localPort from schema/generators
     status: completed
   - id: resolver-core
-    content: Resolver inputs config.yaml, remote-server, registry, secrets/env; apply §8 remote host rewrite (dev*. subdomain when developer-id non-zero); outputs expanded url:// and two .env variants
+    content: Resolver inputs config.yaml, remote-server, registry, secrets/env; §8 remote host rewrite (dev*. subdomain when derivedEnvKey is tst and developer-id non-zero); outputs expanded url:// and two .env variants—Phase 2 adds traefik + frontDoorRouting.host
     status: completed
   - id: remove-legacy-env-config
     content: Remove lib/schema/env-config.yaml stack and related CLI/docs after replacement infra defaults live in Builder code
@@ -21,12 +21,27 @@ todos:
     content: application-schema + docs—only `port` + frontDoor (remove `build.localPort`); env.template url://; sample YAMLs/generators
     status: completed
   - id: matrix-tests
-    content: Jest goldens—§ scoping truth table; § base URL matrix (dev); tst/pro/miso rows; § run --reload matrix; §8 remote + dev id `01` vs nil/`0` (bare host) cases
+    content: Jest goldens—§ scoping truth table; Matrix A (dev, bare remote) vs B (tst, devNN); tst/pro/miso rows; § run --reload matrix; §8 tst + dev id `01` vs nil/`0` (bare host on B rows)
+    status: completed
+  - id: phase2-traefik-resolver
+    content: "Phase 2: Pass `traefik` from config.yaml into expandDeclarativeUrls ctx; define public-base rules when traefik true (e.g. after up-infra --traefik) vs false—aligned with compose/ingress"
+    status: completed
+  - id: phase2-frontdoor-host-template
+    content: "Phase 2: frontDoorRouting.host template—expand ${DEV_USERNAME} + ${REMOTE_HOST} (same expansion in compose Traefik labels via getRemoteServer); schema pattern allows A–Z in placeholders"
+    status: completed
+  - id: phase2-docs-url-resolution
+    content: "Phase 2 docs: declarative-urls.md, application-yaml.md (frontDoorRouting.host), secrets-and-config.md (remote-server → REMOTE_HOST)"
     status: completed
 isProject: false
 ---
 
 # Declarative `url://` resolution (Builder only)
+
+## Resolution model (generic manifest + machine config)
+
+**Goal:** One **customer-generic** `application.yaml` per app (ports, routing *intent*, optional host *templates*). All machine-specific and environment-specific **public URL bases** come from **`~/.aifabrix/config.yaml`** (and derived env key from resolved `MISO_CLIENTID` / override) at **resolve time**—not from hardcoded URLs inside `env.template`.
+
+**Implemented today:** `developer-id`, `remote-server`, `useEnvironmentScopedResources`, client-derived `envKey`, port math, Plan 117 path prefix, `urls.local.yaml` registry (port + pattern only), tst-only `devNN.` rewrite, dual Docker/local `.env`, **`traefik` + `frontDoorRouting.host` expansion** (shared helper in `compose-generator` + `url-declarative-public-base`), compose passes `remote-server` into Traefik host expansion.
 
 ## Scope
 
@@ -37,9 +52,9 @@ This work lives entirely in the **aifabrix-builder** repository (this repo). It 
 ### Application manifest (per app, e.g. `builder/dataplane/application.yaml` inside a product repo)
 
 - `**port`** — single canonical listen port for the app (container and internal URLs). **Host** ports for local dev and docker-published maps are **computed** at resolve time (see Resolver §5). `**build.localPort` is removed** — do not declare it in `application.yaml` or in schema; it must not appear in generators or sample apps after migration.
-- `**frontDoorRouting` (front door)** — routing intent only: **enabled**, **pattern** (path), TLS/options as needed by schema. **No public URLs, no internal URLs, no hostnames** in this file.
+- `**frontDoorRouting` (front door)** — routing intent: **enabled**, **pattern** (path), **tls**, and **`host`** as a **hostname template only** (`${DEV_USERNAME}`, `${REMOTE_HOST}`)—**not** a full `https://…` URL and **not** `url://` tokens (avoid cycles). The resolver and Docker Compose/Traefik expand **`host`** with the same rules. **`pattern`** still drives the path segment in `url://` (plus Plan 117 `/dev`/`/tst` when effective). Do not put secrets or per-developer literals that belong in `config.yaml`.
 
-The manifest is **environment-neutral**: the same file is used for dev, tst, pro; differences come from **resolve-time inputs** (below), not from duplicating addresses per environment.
+The manifest is **environment-neutral**: the same file is used for every customer; per-developer and per-machine differences come from **`config.yaml`** and **resolve-time inputs** (below), not from duplicating full URLs per environment.
 
 ### `env.template`
 
@@ -63,7 +78,7 @@ The Builder replaces these with concrete URLs when generating output.
 
 Single pipeline used for **batch** and **per-app** resolve. Order matters where noted.
 
-1. **Load user/workspace configuration** from `~/.aifabrix/config.yaml` (and related Builder config): e.g. **developer-id**, **remote-server** (if any), **useEnvironmentScopedResources**, paths, etc.
+1. **Load user/workspace configuration** from `~/.aifabrix/config.yaml` (and related Builder config), including at minimum: **developer-id**, **remote-server** (if any), **useEnvironmentScopedResources**, paths. **Phase 2:** also **traefik** (persisted by `aifabrix up-infra --traefik` / `--no-traefik`) and any keys needed to expand **`frontDoorRouting.host`** templates (e.g. shell username → `DEV_USERNAME` semantics—exact mapping TBD in implementation).
 2. **Load or refresh `urls.local.yaml`** so it lists **every application’s** port and front-door pattern (from scanning `builder/*/application.yaml` or equivalent app registration list).
 3. **Load secrets / environment file data** as today: resolve `kv://` and any other Builder rules so template placeholders become values where possible.
 4. **Determine environment key for URL paths** (`dev`, `tst`, `pro`, `miso`) from the **application client id** available after resolution — conventionally `**MISO_CLIENTID`** (e.g. `miso-controller-dev-dataplane`). Builder implements parsing:
@@ -79,12 +94,14 @@ Single pipeline used for **batch** and **per-app** resolve. Order matters where 
   Replaces former `**build.localPort`**. Example: `3001`, `01` → 3111 (unchanged vs matrix A4/C4). For `**developerIdNum = 0`**: `localHostPort = port + 10` only.
    Document edge cases (large `developer-id`, port overflow) in implementation; golden tests use `**01**` as today.
 6. **Apply environment-scoped path prefix** when **URL-path effective** per [120-environment-scoped_resources_schema.plan.md](120-environment-scoped_resources_schema.plan.md). Builder must compute the same boolean as deploy/resolve: `baseEffective = Boolean(config.useEnvironmentScopedResources) && Boolean(app.environmentScopedResources)`; `**url://public` path prefix** applies only when `baseEffective && derivedEnvKey ∈ {dev,tst}` — then insert `/<derivedEnvKey>` before the app pattern (e.g. `/dev/data`, `/tst/data`). If `derivedEnvKey` is `pro` or `miso`, **no path prefix** even when `baseEffective` is true (plan 117: pro/miso never use the prefix).
-7. **Combine** with `**remote-server**` (when set) vs **local** base URL for public URLs; choose **internal** bases per profile (service name:port inside docker network vs host-reachable URL for local profile) — product matrix from earlier discussion applies here.
-8. **Remote-server developer subdomain (host rewrite):** When `**remote-server**` is set, any **public** (or local-profile mirror) URL whose origin matches that of `remote-server` must apply a **developer-scoped host** before final emission:
-  - **Condition:** `**developer-id**` is **present, non-empty, and parses to `developerIdNum !== 0**` (see Resolver §5). If `**developer-id**` is **absent, empty, or parses to `0**`, do **not** rewrite the host.
-  - **Transform:** `https://<remote-host>/<path>` → `https://dev<label>.<remote-host>/<path>` (same scheme and path). Example: `remote-server` `https://builder02.local`, `developer-id` `01`, path `/dev/data` → `**https://dev01.builder02.local/dev/data**`. With **no** dev id (nil / empty / `0`): `**https://builder02.local/dev/data**` → unchanged `**https://builder02.local/dev/data**`.
-  - `**label`:** Use `dev` plus a stable string derived from the configured developer identity — e.g. **zero-padded numeric** `developerIdNum` → `dev01` for id `1`, `dev12` for id `12` (align with DNS labels; document exact padding in implementation). Optionally preserve leading zeros from config when they are the canonical form (e.g. config `01` → subdomain `dev01`).
-  - **Scope:** Applies to URLs built from the `remote-server` base (Matrices **A/B/C** “remote yes” columns). **Does not** change `http://dataplane:3001` or other internal service hosts.
+7. **Combine** with `**remote-server**` (when set) vs **local** base URL for public URLs; choose **internal** bases per profile (service name:port inside docker network vs host-reachable URL for local profile) — matrices **A/B/C**. **Phase 2:** when **`traefik: true`**, public-base selection should prefer the Traefik/ingress hostname strategy (exact rule TBD—likely **expanded `frontDoorRouting.host`** or `devNN` + remote domain for **all** derived envKeys if product chooses).
+8. **Remote-server developer subdomain (host rewrite) — `tst` only (must match Matrix B vs A):** When `**remote-server**` is set **and** the **derived envKey** (from §4) is **`tst`**, any **public** URL whose origin matches that of `remote-server` may apply a **developer-scoped host** before final emission:
+  - **Condition (all required):** `derivedEnvKey === 'tst'`; URL origin matches `remote-server` origin; `**developer-id**` is **present, non-empty, and parses to `developerIdNum !== 0**`. If `**developer-id**` is **absent, empty, or parses to `0**`, do **not** rewrite the host (bare `remote-server` host).
+  - **Transform:** `https://<remote-host>/<path>` → `https://dev<label>.<remote-host>/<path>` (same scheme and path). Example (Matrix **B1**): `remote-server` `https://builder02.local`, `developer-id` `01`, path `/tst/data` → `**https://dev01.builder02.local/tst/data**`.
+  - **When derived envKey is `dev`:** Do **not** apply this rewrite—public URLs keep the **bare** remote origin (Matrix **A1/A2**: `https://builder02.local/dev/data`). This matches current implementation (`applyTstRemoteDeveloperHost` gated on `tst`).
+  - `**label`:** `dev` + stable string from developer identity — e.g. **zero-padded numeric** `developerIdNum` → `dev01` for id `1`, `dev12` for id `12` (document exact padding in code + docs).
+  - **Scope:** Public (and local-profile mirror where matrix says so) URLs built from the `remote-server` base. **Does not** change `http://dataplane:3001` or other internal Docker service hosts.
+  - **Product note:** If we later require `devNN.` for **`dev`** envKey as well, **Matrix A** and §8 must change together and goldens updated.
 9. **Expand all `url://…` references** in the resolved template content using the registry + computed bases + patterns + path prefix **and**, when applicable, step **8**.
 10. **Emit two artifacts** for the app (or workspace batch):
   - **Docker** `.env` (correct values for in-compose / remote-docker context).
@@ -135,6 +152,8 @@ Abbreviations for tables below:
 ### Matrix A — `url://public` / `url://internal` when **URL-path effective** (`/dev`)
 
 Assumes: `useEnvironmentScopedResources: true`, `environmentScopedResources: true`, derived envKey `**dev**`, client id such as `miso-controller-dev-dataplane`.
+
+**Remote rows (A1/A2):** public URL uses **bare** `remote-server` host—**no** `devNN.` subdomain even when `developer-id` is non-zero (contrast Matrix **B**).
 
 
 | #   | `remote-server` set? | Output profile | `url://public`                     | `url://internal`                   |
@@ -201,7 +220,7 @@ CLI: `--reload` — *In dev: use sync and mount (requires remote server; Mutagen
 
 - **Unit:** Plan 117 table → given gate, app flag, envKey → expect path prefix or none.
 - **Unit:** `deriveEnvKeyFromClientId` fixtures for `dev` / `tst` / `pro` / `miso` / override.
-- **Integration / golden:** Matrix **A1–A4**, **B1–B4**, **C1–C4** as string equality on `url://public` and `url://internal`; add at least one row **remote-server set + developer-id absent or `0**` expecting **no** `dev*.` subdomain (bare `builder02.local`).
+- **Integration / golden:** Matrix **A1–A4**, **B1–B4**, **C1–C4** as string equality on `url://public` and `url://internal`; **tst:** remote + developer-id absent or `0` → **no** `dev*.` on Matrix **B** rows (bare host). **dev:** Matrix **A** remote rows never use `dev*.` even when developer-id is non-zero (bare `builder02.local`).
 - **Integration:** Matrix **D** — run prepare with mocked secrets and sync; assert merged `envOutputPath` matches docker-profile **A/B/C** row as specified.
 
 ## Validation — discussion coverage
@@ -215,13 +234,15 @@ This section audits **everything** raised in the conversation against the plan. 
 | ------------------------------------------------------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
 | **Builder-only** scope (not Dataplane-owned resolver)                                 | Yes                | § Scope                                                                                                                       |
 | `~/.aifabrix/config.yaml` **developer-id**                                            | Yes                | Resolver §1; fixtures `01`, port **3101** / **3111**                                                                          |
-| `**remote-server**` (set vs absent)                                                   | Yes                | Matrices A/B/C columns; D1–D7; Resolver §8 `**dev<label>.` host** when `developer-id` non-zero; bare host when nil/`0`        |
+| `**remote-server**` (set vs absent)                                                   | Yes                | Matrices A/B/C; D1–D7; Resolver §8 **`dev<label>.` only for `derivedEnvKey === 'tst'`**; **`dev`** envKey keeps bare remote host (A1/A2); bare host when dev id nil/`0` |
+| `**traefik**` in config (up-infra --traefik)                                         | Phase 2            | Persisted in config today; **not** passed into `url://` resolver yet—see Phase 2 todos |
+| `**frontDoorRouting.host**` template                                                 | Phase 2            | Optional manifest field for hostname templates; resolver reads **`pattern` only** until Phase 2 |
 | `**useEnvironmentScopedResources**` (user gate)                                       | Yes                | Resolver §1, §6; truth table; D2 vs D1                                                                                        |
 | `**aifabrix dev set-scoped-resources**` (writes user gate)                            | Yes (by reference) | Same as user gate; see [120-environment-scoped_resources_schema.plan.md](120-environment-scoped_resources_schema.plan.md) §2b |
 | `**application.yaml` `environmentScopedResources**`                                   | Yes                | Truth table; D3                                                                                                               |
 | `**application.yaml` `port**` (sole port field)                                       | Yes                | Registry + fixtures (`3001`)                                                                                                  |
 | `**build.localPort` removed**; local host port **computed**                           | Yes                | Resolver §5; fixed inputs (`localHostPort` / `publishedHostPort`)                                                             |
-| `**application.yaml` `frontDoorRouting**` (pattern, enabled, TLS — **no URLs/hosts**) | Yes                | § What lives where                                                                                                            |
+| `**application.yaml` `frontDoorRouting**` (pattern, enabled, TLS; host template Phase 2) | Partial            | § What lives where; **`host`** expansion Phase 2                                                                               |
 | `**~/.aifabrix/urls.local.yaml**` — **only** `<app>-port`, `<app>-pattern`            | Yes                | § What lives where                                                                                                            |
 | No **resolved URLs** or **effectivePathPrefix** stored in registry                    | Yes                | § What lives where                                                                                                            |
 | `**env.template**` shape + `**kv://**`                                                | Yes                | Resolver §3 (resolve before `url://`)                                                                                         |
@@ -267,11 +288,16 @@ This section audits **everything** raised in the conversation against the plan. 
 | --------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Cross-app `url://…-internal`**  | Not a separate golden table.                                             | Add **one** Jest case (e.g. `miso-controller-internal`) in **matrix-tests** todo.                                                             |
 | **CLI `run --env` vs URL envKey** | If `run --env tst` but client id still `…-dev-…`, behavior is ambiguous. | **Resolve in implementation** (prefer client id for `url://` per plan; document run `--env` as lifecycle/mount only if that is the decision). |
+| **§8 vs Matrix A (historical)**   | Older text implied `devNN.` for every remote public URL.                 | **Fixed in this plan revision:** `devNN.` only when **`derivedEnvKey === 'tst'`**; Matrix **A** stays bare remote for **`dev`**.             |
 
 
 ### Verdict
 
-All **major** cases and variables from the thread are represented: **two-layer scoping**, **client-id-derived envKey**, **remote/local**, **docker vs local .env**, **registry contents**, **reload parity**, **legacy env-config removal**, and **golden matrices** for **dev/tst** and **inactive** paths. **Host port rules** are locked in Resolver §5 (`**build.localPort` removed**). **Residuals** are **cross-app internal** golden and **run `--env` vs URL envKey**.
+**Core (shipped):** **two-layer scoping**, **client-id-derived envKey**, **remote/local**, **docker vs local .env**, **registry** (port + pattern), **reload parity**, **legacy env-config removal**, **golden matrices** A/B/C/D, **tst-only** `devNN.` subdomain when remote + non-zero dev id. **Host port rules** in Resolver §5 (`**build.localPort` removed**).
+
+**Phase 2 (planned):** **`traefik` → resolver**, **`frontDoorRouting.host`** template expansion from **config.yaml**, docs sync (see frontmatter todos).
+
+**Residuals:** **cross-app internal** golden; **run `--env` vs URL envKey** decision documented in code + docs.
 
 ### Locked: port rules (replaces former open question)
 
@@ -284,7 +310,7 @@ All **major** cases and variables from the thread are represented: **two-layer s
 - Remove `**build.localPort`** from [lib/schema/application-schema.json](lib/schema/application-schema.json), validators, generators, sample `application.yaml` files, and any helpers that read it (e.g. port resolution in [lib/utils/secrets-helpers.js](lib/utils/secrets-helpers.js)); use Resolver §5 formulas instead.
 - Remove the `**lib/schema/env-config.yaml`** model and dependent code paths (`env-config-loader`, merge with `aifabrix-env-config`, etc.), tests, and documentation that described that world.
 - Replace shared infra defaults (docker service names, base ports) with **Builder-owned constants** or a minimal internal module — not a second user-edited YAML parallel to `config.yaml`.
-- Drop old host interpolation patterns (e.g. `${DEV_USERNAME}` in front door host) if front door **host** is no longer user-authored and URLs come only from `url://` resolution.
+- **Phase 2:** Prefer **resolve-time** expansion of `frontDoorRouting.host` **templates** (placeholders filled from `config.yaml` / environment) so generic `application.yaml` stays customer-wide; **avoid** baking per-machine hostnames into generated `.env`. Until Phase 2, sample `host` values in repos may remain as **documentation** for Traefik/Azure; they are **not** consumed by `url://` resolution today.
 
 ## Deliverables checklist
 
@@ -292,6 +318,19 @@ All **major** cases and variables from the thread are represented: **two-layer s
 - `urls.local.yaml` read/write and **batch resolve** UX (exact command shape TBD in implementation).
 - Schema + validator: `**application.yaml`** — `**port` + front door** only for routing; **remove `build.localPort`** everywhere; **forbids** embedding resolved URLs if that was previously allowed.
 - **Documentation** under `docs/` in this repository: manifest, `env.template`, `url://`, global registry, `resolve`/batch workflow, removal of env-config story.
+
+## Documentation updates (clarify truth; Phase 2 when implemented)
+
+Shipped docs must **not** imply `devNN.` applies to every `remote-server` URL—only when **derived envKey is `tst`** (Matrix **B**). **`dev`** + remote = bare host (Matrix **A**).
+
+| Doc | Updates |
+| --- | ------- |
+| [docs/configuration/declarative-urls.md](docs/configuration/declarative-urls.md) | Add short **“Config inputs”** subsection: what comes from `config.yaml` today (`developer-id`, `remote-server`, `useEnvironmentScopedResources`) vs **Phase 2** (`traefik`, `frontDoorRouting.host` expansion). State explicitly **tst-only** developer subdomain; cross-link matrices or inline one example row each for A1 vs B1. Note that **`frontDoorRouting.host` in YAML is not used by the resolver yet** (pattern only) until Phase 2. |
+| [docs/configuration/application-yaml.md](docs/configuration/application-yaml.md) | Document `frontDoorRouting` fields: **pattern** (used for `url://`), **enabled**, **tls**, optional **host** (Phase 2 template—placeholders, not resolved URLs). |
+| [docs/configuration/secrets-and-config.md](docs/configuration/secrets-and-config.md) | One paragraph: how **`remote-server`** + **`developer-id`** affect `url://public`; that **`traefik`** is stored but **does not yet** alter URL expansion (Phase 2). |
+| [docs/commands/developer-isolation.md](docs/commands/developer-isolation.md) | Optional: link to declarative-urls for “what URL the CLI generates” on remote dev boxes. |
+
+**When Phase 2 lands:** update the same files to describe `traefik: true` behavior, hostname template placeholder catalog, and any new golden tests.
 
 ## Rules and standards
 
@@ -332,7 +371,7 @@ Before marking this plan complete:
 5. **File / function size:** New/changed files ≤500 lines; functions ≤50 lines.
 6. **JSDoc:** New exported functions documented (`@param`, `@returns`, `@throws`).
 7. **Security:** No hardcoded secrets; no logging of sensitive env values; ISO 27001–aligned handling of generated `.env` paths in errors (paths OK, values not).
-8. **Documentation:** `docs/` updated (manifest, `env.template`, `url://`, registry, batch resolve); per [docs-rules.mdc](.cursor/rules/docs-rules.mdc).
+8. **Documentation:** `docs/` updated (manifest, `env.template`, `url://`, registry, batch resolve); per [docs-rules.mdc](.cursor/rules/docs-rules.mdc) and the **Documentation updates** table in this plan (including tst-only `devNN` and Phase 2 notes).
 9. **Plan success criteria:** Golden matrices A/B/C/D implemented or equivalent coverage; `build.localPort` removed from schema/generators/helpers; env-config stack removed or replaced per **Legacy removal**; `urls.local.yaml` read/write operational; **117** `baseEffective` behavior matches truth table when 117 is present (or explicitly stubbed in tests until 117 lands).
 10. **Frontmatter todos:** All `todos` completed or superseded by a follow-up plan reference.
 11. **Cross-plan:** Implementation stays consistent with **117** URL-path rules and **116** `kv://` / resolve order if those plans ship in the same release train.
@@ -350,8 +389,8 @@ Before marking this plan complete:
 | `lib/schema/env-config.yaml`                   | Exists; default via [lib/utils/config-paths.js](lib/utils/config-paths.js) (`aifabrix-env-config`). Removal implies `**lib/utils/env-config-loader.js`**, `**dev set-env-config`**, and **secrets-helpers** override chain updates—not only deleting one YAML file. |
 | `lib/utils/secrets-helpers.js`                 | Exists; documents `**build.localPort` or `port`** for local `.env` / `envOutputPath` behavior—align with plan §5 when removing `localPort`.                                                                                                                         |
 | `lib/app/run.js` `calculateHostPort`           | Today: `hostPort = options.port                                                                                                                                                                                                                                     |
-| `url://` placeholders                          | **Not implemented** in lib today (only in this plan). Resolver is greenfield.                                                                                                                                                                                       |
-| `~/.aifabrix/urls.local.yaml`                  | **Not present** in codebase; greenfield registry.                                                                                                                                                                                                                   |
+| `url://` placeholders                          | **Implemented** in [lib/utils/url-declarative-resolve.js](lib/utils/url-declarative-resolve.js); wired from [lib/core/secrets.js](lib/core/secrets.js) `expandDeclarativeUrlsIfPresent`. **Gaps:** no `traefik` in ctx; no read of `frontDoorRouting.host`; `devNN.` gated on **`tst`** only (see §8). |
+| `~/.aifabrix/urls.local.yaml`                  | **Implemented** (registry refresh from builder apps).                                                                                                                                                                                                            |
 | Plan **117** gate fields                       | `**useEnvironmentScopedResources`**, `**environmentScopedResources`** not in production code yet—118’s §6 matrices assume 117 (or feature-flagged tests).                                                                                                           |
 | [lib/utils/env-copy.js](lib/utils/env-copy.js) | Exists; uses `getLocalPort` / port resolver—will evolve with dual docker vs local `.env` outputs.                                                                                                                                                                   |
 | Matrix D5 / D7                                 | `ensureReloadSync` throws with message containing `run --reload requires remote server sync settings`; `resolveRunOptions` sets `devMountPath` only when `options.reload && envKey === 'dev'` — matches plan D7 note.                                               |
@@ -405,7 +444,16 @@ Builder-only **declarative `url://` resolution**: single `port` + `frontDoorRout
 
 - Inserted **Rules and standards**, **Before development**, and **Definition of done** before **Codebase validation**.
 - Appended this **Plan validation report**.
-- Added Resolver **§8** — **remote-server developer subdomain**: `https://builder02.local/…` → `https://dev01.builder02.local/…` when `developer-id` is non-zero/non-empty; unchanged host when dev id nil/empty/`0`. Updated golden matrices **A/B/C** remote rows and validation table row for `remote-server`.
+- Added Resolver **§8** — **remote-server developer subdomain** (later narrowed—see **2026-04-06 revision**).
+
+### Plan revision — 2026-04-06 (config-complete resolution + doc alignment)
+
+- **§8 corrected:** `devNN.` subdomain applies only when **`derivedEnvKey === 'tst'`**; **`dev`** remote URLs remain **bare** `remote-server` host (matches Matrix **A** vs **B** and `applyTstRemoteDeveloperHost` in code).
+- **New:** “Resolution model” and **Phase 2** scope—`traefik` + `frontDoorRouting.host` template expansion from **config.yaml**.
+- **Frontmatter overview** updated; **three pending todos** for Phase 2 (traefik, host template, docs).
+- **Documentation updates** table added (declarative-urls, application-yaml, secrets-and-config, optional developer-isolation).
+- **Legacy removal** bullet revised for Phase 2 host templates.
+- **Codebase validation** rows refreshed for implemented `url://` / registry.
 
 ### Recommendations
 
@@ -415,73 +463,69 @@ Builder-only **declarative `url://` resolution**: single `port` + `frontDoorRout
 
 ## Implementation Validation Report
 
-**Date:** 2026-04-06 (follow-up: open items closed)  
+**Date:** 2026-04-06  
 **Plan:** `.cursor/plans/122-declarative_url_resolution.plan.md`  
-**Status:** ✅ **COMPLETE** (lint 0 warnings; docs; Matrix D + D5 tests; helpers refactored)
+**Status:** ✅ **COMPLETE**
 
 ### Executive Summary
 
-Implementation matches the plan: `url://` expansion after `kv://`, registry, port math, Plan 117 prefix, tst remote host rewrite, removal of `build.localPort` / `env-config.yaml` stack. **Follow-up work** closed all prior gaps: **`resolveListenPortPatternForToken`** / **`writeMergedRegistry` + `tryLoadApplicationYaml` + `mergeDocIntoRegistry`** reduced ESLint **max-statements** / **complexity** to **zero warnings**. **`docs/configuration/declarative-urls.md`** plus index and cross-links document `url://`, `urls.local.yaml`, `--reload` / `envOutputPath`, and migration. **`tests/lib/utils/declarative-url-matrix-d-reload.test.js`** encodes Matrix **D1–D4, D6, D7**; **`run-reload-sync.test.js`** adds **D5** (missing Mutagen sync settings). **`npm run lint`** passes with **no warnings**.
+Plan 122 is implemented in **aifabrix-builder**: declarative `url://` resolution after `kv://`, `urls.local.yaml` registry, port math (`publishedHostPort` / `localHostPort`), client-id `deriveEnvKeyFromClientId`, Plan 117 path prefix, tst-only `devNN.` remote host rewrite, dual docker/local `.env`, legacy **`build.localPort`** removed from schema and **`lib/schema/env-config.yaml`** removed from production paths. **Phase 2** is in code: **`traefik`** from user config is passed into `expandDeclarativeUrlsIfPresent` (`lib/core/secrets.js`) and drives public-base selection with **`frontDoorRouting.host`** via `url-declarative-public-base.js` and compose (`expandFrontDoorHostPlaceholders`). This validation run initially failed ESLint (**`max-lines`** / **`max-lines-per-function`** on `url-declarative-resolve.js`, **`max-params`** on `buildServiceConfig`); those issues were fixed by splitting URL builders into **`lib/utils/url-declarative-resolve-build.js`** and collapsing optional compose args into a single **`runExtras`** object.
 
-### Task completion (frontmatter)
+### Task completion (YAML frontmatter)
 
-| Todo ID | Status |
-|--------|--------|
-| urls-registry | ✅ completed |
-| envkey-from-clientid | ✅ completed |
-| port-rules | ✅ completed |
-| resolver-core | ✅ completed |
-| remove-legacy-env-config | ✅ completed |
-| schema-docs | ✅ completed (schema + CHANGELOG + `declarative-urls.md` + links) |
-| matrix-tests | ✅ completed (A/B/C + expand + **Matrix D** + D5) |
+All 11 todos show `status: completed` in plan frontmatter (`urls-registry` through `phase2-docs-url-resolution`).
 
 ### File existence validation
 
 | Item | Status |
 |------|--------|
-| Resolver / registry / ports / derive-env / infra-env-defaults | ✅ |
-| `docs/configuration/declarative-urls.md` | ✅ |
-| `tests/lib/utils/declarative-url-matrix-d-reload.test.js` | ✅ |
-| Tests (declarative-url-*, urls-local-registry, url-declarative-resolve-expand) | ✅ |
+| `lib/utils/url-declarative-resolve.js` (orchestration + `expandDeclarativeUrlsInEnvContent`) | ✅ |
+| `lib/utils/url-declarative-resolve-build.js` (builders, token parse, `expandResolvedUrlToken`) | ✅ |
+| `lib/utils/url-declarative-public-base.js` | ✅ |
+| `lib/utils/derive-env-key-from-client-id.js`, `declarative-url-ports.js`, `urls-local-registry.js` | ✅ |
+| `lib/core/secrets.js` wires `traefik` into declarative ctx | ✅ |
+| `lib/schema/application-schema.json` — no `build.localPort` property | ✅ |
+| `lib/schema/env-config.yaml` — absent (fixture only under `tests/fixtures/`) | ✅ |
+| `docs/configuration/declarative-urls.md`, `application-yaml.md`, `secrets-and-config.md` (per plan) | ✅ |
+| Golden / matrix tests: `declarative-url-resolution.test.js`, `url-declarative-resolve-expand.test.js`, `declarative-url-matrix-d-reload.test.js`, `declarative-url-ports.test.js`, `urls-local-registry.test.js` | ✅ |
 
 ### Test coverage
 
-- ✅ Matrices A/B/C helpers + expand + registry + ports (unchanged suites).
-- ✅ **Matrix D** — D1 (docker vs local internal difference + parity), D2, D3, D4, D6, D7 in `declarative-url-matrix-d-reload.test.js`.
-- ✅ **Matrix D5** — `ensureReloadSync` throws when mutagen sync settings incomplete (`run-reload-sync.test.js`).
-- ℹ️ **Coverage %** — run `npm run test:coverage` in CI when required; targeted suites pass.
+- Unit / golden coverage for matrices A/B/C, envKey derivation, ports, expand, registry, Matrix D reload parity, D5 sync error.
+- Full suite: **291** test suites passed, **5918** tests passed (28 skipped), ~5.5s wall time (7 Jest projects).
 
 ### Code quality validation
 
 | Step | Result |
 |------|--------|
+| `npm run lint:fix` | ✅ exit 0 |
 | `npm run lint` | ✅ **0 errors, 0 warnings** |
-| Plan-122 related Jest suites (run in band) | ✅ 57 tests passed |
+| `npm test` | ✅ all tests passed |
 
-### Cursor rules compliance
+`npm run build` in this repo is `lint && test`; both succeeded in this run.
 
-- ✅ Command-centric docs (no REST); `path.join`, resolve order, ISO logging posture.
-- ✅ File/function ESLint limits satisfied for touched hotspots.
+### Cursor rules compliance (spot check)
 
-### Definition of done
+- CommonJS, `path.join` for filesystem paths in resolver paths.
+- No new `console.log` in library code from this change set.
+- File size: `url-declarative-resolve-build.js` ≤500 lines; entry `url-declarative-resolve.js` slim.
+- `buildServiceConfig` arity within **`max-params`** via `runExtras` object.
 
-| Item | Status |
-|------|--------|
-| Lint zero warnings | ✅ |
-| `docs/` for `url://` / registry | ✅ |
-| Matrix D + D5 | ✅ |
-| Refactor warnings | ✅ |
+### Plan body vs implementation (stale plan text)
 
-### Residual notes
+Some narrative in § “Validation — discussion coverage” still says Phase 2 resolver items are “not yet” wired; **code and frontmatter todos contradict that**—treat the implementation and this report as authoritative for Phase 2.
 
-- Full **`npm run build`** (multi-project Jest) can still show **intermittent cross-worker pollution** or **missing optional workspace files** in some environments; use **`npx jest --runInBand`** for a deterministic full run if needed.
+### Issues and recommendations
+
+- Jest occasionally reports worker teardown noise (“force exited”); existing project behavior; use `--runInBand` if debugging leaks.
+- Optional: add explicit **cross-app `url://…-internal`** golden if not already covered by expand tests (plan residual).
 
 ### Final validation checklist
 
-- [x] Core implementation present and wired
-- [x] Tests including Matrix D and D5
-- [x] Lint: zero warnings
-- [x] `docs/` updated (`declarative-urls.md` + links)
-- [x] Plan frontmatter todos completed
-- [x] Resolver/registry helper refactors
+- [x] Frontmatter todos completed
+- [x] Key files present (resolver split + public-base + secrets ctx)
+- [x] Tests exist and pass (`npm test`)
+- [x] `npm run lint` clean (0 errors, 0 warnings)
+- [x] ESLint file/function limits satisfied for declarative URL modules
+- [x] Phase 2 (`traefik` + `frontDoorRouting.host`) reflected in code
 

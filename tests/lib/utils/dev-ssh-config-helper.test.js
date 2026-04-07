@@ -2,7 +2,8 @@
  * @fileoverview Unit tests for dev-ssh-config-helper (SSH config Host upsert, duplicate detection).
  */
 
-const fs = require('fs').promises;
+// Real fs.promises for temp SSH dirs (workers may retain jest.mock('fs') from other suites).
+const fs = jest.requireActual('node:fs').promises;
 const os = require('os');
 const path = require('path');
 const {

@@ -29,6 +29,7 @@ jest.mock('chalk', () => {
 // Mock config BEFORE requiring modules
 const mockConfig = {
   getDeveloperId: jest.fn(),
+  getConfig: jest.fn().mockResolvedValue({}),
   getSecretsPath: jest.fn().mockResolvedValue(null),
   getSecretsEncryptionKey: jest.fn().mockResolvedValue(null),
   getAifabrixEnvConfigPath: jest.fn().mockResolvedValue(null),
@@ -252,6 +253,7 @@ DB_PORT=\${DB_PORT}`;
     jest.clearAllMocks();
     os.homedir.mockReturnValue(mockHomeDir);
     mockConfig.getDeveloperId.mockResolvedValue('0');
+    mockConfig.getConfig.mockResolvedValue({});
 
     // Default fs mocks - use a function that can be overridden in tests
     fs.existsSync.mockImplementation((filePath) => {
@@ -1063,7 +1065,7 @@ DB_PORT=\${DB_PORT}`;
 
         const result = await buildEnvVarMap('local', os);
 
-        expect(result).toEqual({});
+        expect(result).toEqual({ TLS_ENABLED: 'false', HTTP_ENABLED: 'true' });
         // Reset mock for other tests
         loadEnvConfig.mockResolvedValue(mockEnvConfig);
       });
@@ -1330,6 +1332,25 @@ DB_PORT=\${DB_PORT}`;
 
         expect(result.PORT).toBe('3000');
         loadEnvConfig.mockResolvedValue(mockEnvConfig);
+      });
+
+      it('should set TLS_ENABLED and HTTP_ENABLED from config.getConfig tlsEnabled', async() => {
+        mockConfig.getConfig.mockResolvedValueOnce({ tlsEnabled: true });
+        const on = await buildEnvVarMap('docker');
+        expect(on.TLS_ENABLED).toBe('true');
+        expect(on.HTTP_ENABLED).toBe('false');
+
+        mockConfig.getConfig.mockResolvedValueOnce({ tlsEnabled: false });
+        const off = await buildEnvVarMap('local', os);
+        expect(off.TLS_ENABLED).toBe('false');
+        expect(off.HTTP_ENABLED).toBe('true');
+
+        mockConfig.getConfig.mockResolvedValueOnce({});
+        const def = await buildEnvVarMap('docker');
+        expect(def.TLS_ENABLED).toBe('false');
+        expect(def.HTTP_ENABLED).toBe('true');
+
+        mockConfig.getConfig.mockResolvedValue({});
       });
     });
   });

@@ -16,7 +16,8 @@ jest.mock('../../../lib/core/config');
 jest.mock('../../../lib/utils/api');
 jest.mock('../../../lib/utils/logger');
 jest.mock('../../../lib/utils/paths', () => ({
-  getAifabrixHome: jest.fn()
+  getAifabrixHome: jest.fn(),
+  getPrimaryUserSecretsLocalPath: jest.fn()
 }));
 
 const tokenManager = require('../../../lib/utils/token-manager');
@@ -32,9 +33,16 @@ describe('Token Manager Module', () => {
     jest.clearAllMocks();
     // Mock os.homedir
     jest.spyOn(os, 'homedir').mockReturnValue(mockHomeDir);
-    // Mock paths.getAifabrixHome() to return default path
     const pathsUtil = require('../../../lib/utils/paths');
     pathsUtil.getAifabrixHome.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
+    pathsUtil.getPrimaryUserSecretsLocalPath.mockReturnValue(
+      path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml')
+    );
+  });
+
+  afterAll(() => {
+    // Spies on `fs` would otherwise leak to the next test file in the same Jest worker (nodeFs / requireActual).
+    jest.restoreAllMocks();
   });
 
   describe('loadClientCredentials', () => {
@@ -111,11 +119,12 @@ describe('Token Manager Module', () => {
       expect(result).toBeNull();
     });
 
-    it('should respect config.yaml aifabrix-home override', async() => {
-      const overrideHome = '/custom/aifabrix';
-      const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
+    it('should read from getPrimaryUserSecretsLocalPath even when aifabrix-home differs', async() => {
+      const configDir = '/workspace/.aifabrix';
+      const secretsPath = path.join(configDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
-      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+      pathsUtil.getPrimaryUserSecretsLocalPath.mockReturnValue(secretsPath);
+      pathsUtil.getAifabrixHome.mockReturnValue('/home/dev02');
 
       const mockSecrets = {
         'keycloak-client-idKeyVault': 'test-client-id',
@@ -127,46 +136,39 @@ describe('Token Manager Module', () => {
 
       const result = await tokenManager.loadClientCredentials('keycloak');
 
-      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
-      expect(fs.existsSync).toHaveBeenCalledWith(overrideSecretsPath);
-      expect(fs.readFileSync).toHaveBeenCalledWith(overrideSecretsPath, 'utf8');
+      expect(pathsUtil.getPrimaryUserSecretsLocalPath).toHaveBeenCalled();
+      expect(fs.existsSync).toHaveBeenCalledWith(secretsPath);
+      expect(fs.readFileSync).toHaveBeenCalledWith(secretsPath, 'utf8');
       expect(result).toEqual({
         clientId: 'test-client-id',
         clientSecret: 'test-client-secret'
       });
     });
 
-    it('should use paths.getAifabrixHome() instead of os.homedir()', async() => {
-      const overrideHome = '/workspace/.aifabrix';
-      const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
+    it('should use getPrimaryUserSecretsLocalPath instead of os.homedir()', async() => {
+      const overrideSecretsPath = '/workspace/.aifabrix/secrets.local.yaml';
       const pathsUtil = require('../../../lib/utils/paths');
-      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+      pathsUtil.getPrimaryUserSecretsLocalPath.mockReturnValue(overrideSecretsPath);
 
       const mockSecrets = {
         'keycloak-client-idKeyVault': 'test-client-id',
         'keycloak-client-secretKeyVault': 'test-client-secret'
       };
 
-      // Get the current call count before this test
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(yaml.dump(mockSecrets));
       const initialExistsSyncCalls = fs.existsSync.mock.calls.length;
       const initialReadFileSyncCalls = fs.readFileSync.mock.calls.length;
 
-      fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue(yaml.dump(mockSecrets));
-
       const result = await tokenManager.loadClientCredentials('keycloak');
 
-      // Verify paths.getAifabrixHome() was called
-      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
-      // Verify it read from the override path, not the default os.homedir() path
-      // Check only the calls made during this test (after initial calls)
+      expect(pathsUtil.getPrimaryUserSecretsLocalPath).toHaveBeenCalled();
       const newExistsSyncCalls = fs.existsSync.mock.calls.slice(initialExistsSyncCalls);
       const newReadFileSyncCalls = fs.readFileSync.mock.calls.slice(initialReadFileSyncCalls);
 
       expect(newExistsSyncCalls).toContainEqual([overrideSecretsPath]);
       expect(newReadFileSyncCalls).toContainEqual([overrideSecretsPath, 'utf8']);
 
-      // Verify it did NOT use os.homedir() path in the new calls
       const defaultPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       const callsWithDefaultPath = newExistsSyncCalls.filter(call => call[0] === defaultPath);
       expect(callsWithDefaultPath).toHaveLength(0);

@@ -488,6 +488,21 @@ aifabrix secret remove my-keyKeyVault --shared
 
 **Security note:** When `aifabrix-secrets` is a URL, shared secret values are never stored on disk; they are fetched at resolution time when generating `.env`.
 
+<a id="aifabrix-secret-remove-all"></a>
+### aifabrix secret remove-all
+
+Remove **all** secret keys in one go. **Local:** clears `~/.aifabrix/secrets.local.yaml` to an empty map. **Shared:** with `--shared`, clears the shared secrets file or deletes each key via the remote API (same targets as `secret list --shared`).
+
+**Confirmation:** Unless you pass `--yes` / `-y`, you must type `yes` when prompted; anything else cancels.
+
+**Usage:**
+```bash
+aifabrix secret remove-all
+aifabrix secret remove-all --yes
+aifabrix secret remove-all --shared
+aifabrix secret remove-all --shared --yes
+```
+
 <a id="aifabrix-secret-set-secrets-file"></a>
 ### aifabrix secret set-secrets-file
 

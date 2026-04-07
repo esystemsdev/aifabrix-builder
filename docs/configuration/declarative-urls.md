@@ -8,6 +8,7 @@ When your **`env.template`** contains values like `url://public` or `url://inter
 
 - **`port`** — The listen port inside the container. Host-side ports for local development are **derived** from `port`, your **`developer-id`** in `config.yaml`, and whether the output is for **Docker** (published port) or **local** (workstation) profile. You do **not** set a separate `build.localPort` (removed in favor of this model).
 - **`frontDoorRouting.pattern`** — Path pattern for public URLs (for example `/api/*`). The Builder normalizes it when building URLs.
+- **`frontDoorRouting.host`** (when Traefik ingress is enabled for the app) — **Hostname template only** (no path, no `url://`). Supported placeholders: **`${DEV_USERNAME}`** (from `developer-id`) and **`${REMOTE_HOST}`** (hostname parsed from **`remote-server`** in `config.yaml`). For **`developer-id` 0, missing, or empty**, **`${DEV_USERNAME}`** is omitted so you get the **bare** remote hostname (e.g. `builder02.local`), not `dev.builder02.local` or `.builder02.local`. For non-zero ids the label is `dev01`, `dev02`, etc. Prefer **`${DEV_USERNAME}.${REMOTE_HOST}`**. If you write **`${DEV_USERNAME}${REMOTE_HOST}`** without a dot, the Builder inserts one between the two tokens. If **`remote-server`** is unset, **`${REMOTE_HOST}`** expands to empty and stray dots are trimmed. The same expansion is applied to Traefik labels in generated Compose files when **`traefik: true`** in config and **`frontDoorRouting.enabled: true`**.
 
 Optional: **`environmentScopedResources: true`** interacts with **`useEnvironmentScopedResources`** in `config.yaml` so public URLs can include a **`/dev`** or **`/tst`** path segment when the effective environment is dev or tst. For **pro** and **miso**-derived keys, no extra path prefix is added even when both flags are on.
 
@@ -17,11 +18,22 @@ The Builder maintains **`~/.aifabrix/urls.local.yaml`** (under your Fabrix home,
 
 ## Supported placeholder shapes
 
-- **`url://public`** — Public base URL for the **current** app (from `env.template`’s app).
-- **`url://internal`** — Internal URL (service hostname and listen port in the Docker profile; host-reachable URL in the local profile when `remote-server` is set).
-- **`url://<appKey>-public`** / **`url://<appKey>-internal`** — Same rules for another registered app key.
+**Full URL** (scheme + host + port + env path prefix + normalized `frontDoorRouting.pattern`):
 
-The effective URL also depends on **`remote-server`** in `config.yaml`, **`developer-id`**, and (for tst with a non-zero developer id and a matching remote origin) a **developer-scoped host** on the public URL.
+- **`url://public`** / **`url://internal`** — Current app.
+- **`url://<appKey>-public`** / **`url://<appKey>-internal`** — Cross-app (for example `url://dataplane-public`, `url://keycloak-internal`). The target app must be registered from **`builder/<appKey>/application.yaml`**.
+
+**Host only** (origin: `http://host:port` with no path prefix and no front-door path — useful when path is a separate variable, e.g. Keycloak `KC_HOSTNAME` vs `KC_HTTP_RELATIVE_PATH`):
+
+- **`url://host-public`** / **`url://host-internal`**
+- **`url://<appKey>-host-public`** / **`url://<appKey>-host-internal`**
+
+**Virtual directory only** (normalized path from `frontDoorRouting.pattern`, e.g. `/auth` from `/auth/*`; **`vdir-public` and `vdir-internal` resolve to the same path**):
+
+- **`url://vdir-public`** / **`url://vdir-internal`**
+- **`url://<appKey>-vdir-public`** / **`url://<appKey>-vdir-internal`**
+
+The effective URL also depends on **`remote-server`** in `config.yaml`, **`developer-id`**, **`traefik`** (whether public base uses the expanded **`frontDoorRouting.host`** vs published localhost ports or the remote origin), and (for tst with a non-zero developer id and a matching remote origin) a **developer-scoped host** on the public URL when using the remote base.
 
 ## `aifabrix run` and `--reload`
 

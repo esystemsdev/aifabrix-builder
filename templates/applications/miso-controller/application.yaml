@@ -9,11 +9,20 @@ app:
 # Image Configuration
 image:
   name: aifabrix/miso-controller
+  tag: latest
   registry: aifabrixdevacr.azurecr.io
   registryMode: acr
 
 # Port Configuration (container port; host port = 3000 + developer_id*100 from ~/.aifabrix/config.yaml)
 port: 3000
+
+# Public path behind Azure Front Door / reverse proxy (used by url://public and urls.local.yaml).
+# Traefik: `${DEV_USERNAME}.${REMOTE_HOST}` → e.g. dev01.builder02.local when remote-server is set (see config.yaml).
+frontDoorRouting:
+  pattern: /controller/*
+  enabled: true
+  host: ${DEV_USERNAME}.${REMOTE_HOST}
+  tls: false
 
 # Azure Requirements
 requires:

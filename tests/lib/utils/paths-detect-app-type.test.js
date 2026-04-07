@@ -19,6 +19,20 @@ jest.mock('fs', () => jest.requireActual('fs'));
 const fs = require('fs');
 const realFs = jest.requireActual('fs');
 
+/**
+ * Runner subprocesses do not load tests/setup.js; inherited AIFABRIX_* path env would break
+ * builder/integration resolution against temp project roots.
+ * @returns {NodeJS.ProcessEnv}
+ */
+function subprocessEnv() {
+  const env = { ...process.env };
+  delete env.AIFABRIX_BUILDER_DIR;
+  delete env.AIFABRIX_HOME;
+  delete env.AIFABRIX_WORK;
+  delete env.AIFABRIX_CONFIG;
+  return env;
+}
+
 /** Create temp dir on real filesystem so it exists even when fs is mocked by other tests. Cross-platform. */
 function createTempDirReal(baseDir) {
   const script = 'require(\'fs\').mkdirSync(process.argv[1], { recursive: true })';
@@ -81,7 +95,7 @@ describe('detectAppType', () => {
     try {
       const out = execSync(
         nodeExe + ' ' + JSON.stringify(runnerPath) + ' ' + JSON.stringify(tempDir) + ' ' + JSON.stringify(appNameArg) + ' ' + JSON.stringify(optionsJson),
-        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], shell: true }
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], shell: true, env: subprocessEnv() }
       ).trim();
       return JSON.parse(out);
     } catch (err) {
@@ -233,7 +247,7 @@ describe('getResolveAppPath', () => {
     try {
       const out = execSync(
         nodeExe + ' ' + JSON.stringify(runnerPath) + ' ' + JSON.stringify(tempDir) + ' ' + JSON.stringify(appNameArg),
-        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], shell: true }
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], shell: true, env: subprocessEnv() }
       ).trim();
       return JSON.parse(out);
     } catch (err) {

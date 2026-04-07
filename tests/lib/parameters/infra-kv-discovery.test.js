@@ -2,7 +2,8 @@
  * @fileoverview Tests for infra kv discovery (up-infra key union)
  */
 
-const fs = require('fs');
+// Real disk I/O; SUT uses internal/node-fs (requireActual). Mocked node:fs from other suites would leave dirs missing.
+const fs = jest.requireActual('node:fs');
 const path = require('path');
 const os = require('os');
 const yaml = require('js-yaml');

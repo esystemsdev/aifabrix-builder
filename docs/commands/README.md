@@ -116,6 +116,7 @@ Complete command reference organized by concept with examples and troubleshootin
     - [`aifabrix secret list`](utilities.md#aifabrix-secret-list) / [`secret list --shared`](utilities.md#aifabrix-secret-list) - List local or shared secrets
     - [`aifabrix secret set <key> <value>`](utilities.md#aifabrix-secret-set) / `--shared` - Set secret (local or shared)
     - [`aifabrix secret remove <key>`](utilities.md#aifabrix-secret-remove) / `--shared` - Remove secret (local or shared)
+    - [`aifabrix secret remove-all`](utilities.md#aifabrix-secret-remove-all) / `--shared` / `--yes` - Remove all secrets (confirmation unless `--yes`)
 
 ### Reference
 - [Command Reference](reference.md) - Common workflows, global options, exit codes, configuration, and getting help
