@@ -82,7 +82,7 @@ Examples: `API_KEY=kv://miso-controller-api-key-secretKeyVault`, `ENCRYPTION_KEY
 
 ### D. Onboarding admin email (historical)
 
-- **Fixed:** exact catalog entry `**miso-controller-admin-emailKeyVault`** with `**generator: literal**` (`admin@aifabrix.ai`) so the key is not caught by `*KeyVault` → `randomBytes32`.
+- **Fixed:** exact catalog entry `**miso-controller-admin-emailKeyVault`** with `**generator: literal`** (`admin@aifabrix.ai`) so the key is not caught by `*KeyVault` → `randomBytes32`.
 
 ## Goal: local installation without manual work
 
@@ -116,7 +116,7 @@ Union of **active** (non-comment) `kv://` lines in:
 - **Infra-shared:** `redis-url`, `redis-passwordKeyVault`, `postgres-passwordKeyVault`, …
 - **Per-app databases:** `databases-{appKey}-{index}-urlKeyVault` / `passwordKeyVault` (keycloak 0; miso-controller 0–1; dataplane 0–3)
 - **Tokens / KeyVault suffix:** `*KeyVault` patterns (JWT, API keys, Azure/Mori placeholders, encryption, npm token, etc.)
-- **URL-shaped keys today:** e.g. `keycloak-server-url`, `miso-controller-web-server-url`, `dataplane-web-server-url` — catalog often uses `emptyString` or patterns; platform templates use `**url://**` per **122** (shipped); **124** tracks further behavioral alignment (Traefik/direct, path prefixes).
+- **URL-shaped keys today:** e.g. `keycloak-server-url`, `miso-controller-web-server-url`, `dataplane-web-server-url` — catalog often uses `emptyString` or patterns; platform templates use `**url://`** per **122** (shipped); **124** tracks further behavioral alignment (Traefik/direct, path prefixes).
 
 ## Does plan 123 add entries to `lib/schema/infra.parameter.yaml`?
 
@@ -124,7 +124,7 @@ Union of **active** (non-comment) `kv://` lines in:
 
 - **121** already introduced and maintains the catalog (`parameters[]`, patterns, `standardUpInfraEnsureKeys`, generators).
 - **123** only tracks coordination and optional follow-ups. The only **optional** catalog touch is the todo *optional-standard-dataplane-keys*: if done, it may append **key names** to the root-level `standardUpInfraEnsureKeys` list (bootstrap list), not new `generator` / `parameters[]` definitions unless a new `kv://` key appears in templates first (then 121-style catalog work applies).
-- **123 explicitly avoids** adding URL `literal` generators to the catalog for service public URLs — that stays with **`url://`** (**122** shipped; **124** for rule refinements).
+- **123 explicitly avoids** adding URL `literal` generators to the catalog for service public URLs — that stays with `**url://`** (**122** shipped; **124** for rule refinements).
 
 ## Design decisions (123)
 
@@ -138,13 +138,13 @@ Union of **active** (non-comment) `kv://` lines in:
 - **122/124 alignment:** When migrating templates, replace URL-like `kv://` with `url://public` / `url://internal` / cross-app refs (per shipped **122**); keep **121** catalog entries until migration, then delete or mark deprecated. **124** drives further resolver/test/doc work on Traefik vs direct and Plan 117 gating.
 - **JS cleanup:** `createDefaultSecrets`, legacy `generateSecretValue` branches, `MISO_CONTROLLER_DATABASE_NAMES` — shrink in favor of catalog + YAML-driven DB lists (121 already fixed index-aware miso-controller generation; constant is a leftover optimization).
 - **Tests:** Keep `parameters validate` / workspace tests in sync when platform `env.template` files gain new `kv://` keys.
-- **Contributor/user docs (`docs-infra-parameters-md` todo):** Done for shipped `url://` (see Validation Report). For **deep** URL rules (proxy off, path prefixes, TLS), link or mirror from [`docs/configuration/declarative-urls.md`](../docs/configuration/declarative-urls.md) and **124** — not by re-expanding full matrices in `infra-parameters.md`.
+- **Contributor/user docs (`docs-infra-parameters-md` todo):** Done for shipped `url://` (see Validation Report). For **deep** URL rules (proxy off, path prefixes, TLS), link or mirror from `[docs/configuration/declarative-urls.md](../docs/configuration/declarative-urls.md)` and **124** — not by re-expanding full matrices in `infra-parameters.md`.
 
 ## Definition of done (for 123 closure)
 
 - Todos in this file’s frontmatter completed or explicitly superseded by merged **122** implementation (including `**docs-infra-parameters-md`**). Ongoing URL *rule* work is **124**, not a reopen of 123.
 - `**docs/configuration/infra-parameters.md` updated** to reflect resolution of `${VAR}` vs `kv://`, shared secret keys, legacy empty URL `kv://` rows where still relevant, onboarding email, and the recommended platform command sequence — with a **Related** link to this plan (`.cursor/plans/123-up-miso-dataplane-and-parameter-consolidation.plan.md`).
-- **Zero-touch local install:** URL-shaped values populated by **`url://`** (122 shipped); **onboarding email** no longer random bytes; command sequence documented and verified (up-infra → up-miso → up-dataplane).
+- **Zero-touch local install:** URL-shaped values populated by `**url://`** (122 shipped); **onboarding email** no longer random bytes; command sequence documented and verified (up-infra → up-miso → up-dataplane).
 - No contradiction with 121 (catalog) or 122/124 (`url://` / registry / legacy removal; **124** for behavioral truth table).
 
 ## Mermaid — target pipeline (`url://` layer, shipped with 122)
@@ -187,7 +187,7 @@ flowchart LR
 
 ### Executive Summary
 
-All **nine** YAML frontmatter todos are `**completed`**. **Miso-controller** and **generic monitoring** env snippets now use `**url://`** for Keycloak and Miso public/internal URLs (aligned with **dataplane**). `**generateSecretValue`** throws when the infra catalog loads but a key has **no rule**, and falls back to **legacy heuristics only** if the catalog **fails to load** (tests / broken installs). Catalog **notes** on `keycloak-server-url` / `keycloak-internal-server-url` document Bicep vs template split. `**lib/core/templates-env.js`** uses `url://miso-controller-public` for `MISO_WEB_SERVER_URL`.
+All **nine** YAML frontmatter todos are `**completed`**. Miso-controller and generic monitoring env snippets now use `**url://`** for Keycloak and Miso public/internal URLs (aligned with **dataplane**). `**generateSecretValue`** throws when the infra catalog loads but a key has **no rule**, and falls back to **legacy heuristics only** if the catalog **fails to load** (tests / broken installs). Catalog **notes** on `keycloak-server-url` / `keycloak-internal-server-url` document Bicep vs template split. `**lib/core/templates-env.js`** uses `url://miso-controller-public` for `MISO_WEB_SERVER_URL`.
 
 ### Task completion (frontmatter)
 
@@ -196,13 +196,13 @@ All todos: `completed` (see plan YAML).
 ### Code / template changes (closure)
 
 
-| Area                                                  | Change                                                                                             |
-| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `templates/applications/miso-controller/env.template` | `KEYCLOAK_*` + `MISO_WEB_SERVER_URL` + `MISO_CONTROLLER_URL` → `url://…`                           |
-| `lib/core/templates-env.js`                           | `MISO_WEB_SERVER_URL` → `url://miso-controller-public`                                             |
-| `lib/utils/secrets-generator.js`                      | Catalog-first + DB helpers; throw if unmatched when catalog OK; legacy only if catalog load throws |
-| `lib/schema/infra.parameter.yaml`                     | Notes on legacy kv URL keys vs shipped `url://`                                                    |
-| `docs/configuration/infra-parameters.md`              | Gap paragraph updated for `url://` on platform templates                                           |
+| Area                                                  | Change                                                                                                                 |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `templates/applications/miso-controller/env.template` | `KEYCLOAK_`* + `MISO_WEB_SERVER_URL` + `MISO_CONTROLLER_URL` → `url://…`                                               |
+| `lib/core/templates-env.js`                           | `MISO_WEB_SERVER_URL` → `url://miso-controller-public`                                                                 |
+| `lib/utils/secrets-generator.js`                      | Catalog-first + DB helpers; throw if unmatched when catalog OK; legacy only if catalog load throws                     |
+| `lib/schema/infra.parameter.yaml`                     | Notes on legacy kv URL keys vs shipped `url://`                                                                        |
+| `docs/configuration/infra-parameters.md`              | Gap paragraph updated for `url://` on platform templates                                                               |
 | Plan body                                             | Relationship table: **121** / **122** / **124** / **123**; honest-state table refreshed; **124** = canonical URL rules |
 
 

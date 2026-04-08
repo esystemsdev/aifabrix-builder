@@ -4,7 +4,8 @@
 
 'use strict';
 
-const fs = require('fs');
+/** Real disk I/O — worker may have jest.mock('fs') from other suites */
+const fs = jest.requireActual('node:fs');
 const path = require('path');
 const os = require('os');
 

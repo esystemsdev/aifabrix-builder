@@ -37,6 +37,14 @@ describe('parseUrlToken', () => {
     });
     expect(parseUrlToken('host-public')).toEqual({ targetKey: '', kind: 'public', surface: 'host' });
     expect(parseUrlToken('vdir-internal')).toEqual({ targetKey: '', kind: 'internal', surface: 'vdir' });
+    expect(parseUrlToken('private')).toEqual({ targetKey: '', kind: 'internal', surface: 'full' });
+    expect(parseUrlToken('host-private')).toEqual({ targetKey: '', kind: 'internal', surface: 'host' });
+    expect(parseUrlToken('vdir-private')).toEqual({ targetKey: '', kind: 'internal', surface: 'vdir' });
+    expect(parseUrlToken('dataplane-private')).toEqual({
+      targetKey: 'dataplane',
+      kind: 'internal',
+      surface: 'full'
+    });
     expect(parseUrlToken('keycloak-host-public')).toEqual({
       targetKey: 'keycloak',
       kind: 'public',
@@ -262,6 +270,38 @@ H=url://host-public
       developerIdRaw: 0
     });
     expect(out).toMatch(/^H=http:\/\/localhost:8092$/m);
+  });
+
+  it('resolves url://private and url://host-private for docker to service:containerPort (Keycloak env.template)', async() => {
+    writeApp(
+      'kcpriv',
+      `port: 8082
+build:
+  containerPort: 8080
+frontDoorRouting:
+  pattern: /auth/*
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'kcpriv', 'application.yaml');
+    const out = await expandDeclarativeUrlsInEnvContent(
+      `MISO_CLIENTID=z
+PRIVATE=url://private
+PH=url://host-private
+`,
+      {
+        profile: 'docker',
+        currentAppKey: 'kcpriv',
+        variablesPath,
+        useEnvironmentScopedResources: false,
+        appEnvironmentScopedResources: false,
+        remoteServer: 'https://builder02.local',
+        developerIdRaw: '02',
+        traefik: false,
+        infraTlsEnabled: true
+      }
+    );
+    expect(out).toMatch(/^PRIVATE=http:\/\/kcpriv:8080$/m);
+    expect(out).toMatch(/^PH=http:\/\/kcpriv:8080$/m);
   });
 
   it('resolves url://keycloak-internal for docker to service:listen port (no path)', async() => {
@@ -579,9 +619,10 @@ VD=url://vdir-public
         [false, 'true', ''],
         [true, 'omit', ''],
         [true, 'false', ''],
-        [true, 'true', '/api']
+        // Plan 124: docker profile PRIVATEVDIR is always empty (even when PUBLICVDIR is /api)
+        [true, 'true', '']
       ])(
-        'vdir-internal when traefik=%s and enabled=%s → %j (same rules as vdir-public)',
+        'vdir-internal docker: always empty (plan 124)',
         async(traefik, enabledMode, expected) => {
           const out = await expandFor(
             `vdint-${traefik}-${String(enabledMode)}`,
@@ -600,8 +641,9 @@ VI=url://vdir-internal
       it.each([
         [false, 'omit', 'http://remote.test:5555'],
         [false, 'true', 'http://remote.test:5555'],
-        [true, 'omit', 'https://ingress.test.local'],
-        [true, 'false', 'https://ingress.test.local'],
+        // Plan 124: Traefik host only when pathActive (enabled === true); else direct remote base
+        [true, 'omit', 'http://remote.test:5555'],
+        [true, 'false', 'http://remote.test:5555'],
         [true, 'true', 'https://ingress.test.local/api']
       ])(
         'public when traefik=%s and enabled=%s → %s',
@@ -637,7 +679,7 @@ H=url://host-public
         );
         const val = parseSimpleEnvMap(out).H;
         expect(val).not.toContain('/api');
-        if (traefik) {
+        if (traefik && enabledMode === 'true') {
           expect(val).toBe('https://ingress.test.local');
         } else {
           expect(val).toBe('http://remote.test:5555');
@@ -752,7 +794,7 @@ X=url://svc2-vdir-public
       expect(parseSimpleEnvMap(out).X).toBe('');
     });
 
-    it('Plan 117 /dev prefix without pattern when traefik on but frontDoorRouting.enabled false', async() => {
+    it('Plan 117 /dev prefix without pattern when traefik on but frontDoorRouting.enabled false (direct base)', async() => {
       const yaml = `app:
   key: scopedx
 port: 8082
@@ -774,7 +816,7 @@ P=url://public
           appEnvironmentScopedResources: true
         }
       );
-      expect(parseSimpleEnvMap(out).P).toBe('https://scopedx.test.local/dev');
+      expect(parseSimpleEnvMap(out).P).toBe('http://remote.test:5555/dev');
     });
 
     it('url://internal local profile + remote mirrors public when ingress active', async() => {
@@ -798,7 +840,7 @@ I=url://internal
       expect(parseSimpleEnvMap(out).I).toBe('https://ingress.test.local/api');
     });
 
-    it('url://internal local profile + remote omits pattern when ingress inactive', async() => {
+    it('url://internal local profile uses direct remote when ingress inactive (enabled omit)', async() => {
       writeApp('locint2', ingressAppYaml('omit'));
       const variablesPath = path.join(fakeProject, 'builder', 'locint2', 'application.yaml');
       const out = await expandDeclarativeUrlsInEnvContent(
@@ -816,7 +858,7 @@ I=url://internal
           traefik: true
         }
       );
-      expect(parseSimpleEnvMap(out).I).toBe('https://ingress.test.local');
+      expect(parseSimpleEnvMap(out).I).toBe('http://remote.test:5555');
     });
   });
 });

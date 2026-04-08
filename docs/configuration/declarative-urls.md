@@ -22,7 +22,7 @@ The Builder maintains **`~/.aifabrix/urls.local.yaml`** (under your Fabrix home,
 
 **Full URL** (scheme + host + port; plus optional **`/dev`** / **`/tst`** when Traefik and scoped-resource rules apply; plus normalized **`frontDoorRouting.pattern`** only when the front door is **active** — same condition as **`url://vdir-*`**):
 
-- **`url://public`** / **`url://internal`** — Current app.
+- **`url://public`** / **`url://internal`** — Current app. **`url://private`** is an alias for **`url://internal`** (same for **`host-private`** / **`vdir-private`** and cross-app **`*-private`**, used in Keycloak and similar templates).
 - **`url://<appKey>-public`** / **`url://<appKey>-internal`** — Cross-app (for example `url://dataplane-public`, `url://keycloak-internal`). The target app must be registered from **`builder/<appKey>/application.yaml`**.
 
 **Host only** (origin: `http://host:port` with no path prefix and no front-door path — pair with **`url://vdir-*`** when your stack splits **public origin** and **ingress path** into separate env vars):
@@ -30,14 +30,16 @@ The Builder maintains **`~/.aifabrix/urls.local.yaml`** (under your Fabrix home,
 - **`url://host-public`** / **`url://host-internal`**
 - **`url://<appKey>-host-public`** / **`url://<appKey>-host-internal`**
 
-**Virtual directory only** (normalized path from `frontDoorRouting.pattern`, e.g. `/auth` from `/auth/*`; **`vdir-public` and `vdir-internal` resolve to the same path**):
+**Virtual directory only** (normalized path from `frontDoorRouting.pattern`, e.g. `/auth` from `/auth/*`):
 
 - **`url://vdir-public`** / **`url://vdir-internal`**
 - **`url://<appKey>-vdir-public`** / **`url://<appKey>-vdir-internal`**
 
+For the **Docker** profile, **`url://vdir-internal`** is always **empty** (container reachability uses **`http://<service>:<port>`** only). For the **local** profile, **`vdir-internal`** matches **`vdir-public`** when the front door is active (plan 124).
+
 **Passive front door (no virtual-directory segment):** When **`traefik` is not true** in `config.yaml` **or** the target app’s **`frontDoorRouting.enabled`** is not **`true`**, there is **no** front-door path on public URLs: **`url://vdir-*`** expands to an **empty string** (nothing after `=`, e.g. `MY_PATH_PREFIX=` — the token is fully replaced), and **`url://public`** / cross-app **`*-public`** resolve to the **public origin only** (no `/auth`, `/data`, etc. from `frontDoorRouting.pattern`). When **both** **`traefik: true`** and **`frontDoorRouting.enabled: true`** apply, vdir is the normalized pattern path and full public URLs include that path after any **`/dev`** / **`/tst`** segment.
 
-The effective URL also depends on **`remote-server`**, **`developer-id`**, **`traefik`**, and **`tlsEnabled`**. **`devNN.<remote-host>`** comes from expanding **`frontDoorRouting.host`** when **`traefik: true`**. The optional **`/dev`** / **`/tst`** segment applies only when Traefik is on **and** both scoped-resource settings are enabled—not when Traefik is off.
+The effective URL also depends on **`remote-server`**, **`developer-id`**, **`traefik`**, and **`tlsEnabled`**. **`devNN.<remote-host>`** (and any **`frontDoorRouting.host`** template) is used as the public **authority** only when **`traefik: true`** **and** the target app has **`frontDoorRouting.enabled: true`**. If Traefik is on but the front door is passive (`enabled` not **`true`**), public bases use **direct** reachability (`remote-server` + published port, or localhost)—not the ingress hostname. The optional **`/dev`** / **`/tst`** segment still applies when Traefik is on **and** both scoped-resource settings are enabled; it is **not** applied when Traefik is off.
 
 When **Traefik is off**, **`tlsEnabled`** in `config.yaml` (`up-infra --tls`) chooses **`http`** vs **`https`** for the public base built from **`remote-server`**. If TLS is **off**, the scheme is **`http`** even when **`remote-server`** is written as **`https://…`** (typical for direct published ports). If TLS is **on**, the scheme is **`https`**.
 

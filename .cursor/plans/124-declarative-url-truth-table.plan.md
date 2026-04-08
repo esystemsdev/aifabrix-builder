@@ -135,3 +135,82 @@ Explicit golden cases (docker + local where applicable):
 
 - **[122-declarative_url_resolution.plan.md](./122-declarative_url_resolution.plan.md)** — original Plan 122 archive (port math, registry, matrices A–D, phased delivery). Marked as historical; **124** is canonical for live rules.
 
+---
+
+## Implementation Validation Report
+
+**Date:** 2026-04-07  
+**Plan:** `.cursor/plans/124-declarative-url-truth-table.plan.md`  
+**Status:** ✅ **COMPLETE** (with minor follow-up notes)
+
+### Executive Summary
+
+Plan 124 behavior is implemented in the Builder: `pathActive` gates Traefik host authority and pattern segments; Plan 117 path prefix is gated by `traefik`; docker `url://vdir-internal` is empty; local internal mirrors public where applicable; docs and Jest coverage are in place. **`npm run lint:fix` → `npm run lint` → `npm test`** all succeeded (zero ESLint issues; **5,895** tests passed, **28** skipped).
+
+### Task completion (§ Todos — execution)
+
+| Item | Status |
+|------|--------|
+| Centralize URL flags + composition (`pathPrefix`, pattern, Traefik vs direct) | ✅ `lib/utils/url-declarative-url-flags.js` + wiring in resolve / resolve-build |
+| Align `url-declarative-public-base.js` (`pathActive` / direct branch, TLS) | ✅ `pathActive` required for Traefik host; direct `remote-server` + scheme rules preserved |
+| Docker-only empty `vdir-internal`; local mirrors public | ✅ `expandResolvedUrlToken` docker internal vdir; truth-table + expand tests |
+| Verify `--reload` / `envOutputPath` docker-shaped URLs | ✅ No code change required; existing `writeEnvOutputForReload` + Matrix D tests |
+| Golden tests (scoped dev/tst/pro × traefik × pathActive) | ✅ `tests/lib/utils/url-declarative-truth-table-124.test.js` + updated `url-declarative-resolve-expand.test.js` + existing matrices |
+| `docs/configuration/declarative-urls.md` | ✅ Traefik off / passive front door / vdir-internal docker vs local |
+
+**Note:** The plan’s “centralize `{ … schemeForDirect }` in one place” is **partially** met: `pathActive` and `computeDeclarativePathPrefix` live in `url-declarative-url-flags.js`; `schemeForDirect` / `remotePublicBaseWithoutTraefik` remain in `url-declarative-public-base.js` (acceptable split; no drift observed).
+
+### File existence validation
+
+| Path | Status |
+|------|--------|
+| `lib/utils/url-declarative-resolve.js` | ✅ (uses `computeDeclarativePathPrefix`) |
+| `lib/utils/url-declarative-resolve-build.js` | ✅ (`computePathActive`, vdir-internal docker, `pathActive` → public base) |
+| `lib/utils/url-declarative-public-base.js` | ✅ (`pathActive` gate on Traefik host) |
+| `lib/utils/url-public-path-prefix.js` | ✅ (unchanged contract; called via flags module) |
+| `lib/utils/url-declarative-url-flags.js` | ✅ **new** |
+| `lib/core/secrets.js` | ✅ (`expandDeclarativeUrlsIfPresent` unchanged contract; profile still `docker` \| `local`) |
+
+### Test coverage
+
+| Test file | Role |
+|-----------|------|
+| `tests/lib/utils/url-declarative-truth-table-124.test.js` | Plan 124 flags + matrix (dev/tst/pro, passive pathActive, traefik off, local vdir parity) |
+| `tests/lib/utils/url-declarative-resolve-expand.test.js` | Ingress matrix, host-public, cross-app, Plan 117 + passive front door |
+| `tests/lib/utils/declarative-url-resolution.test.js` | Builder helpers + `frontDoorIngressActive` / pattern |
+| `tests/lib/utils/url-declarative-public-base.test.js` | Direct remote + `infraTlsEnabled` scheme |
+| `tests/lib/utils/declarative-url-matrix-d-reload.test.js` | Docker vs local + reload parity |
+
+**Optional gap:** Explicit golden for **`useEnvironmentScopedResources: true`** with **`environmentScopedResources: false`** on the app (baseEffective false, traefik on, pathActive on) is not isolated in `url-declarative-truth-table-124.test.js`; behavior is covered indirectly via scoped-config-off and path-prefix unit tests. Add one case if you want row-for-row parity with § truth-table row “baseEffective false, dev/tst”.
+
+### Code quality validation
+
+- ✅ **Format / fix:** `npm run lint:fix` — exit 0  
+- ✅ **Lint:** `npm run lint` — exit 0 (0 errors, 0 warnings)  
+- ✅ **Tests:** `npm test` — all suites passed  
+
+### Cursor rules compliance (spot check)
+
+- ✅ CommonJS, `path.join`, JSDoc on public helpers, no secrets in code  
+- ✅ New module size within project norms; no `console.log` in library code under review  
+
+### Implementation completeness (plan scope)
+
+- ✅ No database migrations or API routes (N/A for this plan)  
+- ✅ Documentation updated per plan  
+- ⚠️ **Optional:** Single module exporting all derived flags including `schemeForDirect` — not required for correctness  
+
+### Issues and recommendations
+
+1. Keep **124** as the canonical spec; update **122** only as archive pointers (already done elsewhere).  
+2. (Optional) Add one Jest case: **app `environmentScopedResources: false`**, config scoped **on**, traefik **on**, `enabled: true`, dev client → public path **without** `/dev`.  
+
+### Final validation checklist
+
+- [x] Execution todos implemented  
+- [x] Referenced lib files exist and implement plan 124 rules  
+- [x] Tests exist, mirror `lib/utils`, and pass  
+- [x] `lint:fix` + `lint` + `npm test` pass  
+- [x] `docs/configuration/declarative-urls.md` reflects Traefik/proxy/vdir rules  
+- [x] Report appended to this plan file  
+
