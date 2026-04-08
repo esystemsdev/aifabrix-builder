@@ -27,16 +27,13 @@ beforeEach(() => {
 });
 
 function withSchemaSyncTempDir(fn) {
-  // Writes must use lib/internal/node-fs (same as datasource-test-run-schema-sync.js).
-  // jest.requireActual('node:fs').writeFileSync hits tests/setup.js patched fs; pairing that
-  // with snapshot existsSync in production code can yield "file missing" in some workers.
-  const { nodeFs } = require('../../../lib/internal/node-fs');
-  const disk = nodeFs();
+  // Writes via jest.requireActual('node:fs') (not require('fs'), which setup.js patches).
+  // Matches what nodeFs()/assertDatasourceTestRunSchemasInSync see on disk across Jest workers.
   const actualFs = jest.requireActual('node:fs');
   const unique = `${process.pid}-${Date.now()}-${crypto.randomBytes(8).toString('hex')}`;
   const dir = actualFs.mkdtempSync(path.join(os.tmpdir(), `schema-sync-${unique}-`));
   try {
-    return fn(dir, disk);
+    return fn(dir, actualFs);
   } finally {
     try {
       actualFs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });

@@ -4,10 +4,7 @@
 
 'use strict';
 
-// Prefer real fs if this worker loaded jest.mock('fs') from another suite.
-jest.unmock('fs');
-
-const fs = require('node:fs');
+const fs = jest.requireActual('node:fs');
 const path = require('path');
 const os = require('os');
 

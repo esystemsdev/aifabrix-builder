@@ -127,6 +127,12 @@ const logger = require('../../lib/utils/logger');
 const { handleLogin } = require('../../lib/commands/login');
 const config = require('../../lib/core/config');
 const devConfig = require('../../lib/utils/dev-config');
+const {
+  loadInfraStatusSummary,
+  formatInfraStatusTitleLine,
+  logInfraStatusConfigurationSummary,
+  logPaddedFieldRow
+} = require('../../lib/utils/infra-status-display');
 
 describe('CLI Commands', () => {
   const mockHomeDir = '/home/test';
@@ -767,6 +773,13 @@ describe('CLI Commands', () => {
   });
 
   describe('status command', () => {
+    const EM = '\u2013';
+    const LABEL = 18;
+    function statusRow(label, value) {
+      const v = value === null || value === undefined || value === '' ? EM : String(value);
+      return `  ${label.padEnd(LABEL)} ${v}`;
+    }
+
     it('should show infrastructure status successfully', async() => {
       const mockStatus = {
         postgres: { status: 'running', port: 5432, url: 'postgresql://localhost:5432' },
@@ -776,25 +789,41 @@ describe('CLI Commands', () => {
       };
 
       infra.getInfraStatus.mockResolvedValue(mockStatus);
+      config.getDeveloperId.mockResolvedValue('2');
+      config.getCurrentEnvironment.mockResolvedValue('dev');
+      config.getTlsEnabled.mockResolvedValue(true);
+      config.getRemoteServer.mockResolvedValue('https://builder02.local');
+      config.getUseEnvironmentScopedResources.mockResolvedValue(false);
+      config.getTraefikEnabled.mockResolvedValue(true);
 
       try {
+        const summary = await loadInfraStatusSummary();
         const status = await infra.getInfraStatus();
-        logger.log('\n📊 Infrastructure Status\n');
+        logger.log('');
+        logger.log(formatInfraStatusTitleLine(summary.devIdStr, summary.remoteServer));
+        logger.log('');
+        logInfraStatusConfigurationSummary(summary);
 
         Object.entries(status).forEach(([service, info]) => {
-          const icon = info.status === 'running' ? '✅' : '❌';
-          logger.log(`${icon} ${service}:`);
-          logger.log(`   Status: ${info.status}`);
-          logger.log(`   Port: ${info.port}`);
-          logger.log(`   URL: ${info.url}`);
+          const icon = String(info.status).trim().toLowerCase() === 'running' ? '✅' : '❌';
+          logger.log(`${icon} ${service}`);
+          logPaddedFieldRow('Status', info.status);
+          logPaddedFieldRow('Port', info.port);
+          logPaddedFieldRow('URL', info.url);
           logger.log('');
         });
 
         expect(infra.getInfraStatus).toHaveBeenCalled();
-        expect(logger.log).toHaveBeenCalledWith('\n📊 Infrastructure Status\n');
-        expect(logger.log).toHaveBeenCalledWith('✅ postgres:');
-        expect(logger.log).toHaveBeenCalledWith('   Status: running');
-        expect(logger.log).toHaveBeenCalledWith('   Port: 5432');
+        expect(logger.log).toHaveBeenCalledWith('📊 Infrastructure Status (dev02 @ builder02.local)');
+        expect(logger.log).toHaveBeenCalledWith('⚙️ Configuration');
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Server', 'https://builder02.local'));
+        expect(logger.log).toHaveBeenCalledWith(statusRow('TLS/SSL', 'ON 🔒'));
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Traefik proxy', 'ON 🟢'));
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Environment', 'DEV'));
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Scoped resources', 'OFF (DEFAULT)'));
+        expect(logger.log).toHaveBeenCalledWith('✅ postgres');
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Status', 'running'));
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Port', '5432'));
       } catch (error) {
         expect(true).toBe(false); // Should not reach here
       }
@@ -1719,6 +1748,13 @@ describe('CLI Commands', () => {
     });
 
     describe('status command with stopped services', () => {
+      const EM = '\u2013';
+      const LABEL = 18;
+      function statusRow(label, value) {
+        const v = value === null || value === undefined || value === '' ? EM : String(value);
+        return `  ${label.padEnd(LABEL)} ${v}`;
+      }
+
       it('should show status for stopped services', async() => {
         const mockStatus = {
           postgres: { status: 'stopped', port: 5432, url: 'postgresql://localhost:5432' },
@@ -1727,19 +1763,28 @@ describe('CLI Commands', () => {
 
         infra.getInfraStatus.mockResolvedValue(mockStatus);
         logger.log.mockImplementation(() => {});
+        config.getDeveloperId.mockResolvedValue('2');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getTlsEnabled.mockResolvedValue(false);
+        config.getRemoteServer.mockResolvedValue(null);
+        config.getUseEnvironmentScopedResources.mockResolvedValue(false);
+        config.getTraefikEnabled.mockResolvedValue(false);
 
-        // Simulate the command handler action from cli.js line 194-211
         const action = async() => {
           try {
+            const summary = await loadInfraStatusSummary();
             const status = await infra.getInfraStatus();
-            logger.log('\n📊 Infrastructure Status\n');
+            logger.log('');
+            logger.log(formatInfraStatusTitleLine(summary.devIdStr, summary.remoteServer));
+            logger.log('');
+            logInfraStatusConfigurationSummary(summary);
 
             Object.entries(status).forEach(([service, info]) => {
-              const icon = info.status === 'running' ? '✅' : '❌';
-              logger.log(`${icon} ${service}:`);
-              logger.log(`   Status: ${info.status}`);
-              logger.log(`   Port: ${info.port}`);
-              logger.log(`   URL: ${info.url}`);
+              const icon = String(info.status).trim().toLowerCase() === 'running' ? '✅' : '❌';
+              logger.log(`${icon} ${service}`);
+              logPaddedFieldRow('Status', info.status);
+              logPaddedFieldRow('Port', info.port);
+              logPaddedFieldRow('URL', info.url);
               logger.log('');
             });
           } catch (error) {
@@ -1749,10 +1794,11 @@ describe('CLI Commands', () => {
         };
 
         await action();
-        expect(logger.log).toHaveBeenCalledWith('❌ postgres:');
-        expect(logger.log).toHaveBeenCalledWith('   Status: stopped');
-        expect(logger.log).toHaveBeenCalledWith('✅ redis:');
-        expect(logger.log).toHaveBeenCalledWith('   Status: running');
+        expect(logger.log).toHaveBeenCalledWith('📊 Infrastructure Status (dev02)');
+        expect(logger.log).toHaveBeenCalledWith('❌ postgres');
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Status', 'stopped'));
+        expect(logger.log).toHaveBeenCalledWith('✅ redis');
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Status', 'running'));
       });
     });
   });
@@ -2301,6 +2347,22 @@ describe('CLI Commands', () => {
     });
 
     describe('status command handler execution', () => {
+      const EM = '\u2013';
+      const L = 18;
+      const sr = (label, value) => {
+        const v = value === null || value === undefined || value === '' ? EM : String(value);
+        return `  ${label.padEnd(L)} ${v}`;
+      };
+
+      beforeEach(() => {
+        config.getDeveloperId.mockResolvedValue('0');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getTlsEnabled.mockResolvedValue(false);
+        config.getRemoteServer.mockResolvedValue(null);
+        config.getUseEnvironmentScopedResources.mockResolvedValue(false);
+        config.getTraefikEnabled.mockResolvedValue(false);
+      });
+
       it('should execute status command handler via setupCommands', async() => {
         setupCommandsAndResetLogger();
 
@@ -2316,11 +2378,17 @@ describe('CLI Commands', () => {
         await handler();
 
         expect(infra.getInfraStatus).toHaveBeenCalled();
-        expect(logger.log).toHaveBeenCalledWith('\n📊 Infrastructure Status\n');
-        expect(logger.log).toHaveBeenCalledWith('✅ postgres:');
-        expect(logger.log).toHaveBeenCalledWith('   Status: running');
-        expect(logger.log).toHaveBeenCalledWith('❌ redis:');
-        expect(logger.log).toHaveBeenCalledWith('   Status: stopped');
+        expect(logger.log).toHaveBeenCalledWith('📊 Infrastructure Status (dev00)');
+        expect(logger.log).toHaveBeenCalledWith('⚙️ Configuration');
+        expect(logger.log).toHaveBeenCalledWith(sr('Server', null));
+        expect(logger.log).toHaveBeenCalledWith(sr('TLS/SSL', 'OFF 🕐'));
+        expect(logger.log).toHaveBeenCalledWith(sr('Traefik proxy', 'OFF 🟡'));
+        expect(logger.log).toHaveBeenCalledWith(sr('Environment', 'DEV'));
+        expect(logger.log).toHaveBeenCalledWith(sr('Scoped resources', 'OFF (DEFAULT)'));
+        expect(logger.log).toHaveBeenCalledWith('✅ postgres');
+        expect(logger.log).toHaveBeenCalledWith(sr('Status', 'running'));
+        expect(logger.log).toHaveBeenCalledWith('❌ redis');
+        expect(logger.log).toHaveBeenCalledWith(sr('Status', 'stopped'));
       });
 
       it('should handle status command handler error via setupCommands', async() => {
@@ -2628,6 +2696,21 @@ describe('CLI Commands', () => {
     });
 
     describe('status command with running applications', () => {
+      const EM = '\u2013';
+      const L = 18;
+      const sr = (label, value) => {
+        const v = value === null || value === undefined || value === '' ? EM : String(value);
+        return `  ${label.padEnd(L)} ${v}`;
+      };
+
+      beforeEach(() => {
+        config.getDeveloperId.mockResolvedValue('0');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getTlsEnabled.mockResolvedValue(false);
+        config.getRemoteServer.mockResolvedValue(null);
+        config.getUseEnvironmentScopedResources.mockResolvedValue(false);
+      });
+
       it('should execute status command with running applications via setupCommands', async() => {
         setupCommandsAndResetLogger();
 
@@ -2649,18 +2732,18 @@ describe('CLI Commands', () => {
 
         expect(infra.getInfraStatus).toHaveBeenCalled();
         expect(infra.getAppStatus).toHaveBeenCalled();
-        expect(logger.log).toHaveBeenCalledWith('\n📊 Infrastructure Status\n');
+        expect(logger.log).toHaveBeenCalledWith('📊 Infrastructure Status (dev00)');
         expect(logger.log).toHaveBeenCalledWith('📱 Running Applications\n');
-        expect(logger.log).toHaveBeenCalledWith('✅ testapp:');
-        expect(logger.log).toHaveBeenCalledWith('   Container: testapp-container');
-        expect(logger.log).toHaveBeenCalledWith('   Port: 3000');
-        expect(logger.log).toHaveBeenCalledWith('   Status: running');
-        expect(logger.log).toHaveBeenCalledWith('   URL: http://localhost:3000');
-        expect(logger.log).toHaveBeenCalledWith('✅ testapp2:');
-        expect(logger.log).toHaveBeenCalledWith('   Container: testapp2-container');
-        expect(logger.log).toHaveBeenCalledWith('   Port: 3001');
-        expect(logger.log).toHaveBeenCalledWith('   Status: up');
-        expect(logger.log).toHaveBeenCalledWith('   URL: http://localhost:3001');
+        expect(logger.log).toHaveBeenCalledWith('✅ testapp');
+        expect(logger.log).toHaveBeenCalledWith(sr('Container', 'testapp-container'));
+        expect(logger.log).toHaveBeenCalledWith(sr('Port', '3000'));
+        expect(logger.log).toHaveBeenCalledWith(sr('Status', 'running'));
+        expect(logger.log).toHaveBeenCalledWith(sr('URL', 'http://localhost:3000'));
+        expect(logger.log).toHaveBeenCalledWith('✅ testapp2');
+        expect(logger.log).toHaveBeenCalledWith(sr('Container', 'testapp2-container'));
+        expect(logger.log).toHaveBeenCalledWith(sr('Port', '3001'));
+        expect(logger.log).toHaveBeenCalledWith(sr('Status', 'up'));
+        expect(logger.log).toHaveBeenCalledWith(sr('URL', 'http://localhost:3001'));
       });
 
       it('should execute status command without running applications via setupCommands', async() => {
@@ -2701,8 +2784,8 @@ describe('CLI Commands', () => {
         await handler();
 
         expect(logger.log).toHaveBeenCalledWith('📱 Running Applications\n');
-        expect(logger.log).toHaveBeenCalledWith('❌ testapp:');
-        expect(logger.log).toHaveBeenCalledWith('   Status: stopped');
+        expect(logger.log).toHaveBeenCalledWith('❌ testapp');
+        expect(logger.log).toHaveBeenCalledWith(sr('Status', 'stopped'));
       });
     });
 

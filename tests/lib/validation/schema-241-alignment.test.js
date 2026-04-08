@@ -6,13 +6,9 @@
  * @version 2.0.0
  */
 
-// Another suite in this worker (e.g. validator.test.js) uses jest.mock('fs'); unmock so
-// schema-loader and fixture reads see the real filesystem.
-jest.unmock('fs');
-
 const path = require('path');
-const fs = require('fs');
-const realFs = jest.requireActual('fs');
+/** Real fs: `jest.mock('fs')` in other suites leaves a stubbed `fs` in the worker cache. */
+const fs = jest.requireActual('node:fs');
 const { validateFieldReferences } = require('../../../lib/datasource/field-reference-validator');
 const { collectExternalDatasourceWarnings } = require('../../../lib/validation/datasource-warnings');
 
@@ -21,10 +17,6 @@ delete require.cache[schemaLoaderPath];
 const { loadExternalDataSourceSchema, loadExternalSystemSchema } = require('../../../lib/utils/schema-loader');
 
 describe('Schema 2.4.x alignment', () => {
-  beforeAll(() => {
-    fs.existsSync = realFs.existsSync;
-    fs.readFileSync = realFs.readFileSync;
-  });
   const fixturePath = path.join(__dirname, '../../fixtures/external-datasource-minimal-241.json');
 
   it('loads minimal v2.4 fixture and passes field-reference validation', () => {

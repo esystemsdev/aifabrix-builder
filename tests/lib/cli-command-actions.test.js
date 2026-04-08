@@ -23,7 +23,14 @@ const secrets = require('../../lib/core/secrets');
 const generator = require('../../lib/generator');
 const validator = require('../../lib/validation/validator');
 const keyGenerator = require('../../lib/core/key-generator');
-const { saveConfig } = require('../../lib/core/config');
+const config = require('../../lib/core/config');
+const { saveConfig } = config;
+const {
+  loadInfraStatusSummary,
+  formatInfraStatusTitleLine,
+  logInfraStatusConfigurationSummary,
+  logPaddedFieldRow
+} = require('../../lib/utils/infra-status-display');
 const { makeApiCall, initiateDeviceCodeFlow, pollDeviceCodeToken, displayDeviceCodeInfo } = require('../../lib/utils/api');
 const inquirer = require('inquirer');
 const { exec } = require('child_process');
@@ -882,22 +889,34 @@ describe('CLI Command Actions', () => {
       };
 
       infra.getInfraStatus = jest.fn().mockResolvedValue(mockStatus);
+      config.getDeveloperId = jest.fn().mockResolvedValue('1');
+      config.getCurrentEnvironment = jest.fn().mockResolvedValue('dev');
+      config.getTlsEnabled = jest.fn().mockResolvedValue(true);
+      config.getRemoteServer = jest.fn().mockResolvedValue('https://remote.example');
+      config.getUseEnvironmentScopedResources = jest.fn().mockResolvedValue(false);
+      config.getTraefikEnabled = jest.fn().mockResolvedValue(false);
+      jest.spyOn(logger, 'log').mockImplementation(() => {});
 
       try {
+        const summary = await loadInfraStatusSummary();
         const status = await infra.getInfraStatus();
-        console.log('\n📊 Infrastructure Status\n');
+        logger.log('');
+        logger.log(formatInfraStatusTitleLine(summary.devIdStr, summary.remoteServer));
+        logger.log('');
+        logInfraStatusConfigurationSummary(summary);
 
         Object.entries(status).forEach(([service, info]) => {
-          const icon = info.status === 'running' ? '✅' : '❌';
-          console.log(`${icon} ${service}:`);
-          console.log(`   Status: ${info.status}`);
-          console.log(`   Port: ${info.port}`);
-          console.log(`   URL: ${info.url}`);
-          console.log('');
+          const icon = String(info.status).trim().toLowerCase() === 'running' ? '✅' : '❌';
+          logger.log(`${icon} ${service}`);
+          logPaddedFieldRow('Status', info.status);
+          logPaddedFieldRow('Port', info.port);
+          logPaddedFieldRow('URL', info.url);
+          logger.log('');
         });
 
         expect(infra.getInfraStatus).toHaveBeenCalled();
-        expect(console.log).toHaveBeenCalled();
+        expect(logger.log).toHaveBeenCalledWith('📊 Infrastructure Status (dev01 @ remote.example)');
+        expect(logger.log).toHaveBeenCalledWith('✅ postgres');
       } catch (error) {
         cli.handleCommandError(error, 'status');
       }

@@ -63,6 +63,7 @@ INTERNAL_URL=url://internal
 port: 3001
 frontDoorRouting:
   pattern: /data/*
+  enabled: true
 `,
       'utf8'
     );
@@ -92,19 +93,21 @@ frontDoorRouting:
       profile: 'docker',
       useEnvironmentScopedResources: true,
       appEnvironmentScopedResources: true,
-      remoteServer: 'https://builder02.local'
+      remoteServer: 'https://builder02.local',
+      traefik: true
     });
-    expect(dockerMap.PUBLIC_URL).toBe('https://builder02.local/dev/data');
+    expect(dockerMap.PUBLIC_URL).toBe('http://builder02.local:3101/dev/data');
     expect(dockerMap.INTERNAL_URL).toBe('http://dataplane:3001');
 
     const localMap = await expand(envBody, {
       profile: 'local',
       useEnvironmentScopedResources: true,
       appEnvironmentScopedResources: true,
-      remoteServer: 'https://builder02.local'
+      remoteServer: 'https://builder02.local',
+      traefik: true
     });
-    expect(localMap.PUBLIC_URL).toBe('https://builder02.local/dev/data');
-    expect(localMap.INTERNAL_URL).toBe('https://builder02.local/dev/data');
+    expect(localMap.PUBLIC_URL).toBe('http://builder02.local:3111/dev/data');
+    expect(localMap.INTERNAL_URL).toBe('http://builder02.local:3111/dev/data');
     expect(localMap.INTERNAL_URL).not.toBe(dockerMap.INTERNAL_URL);
   });
 
@@ -113,13 +116,15 @@ frontDoorRouting:
       profile: 'docker',
       useEnvironmentScopedResources: true,
       appEnvironmentScopedResources: true,
-      remoteServer: 'https://builder02.local'
+      remoteServer: 'https://builder02.local',
+      traefik: true
     });
     const b = await expand(envBody, {
       profile: 'docker',
       useEnvironmentScopedResources: true,
       appEnvironmentScopedResources: true,
-      remoteServer: 'https://builder02.local'
+      remoteServer: 'https://builder02.local',
+      traefik: true
     });
     expect(a.PUBLIC_URL).toBe(b.PUBLIC_URL);
     expect(a.INTERNAL_URL).toBe(b.INTERNAL_URL);
@@ -132,7 +137,7 @@ frontDoorRouting:
       appEnvironmentScopedResources: true,
       remoteServer: 'https://builder02.local'
     });
-    expect(m.PUBLIC_URL).toBe('https://builder02.local/data');
+    expect(m.PUBLIC_URL).toBe('http://builder02.local:3101');
     expect(m.INTERNAL_URL).toBe('http://dataplane:3001');
   });
 
@@ -143,17 +148,18 @@ frontDoorRouting:
       appEnvironmentScopedResources: false,
       remoteServer: 'https://builder02.local'
     });
-    expect(m.PUBLIC_URL).toBe('https://builder02.local/data');
+    expect(m.PUBLIC_URL).toBe('http://builder02.local:3101');
   });
 
-  it('D4: no remote-server → Matrix A3 docker (localhost published port)', async() => {
+  it('D4: no remote-server, traefik off → no Plan 117 path prefix on published port', async() => {
     const m = await expand(envBody, {
       profile: 'docker',
       useEnvironmentScopedResources: true,
       appEnvironmentScopedResources: true,
-      remoteServer: null
+      remoteServer: null,
+      traefik: false
     });
-    expect(m.PUBLIC_URL).toBe('http://localhost:3101/dev/data');
+    expect(m.PUBLIC_URL).toBe('http://localhost:3101');
     expect(m.INTERNAL_URL).toBe('http://dataplane:3001');
   });
 
@@ -162,9 +168,10 @@ frontDoorRouting:
       profile: 'docker',
       useEnvironmentScopedResources: true,
       appEnvironmentScopedResources: true,
-      remoteServer: 'https://builder02.local'
+      remoteServer: 'https://builder02.local',
+      traefik: true
     });
-    expect(m.PUBLIC_URL).toBe('https://dev01.builder02.local/tst/data');
+    expect(m.PUBLIC_URL).toBe('http://builder02.local:3101/tst/data');
     expect(m.INTERNAL_URL).toBe('http://dataplane:3001');
   });
 
@@ -175,7 +182,7 @@ frontDoorRouting:
       appEnvironmentScopedResources: true,
       remoteServer: 'https://builder02.local'
     });
-    expect(m.PUBLIC_URL).toBe('https://builder02.local/data');
+    expect(m.PUBLIC_URL).toBe('http://builder02.local:3101');
     expect(m.INTERNAL_URL).toBe('http://dataplane:3001');
   });
 });

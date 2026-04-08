@@ -29,6 +29,12 @@ describe('ssh-key-helper', () => {
     );
   });
 
+  afterEach(() => {
+    nodeFsLib.nodeFs.mockImplementation(() =>
+      jest.requireActual('../../../lib/internal/node-fs').nodeFs()
+    );
+  });
+
   describe('getDefaultSshDir', () => {
     it('returns home/.ssh', () => {
       expect(sshKeyHelper.getDefaultSshDir()).toBe(path.join('/home/user', '.ssh'));

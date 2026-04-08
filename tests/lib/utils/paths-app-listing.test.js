@@ -42,7 +42,12 @@ describe('paths app listing (real fs, broken symlinks)', () => {
       fs.symlinkSync(target, linkPath);
       return true;
     } catch (err) {
-      if (err && (err.code === 'EPERM' || err.code === 'EOPNOTSUPP')) {
+      if (
+        err &&
+        (err.code === 'EPERM' ||
+          err.code === 'EOPNOTSUPP' ||
+          err.code === 'ENOENT')
+      ) {
         return false;
       }
       throw err;

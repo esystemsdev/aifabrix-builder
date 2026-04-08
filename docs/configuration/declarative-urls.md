@@ -10,7 +10,9 @@ When your **`env.template`** contains values like `url://public` or `url://inter
 - **`frontDoorRouting.pattern`** — Path pattern for public URLs (for example `/api/*`). The Builder normalizes it when building URLs.
 - **`frontDoorRouting.host`** (when Traefik ingress is enabled for the app) — **Hostname template only** (no path, no `url://`). Supported placeholders: **`${DEV_USERNAME}`** (from `developer-id`) and **`${REMOTE_HOST}`** (hostname parsed from **`remote-server`** in `config.yaml`). For **`developer-id` 0, missing, or empty**, **`${DEV_USERNAME}`** is omitted so you get the **bare** remote hostname (e.g. `builder02.local`), not `dev.builder02.local` or `.builder02.local`. For non-zero ids the label is `dev01`, `dev02`, etc. Prefer **`${DEV_USERNAME}.${REMOTE_HOST}`**. If you write **`${DEV_USERNAME}${REMOTE_HOST}`** without a dot, the Builder inserts one between the two tokens. If **`remote-server`** is unset, **`${REMOTE_HOST}`** expands to empty and stray dots are trimmed. The same expansion is applied to Traefik labels in generated Compose files when **`traefik: true`** in config and **`frontDoorRouting.enabled: true`**.
 
-Optional: **`environmentScopedResources: true`** interacts with **`useEnvironmentScopedResources`** in `config.yaml` so public URLs can include a **`/dev`** or **`/tst`** path segment when the effective environment is dev or tst. For **pro** and **miso**-derived keys, no extra path prefix is added even when both flags are on.
+Optional: **`environmentScopedResources: true`** plus **`useEnvironmentScopedResources`** in `config.yaml` can add a **`/dev`** or **`/tst`** path segment **only when `traefik: true`** in config and the derived env key is dev or tst. For **pro** and **miso**, no such prefix. With Traefik off, that env segment is not applied. **`url://internal`** on Docker is always **`http://<service>:<listenPort>`** (no path). **HTTPS vs HTTP** for public URLs follows infra TLS (`tlsEnabled` / `up-infra --tls`) and **`frontDoorRouting.tls`** when using the Traefik host template.
+
+The normalized **`frontDoorRouting.pattern`** path (the same segment as **`url://vdir-*`**) is appended to **`url://public`** / **`url://internal`** (full URL) **only when both** **`traefik: true`** in `config.yaml` **and** **`frontDoorRouting.enabled: true`** for the target app. Otherwise the public base is **origin only** (no virtual-directory path), consistent with a passive front door.
 
 ## Registry: `urls.local.yaml`
 
@@ -18,12 +20,12 @@ The Builder maintains **`~/.aifabrix/urls.local.yaml`** (under your Fabrix home,
 
 ## Supported placeholder shapes
 
-**Full URL** (scheme + host + port + env path prefix + normalized `frontDoorRouting.pattern`):
+**Full URL** (scheme + host + port; plus optional **`/dev`** / **`/tst`** when Traefik and scoped-resource rules apply; plus normalized **`frontDoorRouting.pattern`** only when the front door is **active** — same condition as **`url://vdir-*`**):
 
 - **`url://public`** / **`url://internal`** — Current app.
 - **`url://<appKey>-public`** / **`url://<appKey>-internal`** — Cross-app (for example `url://dataplane-public`, `url://keycloak-internal`). The target app must be registered from **`builder/<appKey>/application.yaml`**.
 
-**Host only** (origin: `http://host:port` with no path prefix and no front-door path — useful when path is a separate variable, e.g. Keycloak `KC_HOSTNAME` vs `KC_HTTP_RELATIVE_PATH`):
+**Host only** (origin: `http://host:port` with no path prefix and no front-door path — pair with **`url://vdir-*`** when your stack splits **public origin** and **ingress path** into separate env vars):
 
 - **`url://host-public`** / **`url://host-internal`**
 - **`url://<appKey>-host-public`** / **`url://<appKey>-host-internal`**
@@ -33,7 +35,13 @@ The Builder maintains **`~/.aifabrix/urls.local.yaml`** (under your Fabrix home,
 - **`url://vdir-public`** / **`url://vdir-internal`**
 - **`url://<appKey>-vdir-public`** / **`url://<appKey>-vdir-internal`**
 
-The effective URL also depends on **`remote-server`** in `config.yaml`, **`developer-id`**, **`traefik`** (whether public base uses the expanded **`frontDoorRouting.host`** vs published localhost ports or the remote origin), and (for tst with a non-zero developer id and a matching remote origin) a **developer-scoped host** on the public URL when using the remote base.
+**Passive front door (no virtual-directory segment):** When **`traefik` is not true** in `config.yaml` **or** the target app’s **`frontDoorRouting.enabled`** is not **`true`**, there is **no** front-door path on public URLs: **`url://vdir-*`** expands to an **empty string** (nothing after `=`, e.g. `MY_PATH_PREFIX=` — the token is fully replaced), and **`url://public`** / cross-app **`*-public`** resolve to the **public origin only** (no `/auth`, `/data`, etc. from `frontDoorRouting.pattern`). When **both** **`traefik: true`** and **`frontDoorRouting.enabled: true`** apply, vdir is the normalized pattern path and full public URLs include that path after any **`/dev`** / **`/tst`** segment.
+
+The effective URL also depends on **`remote-server`**, **`developer-id`**, **`traefik`**, and **`tlsEnabled`**. **`devNN.<remote-host>`** comes from expanding **`frontDoorRouting.host`** when **`traefik: true`**. The optional **`/dev`** / **`/tst`** segment applies only when Traefik is on **and** both scoped-resource settings are enabled—not when Traefik is off.
+
+When **Traefik is off**, **`tlsEnabled`** in `config.yaml` (`up-infra --tls`) chooses **`http`** vs **`https`** for the public base built from **`remote-server`**. If TLS is **off**, the scheme is **`http`** even when **`remote-server`** is written as **`https://…`** (typical for direct published ports). If TLS is **on**, the scheme is **`https`**.
+
+When **`remote-server`** has **no port** (e.g. `https://builder02.local`), the public base uses that host with the app’s **published Docker port** (manifest **`port` + `developer-id` × 100). If **`remote-server`** already includes a port, that **host:port** is kept; the scheme still follows **`tlsEnabled`** as above.
 
 ## `aifabrix run` and `--reload`
 

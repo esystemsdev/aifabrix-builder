@@ -571,22 +571,38 @@ function processTestResults(testResult, parsedResults) {
  * @returns {Promise<void>} Resolves when tests complete
  */
 async function main() {
-  const jestArgs = process.env.RUN_COVERAGE === '1'
-    ? [
+  if (process.env.RUN_COVERAGE === '1') {
+    const testResult = await runCommand('npx', [
       'jest',
       '--ci',
       '--watchAll=false',
       '--coverage',
       '--config', 'jest.config.coverage.js',
       '--runInBand'
-    ]
-    : ['jest', '--ci', '--watchAll=false'];
+    ]);
+    const parsedResults = parseTestResults(testResult.output);
+    const exitCode = processTestResults(testResult, parsedResults);
+    process.exit(exitCode);
+    return;
+  }
 
-  const testResult = await runCommand('npx', jestArgs);
+  const baseArgs = ['jest', '--ci', '--watchAll=false'];
+  const rDefault = await runCommand('npx', [...baseArgs, '--config', 'jest.config.default.js']);
+  if (rDefault.code !== 0) {
+    const parsedResults = parseTestResults(rDefault.output);
+    process.exit(processTestResults(rDefault, parsedResults));
+    return;
+  }
 
-  const parsedResults = parseTestResults(testResult.output);
-  const exitCode = processTestResults(testResult, parsedResults);
-  process.exit(exitCode);
+  const rIsolated = await runCommand('npx', [...baseArgs, '--config', 'jest.config.isolated.js']);
+  if (rIsolated.code !== 0) {
+    const parsedResults = parseTestResults(rIsolated.output);
+    process.exit(processTestResults(rIsolated, parsedResults));
+    return;
+  }
+
+  displaySuccess(null, null);
+  process.exit(0);
 }
 
 main().catch((error) => {

@@ -27,6 +27,7 @@ const {
   loadDeveloperId,
   getCurrentEnvironment,
   getTlsEnabled,
+  getTraefikEnabled,
   setCurrentEnvironment,
   resolveEnvironment,
   isTokenExpired,
@@ -721,6 +722,31 @@ describe('Config Module', () => {
       fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
 
       await expect(getTlsEnabled()).resolves.toBe(false);
+    });
+  });
+
+  describe('getTraefikEnabled', () => {
+    it('should return true when traefik is true', async() => {
+      const mockConfig = {
+        'developer-id': '0',
+        environments: {},
+        traefik: true
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      await expect(getTraefikEnabled()).resolves.toBe(true);
+    });
+
+    it('should return false when traefik is false or omitted', async() => {
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(
+        yaml.dump({ 'developer-id': '0', environments: {}, traefik: false })
+      );
+      await expect(getTraefikEnabled()).resolves.toBe(false);
+
+      fsPromises.readFile.mockResolvedValue(yaml.dump({ 'developer-id': '0', environments: {} }));
+      await expect(getTraefikEnabled()).resolves.toBe(false);
     });
   });
 

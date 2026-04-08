@@ -80,10 +80,10 @@ describe('url-declarative-resolve helpers (matrix fixtures)', () => {
       pathPrefix: '/dev',
       patternPath
     });
-    expect(applyTstRemoteDeveloperHost(u, remote, devNum, 'dev')).toBe('https://builder02.local/dev/data');
+    expect(applyTstRemoteDeveloperHost(u, remote, devNum, 'dev')).toBe('http://builder02.local:3101/dev/data');
   });
 
-  it('Matrix B1 public remote docker — tst uses dev01 subdomain', () => {
+  it('Matrix B1 public remote docker — tst path only; same host+published port as Matrix A (no tst→devNN)', () => {
     const u = buildPublicUrlString({
       profile: 'docker',
       listenPort: listen,
@@ -92,10 +92,11 @@ describe('url-declarative-resolve helpers (matrix fixtures)', () => {
       pathPrefix: '/tst',
       patternPath
     });
-    expect(applyTstRemoteDeveloperHost(u, remote, devNum, 'tst')).toBe('https://dev01.builder02.local/tst/data');
+    expect(u).toBe('http://builder02.local:3101/tst/data');
+    expect(applyTstRemoteDeveloperHost(u, remote, devNum, 'tst')).toBe(u);
   });
 
-  it('Matrix B1 bare host when developer id 0', () => {
+  it('Matrix B remote docker — developer id 0 uses base listen port on remote host for tst path', () => {
     const u = buildPublicUrlString({
       profile: 'docker',
       listenPort: listen,
@@ -104,7 +105,8 @@ describe('url-declarative-resolve helpers (matrix fixtures)', () => {
       pathPrefix: '/tst',
       patternPath
     });
-    expect(applyTstRemoteDeveloperHost(u, remote, 0, 'tst')).toBe('https://builder02.local/tst/data');
+    expect(u).toBe('http://builder02.local:3001/tst/data');
+    expect(applyTstRemoteDeveloperHost(u, remote, 0, 'tst')).toBe(u);
   });
 
   it('Matrix A1 internal docker', () => {
@@ -133,7 +135,7 @@ describe('url-declarative-resolve helpers (matrix fixtures)', () => {
       developerIdNum: devNum,
       derivedEnvKey: 'dev'
     });
-    expect(internal).toBe('https://builder02.local/dev/data');
+    expect(internal).toBe('http://builder02.local:3111/dev/data');
   });
 
   it('cross-app token parsing', () => {
@@ -152,8 +154,66 @@ describe('url-declarative-resolve helpers (matrix fixtures)', () => {
     });
   });
 
-  it('applyTstRemoteDeveloperHost does not rewrite when URL origin differs from remote base', () => {
+  it('applyTstRemoteDeveloperHost is a no-op (devNN comes from Traefik frontDoor host template only)', () => {
     const u = 'https://other.host/tst/x';
     expect(applyTstRemoteDeveloperHost(u, 'https://builder02.local', 1, 'tst')).toBe(u);
+  });
+
+  describe('buildPublicUrlString frontDoorIngressActive (normalized pattern segment)', () => {
+    const baseOpts = {
+      profile: 'docker',
+      listenPort: 3001,
+      developerIdNum: 1,
+      remoteServer: 'https://builder02.local',
+      pathPrefix: '',
+      patternPath: '/data',
+      traefik: false,
+      hostTemplate: null,
+      tls: true,
+      developerIdRaw: 0,
+      infraTlsEnabled: false
+    };
+
+    it('omits pattern when frontDoorIngressActive is false', () => {
+      expect(
+        buildPublicUrlString({
+          ...baseOpts,
+          frontDoorIngressActive: false
+        })
+      ).toBe('http://builder02.local:3101');
+    });
+
+    it('keeps pattern when frontDoorIngressActive is undefined (direct callers / legacy)', () => {
+      expect(buildPublicUrlString(baseOpts)).toBe('http://builder02.local:3101/data');
+    });
+
+    it('keeps pattern when frontDoorIngressActive is true', () => {
+      expect(
+        buildPublicUrlString({
+          ...baseOpts,
+          frontDoorIngressActive: true
+        })
+      ).toBe('http://builder02.local:3101/data');
+    });
+
+    it('keeps Plan 117 pathPrefix when frontDoorIngressActive is false', () => {
+      expect(
+        buildPublicUrlString({
+          ...baseOpts,
+          pathPrefix: '/dev',
+          frontDoorIngressActive: false
+        })
+      ).toBe('http://builder02.local:3101/dev');
+    });
+
+    it('keeps https when infraTlsEnabled true even if remote-server uses https:// (TLS infra)', () => {
+      expect(
+        buildPublicUrlString({
+          ...baseOpts,
+          infraTlsEnabled: true,
+          frontDoorIngressActive: false
+        })
+      ).toBe('https://builder02.local:3101');
+    });
   });
 });

@@ -19,6 +19,10 @@ jest.mock('../../lib/core/config', () => {
   const mockSaveConfig = jest.fn().mockResolvedValue();
   const mockClearConfig = jest.fn().mockResolvedValue();
   const mockGetCurrentEnvironment = jest.fn().mockResolvedValue('dev');
+  const mockGetTlsEnabled = jest.fn().mockResolvedValue(false);
+  const mockGetRemoteServer = jest.fn().mockResolvedValue(null);
+  const mockGetUseEnvironmentScopedResources = jest.fn().mockResolvedValue(false);
+  const mockGetTraefikEnabled = jest.fn().mockResolvedValue(false);
   const mockSetCurrentEnvironment = jest.fn().mockResolvedValue();
   const mockSetControllerUrl = jest.fn().mockResolvedValue();
   const mockGetControllerUrl = jest.fn().mockResolvedValue(null);
@@ -34,6 +38,10 @@ jest.mock('../../lib/core/config', () => {
     saveConfig: mockSaveConfig,
     clearConfig: mockClearConfig,
     getCurrentEnvironment: mockGetCurrentEnvironment,
+    getTlsEnabled: mockGetTlsEnabled,
+    getRemoteServer: mockGetRemoteServer,
+    getUseEnvironmentScopedResources: mockGetUseEnvironmentScopedResources,
+    getTraefikEnabled: mockGetTraefikEnabled,
     setCurrentEnvironment: mockSetCurrentEnvironment,
     setControllerUrl: mockSetControllerUrl,
     getControllerUrl: mockGetControllerUrl,
@@ -118,6 +126,14 @@ describe('CLI Comprehensive Tests', () => {
     config.getConfig.mockResolvedValue({ 'developer-id': 1, environment: 'dev', environments: {} });
     config.getCurrentEnvironment.mockClear();
     config.getCurrentEnvironment.mockResolvedValue('dev');
+    config.getTlsEnabled.mockClear();
+    config.getTlsEnabled.mockResolvedValue(false);
+    config.getRemoteServer.mockClear();
+    config.getRemoteServer.mockResolvedValue(null);
+    config.getUseEnvironmentScopedResources.mockClear();
+    config.getUseEnvironmentScopedResources.mockResolvedValue(false);
+    config.getTraefikEnabled.mockClear();
+    config.getTraefikEnabled.mockResolvedValue(false);
     config.setCurrentEnvironment.mockClear();
     config.setCurrentEnvironment.mockResolvedValue();
     config.setControllerUrl.mockClear();

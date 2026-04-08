@@ -140,8 +140,8 @@ API_URL=url://public
       remoteServer: null,
       developerIdRaw: 1
     });
-    // localHostPort(4000, 1) = 4110; path /api
-    expect(out).toContain('API_URL=http://localhost:4110/api');
+    // localHostPort(4000, 1) = 4110; no front-door pattern without traefik + enabled
+    expect(out).toContain('API_URL=http://localhost:4110');
   });
 
   it('resolves url://other-public from registry after refresh', async() => {
@@ -168,7 +168,7 @@ U=url://other-public
       remoteServer: null,
       developerIdRaw: 0
     });
-    expect(out).toContain('U=http://localhost:5010/odata');
+    expect(out).toContain('U=http://localhost:5010');
   });
 
   it('resolves url://internal for docker profile to service:port', async() => {
@@ -189,7 +189,7 @@ X=url://internal
     expect(out).toContain('X=http://dp:3001');
   });
 
-  it('resolves url://vdir-public from current app pattern', async() => {
+  it('resolves url://vdir-public to empty when front door is passive (no traefik or enabled not true)', async() => {
     writeApp(
       'kc',
       `port: 8082
@@ -209,6 +209,33 @@ VDIR=url://vdir-public
       appEnvironmentScopedResources: false,
       remoteServer: null,
       developerIdRaw: 0
+    });
+    expect(out).toMatch(/^VDIR=$/m);
+  });
+
+  it('resolves url://vdir-public from pattern when traefik and frontDoorRouting.enabled are true', async() => {
+    writeApp(
+      'kc',
+      `port: 8082
+frontDoorRouting:
+  pattern: /auth/*
+  enabled: true
+  host: kc.example.test
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'kc', 'application.yaml');
+    const content = `MISO_CLIENTID=z
+VDIR=url://vdir-public
+`;
+    const out = await expandDeclarativeUrlsInEnvContent(content, {
+      profile: 'local',
+      currentAppKey: 'kc',
+      variablesPath,
+      useEnvironmentScopedResources: false,
+      appEnvironmentScopedResources: false,
+      remoteServer: null,
+      developerIdRaw: 0,
+      traefik: true
     });
     expect(out).toContain('VDIR=/auth');
   });
@@ -237,7 +264,7 @@ H=url://host-public
     expect(out).toMatch(/^H=http:\/\/localhost:8092$/m);
   });
 
-  it('resolves url://keycloak-internal for docker to service:listen port plus /auth', async() => {
+  it('resolves url://keycloak-internal for docker to service:listen port (no path)', async() => {
     writeApp(
       'keycloak',
       `port: 8080
@@ -259,7 +286,7 @@ K=url://keycloak-internal
       remoteServer: null,
       developerIdRaw: 0
     });
-    expect(out).toContain('K=http://keycloak:8080/auth');
+    expect(out).toContain('K=http://keycloak:8080');
   });
 
   it('leaves lines without url:// and comment lines untouched', async() => {
@@ -279,5 +306,517 @@ PLAIN=url://public
     });
     expect(out.split('\n')[0]).toBe('# nope');
     expect(out).toMatch(/^PLAIN=http:\/\/localhost:3010\/?$/m);
+  });
+
+  it('Traefik host + frontDoorRouting.tls false uses https when infraTlsEnabled (up-infra --tls)', async() => {
+    writeApp(
+      'kc',
+      `port: 8082
+frontDoorRouting:
+  pattern: /auth/*
+  enabled: true
+  host: kc.frontdoor.test
+  tls: false
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'kc', 'application.yaml');
+    const content = `MISO_CLIENTID=z
+KC=url://public
+`;
+    const withTls = await expandDeclarativeUrlsInEnvContent(content, {
+      profile: 'docker',
+      currentAppKey: 'kc',
+      variablesPath,
+      useEnvironmentScopedResources: false,
+      appEnvironmentScopedResources: false,
+      remoteServer: null,
+      developerIdRaw: '02',
+      traefik: true,
+      infraTlsEnabled: true
+    });
+    expect(withTls).toContain('KC=https://kc.frontdoor.test/auth');
+
+    const noTls = await expandDeclarativeUrlsInEnvContent(content, {
+      profile: 'docker',
+      currentAppKey: 'kc',
+      variablesPath,
+      useEnvironmentScopedResources: false,
+      appEnvironmentScopedResources: false,
+      remoteServer: null,
+      developerIdRaw: '02',
+      traefik: true,
+      infraTlsEnabled: false
+    });
+    expect(noTls).toContain('KC=http://kc.frontdoor.test/auth');
+  });
+
+  it('Traefik expanded frontDoor host + Plan 117 keeps /dev and /tst path prefix', async() => {
+    writeApp(
+      'fdscoped',
+      `app:
+  key: fdscoped
+port: 3001
+environmentScopedResources: true
+frontDoorRouting:
+  pattern: /data/*
+  enabled: true
+  host: \${DEV_USERNAME}.\${REMOTE_HOST}
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'fdscoped', 'application.yaml');
+    const baseCtx = {
+      profile: 'docker',
+      currentAppKey: 'fdscoped',
+      variablesPath,
+      useEnvironmentScopedResources: true,
+      appEnvironmentScopedResources: true,
+      remoteServer: 'https://builder02.local',
+      developerIdRaw: '01',
+      traefik: true,
+      infraTlsEnabled: false
+    };
+    const devOut = await expandDeclarativeUrlsInEnvContent(
+      `MISO_CLIENTID=miso-controller-dev-fdscoped
+P=url://public
+`,
+      baseCtx
+    );
+    expect(devOut).toContain('P=https://dev01.builder02.local/dev/data');
+
+    const tstOut = await expandDeclarativeUrlsInEnvContent(
+      `MISO_CLIENTID=miso-controller-tst-fdscoped
+P=url://public
+`,
+      baseCtx
+    );
+    expect(tstOut).toContain('P=https://dev01.builder02.local/tst/data');
+  });
+
+  it('without Traefik, url://public keeps explicit remote port; bare host gets published docker port', async() => {
+    writeApp(
+      'keycloak',
+      `port: 8082
+frontDoorRouting:
+  pattern: /auth/*
+  host: ignored.without.traefik.example
+  tls: false
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'keycloak', 'application.yaml');
+    const content = `MISO_CLIENTID=z
+KC=url://public
+`;
+    const httpsOut = await expandDeclarativeUrlsInEnvContent(content, {
+      profile: 'docker',
+      currentAppKey: 'keycloak',
+      variablesPath,
+      useEnvironmentScopedResources: false,
+      appEnvironmentScopedResources: false,
+      remoteServer: 'https://builder02.local:3000',
+      developerIdRaw: '02',
+      traefik: false,
+      infraTlsEnabled: true
+    });
+    expect(httpsOut).toContain('KC=https://builder02.local:3000');
+
+    const httpOut = await expandDeclarativeUrlsInEnvContent(content, {
+      profile: 'docker',
+      currentAppKey: 'keycloak',
+      variablesPath,
+      useEnvironmentScopedResources: false,
+      appEnvironmentScopedResources: false,
+      remoteServer: 'http://builder02.local:3000',
+      developerIdRaw: '02',
+      traefik: false,
+      infraTlsEnabled: false
+    });
+    expect(httpOut).toContain('KC=http://builder02.local:3000');
+
+    const bareHttps = await expandDeclarativeUrlsInEnvContent(content, {
+      profile: 'docker',
+      currentAppKey: 'keycloak',
+      variablesPath,
+      useEnvironmentScopedResources: false,
+      appEnvironmentScopedResources: false,
+      remoteServer: 'https://builder02.local',
+      developerIdRaw: '02',
+      traefik: false,
+      infraTlsEnabled: true
+    });
+    expect(bareHttps).toContain('KC=https://builder02.local:8282');
+
+    const bareNoTls = await expandDeclarativeUrlsInEnvContent(content, {
+      profile: 'docker',
+      currentAppKey: 'keycloak',
+      variablesPath,
+      useEnvironmentScopedResources: false,
+      appEnvironmentScopedResources: false,
+      remoteServer: 'https://builder02.local',
+      developerIdRaw: '02',
+      traefik: false,
+      infraTlsEnabled: false
+    });
+    expect(bareNoTls).toContain('KC=http://builder02.local:8282');
+
+    const httpsExplicitNoTls = await expandDeclarativeUrlsInEnvContent(content, {
+      profile: 'docker',
+      currentAppKey: 'keycloak',
+      variablesPath,
+      useEnvironmentScopedResources: false,
+      appEnvironmentScopedResources: false,
+      remoteServer: 'https://builder02.local:3000',
+      developerIdRaw: '02',
+      traefik: false,
+      infraTlsEnabled: false
+    });
+    expect(httpsExplicitNoTls).toContain('KC=http://builder02.local:3000');
+
+    const hostOnly = await expandDeclarativeUrlsInEnvContent(
+      `MISO_CLIENTID=z
+KC=url://host-public
+`,
+      {
+        profile: 'docker',
+        currentAppKey: 'keycloak',
+        variablesPath,
+        useEnvironmentScopedResources: false,
+        appEnvironmentScopedResources: false,
+        remoteServer: 'https://builder02.local',
+        developerIdRaw: '02',
+        traefik: false,
+        infraTlsEnabled: true
+      }
+    );
+    expect(hostOnly).toContain('KC=https://builder02.local:8282');
+
+    const hostNoTls = await expandDeclarativeUrlsInEnvContent(
+      `MISO_CLIENTID=z
+KC=url://host-public
+`,
+      {
+        profile: 'docker',
+        currentAppKey: 'keycloak',
+        variablesPath,
+        useEnvironmentScopedResources: false,
+        appEnvironmentScopedResources: false,
+        remoteServer: 'https://builder02.local',
+        developerIdRaw: '02',
+        traefik: false,
+        infraTlsEnabled: false
+      }
+    );
+    expect(hostNoTls).toContain('KC=http://builder02.local:8282');
+  });
+
+  describe('front-door ingress matrix (traefik × frontDoorRouting.enabled)', () => {
+    /**
+     * @param {'omit'|'false'|'true'} enabledMode
+     * @returns {string}
+     */
+    function ingressAppYaml(enabledMode) {
+      const lines = [
+        'port: 8082',
+        'frontDoorRouting:',
+        '  pattern: /api/*',
+        '  host: ingress.test.local'
+      ];
+      if (enabledMode === 'false') {
+        lines.push('  enabled: false');
+      } else if (enabledMode === 'true') {
+        lines.push('  enabled: true');
+      }
+      return lines.join('\n');
+    }
+
+    const remoteExplicit = 'https://remote.test:5555';
+
+    /**
+     * @param {string} appKey
+     * @param {string} yamlText
+     * @param {string} envBody
+     * @param {Record<string, unknown>} ctxExtra
+     * @returns {Promise<string>}
+     */
+    async function expandFor(appKey, yamlText, envBody, ctxExtra) {
+      writeApp(appKey, yamlText);
+      const variablesPath = path.join(fakeProject, 'builder', appKey, 'application.yaml');
+      return expandDeclarativeUrlsInEnvContent(envBody, {
+        profile: 'docker',
+        currentAppKey: appKey,
+        variablesPath,
+        useEnvironmentScopedResources: false,
+        appEnvironmentScopedResources: false,
+        remoteServer: remoteExplicit,
+        developerIdRaw: 0,
+        ...ctxExtra
+      });
+    }
+
+    describe('url://vdir-public and url://vdir-internal', () => {
+      it.each([
+        [false, 'omit', ''],
+        [false, 'true', ''],
+        [true, 'omit', ''],
+        [true, 'false', ''],
+        [true, 'true', '/api']
+      ])(
+        'vdir-public when traefik=%s and enabled=%s → %j',
+        async(traefik, enabledMode, expected) => {
+          const out = await expandFor(
+            `vd-${traefik}-${String(enabledMode)}`,
+            ingressAppYaml(enabledMode),
+            `MISO_CLIENTID=z
+VD=url://vdir-public
+`,
+            { traefik }
+          );
+          expect(parseSimpleEnvMap(out).VD).toBe(expected);
+        }
+      );
+
+      it.each([
+        [false, 'omit', ''],
+        [false, 'true', ''],
+        [true, 'omit', ''],
+        [true, 'false', ''],
+        [true, 'true', '/api']
+      ])(
+        'vdir-internal when traefik=%s and enabled=%s → %j (same rules as vdir-public)',
+        async(traefik, enabledMode, expected) => {
+          const out = await expandFor(
+            `vdint-${traefik}-${String(enabledMode)}`,
+            ingressAppYaml(enabledMode),
+            `MISO_CLIENTID=z
+VI=url://vdir-internal
+`,
+            { traefik }
+          );
+          expect(parseSimpleEnvMap(out).VI).toBe(expected);
+        }
+      );
+    });
+
+    describe('url://public (full URL path segment)', () => {
+      it.each([
+        [false, 'omit', 'http://remote.test:5555'],
+        [false, 'true', 'http://remote.test:5555'],
+        [true, 'omit', 'https://ingress.test.local'],
+        [true, 'false', 'https://ingress.test.local'],
+        [true, 'true', 'https://ingress.test.local/api']
+      ])(
+        'public when traefik=%s and enabled=%s → %s',
+        async(traefik, enabledMode, expectedUrl) => {
+          const out = await expandFor(
+            `pub-${traefik}-${String(enabledMode)}`,
+            ingressAppYaml(enabledMode),
+            `MISO_CLIENTID=z
+P=url://public
+`,
+            { traefik }
+          );
+          expect(parseSimpleEnvMap(out).P).toBe(expectedUrl);
+        }
+      );
+    });
+
+    describe('url://host-public (always origin only)', () => {
+      it.each([
+        [false, 'omit'],
+        [false, 'true'],
+        [true, 'omit'],
+        [true, 'false'],
+        [true, 'true']
+      ])('host-public has no pattern path when traefik=%s enabled=%s', async(traefik, enabledMode) => {
+        const out = await expandFor(
+          `hp-${traefik}-${String(enabledMode)}`,
+          ingressAppYaml(enabledMode),
+          `MISO_CLIENTID=z
+H=url://host-public
+`,
+          { traefik }
+        );
+        const val = parseSimpleEnvMap(out).H;
+        expect(val).not.toContain('/api');
+        if (traefik) {
+          expect(val).toBe('https://ingress.test.local');
+        } else {
+          expect(val).toBe('http://remote.test:5555');
+        }
+      });
+    });
+
+    it('cross-app url://svc-vdir-public uses target application.yaml enabled + traefik', async() => {
+      writeApp(
+        'svc',
+        `port: 9000
+frontDoorRouting:
+  pattern: /svc/*
+  enabled: true
+  host: svc.test.local
+`
+      );
+      writeApp('client', 'port: 3000\n');
+      const variablesPath = path.join(fakeProject, 'builder', 'client', 'application.yaml');
+      const out = await expandDeclarativeUrlsInEnvContent(
+        `MISO_CLIENTID=z
+X=url://svc-vdir-public
+`,
+        {
+          profile: 'docker',
+          currentAppKey: 'client',
+          variablesPath,
+          useEnvironmentScopedResources: false,
+          appEnvironmentScopedResources: false,
+          remoteServer: remoteExplicit,
+          developerIdRaw: 0,
+          traefik: true
+        }
+      );
+      expect(parseSimpleEnvMap(out).X).toBe('/svc');
+    });
+
+    it('cross-app url://svc-public includes target pattern only when traefik and target enabled', async() => {
+      writeApp(
+        'svcpub',
+        `port: 9000
+frontDoorRouting:
+  pattern: /svc/*
+  enabled: true
+  host: svcpub.test.local
+`
+      );
+      writeApp('clientpub', 'port: 3000\n');
+      const variablesPath = path.join(fakeProject, 'builder', 'clientpub', 'application.yaml');
+      const active = await expandDeclarativeUrlsInEnvContent(
+        `MISO_CLIENTID=z
+R=url://svcpub-public
+`,
+        {
+          profile: 'docker',
+          currentAppKey: 'clientpub',
+          variablesPath,
+          useEnvironmentScopedResources: false,
+          appEnvironmentScopedResources: false,
+          remoteServer: remoteExplicit,
+          developerIdRaw: 0,
+          traefik: true
+        }
+      );
+      expect(parseSimpleEnvMap(active).R).toBe('https://svcpub.test.local/svc');
+
+      const passive = await expandDeclarativeUrlsInEnvContent(
+        `MISO_CLIENTID=z
+R=url://svcpub-public
+`,
+        {
+          profile: 'docker',
+          currentAppKey: 'clientpub',
+          variablesPath,
+          useEnvironmentScopedResources: false,
+          appEnvironmentScopedResources: false,
+          remoteServer: remoteExplicit,
+          developerIdRaw: 0,
+          traefik: false
+        }
+      );
+      expect(parseSimpleEnvMap(passive).R).toBe('http://remote.test:5555');
+    });
+
+    it('cross-app vdir empty when target has enabled true but traefik is off', async() => {
+      writeApp(
+        'svc2',
+        `port: 9000
+frontDoorRouting:
+  pattern: /svc/*
+  enabled: true
+  host: svc2.test.local
+`
+      );
+      writeApp('client2', 'port: 3000\n');
+      const variablesPath = path.join(fakeProject, 'builder', 'client2', 'application.yaml');
+      const out = await expandDeclarativeUrlsInEnvContent(
+        `MISO_CLIENTID=z
+X=url://svc2-vdir-public
+`,
+        {
+          profile: 'docker',
+          currentAppKey: 'client2',
+          variablesPath,
+          useEnvironmentScopedResources: false,
+          appEnvironmentScopedResources: false,
+          remoteServer: remoteExplicit,
+          developerIdRaw: 0,
+          traefik: false
+        }
+      );
+      expect(parseSimpleEnvMap(out).X).toBe('');
+    });
+
+    it('Plan 117 /dev prefix without pattern when traefik on but frontDoorRouting.enabled false', async() => {
+      const yaml = `app:
+  key: scopedx
+port: 8082
+environmentScopedResources: true
+frontDoorRouting:
+  pattern: /api/*
+  enabled: false
+  host: scopedx.test.local
+`;
+      const out = await expandFor(
+        'scopedx',
+        yaml,
+        `MISO_CLIENTID=miso-controller-dev-scopedx
+P=url://public
+`,
+        {
+          traefik: true,
+          useEnvironmentScopedResources: true,
+          appEnvironmentScopedResources: true
+        }
+      );
+      expect(parseSimpleEnvMap(out).P).toBe('https://scopedx.test.local/dev');
+    });
+
+    it('url://internal local profile + remote mirrors public when ingress active', async() => {
+      writeApp('locint', ingressAppYaml('true'));
+      const variablesPath = path.join(fakeProject, 'builder', 'locint', 'application.yaml');
+      const out = await expandDeclarativeUrlsInEnvContent(
+        `MISO_CLIENTID=z
+I=url://internal
+`,
+        {
+          profile: 'local',
+          currentAppKey: 'locint',
+          variablesPath,
+          useEnvironmentScopedResources: false,
+          appEnvironmentScopedResources: false,
+          remoteServer: remoteExplicit,
+          developerIdRaw: 0,
+          traefik: true
+        }
+      );
+      expect(parseSimpleEnvMap(out).I).toBe('https://ingress.test.local/api');
+    });
+
+    it('url://internal local profile + remote omits pattern when ingress inactive', async() => {
+      writeApp('locint2', ingressAppYaml('omit'));
+      const variablesPath = path.join(fakeProject, 'builder', 'locint2', 'application.yaml');
+      const out = await expandDeclarativeUrlsInEnvContent(
+        `MISO_CLIENTID=z
+I=url://internal
+`,
+        {
+          profile: 'local',
+          currentAppKey: 'locint2',
+          variablesPath,
+          useEnvironmentScopedResources: false,
+          appEnvironmentScopedResources: false,
+          remoteServer: remoteExplicit,
+          developerIdRaw: 0,
+          traefik: true
+        }
+      );
+      expect(parseSimpleEnvMap(out).I).toBe('https://ingress.test.local');
+    });
   });
 });
