@@ -7,12 +7,12 @@
         "key":"external-datasource-schema",
         "name":"External Data Source Configuration Schema",
         "description":"JSON schema for validating ExternalDataSource configuration files",
-        "version":"2.4.4",
+        "version":"2.4.5",
         "type":"schema",
         "category":"integration",
         "author":"AI Fabrix Team",
         "createdAt":"2024-01-01T00:00:00Z",
-        "updatedAt":"2026-04-06T00:00:00Z",
+        "updatedAt":"2026-04-07T00:00:00Z",
         "compatibility":{
            "minVersion":"1.0.0",
            "maxVersion":"3.0.0",
@@ -165,6 +165,14 @@
            "date":"2026-04-06T00:00:00Z",
            "changes":[
               "Added optional root mcpContract object for embedded MCP securityModel (tools/abac policy buckets). Required for integration manifests when CIP filter.abac uses mandatory datasource-scoped policies (static readiness vs runtime ExternalDataSource.mcpContract)."
+           ],
+           "breaking":false
+        },
+        {
+           "version":"2.4.5",
+           "date":"2026-04-07T00:00:00Z",
+           "changes":[
+              "exposed.profiles object profiles: attributes may be an object map (property names = field keys; values ignored), matching runtime exposed_profile_field_names and CIP/ExposedFieldsValidator behavior."
            ],
            "breaking":false
         }
@@ -400,13 +408,25 @@
                        "type":"object",
                        "properties":{
                           "attributes":{
-                             "type":"array",
-                             "items":{
-                                "type":"string",
-                                "pattern":"^[a-z][a-zA-Z0-9]*$"
-                             },
-                             "minItems":1,
-                             "uniqueItems":true
+                             "oneOf":[
+                                {
+                                   "type":"array",
+                                   "items":{
+                                      "type":"string",
+                                      "pattern":"^[a-z][a-zA-Z0-9]*$"
+                                   },
+                                   "minItems":1,
+                                   "uniqueItems":true
+                                },
+                                {
+                                   "type":"object",
+                                   "minProperties":1,
+                                   "propertyNames":{
+                                      "pattern":"^[a-z][a-zA-Z0-9]*$"
+                                   },
+                                   "additionalProperties":true
+                                }
+                             ]
                           },
                           "required":{
                              "type":"array",

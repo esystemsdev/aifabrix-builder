@@ -110,5 +110,33 @@ describe('deploy-manifest-azure-kv', () => {
       const template = 'X=url://public\n';
       expect(() => parseEnvironmentVariables(template, null)).toThrow(/app\.key is required/);
     });
+
+    it('maps comma-separated url:// tokens to Key Vault secret names each', () => {
+      const template =
+        'ALLOWED_ORIGINS=url://host-public,url://host-private\n' +
+        'MISO_ALLOWED_ORIGINS=url://public,url://internal\n';
+      const cfg = parseEnvironmentVariables(template, variablesConfig);
+      const byName = Object.fromEntries(cfg.map((c) => [c.name, c]));
+      expect(byName.ALLOWED_ORIGINS).toEqual({
+        name: 'ALLOWED_ORIGINS',
+        value: 'miso-controller-host-public,miso-controller-host-internal',
+        location: 'keyvault',
+        required: true
+      });
+      expect(byName.MISO_ALLOWED_ORIGINS).toEqual({
+        name: 'MISO_ALLOWED_ORIGINS',
+        value: 'miso-controller-web-server-url,miso-controller-internal-server-url',
+        location: 'keyvault',
+        required: true
+      });
+    });
+
+    it('preserves non-url:// segments in comma-separated url:// lists', () => {
+      const template = 'ALLOWED_ORIGINS=url://host-public,http://localhost:*\n';
+      const cfg = parseEnvironmentVariables(template, variablesConfig);
+      expect(cfg.find((c) => c.name === 'ALLOWED_ORIGINS').value).toBe(
+        'miso-controller-host-public,http://localhost:*'
+      );
+    });
   });
 });
