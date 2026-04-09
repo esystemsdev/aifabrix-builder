@@ -13,6 +13,10 @@ const os = require('os');
 
 // Mock fs BEFORE requiring paths
 jest.mock('fs');
+// Real sync fs for runtime config dir (nested AIFABRIX_HOME + .aifabrix/config.yaml).
+// Other suites mock fs-real-sync with existsSync always true, which would wrongly
+// treat $AIFABRIX_HOME/config.yaml as present when only nested config exists.
+jest.unmock('../../../lib/internal/fs-real-sync');
 const fs = require('fs');
 
 // We will dynamically import paths within tests to pick up current mocks and fs behavior

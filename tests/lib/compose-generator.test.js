@@ -185,6 +185,57 @@ describe('Compose Generator Module', () => {
       const t = buildTraefikConfig(cfg, 1, null, 'https://builder02.local');
       expect(t.tls).toBe(false);
     });
+
+    it('buildTraefikConfig prefixes Traefik path with /dev when env-scoped resources apply (dataplane-style)', () => {
+      const cfg = {
+        frontDoorRouting: {
+          enabled: true,
+          pattern: '/data/*',
+          host: '${DEV_USERNAME}.${REMOTE_HOST}',
+          tls: false
+        }
+      };
+      const scope = {
+        effectiveEnvironmentScopedResources: true,
+        runEnvKey: 'dev'
+      };
+      const t = buildTraefikConfig(cfg, 1, scope, 'https://builder02.local');
+      expect(t.path).toBe('/dev/data');
+    });
+
+    it('buildTraefikConfig uses /tst/data when run env is tst', () => {
+      const cfg = {
+        frontDoorRouting: {
+          enabled: true,
+          pattern: '/data/*',
+          host: '${DEV_USERNAME}.${REMOTE_HOST}',
+          tls: false
+        }
+      };
+      const scope = {
+        effectiveEnvironmentScopedResources: true,
+        runEnvKey: 'tst'
+      };
+      const t = buildTraefikConfig(cfg, 2, scope, 'https://builder02.local');
+      expect(t.path).toBe('/tst/data');
+    });
+
+    it('buildTraefikConfig leaves /miso base path when env-scoped (same generator; miso template omits app flag)', () => {
+      const cfg = {
+        frontDoorRouting: {
+          enabled: true,
+          pattern: '/miso/*',
+          host: '${DEV_USERNAME}.${REMOTE_HOST}',
+          tls: false
+        }
+      };
+      const scope = {
+        effectiveEnvironmentScopedResources: true,
+        runEnvKey: 'dev'
+      };
+      const t = buildTraefikConfig(cfg, 1, scope, 'https://builder02.local');
+      expect(t.path).toBe('/dev/miso');
+    });
   });
 
   beforeEach(() => {

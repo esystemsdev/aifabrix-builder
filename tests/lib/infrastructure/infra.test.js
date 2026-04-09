@@ -617,7 +617,8 @@ describe('Infrastructure Module', () => {
         enabled: true,
         certStore: 'wildcard',
         certFile: '/path/to/cert.crt',
-        keyFile: '/path/to/key.key'
+        keyFile: '/path/to/key.key',
+        trustForwardedHeaders: false
       });
 
       process.env = originalEnv;

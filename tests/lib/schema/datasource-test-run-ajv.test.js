@@ -5,6 +5,8 @@
 const Ajv = require('ajv');
 const path = require('path');
 const fixture = require('../../fixtures/datasource-test-run-minimal.json');
+/** Avoid hoisted jest.mock('fs') from other suites: existsSync true + read ENOENT false positives */
+const fs = jest.requireActual('node:fs');
 
 describe('datasource-test-run.schema.json (AJV)', () => {
   it('validates minimal fixture', () => {
@@ -24,7 +26,6 @@ describe('datasource-test-run.schema.json (AJV)', () => {
       __dirname,
       '../../../../aifabrix-dataplane/app/schemas/json/datasource-test-run.schema.json'
     );
-    const fs = require('fs');
     if (!fs.existsSync(dpPath)) {
       expect(true).toBe(true);
       return;

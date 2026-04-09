@@ -117,6 +117,9 @@ services:
       - "--providers.docker.network={{networkName}}"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
+{{#if traefik.trustForwardedHeaders}}
+      - "--entrypoints.web.forwardedHeaders.insecure=true"
+{{/if}}
 {{#if traefik.certStore}}
 {{#if traefik.certFile}}
       - "--certificatesstores.{{traefik.certStore}}.defaultcertificate.certfile={{traefik.certFile}}"

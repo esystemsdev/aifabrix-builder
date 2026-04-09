@@ -48,6 +48,7 @@ jest.mock('../../../lib/core/config', () => ({
   getConfig: jest.fn().mockResolvedValue({ 'developer-id': 1 }),
   saveConfig: jest.fn().mockResolvedValue(),
   clearConfig: jest.fn().mockResolvedValue(),
+  getRemoteServer: jest.fn().mockResolvedValue(null),
   getDockerEndpoint: jest.fn().mockResolvedValue(null),
   getDockerTlsSkipVerify: jest.fn().mockResolvedValue(false),
   CONFIG_DIR: '/mock/config/dir',

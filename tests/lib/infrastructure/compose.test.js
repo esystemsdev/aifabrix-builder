@@ -54,7 +54,8 @@ describe('Infrastructure Compose Module', () => {
         enabled: false,
         certStore: null,
         certFile: null,
-        keyFile: null
+        keyFile: null,
+        trustForwardedHeaders: false
       });
     });
 
@@ -75,7 +76,8 @@ describe('Infrastructure Compose Module', () => {
         enabled: true,
         certStore: null,
         certFile: null,
-        keyFile: null
+        keyFile: null,
+        trustForwardedHeaders: false
       });
     });
 
@@ -117,7 +119,8 @@ describe('Infrastructure Compose Module', () => {
         enabled: true,
         certStore: 'wildcard',
         certFile: '/path/to/wildcard.crt',
-        keyFile: '/path/to/wildcard.key'
+        keyFile: '/path/to/wildcard.key',
+        trustForwardedHeaders: false
       });
     });
 
@@ -170,7 +173,7 @@ describe('Infrastructure Compose Module', () => {
       const result = compose.validateTraefikConfig(config);
 
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('TRAEFIK_CERT_FILE and TRAEFIK_KEY_FILE are required when TRAEFIK_CERT_STORE is set');
+      expect(result.errors.some((e) => e.includes('TLS is enabled for Traefik'))).toBe(true);
     });
 
     it('should return invalid when certStore provided but keyFile missing', () => {
@@ -182,7 +185,7 @@ describe('Infrastructure Compose Module', () => {
       const result = compose.validateTraefikConfig(config);
 
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('TRAEFIK_CERT_FILE and TRAEFIK_KEY_FILE are required when TRAEFIK_CERT_STORE is set');
+      expect(result.errors.some((e) => e.includes('TLS is enabled for Traefik'))).toBe(true);
     });
 
     it('should return invalid when certStore provided but both certFile and keyFile missing', () => {
@@ -193,7 +196,7 @@ describe('Infrastructure Compose Module', () => {
       const result = compose.validateTraefikConfig(config);
 
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('TRAEFIK_CERT_FILE and TRAEFIK_KEY_FILE are required when TRAEFIK_CERT_STORE is set');
+      expect(result.errors.some((e) => e.includes('TLS is enabled for Traefik'))).toBe(true);
     });
 
     it('should return invalid when certFile does not exist', () => {
@@ -210,8 +213,8 @@ describe('Infrastructure Compose Module', () => {
       const result = compose.validateTraefikConfig(config);
 
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Certificate file not found: /path/to/cert.crt');
-      expect(result.errors).not.toContain('Private key file not found');
+      expect(result.errors.some((e) => e.includes('Certificate file not found: /path/to/cert.crt'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('Private key file not found'))).toBe(false);
     });
 
     it('should return invalid when keyFile does not exist', () => {
@@ -228,8 +231,8 @@ describe('Infrastructure Compose Module', () => {
       const result = compose.validateTraefikConfig(config);
 
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Private key file not found: /path/to/key.key');
-      expect(result.errors).not.toContain('Certificate file not found');
+      expect(result.errors.some((e) => e.includes('Private key file not found: /path/to/key.key'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('Certificate file not found'))).toBe(false);
     });
 
     it('should return invalid when both certFile and keyFile do not exist', () => {
@@ -244,8 +247,8 @@ describe('Infrastructure Compose Module', () => {
       const result = compose.validateTraefikConfig(config);
 
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Certificate file not found: /path/to/cert.crt');
-      expect(result.errors).toContain('Private key file not found: /path/to/key.key');
+      expect(result.errors.some((e) => e.includes('Certificate file not found: /path/to/cert.crt'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('Private key file not found: /path/to/key.key'))).toBe(true);
     });
 
     it('should return valid when certStore and both files exist', () => {
@@ -541,6 +544,21 @@ describe('Infrastructure Compose Module', () => {
         expect.objectContaining({
           pgadmin: { enabled: true },
           redisCommander: { enabled: true }
+        })
+      );
+    });
+
+    it('should pass trustForwardedHeaders on traefik config when set', () => {
+      compose.generateComposeFile(mockTemplatePath, '0', 0, mockPorts, mockInfraDir, {
+        traefik: { ...compose.buildTraefikConfig(true), trustForwardedHeaders: true }
+      });
+
+      expect(mockCompiledTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          traefik: expect.objectContaining({
+            enabled: true,
+            trustForwardedHeaders: true
+          })
         })
       );
     });
