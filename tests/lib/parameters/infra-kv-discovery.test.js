@@ -23,6 +23,12 @@ const {
 const BUNDLED_CATALOG = path.join(__dirname, '../../../lib/schema/infra.parameter.yaml');
 
 describe('infra-kv-discovery', () => {
+  const rmTmp = (tmp) => {
+    // In CI simulation (copy-to-/tmp + parallel Jest), Linux can intermittently throw ENOTEMPTY
+    // during recursive deletes. Retries make this deterministic without masking real test failures.
+    fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  };
+
   describe('extractKvKeysFromEnvContent', () => {
     it('returns empty for non-string input', () => {
       expect(extractKvKeysFromEnvContent(null)).toEqual([]);
@@ -57,7 +63,7 @@ describe('infra-kv-discovery', () => {
         getIntegrationPath: (n) => path.join(tmp, 'integration', n)
       };
       expect(listAppDirsForDiscovery(pathsUtil)).toEqual([{ appKey: 'alpha', dir: appDir }]);
-      fs.rmSync(tmp, { recursive: true, force: true });
+      rmTmp(tmp);
     });
 
     it('prefers builder over integration when the same name exists in both', () => {
@@ -73,7 +79,7 @@ describe('infra-kv-discovery', () => {
         getIntegrationPath: () => iDir
       };
       expect(listAppDirsForDiscovery(pathsUtil)).toEqual([{ appKey: 'same', dir: bDir }]);
-      fs.rmSync(tmp, { recursive: true, force: true });
+      rmTmp(tmp);
     });
 
     it('includes integration-only app when not in builder list', () => {
@@ -87,7 +93,7 @@ describe('infra-kv-discovery', () => {
         getIntegrationPath: (n) => path.join(tmp, 'integration', n)
       };
       expect(listAppDirsForDiscovery(pathsUtil)).toEqual([{ appKey: 'ext', dir: iDir }]);
-      fs.rmSync(tmp, { recursive: true, force: true });
+      rmTmp(tmp);
     });
   });
 
@@ -117,7 +123,7 @@ describe('infra-kv-discovery', () => {
         'databases-dataplane-1-passwordKeyVault',
         'databases-dataplane-1-urlKeyVault'
       ]);
-      fs.rmSync(tmp, { recursive: true, force: true });
+      rmTmp(tmp);
     });
   });
 
@@ -141,7 +147,7 @@ describe('infra-kv-discovery', () => {
       const keys = discoverKvKeysFromEnvTemplatesForHook(pathsUtil, 'upInfra', catalog).sort();
       expect(keys).toContain('postgres-passwordKeyVault');
       expect(keys).not.toContain('npm-token-secretKeyVault');
-      fs.rmSync(tmp, { recursive: true, force: true });
+      rmTmp(tmp);
     });
   });
 
@@ -180,7 +186,7 @@ describe('infra-kv-discovery', () => {
       }
       const sorted = [...keys].sort();
       expect(keys).toEqual(sorted);
-      fs.rmSync(tmp, { recursive: true, force: true });
+      rmTmp(tmp);
     });
   });
 });

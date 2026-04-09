@@ -4,7 +4,8 @@
 
 'use strict';
 
-const fs = require('node:fs').promises;
+// Use the real fs implementation even if other suites mock node:fs.
+const fs = jest.requireActual('node:fs').promises;
 const os = require('os');
 const path = require('path');
 

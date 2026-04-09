@@ -5,7 +5,10 @@
  */
 'use strict';
 
-const fs = require('node:fs');
+const fs =
+  typeof jest !== 'undefined' && typeof jest.requireActual === 'function'
+    ? jest.requireActual('node:fs')
+    : require('node:fs');
 
 // Sync helpers only: tests spy on fs.promises.* and expect those spies to intercept production code.
 global.__AIFABRIX_NODE_FS_UNMOCKED__ = {
