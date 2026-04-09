@@ -113,6 +113,37 @@ P=url://public
     expect(u).toBe('https://ingress124.test/dev/auth');
   });
 
+  it('scoped + traefik + pathActive + dev → url://vdir-public matches /dev + pattern', async() => {
+    writeApp(
+      'app124vdir',
+      `port: 8080
+environmentScopedResources: true
+frontDoorRouting:
+  pattern: /auth/*
+  enabled: true
+  host: ingress124.test
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'app124vdir', 'application.yaml');
+    const out = await expandDeclarativeUrlsInEnvContent(
+      `MISO_CLIENTID=miso-controller-dev-app124
+VP=url://vdir-public
+`,
+      {
+        profile: 'docker',
+        currentAppKey: 'app124vdir',
+        variablesPath,
+        remoteServer: remote,
+        developerIdRaw: 0,
+        infraTlsEnabled: false,
+        useEnvironmentScopedResources: true,
+        appEnvironmentScopedResources: true,
+        traefik: true
+      }
+    );
+    expect(parseSimpleEnvMap(out).VP).toBe('/dev/auth');
+  });
+
   it('scoped + traefik + pathActive + tst → /tst + pattern', async() => {
     const u = await expandPublic(
       { traefik: true },

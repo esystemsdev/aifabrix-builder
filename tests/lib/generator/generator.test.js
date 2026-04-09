@@ -1077,6 +1077,70 @@ API_KEY=kv://api-keyKeyVault`;
         probeIntervalInSeconds: 60
       });
     });
+
+    it('should derive path and probePath from frontDoor vdir + healthCheck.path', () => {
+      const variables = {
+        healthCheck: {
+          path: '/health/ready',
+          interval: 30
+        },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'ingress.test',
+          pattern: '/auth/*'
+        }
+      };
+
+      const result = generator.buildHealthCheck(variables);
+      expect(result).toEqual({
+        path: '/auth/health/ready',
+        interval: 30,
+        probePath: '/auth/health/ready'
+      });
+    });
+
+    it('should upgrade probePath to full vdir path when probePath equals path suffix only', () => {
+      const variables = {
+        healthCheck: {
+          path: '/health/ready',
+          probePath: '/health/ready',
+          interval: 30
+        },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'ingress.test',
+          pattern: '/auth/*'
+        }
+      };
+
+      const result = generator.buildHealthCheck(variables);
+      expect(result).toEqual({
+        path: '/auth/health/ready',
+        interval: 30,
+        probePath: '/auth/health/ready'
+      });
+    });
+
+    it('should prepend vdir to bare /health for deployment probes (public URL)', () => {
+      const variables = {
+        healthCheck: {
+          path: '/health',
+          interval: 30
+        },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'ingress.test',
+          pattern: '/miso/*'
+        }
+      };
+
+      const result = generator.buildHealthCheck(variables);
+      expect(result).toEqual({
+        path: '/miso/health',
+        interval: 30,
+        probePath: '/miso/health'
+      });
+    });
   });
 
   describe('buildRequirements', () => {
