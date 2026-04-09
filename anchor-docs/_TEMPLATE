@@ -1,0 +1,24 @@
+# Copy this file to `your-topic.md` and replace placeholders. This is not `*.md` so it is not validated as an anchor-doc.
+
+---
+title: <Title>
+navigation_id: builder/<slug-from-navigation.yaml>
+owner: <team>
+last_verified_commit: <sha-or-TBD>
+---
+
+## Summary
+
+<What this anchor covers for Builder CLI or schemas.>
+
+## Details
+
+<Implementation notes; keep persona docs in aifabrix-docs thin.>
+
+## Examples
+
+<aifabrix wizard|validate|deploy ...>
+
+## Paths
+
+[path:aifabrix-builder/README.md]
