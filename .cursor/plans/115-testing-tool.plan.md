@@ -1,7 +1,31 @@
 ---
 name: Builder CLI — unified testing and certification
 overview: End-to-end plan for aifabrix CLI support for Dataplane unified validation (POST /api/v1/validation/run), DatasourceTestRun envelope, datasource- and **external-system-level** scopes, certification surfacing, async polling, CI-ready machine output, and normative TTY UI (Data Quality + Trust, aggregation at system level). Includes strict operational contracts (exit codes, rendering order, async, limits, schema enforcement) to prevent implementation drift. Defers HTTP field detail to Dataplane OpenAPI and plan 365.
-todos: []
+todos:
+  - id: api-post-poll-system
+    content: Single API module — POST + shared poll; system scope + optional fan-out merge (§2.2, §9, §17.4)
+    status: pending
+  - id: datasource-test-capability
+    content: "`datasource test` + `test-e2e <ds> <capabilityKey>` drill-down (§2.1, §2.3)"
+    status: pending
+  - id: renderer-ds-system
+    content: Renderer — §3.2 + §16 (datasource) + §17 (system); dedupe, RBAC, no leakage (§3.9–§3.12)
+    status: pending
+  - id: exit-flags
+    content: Exit matrix §3.1 + §3.1a; `--require-cert`, `--warnings-as-errors`
+    status: pending
+  - id: machine-schema-ci
+    content: "`--json` / `--summary`; schema sync CI §8.1; flag map §4 tested"
+    status: pending
+  - id: watch-progress-debug
+    content: "`--watch` §3.14; progress §3.13; debug limits §3.7; `reportVersion` §3.15"
+    status: pending
+  - id: docs-permissions
+    content: Permissions JSDoc + `docs/commands` updates (no raw REST in user docs); deprecate legacy external test URLs (§11)
+    status: pending
+  - id: tests-snapshots
+    content: Unit/integration/golden TTY snapshots per §12; system aggregate fixtures §17.6–17.8
+    status: pending
 isProject: true
 ---
 
@@ -11,13 +35,36 @@ This document is the **product and implementation plan** for exercising Dataplan
 
 | Source | Role |
 |--------|------|
-| Dataplane **361** — `aifabrix-dataplane/.cursor/plans/361.builder.plan.md` | **HTTP surface**: public tier, `POST /api/v1/validation/run`, optional `GET` poll, success = **DatasourceTestRun** only; legacy routes out of scope for new work. |
-| Dataplane plans **365** (contract intent) and **362** (migration ordering) | **Request shape**: `validationScope`, `runType`, unified options on one body — exact fields in **OpenAPI** (`openapi.yaml` / `/api/v1/openapi.json`). |
+| Dataplane **361** — `aifabrix-dataplane/.cursor/plans/361.builder.plan.md` *(may live under `.cursor/plans/-1.done/` on some branches)* | **HTTP surface**: public tier, `POST /api/v1/validation/run`, optional `GET` poll, success = **DatasourceTestRun** only; legacy routes out of scope for new work. |
+| Dataplane **365** (contract intent) and **362** (migration ordering) | **Request shape**: `validationScope`, `runType`, unified options on one body — exact fields in **OpenAPI** (`openapi.yaml` / `/api/v1/openapi.json`). |
 | `lib/schema/datasource-test-run.schema.json` (Builder copy of canonical envelope) | **Success JSON contract** for `--json` output, golden tests, and AJV validation in CI; must stay in sync with Dataplane `app/schemas/json/datasource-test-run.schema.json`. |
 
 **Non-goals here:** implementation code, duplicate OpenAPI field lists, or REST documentation in user-facing CLI docs (per Builder docs rules).
 
 **Strict contracts:** Exit codes, human rendering order, async/poll behavior, debug limits, schema sync enforcement, and related rules below are **normative** for CLI implementation and tests — not suggestions.
+
+## Contents
+
+| § | Topic |
+|---|--------|
+| [1](#1-problem-statement) | Problem statement |
+| [2](#2-architectural-rule-one-http-operation-scopes-and-commands) | Architectural rule — one HTTP operation, scopes, commands |
+| [3](#3-operational-contracts-strict) | Operational contracts (exit codes, TTY order, async, debug, watch, `reportVersion`) |
+| [4](#4-flag-to-request-mapping-contract) | Flag-to-request mapping |
+| [5](#5-request-side-cli--dataplane) | Request side (CLI → Dataplane) |
+| [6](#6-response-side-datasourcetestrun-as-the-single-success-shape) | Response shape (`DatasourceTestRun`) |
+| [7](#7-human-output-contract-decision-oriented-cli) | Human output contract |
+| [8](#8-machine-output-and-ci-certification-gates) | Machine output and CI |
+| [9](#9-async-polling-implementation-detail) | Async polling |
+| [10](#10-relationship-to-local-datasource-validate-file) | vs local `datasource validate` |
+| [11](#11-migration-and-deprecation-builder) | Migration and deprecation |
+| [12](#12-testing-strategy-builder-repo) | Testing strategy |
+| [13](#13-anti-patterns) | Anti-patterns |
+| [14](#14-deliverables-checklist) | Deliverables + definition of done |
+| [15](#15-traceability) | Traceability |
+| [16](#16-cli-ui-specification-tty-gold-standard--datasource-scope) | TTY — datasource scope |
+| [17](#17-external-system-system-level-cli-ui) | TTY — system scope |
+| [18](#18-next-steps-optional-follow-ups) | Next steps |
 
 ---
 
@@ -111,6 +158,22 @@ This section locks behavior so CI, snapshots, and user scripts do not drift acro
 **Ordering:** Parse body → apply `status` / `--warnings-as-errors` → then apply `--require-cert` → exit.
 
 **`--json`:** Exit codes follow the **same** matrix; stdout is still the raw envelope on HTTP success.
+
+### 3.1a System-scoped and client-aggregated exit codes (normative)
+
+Applies when **`validationScope`** is **external system** (§2.2, §17) and the CLI either receives **one** server aggregate or **merges** N datasource-scoped **`DatasourceTestRun`** results (interim fan-out).
+
+| Situation | Effective status for §3.1 rows |
+|-----------|----------------------------------|
+| **Preferred:** single JSON body from OpenAPI with explicit **`systemStatus`** (or equivalent rollup field) | Use **`systemStatus`** for root-status rules in §3.1. If the body also has a top-level **`status`** that disagrees, **`systemStatus` wins** for exit mapping. |
+| **Preferred:** single body with only root **`status`** and no separate rollup field | Use root **`status`** as today. |
+| **Interim:** client merged children **{R₁…Rₙ}** per §17.4 | Compute **`systemStatus`** with the rules in §17.4; treat that computed value **as** root `status` for §3.1 (ok / warn / fail / skipped). |
+
+**Certificate and `--require-cert`:** On system scope, evaluate exit **2** as: **any** child with `certificate.status === 'not_passed'` **or** §17.4 system certification **not_passed** when certificates are present on any child — same ordering as §3.1 after HTTP success.
+
+**HTTP / transport:** For interim fan-out, **any** child request that ends in §3.1 row “HTTP error / TLS / DNS / timeout / invalid JSON” forces exit **3** for the **whole** command (do not merge partial success with a failed child call). **4xx/5xx** on one child counts as that row.
+
+**Poll:** If the aggregate is async, polling applies to the **system** handle when the server provides one; if interim mode polls **per child**, **all** children must reach terminal **`reportCompleteness`** (or equivalent) before final merge — a stuck child exhausts §3.6 budget → §3.4 timeout rules (exit **1** vs **3** per last body).
 
 ### 3.2 `DatasourceTestRun` human rendering — deterministic priority (TTY)
 
@@ -412,6 +475,17 @@ Flow: local validate → `datasource test` → `test-integration` → `test-e2e`
 - [ ] `reportVersion` handling §3.15.
 - [ ] Flag map §4 documented and tested.
 
+### 14.1 Definition of done
+
+Work matches this plan when **all** of the following hold:
+
+1. **Unified API path only** — No new reliance on legacy per-resource test URLs for validation concerns; `lib/api/` uses POST + optional poll per **361** / OpenAPI (§5, §9, §11).
+2. **Exit semantics** — §3.1 and **§3.1a** behavior covered by tests; `--require-cert` and `--warnings-as-errors` documented in command help.
+3. **Human output** — Default TTY for datasource commands follows §3.2 + §16 (snapshots); system commands follow §17 without dumping full §16 per datasource by default.
+4. **Machine output** — `--json` emits unmodified success body(ies) per §8 / §17.12; `--summary` lines match §16.9 / §17.9.
+5. **CI** — `datasource-test-run.schema.json` sync check §8.1 passes; golden fixtures AJV-valid.
+6. **Permissions and docs** — `permissions-guide.md` / JSDoc and user-facing command docs updated without violating Builder docs rules (no REST tutorial in `docs/commands`).
+
 ---
 
 ## 15. Traceability
@@ -420,6 +494,7 @@ Flow: local validate → `datasource test` → `test-integration` → `test-e2e`
 |-------|----------------|
 | HTTP paths, deprecation | Dataplane **361** |
 | `validationScope`, `runType` | Dataplane **365** |
+| Migration ordering, route removal | Dataplane **362** |
 | Envelope fields | `datasource-test-run.schema.json` |
 | OpenAPI property names | Dataplane `openapi.yaml` |
 | System-level TTY + aggregation | §17; `validationScope` + OpenAPI system aggregate (when added) |
@@ -1007,7 +1082,7 @@ This plan intentionally does **not** restate every JSON property; implementers r
 
 ## Implementation Validation Report
 
-**Date**: 2026-04-04  
+**Date**: 2026-04-04 (plan text amended 2026-04-09: §3.1a, Contents, §14.1 definition of done, frontmatter `todos`, traceability **362**)  
 **Plan**: `.cursor/plans/115-testing-tool.plan.md`  
 **Status**: ⚠️ INCOMPLETE (plan §14 deliverables unchecked; partial implementation validated)
 
