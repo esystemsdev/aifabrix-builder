@@ -367,3 +367,8 @@ permissions:
   - name: 'onboarding:config'
     roles: ['aifabrix-platform-admin', 'aifabrix-infrastructure-admin']
     description: 'Configure onboarding (license, Entra ID, subscription config)'
+
+  # Reserved for routes that use non-OAuth verification (e.g. future webhooks); keep for routes.csv compatibility
+  - name: 'system:callback'
+    roles: ['aifabrix-platform-admin', 'aifabrix-infrastructure-admin']
+    description: 'Routes.csv / OpenAPI marker for routes without standard OAuth scopes'
