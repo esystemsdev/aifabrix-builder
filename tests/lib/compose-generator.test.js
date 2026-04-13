@@ -465,7 +465,8 @@ describe('Compose Generator Module', () => {
         host: 'dev01.aifabrix.dev',
         path: '/api',
         tls: false,
-        certStore: null
+        certStore: null,
+        stripPathPrefix: true
       });
     });
 
@@ -486,7 +487,8 @@ describe('Compose Generator Module', () => {
         host: 'dev01.aifabrix.dev',
         path: '/api',
         tls: true,
-        certStore: 'wildcard'
+        certStore: 'wildcard',
+        stripPathPrefix: true
       });
     });
 
@@ -506,7 +508,8 @@ describe('Compose Generator Module', () => {
         host: 'dev01.aifabrix.dev',
         path: '/api',
         tls: true,
-        certStore: null
+        certStore: null,
+        stripPathPrefix: true
       });
     });
 
@@ -617,6 +620,50 @@ describe('Compose Generator Module', () => {
         }
       };
       expect(composeGenerator.resolveHealthCheckPathWithFrontDoorVdir(config, 0, null, null)).toBe('/miso/health');
+    });
+
+    it('buildTraefikConfig sets stripPathPrefix false when compose health is under /auth (no frontDoor.stripPathPrefix)', () => {
+      const config = {
+        healthCheck: { path: '/health/ready', interval: 30 },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'dev01.aifabrix.dev',
+          pattern: '/auth/*',
+          tls: false
+        }
+      };
+      const t = composeGenerator.buildTraefikConfig(config, '1');
+      expect(t.stripPathPrefix).toBe(false);
+    });
+
+    it('buildTraefikConfig sets stripPathPrefix true for miso-style bare /health', () => {
+      const config = {
+        healthCheck: { path: '/health', interval: 30 },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'h.test',
+          pattern: '/miso/*',
+          tls: false
+        }
+      };
+      const t = composeGenerator.buildTraefikConfig(config, '1');
+      expect(t.stripPathPrefix).toBe(true);
+    });
+
+    it('buildTraefikConfig sets stripPathPrefix false for scoped /dev/auth and /health/ready', () => {
+      const config = {
+        healthCheck: { path: '/health/ready', interval: 30 },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'h.test',
+          pattern: '/auth/*',
+          tls: false
+        }
+      };
+      const scope = { effectiveEnvironmentScopedResources: true, runEnvKey: 'dev' };
+      const t = composeGenerator.buildTraefikConfig(config, '1', scope, null);
+      expect(t.path).toBe('/dev/auth');
+      expect(t.stripPathPrefix).toBe(false);
     });
   });
 
@@ -1227,6 +1274,32 @@ describe('Compose Generator Module', () => {
       expect(result).toContain('traefik.http.routers.test-app-http.service=test-app');
       expect(result).toContain('BASE_PATH=/api');
       expect(result).toContain('X_FORWARDED_PREFIX=/api');
+      expect(result).toContain('stripprefix');
+    });
+
+    it('should omit Traefik StripPrefix for /auth when healthCheck.path is under vdir (derived, no YAML flag)', async() => {
+      const configModule = require('../../lib/core/config');
+      configModule.getDeveloperId.mockResolvedValue(1);
+
+      const actualDevDir = await getAndEnsureDevDir('test-app-strip');
+      const envPath = path.join(actualDevDir, '.env');
+      fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+      const config = {
+        port: 3000,
+        requires: { database: true },
+        healthCheck: { path: '/health/ready', interval: 30 },
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.aifabrix.dev',
+          pattern: '/auth/*',
+          tls: true
+        }
+      };
+
+      const result = await composeGenerator.generateDockerCompose('kc-style', config, {});
+      expect(result).toContain('PathPrefix(`/auth`)');
+      expect(result).not.toContain('stripprefix');
     });
 
     it('should healthcheck use vdir + healthCheck.path when frontDoorRouting.enabled', async() => {
@@ -1257,6 +1330,7 @@ describe('Compose Generator Module', () => {
       const result = await composeGenerator.generateDockerCompose('idp-svc', config, {});
       expect(result).toContain('GET /auth/health/ready');
       expect(result).toContain('CMD-SHELL');
+      expect(result).not.toContain('stripprefix');
     });
 
     it('should healthcheck keep bare /health for compose when frontDoorRouting.enabled (internal listener)', async() => {
@@ -1287,6 +1361,7 @@ describe('Compose Generator Module', () => {
       const result = await composeGenerator.generateDockerCompose('miso-style-app', config, {});
       expect(result).toContain('GET /health');
       expect(result).not.toContain('GET /miso/health');
+      expect(result).toContain('stripprefix');
     });
 
     it('should include certStore label when certStore is provided', async() => {

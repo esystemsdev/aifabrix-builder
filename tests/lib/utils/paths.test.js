@@ -287,13 +287,21 @@ describe('Path Utilities - directory helpers', () => {
     const tmp = fsReal.mkdtempSync(path.join(os.tmpdir(), 'afx-app-home-'));
     const nest = path.join(tmp, '.aifabrix');
     fsReal.mkdirSync(nest, { recursive: true });
-    fsReal.writeFileSync(path.join(nest, 'config.yaml'), 'x: 1\n', 'utf8');
+    const nestedConfigPath = path.join(nest, 'config.yaml');
+    fsReal.writeFileSync(nestedConfigPath, 'x: 1\n', 'utf8');
+    const directConfigPath = path.join(tmp, 'config.yaml');
+    expect(fsReal.existsSync(nestedConfigPath)).toBe(true);
+    expect(fsReal.existsSync(directConfigPath)).toBe(false);
+
     const origHome = process.env.AIFABRIX_HOME;
     const origCfg = process.env.AIFABRIX_CONFIG;
     try {
       process.env.AIFABRIX_HOME = tmp;
       delete process.env.AIFABRIX_CONFIG;
       jest.resetModules();
+      // Resolve config dir before paths so a bad fs-real-sync mock (existsSync always true) fails on directConfigPath check above, not on app paths.
+      const { getAifabrixRuntimeConfigDir } = require('../../../lib/utils/aifabrix-runtime-config-dir');
+      expect(getAifabrixRuntimeConfigDir()).toBe(nest);
       const pathsMod = require('../../../lib/utils/paths');
       expect(pathsMod.getApplicationsBaseDir('02')).toBe(path.join(nest, 'applications-dev-02'));
       expect(pathsMod.getApplicationsBaseDir(0)).toBe(path.join(nest, 'applications'));

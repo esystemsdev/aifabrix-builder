@@ -20,14 +20,18 @@ jest.mock('../../../lib/utils/secrets-encryption', () => ({
   isEncrypted: jest.fn((val) => typeof val === 'string' && val.startsWith('secure://'))
 }));
 
-jest.mock('../../../lib/internal/fs-real-sync', () => ({
-  existsSync: jest.fn(() => true),
-  readFileSync: jest.fn(() => 'POSTGRES_PASSWORD=plain\nPGADMIN_DEFAULT_EMAIL=admin@aifabrix.dev\n'),
-  writeFileSync: jest.fn(),
-  mkdirSync: jest.fn(),
-  statSync: jest.fn(),
-  readdirSync: jest.fn()
-}));
+jest.mock('../../../lib/internal/fs-real-sync', () => {
+  const actual = jest.requireActual('../../../lib/internal/fs-real-sync');
+  return {
+    ...actual,
+    existsSync: jest.fn(() => true),
+    readFileSync: jest.fn(() => 'POSTGRES_PASSWORD=plain\nPGADMIN_DEFAULT_EMAIL=admin@aifabrix.dev\n'),
+    writeFileSync: jest.fn(),
+    mkdirSync: jest.fn(),
+    statSync: jest.fn(),
+    readdirSync: jest.fn()
+  };
+});
 
 const fsRealSync = require('../../../lib/internal/fs-real-sync');
 const adminSecrets = require('../../../lib/core/admin-secrets');

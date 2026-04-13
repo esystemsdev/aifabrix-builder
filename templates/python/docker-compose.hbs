@@ -19,7 +19,9 @@ services:
       - "traefik.http.routers.{{app.key}}-http.rule=Host(`{{traefik.host}}`) && PathPrefix(`{{traefik.path}}`)"
       - "traefik.http.routers.{{app.key}}-http.entrypoints=web"
       {{#unless (eq traefik.path "/")}}
+      {{#if traefik.stripPathPrefix}}
       - "traefik.http.routers.{{app.key}}-http.middlewares={{app.key}}-stripprefix"
+      {{/if}}
       {{/unless}}
       - "traefik.http.routers.{{app.key}}-http.service={{app.key}}"
       {{else}}
@@ -27,8 +29,10 @@ services:
       {{/if}}
       - "traefik.http.services.{{app.key}}.loadbalancer.server.port={{containerPort}}"
       {{#unless (eq traefik.path "/")}}
+      {{#if traefik.stripPathPrefix}}
       - "traefik.http.middlewares.{{app.key}}-stripprefix.stripprefix.prefixes={{traefik.path}}"
       - "traefik.http.routers.{{app.key}}.middlewares={{app.key}}-stripprefix"
+      {{/if}}
       {{/unless}}
     {{/if}}
     environment:
