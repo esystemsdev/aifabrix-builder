@@ -1663,6 +1663,9 @@
            "lineage":{
               "$ref":"#/$defs/cipLineage"
            },
+           "identity":{
+              "$ref":"#/$defs/identitySpec"
+           },
            "steps":{
               "type":"array",
               "minItems":1,
@@ -1695,6 +1698,48 @@
               "$ref":"#/$defs/cipStepPythonInline"
            }
         ]
+     },
+     "identityMode":{
+        "type":"string",
+        "enum":[
+           "impersonation",
+           "attribution",
+           "system"
+        ],
+        "description":"Identity execution mode for operation-level override."
+     },
+     "identitySpec":{
+        "type":"object",
+        "description":"Operation-level identity override. When omitted, external-system default applies.",
+        "required":[
+           "mode"
+        ],
+        "properties":{
+           "mode":{
+              "$ref":"#/$defs/identityMode"
+           },
+           "required":{
+              "type":"boolean",
+              "default":false,
+              "description":"When true, fail operation if requested mode cannot be applied."
+           },
+           "fallback":{
+              "type":"array",
+              "description":"Fallback mode chain evaluated when primary mode fails.",
+              "items":{
+                 "$ref":"#/$defs/identityMode"
+              },
+              "uniqueItems":true
+           },
+           "scopes":{
+              "type":"array",
+              "description":"Optional scopes requested for impersonation minting.",
+              "items":{
+                 "type":"string"
+              }
+           }
+        },
+        "additionalProperties":false
      },
      "cipStepFetch":{
         "type":"object",

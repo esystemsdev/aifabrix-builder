@@ -87,6 +87,10 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\parameters\\\\infra-parameter-validate.test.js',
       'lib/parameters/infra-parameter-validate.test.js',
       'infra-parameter-validate\\.test\\.js',
+      '/tests/lib/parameters/infra-parameter-catalog.test.js',
+      '\\\\tests\\\\lib\\\\parameters\\\\infra-parameter-catalog.test.js',
+      'lib/parameters/infra-parameter-catalog.test.js',
+      'infra-parameter-catalog\\.test\\.js',
       '/tests/lib/utils/urls-local-registry.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\urls-local-registry.test.js',
       'lib/utils/urls-local-registry.test.js',
@@ -151,6 +155,9 @@ const isolatedProjects = [
   ]),
   makeIsolatedProject('infra-parameter-validate', [
     '**/tests/lib/parameters/infra-parameter-validate.test.js'
+  ]),
+  makeIsolatedProject('infra-parameter-catalog', [
+    '**/tests/lib/parameters/infra-parameter-catalog.test.js'
   ]),
   makeIsolatedProject('urls-local-registry', ['**/tests/lib/utils/urls-local-registry.test.js']),
   makeIsolatedProject('aifabrix-runtime-config-dir', [

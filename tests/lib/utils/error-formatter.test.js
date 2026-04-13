@@ -375,6 +375,50 @@ describe('Error Formatter Module', () => {
       expect(result[1]).toContain('key');
     });
 
+    it('should explain empty permissions[].roles (RBAC) with permission name when manifest passed', () => {
+      const errors = [
+        {
+          instancePath: '/permissions/57/roles',
+          keyword: 'minItems',
+          params: { limit: 1 },
+          data: [],
+          message: 'must NOT have fewer than 1 items'
+        }
+      ];
+      const deploymentManifest = {
+        permissions: Array.from({ length: 58 }, (_, i) =>
+          i === 57
+            ? { name: 'dataplane:pipelines:write', roles: [], description: 'x' }
+            : { name: `p${i}`, roles: ['admin'], description: 'd' }
+        )
+      };
+
+      const result = formatValidationErrors(errors, { deploymentManifest });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toContain('RBAC:');
+      expect(result[0]).toContain('dataplane:pipelines:write');
+      expect(result[0]).toContain('empty "roles"');
+      expect(result[0]).toContain('rbac.yaml');
+    });
+
+    it('should explain empty permissions[].roles using index when no manifest', () => {
+      const errors = [
+        {
+          instancePath: '/permissions/3/roles',
+          keyword: 'minItems',
+          params: { limit: 1 },
+          data: [],
+          message: 'must NOT have fewer than 1 items'
+        }
+      ];
+
+      const result = formatValidationErrors(errors);
+
+      expect(result[0]).toContain('permissions[3]');
+      expect(result[0]).toContain('RBAC:');
+    });
+
     it('should handle errors with different keywords', () => {
       const errors = [
         {

@@ -13,29 +13,62 @@ const yaml = require('js-yaml');
 /**
  * Repo root for shipped app YAML under templates/applications (each app folder has application.yaml).
  * global.PROJECT_ROOT can be wrong (e.g. tests/); only trust it when the miso-controller marker exists there.
+ * Also checks process.cwd() and an explicit path from this file (tests/lib/templates → three levels up): linked
+ * or global installs can leave __dirname under node_modules so parent-walk never reaches the real repo.
  */
 function resolveRepoRootForShippedApplicationTemplates() {
   const misoRel = path.join('templates', 'applications', 'miso-controller', 'application.yaml');
+  const misoAbs = (root) => path.join(root, misoRel);
+
   const fromGlobal =
     global.PROJECT_ROOT && typeof global.PROJECT_ROOT === 'string'
       ? path.resolve(global.PROJECT_ROOT.trim())
       : null;
-  if (fromGlobal && fs.existsSync(path.join(fromGlobal, misoRel))) {
+  if (fromGlobal && fs.existsSync(misoAbs(fromGlobal))) {
     return fromGlobal;
   }
-  let dir = path.resolve(__dirname);
-  for (let i = 0; i < 24; i++) {
-    if (fs.existsSync(path.join(dir, misoRel))) {
-      return dir;
-    }
-    const parent = path.dirname(dir);
-    if (parent === dir) {
-      break;
-    }
-    dir = parent;
+
+  // This file lives at <repo>/tests/lib/templates/ → repo root is three levels up.
+  const explicitRepo = path.resolve(__dirname, '..', '..', '..');
+  if (fs.existsSync(misoAbs(explicitRepo))) {
+    return explicitRepo;
   }
+
+  const cwd = path.resolve(process.cwd());
+  if (fs.existsSync(misoAbs(cwd))) {
+    return cwd;
+  }
+
+  function walkUp(startDir) {
+    let dir = path.resolve(startDir);
+    for (let i = 0; i < 24; i++) {
+      if (fs.existsSync(misoAbs(dir))) {
+        return dir;
+      }
+      const parent = path.dirname(dir);
+      if (parent === dir) {
+        break;
+      }
+      dir = parent;
+    }
+    return null;
+  }
+
+  const fromCwdWalk = walkUp(cwd);
+  if (fromCwdWalk) {
+    return fromCwdWalk;
+  }
+
+  const fromDirnameWalk = walkUp(__dirname);
+  if (fromDirnameWalk) {
+    return fromDirnameWalk;
+  }
+
   throw new Error(
-    `Could not find shipped ${misoRel} (checked PROJECT_ROOT and parents of ${__dirname})`
+    `Could not find shipped ${misoRel}.\n` +
+      `Tried: PROJECT_ROOT=${fromGlobal || '(unset)'}, explicit ${explicitRepo}, cwd=${cwd}, and parents of cwd / __dirname.\n` +
+      'Run tests from the aifabrix-builder repository root (where templates/applications exists), ' +
+      'and ensure that path is in your checkout (not sparse-excluded).'
   );
 }
 

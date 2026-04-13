@@ -7,12 +7,12 @@
      "key":"external-system-schema",
      "name":"External System Configuration Schema",
      "description":"JSON schema for validating ExternalSystem configuration files",
-     "version":"1.5.0",
+     "version":"1.6.0",
      "type":"schema",
      "category":"integration",
      "author":"AI Fabrix Team",
      "createdAt":"2024-01-01T00:00:00Z",
-     "updatedAt":"2026-03-07T00:00:00Z",
+     "updatedAt":"2026-04-09T00:00:00Z",
      "compatibility":{
         "minVersion":"1.4.0",
         "maxVersion":"2.0.0",
@@ -29,6 +29,14 @@
         
      ],
      "changelog":[
+        {
+           "version":"1.6.0",
+           "date":"2026-04-09T00:00:00Z",
+           "changes":[
+              "Added identityPropagation configuration for impersonation, attribution, and system identity execution modes",
+              "Added tokenBroker mint endpoint and attribution field injection settings for runtime identity behavior"
+           ]
+        },
         {
            "version":"1.5.0",
            "date":"2026-03-07T00:00:00Z",
@@ -483,6 +491,112 @@
         "type":"string",
         "description":"SHA256 hash of triggerPaths payload (64-char hex). Used to detect structural changes. Optional; Dataplane computes when absent.",
         "pattern":"^[a-f0-9]{64}$"
+     },
+     "identityPropagation":{
+        "type":"object",
+        "description":"Declares supported identity propagation modes and defaults for outbound operations.",
+        "required":[
+           "modes",
+           "default"
+        ],
+        "properties":{
+           "modes":{
+              "type":"array",
+              "items":{
+                 "type":"string",
+                 "enum":[
+                    "impersonation",
+                    "attribution",
+                    "system"
+                 ]
+              },
+              "uniqueItems":true,
+              "minItems":1
+           },
+           "default":{
+              "type":"string",
+              "enum":[
+                 "impersonation",
+                 "attribution",
+                 "system"
+              ]
+           },
+           "impersonation":{
+              "type":"object",
+              "properties":{
+                 "tokenBroker":{
+                    "type":"object",
+                    "properties":{
+                       "mintEndpoint":{
+                          "type":"string",
+                          "default":"/api/v1/auth/token/mint",
+                          "description":"Controller endpoint for delegated token minting."
+                       }
+                    },
+                    "additionalProperties":false
+                 },
+                 "scopes":{
+                    "type":"array",
+                    "items":{
+                       "type":"string"
+                    }
+                 },
+                 "requiredUserConsent":{
+                    "type":"boolean",
+                    "default":false
+                 }
+              },
+              "additionalProperties":false
+           },
+           "attribution":{
+              "type":"object",
+              "properties":{
+                 "actorFieldMappings":{
+                    "type":"object",
+                    "description":"Map target fields to actor templates (supports {{actor.*}} and {{request.*}}).",
+                    "additionalProperties":{
+                       "type":[
+                          "string",
+                          "number",
+                          "boolean"
+                       ]
+                    }
+                 },
+                 "commentTemplate":{
+                    "type":"string",
+                    "description":"Optional comment template for attribution logs (supports {{actor.*}})."
+                 },
+                 "injectionLocations":{
+                    "type":"array",
+                    "items":{
+                       "type":"string",
+                       "enum":[
+                          "body",
+                          "headers",
+                          "query",
+                          "comment"
+                       ]
+                    },
+                    "default":[
+                       "body"
+                    ],
+                    "uniqueItems":true
+                 }
+              },
+              "additionalProperties":false
+           },
+           "system":{
+              "type":"object",
+              "properties":{
+                 "allowWrites":{
+                    "type":"boolean",
+                    "default":true
+                 }
+              },
+              "additionalProperties":false
+           }
+        },
+        "additionalProperties":false
      },
      "rateLimit":{
         "type":"object",

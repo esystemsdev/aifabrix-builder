@@ -283,15 +283,18 @@ describe('Path Utilities - directory helpers', () => {
   });
 
   it('getApplicationsBaseDir uses ~/.aifabrix when AIFABRIX_HOME is that homedir and config is nested', () => {
-    const fsReal = jest.requireActual('node:fs');
-    const tmp = fsReal.mkdtempSync(path.join(os.tmpdir(), 'afx-app-home-'));
+    const GFS = global.__AIFABRIX_NODE_FS_UNMOCKED__;
+    if (!GFS || typeof GFS.mkdtempSync !== 'function') {
+      throw new Error('tests/capture-real-fs.js must set global.__AIFABRIX_NODE_FS_UNMOCKED__');
+    }
+    const tmp = GFS.mkdtempSync(path.join(os.tmpdir(), 'afx-app-home-'));
     const nest = path.join(tmp, '.aifabrix');
-    fsReal.mkdirSync(nest, { recursive: true });
+    GFS.mkdirSync(nest, { recursive: true });
     const nestedConfigPath = path.join(nest, 'config.yaml');
-    fsReal.writeFileSync(nestedConfigPath, 'x: 1\n', 'utf8');
+    GFS.writeFileSync(nestedConfigPath, 'x: 1\n', 'utf8');
     const directConfigPath = path.join(tmp, 'config.yaml');
-    expect(fsReal.existsSync(nestedConfigPath)).toBe(true);
-    expect(fsReal.existsSync(directConfigPath)).toBe(false);
+    expect(GFS.existsSync(nestedConfigPath)).toBe(true);
+    expect(GFS.existsSync(directConfigPath)).toBe(false);
 
     const origHome = process.env.AIFABRIX_HOME;
     const origCfg = process.env.AIFABRIX_CONFIG;
@@ -317,7 +320,7 @@ describe('Path Utilities - directory helpers', () => {
         process.env.AIFABRIX_CONFIG = origCfg;
       }
       try {
-        fsReal.rmSync(tmp, { recursive: true, force: true });
+        GFS.rmSync(tmp, { recursive: true, force: true });
       } catch {
         // ignore
       }
