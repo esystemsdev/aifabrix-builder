@@ -408,7 +408,7 @@ describe('External System Test Module', () => {
       expect(results.success).toBe(true);
       expect(results.datasourceResults.length).toBeGreaterThan(0);
       expect(authenticatedApiCall).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/pipeline/hubspot/'),
+        expect.stringContaining('/api/v1/validation/run'),
         expect.any(Object),
         expect.objectContaining({ token: 'test-token' })
       );

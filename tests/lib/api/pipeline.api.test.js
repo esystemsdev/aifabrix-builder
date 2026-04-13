@@ -236,23 +236,34 @@ describe('Pipeline API', () => {
     const systemKey = 'test-system';
     const testData = { includeDebug: true };
 
-    it('should test system via dataplane pipeline endpoint', async() => {
+    it('should test system via unified validation run endpoint', async() => {
       await pipelineApi.testSystemViaPipeline(dataplaneUrl, systemKey, authConfig, testData);
 
-      expect(mockClient.post).toHaveBeenCalledWith(
-        `/api/v1/pipeline/${systemKey}/test`,
-        { body: testData }
-      );
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/validation/run', {
+        body: {
+          validationScope: 'externalSystem',
+          runType: 'test',
+          systemIdOrKey: systemKey,
+          payloadTemplate: {},
+          includeDebug: true
+        }
+      });
     });
 
     it('should pass timeout option when provided', async() => {
       const options = { timeout: 5000 };
       await pipelineApi.testSystemViaPipeline(dataplaneUrl, systemKey, authConfig, testData, options);
 
-      expect(mockClient.post).toHaveBeenCalledWith(
-        `/api/v1/pipeline/${systemKey}/test`,
-        { body: testData, timeout: 5000 }
-      );
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/validation/run', {
+        body: {
+          validationScope: 'externalSystem',
+          runType: 'test',
+          systemIdOrKey: systemKey,
+          payloadTemplate: {},
+          includeDebug: true
+        },
+        timeout: 5000
+      });
     });
   });
 
@@ -267,13 +278,18 @@ describe('Pipeline API', () => {
       }
     };
 
-    it('should test datasource via dataplane pipeline endpoint', async() => {
+    it('should test datasource via unified validation run endpoint', async() => {
       await pipelineApi.testDatasourceViaPipeline({ dataplaneUrl, systemKey, datasourceKey, authConfig, testData });
 
-      expect(mockClient.post).toHaveBeenCalledWith(
-        `/api/v1/pipeline/${systemKey}/${datasourceKey}/test`,
-        { body: testData }
-      );
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/validation/run', {
+        body: {
+          validationScope: 'externalDataSource',
+          runType: 'test',
+          systemIdOrKey: systemKey,
+          payloadTemplate: testData.payloadTemplate,
+          datasourceKeys: [datasourceKey]
+        }
+      });
     });
 
     it('should use dataplane URL as base URL', async() => {
@@ -286,10 +302,16 @@ describe('Pipeline API', () => {
       const options = { timeout: 60000 };
       await pipelineApi.testDatasourceViaPipeline({ dataplaneUrl, systemKey, datasourceKey, authConfig, testData, options });
 
-      expect(mockClient.post).toHaveBeenCalledWith(
-        `/api/v1/pipeline/${systemKey}/${datasourceKey}/test`,
-        { body: testData, timeout: 60000 }
-      );
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/validation/run', {
+        body: {
+          validationScope: 'externalDataSource',
+          runType: 'test',
+          systemIdOrKey: systemKey,
+          payloadTemplate: testData.payloadTemplate,
+          datasourceKeys: [datasourceKey]
+        },
+        timeout: 60000
+      });
     });
 
     it('should return success response', async() => {

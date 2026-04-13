@@ -5,7 +5,9 @@
  */
 'use strict';
 
-const fs = require('fs');
+// Use real fs: other suites (e.g. paths.test.js) call jest.mock('fs'); require('fs') would be a mock
+// and would not create dirs while lib/utils/paths reads via node-fs (real disk) → flaky [].
+const fs = jest.requireActual('node:fs');
 const os = require('os');
 const path = require('path');
 

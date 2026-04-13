@@ -1078,7 +1078,7 @@ API_KEY=kv://api-keyKeyVault`;
       });
     });
 
-    it('should derive path and probePath from frontDoor vdir + healthCheck.path', () => {
+    it('should use yaml health path as-is when frontDoorRouting is set (Keycloak-style /health/ready)', () => {
       const variables = {
         healthCheck: {
           path: '/health/ready',
@@ -1093,13 +1093,12 @@ API_KEY=kv://api-keyKeyVault`;
 
       const result = generator.buildHealthCheck(variables);
       expect(result).toEqual({
-        path: '/auth/health/ready',
-        interval: 30,
-        probePath: '/auth/health/ready'
+        path: '/health/ready',
+        interval: 30
       });
     });
 
-    it('should upgrade probePath to full vdir path when probePath equals path suffix only', () => {
+    it('should keep explicit probePath when frontDoorRouting is set (Keycloak deploy)', () => {
       const variables = {
         healthCheck: {
           path: '/health/ready',
@@ -1115,13 +1114,13 @@ API_KEY=kv://api-keyKeyVault`;
 
       const result = generator.buildHealthCheck(variables);
       expect(result).toEqual({
-        path: '/auth/health/ready',
+        path: '/health/ready',
         interval: 30,
-        probePath: '/auth/health/ready'
+        probePath: '/health/ready'
       });
     });
 
-    it('should prepend vdir to bare /health for deployment probes (public URL)', () => {
+    it('should not prepend vdir to bare /health in deploy manifest (same as compose in-container path)', () => {
       const variables = {
         healthCheck: {
           path: '/health',
@@ -1136,9 +1135,34 @@ API_KEY=kv://api-keyKeyVault`;
 
       const result = generator.buildHealthCheck(variables);
       expect(result).toEqual({
-        path: '/miso/health',
+        path: '/health',
+        interval: 30
+      });
+    });
+
+    it('should keep bare /health for dataplane-style /data vdir and explicit probePath', () => {
+      const variables = {
+        healthCheck: {
+          path: '/health',
+          interval: 30,
+          probePath: '/health',
+          probeProtocol: 'Https',
+          probeIntervalInSeconds: 120
+        },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'ingress.test',
+          pattern: '/data/*'
+        }
+      };
+
+      const result = generator.buildHealthCheck(variables);
+      expect(result).toEqual({
+        path: '/health',
         interval: 30,
-        probePath: '/miso/health'
+        probePath: '/health',
+        probeProtocol: 'Https',
+        probeIntervalInSeconds: 120
       });
     });
   });

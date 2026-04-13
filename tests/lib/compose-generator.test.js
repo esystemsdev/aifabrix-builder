@@ -610,7 +610,7 @@ describe('Compose Generator Module', () => {
       ).toBe('/health');
     });
 
-    it('resolveHealthCheckPathWithFrontDoorVdir prepends vdir to bare /health for deployment (no skip)', () => {
+    it('resolveHealthCheckPathWithFrontDoorVdir prepends vdir to bare /health when caller omits skip (legacy / explicit public path)', () => {
       const config = {
         healthCheck: { path: '/health', interval: 30 },
         frontDoorRouting: {
