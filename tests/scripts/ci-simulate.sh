@@ -94,6 +94,27 @@ if [ ! -f "$TEST_PROJECT_DIR/package.json" ]; then
     echo -e "${RED}✗ Failed to copy project${NC}"
     exit 1
 fi
+
+# Bundled catalog + schema (infra-parameter-catalog, secrets-ensure, validation). Sparse checkouts often omit these.
+REQUIRED_LIB_SCHEMA=(
+    "lib/schema/infra.parameter.yaml"
+    "lib/schema/infra-parameter.schema.json"
+)
+SCHEMA_MISSING=()
+for rel in "${REQUIRED_LIB_SCHEMA[@]}"; do
+    if [ ! -f "$TEST_PROJECT_DIR/$rel" ]; then
+        SCHEMA_MISSING+=("$rel")
+    fi
+done
+if [ "${#SCHEMA_MISSING[@]}" -gt 0 ]; then
+    echo -e "${RED}✗ Required files missing under test copy (tests will fail):${NC}"
+    for rel in "${SCHEMA_MISSING[@]}"; do
+        echo "    - $rel"
+    done
+    echo "  Restore from git: git checkout HEAD -- lib/schema/"
+    exit 1
+fi
+
 echo -e "${GREEN}✓ Project copied${NC}"
 echo ""
 

@@ -17,6 +17,7 @@ jest.mock('../../../lib/utils/paths', () => ({
 const pathsUtil = require('../../../lib/utils/paths');
 const {
   expandDeclarativeUrlsInEnvContent,
+  expandDeclarativeUrlListValue,
   parseSimpleEnvMap,
   parseUrlToken
 } = require('../../../lib/utils/url-declarative-resolve');
@@ -63,6 +64,18 @@ describe('parseUrlToken', () => {
       kind: 'public',
       surface: 'full'
     });
+  });
+});
+
+describe('expandDeclarativeUrlListValue', () => {
+  it('expands each comma-separated url:// token', () => {
+    const out = expandDeclarativeUrlListValue('url://host-public,url://host-private', (t) => `X:${t}`);
+    expect(out).toBe('X:host-public,X:host-private');
+  });
+
+  it('leaves non-url segments unchanged', () => {
+    const out = expandDeclarativeUrlListValue('url://public,http://localhost:*', (t) => `R:${t}`);
+    expect(out).toBe('R:public,http://localhost:*');
   });
 });
 
@@ -176,7 +189,8 @@ U=url://other-public
       remoteServer: null,
       developerIdRaw: 0
     });
-    expect(out).toContain('U=http://localhost:5010');
+    // Cross-app (other ≠ writer): no workstation +10 → published port only for dev 0
+    expect(out).toContain('U=http://localhost:5000');
   });
 
   it('resolves url://internal for docker profile to service:port', async() => {
@@ -418,8 +432,77 @@ KINT=url://keycloak-internal
       }
     );
     const m = parseSimpleEnvMap(out);
-    expect(m.KPUB).toBe('http://localhost:8092');
+    // Cross-app: no workstation +10; dev 0 → manifest published port only
+    expect(m.KPUB).toBe('http://localhost:8082');
     expect(m.KINT).toBe(m.KPUB);
+  });
+
+  it('local cross-app uses dev*100 only (+10 on current app only)', async() => {
+    writeApp(
+      'keycloak',
+      `port: 8082
+frontDoorRouting:
+  pattern: /auth/*
+`
+    );
+    writeApp(
+      'miso-controller',
+      `port: 3000
+frontDoorRouting:
+  pattern: /miso/*
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'miso-controller', 'application.yaml');
+    const out = await expandDeclarativeUrlsInEnvContent(
+      `MISO_CLIENTID=z
+CUR=url://public
+KC=url://keycloak-public
+`,
+      {
+        profile: 'local',
+        currentAppKey: 'miso-controller',
+        variablesPath,
+        useEnvironmentScopedResources: false,
+        appEnvironmentScopedResources: false,
+        remoteServer: null,
+        developerIdRaw: 1,
+        traefik: false
+      }
+    );
+    const m = parseSimpleEnvMap(out);
+    expect(m.CUR).toBe('http://localhost:3110');
+    expect(m.KC).toBe('http://localhost:8182');
+  });
+
+  it('expands comma-separated url:// on one line (MISO_ALLOWED_ORIGINS / ALLOWED_ORIGINS)', async() => {
+    writeApp(
+      'miso-controller',
+      `port: 3000
+frontDoorRouting:
+  pattern: /miso/*
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'miso-controller', 'application.yaml');
+    const out = await expandDeclarativeUrlsInEnvContent(
+      `MISO_CLIENTID=z
+MISO_ALLOWED_ORIGINS=url://host-public,url://host-private
+ALLOWED_ORIGINS=url://host-public,http://localhost:5173
+`,
+      {
+        profile: 'local',
+        currentAppKey: 'miso-controller',
+        variablesPath,
+        useEnvironmentScopedResources: false,
+        appEnvironmentScopedResources: false,
+        remoteServer: null,
+        developerIdRaw: 0,
+        traefik: false
+      }
+    );
+    const m = parseSimpleEnvMap(out);
+    const origin = 'http://localhost:3010';
+    expect(m.MISO_ALLOWED_ORIGINS).toBe(`${origin},${origin}`);
+    expect(m.ALLOWED_ORIGINS).toBe(`${origin},http://localhost:5173`);
   });
 
   it('local workstation: url://host-internal matches url://host-public', async() => {

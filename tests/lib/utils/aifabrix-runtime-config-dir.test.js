@@ -83,4 +83,82 @@ describe('getAifabrixRuntimeConfigDir', () => {
     const { getAifabrixRuntimeConfigDir } = require('../../../lib/utils/aifabrix-runtime-config-dir');
     expect(getAifabrixRuntimeConfigDir()).toBe(path.join(os.homedir(), '.aifabrix'));
   });
+
+  it('anchors bare relative AIFABRIX_HOME to user home when cwd is filesystem root', () => {
+    const origCwd = process.cwd();
+    const rel = `afx-rel-${Date.now()}`;
+    const expected = path.join(os.homedir(), rel);
+    try {
+      process.chdir(path.parse(origCwd).root);
+      process.env.AIFABRIX_HOME = rel;
+      delete process.env.AIFABRIX_CONFIG;
+      jest.isolateModules(() => {
+        const { getAifabrixRuntimeConfigDir } = require('../../../lib/utils/aifabrix-runtime-config-dir');
+        expect(getAifabrixRuntimeConfigDir()).toBe(expected);
+      });
+    } finally {
+      process.chdir(origCwd);
+    }
+  });
+
+  it('resolves AIFABRIX_HOME=. from cwd (explicit project-relative)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'afx-cwd-home-'));
+    const origCwd = process.cwd();
+    try {
+      process.chdir(tmp);
+      process.env.AIFABRIX_HOME = '.';
+      delete process.env.AIFABRIX_CONFIG;
+      jest.isolateModules(() => {
+        const { getAifabrixRuntimeConfigDir } = require('../../../lib/utils/aifabrix-runtime-config-dir');
+        expect(getAifabrixRuntimeConfigDir()).toBe(tmp);
+      });
+    } finally {
+      process.chdir(origCwd);
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('anchors bare relative AIFABRIX_CONFIG under user home', () => {
+    const slug = `training-${Date.now()}`;
+    const cfgDir = path.join(os.homedir(), slug, '.aifabrix');
+    const cfgFile = path.join(cfgDir, 'config.yaml');
+    fs.mkdirSync(cfgDir, { recursive: true, mode: 0o700 });
+    fs.writeFileSync(cfgFile, 'x: 1\n', 'utf8');
+    const relFromHome = path.join(slug, '.aifabrix', 'config.yaml');
+    const origCwd = process.cwd();
+    try {
+      process.chdir(path.parse(origCwd).root);
+      process.env.AIFABRIX_CONFIG = relFromHome.split(path.sep).join('/');
+      delete process.env.AIFABRIX_HOME;
+      jest.isolateModules(() => {
+        const { getAifabrixRuntimeConfigDir } = require('../../../lib/utils/aifabrix-runtime-config-dir');
+        expect(getAifabrixRuntimeConfigDir()).toBe(cfgDir);
+      });
+    } finally {
+      process.chdir(origCwd);
+      try {
+        fs.rmSync(path.join(os.homedir(), slug), { recursive: true, force: true });
+      } catch {
+        // ignore
+      }
+    }
+  });
+
+  it('uses cwd for AIFABRIX_CONFIG starting with ./', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'afx-cwd-cfg-'));
+    fs.writeFileSync(path.join(tmp, 'config.yaml'), 'x: 1\n', 'utf8');
+    const origCwd = process.cwd();
+    try {
+      process.chdir(tmp);
+      process.env.AIFABRIX_CONFIG = './config.yaml';
+      delete process.env.AIFABRIX_HOME;
+      jest.isolateModules(() => {
+        const { getAifabrixRuntimeConfigDir } = require('../../../lib/utils/aifabrix-runtime-config-dir');
+        expect(getAifabrixRuntimeConfigDir()).toBe(tmp);
+      });
+    } finally {
+      process.chdir(origCwd);
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
 });

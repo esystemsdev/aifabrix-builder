@@ -119,6 +119,10 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\core\\\\secrets-ensure-catalog-fallback.test.js',
       'lib/core/secrets-ensure-catalog-fallback.test.js',
       'secrets-ensure-catalog-fallback\\.test\\.js',
+      '/tests/lib/core/secrets-ensure.test.js',
+      '\\\\tests\\\\lib\\\\core\\\\secrets-ensure.test.js',
+      'lib/core/secrets-ensure.test.js',
+      'secrets-ensure\\.test\\.js',
       '/tests/lib/utils/url-declarative-vdir-inactive-env.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\url-declarative-vdir-inactive-env.test.js',
       'lib/utils/url-declarative-vdir-inactive-env.test.js',
@@ -184,6 +188,7 @@ const isolatedProjects = [
   makeIsolatedProject('secrets-ensure-catalog-fallback', [
     '**/tests/lib/core/secrets-ensure-catalog-fallback.test.js'
   ]),
+  makeIsolatedProject('secrets-ensure', ['**/tests/lib/core/secrets-ensure.test.js']),
   makeIsolatedProject('url-declarative-vdir-inactive-env', [
     '**/tests/lib/utils/url-declarative-vdir-inactive-env.test.js'
   ]),

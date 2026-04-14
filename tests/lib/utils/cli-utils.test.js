@@ -216,12 +216,24 @@ describe('CLI Utils Module', () => {
       expect(loggerCallArrays.error.some(a => String(a[0]).includes('docker-endpoint'))).toBe(true);
     });
 
-    it('should not label plain EACCES as Docker (e.g. bogus filesystem path)', () => {
+    it('should not label plain EACCES mkdir as Docker or API token (local filesystem path)', () => {
       const error = new Error('EACCES: permission denied, mkdir \'/aifabrix-miso\'');
 
       handleCommandError(error, 'secret set');
 
       expect(loggerCallArrays.error.some(a => String(a[0]).includes('Permission denied when using Docker'))).toBe(false);
+      expect(
+        loggerCallArrays.error.some(
+          (a) =>
+            String(a[0]).includes('Ensure your token has the required permission') &&
+            String(a[0]).includes('external-system:delete')
+        )
+      ).toBe(false);
+      expect(
+        loggerCallArrays.error.some((a) =>
+          String(a[0]).includes('local filesystem path or permissions issue')
+        )
+      ).toBe(true);
     });
 
     it('should append docker-endpoint hints to infrastructure Docker failure message', () => {

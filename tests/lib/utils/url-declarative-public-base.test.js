@@ -4,7 +4,10 @@
 
 'use strict';
 
-const { computePublicUrlBaseString } = require('../../../lib/utils/url-declarative-public-base');
+const {
+  computePublicUrlBaseString,
+  resolveHostPortForDeclarativePublic
+} = require('../../../lib/utils/url-declarative-public-base');
 
 describe('computePublicUrlBaseString (remote without Traefik)', () => {
   const base = {
@@ -54,5 +57,43 @@ describe('computePublicUrlBaseString (remote without Traefik)', () => {
         infraTlsEnabled: true
       })
     ).toBe('https://builder02.local:3000');
+  });
+});
+
+describe('resolveHostPortForDeclarativePublic (local +10 on current app only)', () => {
+  it('applies localHostPort math when target matches current app', () => {
+    expect(
+      resolveHostPortForDeclarativePublic({
+        profile: 'local',
+        listenPort: 3000,
+        developerIdNum: 1,
+        declarativeTargetAppKey: 'miso-controller',
+        declarativeCurrentAppKey: 'miso-controller'
+      })
+    ).toBe(3110);
+  });
+
+  it('uses publishedHostPort math for cross-app targets', () => {
+    expect(
+      resolveHostPortForDeclarativePublic({
+        profile: 'local',
+        listenPort: 8082,
+        developerIdNum: 1,
+        declarativeTargetAppKey: 'keycloak',
+        declarativeCurrentAppKey: 'miso-controller'
+      })
+    ).toBe(8182);
+  });
+
+  it('docker profile ignores declarative app keys', () => {
+    expect(
+      resolveHostPortForDeclarativePublic({
+        profile: 'docker',
+        listenPort: 8082,
+        developerIdNum: 1,
+        declarativeTargetAppKey: 'keycloak',
+        declarativeCurrentAppKey: 'miso-controller'
+      })
+    ).toBe(8182);
   });
 });

@@ -59,6 +59,8 @@ jest.mock('fs', () => ({
   mkdirSync: jest.fn(),
   readFileSync: jest.fn()
 }));
+// infra-parameter-catalog reads via fs-real-sync, not mocked `fs`; keep real disk for bundled YAML.
+jest.unmock('../../../lib/internal/fs-real-sync');
 
 const config = require('../../../lib/core/config');
 const pathsUtil = require('../../../lib/utils/paths');
