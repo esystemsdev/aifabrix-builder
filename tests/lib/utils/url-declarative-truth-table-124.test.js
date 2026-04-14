@@ -198,6 +198,37 @@ P=url://public
     expect(u).toBe('https://ingress124.test/auth');
   });
 
+  it('scoped config on + app environmentScopedResources false + traefik + pathActive + dev → /auth only (no /dev)', async() => {
+    writeApp(
+      'app124unscoped',
+      `port: 8080
+environmentScopedResources: false
+frontDoorRouting:
+  pattern: /auth/*
+  enabled: true
+  host: ingress124.test
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'app124unscoped', 'application.yaml');
+    const out = await expandDeclarativeUrlsInEnvContent(
+      `MISO_CLIENTID=miso-controller-dev-app124unscoped
+P=url://public
+`,
+      {
+        profile: 'docker',
+        currentAppKey: 'app124unscoped',
+        variablesPath,
+        remoteServer: remote,
+        developerIdRaw: 0,
+        infraTlsEnabled: false,
+        useEnvironmentScopedResources: true,
+        appEnvironmentScopedResources: false,
+        traefik: true
+      }
+    );
+    expect(parseSimpleEnvMap(out).P).toBe('https://ingress124.test/auth');
+  });
+
   it('traefik off + scoped on + dev → no /dev, direct base + pattern omitted', async() => {
     const u = await expandPublic({ traefik: false });
     expect(u).toBe('http://remote.example:9000');

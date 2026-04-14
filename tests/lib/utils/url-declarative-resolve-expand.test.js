@@ -304,6 +304,36 @@ PH=url://host-private
     expect(out).toMatch(/^PH=http:\/\/kcpriv:8080$/m);
   });
 
+  it('docker url://host-public without Traefik uses manifest port (not containerPort) for localhost', async() => {
+    writeApp(
+      'kcPub',
+      `port: 8082
+build:
+  containerPort: 8080
+frontDoorRouting:
+  pattern: /auth/*
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'kcPub', 'application.yaml');
+    const out = await expandDeclarativeUrlsInEnvContent(
+      `MISO_CLIENTID=z
+H=url://host-public
+`,
+      {
+        profile: 'docker',
+        currentAppKey: 'kcPub',
+        variablesPath,
+        useEnvironmentScopedResources: false,
+        appEnvironmentScopedResources: false,
+        remoteServer: null,
+        developerIdRaw: '1',
+        traefik: false,
+        infraTlsEnabled: false
+      }
+    );
+    expect(out).toMatch(/^H=http:\/\/localhost:8182$/m);
+  });
+
   it('resolves url://keycloak-internal for docker to service:listen port (no path)', async() => {
     writeApp(
       'keycloak',
@@ -327,6 +357,99 @@ K=url://keycloak-internal
       developerIdRaw: 0
     });
     expect(out).toContain('K=http://keycloak:8080');
+  });
+
+  it('local workstation: url://internal matches url://public (same app)', async() => {
+    writeApp(
+      'miso-controller',
+      `port: 3000
+frontDoorRouting:
+  pattern: /miso/*
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'miso-controller', 'application.yaml');
+    const out = await expandDeclarativeUrlsInEnvContent(
+      `MISO_CLIENTID=z
+WEB=url://public
+CTRL=url://internal
+`,
+      {
+        profile: 'local',
+        currentAppKey: 'miso-controller',
+        variablesPath,
+        useEnvironmentScopedResources: false,
+        appEnvironmentScopedResources: false,
+        remoteServer: null,
+        developerIdRaw: 0,
+        traefik: false
+      }
+    );
+    const m = parseSimpleEnvMap(out);
+    expect(m.WEB).toBe('http://localhost:3010');
+    expect(m.CTRL).toBe(m.WEB);
+  });
+
+  it('local workstation: url://keycloak-internal matches url://keycloak-public (cross-app)', async() => {
+    writeApp(
+      'keycloak',
+      `port: 8082
+build:
+  containerPort: 8080
+frontDoorRouting:
+  pattern: /auth/*
+`
+    );
+    writeApp('miso-controller', 'port: 3000\n');
+    const variablesPath = path.join(fakeProject, 'builder', 'miso-controller', 'application.yaml');
+    const out = await expandDeclarativeUrlsInEnvContent(
+      `MISO_CLIENTID=z
+KPUB=url://keycloak-public
+KINT=url://keycloak-internal
+`,
+      {
+        profile: 'local',
+        currentAppKey: 'miso-controller',
+        variablesPath,
+        useEnvironmentScopedResources: false,
+        appEnvironmentScopedResources: false,
+        remoteServer: null,
+        developerIdRaw: 0,
+        traefik: false
+      }
+    );
+    const m = parseSimpleEnvMap(out);
+    expect(m.KPUB).toBe('http://localhost:8092');
+    expect(m.KINT).toBe(m.KPUB);
+  });
+
+  it('local workstation: url://host-internal matches url://host-public', async() => {
+    writeApp(
+      'keycloak',
+      `port: 8082
+frontDoorRouting:
+  pattern: /auth/*
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'keycloak', 'application.yaml');
+    const out = await expandDeclarativeUrlsInEnvContent(
+      `MISO_CLIENTID=z
+HP=url://host-public
+HI=url://host-internal
+`,
+      {
+        profile: 'local',
+        currentAppKey: 'keycloak',
+        variablesPath,
+        useEnvironmentScopedResources: false,
+        appEnvironmentScopedResources: false,
+        remoteServer: null,
+        developerIdRaw: 0,
+        traefik: false
+      }
+    );
+    const m = parseSimpleEnvMap(out);
+    expect(m.HP).toBe('http://localhost:8092');
+    expect(m.HI).toBe(m.HP);
   });
 
   it('leaves lines without url:// and comment lines untouched', async() => {

@@ -163,6 +163,18 @@ frontDoorRouting:
     expect(m.INTERNAL_URL).toBe('http://dataplane:3001');
   });
 
+  it('D5: local profile, no remote-server → internal url:// matches public (workstation .env)', async() => {
+    const m = await expand(envBody, {
+      profile: 'local',
+      useEnvironmentScopedResources: true,
+      appEnvironmentScopedResources: true,
+      remoteServer: null,
+      traefik: false
+    });
+    expect(m.PUBLIC_URL).toBe('http://localhost:3111');
+    expect(m.INTERNAL_URL).toBe(m.PUBLIC_URL);
+  });
+
   it('D6: tst derived env key → Matrix B1 public docker', async() => {
     const m = await expand(envBodyTst, {
       profile: 'docker',

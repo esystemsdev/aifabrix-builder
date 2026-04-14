@@ -118,7 +118,15 @@ const defaultProject = {
       '/tests/lib/core/secrets-ensure-catalog-fallback.test.js',
       '\\\\tests\\\\lib\\\\core\\\\secrets-ensure-catalog-fallback.test.js',
       'lib/core/secrets-ensure-catalog-fallback.test.js',
-      'secrets-ensure-catalog-fallback\\.test\\.js'
+      'secrets-ensure-catalog-fallback\\.test\\.js',
+      '/tests/lib/utils/url-declarative-vdir-inactive-env.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\url-declarative-vdir-inactive-env.test.js',
+      'lib/utils/url-declarative-vdir-inactive-env.test.js',
+      'url-declarative-vdir-inactive-env\\.test\\.js',
+      '/tests/lib/utils/app-service-env-from-builder.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\app-service-env-from-builder.test.js',
+      'lib/utils/app-service-env-from-builder.test.js',
+      'app-service-env-from-builder\\.test\\.js'
     ];
     if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
       patterns.push('/tests/local/');
@@ -175,6 +183,12 @@ const isolatedProjects = [
   makeIsolatedProject('ssh-key-helper', ['**/tests/lib/utils/ssh-key-helper.test.js']),
   makeIsolatedProject('secrets-ensure-catalog-fallback', [
     '**/tests/lib/core/secrets-ensure-catalog-fallback.test.js'
+  ]),
+  makeIsolatedProject('url-declarative-vdir-inactive-env', [
+    '**/tests/lib/utils/url-declarative-vdir-inactive-env.test.js'
+  ]),
+  makeIsolatedProject('app-service-env-from-builder', [
+    '**/tests/lib/utils/app-service-env-from-builder.test.js'
   ])
 ];
 

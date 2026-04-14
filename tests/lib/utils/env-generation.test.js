@@ -714,6 +714,143 @@ DB_PORT=\${DB_PORT}`;
       });
     });
 
+    describe('Keycloak docker: public port from application.yaml and KC_HTTP_RELATIVE_PATH without front door', () => {
+      const kcPath = path.join(process.cwd(), 'builder', 'keycloak');
+
+      it('sets KEYCLOAK_PUBLIC_PORT from application port and PORT from containerPort (dev 0)', async() => {
+        const variables = {
+          app: { key: 'keycloak' },
+          port: 9150,
+          build: { containerPort: 8080 }
+        };
+        const template = 'KEYCLOAK_PUBLIC_PORT=${KEYCLOAK_PUBLIC_PORT}\nPORT=${PORT}\n';
+
+        fs.existsSync.mockImplementation((filePath) => {
+          return (
+            filePath === path.join(kcPath, 'env.template') ||
+            filePath === path.join(kcPath, 'application.yaml') ||
+            (filePath && filePath.includes('env-config.yaml'))
+          );
+        });
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === path.join(kcPath, 'env.template')) {
+            return template;
+          }
+          if (filePath === path.join(kcPath, 'application.yaml')) {
+            return yaml.dump(variables);
+          }
+          if (filePath && filePath.includes('env-config.yaml')) {
+            return yaml.dump(mockEnvConfig);
+          }
+          return '';
+        });
+        mockConfig.getDeveloperId.mockResolvedValue('0');
+        mockConfig.getConfig.mockResolvedValue({ traefik: false });
+
+        const result = await generateEnvContent('keycloak', null, 'docker', false, { appPath: kcPath });
+
+        expect(result).toMatch(/^KEYCLOAK_PUBLIC_PORT=9150$/m);
+        expect(result).toMatch(/^PORT=8080$/m);
+      });
+
+      it('offsets KEYCLOAK_PUBLIC_PORT by developer id for keycloak (dev 1)', async() => {
+        const variables = {
+          app: { key: 'keycloak' },
+          port: 9150,
+          build: { containerPort: 8080 }
+        };
+        const template = 'KEYCLOAK_PUBLIC_PORT=${KEYCLOAK_PUBLIC_PORT}\nPORT=${PORT}\n';
+
+        fs.existsSync.mockImplementation((filePath) => {
+          return (
+            filePath === path.join(kcPath, 'env.template') ||
+            filePath === path.join(kcPath, 'application.yaml') ||
+            (filePath && filePath.includes('env-config.yaml'))
+          );
+        });
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === path.join(kcPath, 'env.template')) {
+            return template;
+          }
+          if (filePath === path.join(kcPath, 'application.yaml')) {
+            return yaml.dump(variables);
+          }
+          if (filePath && filePath.includes('env-config.yaml')) {
+            return yaml.dump(mockEnvConfig);
+          }
+          return '';
+        });
+        mockConfig.getDeveloperId.mockResolvedValue('1');
+        mockConfig.getConfig.mockResolvedValue({ traefik: false });
+
+        const result = await generateEnvContent('keycloak', null, 'docker', false, { appPath: kcPath });
+
+        expect(result).toMatch(/^KEYCLOAK_PUBLIC_PORT=9250$/m);
+        expect(result).toMatch(/^PORT=8080$/m);
+      });
+
+      it('rewrites KC_HTTP_RELATIVE_PATH to / when Traefik front door is not active', async() => {
+        const variables = {
+          app: { key: 'keycloak' },
+          port: 8082,
+          frontDoorRouting: { enabled: true, pattern: '/auth/*' }
+        };
+        const template = 'KC_HTTP_RELATIVE_PATH=url://vdir-public\n';
+
+        fs.existsSync.mockImplementation((filePath) => {
+          return (
+            filePath === path.join(kcPath, 'env.template') ||
+            filePath === path.join(kcPath, 'application.yaml') ||
+            (filePath && filePath.includes('env-config.yaml'))
+          );
+        });
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === path.join(kcPath, 'env.template')) {
+            return template;
+          }
+          if (filePath === path.join(kcPath, 'application.yaml')) {
+            return yaml.dump(variables);
+          }
+          if (filePath && filePath.includes('env-config.yaml')) {
+            return yaml.dump(mockEnvConfig);
+          }
+          return '';
+        });
+        mockConfig.getDeveloperId.mockResolvedValue('0');
+        mockConfig.getConfig.mockResolvedValue({ traefik: false });
+
+        const result = await generateEnvContent('keycloak', null, 'docker', false, { appPath: kcPath });
+
+        expect(result).toMatch(/^KC_HTTP_RELATIVE_PATH=\/$/m);
+      });
+
+      it('does not set KEYCLOAK_PUBLIC_PORT from another app application.yaml port', async() => {
+        const variables = {
+          port: 9999,
+          build: { containerPort: 3000 }
+        };
+        const template = 'KEYCLOAK_PUBLIC_PORT=${KEYCLOAK_PUBLIC_PORT}\nPORT=${PORT}\n';
+
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath === mockTemplatePath) {
+            return template;
+          }
+          if (filePath === mockVariablesPath) {
+            return yaml.dump(variables);
+          }
+          if (filePath && filePath.includes('env-config.yaml')) {
+            return yaml.dump(mockEnvConfig);
+          }
+          return '';
+        });
+
+        const result = await generateEnvContent(mockAppName, null, 'docker', false);
+
+        expect(result).not.toMatch(/^KEYCLOAK_PUBLIC_PORT=9999$/m);
+        expect(result).toMatch(/^PORT=3000$/m);
+      });
+    });
+
     describe('Docker config.yaml overrides', () => {
       it('should override env-config.yaml with environments.docker values', async() => {
         const configYaml = {

@@ -6,17 +6,25 @@ When your **`env.template`** contains values like `url://public` or `url://inter
 
 ## What you declare in `application.yaml`
 
-- **`port`** — The listen port inside the container. Host-side ports for local development are **derived** from `port`, your **`developer-id`** in `config.yaml`, and whether the output is for **Docker** (published port) or **local** (workstation) profile. You do **not** set a separate `build.localPort` (removed in favor of this model).
+- **`port`** — Manifest **published** port (browser / host URL basis and port math). Host-side ports are **derived** from `port`, **`developer-id`**, and **Docker** vs **local** profile. Optional **`build.containerPort`** is the **in-container** listen port when it differs (for example published **8082** with process listening on **8080**).
 - **`frontDoorRouting.pattern`** — Path pattern for public URLs (for example `/api/*`). The Builder normalizes it when building URLs.
 - **`frontDoorRouting.host`** (when Traefik ingress is enabled for the app) — **Hostname template only** (no path, no `url://`). Supported placeholders: **`${DEV_USERNAME}`** (from `developer-id`) and **`${REMOTE_HOST}`** (hostname parsed from **`remote-server`** in `config.yaml`). For **`developer-id` 0, missing, or empty**, **`${DEV_USERNAME}`** is omitted so you get the **bare** remote hostname (e.g. `builder02.local`), not `dev.builder02.local` or `.builder02.local`. For non-zero ids the label is `dev01`, `dev02`, etc. Prefer **`${DEV_USERNAME}.${REMOTE_HOST}`**. If you write **`${DEV_USERNAME}${REMOTE_HOST}`** without a dot, the Builder inserts one between the two tokens. If **`remote-server`** is unset, **`${REMOTE_HOST}`** expands to empty and stray dots are trimmed. The same expansion is applied to Traefik labels in generated Compose files when **`traefik: true`** in config and **`frontDoorRouting.enabled: true`**.
 
-Optional: **`environmentScopedResources: true`** plus **`useEnvironmentScopedResources`** in `config.yaml` can add a **`/dev`** or **`/tst`** path segment **only when `traefik: true`** in config and the derived env key is dev or tst. For **pro** and **miso**, no such prefix. With Traefik off, that env segment is not applied. **`url://internal`** on Docker is always **`http://<service>:<listenPort>`** (no path). **HTTPS vs HTTP** for public URLs follows infra TLS (`tlsEnabled` / `up-infra --tls`) and **`frontDoorRouting.tls`** when using the Traefik host template.
+Optional: **`environmentScopedResources: true`** plus **`useEnvironmentScopedResources`** in `config.yaml` can add a **`/dev`** or **`/tst`** path segment **only when `traefik: true`** in config and the derived env key is dev or tst. For **pro** and **miso**, no such prefix. With Traefik off, that env segment is not applied. **`url://internal`** on Docker is always **`http://<service>:<listenPort>`** (no path). For **`local`** profile with **no `remote-server`**, **`url://internal`**, **`url://<app>-internal`**, and **`host-internal` / `private`** surfaces expand to the **same** values as their **public** counterparts (browser localhost / published ports), so `aifabrix resolve` workstation `.env` files do not point at Docker service hostnames. **HTTPS vs HTTP** for public URLs follows infra TLS (`tlsEnabled` / `up-infra --tls`) and **`frontDoorRouting.tls`** when using the Traefik host template.
 
 The normalized **`frontDoorRouting.pattern`** path (the same segment as **`url://vdir-*`**) is appended to **`url://public`** / **`url://internal`** (full URL) **only when both** **`traefik: true`** in `config.yaml` **and** **`frontDoorRouting.enabled: true`** for the target app. Otherwise the public base is **origin only** (no virtual-directory path), consistent with a passive front door.
 
 ## Registry: `urls.local.yaml`
 
-The Builder maintains **`~/.aifabrix/urls.local.yaml`** (under your Fabrix home, or `AIFABRIX_HOME`). It records each known app’s **`{appKey}-port`** and **`{appKey}-pattern`**, updated when the Builder scans **`builder/*/application.yaml`**. Cross-app placeholders such as `url://other-app-public` use the target app’s port and pattern from this registry.
+The Builder maintains **`~/.aifabrix/urls.local.yaml`** (beside `config.yaml`, typically **`~/.aifabrix/`**). For each app it records:
+
+- **`{appKey}-port`** — from manifest **`port`**
+- **`{appKey}-pattern`** — from **`frontDoorRouting.pattern`** (or an infra default when omitted)
+- **`{appKey}-containerPort`** — optional; set when **`build.containerPort`** is present in **`application.yaml`**
+
+The file is refreshed when the Builder scans **`builder/*/application.yaml`** and after a successful **`aifabrix app register`**. Cross-app tokens such as **`url://other-app-public`** resolve the target app using **`application.yaml`** when present and the registry as a supplement (for example **`port`** / **`containerPort`** / **pattern**).
+
+**Interpolation defaults:** Builder code splits **infra** defaults (Postgres, Redis, …) from **application service** host/port keys used for **`${DATAPLANE_HOST}`**-style placeholders until templates rely entirely on manifests and **`url://`**. See **`lib/utils/infra-env-defaults.js`** (`INFRA_*` vs **`APP_SERVICE_ENV_DEFAULTS_*`**).
 
 ## Supported placeholder shapes
 
@@ -35,7 +43,7 @@ The Builder maintains **`~/.aifabrix/urls.local.yaml`** (under your Fabrix home,
 - **`url://vdir-public`** / **`url://vdir-internal`**
 - **`url://<appKey>-vdir-public`** / **`url://<appKey>-vdir-internal`**
 
-For the **Docker** profile, **`url://vdir-internal`** is always **empty** (container reachability uses **`http://<service>:<port>`** only). For the **local** profile, **`vdir-internal`** matches **`vdir-public`** when the front door is active (plan 124).
+For the **Docker** profile, **`url://vdir-internal`** is always **empty** (container reachability uses **`http://<service>:<port>`** only). For the **local** profile, **`vdir-internal`** matches **`vdir-public`** when the front door is active.
 
 **Passive front door (no virtual-directory segment):** When **`traefik` is not true** in `config.yaml` **or** the target app’s **`frontDoorRouting.enabled`** is not **`true`**, there is **no** front-door path on public URLs: **`url://vdir-*`** expands to an **empty string** (nothing after `=`, e.g. `MY_PATH_PREFIX=` — the token is fully replaced), and **`url://public`** / cross-app **`*-public`** resolve to the **public origin only** (no `/auth`, `/data`, etc. from `frontDoorRouting.pattern`). When **both** **`traefik: true`** and **`frontDoorRouting.enabled: true`** apply, vdir is the normalized pattern path and full public URLs include that path after any **`/dev`** / **`/tst`** segment.
 

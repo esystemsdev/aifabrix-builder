@@ -73,17 +73,26 @@ describe('urls-local-registry', () => {
       expect(getRegistryEntryForApp('x', { 'x-port': 0 })).toBeNull();
     });
 
-    it('returns port and pattern', () => {
+    it('returns port, pattern, and containerPort when set', () => {
+      const r = getRegistryEntryForApp('dataplane', {
+        'dataplane-port': 3001,
+        'dataplane-pattern': '/data/*',
+        'dataplane-containerPort': 3000
+      });
+      expect(r).toEqual({ port: 3001, containerPort: 3000, pattern: '/data/*' });
+    });
+
+    it('returns port and pattern with containerPort null when absent', () => {
       const r = getRegistryEntryForApp('dataplane', {
         'dataplane-port': 3001,
         'dataplane-pattern': '/data/*'
       });
-      expect(r).toEqual({ port: 3001, pattern: '/data/*' });
+      expect(r).toEqual({ port: 3001, containerPort: null, pattern: '/data/*' });
     });
 
     it('defaults pattern to / when not a string', () => {
       const r = getRegistryEntryForApp('a', { 'a-port': 80, 'a-pattern': 1 });
-      expect(r).toEqual({ port: 80, pattern: '/' });
+      expect(r).toEqual({ port: 80, containerPort: null, pattern: '/' });
     });
   });
 
@@ -154,6 +163,37 @@ frontDoorRouting:
 
       const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
       expect(merged['beta-only-port']).toBe(8080);
+    });
+
+    it('writes containerPort from application.yaml build.containerPort and drops it when removed', () => {
+      const kcDir = path.join(fakeProject, 'builder', 'kc');
+      fs.mkdirSync(kcDir, { recursive: true });
+      const kcYaml = path.join(kcDir, 'application.yaml');
+      fs.writeFileSync(
+        kcYaml,
+        `port: 8082
+app:
+  key: keycloak
+build:
+  containerPort: 8080
+`,
+        'utf8'
+      );
+      let merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+      expect(merged['keycloak-port']).toBe(8082);
+      expect(merged['keycloak-containerPort']).toBe(8080);
+
+      fs.writeFileSync(
+        kcYaml,
+        `port: 8082
+app:
+  key: keycloak
+`,
+        'utf8'
+      );
+      merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+      expect(merged['keycloak-port']).toBe(8082);
+      expect(merged['keycloak-containerPort']).toBeUndefined();
     });
 
     it('skips folders without valid port', () => {
