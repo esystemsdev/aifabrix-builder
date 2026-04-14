@@ -130,7 +130,15 @@ const defaultProject = {
       '/tests/lib/utils/app-service-env-from-builder.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\app-service-env-from-builder.test.js',
       'lib/utils/app-service-env-from-builder.test.js',
-      'app-service-env-from-builder\\.test\\.js'
+      'app-service-env-from-builder\\.test\\.js',
+      '/tests/lib/parameters/infra-kv-discovery.test.js',
+      '\\\\tests\\\\lib\\\\parameters\\\\infra-kv-discovery.test.js',
+      'lib/parameters/infra-kv-discovery.test.js',
+      'infra-kv-discovery\\.test\\.js',
+      '/tests/lib/utils/infra-env-defaults.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\infra-env-defaults.test.js',
+      'lib/utils/infra-env-defaults.test.js',
+      'infra-env-defaults\\.test\\.js'
     ];
     if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
       patterns.push('/tests/local/');
@@ -194,7 +202,9 @@ const isolatedProjects = [
   ]),
   makeIsolatedProject('app-service-env-from-builder', [
     '**/tests/lib/utils/app-service-env-from-builder.test.js'
-  ])
+  ]),
+  makeIsolatedProject('infra-kv-discovery', ['**/tests/lib/parameters/infra-kv-discovery.test.js']),
+  makeIsolatedProject('infra-env-defaults', ['**/tests/lib/utils/infra-env-defaults.test.js'])
 ];
 
 const allProjects = [defaultProject, ...isolatedProjects];

@@ -4,6 +4,8 @@
 
 'use strict';
 
+jest.unmock('../../../lib/internal/fs-real-sync');
+
 const fs = jest.requireActual('fs');
 const path = require('path');
 const os = require('os');

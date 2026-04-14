@@ -2,7 +2,9 @@
  * @fileoverview Tests for infra kv discovery (up-infra key union)
  */
 
-// Real disk I/O; SUT uses internal/node-fs (requireActual). Mocked node:fs from other suites would leave dirs missing.
+// Real disk I/O; workers may retain jest.mock('fs') / mocked fs-real-sync (e.g. admin-secrets.test.js).
+jest.unmock('../../../lib/internal/fs-real-sync');
+
 const fs = jest.requireActual('node:fs');
 const path = require('path');
 const os = require('os');
@@ -20,7 +22,19 @@ const {
   standardBootstrapKeysFromDoc
 } = require('../../../lib/parameters/infra-parameter-catalog');
 
-const BUNDLED_CATALOG = path.join(__dirname, '../../../lib/schema/infra.parameter.yaml');
+function bundledInfraCatalogPath() {
+  const fromTest = path.join(__dirname, '../../../lib/schema/infra.parameter.yaml');
+  if (fs.existsSync(fromTest)) {
+    return fromTest;
+  }
+  const fromCwd = path.join(process.cwd(), 'lib/schema/infra.parameter.yaml');
+  if (fs.existsSync(fromCwd)) {
+    return fromCwd;
+  }
+  throw new Error(
+    'infra.parameter.yaml not found (lib/schema/). Restore with: git checkout HEAD -- lib/schema/'
+  );
+}
 
 describe('infra-kv-discovery', () => {
   const rmTmp = (tmp) => {
@@ -137,7 +151,7 @@ describe('infra-kv-discovery', () => {
         'A=kv://postgres-passwordKeyVault\nB=kv://npm-token-secretKeyVault\n',
         'utf8'
       );
-      const catalog = loadInfraParameterCatalog(BUNDLED_CATALOG);
+      const catalog = loadInfraParameterCatalog(bundledInfraCatalogPath());
       const pathsUtil = {
         listBuilderAppNames: () => ['svc'],
         listIntegrationAppNames: () => [],
@@ -168,7 +182,7 @@ describe('infra-kv-discovery', () => {
         'PG=kv://postgres-passwordKeyVault\n',
         'utf8'
       );
-      const catalog = loadInfraParameterCatalog(BUNDLED_CATALOG);
+      const catalog = loadInfraParameterCatalog(bundledInfraCatalogPath());
       const pathsUtil = {
         listBuilderAppNames: () => ['svc'],
         listIntegrationAppNames: () => [],
@@ -179,7 +193,7 @@ describe('infra-kv-discovery', () => {
       expect(keys).toContain('postgres-passwordKeyVault');
       expect(keys).toContain('databases-svc-0-urlKeyVault');
       const bootstrap = standardBootstrapKeysFromDoc(
-        yaml.load(fs.readFileSync(BUNDLED_CATALOG, 'utf8'))
+        yaml.load(fs.readFileSync(bundledInfraCatalogPath(), 'utf8'))
       );
       for (const k of bootstrap) {
         expect(keys).toContain(k);
