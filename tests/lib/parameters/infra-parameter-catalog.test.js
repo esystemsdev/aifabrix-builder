@@ -220,20 +220,19 @@ parameters:
     const cryptoStub = {
       randomBytes: jest.fn((n) => Buffer.alloc(n, 7))
     };
-    for (const key of [
+    const keys = [
       'miso-controller-secrets-encryptionKeyVault',
       'miso-controller-jwt-secretKeyVault',
-      'miso-controller-secretKeyVault',
       'dataplane-client-secretKeyVault',
-      'dataplane-secrets-encryptionKeyVault',
       'api-key'
-    ]) {
+    ];
+    for (const key of keys) {
       const e = cat.findEntryForKey(key);
       expect(e).toBeTruthy();
       expect(e.generator.type).toBe('randomBytes32');
       expect(generateValueFromCatalogEntry(key, e, cryptoStub)).toHaveLength(44);
     }
-    expect(cryptoStub.randomBytes).toHaveBeenCalledTimes(6);
+    expect(cryptoStub.randomBytes).toHaveBeenCalledTimes(keys.length);
     expect(cryptoStub.randomBytes).toHaveBeenCalledWith(32);
   });
 

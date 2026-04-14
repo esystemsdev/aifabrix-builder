@@ -1,0 +1,64 @@
+{
+  "key": "hubspot-test",
+  "displayName": "HubSpot CRM",
+  "description": "HubSpot CRM integration with OpenAPI support for companies, contacts, and deals",
+  "type": "openapi",
+  "enabled": true,
+  "authentication": {
+    "method": "oauth2",
+    "variables": {
+      "baseUrl": "https://api.hubapi.com",
+      "tokenUrl": "https://api.hubapi.com/oauth/v1/token",
+      "authorizationUrl": "https://app.hubspot.com/oauth/authorize",
+      "scope": "crm.objects.companies.read crm.objects.companies.write crm.objects.contacts.read crm.objects.contacts.write crm.objects.deals.read crm.objects.deals.write"
+    },
+    "security": {
+      "clientId": "kv://hubspot-test/clientId",
+      "clientSecret": "kv://hubspot-test/clientSecret"
+    }
+  },
+  "configuration": [
+    {
+      "name": "HUBSPOT_API_VERSION",
+      "value": "v3",
+      "location": "variable",
+      "required": false,
+      "portalInput": {
+        "field": "select",
+        "label": "HubSpot API Version",
+        "placeholder": "Select API version",
+        "options": ["v1", "v2", "v3"],
+        "validation": { "required": false }
+      }
+    },
+    {
+      "name": "MAX_PAGE_SIZE",
+      "value": "100",
+      "location": "variable",
+      "required": false,
+      "portalInput": {
+        "field": "text",
+        "label": "Maximum Page Size",
+        "placeholder": "100",
+        "validation": {
+          "required": false,
+          "pattern": "^[0-9]+$",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      }
+    }
+  ],
+  "openapi": {
+    "documentKey": "hubspot-v3",
+    "autoDiscoverEntities": false
+  },
+  "tags": ["crm", "sales", "marketing", "hubspot"],
+  "dataSources": [
+    "hubspot-test-company",
+    "hubspot-test-contact",
+    "hubspot-test-deal",
+    "hubspot-test-users"
+  ]
+}
+

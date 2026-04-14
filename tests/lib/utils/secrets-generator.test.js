@@ -870,6 +870,38 @@ describe('Secrets Generator Module', () => {
     });
   });
 
+  describe('saveSecretsFile (preserve comments)', () => {
+    it('preserves comments/blank lines and supports add/update/delete for flat secrets.local.yaml', () => {
+      const target = '/home/user/.aifabrix/secrets.local.yaml';
+      const existing =
+        '# Header comment stays\n' +
+        '\n' +
+        'keepKey: keepVal # inline comment stays\n' +
+        'updateKey: oldVal\n' +
+        'deleteKey: bye\n';
+
+      fs.existsSync.mockImplementation((p) => {
+        if (p === path.dirname(target)) return true;
+        if (p === target) return true;
+        return true;
+      });
+      fs.readFileSync.mockReturnValue(existing);
+
+      secretsGenerator.saveSecretsFile(target, {
+        keepKey: 'keepVal',
+        updateKey: 'newVal',
+        addKey: 'added'
+      });
+
+      const written = fs.writeFileSync.mock.calls[0][1];
+      expect(written).toContain('# Header comment stays');
+      expect(written).toContain('keepKey: keepVal # inline comment stays');
+      expect(written).toContain('updateKey: newVal');
+      expect(written).toContain('addKey: added');
+      expect(written).not.toContain('deleteKey:');
+    });
+  });
+
   describe('Integration tests', () => {
     it('should generate and save secrets in correct format', async() => {
       const envTemplate = `

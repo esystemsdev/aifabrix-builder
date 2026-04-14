@@ -236,15 +236,6 @@ parameters:
       notes: >-
         Per-app OAuth client id from controller registration; literal default matches local Keycloak client naming.
 
-  - key: miso-controller-secretKeyVault
-    scope: app
-    generator:
-      type: randomBytes32
-    ensureOn: [upInfra, resolveApp]
-    azure:
-      vaultSecretName: miso-controller-client-secretKeyVault
-      notes: Per-app OAuth client secret from controller registration; generated on first ensure.
-
   # Dataplane ↔ controller OAuth (builder/dataplane env.template MISO_CLIENTID / MISO_CLIENTSECRET).
   - key: dataplane-client-idKeyVault
     scope: app

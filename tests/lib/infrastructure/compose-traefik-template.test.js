@@ -2,8 +2,11 @@
  * @fileoverview Renders real compose.yaml.hbs to verify Traefik forwarded-headers CLI args (plan 018)
  */
 
+// compose.test.js mocks `fs` in the same Jest worker; always read the real template from disk.
+jest.unmock('fs');
+
 const path = require('path');
-const fs = require('fs');
+const fs = jest.requireActual('fs');
 const handlebars = require('handlebars');
 const { registerHandlebarsHelper } = require('../../../lib/infrastructure/helpers');
 

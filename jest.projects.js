@@ -138,7 +138,11 @@ const defaultProject = {
       '/tests/lib/utils/infra-env-defaults.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\infra-env-defaults.test.js',
       'lib/utils/infra-env-defaults.test.js',
-      'infra-env-defaults\\.test\\.js'
+      'infra-env-defaults\\.test\\.js',
+      '/tests/lib/infrastructure/compose-traefik-template.test.js',
+      '\\\\tests\\\\lib\\\\infrastructure\\\\compose-traefik-template.test.js',
+      'lib/infrastructure/compose-traefik-template.test.js',
+      'compose-traefik-template\\.test\\.js'
     ];
     if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
       patterns.push('/tests/local/');
@@ -204,7 +208,10 @@ const isolatedProjects = [
     '**/tests/lib/utils/app-service-env-from-builder.test.js'
   ]),
   makeIsolatedProject('infra-kv-discovery', ['**/tests/lib/parameters/infra-kv-discovery.test.js']),
-  makeIsolatedProject('infra-env-defaults', ['**/tests/lib/utils/infra-env-defaults.test.js'])
+  makeIsolatedProject('infra-env-defaults', ['**/tests/lib/utils/infra-env-defaults.test.js']),
+  makeIsolatedProject('compose-traefik-template', [
+    '**/tests/lib/infrastructure/compose-traefik-template.test.js'
+  ])
 ];
 
 const allProjects = [defaultProject, ...isolatedProjects];

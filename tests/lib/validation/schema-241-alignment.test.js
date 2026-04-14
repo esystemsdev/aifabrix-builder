@@ -138,7 +138,7 @@ describe('Schema 2.4.x alignment', () => {
   });
 
   it('validates external-system with performance.cacheDefaults and certification', () => {
-    const hubspotSystemPath = path.join(__dirname, '../../../integration/hubspot-test/hubspot-test-system.json');
+    const hubspotSystemPath = path.join(__dirname, '../../fixtures/hubspot-test-system.json');
     const base = JSON.parse(fs.readFileSync(hubspotSystemPath, 'utf8'));
     const withOpt = {
       ...base,
