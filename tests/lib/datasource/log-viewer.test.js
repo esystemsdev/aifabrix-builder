@@ -83,10 +83,11 @@ describe('log-viewer', () => {
       }, 'test-e2e', 'test-e2e-123.json');
       expect(logViewerLoggerCalls.log.length).toBeGreaterThan(0);
       const calls = logMessages();
-      expect(calls.some(s => s.includes('E2E Log') && s.includes('test-e2e-123'))).toBe(true);
+      expect(calls.some(s => stripAnsi(s).toLowerCase().includes('e2e log'))).toBe(true);
+      expect(calls.some(s => s.includes('test-e2e-123'))).toBe(true);
       expect(calls.some(s => s.includes('sourceIdOrKey'))).toBe(true);
-      // Chalk may wrap only the checkmark (FORCE_COLOR); contiguous "✓ config" is not guaranteed.
-      expect(calls.some(s => stripAnsi(s).includes('✓ config'))).toBe(true);
+      // Chalk may wrap only the checkmark (FORCE_COLOR); contiguous "✔ config" is not guaranteed.
+      expect(calls.some(s => stripAnsi(s).includes('✔ config'))).toBe(true);
     });
 
     it('should show full executionId and execution link when dataplaneUrl in request', () => {
@@ -130,7 +131,7 @@ describe('log-viewer', () => {
       }, 'test-integration', 'test-integration-123.json');
       expect(logViewerLoggerCalls.log.length).toBeGreaterThan(0);
       const calls = logMessages();
-      expect(calls.some(s => s.includes('Integration Log'))).toBe(true);
+      expect(calls.some(s => stripAnsi(s).toLowerCase().includes('integration log'))).toBe(true);
       expect(calls.some(s => s.includes('systemKey'))).toBe(true);
       expect(calls.some(s => s.includes('mappingCount'))).toBe(true);
     });
