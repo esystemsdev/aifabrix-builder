@@ -120,7 +120,7 @@ describe('API Utilities', () => {
       expect(result.errorType).toBe('notfound');
       expect(result.status).toBe(404);
       expect(result.formattedError).toBeDefined();
-      expect(result.formattedError).toContain('❌ Not Found');
+      expect(result.formattedError).toContain('✖ Not Found');
     });
 
     it('should handle 401 error with error JSON', async() => {

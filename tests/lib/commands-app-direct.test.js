@@ -156,12 +156,12 @@ describe('Application Registration Commands - Direct Logic Tests', () => {
       );
 
       if (!response.success) {
-        console.error(`❌ Registration failed: ${response.error}`);
+        console.error(`✖ Registration failed: ${response.error}`);
         process.exit(1);
       }
 
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('❌ Registration failed')
+        expect.stringContaining('✖ Registration failed')
       );
       expect(process.exit).toHaveBeenCalledWith(1);
     });
@@ -180,12 +180,12 @@ describe('Application Registration Commands - Direct Logic Tests', () => {
 
       const config = await getConfig();
       if (!config.apiUrl || !config.token) {
-        console.error('❌ Not logged in. Run: aifabrix login');
+        console.error('✖ Not logged in. Run: aifabrix login');
         process.exit(1);
       }
 
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('❌ Not logged in')
+        expect.stringContaining('✖ Not logged in')
       );
       expect(process.exit).toHaveBeenCalledWith(1);
     });
@@ -250,12 +250,12 @@ describe('Application Registration Commands - Direct Logic Tests', () => {
       );
 
       if (!response.success || !response.data) {
-        console.error('❌ Failed to fetch applications');
+        console.error('✖ Failed to fetch applications');
         process.exit(1);
       }
 
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('❌ Failed to fetch applications')
+        expect.stringContaining('✖ Failed to fetch applications')
       );
       expect(process.exit).toHaveBeenCalledWith(1);
     });
@@ -311,12 +311,12 @@ describe('Application Registration Commands - Direct Logic Tests', () => {
       );
 
       if (!response.success) {
-        console.error(`❌ Rotation failed: ${response.error}`);
+        console.error(`✖ Rotation failed: ${response.error}`);
         process.exit(1);
       }
 
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('❌ Rotation failed')
+        expect.stringContaining('✖ Rotation failed')
       );
       expect(process.exit).toHaveBeenCalledWith(1);
     });

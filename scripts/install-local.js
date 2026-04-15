@@ -340,7 +340,7 @@ function printPnpmPathHints(usedPnpm, newVersion, pathInfo) {
  */
 function displaySuccessMessage(currentVersion, newVersion, usedPnpm, pathInfo, binNames) {
   const bins = binNames && binNames.length ? binNames : [PRIMARY_BIN];
-  console.log('\n✅ Successfully linked!');
+  console.log('\n✔ Successfully linked!');
   if (currentVersion && newVersion && currentVersion !== newVersion) {
     console.log(`📊 Version updated: ${currentVersion} → ${newVersion}`);
   } else if (newVersion) {
@@ -405,7 +405,7 @@ function installLocal() {
   try {
     runGlobalLink(pm, currentVersion, binNames);
   } catch (error) {
-    console.error('\n❌ Failed to link package:', error.message);
+    console.error('\n✖ Failed to link package:', error.message);
     process.exit(1);
   }
 }
@@ -444,7 +444,7 @@ function displayUninstallVersionInfo(currentVersion, packageVersion) {
  * @returns {void}
  */
 function displayUninstallSuccess(pm, currentVersion) {
-  console.log(`\n✅ Successfully unlinked with ${pm}!`);
+  console.log(`\n✔ Successfully unlinked with ${pm}!`);
   if (currentVersion) {
     console.log(`📊 Uninstalled version: ${currentVersion}`);
   }
@@ -472,7 +472,7 @@ function uninstallLocal() {
       displayUninstallSuccess(pm, currentVersion);
     }
   } catch (error) {
-    console.error('\n❌ Failed to unlink package:', error.message);
+    console.error('\n✖ Failed to unlink package:', error.message);
     process.exit(1);
   }
 }

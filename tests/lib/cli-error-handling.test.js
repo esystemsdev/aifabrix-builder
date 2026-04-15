@@ -98,7 +98,7 @@ describe('CLI Error Handling', () => {
 
       cli.handleCommandError(error, command);
 
-      expect(console.error).toHaveBeenCalledWith('\n❌ Error in build command:');
+      expect(console.error).toHaveBeenCalledWith('\n✖ Error in build command:');
       expect(console.error).toHaveBeenCalledWith('   Docker is not running or not installed.');
       expect(console.error).toHaveBeenCalledWith(`   ${getDockerDaemonStartHintSentence()}`);
       for (const line of getDockerApiOverTcpHintLines()) {
@@ -115,7 +115,7 @@ describe('CLI Error Handling', () => {
 
       cli.handleCommandError(error, command);
 
-      expect(console.error).toHaveBeenCalledWith('\n❌ Error in up-infra command:');
+      expect(console.error).toHaveBeenCalledWith('\n✖ Error in up-infra command:');
       expect(console.error).toHaveBeenCalledWith('   Port conflict detected.');
       expect(console.error).toHaveBeenCalledWith('   Run "aifabrix doctor" to check which ports are in use.');
     });
@@ -128,7 +128,7 @@ describe('CLI Error Handling', () => {
 
       cli.handleCommandError(error, command);
 
-      expect(console.error).toHaveBeenCalledWith('\n❌ Error in build command:');
+      expect(console.error).toHaveBeenCalledWith('\n✖ Error in build command:');
       expect(console.error).toHaveBeenCalledWith('   permission denied');
       expect(console.error).toHaveBeenCalledWith('   Ensure your token has the required permission (e.g. external-system:delete for delete).');
     });
@@ -142,7 +142,7 @@ describe('CLI Error Handling', () => {
 
       cli.handleCommandError(error, command);
 
-      expect(console.error).toHaveBeenCalledWith('\n❌ Error in run command:');
+      expect(console.error).toHaveBeenCalledWith('\n✖ Error in run command:');
       expect(console.error).toHaveBeenCalledWith(
         '   Permission denied when using Docker (e.g. unix socket).'
       );
@@ -162,7 +162,7 @@ describe('CLI Error Handling', () => {
 
       cli.handleCommandError(error, command);
 
-      expect(console.error).toHaveBeenCalledWith('\n❌ Error in push command:');
+      expect(console.error).toHaveBeenCalledWith('\n✖ Error in push command:');
       expect(console.error).toHaveBeenCalledWith('   Azure CLI is not installed or not working properly.');
     });
 
@@ -222,7 +222,7 @@ describe('CLI Error Handling', () => {
 
       cli.handleCommandError(error, command);
 
-      expect(console.error).toHaveBeenCalledWith('\n❌ Error in deploy command:');
+      expect(console.error).toHaveBeenCalledWith('\n✖ Error in deploy command:');
       expect(console.error).toHaveBeenCalledWith('   Something went wrong');
     });
   });

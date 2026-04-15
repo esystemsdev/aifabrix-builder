@@ -488,7 +488,7 @@ describe('Datasource Deploy Module', () => {
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
       await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Bearer token authentication required');
-      // logger.error is called with multiple arguments: chalk.red('❌ Failed to resolve dataplane URL:'), error.message
+      // logger.error is called with multiple arguments: chalk.red('✖ Failed to resolve dataplane URL:'), error.message
       expect(logger.error).toHaveBeenCalled();
     });
 

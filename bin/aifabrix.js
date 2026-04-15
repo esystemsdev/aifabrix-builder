@@ -60,7 +60,7 @@ if (require.main === module) {
   try {
     initializeCLI();
   } catch (error) {
-    logger.error('❌ Failed to initialize CLI:', error.message);
+    logger.error('✖ Failed to initialize CLI:', error.message);
     process.exit(1);
   }
 }

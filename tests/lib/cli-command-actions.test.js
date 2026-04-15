@@ -824,9 +824,9 @@ describe('CLI Command Actions', () => {
 
       try {
         const imageTag = await app.buildApp(appName, options);
-        console.log(`✅ Built image: ${imageTag}`);
+        console.log(`✔ Built image: ${imageTag}`);
         expect(app.buildApp).toHaveBeenCalledWith(appName, options);
-        expect(console.log).toHaveBeenCalledWith('✅ Built image: test-app:latest');
+        expect(console.log).toHaveBeenCalledWith('✔ Built image: test-app:latest');
       } catch (error) {
         cli.handleCommandError(error, 'build');
       }
@@ -906,7 +906,7 @@ describe('CLI Command Actions', () => {
         logInfraStatusConfigurationSummary(summary);
 
         Object.entries(status).forEach(([service, info]) => {
-          const icon = String(info.status).trim().toLowerCase() === 'running' ? '✅' : '❌';
+          const icon = String(info.status).trim().toLowerCase() === 'running' ? '✔' : '✖';
           logger.log(`${icon} ${service}`);
           logPaddedFieldRow('Status', info.status);
           logPaddedFieldRow('Port', info.port);
@@ -916,7 +916,7 @@ describe('CLI Command Actions', () => {
 
         expect(infra.getInfraStatus).toHaveBeenCalled();
         expect(logger.log).toHaveBeenCalledWith('📊 Infrastructure Status (dev01 @ remote.example)');
-        expect(logger.log).toHaveBeenCalledWith('✅ postgres');
+        expect(logger.log).toHaveBeenCalledWith('✔ postgres');
       } catch (error) {
         cli.handleCommandError(error, 'status');
       }
@@ -931,9 +931,9 @@ describe('CLI Command Actions', () => {
 
       try {
         await infra.restartService(service);
-        console.log(`✅ ${service} service restarted successfully`);
+        console.log(`✔ ${service} service restarted successfully`);
         expect(infra.restartService).toHaveBeenCalledWith(service);
-        expect(console.log).toHaveBeenCalledWith(`✅ ${service} service restarted successfully`);
+        expect(console.log).toHaveBeenCalledWith(`✔ ${service} service restarted successfully`);
       } catch (error) {
         cli.handleCommandError(error, 'restart');
       }
@@ -978,13 +978,13 @@ describe('CLI Command Actions', () => {
           console.log(`✓ Generated deployment JSON: ${result.path}`);
 
           if (result.validation.warnings.length > 0) {
-            console.log('\n⚠️  Warnings:');
+            console.log('\n⚠  Warnings:');
             result.validation.warnings.forEach(warning => console.log(`   • ${warning}`));
           }
         }
         expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
         expect(console.log).toHaveBeenCalledWith('✓ Generated deployment JSON: /path/to/test-app-deploy.json');
-        expect(console.log).toHaveBeenCalledWith('\n⚠️  Warnings:');
+        expect(console.log).toHaveBeenCalledWith('\n⚠  Warnings:');
       } catch (error) {
         cli.handleCommandError(error, 'json');
       }
@@ -1006,11 +1006,11 @@ describe('CLI Command Actions', () => {
       try {
         const result = await generator.generateDeployJsonWithValidation(appName);
         if (!result.success) {
-          console.log('❌ Validation failed:');
+          console.log('✖ Validation failed:');
           result.validation.errors.forEach(error => console.log(`   • ${error}`));
           process.exit(1);
         }
-        expect(console.log).toHaveBeenCalledWith('❌ Validation failed:');
+        expect(console.log).toHaveBeenCalledWith('✖ Validation failed:');
         expect(process.exit).toHaveBeenCalledWith(1);
       } catch (error) {
         cli.handleCommandError(error, 'json');
@@ -1027,7 +1027,7 @@ describe('CLI Command Actions', () => {
 
       try {
         const dockerfilePath = await app.generateDockerfileForApp(appName, options);
-        console.log('\n✅ Dockerfile generated successfully!');
+        console.log('\n✔ Dockerfile generated successfully!');
         console.log(`Location: ${dockerfilePath}`);
         expect(app.generateDockerfileForApp).toHaveBeenCalledWith(appName, options);
         expect(console.log).toHaveBeenCalled();

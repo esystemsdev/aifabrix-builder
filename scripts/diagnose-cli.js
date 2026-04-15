@@ -130,7 +130,7 @@ function warnIfMultipleVersions(names) {
     }
   }
   if (uniqVersions.size > 1) {
-    console.log('⚠️  Multiple distinct --version values above: remove or reorder PATH so only one install remains.');
+    console.log('⚠  Multiple distinct --version values above: remove or reorder PATH so only one install remains.');
     console.log('   Often: npm uninstall -g @aifabrix/builder, then ensure PNPM_HOME is before /usr/local/bin in PATH.\n');
   }
 }

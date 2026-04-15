@@ -337,9 +337,9 @@ describe('CLI Uncovered Command Handlers', () => {
         try {
           const result = await validator.checkEnvironment();
           logger.log('\n🔍 AI Fabrix Environment Check\n');
-          logger.log(`Docker: ${result.docker === 'ok' ? '✅ Running' : '❌ Not available'}`);
-          logger.log(`Ports: ${result.ports === 'ok' ? '✅ Available' : '⚠️  Some ports in use'}`);
-          logger.log(`Secrets: ${result.secrets === 'ok' ? '✅ Configured' : '❌ Missing'}`);
+          logger.log(`Docker: ${result.docker === 'ok' ? '✔ Running' : '✖ Not available'}`);
+          logger.log(`Ports: ${result.ports === 'ok' ? '✔ Available' : '⚠  Some ports in use'}`);
+          logger.log(`Secrets: ${result.secrets === 'ok' ? '✔ Configured' : '✖ Missing'}`);
 
           if (result.recommendations.length > 0) {
             logger.log('\n📋 Recommendations:');
@@ -351,7 +351,7 @@ describe('CLI Uncovered Command Handlers', () => {
               const health = await infra.checkInfraHealth();
               logger.log('\n🏥 Infrastructure Health:');
               Object.entries(health).forEach(([service, status]) => {
-                const icon = status === 'healthy' ? '✅' : status === 'unknown' ? '❓' : '❌';
+                const icon = status === 'healthy' ? '✔' : status === 'unknown' ? '❓' : '✖';
                 logger.log(`  ${icon} ${service}: ${status}`);
               });
             } catch (error) {
@@ -386,16 +386,16 @@ describe('CLI Uncovered Command Handlers', () => {
         try {
           const result = await validator.checkEnvironment();
           logger.log('\n🔍 AI Fabrix Environment Check\n');
-          logger.log(`Docker: ${result.docker === 'ok' ? '✅ Running' : '❌ Not available'}`);
-          logger.log(`Ports: ${result.ports === 'ok' ? '✅ Available' : '⚠️  Some ports in use'}`);
-          logger.log(`Secrets: ${result.secrets === 'ok' ? '✅ Configured' : '❌ Missing'}`);
+          logger.log(`Docker: ${result.docker === 'ok' ? '✔ Running' : '✖ Not available'}`);
+          logger.log(`Ports: ${result.ports === 'ok' ? '✔ Available' : '⚠  Some ports in use'}`);
+          logger.log(`Secrets: ${result.secrets === 'ok' ? '✔ Configured' : '✖ Missing'}`);
 
           if (result.docker === 'ok') {
             try {
               const health = await infra.checkInfraHealth();
               logger.log('\n🏥 Infrastructure Health:');
               Object.entries(health).forEach(([service, status]) => {
-                const icon = status === 'healthy' ? '✅' : status === 'unknown' ? '❓' : '❌';
+                const icon = status === 'healthy' ? '✔' : status === 'unknown' ? '❓' : '✖';
                 logger.log(`  ${icon} ${service}: ${status}`);
               });
             } catch (error) {

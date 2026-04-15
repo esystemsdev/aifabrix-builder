@@ -136,7 +136,7 @@ describe('dev-show-display', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('TLS Verify'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/OFF\s*$/));
       expect(logger.log).toHaveBeenCalledWith('🔐 Identity');
-      expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/Certificate\s+VALID ✅/));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/Certificate\s+VALID ✔/));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('tcp://127.0.0.1:2376'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('dev@host.local'));
 
@@ -173,7 +173,7 @@ describe('dev-show-display', () => {
 
       await displayDevConfig('01');
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('VALID ⚠️'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('VALID ⚠'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/Developer mismatch/));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('af dev sync'));
     });

@@ -206,11 +206,11 @@ describe('App.js Uncovered Paths', () => {
       };
 
       if (envResult.warnings.length > 0) {
-        console.log('\n⚠️  Environment conversion warnings:');
+        console.log('\n⚠  Environment conversion warnings:');
         envResult.warnings.forEach(warning => console.log(`  - ${warning}`));
       }
 
-      expect(console.log).toHaveBeenCalledWith('\n⚠️  Environment conversion warnings:');
+      expect(console.log).toHaveBeenCalledWith('\n⚠  Environment conversion warnings:');
       expect(console.log).toHaveBeenCalledWith('  - Warning: DATABASE_URL format may need adjustment');
 
       console.log.mockRestore();

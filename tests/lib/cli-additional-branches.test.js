@@ -45,8 +45,8 @@ describe('CLI Additional Branch Coverage', () => {
       });
 
       const result = await validator.checkEnvironment();
-      const dockerStatus = result.docker === 'ok' ? '✅ Running' : '❌ Not available';
-      expect(dockerStatus).toBe('❌ Not available');
+      const dockerStatus = result.docker === 'ok' ? '✔ Running' : '✖ Not available';
+      expect(dockerStatus).toBe('✖ Not available');
     });
 
     it('should handle ports in use', async() => {
@@ -58,8 +58,8 @@ describe('CLI Additional Branch Coverage', () => {
       });
 
       const result = await validator.checkEnvironment();
-      const portsStatus = result.ports === 'ok' ? '✅ Available' : '⚠️  Some ports in use';
-      expect(portsStatus).toBe('⚠️  Some ports in use');
+      const portsStatus = result.ports === 'ok' ? '✔ Available' : '⚠  Some ports in use';
+      expect(portsStatus).toBe('⚠  Some ports in use');
     });
 
     it('should handle secrets missing', async() => {
@@ -71,8 +71,8 @@ describe('CLI Additional Branch Coverage', () => {
       });
 
       const result = await validator.checkEnvironment();
-      const secretsStatus = result.secrets === 'ok' ? '✅ Configured' : '❌ Missing';
-      expect(secretsStatus).toBe('❌ Missing');
+      const secretsStatus = result.secrets === 'ok' ? '✔ Configured' : '✖ Missing';
+      expect(secretsStatus).toBe('✖ Missing');
     });
 
     it('should handle unknown service status', async() => {
@@ -90,7 +90,7 @@ describe('CLI Additional Branch Coverage', () => {
 
       const health = await infra.checkInfraHealth();
       Object.entries(health).forEach(([service, status]) => {
-        const icon = status === 'healthy' ? '✅' : status === 'unknown' ? '❓' : '❌';
+        const icon = status === 'healthy' ? '✔' : status === 'unknown' ? '❓' : '✖';
         if (service === 'postgres') {
           expect(icon).toBe('❓');
         }
@@ -112,9 +112,9 @@ describe('CLI Additional Branch Coverage', () => {
 
       const health = await infra.checkInfraHealth();
       Object.entries(health).forEach(([service, status]) => {
-        const icon = status === 'healthy' ? '✅' : status === 'unknown' ? '❓' : '❌';
+        const icon = status === 'healthy' ? '✔' : status === 'unknown' ? '❓' : '✖';
         if (service === 'postgres') {
-          expect(icon).toBe('❌');
+          expect(icon).toBe('✖');
         }
       });
     });
@@ -152,11 +152,11 @@ describe('CLI Additional Branch Coverage', () => {
 
       const status = await infra.getInfraStatus();
       Object.entries(status).forEach(([service, info]) => {
-        const icon = info.status === 'running' ? '✅' : '❌';
+        const icon = info.status === 'running' ? '✔' : '✖';
         if (service === 'postgres') {
-          expect(icon).toBe('❌');
+          expect(icon).toBe('✖');
         } else {
-          expect(icon).toBe('✅');
+          expect(icon).toBe('✔');
         }
       });
     });
@@ -177,13 +177,13 @@ describe('CLI Additional Branch Coverage', () => {
       if (result.success) {
         console.log(`✓ Generated deployment JSON: ${result.path}`);
         if (result.validation.warnings.length > 0) {
-          console.log('\n⚠️  Warnings:');
+          console.log('\n⚠  Warnings:');
           result.validation.warnings.forEach(warning => console.log(`   • ${warning}`));
         }
       }
 
       expect(console.log).toHaveBeenCalledWith('✓ Generated deployment JSON: /path/to/test-app-deploy.json');
-      expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('⚠️  Warnings:'));
+      expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('⚠  Warnings:'));
     });
 
     it('should handle warnings', async() => {
@@ -200,12 +200,12 @@ describe('CLI Additional Branch Coverage', () => {
       if (result.success) {
         console.log(`✓ Generated deployment JSON: ${result.path}`);
         if (result.validation.warnings.length > 0) {
-          console.log('\n⚠️  Warnings:');
+          console.log('\n⚠  Warnings:');
           result.validation.warnings.forEach(warning => console.log(`   • ${warning}`));
         }
       }
 
-      expect(console.log).toHaveBeenCalledWith('\n⚠️  Warnings:');
+      expect(console.log).toHaveBeenCalledWith('\n⚠  Warnings:');
     });
 
     it('should handle validation errors', async() => {
@@ -219,12 +219,12 @@ describe('CLI Additional Branch Coverage', () => {
 
       const result = await generator.generateDeployJsonWithValidation('test-app');
       if (!result.success) {
-        console.log('❌ Validation failed:');
+        console.log('✖ Validation failed:');
         result.validation.errors.forEach(error => console.log(`   • ${error}`));
         process.exit(1);
       }
 
-      expect(console.log).toHaveBeenCalledWith('❌ Validation failed:');
+      expect(console.log).toHaveBeenCalledWith('✖ Validation failed:');
       expect(process.exit).toHaveBeenCalledWith(1);
     });
   });

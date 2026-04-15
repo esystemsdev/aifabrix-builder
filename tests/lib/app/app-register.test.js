@@ -99,7 +99,7 @@ describe('App Register Module', () => {
       }
     });
 
-    apiErrorHandler.formatApiError.mockReturnValue('❌ Formatted error');
+    apiErrorHandler.formatApiError.mockReturnValue('✖ Formatted error');
 
     // Create builder and integration directories
     fsSync.mkdirSync(path.join(tempDir, 'builder'), { recursive: true });
@@ -436,7 +436,7 @@ describe('App Register Module', () => {
       await appRegister.registerApplication(appKey, { environment: 'dev' });
 
       expect(api.authenticatedApiCall).toHaveBeenCalled();
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Application registered successfully'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Application registered successfully'));
     });
 
     it('should handle invalid response format', async() => {
@@ -477,7 +477,7 @@ describe('App Register Module', () => {
 
       expect(process.exit).toHaveBeenCalledWith(1);
       expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('❌ Invalid response: missing application data')
+        expect.stringContaining('✖ Invalid response: missing application data')
       );
     });
   });
@@ -551,7 +551,7 @@ describe('App Register Module', () => {
       await appRegister.registerApplication(appKey, { environment: 'dev' });
 
       expect(api.authenticatedApiCall).toHaveBeenCalled();
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Application registered successfully'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Application registered successfully'));
       expect(localSecrets.saveLocalSecret).toHaveBeenCalledTimes(2);
       expect(envTemplate.updateEnvTemplate).toHaveBeenCalled();
       expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local');
@@ -583,10 +583,10 @@ describe('App Register Module', () => {
       await appRegister.registerApplication(appKey, { environment: 'dev' });
 
       expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('⚠️  Could not save credentials locally')
+        expect.stringContaining('⚠  Could not save credentials locally')
       );
       // Should still complete successfully
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Application registered successfully'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Application registered successfully'));
     });
 
     it('should not save credentials when not localhost', async() => {
@@ -654,7 +654,7 @@ describe('App Register Module', () => {
 
       expect(process.exit).toHaveBeenCalledWith(1);
       expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('❌ Authentication Failed')
+        expect.stringContaining('✖ Authentication Failed')
       );
     });
 
@@ -681,7 +681,7 @@ describe('App Register Module', () => {
       api.authenticatedApiCall.mockResolvedValue({
         success: false,
         error: 'Registration failed',
-        formattedError: '❌ Registration failed'
+        formattedError: '✖ Registration failed'
       });
 
       localSecrets.isLocalhost.mockReturnValue(false); // Prevent trying to access responseData
@@ -693,7 +693,7 @@ describe('App Register Module', () => {
       }
 
       expect(process.exit).toHaveBeenCalledWith(1);
-      expect(logger.error).toHaveBeenCalledWith('❌ Registration failed');
+      expect(logger.error).toHaveBeenCalledWith('✖ Registration failed');
     });
 
     it('should use options.name when provided', async() => {
@@ -986,7 +986,7 @@ describe('App Register Module', () => {
       expect(body.image).toBeUndefined(); // Image should not be included for external
       expect(body.externalIntegration).toBeDefined(); // externalIntegration should be included
       expect(body.externalIntegration).toBeDefined(); // URL no longer from manifest; Controller resolves at deploy
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Application registered successfully'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Application registered successfully'));
     });
 
     it('should skip port validation for external systems with null port', async() => {

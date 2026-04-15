@@ -292,7 +292,7 @@ describe('App Commands Module', () => {
             const options = { environment: 'dev' };
             await actionCall[0]('test-app', options);
 
-            expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('❌ Registration failed:'), 'Registration failed');
+            expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('✖ Registration failed:'), 'Registration failed');
             expect(process.exit).toHaveBeenCalledWith(1);
           }
         }
@@ -340,7 +340,7 @@ describe('App Commands Module', () => {
             const options = { environment: 'dev' };
             await actionCall[0](options);
 
-            expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('❌ Failed to list applications:'), 'List failed');
+            expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('✖ Failed to list applications:'), 'List failed');
             expect(process.exit).toHaveBeenCalledWith(1);
           }
         }
@@ -388,7 +388,7 @@ describe('App Commands Module', () => {
             const options = { environment: 'dev' };
             await actionCall[0]('test-app', options);
 
-            expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('❌ Rotation failed:'), 'Rotation failed');
+            expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('✖ Rotation failed:'), 'Rotation failed');
             expect(process.exit).toHaveBeenCalledWith(1);
           }
         }

@@ -155,11 +155,11 @@ describe('AI Fabrix CLI Entry Point', () => {
       try {
         aifabrix.initializeCLI();
       } catch (err) {
-        logger.error('❌ Failed to initialize CLI:', err.message);
+        logger.error('✖ Failed to initialize CLI:', err.message);
         process.exit(1);
       }
 
-      expect(logger.error).toHaveBeenCalledWith('❌ Failed to initialize CLI:', 'Initialization failed');
+      expect(logger.error).toHaveBeenCalledWith('✖ Failed to initialize CLI:', 'Initialization failed');
       expect(process.exit).toHaveBeenCalledWith(1);
     });
 
@@ -174,11 +174,11 @@ describe('AI Fabrix CLI Entry Point', () => {
       try {
         aifabrix.initializeCLI();
       } catch (err) {
-        logger.error('❌ Failed to initialize CLI:', err.message);
+        logger.error('✖ Failed to initialize CLI:', err.message);
         process.exit(1);
       }
 
-      expect(logger.error).toHaveBeenCalledWith('❌ Failed to initialize CLI:', errorMessage);
+      expect(logger.error).toHaveBeenCalledWith('✖ Failed to initialize CLI:', errorMessage);
       expect(process.exit).toHaveBeenCalledWith(1);
     });
 
@@ -202,12 +202,12 @@ describe('AI Fabrix CLI Entry Point', () => {
       try {
         aifabrix.initializeCLI();
       } catch (err) {
-        logger.error('❌ Failed to initialize CLI:', err.message);
+        logger.error('✖ Failed to initialize CLI:', err.message);
         process.exit(1);
       }
 
       // Verify the error handling code executed correctly
-      expect(logger.error).toHaveBeenCalledWith('❌ Failed to initialize CLI:', 'CLI initialization failed');
+      expect(logger.error).toHaveBeenCalledWith('✖ Failed to initialize CLI:', 'CLI initialization failed');
       expect(process.exit).toHaveBeenCalledWith(1);
       expect(aifabrix.initializeCLI).toHaveBeenCalled();
     });
@@ -234,12 +234,12 @@ describe('AI Fabrix CLI Entry Point', () => {
       try {
         aifabrix.initializeCLI();
       } catch (error) {
-        logger.error('❌ Failed to initialize CLI:', error.message);
+        logger.error('✖ Failed to initialize CLI:', error.message);
         process.exit(1);
       }
 
       // Verify error handling executed correctly
-      expect(logger.error).toHaveBeenCalledWith('❌ Failed to initialize CLI:', 'Direct execution test error');
+      expect(logger.error).toHaveBeenCalledWith('✖ Failed to initialize CLI:', 'Direct execution test error');
       expect(process.exit).toHaveBeenCalledWith(1);
       expect(aifabrix.initializeCLI).toHaveBeenCalled();
 
@@ -276,12 +276,12 @@ describe('AI Fabrix CLI Entry Point', () => {
       try {
         aifabrix.initializeCLI();
       } catch (error) {
-        logger.error('❌ Failed to initialize CLI:', error.message);
+        logger.error('✖ Failed to initialize CLI:', error.message);
         process.exit(1);
       }
 
       // Verify error handling executed correctly
-      expect(logger.error).toHaveBeenCalledWith('❌ Failed to initialize CLI:', 'CLI initialization failed');
+      expect(logger.error).toHaveBeenCalledWith('✖ Failed to initialize CLI:', 'CLI initialization failed');
       expect(process.exit).toHaveBeenCalledWith(1);
       expect(aifabrix.initializeCLI).toHaveBeenCalled();
 

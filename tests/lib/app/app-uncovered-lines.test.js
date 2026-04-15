@@ -150,7 +150,7 @@ describe('App.js Uncovered Lines Tests', () => {
 
       // Verify warnings were displayed
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('⚠️  Environment conversion warnings:')
+        expect.stringContaining('⚠  Environment conversion warnings:')
       );
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining('DATABASE_URL was converted')
@@ -183,7 +183,7 @@ describe('App.js Uncovered Lines Tests', () => {
 
       // Verify warnings were NOT displayed
       expect(consoleLogSpy).not.toHaveBeenCalledWith(
-        expect.stringContaining('⚠️  Environment conversion warnings:')
+        expect.stringContaining('⚠  Environment conversion warnings:')
       );
 
       consoleLogSpy.mockRestore();

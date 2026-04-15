@@ -126,7 +126,7 @@ function runCommand(command, args) {
       }
       if (!childProcess.killed && childProcess.pid) {
         // eslint-disable-next-line no-console
-        console.log(`\n⚠️  Jest hung (${reason}), forcing exit...`);
+        console.log(`\n⚠  Jest hung (${reason}), forcing exit...`);
         childProcess.kill('SIGKILL');
       }
       // Resolve with code 1 (Jest's error) but we'll check results in processTestResults
@@ -333,15 +333,15 @@ function handleJestErrors(output, parsedResults, hasExitError, hasCovError, hasS
     console.log('✓ ALL TESTS PASSED!');
     if (hasExitError) {
       // eslint-disable-next-line no-console
-      console.log('⚠️  Jest exit handler error (known Jest bug, ignoring)');
+      console.log('⚠  Jest exit handler error (known Jest bug, ignoring)');
     }
     if (hasCovError) {
       // eslint-disable-next-line no-console
-      console.log('⚠️  Coverage merge error (known Jest bug, ignoring)');
+      console.log('⚠  Coverage merge error (known Jest bug, ignoring)');
     }
     if (hasSignal) {
       // eslint-disable-next-line no-console
-      console.log('⚠️  Process exited with signal after tests (coverage written; known Jest/Node issue)');
+      console.log('⚠  Process exited with signal after tests (coverage written; known Jest/Node issue)');
     }
     // eslint-disable-next-line no-console
     console.log('='.repeat(60));
@@ -450,7 +450,7 @@ function displayFailure(suiteMatch, hasJestError = false, jestOutput = '', parse
         });
       } else if (failed > 0) {
         // eslint-disable-next-line no-console
-        console.error('\n⚠️  Warning: Failed tests detected but could not extract test names from output.');
+        console.error('\n⚠  Warning: Failed tests detected but could not extract test names from output.');
       }
     }
   }
@@ -470,7 +470,7 @@ function displayFailure(suiteMatch, hasJestError = false, jestOutput = '', parse
 
   if (hasJestError) {
     // eslint-disable-next-line no-console
-    console.error('\n⚠️  Note: Jest also encountered an exit handler error (known Jest bug)');
+    console.error('\n⚠  Note: Jest also encountered an exit handler error (known Jest bug)');
     // eslint-disable-next-line no-console
     console.error('   However, tests had real failures, so build is failing.');
     // eslint-disable-next-line no-console
@@ -480,7 +480,7 @@ function displayFailure(suiteMatch, hasJestError = false, jestOutput = '', parse
   // If Jest output doesn't contain failure details, something went wrong
   if (jestOutput && !jestOutput.includes('FAIL') && !jestOutput.includes('●') && !jestOutput.includes('Test Suites:')) {
     // eslint-disable-next-line no-console
-    console.error('\n⚠️  Warning: Jest output may be incomplete. Check Jest output above for details.');
+    console.error('\n⚠  Warning: Jest output may be incomplete. Check Jest output above for details.');
   }
 }
 

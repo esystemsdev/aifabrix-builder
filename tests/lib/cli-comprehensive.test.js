@@ -470,9 +470,9 @@ describe('CLI Comprehensive Tests', () => {
 
       try {
         const imageTag = await app.buildApp(appName, options);
-        console.log(`✅ Built image: ${imageTag}`);
+        console.log(`✔ Built image: ${imageTag}`);
         expect(app.buildApp).toHaveBeenCalledWith(appName, options);
-        expect(console.log).toHaveBeenCalledWith('✅ Built image: test-app:latest');
+        expect(console.log).toHaveBeenCalledWith('✔ Built image: test-app:latest');
       } catch (error) {
         const { handleCommandError } = require('../../lib/cli');
         handleCommandError(error, 'build');
@@ -800,9 +800,9 @@ describe('CLI Comprehensive Tests', () => {
       const service = 'postgres';
       try {
         await infra.restartService(service);
-        console.log(`✅ ${service} service restarted successfully`);
+        console.log(`✔ ${service} service restarted successfully`);
         expect(infra.restartService).toHaveBeenCalledWith(service);
-        expect(console.log).toHaveBeenCalledWith('✅ postgres service restarted successfully');
+        expect(console.log).toHaveBeenCalledWith('✔ postgres service restarted successfully');
       } catch (error) {
         const { handleCommandError } = require('../../lib/cli');
         handleCommandError(error, 'restart');
@@ -884,7 +884,7 @@ describe('CLI Comprehensive Tests', () => {
         if (result.success) {
           console.log(`✓ Generated deployment JSON: ${result.path}`);
           if (result.validation.warnings.length > 0) {
-            console.log('\n⚠️  Warnings:');
+            console.log('\n⚠  Warnings:');
             result.validation.warnings.forEach(warning => console.log(`   • ${warning}`));
           }
         }
@@ -910,11 +910,11 @@ describe('CLI Comprehensive Tests', () => {
       try {
         const result = await generator.generateDeployJsonWithValidation(appName);
         if (!result.success) {
-          console.log('❌ Validation failed:');
+          console.log('✖ Validation failed:');
           result.validation.errors.forEach(error => console.log(`   • ${error}`));
           process.exit(1);
         }
-        expect(console.log).toHaveBeenCalledWith('❌ Validation failed:');
+        expect(console.log).toHaveBeenCalledWith('✖ Validation failed:');
         expect(process.exit).toHaveBeenCalledWith(1);
       } catch (error) {
         const { handleCommandError } = require('../../lib/cli');
@@ -951,7 +951,7 @@ describe('CLI Comprehensive Tests', () => {
       const options = { language: 'typescript', force: true };
       try {
         const dockerfilePath = await app.generateDockerfileForApp(appName, options);
-        console.log('\n✅ Dockerfile generated successfully!');
+        console.log('\n✔ Dockerfile generated successfully!');
         console.log(`Location: ${dockerfilePath}`);
         expect(app.generateDockerfileForApp).toHaveBeenCalledWith(appName, options);
         expect(console.log).toHaveBeenCalled();
