@@ -170,7 +170,7 @@ describe('Secrets Utils Module', () => {
       fs.existsSync.mockReturnValue(true);
       const userSecrets = {
         'dataplane-web-server-url': 'http://localhost:3001',
-        'keycloak-server-url': 'http://localhost:8080'
+        'keycloak-web-server-url': 'http://localhost:8080'
       };
       fs.readFileSync.mockReturnValue(
         'dataplane-web-server-url: "http://localhost:3001"\nkeycloak-server-url: "http://localhost:8080"'

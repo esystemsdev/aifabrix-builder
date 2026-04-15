@@ -14,16 +14,21 @@ jest.mock('../../../lib/utils/logger', () => ({
   warn: jest.fn()
 }));
 
-const config = require('../../../lib/core/config');
-const paths = require('../../../lib/utils/paths');
-const secretsEnsure = require('../../../lib/core/secrets-ensure');
 const { parseAdminEnvContent } = require('../../../lib/core/admin-secrets');
 
 describe('infrastructure/helpers ensureAdminSecrets', () => {
   let tmpDir;
   let adminPath;
+  /** Fresh after jest.resetModules() — other suites reset the registry; stale paths breaks spies. */
+  let config;
+  let paths;
+  let secretsEnsure;
 
   beforeEach(() => {
+    jest.resetModules();
+    config = require('../../../lib/core/config');
+    paths = require('../../../lib/utils/paths');
+    secretsEnsure = require('../../../lib/core/secrets-ensure');
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aifx-admin-secrets-'));
     adminPath = path.join(tmpDir, 'admin-secrets.env');
     jest.spyOn(paths, 'getAifabrixSystemDir').mockReturnValue(tmpDir);

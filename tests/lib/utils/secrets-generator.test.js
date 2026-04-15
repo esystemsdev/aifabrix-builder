@@ -831,7 +831,7 @@ describe('Secrets Generator Module', () => {
       expect(content).toContain('redis-passwordKeyVault');
       expect(content).toContain('redis-url');
       expect(content).toContain('keycloak-admin-passwordKeyVault');
-      expect(content).toContain('keycloak-server-url:');
+      expect(content).toContain('keycloak-web-server-url:');
     });
 
     it('should write file with correct permissions', async() => {

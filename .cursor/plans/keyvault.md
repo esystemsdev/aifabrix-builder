@@ -10,8 +10,8 @@ Rules use **`app.key`** from `application.yaml` as *owner app* (`{app-key}` belo
 | ------------------------- | ------------------------------------ | ----- |
 | `public` | `{app-key}-web-server-url` | Self app public URL |
 | `internal` | `{app-key}-internal-server-url` | Self app internal URL |
-| `public` / `internal` when `{app-key}` is **`keycloak`** | `keycloak-server-url` / `keycloak-internal-server-url` | Same unprefixed names as Miso Bicep (`05_miso-webapp.bicep`) |
-| `keycloak-public`, `keycloak-internal` | `keycloak-server-url`, `keycloak-internal-server-url` | Cross-app from another manifest (e.g. miso-controller) |
+| `public` / `internal` when `{app-key}` is **`keycloak`** | `keycloak-web-server-url` / `keycloak-internal-server-url` | Same unprefixed names as Miso Bicep (`05_miso-webapp.bicep`) |
+| `keycloak-public`, `keycloak-internal` | `keycloak-web-server-url`, `keycloak-internal-server-url` | Cross-app from another manifest (e.g. miso-controller) |
 | `{other-app}-public`, `{other-app}-internal` | `{other-app}-web-server-url`, `{other-app}-internal-server-url` | e.g. `dataplane-public` → `dataplane-web-server-url` |
 | `vdir-public`, `vdir-internal` | `{app-key}-vdir-public`, `{app-key}-vdir-internal` | Path segment; populated like other URL secrets at deploy |
 | `{target}-vdir-public` (suffix form) | `{target}-vdir-public` | e.g. self already `keycloak` → `keycloak-vdir-public` |
@@ -88,6 +88,6 @@ Some Azure deploy templates use a **different secret name shape** than local `kv
 | `keycloak-admin-passwordKeyVault` | `{app-key}-keycloak-admin-password` | `05_miso-webapp.bicep`, `07_keycloak-webapp.bicep` |
 | `postgres-passwordKeyVault` (Docker infra admin) | `{app-key}-postgres-admin-password` | `07_keycloak-webapp.bicep` only — **not** the same role as shared `postgres-passwordKeyVault` in local infra |
 
-Unprefixed names that **match** between Bicep and local env include `keycloak-server-url`, `keycloak-internal-server-url`, `miso-controller-web-server-url`, `miso-controller-internal-server-url`, and `miso-controller-client-secretKeyVault`. A full line-by-line list is maintained in [Infra parameters — Bicep audit](../../docs/configuration/infra-parameters.md#audit-miso-install-bicep-vs-local-keys).
+Unprefixed names that **match** between Bicep and local env include `keycloak-web-server-url`, `keycloak-internal-server-url`, `miso-controller-web-server-url`, `miso-controller-internal-server-url`, and `miso-controller-client-secretKeyVault`. A full line-by-line list is maintained in [Infra parameters — Bicep audit](../../docs/configuration/infra-parameters.md#audit-miso-install-bicep-vs-local-keys).
 
 **Deploy-manifest-only names** (appear in `*-deploy.json` as keyvault `value`; pipeline / install must create the secret if not already present): `{app-key}-frontdoor-routing-host`, `{app-key}-vdir-public`, `{app-key}-vdir-internal`, `{app-key}-host-public`, `{app-key}-host-internal`. Bicep may still hard-code some app settings (e.g. Keycloak `KC_HTTP_RELATIVE_PATH` in `07_keycloak-webapp.bicep`); align vault secrets and ARM templates when switching those apps to manifest-driven Key Vault references.

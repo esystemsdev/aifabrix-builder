@@ -36,7 +36,7 @@ For `databases-<appKey>-<index>-passwordKeyVault`, local defaults use the same r
 
 ### Gaps to know (zero-touch install)
 
-- **Service public/internal URLs** in shipped **miso-controller** and **dataplane** `env.template` files use **`url://…`** (resolved after `kv://`) so local `.env` gets computed URLs from the registry — see [Declarative `url://` placeholders](declarative-urls.md). Catalog rows such as **`keycloak-server-url`** / **`miso-controller-web-server-url`** remain for **Azure/Bicep** and any legacy secrets file; they are not required in templates that already use `url://`.
+- **Service public/internal URLs** in shipped **miso-controller** and **dataplane** `env.template` files use **`url://…`** (resolved after `kv://`) so local `.env` gets computed URLs from the registry — see [Declarative `url://` placeholders](declarative-urls.md). Catalog rows such as **`keycloak-web-server-url`** / **`miso-controller-web-server-url`** remain for **Azure/Bicep** and any legacy secrets file; they are not required in templates that already use `url://`.
 - **Azure-related `kv://` lines** may hold generated placeholders locally when you use **`DEPLOYMENT=database`**; deployed Azure environments use Key Vault secret names that often differ from local `kv://` key names. The catalog’s Azure-related entries describe naming where that matters.
 
 ### Suggested platform sequence
@@ -81,7 +81,7 @@ The Miso application manifest still describes configuration entries as `database
 | `${prefix}-encryption-keyKeyVault` | `encryption-keyKeyVault` (when present in templates) | Check app manifest / env.template for exact local key. |
 | `${prefix}-keycloak-admin-password` | `keycloak-admin-passwordKeyVault` | **Different shape:** Azure drops the `KeyVault` suffix; local keeps it. Catalog `azure.vaultSecretNamePattern` documents this. |
 | `${prefix}-postgres-admin-password` | (not the same as `postgres-passwordKeyVault`) | **Different secret:** Keycloak stack Postgres admin on Azure vs shared Docker `postgres-passwordKeyVault` for local infra. |
-| `keycloak-server-url` | `keycloak-server-url` | Unprefixed; matches local key name (non–Key Vault convention). |
+| `keycloak-web-server-url` | `keycloak-web-server-url` | Unprefixed; matches local key name (non–Key Vault convention). |
 | `keycloak-internal-server-url` | `keycloak-internal-server-url` | Unprefixed. |
 | `miso-controller-web-server-url` | `miso-controller-web-server-url` | Unprefixed; matches local env key. |
 | `miso-controller-internal-server-url` | `miso-controller-internal-server-url` | Unprefixed. |

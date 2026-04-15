@@ -24,15 +24,15 @@ describe('deploy-manifest-azure-kv', () => {
 
     it('maps keycloak cross-app tokens to Bicep secret names', () => {
       expect(urlTokenToKeyVaultSecretName('miso-controller', 'keycloak-public')).toBe(
-        'keycloak-server-url'
+        'keycloak-web-server-url'
       );
       expect(urlTokenToKeyVaultSecretName('miso-controller', 'keycloak-internal')).toBe(
         'keycloak-internal-server-url'
       );
     });
 
-    it('maps keycloak self public/internal to keycloak-server-url (not keycloak-web-server-url)', () => {
-      expect(urlTokenToKeyVaultSecretName('keycloak', 'public')).toBe('keycloak-server-url');
+    it('maps keycloak self public/internal to keycloak-web-server-url (not keycloak-web-server-url)', () => {
+      expect(urlTokenToKeyVaultSecretName('keycloak', 'public')).toBe('keycloak-web-server-url');
       expect(urlTokenToKeyVaultSecretName('keycloak', 'internal')).toBe('keycloak-internal-server-url');
     });
 
@@ -102,7 +102,7 @@ describe('deploy-manifest-azure-kv', () => {
         required: true
       });
       expect(byName.MISO_CONTROLLER_URL.value).toBe('miso-controller-internal-server-url');
-      expect(byName.KEYCLOAK_SERVER_URL.value).toBe('keycloak-server-url');
+      expect(byName.KEYCLOAK_SERVER_URL.value).toBe('keycloak-web-server-url');
       expect(byName.KEYCLOAK_INTERNAL_SERVER_URL.value).toBe('keycloak-internal-server-url');
     });
 

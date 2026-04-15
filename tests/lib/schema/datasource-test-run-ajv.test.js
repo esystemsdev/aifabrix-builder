@@ -5,8 +5,11 @@
 const Ajv = require('ajv');
 const path = require('path');
 const fixture = require('../../fixtures/datasource-test-run-minimal.json');
-/** Avoid hoisted jest.mock('fs') from other suites: existsSync true + read ENOENT false positives */
-const fs = jest.requireActual('node:fs');
+/**
+ * Real sync fs (setupFiles capture). Avoids jest.mock('fs') leaks: existsSync true + read ENOENT.
+ * @type {typeof import('node:fs')}
+ */
+const nodeFs = global.__AIFABRIX_NODE_FS_UNMOCKED__ || require('node:fs');
 
 describe('datasource-test-run.schema.json (AJV)', () => {
   it('validates minimal fixture', () => {
@@ -21,17 +24,24 @@ describe('datasource-test-run.schema.json (AJV)', () => {
   });
 
   it('builder schema matches dataplane sibling when present', () => {
-    const builderPath = path.join(__dirname, '../../../lib/schema/datasource-test-run.schema.json');
-    const dpPath = path.join(
-      __dirname,
-      '../../../../aifabrix-dataplane/app/schemas/json/datasource-test-run.schema.json'
+    const builderRoot = path.resolve(__dirname, '../../..');
+    const builderPath = path.join(builderRoot, 'lib/schema/datasource-test-run.schema.json');
+    const dpPath = path.resolve(
+      builderRoot,
+      '..',
+      'aifabrix-dataplane',
+      'app/schemas/json/datasource-test-run.schema.json'
     );
-    if (!fs.existsSync(dpPath)) {
-      expect(true).toBe(true);
-      return;
+    let dataplaneRaw;
+    try {
+      dataplaneRaw = nodeFs.readFileSync(dpPath, 'utf8');
+    } catch (err) {
+      if (err && (err.code === 'ENOENT' || err.code === 'ENOTDIR')) {
+        return;
+      }
+      throw err;
     }
-    const a = fs.readFileSync(builderPath, 'utf8');
-    const b = fs.readFileSync(dpPath, 'utf8');
-    expect(a).toBe(b);
+    const builderRaw = nodeFs.readFileSync(builderPath, 'utf8');
+    expect(builderRaw).toBe(dataplaneRaw);
   });
 });

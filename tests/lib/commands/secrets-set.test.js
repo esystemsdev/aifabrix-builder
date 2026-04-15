@@ -194,7 +194,7 @@ describe('secret set command', () => {
       });
 
       it('should support full URLs as values', async() => {
-        const key = 'keycloak-server-url';
+        const key = 'keycloak-web-server-url';
         const value = 'https://mydomain.com/keycloak';
         const options = {};
 
@@ -208,7 +208,7 @@ describe('secret set command', () => {
       });
 
       it('should support environment variable interpolation in values', async() => {
-        const key = 'keycloak-server-url';
+        const key = 'keycloak-web-server-url';
         const value = 'https://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}';
         const options = {};
 

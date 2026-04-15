@@ -244,8 +244,21 @@ describe('Pipeline API', () => {
           validationScope: 'externalSystem',
           runType: 'test',
           systemIdOrKey: systemKey,
-          payloadTemplate: {},
           includeDebug: true
+        }
+      });
+    });
+
+    it('should include payloadTemplate only when caller provides it', async() => {
+      await pipelineApi.testSystemViaPipeline(dataplaneUrl, systemKey, authConfig, {
+        payloadTemplate: { foo: 'bar' }
+      });
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/validation/run', {
+        body: {
+          validationScope: 'externalSystem',
+          runType: 'test',
+          systemIdOrKey: systemKey,
+          payloadTemplate: { foo: 'bar' }
         }
       });
     });
@@ -259,7 +272,6 @@ describe('Pipeline API', () => {
           validationScope: 'externalSystem',
           runType: 'test',
           systemIdOrKey: systemKey,
-          payloadTemplate: {},
           includeDebug: true
         },
         timeout: 5000

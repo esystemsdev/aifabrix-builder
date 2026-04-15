@@ -778,9 +778,9 @@ environments:
     KEYCLOAK_PORT: 8082
 `);
         const mockSecretsWithPort = {
-          'keycloak-server-url': 'http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}'
+          'keycloak-web-server-url': 'http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}'
         };
-        const template = 'KEYCLOAK_SERVER_URL=kv://keycloak-server-url';
+        const template = 'KEYCLOAK_SERVER_URL=kv://keycloak-web-server-url';
 
         config.getDeveloperId.mockResolvedValue('1');
 
@@ -838,9 +838,9 @@ environments:
 `);
         config.getDeveloperId.mockResolvedValue(6);
         const mockSecrets = {
-          'keycloak-server-url': 'http://localhost:${KEYCLOAK_PUBLIC_PORT}'
+          'keycloak-web-server-url': 'http://localhost:${KEYCLOAK_PUBLIC_PORT}'
         };
-        const template = 'KEYCLOAK_PUBLIC_SERVER_URL=kv://keycloak-server-url';
+        const template = 'KEYCLOAK_PUBLIC_SERVER_URL=kv://keycloak-web-server-url';
 
         const result = await secrets.resolveKvReferences(template, mockSecrets, 'docker');
 
@@ -1837,10 +1837,10 @@ environments:
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
-          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-server-url:';
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-web-server-url:';
         }
         if (secretsFileMatch(filePath)) {
-          return 'keycloak-server-url: "http://${KEYCLOAK_HOST}:8082"';
+          return 'keycloak-web-server-url: "http://${KEYCLOAK_HOST}:8082"';
         }
         if (filePath.includes('keycloak/application.yaml') || (filePath.includes('keycloak') && filePath.includes('application.yaml'))) {
           return `
@@ -1872,10 +1872,10 @@ environments:
     it('should not replace ports in local environment', async() => {
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
-          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-server-url:';
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-web-server-url:';
         }
         if (secretsFileMatch(filePath)) {
-          return 'keycloak-server-url: "http://${KEYCLOAK_HOST}:8082"';
+          return 'keycloak-web-server-url: "http://${KEYCLOAK_HOST}:8082"';
         }
         if (filePath.includes('env-config.yaml')) {
           return `
@@ -1908,10 +1908,10 @@ environments:
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
-          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-server-url:';
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-web-server-url:';
         }
         if (secretsFileMatch(filePath)) {
-          return 'keycloak-server-url: "http://${KEYCLOAK_HOST}:8082"';
+          return 'keycloak-web-server-url: "http://${KEYCLOAK_HOST}:8082"';
         }
         if (filePath.includes('keycloak') && filePath.includes('application.yaml')) {
           return `
@@ -1951,10 +1951,10 @@ environments:
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
-          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-server-url:';
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-web-server-url:';
         }
         if (secretsFileMatch(filePath)) {
-          return 'keycloak-server-url: "http://${KEYCLOAK_HOST}:8082"';
+          return 'keycloak-web-server-url: "http://${KEYCLOAK_HOST}:8082"';
         }
         if (filePath.includes('env-config.yaml')) {
           return `
@@ -2240,7 +2240,7 @@ environments:
       expect(content).toContain('redis-passwordKeyVault');
       expect(content).toContain('redis-url');
       expect(content).toContain('keycloak-admin-passwordKeyVault');
-      expect(content).toContain('keycloak-server-url:');
+      expect(content).toContain('keycloak-web-server-url:');
     });
   });
 
@@ -2450,7 +2450,7 @@ environments:
       const userSecrets = { 'only-in-local': 'local-value' };
       const projectSecrets = {
         'only-in-local': 'ignored-if-same-key',
-        'keycloak-server-url': 'http://localhost:${KEYCLOAK_PUBLIC_PORT}'
+        'keycloak-web-server-url': 'http://localhost:${KEYCLOAK_PUBLIC_PORT}'
       };
 
       configMock.getSecretsPath.mockResolvedValue(canonicalPath);
@@ -2466,7 +2466,7 @@ environments:
       const result = await secrets.loadSecrets(undefined, 'myapp');
 
       expect(result['only-in-local']).toBe('local-value');
-      expect(result['keycloak-server-url']).toBe('http://localhost:${KEYCLOAK_PUBLIC_PORT}');
+      expect(result['keycloak-web-server-url']).toBe('http://localhost:${KEYCLOAK_PUBLIC_PORT}');
     });
 
     it('uses primary user file as master when aifabrix-secrets points to builder file (e.g. up-dataplane)', async() => {
@@ -2475,11 +2475,11 @@ environments:
       const buildPath = path.join(process.cwd(), 'aifabrix-miso', 'builder', 'secrets.local.yaml');
       const userSecrets = {
         'dataplane-web-server-url': 'http://localhost:3001',
-        'keycloak-server-url': 'http://localhost:8080'
+        'keycloak-web-server-url': 'http://localhost:8080'
       };
       const buildSecrets = {
         'dataplane-web-server-url': '',
-        'keycloak-server-url': ''
+        'keycloak-web-server-url': ''
       };
 
       configMock.getSecretsPath.mockResolvedValue(buildPath);
@@ -2495,7 +2495,7 @@ environments:
       const result = await secrets.loadSecrets(undefined, 'dataplane');
 
       expect(result['dataplane-web-server-url']).toBe('http://localhost:3001');
-      expect(result['keycloak-server-url']).toBe('http://localhost:8080');
+      expect(result['keycloak-web-server-url']).toBe('http://localhost:8080');
       expect(fs.readFileSync).toHaveBeenCalledWith(primaryUserPath, 'utf8');
     });
 

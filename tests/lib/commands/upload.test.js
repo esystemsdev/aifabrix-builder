@@ -140,6 +140,19 @@ describe('upload command', () => {
       expect(logDataplanePipelineWarning).toHaveBeenCalledTimes(1);
     });
 
+    it('should call validation/run with payloadTemplate for --probe (payload test path, not full engine RBAC)', async() => {
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      const { testSystemViaPipeline } = require('../../../lib/api/pipeline.api');
+      await uploadExternalSystem(systemKey, { probe: true });
+      expect(testSystemViaPipeline).toHaveBeenCalledWith(
+        'http://dataplane:4000',
+        systemKey,
+        { type: 'bearer', token: 'token' },
+        { payloadTemplate: {} },
+        expect.objectContaining({ timeout: 120000 })
+      );
+    });
+
     it('should call configuration resolver for application and datasource configuration before upload', async() => {
       const manifestWithConfig = {
         key: 'my-hubspot',

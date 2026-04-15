@@ -8,6 +8,7 @@ const {
   summarizeDatasourceTiersA,
   aggregateVerdictFromCounts,
   classifyDatasourceTierB,
+  coerceProbeRunToResultRows,
   extractIdentitySummary,
   resolveCredentialTestEndpointDisplay,
   formatDataplaneFetchReason,
@@ -81,6 +82,32 @@ describe('external-system-readiness-core', () => {
           validationResults: { isValid: true }
         })
       ).toBe('ready');
+    });
+  });
+
+  describe('coerceProbeRunToResultRows', () => {
+    it('prefers legacy results array when non-empty', () => {
+      const rows = [{ sourceKey: 'a' }];
+      expect(coerceProbeRunToResultRows({ results: rows })).toBe(rows);
+    });
+
+    it('maps DatasourceTestRun envelope to one legacy row', () => {
+      const run = {
+        reportVersion: '1.1.0',
+        datasourceKey: 'ds-1',
+        systemKey: 'sys',
+        status: 'ok',
+        runType: 'test',
+        validation: { status: 'ok', issues: [] }
+      };
+      const out = coerceProbeRunToResultRows(run);
+      expect(out).toHaveLength(1);
+      expect(out[0].sourceKey).toBe('ds-1');
+      expect(out[0].validationResults.isValid).toBe(true);
+    });
+
+    it('returns empty when envelope unrecognized', () => {
+      expect(coerceProbeRunToResultRows({ foo: 1 })).toEqual([]);
     });
   });
 

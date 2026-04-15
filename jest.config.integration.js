@@ -26,5 +26,8 @@ module.exports = {
   testTimeout: 300000,
   maxWorkers: 1,
   setupFiles: ['<rootDir>/tests/capture-real-fs.js'],
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.js']
+  setupFilesAfterEnv: [
+    '<rootDir>/tests/setup.js',
+    '<rootDir>/tests/integration/jest-restore-integration-timeout.js'
+  ]
 };

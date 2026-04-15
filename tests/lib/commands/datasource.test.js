@@ -100,11 +100,17 @@ describe('Datasource Commands Module', () => {
 
       expect(program.command).toHaveBeenCalledWith('datasource');
       const datasourceGroup = program._datasourceGroup;
-      expect(datasourceGroup.command).toHaveBeenCalledWith('validate <file>');
+      expect(datasourceGroup.command).toHaveBeenCalledWith('validate <file-or-key>');
       // Check that the subcommand's description was called
-      const validateCommand = datasourceGroup._subCommands?.find(c => c.name === 'validate <file>');
+      const validateCommand = datasourceGroup._subCommands?.find(c => c.name === 'validate <file-or-key>');
       expect(validateCommand).toBeDefined();
-      expect(validateCommand.command.description).toHaveBeenCalledWith('Validate datasource JSON file');
+      expect(validateCommand.command.description).toHaveBeenCalledWith(
+        'Validate datasource JSON (file path or datasource key under integration/<app>/)'
+      );
+      expect(validateCommand.command.addHelpText).toHaveBeenCalledWith(
+        'after',
+        expect.stringMatching(/Examples:\s*\n/)
+      );
     });
 
     it('should register list command', () => {
@@ -152,6 +158,10 @@ describe('Datasource Commands Module', () => {
       expect(testCmd.command.description).toHaveBeenCalledWith(
         'Structural/policy validation for one datasource (unified dataplane API, runType=test)'
       );
+      expect(testCmd.command.addHelpText).toHaveBeenCalledWith(
+        'after',
+        expect.stringMatching(/Examples:\s*\n/)
+      );
     });
 
     it('should register test-integration command', () => {
@@ -163,6 +173,10 @@ describe('Datasource Commands Module', () => {
       expect(cmd.command.description).toHaveBeenCalledWith(
         'Integration test one datasource (unified validation API, runType=integration)'
       );
+      expect(cmd.command.addHelpText).toHaveBeenCalledWith(
+        'after',
+        expect.stringMatching(/Examples:\s*\n/)
+      );
     });
 
     it('should register test-e2e command', () => {
@@ -173,6 +187,10 @@ describe('Datasource Commands Module', () => {
       expect(cmd).toBeDefined();
       expect(cmd.command.description).toHaveBeenCalledWith(
         'E2E test one datasource (unified validation API, runType=e2e)'
+      );
+      expect(cmd.command.addHelpText).toHaveBeenCalledWith(
+        'after',
+        expect.stringMatching(/Examples:\s*\n/)
       );
     });
 
@@ -227,14 +245,15 @@ describe('Datasource Commands Module', () => {
       validateDatasourceFile.mockResolvedValue({
         valid: true,
         errors: [],
-        warnings: []
+        warnings: [],
+        resolvedPath: '/path/to/file.json'
       });
 
       setupDatasourceCommands(program);
 
       // Get the validate command's action handler
       const datasourceGroup = program._datasourceGroup;
-      const validateCommand = datasourceGroup._subCommands?.find(c => c.name === 'validate <file>');
+      const validateCommand = datasourceGroup._subCommands?.find(c => c.name === 'validate <file-or-key>');
       if (validateCommand) {
         const actionCall = validateCommand.command.action.mock.calls[0];
         if (actionCall && typeof actionCall[0] === 'function') {
@@ -253,14 +272,15 @@ describe('Datasource Commands Module', () => {
       validateDatasourceFile.mockResolvedValue({
         valid: false,
         errors: ['Error 1', 'Error 2'],
-        warnings: []
+        warnings: [],
+        resolvedPath: '/path/to/file.json'
       });
 
       setupDatasourceCommands(program);
 
       // Get the validate command's action handler
       const datasourceGroup = program._datasourceGroup;
-      const validateCommand = datasourceGroup._subCommands?.find(c => c.name === 'validate <file>');
+      const validateCommand = datasourceGroup._subCommands?.find(c => c.name === 'validate <file-or-key>');
       if (validateCommand) {
         const actionCall = validateCommand.command.action.mock.calls[0];
         if (actionCall && typeof actionCall[0] === 'function') {
@@ -281,7 +301,7 @@ describe('Datasource Commands Module', () => {
 
       // Get the validate command's action handler
       const datasourceGroup = program._datasourceGroup;
-      const validateCommand = datasourceGroup._subCommands?.find(c => c.name === 'validate <file>');
+      const validateCommand = datasourceGroup._subCommands?.find(c => c.name === 'validate <file-or-key>');
       if (validateCommand) {
         const actionCall = validateCommand.command.action.mock.calls[0];
         if (actionCall && typeof actionCall[0] === 'function') {

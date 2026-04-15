@@ -71,15 +71,15 @@ parameters:
         SecretName `${prefix}-keycloak-admin-password` (no KeyVault suffix) in
         infrastructure/bicep/modules/05_miso-webapp.bicep and 07_keycloak-webapp.bicep.
 
-  - key: keycloak-server-url
+  - key: keycloak-web-server-url
     scope: shared-service
     generator:
       type: emptyString
     ensureOn: [upInfra, resolveApp]
     azure:
-      vaultSecretName: keycloak-server-url
+      vaultSecretName: keycloak-web-server-url
       notes: >-
-        Bicep (05_miso-webapp.bicep) uses unprefixed SecretName `keycloak-server-url` (same as local key).
+        Bicep (05_miso-webapp.bicep) uses unprefixed SecretName `keycloak-web-server-url` (same as local key).
         Shipped miso-controller/dataplane env templates use url://keycloak-public instead of this kv:// for local resolve.
 
   - key: keycloak-internal-server-url

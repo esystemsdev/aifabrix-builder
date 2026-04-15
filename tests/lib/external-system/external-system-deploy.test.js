@@ -237,7 +237,7 @@ describe('External System Deploy Module', () => {
       );
     });
 
-    it('should use 500ms default pollInterval for external systems', async() => {
+    it('should use 500ms pollInterval and ~10s poll window defaults for external systems', async() => {
       const { deployExternalSystem } = require('../../../lib/external-system/deploy');
       await deployExternalSystem(appName, {});
 
@@ -247,7 +247,8 @@ describe('External System Deploy Module', () => {
         expect.any(String),
         expect.any(Object),
         expect.objectContaining({
-          pollInterval: 500
+          pollInterval: 500,
+          pollMaxAttempts: 22
         })
       );
     });

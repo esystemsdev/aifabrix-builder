@@ -16,14 +16,23 @@ jest.mock('../../../lib/utils/schema-loader', () => ({
 jest.mock('../../../lib/utils/error-formatter', () => ({
   formatValidationErrors: jest.fn((errors) => errors.map(e => e.message || JSON.stringify(e)))
 }));
+jest.mock('../../../lib/utils/paths', () => ({
+  listIntegrationAppNames: jest.fn(() => []),
+  getIntegrationPath: jest.fn((app) => `/mock/integration/${app}`)
+}));
 
 const fsSync = require('fs');
+const paths = require('../../../lib/utils/paths');
 const { loadExternalDataSourceSchema } = require('../../../lib/utils/schema-loader');
 const { formatValidationErrors } = require('../../../lib/utils/error-formatter');
 
 describe('Datasource Validation Module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    fsSync.statSync.mockImplementation(() => ({
+      isFile: () => true,
+      isDirectory: () => false
+    }));
   });
 
   describe('validateDatasourceFile', () => {
@@ -99,6 +108,7 @@ describe('Datasource Validation Module', () => {
       expect(result.valid).toBe(false);
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0]).toContain('Invalid JSON syntax');
+      expect(result.resolvedPath).toBe(mockFilePath);
     });
 
     it('should return empty warnings array', async() => {
@@ -329,6 +339,76 @@ describe('Datasource Validation Module', () => {
 
         expect(result.valid).toBe(false);
         expect(result.errors.some(e => e.includes('crossSystemJson') && e.includes('exactly one operator'))).toBe(true);
+      });
+    });
+
+    describe('datasource key resolution under integration/<app>/', () => {
+      it('should resolve key to file and validate', async() => {
+        const intDir = '/mock/integration/acme';
+        const jsonPath = `${intDir}/acme-datasource-users.json`;
+        const mockContent = JSON.stringify({
+          key: 'acme-users',
+          systemKey: 'acme',
+          fieldMappings: { attributes: { id: {} } }
+        });
+        const mockValidate = jest.fn().mockReturnValue(true);
+
+        paths.listIntegrationAppNames.mockReturnValue(['acme']);
+        paths.getIntegrationPath.mockImplementation((app) => `/mock/integration/${app}`);
+        fsSync.existsSync.mockImplementation((p) => p === intDir);
+        fsSync.statSync.mockImplementation((p) => {
+          if (p === intDir) {
+            return { isFile: () => false, isDirectory: () => true };
+          }
+          return { isFile: () => true, isDirectory: () => false };
+        });
+        fsSync.readdirSync.mockReturnValue(['acme-datasource-users.json']);
+        fsSync.readFileSync.mockImplementation((p) => (p === jsonPath ? mockContent : ''));
+        loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+        const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+        const result = await validateDatasourceFile('acme-users');
+
+        expect(result.valid).toBe(true);
+        expect(result.resolvedPath).toBe(jsonPath);
+        expect(mockValidate).toHaveBeenCalled();
+      });
+
+      it('should prefer longest integration app prefix for key', async() => {
+        const intDir = '/mock/integration/acme-long';
+        const jsonPath = `${intDir}/f.json`;
+        const mockContent = JSON.stringify({
+          key: 'acme-long-users',
+          systemKey: 'acme-long',
+          fieldMappings: { attributes: { id: {} } }
+        });
+        const mockValidate = jest.fn().mockReturnValue(true);
+
+        paths.listIntegrationAppNames.mockReturnValue(['acme', 'acme-long']);
+        fsSync.existsSync.mockImplementation((p) => p === intDir);
+        fsSync.statSync.mockImplementation((p) => {
+          if (p === intDir) {
+            return { isFile: () => false, isDirectory: () => true };
+          }
+          return { isFile: () => true, isDirectory: () => false };
+        });
+        fsSync.readdirSync.mockReturnValue(['f.json']);
+        fsSync.readFileSync.mockReturnValue(mockContent);
+        loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+        const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+        const result = await validateDatasourceFile('acme-long-users');
+
+        expect(result.valid).toBe(true);
+        expect(result.resolvedPath).toBe(jsonPath);
+      });
+
+      it('should throw when no integration app matches key', async() => {
+        fsSync.existsSync.mockReturnValue(false);
+        paths.listIntegrationAppNames.mockReturnValue(['other']);
+
+        const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+        await expect(validateDatasourceFile('acme-users')).rejects.toThrow(/No integration/);
       });
     });
   });
