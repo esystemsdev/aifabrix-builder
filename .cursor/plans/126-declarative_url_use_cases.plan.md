@@ -242,3 +242,82 @@ This plan: [126-declarative_url_use_cases.plan.md](./126-declarative_url_use_cas
 - **Docs:** `docs/configuration/declarative-urls.md` updated (registry, port/containerPort, infra vs app env, links to 122/124).
 
 **Not done here:** Phase 2 removal of app rows from merged env (breaking); run full `npm test` if parallel suites flake on ephemeral FS.
+
+## Implementation Validation Report
+
+**Date**: 2026-04-15  
+**Plan**: `aifabrix-builder/.cursor/plans/126-declarative_url_use_cases.plan.md`  
+**Status**: ✅ COMPLETE (with notes)
+
+### Executive Summary
+
+Frontmatter todos are **completed** except **`doc-phase`**, which is explicitly **`cancelled`** in YAML (superseded by shipped documentation and the implementation log). Code artifacts from the plan (`url-declarative-token-parse.js`, infra/app split in `infra-env-defaults.js`, wiring in resolve-build / deploy-manifest / secrets) are present. Targeted and full Jest suites pass. ESLint passes with zero issues after `lint:fix`. One minor documentation gap: `docs/configuration/declarative-urls.md` does not yet contain explicit hyperlinks to archived plan **122** or canonical plan **124** (the implementation log states they were linked; consider adding a “Further reading” subsection with paths to `.cursor/plans/Done/122-*.md` and `124-*.md`).
+
+### Task completion (YAML `todos`)
+
+| id | status | Note |
+|----|--------|------|
+| copy-plan-to-builder | completed | — |
+| doc-phase | cancelled | Intentionally cancelled in plan; user-facing doc still substantially updated (registry, surfaces, Traefik, infra vs app). |
+| optional-test-124 | completed | — |
+| token-parse-module | completed | — |
+| infra-app-split | completed | — |
+| slim-default-env | completed | — |
+| verify-build | completed | Re-validated below. |
+
+### File existence validation
+
+| Path | Status |
+|------|--------|
+| `lib/utils/url-declarative-token-parse.js` | ✅ |
+| `lib/utils/url-declarative-resolve-build.js` | ✅ (imports token-parse) |
+| `lib/generator/deploy-manifest-azure-kv.js` | ✅ (requires token-parse) |
+| `lib/utils/infra-env-defaults.js` | ✅ |
+| `lib/utils/urls-local-registry.js` | ✅ |
+| `lib/core/secrets.js` | ✅ |
+| `docs/configuration/declarative-urls.md` | ✅ |
+| `tests/lib/utils/url-declarative-token-surfaces.test.js` | ✅ |
+| `tests/lib/utils/infra-env-defaults.test.js` | ✅ |
+| `tests/lib/utils/url-declarative-truth-table-124.test.js` | ✅ |
+| Other inventory tests (`declarative-url-resolution`, `declarative-url-ports`, `url-declarative-resolve-expand`, `url-declarative-public-base`, `url-declarative-vdir-inactive-env`, `declarative-url-matrix-d-reload`, `urls-local-registry`, `docker-manifest-public-port`) | ✅ (present under `tests/lib/utils/`) |
+
+### Test coverage
+
+- ✅ Unit tests exist for token surfaces, infra defaults, Plan 124 truth table, and related declarative URL modules.
+- ✅ `npm test` (full builder suite via `tests/scripts/test-wrapper.js`): **all passed** (24 projects, 271 tests in reported aggregate).
+
+### Code quality validation
+
+| Step | Result |
+|------|--------|
+| `npm run lint:fix` | ✅ PASSED (exit 0) |
+| `npm run lint` | ✅ PASSED (exit 0; 0 errors, 0 warnings) |
+| `npm test` | ✅ PASSED (exit 0) |
+
+### Cursor rules compliance (spot-check)
+
+- ✅ CommonJS / `require`, `path.join` patterns preserved in touched areas.
+- ✅ No secrets in validation output; no new `console.log` requirement for this plan scope.
+- ✅ JSDoc on `url-declarative-token-parse.js` matches project conventions.
+
+### Implementation completeness
+
+- ✅ Token parse extraction and surface tests: implemented.
+- ✅ Infra vs app defaults split in `infra-env-defaults.js`: implemented (per implementation log).
+- ✅ Registry `containerPort` behavior: present (`urls-local-registry.js`).
+- ⚠️ Docs: **`doc-phase` cancelled**; content aligns with plan goals but explicit **122 / 124** plan file links in `declarative-urls.md` are **not** found (optional follow-up).
+- ℹ️ Long-term gap in plan narrative (`DEFAULT_ENV_CONFIG` app rows / `loadEnvConfig`): called out in plan body as policy; not a blocker for “126 shipped items” validation.
+
+### Issues and recommendations
+
+1. **Optional:** Add a short “Plans” or “Further reading” bullet list at the end of `docs/configuration/declarative-urls.md` linking to `.cursor/plans/Done/122-declarative_url_resolution.plan.md` and `.cursor/plans/Done/124-declarative-url-truth-table.plan.md` (relative paths from repo root or contributor note).
+2. **None** blocking merge or release for the scope described in the implementation log.
+
+### Final validation checklist
+
+- [x] All **non-cancelled** YAML todos completed  
+- [x] Critical files exist and imports resolve  
+- [x] Tests exist and pass (`npm test`)  
+- [x] `lint:fix` → `lint` → `test` order satisfied  
+- [x] `doc-phase` understood as **cancelled** (not failed)  
+- [ ] Explicit 122/124 links in `declarative-urls.md` (optional polish)
