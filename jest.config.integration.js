@@ -1,30 +1,30 @@
 /**
- * Jest Configuration for Integration Tests
- * Ensures tests run in correct order with proper error handling
+ * Jest configuration for integration tests under tests/integration/ only.
  *
- * @fileoverview Jest config specifically for integration tests
+ * IMPORTANT: Do not spread ./jest.config.js here — that config sets `projects` (default +
+ * isolated suites). Spreading it caused `test:integration` to run the entire multi-project
+ * suite in one process, leaking mocks/module state between projects and producing flaky
+ * failures. This file defines a single project matching docs/plans for npm run test:integration.
+ *
+ * @fileoverview Full integration Jest config: HubSpot fixtures, workflow shim, and
+ *   tests/integration/steps/* (real Docker: create, build, run, health).
+ *   For fixture-only tests without Docker, use jest.config.integration.fixtures.js
+ *   (npm run test:integration:fixtures).
  * @author AI Fabrix Team
  * @version 2.0.0
  */
 
-const baseConfig = require('./jest.config');
+const { sharedTransform } = require('./jest.projects');
 
 module.exports = {
-  ...baseConfig,
-  // Override testPathIgnorePatterns for integration tests
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '\\\\node_modules\\\\'
-  ],
-  // Use custom test sequencer for correct order
+  displayName: 'integration',
+  testEnvironment: 'node',
+  transform: sharedTransform,
+  testMatch: ['**/tests/integration/**/*.test.js'],
+  testPathIgnorePatterns: ['/node_modules/', '\\\\node_modules\\\\'],
   testSequencer: '<rootDir>/tests/integration/test-sequencer.js',
-  // Longer timeout for integration tests
-  testTimeout: 300000, // 5 minutes
-  // Run tests sequentially
+  testTimeout: 300000,
   maxWorkers: 1,
-  // Don't ignore integration tests
-  testMatch: [
-    '**/tests/integration/**/*.test.js'
-  ]
+  setupFiles: ['<rootDir>/tests/capture-real-fs.js'],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.js']
 };
-

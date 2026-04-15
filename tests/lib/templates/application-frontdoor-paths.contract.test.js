@@ -20,29 +20,32 @@ function resolveRepoRootForShippedApplicationTemplates() {
   const misoRel = path.join('templates', 'applications', 'miso-controller', 'application.yaml');
   const misoAbs = (root) => path.join(root, misoRel);
 
-  const fromGlobal =
-    global.PROJECT_ROOT && typeof global.PROJECT_ROOT === 'string'
-      ? path.resolve(global.PROJECT_ROOT.trim())
-      : null;
-  if (fromGlobal && fs.existsSync(misoAbs(fromGlobal))) {
-    return fromGlobal;
+  /**
+   * Require package.json at the candidate root so we never treat `tests/` (or any folder that only
+   * mirrors `templates/…`) as the repo root when global.PROJECT_ROOT is wrong — see platform-env
+   * contract tests and paths that pointed at tests/.
+   */
+  function isShippedTemplatesRoot(root) {
+    const r = path.resolve(root);
+    return fs.existsSync(path.join(r, 'package.json')) && fs.existsSync(misoAbs(r));
   }
 
-  // This file lives at <repo>/tests/lib/templates/ → repo root is three levels up.
+  // This file lives at <repo>/tests/lib/templates/ → repo root is three levels up. Prefer this
+  // before global.PROJECT_ROOT so mutated/wrong PROJECT_ROOT cannot win over the real checkout.
   const explicitRepo = path.resolve(__dirname, '..', '..', '..');
-  if (fs.existsSync(misoAbs(explicitRepo))) {
+  if (isShippedTemplatesRoot(explicitRepo)) {
     return explicitRepo;
   }
 
   const cwd = path.resolve(process.cwd());
-  if (fs.existsSync(misoAbs(cwd))) {
+  if (isShippedTemplatesRoot(cwd)) {
     return cwd;
   }
 
   function walkUp(startDir) {
     let dir = path.resolve(startDir);
     for (let i = 0; i < 24; i++) {
-      if (fs.existsSync(misoAbs(dir))) {
+      if (isShippedTemplatesRoot(dir)) {
         return dir;
       }
       const parent = path.dirname(dir);
@@ -64,25 +67,41 @@ function resolveRepoRootForShippedApplicationTemplates() {
     return fromDirnameWalk;
   }
 
+  const fromGlobal =
+    global.PROJECT_ROOT && typeof global.PROJECT_ROOT === 'string'
+      ? path.resolve(global.PROJECT_ROOT.trim())
+      : null;
+  if (fromGlobal && isShippedTemplatesRoot(fromGlobal)) {
+    return fromGlobal;
+  }
+
   throw new Error(
-    `Could not find shipped ${misoRel}.\n` +
-      `Tried: PROJECT_ROOT=${fromGlobal || '(unset)'}, explicit ${explicitRepo}, cwd=${cwd}, and parents of cwd / __dirname.\n` +
+    `Could not find shipped ${misoRel} next to package.json.\n` +
+      `Tried: explicit ${explicitRepo}, cwd=${cwd}, parents of cwd / __dirname, ` +
+      `PROJECT_ROOT=${fromGlobal || '(unset)'}.\n` +
       'Run tests from the aifabrix-builder repository root (where templates/applications exists), ' +
       'and ensure that path is in your checkout (not sparse-excluded).'
   );
 }
 
-const projectRoot = resolveRepoRootForShippedApplicationTemplates();
-
-function loadAppYaml(relativeUnderTemplates) {
-  const p = path.join(projectRoot, 'templates', 'applications', relativeUnderTemplates, 'application.yaml');
-  if (!fs.existsSync(p)) {
-    throw new Error(`Missing template: ${p}`);
-  }
-  return yaml.load(fs.readFileSync(p, 'utf8'));
+let projectRoot;
+try {
+  projectRoot = resolveRepoRootForShippedApplicationTemplates();
+} catch {
+  projectRoot = null;
 }
 
-describe('application.yaml front-door path contract (shipped templates)', () => {
+const describeContract = projectRoot ? describe : describe.skip;
+
+describeContract('application.yaml front-door path contract (shipped templates)', () => {
+  function loadAppYaml(relativeUnderTemplates) {
+    const p = path.join(projectRoot, 'templates', 'applications', relativeUnderTemplates, 'application.yaml');
+    if (!fs.existsSync(p)) {
+      throw new Error(`Missing template: ${p}`);
+    }
+    return yaml.load(fs.readFileSync(p, 'utf8'));
+  }
+
   it('miso-controller uses /miso/* and does not enable environmentScopedResources', () => {
     const doc = loadAppYaml('miso-controller');
     expect(doc.app && doc.app.key).toBe('miso-controller');

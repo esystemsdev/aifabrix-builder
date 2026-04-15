@@ -337,6 +337,17 @@ parameters:
       notes: >-
         Prefer {appKey}-secrets-apiKeyVault locally; dataplane shares miso-controller's entry for pipeline Bearer bypass.
 
+  # App semver when env.template / conversion yields kv://version (local secrets backfill).
+  - key: version
+    scope: app
+    generator:
+      type: literal
+      value: '1.0.0'
+    ensureOn: [resolveApp]
+    azure:
+      notes: >-
+        Default application version for kv://version; override in secrets when needed.
+
   # Per-index database secrets (local names). Index must match requires.databases order in application.yaml.
   - keyPattern: '^databases-[a-z0-9-]+-\d+-urlKeyVault$'
     scope: app

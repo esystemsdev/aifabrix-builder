@@ -83,6 +83,31 @@ describe('datasource-test-run-display', () => {
     expect(out).toContain('✖ fail');
   });
 
+  it('formatDatasourceTestRunTTY includes reference layout and validation issues', () => {
+    const env = {
+      ...baseEnv,
+      runType: 'integration',
+      audit: { traceRefs: ['https://example.com/t/1'] },
+      debug: { payloadRefs: [{ key: 'snap', ref: 'ref-abc' }] },
+      validation: {
+        issues: [{ code: 'DP-VAL-001', message: 'Schema gap' }, { message: 'Second' }]
+      },
+      integration: {
+        stepResults: [{ name: 'fetch', success: true }, { name: 'map', success: false, error: 'bad' }]
+      }
+    };
+    const out = formatDatasourceTestRunTTY(env);
+    expect(out).toContain('audit.traceRefs:');
+    expect(out).toContain('https://example.com/t/1');
+    expect(out).toContain('debug.payloadRefs:');
+    expect(out).toContain('snap: ref-abc');
+    expect(out).toContain('Validation issues:');
+    expect(out).toContain('DP-VAL-001');
+    expect(out).toContain('Integration steps:');
+    expect(out).toContain('✗ map');
+    expect(out).toContain('bad');
+  });
+
   it('formatDatasourceTestRunSummary uses focused cap instead of rollup counts', () => {
     const env = {
       ...baseEnv,

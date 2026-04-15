@@ -278,13 +278,25 @@ describe('HubSpot Integration Tests', () => {
 
     it('should have OAuth2 authentication configuration', () => {
       expect(systemJson.authentication).toBeDefined();
-      expect(systemJson.authentication.type).toBe('oauth2');
-      expect(systemJson.authentication.mode).toBe('oauth2');
-      expect(systemJson.authentication.oauth2).toBeDefined();
-      expect(systemJson.authentication.oauth2.tokenUrl).toBeDefined();
-      expect(systemJson.authentication.oauth2.clientId).toBeDefined();
-      expect(systemJson.authentication.oauth2.clientSecret).toBeDefined();
-      expect(Array.isArray(systemJson.authentication.oauth2.scopes)).toBe(true);
+      const auth = systemJson.authentication;
+      // v2.x fixture: method + variables + security (kv paths)
+      if (auth.method === 'oauth2' && auth.variables && auth.security) {
+        expect(auth.variables.tokenUrl).toBeDefined();
+        expect(auth.security.clientId).toBeDefined();
+        expect(auth.security.clientSecret).toBeDefined();
+        expect(
+          typeof auth.variables.scope === 'string' && auth.variables.scope.length > 0
+        ).toBe(true);
+        return;
+      }
+      // Legacy nested oauth2 shape
+      expect(auth.type).toBe('oauth2');
+      expect(auth.mode).toBe('oauth2');
+      expect(auth.oauth2).toBeDefined();
+      expect(auth.oauth2.tokenUrl).toBeDefined();
+      expect(auth.oauth2.clientId).toBeDefined();
+      expect(auth.oauth2.clientSecret).toBeDefined();
+      expect(Array.isArray(auth.oauth2.scopes)).toBe(true);
     });
 
     it('should have configuration array', () => {

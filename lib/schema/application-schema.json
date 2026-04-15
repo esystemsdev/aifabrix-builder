@@ -563,7 +563,7 @@
           "description": "Required roles for access",
           "items": {
             "type": "string",
-            "pattern": "^[a-z-]+$"
+            "pattern": "^[a-z0-9-]+$"
           }
         },
         "endpoints": {
@@ -619,7 +619,7 @@
           "value": {
             "type": "string",
             "description": "Role identifier (used in JWT and ACL)",
-            "pattern": "^[a-z-]+$"
+            "pattern": "^[a-z0-9-]+$"
           },
           "description": {
             "type": "string",
@@ -663,7 +663,7 @@
             "description": "Roles that have this permission",
             "items": {
               "type": "string",
-              "pattern": "^[a-z-]+$",
+              "pattern": "^[a-z0-9-]+$",
               "minLength": 1,
               "maxLength": 50
             },

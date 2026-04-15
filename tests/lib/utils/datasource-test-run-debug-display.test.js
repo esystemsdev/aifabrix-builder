@@ -32,18 +32,27 @@ describe('datasource-test-run-debug-display', () => {
     expect(t.length).toBeLessThan(long.length);
   });
 
-  it('formatDatasourceTestRunDebugBlock summary lists refs', () => {
+  it('formatDatasourceTestRunDebugBlock summary lists ref layout', () => {
     const out = formatDatasourceTestRunDebugBlock(
       {
-        audit: { traceRefs: ['a', 'b'] },
-        debug: { payloadRefs: ['p1'] }
+        audit: { traceRefs: ['https://trace/a', 'https://trace/b'], executionIds: ['exec-1'] },
+        debug: { payloadRefs: [{ key: 'lastRequest', ref: 'audit://payload/1' }] }
       },
       'summary',
       true
     );
     expect(out).toContain('Debug (summary)');
-    expect(out).toContain('audit.traceRefs: 2 ref(s)');
-    expect(out).toContain('debug.payloadRefs: 1 ref(s)');
+    expect(out).toContain('audit.executionIds:');
+    expect(out).toContain('[1] exec-1');
+    expect(out).toContain('audit.traceRefs:');
+    expect(out).toContain('[1] https://trace/a');
+    expect(out).toContain('debug.payloadRefs:');
+    expect(out).toContain('lastRequest: audit://payload/1');
+  });
+
+  it('formatDatasourceTestRunDebugBlock summary placeholder when no refs', () => {
+    const out = formatDatasourceTestRunDebugBlock({ audit: {}, debug: {} }, 'summary', true);
+    expect(out).toContain('No audit or debug references');
   });
 
   it('formatDatasourceTestRunDebugBlock full deep-truncates long strings', () => {

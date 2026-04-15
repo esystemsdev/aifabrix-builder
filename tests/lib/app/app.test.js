@@ -262,11 +262,23 @@ describe('Application Module', () => {
         database: true
       };
 
-      // Create existing .env file in the root directory (not in the app directory)
-      const existingEnvPath = '.env';
-      await fs.writeFile(existingEnvPath, 'DATABASE_URL=postgresql://user:pass@localhost/db\nAPI_KEY=secret123');
+      // createApp reads builder/<app>/.env only (not process.cwd()); simulate an existing app .env
+      const readSpy = jest.spyOn(envReader, 'readExistingEnv').mockImplementation(async(appPath) => {
+        const p = String(appPath);
+        if (p.includes(appName)) {
+          return {
+            DATABASE_URL: 'postgresql://user:pass@localhost/db',
+            API_KEY: 'secret123'
+          };
+        }
+        return null;
+      });
 
-      await app.createApp(appName, options);
+      try {
+        await app.createApp(appName, options);
+      } finally {
+        readSpy.mockRestore();
+      }
 
       // Verify env.template was created with kv:// references
       const appPath = path.join('builder', appName);

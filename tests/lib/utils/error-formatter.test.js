@@ -120,7 +120,7 @@ describe('Error Formatter Module', () => {
       expect(result).toBe('Field "email": Invalid value "bad-email" - must match pattern: ^[a-z]+@[a-z]+\\.[a-z]+$');
     });
 
-    it('should format pattern error without data value', () => {
+    it('should format pattern error without data value when no root is passed', () => {
       const error = {
         instancePath: '/key',
         keyword: 'pattern',
@@ -130,7 +130,24 @@ describe('Error Formatter Module', () => {
 
       const result = formatSingleError(error);
 
-      expect(result).toBe('Field "key": Invalid value value - lowercase letters, numbers, and hyphens only');
+      expect(result).toContain('Field "key"');
+      expect(result).toContain('(unavailable');
+      expect(result).toContain('lowercase letters, numbers, and hyphens only');
+    });
+
+    it('should format pattern error using rootData when AJV omits data', () => {
+      const error = {
+        instancePath: '/roles/0/value',
+        keyword: 'pattern',
+        params: { pattern: '^[a-z0-9-]+$' },
+        message: 'Invalid format'
+      };
+      const rootData = { roles: [{ value: 'test-e2e-hubspot-admin' }] };
+
+      const result = formatSingleError(error, { rootData });
+
+      expect(result).toContain('"test-e2e-hubspot-admin"');
+      expect(result).toContain('lowercase letters, numbers, and hyphens only');
     });
 
     it('should format enum error', () => {

@@ -163,6 +163,10 @@ describe('Secrets Generator Module', () => {
       fs.readFileSync.mockImplementation(() => '');
     });
 
+    it('should generate default semver for catalog key version (kv://version backfill)', () => {
+      expect(secretsGenerator.generateSecretValue('version')).toBe('1.0.0');
+    });
+
     it('should generate database password for databases-{app}-{index}-passwordKeyVault format', () => {
       const key = 'databases-myapp-0-passwordKeyVault';
 

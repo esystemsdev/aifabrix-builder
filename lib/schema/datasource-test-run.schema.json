@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://aifabrix.ai/schemas/datasource-test-run.schema.json",
+  "$id": "aifabrix://schema/datasource-test-run.schema.json",
   "title": "DatasourceTestRun",
   "description": "Canonical datasource-root test report (plans 362/365). Public success shape for POST /api/v1/validation/run (and async poll GET /validation/run/{testRunId}). runType=test|integration|e2e; CLI/docs may say test | test-integration | test-e2e; public JSON uses runType only. Includes validation layer (machine/explain), certificate snapshot, optional integration pipeline results, capability E2Es, debug by reference, plural audit refs, developer summaries. Forward-compatible: minor reportVersion bumps may add fields.",
   "type": "object",
@@ -411,6 +411,11 @@
           "items": {
             "$ref": "#/$defs/PayloadRef"
           }
+        },
+        "e2eAsyncDebug": {
+          "type": "object",
+          "description": "Async E2E poll: masked debug from run store (requestId, timing, stepDebug, firstRequestUrl, requestParams, …).",
+          "additionalProperties": true
         }
       }
     },

@@ -2,6 +2,15 @@
 name: Builder CLI — unified testing and certification
 overview: End-to-end plan for aifabrix CLI support for Dataplane unified validation (POST /api/v1/validation/run), DatasourceTestRun envelope, datasource- and **external-system-level** scopes, certification surfacing, async polling, CI-ready machine output, and normative TTY UI (Data Quality + Trust, aggregation at system level). Includes strict operational contracts (exit codes, rendering order, async, limits, schema enforcement) to prevent implementation drift. Defers HTTP field detail to Dataplane OpenAPI and plan 365.
 todos:
+  - id: validation-report-tty-kit
+    content: Reusable TTY kit (`lib/utils/validation-report-tty-kit.js`) + shared envelope logging (`datasource-test-run-tty-log.js`) for validation CLI and external server tests
+    status: completed
+  - id: layout-local-external-test
+    content: Local `aifabrix test` — plan §3.2 layout via `external-system-local-test-tty.js` + `displayTestResults(..., appName)`
+    status: completed
+  - id: layout-external-server-integration-e2e
+    content: External `test-integration` / `test-e2e` — DatasourceTestRun TTY when envelopes present; E2E loop keeps `datasourceTestRun`; `--debug` passed into `displayIntegrationTestResults`
+    status: completed
   - id: api-post-poll-system
     content: Single API module — POST + shared poll; system scope + optional fan-out merge (§2.2, §9, §17.4)
     status: pending

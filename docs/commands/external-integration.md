@@ -217,13 +217,23 @@ aifabrix upload my-hubspot
 
 # Validate and build payload only; no API calls
 aifabrix upload my-hubspot --dry-run
+
+# Extra server-side validation warnings before publish
+aifabrix upload my-hubspot --verbose
+
+# After publish, run runtime checks (slower)
+aifabrix upload my-hubspot --probe
 ```
 
 **Arguments:** `<systemKey>` – External system key (same as `integration/<systemKey>/`).
 
 **Options:**
 - `--dry-run` – Validate locally and build payload only; no API calls
-- `--debug` – Include debug output
+- `-v, --verbose` – Call dataplane validate on the full manifest and print warnings before publish
+- `--probe` – After a successful publish, call dataplane runtime checks for all datasources
+- `--minimal` – Print a short readiness summary only
+- `--probe-timeout <ms>` – Timeout for `--probe` (default: 120000)
+- `--debug` – Include debug output (where supported by the command chain)
 
 **Prerequisites:**
 - Login or app credentials for the system: `aifabrix login` or `aifabrix app register <systemKey>`
@@ -245,19 +255,7 @@ aifabrix upload my-hubspot --dry-run
    Dataplane permission **credential:create** is required for this automatic push; if the push fails (e.g. 403), upload still continues but secrets must be available elsewhere (e.g. env on dataplane). See [Secrets and config](../configuration/secrets-and-config.md) and [Permissions](permissions.md).
 6. **Pipeline upload:** Sends the configuration to the Dataplane (upload, validate, and publish in one step). On failure, the CLI shows validation or publish errors and exits.
 
-**Output example:**
-```text
-Uploading external system to dataplane: my-hubspot
-Validation passed.
-Resolving dataplane URL...
-Dataplane: https://dataplane.example.com
-⚠ Configuration will be sent to the dataplane. Ensure you are targeting the correct environment and have the required permissions.
-
-Upload validated and published to dataplane.
-Environment: dev
-System: my-hubspot
-Dataplane: https://dataplane.example.com
-```
+**Output:** After publish, the CLI prints a **readiness-oriented** summary: registration outcome, upload id, per-datasource status (Ready / Partial / Failed), identity and credential **intent** (resolved test URL without implying connectivity unless you used `--probe`), and suggested next commands. If dataplane details cannot be fetched after a deploy, the CLI warns explicitly instead of staying silent.
 
 **Workflow:** Develop with `aifabrix upload` for quick iteration and testing. Promote with `aifabrix deploy <app>` when ready for full controller deployment and dev → tst → pro promotion.
 

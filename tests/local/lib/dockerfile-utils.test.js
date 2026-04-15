@@ -219,6 +219,19 @@ EXPOSE ${vars.port || 3000}`;
       expect(result).toContain(`COPY ${appSourcePath}package*.json ./`);
       expect(result).toContain('COPY src ./src'); // This should not be replaced
     });
+
+    it('Python template with root appSourcePath ./ must COPY ./requirements*.txt (not .requirements*.txt)', () => {
+      pathsModule.getProjectRoot.mockReturnValue(realProjectRoot);
+      const template = dockerfileUtils.loadDockerfileTemplate('python');
+      const out = template({
+        port: 8083,
+        healthCheck: { interval: 30, path: '/health' },
+        startupCommand: null,
+        appSourcePath: './'
+      });
+      expect(out).toContain('COPY ./requirements*.txt ./');
+      expect(out).not.toContain('.requirements');
+    });
   });
 
   describe('checkTemplateDockerfile', () => {

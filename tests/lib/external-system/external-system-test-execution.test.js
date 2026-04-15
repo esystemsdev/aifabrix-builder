@@ -226,7 +226,7 @@ describe('External System Test Execution Module', () => {
       const dataplaneUrl = 'https://dataplane.example.com';
       const authConfig = { token: 'test-token' };
       const customPayload = null;
-      const options = { timeout: '30000' };
+      const options = { timeout: '30000', verbose: true };
 
       const payloadTemplate = { test: 'payload' };
       const mockResult = {
@@ -277,7 +277,7 @@ describe('External System Test Execution Module', () => {
       const dataplaneUrl = 'https://dataplane.example.com';
       const authConfig = { token: 'test-token' };
       const customPayload = null;
-      const options = { timeout: '30000' };
+      const options = { timeout: '30000', verbose: true };
 
       testHelpers.determinePayloadTemplate.mockReturnValue(null);
 
@@ -388,7 +388,7 @@ describe('External System Test Execution Module', () => {
       const dataplaneUrl = 'https://dataplane.example.com';
       const authConfig = { token: 'test-token' };
       const customPayload = null;
-      const options = { timeout: '30000' };
+      const options = { timeout: '30000', verbose: true };
 
       const payloadTemplate = { test: 'payload' };
       const mockResult = {

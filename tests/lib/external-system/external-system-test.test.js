@@ -34,6 +34,10 @@ jest.mock('chalk', () => {
   mockChalk.blue = jest.fn((text) => text);
   mockChalk.yellow = jest.fn((text) => text);
   mockChalk.gray = jest.fn((text) => text);
+  mockChalk.cyan = jest.fn((text) => text);
+  mockChalk.white = Object.assign(jest.fn((text) => text), {
+    bold: jest.fn((text) => text)
+  });
   return mockChalk;
 });
 jest.mock('../../../lib/utils/token-manager', () => ({
