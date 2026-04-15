@@ -420,13 +420,13 @@ describe('External System Display Helpers', () => {
       expectLogContains('Validation: ✔ Valid', 'Field mappings: 10 attributes', 'Endpoint: ✔ Configured');
     });
 
-    it('should use server DatasourceTestRun layout when envelope present', () => {
+    it('should mirror datasource test TTY when a single DatasourceTestRun envelope is present', () => {
       const envelope = {
         datasourceKey: 'datasource1',
         systemKey: 'hubspot',
         runType: 'integration',
         status: 'ok',
-        developer: { executiveSummary: 'ok' }
+        developer: { executiveSummary: 'ok summary' }
       };
       const results = {
         success: true,
@@ -442,7 +442,45 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, false, { runType: 'integration' });
-      expectLogContains('test-integration (dataplane)', 'Datasource: datasource1', 'All server tests passed.');
+      const flat = loggerCallArrays.log.map(a => stripAnsi(String(a[0]))).join('\n');
+      expect(flat).toContain('Verdict:');
+      expect(flat).toContain('ok summary');
+      expect(flat).toContain('Datasource: datasource1');
+      expect(flat).toContain('(hubspot)');
+      expect(flat).not.toContain('Server test results');
+      expect(flat).not.toContain('test-integration (dataplane)');
+      expect(flat).not.toContain('All server tests passed.');
+    });
+
+    it('should show server wrapper when multiple DatasourceTestRun envelopes are present', () => {
+      const mk = (key) => ({
+        datasourceKey: key,
+        systemKey: 'hubspot',
+        runType: 'integration',
+        status: 'ok',
+        developer: { executiveSummary: `ok ${key}` }
+      });
+      const results = {
+        success: true,
+        systemKey: 'hubspot',
+        datasourceResults: [
+          {
+            key: 'ds-a',
+            skipped: false,
+            success: true,
+            datasourceTestRun: mk('ds-a')
+          },
+          {
+            key: 'ds-b',
+            skipped: false,
+            success: true,
+            datasourceTestRun: mk('ds-b')
+          }
+        ]
+      };
+
+      displayIntegrationTestResults(results, false, { runType: 'integration' });
+      expectLogContains('Server test results', 'test-integration (dataplane)', 'All server tests passed.');
     });
   });
 

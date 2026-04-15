@@ -6,15 +6,17 @@
  * @version 2.0.0
  */
 
-const chalk = require('chalk');
-
 // Mock modules
 jest.mock('chalk', () => {
+  const id = (text) => text;
   const mockChalk = (text) => text;
-  mockChalk.green = jest.fn((text) => text);
-  mockChalk.red = jest.fn((text) => text);
-  mockChalk.blue = jest.fn((text) => text);
-  mockChalk.yellow = jest.fn((text) => text);
+  mockChalk.green = Object.assign(jest.fn(id), { bold: jest.fn(id) });
+  mockChalk.red = Object.assign(jest.fn(id), { bold: jest.fn(id) });
+  mockChalk.blue = jest.fn(id);
+  mockChalk.yellow = jest.fn(id);
+  mockChalk.gray = jest.fn(id);
+  mockChalk.cyan = jest.fn(id);
+  mockChalk.white = Object.assign(jest.fn(id), { bold: jest.fn(id) });
   return mockChalk;
 });
 jest.mock('../../../lib/utils/logger', () => ({
