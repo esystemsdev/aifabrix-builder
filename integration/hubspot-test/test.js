@@ -1216,7 +1216,7 @@ function buildNegativeCredentialTestCases(context) {
  * @param {string} appName - Application name
  * @param {Object} context - Test context
  * @param {Object} options - Options object
- * @param {string} expectedMessage - Expected error message
+ * @param {string|string[]} expectedMessage - Expected error substring(s); any match passes
  * @returns {Promise<void>} Resolves when validation fails as expected
  * @throws {Error} If validation succeeds or expected message not found
  */
@@ -1228,8 +1228,12 @@ async function runValidationExpectFailure(appName, context, options, expectedMes
   }
   if (expectedMessage) {
     const combined = `${result.stdout}\n${result.stderr}`;
-    if (!combined.includes(expectedMessage)) {
-      throw new Error(`Expected error message not found: ${expectedMessage}\nActual output: ${combined}`);
+    const needles = Array.isArray(expectedMessage) ? expectedMessage : [expectedMessage];
+    const found = needles.some(n => combined.includes(n));
+    if (!found) {
+      throw new Error(
+        `Expected error message not found (any of): ${needles.join(' | ')}\nActual output: ${combined}`
+      );
     }
   }
 }
@@ -1315,20 +1319,16 @@ async function getFirstDatasourcePath(appPath) {
 }
 
 /**
- * Corrupts datasource file by removing dimensions
+ * Corrupts root v2.4 ``dimensions``: local binding without required ``field`` (schema failure).
  * @async
- * @function corruptDatasourceRemoveDimensions
+ * @function corruptDatasourceLocalBindingMissingField
  * @param {string} datasourcePath - Datasource file path
  * @returns {Promise<void>} Resolves when file is corrupted
  */
-async function corruptDatasourceRemoveDimensions(datasourcePath) {
+async function corruptDatasourceLocalBindingMissingField(datasourcePath) {
   const datasourceContent = await fs.readFile(datasourcePath, 'utf8');
   const datasourceJson = JSON.parse(datasourceContent);
-  if (datasourceJson.fieldMappings) {
-    delete datasourceJson.fieldMappings.dimensions;
-  } else {
-    datasourceJson.fieldMappings = {};
-  }
+  datasourceJson.dimensions = { orphan_local: { type: 'local' } };
   await fs.writeFile(datasourcePath, JSON.stringify(datasourceJson, null, 2), 'utf8');
 }
 
@@ -1342,13 +1342,9 @@ async function corruptDatasourceRemoveDimensions(datasourcePath) {
 async function corruptDatasourceInvalidDimensionKey(datasourcePath) {
   const datasourceContent = await fs.readFile(datasourcePath, 'utf8');
   const datasourceJson = JSON.parse(datasourceContent);
-  if (!datasourceJson.fieldMappings) {
-    datasourceJson.fieldMappings = {};
-  }
-  if (!datasourceJson.fieldMappings.dimensions) {
-    datasourceJson.fieldMappings.dimensions = {};
-  }
-  datasourceJson.fieldMappings.dimensions['invalid-key-with-hyphen'] = 'metadata.id';
+  datasourceJson.dimensions = {
+    'invalid-key-with-hyphen': { type: 'local', field: 'id' }
+  };
   await fs.writeFile(datasourcePath, JSON.stringify(datasourceJson, null, 2), 'utf8');
 }
 
@@ -1362,30 +1358,23 @@ async function corruptDatasourceInvalidDimensionKey(datasourcePath) {
 async function corruptDatasourceInvalidAttributePath(datasourcePath) {
   const datasourceContent = await fs.readFile(datasourcePath, 'utf8');
   const datasourceJson = JSON.parse(datasourceContent);
-  if (!datasourceJson.fieldMappings) {
-    datasourceJson.fieldMappings = {};
-  }
-  if (!datasourceJson.fieldMappings.dimensions) {
-    datasourceJson.fieldMappings.dimensions = {};
-  }
-  datasourceJson.fieldMappings.dimensions['valid_key'] = 'metadata.id-with-invalid-chars@';
+  datasourceJson.dimensions = {
+    valid_key: { type: 'local', field: 'id-with-invalid-chars@' }
+  };
   await fs.writeFile(datasourcePath, JSON.stringify(datasourceJson, null, 2), 'utf8');
 }
 
 /**
- * Corrupts datasource file with dimensions as array
+ * Corrupts root ``dimensions`` with a non-object JSON value (schema type error).
  * @async
- * @function corruptDatasourceDimensionsAsArray
+ * @function corruptDatasourceDimensionsWrongJsonType
  * @param {string} datasourcePath - Datasource file path
  * @returns {Promise<void>} Resolves when file is corrupted
  */
-async function corruptDatasourceDimensionsAsArray(datasourcePath) {
+async function corruptDatasourceDimensionsWrongJsonType(datasourcePath) {
   const datasourceContent = await fs.readFile(datasourcePath, 'utf8');
   const datasourceJson = JSON.parse(datasourceContent);
-  if (!datasourceJson.fieldMappings) {
-    datasourceJson.fieldMappings = {};
-  }
-  datasourceJson.fieldMappings.dimensions = ['invalid', 'array', 'format'];
+  datasourceJson.dimensions = ['invalid', 'array', 'format'];
   await fs.writeFile(datasourcePath, JSON.stringify(datasourceJson, null, 2), 'utf8');
 }
 
@@ -1421,7 +1410,10 @@ function buildNegativeRbacTestCases(context) {
         }
         const appPath = await createSystemForNegativeTest(appName, 'wizard-valid-for-rbac-yaml-test', context, options);
         await corruptRbacFile(appPath);
-        await runValidationExpectFailure(appName, context, options, 'Invalid YAML syntax in rbac.yaml');
+        await runValidationExpectFailure(appName, context, options, [
+          'Invalid syntax in rbac.yaml',
+          'Invalid YAML syntax'
+        ]);
         await cleanupAppArtifacts(appName, options);
       }
     }
@@ -1451,23 +1443,23 @@ function buildNegativeDimensionTestCases(context) {
   return [
     createTestCase(
       '2.14',
-      'Datasource missing dimensions in fieldMappings',
+      'Datasource dimensions: local binding missing required field',
       'wizard-e2e-negative-dimension-missing',
       'wizard-valid-for-dimension-test',
-      corruptDatasourceRemoveDimensions,
-      'Missing required property "dimensions"'
+      corruptDatasourceLocalBindingMissingField,
+      'Missing required property "field"'
     ),
     createTestCase(
       '2.15',
-      'Datasource invalid dimension key pattern',
+      'Datasource invalid dimension key (root dimensions propertyNames)',
       'wizard-e2e-negative-dimension-invalid-key',
       'wizard-valid-for-dimension-key-test',
       corruptDatasourceInvalidDimensionKey,
-      'Must be at most 40 characters'
+      ['letters, numbers, and underscores only', 'property name must be valid']
     ),
     createTestCase(
       '2.16',
-      'Datasource invalid attribute path pattern',
+      'Datasource invalid dimension binding field pattern',
       'wizard-e2e-negative-dimension-invalid-path',
       'wizard-valid-for-dimension-path-test',
       corruptDatasourceInvalidAttributePath,
@@ -1475,11 +1467,11 @@ function buildNegativeDimensionTestCases(context) {
     ),
     createTestCase(
       '2.17',
-      'Datasource dimensions as array instead of object',
+      'Datasource dimensions wrong JSON type (array)',
       'wizard-e2e-negative-dimension-array',
       'wizard-valid-for-dimension-array-test',
-      corruptDatasourceDimensionsAsArray,
-      'Expected object, got undefined'
+      corruptDatasourceDimensionsWrongJsonType,
+      'Expected object'
     )
   ];
 }

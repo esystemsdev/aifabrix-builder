@@ -8,7 +8,7 @@
     "af": "bin/aifabrix.js"
   },
   "scripts": {
-    "all": "npm run precommit && npm run test:manual && npm run test:integration ",
+    "all": "npm run precommit && npm run test:manual && npm run test:integration:fixtures && npm run test:hubspot-wizard",
     "test": "node tests/scripts/test-wrapper.js",
     "test:ci": "bash tests/scripts/ci-simulate.sh",
     "test:same-as-github": "npm run build:ci",
