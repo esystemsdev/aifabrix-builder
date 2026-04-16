@@ -1,5 +1,6 @@
 /**
  * Tests for AI Fabrix Builder Secrets Generator Module
+ * Isolated Jest project `secrets-generator` — jest.mock('fs') + catalog passthrough; do not leak mocks to other workers.
  *
  * @fileoverview Unit tests for secrets-generator.js module
  * @author AI Fabrix Team
@@ -36,11 +37,6 @@ jest.mock('../../../lib/utils/paths', () => ({
 describe('Secrets Generator Module', () => {
   const mockHomeDir = '/home/test';
   const mockSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
-
-  afterAll(() => {
-    fs.existsSync.mockImplementation(() => false);
-    fs.readFileSync.mockImplementation(() => '');
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();

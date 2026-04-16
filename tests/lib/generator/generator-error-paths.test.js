@@ -1,5 +1,6 @@
 /**
  * Tests for Generator Error Paths
+ * Isolated project `generator-error-paths` — jest.mock('fs') / paths / validator must not share a default worker.
  *
  * @fileoverview Unit tests for generator.js error handling paths
  * @author AI Fabrix Team

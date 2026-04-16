@@ -1,5 +1,6 @@
 /**
  * Regression tests for external-datasource 2.4.x / external-system optional fields.
+ * Isolated project `schema-241-alignment` — real fixture reads + schema-loader; avoid jest.mock('fs') worker bleed.
  *
  * @fileoverview Schema 2.4 alignment coverage from plan 113
  * @author AI Fabrix Team

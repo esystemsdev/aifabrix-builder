@@ -1,5 +1,6 @@
 /**
  * Tests for DATABASELOG_URL handling in resolve command
+ * Isolated project `secrets-databaselog` — jest.mock('fs') and secrets/env chain; isolate from real-fs suites.
  *
  * @fileoverview Tests to verify DATABASELOG_URL is correctly replaced with ${VAR} references
  * @author AI Fabrix Team
