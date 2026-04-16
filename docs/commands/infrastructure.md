@@ -110,6 +110,12 @@ Set environment variables before running `aifabrix up-infra --traefik`:
 - `TRAEFIK_CERT_FILE` - Absolute path to certificate file
 - `TRAEFIK_KEY_FILE` - Absolute path to private key file
 
+**Traefik + app startup (local):**
+
+Infra Traefik is generated with `--providers.docker.allowEmptyServices=true` so it can still publish Docker routes while a backing container is in Docker’s `starting` / `unhealthy` health state. That avoids a common local foot‑gun where the public URL returns **404** until Docker health turns green (Traefik v3.6 otherwise filters those containers out of routing entirely).
+
+If you upgrade the Builder CLI and this behavior matters for your machine, re-run **`aifabrix up-infra`** (with your usual flags) so `~/.aifabrix/infra-dev*/compose.yaml` is regenerated.
+
 **Developer Isolation (one network per developer):**
 When using `--developer`, each developer gets:
 - Separate Docker Compose project: `infra-dev{id}` (compose and infra working files live under that folder **next to `config.yaml`**, e.g. `~/.aifabrix/infra-dev02`, not under `$HOME` when that differs from the config directory)

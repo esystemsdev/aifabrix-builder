@@ -33,6 +33,7 @@ application:
     - configuration.items.portalInput
     - healthCheck
     - healthCheck.path
+    - healthCheck.bashProbe
     - healthCheck.probePath
     - healthCheck.probeRequestType
     - healthCheck.probeProtocol

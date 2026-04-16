@@ -1292,6 +1292,7 @@ describe('Compose Generator Module', () => {
       expect(result).toContain('Host(`dev01.aifabrix.dev`)');
       expect(result).toContain('PathPrefix(`/api`)');
       expect(result).toContain('traefik.http.routers.test-app.entrypoints=web');
+      expect(result).toContain('traefik.http.routers.test-app.service=test-app');
       expect(result).not.toContain('traefik.http.routers.test-app-http.');
       expect(result).not.toContain('entrypoints=websecure');
       expect(result).toContain('BASE_PATH=/api');
@@ -1409,6 +1410,7 @@ describe('Compose Generator Module', () => {
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
       expect(result).toContain('traefik.enable=true');
       expect(result).toContain('traefik.http.routers.test-app.entrypoints=web');
+      expect(result).toContain('traefik.http.routers.test-app.service=test-app');
       expect(result).not.toContain('traefik.http.routers.test-app.tls.certstore');
       expect(result).not.toContain('entrypoints=websecure');
     });
@@ -1434,6 +1436,7 @@ describe('Compose Generator Module', () => {
 
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
       expect(result).toContain('traefik.http.routers.test-app.entrypoints=web');
+      expect(result).toContain('traefik.http.routers.test-app.service=test-app');
       expect(result).not.toContain('traefik.http.routers.test-app-http.');
       expect(result).not.toContain('entrypoints=websecure');
       expect(result).not.toContain('traefik.http.routers.test-app.tls.certstore');

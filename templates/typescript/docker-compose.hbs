@@ -13,6 +13,7 @@ services:
       {{#if traefik.tls}}
       - "traefik.http.routers.{{app.key}}.entrypoints=websecure"
       - "traefik.http.routers.{{app.key}}.tls=true"
+      - "traefik.http.routers.{{app.key}}.service={{app.key}}"
       {{#if traefik.certStore}}
       - "traefik.http.routers.{{app.key}}.tls.certstore={{traefik.certStore}}"
       {{/if}}
@@ -26,6 +27,7 @@ services:
       - "traefik.http.routers.{{app.key}}-http.service={{app.key}}"
       {{else}}
       - "traefik.http.routers.{{app.key}}.entrypoints=web"
+      - "traefik.http.routers.{{app.key}}.service={{app.key}}"
       {{/if}}
       - "traefik.http.services.{{app.key}}.loadbalancer.server.port={{containerPort}}"
       {{#unless (eq traefik.path "/")}}

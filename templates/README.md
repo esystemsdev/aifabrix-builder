@@ -71,6 +71,12 @@ Some application images intentionally do not ship with `curl` (for smaller image
 
 Set `healthCheck.bashProbe: true` to make Compose healthchecks work without `curl` by performing a minimal HTTP request over `/dev/tcp`.
 
+### Traefik (Docker Compose labels)
+
+Generated compose includes `traefik.http.routers.<app>.service=<app>` so Traefik’s Docker provider always binds the router to the in-compose service (required for HTTP-only routers when TLS terminates at nginx).
+
+Infra Traefik is started with `--providers.docker.allowEmptyServices=true` so routes are published while a container is still in Docker’s `starting` / `unhealthy` health state (common during slow boots or when a health probe differs from real readiness).
+
 ### Service Requirements
 - `{{requiresDatabase}}` - Database requirement flag (conditional db-init service)
 - `{{requiresStorage}}` - Storage requirement flag (conditional volume mounting)
