@@ -182,7 +182,10 @@ const defaultProject = {
       '/tests/lib/validation/schema-241-alignment.test.js',
       '\\\\tests\\\\lib\\\\validation\\\\schema-241-alignment.test.js',
       'lib/validation/schema-241-alignment.test.js',
-      'schema-241-alignment\\.test\\.js'
+      'schema-241-alignment\\.test\\.js',
+      '/tests/lib/app/app.test.js',
+      '\\\\tests\\\\lib\\\\app\\\\app.test.js',
+      'lib/app/app.test.js'
     ];
     if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
       patterns.push('/tests/local/');
@@ -269,7 +272,8 @@ const isolatedProjects = [
   ]),
   makeIsolatedProject('generator-error-paths', ['**/tests/lib/generator/generator-error-paths.test.js']),
   makeIsolatedProject('secrets-databaselog', ['**/tests/lib/core/secrets-databaselog.test.js']),
-  makeIsolatedProject('schema-241-alignment', ['**/tests/lib/validation/schema-241-alignment.test.js'])
+  makeIsolatedProject('schema-241-alignment', ['**/tests/lib/validation/schema-241-alignment.test.js']),
+  makeIsolatedProject('app-module', ['**/tests/lib/app/app.test.js'])
 ];
 
 const allProjects = [defaultProject, ...isolatedProjects];
