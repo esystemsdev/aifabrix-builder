@@ -16,7 +16,7 @@ jest.mock('../../../lib/utils/logger', () => ({
 
 // Mock paths
 jest.mock('../../../lib/utils/paths', () => ({
-  getAifabrixHome: jest.fn(() => '/home/user/.aifabrix')
+  getPrimaryUserSecretsLocalPath: jest.fn(() => '/home/user/.aifabrix/secrets.local.yaml')
 }));
 
 // Mock config so getSecretsEncryptionKey is controllable (default: no encryption for backward-compat tests)
@@ -54,7 +54,7 @@ describe('Local Secrets Module', () => {
 
       await saveLocalSecret(key, value);
 
-      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+      expect(pathsUtil.getPrimaryUserSecretsLocalPath).toHaveBeenCalled();
       expect(fs.mkdirSync).toHaveBeenCalledWith(secretsDir, { recursive: true, mode: 0o700 });
       expect(fs.writeFileSync).toHaveBeenCalledWith(
         secretsPath,

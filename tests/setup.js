@@ -3,6 +3,25 @@
  * Global test configuration and utilities
  */
 
+/**
+ * Default unit/integration Jest runs should match CI: no inherited Fabrix path env.
+ * lib/core/config.js resolves CONFIG_DIR from env on each read; a developer shell exporting
+ * AIFABRIX_HOME breaks tests that expect ~/.aifabrix.
+ * Set PRESERVE_AIFABRIX_TEST_ENV=true to skip (rare; e.g. debugging config path behavior).
+ */
+function clearFabrixPathEnvForTests() {
+  if (process.env.PRESERVE_AIFABRIX_TEST_ENV === 'true') {
+    return;
+  }
+  delete process.env.AIFABRIX_HOME;
+  delete process.env.AIFABRIX_WORK;
+  delete process.env.AIFABRIX_CONFIG;
+  // Inherited per-repo builder dir breaks database secret + infra contract tests (generateSecretValue).
+  delete process.env.AIFABRIX_BUILDER_DIR;
+}
+
+clearFabrixPathEnvForTests();
+
 // Preserve the original working directory to avoid ENOENT errors if tests change/remove CWD
 const ORIGINAL_CWD = process.cwd();
 
@@ -270,6 +289,8 @@ global.testUtils = {
 // 2. jest.mock() calls are hoisted and persist anyway
 // 3. Most tests don't need module cache reset - they just need mock state reset
 beforeEach(() => {
+  clearFabrixPathEnvForTests();
+
   // Reset fetch mock to default implementation
   if (global.fetch && typeof global.fetch.mockClear === 'function') {
     global.fetch.mockClear();

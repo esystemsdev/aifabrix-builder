@@ -82,7 +82,8 @@ jest.mock('../../../lib/core/config', () => ({
 
 jest.mock('../../../lib/utils/remote-dev-auth', () => ({
   isRemoteSecretsUrl: jest.fn((v) => typeof v === 'string' && (v.startsWith('http://') || v.startsWith('https://'))),
-  getRemoteDevAuth: jest.fn().mockResolvedValue(null)
+  getRemoteDevAuth: jest.fn().mockResolvedValue(null),
+  resolveSharedSecretsEndpoint: jest.fn(async(p) => p)
 }));
 
 jest.mock('../../../lib/api/dev.api', () => ({
@@ -132,15 +133,21 @@ const mockEnvConfig = {
 
 const secrets = require('../../../lib/core/secrets');
 const localSecrets = require('../../../lib/utils/local-secrets');
+const infraParameterCatalogModule = require('../../../lib/parameters/infra-parameter-catalog');
 
 // Mock fs module
 jest.mock('fs');
 jest.mock('os');
 jest.mock('../../../lib/utils/paths', () => {
   const pathMod = require('path');
+  const getConfigDirForPaths = jest.fn();
   return {
     getAifabrixHome: jest.fn(),
-    getConfigDirForPaths: jest.fn(),
+    getConfigDirForPaths,
+    getAifabrixSystemDir: jest.fn(() => getConfigDirForPaths()),
+    getPrimaryUserSecretsLocalPath: jest.fn(() =>
+      pathMod.join(getConfigDirForPaths(), 'secrets.local.yaml')
+    ),
     getBuilderPath: jest.fn((appName) => pathMod.join(process.cwd(), 'builder', appName))
   };
 });
@@ -166,6 +173,7 @@ describe('Secrets Module', () => {
     const defaultAifabrix = path.join(mockHomeDir, '.aifabrix');
     pathsUtil.getAifabrixHome.mockReturnValue(defaultAifabrix);
     pathsUtil.getConfigDirForPaths.mockReturnValue(defaultAifabrix);
+    pathsUtil.getAifabrixSystemDir.mockReturnValue(defaultAifabrix);
 
     // Default mock for env-config.yaml used by loadEnvConfig
     fs.existsSync.mockImplementation((filePath) => {
@@ -387,8 +395,8 @@ environments:
       expect(call).toBeDefined();
       const written = call[1];
       expect(written).toContain('DATABASE_URL=admin123');
-      // With dev-id 1 mocked in this test file, PORT should be appended (+100)
-      expect(written).toMatch(/^PORT=3100$/m);
+      // With dev-id 1 mocked: local host port = listen + 10 + 100
+      expect(written).toMatch(/^PORT=3110$/m);
       expect(result).toBe(path.join(builderPath, '.env'));
     });
 
@@ -607,11 +615,10 @@ environments:
       await secrets.createDefaultSecrets(secretsPath);
 
       expect(fs.mkdirSync).toHaveBeenCalledWith(path.dirname(resolvedPath), { recursive: true, mode: 0o700 });
-      expect(fs.writeFileSync).toHaveBeenCalledWith(
-        resolvedPath,
-        expect.stringContaining('postgres-passwordKeyVault: "admin123"'),
-        { mode: 0o600 }
-      );
+      const written = fs.writeFileSync.mock.calls.find((c) => c[0] === resolvedPath)?.[1] || '';
+      expect(written).toContain('postgres-passwordKeyVault');
+      expect(written).toMatch(/postgres-passwordKeyVault:\s/m);
+      expect(fs.writeFileSync).toHaveBeenCalledWith(resolvedPath, expect.any(String), { mode: 0o600 });
     });
 
     it('should handle absolute paths', async() => {
@@ -771,9 +778,9 @@ environments:
     KEYCLOAK_PORT: 8082
 `);
         const mockSecretsWithPort = {
-          'keycloak-server-url': 'http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}'
+          'keycloak-web-server-url': 'http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}'
         };
-        const template = 'KEYCLOAK_SERVER_URL=kv://keycloak-server-url';
+        const template = 'KEYCLOAK_SERVER_URL=kv://keycloak-web-server-url';
 
         config.getDeveloperId.mockResolvedValue('1');
 
@@ -831,9 +838,9 @@ environments:
 `);
         config.getDeveloperId.mockResolvedValue(6);
         const mockSecrets = {
-          'keycloak-server-url': 'http://localhost:${KEYCLOAK_PUBLIC_PORT}'
+          'keycloak-web-server-url': 'http://localhost:${KEYCLOAK_PUBLIC_PORT}'
         };
-        const template = 'KEYCLOAK_PUBLIC_SERVER_URL=kv://keycloak-server-url';
+        const template = 'KEYCLOAK_PUBLIC_SERVER_URL=kv://keycloak-web-server-url';
 
         const result = await secrets.resolveKvReferences(template, mockSecrets, 'docker');
 
@@ -883,6 +890,20 @@ environments:
   });
 
   describe('generateMissingSecrets - branch coverage', () => {
+    let getInfraParameterCatalogSpy;
+
+    beforeAll(() => {
+      getInfraParameterCatalogSpy = jest.spyOn(infraParameterCatalogModule, 'getInfraParameterCatalog').mockImplementation(() => {
+        const err = new Error('catalog unavailable for synthetic kv keys in unit test');
+        err.code = 'ENOENT';
+        throw err;
+      });
+    });
+
+    afterAll(() => {
+      getInfraParameterCatalogSpy.mockRestore();
+    });
+
     beforeEach(() => {
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(`
@@ -1816,17 +1837,16 @@ environments:
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
-          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-server-url:';
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-web-server-url:';
         }
         if (secretsFileMatch(filePath)) {
-          return 'keycloak-server-url: "http://${KEYCLOAK_HOST}:8082"';
+          return 'keycloak-web-server-url: "http://${KEYCLOAK_HOST}:8082"';
         }
         if (filePath.includes('keycloak/application.yaml') || (filePath.includes('keycloak') && filePath.includes('application.yaml'))) {
           return `
 port: 8082
 build:
   containerPort: 8080
-  localPort: 8082
 `;
         }
         if (filePath.includes('env-config.yaml')) {
@@ -1852,10 +1872,10 @@ environments:
     it('should not replace ports in local environment', async() => {
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
-          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-server-url:';
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-web-server-url:';
         }
         if (secretsFileMatch(filePath)) {
-          return 'keycloak-server-url: "http://${KEYCLOAK_HOST}:8082"';
+          return 'keycloak-web-server-url: "http://${KEYCLOAK_HOST}:8082"';
         }
         if (filePath.includes('env-config.yaml')) {
           return `
@@ -1888,16 +1908,14 @@ environments:
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
-          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-server-url:';
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-web-server-url:';
         }
         if (secretsFileMatch(filePath)) {
-          return 'keycloak-server-url: "http://${KEYCLOAK_HOST}:8082"';
+          return 'keycloak-web-server-url: "http://${KEYCLOAK_HOST}:8082"';
         }
         if (filePath.includes('keycloak') && filePath.includes('application.yaml')) {
           return `
 port: 8080
-build:
-  localPort: 8082
 `;
         }
         if (filePath.includes('env-config.yaml')) {
@@ -1933,10 +1951,10 @@ environments:
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
-          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-server-url:';
+          return 'KEYCLOAK_AUTH_SERVER_URL=kv://keycloak-web-server-url:';
         }
         if (secretsFileMatch(filePath)) {
-          return 'keycloak-server-url: "http://${KEYCLOAK_HOST}:8082"';
+          return 'keycloak-web-server-url: "http://${KEYCLOAK_HOST}:8082"';
         }
         if (filePath.includes('env-config.yaml')) {
           return `
@@ -2086,7 +2104,7 @@ environments:
   });
 
   describe('generateAdminSecretsEnv - branch coverage', () => {
-    it('should handle error when secrets file does not exist but path exists', async() => {
+    it('when secrets.yaml exists but is unreadable, uses empty merged secrets and default admin password', async() => {
       const secretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
       fs.existsSync.mockImplementation((filePath) => {
         return filePath === secretsPath;
@@ -2094,8 +2112,13 @@ environments:
       fs.readFileSync.mockImplementation(() => {
         throw new Error('Permission denied');
       });
+      fs.mkdirSync.mockImplementation(() => {});
+      fs.writeFileSync.mockImplementation(() => {});
 
-      await expect(secrets.generateAdminSecretsEnv()).rejects.toThrow();
+      const result = await secrets.generateAdminSecretsEnv();
+
+      expect(result).toBe(mockAdminSecretsPath);
+      expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
     it('should create default secrets when file does not exist', async() => {
@@ -2125,7 +2148,7 @@ environments:
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
-    it('should use default admin123 when postgres-passwordKeyVault is missing (new local install)', async() => {
+    it('should use catalog default admin password when postgres-passwordKeyVault is missing (new local install)', async() => {
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('other-key: "value"');
 
@@ -2199,11 +2222,9 @@ environments:
 
       await secrets.createDefaultSecrets(secretsPath);
 
-      expect(fs.writeFileSync).toHaveBeenCalledWith(
-        resolvedPath,
-        expect.stringContaining('postgres-passwordKeyVault: "admin123"'),
-        { mode: 0o600 }
-      );
+      const written = fs.writeFileSync.mock.calls.find((c) => c[0] === resolvedPath)?.[1] || '';
+      expect(written).toContain('postgres-passwordKeyVault');
+      expect(fs.writeFileSync).toHaveBeenCalledWith(resolvedPath, expect.any(String), { mode: 0o600 });
     });
 
     it('should include all default secrets in output', async() => {
@@ -2219,7 +2240,7 @@ environments:
       expect(content).toContain('redis-passwordKeyVault');
       expect(content).toContain('redis-url');
       expect(content).toContain('keycloak-admin-passwordKeyVault');
-      expect(content).toContain('keycloak-server-url:');
+      expect(content).toContain('keycloak-web-server-url:');
     });
   });
 
@@ -2227,6 +2248,11 @@ environments:
     beforeEach(() => {
       jest.clearAllMocks();
       os.homedir.mockReturnValue(mockHomeDir);
+      const remoteDevAuth = require('../../../lib/utils/remote-dev-auth');
+      remoteDevAuth.resolveSharedSecretsEndpoint.mockImplementation(async(p) => p);
+      remoteDevAuth.getRemoteDevAuth.mockResolvedValue(null);
+      const devApi = require('../../../lib/api/dev.api');
+      devApi.listSecrets.mockResolvedValue([]);
     });
 
     it('should use canonical aifabrix-secrets when user and build secrets are absent', async() => {
@@ -2257,7 +2283,8 @@ environments:
       configMock.getSecretsPath.mockResolvedValue('https://dev.example.com/secrets');
       remoteDevAuth.getRemoteDevAuth.mockResolvedValue({
         serverUrl: 'https://dev.example.com',
-        clientCertPem: 'mock-pem'
+        clientCertPem: 'mock-pem',
+        serverCaPem: null
       });
       devApi.listSecrets.mockResolvedValue([
         { name: 'API_KEY', value: 'secret-from-api' },
@@ -2266,9 +2293,41 @@ environments:
 
       const result = await secrets.loadSecrets(undefined, 'myapp');
       expect(remoteDevAuth.getRemoteDevAuth).toHaveBeenCalled();
-      expect(devApi.listSecrets).toHaveBeenCalledWith('https://dev.example.com', 'mock-pem');
+      expect(devApi.listSecrets).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'mock-pem',
+        undefined,
+        'https://dev.example.com/secrets'
+      );
       expect(result.API_KEY).toBe('secret-from-api');
       expect(result.DB_PASS).toBe('db-from-api');
+    });
+
+    it('when aifabrix-secrets is a file path but remote dev resolves to API, merges from API not local path', async() => {
+      const configMock = require('../../../lib/core/config');
+      const remoteDevAuth = require('../../../lib/utils/remote-dev-auth');
+      const devApi = require('../../../lib/api/dev.api');
+      const serverSidePath = path.join(process.cwd(), 'aifabrix-miso', 'builder', 'secrets.local.yaml');
+
+      configMock.getSecretsPath.mockResolvedValue(serverSidePath);
+      remoteDevAuth.resolveSharedSecretsEndpoint.mockResolvedValue('http://dev.example.com/api/dev/secrets');
+      remoteDevAuth.getRemoteDevAuth.mockResolvedValue({
+        serverUrl: 'http://dev.example.com',
+        clientCertPem: 'mock-pem',
+        serverCaPem: null
+      });
+      devApi.listSecrets.mockResolvedValue([{ name: 'SHARED_KEY', value: 'from-remote-api' }]);
+
+      const result = await secrets.loadSecrets(undefined, 'myapp');
+      expect(devApi.listSecrets).toHaveBeenCalledWith(
+        'http://dev.example.com',
+        'mock-pem',
+        undefined,
+        'http://dev.example.com/api/dev/secrets'
+      );
+      expect(result.SHARED_KEY).toBe('from-remote-api');
+      const readsConfiguredPath = fs.readFileSync.mock.calls.filter((c) => c[0] === serverSidePath);
+      expect(readsConfiguredPath.length).toBe(0);
     });
 
     it('when config has aifabrix-secrets, local (user) file is strongest and overrides project for same key', async() => {
@@ -2391,7 +2450,7 @@ environments:
       const userSecrets = { 'only-in-local': 'local-value' };
       const projectSecrets = {
         'only-in-local': 'ignored-if-same-key',
-        'keycloak-server-url': 'http://localhost:${KEYCLOAK_PUBLIC_PORT}'
+        'keycloak-web-server-url': 'http://localhost:${KEYCLOAK_PUBLIC_PORT}'
       };
 
       configMock.getSecretsPath.mockResolvedValue(canonicalPath);
@@ -2407,7 +2466,7 @@ environments:
       const result = await secrets.loadSecrets(undefined, 'myapp');
 
       expect(result['only-in-local']).toBe('local-value');
-      expect(result['keycloak-server-url']).toBe('http://localhost:${KEYCLOAK_PUBLIC_PORT}');
+      expect(result['keycloak-web-server-url']).toBe('http://localhost:${KEYCLOAK_PUBLIC_PORT}');
     });
 
     it('uses primary user file as master when aifabrix-secrets points to builder file (e.g. up-dataplane)', async() => {
@@ -2416,11 +2475,11 @@ environments:
       const buildPath = path.join(process.cwd(), 'aifabrix-miso', 'builder', 'secrets.local.yaml');
       const userSecrets = {
         'dataplane-web-server-url': 'http://localhost:3001',
-        'keycloak-server-url': 'http://localhost:8080'
+        'keycloak-web-server-url': 'http://localhost:8080'
       };
       const buildSecrets = {
         'dataplane-web-server-url': '',
-        'keycloak-server-url': ''
+        'keycloak-web-server-url': ''
       };
 
       configMock.getSecretsPath.mockResolvedValue(buildPath);
@@ -2436,7 +2495,7 @@ environments:
       const result = await secrets.loadSecrets(undefined, 'dataplane');
 
       expect(result['dataplane-web-server-url']).toBe('http://localhost:3001');
-      expect(result['keycloak-server-url']).toBe('http://localhost:8080');
+      expect(result['keycloak-web-server-url']).toBe('http://localhost:8080');
       expect(fs.readFileSync).toHaveBeenCalledWith(primaryUserPath, 'utf8');
     });
 
@@ -2528,10 +2587,21 @@ environments:
       expect(result).toEqual(defaultSecrets);
     });
 
-    it('should throw error if no secrets file found', async() => {
+    it('when no secrets files exist, bootstraps primary secrets.local.yaml and returns empty object', async() => {
       fs.existsSync.mockReturnValue(false);
+      fs.mkdirSync.mockImplementation(() => {});
+      fs.writeFileSync.mockImplementation(() => {});
 
-      await expect(secrets.loadSecrets(undefined, 'myapp')).rejects.toThrow('No secrets file found');
+      const primaryPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const result = await secrets.loadSecrets(undefined, 'myapp');
+
+      expect(result).toEqual({});
+      expect(fs.mkdirSync).toHaveBeenCalledWith(path.dirname(primaryPath), { recursive: true, mode: 0o700 });
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        primaryPath,
+        expect.stringContaining('# Local secrets for AI Fabrix CLI'),
+        { mode: 0o600 }
+      );
     });
   });
 
@@ -2598,11 +2668,12 @@ environments:
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
-    it('should respect config.yaml aifabrix-home override', async() => {
-      const overrideHome = '/custom/aifabrix';
-      const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
+    it('should save under getConfigDirForPaths (primary secrets file)', async() => {
+      const configDir = '/custom/aifabrix';
+      const userSecretsPath = path.join(configDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
-      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+      pathsUtil.getConfigDirForPaths.mockReturnValue(configDir);
+      pathsUtil.getAifabrixHome.mockReturnValue('/home/dev02');
 
       fs.existsSync.mockReturnValue(false);
       fs.mkdirSync.mockImplementation(() => {});
@@ -2610,20 +2681,20 @@ environments:
 
       await localSecrets.saveLocalSecret('myapp-client-idKeyVault', 'client-id-value');
 
-      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
-      expect(fs.mkdirSync).toHaveBeenCalledWith(path.normalize(overrideHome), { recursive: true, mode: 0o700 });
+      expect(pathsUtil.getPrimaryUserSecretsLocalPath).toHaveBeenCalled();
+      expect(fs.mkdirSync).toHaveBeenCalledWith(path.normalize(configDir), { recursive: true, mode: 0o700 });
       expect(fs.writeFileSync).toHaveBeenCalledWith(
-        path.normalize(overrideSecretsPath),
+        path.normalize(userSecretsPath),
         expect.stringContaining('myapp-client-idKeyVault'),
         { mode: 0o600 }
       );
     });
 
-    it('should use paths.getAifabrixHome() instead of os.homedir()', async() => {
-      const overrideHome = '/workspace/.aifabrix';
-      const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
+    it('should use getPrimaryUserSecretsLocalPath instead of os.homedir()', async() => {
+      const configDir = '/workspace/.aifabrix';
+      const userSecretsPath = path.join(configDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
-      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+      pathsUtil.getConfigDirForPaths.mockReturnValue(configDir);
 
       fs.existsSync.mockReturnValue(false);
       fs.mkdirSync.mockImplementation(() => {});
@@ -2631,19 +2702,16 @@ environments:
 
       await localSecrets.saveLocalSecret('test-key', 'test-value');
 
-      // Verify paths.getAifabrixHome() was called
-      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
-      // Verify it wrote to the override path, not the default os.homedir() path
+      expect(pathsUtil.getPrimaryUserSecretsLocalPath).toHaveBeenCalled();
       expect(fs.writeFileSync).toHaveBeenCalledWith(
-        overrideSecretsPath,
+        userSecretsPath,
         expect.any(String),
         { mode: 0o600 }
       );
-      // Verify it did NOT use os.homedir() path
       const defaultPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       const writeCall = fs.writeFileSync.mock.calls[0];
       expect(writeCall[0]).not.toBe(defaultPath);
-      expect(writeCall[0]).toBe(overrideSecretsPath);
+      expect(writeCall[0]).toBe(userSecretsPath);
     });
   });
 
@@ -2945,10 +3013,10 @@ port: 4000
       const writeCalls = fs.writeFileSync.mock.calls;
       const outputCall = writeCalls.find(call => call[0] === outputPath);
       expect(outputCall).toBeDefined();
-      expect(outputCall[1]).toContain('PORT=4000');
+      expect(outputCall[1]).toContain('PORT=4010');
     });
 
-    it('should use port when localPort not specified', async() => {
+    it('should derive PORT from manifest port for envOutputPath copy (dev id 0)', async() => {
       // Set developer-id to 0 for this test to avoid offset
       // Reset the mock first, then set it to return 0
       config.getDeveloperId.mockReset();
@@ -2997,7 +3065,7 @@ environments:
       const outputPath = path.resolve(builderPath, '../app/.env');
       const outputCall = writeCalls.find(call => call[0] === outputPath);
       expect(outputCall).toBeDefined();
-      expect(outputCall[1]).toContain('PORT=5000');
+      expect(outputCall[1]).toContain('PORT=5010');
     });
 
     it('should not copy when envOutputPath is null', async() => {
@@ -3243,7 +3311,9 @@ environments:
       // Mock os.homedir
       os.homedir.mockReturnValue(mockHomeDir);
       const pathsUtil = require('../../../lib/utils/paths');
-      pathsUtil.getAifabrixHome.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
+      const userConfigDir = path.join(mockHomeDir, '.aifabrix');
+      pathsUtil.getAifabrixHome.mockReturnValue(userConfigDir);
+      pathsUtil.getConfigDirForPaths.mockReturnValue(userConfigDir);
       config.getDeveloperId.mockResolvedValue(1);
 
       // Mock file system
@@ -3391,11 +3461,11 @@ environments:
   });
 
   describe('path resolution consistency between save and load', () => {
-    it('should save and load from the same path when aifabrix-home is overridden', async() => {
-      const overrideHome = '/workspace/.aifabrix';
-      const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
+    it('should save and load from the same path when config dir is overridden', async() => {
+      const configDir = '/workspace/.aifabrix';
+      const userSecretsPath = path.join(configDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
-      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+      pathsUtil.getConfigDirForPaths.mockReturnValue(configDir);
 
       // Save a secret
       fs.existsSync.mockReturnValue(false);
@@ -3404,14 +3474,13 @@ environments:
 
       await localSecrets.saveLocalSecret('test-app-client-idKeyVault', 'saved-client-id');
 
-      // Verify it was saved to override path
-      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+      expect(pathsUtil.getPrimaryUserSecretsLocalPath).toHaveBeenCalled();
       const saveCall = fs.writeFileSync.mock.calls[0];
-      expect(saveCall[0]).toBe(overrideSecretsPath);
+      expect(saveCall[0]).toBe(userSecretsPath);
 
       // Now load secrets - should read from the same path
       jest.clearAllMocks();
-      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+      pathsUtil.getConfigDirForPaths.mockReturnValue(configDir);
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(yaml.dump({
         'test-app-client-idKeyVault': 'saved-client-id',
@@ -3421,18 +3490,17 @@ environments:
       const secretsUtils = require('../../../lib/utils/secrets-utils');
       const loadedSecrets = secretsUtils.loadUserSecrets();
 
-      // Verify it read from the same override path
-      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
-      expect(fs.existsSync).toHaveBeenCalledWith(overrideSecretsPath);
-      expect(fs.readFileSync).toHaveBeenCalledWith(overrideSecretsPath, 'utf8');
+      expect(pathsUtil.getPrimaryUserSecretsLocalPath).toHaveBeenCalled();
+      expect(fs.existsSync).toHaveBeenCalledWith(userSecretsPath);
+      expect(fs.readFileSync).toHaveBeenCalledWith(userSecretsPath, 'utf8');
       expect(loadedSecrets['test-app-client-idKeyVault']).toBe('saved-client-id');
     });
 
     it('should ensure saveLocalSecret and loadUserSecrets use the same path resolution', async() => {
-      const overrideHome = '/custom/aifabrix';
-      const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
+      const configDir = '/custom/aifabrix';
+      const userSecretsPath = path.join(configDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
-      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+      pathsUtil.getConfigDirForPaths.mockReturnValue(configDir);
 
       // Save using saveLocalSecret
       fs.existsSync.mockReturnValue(false);
@@ -3441,14 +3509,13 @@ environments:
 
       await localSecrets.saveLocalSecret('integration-test-key', 'integration-test-value');
 
-      // Verify save used paths.getAifabrixHome()
-      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+      expect(pathsUtil.getPrimaryUserSecretsLocalPath).toHaveBeenCalled();
       const savePath = fs.writeFileSync.mock.calls[0][0];
-      expect(savePath).toBe(overrideSecretsPath);
+      expect(savePath).toBe(userSecretsPath);
 
       // Load using loadUserSecrets
       jest.clearAllMocks();
-      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+      pathsUtil.getConfigDirForPaths.mockReturnValue(configDir);
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(yaml.dump({
         'integration-test-key': 'integration-test-value'
@@ -3457,10 +3524,9 @@ environments:
       const secretsUtils = require('../../../lib/utils/secrets-utils');
       const loadedSecrets = secretsUtils.loadUserSecrets();
 
-      // Verify load used paths.getAifabrixHome() and same path
-      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+      expect(pathsUtil.getPrimaryUserSecretsLocalPath).toHaveBeenCalled();
       const loadPath = fs.readFileSync.mock.calls[0][0];
-      expect(loadPath).toBe(overrideSecretsPath);
+      expect(loadPath).toBe(userSecretsPath);
       expect(savePath).toBe(loadPath);
       expect(loadedSecrets['integration-test-key']).toBe('integration-test-value');
     });

@@ -30,7 +30,7 @@ describe('External Manifest Validator Module', () => {
 
     // Setup mock schemas
     const mockSystemSchema = {
-      $id: 'https://raw.githubusercontent.com/esystemsdev/aifabrix-builder/refs/heads/main/lib/schema/external-system.schema.json',
+      $id: 'aifabrix://schema/external-system.schema.json',
       type: 'object',
       properties: {
         key: { type: 'string' },
@@ -40,7 +40,7 @@ describe('External Manifest Validator Module', () => {
     };
 
     const mockDatasourceSchema = {
-      $id: 'https://raw.githubusercontent.com/esystemsdev/aifabrix-builder/refs/heads/main/lib/schema/external-datasource.schema.json',
+      $id: 'aifabrix://schema/external-datasource.schema.json',
       type: 'object',
       properties: {
         key: { type: 'string' },

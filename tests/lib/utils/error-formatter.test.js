@@ -120,7 +120,7 @@ describe('Error Formatter Module', () => {
       expect(result).toBe('Field "email": Invalid value "bad-email" - must match pattern: ^[a-z]+@[a-z]+\\.[a-z]+$');
     });
 
-    it('should format pattern error without data value', () => {
+    it('should format pattern error without data value when no root is passed', () => {
       const error = {
         instancePath: '/key',
         keyword: 'pattern',
@@ -130,7 +130,24 @@ describe('Error Formatter Module', () => {
 
       const result = formatSingleError(error);
 
-      expect(result).toBe('Field "key": Invalid value value - lowercase letters, numbers, and hyphens only');
+      expect(result).toContain('Field "key"');
+      expect(result).toContain('(unavailable');
+      expect(result).toContain('lowercase letters, numbers, and hyphens only');
+    });
+
+    it('should format pattern error using rootData when AJV omits data', () => {
+      const error = {
+        instancePath: '/roles/0/value',
+        keyword: 'pattern',
+        params: { pattern: '^[a-z0-9-]+$' },
+        message: 'Invalid format'
+      };
+      const rootData = { roles: [{ value: 'test-e2e-hubspot-admin' }] };
+
+      const result = formatSingleError(error, { rootData });
+
+      expect(result).toContain('"test-e2e-hubspot-admin"');
+      expect(result).toContain('lowercase letters, numbers, and hyphens only');
     });
 
     it('should format enum error', () => {
@@ -373,6 +390,50 @@ describe('Error Formatter Module', () => {
       expect(result).toHaveLength(2);
       expect(result[0]).toContain('displayName');
       expect(result[1]).toContain('key');
+    });
+
+    it('should explain empty permissions[].roles (RBAC) with permission name when manifest passed', () => {
+      const errors = [
+        {
+          instancePath: '/permissions/57/roles',
+          keyword: 'minItems',
+          params: { limit: 1 },
+          data: [],
+          message: 'must NOT have fewer than 1 items'
+        }
+      ];
+      const deploymentManifest = {
+        permissions: Array.from({ length: 58 }, (_, i) =>
+          i === 57
+            ? { name: 'dataplane:pipelines:write', roles: [], description: 'x' }
+            : { name: `p${i}`, roles: ['admin'], description: 'd' }
+        )
+      };
+
+      const result = formatValidationErrors(errors, { deploymentManifest });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toContain('RBAC:');
+      expect(result[0]).toContain('dataplane:pipelines:write');
+      expect(result[0]).toContain('empty "roles"');
+      expect(result[0]).toContain('rbac.yaml');
+    });
+
+    it('should explain empty permissions[].roles using index when no manifest', () => {
+      const errors = [
+        {
+          instancePath: '/permissions/3/roles',
+          keyword: 'minItems',
+          params: { limit: 1 },
+          data: [],
+          message: 'must NOT have fewer than 1 items'
+        }
+      ];
+
+      const result = formatValidationErrors(errors);
+
+      expect(result[0]).toContain('permissions[3]');
+      expect(result[0]).toContain('RBAC:');
     });
 
     it('should handle errors with different keywords', () => {

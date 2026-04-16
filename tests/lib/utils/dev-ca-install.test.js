@@ -15,9 +15,11 @@ jest.mock('readline', () => ({ createInterface: jest.fn() }));
 
 const {
   isSslUntrustedError,
+  isSslHostnameMismatchError,
   fetchInstallCa,
   installCaPlatform,
-  promptInstallCa
+  promptInstallCa,
+  isLinuxCaSudoRequiredError
 } = require('../../../lib/utils/dev-ca-install');
 
 describe('dev-ca-install', () => {
@@ -56,6 +58,57 @@ describe('dev-ca-install', () => {
     it('returns false for null/undefined', () => {
       expect(isSslUntrustedError(null)).toBe(false);
       expect(isSslUntrustedError(undefined)).toBe(false);
+    });
+
+    it('returns true when nested cause has OpenSSL code (fetch failed wrapper)', () => {
+      const inner = new Error('unable to verify the first certificate');
+      inner.code = 'DEPTH_ZERO_SELF_SIGNED_CERT';
+      const outer = new TypeError('fetch failed');
+      outer.cause = inner;
+      expect(isSslUntrustedError(outer)).toBe(true);
+    });
+
+    it('returns true for CERT_HAS_EXPIRED in chain', () => {
+      const inner = new Error('certificate has expired');
+      inner.code = 'CERT_HAS_EXPIRED';
+      const outer = new Error('request failed');
+      outer.cause = inner;
+      expect(isSslUntrustedError(outer)).toBe(true);
+    });
+  });
+
+  describe('isLinuxCaSudoRequiredError', () => {
+    it('returns true for installCaPlatform Linux sudo message', () => {
+      expect(
+        isLinuxCaSudoRequiredError(
+          new Error(
+            'Linux CA install requires sudo. Save CA manually from https://x/install-ca-help to /usr/local/share/ca-certificates/aifabrix-root-ca.crt and run: sudo update-ca-certificates'
+          )
+        )
+      ).toBe(true);
+    });
+
+    it('returns false for other errors', () => {
+      expect(isLinuxCaSudoRequiredError(new Error('EACCES'))).toBe(false);
+      expect(isLinuxCaSudoRequiredError(null)).toBe(false);
+    });
+  });
+
+  describe('isSslHostnameMismatchError', () => {
+    it('returns true for ERR_TLS_CERT_ALTNAME_INVALID on cause', () => {
+      const inner = new Error('Hostname/IP does not match certificate altnames');
+      inner.code = 'ERR_TLS_CERT_ALTNAME_INVALID';
+      const outer = new TypeError('fetch failed');
+      outer.cause = inner;
+      expect(isSslHostnameMismatchError(outer)).toBe(true);
+    });
+
+    it('returns false for self-signed chain', () => {
+      const inner = new Error('x');
+      inner.code = 'DEPTH_ZERO_SELF_SIGNED_CERT';
+      const outer = new TypeError('fetch failed');
+      outer.cause = inner;
+      expect(isSslHostnameMismatchError(outer)).toBe(false);
     });
   });
 
@@ -101,7 +154,83 @@ describe('dev-ca-install', () => {
         return { on: jest.fn(), destroy: jest.fn() };
       });
 
-      await expect(fetchInstallCa('https://builder02.local')).rejects.toThrow('Invalid CA response');
+      await expect(fetchInstallCa('https://builder02.local')).rejects.toThrow(/Invalid CA response/);
+    });
+
+    it('accepts JSON body with caCertificate PEM field', async() => {
+      const pem = '-----BEGIN CERTIFICATE-----\nMIIBkTCB\n-----END CERTIFICATE-----';
+      const json = JSON.stringify({ caCertificate: pem });
+      const mockRes = {
+        statusCode: 200,
+        on: jest.fn((ev, cb) => {
+          if (ev === 'data') cb(Buffer.from(json));
+          if (ev === 'end') cb();
+          return mockRes;
+        })
+      };
+      https.get.mockImplementation((url, opts, cb) => {
+        cb(mockRes);
+        return { on: jest.fn(), destroy: jest.fn() };
+      });
+
+      const result = await fetchInstallCa('https://builder02.local');
+      expect(result.toString('utf8')).toContain('-----BEGIN CERTIFICATE-----');
+    });
+
+    it('extracts PEM from HTML wrapper', async() => {
+      const pem = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----';
+      const html = `<!DOCTYPE html><html><body><pre>${pem}</pre></body></html>`;
+      const mockRes = {
+        statusCode: 200,
+        on: jest.fn((ev, cb) => {
+          if (ev === 'data') cb(Buffer.from(html));
+          if (ev === 'end') cb();
+          return mockRes;
+        })
+      };
+      https.get.mockImplementation((url, opts, cb) => {
+        cb(mockRes);
+        return { on: jest.fn(), destroy: jest.fn() };
+      });
+
+      const result = await fetchInstallCa('https://builder02.local');
+      expect(result.toString('utf8')).toContain('-----BEGIN CERTIFICATE-----');
+    });
+
+    it('follows relative Location and fetches PEM from final URL', async() => {
+      const pem = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----';
+      let call = 0;
+      https.get.mockImplementation((url, opts, cb) => {
+        const callback = typeof opts === 'function' ? opts : cb;
+        call += 1;
+        if (call === 1) {
+          const mockRes = {
+            statusCode: 302,
+            headers: { location: '/api/dev/ca.pem' },
+            on: jest.fn(),
+            destroy: jest.fn()
+          };
+          callback(mockRes);
+          return { on: jest.fn(), destroy: jest.fn() };
+        }
+        expect(url).toBe('https://builder02.local/api/dev/ca.pem');
+        const mockRes = {
+          statusCode: 200,
+          on: jest.fn((ev, handler) => {
+            setImmediate(() => {
+              if (ev === 'data') handler(Buffer.from(pem));
+              if (ev === 'end') handler();
+            });
+            return mockRes;
+          })
+        };
+        callback(mockRes);
+        return { on: jest.fn(), destroy: jest.fn() };
+      });
+
+      const result = await fetchInstallCa('https://builder02.local');
+      expect(result.toString('utf8')).toContain('BEGIN CERTIFICATE');
+      expect(https.get).toHaveBeenCalledTimes(2);
     });
 
     it('rejects for non-https URL', async() => {

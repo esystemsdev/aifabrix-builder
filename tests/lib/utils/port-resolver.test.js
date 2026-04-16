@@ -49,23 +49,13 @@ describe('port-resolver', () => {
   });
 
   describe('getLocalPort', () => {
-    it('returns port when only variables.port is set', () => {
+    it('returns manifest port (ignores legacy build.localPort)', () => {
       expect(getLocalPort({ port: 8080 })).toBe(8080);
-    });
-
-    it('returns build.localPort when set and positive, else port', () => {
-      expect(getLocalPort({ port: 8080, build: { localPort: 3010 } })).toBe(3010);
+      expect(getLocalPort({ port: 8080, build: { localPort: 3010 } })).toBe(8080);
       expect(getLocalPort({ port: 3020 }, 3000)).toBe(3020);
     });
 
-    it('falls back to port when build.localPort is 0 or not a positive number', () => {
-      expect(getLocalPort({ port: 8080, build: { localPort: 0 } })).toBe(8080);
-      expect(getLocalPort({ port: 8080, build: { localPort: -1 } })).toBe(8080);
-      expect(getLocalPort({ port: 8080, build: { localPort: undefined } })).toBe(8080);
-      expect(getLocalPort({ port: 8080, build: { localPort: '3010' } })).toBe(8080);
-    });
-
-    it('returns defaultPort when neither localPort nor port is set', () => {
+    it('returns defaultPort when port is not set', () => {
       expect(getLocalPort({})).toBe(3000);
       expect(getLocalPort({}, 5000)).toBe(5000);
     });
@@ -149,10 +139,10 @@ describe('port-resolver', () => {
       expect(getLocalPortFromPath('/app/application.yaml')).toBe(3010);
     });
 
-    it('returns build.localPort when set in file (overrides port)', () => {
+    it('returns port from file when legacy localPort also present', () => {
       fs.existsSync = jest.fn().mockReturnValue(true);
       fs.readFileSync = jest.fn().mockReturnValue('port: 4000\nbuild:\n  localPort: 3010');
-      expect(getLocalPortFromPath('/app/application.yaml')).toBe(3010);
+      expect(getLocalPortFromPath('/app/application.yaml')).toBe(4000);
     });
 
     it('returns port when set in file', () => {

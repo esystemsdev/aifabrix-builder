@@ -34,6 +34,9 @@ jest.mock('chalk', () => {
   mockChalk.blue = jest.fn((text) => text);
   mockChalk.yellow = jest.fn((text) => text);
   mockChalk.gray = jest.fn((text) => text);
+  mockChalk.white = jest.fn((text) => text);
+  mockChalk.cyan = jest.fn((text) => text);
+  mockChalk.bold = jest.fn((text) => text);
   return mockChalk;
 });
 jest.mock('../../../lib/utils/token-manager', () => ({
@@ -234,7 +237,7 @@ describe('External System Deploy Module', () => {
       );
     });
 
-    it('should use 500ms default pollInterval for external systems', async() => {
+    it('should use 500ms pollInterval and ~10s poll window defaults for external systems', async() => {
       const { deployExternalSystem } = require('../../../lib/external-system/deploy');
       await deployExternalSystem(appName, {});
 
@@ -244,7 +247,8 @@ describe('External System Deploy Module', () => {
         expect.any(String),
         expect.any(Object),
         expect.objectContaining({
-          pollInterval: 500
+          pollInterval: 500,
+          pollMaxAttempts: 22
         })
       );
     });
@@ -451,7 +455,7 @@ describe('External System Deploy Module', () => {
         'test-external-app',
         { type: 'bearer', token: 'test-token' }
       );
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Documentation:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Docs:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('API Docs:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('MCP Server:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('OpenAPI Docs Page:'));
@@ -468,21 +472,21 @@ describe('External System Deploy Module', () => {
       const { deployExternalSystem } = require('../../../lib/external-system/deploy');
       await deployExternalSystem(appName);
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Documentation:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Docs:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('MCP Server:'));
       const logCalls = logger.log.mock.calls.map(c => c[0]);
       expect(logCalls.some(s => s.includes('API Docs:'))).toBe(false);
       expect(logCalls.some(s => s.includes('OpenAPI Docs Page:'))).toBe(false);
     });
 
-    it('should not show Documentation section when no doc URLs returned', async() => {
+    it('should not show Docs section when no doc URLs returned', async() => {
       getExternalSystem.mockResolvedValue({ data: { key: 'test-external-app' } });
 
       const { deployExternalSystem } = require('../../../lib/external-system/deploy');
       await deployExternalSystem(appName);
 
       const logCalls = logger.log.mock.calls.map(c => c[0]);
-      expect(logCalls.some(s => s === 'Documentation:')).toBe(false);
+      expect(logCalls.some(s => s === 'Docs:')).toBe(false);
     });
 
     it('should complete successfully when resolveDataplaneUrl fails', async() => {

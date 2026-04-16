@@ -37,10 +37,11 @@ describe('Integration Step 01: Create Application', () => {
     const languageDisplay = language.charAt(0).toUpperCase() + language.slice(1).toLowerCase();
     console.log(`Creating ${languageDisplay} application...`);
 
-    // Pipe "N" to answer "No" to GitHub Actions prompt
+    // --type webapp: CLI default type is external; integration expects builder/apps scaffold.
+    // Pipe "N" if any workflow prompt still appears (non-TTY).
     const result = await execCommand(
-      `printf "N\\n" | aifabrix create ${appName} --port ${port} --database --redis --storage --authentication --language ${language} --app`,
-      60000
+      `printf "N\\n" | aifabrix create ${appName} --type webapp --port ${port} --database --redis --storage --authentication --language ${language} --app`,
+      120000
     );
 
     if (result.exitCode !== 0) {

@@ -26,6 +26,8 @@ const {
   setDeveloperId,
   loadDeveloperId,
   getCurrentEnvironment,
+  getTlsEnabled,
+  getTraefikEnabled,
   setCurrentEnvironment,
   resolveEnvironment,
   isTokenExpired,
@@ -38,6 +40,8 @@ const {
   decryptTokenValue,
   getFormat,
   setFormat,
+  getUseEnvironmentScopedResources,
+  setUseEnvironmentScopedResources,
   CONFIG_DIR,
   CONFIG_FILE
 } = require('../../../lib/core/config');
@@ -82,7 +86,8 @@ describe('Config Module', () => {
         'developer-id': '0',
         environment: 'dev',
         environments: {},
-        device: {}
+        device: {},
+        useEnvironmentScopedResources: false
       });
       expect(fsPromises.readFile).toHaveBeenCalledWith(CONFIG_FILE, 'utf8');
     });
@@ -103,7 +108,8 @@ describe('Config Module', () => {
         'developer-id': '5', // getConfig converts numbers to strings
         environment: 'dev',
         environments: {},
-        device: {}
+        device: {},
+        useEnvironmentScopedResources: false
       });
       expect(result['developer-id']).toBe('5');
     });
@@ -118,8 +124,11 @@ describe('Config Module', () => {
       expect(result).toEqual({
         'developer-id': '0',
         environment: 'dev',
+        controller: undefined,
         environments: {},
-        device: {}
+        device: {},
+        format: undefined,
+        useEnvironmentScopedResources: false
       });
     });
 
@@ -132,7 +141,8 @@ describe('Config Module', () => {
         'developer-id': '0',
         environment: 'dev',
         environments: {},
-        device: {}
+        device: {},
+        useEnvironmentScopedResources: false
       });
     });
 
@@ -145,7 +155,8 @@ describe('Config Module', () => {
         'developer-id': '0',
         environment: 'dev',
         environments: {},
-        device: {}
+        device: {},
+        useEnvironmentScopedResources: false
       });
     });
 
@@ -515,6 +526,51 @@ describe('Config Module', () => {
     });
   });
 
+  describe('getUseEnvironmentScopedResources', () => {
+    it('should return false when not set in config', async() => {
+      const yaml = require('js-yaml');
+      const mockConfig = { 'developer-id': '0', environment: 'dev' };
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+      const result = await getUseEnvironmentScopedResources();
+      expect(result).toBe(false);
+    });
+
+    it('should return true when set in config', async() => {
+      const yaml = require('js-yaml');
+      const mockConfig = {
+        'developer-id': '0',
+        environment: 'dev',
+        useEnvironmentScopedResources: true
+      };
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+      const result = await getUseEnvironmentScopedResources();
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('setUseEnvironmentScopedResources', () => {
+    it('should persist true', async() => {
+      const yaml = require('js-yaml');
+      const mockConfig = { 'developer-id': '0', environment: 'dev' };
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+      fsPromises.mkdir.mockResolvedValue(undefined);
+      fsPromises.writeFile.mockResolvedValue(undefined);
+      fsPromises.open.mockResolvedValue({ sync: jest.fn(), close: jest.fn() });
+
+      await setUseEnvironmentScopedResources(true);
+
+      expect(fsPromises.writeFile).toHaveBeenCalled();
+      const written = yaml.load(fsPromises.writeFile.mock.calls[0][1]);
+      expect(written.useEnvironmentScopedResources).toBe(true);
+    });
+
+    it('should reject non-boolean', async() => {
+      await expect(setUseEnvironmentScopedResources('true')).rejects.toThrow(
+        'useEnvironmentScopedResources must be a boolean'
+      );
+    });
+  });
+
   describe('loadDeveloperId', () => {
     it('should load developer ID when cache is null', async() => {
       jest.resetModules();
@@ -632,6 +688,68 @@ describe('Config Module', () => {
     });
   });
 
+  describe('getTlsEnabled', () => {
+    it('should return true when tlsEnabled is true', async() => {
+      const mockConfig = {
+        'developer-id': '0',
+        environments: {},
+        tlsEnabled: true
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      await expect(getTlsEnabled()).resolves.toBe(true);
+    });
+
+    it('should return false when tlsEnabled is false', async() => {
+      const mockConfig = {
+        'developer-id': '0',
+        environments: {},
+        tlsEnabled: false
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      await expect(getTlsEnabled()).resolves.toBe(false);
+    });
+
+    it('should return false when tlsEnabled is omitted', async() => {
+      const mockConfig = {
+        'developer-id': '0',
+        environments: {}
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      await expect(getTlsEnabled()).resolves.toBe(false);
+    });
+  });
+
+  describe('getTraefikEnabled', () => {
+    it('should return true when traefik is true', async() => {
+      const mockConfig = {
+        'developer-id': '0',
+        environments: {},
+        traefik: true
+      };
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+
+      await expect(getTraefikEnabled()).resolves.toBe(true);
+    });
+
+    it('should return false when traefik is false or omitted', async() => {
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(
+        yaml.dump({ 'developer-id': '0', environments: {}, traefik: false })
+      );
+      await expect(getTraefikEnabled()).resolves.toBe(false);
+
+      fsPromises.readFile.mockResolvedValue(yaml.dump({ 'developer-id': '0', environments: {} }));
+      await expect(getTraefikEnabled()).resolves.toBe(false);
+    });
+  });
+
   describe('secrets path accessors and precedence', () => {
     it('getSecretsPath prefers aifabrix-secrets over legacy secrets-path', async() => {
       const yamlLib = require('js-yaml');
@@ -722,7 +840,7 @@ describe('Config Module', () => {
       }));
 
       const value = await getAifabrixEnvConfigPath();
-      expect(value).toBe('/custom/env-config.yaml');
+      expect(value).toBe(path.normalize(path.resolve('/custom/env-config.yaml')));
     });
 
     it('setAifabrixEnvConfigPath validates input type', async() => {
@@ -731,14 +849,13 @@ describe('Config Module', () => {
       await expect(setAifabrixEnvConfigPath(42)).rejects.toThrow('Env config path is required and must be a string');
     });
 
-    it('getAifabrixEnvConfigPath returns default schema path when not set', async() => {
+    it('getAifabrixEnvConfigPath returns null when not set', async() => {
       const yamlLib = require('js-yaml');
       fsPromises.readFile.mockResolvedValue(yamlLib.dump({ 'developer-id': '0' }));
 
-      const { getDefaultEnvConfigPath } = require('../../../lib/utils/config-paths');
       const { getAifabrixEnvConfigPath } = require('../../../lib/core/config');
       const value = await getAifabrixEnvConfigPath();
-      expect(value).toBe(getDefaultEnvConfigPath());
+      expect(value).toBeNull();
     });
   });
 

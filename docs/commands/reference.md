@@ -36,7 +36,7 @@ aifabrix push myapp --registry myacr.azurecr.io --tag v1.0.0
 # Deploy (uses controller and environment from config)
 aifabrix deploy myapp
 
-# Deploy external system from integration/<app>/ (resolved first by default; no app register needed)
+# Deploy external system from integration/<systemKey>/ (resolved first by default; no app register needed)
 aifabrix deploy myapp
 ```
 
@@ -94,6 +94,8 @@ Set these keys in `~/.aifabrix/config.yaml`:
 
 - aifabrix-home: Base directory for local files (default `~/.aifabrix`)
   - Example: `aifabrix-home: "/custom/path"`
+- aifabrix-work: Optional default git/workspace root (no default; unset means “not configured”). Resolved after **`AIFABRIX_WORK`** env if set.
+  - Example: `aifabrix-work: "/workspace/repos"`
 - aifabrix-secrets: Default secrets file path (default `<home>/secrets.yaml`)
   - Example: `aifabrix-secrets: "/path/to/secrets.yaml"`
 - developer-id: Developer ID for port isolation (default: 0)
@@ -125,9 +127,20 @@ fi
 
 ## Getting Help
 
-**Command help:**
+**All commands (grouped by category):**
+```bash
+aifabrix --help
+```
+
+**One command (options and examples):**
 ```bash
 aifabrix <command> --help
+```
+
+**Nested commands (e.g. secret, app, env):**
+```bash
+aifabrix secret --help
+aifabrix env deploy --help
 ```
 
 **Check environment:**

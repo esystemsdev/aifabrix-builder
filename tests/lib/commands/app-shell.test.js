@@ -6,7 +6,10 @@
 const { spawn } = require('child_process');
 
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn() }));
-jest.mock('../../../lib/core/config', () => ({ getDeveloperId: jest.fn().mockResolvedValue('01') }));
+jest.mock('../../../lib/core/config', () => ({
+  getDeveloperId: jest.fn().mockResolvedValue('01'),
+  getDockerEndpoint: jest.fn().mockResolvedValue(null)
+}));
 jest.mock('../../../lib/utils/app-run-containers', () => ({
   getContainerName: jest.fn((app, devId) => `aifabrix-dev${devId}-${app}`),
   checkContainerRunning: jest.fn().mockResolvedValue(true)
@@ -65,6 +68,6 @@ describe('app-shell command', () => {
       '-e', 'TMPDIR=/tmp',
       'aifabrix-dev01-myapp',
       'sh'
-    ], expect.objectContaining({ stdio: 'inherit', shell: false }));
+    ], expect.objectContaining({ stdio: 'inherit', shell: false, env: expect.any(Object) }));
   });
 });

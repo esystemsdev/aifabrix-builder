@@ -94,7 +94,7 @@ describe('secrets-validation', () => {
       const result = validateSecretsFile('/path/secrets.yaml');
       expect(result.valid).toBe(false);
       expect(result.errors).toContainEqual(expect.stringMatching(/Invalid YAML/));
-      expect(result.path).toBe('/path/secrets.yaml');
+      expect(result.path).toBe(path.resolve('/path/secrets.yaml'));
     });
 
     it('returns valid for flat key-value object (no naming check)', () => {
@@ -107,7 +107,7 @@ describe('secrets-validation', () => {
       const result = validateSecretsFile('/path/secrets.yaml');
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
-      expect(result.path).toBe('/path/secrets.yaml');
+      expect(result.path).toBe(path.resolve('/path/secrets.yaml'));
     });
 
     it('returns invalid when parsed value is not an object (array)', () => {
@@ -158,7 +158,7 @@ describe('secrets-validation', () => {
       fs.existsSync.mockReturnValue(false);
       const absPath = path.isAbsolute('/foo') ? '/foo/secrets.yaml' : path.join(cwd, 'foo', 'secrets.yaml');
       const result = validateSecretsFile(absPath);
-      expect(result.path).toBe(absPath);
+      expect(result.path).toBe(path.resolve(absPath));
     });
   });
 });

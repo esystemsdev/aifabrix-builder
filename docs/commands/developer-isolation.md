@@ -2,45 +2,53 @@
 
 ← [Documentation index](../README.md) · [Commands index](README.md)
 
-Commands for managing developer isolation, port configuration, and **remote development** (when a remote server is configured).
+Commands for managing developer isolation, port configuration, and **remote development**: onboard with **`dev init`**, then use **`dev refresh`**, **`dev add`**, and related commands once **`remote-server`** is set in config.
 
-**Remote-only commands:** `dev init`, `dev refresh`, `dev add`, `dev update`, `dev pin`, `dev delete`, `dev list`, and `dev down` are available **only when `remote-server` is set** in `~/.aifabrix/config.yaml`. Without a remote server, there is no dev user API or sync sessions to manage.
-
-When you run `dev add`, `dev update`, `dev pin`, or `dev delete` without a configured remote, the CLI shows: **"Remote server is not configured. Set remote-server and run \"aifabrix dev init\" first."**
+**Remote development:** `dev init` connects your machine to a Builder Server (using `--server`) and, on success, saves `remote-server` in `~/.aifabrix/config.yaml`. **`dev refresh`**, **`dev add`**, **`dev update`**, **`dev pin`**, **`dev delete`**, **`dev list`**, and **`dev down`** expect that onboarding has already completed (remote server URL and client certificate on disk). If you run those without a configured remote or certificate, the CLI shows: **"Remote server is not configured. Set remote-server and run \"aifabrix dev init\" first."**
 
 ---
 
 <a id="aifabrix-dev-init"></a>
-## aifabrix dev init (remote only)
+## aifabrix dev init
 
-One-time setup for remote development: issue certificate, fetch server settings, and register SSH keys so Mutagen works without password.
+One-time onboarding to a **Builder Server**: verify connectivity, issue a client certificate, fetch server settings, and register SSH keys so Mutagen can sync without a password. On success, the CLI writes `remote-server` and saves certificates under `~/.aifabrix/certs/<developer-id>/`.
 
-**What:** When a remote server exists (`remote-server` in config), runs: issue-cert, fetch server settings, then register SSH keys so Mutagen sync works. Only when `remote-server` is set.
-
-**When:** First-time onboarding to a remote dev host, or after re-provisioning the server.
+**When:** First connection to a dev Builder Server, or re-onboarding with a new PIN after your admin resets access.
 
 **Usage:**
 ```bash
-aifabrix dev init
+aifabrix dev init --developer-id 01 --server https://builder02.local --pin 123456
 
-# With options (same parameter names as dev add)
-aifabrix dev init --developer-id 01 --server my-remote-host --pin 123456
+# Optional: add the server hostname to this machine’s hosts file (see below)
+aifabrix dev init --developer-id 01 --server https://builder02.local --pin 123456 --add-hosts --hosts-ip 192.168.1.25
+
+# Skip interactive prompts (untrusted CA + hosts confirmation)
+aifabrix dev init --developer-id 01 --server https://builder02.local --pin 123456 -y --add-hosts --hosts-ip 192.168.1.25
 ```
 
 **Options:**
-- `--developer-id <id>` - Developer ID (same as `dev add`; e.g. 01)
-- `--server <url>` - Builder Server base URL (e.g. <https://builder.local>)
-- `--pin <pin>` - One-time PIN for onboarding (from your admin)
-- `-y, --yes` - Auto-install development CA without prompt when the server certificate is untrusted
+- `--developer-id <id>` - Developer ID (same as `dev add`; e.g. `01`)
+- `--server <url>` - Builder Server base URL (e.g. `https://builder02.local`)
+- `--pin <pin>` - One-time PIN from your admin (`aifabrix dev pin <id>` on an admin machine)
+- `-y, --yes` - When the server certificate is untrusted: auto-install the development CA without prompting. When combined with `--add-hosts`: also skip the confirmation before editing the hosts file
 - `--no-install-ca` - Do not offer CA install; fail with manual instructions when the server certificate is untrusted
+- `--add-hosts` - After showing brief guidance, optionally append to this computer’s **hosts file** so names resolve (e.g. to a LAN IP). Adds the hostname from `--server` and **`dev` + your `--developer-id` + `.` + that hostname** (e.g. `dev02.builder02.local` for id `02` and server `https://builder02.local`) on one line when applicable. Does **not** support wildcard entries (`*.zone`); see below
+- `--hosts-ip <ip>` - IPv4 address to use for that hosts entry (skips DNS lookup and the interactive IP prompt when used with `--add-hosts`)
 
-**Process:**
-1. Ensure server is reachable and trusted (see CA install below if certificate is untrusted)
-2. Issue or use existing client certificate (mTLS for dev APIs)
-3. Fetch sync and Docker parameters from the server (cert-authenticated)
-4. Register SSH keys so Mutagen can sync without password prompt
+**Process (order):**
+1. **Optional (`--add-hosts`):** Explain wildcard DNS vs hosts file; resolve or ask for an IP; confirm **(y/n)** before appending to the hosts file (unless `-y`). Writing the hosts file often requires an **elevated** terminal (Administrator on Windows, `sudo` on macOS/Linux). If the write fails, the CLI prints a command you can run manually with admin rights. After this step, the CLI prints **your per-developer URL** (e.g. `https://dev02.builder02.local` when `--developer-id` is `02`), using the same scheme and port as `--server`.
+2. **Trust and reachability:** Health check to the Builder Server. If the certificate is not trusted, see **Untrusted certificate** below.
+3. **Certificate:** Request and save client cert and key; save **`ca.pem`** when the server provides a root CA (or reuse the CA fetched during install-ca) so later CLI commands and remote Docker can trust the same chain.
+4. **Config:** Merge remote settings into `~/.aifabrix/config.yaml` and set `remote-server`.
+5. **SSH key:** Register your public key for Mutagen sync when the server accepts it.
 
-**Untrusted certificate (dev Builder Server):** When the server uses a self-signed certificate (e.g. local dev servers like `https://builder02.local`), the initial health check may fail with an SSL verification error. The CLI will prompt: *"Server certificate not trusted. Download and install the development CA? (y/n)"*. On *y*, it fetches the Root CA from `{server}/install-ca`, installs it into your OS trust store (Windows user store, macOS login keychain, or Linux ca-certificates), then retries init. Use `--yes` to auto-install without prompting, or `--no-install-ca` to fail immediately with manual instructions. Manual install: download from `{server}/install-ca` and add the certificate to your system trust store. For Linux, see `{server}/install-ca-help` for steps.
+**Local name resolution (`--add-hosts`):** Wildcard names such as `*.builder02.local` cannot be represented in the hosts file; use **real DNS** (router, internal DNS, Pi-hole, etc.) for that. This option adds a line mapping the **hostname from `--server`** and, when you use `--developer-id`, **`devNN` + that hostname** (e.g. `192.168.1.25 builder02.local dev02.builder02.local`) so per-developer hostnames resolve without wildcard DNS. **Default `dev init` (without `--add-hosts`) does not change the hosts file and does not require administrator rights for that step.**
+
+**Untrusted certificate (typical on local Builder Servers):** If the health check fails because the certificate is self-signed or signed by a private root, the CLI can offer to download the development root CA from **`{server}/install-ca`**, install it into the **OS trust store** (helps browsers and some tools), and retry. Separately, the CLI keeps a copy as **`ca.pem`** next to your client cert so **its own** connections to that Builder Server keep working (the OS store alone is not always enough for the Node-based CLI). Use `--yes` to auto-accept CA install, or `--no-install-ca` to stop with instructions to install the CA manually. On Linux, full trust-store install may need `sudo`; see **`{server}/install-ca-help`** if offered.
+
+**Shared builder VMs:** If admins run **`sudo af-server install-server`** (local bootstrap) on the host, the server setup installs the same dev root PEM into the system CA bundle (**`aifabrix-root-ca.crt`** + **`update-ca-certificates`**). SSH users on that host then usually **do not** need **`sudo`** for the CLI’s CA install prompt when using **`https://<builder-host>`** from the server itself.
+
+**Administrator rights:** Ordinary `dev init` **does not require admin**. Admin (or `sudo`) may be needed only if you use **`--add-hosts`** and the OS blocks writing the hosts file, or on some Linux setups when installing the CA into the system bundle.
 
 **See Also:** [Secrets and config](../configuration/secrets-and-config.md) (remote-server, docker-endpoint), [Developer Isolation Guide](../developer-isolation.md).
 
@@ -72,11 +80,11 @@ aifabrix dev refresh --cert   # Force certificate refresh even when cert is stil
 <a id="aifabrix-dev-add-update-pin-delete-list"></a>
 ## aifabrix dev add / update / pin / delete / list (remote only)
 
-Manage developers on the remote server. **Only when `remote-server` is set**; no dev user API without a remote server. Admin or secret-manager role required for add/update/pin/delete.
+Manage developers on the remote server. **Only when `remote-server` is set**; no dev user API without a remote server. **Admin** role is required for **add**, **update**, **pin**, and **delete** (see group table below). **Dev list** is available with a valid client certificate to **admin** (full) and **developer** (read-only list of users). **Secret-manager** does not use these user-management commands; it uses shared **secret** commands instead.
 
 - **dev add** – Create a new developer (profile on server).
 - **dev update** – Patch an existing developer's profile.
-- **dev pin** – Set or display a one-time PIN for onboarding (e.g. for `aifabrix dev init --pin`).
+- **dev pin** – Create a one-time PIN for onboarding. The CLI prints **two copy-paste commands** for the developer: a **standard** `dev init` line (when DNS or hosts already resolve the server hostname), and a **hosts-file** variant with `--add-hosts` (when the hostname does not resolve and DNS is not provided by the organisation). Optional **`--hosts-ip <IPv4>`** fills in the server’s LAN IP in that second command.
 - **dev delete** – Remove a developer from the server.
 - **dev list** – List developers (as returned by the API).
 
@@ -85,17 +93,20 @@ Manage developers on the remote server. **Only when `remote-server` is set**; no
 aifabrix dev list
 aifabrix dev add --developer-id <id> --name <name> --email <email> [--groups <items>]
 aifabrix dev update [developerId] [--name <name>] [--email <email>] [--groups <items>]
-aifabrix dev pin [developerId]
+aifabrix dev pin [developerId] [--hosts-ip <IPv4>]
 aifabrix dev delete <developer-id>
 ```
 
-**Setting groups:** Use a single `--groups` option with **comma-separated** values (no spaces between group names). Examples:
+**Setting groups:** Use a single `--groups` option with **comma-separated** values (no spaces between group names). API groups are **admin**, **secret-manager**, **developer**, and optionally **docker** (host sync only; see table). Examples:
 ```bash
 # Give developer 06 both admin and secret-manager
 aifabrix dev update 06 --groups admin,secret-manager
 
 # Set only developer (default)
 aifabrix dev update 06 --groups developer
+
+# Developer with host docker group (socket-level Docker on server — grant sparingly)
+aifabrix dev update 08 --groups developer,docker
 
 # Add with multiple groups
 aifabrix dev add --developer-id 07 --name "Jane" --email jane@example.com --groups admin,secret-manager
@@ -108,6 +119,7 @@ aifabrix dev add --developer-id 07 --name "Jane" --email jane@example.com --grou
 | **admin** | All dev and secrets endpoints (list/create/update/delete users, create PIN for any user, list/add/delete secrets). |
 | **secret-manager** | Secrets only: list, add, delete. No user management or PIN creation. |
 | **developer** | List users (read-only), create PIN for **self** only, get own settings, manage own SSH keys. No create/update/delete users, no secrets. |
+| **docker** | Not an API capability: optional flag on a user so the host sync job adds the OS user `dev<id>` to the Linux `docker` group (socket-level Docker on the server). Converges on the next cron run (typically within a few minutes); the server needs **`jq`** on the host for that step. **Reconnect SSH** (or run `newgrp docker`) after grant—existing sessions do not pick up the new group. Does not grant extra HTTP routes; combine with **developer** (or another API group). Host membership in `docker` is highly sensitive—treat like root. |
 
 **See Also:** [Developer Isolation Guide](../developer-isolation.md), [Secrets and config](../configuration/secrets-and-config.md).
 
@@ -134,6 +146,31 @@ aifabrix dev down --apps
 
 ---
 
+<a id="aifabrix-dev-set-scoped-resources"></a>
+## aifabrix dev set-scoped-resources
+
+Activate or passivate **environment-scoped resource names** in local Builder behavior (secrets resolution, Redis DB index, Docker container names, Traefik path prefixes when your app uses ingress).
+
+**What:** Writes `useEnvironmentScopedResources` to `~/.aifabrix/config.yaml` as `true` or `false`. When **activated** (`true`), the Builder honors each app’s optional `environmentScopedResources` flag in `application.yaml` **only** for run/deploy resolution when the target environment is **dev** or **tst** (for example `aifabrix run <app> --env dev`). **pro** never uses these prefixes. When **passivated** (`false`, or key omitted), every app is treated as if `environmentScopedResources` were off for **local** resolution and compose generation. The per-app flag may still appear in generated deploy manifests for controller alignment.
+
+**Effective behavior** is: user gate **and** app flag **and** dev/tst. You normally set the app flag on apps that share Postgres/Docker across dev/tst (for example dataplane); you toggle the user gate when your machine should use prefixed keys and names.
+
+**When:** Turning shared-infrastructure mode on for your workspace, or reverting to classic single-env naming without editing YAML by hand.
+
+**Usage:**
+```bash
+aifabrix dev set-scoped-resources true
+aifabrix dev set-scoped-resources false
+```
+
+**Arguments:** `<value>` must be `true` or `false` (case-insensitive).
+
+**Output:** Confirmation and the same summary as `aifabrix dev show` (including **Scoped resources** on/off).
+
+**See also:** [aifabrix dev show](#aifabrix-dev-show), [Application configuration – application.yaml](../configuration/application-yaml.md), [Secrets and config](../configuration/secrets-and-config.md).
+
+---
+
 <a id="aifabrix-dev-set-format"></a>
 ## aifabrix dev set-format
 
@@ -143,10 +180,10 @@ Set default output format for commands that generate or convert external system 
 
 | Command | Uses format when |
 | -------- | ----------------- |
-| `aifabrix download <system-key>` | `--format` not passed |
+| `aifabrix download <systemKey>` | `--format` not passed |
 | `aifabrix convert <app>` | `--format` not passed |
 | `aifabrix create <app> --type external` | Always (no CLI `--format`; config drives file extensions) |
-| `aifabrix wizard [app]` | Always (no CLI `--format`; config drives file extensions) |
+| `aifabrix wizard [system-key]` | Always (no CLI `--format`; config drives file extensions) |
 
 For `create --type external` and `wizard`, the format determines whether generated files use `.yaml` or `.json` (e.g. `application.yaml` vs `application.json`, `*-system.yaml` vs `*-system.json`, `*-datasource-*.yaml` vs `*-datasource-*.json`).
 
@@ -172,7 +209,7 @@ aifabrix dev set-format yaml
 
 Show developer configuration (ports and config vars).
 
-**What:** Displays current developer ID, calculated ports (app, Postgres, Redis, pgAdmin, Redis Commander), and config vars (environment, controller, aifabrix-home, aifabrix-secrets, aifabrix-env-config, etc.).
+**What:** Displays current developer ID, calculated ports (app, Postgres, Redis, pgAdmin, Redis Commander), and config vars (environment, controller, scoped resources on/off, aifabrix-home, resolved home path, aifabrix-work, resolved `AIFABRIX_WORK`, aifabrix-secrets, aifabrix-env-config, etc.).
 
 **When:** After `dev refresh` or to verify your developer isolation settings.
 
@@ -181,7 +218,7 @@ Show developer configuration (ports and config vars).
 aifabrix dev show
 ```
 
-**See Also:** [aifabrix dev set-id](#aifabrix-dev-set-id), [aifabrix dev set-format](#aifabrix-dev-set-format).
+**See Also:** [aifabrix dev set-id](#aifabrix-dev-set-id), [aifabrix dev set-scoped-resources](#aifabrix-dev-set-scoped-resources), [aifabrix dev set-format](#aifabrix-dev-set-format).
 
 ---
 
@@ -203,7 +240,7 @@ aifabrix dev set-id 01
 aifabrix dev set-id 2
 ```
 
-**See Also:** [aifabrix dev show](#aifabrix-dev-show), [aifabrix dev set-format](#aifabrix-dev-set-format).
+**See Also:** [aifabrix dev show](#aifabrix-dev-show), [aifabrix dev set-scoped-resources](#aifabrix-dev-set-scoped-resources), [aifabrix dev set-format](#aifabrix-dev-set-format).
 
 ---
 
@@ -213,6 +250,8 @@ aifabrix dev set-id 2
 Set the path to the env-config file in `config.yaml`.
 
 **What:** Writes `aifabrix-env-config` to `~/.aifabrix/config.yaml`. This path is used by up-miso/up-dataplane to resolve `AIFABRIX_BUILDER_DIR` and load env config (e.g. for builder directory override).
+
+If the value is a **relative** path, the CLI resolves it against **`aifabrix-work`** from the same config, or the effective workspace root from **`AIFABRIX_WORK`** / `aifabrix-work` on disk (same rules as `aifabrix dev set-work`), **before** falling back to `aifabrix-home` or the effective Fabrix home (same rules as `aifabrix dev set-home`). It does **not** use the current working directory as the anchor.
 
 **Usage:**
 ```bash
@@ -226,14 +265,56 @@ aifabrix dev set-env-config /path/to/env-config.yaml
 
 Set the aifabrix-home path in `config.yaml`.
 
-**What:** Writes `aifabrix-home` to `~/.aifabrix/config.yaml`. Overrides the default AI Fabrix home directory (used for applications base path when developer ID is set).
+**What:** Writes `aifabrix-home` to `config.yaml` (under your AI Fabrix config directory). Overrides the default AI Fabrix home directory (used for applications base path when developer ID is set). Unless you pass **`--no-register-env`**, the CLI also updates **AIFABRIX_HOME** (and refreshes the paired shell env file / user env so **AIFABRIX_WORK** stays aligned with config). Open a new terminal after registration.
 
 **Usage:**
 ```bash
 aifabrix dev set-home /path/to/aifabrix-home
+aifabrix dev set-home ""            # clear override
+aifabrix dev set-home /path --no-register-env   # config only
 ```
 
-**See Also:** [aifabrix dev show](#aifabrix-dev-show).
+**See Also:** [aifabrix dev set-work](#aifabrix-dev-set-work), [aifabrix dev print-home](#aifabrix-dev-print-home), [aifabrix dev show](#aifabrix-dev-show).
+
+---
+
+<a id="aifabrix-dev-set-work"></a>
+## aifabrix dev set-work
+
+Set the optional workspace root (`aifabrix-work`) in `config.yaml`.
+
+**What:** Stores a normalized absolute path as **`aifabrix-work`** (default clone / repo root). This is separate from **`aifabrix-home`** (secrets, infra, `~/.aifabrix`-style state stay on home unless you set them there). Clearing uses an empty path argument. Unless you pass **`--no-register-env`**, the CLI registers **AIFABRIX_WORK** for new shells (Windows user env or POSIX `aifabrix-shell-env.sh` + profile snippet). **`AIFABRIX_WORK`** in the environment overrides the YAML value when resolving the workspace.
+
+**Usage:**
+```bash
+aifabrix dev set-work /path/to/git-workspace
+aifabrix dev set-work "" --no-register-env
+```
+
+**See Also:** [aifabrix dev set-home](#aifabrix-dev-set-home), [aifabrix dev print-work](#aifabrix-dev-print-work), [Secrets and config](../configuration/secrets-and-config.md).
+
+---
+
+<a id="aifabrix-dev-print-home"></a>
+## aifabrix dev print-home
+
+Print the resolved **AIFABRIX_HOME** path to stdout (no colors); intended for scripts.
+
+**Usage:**
+```bash
+aifabrix dev print-home
+```
+
+**See Also:** [aifabrix dev print-work](#aifabrix-dev-print-work).
+
+---
+
+<a id="aifabrix-dev-print-work"></a>
+## aifabrix dev print-work
+
+Print the resolved workspace path to stdout, or a single empty line if unset (no implicit default). No colors.
+
+**See Also:** [aifabrix dev set-work](#aifabrix-dev-set-work).
 
 **Output (view):**
 ```yaml
@@ -323,7 +404,8 @@ Ports are calculated using: `basePort + (developer-id * 100)`
 
 **Configuration Variables:**
 The command displays configuration variables if they are set in `~/.aifabrix/config.yaml`:
-- `aifabrix-home` - Base directory for AI Fabrix local files (default: `~/.aifabrix`)
+- `aifabrix-home` - Base directory for AI Fabrix local files (default: `~/.aifabrix`); **aifabrix-home (resolved)** shows the path after env/yaml resolution
+- `aifabrix-work` - Optional workspace root for git repos (unset if not configured); **AIFABRIX_WORK (resolved)** shows env override or yaml (or “not set”)
 - `aifabrix-secrets` - Default secrets file path or `http(s)://` URL for remote shared secrets (default: `<home>/secrets.yaml`)
 - `aifabrix-env-config` - Custom environment configuration file path
 

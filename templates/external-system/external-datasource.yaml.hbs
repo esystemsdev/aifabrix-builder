@@ -1,47 +1,89 @@
+# External datasource definition. Validate against lib/schema/external-datasource.schema.json (e.g. aifabrix validate / CI).
+# Normative usage (metadata, FKs, dimensions, expressions, execution vs query) aligns with schema v2.4.1 and the Datasource Rules baseline (Plan 346).
+# key: stable identifier (typically <systemKey>-<entity>); referenced by credentials, deploy, and datasource-chaining CIP steps.
 key: "{{fullDatasourceKey}}"
+# Short name and description shown in tooling and docs.
 displayName: "{{datasourceDisplayName}}"
 description: "{{datasourceDescription}}"
+# Parent external system this datasource belongs to (matches external-system key).
 systemKey: "{{systemKey}}"
+# entityType: recordStorage = structured rows in DB; documentStorage = same family + binary/large content outside metadata_json;
+# vectorStore = retrieval/embedding external store; messageService = channels/notifications; none = orchestration/API composition ONLY.
+# If none: do NOT add metadataSchema, primaryKey, labelKey, dimensions, fieldMappings, sync, documentStorage, etc. (schema forbids them).
 entityType: "{{schemaEntityType}}"
+# Fine-grained resource classification (e.g. customer, document); used for UX and policies.
 resourceType: "{{resourceType}}"
+enabled: true
+# File / config version for this YAML (distinct from execution.cip.version when you add CIP below).
+version: "1.0.0"
+{{#unless (eq schemaEntityType "none")}}
+# primaryKey: normalized attribute names used for get/update/delete and storage keys (must exist in metadataSchema + fieldMappings).
 primaryKey:
 {{#each primaryKey}}  - "{{this}}"
 {{/each}}
-enabled: true
-version: "1.0.0"
-fieldMappings:
-{{#if dimensions}}
-  dimensions:
-{{#each dimensions}}
-    {{@key}}: "{{this}}"
+# labelKey: attributes used for display labels (search, pickers); often includes primaryKey + human-readable fields.
+labelKey:
+{{#each labelKey}}  - "{{this}}"
 {{/each}}
-{{else}}
-  dimensions: {}
-  # Optional: add country, department, organization for ABAC
+# metadataSchema: canonical normalized fields (camelCase). Only index=true / filter=true scalars materialize as DB columns; full shape lives in metadata_json.
+# Allowed on fields: type, format, index, filter, nullable, description, string/number validation keywords. Forbidden: anyOf/oneOf/allOf/not/enum/const in author trees.
+# Datetime: type string + format date-time, UTC. Max structural depth per product rules (~2); avoid deep JSON for filter/join paths.
+metadataSchema:
+  type: object
+  required:
+{{#each attributeKeysForMetadata}}    - "{{this}}"
+{{/each}}
+  properties:
+{{#each attributeKeysForMetadata}}
+    {{this}}:
+      type: string
+{{#if (eq this "externalId")}}      index: true
+{{else}}{{#if (eq this "id")}}      index: true
+{{else}}{{#if @first}}      index: true
+{{else}}      filter: true
+{{/if}}{{/if}}{{/if}}
+{{/each}}
+{{#if dimensionBindingEntries}}
+# dimensions: top-level only. type local binds to an indexed metadata field; type fk uses via: [{ fk, dimension }]. Optional for global reference data; expected when ABAC/FK joins apply (Plan 346 section 7).
+# Actors: displayName|email|userId → operator eq; groups|roles → in. If actor is omitted, operator should be omitted (operator has no effect without actor).
+dimensions:
+{{#each dimensionBindingEntries}}
+  {{dimKey}}:
+    type: local
+    field: "{{field}}"
+    actor: displayName
+    operator: eq
+{{/each}}
 {{/if}}
+# fieldMappings: normalization-only. Each attribute allows only { expression }. Roots MUST be raw.*, fk.*, or dimension.* (e.g. raw.id, fk.company.metadata.name).
+# Heavy transforms belong upstream, in sync, or in entityType none orchestration — not here. Output keys MUST match metadataSchema properties.
+fieldMappings:
   attributes:
 {{#if attributes}}
 {{#each attributes}}
     {{@key}}:
       expression: "{{this.expression}}"
-      type: {{this.type}}
-      indexed: {{#if this.indexed}}true{{else}}false{{/if}}
 {{/each}}
 {{else}}
     id:
       expression: "{{raw.id}}"
-      type: string
-      indexed: true
     name:
       expression: "{{raw.name}}"
-      type: string
-      indexed: false
 {{/if}}
+# foreignKeys (optional): declare join graph to other storage datasources. name + fields[] (indexed metadata fields) + targetDatasource; acyclic; types must match (Plan 346 sections 6 and 8).
+# foreignKeys:
+#   - name: company
+#     fields: [companyId]
+#     targetDatasource: my-system-company
+{{/unless}}
 {{#if (eq systemType "openapi")}}
+# openapi: links this datasource to the generated OpenAPI document (same systemKey-api artifact). CIP fetch.openapiRef uses keys below: list, get, …
 openapi:
   enabled: true
+  # Must match the OpenAPI bundle key published for this system (wizard default: <systemKey>-api).
   documentKey: "{{systemKey}}-api"
   operations:
+    # Standard names list/get/create/update/delete; operationId and path should match your spec. CIP uses openapiRef: list | get.
     list:
       operationId: "list{{entityKey}}"
       method: GET
@@ -50,168 +92,205 @@ openapi:
       operationId: "get{{entityKey}}"
       method: GET
       path: "/{{entityKey}}/{id}"
+  # When true, runtime can derive RBAC hints from OpenAPI metadata where supported.
   autoRbac: true
 {{/if}}
 
 # --- Optional sections: uncomment or delete as needed ---
-# CIP (Custom Integration Pipeline) supports: fetch, paginate, map, filter, output, pythonInline steps.
-# Operations: list, get, create, update, delete. Pagination: cursor | page | offset.
+#
+# Query-time (v2.4): public list/get/filter are served from persisted Dataplane DB — not live external HTTP on every read (Plan 346 section 11).
+# External APIs: sync jobs and create/update/delete execution paths. CIP fetch→map is for ingestion, writes, or orchestration — populate storage before expecting query APIs.
+#
+# CIP (Composable Integration Pipeline): fetch → [paginate] → [map] → [filter] → output
+# Sources: openapi (openapi.operations.<name>), http (method + path), datasource (another datasource key + operation name). Operation names: ^[a-z][a-zA-Z0-9]*$
+# execution.cip requires version "1.0" and operations.<name>.steps ($defs.cipDefinition). Custom operation keys must match the same pattern as capabilities[].
+#
 {{#if (eq schemaEntityType "recordStorage")}}
+# sync: external APIs run during sync (Plan 346 section 11). Minimal contract: mode/schedule/batchSize per schema. FK fields on a record should update atomically in one logical write.
 # sync:
 #   pull:
 #     enabled: true
 #     schedule: "0 * * * *"
+#     batchSize: 500
+# validation: structural / pre-persistence checks; quality: post-mapping acceptance (e.g. rejectIf) — see schema when you enable them.
+# capabilities: standard names list, get, create, update, delete + custom names matching ^[a-z][a-zA-Z0-9]*$; must match execution.cip.operations / openapi.operations you implement.
 # capabilities: [list, get]
 {{/if}}
 {{#if (eq schemaEntityType "documentStorage")}}
+# documentStorage: binary/attachment flow — which operation fetches bytes and which metadata field holds extractable text for embeddings.
 # documentStorage:
 #   enabled: true
 #   binaryOperationRef: get
 #   embeddingField: content
 {{/if}}
 {{#if (eq schemaEntityType "vectorStore")}}
+# vectorStore: vector index settings (model id, dimensions, etc. per schema). Uncomment and set to match your embedding deployment.
 # vectorStore:
 #   enabled: true
 #   embeddingModel: "text-embedding-ada-002"
 {{/if}}
 {{#if (eq schemaEntityType "messageService")}}
+# messageService: channel-oriented messaging integration; channels list drives subscription/send surfaces.
 # messageService:
 #   enabled: true
 #   channels: []
 {{/if}}
 
-# --- execution: CIP pipeline ---
-# Steps: fetch (openapi/http) → paginate (cursor|page|offset) → map (useFieldMappings, inputPath) → filter (enforceAbac, expression) → output (mode: records)
-# Pagination: cursor=cursorField+cursorParam | page=pageParam+pageSizeParam | offset=offsetParam+pageSizeParam
-# Adjust inputPath to your API ($.results[*], $.items[*], $.value[*], etc.)
-{{#if (eq schemaEntityType "recordStorage")}}
+{{#unless (eq schemaEntityType "none")}}
+{{#if (eq systemType "openapi")}}
+# Example CIP (commented): matches openapi.operations list/get for "{{entityKey}}" above — copy, uncomment, tune inputPath/query.
+# Alternative engines: execution.engine python (custom handler) or datasource (chain); see schema execution.* properties.
+#
 # execution:
 #   engine: cip
 #   cip:
+#     version: "1.0"
+#     # Optional: idempotency / runtimeContext blocks live alongside version at this level (schema $defs.idempotencyConfig, cipRuntimeContext).
 #     operations:
 #       list:
 #         enabled: true
-#         description: "List all records"
+#         description: "List {{entityKey}} records"
 #         steps:
-#           - fetch: { source: openapi, openapiRef: list, query: {} }
-#           - paginate: { strategy: cursor, cursorField: "$.paging.next.after", cursorParam: after, pageSize: 100, maxPages: 100 }
-#           # Alternative: page → pageParam, pageSizeParam | offset → offsetParam, pageSizeParam
-#           - map: { useFieldMappings: true, inputPath: "$.results[*]" }
-#           - filter: { enforceAbac: true }
-#           # Optional: filter.expression for SQL or JSON filter, e.g. expression: "status = 'active'"
-#           - output: { mode: records }
+#           - fetch:
+#               source: openapi
+#               openapiRef: list
+#               query: {}
+#               # expectedItemsPath: "$.results"
+#           # - paginate:
+#           #     strategy: cursor
+#           #     cursorField: "next_cursor"
+#           #     cursorParam: "cursor"
+#           #     pageSize: 100
+#           #     maxPages: 50
+#           - map:
+#               useFieldMappings: true
+#               # inputPath: JSONPath-like slice over the fetch body; must match list payload (array of raw objects before fieldMappings).
+#               inputPath: "$.results[*]"
+#               # Try $.items[*], $.data[*], etc. if your list lives under a different key (schema default hint is $.items[*]).
+#               # inline: { customField: "\{{raw.custom}}" }  # optional field override beside useFieldMappings
+#           - filter:
+#               enforceAbac: true
+#               # expression "@": pass records through JMESPath after ABAC; replace with a predicate when you need server-side row filtering.
+#               expression: "@"
+#               expressionLanguage: jmespath
+#               # abac: { mode: mandatory, policyScope: datasource }
+#           - output:
+#               mode: records
+#               # limit: soft cap on list size; sync jobs may override.
+#               # limit: 500
+#               # includeConfidence: true  # optional per-record scoring when supported
 #       get:
 #         enabled: true
-#         description: "Get record by ID"
+#         description: "Single {{entityKey}} by id (path /{{entityKey}}/{id} on openapi.get)"
 #         steps:
-#           - fetch: { source: openapi, openapiRef: get, query: {} }
-#           - map: { useFieldMappings: true, inputPath: "$" }
-#           - filter: { enforceAbac: true }
-#           - output: { mode: records }
-#       create:
-#         steps:
-#           - fetch: { source: openapi, openapiRef: create, bodyTemplate: "{{body}}" }
-#           - map: { useFieldMappings: true, inputPath: "$" }
-#           - output: { mode: records }
-#       update:
-#         steps:
-#           - fetch: { source: openapi, openapiRef: update, bodyTemplate: "{{body}}" }
-#           - map: { useFieldMappings: true, inputPath: "$" }
-#           - output: { mode: records }
-#       delete:
-#         steps:
-#           - fetch: { source: openapi, openapiRef: delete }
-#           - output: { mode: records }
-{{/if}}
-{{#if (eq schemaEntityType "documentStorage")}}
+#           - fetch:
+#               source: openapi
+#               openapiRef: get
+#               query:
+#                 id: "{{raw.id}}"
+#               # If your API uses a different param name, rename the key; path params are resolved per your OpenAPI operation.
+#               # onError: { retry: { maxAttempts: 3 } }  # optional per-step error policy (schema $defs.cipOnErrorConfig)
+#           - map:
+#               useFieldMappings: true
+#               # Single-object body: "$" or a path to the entity object inside a wrapper response.
+#               inputPath: "$"
+#               # Wrapped entity: use "$.data" or "$.result"
+#           - filter:
+#               enforceAbac: true
+#               expression: "@"
+#               expressionLanguage: jmespath
+#           - output:
+#               mode: records
+#       # Optional: delegate to another datasource's CIP
+#       # related:
+#       #   enabled: true
+#       #   steps:
+#       #     - fetch: { source: datasource, datasource: "other-system-entity", operation: list, parameters: {} }
+#       #     - output: { mode: records }
+{{else}}
+# Example CIP (commented): no openapi block in this file — use http fetch (or add openapi: first, then use the openapi example pattern).
+# http fetch: method + path are required; query holds static query params (runtime may merge ABAC params).
+#
 # execution:
 #   engine: cip
 #   cip:
+#     version: "1.0"
 #     operations:
 #       list:
 #         enabled: true
-#         description: "List documents"
 #         steps:
-#           - fetch: { source: openapi, openapiRef: list, query: {} }
-#           - paginate: { strategy: offset, offsetParam: skip, pageSizeParam: top, pageSize: 100, maxPages: 100 }
-#           - map: { useFieldMappings: true, inputPath: "$.value[*]" }
-#           - filter: { enforceAbac: true }
-#           - output: { mode: records }
+#           - fetch:
+#               source: http
+#               method: GET
+#               path: "/{{entityKey}}"
+#               query: {}
+#               # headers: { Accept: "application/json" }
+#           - map:
+#               useFieldMappings: true
+#               inputPath: "$.items[*]"
+#           - filter:
+#               enforceAbac: true
+#               expression: "@"
+#               expressionLanguage: jmespath
+#           - output:
+#               mode: records
 #       get:
 #         enabled: true
-#         description: "Get document by ID"
 #         steps:
-#           - fetch: { source: openapi, openapiRef: get, query: {} }
-#           - map: { useFieldMappings: true, inputPath: "$" }
-#           - filter: { enforceAbac: true }
-#           - output: { mode: records }
-#       create:
-#         enabled: true
-#         description: "Upload document"
-#         steps:
-#           - fetch: { source: openapi, openapiRef: create, bodyTemplate: "{{fileContent}}" }
-#           - map: { useFieldMappings: true, inputPath: "$" }
-#           - output: { mode: records }
+#           - fetch:
+#               source: http
+#               method: GET
+#               # Path template must match your API; {id} is illustrative — align with real route and param names.
+#               path: "/{{entityKey}}/{id}"
+#               query: {}
+#           - map:
+#               useFieldMappings: true
+#               inputPath: "$"
+#           - filter:
+#               enforceAbac: true
+#               expression: "@"
+#               expressionLanguage: jmespath
+#           - output:
+#               mode: records
 {{/if}}
-{{#if (eq schemaEntityType "vectorStore")}}
-# execution:
-#   engine: cip
-#   cip:
-#     operations:
-#       list:
-#         steps:
-#           - fetch: { source: openapi, openapiRef: list, query: {} }
-#           - map: { useFieldMappings: true, inputPath: "$" }
-#           - output: { mode: records }
-#       get:
-#         steps:
-#           - fetch: { source: openapi, openapiRef: get, query: {} }
-#           - map: { useFieldMappings: true, inputPath: "$" }
-#           - output: { mode: records }
-{{/if}}
-{{#if (eq schemaEntityType "messageService")}}
-# execution:
-#   engine: cip
-#   cip:
-#     operations:
-#       list:
-#         steps:
-#           - fetch: { source: openapi, openapiRef: list, query: {} }
-#           - map: { useFieldMappings: true, inputPath: "$" }
-#           - output: { mode: records }
-{{/if}}
+{{/unless}}
 {{#if (eq schemaEntityType "none")}}
-# execution:
+# execution (entityType none — orchestration / API composition only; no storage contract on this datasource):
+# Cross-datasource access without FK is not a query-time join: use FK graph, bridge recordStorage, pre-normalize, or fan-out here (Plan 346 section 5).
 #   engine: cip
 #   cip:
+#     version: "1.0"
 #     operations:
 #       list:
 #         steps:
 #           - fetch: { source: openapi, openapiRef: list, query: {} }
-#           - map: { useFieldMappings: true, inputPath: "$" }
 #           - output: { mode: records }
-#       get:
-#         steps:
-#           - fetch: { source: openapi, openapiRef: get, query: {} }
-#           - map: { useFieldMappings: true, inputPath: "$" }
-#           - output: { mode: records }
+#       # Chain another datasource (no fieldMappings on this datasource):
+#       # chain:
+#       #   steps:
+#       #     - fetch: { source: datasource, datasource: "upstream-system-entity", operation: list, parameters: {} }
+#       #     - output: { mode: records }
 {{/if}}
 
-# config: ABAC cross-system filters (SQL or JSON)
+# config.extensions: vendor-specific knobs; property names must match ^x[A-Z]… (e.g. xHubSpotFeature). Keeps core schema stable.
 # config:
-#   abac:
-#     crossSystemSql: "country = '{{actor.country}}'"
-#     # crossSystemJson: { "dimensions.country": { "eq": "{{actor.country}}" } }
+#   extensions:
+#     xHubSpotFeature: {}
 
-# capabilities: [list, get, create, update, delete]
-
-# exposed: attributes to expose via MCP/OpenAPI
+# exposed.schema: single public response shape for REST/MCP; values are expressions (metadata.*, dimension.*, fk.*.metadata.*). No implicit fields; use exposed.readonly[] / exposed.omit[] for writes (Plan 346 section 13). exposed.attributes is deprecated.
 # exposed:
-#   attributes: [id, name]
+#   schema:
+#     id: metadata.id
+#     name: metadata.name
+#     # nested objects and fk.* paths are allowed when foreignKeys exist and join rules pass join rules (section 8)
+#   # readonly: [status]
+#   # omit: [internalScore]
 
-# metadataSchema: JSON Schema for raw metadata validation
-# metadataSchema:
-#   type: object
-#   properties:
-#     id: { type: string }
-#     name: { type: string }
+# testPayload (optional): fixtures for static expression resolution (raw/fk/dimension); root keys are closed in schema — no typos at top level (Plan 346 section 16).
+# testPayload:
+#   mode: smoke
+#   payloadTemplate:
+#     raw: { id: "1", name: "Example" }
+
+# capabilities: root-level array preferred (v2.2+); names must match ^[a-z][a-zA-Z0-9]*$.
+# capabilities: [list, get, create, update, delete]

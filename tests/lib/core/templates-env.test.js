@@ -195,9 +195,9 @@ describe('Templates Environment Module', () => {
       expect(result).toEqual({
         'MISO_CONTROLLER_URL': 'https://controller.aifabrix.dev',
         'MISO_ENVIRONMENT': 'dev',
-        'MISO_CLIENTID': 'kv://miso-controller-client-idKeyVault',
-        'MISO_CLIENTSECRET': 'kv://miso-controller-client-secretKeyVault',
-        'MISO_WEB_SERVER_URL': 'kv://miso-controller-web-server-url'
+        'MISO_CLIENTID': '',
+        'MISO_CLIENTSECRET': '',
+        'MISO_WEB_SERVER_URL': 'url://miso-controller-public'
       });
     });
 
@@ -307,9 +307,9 @@ describe('Templates Environment Module', () => {
       expect(result).toContain('# MISO Controller Configuration');
       expect(result).toContain('MISO_CONTROLLER_URL=https://controller.aifabrix.dev');
       expect(result).toContain('MISO_ENVIRONMENT=dev');
-      expect(result).toContain('MISO_CLIENTID=kv://miso-controller-client-idKeyVault');
-      expect(result).toContain('MISO_CLIENTSECRET=kv://miso-controller-client-secretKeyVault');
-      expect(result).toContain('MISO_WEB_SERVER_URL=kv://miso-controller-web-server-url');
+      expect(result).toContain('MISO_CLIENTID=');
+      expect(result).toContain('MISO_CLIENTSECRET=');
+      expect(result).toContain('MISO_WEB_SERVER_URL=url://miso-controller-public');
     });
 
     it('should merge with existing environment variables', () => {

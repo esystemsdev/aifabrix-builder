@@ -13,16 +13,28 @@ services:
       {{#if traefik.tls}}
       - "traefik.http.routers.{{app.key}}.entrypoints=websecure"
       - "traefik.http.routers.{{app.key}}.tls=true"
+      - "traefik.http.routers.{{app.key}}.service={{app.key}}"
       {{#if traefik.certStore}}
       - "traefik.http.routers.{{app.key}}.tls.certstore={{traefik.certStore}}"
       {{/if}}
+      - "traefik.http.routers.{{app.key}}-http.rule=Host(`{{traefik.host}}`) && PathPrefix(`{{traefik.path}}`)"
+      - "traefik.http.routers.{{app.key}}-http.entrypoints=web"
+      {{#unless (eq traefik.path "/")}}
+      {{#if traefik.stripPathPrefix}}
+      - "traefik.http.routers.{{app.key}}-http.middlewares={{app.key}}-stripprefix"
+      {{/if}}
+      {{/unless}}
+      - "traefik.http.routers.{{app.key}}-http.service={{app.key}}"
       {{else}}
       - "traefik.http.routers.{{app.key}}.entrypoints=web"
+      - "traefik.http.routers.{{app.key}}.service={{app.key}}"
       {{/if}}
       - "traefik.http.services.{{app.key}}.loadbalancer.server.port={{containerPort}}"
       {{#unless (eq traefik.path "/")}}
+      {{#if traefik.stripPathPrefix}}
       - "traefik.http.middlewares.{{app.key}}-stripprefix.stripprefix.prefixes={{traefik.path}}"
       - "traefik.http.routers.{{app.key}}.middlewares={{app.key}}-stripprefix"
+      {{/if}}
       {{/unless}}
     {{/if}}
     environment:
@@ -59,7 +71,11 @@ services:
     {{/if}}
     {{/if}}
     healthcheck:
+      {{#if healthCheck.bashProbe}}
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/{{port}} && printf \"GET {{healthCheck.path}} HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3 && head -n1 <&3 | grep -q \"200 OK\"'"]
+      {{else}}
       test: ["CMD", "curl", "-f", "http://localhost:{{port}}{{healthCheck.path}}"]
+      {{/if}}
       interval: {{healthCheck.interval}}s
       timeout: 10s
       retries: 3

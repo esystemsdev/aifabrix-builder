@@ -98,7 +98,7 @@ describe('App Register Display Module', () => {
 
       displayRegistrationResults(data, apiUrl, environment);
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Application registered successfully!'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Application registered successfully!'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('📋 Application Details:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('ID:           app-123'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Key:          myapp'));
@@ -106,7 +106,7 @@ describe('App Register Display Module', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🔑 CREDENTIALS'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Client ID:     client-id-123'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Client Secret: client-secret-456'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('⚠️  IMPORTANT: Client Secret will not be shown again!'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('⚠  IMPORTANT: Client Secret will not be shown again!'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('📝 Add to GitHub Secrets:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('MISO_CONTROLLER_URL = http://localhost:3000'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('DEV_MISO_CLIENTID = client-id-123'));

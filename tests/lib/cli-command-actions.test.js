@@ -23,7 +23,14 @@ const secrets = require('../../lib/core/secrets');
 const generator = require('../../lib/generator');
 const validator = require('../../lib/validation/validator');
 const keyGenerator = require('../../lib/core/key-generator');
-const { saveConfig } = require('../../lib/core/config');
+const config = require('../../lib/core/config');
+const { saveConfig } = config;
+const {
+  loadInfraStatusSummary,
+  formatInfraStatusTitleLine,
+  logInfraStatusConfigurationSummary,
+  logPaddedFieldRow
+} = require('../../lib/utils/infra-status-display');
 const { makeApiCall, initiateDeviceCodeFlow, pollDeviceCodeToken, displayDeviceCodeInfo } = require('../../lib/utils/api');
 const inquirer = require('inquirer');
 const { exec } = require('child_process');
@@ -817,9 +824,9 @@ describe('CLI Command Actions', () => {
 
       try {
         const imageTag = await app.buildApp(appName, options);
-        console.log(`✅ Built image: ${imageTag}`);
+        console.log(`✔ Built image: ${imageTag}`);
         expect(app.buildApp).toHaveBeenCalledWith(appName, options);
-        expect(console.log).toHaveBeenCalledWith('✅ Built image: test-app:latest');
+        expect(console.log).toHaveBeenCalledWith('✔ Built image: test-app:latest');
       } catch (error) {
         cli.handleCommandError(error, 'build');
       }
@@ -882,22 +889,34 @@ describe('CLI Command Actions', () => {
       };
 
       infra.getInfraStatus = jest.fn().mockResolvedValue(mockStatus);
+      config.getDeveloperId = jest.fn().mockResolvedValue('1');
+      config.getCurrentEnvironment = jest.fn().mockResolvedValue('dev');
+      config.getTlsEnabled = jest.fn().mockResolvedValue(true);
+      config.getRemoteServer = jest.fn().mockResolvedValue('https://remote.example');
+      config.getUseEnvironmentScopedResources = jest.fn().mockResolvedValue(false);
+      config.getTraefikEnabled = jest.fn().mockResolvedValue(false);
+      jest.spyOn(logger, 'log').mockImplementation(() => {});
 
       try {
+        const summary = await loadInfraStatusSummary();
         const status = await infra.getInfraStatus();
-        console.log('\n📊 Infrastructure Status\n');
+        logger.log('');
+        logger.log(formatInfraStatusTitleLine(summary.devIdStr, summary.remoteServer));
+        logger.log('');
+        logInfraStatusConfigurationSummary(summary);
 
         Object.entries(status).forEach(([service, info]) => {
-          const icon = info.status === 'running' ? '✅' : '❌';
-          console.log(`${icon} ${service}:`);
-          console.log(`   Status: ${info.status}`);
-          console.log(`   Port: ${info.port}`);
-          console.log(`   URL: ${info.url}`);
-          console.log('');
+          const icon = String(info.status).trim().toLowerCase() === 'running' ? '✔' : '✖';
+          logger.log(`${icon} ${service}`);
+          logPaddedFieldRow('Status', info.status);
+          logPaddedFieldRow('Port', info.port);
+          logPaddedFieldRow('URL', info.url);
+          logger.log('');
         });
 
         expect(infra.getInfraStatus).toHaveBeenCalled();
-        expect(console.log).toHaveBeenCalled();
+        expect(logger.log).toHaveBeenCalledWith('📊 Infrastructure Status (dev01 @ remote.example)');
+        expect(logger.log).toHaveBeenCalledWith('✔ postgres');
       } catch (error) {
         cli.handleCommandError(error, 'status');
       }
@@ -912,9 +931,9 @@ describe('CLI Command Actions', () => {
 
       try {
         await infra.restartService(service);
-        console.log(`✅ ${service} service restarted successfully`);
+        console.log(`✔ ${service} service restarted successfully`);
         expect(infra.restartService).toHaveBeenCalledWith(service);
-        expect(console.log).toHaveBeenCalledWith(`✅ ${service} service restarted successfully`);
+        expect(console.log).toHaveBeenCalledWith(`✔ ${service} service restarted successfully`);
       } catch (error) {
         cli.handleCommandError(error, 'restart');
       }
@@ -929,9 +948,9 @@ describe('CLI Command Actions', () => {
 
       try {
         const envPath = await secrets.generateEnvFile(appName);
-        console.log(`✓ Generated .env file: ${envPath}`);
+        console.log(`✔ Generated .env file: ${envPath}`);
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName);
-        expect(console.log).toHaveBeenCalledWith('✓ Generated .env file: /path/to/.env');
+        expect(console.log).toHaveBeenCalledWith('✔ Generated .env file: /path/to/.env');
       } catch (error) {
         cli.handleCommandError(error, 'resolve');
       }
@@ -956,16 +975,16 @@ describe('CLI Command Actions', () => {
       try {
         const result = await generator.generateDeployJsonWithValidation(appName);
         if (result.success) {
-          console.log(`✓ Generated deployment JSON: ${result.path}`);
+          console.log(`✔ Generated deployment JSON: ${result.path}`);
 
           if (result.validation.warnings.length > 0) {
-            console.log('\n⚠️  Warnings:');
+            console.log('\n⚠  Warnings:');
             result.validation.warnings.forEach(warning => console.log(`   • ${warning}`));
           }
         }
         expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
-        expect(console.log).toHaveBeenCalledWith('✓ Generated deployment JSON: /path/to/test-app-deploy.json');
-        expect(console.log).toHaveBeenCalledWith('\n⚠️  Warnings:');
+        expect(console.log).toHaveBeenCalledWith('✔ Generated deployment JSON: /path/to/test-app-deploy.json');
+        expect(console.log).toHaveBeenCalledWith('\n⚠  Warnings:');
       } catch (error) {
         cli.handleCommandError(error, 'json');
       }
@@ -987,11 +1006,11 @@ describe('CLI Command Actions', () => {
       try {
         const result = await generator.generateDeployJsonWithValidation(appName);
         if (!result.success) {
-          console.log('❌ Validation failed:');
+          console.log('✖ Validation failed:');
           result.validation.errors.forEach(error => console.log(`   • ${error}`));
           process.exit(1);
         }
-        expect(console.log).toHaveBeenCalledWith('❌ Validation failed:');
+        expect(console.log).toHaveBeenCalledWith('✖ Validation failed:');
         expect(process.exit).toHaveBeenCalledWith(1);
       } catch (error) {
         cli.handleCommandError(error, 'json');
@@ -1008,7 +1027,7 @@ describe('CLI Command Actions', () => {
 
       try {
         const dockerfilePath = await app.generateDockerfileForApp(appName, options);
-        console.log('\n✅ Dockerfile generated successfully!');
+        console.log('\n✔ Dockerfile generated successfully!');
         console.log(`Location: ${dockerfilePath}`);
         expect(app.generateDockerfileForApp).toHaveBeenCalledWith(appName, options);
         expect(console.log).toHaveBeenCalled();

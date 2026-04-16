@@ -337,9 +337,9 @@ describe('CLI Uncovered Command Handlers', () => {
         try {
           const result = await validator.checkEnvironment();
           logger.log('\n🔍 AI Fabrix Environment Check\n');
-          logger.log(`Docker: ${result.docker === 'ok' ? '✅ Running' : '❌ Not available'}`);
-          logger.log(`Ports: ${result.ports === 'ok' ? '✅ Available' : '⚠️  Some ports in use'}`);
-          logger.log(`Secrets: ${result.secrets === 'ok' ? '✅ Configured' : '❌ Missing'}`);
+          logger.log(`Docker: ${result.docker === 'ok' ? '✔ Running' : '✖ Not available'}`);
+          logger.log(`Ports: ${result.ports === 'ok' ? '✔ Available' : '⚠  Some ports in use'}`);
+          logger.log(`Secrets: ${result.secrets === 'ok' ? '✔ Configured' : '✖ Missing'}`);
 
           if (result.recommendations.length > 0) {
             logger.log('\n📋 Recommendations:');
@@ -351,7 +351,7 @@ describe('CLI Uncovered Command Handlers', () => {
               const health = await infra.checkInfraHealth();
               logger.log('\n🏥 Infrastructure Health:');
               Object.entries(health).forEach(([service, status]) => {
-                const icon = status === 'healthy' ? '✅' : status === 'unknown' ? '❓' : '❌';
+                const icon = status === 'healthy' ? '✔' : status === 'unknown' ? '❓' : '✖';
                 logger.log(`  ${icon} ${service}: ${status}`);
               });
             } catch (error) {
@@ -386,16 +386,16 @@ describe('CLI Uncovered Command Handlers', () => {
         try {
           const result = await validator.checkEnvironment();
           logger.log('\n🔍 AI Fabrix Environment Check\n');
-          logger.log(`Docker: ${result.docker === 'ok' ? '✅ Running' : '❌ Not available'}`);
-          logger.log(`Ports: ${result.ports === 'ok' ? '✅ Available' : '⚠️  Some ports in use'}`);
-          logger.log(`Secrets: ${result.secrets === 'ok' ? '✅ Configured' : '❌ Missing'}`);
+          logger.log(`Docker: ${result.docker === 'ok' ? '✔ Running' : '✖ Not available'}`);
+          logger.log(`Ports: ${result.ports === 'ok' ? '✔ Available' : '⚠  Some ports in use'}`);
+          logger.log(`Secrets: ${result.secrets === 'ok' ? '✔ Configured' : '✖ Missing'}`);
 
           if (result.docker === 'ok') {
             try {
               const health = await infra.checkInfraHealth();
               logger.log('\n🏥 Infrastructure Health:');
               Object.entries(health).forEach(([service, status]) => {
-                const icon = status === 'healthy' ? '✅' : status === 'unknown' ? '❓' : '❌';
+                const icon = status === 'healthy' ? '✔' : status === 'unknown' ? '❓' : '✖';
                 logger.log(`  ${icon} ${service}: ${status}`);
               });
             } catch (error) {
@@ -453,7 +453,7 @@ describe('CLI Uncovered Command Handlers', () => {
           const outputDir = options.output || appPath;
           const result = await generator.splitDeployJson(deployJsonPath, outputDir);
 
-          logger.log(chalk.green('\n✓ Successfully split deployment JSON into component files:'));
+          logger.log(chalk.green('\n✔ Successfully split deployment JSON into component files:'));
           logger.log(`  • env.template: ${result.envTemplate}`);
           logger.log(`  • application.yaml: ${result.variables}`);
           if (result.rbac) {
@@ -468,7 +468,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       await handler('testapp', {});
       expect(generator.splitDeployJson).toHaveBeenCalled();
-      expect(logger.log).toHaveBeenCalledWith(chalk.green('\n✓ Successfully split deployment JSON into component files:'));
+      expect(logger.log).toHaveBeenCalledWith(chalk.green('\n✔ Successfully split deployment JSON into component files:'));
       expect(process.exit).not.toHaveBeenCalled();
     });
 
@@ -794,6 +794,7 @@ describe('CLI Uncovered Command Handlers', () => {
       const prog = {
         command: jest.fn((name) => ({
           description: jest.fn().mockReturnThis(),
+          addHelpText: jest.fn().mockReturnThis(),
           option: jest.fn().mockReturnThis(),
           action: jest.fn((fn) => {
             actions[name] = fn;
@@ -803,7 +804,7 @@ describe('CLI Uncovered Command Handlers', () => {
       };
       setupExternalSystemCommands(prog);
 
-      const act = actions['download <system-key>'];
+      const act = actions['download <systemKey>'];
       expect(act).toBeDefined();
       await act('hubspot', { format: 'json' });
       expect(download.downloadExternalSystem).toHaveBeenCalledWith('hubspot', expect.objectContaining({ format: 'json' }));
@@ -818,6 +819,7 @@ describe('CLI Uncovered Command Handlers', () => {
       const prog = {
         command: jest.fn((name) => ({
           description: jest.fn().mockReturnThis(),
+          addHelpText: jest.fn().mockReturnThis(),
           option: jest.fn().mockReturnThis(),
           action: jest.fn((fn) => {
             actions[name] = fn;
@@ -827,7 +829,7 @@ describe('CLI Uncovered Command Handlers', () => {
       };
       setupExternalSystemCommands(prog);
 
-      await actions['download <system-key>']('hubspot', {});
+      await actions['download <systemKey>']('hubspot', {});
       expect(download.downloadExternalSystem).toHaveBeenCalledWith('hubspot', expect.objectContaining({ format: 'json' }));
     });
   });
@@ -842,6 +844,7 @@ describe('CLI Uncovered Command Handlers', () => {
       const prog = {
         command: jest.fn((name) => ({
           description: jest.fn().mockReturnThis(),
+          addHelpText: jest.fn().mockReturnThis(),
           option: jest.fn().mockReturnThis(),
           action: jest.fn((fn) => {
             actions[name] = fn;
@@ -866,6 +869,7 @@ describe('CLI Uncovered Command Handlers', () => {
       const prog = {
         command: jest.fn((name) => ({
           description: jest.fn().mockReturnThis(),
+          addHelpText: jest.fn().mockReturnThis(),
           option: jest.fn().mockReturnThis(),
           action: jest.fn((fn) => {
             actions[name] = fn;
@@ -887,6 +891,7 @@ describe('CLI Uncovered Command Handlers', () => {
       const prog = {
         command: jest.fn((name) => ({
           description: jest.fn().mockReturnThis(),
+          addHelpText: jest.fn().mockReturnThis(),
           option: jest.fn().mockReturnThis(),
           action: jest.fn((fn) => {
             actions[name] = fn;

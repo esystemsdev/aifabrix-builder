@@ -14,6 +14,19 @@ jest.mock('child_process', () => ({
   exec: jest.fn()
 }));
 
+jest.mock('../../../lib/utils/docker-exec', () => ({
+  execWithDockerEnv(command) {
+    const { exec } = require('child_process');
+    return new Promise((resolve, reject) => {
+      // Match legacy tests: mocked exec uses (command, callback) only
+      exec(command, (error, stdout, stderr) => {
+        if (error) reject(error);
+        else resolve({ stdout: stdout || '', stderr: stderr || '' });
+      });
+    });
+  }
+}));
+
 const execAsync = promisify(exec);
 const {
   checkDockerCli,
@@ -22,8 +35,19 @@ const {
 } = require('../../../lib/utils/docker');
 
 describe('Docker Utilities Module', () => {
+  const originalComposeEnv = process.env.AIFABRIX_COMPOSE_CMD;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    delete process.env.AIFABRIX_COMPOSE_CMD;
+  });
+
+  afterAll(() => {
+    if (originalComposeEnv === undefined) {
+      delete process.env.AIFABRIX_COMPOSE_CMD;
+    } else {
+      process.env.AIFABRIX_COMPOSE_CMD = originalComposeEnv;
+    }
   });
 
   describe('checkDockerCli', () => {
@@ -84,16 +108,102 @@ describe('Docker Utilities Module', () => {
       expect(exec).toHaveBeenCalledWith('docker-compose --version', expect.any(Function));
     });
 
-    it('should throw error when neither v2 nor v1 is available', async() => {
+    it('should throw error when neither v2 nor v1 nor podman compose is available', async() => {
       exec.mockImplementation((command, callback) => {
         callback(new Error('command not found'), null);
       });
 
       await expect(getComposeCommand()).rejects.toThrow(
-        'Docker Compose is not available (neither "docker compose" nor "docker-compose" found)'
+        /Docker Compose is not available[\s\S]*Compose v2 plugin/
       );
       expect(exec).toHaveBeenCalledWith('docker compose version', expect.any(Function));
       expect(exec).toHaveBeenCalledWith('docker-compose --version', expect.any(Function));
+      expect(exec).toHaveBeenCalledWith('podman compose version', expect.any(Function));
+    });
+
+    it('should include docker compose failure detail and TLS hint when v2 fails with cert error', async() => {
+      exec.mockImplementation((command, callback) => {
+        if (command === 'docker compose version') {
+          callback(new Error('tls: failed to verify certificate: x509'), null);
+        } else {
+          callback(new Error('not found'), null);
+        }
+      });
+
+      try {
+        await getComposeCommand();
+        expect.fail('should throw');
+      } catch (err) {
+        expect(err.message).toMatch(/docker compose version.*failed:/);
+        expect(err.message).toMatch(/cert\.pem|client auth|TLS/i);
+      }
+    });
+
+    it('should return AIFABRIX_COMPOSE_CMD when set and version succeeds', async() => {
+      process.env.AIFABRIX_COMPOSE_CMD = '/opt/bin/docker compose';
+      exec.mockImplementation((command, callback) => {
+        if (command === '/opt/bin/docker compose version') {
+          callback(null, { stdout: 'Docker Compose version v2', stderr: '' });
+        }
+      });
+
+      const result = await getComposeCommand();
+      expect(result).toBe('/opt/bin/docker compose');
+      expect(exec).toHaveBeenCalledWith('/opt/bin/docker compose version', expect.any(Function));
+    });
+
+    it('should return AIFABRIX_COMPOSE_CMD when version fails but --version works', async() => {
+      process.env.AIFABRIX_COMPOSE_CMD = 'docker-compose';
+      exec.mockImplementation((command, callback) => {
+        if (command === 'docker-compose version') {
+          callback(new Error('unknown flag'), null);
+        } else if (command === 'docker-compose --version') {
+          callback(null, { stdout: '1.29', stderr: '' });
+        }
+      });
+
+      const result = await getComposeCommand();
+      expect(result).toBe('docker-compose');
+    });
+
+    it('should return podman compose when docker compose and docker-compose fail', async() => {
+      exec.mockImplementation((command, callback) => {
+        if (command === 'docker compose version') {
+          callback(new Error('not found'), null);
+        } else if (command === 'docker-compose --version') {
+          callback(new Error('not found'), null);
+        } else if (command === 'podman compose version') {
+          callback(null, { stdout: 'podman compose', stderr: '' });
+        }
+      });
+
+      const result = await getComposeCommand();
+      expect(result).toBe('podman compose');
+    });
+
+    it('should throw when AIFABRIX_COMPOSE_CMD is set but both version probes fail', async() => {
+      process.env.AIFABRIX_COMPOSE_CMD = '/bad/compose';
+      exec.mockImplementation((command, callback) => {
+        if (command === '/bad/compose version' || command === '/bad/compose --version') {
+          callback(new Error('enoent'), null);
+        }
+      });
+
+      await expect(getComposeCommand()).rejects.toThrow(
+        /AIFABRIX_COMPOSE_CMD[\s\S]*\/bad\/compose[\s\S]*enoent/
+      );
+    });
+
+    it('should ignore whitespace-only AIFABRIX_COMPOSE_CMD and use auto-detection', async() => {
+      process.env.AIFABRIX_COMPOSE_CMD = '   ';
+      exec.mockImplementation((command, callback) => {
+        if (command === 'docker compose version') {
+          callback(null, { stdout: 'v2', stderr: '' });
+        }
+      });
+
+      const result = await getComposeCommand();
+      expect(result).toBe('docker compose');
     });
 
     it('should try v2 first before falling back to v1', async() => {

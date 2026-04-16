@@ -2,9 +2,11 @@
 
 ← [Documentation index](../README.md) · [Configuration](README.md)
 
-Environment variables template. `aifabrix resolve <app>` and run/build generate `.env` from this file plus secrets. **Resolve for external integrations:** You can run `aifabrix resolve <app>` for external integrations in `integration/<app>/` when only `env.template` is present (no `application.yaml` required); resolve then writes `integration/<app>/.env`. When full application config exists, the only persisted `.env` is written to `build.envOutputPath` when set (or to a temp path for run).
+Environment variables template. `aifabrix resolve <app>` and run/build generate `.env` from this file plus secrets. **Resolve for external integrations:** You can run `aifabrix resolve <app>` for external integrations in `integration/<systemKey>/` when only `env.template` is present (no `application.yaml` required); resolve then writes `integration/<systemKey>/.env`. When full application config exists, the only persisted `.env` is written to `build.envOutputPath` when set (or to a temp path for run).
 
 **kv:// references:** `kv://name` resolves from the secrets file (e.g. `~/.aifabrix/secrets.local.yaml`). Pattern: `<app>-client-idKeyVault`, `<app>-client-secretKeyVault`, or any `*KeyVault` key.
+
+**url:// placeholders:** After `kv://` values are resolved, the Builder expands declarative URL tokens (full URL, **host-only** origin, and **vdir** path). Shapes include **`url://public`**, **`url://internal`**, **`url://<appKey>-public`**, **`url://<appKey>-internal`**, plus **`url://host-public`**, **`url://vdir-public`**, and cross-app **`url://<appKey>-host-public`**, **`url://<appKey>-vdir-public`**, etc. See [Declarative url://](declarative-urls.md).
 
 **Configuration alignment:** For external systems, variable names in env.template align with `configuration[].name` for entries with `location: variable`. On **upload**, the CLI resolves those configuration values from .env (and keyvault entries from secrets) before sending to the dataplane. On **download**, when env.template exists, the CLI sets `configuration[].value` to `{{name}}` for each variable-location entry whose name matches a key in env.template, so the downloaded system file stays template-based.
 
@@ -24,4 +26,4 @@ API_KEY=kv://my-api-keyKeyVault
 MISO_CONTROLLER_URL=http://${MISO_HOST}:${MISO_PORT}
 ```
 
-See [application.yaml](application-yaml.md), [env-config](env-config.md), [Secrets and config](secrets-and-config.md).
+See [application.yaml](application-yaml.md), [env-config](env-config.md), [Declarative url://](declarative-urls.md), [Secrets and config](secrets-and-config.md).

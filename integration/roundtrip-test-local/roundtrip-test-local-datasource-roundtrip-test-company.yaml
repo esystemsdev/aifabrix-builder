@@ -1,0 +1,14 @@
+key: roundtrip-test-company
+displayName: Company
+systemKey: roundtrip-test-local
+entityType: record-storage
+resourceType: customer
+primaryKey:
+  - country
+fieldMappings:
+  dimensions:
+    country: metadata.country
+  attributes:
+    country:
+      expression: '{{metadata.country}}'
+      type: string

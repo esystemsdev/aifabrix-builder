@@ -1,0 +1,86 @@
+{
+  "system": {
+    "key": "roundtrip-test-local2",
+    "displayName": "Roundtrip Test",
+    "description": "Roundtrip validation test",
+    "type": "openapi",
+    "enabled": true,
+    "authentication": {
+      "method": "oauth2",
+      "variables": {
+        "baseUrl": "https://api.example.com",
+        "tokenUrl": "https://api.example.com/oauth/token",
+        "authorizationUrl": "https://api.example.com/oauth/authorize"
+      },
+      "security": {
+        "clientId": "kv://roundtrip-test-local2/clientId",
+        "clientSecret": "kv://roundtrip-test-local2/clientSecret"
+      }
+    },
+    "configuration": [
+      {
+        "name": "KV_ROUNDTRIP_TEST_CLIENTID",
+        "value": "roundtrip-test-local2/clientId",
+        "location": "keyvault",
+        "required": true
+      },
+      {
+        "name": "KV_ROUNDTRIP_TEST_CLIENTSECRET",
+        "value": "roundtrip-test-local2/clientSecret",
+        "location": "keyvault",
+        "required": true
+      }
+    ],
+    "dataSources": [
+      "roundtrip-test-local2-company"
+    ]
+  },
+  "dataSources": [
+    {
+      "key": "roundtrip-test-local2-company",
+      "displayName": "Company",
+      "systemKey": "roundtrip-test-local2",
+      "entityType": "recordStorage",
+      "resourceType": "record",
+      "primaryKey": [
+        "id"
+      ],
+      "labelKey": [
+        "id"
+      ],
+      "metadataSchema": {
+        "type": "object",
+        "required": [
+          "id",
+          "externalId"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "index": true
+          },
+          "externalId": {
+            "type": "string",
+            "index": true
+          }
+        }
+      },
+      "fieldMappings": {
+        "attributes": {
+          "id": {
+            "expression": "{{raw.id}}"
+          },
+          "externalId": {
+            "expression": "{{raw.externalId}}"
+          }
+        }
+      },
+      "exposed": {
+        "schema": {
+          "id": "metadata.id",
+          "externalId": "metadata.externalId"
+        }
+      }
+    }
+  ]
+}

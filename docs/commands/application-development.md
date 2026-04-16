@@ -11,7 +11,7 @@ Commands for creating, building, and running applications locally.
 
 Create new application with configuration files.
 
-**What:** Creates a new application. By default creates an **external** system in `integration/<app>/`. Use `--type webapp` to create a builder app in `builder/<app>/` with `application.yaml`, `env.template`, `rbac.yaml`, and optional GitHub Actions workflows.
+**What:** Creates a new application. By default creates an **external** system in `integration/<systemKey>/`. Use `--type webapp` to create a builder app in `builder/<appKey>/` with `application.yaml`, `env.template`, `rbac.yaml`, and optional GitHub Actions workflows.
 
 **When:** Starting a new application.
 
@@ -54,7 +54,7 @@ aifabrix create myapp --github --github-steps npm --type webapp
 ```bash
 aifabrix create hubspot --wizard
 ```
-Creates in `integration/<app>/` using the interactive wizard. For non-interactive external create, use `--display-name`, `--description`, `--system-type`, `--auth-type`, `--entity-type`, and `--datasources`. For other commands (validate, json, deploy, delete, **resolve**), the CLI always resolves the app by checking `integration/<app>` first, then `builder/<app>`; if neither exists, it errors. **Resolve** additionally supports **env-only** mode: if `integration/<app>/env.template` exists (even without `application.yaml`), resolve uses that directory and writes `integration/<app>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
+Creates in `integration/<systemKey>/` using the interactive wizard. For non-interactive external create, use `--display-name`, `--description`, `--system-type`, `--auth-type`, `--entity-type`, and `--datasources`. For other commands (validate, json, deploy, delete, **resolve**), the CLI always resolves the app by checking `integration/<systemKey>` first, then `builder/<appKey>`; if neither exists, it errors. **Resolve** additionally supports **env-only** mode: if `integration/<systemKey>/env.template` exists (even without `application.yaml`), resolve uses that directory and writes `integration/<systemKey>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
 
 **External output:** Generated `env.template` includes full `kv://` paths (e.g. `KV_HUBSPOT_APIKEY=kv://hubspot-demo/apikey`) for credential secrets. The generated README includes a **Secrets** section listing `aifabrix secret set <systemKey>/<key> <your value>` per authentication type (the key has no `kv://` prefix).
 
@@ -78,11 +78,11 @@ See `integration/hubspot-test/` for a complete HubSpot integration with companie
 - `--main-branch <branch>` - Main branch name for workflows (default: main)
 
 **Creates:**
-- `builder/<app>/application.yaml` - Application configuration (regular apps)
-- `builder/<app>/env.template` - Environment template with kv:// references
-- `builder/<app>/rbac.yaml` - RBAC configuration (if authentication enabled)
-- `builder/<app>/<appKey>-deploy.json` - Deployment manifest (e.g. `builder/myapp/myapp-deploy.json`)
-- `builder/<app>/README.md` - Application documentation
+- `builder/<appKey>/application.yaml` - Application configuration (regular apps)
+- `builder/<appKey>/env.template` - Environment template with kv:// references
+- `builder/<appKey>/rbac.yaml` - RBAC configuration (if authentication enabled)
+- `builder/<appKey>/<appKey>-deploy.json` - Deployment manifest (e.g. `builder/myapp/myapp-deploy.json`)
+- `builder/<appKey>/README.md` - Application documentation
 - `.github/workflows/` - GitHub Actions workflows (if --github specified)
 
 **External type (default):** When `--type` is omitted or `--type external`:
@@ -93,15 +93,15 @@ See `integration/hubspot-test/` for a complete HubSpot integration with companie
 - `--entity-type <type>` - recordStorage, documentStorage, vectorStore, messageService, or none (required for non-interactive)
 - `--datasources <count>` - Number of datasources (required for non-interactive)
 
-When using `--type external`, the command creates an external system integration in `integration/<app>/`:
-- `integration/<app>/application.yaml` (or `application.json` if config format is `json`) - App configuration with `app.type: "external"` and `externalIntegration` block
-- `integration/<app>/<systemKey>-system.yaml` (or `*.json`) - External system configuration
-- `integration/<app>/<systemKey>-datasource-<datasource-key>.yaml` (or `*.json`) - Datasource files (all in same folder)
+When using `--type external`, the command creates an external system integration in `integration/<systemKey>/`:
+- `integration/<systemKey>/application.yaml` (or `application.json` if config format is `json`) - App configuration with `app.type: "external"` and `externalIntegration` block
+- `integration/<systemKey>/<systemKey>-system.yaml` (or `*.json`) - External system configuration
+- `integration/<systemKey>/<systemKey>-datasource-<datasource-key>.yaml` (or `*.json`) - Datasource files (all in same folder)
 
 When `format` is set in `~/.aifabrix/config.yaml` (via `aifabrix dev set-format`), the command generates files in that format.
-- `integration/<app>/<systemKey>-deploy.json` - Deployment manifest (generated)
-- `integration/<app>/env.template` - Environment variables template
-- `integration/<app>/README.md` - Application documentation
+- `integration/<systemKey>/<systemKey>-deploy.json` - Deployment manifest (generated)
+- `integration/<systemKey>/env.template` - Environment variables template
+- `integration/<systemKey>/README.md` - Application documentation
 - All files are in the same folder for easy viewing and management
 - External systems use the pipeline API for deployment via Miso Controller
 
@@ -165,8 +165,10 @@ aifabrix build myapp --force-template
 - `-f, --force-template` - Force rebuild from template
 - `-t, --tag <tag>` - Image tag (default: latest)
 
+**Image repository name:** Taken from `application.yaml` when `image` is set (same rules as run: optional `image.registry`, `image.name`, `image.tag`, or a string `image: repo:tag`). If `image` is omitted, blank, or an empty object, the CLI lists **local Docker images** and reuses a matching repository, stripping common dev suffixes (`-dev<N>`, `-extra`) so the next build tags the base name (for example a listed `myorg/app-dev2:latest` → build target `myorg/app`). When your developer id is set, a repository ending in `-dev<id>` is preferred if several lines match. If nothing in Docker matches, the name falls back to `app.key` or the app folder name.
+
 **Creates:**
-- Docker image: `myapp:latest`
+- Docker image: `<resolved-repository>:<tag>` (default tag `latest`)
 - Env is resolved in memory; the only persisted `.env` is written to `build.envOutputPath` when configured (run uses the same single .env path or temp).
 
 **Environment and tokens:** Build passes `NPM_TOKEN` and `PYPI_TOKEN` as Docker build-args when they are in `env.template` (e.g. `NPM_TOKEN=kv://npm-tokenKeyVault`) or in your secrets file, so private npm/pypi registries work during `RUN npm install` / `pip install`. Add them to `env.template` as `kv://` references; see [env.template](../configuration/env-template.md#build-run-shell-and-install). The TypeScript Dockerfile uses `NODE_AUTH_TOKEN=$NPM_TOKEN` so npm install can authenticate; for Python, use a custom Dockerfile or run `aifabrix install <app>` after build if you need private PyPI during install. Note: build-args can appear in image history; for maximum security use Docker build secrets or install-after-build.
@@ -183,14 +185,14 @@ aifabrix build myapp --force-template
 
 Run application locally in Docker container with automatic infrastructure connectivity.
 
-**What:** Starts container, connects to infrastructure, maps ports, waits for health check. **Only applications in `builder/<app>/` can be run** (no `--type` flag; external systems in `integration/` are not run as containers—use `aifabrix build` / deploy and test via OpenAPI instead).
+**What:** Starts container, connects to infrastructure, maps ports, waits for health check. **Only applications in `builder/<appKey>/` can be run** (no `--type` flag; external systems in `integration/` are not run as containers—use `aifabrix build` / deploy and test via OpenAPI instead).
 
 **When:** Testing, development, debugging, local demonstrations.
 
 **Prerequisites:**
-- Application must be in `builder/<app>/` and built: `aifabrix build <app>`
+- Application must be in `builder/<appKey>/` and built: `aifabrix build <app>`
 - Infrastructure must be running: `aifabrix up-infra`
-- Env is generated at run time to `build.envOutputPath` when set (or to a temp path); no requirement for a pre-existing `.env` file in `builder/<app>/`. For `NPM_TOKEN`/`PYPI_TOKEN` (private registries), add them to `env.template` as `kv://` references; see [env.template](../configuration/env-template.md#build-run-shell-and-install).
+- Env is generated at run time to `build.envOutputPath` when set (or to a temp path); no requirement for a pre-existing `.env` file in `builder/<appKey>/`. For `NPM_TOKEN`/`PYPI_TOKEN` (private registries), add them to `env.template` as `kv://` references; see [env.template](../configuration/env-template.md#build-run-shell-and-install).
 
 **Example:**
 ```bash
@@ -261,14 +263,26 @@ aifabrix run myapp --debug
 **Health Check:** `/health` endpoint
 
 **Issues:**
-- **"Application not found in builder/"** → Only apps in `builder/<app>/` can be run. Create or copy the app into builder (e.g. `aifabrix create <app>` or copy from templates). External systems in `integration/` are not run as containers.
-- **"External systems don't run as Docker containers"** → The app in `builder/<app>/` has `app.type: external`; run only supports runnable apps. Use `aifabrix build` and deploy, then test via OpenAPI.
+- **"Application not found in builder/"** → Only apps in `builder/<appKey>/` can be run. Create or copy the app into builder (e.g. `aifabrix create <app>` or copy from templates). External systems in `integration/` are not run as containers.
+- **"External systems don't run as Docker containers"** → The app in `builder/<appKey>/` has `app.type: external`; run only supports runnable apps. Use `aifabrix build` and deploy, then test via OpenAPI.
 - **"Docker image not found"** → Run `aifabrix build <app>` first
 - **"Infrastructure not running"** → Run `aifabrix up-infra` first
 - **"Port already in use"** → Use `--port <alternative>` flag
 - **"Container won't start"** → Check logs: `aifabrix logs <app>`
 - **"Health check timeout"** → Check application logs and health endpoint
-- **"Configuration validation failed"** → Fix issues in `builder/<app>/application.yaml`
+- **"Configuration validation failed"** → Fix issues in `builder/<appKey>/application.yaml`
+
+**Health check implementation note (Compose):**
+
+By default, generated Docker Compose healthchecks use `curl`. If an image does not include `curl`, Docker will report the container as **unhealthy** even if the app is working. In that case, set `healthCheck.bashProbe: true` in the app manifest so Compose uses a bash TCP probe instead.
+
+**Traefik routing note (Compose):**
+
+Compose also emits `traefik.http.routers.<app>.service=<app>` so Traefik binds the router to the correct backend service when using HTTP-only entrypoints (typical when nginx terminates TLS and forwards HTTP to per-developer Traefik).
+
+**Infra Traefik note (local):**
+
+Per-developer Traefik is configured with `--providers.docker.allowEmptyServices=true` so it still publishes Docker routes while a container is in Docker’s `starting` / `unhealthy` health state. Without this, Traefik v3.6 can filter the container entirely (symptom: `404 page not found` on the public URL even though the app responds on its published host port).
 
 ---
 
@@ -277,7 +291,7 @@ aifabrix run myapp --debug
 
 Restart a running Docker application (container restart without recreating).
 
-**What:** Restarts the application container started by `aifabrix run <app>`. Uses Docker restart so the same container and configuration are reused. Only applies to apps in `builder/<app>/`.
+**What:** Restarts the application container started by `aifabrix run <app>`. Uses Docker restart so the same container and configuration are reused. Only applies to apps in `builder/<appKey>/`.
 
 **When:** After code or config changes where a full stop/start is not needed, or to clear a stuck process.
 
@@ -372,7 +386,7 @@ aifabrix down-app myapp
 aifabrix down-app myapp --volumes
 ```
 
-**Note:** Does not delete files under `builder/<app>/`. For full teardown including infra, use `aifabrix down-infra`.
+**Note:** Does not delete files under `builder/<appKey>/`. For full teardown including infra, use `aifabrix down-infra`.
 
 ---
 
@@ -405,27 +419,29 @@ aifabrix shell myapp --env tst
 ---
 
 <a id="aifabrix-test-app"></a>
-## aifabrix test <app> (builder applications)
+## aifabrix test <app>
 
-Run tests inside the container for **builder** applications (not external systems).
+Run tests for **builder** applications in a container, or **local structural checks** for external systems in `integration/<systemKey>/` (no dataplane calls).
 
-**What:** Runs the app's test suite inside the container. For **dev**: uses the running container if the app is up; for **tst**: starts an ephemeral container, runs tests, then stops it.
+**What:** If `<app>` resolves to `builder/<appKey>/`, runs the app’s test script inside the container (dev = exec in running container when possible; tst = ephemeral). If it resolves to `integration/<systemKey>/`, runs offline validation of system and datasource files (schemas, wiring, optional `testPayload` checks).
 
-**When:** Running unit or integration tests in the same environment as the running app (same env, dependencies, network).
+**When:** Builder: same-environment test runs. External: quick local validation before upload or dataplane-backed tests.
 
-**Usage:**
+**Usage (builder):**
 ```bash
-# Dev: run tests in running container or ephemeral
 aifabrix test myapp
-
-# Tst: ephemeral container
 aifabrix test myapp --env tst
 ```
 
-**Options:**
-- `--env <dev|tst>` - Environment (dev = running or ephemeral; tst = ephemeral)
+**Usage (external system):**
+```bash
+aifabrix test mysystem -v
+aifabrix test mysystem -e tst -d
+```
 
-**Note:** For **external-system** applications in `integration/`, testing is via the external integration flow (e.g. OpenAPI, upload, deploy); see [External Systems](../external-systems.md). `aifabrix test <app>` here refers only to builder apps in `builder/<app>/`.
+**Options:** Builder path: `--env <dev|tst>`. External path: `-e, --env <env>`, `-v, --verbose`, `-d, --debug` (writes a debug JSON under `integration/<systemKey>/logs/` when enabled). For dataplane validation of a **single** datasource key, use `aifabrix datasource test <datasourceKey>`.
+
+**See also:** [External Integration Commands – test](external-integration.md#aifabrix-test-app) and [External Integration Testing](external-integration-testing.md).
 
 ---
 
@@ -461,7 +477,7 @@ aifabrix install myapp --env tst
 
 Run e2e tests: **builder** apps in container; **external** systems run E2E for all datasources via the dataplane.
 
-**What:** For **builder** apps: runs the app's test:e2e command (e.g. `pnpm test:e2e`, `make test:e2e`) inside the container. For **dev**: uses the running container; for **tst**: ephemeral container with resolved `.env`. For **external** systems in `integration/<app>/`: runs E2E for every datasource of that system using each datasource's test payload (no extra parameters required); results are aggregated and the command exits with non-zero if any datasource fails.
+**What:** For **builder** apps: runs the app's test:e2e command (e.g. `pnpm test:e2e`, `make test:e2e`) inside the container. For **dev**: uses the running container; for **tst**: ephemeral container with resolved `.env`. For **external** systems in `integration/<systemKey>/`: runs E2E for every datasource of that system using each datasource's test payload (no extra parameters required); results are aggregated and the command exits with non-zero if any datasource fails.
 
 **Usage (builder):** `aifabrix test-e2e myapp` or `aifabrix test-e2e myapp --env tst`
 
@@ -469,10 +485,11 @@ Run e2e tests: **builder** apps in container; **external** systems run E2E for a
 ```bash
 aifabrix test-e2e hubspot-demo
 aifabrix test-e2e hubspot-demo --env tst -v --debug
-aifabrix test-e2e hubspot-demo --no-async
 ```
 
-**Options:** `-e, --env <env>` — Environment (dev, tst, pro). `-v, --verbose` — Show detailed step output and poll progress. `--debug` — Include debug output and write log to `integration/<app>/logs/`. `--no-async` — Use sync mode (no polling). For builder apps, override the script with `build.scripts.test:e2e` or `build.scripts.testE2e`; see [Scripts and commands](#scripts-and-commands).
+**Options (external system in `integration/<systemKey>/`):** `-e, --env <env>` — Environment (dev, tst, pro). `-v, --verbose` — Show detailed step output and poll progress. `-d, --debug` — Include debug output and write logs under `integration/<systemKey>/logs/` where applicable. The external rollup **always waits for completion** (async polling on the dataplane side); there is **no** `--no-async` on this top-level command—use `aifabrix datasource test-e2e <datasourceKey>` if you need `--no-async` for a single datasource.
+
+**Options (builder app in `builder/<appKey>/`):** `--env <dev|tst>` — Run the configured E2E script in a dev (exec) or tst (ephemeral) container. Override the script with `build.scripts.test:e2e` or `build.scripts.testE2e`; see [Scripts and commands](#scripts-and-commands). `-v` / `-d` are accepted by the CLI parser but **do not change** the builder-container E2E run today (they apply to the external integration path).
 
 ---
 
@@ -481,7 +498,7 @@ aifabrix test-e2e hubspot-demo --no-async
 
 Run integration tests for **builder** applications (in container) or **external** systems (via dataplane pipeline API).
 
-**What:** For **builder** apps in `builder/<app>/`: runs the app's integration test command inside the container (same pattern as [aifabrix test](#aifabrix-test-app) and [aifabrix test-e2e](#aifabrix-test-e2e-app)). For **external** systems in `integration/<app>/` with an `externalIntegration` block: runs integration tests via the dataplane pipeline API (see [External Integration Testing](external-integration-testing.md)).
+**What:** For **builder** apps in `builder/<appKey>/`: runs the app's integration test command inside the container (same pattern as [aifabrix test](#aifabrix-test-app) and [aifabrix test-e2e](#aifabrix-test-e2e-app)). For **external** systems in `integration/<systemKey>/` with an `externalIntegration` block: runs integration tests via the dataplane pipeline API (see [External Integration Testing](external-integration-testing.md)).
 
 **When:** Running integration tests in the same environment as the app (builder) or validating external system pipelines (external).
 
@@ -498,19 +515,12 @@ aifabrix test-integration myapp --env tst
 ```bash
 aifabrix test-integration hubspot
 aifabrix test-integration hubspot --env tst
-aifabrix test-integration hubspot --datasource hubspot-company --payload ./test-payload.json
-aifabrix test-integration hubspot-test --debug  # write log to integration/hubspot-test/logs/
+aifabrix test-integration hubspot-test --debug
 ```
 
-**Options:**
-- `--env <dev|tst|pro>` — For builder: dev (running container) or tst (ephemeral). For external: environment for dataplane (dev, tst, pro).
-- `-d, --datasource <key>` — (External only) Test a specific datasource.
-- `-p, --payload <file>` — (External only) Path to custom test payload file.
-- `-v, --verbose` — (External only) Show detailed test output.
-- `--debug` — (External only) Include debug output and write log to `integration/<app>/logs/`.
-- `--timeout <ms>` — (External only) Request timeout in milliseconds (default 30000).
+**Options (external system in `integration/<systemKey>/`):** `-e, --env <env>` — Environment for the dataplane run (dev, tst, pro). `-v, --verbose` — More detailed output. `-d, --debug` — Include debug output and write logs under `integration/<systemKey>/logs/` where applicable. Per-datasource payloads, timeouts, and other run controls live on **`aifabrix datasource test-integration <datasourceKey>`** (see [External Integration Commands](external-integration.md#aifabrix-datasource-test-integration-datasourcekey)).
 
-**Script:** For builder apps, override with `build.scripts.test:integration` or `build.scripts.testIntegration` in application.yaml. When unset, the command used is the same as [aifabrix test-e2e](#aifabrix-test-e2e-app) (e.g. `pnpm test:e2e`, `make test:e2e`). See [Scripts and commands](#scripts-and-commands).
+**Options (builder app in `builder/<appKey>/`):** `--env <dev|tst>` — dev (exec in running container) or tst (ephemeral). Override with `build.scripts.test:integration` or `build.scripts.testIntegration` in application.yaml. When unset, the command used is the same as [aifabrix test-e2e](#aifabrix-test-e2e-app) (e.g. `pnpm test:e2e`, `make test:e2e`). See [Scripts and commands](#scripts-and-commands).
 
 **See also:** [External Integration Testing](external-integration-testing.md) for external system integration tests, payload configuration, and troubleshooting. For datasource-level E2E tests (including credential validation), use `aifabrix datasource test-e2e <datasourceKey>`; see [External Integration Commands](external-integration.md#aifabrix-datasource-test-e2e-datasourcekey).
 

@@ -11,7 +11,8 @@ jest.mock('../../../lib/core/config', () => ({
 }));
 
 jest.mock('../../../lib/utils/paths', () => ({
-  getAifabrixHome: jest.fn(() => '/home/.aifabrix')
+  getAifabrixHome: jest.fn(() => '/home/user'),
+  getAifabrixSystemDir: jest.fn(() => '/home/.aifabrix')
 }));
 
 jest.mock('../../../lib/utils/secrets-encryption', () => ({
@@ -19,12 +20,20 @@ jest.mock('../../../lib/utils/secrets-encryption', () => ({
   isEncrypted: jest.fn((val) => typeof val === 'string' && val.startsWith('secure://'))
 }));
 
-const fs = require('fs');
-jest.mock('fs', () => ({
-  existsSync: jest.fn(() => true),
-  readFileSync: jest.fn(() => 'POSTGRES_PASSWORD=plain\nPGADMIN_DEFAULT_EMAIL=admin@aifabrix.dev\n')
-}));
+jest.mock('../../../lib/internal/fs-real-sync', () => {
+  const actual = jest.requireActual('../../../lib/internal/fs-real-sync');
+  return {
+    ...actual,
+    existsSync: jest.fn(() => true),
+    readFileSync: jest.fn(() => 'POSTGRES_PASSWORD=plain\nPGADMIN_DEFAULT_EMAIL=admin@aifabrix.dev\n'),
+    writeFileSync: jest.fn(),
+    mkdirSync: jest.fn(),
+    statSync: jest.fn(),
+    readdirSync: jest.fn()
+  };
+});
 
+const fsRealSync = require('../../../lib/internal/fs-real-sync');
 const adminSecrets = require('../../../lib/core/admin-secrets');
 const config = require('../../../lib/core/config');
 
@@ -32,8 +41,8 @@ describe('admin-secrets', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     config.getSecretsEncryptionKey.mockResolvedValue('a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4');
-    fs.existsSync.mockReturnValue(true);
-    fs.readFileSync.mockReturnValue('POSTGRES_PASSWORD=plain\nPGADMIN_DEFAULT_EMAIL=admin@aifabrix.dev\n');
+    fsRealSync.existsSync.mockReturnValue(true);
+    fsRealSync.readFileSync.mockReturnValue('POSTGRES_PASSWORD=plain\nPGADMIN_DEFAULT_EMAIL=admin@aifabrix.dev\n');
   });
 
   describe('readAndDecryptAdminSecrets', () => {
@@ -49,7 +58,7 @@ describe('admin-secrets', () => {
       const { decryptSecret, isEncrypted } = require('../../../lib/utils/secrets-encryption');
       isEncrypted.mockImplementation((v) => v && v.startsWith('secure://'));
       decryptSecret.mockImplementation((v) => v.replace(/^secure:\/\//, 'decrypted-'));
-      fs.readFileSync.mockReturnValue('POSTGRES_PASSWORD=secure://xxx\nPGADMIN_DEFAULT_EMAIL=admin@aifabrix.dev\n');
+      fsRealSync.readFileSync.mockReturnValue('POSTGRES_PASSWORD=secure://xxx\nPGADMIN_DEFAULT_EMAIL=admin@aifabrix.dev\n');
 
       const result = await adminSecrets.readAndDecryptAdminSecrets();
       expect(result.POSTGRES_PASSWORD).toBe('decrypted-xxx');
@@ -57,15 +66,26 @@ describe('admin-secrets', () => {
     });
 
     it('throws when file does not exist', async() => {
-      fs.existsSync.mockReturnValue(false);
+      fsRealSync.existsSync.mockReturnValue(false);
       await expect(adminSecrets.readAndDecryptAdminSecrets()).rejects.toThrow(/Admin secrets file not found/);
+    });
+
+    it('uses legacy aifabrix-home admin-secrets.env when system dir file is missing', async() => {
+      const pathsMod = require('../../../lib/utils/paths');
+      fsRealSync.existsSync.mockImplementation((p) => p === '/home/user/admin-secrets.env');
+      fsRealSync.readFileSync.mockReturnValue('POSTGRES_PASSWORD=legacy\n');
+
+      const result = await adminSecrets.readAndDecryptAdminSecrets();
+      expect(result.POSTGRES_PASSWORD).toBe('legacy');
+      expect(fsRealSync.readFileSync).toHaveBeenCalledWith('/home/user/admin-secrets.env', 'utf8');
+      expect(pathsMod.getAifabrixSystemDir).toHaveBeenCalled();
     });
 
     it('throws when encrypted value present but no encryption key', async() => {
       config.getSecretsEncryptionKey.mockResolvedValue(null);
       const { isEncrypted } = require('../../../lib/utils/secrets-encryption');
       isEncrypted.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue('POSTGRES_PASSWORD=secure://xxx\n');
+      fsRealSync.readFileSync.mockReturnValue('POSTGRES_PASSWORD=secure://xxx\n');
 
       await expect(adminSecrets.readAndDecryptAdminSecrets()).rejects.toThrow(/no secrets-encryption key/);
     });
@@ -91,7 +111,7 @@ describe('admin-secrets', () => {
 
   describe('readAndDecryptAdminSecrets with comments and blank lines', () => {
     it('skips comment lines and blank lines', async() => {
-      fs.readFileSync.mockReturnValue(
+      fsRealSync.readFileSync.mockReturnValue(
         '# comment\n\nPOSTGRES_PASSWORD=secret\nPGADMIN_DEFAULT_EMAIL=admin@test\n'
       );
       const result = await adminSecrets.readAndDecryptAdminSecrets();

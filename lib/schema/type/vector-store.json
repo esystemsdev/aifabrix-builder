@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aifabrix://schema/type/vector-store.json",
+  "title": "Vector Store Configuration Schema",
+  "description": "Internal schema for validating vector-store type ExternalSystem configurations. Enforces semantic constraints: no filtering, no hybrid search, ID-constrained scoring only.",
+  "metadata": {
+    "key": "vector-store-schema",
+    "name": "Vector Store Configuration Schema",
+    "description": "JSON schema for validating vector-store type ExternalSystem configurations",
+    "version": "1.0.0",
+    "type": "schema",
+    "category": "vector-store",
+    "author": "AI Fabrix Team",
+    "createdAt": "2026-01-02T00:00:00Z",
+    "updatedAt": "2026-01-02T00:00:00Z",
+    "compatibility": {
+      "minVersion": "1.0.0",
+      "maxVersion": "2.0.0",
+      "deprecated": false
+    },
+    "tags": [
+      "schema",
+      "vector-store",
+      "dataplane",
+      "validation"
+    ],
+    "dependencies": [],
+    "changelog": [
+      {
+        "version": "1.0.0",
+        "date": "2026-01-02T00:00:00Z",
+        "changes": [
+          "Initial schema for vector-store type validation",
+          "Enforces no filtering and no hybrid search constraints",
+          "Defines required capabilities: score, upsert, delete"
+        ],
+        "breaking": false
+      }
+    ]
+  },
+  "type": "object",
+  "required": ["dimensions", "distanceMetric", "capabilities"],
+  "properties": {
+    "dimensions": {
+      "type": "integer",
+      "minimum": 128,
+      "description": "Embedding vector dimensions (e.g., 1536 for OpenAI text-embedding-ada-002)"
+    },
+    "distanceMetric": {
+      "type": "string",
+      "enum": ["cosine", "dot"],
+      "description": "Distance metric for similarity scoring. 'cosine' uses cosine similarity, 'dot' uses dot product."
+    },
+    "capabilities": {
+      "type": "object",
+      "required": ["score", "upsert", "delete"],
+      "properties": {
+        "score": {
+          "type": "boolean",
+          "description": "Supports similarity scoring operation. Must be true for vector stores."
+        },
+        "upsert": {
+          "type": "boolean",
+          "description": "Supports vector upsert operation. Must be true for vector stores."
+        },
+        "delete": {
+          "type": "boolean",
+          "description": "Supports vector deletion operation. Must be true for vector stores."
+        },
+        "stats": {
+          "type": "boolean",
+          "description": "Supports index statistics/health check operation. Optional capability."
+        },
+        "filter": {
+          "const": false,
+          "description": "Filtering is explicitly forbidden - vector stores do not filter. This must be false or absent."
+        },
+        "hybridSearch": {
+          "const": false,
+          "description": "Hybrid search is explicitly forbidden - vector stores only score pre-authorized IDs. This must be false or absent."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
+

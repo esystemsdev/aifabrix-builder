@@ -98,6 +98,7 @@ describe('Application Commands - Rotate Secret Action', () => {
       command: jest.fn().mockImplementation((cmdName) => {
         const cmdObj = {
           description: jest.fn().mockReturnThis(),
+          addHelpText: jest.fn().mockReturnThis(),
           requiredOption: jest.fn().mockReturnThis(),
           option: jest.fn().mockReturnThis(),
           action: jest.fn((handler) => {
@@ -110,6 +111,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         return cmdObj;
       }),
       description: jest.fn().mockReturnThis(),
+      addHelpText: jest.fn().mockReturnThis(),
       requiredOption: jest.fn().mockReturnThis(),
       option: jest.fn().mockReturnThis(),
       action: jest.fn().mockReturnThis()
@@ -122,7 +124,8 @@ describe('Application Commands - Rotate Secret Action', () => {
         }
         return mockAppCommand;
       }),
-      description: jest.fn().mockReturnThis()
+      description: jest.fn().mockReturnThis(),
+      addHelpText: jest.fn().mockReturnThis()
     };
 
     setupAppCommands(mockProgram);
@@ -194,15 +197,15 @@ describe('Application Commands - Rotate Secret Action', () => {
           expect.objectContaining({ method: 'POST' }),
           expect.objectContaining({ token: 'test-token' })
         );
-        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Secret rotated successfully!'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Secret rotated successfully!'));
         // Verify that saveLocalSecret is called (always saves now)
         expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith('test-app-client-idKeyVault', 'new-client-id');
         expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith('test-app-client-secretKeyVault', 'new-client-secret');
-        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ Credentials saved to ~/.aifabrix/secrets.local.yaml'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Credentials saved to ~/.aifabrix/secrets.local.yaml'));
         // Verify that env.template is updated and .env file is generated when localhost
         expect(require('../../lib/utils/env-template').updateEnvTemplate).toHaveBeenCalled();
         expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local');
-        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ .env file updated with new credentials'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ .env file updated with new credentials'));
       }
     });
 
@@ -550,10 +553,10 @@ describe('Application Commands - Rotate Secret Action', () => {
         expect(require('../../lib/utils/env-template').updateEnvTemplate).toHaveBeenCalled();
         expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local');
         expect(logger.warn).toHaveBeenCalledWith(
-          expect.stringContaining('⚠️  Could not regenerate .env file')
+          expect.stringContaining('⚠  Could not regenerate .env file')
         );
         // Should still complete successfully
-        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Secret rotated successfully!'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Secret rotated successfully!'));
       }
     });
   });

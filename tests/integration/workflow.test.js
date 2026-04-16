@@ -32,7 +32,7 @@ describe('Integration Workflow', () => {
     // Check Docker availability
     const dockerRunning = await testDockerRunning();
     if (!dockerRunning) {
-      console.error('\n❌ Docker is not running or not accessible.');
+      console.error('\n✖ Docker is not running or not accessible.');
       console.error('Please start Docker Desktop before running integration tests.');
       console.error('Integration tests require Docker to build images and run containers.\n');
       throw new Error('Docker is not running. Start Docker Desktop and try again.');

@@ -563,7 +563,7 @@ externalIntegration:
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Build:'));
     });
 
-    it('should format health and build from API (probePath, probeIntervalInSeconds, language, localPort)', async() => {
+    it('should format health and build from API (probePath, probeIntervalInSeconds, language, port)', async() => {
       getApplication.mockResolvedValue({
         success: true,
         data: {
@@ -573,7 +573,7 @@ externalIntegration:
           status: 'active',
           configuration: {
             healthCheck: { probePath: '/ready', probeIntervalInSeconds: 45 },
-            build: { language: 'node', localPort: 3000 }
+            build: { language: 'node', port: 3000 }
           }
         }
       });
@@ -895,7 +895,7 @@ externalIntegration:
         expect(formatBuildForDisplay({})).toBe('—');
       });
       it('should include language and port', () => {
-        expect(formatBuildForDisplay({ language: 'node', localPort: 3000 }))
+        expect(formatBuildForDisplay({ language: 'node', port: 3000 }))
           .toBe('node, port 3000');
       });
       it('should include only dockerfile when no envOutputPath', () => {

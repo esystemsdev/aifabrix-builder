@@ -98,7 +98,6 @@ describe('External System Test Helpers Module', () => {
       const results = initializeTestResults();
       validateSystemFilesForTest(systemFiles, results);
 
-      expect(logger.log).toHaveBeenCalledWith(chalk.blue('📋 Validating system files...'));
       expect(validateAgainstSchema).toHaveBeenCalledTimes(2);
       expect(results.valid).toBe(true);
       expect(results.errors).toEqual([]);
@@ -191,7 +190,6 @@ describe('External System Test Helpers Module', () => {
       const results = initializeTestResults();
       validateSystemFilesForTest(systemFiles, results);
 
-      expect(logger.log).toHaveBeenCalledWith(chalk.blue('📋 Validating system files...'));
       expect(validateAgainstSchema).not.toHaveBeenCalled();
       expect(results.systemResults).toEqual([]);
     });
@@ -267,7 +265,6 @@ describe('External System Test Helpers Module', () => {
         mockDetermineDatasourcesToTest
       );
 
-      expect(logger.log).toHaveBeenCalledWith(chalk.blue('📋 Validating datasource files...'));
       expect(mockDetermineDatasourcesToTest).toHaveBeenCalledWith(datasourceFiles, null);
       expect(mockValidateSingleDatasource).toHaveBeenCalledTimes(2);
       expect(results.valid).toBe(true);

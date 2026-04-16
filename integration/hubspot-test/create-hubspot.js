@@ -404,7 +404,7 @@ async function executeWizard(args) {
     args.controller,
     args.environment
   );
-  logSuccess(`✓ Created config: ${configPath}`);
+  logSuccess(`✔ Created config: ${configPath}`);
 
   logInfo('\n2. Running wizard...');
   const wizardResult = await runWizard(configPath, args.controller, args.environment);
@@ -420,7 +420,7 @@ async function executeWizard(args) {
     throw new Error('Wizard execution failed');
   }
 
-  logSuccess('✓ Wizard completed successfully');
+  logSuccess('✔ Wizard completed successfully');
   return configPath;
 }
 
@@ -444,7 +444,7 @@ async function processGeneratedFiles(args) {
   if (outputDir !== wizardOutputDir) {
     logInfo(`\n4. Copying files to: ${outputDir}`);
     const copiedFiles = await copyDirectoryContents(wizardOutputDir, outputDir);
-    logSuccess(`✓ Copied ${copiedFiles.length} files`);
+    logSuccess(`✔ Copied ${copiedFiles.length} files`);
   } else {
     logInfo(`\n4. Files are in: ${outputDir}`);
   }
@@ -462,7 +462,7 @@ async function processGeneratedFiles(args) {
  * @returns {Promise<void>} Resolves when summary is printed
  */
 async function printSummary(outputDir, appName, environment) {
-  logSuccess('\n✓ HubSpot integration created successfully!');
+  logSuccess('\n✔ HubSpot integration created successfully!');
   logger.log('\nGenerated files:');
   const files = await listFiles(outputDir);
   for (const file of files) {
@@ -490,7 +490,7 @@ async function cleanupFiles(configPath, wizardOutputDir, outputDir, keepWizardFi
   if (!keepWizardFiles && outputDir !== wizardOutputDir) {
     logInfo('\n5. Cleaning up wizard files...');
     await fs.rm(wizardOutputDir, { recursive: true, force: true });
-    logSuccess('✓ Cleaned up wizard files');
+    logSuccess('✔ Cleaned up wizard files');
   }
 
   await fs.unlink(configPath).catch(() => {

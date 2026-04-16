@@ -11,12 +11,12 @@ const fs = require('fs');
 const handlebars = require('handlebars');
 
 // Mock the template loading to avoid file system issues in CI
-jest.mock('../../../lib/utils/external-readme', () => {
-  const actualModule = jest.requireActual('../../../lib/utils/external-readme');
+jest.mock('../../../../lib/utils/external-readme', () => {
+  const actualModule = jest.requireActual('../../../../lib/utils/external-readme');
   const path = require('path');
   const fs = require('fs');
   const handlebars = require('handlebars');
-  const { getProjectRoot } = require('../../../lib/utils/paths');
+  const { getProjectRoot } = require('../../../../lib/utils/paths');
 
   // Try to load the real template, but fall back to a mock if it doesn't exist
   let templateContent = null;
@@ -61,7 +61,7 @@ jest.mock('../../../lib/utils/external-readme', () => {
 - \`deploy.js\` – Deploy script for the integration
 - \`wizard.yaml\` – Wizard configuration (if created via wizard)
 
-Optional: \`rbac.yaml\` – Roles and permissions merged into the system when present.
+Optional: \`{{rbacOptionalFile}}\` – Roles and permissions merged into the system when present.
 
 ## Quick Start
 
@@ -84,10 +84,12 @@ aifabrix wizard --app {{appName}}
 Edit files in \`integration/{{appName}}/\`:
 
 - **Authentication**: \`{{systemKey}}-system{{fileExt}}\` (auth type, credentials placeholders)
-- **Field mappings**: \`{{systemKey}}-datasource-*-datasource{{fileExt}}\` (dimensions, attributes, operations)
+- **Field mappings**: \`{{systemKey}}-datasource-*{{fileExt}}\` (dimensions, attributes, operations)
 - **Credential and configuration**: \`env.template\` (security settings and configuration variables)
 
-### 3. Validate Configuration
+### 3. Validate configuration (local only)
+
+\`aifabrix validate\` runs **on your machine** — no dataplane.
 
 \`\`\`bash
 aifabrix validate {{appName}}
@@ -113,27 +115,31 @@ aifabrix upload {{appName}}
 
 ## Testing
 
-### Unit Tests (Local Validation, No API)
+| Command | Calls dataplane? |
+| \`aifabrix validate {{appName}}\` | No |
+| \`aifabrix test {{appName}}\` | No |
+| \`aifabrix test-integration {{appName}}\` | Yes |
+
+### Local checks (no API)
 
 \`\`\`bash
+aifabrix validate {{appName}}
 aifabrix test {{appName}}
 \`\`\`
 
-### Integration Tests (Via Dataplane)
+### Integration tests (dataplane API)
 
 \`\`\`bash
 aifabrix test-integration {{appName}}
 \`\`\`
 
-### End-to-end Tests (Via Dataplane)
+### End-to-end tests (dataplane API)
 
 \`\`\`bash
 aifabrix test-e2e {{appName}}
 \`\`\`
 
 ### E2E tests per datasource
-
-To run a full E2E test for a single datasource:
 
 {{#if hasDatasources}}
 \`\`\`bash
@@ -145,11 +151,9 @@ aifabrix datasource test-e2e {{datasourceKey}} --app {{../appName}}
 \`\`\`
 {{/if}}
 
-Use \`-v\` for verbose output.
-
 ## Deployment
 
-Deploy via miso-controller pipeline:
+Deploy via miso-controller pipeline (same as regular apps).
 
 \`\`\`bash
 aifabrix deploy {{appName}}
@@ -157,7 +161,7 @@ aifabrix deploy {{appName}}
 
 ## Troubleshooting
 
-- **Validation errors**: Run \`aifabrix validate {{appName}}\` to see schema and manifest errors.
+- **Local validation errors**: Run \`aifabrix validate {{appName}}\` — files on disk only.
 - **Deployment / auth**: Run \`aifabrix auth config --set-controller <url> --set-environment <env>\` and \`aifabrix login\` before \`aifabrix deploy\`.
 - **File not found**: Run commands from the project root (where \`package.json\` and \`integration/\` live).`;
     }
@@ -183,7 +187,7 @@ aifabrix deploy {{appName}}
 const {
   buildExternalReadmeContext,
   generateExternalReadmeContent
-} = require('../../../lib/utils/external-readme');
+} = require('../../../../lib/utils/external-readme');
 
 describe('external-readme', () => {
   describe('buildExternalReadmeContext', () => {
@@ -194,6 +198,7 @@ describe('external-readme', () => {
       expect(ctx.displayName).toBe('External System');
       expect(ctx.systemType).toBe('openapi');
       expect(ctx.fileExt).toBe('.json');
+      expect(ctx.rbacOptionalFile).toBe('rbac.json');
       expect(ctx.datasourceCount).toBe(0);
       expect(ctx.hasDatasources).toBe(false);
       expect(ctx.datasources).toEqual([]);
@@ -273,6 +278,7 @@ describe('external-readme', () => {
       });
       expect(ctx.fileExt).toBe('.yaml');
       expect(ctx.datasources[0].fileName).toBe('myapp-datasource-users.yaml');
+      expect(ctx.rbacOptionalFile).toBe('rbac.yaml');
     });
   });
 
@@ -328,6 +334,17 @@ describe('external-readme', () => {
       });
       expect(out).toContain('aifabrix validate myext');
       expect(out).not.toContain('validate myext --type external');
+    });
+
+    it('documents local validate vs dataplane-backed tests', () => {
+      const out = generateExternalReadmeContent({
+        systemKey: 'myext',
+        appName: 'myext',
+        datasources: []
+      });
+      expect(out).toContain('Validate configuration (local only)');
+      expect(out).toContain('Calls dataplane?');
+      expect(out).toContain('unified validation / pipeline API');
     });
 
     it('includes test, test-integration, and test-e2e commands', () => {
@@ -407,6 +424,7 @@ describe('external-readme', () => {
       });
       expect(out).toContain('application.json');
       expect(out).toContain('myext-system.json');
+      expect(out).toContain('Optional: `rbac.json`');
     });
   });
 });

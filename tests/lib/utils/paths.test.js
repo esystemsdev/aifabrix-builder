@@ -13,6 +13,10 @@ const os = require('os');
 
 // Mock fs BEFORE requiring paths
 jest.mock('fs');
+// Real sync fs for runtime config dir (nested AIFABRIX_HOME + .aifabrix/config.yaml).
+// Other suites mock fs-real-sync with existsSync always true, which would wrongly
+// treat $AIFABRIX_HOME/config.yaml as present when only nested config exists.
+jest.unmock('../../../lib/internal/fs-real-sync');
 const fs = require('fs');
 
 // We will dynamically import paths within tests to pick up current mocks and fs behavior
@@ -277,6 +281,50 @@ describe('Path Utilities - directory helpers', () => {
     const devDir = paths.getDevDirectory('myapp', '3');
     expect(devDir).toBe(path.join(realHomeDir, '.aifabrix', 'applications-dev-3'));
   });
+
+  it('getApplicationsBaseDir uses ~/.aifabrix when AIFABRIX_HOME is that homedir and config is nested', () => {
+    // Use requireActual here: capture-real-fs may have bound mocked fs if hoisted jest.mock('fs')
+    // ran before setupFiles in this worker, which would make snapshot writeFileSync a no-op.
+    const GFS = jest.requireActual('node:fs');
+    const tmp = GFS.mkdtempSync(path.join(os.tmpdir(), 'afx-app-home-'));
+    const nest = path.join(tmp, '.aifabrix');
+    GFS.mkdirSync(nest, { recursive: true });
+    const nestedConfigPath = path.join(nest, 'config.yaml');
+    GFS.writeFileSync(nestedConfigPath, 'x: 1\n', 'utf8');
+    const directConfigPath = path.join(tmp, 'config.yaml');
+    expect(GFS.existsSync(nestedConfigPath)).toBe(true);
+    expect(GFS.existsSync(directConfigPath)).toBe(false);
+
+    const origHome = process.env.AIFABRIX_HOME;
+    const origCfg = process.env.AIFABRIX_CONFIG;
+    try {
+      process.env.AIFABRIX_HOME = tmp;
+      delete process.env.AIFABRIX_CONFIG;
+      jest.resetModules();
+      // Resolve config dir before paths so a bad fs-real-sync mock (existsSync always true) fails on directConfigPath check above, not on app paths.
+      const { getAifabrixRuntimeConfigDir } = require('../../../lib/utils/aifabrix-runtime-config-dir');
+      expect(getAifabrixRuntimeConfigDir()).toBe(nest);
+      const pathsMod = require('../../../lib/utils/paths');
+      expect(pathsMod.getApplicationsBaseDir('02')).toBe(path.join(nest, 'applications-dev-02'));
+      expect(pathsMod.getApplicationsBaseDir(0)).toBe(path.join(nest, 'applications'));
+    } finally {
+      if (origHome === undefined) {
+        delete process.env.AIFABRIX_HOME;
+      } else {
+        process.env.AIFABRIX_HOME = origHome;
+      }
+      if (origCfg === undefined) {
+        delete process.env.AIFABRIX_CONFIG;
+      } else {
+        process.env.AIFABRIX_CONFIG = origCfg;
+      }
+      try {
+        GFS.rmSync(tmp, { recursive: true, force: true });
+      } catch {
+        // ignore
+      }
+    }
+  });
 });
 
 describe('Path Utilities - listIntegrationAppNames / listBuilderAppNames', () => {
@@ -291,17 +339,55 @@ describe('Path Utilities - listIntegrationAppNames / listBuilderAppNames', () =>
   });
 
   it('listIntegrationAppNames returns [] when root does not exist', () => {
-    fs.existsSync.mockReturnValue(false);
-    const paths = require('../../../lib/utils/paths');
-    const names = paths.listIntegrationAppNames();
-    expect(names).toEqual([]);
+    const fsReal = jest.requireActual('node:fs');
+    const tmp = fsReal.mkdtempSync(path.join(os.tmpdir(), 'aifx-list-int-'));
+    fsReal.writeFileSync(path.join(tmp, 'package.json'), '{}', 'utf8');
+    const savedRoot = global.PROJECT_ROOT;
+    const savedCwd = process.cwd();
+    try {
+      process.chdir(tmp);
+      global.PROJECT_ROOT = tmp;
+      jest.resetModules();
+      jest.clearAllMocks();
+      const paths = require('../../../lib/utils/paths');
+      paths.clearProjectRootCache();
+      expect(paths.listIntegrationAppNames()).toEqual([]);
+    } finally {
+      process.chdir(savedCwd);
+      global.PROJECT_ROOT = savedRoot;
+      try {
+        fsReal.rmSync(tmp, { recursive: true, force: true });
+      } catch {
+        // ignore
+      }
+      jest.resetModules();
+    }
   });
 
   it('listBuilderAppNames returns [] when root does not exist', () => {
-    fs.existsSync.mockReturnValue(false);
-    const paths = require('../../../lib/utils/paths');
-    const names = paths.listBuilderAppNames();
-    expect(names).toEqual([]);
+    const fsReal = jest.requireActual('node:fs');
+    const tmp = fsReal.mkdtempSync(path.join(os.tmpdir(), 'aifx-list-bld-'));
+    fsReal.writeFileSync(path.join(tmp, 'package.json'), '{}', 'utf8');
+    const savedRoot = global.PROJECT_ROOT;
+    const savedCwd = process.cwd();
+    try {
+      process.chdir(tmp);
+      global.PROJECT_ROOT = tmp;
+      jest.resetModules();
+      jest.clearAllMocks();
+      const paths = require('../../../lib/utils/paths');
+      paths.clearProjectRootCache();
+      expect(paths.listBuilderAppNames()).toEqual([]);
+    } finally {
+      process.chdir(savedCwd);
+      global.PROJECT_ROOT = savedRoot;
+      try {
+        fsReal.rmSync(tmp, { recursive: true, force: true });
+      } catch {
+        // ignore
+      }
+      jest.resetModules();
+    }
   });
 
   it('getIntegrationRoot returns path under base dir', () => {
@@ -325,6 +411,57 @@ describe('Path Utilities - listIntegrationAppNames / listBuilderAppNames', () =>
     const paths = require('../../../lib/utils/paths');
     expect(paths.getBuilderRoot()).toBe(path.resolve(customDir));
     process.env.AIFABRIX_BUILDER_DIR = orig;
+  });
+
+});
+
+describe('Path Utilities - getAifabrixWork', () => {
+  let savedWork;
+
+  beforeEach(() => {
+    savedWork = process.env.AIFABRIX_WORK;
+    delete process.env.AIFABRIX_WORK;
+    jest.resetModules();
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    if (savedWork === undefined) {
+      delete process.env.AIFABRIX_WORK;
+    } else {
+      process.env.AIFABRIX_WORK = savedWork;
+    }
+  });
+
+  it('returns null when AIFABRIX_WORK unset in test env', () => {
+    const paths = require('../../../lib/utils/paths');
+    expect(paths.getAifabrixWork()).toBeNull();
+  });
+
+  it('returns resolved path from AIFABRIX_WORK when set', () => {
+    process.env.AIFABRIX_WORK = '  /tmp/my-work  ';
+    jest.resetModules();
+    const paths = require('../../../lib/utils/paths');
+    expect(paths.getAifabrixWork()).toBe(path.resolve('/tmp/my-work'));
+  });
+
+  it('returns null for whitespace-only AIFABRIX_WORK', () => {
+    process.env.AIFABRIX_WORK = '   ';
+    jest.resetModules();
+    const paths = require('../../../lib/utils/paths');
+    expect(paths.getAifabrixWork()).toBeNull();
+  });
+});
+
+describe('Path Utilities - getAifabrixSystemDir', () => {
+  beforeEach(() => {
+    jest.resetModules();
+    jest.clearAllMocks();
+  });
+
+  it('returns the same path as getConfigDirForPaths', () => {
+    const paths = require('../../../lib/utils/paths');
+    expect(paths.getAifabrixSystemDir()).toBe(paths.getConfigDirForPaths());
   });
 });
 

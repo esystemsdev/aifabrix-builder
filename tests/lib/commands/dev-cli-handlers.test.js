@@ -11,6 +11,7 @@ jest.mock('chalk', () => {
   m.cyan = (s) => s;
   m.gray = (s) => s;
   m.bold = (s) => s;
+  m.white = (s) => s;
   return m;
 });
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn() }));
@@ -49,7 +50,7 @@ describe('dev-cli-handlers', () => {
         { id: '01', name: 'Bob', email: 'b@example.com', certificateIssued: true, certificateValidNotAfter: '2026-01-01', groups: ['admin'] }
       ]);
       await handleDevList();
-      expect(devApi.listUsers).toHaveBeenCalledWith('https://dev.example.com', 'pem');
+      expect(devApi.listUsers).toHaveBeenCalledWith('https://dev.example.com', 'pem', undefined);
       const logger = require('../../../lib/utils/logger').log;
       expect(logger).toHaveBeenCalledWith(expect.stringContaining('Developers:'));
       expect(logger).toHaveBeenCalledWith(expect.stringMatching(/^ID\s+Name\s+Email\s+Cert\s+Until\s+Groups$/));
@@ -87,7 +88,66 @@ describe('dev-cli-handlers', () => {
     it('creates user and logs success', async() => {
       devApi.createUser.mockResolvedValue({ id: '02' });
       await handleDevAdd({ developerId: '02', name: 'Two', email: 't@e.com' });
-      expect(devApi.createUser).toHaveBeenCalledWith('https://dev.example.com', 'pem', expect.objectContaining({ developerId: '02', name: 'Two', email: 't@e.com' }));
+      expect(devApi.createUser).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        expect.objectContaining({
+          developerId: '02',
+          name: 'Two',
+          email: 't@e.com',
+          groups: ['developer']
+        }),
+        undefined
+      );
+    });
+
+    it('rejects unknown group', async() => {
+      await expect(
+        handleDevAdd({ developerId: '02', name: 'Two', email: 't@e.com', groups: 'admin,badgroup' })
+      ).rejects.toThrow(/Invalid group/);
+      expect(devApi.createUser).not.toHaveBeenCalled();
+    });
+
+    it('sends docker in groups when provided', async() => {
+      devApi.createUser.mockResolvedValue({ id: '02' });
+      await handleDevAdd({
+        developerId: '02',
+        name: 'Two',
+        email: 't@e.com',
+        groups: 'admin,developer,docker'
+      });
+      expect(devApi.createUser).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        expect.objectContaining({
+          groups: ['admin', 'developer', 'docker']
+        }),
+        undefined
+      );
+    });
+
+    it('defaults to developer when groups is empty string', async() => {
+      devApi.createUser.mockResolvedValue({ id: '03' });
+      await handleDevAdd({ developerId: '03', name: 'Three', email: '3@e.com', groups: '' });
+      expect(devApi.createUser).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        expect.objectContaining({ groups: ['developer'] }),
+        undefined
+      );
+    });
+
+    it('augments server validation error when docker was requested on create', async() => {
+      const serverMsg = 'each value in groups must be one of the following values: admin, secret-manager, developer';
+      devApi.createUser.mockRejectedValue(new Error(serverMsg));
+      await expect(
+        handleDevAdd({
+          developerId: '02',
+          name: 'Two',
+          email: 't@e.com',
+          groups: 'developer,docker'
+        })
+      ).rejects.toThrow(/does not accept/);
     });
   });
 
@@ -108,13 +168,74 @@ describe('dev-cli-handlers', () => {
     it('calls updateUser with body (positional id)', async() => {
       devApi.updateUser.mockResolvedValue(undefined);
       await handleDevUpdate('01', { name: 'New Name' });
-      expect(devApi.updateUser).toHaveBeenCalledWith('https://dev.example.com', 'pem', '01', { name: 'New Name' });
+      expect(devApi.updateUser).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        '01',
+        { name: 'New Name' },
+        undefined
+      );
     });
 
     it('calls updateUser with --developer-id when provided', async() => {
       devApi.updateUser.mockResolvedValue(undefined);
       await handleDevUpdate(undefined, { developerId: '02', name: 'New Name' });
-      expect(devApi.updateUser).toHaveBeenCalledWith('https://dev.example.com', 'pem', '02', { name: 'New Name' });
+      expect(devApi.updateUser).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        '02',
+        { name: 'New Name' },
+        undefined
+      );
+    });
+
+    it('calls updateUser with normalized groups including docker', async() => {
+      devApi.updateUser.mockResolvedValue(undefined);
+      await handleDevUpdate('02', { groups: 'admin,developer,docker' });
+      expect(devApi.updateUser).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        '02',
+        { groups: ['admin', 'developer', 'docker'] },
+        undefined
+      );
+    });
+
+    it('parses space-separated groups (PowerShell-style argv)', async() => {
+      devApi.updateUser.mockResolvedValue(undefined);
+      await handleDevUpdate('02', { groups: 'admin developer docker' });
+      expect(devApi.updateUser).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        '02',
+        { groups: ['admin', 'developer', 'docker'] },
+        undefined
+      );
+    });
+
+    it('rejects unknown group on update', async() => {
+      await expect(handleDevUpdate('02', { groups: 'docker,invalid' })).rejects.toThrow(/Invalid group/);
+      expect(devApi.updateUser).not.toHaveBeenCalled();
+    });
+
+    it('throws when --groups is only delimiters', async() => {
+      await expect(handleDevUpdate('02', { groups: '  ,  ' })).rejects.toThrow('--groups must list at least one valid group');
+      expect(devApi.updateUser).not.toHaveBeenCalled();
+    });
+
+    it('augments server validation error when docker was requested on update', async() => {
+      const serverMsg = 'each value in groups must be one of the following values: admin, secret-manager, developer';
+      devApi.updateUser.mockRejectedValue(new Error(serverMsg));
+      await expect(handleDevUpdate('02', { groups: 'admin,docker' })).rejects.toThrow(/does not accept/);
+    });
+
+    it('rethrows server error unchanged when docker was not in PATCH body', async() => {
+      const serverMsg = 'each value in groups must be one of the following values: admin, secret-manager, developer';
+      devApi.updateUser.mockRejectedValue(new Error(serverMsg));
+      const err = await handleDevUpdate('02', { groups: 'admin,developer' }).catch((e) => e);
+      expect(err).toBeInstanceOf(Error);
+      expect(err.message).toBe(serverMsg);
+      expect(err.message).not.toContain('does not accept');
     });
   });
 
@@ -127,13 +248,40 @@ describe('dev-cli-handlers', () => {
     it('uses config developerId when no arg', async() => {
       devApi.createPin.mockResolvedValue({ pin: '123456', expiresAt: '2026-01-01' });
       await handleDevPin();
-      expect(devApi.createPin).toHaveBeenCalledWith('https://dev.example.com', 'pem', '01');
+      expect(devApi.createPin).toHaveBeenCalledWith('https://dev.example.com', 'pem', '01', undefined);
     });
 
     it('uses arg developerId when provided', async() => {
       devApi.createPin.mockResolvedValue({ pin: '654321', expiresAt: '2026-01-01' });
       await handleDevPin('02');
-      expect(devApi.createPin).toHaveBeenCalledWith('https://dev.example.com', 'pem', '02');
+      expect(devApi.createPin).toHaveBeenCalledWith('https://dev.example.com', 'pem', '02', undefined);
+    });
+
+    it('rejects invalid --hosts-ip before calling API', async() => {
+      await expect(handleDevPin('02', { hostsIp: 'not-an-ip' })).rejects.toThrow('Invalid --hosts-ip');
+      expect(devApi.createPin).not.toHaveBeenCalled();
+    });
+
+    it('logs standard, hosts, and dev init --pin commands', async() => {
+      const logger = require('../../../lib/utils/logger');
+      devApi.createPin.mockResolvedValue({ pin: '888888', expiresAt: '2026-04-03T13:00:00.000Z' });
+      await handleDevPin('02');
+      const joined = logger.log.mock.calls.map((c) => c.join(' ')).join('\n');
+      expect(joined).toContain(
+        'aifabrix dev init --developer-id 02 --server https://dev.example.com --pin 888888'
+      );
+      expect(joined).toContain('--add-hosts');
+      expect(joined).toContain('<server-LAN-IPv4>');
+      expect(joined).toContain('aifabrix dev init --pin 888888');
+    });
+
+    it('embeds --hosts-ip in hosts variant when provided', async() => {
+      const logger = require('../../../lib/utils/logger');
+      devApi.createPin.mockResolvedValue({ pin: '111222', expiresAt: '2026-01-01' });
+      await handleDevPin('02', { hostsIp: '192.168.1.25' });
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('--add-hosts --hosts-ip 192.168.1.25')
+      );
     });
   });
 
@@ -146,7 +294,7 @@ describe('dev-cli-handlers', () => {
     it('calls deleteUser and logs', async() => {
       devApi.deleteUser.mockResolvedValue(undefined);
       await handleDevDelete('02');
-      expect(devApi.deleteUser).toHaveBeenCalledWith('https://dev.example.com', 'pem', '02');
+      expect(devApi.deleteUser).toHaveBeenCalledWith('https://dev.example.com', 'pem', '02', undefined);
     });
   });
 });

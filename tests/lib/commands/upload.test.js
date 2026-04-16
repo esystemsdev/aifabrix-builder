@@ -1,5 +1,5 @@
 /**
- * Tests for upload command (aifabrix upload <system-key>)
+ * Tests for upload command (aifabrix upload <systemKey>)
  *
  * @fileoverview Unit tests for lib/commands/upload.js
  * @author AI Fabrix Team
@@ -31,7 +31,9 @@ jest.mock('../../../lib/utils/dataplane-resolver', () => ({
   resolveDataplaneUrl: jest.fn().mockResolvedValue('http://dataplane:4000')
 }));
 jest.mock('../../../lib/api/pipeline.api', () => ({
-  uploadApplicationViaPipeline: jest.fn()
+  uploadApplicationViaPipeline: jest.fn(),
+  validatePipelineConfig: jest.fn(),
+  testSystemViaPipeline: jest.fn()
 }));
 jest.mock('../../../lib/utils/api-error-handler', () => ({
   formatApiError: jest.fn((r) => r?.formattedError || r?.error || 'Unknown error')
@@ -56,6 +58,9 @@ jest.mock('chalk', () => {
   mock.blue = (s) => s;
   mock.yellow = (s) => s;
   mock.gray = (s) => s;
+  mock.bold = (s) => s;
+  mock.cyan = (s) => s;
+  mock.white = (s) => s;
   return mock;
 });
 
@@ -80,13 +85,27 @@ describe('upload command', () => {
     dataSources: [{ key: 'ds1', systemKey: 'my-hubspot' }]
   };
 
+  const mockPublication = {
+    uploadId: 'up_test',
+    uploadStatus: 'published',
+    generateMcpContract: true,
+    system: { key: 'my-hubspot', status: 'published' },
+    datasources: [{ key: 'ds1', status: 'published', isActive: true, mcpContract: {} }]
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     validateExternalSystemComplete.mockResolvedValue({ valid: true, errors: [], warnings: [] });
     generateControllerManifest.mockResolvedValue(mockManifest);
     getDeploymentAuth.mockResolvedValue({ type: 'bearer', token: 'token' });
     pushCredentialSecrets.mockResolvedValue({ pushed: 0 });
-    uploadApplicationViaPipeline.mockResolvedValue({ success: true, data: { systemKey: 'my-hubspot' } });
+    uploadApplicationViaPipeline.mockResolvedValue({ success: true, data: mockPublication });
+    const { validatePipelineConfig, testSystemViaPipeline } = require('../../../lib/api/pipeline.api');
+    validatePipelineConfig.mockResolvedValue({ success: true, data: { isValid: true, warnings: [] } });
+    testSystemViaPipeline.mockResolvedValue({
+      success: true,
+      data: { success: true, results: [{ sourceKey: 'ds1', success: true, validationResults: { isValid: true } }] }
+    });
     buildResolvedEnvMapForIntegration.mockResolvedValue({ envMap: {}, secrets: {} });
   });
 
@@ -119,6 +138,19 @@ describe('upload command', () => {
         }
       );
       expect(logDataplanePipelineWarning).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call validation/run with payloadTemplate for --probe (payload test path, not full engine RBAC)', async() => {
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      const { testSystemViaPipeline } = require('../../../lib/api/pipeline.api');
+      await uploadExternalSystem(systemKey, { probe: true });
+      expect(testSystemViaPipeline).toHaveBeenCalledWith(
+        'http://dataplane:4000',
+        systemKey,
+        { type: 'bearer', token: 'token' },
+        { payloadTemplate: {} },
+        expect.objectContaining({ timeout: 120000 })
+      );
     });
 
     it('should call configuration resolver for application and datasource configuration before upload', async() => {
@@ -323,6 +355,30 @@ describe('upload command', () => {
 
       const { uploadExternalSystem } = require('../../../lib/commands/upload');
       await expect(uploadExternalSystem(systemKey)).rejects.toThrow('Network error');
+    });
+
+    it('should throw when upload response is not a publication result', async() => {
+      uploadApplicationViaPipeline.mockResolvedValue({ success: true, data: { systemKey: 'my-hubspot' } });
+
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await expect(uploadExternalSystem(systemKey)).rejects.toThrow(/Unexpected response from dataplane upload/);
+    });
+
+    it('should call validatePipelineConfig when --verbose', async() => {
+      const { validatePipelineConfig } = require('../../../lib/api/pipeline.api');
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await uploadExternalSystem(systemKey, { verbose: true });
+      expect(validatePipelineConfig).toHaveBeenCalledWith(
+        'http://dataplane:4000',
+        { type: 'bearer', token: 'token' },
+        expect.objectContaining({
+          config: expect.objectContaining({
+            version: '1.0.0',
+            application: mockManifest.system,
+            dataSources: mockManifest.dataSources
+          })
+        })
+      );
     });
 
     it('should throw when system-key is empty', async() => {

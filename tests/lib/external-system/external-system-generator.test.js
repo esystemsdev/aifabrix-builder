@@ -82,17 +82,41 @@ systemKey: "{{systemKey}}"
 entityType: "{{schemaEntityType}}"
 resourceType: "{{resourceType}}"
 enabled: true
+version: "1.0.0"
+primaryKey:
+{{#each primaryKey}}  - "{{this}}"
+{{/each}}
+labelKey:
+{{#each labelKey}}  - "{{this}}"
+{{/each}}
+metadataSchema:
+  type: object
+  required:
+{{#each attributeKeysForMetadata}}    - "{{this}}"
+{{/each}}
+  properties:
+{{#each attributeKeysForMetadata}}
+    {{this}}:
+      type: string
+{{#if (eq this "externalId")}}      index: true
+{{else}}{{#if (eq this "id")}}      index: true
+{{else}}{{#if @first}}      index: true
+{{else}}      filter: true
+{{/if}}{{/if}}{{/if}}
+{{/each}}
 fieldMappings:
-  dimensions: {}
   attributes:
+{{#if attributes}}
+{{#each attributes}}
+    {{@key}}:
+      expression: "{{this.expression}}"
+{{/each}}
+{{else}}
     id:
       expression: "{{raw.id}}"
-      type: string
-      indexed: true
     name:
       expression: "{{raw.name}}"
-      type: string
-      indexed: false
+{{/if}}
 `;
 
   beforeEach(() => {
@@ -381,7 +405,7 @@ fieldMappings:
         .rejects.toThrow('Failed to generate external datasource template');
     });
 
-    it('should emit default dimensions and schema-valid attribute expressions when dimensions/attributes are empty', async() => {
+    it('should emit v2.4 metadata, labelKey, and expression-only attributes when dimensions/attributes are empty', async() => {
       const realTemplate = fs.readFileSync(datasourceTemplatePath, 'utf8');
       fsPromises.readFile = jest.fn().mockResolvedValue(realTemplate);
       fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
@@ -397,17 +421,14 @@ fieldMappings:
       const writeCall = fsPromises.writeFile.mock.calls.find(c => c[0] && String(c[0]).includes('-datasource-'));
       const parsed = yaml.load(writeCall[1]);
 
-      expect(parsed.fieldMappings.dimensions).toEqual({});
-      expect(parsed.fieldMappings.attributes.id).toMatchObject({
-        expression: '{{raw.id}}',
-        type: 'string',
-        indexed: true
-      });
-      expect(parsed.fieldMappings.attributes.name).toMatchObject({
-        expression: '{{raw.name}}',
-        type: 'string',
-        indexed: false
-      });
+      expect(parsed.fieldMappings.attributes).toBeDefined();
+      expect(parsed.fieldMappings.attributes.externalId).toEqual({ expression: '{{raw.id}}' });
+      expect(parsed.fieldMappings.attributes.id).toEqual({ expression: '{{raw.id}}' });
+      expect(parsed.fieldMappings.attributes.name).toEqual({ expression: '{{raw.name}}' });
+      expect(parsed.primaryKey).toEqual(['id']);
+      expect(parsed.labelKey).toEqual(['externalId', 'id', 'name']);
+      expect(parsed.metadataSchema.properties.externalId.index).toBe(true);
+      expect(parsed.metadataSchema.properties.id.index).toBe(true);
     });
 
     it('should include commented optional sections for recordStorage', async() => {
@@ -428,7 +449,7 @@ fieldMappings:
       expect(content).toContain('# sync:');
       expect(content).toContain('# execution:');
       expect(content).toContain('# capabilities:');
-      expect(content).toContain('# config:');
+      expect(content).toContain('# config');
     });
 
     it('should include commented optional sections for vectorStore', async() => {
@@ -490,7 +511,9 @@ fieldMappings:
       const content = writeCall[1];
       const parsed = yaml.load(writeCall[1]);
       expect(parsed.entityType).toBe('none');
-      expect(content).toContain('# execution:');
+      expect(parsed.primaryKey).toBeUndefined();
+      expect(parsed.fieldMappings).toBeUndefined();
+      expect(content).toContain('# execution');
     });
 
     it('should generate datasource YAML that validates against external-datasource schema', async() => {
@@ -516,6 +539,9 @@ fieldMappings:
         delete schema.$schema;
       }
       const ajv = new Ajv({ allErrors: true, strict: false });
+      ajv.addSchema(require('../../../lib/schema/type/document-storage.json'));
+      ajv.addSchema(require('../../../lib/schema/type/message-service.json'));
+      ajv.addSchema(require('../../../lib/schema/type/vector-store.json'));
       ajv.addSchema(schema, schema.$id);
       const valid = ajv.validate(schema.$id, json);
 

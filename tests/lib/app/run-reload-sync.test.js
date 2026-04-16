@@ -130,6 +130,29 @@ describe('run (ensureReloadSync and localhost helpers)', () => {
       );
     });
 
+    it('throws when remote is non-local but mutagen sync settings are incomplete (plan 122 Matrix D5)', async() => {
+      config.getDockerEndpoint.mockResolvedValue('tcp://dev.aifabrix.dev:2376');
+      config.getRemoteServer.mockResolvedValue('https://dev.aifabrix.dev');
+      config.getSyncSshHost.mockResolvedValue('dev.aifabrix.dev');
+      config.getUserMutagenFolder.mockResolvedValue(null);
+      config.getSyncSshUser.mockResolvedValue('syncuser');
+      await expect(run.ensureReloadSync('myapp', '01', false, '/local/code')).rejects.toThrow(
+        'run --reload requires remote server sync settings'
+      );
+      expect(mutagen.ensureMutagenPath).not.toHaveBeenCalled();
+    });
+
+    it('throws Matrix D5 when sync-ssh-user is missing', async() => {
+      config.getDockerEndpoint.mockResolvedValue('tcp://dev.aifabrix.dev:2376');
+      config.getRemoteServer.mockResolvedValue('https://dev.aifabrix.dev');
+      config.getSyncSshHost.mockResolvedValue('dev.aifabrix.dev');
+      config.getUserMutagenFolder.mockResolvedValue('/home/dev');
+      config.getSyncSshUser.mockResolvedValue(null);
+      await expect(run.ensureReloadSync('myapp', '01', false, '/local/code')).rejects.toThrow(
+        'run --reload requires remote server sync settings'
+      );
+    });
+
     it('passes remoteSyncPath to getRemotePath when provided', async() => {
       config.getDockerEndpoint.mockResolvedValue('tcp://dev.aifabrix.dev:2376');
       config.getRemoteServer.mockResolvedValue('https://dev.aifabrix.dev');

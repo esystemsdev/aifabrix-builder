@@ -4,16 +4,25 @@ app:
   displayName: 'Miso Controller'
   description: 'Miso is the AI Fabrix in-tenant controller and portal layer for securely operating enterprise AI apps inside a customer’s Azure tenant. It provides Entra ID SSO, RBAC, audit logs, environment/app configuration via schemas, and safe secret handling via Key Vault references—ensuring governance, traceability, and predictable UX across portal, SDK, and CLI.'
   type: webapp
-  version: '1.9.0'
+  version: '1.9.5'
 
 # Image Configuration
 image:
   name: aifabrix/miso-controller
+  tag: latest
   registry: aifabrixdevacr.azurecr.io
   registryMode: acr
 
 # Port Configuration (container port; host port = 3000 + developer_id*100 from ~/.aifabrix/config.yaml)
 port: 3000
+
+# Public path behind Azure Front Door / reverse proxy (used by url://public and urls.local.yaml).
+# Traefik: host is expanded from developer-id + remote-server (hostname of `remote-server` in ~/.aifabrix/config.yaml).
+frontDoorRouting:
+  pattern: /miso/*
+  enabled: true
+  host: ${DEV_USERNAME}.${REMOTE_HOST}
+  tls: ${TLS_ENABLED}
 
 # Azure Requirements
 requires:
@@ -45,7 +54,6 @@ build:
   context: ../.. # Docker build context (relative to builder/miso-controller/)
   dockerfile: builder/miso-controller/Dockerfile # Dockerfile name (relative to project root)
   envOutputPath: ../../packages/miso-controller/.env # Copy .env to repo root for local dev (relative to builder/) (if null, no .env file is copied) (if empty, .env file is copied to repo root)
-  localPort: 3010 # Port for local development (different from Docker port)
   language: typescript # Runtime language for template selection (typescript or python)
   reloadStart: pnpm run start:reload # When running with --reload
 

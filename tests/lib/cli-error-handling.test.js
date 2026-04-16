@@ -43,7 +43,7 @@ jest.mock('chalk', () => {
 
 // Mock other chalk-dependent packages
 jest.mock('log-symbols', () => ({
-  success: '✓',
+  success: '✔',
   error: '✖',
   warning: '⚠',
   info: 'ℹ'
@@ -89,6 +89,7 @@ describe('CLI Error Handling', () => {
 
   describe('Error handling', () => {
     it('should handle command errors with helpful messages', () => {
+      const { getDockerDaemonStartHintSentence, getDockerApiOverTcpHintLines } = require('../../lib/utils/docker-not-running-hint');
       const cli = require('../../lib/cli');
 
       // Test the handleCommandError function
@@ -97,9 +98,12 @@ describe('CLI Error Handling', () => {
 
       cli.handleCommandError(error, command);
 
-      expect(console.error).toHaveBeenCalledWith('\n❌ Error in build command:');
+      expect(console.error).toHaveBeenCalledWith('\n✖ Error in build command:');
       expect(console.error).toHaveBeenCalledWith('   Docker is not running or not installed.');
-      expect(console.error).toHaveBeenCalledWith('   Please start Docker Desktop and try again.');
+      expect(console.error).toHaveBeenCalledWith(`   ${getDockerDaemonStartHintSentence()}`);
+      for (const line of getDockerApiOverTcpHintLines()) {
+        expect(console.error).toHaveBeenCalledWith(line);
+      }
       expect(console.error).toHaveBeenCalledWith('\n💡 Run "aifabrix doctor" for environment diagnostics.\n');
     });
 
@@ -111,7 +115,7 @@ describe('CLI Error Handling', () => {
 
       cli.handleCommandError(error, command);
 
-      expect(console.error).toHaveBeenCalledWith('\n❌ Error in up-infra command:');
+      expect(console.error).toHaveBeenCalledWith('\n✖ Error in up-infra command:');
       expect(console.error).toHaveBeenCalledWith('   Port conflict detected.');
       expect(console.error).toHaveBeenCalledWith('   Run "aifabrix doctor" to check which ports are in use.');
     });
@@ -124,12 +128,13 @@ describe('CLI Error Handling', () => {
 
       cli.handleCommandError(error, command);
 
-      expect(console.error).toHaveBeenCalledWith('\n❌ Error in build command:');
+      expect(console.error).toHaveBeenCalledWith('\n✖ Error in build command:');
       expect(console.error).toHaveBeenCalledWith('   permission denied');
       expect(console.error).toHaveBeenCalledWith('   Ensure your token has the required permission (e.g. external-system:delete for delete).');
     });
 
     it('should handle Docker permission denied errors', () => {
+      const { getDockerApiOverTcpHintLines } = require('../../lib/utils/docker-not-running-hint');
       const cli = require('../../lib/cli');
 
       const error = new Error('Got permission denied while trying to connect to the Docker daemon socket');
@@ -137,9 +142,16 @@ describe('CLI Error Handling', () => {
 
       cli.handleCommandError(error, command);
 
-      expect(console.error).toHaveBeenCalledWith('\n❌ Error in run command:');
-      expect(console.error).toHaveBeenCalledWith('   Permission denied.');
-      expect(console.error).toHaveBeenCalledWith('   Make sure you have the necessary permissions to run Docker commands.');
+      expect(console.error).toHaveBeenCalledWith('\n✖ Error in run command:');
+      expect(console.error).toHaveBeenCalledWith(
+        '   Permission denied when using Docker (e.g. unix socket).'
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        '   On Linux you can add your user to the "docker" group and log in again, or use the Engine API via docker-endpoint:'
+      );
+      for (const line of getDockerApiOverTcpHintLines()) {
+        expect(console.error).toHaveBeenCalledWith(line);
+      }
     });
 
     it('should handle Azure CLI errors', () => {
@@ -150,7 +162,7 @@ describe('CLI Error Handling', () => {
 
       cli.handleCommandError(error, command);
 
-      expect(console.error).toHaveBeenCalledWith('\n❌ Error in push command:');
+      expect(console.error).toHaveBeenCalledWith('\n✖ Error in push command:');
       expect(console.error).toHaveBeenCalledWith('   Azure CLI is not installed or not working properly.');
     });
 
@@ -210,7 +222,7 @@ describe('CLI Error Handling', () => {
 
       cli.handleCommandError(error, command);
 
-      expect(console.error).toHaveBeenCalledWith('\n❌ Error in deploy command:');
+      expect(console.error).toHaveBeenCalledWith('\n✖ Error in deploy command:');
       expect(console.error).toHaveBeenCalledWith('   Something went wrong');
     });
   });

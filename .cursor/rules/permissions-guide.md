@@ -41,6 +41,7 @@ How to update and document permissions for Builder's online (Controller/Dataplan
 |--------|--------|
 | New lib/api function | `lib/api/<module>.api.js` – add @requiresPermission |
 | New CLI command (online) | `docs/commands/permissions.md` – add row; update relevant command doc |
+| Unified validation / `runUnifiedDatasourceValidation` | `lib/api/validation-run.api.js` – @requiresPermission on POST/GET; `docs/commands/permissions.md` – rows for `datasource test`, `test-integration`, `test-e2e`; optional note in `lib/datasource/unified-validation-run.js` fileoverview |
 | Scope change in OpenAPI | Re-check lib/api and docs/commands/permissions.md for affected endpoints |
 
 ## Quick Reference

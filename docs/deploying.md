@@ -6,7 +6,7 @@ Deployment is **unified**: the same flow and the same Miso Controller apply to (
 
 ## What gets deployed
 
-- **External systems:** OpenAPI/MCP integrations, datasources, and related config. You work in `integration/<app>/`. Deploy with `aifabrix deploy <app>` (the CLI resolves `integration/<app>/` first, then `builder/<app>/`). No app registration needed; the controller creates and deploys from your integration manifest.
+- **External systems:** OpenAPI/MCP integrations, datasources, and related config. You work in `integration/<systemKey>/`. Deploy with `aifabrix deploy <app>` (the CLI resolves `integration/<systemKey>/` first, then `builder/<appKey>/`). No app registration needed; the controller creates and deploys from your integration manifest.
 - **Containerized applications:** Web apps or services built as Docker images. You build, push to a registry, then deploy with `aifabrix deploy <app>`. Requires app registration and image push first.
 
 Both paths use the same Controller and the same deploy pipeline; only the source (integration folder vs builder + registry) and manifest content differ.
@@ -15,11 +15,11 @@ Both paths use the same Controller and the same deploy pipeline; only the source
 
 **Local (dev)** → **Controller** → **Dataplane** (or target environment).
 
-- **Local (dev):** You define apps or external systems (e.g. in `builder/<app>/` or `integration/<app>/`). Validate and deploy from the CLI.
+- **Local (dev):** You define apps or external systems (e.g. in `builder/<appKey>/` or `integration/<systemKey>/`). Validate and deploy from the CLI.
 - **Controller:** The CLI sends the deployment manifest to the Miso Controller. The controller validates the manifest and deploys to the dataplane or target environment (Azure Container Apps or local Docker). The builder does not generate or send a deployment key—the controller computes and manages it. See [Deployment key](configuration/deployment-key.md).
 - **Dataplane/target:** The controller deploys; pipeline and schema publishing run when configured (e.g. `autopublish: true` for external systems).
 
-For **containerized applications:** build the image, push to a registry (e.g. ACR), then deploy via the Controller. Prerequisites and steps below apply. For **external systems:** use `aifabrix deploy <app>` from `integration/<app>/` (path is resolved automatically; no app registration needed). MCP and OpenAPI docs are always **served by the dataplane** after publish; see [Controller and Dataplane: What, Why, When](#controller-and-dataplane-what-why-when) for when and how they become available.
+For **containerized applications:** build the image, push to a registry (e.g. ACR), then deploy via the Controller. Prerequisites and steps below apply. For **external systems:** use `aifabrix deploy <app>` from `integration/<systemKey>/` (path is resolved automatically; no app registration needed). MCP and OpenAPI docs are always **served by the dataplane** after publish; see [Controller and Dataplane: What, Why, When](#controller-and-dataplane-what-why-when) for when and how they become available.
 
 ## Controller and Dataplane: What, Why, When
 
@@ -35,7 +35,7 @@ A single place to understand the two platform components and when you get MCP/Op
 | Use case | Command | Path | Outcome |
 | -------- | ------- | ----- | ------- |
 | **Promotion** (dev → tst → pro) | `aifabrix deploy <app>` | CLI → Dataplane → Controller (publish-controller); Controller validate + deploy | Full platform deployment; manifest in controller; container/restart deploy; docs on dataplane after publish |
-| **Development** (quick iteration) | `aifabrix upload <system-key>` | CLI → Dataplane (upload → validate → publish) | Config on dataplane; RBAC registered with controller; docs available after publish. No manifest sent for container deployment; promote via `aifabrix deploy` when ready |
+| **Development** (quick iteration) | `aifabrix upload <systemKey>` | CLI → Dataplane (upload → validate → publish) | Config on dataplane; RBAC registered with controller; docs available after publish. No manifest sent for container deployment; promote via `aifabrix deploy` when ready |
 
 **Intended workflow:** Develop with `aifabrix upload` for fast iteration and testing. Promote with `aifabrix deploy <app>` when ready for full controller deployment and environment promotion.
 
@@ -486,8 +486,8 @@ Controller computes and manages the deployment key. Builder sends manifest only 
 ## Deployment Manifest
 
 The deployment manifest sent to the controller is named by app or system key:
-- **Regular apps (builder):** `builder/<app>/<appKey>-deploy.json` (e.g. `builder/myapp/myapp-deploy.json`)
-- **External systems (integration):** `integration/<app>/<systemKey>-deploy.json` (e.g. `integration/hubspot-test/hubspot-test-deploy.json`)
+- **Regular apps (builder):** `builder/<appKey>/<appKey>-deploy.json` (e.g. `builder/myapp/myapp-deploy.json`)
+- **External systems (integration):** `integration/<systemKey>/<systemKey>-deploy.json` (e.g. `integration/hubspot-test/hubspot-test-deploy.json`)
 
 The controller uses the manifest to deploy to Azure Container Apps or to run containers locally (local Docker).
 
@@ -747,7 +747,7 @@ image:
 | **Deployment** | Immutable; uniquely identified by **deployment Id**. |
 | **Application version** | Semantic version in `application.yaml` (`app.version`, default `1.0.0`). Used for display and “when to change version” guidance. |
 
-**Purpose:** Version tracks product/application changes and enables schema diffing and migrations. For regular apps, `app.version` can be auto-resolved from the image (OCI label or semver tag) when running or deploying; it flows into the deployment JSON and to Miso Controller, then Dataplane. When running the image, `builder/<app>/application.yaml` is updated with the discovered version.
+**Purpose:** Version tracks product/application changes and enables schema diffing and migrations. For regular apps, `app.version` can be auto-resolved from the image (OCI label or semver tag) when running or deploying; it flows into the deployment JSON and to Miso Controller, then Dataplane. When running the image, `builder/<appKey>/application.yaml` is updated with the discovered version.
 
 **Why two (version vs tag):** version = product semantics; tag = container artifact.
 
@@ -960,9 +960,9 @@ Controller fetches from Azure Key Vault.
 The `aifabrix deploy` command performs the following steps:
 
 1. **Load Configuration Files**
-   - Reads `builder/<app>/application.yaml` for application metadata
-   - Reads `builder/<app>/env.template` for environment variables
-   - Reads `builder/<app>/rbac.yaml` for roles and permissions (optional)
+   - Reads `builder/<appKey>/application.yaml` for application metadata
+   - Reads `builder/<appKey>/env.template` for environment variables
+   - Reads `builder/<appKey>/rbac.yaml` for roles and permissions (optional)
 
 2. **Parse Environment Variables**
    - Converts env.template entries to configuration array

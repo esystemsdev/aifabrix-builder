@@ -17,6 +17,10 @@ jest.mock('chalk', () => {
   mockChalk.green = jest.fn((text) => text);
   mockChalk.red = jest.fn((text) => text);
   mockChalk.yellow = jest.fn((text) => text);
+  mockChalk.cyan = jest.fn((text) => text);
+  mockChalk.gray = jest.fn((text) => text);
+  mockChalk.bold = jest.fn((text) => text);
+  mockChalk.white = jest.fn((text) => text);
   return mockChalk;
 });
 
@@ -226,7 +230,7 @@ describe('External System Test Execution Module', () => {
       const dataplaneUrl = 'https://dataplane.example.com';
       const authConfig = { token: 'test-token' };
       const customPayload = null;
-      const options = { timeout: '30000' };
+      const options = { timeout: '30000', verbose: true };
 
       const payloadTemplate = { test: 'payload' };
       const mockResult = {
@@ -247,7 +251,8 @@ describe('External System Test Execution Module', () => {
         options
       );
 
-      expect(logger.log).toHaveBeenCalledWith(chalk.blue('\n📡 Testing datasource: hubspot-companies-get'));
+      expect(logger.log).toHaveBeenCalledWith('');
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('📡 Testing datasource: hubspot-companies-get'));
       expect(testHelpers.determinePayloadTemplate).toHaveBeenCalledWith(
         datasourceFile.data,
         'hubspot-companies-get',
@@ -277,7 +282,7 @@ describe('External System Test Execution Module', () => {
       const dataplaneUrl = 'https://dataplane.example.com';
       const authConfig = { token: 'test-token' };
       const customPayload = null;
-      const options = { timeout: '30000' };
+      const options = { timeout: '30000', verbose: true };
 
       testHelpers.determinePayloadTemplate.mockReturnValue(null);
 
@@ -290,7 +295,8 @@ describe('External System Test Execution Module', () => {
         options
       );
 
-      expect(logger.log).toHaveBeenCalledWith(chalk.blue('\n📡 Testing datasource: hubspot-companies-get'));
+      expect(logger.log).toHaveBeenCalledWith('');
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('📡 Testing datasource: hubspot-companies-get'));
       expect(logger.log).toHaveBeenCalledWith(chalk.yellow('  ⚠ No test payload found for hubspot-companies-get, skipping...'));
       expect(testHelpers.testSingleDatasource).not.toHaveBeenCalled();
       expect(result).toEqual({
@@ -388,7 +394,7 @@ describe('External System Test Execution Module', () => {
       const dataplaneUrl = 'https://dataplane.example.com';
       const authConfig = { token: 'test-token' };
       const customPayload = null;
-      const options = { timeout: '30000' };
+      const options = { timeout: '30000', verbose: true };
 
       const payloadTemplate = { test: 'payload' };
       const mockResult = {
@@ -408,7 +414,8 @@ describe('External System Test Execution Module', () => {
         options
       );
 
-      expect(logger.log).toHaveBeenCalledWith(chalk.blue('\n📡 Testing datasource: custom-datasource-key'));
+      expect(logger.log).toHaveBeenCalledWith('');
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('📡 Testing datasource: custom-datasource-key'));
       expect(testHelpers.determinePayloadTemplate).toHaveBeenCalledWith(
         datasourceFile.data,
         'custom-datasource-key',

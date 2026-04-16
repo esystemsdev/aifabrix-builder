@@ -163,7 +163,7 @@ describe('Login Device Code Flow Module', () => {
       expect(saveDeviceToken).toHaveBeenCalled();
       expect(setControllerUrl).toHaveBeenCalledWith('http://localhost:3000');
       expect(setCurrentEnvironment).toHaveBeenCalledWith('dev');
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✅ Successfully logged in!'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Successfully logged in!'));
 
       jest.restoreAllMocks();
     });
@@ -323,7 +323,7 @@ describe('Login Device Code Flow Module', () => {
 
       await handleDeviceCodeLogin('http://localhost:3000', 'dev');
 
-      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('❌ Device code flow failed:'));
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('✖ Device code flow failed:'));
       expect(logger.log).toHaveBeenCalledWith('Formatted error message');
       expect(process.exit).toHaveBeenCalledWith(1);
     });

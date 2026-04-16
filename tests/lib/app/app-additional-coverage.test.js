@@ -309,12 +309,12 @@ describe('App.js Additional Coverage Tests', () => {
       if (existingEnv) {
         const envResult = await envReader.generateEnvTemplate(config, existingEnv);
         if (envResult.warnings && envResult.warnings.length > 0) {
-          console.log('\n⚠️  Environment conversion warnings:');
+          console.log('\n⚠  Environment conversion warnings:');
           envResult.warnings.forEach(warning => console.log(`  - ${warning}`));
         }
       }
 
-      expect(console.log).toHaveBeenCalledWith('\n⚠️  Environment conversion warnings:');
+      expect(console.log).toHaveBeenCalledWith('\n⚠  Environment conversion warnings:');
       expect(console.log).toHaveBeenCalledWith('  - Warning: DATABASE_URL format may need adjustment');
       expect(console.log).toHaveBeenCalledWith('  - Warning: Some sensitive values were not converted');
 

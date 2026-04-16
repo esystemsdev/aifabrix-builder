@@ -79,7 +79,8 @@ describe('Test Log Writer', () => {
     it('should use custom integrationBaseDir when provided', async() => {
       await writeTestLog('myapp', {}, 'test-e2e', '/custom/integration');
 
-      expect(fs.mkdir).toHaveBeenCalledWith('/custom/integration/myapp/logs', { recursive: true });
+      const path = require('path');
+      expect(fs.mkdir).toHaveBeenCalledWith(path.join('/custom/integration', 'myapp', 'logs'), { recursive: true });
     });
   });
 });

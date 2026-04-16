@@ -11,6 +11,7 @@ The **tests/manual** directory contains tests that call **real** Controller and 
 - **api-datasources.test.js** – datasources-core.api (list, executions, get, status, Dataplane)
 - **api-datasources-extended.test.js** – datasources-extended.api (records, grants, Dataplane)
 - **api-external-test-e2e.test.js** – external-test.api (test-e2e sync, getE2ETestRun; Dataplane; Bearer/API key only)
+- **api-validation-run.test.js** – validation-run.api (unified POST/GET validation run; same stack as `aifabrix datasource test`)
 - **api-wizard.test.js** – wizard.api (platforms, credentials, Dataplane)
 - **api-service-users.test.js** – service-users.api (list; requires Controller and service-user:read for success)
 

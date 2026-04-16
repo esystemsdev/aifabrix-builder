@@ -86,10 +86,10 @@ describe('up-dataplane command', () => {
       pathsUtil.resolveApplicationConfigPath.mockImplementation(() => {
         throw new Error('Application config not found');
       });
-      expect(buildDataplaneImageRef('myreg.azurecr.io')).toBeUndefined();
+      expect(buildDataplaneImageRef({ registry: 'myreg.azurecr.io' })).toBeUndefined();
     });
 
-    it('should build registry/name:tag from application config', () => {
+    it('should build registry/name:tag from CLI registry and application config', () => {
       const builderPath = path.join(cwd, 'builder', 'dataplane');
       pathsUtil.getBuilderPath.mockReturnValue(builderPath);
       pathsUtil.resolveApplicationConfigPath.mockReturnValue(path.join(builderPath, 'application.yaml'));
@@ -98,7 +98,45 @@ describe('up-dataplane command', () => {
         image: { name: 'aifabrix/dataplane', tag: 'v1' }
       });
 
-      expect(buildDataplaneImageRef('myreg.azurecr.io')).toBe('myreg.azurecr.io/aifabrix/dataplane:v1');
+      expect(buildDataplaneImageRef({ registry: 'myreg.azurecr.io' })).toBe(
+        'myreg.azurecr.io/aifabrix/dataplane:v1'
+      );
+    });
+
+    it('should use image.registry from manifest when CLI registry omitted', () => {
+      const builderPath = path.join(cwd, 'builder', 'dataplane');
+      pathsUtil.getBuilderPath.mockReturnValue(builderPath);
+      pathsUtil.resolveApplicationConfigPath.mockReturnValue(path.join(builderPath, 'application.yaml'));
+      configFormat.loadConfigFile.mockReturnValue({
+        app: { key: 'dataplane' },
+        image: { name: 'aifabrix/dataplane', tag: 'v1', registry: 'manifestreg.example.io' }
+      });
+
+      expect(buildDataplaneImageRef({})).toBe('manifestreg.example.io/aifabrix/dataplane:v1');
+    });
+
+    it('should prefer CLI registry over manifest image.registry', () => {
+      const builderPath = path.join(cwd, 'builder', 'dataplane');
+      pathsUtil.getBuilderPath.mockReturnValue(builderPath);
+      pathsUtil.resolveApplicationConfigPath.mockReturnValue(path.join(builderPath, 'application.yaml'));
+      configFormat.loadConfigFile.mockReturnValue({
+        app: { key: 'dataplane' },
+        image: { name: 'aifabrix/dataplane', tag: 'v1', registry: 'manifestreg.example.io' }
+      });
+
+      expect(buildDataplaneImageRef({ registry: 'cli.azurecr.io' })).toBe('cli.azurecr.io/aifabrix/dataplane:v1');
+    });
+
+    it('should return undefined when neither CLI nor manifest registry is set', () => {
+      const builderPath = path.join(cwd, 'builder', 'dataplane');
+      pathsUtil.getBuilderPath.mockReturnValue(builderPath);
+      pathsUtil.resolveApplicationConfigPath.mockReturnValue(path.join(builderPath, 'application.yaml'));
+      configFormat.loadConfigFile.mockReturnValue({
+        app: { key: 'dataplane' },
+        image: { name: 'aifabrix/dataplane', tag: 'v1' }
+      });
+
+      expect(buildDataplaneImageRef({})).toBeUndefined();
     });
   });
 
@@ -128,7 +166,10 @@ describe('up-dataplane command', () => {
       expect(registerApplication).toHaveBeenCalledWith('dataplane', expect.any(Object));
       expect(rotateSecret).not.toHaveBeenCalled();
       expect(app.deployApp).toHaveBeenCalledWith('dataplane', expect.any(Object));
-      expect(app.runApp).toHaveBeenCalledWith('dataplane', { skipEnvOutputPath: true });
+      expect(app.runApp).toHaveBeenCalledWith(
+        'dataplane',
+        expect.objectContaining({ skipEnvOutputPath: true })
+      );
     });
 
     it('should call rotateSecret (not register) then deploy then run locally when app already registered', async() => {
@@ -140,7 +181,10 @@ describe('up-dataplane command', () => {
       expect(rotateSecret).toHaveBeenCalledWith('dataplane', expect.any(Object));
       expect(registerApplication).not.toHaveBeenCalled();
       expect(app.deployApp).toHaveBeenCalledWith('dataplane', expect.any(Object));
-      expect(app.runApp).toHaveBeenCalledWith('dataplane', { skipEnvOutputPath: true });
+      expect(app.runApp).toHaveBeenCalledWith(
+        'dataplane',
+        expect.objectContaining({ skipEnvOutputPath: true })
+      );
     });
 
     it('should pass image override to register and deploy then run locally', async() => {
@@ -154,7 +198,39 @@ describe('up-dataplane command', () => {
         imageOverride: 'myreg/dataplane:latest',
         image: 'myreg/dataplane:latest'
       }));
-      expect(app.runApp).toHaveBeenCalledWith('dataplane', { skipEnvOutputPath: true });
+      expect(app.runApp).toHaveBeenCalledWith(
+        'dataplane',
+        expect.objectContaining({ skipEnvOutputPath: true })
+      );
+    });
+
+    it('should pass CLI registry into runApp for image resolution', async() => {
+      checkApplicationExists.mockResolvedValue(true);
+
+      await handleUpDataplane({ registry: 'my.azurecr.io' });
+
+      expect(app.runApp).toHaveBeenCalledWith(
+        'dataplane',
+        expect.objectContaining({ skipEnvOutputPath: true, registry: 'my.azurecr.io' })
+      );
+    });
+
+    it('should register with manifest image.registry when CLI registry omitted', async() => {
+      checkApplicationExists.mockResolvedValue(false);
+      const builderPath = path.join(cwd, 'builder', 'dataplane');
+      pathsUtil.getBuilderPath.mockReturnValue(builderPath);
+      pathsUtil.resolveApplicationConfigPath.mockReturnValue(path.join(builderPath, 'application.yaml'));
+      configFormat.loadConfigFile.mockReturnValue({
+        app: { key: 'dataplane' },
+        image: { name: 'aifabrix/dataplane', tag: 'v1', registry: 'acr.example.io' }
+      });
+
+      await handleUpDataplane({});
+
+      expect(registerApplication).toHaveBeenCalledWith('dataplane', expect.objectContaining({
+        imageOverride: 'acr.example.io/aifabrix/dataplane:v1',
+        image: 'acr.example.io/aifabrix/dataplane:v1'
+      }));
     });
   });
 });

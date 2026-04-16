@@ -1,0 +1,31 @@
+key: roundtrip-test-local2-company
+displayName: Company
+systemKey: roundtrip-test-local2
+entityType: recordStorage
+resourceType: record
+primaryKey:
+  - id
+labelKey:
+  - id
+metadataSchema:
+  type: object
+  required:
+    - id
+    - externalId
+  properties:
+    id:
+      type: string
+      index: true
+    externalId:
+      type: string
+      index: true
+fieldMappings:
+  attributes:
+    id:
+      expression: '{{raw.id}}'
+    externalId:
+      expression: '{{raw.externalId}}'
+exposed:
+  schema:
+    id: metadata.id
+    externalId: metadata.externalId

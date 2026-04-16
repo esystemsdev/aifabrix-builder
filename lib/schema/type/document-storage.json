@@ -1,0 +1,213 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aifabrix://schema/type/document-storage.json",
+  "title": "Document Storage Configuration Schema",
+  "description": "Internal schema for validating document storage configurations in ExternalDataSource. Enforces CIP-only binary operations, simplifying binary retrieval configuration.",
+  "metadata": {
+    "key": "document-storage-schema",
+    "name": "Document Storage Configuration Schema",
+    "description": "JSON schema for validating document storage configurations",
+    "version": "1.2.0",
+    "type": "schema",
+    "category": "document-storage",
+    "author": "AI Fabrix Team",
+    "createdAt": "2026-01-02T00:00:00Z",
+    "updatedAt": "2026-03-31T00:00:00Z",
+    "compatibility": {
+      "minVersion": "1.0.0",
+      "maxVersion": "2.0.0",
+      "deprecated": false
+    },
+    "tags": [
+      "schema",
+      "document-storage",
+      "dataplane",
+      "validation"
+    ],
+    "dependencies": [],
+    "changelog": [
+      {
+        "version": "1.0.0",
+        "date": "2026-01-02T00:00:00Z",
+        "changes": [
+          "Initial schema for document storage validation",
+          "Simplified binary operation to CIP-only approach",
+          "Removed HTTP/OpenAPI fallback mode",
+          "Standardized on CIP operation reference (default: 'get')"
+        ],
+        "breaking": false
+      },
+      {
+        "version": "1.1.0",
+        "date": "2026-03-22T00:00:00Z",
+        "changes": [
+          "Aligned notifications to strict flat shape (email/slack/teams/webhookUrl)",
+          "Removed processing.ingestAfterSync duplicate (top-level ingestAfterSync remains canonical)",
+          "Removed aiValidation llmProvider/llmModel from schema contract",
+          "Removed unused documentStorage.credentialId from type schema"
+        ],
+        "breaking": true
+      },
+      {
+        "version": "1.1.1",
+        "date": "2026-03-31T00:00:00Z",
+        "changes": [
+          "Removed duplicate processing.aiPrompt definition and enforced string-only prompt contract"
+        ],
+        "breaking": false
+      },
+      {
+        "version": "1.2.0",
+        "date": "2026-03-31T00:00:00Z",
+        "changes": [
+          "Added optional securityLevel classification field (public/internal/restricted/confidential)"
+        ],
+        "breaking": false
+      }
+    ]
+  },
+  "type": "object",
+  "required": ["enabled"],
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether document storage is enabled"
+    },
+    "securityLevel": {
+      "type": "string",
+      "enum": ["public", "internal", "restricted", "confidential"],
+      "description": "Document sensitivity classification applied at datasource level"
+    },
+    "twoPhaseSync": {
+      "type": "boolean",
+      "default": true,
+      "description": "Enable two-phase sync: metadata validation first, then binary retrieval via CIP. When true, validates metadata before fetching binaries. When false, fetches binaries directly without validation phase."
+    },
+    "ingestAfterSync": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, chunk and embed each document after store during sync so vector search returns hits immediately. When false, ingestion runs later (e.g. Celery task or on approval). Set true for E2E tests that validate vector step."
+    },
+    "binaryOperationRef": {
+      "type": "string",
+      "default": "get",
+      "description": "CIP operation name for binary document retrieval. Must exist in execution.cip.operations. Defaults to 'get' operation."
+    },
+    "responseType": {
+      "type": "string",
+      "enum": ["binary", "base64", "json"],
+      "default": "binary",
+      "description": "Expected response type from CIP operation. 'binary' for raw binary data, 'base64' for base64-encoded data, 'json' for JSON response with binary field."
+    },
+    "binaryField": {
+      "type": "string",
+      "description": "Field name containing binary data if responseType is 'json' or 'base64'. Required when responseType is not 'binary'."
+    },
+    "parameterMapping": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Map metadata record fields to CIP operation parameters. Example: {\"fileId\": \"{{key}}\", \"downloadUrl\": \"{{metadata.downloadUrl}}\"}"
+    },
+    "pathSuffix": {
+      "type": "string",
+      "description": "Optional suffix appended to CIP fetch path for binary retrieval (for example '/content')."
+    },
+    "dropQueryParameters": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, removes fetch.query when applying binary retrieval path override."
+    },
+    "processing": {
+      "type": "object",
+      "properties": {
+        "fileStoragePath": {
+          "type": "string",
+          "default": "/data/documents"
+        },
+        "aiValidation": {
+          "type": "object",
+          "description": "AI validation configuration.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "confidenceThreshold": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "default": 0.85
+            },
+            "requiredFields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "aiPrompt": {
+          "type": "string",
+          "description": "Approved AI prompt text stored in the manifest."
+        },
+        "spacyEnrichment": {
+          "type": "object",
+          "description": "spaCy enrichment configuration.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "extractEntities": {
+              "type": "boolean",
+              "default": true
+            },
+            "extractKeywords": {
+              "type": "boolean",
+              "default": true
+            },
+            "extractSentences": {
+              "type": "boolean",
+              "default": false
+            },
+            "language": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 16,
+              "default": "en"
+            }
+          },
+          "additionalProperties": false
+        },
+        "notifications": {
+          "type": "object",
+          "description": "Validation notification configuration.",
+          "properties": {
+            "email": {
+              "type": "boolean"
+            },
+            "slack": {
+              "type": "boolean"
+            },
+            "teams": {
+              "type": "boolean"
+            },
+            "webhookUrl": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
+

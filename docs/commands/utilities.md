@@ -27,7 +27,7 @@ Generate `.env` file from template.
 
 **When:** After secrets change, troubleshooting environment issues.
 
-**App path:** Resolve works for **builder** apps and for **external integrations** in `integration/<app>/`. If `integration/<app>/env.template` exists (even without `application.yaml`), that directory is used and resolve runs in **env-only** mode; otherwise the CLI resolves the app via integration then builder using full config (application.yaml or application.json).
+**App path:** Resolve works for **builder** apps and for **external integrations** in `integration/<systemKey>/`. If `integration/<systemKey>/env.template` exists (even without `application.yaml`), that directory is used and resolve runs in **env-only** mode; otherwise the CLI resolves the app via integration then builder using full config (application.yaml or application.json).
 
 **Example:**
 ```bash
@@ -56,7 +56,7 @@ This will generate the .env file without running validation checks afterward.
 - `-f, --force` - Generate missing secret keys in secrets file
 - `--skip-validation` - Skip file validation after generating .env
 
-**Output:** When the app is in **integration** with **env-only** (only `env.template` present, no `application.yaml`), `.env` is written to `integration/<app>/.env`. When the app has full config (builder or integration with `application.yaml`) and `build.envOutputPath` is set, `.env` is written to that path; otherwise behaviour is as documented for run/build (e.g. temp or run-only).
+**Output:** When the app is in **integration** with **env-only** (only `env.template` present, no `application.yaml`), `.env` is written to `integration/<systemKey>/.env`. When the app has full config (builder or integration with `application.yaml`) and `build.envOutputPath` is set, `.env` is written to that path; otherwise behaviour is as documented for run/build (e.g. temp or run-only).
 
 **Env-only mode:** When resolving in **env-only** mode (integration + `env.template` only), post-resolve validation is skipped because there is no `application.yaml` to validate. Run `aifabrix validate <app>` separately when you add full config later.
 
@@ -73,7 +73,7 @@ This will generate the .env file without running validation checks afterward.
 
 Generate deployment JSON.
 
-**What:** Creates `<appKey>-deploy.json` (e.g. `builder/<app>/<appKey>-deploy.json`) from application config, env.template, and rbac for normal applications. Application config may be `application.yaml` or `application.json`; system/datasource config may be `.yaml` or `.json`. The deployment manifest is always **JSON only** (`<appKey>-deploy.json` or `<systemKey>-deploy.json`). For external type applications, generates `<systemKey>-deploy.json` by loading the component files (`<systemKey>-system.yaml`/`.json` and `<systemKey>-datasource-*.*`), combining them into a controller-compatible deployment manifest with inline system + datasources. This is the reverse operation of `aifabrix split-json` — it combines component files back into a deployment manifest. When you download an external system from the dataplane (via `aifabrix download`), you get `<systemKey>-deploy.json`, which can then be split into component files using `aifabrix split-json`. Merges RBAC config (rbac.yaml, rbac.yml, or rbac.json, if present) into the system JSON. **Note:** Only the first system from `externalIntegration.systems` is included in the generated `<systemKey>-deploy.json`. All data sources from `externalIntegration.dataSources` are included.
+**What:** Creates `<appKey>-deploy.json` (e.g. `builder/<appKey>/<appKey>-deploy.json`) from application config, env.template, and rbac for normal applications. Application config may be `application.yaml` or `application.json`; system/datasource config may be `.yaml` or `.json`. The deployment manifest is always **JSON only** (`<appKey>-deploy.json` or `<systemKey>-deploy.json`). For external type applications, generates `<systemKey>-deploy.json` by loading the component files (`<systemKey>-system.yaml`/`.json` and `<systemKey>-datasource-*.*`), combining them into a controller-compatible deployment manifest with inline system + datasources. This is the reverse operation of `aifabrix split-json` — it combines component files back into a deployment manifest. When you download an external system from the dataplane (via `aifabrix download`), you get `<systemKey>-deploy.json`, which can then be split into component files using `aifabrix split-json`. Merges RBAC config (rbac.yaml, rbac.yml, or rbac.json, if present) into the system JSON. **Note:** Only the first system from `externalIntegration.systems` is included in the generated `<systemKey>-deploy.json`. All data sources from `externalIntegration.dataSources` are included.
 
 **When:** Previewing deployment configuration, debugging deployments. For external systems, before deploying to generate the combined application schema file. For external systems with RBAC, ensures roles/permissions from the RBAC file (rbac.yaml, rbac.yml, or rbac.json) are merged into the system JSON.
 
@@ -89,8 +89,8 @@ aifabrix json hubspot
 ```
 
 **Creates:**
-- Normal apps: `builder/<app>/<appKey>-deploy.json` (e.g. `builder/myapp/myapp-deploy.json`)
-- External systems: `integration/<app>/<systemKey>-deploy.json` (deployment manifest, JSON only; combines `<systemKey>-system.*` + `<systemKey>-datasource-*.*` files with rbac merged if present)
+- Normal apps: `builder/<appKey>/<appKey>-deploy.json` (e.g. `builder/myapp/myapp-deploy.json`)
+- External systems: `integration/<systemKey>/<systemKey>-deploy.json` (deployment manifest, JSON only; combines `<systemKey>-system.*` + `<systemKey>-datasource-*.*` files with rbac merged if present)
 
 **RBAC Support for External Systems:**
 - External systems can define roles and permissions in **rbac.yaml**, **rbac.yml**, or **rbac.json** (same structure; format inferred from extension)
@@ -129,7 +129,7 @@ aifabrix split-json hubspot
 **Options:**
 - `-o, --output <dir>` - Output directory for component files (defaults to same directory as JSON file)
 
-**App path resolution:** The command resolves the app by checking **`integration/<app>`** first, then **`builder/<app>`**. If neither exists, it errors. There is no option to override this order.
+**App path resolution:** The command resolves the app by checking **`integration/<systemKey>`** first, then **`builder/<appKey>`**. If neither exists, it errors. There is no option to override this order.
 
 **Process:**
 1. Locates `<app-name>-deploy.json` (regular apps) or `<systemKey>-deploy.json` (external systems) in the application directory
@@ -192,7 +192,7 @@ aifabrix convert hubspot --format json --force
 - `--format <format>` - Target format: `json` or `yaml` (required unless config format is set). When not passed, uses the format from `~/.aifabrix/config.yaml` (set via `aifabrix dev set-format`). If neither is set, the command fails with instructions.
 - `-f, --force` - Skip "Are you sure?" confirmation prompt
 
-**App path resolution:** The command resolves the app by checking **`integration/<app>`** first, then **`builder/<app>`**. If neither exists, it errors. There is no option to override this order.
+**App path resolution:** The command resolves the app by checking **`integration/<systemKey>`** first, then **`builder/<appKey>`**. If neither exists, it errors. There is no option to override this order.
 
 **Process:**
 1. Validate the app; abort if validation fails.
@@ -205,16 +205,16 @@ aifabrix convert hubspot --format json --force
 - **"Option --format is required and must be 'json' or 'yaml'"** → Pass `--format json` or `--format yaml`, or set default with `aifabrix dev set-format json` (or `yaml`)
 - **"Validation failed"** → Fix validation errors (run `aifabrix validate <app>`) before converting
 - **"Convert cancelled"** → You answered no to the confirmation prompt; run again with `--force` to skip the prompt
-- **"App not found"** → Ensure the app exists in `integration/<app>` or `builder/<app>`
+- **"App not found"** → Ensure the app exists in `integration/<systemKey>` or `builder/<appKey>`
 
 ---
 
 <a id="aifabrix-repair-app"></a>
-## aifabrix repair <app>
+## aifabrix repair <systemKey>
 
 Repair external integration config when `application.yaml` drifts from files on disk.
 
-**What:** Aligns `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files, syncs the system file `dataSources` array to datasource keys from discovered files (add/delete/rename), removes authentication-only variables from the system `configuration` array (keeps keyvault auth entries), fixes `app.key` to match `system.key`, aligns datasource `systemKey` values to match the system key, creates a minimal `externalIntegration` block when missing, extracts `rbac.yaml` from system roles/permissions when absent, repairs env.template so KV_ variable names and path-style `kv://` values match the system file (adds missing auth vars, corrects names/values), and regenerates `<systemKey>-deploy.json`. Repair also runs on **datasource files**: it treats `fieldMappings.attributes` as the source of truth and aligns `fieldMappings.dimensions` (removes dimension entries whose `metadata.<attr>` is not in attributes) and `metadataSchema` (adds a minimal schema if missing; removes schema branches not referenced by any attribute expression).
+**What:** Aligns `externalIntegration.systems` and `externalIntegration.dataSources` with discovered files, syncs the system file `dataSources` array to datasource keys from discovered files (add/delete/rename), removes authentication-only variables from the system `configuration` array (keeps keyvault auth entries), fixes `app.key` to match `system.key`, aligns datasource `systemKey` values to match the system key, creates a minimal `externalIntegration` block when missing, extracts `rbac.yaml` from system roles/permissions when absent, repairs env.template so KV_ variable names and path-style `kv://` values match the system file (adds missing auth vars, corrects names/values), and regenerates `<systemKey>-deploy.json`. Repair also runs on **datasource files** (v2.4 model): it treats `fieldMappings.attributes` as the source of truth and, for entity types other than `none`, normalizes **root `dimensions`** (local bindings: drops invalid `via`, fixes FK/local shape; removes local dimensions whose `field` is not an attribute key), prunes or extends **`metadataSchema`** (adds a minimal schema if missing; removes `properties` entries not referenced by `metadata.*` in attribute expressions; adds minimal string stubs for referenced paths). It does **not** migrate legacy `fieldMappings.dimensions`; use `aifabrix convert` or edit files to v2.4 first. For **`entityType: none`**, datasource repair skips `metadataSchema`, root-dimension, and default **sync** changes so orchestration configs stay valid.
 
 **When:** After converting files (JSON ↔ YAML), after adding/removing datasource files, when validation reports "External datasource file not found", or when `application.yaml` gets out of sync with files on disk.
 
@@ -227,13 +227,13 @@ Repair external integration config when `application.yaml` drifts from files on 
 - **Missing externalIntegration** — No block; repair creates it from discovered files
 - **Datasource systemKey mismatch** — Datasource file has `systemKey: X` but system file has `key: Y`; repair updates `systemKey` in each datasource file to match system key
 - **system.key mismatch** — System file has `key: X` but `app.key` is `Y`; repair updates `app.key`
-- **Dimensions not in attributes** — Dimension values like `metadata.<attr>` must reference an existing attribute key in `fieldMappings.attributes`; repair removes invalid dimension entries
-- **metadataSchema drift** — Repair adds a minimal metadataSchema when missing and removes schema fields not used by attribute expressions
+- **Root dimensions vs attributes** — For **local** dimension bindings, `field` must match a key in `fieldMappings.attributes`; repair removes orphan local dimensions. **FK** bindings are not removed by that rule.
+- **metadataSchema drift** — For non-`none` entity types, repair adds a minimal metadataSchema when missing, prunes unreferenced `properties`, and adds minimal stubs for `metadata.*` paths used in expressions. **`recordStorage`** and **`documentStorage`** must also satisfy the schema rule **`metadataSchema.properties.externalId`** (`type: string`, `index: true`); add **`fieldMappings.attributes.externalId`** and keep that property when editing so validation and repair stay aligned.
 - **rbac.yaml missing** — System has roles/permissions but no `rbac.yaml`; repair creates it
 - **env.template key drift** — env.template has wrong or missing KV_* keys or non–path-style kv values; repair aligns names and values with the system's authentication.security and configuration
 - **Stale deploy manifest** — Regenerates `<systemKey>-deploy.json` after config changes
-- **Datasource key and filename normalization** — Repair normalizes datasource keys to `<system-key>-<resourceType>` (or `<system-key>-<resourceType>-2`, `-3` for duplicates) and filenames to `<system-key>-datasource-<suffix>.<ext>`. Keys or filenames that already match the valid pattern (e.g. `customer-extra`, `customer-1`) are left unchanged.
-- **Optional flags** — `--rbac` adds or merges RBAC permissions per datasource and default Admin/Reader roles if none exist; `--expose` sets `exposed.attributes` on each datasource to all attribute keys; `--sync` adds a default sync section to datasources that lack it; `--test` generates `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes
+- **Datasource key and filename normalization** — Repair normalizes datasource keys to `<systemKey>-<resourceType>` (or `<systemKey>-<resourceType>-2`, `-3` for duplicates) and filenames to `<systemKey>-datasource-<suffix>.<ext>`. Keys or filenames that already match the valid pattern (e.g. `customer-extra`, `customer-1`) are left unchanged.
+- **Optional flags** — `--rbac` adds or merges RBAC permissions per datasource and default Admin/Reader roles if none exist; `--expose` sets **`exposed.schema`** on each datasource (each key maps to `metadata.<key>` for every `fieldMappings.attributes` key) and removes deprecated `exposed.attributes` if present; `--sync` adds a default sync section (`mode`, `batchSize`) to datasources that lack it (not applied when `entityType` is `none`); `--test` rebuilds `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes and strips unknown top-level `testPayload` keys
 - **Authentication method** — When `--auth <method>` is provided, repair sets the integration’s authentication to that method (canonical variables and security) and updates env.template accordingly
 
 **Usage:**
@@ -247,7 +247,7 @@ aifabrix repair hubspot-demo --auth apikey
 # Preview changes without writing (--dry-run)
 aifabrix repair hubspot --dry-run
 
-# Optional: ensure RBAC, exposed attributes, sync section, or test payload
+# Optional: ensure RBAC, exposed.schema, sync section, or test payload
 aifabrix repair hubspot --rbac --expose --sync --test
 
 # Regenerate README.md from the current deployment manifest
@@ -259,12 +259,12 @@ aifabrix repair hubspot --doc
 - `--doc` — Regenerate `README.md` from the deployment manifest
 - `--dry-run` — Report what would be changed; do not write
 - `--rbac` — Ensure RBAC has a permission per datasource endpoint (`<resourceType>:<capability>`) and add default Admin/Reader roles if none exist
-- `--expose` — Set `exposed.attributes` on each datasource to the list of all `fieldMappings.attributes` keys
-- `--sync` — Add a default sync section (mode, batchSize, maxParallelRequests) to datasources that lack it
+- `--expose` — Set `exposed.schema` on each datasource from all `fieldMappings.attributes` keys (`metadata.<key>` values); removes deprecated `exposed.attributes` if present
+- `--sync` — Add a default sync section (`mode: pull`, `batchSize: 500`) to datasources that lack it (skipped for `entityType: none`)
 - `--test` — Generate `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes for each datasource
 
 **Issues:**
-- **"App not found"** → Ensure the app exists in `integration/<app>` or `builder/<app>`
+- **"App not found"** → Ensure the app exists in `integration/<systemKey>` or `builder/<appKey>`
 - **"No system file found"** → Add a `*-system.yaml` or `*-system.json` file first
 
 ---
@@ -386,7 +386,9 @@ Encrypted secrets are automatically decrypted when loaded by `aifabrix resolve`,
 
 ## aifabrix secret
 
-Manage secrets: local (project/user secrets file) and shared (file or remote API). When `aifabrix-secrets` in config is an **http(s)://** URL, shared secrets are served by the remote API; shared values are **never stored on disk** and are fetched at resolution time. When it is a file path, use the project secret file as today.
+Manage secrets: local (project/user secrets file) and shared (file or remote API). When `aifabrix-secrets` in config is an **http(s)://** URL, shared secrets are served by the remote API (typically **Builder Server**); shared values are **never stored on disk** on the developer machine and are fetched at resolution time. When it is a file path, use the project secret file as today.
+
+**Shared secrets over HTTPS — `BASH_` keys:** If you store a shared secret with `aifabrix secret set <key> <value> --shared` and the **key name starts with `BASH_`**, the remote secrets service turns it into a **normal environment variable in your terminal**: the variable name is whatever comes **after** `BASH_`, and the value is your secret. Example: key **`BASH_NPM_TOKEN`** → you get **`NPM_TOKEN`** exported with that value, ready to use in the shell (build tools, package managers, and so on). If the part after `BASH_` is not a valid shell variable name, that key is skipped. The CLI only sends the key and value; making them show up in the session is handled by the remote environment together with that naming rule.
 
 <a id="aifabrix-secret-list"></a>
 ### aifabrix secret list
@@ -416,20 +418,23 @@ You can add secrets manually in the project secrets file, but the recommended ap
 **Usage:**
 ```bash
 # Set secret in user secrets file (default)
-aifabrix secret set keycloak-server-url "https://mydomain.com/keycloak"
+aifabrix secret set keycloak-web-server-url "https://mydomain.com/keycloak"
 
 # Set secret in general secrets file (shared across projects)
-aifabrix secret set keycloak-server-url "https://mydomain.com/keycloak" --shared
+aifabrix secret set keycloak-web-server-url "https://mydomain.com/keycloak" --shared
+
+# Shared over HTTPS: BASH_ prefix → same value available in terminal as NPM_TOKEN (exported)
+aifabrix secret set BASH_NPM_TOKEN "your-token" --shared
 
 # Set secret with environment variable interpolation
-aifabrix secret set keycloak-server-url "https://\${KEYCLOAK_HOST}:\${KEYCLOAK_PORT}"
+aifabrix secret set keycloak-web-server-url "https://\${KEYCLOAK_HOST}:\${KEYCLOAK_PORT}"
 
 # Set secret with full URL path
-aifabrix secret set keycloak-server-url "https://keycloak.example.com/auth/realms/master"
+aifabrix secret set keycloak-web-server-url "https://keycloak.example.com/auth/realms/master"
 ```
 
 **Options:**
-- `--shared` - Save to shared secrets: when `aifabrix-secrets` is a file path, write to that file; when it is an `http(s)://` URL, saves to the remote server (cert required; admin/secret-manager for shared when remote)
+- `--shared` - Save to shared secrets: when `aifabrix-secrets` is a file path, write to that file; when it is an `http(s)://` URL, saves to the remote server (cert required; admin/secret-manager for shared when remote). With an **HTTPS** shared store, a key named **`BASH_<NAME>`** is how you request that **`NAME`** appear in your terminal as an exported variable with that value (see introduction under [aifabrix secret](#aifabrix-secret)).
 
 **Secret Value Formats:**
 - **Full URLs**: Direct URL values (e.g., `https://mydomain.com/keycloak`)
@@ -451,7 +456,7 @@ aifabrix secret set api-keyKeyVault "\${API_KEY}"
 
 **Output:**
 ```yaml
-✓ Secret 'keycloak-server-url' saved to user secrets file: /home/user/.aifabrix/secrets.local.yaml
+✓ Secret 'keycloak-web-server-url' saved to user secrets file: /home/user/.aifabrix/secrets.local.yaml
 ```
 
 **Behavior:**
@@ -482,6 +487,21 @@ aifabrix secret remove my-keyKeyVault --shared
 ```
 
 **Security note:** When `aifabrix-secrets` is a URL, shared secret values are never stored on disk; they are fetched at resolution time when generating `.env`.
+
+<a id="aifabrix-secret-remove-all"></a>
+### aifabrix secret remove-all
+
+Remove **all** secret keys in one go. **Local:** clears `~/.aifabrix/secrets.local.yaml` to an empty map. **Shared:** with `--shared`, clears the shared secrets file or deletes each key via the remote API (same targets as `secret list --shared`).
+
+**Confirmation:** Unless you pass `--yes` / `-y`, you must type `yes` when prompted; anything else cancels.
+
+**Usage:**
+```bash
+aifabrix secret remove-all
+aifabrix secret remove-all --yes
+aifabrix secret remove-all --shared
+aifabrix secret remove-all --shared --yes
+```
 
 <a id="aifabrix-secret-set-secrets-file"></a>
 ### aifabrix secret set-secrets-file

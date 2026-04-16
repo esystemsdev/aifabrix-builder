@@ -8,11 +8,11 @@ Commands for validating and comparing configuration files.
 
 ## Overview
 
-The AI Fabrix Builder validates all configuration files using **JSON Schema validation**. The validation system works in two modes:
+The AI Fabrix Builder validates configuration files using **JSON Schema validation plus semantic checks** (a validation engine that layers contract rules on top of schemas). The validation system works in two modes:
 
-1. **Offline Validation (Local)** - Validation runs **completely offline** on your machine before deployment. No network access or backend connection is required. This catches configuration errors early in your development workflow.
+1. **Offline Validation (Local)** - Validation runs **completely offline** on your machine before deployment. No network access or backend connection is required. This catches configuration errors early in your development workflow, including **freeze-contract** rules for external datasources (v2.4+).
 
-2. **Online Validation (Service)** - The dataplane service validates configurations using the **same JSON schemas** when you deploy. This ensures consistency between local and service-side validation. Additionally, the service performs **online validation of ABAC dimensions** to verify dimension keys exist in the Dimension Catalog and are properly configured for access control.
+2. **Online Validation (Service)** - The dataplane service validates configurations when you deploy and during integration tests. This ensures consistency between local and service-side validation. Additionally, the service performs **online validation of ABAC dimensions** to verify dimension keys exist in the Dimension Catalog and are properly configured for access control.
 
 ### What Gets Validated
 
@@ -40,6 +40,7 @@ The validation system validates:
 - [Wizard Guide](../wizard.md) - Wizard validation and configuration
 - [External Integration Commands](external-integration.md) - External system validation commands
 - [External Systems Guide](../external-systems.md) - ABAC dimensions and field mappings
+- [Infra parameters catalog](../configuration/infra-parameters.md) - `infra.parameter.yaml`, local `kv://` vs Azure naming, workspace discovery
 
 ---
 
@@ -93,7 +94,7 @@ The validation system uses four core JSON schemas:
 - Datasource identifier (`key`)
 - Parent system reference (`systemKey`)
 - Entity type (`entityType`)
-- Field mappings (dimensions and attributes)
+- Field mappings (`fieldMappings.attributes`) and root **`dimensions`** (v2.4)
 - Metadata schema
 - Custom Integration Pipeline (CIP) configuration
 
@@ -101,13 +102,14 @@ The validation system uses four core JSON schemas:
 - `key` must be unique within the system
 - `systemKey` must reference a valid external system
 - `entityType` must be specified
-- `fieldMappings` must include dimensions and attributes
+- `fieldMappings` must include **`attributes`**; **dimensions** are top-level, not under `fieldMappings`
 - Field mapping expressions must follow correct syntax
 
 **Field reference and ABAC checks (offline):** After schema validation, the CLI runs procedural checks so that `aifabrix validate <file>` and `aifabrix validate <app>` Step 2 give the same quality as `aifabrix datasource validate <file>`:
 
-- **Field references** – Each of the following must reference only existing `fieldMappings.attributes` (or `fieldMappings.dimensions` for `primaryKey`): `indexing.embedding[]`, `indexing.uniqueKey`, `validation.repeatingValues[].field`, `quality.rejectIf[].field`, `primaryKey[]`, and `exposed.profiles.<name>[]`. Errors include a short hint (e.g. "Add the attribute or remove the reference").
-- **ABAC** – Dimension-to-attribute references in `config.abac.dimensions` or `fieldMappings.dimensions` are validated (keys and paths format; dimension values must reference existing attributes where applicable). `config.abac.crossSystemJson` is validated (path format, exactly one operator per path, allowed operators). Legacy `config.abac.crossSystem` is rejected with a message to use `crossSystemJson` or `crossSystemSql` instead.
+- **Field references** – Each of the following must reference only existing `fieldMappings.attributes`, except **`primaryKey[]`**, which may use an attribute key **or a key of root `dimensions`**: `indexing.embedding[]`, `indexing.uniqueKey`, `validation.repeatingValues[].field`, `quality.rejectIf[].field`, `primaryKey[]`, and `exposed.profiles.<name>[]`. Errors include a short hint (e.g. "Add the attribute or remove the reference").
+- **ABAC** – Dimension-to-attribute references in **`config.abac.dimensions`** are validated (keys and paths format; dimension values must reference existing attributes where applicable). `config.abac.crossSystemJson` is validated (path format, exactly one operator per path, allowed operators). Legacy `config.abac.crossSystem` is rejected with a message to use `crossSystemJson` or `crossSystemSql` instead.
+- **Storage `metadataSchema`** – For **`entityType`** `recordStorage` or `documentStorage`, schema validation requires **`metadataSchema.properties.externalId`** with **`type: string`** and **`index: true`**. Align **`fieldMappings.attributes.externalId`** with that contract.
 
 Local validation does **not** check dimension keys against the Dimension Catalog or parse `crossSystemSql`; those remain server-side. Use deployment or `aifabrix test-integration` for full dataplane checks.
 
@@ -275,30 +277,58 @@ Validate --> Success
 
 When deploying external datasources to the dataplane, the service performs **online validation of ABAC dimensions**. This validation happens during deployment and verifies:
 
-1. **Dimension Key Existence** - All dimension keys referenced in `fieldMappings.dimensions` or `abac.dimensions` must exist in the Dimension Catalog
-2. **Dimension Mapping Validity** - Dimension mappings must reference valid attribute paths in the metadata schema
+1. **Dimension Key Existence** - All dimension keys used for ABAC (e.g. root **`dimensions`** bindings and **`config.abac.dimensions`**) must exist in the Dimension Catalog when the dataplane enforces catalog registration
+2. **Dimension Mapping Validity** - Local dimension bindings reference indexed metadata fields; FK-based bindings must resolve via declared **`foreignKeys`**
 3. **ABAC Configuration** - ABAC configuration blocks are validated for proper structure
 
-**Example:**
+**Example (v2.4 root dimensions):**
 ```json
 {
+  "dimensions": {
+    "country": {
+      "type": "local",
+      "field": "country",
+      "actor": "displayName",
+      "operator": "eq"
+    }
+  },
   "fieldMappings": {
-    "dimensions": {
-      "country": "metadata.country",
-      "department": "metadata.department"
+    "attributes": {
+      "country": { "expression": "{{ raw.region }}" }
     }
   }
 }
 ```
 
-During deployment, the service validates:
-- `country` and `department` dimension keys exist in the Dimension Catalog
-- `metadata.country` and `metadata.department` are valid attribute paths
+During deployment, the service validates (where applicable):
+- Dimension keys exist in the Dimension Catalog
+- Paths used for visibility / policy resolve against **`metadataSchema`** and storage rules
 - Dimensions are properly configured for ABAC filtering
 
 **Note:** Dimension validation requires network access to the dataplane service. Local validation (`aifabrix validate`) checks dimension syntax and structure but cannot verify dimension keys against the Dimension Catalog. Use `aifabrix test-integration` or deployment to validate dimensions online.
 
 For more information about ABAC dimensions, see [External Systems Guide](../external-systems.md#field-mappings).
+
+---
+
+<a id="aifabrix-parameters-validate"></a>
+## aifabrix parameters validate
+
+Check the **infra parameter catalog** and workspace **`kv://` usage** in app `env.template` files. This is separate from `aifabrix validate` (which validates application and external-integration schemas).
+
+**What:** Loads the shipped catalog `lib/schema/infra.parameter.yaml` (unless you override it), validates catalog internal rules (including generator coverage for entries that require local materialization), then scans discovered `builder/<appKey>/env.template` files for `kv://` references and fails if any key is not covered by the catalog (exact match or pattern). Exits with a non-zero status when validation fails.
+
+**When:** After adding or renaming `kv://` keys in templates, in CI for repos that use the Builder workspace layout, or when troubleshooting missing secret generation for a new key.
+
+**Prerequisites:** None (fully offline). Uses the Builder workspace / `AIFABRIX_BUILDER_DIR` rules described in [Infra parameters](../configuration/infra-parameters.md#workspace-discovery-limits).
+
+**Usage:**
+```bash
+aifabrix parameters validate
+aifabrix parameters validate --catalog /path/to/custom/infra.parameter.yaml
+```
+
+**Related:** [Infra parameters (configuration)](../configuration/infra-parameters.md), [Secrets and config](../configuration/secrets-and-config.md), [Infrastructure commands](infrastructure.md) (`up-infra` ensures many catalog keys automatically).
 
 ---
 
@@ -353,7 +383,7 @@ aifabrix validate --integration --builder
 
 **Batch mode:** When **`--integration`** or **`--builder`** (or both) is used, the command validates all apps under the corresponding directory(ies). Output shows per-app results and an overall summary (e.g. “N passed, M failed”). Exit code is **1** if any app fails; otherwise **0**. When using these options, `appOrFile` is not required and is ignored if provided.
 
-**App path resolution (single-app mode):** The command resolves the app by checking **`integration/<app>`** first, then **`builder/<app>`**. If neither exists, it errors. There is no option to override this order. When the resolved app is in `integration/`, full external system validation (all steps) runs automatically.
+**App path resolution (single-app mode):** The command resolves the app by checking **`integration/<systemKey>`** first, then **`builder/<appKey>`**. If neither exists, it errors. There is no option to override this order. When the resolved app is in `integration/`, full external system validation (all steps) runs automatically.
 
 **Process:**
 
@@ -362,7 +392,7 @@ aifabrix validate --integration --builder
    - If app name → Application validation
 
 2. **Application Validation (app name):**
-   - Resolves app path: `integration/<app-name>/` first, then `builder/<app-name>/`; if neither exists, errors.
+   - Resolves app path: `integration/<systemKey>/` first, then `builder/<appKey>/`; if neither exists, errors.
    - Loads `application.yaml` from the resolved path
    - Validates against application schema
    - If `type: external`:
@@ -466,7 +496,7 @@ Validation errors are formatted to be clear and actionable:
 
 **Issues:**
 - **"App name or file path is required"** → Provide application name or file path
-- **"External datasource file not found"** or wrong extension → Run `aifabrix repair <app>` to sync config with files on disk. Repair also fixes datasource manifest alignment (dimensions, metadataSchema) and can add RBAC, expose, sync, or test payload with the optional flags
+- **"External datasource file not found"** or wrong extension → Run `aifabrix repair <systemKey>` to sync config with files on disk. Repair also fixes datasource manifest alignment (dimensions, metadataSchema) and can add RBAC, expose, sync, or test payload with the optional flags
 - **"File not found"** → Check file path is correct
 - **"Invalid JSON syntax"** → Fix JSON syntax errors in file
 - **"externalIntegration block not found"** → Add externalIntegration block to application.yaml or validate file directly
@@ -614,7 +644,7 @@ aifabrix validate ./schemas/hubspot-system.yaml
 
 ### 2. Use Complete Validation for External Systems
 
-For external systems in `integration/<app>/`, running `aifabrix validate <app>` performs complete validation that checks:
+For external systems in `integration/<systemKey>/`, running `aifabrix validate <app>` performs complete validation that checks:
 - Application configuration
 - Component files (system + datasources)
 - Generated deployment manifest
@@ -696,9 +726,9 @@ When modifying configurations:
 
 ### Field reference and ABAC errors (datasource)
 
-**Error:** `primaryKey[n]: field 'X' does not exist in fieldMappings.attributes or fieldMappings.dimensions`
+**Error:** `primaryKey[n]: field 'X' does not exist in fieldMappings.attributes or root dimensions`
 
-**Solution:** Each `primaryKey` entry must be a key from `fieldMappings.attributes` or `fieldMappings.dimensions`. Add the attribute or dimension, or remove the invalid entry from `primaryKey`.
+**Solution:** Each `primaryKey` entry must be a key from **`fieldMappings.attributes`** or a **key of root `dimensions`**. Add the attribute or dimension binding, or remove the invalid entry from `primaryKey`.
 
 **Error:** `exposed.profiles.<name>[n]: field 'X' does not exist in fieldMappings.attributes`
 

@@ -8,7 +8,7 @@ The templates directory is organized as follows:
 
 ### Application Templates (for `--template` flag)
 
-Application templates are folder-based and located under `templates/applications/`. When you use `--template <name>`, the tool looks for `templates/applications/<name>/` and copies all files from that folder to `builder/<app>/`.
+Application templates are folder-based and located under `templates/applications/`. When you use `--template <name>`, the tool looks for `templates/applications/<name>/` and copies all files from that folder to `builder/<appKey>/`.
 
 **Example:**
 - `templates/applications/miso-controller/` - Miso Controller application template
@@ -18,7 +18,7 @@ Application templates are folder-based and located under `templates/applications
 - Template folder must exist in `templates/applications/<name>/`
 - Template folder must contain at least one file
 - Hidden files (starting with `.`) are skipped
-- If a template includes a `Dockerfile`, it will be copied to `builder/<app>/Dockerfile` along with other files
+- If a template includes a `Dockerfile`, it will be copied to `builder/<appKey>/Dockerfile` along with other files
 
 ### Language Templates
 
@@ -63,6 +63,19 @@ Extra workflow steps are located in `templates/github/steps/`. When you use `--g
 ### Health Check Configuration
 - `{{healthCheck.path}}` - Health check endpoint path (e.g., "/health")
 - `{{healthCheck.interval}}` - Health check interval in seconds
+- `{{healthCheck.bashProbe}}` - When true, generated Docker Compose uses a bash TCP probe (no `curl` dependency) instead of `curl -f`.
+
+**Why `bashProbe` exists**
+
+Some application images intentionally do not ship with `curl` (for smaller images or stricter runtime environments). If Compose uses a `curl`-based healthcheck in those images, Docker will mark the container as **unhealthy** even when the app is actually serving traffic.
+
+Set `healthCheck.bashProbe: true` to make Compose healthchecks work without `curl` by performing a minimal HTTP request over `/dev/tcp`.
+
+### Traefik (Docker Compose labels)
+
+Generated compose includes `traefik.http.routers.<app>.service=<app>` so Traefik’s Docker provider always binds the router to the in-compose service (required for HTTP-only routers when TLS terminates at nginx).
+
+Infra Traefik is started with `--providers.docker.allowEmptyServices=true` so routes are published while a container is still in Docker’s `starting` / `unhealthy` health state (common during slow boots or when a health probe differs from real readiness).
 
 ### Service Requirements
 - `{{requiresDatabase}}` - Database requirement flag (conditional db-init service)

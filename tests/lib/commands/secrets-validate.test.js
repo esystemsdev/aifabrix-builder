@@ -18,7 +18,7 @@ jest.mock('chalk', () => {
 
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn() }));
 jest.mock('../../../lib/utils/paths', () => ({
-  getAifabrixHome: jest.fn(() => '/home/.aifabrix')
+  getPrimaryUserSecretsLocalPath: jest.fn(() => '/home/.aifabrix/secrets.local.yaml')
 }));
 jest.mock('../../../lib/utils/secrets-validation', () => ({
   validateSecretsFile: jest.fn()

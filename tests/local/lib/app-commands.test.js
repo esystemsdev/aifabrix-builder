@@ -142,9 +142,9 @@ describe('App Commands', () => {
 
       await expect(async() => {
         if (!getConfig().token) {
-          throw new Error('❌ Not logged in. Run: aifabrix login');
+          throw new Error('✖ Not logged in. Run: aifabrix login');
         }
-      }).rejects.toThrow('❌ Not logged in');
+      }).rejects.toThrow('✖ Not logged in');
     });
 
     it('should handle rotation failure gracefully', async() => {
@@ -338,9 +338,9 @@ describe('App Commands', () => {
 
       await expect(async() => {
         if (!getConfig().token) {
-          throw new Error('❌ Not logged in. Run: aifabrix login');
+          throw new Error('✖ Not logged in. Run: aifabrix login');
         }
-      }).rejects.toThrow('❌ Not logged in');
+      }).rejects.toThrow('✖ Not logged in');
     });
   });
 });

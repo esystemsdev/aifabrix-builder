@@ -34,6 +34,10 @@ jest.mock('chalk', () => {
   mockChalk.blue = jest.fn((text) => text);
   mockChalk.yellow = jest.fn((text) => text);
   mockChalk.gray = jest.fn((text) => text);
+  mockChalk.cyan = jest.fn((text) => text);
+  mockChalk.white = Object.assign(jest.fn((text) => text), {
+    bold: jest.fn((text) => text)
+  });
   return mockChalk;
 });
 jest.mock('../../../lib/utils/token-manager', () => ({
@@ -362,6 +366,13 @@ describe('External System Test Module', () => {
       const { testExternalSystem } = require('../../../lib/external-system/test');
       await expect(testExternalSystem(appName, {})).rejects.toThrow(/application\.yaml not found|Application config|ENOENT/);
     });
+
+    it('should write debug log when --debug is set', async() => {
+      const { testExternalSystem } = require('../../../lib/external-system/test');
+      await testExternalSystem(appName, { debug: true });
+      expect(fsPromises.writeFile).toHaveBeenCalled();
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Debug log:'));
+    });
   });
 
   describe('testExternalSystemIntegration', () => {
@@ -408,7 +419,7 @@ describe('External System Test Module', () => {
       expect(results.success).toBe(true);
       expect(results.datasourceResults.length).toBeGreaterThan(0);
       expect(authenticatedApiCall).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/pipeline/hubspot/'),
+        expect.stringContaining('/api/v1/validation/run'),
         expect.any(Object),
         expect.objectContaining({ token: 'test-token' })
       );

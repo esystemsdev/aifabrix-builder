@@ -57,6 +57,7 @@ describe('setup-secrets', () => {
       command: jest.fn((name) => {
         const chain = {
           description: jest.fn().mockReturnThis(),
+          addHelpText: jest.fn().mockReturnThis(),
           option: jest.fn().mockReturnThis(),
           action: jest.fn((action) => {
             commandActions[name] = action;
@@ -67,6 +68,7 @@ describe('setup-secrets', () => {
             const fullKey = `${name} ${subBase}`;
             const subChain = {
               description: jest.fn().mockReturnThis(),
+              addHelpText: jest.fn().mockReturnThis(),
               option: jest.fn().mockReturnThis(),
               action: jest.fn((action) => {
                 commandActions[fullKey] = action;

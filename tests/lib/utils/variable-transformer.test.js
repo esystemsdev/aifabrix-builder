@@ -103,6 +103,27 @@ describe('Variable Transformer Module', () => {
       expect(result.databases).toEqual([{ name: 'nested-db' }]);
     });
 
+    it('normalizes frontDoorRouting.tls boolean to string for JSON Schema validation', () => {
+      const variables = {
+        app: { key: 'kc', type: 'webapp' },
+        image: { name: 'k', tag: 't', registry: 'r.azurecr.io', registryMode: 'acr' },
+        requires: { database: true, databases: [{ name: 'keycloak' }], redis: false, storage: false },
+        frontDoorRouting: {
+          pattern: '/auth/*',
+          enabled: true,
+          host: '${DEV_USERNAME}.${REMOTE_HOST}',
+          tls: false
+        }
+      };
+      const result = transformVariablesForValidation(variables, 'kc');
+      expect(result.frontDoorRouting.tls).toBe('false');
+      const vTrue = transformVariablesForValidation(
+        { ...variables, frontDoorRouting: { ...variables.frontDoorRouting, tls: true } },
+        'kc'
+      );
+      expect(vTrue.frontDoorRouting.tls).toBe('true');
+    });
+
     it('should transform nested structure with minimal fields', () => {
       const variables = {
         app: {

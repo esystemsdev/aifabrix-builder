@@ -1077,6 +1077,94 @@ API_KEY=kv://api-keyKeyVault`;
         probeIntervalInSeconds: 60
       });
     });
+
+    it('should use yaml health path as-is when frontDoorRouting is set (Keycloak-style /health/ready)', () => {
+      const variables = {
+        healthCheck: {
+          path: '/health/ready',
+          interval: 30
+        },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'ingress.test',
+          pattern: '/auth/*'
+        }
+      };
+
+      const result = generator.buildHealthCheck(variables);
+      expect(result).toEqual({
+        path: '/health/ready',
+        interval: 30
+      });
+    });
+
+    it('should keep explicit probePath when frontDoorRouting is set (Keycloak deploy)', () => {
+      const variables = {
+        healthCheck: {
+          path: '/health/ready',
+          probePath: '/health/ready',
+          interval: 30
+        },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'ingress.test',
+          pattern: '/auth/*'
+        }
+      };
+
+      const result = generator.buildHealthCheck(variables);
+      expect(result).toEqual({
+        path: '/health/ready',
+        interval: 30,
+        probePath: '/health/ready'
+      });
+    });
+
+    it('should not prepend vdir to bare /health in deploy manifest (same as compose in-container path)', () => {
+      const variables = {
+        healthCheck: {
+          path: '/health',
+          interval: 30
+        },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'ingress.test',
+          pattern: '/miso/*'
+        }
+      };
+
+      const result = generator.buildHealthCheck(variables);
+      expect(result).toEqual({
+        path: '/health',
+        interval: 30
+      });
+    });
+
+    it('should keep bare /health for dataplane-style /data vdir and explicit probePath', () => {
+      const variables = {
+        healthCheck: {
+          path: '/health',
+          interval: 30,
+          probePath: '/health',
+          probeProtocol: 'Https',
+          probeIntervalInSeconds: 120
+        },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'ingress.test',
+          pattern: '/data/*'
+        }
+      };
+
+      const result = generator.buildHealthCheck(variables);
+      expect(result).toEqual({
+        path: '/health',
+        interval: 30,
+        probePath: '/health',
+        probeProtocol: 'Https',
+        probeIntervalInSeconds: 120
+      });
+    });
   });
 
   describe('buildRequirements', () => {
@@ -2296,14 +2384,30 @@ NORMAL_VAR=value456`;
       entityType: 'recordStorage',
       resourceType: 'customer',
       primaryKey: ['country'],
+      labelKey: ['country'],
+      metadataSchema: {
+        type: 'object',
+        required: ['country', 'externalId'],
+        properties: {
+          country: { type: 'string', index: true },
+          externalId: { type: 'string', index: true }
+        }
+      },
+      dimensions: {
+        country: {
+          type: 'local',
+          field: 'country',
+          actor: 'displayName',
+          operator: 'eq'
+        }
+      },
       fieldMappings: {
-        dimensions: {
-          country: 'metadata.country'
-        },
         attributes: {
           country: {
-            expression: '{{properties.country.value}} | toUpper',
-            type: 'string'
+            expression: '{{raw.properties.country.value}} | toUpper'
+          },
+          externalId: {
+            expression: '{{raw.id}}'
           }
         }
       }
@@ -2316,14 +2420,30 @@ NORMAL_VAR=value456`;
       entityType: 'recordStorage',
       resourceType: 'contact',
       primaryKey: ['email'],
+      labelKey: ['email'],
+      metadataSchema: {
+        type: 'object',
+        required: ['email', 'externalId'],
+        properties: {
+          email: { type: 'string', index: true },
+          externalId: { type: 'string', index: true }
+        }
+      },
+      dimensions: {
+        email: {
+          type: 'local',
+          field: 'email',
+          actor: 'displayName',
+          operator: 'eq'
+        }
+      },
       fieldMappings: {
-        dimensions: {
-          email: 'metadata.email'
-        },
         attributes: {
           email: {
-            expression: '{{properties.email.value}} | trim',
-            type: 'string'
+            expression: '{{raw.properties.email.value}} | trim'
+          },
+          externalId: {
+            expression: '{{raw.id}}'
           }
         }
       }

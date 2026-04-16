@@ -1,5 +1,6 @@
 /**
  * Tests for App.js Uncovered Lines
+ * Isolated Jest project `app-uncovered-lines` — real temp dirs + inquirer mocks; avoid sharing a worker with jest.mock('fs') suites.
  *
  * @fileoverview Tests specifically for uncovered lines in app.js
  * @author AI Fabrix Team
@@ -150,7 +151,7 @@ describe('App.js Uncovered Lines Tests', () => {
 
       // Verify warnings were displayed
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('⚠️  Environment conversion warnings:')
+        expect.stringContaining('⚠  Environment conversion warnings:')
       );
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining('DATABASE_URL was converted')
@@ -183,7 +184,7 @@ describe('App.js Uncovered Lines Tests', () => {
 
       // Verify warnings were NOT displayed
       expect(consoleLogSpy).not.toHaveBeenCalledWith(
-        expect.stringContaining('⚠️  Environment conversion warnings:')
+        expect.stringContaining('⚠  Environment conversion warnings:')
       );
 
       consoleLogSpy.mockRestore();

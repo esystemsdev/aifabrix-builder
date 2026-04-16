@@ -13,6 +13,28 @@ const {
   listServiceUsers
 } = require('../../lib/api/service-users.api');
 
+function extractListArray(response) {
+  const payload = response?.data;
+  if (Array.isArray(payload)) return payload;
+  if (payload && typeof payload === 'object') {
+    if (Array.isArray(payload.data)) return payload.data;
+    if (Array.isArray(payload.items)) return payload.items;
+    if (Array.isArray(payload.results)) return payload.results;
+  }
+  return null;
+}
+
+function extractMetaObject(response) {
+  if (response && typeof response === 'object') {
+    if (response.meta && typeof response.meta === 'object') return response.meta;
+    const payload = response.data;
+    if (payload && typeof payload === 'object' && payload.meta && typeof payload.meta === 'object') {
+      return payload.meta;
+    }
+  }
+  return null;
+}
+
 describe('Manual API tests – service-users.api (real Controller)', () => {
   let controllerUrl;
   let authConfig;
@@ -30,10 +52,10 @@ describe('Manual API tests – service-users.api (real Controller)', () => {
         expect(response).toBeDefined();
         if (response.success) {
           expect(response.data).toBeDefined();
-          expect(Array.isArray(response.data)).toBe(true);
-          if (response.meta !== null) {
-            expect(typeof response.meta).toBe('object');
-          }
+          const list = extractListArray(response);
+          expect(Array.isArray(list)).toBe(true);
+          const meta = extractMetaObject(response);
+          if (meta !== null) expect(typeof meta).toBe('object');
         } else {
           expect(response.success).toBe(false);
         }
@@ -58,7 +80,8 @@ describe('Manual API tests – service-users.api (real Controller)', () => {
         });
         expect(response).toBeDefined();
         if (response.success) {
-          expect(Array.isArray(response.data)).toBe(true);
+          const list = extractListArray(response);
+          expect(Array.isArray(list)).toBe(true);
         } else {
           expect(response.success).toBe(false);
         }

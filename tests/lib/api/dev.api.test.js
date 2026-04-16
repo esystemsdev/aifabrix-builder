@@ -120,6 +120,23 @@ describe('Dev API', () => {
 
       await expect(devApi.getHealth(serverUrl)).rejects.toThrow();
     });
+
+    it('should set Error.cause from makeApiCall originalError when request fails', async() => {
+      const original = new Error('fetch failed');
+      original.code = 'DEPTH_ZERO_SELF_SIGNED_CERT';
+      mockMakeApiCall.mockResolvedValue({
+        success: false,
+        error: 'Network',
+        originalError: original
+      });
+
+      try {
+        await devApi.getHealth(serverUrl);
+        expect.fail('should throw');
+      } catch (e) {
+        expect(e.cause).toBe(original);
+      }
+    });
   });
 
   describe('getSettings', () => {
@@ -143,6 +160,44 @@ describe('Dev API', () => {
     it('should throw when clientCertPem is missing', async() => {
       await expect(devApi.getSettings(serverUrl, '')).rejects.toThrow('Client certificate PEM is required');
       await expect(devApi.getSettings(serverUrl, null)).rejects.toThrow('Client certificate PEM is required');
+    });
+
+    it('should use X-Client-Cert via fetch when URL is http even if clientKeyPem is set (mTLS needs https)', async() => {
+      const httpBase = 'http://builder02.local:3000';
+      const keyPem = '-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----';
+      const settings = { dataDir: '/data' };
+      mockMakeApiCall.mockResolvedValue({ success: true, data: settings });
+
+      const result = await devApi.getSettings(httpBase, clientCertPem, keyPem);
+
+      const expectedCertHeader = Buffer.from(clientCertPem, 'utf8').toString('base64');
+      expect(mockMakeApiCall).toHaveBeenCalledWith(
+        'http://builder02.local:3000/api/dev/settings',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ 'X-Client-Cert': expectedCertHeader })
+        })
+      );
+      expect(result).toEqual(settings);
+    });
+
+    it('should use fetch for http URL even when serverCaPem is set (dev CA is for https only)', async() => {
+      const httpBase = 'http://builder02.local:3000';
+      const settings = { dataDir: '/data' };
+      mockMakeApiCall.mockResolvedValue({ success: true, data: settings });
+      const caPem = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----';
+
+      const result = await devApi.getSettings(httpBase, clientCertPem, undefined, caPem);
+
+      const expectedCertHeader = Buffer.from(clientCertPem, 'utf8').toString('base64');
+      expect(mockMakeApiCall).toHaveBeenCalledWith(
+        'http://builder02.local:3000/api/dev/settings',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ 'X-Client-Cert': expectedCertHeader })
+        })
+      );
+      expect(result).toEqual(settings);
     });
   });
 
@@ -287,6 +342,26 @@ describe('Dev API', () => {
       );
       expect(result.fingerprint).toBe('fp1');
     });
+
+    it('should POST ssh-keys with X-Client-Cert via fetch when URL is http even if clientKeyPem is set', async() => {
+      const httpBase = 'http://builder02.local:3000';
+      const keyPem = '-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----';
+      const body = { publicKey: 'ssh-ed25519 AAAA', label: 'laptop' };
+      mockMakeApiCall.mockResolvedValue({ success: true, data: { fingerprint: 'fp1', ...body } });
+
+      const result = await devApi.addSshKey(httpBase, clientCertPem, 'user-1', body, keyPem);
+
+      const expectedCertHeader = Buffer.from(clientCertPem, 'utf8').toString('base64');
+      expect(mockMakeApiCall).toHaveBeenCalledWith(
+        'http://builder02.local:3000/api/dev/users/user-1/ssh-keys',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ 'X-Client-Cert': expectedCertHeader }),
+          body: JSON.stringify(body)
+        })
+      );
+      expect(result.fingerprint).toBe('fp1');
+    });
   });
 
   describe('removeSshKey', () => {
@@ -302,6 +377,26 @@ describe('Dev API', () => {
     });
   });
 
+  describe('resolveSecretsEndpoint', () => {
+    it('uses default /api/dev/secrets under serverUrl when no endpoint override', () => {
+      expect(devApi.resolveSecretsEndpoint(serverUrl, undefined)).toBe(
+        'https://builder-server.example.com/api/dev/secrets'
+      );
+    });
+
+    it('appends /api/dev/secrets when override is base URL with path /', () => {
+      expect(devApi.resolveSecretsEndpoint(serverUrl, 'https://other.example.com/')).toBe(
+        'https://other.example.com/api/dev/secrets'
+      );
+    });
+
+    it('uses full override URL when path is not only root', () => {
+      expect(
+        devApi.resolveSecretsEndpoint(serverUrl, 'https://builder-server.example.com/api/custom/secrets')
+      ).toBe('https://builder-server.example.com/api/custom/secrets');
+    });
+  });
+
   describe('listSecrets', () => {
     it('should GET /api/dev/secrets and return array', async() => {
       const secrets = [{ name: 'KEY1', value: '***' }];
@@ -313,6 +408,17 @@ describe('Dev API', () => {
         'https://builder-server.example.com/api/dev/secrets',
         expect.objectContaining({ method: 'GET' })
       );
+      expect(result).toEqual(secrets);
+    });
+
+    it('should GET configured secrets URL when secretsEndpointUrl provided', async() => {
+      const secrets = [{ name: 'K', value: 'v' }];
+      mockMakeApiCall.mockResolvedValue({ success: true, data: secrets });
+      const endpoint = 'https://builder-server.example.com/api/custom/secrets';
+
+      const result = await devApi.listSecrets(serverUrl, clientCertPem, undefined, endpoint);
+
+      expect(mockMakeApiCall).toHaveBeenCalledWith(endpoint, expect.objectContaining({ method: 'GET' }));
       expect(result).toEqual(secrets);
     });
 
@@ -349,6 +455,18 @@ describe('Dev API', () => {
 
       expect(mockMakeApiCall).toHaveBeenCalledWith(
         'https://builder-server.example.com/api/dev/secrets/MY_KEY',
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+
+    it('should DELETE under configured endpoint when secretsEndpointUrl provided', async() => {
+      mockMakeApiCall.mockResolvedValue({ success: true, data: {} });
+      const base = 'https://builder-server.example.com/api/custom/secrets';
+
+      await devApi.deleteSecret(serverUrl, clientCertPem, 'MY_KEY', undefined, base);
+
+      expect(mockMakeApiCall).toHaveBeenCalledWith(
+        'https://builder-server.example.com/api/custom/secrets/MY_KEY',
         expect.objectContaining({ method: 'DELETE' })
       );
     });

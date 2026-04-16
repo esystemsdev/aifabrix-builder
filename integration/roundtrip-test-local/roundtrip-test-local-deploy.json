@@ -1,0 +1,61 @@
+{
+  "system": {
+    "key": "roundtrip-test-local",
+    "displayName": "Roundtrip Test",
+    "description": "Roundtrip validation test",
+    "type": "openapi",
+    "enabled": true,
+    "authentication": {
+      "method": "oauth2",
+      "variables": {
+        "baseUrl": "https://api.example.com",
+        "tokenUrl": "https://api.example.com/oauth/token",
+        "authorizationUrl": "https://api.example.com/oauth/authorize"
+      },
+      "security": {
+        "clientId": "kv://roundtrip-test/clientId",
+        "clientSecret": "kv://roundtrip-test/clientSecret"
+      }
+    },
+    "configuration": [
+      {
+        "name": "KV_ROUNDTRIP_TEST_CLIENTID",
+        "value": "roundtrip-test/clientId",
+        "location": "keyvault",
+        "required": true
+      },
+      {
+        "name": "KV_ROUNDTRIP_TEST_CLIENTSECRET",
+        "value": "roundtrip-test/clientSecret",
+        "location": "keyvault",
+        "required": true
+      }
+    ],
+    "dataSources": [
+      "roundtrip-test-company"
+    ]
+  },
+  "dataSources": [
+    {
+      "key": "roundtrip-test-company",
+      "displayName": "Company",
+      "systemKey": "roundtrip-test-local",
+      "entityType": "record-storage",
+      "resourceType": "customer",
+      "primaryKey": [
+        "country"
+      ],
+      "fieldMappings": {
+        "dimensions": {
+          "country": "metadata.country"
+        },
+        "attributes": {
+          "country": {
+            "expression": "{{metadata.country}}",
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}

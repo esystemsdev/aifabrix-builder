@@ -175,7 +175,7 @@ describe('API Error Handler', () => {
       expect(result.type).toBe('notfound');
       expect(result.message).toBe('Environment with key \'mis\' not found');
       expect(result.data).toEqual(errorData);
-      expect(result.formatted).toContain('❌ Not Found');
+      expect(result.formatted).toContain('✖ Not Found');
       expect(result.formatted).toContain('Environment with key \'mis\' not found');
     });
 

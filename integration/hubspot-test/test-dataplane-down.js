@@ -152,15 +152,15 @@ async function runTests() {
       results.push(result);
 
       if (result.success) {
-        logSuccess(`✓ ${result.name}: Error handling validated`);
+        logSuccess(`✔ ${result.name}: Error handling validated`);
       } else {
-        logError(`✗ ${result.name}: Error handling failed`);
+        logError(`✖ ${result.name}: Error handling failed`);
         if (result.output) {
           logWarn(`  Output: ${result.output.substring(0, 200)}...`);
         }
       }
     } catch (error) {
-      logError(`✗ ${testFn.name}: Unexpected error: ${error.message}`);
+      logError(`✖ ${testFn.name}: Unexpected error: ${error.message}`);
       results.push({
         name: testFn.name,
         success: false,
