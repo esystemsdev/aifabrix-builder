@@ -431,6 +431,10 @@
           "description": "Front Door probe interval in seconds (default 120)",
           "minimum": 60,
           "maximum": 600
+        },
+        "bashProbe": {
+          "type": "boolean",
+          "description": "When true, generated Docker Compose healthcheck uses a bash /dev/tcp HTTP probe instead of curl (for minimal images such as Keycloak that omit curl)."
         }
       },
       "additionalProperties": false,

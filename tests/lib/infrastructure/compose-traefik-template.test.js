@@ -57,4 +57,9 @@ describe('compose.yaml.hbs Traefik forwarded headers', () => {
     const yaml = render({ trustForwardedHeaders: false });
     expect(yaml).not.toContain('forwardedHeaders.insecure');
   });
+
+  it('includes providers.docker.allowEmptyServices for local dev routing during Docker health start', () => {
+    const yaml = render({ trustForwardedHeaders: false });
+    expect(yaml).toContain('--providers.docker.allowEmptyServices=true');
+  });
 });

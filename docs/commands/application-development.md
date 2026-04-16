@@ -276,6 +276,14 @@ aifabrix run myapp --debug
 
 By default, generated Docker Compose healthchecks use `curl`. If an image does not include `curl`, Docker will report the container as **unhealthy** even if the app is working. In that case, set `healthCheck.bashProbe: true` in the app manifest so Compose uses a bash TCP probe instead.
 
+**Traefik routing note (Compose):**
+
+Compose also emits `traefik.http.routers.<app>.service=<app>` so Traefik binds the router to the correct backend service when using HTTP-only entrypoints (typical when nginx terminates TLS and forwards HTTP to per-developer Traefik).
+
+**Infra Traefik note (local):**
+
+Per-developer Traefik is configured with `--providers.docker.allowEmptyServices=true` so it still publishes Docker routes while a container is in Docker’s `starting` / `unhealthy` health state. Without this, Traefik v3.6 can filter the container entirely (symptom: `404 page not found` on the public URL even though the app responds on its published host port).
+
 ---
 
 <a id="aifabrix-restart-app"></a>
