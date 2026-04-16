@@ -115,6 +115,7 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network={{networkName}}"
+      - "--log.level=INFO"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
 {{#if traefik.trustForwardedHeaders}}

@@ -35,6 +35,7 @@ requires:
 # Health Check
 healthCheck:
   path: /health/ready
+  bashProbe: true
   interval: 30
   probePath: /health/ready
   probeRequestType: GET

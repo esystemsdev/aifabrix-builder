@@ -486,8 +486,8 @@ describe('Compose Generator Module', () => {
         enabled: true,
         host: 'dev01.aifabrix.dev',
         path: '/api',
-        tls: true,
-        certStore: 'wildcard',
+        tls: false,
+        certStore: null,
         stripPathPrefix: true
       });
     });
@@ -507,8 +507,30 @@ describe('Compose Generator Module', () => {
         enabled: true,
         host: 'dev01.aifabrix.dev',
         path: '/api',
-        tls: true,
+        tls: false,
         certStore: null,
+        stripPathPrefix: true
+      });
+    });
+
+    it('should keep Traefik TLS labels for developer-id 0 when frontDoor tls is true', () => {
+      const config = {
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.aifabrix.dev',
+          pattern: '/api/*',
+          tls: true,
+          certStore: 'wildcard'
+        }
+      };
+
+      const result = composeGenerator.buildTraefikConfig(config, '0');
+      expect(result).toEqual({
+        enabled: true,
+        host: 'aifabrix.dev',
+        path: '/api',
+        tls: true,
+        certStore: 'wildcard',
         stripPathPrefix: true
       });
     });
@@ -1269,9 +1291,9 @@ describe('Compose Generator Module', () => {
       expect(result).toContain('traefik.enable=true');
       expect(result).toContain('Host(`dev01.aifabrix.dev`)');
       expect(result).toContain('PathPrefix(`/api`)');
-      expect(result).toContain('traefik.http.routers.test-app.entrypoints=websecure');
-      expect(result).toContain('traefik.http.routers.test-app-http.entrypoints=web');
-      expect(result).toContain('traefik.http.routers.test-app-http.service=test-app');
+      expect(result).toContain('traefik.http.routers.test-app.entrypoints=web');
+      expect(result).not.toContain('traefik.http.routers.test-app-http.');
+      expect(result).not.toContain('entrypoints=websecure');
       expect(result).toContain('BASE_PATH=/api');
       expect(result).toContain('X_FORWARDED_PREFIX=/api');
       expect(result).toContain('stripprefix');
@@ -1386,10 +1408,9 @@ describe('Compose Generator Module', () => {
 
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
       expect(result).toContain('traefik.enable=true');
-      expect(result).toContain('traefik.http.routers.test-app.entrypoints=websecure');
-      expect(result).toContain('traefik.http.routers.test-app-http.entrypoints=web');
-      expect(result).toContain('traefik.http.routers.test-app.tls.certstore=wildcard');
-      expect(result).not.toContain('traefik.http.routers.test-app.tls.certstore=null');
+      expect(result).toContain('traefik.http.routers.test-app.entrypoints=web');
+      expect(result).not.toContain('traefik.http.routers.test-app.tls.certstore');
+      expect(result).not.toContain('entrypoints=websecure');
     });
 
     it('should not include certStore label when certStore is not provided', async() => {
@@ -1412,8 +1433,9 @@ describe('Compose Generator Module', () => {
       };
 
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
-      expect(result).toContain('traefik.http.routers.test-app.entrypoints=websecure');
-      expect(result).toContain('traefik.http.routers.test-app-http.entrypoints=web');
+      expect(result).toContain('traefik.http.routers.test-app.entrypoints=web');
+      expect(result).not.toContain('traefik.http.routers.test-app-http.');
+      expect(result).not.toContain('entrypoints=websecure');
       expect(result).not.toContain('traefik.http.routers.test-app.tls.certstore');
     });
 

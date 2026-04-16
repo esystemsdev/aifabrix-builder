@@ -63,6 +63,13 @@ Extra workflow steps are located in `templates/github/steps/`. When you use `--g
 ### Health Check Configuration
 - `{{healthCheck.path}}` - Health check endpoint path (e.g., "/health")
 - `{{healthCheck.interval}}` - Health check interval in seconds
+- `{{healthCheck.bashProbe}}` - When true, generated Docker Compose uses a bash TCP probe (no `curl` dependency) instead of `curl -f`.
+
+**Why `bashProbe` exists**
+
+Some application images intentionally do not ship with `curl` (for smaller images or stricter runtime environments). If Compose uses a `curl`-based healthcheck in those images, Docker will mark the container as **unhealthy** even when the app is actually serving traffic.
+
+Set `healthCheck.bashProbe: true` to make Compose healthchecks work without `curl` by performing a minimal HTTP request over `/dev/tcp`.
 
 ### Service Requirements
 - `{{requiresDatabase}}` - Database requirement flag (conditional db-init service)

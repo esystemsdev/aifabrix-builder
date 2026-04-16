@@ -272,6 +272,10 @@ aifabrix run myapp --debug
 - **"Health check timeout"** → Check application logs and health endpoint
 - **"Configuration validation failed"** → Fix issues in `builder/<appKey>/application.yaml`
 
+**Health check implementation note (Compose):**
+
+By default, generated Docker Compose healthchecks use `curl`. If an image does not include `curl`, Docker will report the container as **unhealthy** even if the app is working. In that case, set `healthCheck.bashProbe: true` in the app manifest so Compose uses a bash TCP probe instead.
+
 ---
 
 <a id="aifabrix-restart-app"></a>
