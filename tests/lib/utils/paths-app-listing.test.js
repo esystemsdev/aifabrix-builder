@@ -1,6 +1,7 @@
 /**
  * Real-filesystem coverage for listIntegrationAppNames / listBuilderAppNames.
- * Must not use jest.mock('fs') (paths.js would still bind the real module in this project).
+ * Runs in the isolated Jest project `paths-app-listing` (see jest.projects.js) so other suites’
+ * jest.mock('fs') / jest.mock('paths') cannot leak into the same worker. Uses real disk via node:fs.
  * @fileoverview
  */
 'use strict';

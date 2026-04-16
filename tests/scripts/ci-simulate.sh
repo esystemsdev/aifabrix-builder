@@ -167,7 +167,8 @@ timeout 900 npm test > "$REPORT_FILE" 2>&1 || {
 # Extract test results
 if [ $TEST_EXIT -eq 0 ]; then
     echo -e "${GREEN}✓ All tests passed${NC}"
-    TEST_SUMMARY=$(grep -E "(Test Suites|Tests:)" "$REPORT_FILE" | tail -2)
+    # test-wrapper runs Jest twice (default + isolated); capture both summaries (last 4 lines).
+    TEST_SUMMARY=$(grep -E '^Test Suites:|^Tests:' "$REPORT_FILE" | tail -4)
     echo "$TEST_SUMMARY"
 else
     echo -e "${RED}✗ Tests failed${NC}"
@@ -213,8 +214,8 @@ $(if [ $LINT_EXIT -eq 0 ]; then echo "  ✓ PASSED"; else echo "  ✗ FAILED"; f
 TESTING:
 $(if [ $TEST_EXIT -eq 0 ]; then echo "  ✓ PASSED"; else echo "  ✗ FAILED"; fi)
 
-TEST SUMMARY:
-$(grep -E "(Test Suites|Tests:)" "$REPORT_FILE" | tail -2 || echo "  No summary available")
+TEST SUMMARY (default Jest + isolated Jest):
+$(grep -E '^Test Suites:|^Tests:' "$REPORT_FILE" | tail -4 || echo "  No summary available")
 
 FAILED TESTS:
 $(if [ $TEST_EXIT -ne 0 ]; then

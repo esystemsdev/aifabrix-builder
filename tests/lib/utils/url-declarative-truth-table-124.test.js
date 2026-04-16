@@ -1,5 +1,6 @@
 /**
  * Plan 124 declarative URL truth table — pathPrefix × pathActive × traefik × profile.
+ * Isolated Jest project `url-declarative-truth-table-124` — partial paths mock + expand tests need a clean worker.
  */
 
 'use strict';

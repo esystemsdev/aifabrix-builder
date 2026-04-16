@@ -7,7 +7,7 @@
 /** Other suites (e.g. admin-secrets.test.js) mock fs-real-sync; this file needs real sync I/O. */
 jest.unmock('../../../lib/internal/fs-real-sync');
 
-/** Real disk I/O — worker may have jest.mock('fs') from other suites */
+/** Real disk via node:fs; isolated project `helpers-ensure-admin-secrets` so other suites’ jest.mock('fs') cannot leak. */
 const fs = jest.requireActual('node:fs');
 const path = require('path');
 const os = require('os');

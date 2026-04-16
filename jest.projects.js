@@ -142,7 +142,23 @@ const defaultProject = {
       '/tests/lib/infrastructure/compose-traefik-template.test.js',
       '\\\\tests\\\\lib\\\\infrastructure\\\\compose-traefik-template.test.js',
       'lib/infrastructure/compose-traefik-template.test.js',
-      'compose-traefik-template\\.test\\.js'
+      'compose-traefik-template\\.test\\.js',
+      '/tests/lib/utils/paths-app-listing.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\paths-app-listing.test.js',
+      'lib/utils/paths-app-listing.test.js',
+      'paths-app-listing\\.test\\.js',
+      '/tests/lib/utils/url-declarative-truth-table-124.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\url-declarative-truth-table-124.test.js',
+      'lib/utils/url-declarative-truth-table-124.test.js',
+      'url-declarative-truth-table-124\\.test\\.js',
+      '/tests/lib/generator/generator-external-rbac.test.js',
+      '\\\\tests\\\\lib\\\\generator\\\\generator-external-rbac.test.js',
+      'lib/generator/generator-external-rbac.test.js',
+      'generator-external-rbac\\.test\\.js',
+      '/tests/lib/infrastructure/helpers-ensure-admin-secrets.test.js',
+      '\\\\tests\\\\lib\\\\infrastructure\\\\helpers-ensure-admin-secrets.test.js',
+      'lib/infrastructure/helpers-ensure-admin-secrets.test.js',
+      'helpers-ensure-admin-secrets\\.test\\.js'
     ];
     if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
       patterns.push('/tests/local/');
@@ -165,6 +181,7 @@ const isolatedProjects = [
     '**/tests/lib/utils/declarative-url-matrix-d-reload.test.js'
   ]),
   makeIsolatedProject('parameters-validate', ['**/tests/lib/commands/parameters-validate.test.js']),
+  makeIsolatedProject('paths-app-listing', ['**/tests/lib/utils/paths-app-listing.test.js']),
   makeIsolatedProject('datasource-validation-watch', [
     '**/tests/lib/utils/datasource-validation-watch.test.js'
   ]),
@@ -211,6 +228,15 @@ const isolatedProjects = [
   makeIsolatedProject('infra-env-defaults', ['**/tests/lib/utils/infra-env-defaults.test.js']),
   makeIsolatedProject('compose-traefik-template', [
     '**/tests/lib/infrastructure/compose-traefik-template.test.js'
+  ]),
+  makeIsolatedProject('generator-external-rbac', [
+    '**/tests/lib/generator/generator-external-rbac.test.js'
+  ]),
+  makeIsolatedProject('helpers-ensure-admin-secrets', [
+    '**/tests/lib/infrastructure/helpers-ensure-admin-secrets.test.js'
+  ]),
+  makeIsolatedProject('url-declarative-truth-table-124', [
+    '**/tests/lib/utils/url-declarative-truth-table-124.test.js'
   ])
 ];
 
