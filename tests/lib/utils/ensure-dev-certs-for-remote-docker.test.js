@@ -49,12 +49,14 @@ const {
 } = require('../../../lib/utils/ensure-dev-certs-for-remote-docker');
 
 describe('ensure-dev-certs-for-remote-docker', () => {
-  beforeEach(() => {
-    // Spies on node:fs from other test files in this worker leak into nodeFs() / requireActual.
-    jest.restoreAllMocks();
-  });
-
   describe('readIssueCertPin', () => {
+    beforeEach(() => {
+      // CI / developer shells may export PIN env; this suite must not inherit them.
+      delete process.env.AIFABRIX_DEV_ISSUE_PIN;
+      delete process.env.AIFABRIX_ISSUE_CERT_PIN;
+      delete process.env.AIFABRIX_DEV_ISSUE_PIN_FILE;
+    });
+
     afterEach(() => {
       delete process.env.AIFABRIX_DEV_ISSUE_PIN;
       delete process.env.AIFABRIX_ISSUE_CERT_PIN;
@@ -69,14 +71,15 @@ describe('ensure-dev-certs-for-remote-docker', () => {
 
     it('reads first non-empty line from AIFABRIX_DEV_ISSUE_PIN_FILE', () => {
       const disk = jest.requireActual('node:fs');
-      const tmp = path.join(os.tmpdir(), `pin-${Date.now()}.txt`);
+      const dir = disk.mkdtempSync(path.join(os.tmpdir(), 'aifx-pin-'));
+      const tmp = path.join(dir, 'pin.txt');
       disk.writeFileSync(tmp, '\n  abc123  \n', 'utf8');
       process.env.AIFABRIX_DEV_ISSUE_PIN_FILE = tmp;
       try {
         expect(readIssueCertPin()).toBe('abc123');
       } finally {
         try {
-          disk.unlinkSync(tmp);
+          disk.rmSync(dir, { recursive: true, force: true });
         } catch {
           // ignore
         }
@@ -90,6 +93,8 @@ describe('ensure-dev-certs-for-remote-docker', () => {
     let writeFileSpy;
 
     beforeEach(() => {
+      // Only this block uses fs spies; restore here so readIssueCertPin is not affected.
+      jest.restoreAllMocks();
       jest.clearAllMocks();
       config.getDockerEndpoint.mockResolvedValue(null);
       config.getRemoteServer.mockResolvedValue('https://builder.example.com');

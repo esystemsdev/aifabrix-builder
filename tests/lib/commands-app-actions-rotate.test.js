@@ -201,11 +201,11 @@ describe('Application Commands - Rotate Secret Action', () => {
         // Verify that saveLocalSecret is called (always saves now)
         expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith('test-app-client-idKeyVault', 'new-client-id');
         expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith('test-app-client-secretKeyVault', 'new-client-secret');
-        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ Credentials saved to ~/.aifabrix/secrets.local.yaml'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Credentials saved to ~/.aifabrix/secrets.local.yaml'));
         // Verify that env.template is updated and .env file is generated when localhost
         expect(require('../../lib/utils/env-template').updateEnvTemplate).toHaveBeenCalled();
         expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local');
-        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ .env file updated with new credentials'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ .env file updated with new credentials'));
       }
     });
 

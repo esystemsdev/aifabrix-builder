@@ -183,8 +183,8 @@ describe('Credential list command', () => {
     const output = logger.log.mock.calls.map(c => String(c[0])).join('\n');
     expect(output).toContain('cred-ok');
     expect(output).toContain('cred-fail');
-    expect(output).toContain(' ✓');
-    expect(output).toContain(' ✗');
+    expect(output).toContain(' ✔');
+    expect(output).toContain(' ✖');
     expect(output).toContain(' (Valid)');
     expect(output).toContain(' (Connection failed)');
   });
@@ -200,8 +200,8 @@ describe('Credential list command', () => {
     const output = logger.log.mock.calls.map(c => String(c[0])).join('\n');
     expect(output).toContain('no-status');
     expect(output).toContain('No Status Cred');
-    expect(output).not.toContain(' ✓');
-    expect(output).not.toContain(' ✗');
+    expect(output).not.toContain(' ✔');
+    expect(output).not.toContain(' ✖');
   });
 
   it('should display credentials with alternative field names (id, credentialKey, name)', async() => {

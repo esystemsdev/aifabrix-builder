@@ -42,11 +42,13 @@ isProject: true
 
 This document is the **product and implementation plan** for exercising Dataplane validation, integration, E2E, and **certification** through the **AI Fabrix Builder CLI** (`aifabrix` / `aifx`). It aligns three sources of truth:
 
-| Source | Role |
-|--------|------|
-| Dataplane **361** — `aifabrix-dataplane/.cursor/plans/361.builder.plan.md` *(may live under `.cursor/plans/-1.done/` on some branches)* | **HTTP surface**: public tier, `POST /api/v1/validation/run`, optional `GET` poll, success = **DatasourceTestRun** only; legacy routes out of scope for new work. |
-| Dataplane **365** (contract intent) and **362** (migration ordering) | **Request shape**: `validationScope`, `runType`, unified options on one body — exact fields in **OpenAPI** (`openapi.yaml` / `/api/v1/openapi.json`). |
-| `lib/schema/datasource-test-run.schema.json` (Builder copy of canonical envelope) | **Success JSON contract** for `--json` output, golden tests, and AJV validation in CI; must stay in sync with Dataplane `app/schemas/json/datasource-test-run.schema.json`. |
+
+| Source                                                                                                                                  | Role                                                                                                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dataplane **361** — `aifabrix-dataplane/.cursor/plans/361.builder.plan.md` *(may live under `.cursor/plans/-1.done/` on some branches)* | **HTTP surface**: public tier, `POST /api/v1/validation/run`, optional `GET` poll, success = **DatasourceTestRun** only; legacy routes out of scope for new work.           |
+| Dataplane **365** (contract intent) and **362** (migration ordering)                                                                    | **Request shape**: `validationScope`, `runType`, unified options on one body — exact fields in **OpenAPI** (`openapi.yaml` / `/api/v1/openapi.json`).                       |
+| `lib/schema/datasource-test-run.schema.json` (Builder copy of canonical envelope)                                                       | **Success JSON contract** for `--json` output, golden tests, and AJV validation in CI; must stay in sync with Dataplane `app/schemas/json/datasource-test-run.schema.json`. |
+
 
 **Non-goals here:** implementation code, duplicate OpenAPI field lists, or REST documentation in user-facing CLI docs (per Builder docs rules).
 
@@ -54,26 +56,28 @@ This document is the **product and implementation plan** for exercising Dataplan
 
 ## Contents
 
-| § | Topic |
-|---|--------|
-| [1](#1-problem-statement) | Problem statement |
-| [2](#2-architectural-rule-one-http-operation-scopes-and-commands) | Architectural rule — one HTTP operation, scopes, commands |
-| [3](#3-operational-contracts-strict) | Operational contracts (exit codes, TTY order, async, debug, watch, `reportVersion`) |
-| [4](#4-flag-to-request-mapping-contract) | Flag-to-request mapping |
-| [5](#5-request-side-cli--dataplane) | Request side (CLI → Dataplane) |
-| [6](#6-response-side-datasourcetestrun-as-the-single-success-shape) | Response shape (`DatasourceTestRun`) |
-| [7](#7-human-output-contract-decision-oriented-cli) | Human output contract |
-| [8](#8-machine-output-and-ci-certification-gates) | Machine output and CI |
-| [9](#9-async-polling-implementation-detail) | Async polling |
-| [10](#10-relationship-to-local-datasource-validate-file) | vs local `datasource validate` |
-| [11](#11-migration-and-deprecation-builder) | Migration and deprecation |
-| [12](#12-testing-strategy-builder-repo) | Testing strategy |
-| [13](#13-anti-patterns) | Anti-patterns |
-| [14](#14-deliverables-checklist) | Deliverables + definition of done |
-| [15](#15-traceability) | Traceability |
-| [16](#16-cli-ui-specification-tty-gold-standard--datasource-scope) | TTY — datasource scope |
-| [17](#17-external-system-system-level-cli-ui) | TTY — system scope |
-| [18](#18-next-steps-optional-follow-ups) | Next steps |
+
+| §                                                                   | Topic                                                                               |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| [1](#1-problem-statement)                                           | Problem statement                                                                   |
+| [2](#2-architectural-rule-one-http-operation-scopes-and-commands)   | Architectural rule — one HTTP operation, scopes, commands                           |
+| [3](#3-operational-contracts-strict)                                | Operational contracts (exit codes, TTY order, async, debug, watch, `reportVersion`) |
+| [4](#4-flag-to-request-mapping-contract)                            | Flag-to-request mapping                                                             |
+| [5](#5-request-side-cli--dataplane)                                 | Request side (CLI → Dataplane)                                                      |
+| [6](#6-response-side-datasourcetestrun-as-the-single-success-shape) | Response shape (`DatasourceTestRun`)                                                |
+| [7](#7-human-output-contract-decision-oriented-cli)                 | Human output contract                                                               |
+| [8](#8-machine-output-and-ci-certification-gates)                   | Machine output and CI                                                               |
+| [9](#9-async-polling-implementation-detail)                         | Async polling                                                                       |
+| [10](#10-relationship-to-local-datasource-validate-file)            | vs local `datasource validate`                                                      |
+| [11](#11-migration-and-deprecation-builder)                         | Migration and deprecation                                                           |
+| [12](#12-testing-strategy-builder-repo)                             | Testing strategy                                                                    |
+| [13](#13-anti-patterns)                                             | Anti-patterns                                                                       |
+| [14](#14-deliverables-checklist)                                    | Deliverables + definition of done                                                   |
+| [15](#15-traceability)                                              | Traceability                                                                        |
+| [16](#16-cli-ui-specification-tty-gold-standard--datasource-scope)  | TTY — datasource scope                                                              |
+| [17](#17-external-system-system-level-cli-ui)                       | TTY — system scope                                                                  |
+| [18](#18-next-steps-optional-follow-ups)                            | Next steps                                                                          |
+
 
 ---
 
@@ -93,40 +97,77 @@ Today, Builder still targets **legacy** per-resource test routes in places (e.g.
 
 ## 2. Architectural rule: one HTTP operation, scopes, and commands
 
-**HTTP:** Still **one** family: `POST /api/v1/validation/run` (+ optional poll). **Scope** is selected with **`validationScope`** (and ids) per plan **365** / OpenAPI — e.g. **single datasource** vs **external system (aggregate)**.
+**HTTP:** Still **one** family: `POST /api/v1/validation/run` (+ optional poll). **Scope** is selected with `**validationScope`** (and ids) per plan **365** / OpenAPI — e.g. **single datasource** vs **external system (aggregate)**.
 
 ### 2.0 Three-level debugging pyramid (product model)
 
-| Level | Question answered | Typical command surface (target) |
-|-------|-------------------|----------------------------------|
-| **System** | Where should I focus? Which datasource is the bottleneck? | `aifabrix test <systemKey>`, `aifabrix test-integration <systemKey>`, `aifabrix test-e2e <systemKey>` **when** the resolved app is **external integration** (`integration/<systemKey>/`), not a builder app |
-| **Datasource** | What is broken in this datasource? | `aifabrix datasource test …`, `test-integration …`, `test-e2e …` |
-| **Capability** | Why does this operation fail? | `aifabrix datasource test-e2e <datasourceKey> <capabilityKey>` (§2.3) |
 
-**Dispatch collision (normative):** Top-level **`aifabrix test <name>`** today may mean **builder app** tests when `<name>` resolves under **builder**. For **external** systems, **`test` / `test-integration` / `test-e2e`** must resolve **`integration/<systemKey>/`** (same disambiguation pattern as existing `test-integration <app>` in `lib/cli/setup-external-system.js`). If ambiguous, require **cwd** under `integration/<systemKey>/` or an explicit flag (e.g. `--system <systemKey>`) — document in command help. **Do not** change builder-app semantics accidentally.
+| Level          | Question answered                                         | Typical command surface (target)                                                                                                                                                                            |
+| -------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **System**     | Where should I focus? Which datasource is the bottleneck? | `aifabrix test <systemKey>`, `aifabrix test-integration <systemKey>`, `aifabrix test-e2e <systemKey>` **when** the resolved app is **external integration** (`integration/<systemKey>/`), not a builder app |
+| **Datasource** | What is broken in this datasource?                        | `aifabrix datasource test …`, `test-integration …`, `test-e2e …`                                                                                                                                            |
+| **Capability** | Why does this operation fail?                             | `aifabrix datasource test-e2e <datasourceKey> <capabilityKey>` (§2.3)                                                                                                                                       |
+
+
+**Dispatch collision (normative):** Top-level `**aifabrix test <name>`** today may mean **builder app** tests when `<name>` resolves under **builder**. For **external** systems, `**test` / `test-integration` / `test-e2e`** must resolve `**integration/<systemKey>/`** (same disambiguation pattern as existing `test-integration <app>` in `lib/cli/setup-external-system.js`). If ambiguous, require **cwd** under `integration/<systemKey>/` or an explicit flag (e.g. `--system <systemKey>`) — document in command help. **Do not** change builder-app semantics accidentally.
 
 ### 2.1 Datasource-scoped CLI (validationScope = datasource)
 
-| CLI command (target) | `runType` in JSON | Primary sections in `DatasourceTestRun` |
-|----------------------|-------------------|----------------------------------------|
-| `aifabrix datasource test <datasourceKey>` *(new or aliased)* | `test` | `validation`, `certificate` (when server includes it for this run), `developer`, `audit`, `debug` |
-| `aifabrix datasource test-integration <datasourceKey>` | `integration` | `validation` (if returned), `integration`, `certificate`, `capabilities` / `capabilitySummary` as applicable, `developer`, `audit`, `debug` |
-| `aifabrix datasource test-e2e <datasourceKey>` | `e2e` | Full stack: `validation`, `integration`, `certificate`, `capabilities` / `capabilitySummary`, `developer`, `audit`, `debug` |
+
+| CLI command (target)                                          | `runType` in JSON | Primary sections in `DatasourceTestRun`                                                                                                     |
+| ------------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aifabrix datasource test <datasourceKey>` *(new or aliased)* | `test`            | `validation`, `certificate` (when server includes it for this run), `developer`, `audit`, `debug`                                           |
+| `aifabrix datasource test-integration <datasourceKey>`        | `integration`     | `validation` (if returned), `integration`, `certificate`, `capabilities` / `capabilitySummary` as applicable, `developer`, `audit`, `debug` |
+| `aifabrix datasource test-e2e <datasourceKey>`                | `e2e`             | Full stack: `validation`, `integration`, `certificate`, `capabilities` / `capabilitySummary`, `developer`, `audit`, `debug`                 |
+
+
+### 2.1a Datasource command flags (implemented; `--help` order)
+
+**Source of truth (code):** `lib/commands/datasource-unified-test-cli.options.js` (`attachDatasourceTestCommonOptions`, `attachDatasourceWatchOptions`) and `lib/commands/datasource-unified-test-cli.js` (per-command `addHelpText`, E2E-only flags).
+
+**Registration order** (what users see under `Options:` before `--help`) is intentionally:
+
+1. `**-a, --app <app>`** — integration folder / app context for resolution and auth.
+2. `**-e, --env <env>`** — `dev`  `tst`  `pro`.
+3. `**-v, --verbose**` — maps to `explain` on the validation request where applicable.
+4. `**-d, --debug [level]**` — `includeDebug` on request; TTY appendix `summary` (default when flag present without value), `full`, or `raw` (not combined with `--json` in the human renderer path).
+5. `**-p, --payload <file>**` — **only** `datasource test` and `datasource test-integration` (custom payload → `payloadTemplate` on request). **Not** registered for `datasource test-e2e`.
+6. `**--timeout <ms>`** — aggregate wall-clock budget for POST + polls (defaults: **30000** for `test` / `test-integration`; **900000** (15m) for `test-e2e`).
+7. `**--json`** — print raw `DatasourceTestRun` JSON to stdout; exit matrix unchanged (§3.1).
+8. `**--summary`** — compact summary line.
+9. `**--warnings-as-errors**` — exit **1** when root `status` is `warn`.
+10. `**--require-cert`** — exit **2** when certification is missing or `not_passed` per §3.1.
+11. `**--no-async`** — **only** `datasource test` and `datasource test-e2e` (no poll; fail if `reportCompleteness` is not `full` on first response). **Not** registered for `datasource test-integration` (always async poll path).
+12. **Watch family** — `--watch`, `--watch-path <path>` (repeatable, default `[]`), `--watch-application-yaml`, `--watch-ci`, `--watch-full-diff`.
+
+`**datasource test-e2e` only** (chained after common options, **before** examples in help):
+
+- `**--test-crud`**, `**--record-id <id>`**, `**--no-cleanup**`, `**--primary-key-value <value|@path>**`
+- `**--capability <key>**` — deprecated alias for capability drill-down; prefer **positional** `[capabilityKey]`.
+- `**--strict-capability-scope`** — exit **1** if a capability drill-down is requested but multiple `capabilities[]` rows violate §2.3 contract.
+
+**Invocation:** `aifabrix datasource test-e2e <datasourceKey> [capabilityKey]` — positional `capabilityKey` wins over `--capability` when both differ (stderr warning).
 
 ### 2.2 External-system-scoped CLI (validationScope = externalSystem)
 
-| CLI command (target) | `runType` | Request intent |
-|----------------------|-----------|----------------|
-| `aifabrix test <systemKey>` *(external resolution only)* | `test` | System rollup: structural / trust summary across datasources |
-| `aifabrix test-integration <systemKey>` *(no `--datasource`)* | `integration` | System integration health across datasources |
-| `aifabrix test-e2e <systemKey>` *(external path)* | `e2e` | System E2E / capability overview across datasources |
 
-**Flag interface (normative, system-level commands):** `aifabrix test`, `test-integration`, and `test-e2e` must expose the **same interface**:
--
-- `-e, --env <env>` — Environment selection (builder: dev/tst; external: dev/tst/pro). **Do not** override the auth-config environment unless the user explicitly passes this flag.
-- `-v, --verbose` — More detail (per §16/§17 rules).
-- `-d, --debug` — Emit debug/audit appendix and **write a log under `integration/<systemKey>/logs/`**.
-- `-h, --help`
+| CLI command (target)                                          | `runType`     | Request intent                                               |
+| ------------------------------------------------------------- | ------------- | ------------------------------------------------------------ |
+| `aifabrix test <systemKey>` *(external resolution only)*      | `test`        | System rollup: structural / trust summary across datasources |
+| `aifabrix test-integration <systemKey>` *(no `--datasource`)* | `integration` | System integration health across datasources                 |
+| `aifabrix test-e2e <systemKey>` *(external path)*             | `e2e`         | System E2E / capability overview across datasources          |
+
+
+**Flag interface (normative, system-level commands):** `aifabrix test`, `test-integration`, and `test-e2e` expose the **same small surface** (no `--json` / `--summary` / `--timeout` / `--watch` on these top-level commands in the current Builder implementation):
+
+- `**-e, --env <env>`** — Environment selection (builder: dev/tst with a Commander default; external: only applied when the user passes `-e` / `--env` so auth-config default env is not overridden — see `lib/cli/setup-app.test-commands.js` and `lib/cli/setup-external-system.js` `rawArgs` checks).
+- `**-v, --verbose`** — More detail (per §16/§17 rules).
+- `**-d, --debug**` — **Boolean** on system-level commands (no `[level]` variant today): external integration path writes logs under `integration/<systemKey>/logs/` where applicable; help/examples live in `lib/cli/setup-app.help.js` and `lib/cli/setup-external-system.help.js`.
+- `**-h, --help`**
+
+**External `test-e2e <systemKey>`:** The CLI **does not** expose `--no-async`. For the integration path, `lib/cli/setup-app.test-commands.js` passes `**async: true`** into the external E2E runner so the command **always polls** until completion (same intent as datasource commands without `--no-async`).
+
+**Asymmetry vs datasource family:** `aifabrix datasource test*` uses `**-d, --debug [level]`**, `**--timeout`**, machine modes (`--json` / `--summary`), exit modifiers, `**--no-async**` (where registered), and **watch** — see **§2.1a**.
 
 **Datasource scoping (normative):** system-level commands do **not** take `--datasource` or `--payload`. To debug a single datasource, use the **datasource** command family (§2.1), e.g. `aifabrix datasource test-integration <datasourceKey>` / `aifabrix datasource test-e2e <datasourceKey>`.
 
@@ -149,7 +190,7 @@ aifabrix datasource test-e2e <datasourceKey> <capabilityKey>
 
 **Semantics (normative):**
 
-- **Single-capability run:** The CLI sets the unified request so the server scopes the run to **one** capability (exact OpenAPI field name per `openapi.yaml`, e.g. a `capabilities: [<capabilityKey>]` or equivalent filter). The response is still a full **DatasourceTestRun** envelope, but the server **must** populate only the relevant capability row in `capabilities[]` (and adjust `capabilitySummary` accordingly) when that contract is supported.
+- **Single-capability run:** The CLI sets the unified request so the server scopes the run to **one** capability (exact OpenAPI field name per `openapi.yaml`). **Builder implementation:** `lib/datasource/unified-validation-run-body.js` passes `**e2eOptions.capabilityKeys: [<capabilityKey>]`** when a drill-down key is set (positional `[capabilityKey]` or deprecated `--capability`). The response is still a full **DatasourceTestRun** envelope, but the server **must** populate only the relevant capability row in `capabilities[]` (and adjust `capabilitySummary` accordingly) when that contract is supported.
 - **No aggregate shortcuts:** Human renderer for this invocation **skips** multi-capability aggregation tables; it renders **one** capability block (status, permission line, E2E steps, issues) only. If the server returns more than one capability, CLI treats that as **contract violation**: print a single warning line, still emit `--json` verbatim, exit code follows normal matrix unless `--strict-capability-scope` (optional) forces exit `1`.
 - **Guarantee:** Implementations must document the request field used; tests include a fixture with a single `capabilities[]` entry.
 
@@ -163,35 +204,39 @@ This section locks behavior so CI, snapshots, and user scripts do not drift acro
 
 ### 3.1 Exit code matrix (normative)
 
-| Condition | Exit code |
-|-----------|-----------|
-| Root `status` is `fail` | **1** |
-| Root `status` is `warn` | **0** by default; **1** if `--warnings-as-errors` is set |
-| Root `status` is `ok` or `skipped` | **0** (unless overridden by cert row below) |
-| `certificate.status` is `not_passed` **and** flag `--require-cert` is set | **2** (evaluated after success HTTP; does not apply if HTTP layer already exited **3**) |
-| Successful HTTP and no row above forced failure | **0** |
-| **HTTP error** (any non-success status from Dataplane, including 4xx/5xx), **TLS/cert verification failure**, **DNS/connect timeout**, **invalid JSON** in response body | **3** |
-| **Client misuse** (unknown flag, missing required arg, local file not found for `--payload`) | **4** |
+
+| Condition                                                                                                                                                                | Exit code                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| Root `status` is `fail`                                                                                                                                                  | **1**                                                                                   |
+| Root `status` is `warn`                                                                                                                                                  | **0** by default; **1** if `--warnings-as-errors` is set                                |
+| Root `status` is `ok` or `skipped`                                                                                                                                       | **0** (unless overridden by cert row below)                                             |
+| `certificate.status` is `not_passed` **and** flag `--require-cert` is set                                                                                                | **2** (evaluated after success HTTP; does not apply if HTTP layer already exited **3**) |
+| Successful HTTP and no row above forced failure                                                                                                                          | **0**                                                                                   |
+| **HTTP error** (any non-success status from Dataplane, including 4xx/5xx), **TLS/cert verification failure**, **DNS/connect timeout**, **invalid JSON** in response body | **3**                                                                                   |
+| **Client misuse** (unknown flag, missing required arg, local file not found for `--payload`)                                                                             | **4**                                                                                   |
+
 
 **Ordering:** Parse body → apply `status` / `--warnings-as-errors` → then apply `--require-cert` → exit.
 
-**`--json`:** Exit codes follow the **same** matrix; stdout is still the raw envelope on HTTP success.
+`**--json`:** Exit codes follow the **same** matrix; stdout is still the raw envelope on HTTP success.
 
 ### 3.1a System-scoped and client-aggregated exit codes (normative)
 
-Applies when **`validationScope`** is **external system** (§2.2, §17) and the CLI either receives **one** server aggregate or **merges** N datasource-scoped **`DatasourceTestRun`** results (interim fan-out).
+Applies when `**validationScope`** is **external system** (§2.2, §17) and the CLI either receives **one** server aggregate or **merges** N datasource-scoped `**DatasourceTestRun`** results (interim fan-out).
 
-| Situation | Effective status for §3.1 rows |
-|-----------|----------------------------------|
-| **Preferred:** single JSON body from OpenAPI with explicit **`systemStatus`** (or equivalent rollup field) | Use **`systemStatus`** for root-status rules in §3.1. If the body also has a top-level **`status`** that disagrees, **`systemStatus` wins** for exit mapping. |
-| **Preferred:** single body with only root **`status`** and no separate rollup field | Use root **`status`** as today. |
-| **Interim:** client merged children **{R₁…Rₙ}** per §17.4 | Compute **`systemStatus`** with the rules in §17.4; treat that computed value **as** root `status` for §3.1 (ok / warn / fail / skipped). |
+
+| Situation                                                                                                  | Effective status for §3.1 rows                                                                                                                                |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Preferred:** single JSON body from OpenAPI with explicit `**systemStatus`** (or equivalent rollup field) | Use `**systemStatus`** for root-status rules in §3.1. If the body also has a top-level `**status**` that disagrees, `**systemStatus` wins** for exit mapping. |
+| **Preferred:** single body with only root `**status`** and no separate rollup field                        | Use root `**status`** as today.                                                                                                                               |
+| **Interim:** client merged children **{R₁…Rₙ}** per §17.4                                                  | Compute `**systemStatus`** with the rules in §17.4; treat that computed value **as** root `status` for §3.1 (ok / warn / fail / skipped).                     |
+
 
 **Certificate and `--require-cert`:** On system scope, evaluate exit **2** as: **any** child with `certificate.status === 'not_passed'` **or** §17.4 system certification **not_passed** when certificates are present on any child — same ordering as §3.1 after HTTP success.
 
 **HTTP / transport:** For interim fan-out, **any** child request that ends in §3.1 row “HTTP error / TLS / DNS / timeout / invalid JSON” forces exit **3** for the **whole** command (do not merge partial success with a failed child call). **4xx/5xx** on one child counts as that row.
 
-**Poll:** If the aggregate is async, polling applies to the **system** handle when the server provides one; if interim mode polls **per child**, **all** children must reach terminal **`reportCompleteness`** (or equivalent) before final merge — a stuck child exhausts §3.6 budget → §3.4 timeout rules (exit **1** vs **3** per last body).
+**Poll:** If the aggregate is async, polling applies to the **system** handle when the server provides one; if interim mode polls **per child**, **all** children must reach terminal `**reportCompleteness`** (or equivalent) before final merge — a stuck child exhausts §3.6 budget → §3.4 timeout rules (exit **1** vs **3** per last body).
 
 ### 3.2 `DatasourceTestRun` human rendering — deterministic priority (TTY)
 
@@ -218,9 +263,9 @@ Applies when **`validationScope`** is **external system** (§2.2, §17) and the 
 17. **Next actions** — `developer.nextActions` + deduped hints (§3.11); **last** substantive block.
 18. **Debug / audit** — only when `--debug` (§3.7); always after Next actions.
 
-**`datasource test` (runType test):** omit **Capabilities**, **Integration**, **Certification** blocks when absent (§3.9); keep Header → Verdict → Summary → Data Quality → Issues-style **Failures** → Impact → Next actions.
+`**datasource test` (runType test):** omit **Capabilities**, **Integration**, **Certification** blocks when absent (§3.9); keep Header → Verdict → Summary → Data Quality → Issues-style **Failures** → Impact → Next actions.
 
-**`datasource test-integration`:** omit **Capabilities** / **Certification** when absent; keep Integration prominent per §16.7 example.
+`**datasource test-integration`:** omit **Capabilities** / **Certification** when absent; keep Integration prominent per §16.7 example.
 
 **Fallback when `developer` is missing or empty:**
 
@@ -228,7 +273,7 @@ Applies when **`validationScope`** is **external system** (§2.2, §17) and the 
 2. **Next actions:** merge `developer.nextActions` with deduped hints from `validation.issues` and `certificate.blockers` (blocking first) — §3.11.
 3. **Verdict / Impact bullets:** derive minimal copy from layer statuses only (OK/WARN/FAIL — no internal metric names).
 
-**`--summary` mode:** not the full §3.2 layout; fixed compact lines per §16.9 and §8.
+`**--summary` mode:** not the full §3.2 layout; fixed compact lines per §16.9 and §8.
 
 ### 3.3 Validation vs integration overlap (no double reporting)
 
@@ -238,15 +283,17 @@ Applies when **`validationScope`** is **external system** (§2.2, §17) and the 
 
 ### 3.4 `reportCompleteness` lifecycle and safe rendering
 
-| Completeness | Meaning (CLI interpretation) | Sections safe to render from body |
-|--------------|------------------------------|-----------------------------------|
-| `minimal` | Accept or early async handle; report may be stubbed | Header, `runId` / `testRunId`, root `status` if present; **do not** render empty capability/integration tables — show single line “Run in progress; polling…” |
-| `partial` | Some layers filled, run not finished | Header + any layer that is **present and non-empty**; for empty layers show “Pending…” once per layer max |
-| `full` | Terminal report for this run | All present blocks per §3.2 order |
+
+| Completeness | Meaning (CLI interpretation)                        | Sections safe to render from body                                                                                                                             |
+| ------------ | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `minimal`    | Accept or early async handle; report may be stubbed | Header, `runId` / `testRunId`, root `status` if present; **do not** render empty capability/integration tables — show single line “Run in progress; polling…” |
+| `partial`    | Some layers filled, run not finished                | Header + any layer that is **present and non-empty**; for empty layers show “Pending…” once per layer max                                                     |
+| `full`       | Terminal report for this run                        | All present blocks per §3.2 order                                                                                                                             |
+
 
 **Transitions:** `minimal` → `partial` → `full` during poll.
 
-**Poll timeout (client budget exhausted, §3.6):** If the last successful JSON body has root `status` **`fail`**, exit **1** (matrix row for `fail` wins). Otherwise exit **3** with message `Report incomplete: timeout` and print the last body if any.
+**Poll timeout (client budget exhausted, §3.6):** If the last successful JSON body has root `status` `**fail`**, exit **1** (matrix row for `fail` wins). Otherwise exit **3** with message `Report incomplete: timeout` and print the last body if any.
 
 **Normative poll stop:** Stop when `reportCompleteness === 'full'` **or** OpenAPI defines another terminal condition (e.g. root `status` terminal **and** no further server updates).
 
@@ -254,54 +301,60 @@ Applies when **`validationScope`** is **external system** (§2.2, §17) and the 
 
 - **Any** `runType` (`test`, `integration`, `e2e`) may return async handles (`testRunId`, `reportCompleteness: minimal|partial`). **Same** poll module, **same** interval/backoff, **same** progress UI (§3.13) for all commands.
 - **Partial reports:** On each poll, re-run the **full** deterministic renderer (§3.2) with latest body; replace screen content or append “updated …” per product choice — **must** be consistent across commands (recommend: TTY refresh single view + timestamp).
-- **Flags (datasource commands only):** `--no-async` (sync-only POST) is supported on `aifabrix datasource test*` commands. System-level `test*` commands intentionally do not expose `--no-async`; they always poll to completeness.
+- **Flags (datasource commands):** `--no-async` is registered on `**aifabrix datasource test`** and `**aifabrix datasource test-e2e`** only (`includeNoAsync` is false for `datasource test-integration`). System-level `test*` commands do not expose `--no-async`; external E2E path always polls for completeness (`lib/cli/setup-app.test-commands.js`).
 
 ### 3.6 Timeout and retry policy (normative)
 
-| Item | Value |
-|------|--------|
+
+| Item                                           | Value                                                                                                                                                          |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--timeout <ms>` default (datasource commands) | **30000** — applies as **one aggregate wall-clock budget** for the whole command: initial POST **plus** all poll requests (not per-request), unless overridden |
-| Poll interval (initial) | **2 s** |
-| Poll backoff | **exponential**, cap **15 s** between polls |
-| Per-request HTTP socket timeout | **min(remaining budget, 30000)** per call so a single hung read does not exceed remaining budget |
-| Retries on **HTTP 3** class | **No** automatic retry for 4xx/5xx. **Retry only** for `ECONNRESET`, `ETIMEDOUT`, `ECONNABORTED` on **POST**, max **2** retries, backoff **1 s / 2 s** |
-| Failure messaging | Always print last `runId` / `testRunId` if present; for exit **3** include HTTP status or transport code |
+| Poll interval (initial)                        | **2 s**                                                                                                                                                        |
+| Poll backoff                                   | **exponential**, cap **15 s** between polls                                                                                                                    |
+| Per-request HTTP socket timeout                | **min(remaining budget, 30000)** per call so a single hung read does not exceed remaining budget                                                               |
+| Retries on **HTTP 3** class                    | **No** automatic retry for 4xx/5xx. **Retry only** for `ECONNRESET`, `ETIMEDOUT`, `ECONNABORTED` on **POST**, max **2** retries, backoff **1 s / 2 s**         |
+| Failure messaging                              | Always print last `runId` / `testRunId` if present; for exit **3** include HTTP status or transport code                                                       |
+
 
 Long-running datasource E2E: user raises `--timeout` (e.g. **300000**) for the same aggregate budget.
 
 ### 3.7 Debug payload size and truncation (normative)
 
-| `--debug` level | CLI behavior |
-|-----------------|--------------|
-| `summary` | No embedded payloads; lengths only; trace ids |
-| `full` | Per-field **max 8192 bytes** UTF-8 per printed string; truncate with suffix ` … [truncated, N bytes]` |
-| `raw` | Per-field **max 65536 bytes** on TTY; **max 1 MiB** when stdout is not a TTY (redirect/file); always **redact** lines matching secret patterns (tokens, `Authorization`); never print more than **200 lines** per payload blob — remainder `… [N lines omitted; use audit ref]` |
+
+| `--debug` level | CLI behavior                                                                                                                                                                                                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `summary`       | No embedded payloads; lengths only; trace ids                                                                                                                                                                                                                                   |
+| `full`          | Per-field **max 8192 bytes** UTF-8 per printed string; truncate with suffix `… [truncated, N bytes]`                                                                                                                                                                            |
+| `raw`           | Per-field **max 65536 bytes** on TTY; **max 1 MiB** when stdout is not a TTY (redirect/file); always **redact** lines matching secret patterns (tokens, `Authorization`); never print more than **200 lines** per payload blob — remainder `… [N lines omitted; use audit ref]` |
+
 
 **Full data:** Always print `audit.traceRefs` / `debug.payloadRefs` when present so users can pull full bodies from authorized audit/trace paths — CLI does not re-fetch by default.
 
 ### 3.8 Capability ordering (normative)
 
 1. **If** `capabilities[].order` or server-provided ordered array is present in schema extension, **use array order** as returned (schema today: order on integration steps, not capability — so default below applies).
-2. **Else** sort by: `type` ascending **`read` → `write` → `sync` → `custom`**, then **`key` ASCII ascending**.
+2. **Else** sort by: `type` ascending `**read` → `write` → `sync` → `custom`**, then `**key` ASCII ascending**.
 3. **Drill-down** (§2.3): single row — no sort needed.
 
 Snapshot tests **must** use fixtures with deterministic order.
 
 ### 3.9 “No data” handling
 
-| Missing / empty | Human output |
-|-----------------|--------------|
-| No `capabilities` or empty array | Omit **Capabilities** section; one line under header: “No capabilities reported.” |
-| No `integration` | Omit **Integration** section entirely (no placeholder). |
-| No `certificate` | Omit **Certificate** section; if `--require-cert`, treat as **not_passed** for exit **2** only when product defines that behavior — **normative:** missing `certificate` with `--require-cert` → exit **2** and message “Certification not returned; cannot verify.” |
-| No `validation` | Omit **Validation** section. |
-| Empty `developer` | Use §3.2 fallback. |
 
-**`--json`:** Always print full parsed object; no omission.
+| Missing / empty                  | Human output                                                                                                                                                                                                                                                         |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No `capabilities` or empty array | Omit **Capabilities** section; one line under header: “No capabilities reported.”                                                                                                                                                                                    |
+| No `integration`                 | Omit **Integration** section entirely (no placeholder).                                                                                                                                                                                                              |
+| No `certificate`                 | Omit **Certificate** section; if `--require-cert`, treat as **not_passed** for exit **2** only when product defines that behavior — **normative:** missing `certificate` with `--require-cert` → exit **2** and message “Certification not returned; cannot verify.” |
+| No `validation`                  | Omit **Validation** section.                                                                                                                                                                                                                                         |
+| Empty `developer`                | Use §3.2 fallback.                                                                                                                                                                                                                                                   |
+
+
+`**--json`:** Always print full parsed object; no omission.
 
 ### 3.10 RBAC surfacing (normative)
 
-- When a capability or layer fails with `Issue.code` matching prefix **`DP-SEC-`** **or** message/hint implies permission denial, CLI **must** print a dedicated line: `Permission: <capabilities[].permission or hint-derived>` when `permission` is present on that capability row.
+- When a capability or layer fails with `Issue.code` matching prefix `**DP-SEC-`** **or** message/hint implies permission denial, CLI **must** print a dedicated line: `Permission: <capabilities[].permission or hint-derived>` when `permission` is present on that capability row.
 - **Normalize:** Map common server phrases (“403”, “forbidden”, “not authorized”) to a standard line: `Access: permission denied` + show `permission` field if present.
 - **Ordering:** RBAC-related issues appear **within** the relevant capability block **before** generic E2E step errors for that capability.
 
@@ -315,29 +368,31 @@ Snapshot tests **must** use fixtures with deterministic order.
 
 **Never** show in default or `--verbose` human output:
 
-- Strings **`ICC`**, **`PDS`**, **`DTS`** (case-insensitive) and labels “validation engine”, “metricValue”, “contract envelope”.
-- Raw **`metricsOutput`** / **`certificationOutput`** keys or nested dumps.
+- Strings `**ICC`**, `**PDS`**, `**DTS**` (case-insensitive) and labels “validation engine”, “metricValue”, “contract envelope”.
+- Raw `**metricsOutput**` / `**certificationOutput**` keys or nested dumps.
 
-**Allowed:** `--debug=full|raw` may show **redacted** structural keys if required for support, but still **not** marketing-unfriendly engine codenames unless behind **`AIFABRIX_INTERNAL_DIAG=1`** (optional escape hatch for staff).
+**Allowed:** `--debug=full|raw` may show **redacted** structural keys if required for support, but still **not** marketing-unfriendly engine codenames unless behind `**AIFABRIX_INTERNAL_DIAG=1`** (optional escape hatch for staff).
 
 **Integration step `name`:** Show as returned **unless** name matches internal-only registry (maintain denylist in CLI); unknown names render as `Step: {name}` (literal step name), not opaque internal IDs.
 
 ### 3.13 Progress indicators (normative)
 
 - **POST in flight:** Spinner + elapsed seconds; if server returns `202` or body includes progress hints, merge when available.
-- **Polling:** Same spinner; every **5 s** (or each poll tick, whichever is less frequent) print current **`reportCompleteness`** and best-known root `status`.
+- **Polling:** Same spinner; every **5 s** (or each poll tick, whichever is less frequent) print current `**reportCompleteness`** and best-known root `status`.
 - **Integration/E2E with `integration.stepResults` or E2E steps:** When rendering **after** completion, show step list with durations from `evidence` / `durationMs` when present.
 
 ### 3.14 Watch mode (normative)
 
 **Command flag:** `--watch` (optional on all three datasource test commands).
 
-| Aspect | Behavior |
-|--------|----------|
-| Trigger | Rerun when watched files change: default glob **datasource JSON** for resolved app (`integration/<systemKey>/**/*datasource*.json` or explicit `--watch-path`); **application.yaml** optional second watch |
-| Debounce | **500 ms** coalescing from last FS event |
-| Diff | On rerun, if previous report cached, print **unified diff** of **root `status`**, **certificate.status**, and **capability key list + statuses** only (not full JSON) unless `--watch-full-diff` |
-| Exit | **does not exit** on test failure by default (developer loop); **`--watch-ci`** exits with normal matrix after first run |
+
+| Aspect   | Behavior                                                                                                                                                                                                   |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Trigger  | Rerun when watched files change: default glob **datasource JSON** for resolved app (`integration/<systemKey>/**/*datasource*.json` or explicit `--watch-path`); **application.yaml** optional second watch |
+| Debounce | **500 ms** coalescing from last FS event                                                                                                                                                                   |
+| Diff     | On rerun, if previous report cached, print **unified diff** of **root `status`**, **certificate.status**, and **capability key list + statuses** only (not full JSON) unless `--watch-full-diff`           |
+| Exit     | **does not exit** on test failure by default (developer loop); `**--watch-ci`** exits with normal matrix after first run                                                                                   |
+
 
 ### 3.15 `reportVersion` backward compatibility (normative)
 
@@ -352,21 +407,30 @@ Snapshot tests **must** use fixtures with deterministic order.
 
 CLI flags **must** map 1:1 to OpenAPI request fields (names below follow **intent**; **exact** property names are whatever `openapi.yaml` defines — update this table when OpenAPI changes).
 
-| CLI flag | Request field (logical) | Default | Notes |
-|----------|-------------------------|---------|--------|
-| *(datasource command)* `datasource test` / `datasource test-integration` / `datasource test-e2e` | `runType` | derived from subcommand | `test` \| `integration` \| `e2e` |
-| `-a, --app <appKey>` | resolution only | cwd / single match | Sets app context for paths and auth; may set body `applicationKey` if OpenAPI requires |
-| `-e, --env <env>` | client config | `dev` | Selects controller/dataplane base URL and token — not always a body field |
-| `-p, --payload <file>` | inline or ref payload | none | Maps to OpenAPI “custom payload” field for integration/e2e when supported |
-| `--timeout <ms>` | client HTTP timeout | **documented single default** | Datasource commands only; see §3.6 |
-| `--debug` / `--debug=<summary\|full\|raw>` | `debug` / `debugMode` | off → `summary` when flag present without value | Align with `DebugTrace.mode` |
-| `--no-async` | `asyncRun: false` or equivalent | async if server default | Datasource commands only |
-| `--test-crud` | `testCrud: true` | false | E2E |
-| `--record-id`, `--no-cleanup`, `--primary-key-value` | matching body fields | OpenAPI defaults | E2E |
-| `--require-cert` | *(client only)* | false | Exit **2** gate; not sent to server unless OpenAPI adds explicit flag |
-| `--warnings-as-errors` | *(client only)* | false | Exit **1** on `warn` |
-| `<capabilityKey>` positional | capability filter | none | §2.3 |
-| `--capabilities <csv>` | capabilities list | server default | Optional future multi-select |
+**Datasource commands (`aifabrix datasource test*`)** — see **§2.1a** for the authoritative flag list and `--help` order. Summary mapping (Builder code: `lib/datasource/unified-validation-run-body.js`, `lib/utils/validation-run-request.js`, `lib/commands/datasource-validation-cli.js`):
+
+
+| CLI flag                                                                                         | Request field (logical)                         | Default                                                  | Notes                                                                                     |
+| ------------------------------------------------------------------------------------------------ | ----------------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| *(datasource command)* `datasource test` / `datasource test-integration` / `datasource test-e2e` | `runType`                                       | derived from subcommand                                  | `test`                                                                                    |
+| `-a, --app <appKey>`                                                                             | resolution only                                 | cwd / single match                                       | Sets app context for paths and auth; may set body `applicationKey` if OpenAPI requires    |
+| `-e, --env <env>`                                                                                | client config                                   | `dev`                                                    | Selects controller/dataplane base URL and token — not always a body field                 |
+| `-v, --verbose`                                                                                  | `explain: true` on request                      | off                                                      | Datasource commands                                                                       |
+| `-d, --debug [level]`                                                                            | `includeDebug` + TTY appendix mode              | off; appendix default `summary` when flag present        | Datasource commands only; levels `summary`                                                |
+| `-p, --payload <file>`                                                                           | inline or ref payload                           | none                                                     | `**test` + `test-integration` only** — not registered for `datasource test-e2e`           |
+| `--timeout <ms>`                                                                                 | client aggregate budget                         | 30000 (`test` / `test-integration`); 900000 (`test-e2e`) | POST + polls; see §3.6                                                                    |
+| `--json` / `--summary`                                                                           | *(client output only)*                          | off                                                      | Do not mutate envelope                                                                    |
+| `--warnings-as-errors` / `--require-cert`                                                        | *(client exit only)*                            | false                                                    | §3.1                                                                                      |
+| `--no-async`                                                                                     | `asyncRun: false` / no poll path                | off                                                      | `**datasource test` + `datasource test-e2e` only** — not on `datasource test-integration` |
+| `--watch*`                                                                                       | *(client only)*                                 | off                                                      | §3.14                                                                                     |
+| `--test-crud`                                                                                    | `testCrud: true`                                | false                                                    | `datasource test-e2e` only                                                                |
+| `--record-id`, `--no-cleanup`, `--primary-key-value`                                             | `e2eOptions.*`                                  | OpenAPI defaults                                         | `datasource test-e2e` only                                                                |
+| `--capability <key>`                                                                             | same as positional filter                       | none                                                     | Deprecated; prefer `[capabilityKey]`                                                      |
+| `<capabilityKey>` positional                                                                     | capability filter (`e2eOptions.capabilityKeys`) | none                                                     | §2.3                                                                                      |
+| `--capabilities <csv>`                                                                           | capabilities list                               | server default                                           | Optional future multi-select                                                              |
+
+
+**System-level** `aifabrix test` / `test-integration` / `test-e2e` — **only** `-e`, `-v`, `-d` (+ `-h`) in current Builder CLI; no `--json` / `--summary` / `--timeout` / `--watch` on those commands (see **§2.2** and `lib/cli/setup-app.test-commands.js` / `lib/cli/setup-external-system.js`).
 
 **Drift prevention:** Builder CI includes a check that every documented flag appears in `lib/cli` setup and in a **machine-readable** `flag-map.json` (or test fixture) cross-checked against OpenAPI `operationId` for validation run (optional codegen later).
 
@@ -382,15 +446,15 @@ CLI flags **must** map 1:1 to OpenAPI request fields (names below follow **inten
 
 ## 6. Response side: `DatasourceTestRun` as the single success shape
 
-Canonical schema: **`lib/schema/datasource-test-run.schema.json`**.
+Canonical schema: `**lib/schema/datasource-test-run.schema.json`**.
 
 ### 6.1 Top-level fields the CLI must understand
 
-- **`reportVersion`**: See §3.15.
-- **`runType`**, **`status`**: Drive exit code (§3.1) and header.
-- **`reportCompleteness`**: See §3.4–3.5.
-- **`systemKey`**, **`datasourceKey`**: Always in header.
-- **`validation`**, **`integration`**, **`certificate`**, **`capabilities`**, **`capabilitySummary`**, **`developer`**, **`debug`**, **`audit`**: As in schema; human TTY per §3.2 and **§16**; machine modes per §8.
+- `**reportVersion`**: See §3.15.
+- `**runType**`, `**status**`: Drive exit code (§3.1) and header.
+- `**reportCompleteness**`: See §3.4–3.5.
+- `**systemKey**`, `**datasourceKey**`: Always in header.
+- `**validation**`, `**integration**`, `**certificate**`, `**capabilities**`, `**capabilitySummary**`, `**developer**`, `**debug**`, `**audit**`: As in schema; human TTY per §3.2 and **§16**; machine modes per §8.
 
 ### 6.2 Certification in the developer workflow
 
@@ -409,12 +473,14 @@ The CLI is a **decision engine**, not a JSON pretty-printer. **Determinism** and
 
 **Progressive disclosure:**
 
-| Mode | Behavior |
-|------|----------|
-| Default | §3.12 compliance; blocking issues first |
+
+| Mode        | Behavior                                                         |
+| ----------- | ---------------------------------------------------------------- |
+| Default     | §3.12 compliance; blocking issues first                          |
 | `--verbose` | Non-blocking issues, more step detail; still no internal leakage |
-| `--debug` | §3.7 limits + audit pointers |
-| `--json` | Raw envelope; exit §3.1 |
+| `--debug`   | §3.7 limits + audit pointers                                     |
+| `--json`    | Raw envelope; exit §3.1                                          |
+
 
 **Status glyphs:** OK / WARN / FAIL / SKIPPED — map from `ok` / `warn` / `fail` / `skipped`.
 
@@ -424,10 +490,10 @@ The CLI is a **decision engine**, not a JSON pretty-printer. **Determinism** and
 
 ## 8. Machine output and CI certification gates
 
-- **`--json`**: Exact success body; exit §3.1.
-- **`--summary`**: Fixed layout per **§16.9** (line order snapshot-tested); fields include `datasourceKey`, root `status`, optional confidence if present, capability counts, certificate tier + glyph.
+- `**--json`**: Exact success body; exit §3.1.
+- `**--summary`**: Fixed layout per **§16.9** (line order snapshot-tested); fields include `datasourceKey`, root `status`, optional confidence if present, capability counts, certificate tier + glyph.
 - **AJV:** Validate fixtures and golden files against `datasource-test-run.schema.json`.
-- **`--fail-fast`:** If OpenAPI supports early abort, pass through; else display-only stop after first blocking group.
+- `**--fail-fast`:** If OpenAPI supports early abort, pass through; else display-only stop after first blocking group.
 
 ### 8.1 Schema sync enforcement (CI — normative)
 
@@ -477,21 +543,21 @@ Flow: local validate → `datasource test` → `test-integration` → `test-e2e`
 - **Different** poll/render behavior per runType.
 - **Different** exit semantics for the same root `status`.
 - Dumping internal metrics on TTY (§3.12).
-- **`--json`** that mutates the envelope.
+- `**--json`** that mutates the envelope.
 - **System view:** pasting full §16 output for every datasource (violates §17.5); missing **Use:** drill-down line; inventing **Confidence** without server input (§17.3).
 
 ---
 
 ## 14. Deliverables checklist
 
-- [x] Single API module: POST + shared poll (§3.5–3.6, §9); system scope + optional fan-out merge (§2.2, §17.4).
-- [x] `datasource test` + drill-down `test-e2e <ds> <capability>` (§2.3).
-- [ ] Renderer: §3.2 + §16 (datasource) + §17 (system aggregate), §3.9 empty, §3.11 dedupe, §3.12 leakage, §3.10 RBAC, chalk §16.12.
-- [ ] Exit matrix §3.1; `--require-cert`, `--warnings-as-errors`.
-- [ ] `--json` / `--summary`; schema sync CI §8.1.
-- [ ] `--watch` §3.14; progress §3.13; debug limits §3.7.
-- [x] `reportVersion` handling §3.15.
-- [ ] Flag map §4 documented and tested.
+- Single API module: POST + shared poll (§3.5–3.6, §9); system scope + optional fan-out merge (§2.2, §17.4).
+- `datasource test` + drill-down `test-e2e <ds> <capability>` (§2.3).
+- Renderer: §3.2 + §16 (datasource) + §17 (system aggregate), §3.9 empty, §3.11 dedupe, §3.12 leakage, §3.10 RBAC, chalk §16.12.
+- Exit matrix §3.1; `--require-cert`, `--warnings-as-errors`.
+- `--json` / `--summary`; schema sync CI §8.1.
+- `--watch` §3.14; progress §3.13; debug limits §3.7.
+- `reportVersion` handling §3.15.
+- Flag map §4 documented and tested.
 
 ### 14.1 Definition of done
 
@@ -508,20 +574,22 @@ Work matches this plan when **all** of the following hold:
 
 ## 15. Traceability
 
-| Topic | Where defined |
-|-------|----------------|
-| HTTP paths, deprecation | Dataplane **361** |
-| `validationScope`, `runType` | Dataplane **365** |
-| Migration ordering, route removal | Dataplane **362** |
-| Envelope fields | `datasource-test-run.schema.json` |
-| OpenAPI property names | Dataplane `openapi.yaml` |
-| System-level TTY + aggregation | §17; `validationScope` + OpenAPI system aggregate (when added) |
+
+| Topic                             | Where defined                                                  |
+| --------------------------------- | -------------------------------------------------------------- |
+| HTTP paths, deprecation           | Dataplane **361**                                              |
+| `validationScope`, `runType`      | Dataplane **365**                                              |
+| Migration ordering, route removal | Dataplane **362**                                              |
+| Envelope fields                   | `datasource-test-run.schema.json`                              |
+| OpenAPI property names            | Dataplane `openapi.yaml`                                       |
+| System-level TTY + aggregation    | §17; `validationScope` + OpenAPI system aggregate (when added) |
+
 
 ---
 
 ## 16. CLI UI specification (TTY gold standard) — datasource scope
 
-Normative **default human output** for **`aifabrix datasource …`** test commands (single datasource). Aligned with **DatasourceTestRun**, **Data Quality + Trust** positioning, **certification**, **capability E2E**, **debug/audit**, and **§3** deterministic rules. **Do not** surface ICC/PDS/DTS or raw `metricsOutput` here (§3.12). **External system** overview UI is **§17** (aggregation — shorter, prioritization-first).
+Normative **default human output** for `**aifabrix datasource …`** test commands (single datasource). Aligned with **DatasourceTestRun**, **Data Quality + Trust** positioning, **certification**, **capability E2E**, **debug/audit**, and **§3** deterministic rules. **Do not** surface ICC/PDS/DTS or raw `metricsOutput` here (§3.12). **External system** overview UI is **§17** (aggregation — shorter, prioritization-first).
 
 ### 16.1 UX model — questions answered in order
 
@@ -534,34 +602,38 @@ Normative **default human output** for **`aifabrix datasource …`** test comman
 
 ### 16.2 Field mapping (envelope → UI)
 
-| UI block | Primary `DatasourceTestRun` sources |
-|----------|-------------------------------------|
-| Header | `datasourceKey`, `systemKey`, `runType`, `status`, `runId`, `testRunId`, `reportCompleteness` |
-| Verdict | root `status`, `certificate.status`, `certificate.level` (product phrase table §16.3) |
-| Summary | `developer.executiveSummary` → else §3.2 fallback |
+
+| UI block           | Primary `DatasourceTestRun` sources                                                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Header             | `datasourceKey`, `systemKey`, `runType`, `status`, `runId`, `testRunId`, `reportCompleteness`                                                                |
+| Verdict            | root `status`, `certificate.status`, `certificate.level` (product phrase table §16.3)                                                                        |
+| Summary            | `developer.executiveSummary` → else §3.2 fallback                                                                                                            |
 | Data Quality lines | `validation.dataReadiness`, `validation.status`, rollups from `validation.issues` (mapped to three trust lines §16.4); never print internal engine codenames |
-| Confidence | optional: only if server exposes a single scalar or phrase in `developer` / agreed extension — **omit** if missing |
-| Deductions | top blocking `Issue`s (grouped) |
-| Readiness | `validation.dataReadiness` enum → user-facing Ready / Partial / Not ready |
-| Capabilities table | `capabilities[]`, `capabilitySummary`; `permission`, `status`; lock marker when RBAC-related (§3.10) |
-| Failures | grouped `Issue` / `Error` per §3.11; hints indented |
-| Impact | `developer.whatFailed`, `developer.whatNeedsAttention` — deduped vs Failures |
-| Integration | `integration.stepResults`; duration from `evidence` / timings |
-| Certification | `certificate.status`, `certificate.level`, `certificate.blockers`, `certificate.summary`; maturity ladder compares achieved vs target tier |
-| Next actions | `developer.nextActions` + deduped hints |
-| Debug | `debug`, `audit` per §3.7; trace URLs/refs as returned (no REST tutorial in user docs) |
+| Confidence         | optional: only if server exposes a single scalar or phrase in `developer` / agreed extension — **omit** if missing                                           |
+| Deductions         | top blocking `Issue`s (grouped)                                                                                                                              |
+| Readiness          | `validation.dataReadiness` enum → user-facing Ready / Partial / Not ready                                                                                    |
+| Capabilities table | `capabilities[]`, `capabilitySummary`; `permission`, `status`; lock marker when RBAC-related (§3.10)                                                         |
+| Failures           | grouped `Issue` / `Error` per §3.11; hints indented                                                                                                          |
+| Impact             | `developer.whatFailed`, `developer.whatNeedsAttention` — deduped vs Failures                                                                                 |
+| Integration        | `integration.stepResults`; duration from `evidence` / timings                                                                                                |
+| Certification      | `certificate.status`, `certificate.level`, `certificate.blockers`, `certificate.summary`; maturity ladder compares achieved vs target tier                   |
+| Next actions       | `developer.nextActions` + deduped hints                                                                                                                      |
+| Debug              | `debug`, `audit` per §3.7; trace URLs/refs as returned (no REST tutorial in user docs)                                                                       |
+
 
 ### 16.3 Verdict phrase table (normative defaults)
 
 Map root `status` + optional cert to **one** headline after `Verdict:`:
 
-| Root status | Cert (if present) | Verdict line (example class) |
-|-------------|-------------------|------------------------------|
-| `ok` | `passed` | Suitable for production use |
-| `ok` | `not_passed` | Functional with certification gaps |
-| `warn` | any | Limited production use |
-| `fail` | any | Not usable / Pipeline not working / Configuration invalid (pick by `runType`: test → config; integration → pipeline; e2e → usability) |
-| `skipped` | any | Skipped (reason from `developer` or `validation.summary` if present) |
+
+| Root status | Cert (if present) | Verdict line (example class)                                                                                                          |
+| ----------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `ok`        | `passed`          | Suitable for production use                                                                                                           |
+| `ok`        | `not_passed`      | Functional with certification gaps                                                                                                    |
+| `warn`      | any               | Limited production use                                                                                                                |
+| `fail`      | any               | Not usable / Pipeline not working / Configuration invalid (pick by `runType`: test → config; integration → pipeline; e2e → usability) |
+| `skipped`   | any               | Skipped (reason from `developer` or `validation.summary` if present)                                                                  |
+
 
 Exact strings are **snapshot-tested**; tune copy in one locale table in code.
 
@@ -666,6 +738,7 @@ Next actions:
 Datasource: hubspot.deals (hubspot)
 Run: test
 Status: ✖ FAIL
+Run ID: run-f9c2b78628f0
 
 Verdict: ✖ Not usable
 
@@ -710,6 +783,7 @@ Next actions:
 Datasource: hubspot.deals (hubspot)
 Run: integration
 Status: ✖ FAIL
+Run ID: run-f9c2b78628f0
 
 Verdict: ✖ Pipeline not working
 
@@ -811,21 +885,23 @@ Percentages only if present in prior/current parsed summaries; else omit. **↑*
 
 ### 16.12 Color and symbol contract (chalk / TTY)
 
-| Meaning | Symbol | Suggested color |
-|---------|--------|-----------------|
-| OK | ✔ | green |
-| WARN | ⚠ | yellow |
-| FAIL | ✖ | red |
-| SKIPPED | ⏭ | gray |
-| Metadata / labels | (none) | gray |
-| In progress | ⏳ | yellow or cyan |
+
+| Meaning           | Symbol | Suggested color |
+| ----------------- | ------ | --------------- |
+| OK                | ✔      | green           |
+| WARN              | ⚠      | yellow          |
+| FAIL              | ✖      | red             |
+| SKIPPED           | ⏭      | gray            |
+| Metadata / labels | (none) | gray            |
+| In progress       | ⏳      | yellow or cyan  |
+
 
 **NO_COLOR** env disables colors; symbols remain.
 
 ### 16.13 Machine modes
 
-- **`--json`:** full **DatasourceTestRun** only — no UI blocks (§8).
-- **`--summary`:** §16.9 only.
+- `**--json`:** full **DatasourceTestRun** only — no UI blocks (§8).
+- `**--summary`:** §16.9 only.
 
 ---
 
@@ -846,13 +922,15 @@ Percentages only if present in prior/current parsed summaries; else omit. **↑*
 
 ### 17.2 Command surfaces (normative)
 
-Use **`aifabrix test <systemKey>`**, **`test-integration <systemKey>`**, or **`test-e2e <systemKey>`** only when resolution is **external integration** (§2.0). Examples below use `hubspot` as `systemKey`.
+Use `**aifabrix test <systemKey>`**, `**test-integration <systemKey>`**, or `**test-e2e <systemKey>**` only when resolution is **external integration** (§2.0). Examples below use `hubspot` as `systemKey`.
 
-| User intent | Command | `runType` |
-|-------------|---------|-----------|
-| System rollup (structural / trust) | `aifabrix test hubspot` *(external dispatch)* | `test` |
-| System integration health | `aifabrix test-integration hubspot` *(no `--datasource`)* | `integration` |
-| System E2E / capability overview | `aifabrix test-e2e hubspot` | `e2e` |
+
+| User intent                        | Command                                                   | `runType`     |
+| ---------------------------------- | --------------------------------------------------------- | ------------- |
+| System rollup (structural / trust) | `aifabrix test hubspot` *(external dispatch)*             | `test`        |
+| System integration health          | `aifabrix test-integration hubspot` *(no `--datasource`)* | `integration` |
+| System E2E / capability overview   | `aifabrix test-e2e hubspot`                               | `e2e`         |
+
 
 **Scoped to one datasource:** use the **datasource** command family (renders §16, not §17), e.g. `aifabrix datasource test-integration hubspot.deals` / `aifabrix datasource test-e2e hubspot.deals`.
 
@@ -868,7 +946,7 @@ Use **`aifabrix test <systemKey>`**, **`test-integration <systemKey>`**, or **`t
 6. **Confidence** — **omit** unless server provides a **single** system-level value or **all** children supply a harmonized scalar; **never** average invented percentages client-side.
 7. **Readiness** — system readiness: **Not ready** if any child `dataReadiness` is `not_ready`; **Limited use** if any `partial` and none `not_ready`; **Ready** if all `ready` (glyphs per §16.12).
 8. **Separator**
-9. **Datasources** — table: `datasourceKey`, rollup status, short readiness label. **Collapse (default):** list **only** datasources with status **warn** or **fail**; single summary line `✔ N datasource(s) fully ready` for **ok** children. **`--verbose`:** list all datasources.
+9. **Datasources** — table: `datasourceKey`, rollup status, short readiness label. **Collapse (default):** list **only** datasources with status **warn** or **fail**; single summary line `✔ N datasource(s) fully ready` for **ok** children. `**--verbose`:** list all datasources.
 10. **Weakest link** — one line: `Blocking datasource: {key}` = first by sort **fail** > **warn** > **ok**, then `datasourceKey` ASCII (§17.4).
 11. **Separator**
 12. **Key issues** — max **5** issue **groups** across the system (blocking first); each group prefixed with datasource key; **no** full step dumps.
@@ -885,15 +963,17 @@ Use **`aifabrix test <systemKey>`**, **`test-integration <systemKey>`**, or **`t
 
 Inputs: ordered set of **child** `DatasourceTestRun` reports **{R₁…Rₙ}** for datasources under `systemKey` (same `runType`). Missing child = **skipped** row in table, not silent omit (mark as “not reported”).
 
-| Derived field | Rule |
-|---------------|------|
-| `systemStatus` | **fail** if any child `status` is `fail`; else **warn** if any `warn`; else **ok** if all `ok`; else **skipped** if all `skipped`; else mixed → **warn**. |
-| Data Quality line glyphs | **Schema coverage:** **fail** if any child validation implies structural failure; **warn** if any warn and none fail; else **ok**. Same pattern for **consistency** / **reliability** from child `validation.issues` severities (heuristics snapshot-tested; no ICC/PDS/DTS strings). |
-| System readiness | From child `validation.dataReadiness` as in §17.3. |
-| **Weakest link datasource** | First child with `status` **fail**; if none, first with **warn**; sort ties by `datasourceKey`. |
-| System certification | **not_passed** if **any** child `certificate.status` is `not_passed` **or** child missing certificate when others have one (document as gap). **Tier display:** show each child’s `certificate.level`; “target” tier for system = product default (e.g. silver) until OpenAPI supplies system goal. |
-| Key issues pool | Collect blocking `Issue`s from children; dedupe §3.11 key; sort by severity then datasource key; take **5**. |
-| **Dependency hint** *(optional)* | If manifest exposes datasource dependencies, one **Dependency impact:** line (e.g. deals → companies); **omit** if unknown. |
+
+| Derived field                    | Rule                                                                                                                                                                                                                                                                                                |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `systemStatus`                   | **fail** if any child `status` is `fail`; else **warn** if any `warn`; else **ok** if all `ok`; else **skipped** if all `skipped`; else mixed → **warn**.                                                                                                                                           |
+| Data Quality line glyphs         | **Schema coverage:** **fail** if any child validation implies structural failure; **warn** if any warn and none fail; else **ok**. Same pattern for **consistency** / **reliability** from child `validation.issues` severities (heuristics snapshot-tested; no ICC/PDS/DTS strings).               |
+| System readiness                 | From child `validation.dataReadiness` as in §17.3.                                                                                                                                                                                                                                                  |
+| **Weakest link datasource**      | First child with `status` **fail**; if none, first with **warn**; sort ties by `datasourceKey`.                                                                                                                                                                                                     |
+| System certification             | **not_passed** if **any** child `certificate.status` is `not_passed` **or** child missing certificate when others have one (document as gap). **Tier display:** show each child’s `certificate.level`; “target” tier for system = product default (e.g. silver) until OpenAPI supplies system goal. |
+| Key issues pool                  | Collect blocking `Issue`s from children; dedupe §3.11 key; sort by severity then datasource key; take **5**.                                                                                                                                                                                        |
+| **Dependency hint** *(optional)* | If manifest exposes datasource dependencies, one **Dependency impact:** line (e.g. deals → companies); **omit** if unknown.                                                                                                                                                                         |
+
 
 ### 17.5 UX rules (system level)
 
@@ -1072,7 +1152,7 @@ Use:
 
 - **Progress:** reuse §3.13 / §16.10; show **datasource index** `(i/N)` when partial aggregate available.
 - **Watch:** §3.14; diff **systemStatus**, **weakest link key**, and **datasource status list** (not full §16 diff).
-- **`--summary`:** one line: `hubspot ⚠ WARN | datasources 2/3 ok | cert ✖` (+ optional confidence if present).
+- `**--summary`:** one line: `hubspot ⚠ WARN | datasources 2/3 ok | cert ✖` (+ optional confidence if present).
 
 ### 17.10 Optional enhancements
 
@@ -1086,7 +1166,7 @@ Every visible line must trace to: **(a)** a field on a child `DatasourceTestRun`
 ### 17.12 Machine output (`--json`)
 
 - **Preferred:** one JSON object as defined in OpenAPI for system scope (e.g. `systemKey`, `systemStatus`, `children: DatasourceTestRun[]`, optional rollup fields).
-- **Interim (client fan-out):** print a **JSON array** of **DatasourceTestRun**, sorted by **`datasourceKey`** ascending; print **stderr** notice `aggregate format: interim array` once. **CI** should prefer OpenAPI aggregate once available — same exit rules §3.1a.
+- **Interim (client fan-out):** print a **JSON array** of **DatasourceTestRun**, sorted by `**datasourceKey`** ascending; print **stderr** notice `aggregate format: interim array` once. **CI** should prefer OpenAPI aggregate once available — same exit rules §3.1a.
 
 ---
 
@@ -1110,16 +1190,18 @@ Code quality commands (`npm run lint:fix`, `npm run lint`) pass. Full `npm test`
 
 ### Task Completion (§14 checklist)
 
-| Item | Plan checkbox | Notes |
-|------|---------------|--------|
-| Single API module POST + poll; system fan-out | `[ ]` | `lib/api/validation-run.api.js`, `lib/utils/validation-run-*.js` present; system aggregate §17 not verified complete |
-| `datasource test` + `test-e2e <ds> <capability>` | `[ ]` | Unified datasource commands exist; positional `<capabilityKey>` vs `--capability` — verify against product intent |
-| Renderer §3.2 / §16 / §17 | `[ ]` | Partial / minimal display; full TTY spec not audited |
-| Exit matrix; `--require-cert`, `--warnings-as-errors` | `[ ]` | Verify in CLI |
-| `--json` / `--summary`; schema sync | `[ ]` | Schema sync: `lib/utils/datasource-test-run-schema-sync.js` uses `node:fs` (reduces `jest.mock('fs')` interference) |
-| `--watch` §3.14; progress; debug limits | `[ ]` | Watch: `lib/utils/datasource-validation-watch.js`; `watchCi` early return after first run; debounce 500ms |
-| `reportVersion` §3.15 | `[ ]` | Spot-check implementation |
-| Flag map §4 | `[ ]` | `lib/schema/flag-map-validation-run.json` present |
+
+| Item                                                  | Plan checkbox | Notes                                                                                                                                                                          |
+| ----------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Single API module POST + poll; system fan-out         | `[ ]`         | `lib/api/validation-run.api.js`, `lib/utils/validation-run-*.js` present; system aggregate §17 not verified complete                                                           |
+| `datasource test` + `test-e2e <ds> <capability>`      | `[ ]`         | Positional `[capabilityKey]` + deprecated `--capability` + mismatch warning implemented (`datasource-unified-test-cli.js`); still verify server contract + fixtures end-to-end |
+| Renderer §3.2 / §16 / §17                             | `[ ]`         | Partial / minimal display; full TTY spec not audited                                                                                                                           |
+| Exit matrix; `--require-cert`, `--warnings-as-errors` | `[ ]`         | Verify in CLI                                                                                                                                                                  |
+| `--json` / `--summary`; schema sync                   | `[ ]`         | Schema sync: `lib/utils/datasource-test-run-schema-sync.js` uses `node:fs` (reduces `jest.mock('fs')` interference)                                                            |
+| `--watch` §3.14; progress; debug limits               | `[ ]`         | Watch: `lib/utils/datasource-validation-watch.js`; `watchCi` early return after first run; debounce 500ms                                                                      |
+| `reportVersion` §3.15                                 | `[ ]`         | Spot-check implementation                                                                                                                                                      |
+| Flag map §4                                           | `[ ]`         | `lib/schema/flag-map-validation-run.json` present                                                                                                                              |
+
 
 **Completion (§14)**: 0 / 8 checkboxes marked done in the plan file.
 
@@ -1154,17 +1236,17 @@ Code quality commands (`npm run lint:fix`, `npm run lint`) pass. Full `npm test`
 
 1. Mark §14 items in the plan as `[x]` only when each bullet is verified against the codebase.
 2. Apply **lazy `require('./paths')`** at the start of `buildWatchTargetList` (remove top-level `paths` import from `datasource-validation-watch.js`) if watch tests still flake under multi-project Jest.
-3. Keep **`tests/lib/infrastructure/compose.test.js`** win32 case using forward slashes after `path.resolve` mock so `toDockerBindMountSource` regex matches on Linux workers.
-4. **`tests/lib/utils/dev-hosts-helper.test.js`**: `fs.rmSync` with `maxRetries` / swallowed errors reduces tmp cleanup races.
+3. Keep `**tests/lib/infrastructure/compose.test.js**` win32 case using forward slashes after `path.resolve` mock so `toDockerBindMountSource` regex matches on Linux workers.
+4. `**tests/lib/utils/dev-hosts-helper.test.js**`: `fs.rmSync` with `maxRetries` / swallowed errors reduces tmp cleanup races.
 
 ### Final validation checklist
 
-- [ ] All §14 tasks completed (plan checkboxes)
-- [x] Key implementation files exist
-- [x] Tests exist for validation-run / watch / schema sync
-- [x] Lint passes (this run)
-- [x] `npm test` green in verification run (re-run in CI; rare flakes possible in other suites)
-- [ ] Registry/docs aligned if APIs changed (Builder docs rules: no raw REST in user docs)
+- All §14 tasks completed (plan checkboxes)
+- Key implementation files exist
+- Tests exist for validation-run / watch / schema sync
+- Lint passes (this run)
+- `npm test` green in verification run (re-run in CI; rare flakes possible in other suites)
+- Registry/docs aligned if APIs changed (Builder docs rules: no raw REST in user docs)
 
 ## Implementation Validation Report
 
@@ -1173,44 +1255,44 @@ Code quality commands (`npm run lint:fix`, `npm run lint`) pass. Full `npm test`
 **Status**: ⚠️ **INCOMPLETE** (core slices implemented; several §14 deliverables still unchecked)
 
 ### Executive summary
+
 - ✅ **Code quality**: `pnpm run lint:fix` → `pnpm run lint` passed
 - ✅ **Tests**: `pnpm test` passed (full suite green in this run)
 - ✅ **Recent work implemented**:
-  - System-level `test` / `test-integration` / `test-e2e` now share the same interface (`-e`, `-v`, `-d/--debug`, `-h`)
+  - System-level `test` / `test-integration` / `test-e2e` now share the same small interface (`-e`, `-v`, `-d/--debug` as **boolean**, `-h`) — see **§2.2** vs datasource **§2.1a**
   - `--debug` for local external `test` writes logs under `integration/<systemKey>/logs/`
   - TTY color semantics improved per `layout.md` (legacy + envelope paths), and tests added for most updated surfaces
 - ⚠️ **Plan completeness**: §14 checklist items are still mostly `[ ]` and should be reviewed/checked only when each is verified end-to-end against this plan.
 
 ### Files verified (spot)
+
 - `lib/commands/datasource-unified-test-cli.js` + `lib/commands/datasource-unified-test-cli.options.js` (refactor to stay under 500 lines; lint rule satisfied)
 - `lib/utils/external-system-display.js` / `lib/utils/external-system-local-test-tty.js` (TTY UX alignment)
 - `lib/cli/setup-app.js`, `lib/cli/setup-external-system.js` (system-level CLI flag interface)
-- Tests added/updated across `tests/lib/utils/*`, `tests/lib/commands/*`, `tests/lib/external-system/*`
+- Tests added/updated across `tests/lib/utils/`*, `tests/lib/commands/*`, `tests/lib/external-system/*`
 
 ### Code quality validation (this run)
+
 - ✅ **Format**: `pnpm run lint:fix`
 - ✅ **Lint**: `pnpm run lint`
 - ✅ **Tests**: `pnpm test`
 
 ### Remaining work (task list)
+
 These map directly to the unchecked §14 items and remaining plan sections that are not yet fully delivered:
 
 1. **Renderer completeness** (plan §3.2 + §16 + §17)
-   - Datasource renderer: verify all required blocks, empty handling (§3.9), dedupe (§3.11), leakage guardrails (§3.12), RBAC surfacing (§3.10) are fully implemented and covered by fixtures.
-   - System aggregate renderer (§17): implement/verify the system-level rollup output (not just per-datasource list) and ensure it does not dump full §16 per datasource by default.
-
+  - Datasource renderer: verify all required blocks, empty handling (§3.9), dedupe (§3.11), leakage guardrails (§3.12), RBAC surfacing (§3.10) are fully implemented and covered by fixtures.
+  - System aggregate renderer (§17): implement/verify the system-level rollup output (not just per-datasource list) and ensure it does not dump full §16 per datasource by default.
 2. **Exit matrix §3.1 end-to-end** (including system aggregate §3.1a)
-   - Confirm exit codes for all combinations (ok/warn/fail + `--warnings-as-errors` + `--require-cert`), including aggregated/system mode.
-
+  - Confirm exit codes for all combinations (ok/warn/fail + `--warnings-as-errors` + `--require-cert`), including aggregated/system mode.
 3. **Machine output modes** (`--json` / `--summary`) + schema sync CI (§8.1)
-   - Ensure fixtures are AJV-valid against `lib/schema/datasource-test-run.schema.json` and schema-sync gate is part of CI (`npm run check:schema-sync` exists; ensure plan §8.1 expectations are met).
-
+  - Ensure fixtures are AJV-valid against `lib/schema/datasource-test-run.schema.json` and schema-sync gate is part of CI (`npm run check:schema-sync` exists; ensure plan §8.1 expectations are met).
 4. **Watch mode + progress UI + debug limits** (plan §3.13–§3.14, §3.7)
-   - Verify progress messaging is present/consistent across datasource commands.
-   - Verify watch mode diff behavior (§3.14) matches the plan, including `--watch-ci` exit semantics.
-
+  - Verify progress messaging is present/consistent across datasource commands.
+  - Verify watch mode diff behavior (§3.14) matches the plan, including `--watch-ci` exit semantics.
 5. **Docs/registry alignment** (builder docs rule: no REST in user docs)
-   - Ensure `docs/commands/*` and any support/registry maps reflect the *actual* CLI interfaces and behavior after the flag/interface changes.
+  - Ensure `docs/commands/`* and any support/registry maps reflect the *actual* CLI interfaces and behavior after the flag/interface changes.
 
 ## Implementation Validation Report (validate-implementation)
 
@@ -1230,7 +1312,7 @@ These map directly to the unchecked §14 items and remaining plan sections that 
 - Exit matrix §3.1 + §3.1a end-to-end (`--require-cert`, `--warnings-as-errors`) including system-aggregate mode
 - Machine outputs: `--json` / `--summary` + schema sync CI §8.1 (fixtures AJV-valid)
 - Watch/progress/debug limits: `--watch` §3.14 + progress §3.13 + debug size limits §3.7
-- Flag map §4 documented + tested
+- Flag map §4: normative **§4** / **§2.1a** tables synced to code (2026-04-16); machine-readable parity / expanded CI for `lib/schema/flag-map-validation-run.json` still pending
 
 ### File existence validation (high-signal targets)
 
@@ -1255,13 +1337,26 @@ These map directly to the unchecked §14 items and remaining plan sections that 
 
 - ✅ CommonJS module pattern maintained
 - ✅ No secrets introduced
-- ⚠️ Docs alignment still pending (Builder docs rule: no REST details in `docs/commands/*`)
+- ⚠️ User-facing CLI docs refreshed (2026-04-16) for system vs `datasource` flags, debug logs, capability positional; keep avoiding REST paths in `docs/commands/*` and re-check after further CLI churn
 
 ### Final validation checklist
 
-- [ ] All §14 tasks completed (plan checkboxes)
-- [x] Key implementation files exist
-- [x] Lint passes (this run)
-- [x] Tests pass (this run)
-- [ ] Registry/docs aligned if interfaces changed
+- All §14 tasks completed (plan checkboxes)
+- Key implementation files exist
+- Lint passes (this run)
+- Tests pass (this run)
+- Registry/docs aligned if interfaces changed
+
+## Plan changelog (CLI parameters)
+
+**2026-04-16:** Normative plan text was aligned with the **current Builder CLI** (see `lib/commands/datasource-unified-test-cli.options.js`, `lib/commands/datasource-unified-test-cli.js`, `lib/cli/setup-app.test-commands.js`, `lib/cli/setup-external-system.js`):
+
+- **§2.1a** — Datasource `test` / `test-integration` / `test-e2e`: full flag set, `**--help` option registration order**, per-command differences (`--payload`, `--no-async`, default `--timeout`), E2E-only flags, and positional `[capabilityKey]`.
+- **§2.2** — System-level `test` / `test-integration` / `test-e2e`: `**-e` / `-v` / `-d/--debug` (boolean) / `-h` only**; no `--json` / `--summary` / `--timeout` / `--watch`; `rawArgs` env override.
+- **§3.5** — `**--no-async`** only on `datasource test` + `datasource test-e2e` (not `datasource test-integration`).
+- **§4** — Flag matrix rewritten to match **§2.1a** + system-level split.
+- **§2.3** — Request wiring documents `**e2eOptions.capabilityKeys`** (`lib/datasource/unified-validation-run-body.js`).
+- **§2.2** (follow-up) — Documented **system `test-e2e`** always-async polling (`async: true` in `setup-app.test-commands.js`).
+- **Validate-tests §14 table** — Notes column for capability drill-down row updated to match current CLI behavior.
+- **User docs (`docs/commands/*`)** — `application-development.md`, `external-integration.md`, `external-integration-testing.md`: aligned with small system-level test surface; documented `datasource test --debug` → `test-*.json` logs; removed stale sample CLI transcripts from the testing guide (prefer `--json` / printed log paths for stability).
 

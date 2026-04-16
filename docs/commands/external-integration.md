@@ -6,7 +6,7 @@ Commands for creating, testing, and managing external system integrations. Comma
 
 **Implementation:** External system CLI commands (`download`, `upload`, `delete`, `test-integration`) are registered in `lib/cli/setup-external-system.js`.
 
-**Dataplane commands:** `aifabrix upload <systemKey>` and `aifabrix datasource upload <app> <file>` send configuration to the dataplane. The CLI displays a warning before doing so—ensure you are targeting the correct environment and have the required permissions (see [Permissions](permissions.md)).
+**Dataplane commands:** `aifabrix upload <systemKey>` and `aifabrix datasource upload <file-or-key>` send configuration to the dataplane. The CLI displays a warning before doing so—ensure you are targeting the correct environment and have the required permissions (see [Permissions](permissions.md)).
 
 **Resolve:** You can run `aifabrix resolve <app>` for external integrations when `integration/<systemKey>/env.template` exists. If `application.yaml` is missing, resolve still runs in **env-only** mode and writes `integration/<systemKey>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
 
@@ -451,19 +451,14 @@ Run unit tests for external system (local validation, no API calls).
 
 **Usage:**
 ```bash
-# Test entire external system
 aifabrix test hubspot
-
-# Test specific datasource only
-aifabrix test hubspot --datasource hubspot-company
-
-# Verbose output
-aifabrix test hubspot --verbose
+aifabrix test hubspot -v
+aifabrix test hubspot -e tst -d
 ```
 
 **Arguments:** `<app>` – Application name (external system).
 
-**Options:** `-d, --datasource <key>` – Test specific datasource only. `-v, --verbose` – Show detailed validation output.
+**Options:** `-e, --env <env>` – Environment label passed through for external runs (optional; omitting `-e`/`--env` keeps auth/config defaults). `-v, --verbose` – More detailed validation output. `-d, --debug` – Write a JSON debug log under `integration/<systemKey>/logs/` when the run succeeds. To validate **one** datasource key against the dataplane, use `aifabrix datasource test <datasourceKey>`.
 
 **Prerequisites:** None (fully local; no login required).
 
@@ -484,28 +479,19 @@ Run integration tests via the dataplane. Requires dataplane access (authenticate
 
 **Usage:**
 ```bash
-# Test entire external system (dataplane URL from controller)
 aifabrix test-integration hubspot
-
-# Test with environment or specific datasource
 aifabrix test-integration hubspot --env tst
-aifabrix test-integration hubspot --datasource hubspot-company
-aifabrix test-integration hubspot --payload ./test-payload.json
-
-# Verbose with custom timeout
-aifabrix test-integration hubspot --verbose --timeout 60000
-
-# Debug mode: include debug in response and write log to integration/<systemKey>/logs/
+aifabrix test-integration hubspot -v
 aifabrix test-integration hubspot --debug
 ```
 
 **Arguments:** `<app>` – Application name (external system).
 
-**Options:** `-e, --env <env>` – Environment: dev, tst, or pro (default: from aifabrix auth config). `-d, --datasource <key>` – Test specific datasource only. `-p, --payload <file>` – Custom test payload file (overrides datasource testPayload). `-v, --verbose` – Detailed output. `--debug` – Write diagnostic logs to `integration/<systemKey>/logs/` (no **`summary`** / **`full`** / **`raw`** levels on this app-wide command; those apply to **`datasource test`** / **`datasource test-integration`** / **`datasource test-e2e`**). `--timeout <ms>` – Request timeout (default: 30000). Dataplane URL is always resolved from the controller.
+**Options:** `-e, --env <env>` – Environment: dev, tst, or pro (default: from aifabrix auth config when you pass `-e` / `--env`). `-v, --verbose` – Detailed output. `-d, --debug` – Write diagnostic logs to `integration/<systemKey>/logs/` where applicable (boolean flag on this command—no **`summary`** / **`full`** / **`raw`** levels here; those optional levels exist on **`datasource test`**, **`datasource test-integration`**, and **`datasource test-e2e`**). Dataplane URL is always resolved from the controller.
 
 **Prerequisites:** Logged in (`aifabrix login`); dataplane accessible; system published or ready for testing.
 
-**Process:** (1) Resolve dataplane URL from controller. (2) For each datasource: load payload from datasource `testPayload.payloadTemplate` or `--payload` file; run the test; parse validation, field mapping, and connectivity results. (3) Display and aggregate results. Includes retry with exponential backoff for transient failures.
+**Process:** (1) Resolve dataplane URL from controller. (2) Run the integration validation flow for the external system (rollup across datasources). (3) Display aggregated results. Per-datasource payloads, custom timeouts, `--json`, and related flags belong on **`aifabrix datasource test-integration <datasourceKey>`**. Includes retry with exponential backoff for transient failures where the implementation supports it.
 
 For payload sources, response handling, and troubleshooting, see [External Integration Testing](external-integration-testing.md#integration-tests-aifabrix-test-integration).
 
@@ -522,7 +508,7 @@ Manage external data sources.
 - `validate` - Validate external datasource JSON file
 - `list` - List datasources from environment
 - `diff` - Compare two datasource configuration files
-- `deploy` - Deploy datasource to dataplane
+- `upload` - Deploy one datasource JSON to the dataplane (file path or key)
 - `test` - Run structural/policy validation for one datasource (unified dataplane validation API)
 - `test-integration` - Run integration validation for one datasource (same unified API, run type integration)
 - `test-e2e` - Run E2E validation for one datasource (same unified API, run type e2e; config, credential, sync, data, CIP)
@@ -620,7 +606,7 @@ aifabrix datasource validate ./schemas --fix --dry-run
 After validation:
 - Fix any validation errors
 - Use `aifabrix datasource diff` to compare versions
-- Upload validated datasource: `aifabrix datasource upload <app> <file>`
+- Upload validated datasource: `aifabrix datasource upload <file-or-key>`
 
 **See Also:** [Validation Commands](validation.md) - Complete validation documentation including schema details and validation flow.
 
@@ -680,7 +666,7 @@ No datasources found in environment: dev
 **Next Steps:**
 After listing:
 - Validate datasource: `aifabrix datasource validate <file>`
-- Upload datasource: `aifabrix datasource upload <app> <file>`
+- Upload datasource: `aifabrix datasource upload <file-or-key>`
 - Compare datasources: `aifabrix datasource diff <file1> <file2>`
 
 ---
@@ -768,16 +754,16 @@ Summary:
 After comparing:
 - Review dataplane-relevant changes
 - Validate new configuration: `aifabrix datasource validate <file2>`
-- Upload updated datasource: `aifabrix datasource upload <app> <file2>`
+- Upload updated datasource: `aifabrix datasource upload <file-or-key>`
 
 ---
 
 <a id="aifabrix-datasource-upload-myapp-file"></a>
-### aifabrix datasource upload <systemKey> <file>
+### aifabrix datasource upload <file-or-key>
 
 Upload datasource to dataplane. Requires dataplane access (authenticated). See [Online Commands and Permissions](permissions.md).
 
-**What:** Validates and uploads an external datasource configuration to the dataplane. Gets dataplane URL from controller, then publishes the datasource.
+**What:** Validates and uploads an external datasource configuration to the dataplane. Gets dataplane URL from controller, then publishes the datasource. The argument is the same as [`datasource validate`](#aifabrix-datasource-validate-file): a path to the datasource JSON file, or a datasource `key` that resolves under `integration/<app>/`. The file must include `systemKey`; that value is used for controller lookup and for the publish call (you do not pass system key separately on the command line).
 
 > **Warning:** Before publishing, the CLI displays a warning that configuration will be sent to the dataplane. Ensure you are targeting the correct environment and have the required permissions. See [Permissions](permissions.md).
 
@@ -787,53 +773,62 @@ This command uses the active `controller` and `environment` from `config.yaml` (
 
 **Usage:**
 ```bash
-# Upload datasource to dataplane
-aifabrix datasource upload myapp ./schemas/hubspot-deal.yaml
+# Upload by path (relative or absolute)
+aifabrix datasource upload ./integration/myapp/myapp-datasource-contacts.json
+
+# Upload by datasource key (resolved like validate)
+aifabrix datasource upload test-e2e-hubspot-users
 ```
 
 **Arguments:**
-- `<myapp>` - Application key
-- `<file>` - Path to datasource JSON file
+- `<file-or-key>` - Path to datasource JSON, or datasource `key` under `integration/<app>/`
 
 **Prerequisites:**
-- Application must be registered: `aifabrix app register <myapp>`
+- The external application for the datasource’s `systemKey` must be registered with the controller (same as for `aifabrix upload <systemKey>` / deploy).
 - Must be logged in or have credentials in secrets.local.yaml
-- Datasource file must be valid
+- Datasource file must be valid and include `systemKey`
 
 **Process:**
-1. Validates datasource file against schema
-2. Loads datasource configuration
-3. Extracts systemKey from configuration
-4. Gets authentication (device token or client credentials)
-5. Gets dataplane URL from controller
-6. Displays warning (configuration will be sent to the dataplane)
-7. Uploads datasource to the dataplane
-8. Displays results
+1. Resolves path or key to a JSON file (same rules as `datasource validate`)
+2. Validates datasource file against schema
+3. Loads datasource configuration
+4. Reads `systemKey` from configuration
+5. Gets authentication (device token or client credentials)
+6. Gets dataplane URL from controller for that application
+7. Displays warning (configuration will be sent to the dataplane)
+8. Uploads datasource to the dataplane
+9. Displays results
 
-**Output:**
-```yaml
-📋 Uploading datasource...
+**Output:** 
 
-🔍 Validating datasource file...
-✓ Datasource file is valid
-🔐 Getting authentication...
-✓ Authentication successful
-🌐 Getting dataplane URL from controller...
-✓ Dataplane URL: https://dataplane.aifabrix.dev
+```text
+Datasource upload
+Publish one datasource JSON to the dataplane
 
-🚀 Publishing datasource to dataplane...
-⚠ Configuration will be sent to the dataplane. Ensure you are targeting the correct environment and have the required permissions.
+ℹ Validating datasource file
+File: /path/to/integration/hubspot-test/hubspot-test-datasource-deal.json
+✔ Datasource file is valid.
 
-✓ Datasource published successfully!
+ℹ Resolving authentication
+✔ Authentication ready
+ℹ Resolving dataplane URL
+Dataplane: https://dataplane.aifabrix.dev
 
+Publish
+Dataplane pipeline: Configuration will be sent to the Dataplane pipeline API. …
+
+✔ Configuration published to dataplane.
+
+Result
 Datasource: hubspot-deal
 System: hubspot-test
 Environment: dev
+
+Status: ✔ OK
 ```
 
 **Issues:**
-- **"Application key is required"** → Provide application key as first argument
-- **"File path is required"** → Provide path to datasource file
+- **"File path or datasource key is required"** → Pass a path to the JSON file or a datasource `key` resolved under `integration/<app>/`
 - **"Controller URL is required"** → Run `aifabrix login` or `aifabrix auth config --set-controller <url>`
 - **"Environment is required"** → Run `aifabrix login` or `aifabrix auth config --set-environment <env>`
 - **"File not found"** → Check datasource file path is correct
@@ -850,7 +845,7 @@ After upload:
 - Run structural dataplane validation: `aifabrix datasource test <datasourceKey>` (add `--app <app>` only if needed)
 - Run integration test: `aifabrix datasource test-integration <datasourceKey>` (add `--app <app>` only if needed)
 - Run E2E test: `aifabrix datasource test-e2e <datasourceKey>` (add `--app <app>` only if needed)
-- View last E2E or integration log: `aifabrix datasource log-e2e <key>` or `aifabrix datasource log-integration <key>` (after a run with `--debug`)
+- View last E2E or integration log: `aifabrix datasource log-e2e <key>` or `aifabrix datasource log-integration <key>` (after a run with `--debug`; those commands locate **`test-e2e-*.json`** / **`test-integration-*.json`**). Structural runs write **`test-*.json`** to the same folder—the CLI prints the path; open that file directly (it is not selected by the E2E/integration log viewers, which filter on their own prefixes).
 - Check datasource status in controller dashboard
 - Monitor dataplane for datasource activity
 
@@ -880,7 +875,7 @@ aifabrix datasource test hubspot-company -a hubspot --watch
 
 **Arguments:** `<datasourceKey>` – Datasource key (e.g. hubspot-company).
 
-**Options:** `-a, --app <app>` – Integration folder (optional: resolved from cwd when inside `integration/<systemKey>/`, or when exactly one integration owns the datasource). `-e, --env <env>` – Environment: dev, tst, or pro. `-p, --payload <file>` – Optional custom payload merged into the request as `payloadTemplate`. `-v, --verbose` – Sets explain-oriented flags on the request. `--debug [level]` – Richer debug from the dataplane and an optional terminal appendix: **`summary`** (default), **`full`**, or **`raw`** (see [External Integration Testing – Debug output](external-integration-testing.md#debug-output-datasource-commands)); no appendix with `--json`. `--timeout <ms>` – Aggregate budget for the initial request and any async polling (default: 30000). `--no-async` – Do not poll; exit with an error if the server returns a partial report. `--json` – Print raw report JSON to stdout. `--summary` – Compact summary line. `--warnings-as-errors` – Exit 1 when root status is warn. `--require-cert` – Exit 2 when certificate checks are missing or not passed. **`--watch`**, **`--watch-path`**, **`--watch-application-yaml`**, **`--watch-ci`**, **`--watch-full-diff`** – Re-run when local files change; see [External Integration Testing – Watch mode](external-integration-testing.md#watch-mode-datasource-commands).
+**Options:** `-a, --app <app>` – Integration folder (optional: resolved from cwd when inside `integration/<systemKey>/`, or when exactly one integration owns the datasource). `-e, --env <env>` – Environment: dev, tst, or pro. `-p, --payload <file>` – Optional custom payload merged into the request as `payloadTemplate`. `-v, --verbose` – Sets explain-oriented flags on the request. `-d, --debug [level]` – Richer debug from the dataplane, optional terminal appendix (**`summary`** / **`full`** / **`raw`**; see [External Integration Testing – Debug output](external-integration-testing.md#debug-output-datasource-commands)), and a timestamped JSON log under **`integration/<systemKey>/logs/`** with prefix **`test-`**; no appendix with `--json`. `--timeout <ms>` – Aggregate budget for the initial request and any async polling (default: 30000). `--no-async` – Do not poll; exit with an error if the server returns a partial report. `--json` – Print raw report JSON to stdout. `--summary` – Compact summary line. `--warnings-as-errors` – Exit 1 when root status is warn. `--require-cert` – Exit 2 when certificate checks are missing or not passed. **`--watch`**, **`--watch-path`**, **`--watch-application-yaml`**, **`--watch-ci`**, **`--watch-full-diff`** – Re-run when local files change; see [External Integration Testing – Watch mode](external-integration-testing.md#watch-mode-datasource-commands).
 
 **Prerequisites:** Same deployment authentication as `test-integration`; dataplane reachable; datasource published (or otherwise resolvable for the target environment).
 
@@ -926,7 +921,7 @@ For details, see [External Integration Testing](external-integration-testing.md#
 
 Run an E2E validation job for one datasource on the dataplane (unified validation API, E2E run type). Uses the same deployment authentication as `test-integration`. See [Online Commands and Permissions](permissions.md).
 
-**What:** Runs the full E2E flow (config, credential, sync, data, CIP) orchestrated by the dataplane. By default the command starts the run asynchronously, then polls until the run completes or fails. With `-v, --verbose` the CLI shows managed record counts for the sync step (e.g. inserted/updated/deleted/totalProcessed) and a short CIP execution trace summary when the dataplane returns audit data; use `-v` also to see poll progress (e.g. number of steps completed so far). Per-step status comes from the returned report. The dataplane runs E2E steps in order: config, credential, sync, data, CIP. Credential status is validated as the second step in this sequence.
+**What:** Runs the full E2E flow (config, credential, sync, data, CIP) orchestrated by the dataplane. By default the command starts the run asynchronously, then polls until the run completes or fails. With `-v, --verbose` the CLI shows managed record counts for the sync step (e.g. inserted/updated/deleted/totalProcessed) and a short CIP execution trace summary when the dataplane returns audit data; use `-v` also to see poll progress (e.g. number of steps completed so far). Per-step status comes from the returned report. The dataplane runs E2E steps in order: config, credential, sync, data, CIP. Credential status is validated as the second step in this sequence. Human-readable lines and labels evolve with CLI releases; use `--json` when you need a stable, machine-readable envelope.
 
 **When:** End-to-end validation of a single datasource after integration runs pass; use when you need the full pipeline against real external systems (see [External Integration Testing](external-integration-testing.md#datasource-e2e-tests)).
 
@@ -941,11 +936,11 @@ aifabrix datasource test-e2e hubspot-contacts -a hubspot -e tst --debug -v
 # Sync mode (single request, no polling)
 aifabrix datasource test-e2e hubspot-contacts --app hubspot --no-async
 
-# Scope to one capability when the dataplane supports it
-aifabrix datasource test-e2e hubspot-contacts --app hubspot --capability read
+# Scope to one capability when the dataplane supports it (positional key)
+aifabrix datasource test-e2e hubspot-contacts --app hubspot read
 ```
 
-**Arguments:** `<datasourceKey>` – Datasource key (e.g. hubspot-contacts).
+**Arguments:** `<datasourceKey>` – Datasource key (e.g. hubspot-contacts). Optional **`[capabilityKey]`** – Capability drill-down when the dataplane supports it.
 
 **Options:**
 - `-a, --app <app>` – Integration folder (optional: resolved from cwd when inside `integration/<systemKey>/`, or from datasource key when exactly one integration has that datasource).
@@ -958,8 +953,8 @@ aifabrix datasource test-e2e hubspot-contacts --app hubspot --capability read
 - `--primary-key-value <value|@path>` – Primary key value, or path to a JSON file (prefix with `@`) for composite keys.
 - `--no-async` – Use sync mode: single request, no polling (useful for short runs or backward compatibility).
 - `--timeout <ms>` – Aggregate budget for the initial request and any async polling (default fifteen minutes).
-- `--capability <key>` – Optional single-capability scope when the server supports filtering the E2E run.
-- `--strict-capability-scope` – With `--capability`, exit with status 1 if the report still lists multiple capability rows (client check; see [External Integration Testing](external-integration-testing.md#datasource-e2e-tests)).
+- `--capability <key>` – Deprecated alias for **`[capabilityKey]`**; prefer the positional argument. If both are set and differ, the CLI keeps the positional value and warns.
+- `--strict-capability-scope` – When a capability drill-down is requested, exit with status **1** if the report still lists multiple capability rows (client check; see [External Integration Testing](external-integration-testing.md#datasource-e2e-tests)).
 - `--json` – Print the raw **DatasourceTestRun** JSON to stdout.
 - `--summary` – Print a compact summary line.
 - `--warnings-as-errors` – Exit with status 1 when the root status is warn.
@@ -997,7 +992,7 @@ aifabrix datasource log-e2e hubspot-contacts --app hubspot
 
 **Options:** `-a, --app <app>` – Integration folder (optional; same resolution as test-e2e). `-f, --file <path>` – Path to the log file (relative to current directory). If omitted, the latest `test-e2e-*.json` in `integration/<systemKey>/logs/` is used.
 
-**Prerequisites:** For “latest” mode: at least one E2E test run with `--debug` so a log exists in the app’s logs folder. For `--file`: the file must exist and be valid JSON.
+**Prerequisites:** For “latest” mode: at least one E2E test run with `--debug` so a **`test-e2e-*.json`** log exists in the app’s logs folder. Structural **`test-*.json`** logs from `datasource test --debug` are **not** picked as “latest” here—open them directly or pass **`--file`**. For `--file`: the file must exist and be valid JSON.
 
 ---
 

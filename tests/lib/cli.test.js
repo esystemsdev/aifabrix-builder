@@ -74,7 +74,7 @@ jest.mock('chalk', () => {
 
 // Mock other chalk-dependent packages
 jest.mock('log-symbols', () => ({
-  success: '✓',
+  success: '✔',
   error: '✖',
   warning: '⚠',
   info: 'ℹ'
@@ -177,7 +177,7 @@ describe('CLI Commands', () => {
       try {
         const { appPath, envOnly } = await paths.getResolveAppPath(appName);
         const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', false, { appPath, envOnly });
-        logger.log(`✓ Generated .env file: ${envPath}`);
+        logger.log(`✔ Generated .env file: ${envPath}`);
         if (!envOnly) {
           const result = await validate.validateAppOrFile(appName);
           validate.displayValidationResults(result);
@@ -211,7 +211,7 @@ describe('CLI Commands', () => {
       try {
         const { appPath, envOnly } = await paths.getResolveAppPath(appName);
         const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', false, { appPath, envOnly });
-        logger.log(`✓ Generated .env file: ${envPath}`);
+        logger.log(`✔ Generated .env file: ${envPath}`);
         if (!envOnly) {
           const result = await validate.validateAppOrFile(appName);
           validate.displayValidationResults(result);
@@ -239,7 +239,7 @@ describe('CLI Commands', () => {
       try {
         const { appPath, envOnly } = await paths.getResolveAppPath(appName);
         const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', false, { appPath, envOnly });
-        logger.log(`✓ Generated .env file: ${envPath}`);
+        logger.log(`✔ Generated .env file: ${envPath}`);
         // When skip-validation: validation not run (simulated by not calling validate when envOnly, or by option)
         const expectedAppPath = path.join(process.cwd(), 'builder', appName);
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', false, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
@@ -301,7 +301,7 @@ describe('CLI Commands', () => {
         const result = await generator.generateDeployJsonWithValidation(appName);
 
         if (result.success) {
-          console.log(`✓ Generated deployment JSON: ${result.path}`);
+          console.log(`✔ Generated deployment JSON: ${result.path}`);
 
           if (result.validation.warnings.length > 0) {
             console.log('\n⚠  Warnings:');
@@ -314,7 +314,7 @@ describe('CLI Commands', () => {
         }
 
         expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
-        expect(console.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
+        expect(console.log).toHaveBeenCalledWith(`✔ Generated deployment JSON: ${expectedJsonPath}`);
         expect(process.exit).not.toHaveBeenCalled();
       } catch (error) {
         expect(true).toBe(false); // Should not reach here
@@ -344,7 +344,7 @@ describe('CLI Commands', () => {
         const result = await generator.generateDeployJsonWithValidation(appName);
 
         if (result.success) {
-          console.log(`✓ Generated deployment JSON: ${result.path}`);
+          console.log(`✔ Generated deployment JSON: ${result.path}`);
 
           if (result.validation.warnings.length > 0) {
             console.log('\n⚠  Warnings:');
@@ -379,7 +379,7 @@ describe('CLI Commands', () => {
         const result = await generator.generateDeployJsonWithValidation(appName);
 
         if (result.success) {
-          console.log(`✓ Generated deployment JSON: ${result.path}`);
+          console.log(`✔ Generated deployment JSON: ${result.path}`);
         } else {
           console.log('✖ Validation failed:');
           result.validation.errors.forEach(error => console.log(`   • ${error}`));
@@ -1223,7 +1223,7 @@ describe('CLI Commands', () => {
           try {
             const { appPath, envOnly } = await paths.getResolveAppPath(appName);
             const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', undefined, { appPath, envOnly });
-            logger.log(`✓ Generated .env file: ${envPath}`);
+            logger.log(`✔ Generated .env file: ${envPath}`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'resolve');
             process.exit(1);
@@ -1233,7 +1233,7 @@ describe('CLI Commands', () => {
         await action(appName);
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', undefined, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
         expect(process.exit).not.toHaveBeenCalled();
       });
 
@@ -1248,7 +1248,7 @@ describe('CLI Commands', () => {
           try {
             const { appPath, envOnly } = await paths.getResolveAppPath(appName);
             const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', undefined, { appPath, envOnly });
-            logger.log(`✓ Generated .env file: ${envPath}`);
+            logger.log(`✔ Generated .env file: ${envPath}`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'resolve');
             process.exit(1);
@@ -1286,7 +1286,7 @@ describe('CLI Commands', () => {
           try {
             const result = await generator.generateDeployJsonWithValidation(appName, options);
             if (result.success) {
-              logger.log(`✓ Generated deployment JSON: ${result.path}`);
+              logger.log(`✔ Generated deployment JSON: ${result.path}`);
 
               if (result.validation.warnings.length > 0) {
                 logger.log('\n⚠  Warnings:');
@@ -1305,7 +1305,7 @@ describe('CLI Commands', () => {
 
         await action(appName, {});
         expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName, {});
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated deployment JSON: ${expectedJsonPath}`);
         expect(process.exit).not.toHaveBeenCalled();
       });
 
@@ -1320,7 +1320,7 @@ describe('CLI Commands', () => {
           try {
             const result = await generator.generateDeployJsonWithValidation(appName);
             if (result.success) {
-              logger.log(`✓ Generated deployment JSON: ${result.path}`);
+              logger.log(`✔ Generated deployment JSON: ${result.path}`);
             } else {
               logger.log('✖ Validation failed:');
               result.validation.errors.forEach(error => logger.log(`   • ${error}`));
@@ -1497,7 +1497,7 @@ describe('CLI Commands', () => {
           try {
             const { appPath, envOnly } = await paths.getResolveAppPath(appName);
             const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', options.force, { appPath, envOnly });
-            logger.log(`✓ Generated .env file: ${envPath}`);
+            logger.log(`✔ Generated .env file: ${envPath}`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'resolve');
             process.exit(1);
@@ -1507,7 +1507,7 @@ describe('CLI Commands', () => {
         await action(appName, { force: true });
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', true, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
         expect(process.exit).not.toHaveBeenCalled();
       });
 
@@ -1521,7 +1521,7 @@ describe('CLI Commands', () => {
           try {
             const { appPath, envOnly } = await paths.getResolveAppPath(appName);
             const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', options.force, { appPath, envOnly });
-            logger.log(`✓ Generated .env file: ${envPath}`);
+            logger.log(`✔ Generated .env file: ${envPath}`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'resolve');
             process.exit(1);
@@ -1531,7 +1531,7 @@ describe('CLI Commands', () => {
         await action(appName, { force: false });
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', false, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
         expect(process.exit).not.toHaveBeenCalled();
       });
     });
@@ -1558,7 +1558,7 @@ describe('CLI Commands', () => {
           try {
             const result = await generator.generateDeployJsonWithValidation(appName);
             if (result.success) {
-              logger.log(`✓ Generated deployment JSON: ${result.path}`);
+              logger.log(`✔ Generated deployment JSON: ${result.path}`);
 
               if (result.validation.warnings && result.validation.warnings.length > 0) {
                 logger.log('\n⚠  Warnings:');
@@ -1608,7 +1608,7 @@ describe('CLI Commands', () => {
           try {
             const result = await generator.generateDeployJsonWithValidation(appName);
             if (result.success) {
-              logger.log(`✓ Generated deployment JSON: ${result.path}`);
+              logger.log(`✔ Generated deployment JSON: ${result.path}`);
 
               if (result.validation.warnings && result.validation.warnings.length > 0) {
                 logger.log('\n⚠  Warnings:');
@@ -1628,7 +1628,7 @@ describe('CLI Commands', () => {
         };
 
         await action(appName);
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated deployment JSON: ${expectedJsonPath}`);
         expect(logger.log).toHaveBeenCalledWith('\n⚠  Warnings:');
         expect(logger.log).toHaveBeenCalledWith('   • Health check path should start with /');
         expect(process.exit).not.toHaveBeenCalled();
@@ -1971,7 +1971,7 @@ describe('CLI Commands', () => {
 
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', true, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
       });
 
       it('should execute resolve command handler without force option via setupCommands', async() => {
@@ -1989,7 +1989,7 @@ describe('CLI Commands', () => {
 
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', undefined, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
       });
 
       it('should handle resolve command handler error via setupCommands', async() => {
@@ -2035,7 +2035,7 @@ describe('CLI Commands', () => {
         await handler(appName);
 
         expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName, undefined);
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated deployment JSON: ${expectedJsonPath}`);
         expect(logger.log).toHaveBeenCalledWith('\n⚠  Warnings:');
         expect(logger.log).toHaveBeenCalledWith('   • Warning 1');
         expect(logger.log).toHaveBeenCalledWith('   • Warning 2');
@@ -2135,7 +2135,7 @@ describe('CLI Commands', () => {
         await handler(appName, {});
 
         expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName, {});
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated deployment JSON: ${expectedJsonPath}`);
         expect(logger.log).not.toHaveBeenCalledWith('\n⚠  Warnings:');
       });
     });
@@ -2430,7 +2430,7 @@ describe('CLI Commands', () => {
 
         expect(config.setDeveloperId).toHaveBeenCalledWith(1);
         expect(process.env.AIFABRIX_DEVELOPERID).toBe('1');
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Developer ID set to 1'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Developer ID set to 1'));
         expect(infra.startInfra).toHaveBeenCalledWith(1, expect.objectContaining({ traefik: false }));
       });
 
@@ -2492,7 +2492,7 @@ describe('CLI Commands', () => {
         await handler({ traefik: true });
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ traefik: true }));
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Traefik enabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Traefik enabled and saved to config'));
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: true }));
       });
 
@@ -2506,7 +2506,7 @@ describe('CLI Commands', () => {
         await handler({ traefik: false }); // --no-traefik sets options.traefik to false
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ traefik: false }));
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Traefik disabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Traefik disabled and saved to config'));
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: false }));
       });
 
@@ -2520,8 +2520,8 @@ describe('CLI Commands', () => {
         await handler({ pgAdmin: true, redisAdmin: true });
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ pgadmin: true, redisCommander: true }));
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ pgAdmin enabled and saved to config'));
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Redis Commander enabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ pgAdmin enabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Redis Commander enabled and saved to config'));
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({
           traefik: false,
           pgadmin: true,
@@ -2539,8 +2539,8 @@ describe('CLI Commands', () => {
         await handler({ pgAdmin: false, redisAdmin: false });
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ pgadmin: false, redisCommander: false }));
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ pgAdmin disabled and saved to config'));
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Redis Commander disabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ pgAdmin disabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Redis Commander disabled and saved to config'));
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({
           pgadmin: false,
           redisCommander: false
@@ -2826,7 +2826,7 @@ describe('CLI Commands', () => {
         expect(config.setDeveloperId).toHaveBeenCalledWith('1');
         expect(process.env.AIFABRIX_DEVELOPERID).toBe('1');
         expect(devConfig.getDevPorts).toHaveBeenCalledWith(1);
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Developer ID set to 1'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Developer ID set to 1'));
         expect(logger.log).toHaveBeenCalledWith(devShowHeader);
         expect(logger.log).toHaveBeenCalledWith('👤 Developer');
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('ID', '1'));
@@ -2894,7 +2894,7 @@ describe('CLI Commands', () => {
         expect(config.setDeveloperId).toHaveBeenCalledWith('01');
         expect(process.env.AIFABRIX_DEVELOPERID).toBe('01');
         expect(devConfig.getDevPorts).toHaveBeenCalledWith(1);
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Developer ID set to 01'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Developer ID set to 01'));
         expect(logger.log).toHaveBeenCalledWith(devShowHeader);
         expect(logger.log).toHaveBeenCalledWith(paddedDevRow('ID', '01'));
         expect(config.getAifabrixSecretsPath).toHaveBeenCalled();
@@ -3135,7 +3135,7 @@ describe('CLI Commands', () => {
         await handler('json');
 
         expect(config.setFormat).toHaveBeenCalledWith('json');
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Format set to json'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Format set to json'));
       });
 
       it('should execute dev set-format yaml via setupCommands', async() => {
@@ -3204,7 +3204,7 @@ describe('CLI Commands', () => {
 
         expect(config.setUseEnvironmentScopedResources).toHaveBeenCalledWith(true);
         expect(logger.log).toHaveBeenCalledWith(
-          chalk.green('✓ Environment-scoped resources activated in ~/.aifabrix/config.yaml')
+          chalk.green('✔ Environment-scoped resources activated in ~/.aifabrix/config.yaml')
         );
       });
 

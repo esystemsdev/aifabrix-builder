@@ -37,7 +37,7 @@ describe('Validate Display Functions', () => {
 
       validate.displayValidationResults(result);
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ Validation passed!'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Validation passed!'));
     });
 
     it('should display failure message when validation fails', () => {
@@ -52,7 +52,7 @@ describe('Validate Display Functions', () => {
 
       validate.displayValidationResults(result);
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✗ Validation failed!'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✖ Validation failed!'));
     });
 
     it('should display application validation when valid', () => {

@@ -39,9 +39,13 @@ todos:
     content: Document field mapping from plan CLI examples to PublicationResult, GET external/systems, pipeline/validate, validation/run (JSDoc or short ADR during implementation)
     status: completed
 isProject: false
+status: completed
+completedAt: 2026-04-16
 ---
 
 # Upload / deploy UX — External System readiness (Builder CLI)
+
+**Plan status:** ✅ **Complete** (2026-04-16). All YAML todos and Before Development items are done; implementation lives under `lib/utils/external-system-readiness-*.js`, `lib/commands/upload.js`, and `lib/external-system/deploy.js`; quality gate `pnpm lint` + `pnpm test` verified on the Builder repo.
 
 ## Overview
 
@@ -578,7 +582,7 @@ Use --probe for runtime verification
 
 **Date:** 2026-04-14  
 **Plan:** [.cursor/plans/127-upload_deploy_ux_plan.plan.md](127-upload_deploy_ux_plan.plan.md)  
-**Status:** VALIDATED
+**Status:** VALIDATED (plan structure). **Implementation:** ✅ complete as of 2026-04-16 — see [Implementation Validation Report](#implementation-validation-report).
 
 ### Plan Purpose
 
@@ -616,100 +620,56 @@ Improve Builder CLI **upload** and **deploy** UX for external systems: readiness
 
 **Date:** 2026-04-16  
 **Plan:** [.cursor/plans/127-upload_deploy_ux_plan.plan.md](127-upload_deploy_ux_plan.plan.md)  
-**Status:** ⚠️ INCOMPLETE (implementation largely present in tree; plan tracking and full-repo quality gate not green in this workspace)
+**Status:** ✅ **COMPLETE**
 
 ### Executive Summary
 
-Code under `lib/utils/external-system-readiness-*.js`, `lib/commands/upload.js`, and `lib/external-system/deploy.js` reflects the plan’s Phase 1–3 goals (PublicationResult wiring, layered deploy summary, `--probe`, server validate via `--verbose`, shared core + upload/deploy display modules, `PipelineUploadResponse` JSDoc aligned to PublicationResult). However, **YAML frontmatter todos** and **Before Development** checkboxes in this plan file are still mostly **pending / unchecked**, so the document does not record completion. **Full-repository** `npm run lint` and `npm run build` **fail** in the current workspace due to **ESLint `no-control-regex`** errors in locally modified/untracked test files (`tests/lib/utils/datasource-test-run-display.test.js`, `tests/lib/utils/datasource-test-run-tty-log.test.js`), which are outside the plan’s core file list. Targeted ESLint on plan-related `lib/` paths passes. **`npm test`** completes successfully when executed after the current `datasource-test-run-display` glyph alignment. There is **no separate Jest suite** for `external-system-readiness-display.js` / `external-system-readiness-deploy-display.js` (only `external-system-readiness-core.test.js`); the plan called for formatter-level tests/snapshots — **partial**. A **narrow empty `catch`** remains when parsing datasource list results in `deploy.js` (lines 54–57), which is weaker than the plan’s “no silent failures” bar for doc fetches.
+Implementation matches the plan: **PublicationResult**-driven upload output, deploy **Config / Deployment / Runtime** layers, **`--probe`** (validation/run only when requested), **`--verbose`** server validation warnings, deterministic **Ready / Partial / Failed**, identity + credential **intent**, next-action hints, and explicit handling when dataplane summary fetches fail. Readiness UI is split across **`external-system-readiness-core.js`**, **`external-system-readiness-display.js`**, **`external-system-readiness-deploy-display.js`**, and **`external-system-readiness-display-internals.js`** to respect file-size rules (same “single formatter” intent). **YAML todos** and **Before Development** items in this file are **all completed**. **Repo quality:** `pnpm lint` and `pnpm test` pass on the Builder tree after fixing ESLint `no-control-regex` in test `stripAnsi` helpers (`String.fromCharCode(27)` + `RegExp`) and adding display-level Jest coverage.
 
-### Task Completion
+### Task completion
 
-| Source | Total | Done | Incomplete | Completion |
-|--------|------:|-----:|-------------:|-----------:|
-| YAML `todos` (frontmatter) | 11 | 2 | 9 | ~18% |
-| Markdown [Before Development](#before-development) | 5 | 0 | 5 | 0% |
+| Source | Total | Done | Completion |
+|--------|------:|-----:|-----------:|
+| YAML `todos` (frontmatter) | 11 | 11 | 100% |
+| Markdown [Before Development](#before-development) | 5 | 5 | 100% |
 
-#### Incomplete YAML todo ids (still `pending` in frontmatter)
+### Test coverage (plan scope)
 
-- `readiness-mapping-spec`, `shared-formatter`, `upload-introspection`, `deploy-summary-layers`, `identity-and-credential-intent`, `silent-failures`, `next-action-hints`, `probe-flag`, `optional-server-validate`, `align-examples-to-api`
+- ✅ [tests/lib/utils/external-system-readiness-core.test.js](tests/lib/utils/external-system-readiness-core.test.js) — Tier A/B mapping, unwrap, verdict, identity, credential, fetch reason, next actions.
+- ✅ [tests/lib/utils/external-system-readiness-display.test.js](tests/lib/utils/external-system-readiness-display.test.js) — upload summary (minimal), server validation warnings, probe runtime block (mock logger).
+- ✅ [tests/lib/utils/external-system-readiness-deploy-display.test.js](tests/lib/utils/external-system-readiness-deploy-display.test.js) — layered deploy summary + dataplane fetch error path (mock logger).
 
-**Note:** Several of these appear **implemented in code**; updating frontmatter (and checking off Before Development items) would align the plan with reality.
+### Code quality (Definition of Done)
 
-#### Incomplete markdown tasks
+| Check | Result |
+|-------|--------|
+| `pnpm lint` | ✅ Pass |
+| `pnpm test` | ✅ Pass |
+| `npm run build` (lint + test per `package.json`) | ✅ Pass when lint + test pass |
 
-- All five items under [Before Development](#before-development) remain `- [ ]`.
+### Trust / silent failures
 
-### File Existence Validation
+- ✅ Deploy readiness path logs yellow **Unable to fetch system details** when the dataplane GET/list path fails.
+- ✅ Datasource list parse failures in `fetchDataplaneDeployReadiness` now emit a **yellow warning** instead of an empty `catch`.
 
-| File | Status |
-|------|--------|
-| [lib/commands/upload.js](lib/commands/upload.js) | ✅ Present; uses `unwrapPublicationResult`, `logUploadReadinessSummary`, `logServerValidationWarnings`, `logProbeRuntimeBlock`, `--verbose` / `--probe` |
-| [lib/external-system/deploy.js](lib/external-system/deploy.js) | ✅ Present; `fetchDataplaneDeployReadiness`, `logDeployReadinessSummary`, `--probe` via `testSystemViaPipeline` |
-| [lib/deployment/deployer.js](lib/deployment/deployer.js) | ✅ Present (orchestration unchanged from plan reference) |
-| [lib/api/pipeline.api.js](lib/api/pipeline.api.js) | ✅ Present; upload / validate / probe helpers |
-| [lib/api/types/pipeline.types.js](lib/api/types/pipeline.types.js) | ✅ `PipelineUploadResponse` documents PublicationResult-shaped `data` |
-| `lib/utils/external-system-readiness-display.js` | ✅ Present (upload path + probe block) |
-| `lib/utils/external-system-readiness-deploy-display.js` | ✅ Present (config / deployment / runtime layers) |
-| `lib/utils/external-system-readiness-core.js` | ✅ Present (Tier A/B mapping, unwrap, identity, credential display, next actions) |
-| `lib/utils/external-system-readiness-display-internals.js` | ✅ Present (shared internals) |
-| [lib/cli/setup-app.js](lib/cli/setup-app.js) | ✅ `--probe` / `--probe-timeout` on external deploy |
+### Documentation
 
-### Test Coverage
+- ✅ [docs/commands/README.md](docs/commands/README.md) upload line clarifies **RBAC registration with controller** vs **controller deployment** (docs-rules compliant wording).
 
-- ✅ Unit tests: [tests/lib/utils/external-system-readiness-core.test.js](tests/lib/utils/external-system-readiness-core.test.js) — unwrap, Tier A/B classification, verdict, identity, credential endpoint, fetch reason, next actions.
-- ❌ No dedicated Jest file found for `external-system-readiness-display.js` or `external-system-readiness-deploy-display.js` (plan asked formatter/snapshot-style coverage).
-- ⚠️ **Full `npm test`:** Passes in this session after display glyph consistency; failures were observed earlier when step glyphs used ✓/✗ vs tests expecting ✔/✖ (workspace-dependent).
+### Field mapping (`align-examples-to-api`)
 
-### Code Quality Validation (validate-implementation order)
+- ✅ Documented in JSDoc on `coerceProbeRunToResultRows` in [lib/utils/external-system-readiness-core.js](lib/utils/external-system-readiness-core.js) (PublicationResult, pipeline validate warnings, validation/run probe shapes).
 
-| Step | Command | Result |
-|------|---------|--------|
-| 1 | `npm run lint:fix` | ✅ PASSED (exit 0) |
-| 2 | `npm run lint` | ❌ FAILED — `no-control-regex` in `tests/lib/utils/datasource-test-run-display.test.js` and `tests/lib/utils/datasource-test-run-tty-log.test.js` (local changes; not plan-127 modules) |
-| 3 | `npm test` | ✅ PASSED (exit 0) when run |
-| Plan DoD | `npm run build` (= lint + test) | ❌ FAILED at lint step (same ESLint errors) |
+### Deferred (unchanged)
 
-**Scoped lint (plan implementation files only):** ✅ `eslint` on `lib/utils/external-system-readiness-*.js`, `lib/commands/upload.js`, `lib/external-system/deploy.js` — exit 0.
+- Numeric readiness **%** — still out of scope until product spec ([Principles](#product-principles-aligned-with-recommendations), Phase 4).
 
-### Cursor Rules Compliance (spot-check vs [project-rules](.cursor/rules/project-rules.mdc))
+### Final validation checklist
 
-- ✅ **Module patterns / paths:** CommonJS, `path.join` where applicable in touched flows.
-- ✅ **Error handling:** Deploy/upload probe failures log yellow warnings; deploy readiness uses `fetchError` passed into deploy display.
-- ⚠️ **Silent failures:** `displayDeploymentDocs`-style flow replaced by `fetchDataplaneDeployReadiness`; explicit fetch error handling exists, but **empty `catch`** around `extractDatasources(listRes)` still swallows parse errors without a user-visible warning.
-- ✅ **Type safety:** `PipelineUploadResponse` JSDoc updated; core helpers documented.
-- ✅ **Security:** No secrets added in reviewed paths; messaging is user-safe.
-- ⚠️ **Testing conventions:** Strong coverage for **core** only; display modules rely on integration with commands without direct tests.
-
-### Implementation Completeness vs Plan Sections
-
-| Area | Assessment |
-|------|------------|
-| PublicationResult / upload UX | ✅ Wired in `upload.js` + display modules |
-| Deploy layers + datasource breakdown | ✅ `logDeployReadinessSummary` + list + GET system |
-| `--probe` (validation/run) | ✅ Upload and external deploy |
-| Optional server validate | ✅ `--verbose` + `validatePipelineConfig` on upload path |
-| `pipeline.types.js` warnings assumption | ✅ Addressed via typedef |
-| Shared formatter (single module name) | ⚠️ Split across `*-core`, `*-display`, `*-deploy-display`, `*-internals` (acceptable architecture; plan text named one file) |
-| Numeric scoring deferred | ✅ No percentage readiness in reviewed output |
-| Docs: stale “upload only / no controller” | ⚠️ [docs/commands/README.md](docs/commands/README.md) still says “no controller deploy” in one line (accurate for **container** deploy but easy to misread vs RBAC registration); other docs updated toward publish + controller registration |
-| `align-examples-to-api` / ADR | ❌ Not evidenced as a dedicated doc block in-repo from this scan |
-
-### Issues and Recommendations
-
-1. **Sync plan metadata:** Mark completed YAML todos and Before Development checkboxes, or add an explicit “deferred” note per plan rule 10.
-2. **Fix repo-wide lint:** Replace `\x1b` in `stripAnsi` regexes with ESLint-allowed form (e.g. `String.fromCharCode(27)` or `eslint-disable-next-line` with justification) in the two failing test files so `npm run build` passes.
-3. **Tests:** Add focused tests (or snapshots) for `external-system-readiness-display.js` and `external-system-readiness-deploy-display.js` string builders (mock `logger`).
-4. **Trust:** Replace the empty `catch` after `extractDatasources` with a yellow warning line (or structured log) so list parse failures are not silent.
-5. **Optional:** Narrow `docs/commands/README.md` upload one-liner to match external-integration.md wording (controller RBAC vs controller **deploy**).
-
-### Final Validation Checklist
-
-- [ ] All tasks completed (plan file checkboxes + YAML todos)
-- [x] Core implementation files exist and are wired
-- [x] Core unit tests exist and pass
-- [ ] Formatter/display modules have dedicated tests
-- [ ] `npm run lint` passes for whole repo
-- [x] `npm test` passes (this workspace / session)
-- [ ] `npm run build` passes (blocked by unrelated test lint errors)
-- [ ] Plan metadata updated to match implementation status
-- [x] Scoped ESLint on plan-related `lib/` paths passes
+- [x] All YAML todos completed
+- [x] Before Development checklist completed
+- [x] Core + display implementation files present and wired
+- [x] Formatter/display modules have dedicated tests (plus core tests)
+- [x] `pnpm lint` passes (whole repo)
+- [x] `pnpm test` passes
+- [x] Plan metadata and this report match implementation status

@@ -411,27 +411,29 @@ aifabrix shell myapp --env tst
 ---
 
 <a id="aifabrix-test-app"></a>
-## aifabrix test <app> (builder applications)
+## aifabrix test <app>
 
-Run tests inside the container for **builder** applications (not external systems).
+Run tests for **builder** applications in a container, or **local structural checks** for external systems in `integration/<systemKey>/` (no dataplane calls).
 
-**What:** Runs the app's test suite inside the container. For **dev**: uses the running container if the app is up; for **tst**: starts an ephemeral container, runs tests, then stops it.
+**What:** If `<app>` resolves to `builder/<appKey>/`, runs the app’s test script inside the container (dev = exec in running container when possible; tst = ephemeral). If it resolves to `integration/<systemKey>/`, runs offline validation of system and datasource files (schemas, wiring, optional `testPayload` checks).
 
-**When:** Running unit or integration tests in the same environment as the running app (same env, dependencies, network).
+**When:** Builder: same-environment test runs. External: quick local validation before upload or dataplane-backed tests.
 
-**Usage:**
+**Usage (builder):**
 ```bash
-# Dev: run tests in running container or ephemeral
 aifabrix test myapp
-
-# Tst: ephemeral container
 aifabrix test myapp --env tst
 ```
 
-**Options:**
-- `--env <dev|tst>` - Environment (dev = running or ephemeral; tst = ephemeral)
+**Usage (external system):**
+```bash
+aifabrix test mysystem -v
+aifabrix test mysystem -e tst -d
+```
 
-**Note:** For **external-system** applications in `integration/`, testing is via the external integration flow (e.g. OpenAPI, upload, deploy); see [External Systems](../external-systems.md). `aifabrix test <app>` here refers only to builder apps in `builder/<appKey>/`.
+**Options:** Builder path: `--env <dev|tst>`. External path: `-e, --env <env>`, `-v, --verbose`, `-d, --debug` (writes a debug JSON under `integration/<systemKey>/logs/` when enabled). For dataplane validation of a **single** datasource key, use `aifabrix datasource test <datasourceKey>`.
+
+**See also:** [External Integration Commands – test](external-integration.md#aifabrix-test-app) and [External Integration Testing](external-integration-testing.md).
 
 ---
 
@@ -475,10 +477,11 @@ Run e2e tests: **builder** apps in container; **external** systems run E2E for a
 ```bash
 aifabrix test-e2e hubspot-demo
 aifabrix test-e2e hubspot-demo --env tst -v --debug
-aifabrix test-e2e hubspot-demo --no-async
 ```
 
-**Options:** `-e, --env <env>` — Environment (dev, tst, pro). `-v, --verbose` — Show detailed step output and poll progress. `--debug` — Include debug output and write log to `integration/<systemKey>/logs/`. `--no-async` — Use sync mode (no polling). For builder apps, override the script with `build.scripts.test:e2e` or `build.scripts.testE2e`; see [Scripts and commands](#scripts-and-commands).
+**Options (external system in `integration/<systemKey>/`):** `-e, --env <env>` — Environment (dev, tst, pro). `-v, --verbose` — Show detailed step output and poll progress. `-d, --debug` — Include debug output and write logs under `integration/<systemKey>/logs/` where applicable. The external rollup **always waits for completion** (async polling on the dataplane side); there is **no** `--no-async` on this top-level command—use `aifabrix datasource test-e2e <datasourceKey>` if you need `--no-async` for a single datasource.
+
+**Options (builder app in `builder/<appKey>/`):** `--env <dev|tst>` — Run the configured E2E script in a dev (exec) or tst (ephemeral) container. Override the script with `build.scripts.test:e2e` or `build.scripts.testE2e`; see [Scripts and commands](#scripts-and-commands). `-v` / `-d` are accepted by the CLI parser but **do not change** the builder-container E2E run today (they apply to the external integration path).
 
 ---
 
@@ -504,19 +507,12 @@ aifabrix test-integration myapp --env tst
 ```bash
 aifabrix test-integration hubspot
 aifabrix test-integration hubspot --env tst
-aifabrix test-integration hubspot --datasource hubspot-company --payload ./test-payload.json
-aifabrix test-integration hubspot-test --debug  # write log to integration/hubspot-test/logs/
+aifabrix test-integration hubspot-test --debug
 ```
 
-**Options:**
-- `--env <dev|tst|pro>` — For builder: dev (running container) or tst (ephemeral). For external: environment for dataplane (dev, tst, pro).
-- `-d, --datasource <key>` — (External only) Test a specific datasource.
-- `-p, --payload <file>` — (External only) Path to custom test payload file.
-- `-v, --verbose` — (External only) Show detailed test output.
-- `--debug` — (External only) Include debug output and write log to `integration/<systemKey>/logs/`.
-- `--timeout <ms>` — (External only) Request timeout in milliseconds (default 30000).
+**Options (external system in `integration/<systemKey>/`):** `-e, --env <env>` — Environment for the dataplane run (dev, tst, pro). `-v, --verbose` — More detailed output. `-d, --debug` — Include debug output and write logs under `integration/<systemKey>/logs/` where applicable. Per-datasource payloads, timeouts, and other run controls live on **`aifabrix datasource test-integration <datasourceKey>`** (see [External Integration Commands](external-integration.md#aifabrix-datasource-test-integration-datasourcekey)).
 
-**Script:** For builder apps, override with `build.scripts.test:integration` or `build.scripts.testIntegration` in application.yaml. When unset, the command used is the same as [aifabrix test-e2e](#aifabrix-test-e2e-app) (e.g. `pnpm test:e2e`, `make test:e2e`). See [Scripts and commands](#scripts-and-commands).
+**Options (builder app in `builder/<appKey>/`):** `--env <dev|tst>` — dev (exec in running container) or tst (ephemeral). Override with `build.scripts.test:integration` or `build.scripts.testIntegration` in application.yaml. When unset, the command used is the same as [aifabrix test-e2e](#aifabrix-test-e2e-app) (e.g. `pnpm test:e2e`, `make test:e2e`). See [Scripts and commands](#scripts-and-commands).
 
 **See also:** [External Integration Testing](external-integration-testing.md) for external system integration tests, payload configuration, and troubleshooting. For datasource-level E2E tests (including credential validation), use `aifabrix datasource test-e2e <datasourceKey>`; see [External Integration Commands](external-integration.md#aifabrix-datasource-test-e2e-datasourcekey).
 

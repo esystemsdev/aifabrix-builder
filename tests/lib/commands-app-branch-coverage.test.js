@@ -346,13 +346,13 @@ describe('Application Commands Branch Coverage Tests', () => {
       );
 
       response.data.forEach((app) => {
-        const hasPipeline = app.configuration?.pipeline?.isActive ? '✓' : '✗';
+        const hasPipeline = app.configuration?.pipeline?.isActive ? '✔' : '✖';
         if (app.key === 'app1') {
-          expect(hasPipeline).toBe('✓');
+          expect(hasPipeline).toBe('✔');
         } else if (app.key === 'app2') {
-          expect(hasPipeline).toBe('✗');
+          expect(hasPipeline).toBe('✖');
         } else if (app.key === 'app3') {
-          expect(hasPipeline).toBe('✗');
+          expect(hasPipeline).toBe('✖');
         }
       });
     });

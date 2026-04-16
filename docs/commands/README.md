@@ -93,13 +93,13 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix download <systemKey>`](external-integration.md#aifabrix-download-system-key) - Pull external system from dataplane into `integration/<key>/`
   - [`aifabrix upload <systemKey>`](external-integration.md#aifabrix-upload-system-key) - Validate and publish external system to dataplane; registers RBAC with controller (does not trigger controller deployment; promote via deploy)
   - [`aifabrix delete <systemKey>`](external-integration.md#aifabrix-delete-system-key) - Remove external system and datasources from dataplane
-  - [`aifabrix test <app> [--env dev|tst]`](external-integration.md#aifabrix-test-app) - Unit tests (external: local validation; builder: in container)
-  - [`aifabrix test-integration <app> [--env dev|tst] [--debug]`](external-integration.md#aifabrix-test-integration-app) - Integration tests: builder in container; external via dataplane. `--debug` writes logs to `integration/<systemKey>/logs/`
+  - [`aifabrix test <app>`](external-integration.md#aifabrix-test-app) - Unit tests (external: local validation; builder: in-container tests with `--env dev|tst`)
+  - [`aifabrix test-integration <app>`](external-integration.md#aifabrix-test-integration-app) - Integration tests: builder in container; external via dataplane (`-e`, `-v`, `-d` / `--debug` on external path; per-datasource flags on `datasource test-integration`)
   - [`aifabrix datasource`](external-integration.md#aifabrix-datasource) - Datasource JSON: validate, list, deploy, test, logs (`aifabrix datasource --help`)
     - [`aifabrix datasource validate <file>`](external-integration.md#aifabrix-datasource-validate-file) - Validate datasource JSON file
     - [`aifabrix datasource list`](external-integration.md#aifabrix-datasource-list) - List datasources for environment in config
     - [`aifabrix datasource diff <file1> <file2>`](external-integration.md#aifabrix-datasource-diff-file1-file2) - Diff two datasource JSON files
-    - [`aifabrix datasource upload <systemKey> <file>`](external-integration.md#aifabrix-datasource-upload-myapp-file) - Deploy datasource file to dataplane
+    - [`aifabrix datasource upload <file-or-key>`](external-integration.md#aifabrix-datasource-upload-myapp-file) - Deploy one datasource JSON to the dataplane (path or key; `systemKey` in file)
     - [`aifabrix datasource test <datasourceKey>`](external-integration.md#aifabrix-datasource-test-datasourcekey) - Structural/policy validation run for one datasource (unified dataplane API, run type test)
     - [`aifabrix datasource test-integration <datasourceKey>`](external-integration.md#aifabrix-datasource-test-integration-datasourcekey) - Integration validation run for one datasource (unified dataplane API)
     - [`aifabrix datasource test-e2e <datasourceKey>`](external-integration.md#aifabrix-datasource-test-e2e-datasourcekey) - E2E validation run for one datasource (unified dataplane API)

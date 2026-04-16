@@ -453,7 +453,7 @@ describe('CLI Uncovered Command Handlers', () => {
           const outputDir = options.output || appPath;
           const result = await generator.splitDeployJson(deployJsonPath, outputDir);
 
-          logger.log(chalk.green('\n✓ Successfully split deployment JSON into component files:'));
+          logger.log(chalk.green('\n✔ Successfully split deployment JSON into component files:'));
           logger.log(`  • env.template: ${result.envTemplate}`);
           logger.log(`  • application.yaml: ${result.variables}`);
           if (result.rbac) {
@@ -468,7 +468,7 @@ describe('CLI Uncovered Command Handlers', () => {
 
       await handler('testapp', {});
       expect(generator.splitDeployJson).toHaveBeenCalled();
-      expect(logger.log).toHaveBeenCalledWith(chalk.green('\n✓ Successfully split deployment JSON into component files:'));
+      expect(logger.log).toHaveBeenCalledWith(chalk.green('\n✔ Successfully split deployment JSON into component files:'));
       expect(process.exit).not.toHaveBeenCalled();
     });
 
