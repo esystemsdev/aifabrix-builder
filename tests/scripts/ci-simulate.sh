@@ -99,6 +99,8 @@ fi
 REQUIRED_LIB_SCHEMA=(
     "lib/schema/infra.parameter.yaml"
     "lib/schema/infra-parameter.schema.json"
+    "lib/schema/external-datasource.schema.json"
+    "lib/schema/external-system.schema.json"
 )
 SCHEMA_MISSING=()
 for rel in "${REQUIRED_LIB_SCHEMA[@]}"; do

@@ -1,5 +1,6 @@
 /**
  * Tests for App.js Uncovered Lines
+ * Isolated Jest project `app-uncovered-lines` — real temp dirs + inquirer mocks; avoid sharing a worker with jest.mock('fs') suites.
  *
  * @fileoverview Tests specifically for uncovered lines in app.js
  * @author AI Fabrix Team

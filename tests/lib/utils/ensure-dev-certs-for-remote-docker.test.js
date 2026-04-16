@@ -1,5 +1,6 @@
 /**
  * @fileoverview Tests for ensure-dev-certs-for-remote-docker
+ * Isolated project `ensure-dev-certs-for-remote-docker` — PIN read uses fs-real-sync; avoid worker fs spy bleed.
  */
 
 const fs = require('node:fs');

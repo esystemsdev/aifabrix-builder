@@ -158,7 +158,31 @@ const defaultProject = {
       '/tests/lib/infrastructure/helpers-ensure-admin-secrets.test.js',
       '\\\\tests\\\\lib\\\\infrastructure\\\\helpers-ensure-admin-secrets.test.js',
       'lib/infrastructure/helpers-ensure-admin-secrets.test.js',
-      'helpers-ensure-admin-secrets\\.test\\.js'
+      'helpers-ensure-admin-secrets\\.test\\.js',
+      '/tests/lib/utils/secrets-generator.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\secrets-generator.test.js',
+      'lib/utils/secrets-generator.test.js',
+      'secrets-generator\\.test\\.js',
+      '/tests/lib/app/app-uncovered-lines.test.js',
+      '\\\\tests\\\\lib\\\\app\\\\app-uncovered-lines.test.js',
+      'lib/app/app-uncovered-lines.test.js',
+      'app-uncovered-lines\\.test\\.js',
+      '/tests/lib/utils/ensure-dev-certs-for-remote-docker.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\ensure-dev-certs-for-remote-docker.test.js',
+      'lib/utils/ensure-dev-certs-for-remote-docker.test.js',
+      'ensure-dev-certs-for-remote-docker\\.test\\.js',
+      '/tests/lib/generator/generator-error-paths.test.js',
+      '\\\\tests\\\\lib\\\\generator\\\\generator-error-paths.test.js',
+      'lib/generator/generator-error-paths.test.js',
+      'generator-error-paths\\.test\\.js',
+      '/tests/lib/core/secrets-databaselog.test.js',
+      '\\\\tests\\\\lib\\\\core\\\\secrets-databaselog.test.js',
+      'lib/core/secrets-databaselog.test.js',
+      'secrets-databaselog\\.test\\.js',
+      '/tests/lib/validation/schema-241-alignment.test.js',
+      '\\\\tests\\\\lib\\\\validation\\\\schema-241-alignment.test.js',
+      'lib/validation/schema-241-alignment.test.js',
+      'schema-241-alignment\\.test\\.js'
     ];
     if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
       patterns.push('/tests/local/');
@@ -237,7 +261,15 @@ const isolatedProjects = [
   ]),
   makeIsolatedProject('url-declarative-truth-table-124', [
     '**/tests/lib/utils/url-declarative-truth-table-124.test.js'
-  ])
+  ]),
+  makeIsolatedProject('secrets-generator', ['**/tests/lib/utils/secrets-generator.test.js']),
+  makeIsolatedProject('app-uncovered-lines', ['**/tests/lib/app/app-uncovered-lines.test.js']),
+  makeIsolatedProject('ensure-dev-certs-for-remote-docker', [
+    '**/tests/lib/utils/ensure-dev-certs-for-remote-docker.test.js'
+  ]),
+  makeIsolatedProject('generator-error-paths', ['**/tests/lib/generator/generator-error-paths.test.js']),
+  makeIsolatedProject('secrets-databaselog', ['**/tests/lib/core/secrets-databaselog.test.js']),
+  makeIsolatedProject('schema-241-alignment', ['**/tests/lib/validation/schema-241-alignment.test.js'])
 ];
 
 const allProjects = [defaultProject, ...isolatedProjects];
