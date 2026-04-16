@@ -7,17 +7,19 @@
  */
 
 const fs = require('fs');
-const chalk = require('chalk');
 
 // Mock modules
 jest.mock('fs');
 jest.mock('chalk', () => {
+  const id = (text) => text;
   const mockChalk = (text) => text;
-  mockChalk.green = jest.fn((text) => text);
-  mockChalk.red = jest.fn((text) => text);
-  mockChalk.blue = jest.fn((text) => text);
-  mockChalk.yellow = jest.fn((text) => text);
-  mockChalk.gray = jest.fn((text) => text);
+  mockChalk.green = jest.fn(id);
+  mockChalk.red = jest.fn(id);
+  mockChalk.blue = jest.fn(id);
+  mockChalk.yellow = jest.fn(id);
+  mockChalk.gray = jest.fn(id);
+  mockChalk.cyan = jest.fn(id);
+  mockChalk.white = Object.assign(jest.fn(id), { bold: jest.fn(id) });
   return mockChalk;
 });
 jest.mock('../../../lib/utils/token-manager', () => ({
@@ -238,7 +240,6 @@ describe('Datasource Deploy Module', () => {
 
   describe('deployDatasource', () => {
     it('should deploy datasource successfully', async() => {
-      const appKey = 'myapp';
       const filePath = '/path/to/datasource.json';
       const options = {};
 
@@ -251,7 +252,8 @@ describe('Datasource Deploy Module', () => {
       validateDatasourceFile.mockResolvedValue({
         valid: true,
         errors: [],
-        warnings: []
+        warnings: [],
+        resolvedPath: filePath
       });
 
       fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
@@ -269,7 +271,7 @@ describe('Datasource Deploy Module', () => {
       });
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      const result = await deployDatasource(appKey, filePath, options);
+      const result = await deployDatasource(filePath, options);
 
       expect(result.success).toBe(true);
       expect(result.datasourceKey).toBe('test-datasource');
@@ -288,16 +290,16 @@ describe('Datasource Deploy Module', () => {
       expect(logDataplanePipelineWarning).toHaveBeenCalledTimes(1);
     });
 
-    it('should throw error if appKey is missing', async() => {
+    it('should throw error if file or key is missing', async() => {
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource(null, '/path/to/file.json', { controller: 'http://localhost:3010', environment: 'dev' }))
-        .rejects.toThrow('Application key is required');
+      await expect(deployDatasource(null, { controller: 'http://localhost:3010', environment: 'dev' }))
+        .rejects.toThrow('File path or datasource key is required');
     });
 
-    it('should throw error if filePath is missing', async() => {
+    it('should throw error if file or key is blank', async() => {
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', null, { controller: 'http://localhost:3010', environment: 'dev' }))
-        .rejects.toThrow('File path is required');
+      await expect(deployDatasource('   ', { controller: 'http://localhost:3010', environment: 'dev' }))
+        .rejects.toThrow('File path or datasource key is required');
     });
 
     it('should use controller and environment from config', async() => {
@@ -306,7 +308,6 @@ describe('Datasource Deploy Module', () => {
       resolveControllerUrl.mockResolvedValueOnce('http://localhost:3010');
       resolveEnvironment.mockResolvedValueOnce('dev');
 
-      const appKey = 'myapp';
       const filePath = '/path/to/datasource.json';
       const datasourceConfig = {
         key: 'test-datasource',
@@ -317,7 +318,8 @@ describe('Datasource Deploy Module', () => {
       validateDatasourceFile.mockResolvedValue({
         valid: true,
         errors: [],
-        warnings: []
+        warnings: [],
+        resolvedPath: filePath
       });
 
       fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
@@ -335,7 +337,7 @@ describe('Datasource Deploy Module', () => {
       });
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      const result = await deployDatasource(appKey, filePath, {});
+      const result = await deployDatasource(filePath, {});
 
       expect(resolveControllerUrl).toHaveBeenCalledWith();
       expect(resolveEnvironment).toHaveBeenCalledWith();
@@ -355,18 +357,20 @@ describe('Datasource Deploy Module', () => {
       validateDatasourceFile.mockResolvedValue({
         valid: false,
         errors: ['Validation error'],
-        warnings: []
+        warnings: [],
+        resolvedPath: '/path/to/file.json'
       });
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Datasource file validation failed');
+      await expect(deployDatasource('/path/to/file.json', {})).rejects.toThrow('Datasource file validation failed');
     });
 
     it('should throw error if systemKey is missing', async() => {
       validateDatasourceFile.mockResolvedValue({
         valid: true,
         errors: [],
-        warnings: []
+        warnings: [],
+        resolvedPath: '/path/to/file.json'
       });
 
       fsSync.readFileSync.mockReturnValue(JSON.stringify({
@@ -375,7 +379,7 @@ describe('Datasource Deploy Module', () => {
       }));
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('systemKey is required');
+      await expect(deployDatasource('/path/to/file.json', {})).rejects.toThrow('systemKey is required');
     });
 
     it('should throw when configuration resolution fails (missing env var)', async() => {
@@ -384,7 +388,12 @@ describe('Datasource Deploy Module', () => {
         systemKey: 'hubspot',
         configuration: [{ name: 'API_KEY', value: '{{API_KEY}}', location: 'variable' }]
       };
-      validateDatasourceFile.mockResolvedValue({ valid: true, errors: [], warnings: [] });
+      validateDatasourceFile.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: [],
+        resolvedPath: '/path/to/datasource.json'
+      });
       fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
       getDeploymentAuth.mockResolvedValue({ type: 'bearer', token: 'test-token' });
       resolveDataplaneUrl.mockResolvedValue('http://dataplane:8080');
@@ -394,7 +403,7 @@ describe('Datasource Deploy Module', () => {
       });
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/datasource.json', {})).rejects.toThrow('Missing configuration env var');
+      await expect(deployDatasource('/path/to/datasource.json', {})).rejects.toThrow('Missing configuration env var');
       expect(publishDatasourceViaPipeline).not.toHaveBeenCalled();
     });
 
@@ -404,13 +413,18 @@ describe('Datasource Deploy Module', () => {
         systemKey: 'hubspot',
         configuration: [{ name: 'X', value: '{{X}}', location: 'variable' }]
       };
-      validateDatasourceFile.mockResolvedValue({ valid: true, errors: [], warnings: [] });
+      validateDatasourceFile.mockResolvedValue({
+        valid: true,
+        errors: [],
+        warnings: [],
+        resolvedPath: '/path/to/datasource.json'
+      });
       fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
       getDeploymentAuth.mockResolvedValue({ type: 'bearer', token: 'test-token' });
       buildResolvedEnvMapForIntegration.mockRejectedValue(new Error('Secrets file not found'));
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/datasource.json', {})).rejects.toThrow('Secrets file not found');
+      await expect(deployDatasource('/path/to/datasource.json', {})).rejects.toThrow('Secrets file not found');
       expect(publishDatasourceViaPipeline).not.toHaveBeenCalled();
     });
 
@@ -418,13 +432,14 @@ describe('Datasource Deploy Module', () => {
       validateDatasourceFile.mockResolvedValue({
         valid: true,
         errors: [],
-        warnings: []
+        warnings: [],
+        resolvedPath: '/path/to/file.json'
       });
 
       fsSync.readFileSync.mockReturnValue('invalid json {');
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Failed to parse datasource file');
+      await expect(deployDatasource('/path/to/file.json', {})).rejects.toThrow('Failed to parse datasource file');
     });
 
     it('should throw error if dataplane deployment fails', async() => {
@@ -436,7 +451,8 @@ describe('Datasource Deploy Module', () => {
       validateDatasourceFile.mockResolvedValue({
         valid: true,
         errors: [],
-        warnings: []
+        warnings: [],
+        resolvedPath: '/path/to/file.json'
       });
 
       fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
@@ -459,7 +475,7 @@ describe('Datasource Deploy Module', () => {
       formatApiError.mockReturnValue('Deployment failed');
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Dataplane publish failed');
+      await expect(deployDatasource('/path/to/file.json', {})).rejects.toThrow('Dataplane publish failed');
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Endpoint URL:'));
     });
 
@@ -472,7 +488,8 @@ describe('Datasource Deploy Module', () => {
       validateDatasourceFile.mockResolvedValue({
         valid: true,
         errors: [],
-        warnings: []
+        warnings: [],
+        resolvedPath: '/path/to/file.json'
       });
 
       fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
@@ -487,8 +504,8 @@ describe('Datasource Deploy Module', () => {
       resolveDataplaneUrl.mockRejectedValueOnce(new Error('Bearer token authentication required'));
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Bearer token authentication required');
-      // logger.error is called with multiple arguments: chalk.red('✖ Failed to resolve dataplane URL:'), error.message
+      await expect(deployDatasource('/path/to/file.json', {})).rejects.toThrow('Bearer token authentication required');
+      // logger.error is called when dataplane URL resolution fails (single formatted line)
       expect(logger.error).toHaveBeenCalled();
     });
 
@@ -501,7 +518,8 @@ describe('Datasource Deploy Module', () => {
       validateDatasourceFile.mockResolvedValue({
         valid: true,
         errors: [],
-        warnings: []
+        warnings: [],
+        resolvedPath: '/path/to/file.json'
       });
 
       fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
@@ -515,7 +533,7 @@ describe('Datasource Deploy Module', () => {
       resolveDataplaneUrl.mockRejectedValueOnce(new Error('Dataplane URL not found'));
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Dataplane URL not found');
+      await expect(deployDatasource('/path/to/file.json', {})).rejects.toThrow('Dataplane URL not found');
       expect(logger.error).toHaveBeenCalled();
     });
 
@@ -528,7 +546,8 @@ describe('Datasource Deploy Module', () => {
       validateDatasourceFile.mockResolvedValue({
         valid: true,
         errors: [],
-        warnings: []
+        warnings: [],
+        resolvedPath: '/path/to/file.json'
       });
 
       fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
@@ -542,7 +561,7 @@ describe('Datasource Deploy Module', () => {
       resolveDataplaneUrl.mockResolvedValue('');
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Dataplane URL is empty');
+      await expect(deployDatasource('/path/to/file.json', {})).rejects.toThrow('Dataplane URL is empty');
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Dataplane URL is empty'));
     });
 
@@ -555,7 +574,8 @@ describe('Datasource Deploy Module', () => {
       validateDatasourceFile.mockResolvedValue({
         valid: true,
         errors: [],
-        warnings: []
+        warnings: [],
+        resolvedPath: '/path/to/file.json'
       });
 
       fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
@@ -578,7 +598,7 @@ describe('Datasource Deploy Module', () => {
       formatApiError.mockReturnValue('Network timeout');
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Dataplane publish failed');
+      await expect(deployDatasource('/path/to/file.json', {})).rejects.toThrow('Dataplane publish failed');
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Endpoint URL:'));
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('http://dataplane:8080/api/v1/external/hubspot/datasources'));
     });
@@ -592,7 +612,8 @@ describe('Datasource Deploy Module', () => {
       validateDatasourceFile.mockResolvedValue({
         valid: true,
         errors: [],
-        warnings: []
+        warnings: [],
+        resolvedPath: '/path/to/file.json'
       });
 
       fsSync.readFileSync.mockReturnValue(JSON.stringify(datasourceConfig));
@@ -613,7 +634,7 @@ describe('Datasource Deploy Module', () => {
       formatApiError.mockReturnValue('Network timeout');
 
       const { deployDatasource } = require('../../../lib/datasource/deploy');
-      await expect(deployDatasource('myapp', '/path/to/file.json', {})).rejects.toThrow('Dataplane publish failed');
+      await expect(deployDatasource('/path/to/file.json', {})).rejects.toThrow('Dataplane publish failed');
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Dataplane URL:'));
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('System Key:'));
     });

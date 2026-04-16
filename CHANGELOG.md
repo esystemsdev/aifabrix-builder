@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Breaking
+- **`aifabrix datasource upload`:** Takes one argument `<file-or-key>` (path to datasource JSON or datasource key under `integration/<app>/`), matching `datasource validate`. The separate `<systemKey>` CLI argument is removed; controller lookup uses `systemKey` from the file. Migrate `aifabrix datasource upload mySystem ./path.json` → `aifabrix datasource upload ./path.json` (or `aifabrix datasource upload <datasourceKey>`).
 - **Application schema 1.4.0:** `build.localPort` removed from `application-schema.json`. Use root `port` only for listen/container and local dev port math; declarative `url://` references in env templates replace separate local publish ports. See schema `metadata.changelog` and docs (plan 122).
 
 ---

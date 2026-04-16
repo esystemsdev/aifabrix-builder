@@ -349,6 +349,51 @@ Upload ID: up_123
 
 ---
 
+# Contributor appendix (glyphs, CI, code map)
+
+## Canonical CLI glyphs
+
+Use **only** these Unicode marks in user-facing CLI output (aligned with the tables above):
+
+| Role        | Glyph | Do **not** use |
+| ----------- | ----- | -------------- |
+| Success     | **✔** | ✓, heavy check, emoji checkmarks |
+| Warning     | **⚠** | ‼, emoji variants for decoration |
+| Failure     | **✖** | ✗, x, decorative X |
+| Skipped     | **⏭** | — |
+| In progress | **⏳** | hourglass emoji as decoration without semantic use |
+
+**Plan vs runtime:** Headings in *this* document may use decorative emoji for navigation. **Terminal output** must follow the semantic table only (no decorative coloring or extra emoji beyond the glyphs above where they carry meaning).
+
+## Non-TTY / CI
+
+When colors are disabled (`chalk` level 0 / `NO_COLOR`), **keep the same glyphs and line layout**; colors become no-ops. Do not introduce a second plain-text format (e.g. swapping `[OK]` for ✔) unless a command explicitly targets machine-only stdout.
+
+## Blocking errors vs non-blocking warnings
+
+- **Blocking:** red **✖** plus red message (layout §18). Use for exit code ≠ 0 or hard failure.
+- **Non-blocking:** yellow **⚠** plus yellow message (layout §17). Never use red for warnings.
+
+## Implementation map (`lib/utils/cli-test-layout-chalk.js`)
+
+| Layout section        | Helper(s) |
+| --------------------- | --------- |
+| §1 Header block       | `headerKeyValue`, `formatStatusKeyValue`, `aggregateStatusWord`, `colorAggregateGlyph` |
+| §5 Datasources list   | `formatDatasourceListRow` |
+| §3 / rollup lines     | `colorRollupPrefixedLine`, `sectionTitle`, `formatBulletSection` |
+| §7 Failures / hints   | `formatIssue` |
+| §9 Impact-style list  | `formatBulletSection` (red bullets) |
+| §14 Docs / links      | `formatDocsLine` |
+| §15 Progress          | `formatProgress` |
+| §16 Debug / traces    | `infoLine`, `metadata` (cyan value pattern) |
+| §17–18 Warn / error   | `integrationFooterLine`, `formatBlockingError`, `formatIssue`, `failureGlyph` |
+| §19 Next actions      | `formatNextActions` |
+| Success (full line)   | `successGlyph`, `formatSuccessLine`, `formatSuccessParagraph` |
+
+**Alias module:** `lib/utils/cli-layout-chalk.js` re-exports the same API for imports that should not say “test” in the path.
+
+---
+
 # 🚨 CRITICAL RULES
 
 ### 1. Never use color without meaning

@@ -1297,8 +1297,8 @@ See [External Integration Commands](commands/external-integration.md#aifabrix-up
 You can deploy and test individual datasources:
 
 ```bash
-# Deploy a single datasource
-aifabrix datasource upload hubspot hubspot-test-datasource-company.yaml
+# Deploy a single datasource (path or datasource key; systemKey is in the JSON)
+aifabrix datasource upload integration/hubspot-test/hubspot-test-datasource-company.json
 
 # This is useful for:
 # - Testing individual datasources
@@ -1467,7 +1467,7 @@ status:
 → Ensure `operationId` matches OpenAPI spec
 → Verify authentication is configured correctly
 
-**Datasource upload:** Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is discovered from the controller. Example: `aifabrix datasource upload hubspot integration/hubspot-test/hubspot-test-datasource-company.yaml`.
+**Datasource upload:** Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is discovered from the controller. Example: `aifabrix datasource upload integration/hubspot-test/hubspot-test-datasource-company.json` (or pass a datasource key resolved under `integration/<app>/`, same as `datasource validate`).
 
 **Validate individual files:** If `aifabrix validate <app>` fails, validate files directly: `aifabrix validate integration/hubspot-test/hubspot-test-system.yaml`, `aifabrix validate integration/hubspot-test/hubspot-test-datasource-company.yaml`.
 
@@ -1541,7 +1541,7 @@ Path is resolved automatically: `integration/<systemKey>/` first, then `builder/
 
 **Deploy individual datasource:** (uses controller and environment from config; dataplane is discovered from the controller)
 ```bash
-aifabrix datasource upload <app-key> <datasource-file>
+aifabrix datasource upload <file-or-key>
 ```
 
 **List datasources:**

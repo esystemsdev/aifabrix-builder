@@ -200,13 +200,7 @@ async function createTestDatasource(datasourcePath) {
  * @returns {string[]} Command arguments
  */
 function buildDatasourceUploadArgs(datasourcePath) {
-  return [
-    'bin/aifabrix.js',
-    'datasource',
-    'upload',
-    'test-app',
-    datasourcePath
-  ];
+  return ['bin/aifabrix.js', 'datasource', 'upload', datasourcePath];
 }
 
 /**

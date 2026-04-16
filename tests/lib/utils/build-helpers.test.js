@@ -85,7 +85,7 @@ describe('Build Helpers Module', () => {
         appName,
         false
       );
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ Using existing Dockerfile:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Using existing Dockerfile:'));
       expect(generateDockerfileFn).not.toHaveBeenCalled();
     });
 
@@ -118,7 +118,7 @@ describe('Build Helpers Module', () => {
         false
       );
       expect(dockerfileUtils.checkTemplateDockerfile).not.toHaveBeenCalled();
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ Using custom Dockerfile:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Using custom Dockerfile:'));
       expect(generateDockerfileFn).not.toHaveBeenCalled();
     });
 
@@ -148,7 +148,7 @@ describe('Build Helpers Module', () => {
         options.contextPath,
         false
       );
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ Using custom Dockerfile:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Using custom Dockerfile:'));
       expect(generateDockerfileFn).not.toHaveBeenCalled();
     });
 
@@ -174,7 +174,7 @@ describe('Build Helpers Module', () => {
         options.buildConfig,
         undefined
       );
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ Generated Dockerfile from template:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Generated Dockerfile from template:'));
     });
 
     it('should use devDir if provided', async() => {

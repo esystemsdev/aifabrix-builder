@@ -837,9 +837,9 @@ describe('CLI Comprehensive Tests', () => {
       const appName = 'test-app';
       try {
         const envPath = await secrets.generateEnvFile(appName);
-        console.log(`✓ Generated .env file: ${envPath}`);
+        console.log(`✔ Generated .env file: ${envPath}`);
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName);
-        expect(console.log).toHaveBeenCalledWith('✓ Generated .env file: /path/to/.env');
+        expect(console.log).toHaveBeenCalledWith('✔ Generated .env file: /path/to/.env');
       } catch (error) {
         const { handleCommandError } = require('../../lib/cli');
         handleCommandError(error, 'resolve');
@@ -882,7 +882,7 @@ describe('CLI Comprehensive Tests', () => {
       try {
         const result = await generator.generateDeployJsonWithValidation(appName);
         if (result.success) {
-          console.log(`✓ Generated deployment JSON: ${result.path}`);
+          console.log(`✔ Generated deployment JSON: ${result.path}`);
           if (result.validation.warnings.length > 0) {
             console.log('\n⚠  Warnings:');
             result.validation.warnings.forEach(warning => console.log(`   • ${warning}`));

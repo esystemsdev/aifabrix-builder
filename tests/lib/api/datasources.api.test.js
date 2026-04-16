@@ -46,7 +46,7 @@ describe('Datasources API', () => {
     it('should list datasources without options', async() => {
       await datasourcesApi.listDatasources(dataplaneUrl, authConfig);
 
-      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/external/', {
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/external', {
         params: {}
       });
     });
@@ -55,7 +55,7 @@ describe('Datasources API', () => {
       const options = { page: 1, pageSize: 20, search: 'test' };
       await datasourcesApi.listDatasources(dataplaneUrl, authConfig, options);
 
-      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/external/', {
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/external', {
         params: options
       });
     });
@@ -70,7 +70,7 @@ describe('Datasources API', () => {
       };
       await datasourcesApi.createDatasource(dataplaneUrl, authConfig, datasourceData);
 
-      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/external/', {
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/external', {
         body: datasourceData
       });
     });

@@ -20,6 +20,9 @@ jest.mock('../../../lib/utils/config-format', () => ({
   loadConfigFile: jest.fn()
 }));
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn() }));
+jest.mock('../../../lib/commands/upload', () => ({
+  uploadExternalSystem: jest.fn().mockResolvedValue(undefined)
+}));
 
 const fs = require('fs');
 const { getIntegrationPath } = require('../../../lib/utils/paths');
@@ -37,6 +40,7 @@ jest.mock('../../../lib/datasource/test-e2e', () => ({
 
 const { discoverIntegrationFiles, buildEffectiveDatasourceFiles } = require('../../../lib/commands/repair-internal');
 const { runDatasourceTestE2E } = require('../../../lib/datasource/test-e2e');
+const upload = require('../../../lib/commands/upload');
 
 describe('test-e2e-external', () => {
   const appPath = path.join(process.cwd(), 'integration', 'hubspot-demo');
@@ -107,6 +111,23 @@ describe('test-e2e-external', () => {
           async: true
         })
       );
+    });
+
+    it('calls uploadExternalSystem once before E2E when sync is true', async() => {
+      await runTestE2EForExternalSystem('hubspot-demo', { sync: true, verbose: true });
+
+      expect(upload.uploadExternalSystem).toHaveBeenCalledTimes(1);
+      expect(upload.uploadExternalSystem).toHaveBeenCalledWith(
+        'hubspot-demo',
+        expect.objectContaining({ minimal: true, verbose: true })
+      );
+      expect(runDatasourceTestE2E).toHaveBeenCalled();
+    });
+
+    it('does not call upload when sync is false', async() => {
+      await runTestE2EForExternalSystem('hubspot-demo');
+
+      expect(upload.uploadExternalSystem).not.toHaveBeenCalled();
     });
 
     it('returns success true and empty results when no datasources', async() => {

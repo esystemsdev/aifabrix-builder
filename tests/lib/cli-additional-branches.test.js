@@ -175,14 +175,14 @@ describe('CLI Additional Branch Coverage', () => {
 
       const result = await generator.generateDeployJsonWithValidation('test-app');
       if (result.success) {
-        console.log(`✓ Generated deployment JSON: ${result.path}`);
+        console.log(`✔ Generated deployment JSON: ${result.path}`);
         if (result.validation.warnings.length > 0) {
           console.log('\n⚠  Warnings:');
           result.validation.warnings.forEach(warning => console.log(`   • ${warning}`));
         }
       }
 
-      expect(console.log).toHaveBeenCalledWith('✓ Generated deployment JSON: /path/to/test-app-deploy.json');
+      expect(console.log).toHaveBeenCalledWith('✔ Generated deployment JSON: /path/to/test-app-deploy.json');
       expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('⚠  Warnings:'));
     });
 
@@ -198,7 +198,7 @@ describe('CLI Additional Branch Coverage', () => {
 
       const result = await generator.generateDeployJsonWithValidation('test-app');
       if (result.success) {
-        console.log(`✓ Generated deployment JSON: ${result.path}`);
+        console.log(`✔ Generated deployment JSON: ${result.path}`);
         if (result.validation.warnings.length > 0) {
           console.log('\n⚠  Warnings:');
           result.validation.warnings.forEach(warning => console.log(`   • ${warning}`));

@@ -286,8 +286,8 @@ describe('app-list', () => {
 
       await listApplications({ environment: 'dev' });
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ app1'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✗ app2'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ app1'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✖ app2'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('To show details for an app: aifabrix app show <app>'));
     });
 
@@ -318,7 +318,7 @@ describe('app-list', () => {
 
       await listApplications({ environment: 'dev' });
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✗ app1'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✖ app1'));
     });
 
     it('should display external applications with link icon', async() => {
@@ -362,8 +362,8 @@ describe('app-list', () => {
       await listApplications({ environment: 'dev' });
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('🔗'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✗ test-hubspot'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ dataplane'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✖ test-hubspot'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ dataplane'));
     });
 
     it('should use default environment name when not provided', async() => {

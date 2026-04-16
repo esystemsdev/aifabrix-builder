@@ -948,9 +948,9 @@ describe('CLI Command Actions', () => {
 
       try {
         const envPath = await secrets.generateEnvFile(appName);
-        console.log(`✓ Generated .env file: ${envPath}`);
+        console.log(`✔ Generated .env file: ${envPath}`);
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName);
-        expect(console.log).toHaveBeenCalledWith('✓ Generated .env file: /path/to/.env');
+        expect(console.log).toHaveBeenCalledWith('✔ Generated .env file: /path/to/.env');
       } catch (error) {
         cli.handleCommandError(error, 'resolve');
       }
@@ -975,7 +975,7 @@ describe('CLI Command Actions', () => {
       try {
         const result = await generator.generateDeployJsonWithValidation(appName);
         if (result.success) {
-          console.log(`✓ Generated deployment JSON: ${result.path}`);
+          console.log(`✔ Generated deployment JSON: ${result.path}`);
 
           if (result.validation.warnings.length > 0) {
             console.log('\n⚠  Warnings:');
@@ -983,7 +983,7 @@ describe('CLI Command Actions', () => {
           }
         }
         expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
-        expect(console.log).toHaveBeenCalledWith('✓ Generated deployment JSON: /path/to/test-app-deploy.json');
+        expect(console.log).toHaveBeenCalledWith('✔ Generated deployment JSON: /path/to/test-app-deploy.json');
         expect(console.log).toHaveBeenCalledWith('\n⚠  Warnings:');
       } catch (error) {
         cli.handleCommandError(error, 'json');

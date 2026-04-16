@@ -299,7 +299,7 @@ function parseTestResults(output) {
   const failMatches = (searchForPass.match(/FAIL\s+tests\/[^\n]+/g) || []).length;
 
   // Check for "ALL TESTS PASSED" message
-  const allPassedMessage = searchOutput.includes('ALL TESTS PASSED') || searchOutput.includes('✓ ALL TESTS PASSED');
+  const allPassedMessage = searchOutput.includes('ALL TESTS PASSED') || searchOutput.includes('✔ ALL TESTS PASSED');
 
   if ((passMatches > 0 && failMatches === 0) || allPassedMessage) {
     // If we see PASS but no FAIL, or explicit success message, tests likely passed
@@ -330,7 +330,7 @@ function handleJestErrors(output, parsedResults, hasExitError, hasCovError, hasS
     // eslint-disable-next-line no-console
     console.log('\n' + '='.repeat(60));
     // eslint-disable-next-line no-console
-    console.log('✓ ALL TESTS PASSED!');
+    console.log('✔ ALL TESTS PASSED!');
     if (hasExitError) {
       // eslint-disable-next-line no-console
       console.log('⚠  Jest exit handler error (known Jest bug, ignoring)');
@@ -398,7 +398,7 @@ function displayFailure(suiteMatch, hasJestError = false, jestOutput = '', parse
   // Note: Jest's failure details should already be visible in the output
   // since we forward stdout/stderr in real-time. This is just a summary.
   // eslint-disable-next-line no-console
-  console.error('\n✗ Tests failed!');
+  console.error('\n✖ Tests failed!');
 
   let failed = 0;
   let passed = 0;
@@ -446,7 +446,7 @@ function displayFailure(suiteMatch, hasJestError = false, jestOutput = '', parse
         console.error('\nFailed test suites:');
         failedTests.forEach(test => {
           // eslint-disable-next-line no-console
-          console.error(`  ✗ ${test}`);
+          console.error(`  ✖ ${test}`);
         });
       } else if (failed > 0) {
         // eslint-disable-next-line no-console
@@ -494,7 +494,7 @@ function displaySuccess(suiteMatch, testMatch) {
   // eslint-disable-next-line no-console
   console.log('\n' + '='.repeat(60));
   // eslint-disable-next-line no-console
-  console.log('✓ ALL TESTS PASSED!');
+  console.log('✔ ALL TESTS PASSED!');
   // eslint-disable-next-line no-console
   console.log('='.repeat(60));
   if (suiteMatch) {

@@ -555,7 +555,7 @@ describe('App Register Module', () => {
       expect(localSecrets.saveLocalSecret).toHaveBeenCalledTimes(2);
       expect(envTemplate.updateEnvTemplate).toHaveBeenCalled();
       expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local');
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ .env file updated with new credentials'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ .env file updated with new credentials'));
     });
 
     it('should handle error when saving credentials locally', async() => {

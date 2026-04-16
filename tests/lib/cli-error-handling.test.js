@@ -43,7 +43,7 @@ jest.mock('chalk', () => {
 
 // Mock other chalk-dependent packages
 jest.mock('log-symbols', () => ({
-  success: '✓',
+  success: '✔',
   error: '✖',
   warning: '⚠',
   info: 'ℹ'

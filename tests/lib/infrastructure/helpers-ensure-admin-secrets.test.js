@@ -4,6 +4,9 @@
 
 'use strict';
 
+/** Other suites (e.g. admin-secrets.test.js) mock fs-real-sync; this file needs real sync I/O. */
+jest.unmock('../../../lib/internal/fs-real-sync');
+
 /** Real disk I/O — worker may have jest.mock('fs') from other suites */
 const fs = jest.requireActual('node:fs');
 const path = require('path');

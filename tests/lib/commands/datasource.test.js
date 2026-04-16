@@ -144,11 +144,17 @@ describe('Datasource Commands Module', () => {
 
       expect(program.command).toHaveBeenCalledWith('datasource');
       const datasourceGroup = program._datasourceGroup;
-      expect(datasourceGroup.command).toHaveBeenCalledWith('upload <systemKey> <file>');
+      expect(datasourceGroup.command).toHaveBeenCalledWith('upload <file-or-key>');
       // Check that the subcommand's description was called (no flags)
-      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <systemKey> <file>');
+      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <file-or-key>');
       expect(uploadCommand).toBeDefined();
-      expect(uploadCommand.command.description).toHaveBeenCalledWith('Deploy datasource file to dataplane');
+      expect(uploadCommand.command.description).toHaveBeenCalledWith(
+        'Deploy datasource JSON to dataplane (file path or datasource key under integration/<app>/)'
+      );
+      expect(uploadCommand.command.addHelpText).toHaveBeenCalledWith(
+        'after',
+        expect.stringMatching(/Examples:\s*\n/)
+      );
     });
 
     it('should register test command (unified validation, runType=test)', () => {
@@ -412,16 +418,16 @@ describe('Datasource Commands Module', () => {
 
       // Get the upload command's action handler
       const datasourceGroup = program._datasourceGroup;
-      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <systemKey> <file>');
+      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <file-or-key>');
       if (uploadCommand) {
         const actionCall = uploadCommand.command.action.mock.calls[0];
         if (actionCall && typeof actionCall[0] === 'function') {
-          await actionCall[0]('myapp', '/path/to/file.json', {
+          await actionCall[0]('/path/to/file.json', {
             controller: 'http://localhost:3010',
             environment: 'dev'
           });
 
-          expect(deployDatasource).toHaveBeenCalledWith('myapp', '/path/to/file.json', {
+          expect(deployDatasource).toHaveBeenCalledWith('/path/to/file.json', {
             controller: 'http://localhost:3010',
             environment: 'dev'
           });
@@ -438,11 +444,11 @@ describe('Datasource Commands Module', () => {
 
       // Get the upload command's action handler
       const datasourceGroup = program._datasourceGroup;
-      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <systemKey> <file>');
+      const uploadCommand = datasourceGroup._subCommands?.find(c => c.name === 'upload <file-or-key>');
       if (uploadCommand) {
         const actionCall = uploadCommand.command.action.mock.calls[0];
         if (actionCall && typeof actionCall[0] === 'function') {
-          await actionCall[0]('myapp', '/path/to/file.json', {
+          await actionCall[0]('/path/to/file.json', {
             controller: 'http://localhost:3010',
             environment: 'dev'
           });

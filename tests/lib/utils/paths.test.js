@@ -283,10 +283,9 @@ describe('Path Utilities - directory helpers', () => {
   });
 
   it('getApplicationsBaseDir uses ~/.aifabrix when AIFABRIX_HOME is that homedir and config is nested', () => {
-    const GFS = global.__AIFABRIX_NODE_FS_UNMOCKED__;
-    if (!GFS || typeof GFS.mkdtempSync !== 'function') {
-      throw new Error('tests/capture-real-fs.js must set global.__AIFABRIX_NODE_FS_UNMOCKED__');
-    }
+    // Use requireActual here: capture-real-fs may have bound mocked fs if hoisted jest.mock('fs')
+    // ran before setupFiles in this worker, which would make snapshot writeFileSync a no-op.
+    const GFS = jest.requireActual('node:fs');
     const tmp = GFS.mkdtempSync(path.join(os.tmpdir(), 'afx-app-home-'));
     const nest = path.join(tmp, '.aifabrix');
     GFS.mkdirSync(nest, { recursive: true });

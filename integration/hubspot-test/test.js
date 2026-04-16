@@ -430,7 +430,7 @@ async function validateAuth(context, options) {
     throw new Error('Authentication check failed. Run: node bin/aifabrix.js login --controller <url> --method device');
   }
   const output = `${result.stdout}\n${result.stderr}`;
-  // Only treat "Not authenticated" as failure; "✗ Not reachable" (dataplane) is not auth failure
+  // Only treat "Not authenticated" as failure; "✖ Not reachable" (dataplane) is not auth failure
   if (output.includes('Not authenticated')) {
     throw new Error('Not authenticated. Run: node bin/aifabrix.js login --controller <url> --method device');
   }
