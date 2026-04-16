@@ -91,7 +91,7 @@ Complete command reference organized by concept with examples and troubleshootin
 - [External Integration Commands](external-integration.md) - External system integration. See [External Integration Testing](external-integration-testing.md) for unit/integration test details and payloads.
   - [`aifabrix wizard [systemKey] [--debug]`](external-integration.md#aifabrix-wizard) - Guided external system setup (OpenAPI, MCP, HubSpot, …) or headless `wizard.yaml`; `--debug` for debug manifests
   - [`aifabrix download <systemKey>`](external-integration.md#aifabrix-download-system-key) - Pull external system from dataplane into `integration/<key>/`
-  - [`aifabrix upload <systemKey>`](external-integration.md#aifabrix-upload-system-key) - Validate and publish external system to dataplane (no controller deploy; promote via deploy)
+  - [`aifabrix upload <systemKey>`](external-integration.md#aifabrix-upload-system-key) - Validate and publish external system to dataplane; registers RBAC with controller (does not trigger controller deployment; promote via deploy)
   - [`aifabrix delete <systemKey>`](external-integration.md#aifabrix-delete-system-key) - Remove external system and datasources from dataplane
   - [`aifabrix test <app> [--env dev|tst]`](external-integration.md#aifabrix-test-app) - Unit tests (external: local validation; builder: in container)
   - [`aifabrix test-integration <app> [--env dev|tst] [--debug]`](external-integration.md#aifabrix-test-integration-app) - Integration tests: builder in container; external via dataplane. `--debug` writes logs to `integration/<systemKey>/logs/`

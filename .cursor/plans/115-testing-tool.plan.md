@@ -13,10 +13,10 @@ todos:
     status: completed
   - id: api-post-poll-system
     content: Single API module — POST + shared poll; system scope + optional fan-out merge (§2.2, §9, §17.4)
-    status: pending
+    status: completed
   - id: datasource-test-capability
     content: "`datasource test` + `test-e2e <ds> <capabilityKey>` drill-down (§2.1, §2.3)"
-    status: pending
+    status: completed
   - id: renderer-ds-system
     content: Renderer — §3.2 + §16 (datasource) + §17 (system); dedupe, RBAC, no leakage (§3.9–§3.12)
     status: pending
@@ -121,7 +121,16 @@ Today, Builder still targets **legacy** per-resource test routes in places (e.g.
 | `aifabrix test-integration <systemKey>` *(no `--datasource`)* | `integration` | System integration health across datasources |
 | `aifabrix test-e2e <systemKey>` *(external path)* | `e2e` | System E2E / capability overview across datasources |
 
-**Body:** `validationScope` = external system + `systemKey` (exact field names in OpenAPI). Optional filter: existing **`-d, --datasource <key>`** scopes **one** datasource (already used on `test-integration`) — mixed mode stays datasource-deep, not system rollup.
+**Flag interface (normative, system-level commands):** `aifabrix test`, `test-integration`, and `test-e2e` must expose the **same interface**:
+-
+- `-e, --env <env>` — Environment selection (builder: dev/tst; external: dev/tst/pro). **Do not** override the auth-config environment unless the user explicitly passes this flag.
+- `-v, --verbose` — More detail (per §16/§17 rules).
+- `-d, --debug` — Emit debug/audit appendix and **write a log under `integration/<systemKey>/logs/`**.
+- `-h, --help`
+
+**Datasource scoping (normative):** system-level commands do **not** take `--datasource` or `--payload`. To debug a single datasource, use the **datasource** command family (§2.1), e.g. `aifabrix datasource test-integration <datasourceKey>` / `aifabrix datasource test-e2e <datasourceKey>`.
+
+**Body:** `validationScope` = external system + `systemKey` (exact field names in OpenAPI).
 
 **Data shape (preferred vs interim):**
 
@@ -245,20 +254,20 @@ Applies when **`validationScope`** is **external system** (§2.2, §17) and the 
 
 - **Any** `runType` (`test`, `integration`, `e2e`) may return async handles (`testRunId`, `reportCompleteness: minimal|partial`). **Same** poll module, **same** interval/backoff, **same** progress UI (§3.13) for all commands.
 - **Partial reports:** On each poll, re-run the **full** deterministic renderer (§3.2) with latest body; replace screen content or append “updated …” per product choice — **must** be consistent across commands (recommend: TTY refresh single view + timestamp).
-- **Flags:** `--no-async` (sync-only POST) is supported uniformly; if response still returns `minimal`, poll once unless `--no-async` forbids polling (then exit **3** with clear message).
+- **Flags (datasource commands only):** `--no-async` (sync-only POST) is supported on `aifabrix datasource test*` commands. System-level `test*` commands intentionally do not expose `--no-async`; they always poll to completeness.
 
 ### 3.6 Timeout and retry policy (normative)
 
 | Item | Value |
 |------|--------|
-| `--timeout <ms>` default | **30000** — applies as **one aggregate wall-clock budget** for the whole command: initial POST **plus** all poll requests (not per-request), unless overridden |
+| `--timeout <ms>` default (datasource commands) | **30000** — applies as **one aggregate wall-clock budget** for the whole command: initial POST **plus** all poll requests (not per-request), unless overridden |
 | Poll interval (initial) | **2 s** |
 | Poll backoff | **exponential**, cap **15 s** between polls |
 | Per-request HTTP socket timeout | **min(remaining budget, 30000)** per call so a single hung read does not exceed remaining budget |
 | Retries on **HTTP 3** class | **No** automatic retry for 4xx/5xx. **Retry only** for `ECONNRESET`, `ETIMEDOUT`, `ECONNABORTED` on **POST**, max **2** retries, backoff **1 s / 2 s** |
 | Failure messaging | Always print last `runId` / `testRunId` if present; for exit **3** include HTTP status or transport code |
 
-Long-running E2E: user raises `--timeout` (e.g. **300000**) for the same aggregate budget.
+Long-running datasource E2E: user raises `--timeout` (e.g. **300000**) for the same aggregate budget.
 
 ### 3.7 Debug payload size and truncation (normative)
 
@@ -345,13 +354,13 @@ CLI flags **must** map 1:1 to OpenAPI request fields (names below follow **inten
 
 | CLI flag | Request field (logical) | Default | Notes |
 |----------|-------------------------|---------|--------|
-| *(command)* `test` / `test-integration` / `test-e2e` | `runType` | derived from subcommand | `test` \| `integration` \| `e2e` |
+| *(datasource command)* `datasource test` / `datasource test-integration` / `datasource test-e2e` | `runType` | derived from subcommand | `test` \| `integration` \| `e2e` |
 | `-a, --app <appKey>` | resolution only | cwd / single match | Sets app context for paths and auth; may set body `applicationKey` if OpenAPI requires |
 | `-e, --env <env>` | client config | `dev` | Selects controller/dataplane base URL and token — not always a body field |
 | `-p, --payload <file>` | inline or ref payload | none | Maps to OpenAPI “custom payload” field for integration/e2e when supported |
-| `--timeout <ms>` | client HTTP timeout | **documented single default** | See §3.6 |
+| `--timeout <ms>` | client HTTP timeout | **documented single default** | Datasource commands only; see §3.6 |
 | `--debug` / `--debug=<summary\|full\|raw>` | `debug` / `debugMode` | off → `summary` when flag present without value | Align with `DebugTrace.mode` |
-| `--no-async` | `asyncRun: false` or equivalent | async if server default | Uniform across commands |
+| `--no-async` | `asyncRun: false` or equivalent | async if server default | Datasource commands only |
 | `--test-crud` | `testCrud: true` | false | E2E |
 | `--record-id`, `--no-cleanup`, `--primary-key-value` | matching body fields | OpenAPI defaults | E2E |
 | `--require-cert` | *(client only)* | false | Exit **2** gate; not sent to server unless OpenAPI adds explicit flag |
@@ -475,13 +484,13 @@ Flow: local validate → `datasource test` → `test-integration` → `test-e2e`
 
 ## 14. Deliverables checklist
 
-- [ ] Single API module: POST + shared poll (§3.5–3.6, §9); system scope + optional fan-out merge (§2.2, §17.4).
-- [ ] `datasource test` + drill-down `test-e2e <ds> <capability>` (§2.3).
+- [x] Single API module: POST + shared poll (§3.5–3.6, §9); system scope + optional fan-out merge (§2.2, §17.4).
+- [x] `datasource test` + drill-down `test-e2e <ds> <capability>` (§2.3).
 - [ ] Renderer: §3.2 + §16 (datasource) + §17 (system aggregate), §3.9 empty, §3.11 dedupe, §3.12 leakage, §3.10 RBAC, chalk §16.12.
 - [ ] Exit matrix §3.1; `--require-cert`, `--warnings-as-errors`.
 - [ ] `--json` / `--summary`; schema sync CI §8.1.
 - [ ] `--watch` §3.14; progress §3.13; debug limits §3.7.
-- [ ] `reportVersion` handling §3.15.
+- [x] `reportVersion` handling §3.15.
 - [ ] Flag map §4 documented and tested.
 
 ### 14.1 Definition of done
@@ -845,7 +854,7 @@ Use **`aifabrix test <systemKey>`**, **`test-integration <systemKey>`**, or **`t
 | System integration health | `aifabrix test-integration hubspot` *(no `--datasource`)* | `integration` |
 | System E2E / capability overview | `aifabrix test-e2e hubspot` | `e2e` |
 
-**Scoped to one datasource:** keep **`--datasource <key>`** — then render **§16** (datasource-deep), not §17.
+**Scoped to one datasource:** use the **datasource** command family (renders §16, not §17), e.g. `aifabrix datasource test-integration hubspot.deals` / `aifabrix datasource test-e2e hubspot.deals`.
 
 ### 17.3 Deterministic block order (system TTY)
 
@@ -1156,3 +1165,103 @@ Code quality commands (`npm run lint:fix`, `npm run lint`) pass. Full `npm test`
 - [x] Lint passes (this run)
 - [x] `npm test` green in verification run (re-run in CI; rare flakes possible in other suites)
 - [ ] Registry/docs aligned if APIs changed (Builder docs rules: no raw REST in user docs)
+
+## Implementation Validation Report
+
+**Date**: 2026-04-16  
+**Plan**: `.cursor/plans/115-testing-tool.plan.md`  
+**Status**: ⚠️ **INCOMPLETE** (core slices implemented; several §14 deliverables still unchecked)
+
+### Executive summary
+- ✅ **Code quality**: `pnpm run lint:fix` → `pnpm run lint` passed
+- ✅ **Tests**: `pnpm test` passed (full suite green in this run)
+- ✅ **Recent work implemented**:
+  - System-level `test` / `test-integration` / `test-e2e` now share the same interface (`-e`, `-v`, `-d/--debug`, `-h`)
+  - `--debug` for local external `test` writes logs under `integration/<systemKey>/logs/`
+  - TTY color semantics improved per `layout.md` (legacy + envelope paths), and tests added for most updated surfaces
+- ⚠️ **Plan completeness**: §14 checklist items are still mostly `[ ]` and should be reviewed/checked only when each is verified end-to-end against this plan.
+
+### Files verified (spot)
+- `lib/commands/datasource-unified-test-cli.js` + `lib/commands/datasource-unified-test-cli.options.js` (refactor to stay under 500 lines; lint rule satisfied)
+- `lib/utils/external-system-display.js` / `lib/utils/external-system-local-test-tty.js` (TTY UX alignment)
+- `lib/cli/setup-app.js`, `lib/cli/setup-external-system.js` (system-level CLI flag interface)
+- Tests added/updated across `tests/lib/utils/*`, `tests/lib/commands/*`, `tests/lib/external-system/*`
+
+### Code quality validation (this run)
+- ✅ **Format**: `pnpm run lint:fix`
+- ✅ **Lint**: `pnpm run lint`
+- ✅ **Tests**: `pnpm test`
+
+### Remaining work (task list)
+These map directly to the unchecked §14 items and remaining plan sections that are not yet fully delivered:
+
+1. **Renderer completeness** (plan §3.2 + §16 + §17)
+   - Datasource renderer: verify all required blocks, empty handling (§3.9), dedupe (§3.11), leakage guardrails (§3.12), RBAC surfacing (§3.10) are fully implemented and covered by fixtures.
+   - System aggregate renderer (§17): implement/verify the system-level rollup output (not just per-datasource list) and ensure it does not dump full §16 per datasource by default.
+
+2. **Exit matrix §3.1 end-to-end** (including system aggregate §3.1a)
+   - Confirm exit codes for all combinations (ok/warn/fail + `--warnings-as-errors` + `--require-cert`), including aggregated/system mode.
+
+3. **Machine output modes** (`--json` / `--summary`) + schema sync CI (§8.1)
+   - Ensure fixtures are AJV-valid against `lib/schema/datasource-test-run.schema.json` and schema-sync gate is part of CI (`npm run check:schema-sync` exists; ensure plan §8.1 expectations are met).
+
+4. **Watch mode + progress UI + debug limits** (plan §3.13–§3.14, §3.7)
+   - Verify progress messaging is present/consistent across datasource commands.
+   - Verify watch mode diff behavior (§3.14) matches the plan, including `--watch-ci` exit semantics.
+
+5. **Docs/registry alignment** (builder docs rule: no REST in user docs)
+   - Ensure `docs/commands/*` and any support/registry maps reflect the *actual* CLI interfaces and behavior after the flag/interface changes.
+
+## Implementation Validation Report (validate-implementation)
+
+**Date**: 2026-04-16  
+**Plan**: `.cursor/plans/115-testing-tool.plan.md`  
+**Status**: ⚠️ **INCOMPLETE** (remaining §14 items not yet verified/delivered)
+
+### Task completion (plan §14 checkboxes)
+
+- **Total**: 8
+- **Completed**: 3
+- **Incomplete**: 5
+
+**Incomplete items:**
+
+- Renderer: §3.2 + §16 (datasource) + §17 (system aggregate), including empty handling/dedupe/leakage/RBAC surfacing
+- Exit matrix §3.1 + §3.1a end-to-end (`--require-cert`, `--warnings-as-errors`) including system-aggregate mode
+- Machine outputs: `--json` / `--summary` + schema sync CI §8.1 (fixtures AJV-valid)
+- Watch/progress/debug limits: `--watch` §3.14 + progress §3.13 + debug size limits §3.7
+- Flag map §4 documented + tested
+
+### File existence validation (high-signal targets)
+
+- ✅ `lib/api/validation-runner.js` (single POST + poll orchestrator)
+- ✅ `lib/api/validation-run.api.js` (unified validation API helpers)
+- ✅ `lib/datasource/unified-validation-run.js` (datasource-scoped unified runner)
+- ✅ `lib/commands/datasource-unified-test-cli.js` + `lib/commands/datasource-unified-test-cli.options.js` (CLI wiring + shared options/help)
+- ✅ `lib/utils/datasource-test-run-tty-log.js` + `lib/utils/datasource-test-run-report-version.js` (`reportVersion` diagnostics)
+
+### Test coverage validation (spot)
+
+- ✅ Tests exist for the unified validation API + polling + CLI wiring (full `npm test` pass in this run)
+- ✅ Legacy external test API module removed (`lib/api/external-test.api.js`) and its tests removed
+
+### Code quality validation (this run; mandatory order)
+
+- ✅ Format: `npm run lint:fix`
+- ✅ Lint: `npm run lint` (0 errors, 0 warnings)
+- ✅ Tests: `npm test` (pass)
+
+### Cursor rules / docs policy (spot)
+
+- ✅ CommonJS module pattern maintained
+- ✅ No secrets introduced
+- ⚠️ Docs alignment still pending (Builder docs rule: no REST details in `docs/commands/*`)
+
+### Final validation checklist
+
+- [ ] All §14 tasks completed (plan checkboxes)
+- [x] Key implementation files exist
+- [x] Lint passes (this run)
+- [x] Tests pass (this run)
+- [ ] Registry/docs aligned if interfaces changed
+

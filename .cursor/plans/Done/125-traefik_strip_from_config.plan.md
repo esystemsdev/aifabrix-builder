@@ -90,72 +90,70 @@ This matches:
 
 ## Implementation Validation Report
 
-**Date**: 2026-04-13  
+**Date**: 2026-04-16  
 **Plan**: `.cursor/plans/125-traefik_strip_from_config.plan.md`  
-**Status**: ⚠️ IMPLEMENTATION COMPLETE — full-repo test run has unrelated failures
+**Status**: ✅ COMPLETE (implementation + lint + full `npm test`)
 
 ### Executive Summary
 
-The plan’s behavior is implemented in `lib/utils/compose-generator.js` with Traefik ingress helpers split into `lib/utils/compose-traefik-ingress-base.js` to satisfy the repository **max-lines (500)** rule on `compose-generator.js`. Unit/integration coverage for compose and Traefik strip behavior is present and passes. `npm run lint:fix` and `npm run lint` complete with **0 errors, 0 warnings**. `npm test` reports **2 failing suites** (`paths.test.js`, `register-aifabrix-shell-env.test.js`) that are **not touched by this plan**; all **84** tests in `tests/lib/compose-generator.test.js` pass.
+Traefik **StripPrefix** is derived from the same resolved health path as the compose probe (`resolveHealthCheckPathWithFrontDoorVdir` + `computeTraefikStripPathPrefix` in `lib/utils/compose-traefik-ingress-base.js`, wired from `buildTraefikConfig` in `lib/utils/compose-generator.js`). There is no `frontDoor.stripPathPrefix` usage in the codebase. **293** default Jest suites and **24** multi-project suites passed via `npm test` (wrapper reported **ALL TESTS PASSED**). Plan YAML frontmatter `todos` still list `status: pending`; behavior and tests are complete except the explicitly optional docs item.
 
 ### Task completion (YAML todos vs implementation)
 
-Frontmatter `todos` still show `status: pending` in this file; behavior-wise the work items are done except the explicitly optional docs note.
+| Todo id | Status |
+|---------|--------|
+| confirm-model | ✅ JSDoc / module docs (`compose-traefik-ingress-base.js`, compose-generator Traefik flow) |
+| strip-logic | ✅ `computeTraefikStripPathPrefix`; `buildTraefikConfig` sets `stripPathPrefix`; no `frontDoor.stripPathPrefix` |
+| wire-health | ✅ Resolved health path passed into `buildTraefikConfig` (same resolver as compose health) |
+| tests | ✅ `tests/lib/compose-generator.test.js` (84 tests): auth-style, miso bare `/health`, scoped `/dev/auth`, `generateDockerCompose` / `stripprefix` labels |
+| docs-optional | ⏭️ Optional only — no required `docs/` change |
 
-| Todo id | Implemented |
-|---------|-------------|
-| confirm-model | ✅ JSDoc on ingress base module + compose-generator health/Traefik flow |
-| strip-logic | ✅ `computeTraefikStripPathPrefix` + `buildTraefikConfig`; `frontDoor.stripPathPrefix` removed |
-| wire-health | ✅ `buildServiceConfig` passes `healthCheck.path` into `buildTraefikConfig`; resolver uses `buildTraefikIngressBase` (no cycle) |
-| tests | ✅ `tests/lib/compose-generator.test.js` (auth / miso / scoped + compose output assertions) |
-| docs-optional | ⏭️ Not required by plan closure (optional only) |
+**Tracking:** Update plan frontmatter `todos[].status` to `completed` if you want the file to reflect completion in tooling.
 
 ### File existence validation
 
 | Item | Status |
 |------|--------|
-| [`lib/utils/compose-generator.js`](lib/utils/compose-generator.js) | ✅ (under 500 lines after split) |
-| [`lib/utils/compose-traefik-ingress-base.js`](lib/utils/compose-traefik-ingress-base.js) | ✅ **Added** during validation to fix `max-lines` |
-| [`templates/typescript/docker-compose.hbs`](templates/typescript/docker-compose.hbs) | ✅ `{{#if traefik.stripPathPrefix}}` unchanged |
-| [`templates/python/docker-compose.hbs`](templates/python/docker-compose.hbs) | ✅ same |
-| [`tests/lib/compose-generator.test.js`](tests/lib/compose-generator.test.js) | ✅ |
-| [`tests/lib/templates/application-frontdoor-paths.contract.test.js`](tests/lib/templates/application-frontdoor-paths.contract.test.js) | ✅ Keycloak `stripPathPrefix` assertion removed (field not in shipped YAML) |
-| Optional `docs/` paragraph | ⏭️ Skipped (optional) |
+| `lib/utils/compose-generator.js` | ✅ |
+| `lib/utils/compose-traefik-ingress-base.js` | ✅ (`computeTraefikStripPathPrefix` exported) |
+| `templates/typescript/docker-compose.hbs` | ✅ `{{#if traefik.stripPathPrefix}}` |
+| `templates/python/docker-compose.hbs` | ✅ same |
+| `tests/lib/compose-generator.test.js` | ✅ |
+| `tests/lib/templates/application-frontdoor-paths.contract.test.js` | ✅ Present; no `stripPathPrefix` YAML assertion (aligned with removed field) |
 
-**Not modified (as planned):** `lib/core/config.js`, `lib/schema/application-schema.json`, shipped Keycloak `application.yaml`, `config.yaml` prefix list.
+**Not modified (as planned):** `lib/core/config.js`, `lib/schema/application-schema.json`, shipped Keycloak template, `config.yaml` prefix list.
 
 ### Test coverage
 
-- ✅ Unit tests for `buildTraefikConfig` `stripPathPrefix` (auth, miso bare `/health`, scoped `/dev/auth`).
-- ✅ `generateDockerCompose` asserts `stripprefix` / absence for IdP vs miso-style cases.
-- ✅ Existing health-path / `resolveHealthCheckPathWithFrontDoorVdir` tests retained.
+- ✅ `buildTraefikConfig` strip true/false cases (Keycloak-style under prefix vs miso bare `/health`, scoped `/dev/auth`).
+- ✅ Compose output / Traefik middleware naming where applicable.
+- ✅ `resolveHealthCheckPathWithFrontDoorVdir` behavior including `skipVdirMergeWhenPathIsBareHealth` for compose.
 
 ### Code quality validation
 
 | Step | Result |
 |------|--------|
 | `npm run lint:fix` | ✅ exit 0 |
-| `npm run lint` | ✅ 0 errors, 0 warnings |
-| `npx jest tests/lib/compose-generator.test.js` | ✅ 84 passed |
-| `npm test` (full) | ⚠️ 2 suites failed (see below) |
+| `npm run lint` | ✅ exit 0 (0 errors, 0 warnings) |
+| `npm test` | ✅ exit 0 — 293 suites (default) + 24 projects; 5955 passed, 28 skipped; wrapper: all tests passed |
 
 ### Cursor rules compliance (spot-check)
 
-- ✅ CommonJS, `path.join` where applicable, no secrets added.
-- ✅ JSDoc on new module and public-facing helpers.
-- ✅ File size: `compose-generator.js` brought under **500 lines** via `compose-traefik-ingress-base.js`.
+- ✅ CommonJS, async/fs patterns consistent with existing modules; no secrets in changes.
+- ✅ JSDoc on `computeTraefikStripPathPrefix` and related ingress helpers.
+- ✅ `compose-generator.js` kept within file-size guidance via `compose-traefik-ingress-base.js`.
 
 ### Issues and recommendations
 
-1. **Full `npm test`**: Failures in `tests/lib/utils/paths.test.js` and `tests/lib/utils/register-aifabrix-shell-env.test.js` should be investigated separately; they are outside plan 125 file scope.
-2. **Plan frontmatter**: Optionally update YAML `todos` to `status: completed` for tracking.
-3. **Optional docs**: Add the short “private URL vs public PathPrefix” paragraph under `docs/` if you want user-facing documentation.
+1. **Frontmatter:** Set YAML `todos` to `status: completed` for non-optional items if you use plan metadata for dashboards.
+2. **Optional docs:** One short paragraph under `docs/` (private URL vs public PathPrefix; health drives strip) remains optional per plan.
 
 ### Final validation checklist
 
-- [x] Implementation matches plan (derive strip from compose health path; no `frontDoor.stripPathPrefix`)
-- [x] Mentioned templates and tests exist / updated
-- [x] Lint passes (0 errors, 0 warnings)
-- [x] Compose-generator tests pass
-- [ ] Full repository test suite green (blocked by unrelated failures)
+- [x] Implementation matches plan (health-aligned strip; no `frontDoor.stripPathPrefix`)
+- [x] Mentioned files exist
+- [x] Tests exist and pass (`compose-generator` + full suite)
+- [x] `npm run lint:fix` → `npm run lint` → `npm test` (mandatory order) all pass
+- [x] Full repository test suite green (this run)
 - [ ] Optional docs paragraph (plan-marked optional)
+- [ ] Plan YAML todos updated to `completed` (optional housekeeping)

@@ -24,7 +24,12 @@ jest.mock('../../../lib/api/index', () => ({
   ApiClient: mockApiClient
 }));
 
+jest.mock('../../../lib/api/validation-runner', () => ({
+  postValidationRunAndOptionalPoll: jest.fn()
+}));
+
 const pipelineApi = require('../../../lib/api/pipeline.api');
+const { postValidationRunAndOptionalPoll } = require('../../../lib/api/validation-runner');
 
 describe('Pipeline API', () => {
   const controllerUrl = 'https://api.example.com';
@@ -237,45 +242,63 @@ describe('Pipeline API', () => {
     const testData = { includeDebug: true };
 
     it('should test system via unified validation run endpoint', async() => {
+      postValidationRunAndOptionalPoll.mockResolvedValueOnce({
+        envelope: { ok: true },
+        apiError: null,
+        pollTimedOut: false,
+        incompleteNoAsync: false
+      });
       await pipelineApi.testSystemViaPipeline(dataplaneUrl, systemKey, authConfig, testData);
 
-      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/validation/run', {
-        body: {
-          validationScope: 'externalSystem',
-          runType: 'test',
-          systemIdOrKey: systemKey,
-          includeDebug: true
-        }
-      });
+      expect(postValidationRunAndOptionalPoll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dataplaneUrl,
+          authConfig,
+          timeoutMs: 30000,
+          useAsync: true,
+          noAsync: false,
+          body: {
+            validationScope: 'externalSystem',
+            runType: 'test',
+            systemIdOrKey: systemKey,
+            includeDebug: true
+          }
+        })
+      );
     });
 
     it('should include payloadTemplate only when caller provides it', async() => {
+      postValidationRunAndOptionalPoll.mockResolvedValueOnce({
+        envelope: { ok: true },
+        apiError: null,
+        pollTimedOut: false,
+        incompleteNoAsync: false
+      });
       await pipelineApi.testSystemViaPipeline(dataplaneUrl, systemKey, authConfig, {
         payloadTemplate: { foo: 'bar' }
       });
-      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/validation/run', {
-        body: {
-          validationScope: 'externalSystem',
-          runType: 'test',
-          systemIdOrKey: systemKey,
-          payloadTemplate: { foo: 'bar' }
-        }
-      });
+      expect(postValidationRunAndOptionalPoll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            payloadTemplate: { foo: 'bar' }
+          })
+        })
+      );
     });
 
     it('should pass timeout option when provided', async() => {
+      postValidationRunAndOptionalPoll.mockResolvedValueOnce({
+        envelope: { ok: true },
+        apiError: null,
+        pollTimedOut: false,
+        incompleteNoAsync: false
+      });
       const options = { timeout: 5000 };
       await pipelineApi.testSystemViaPipeline(dataplaneUrl, systemKey, authConfig, testData, options);
 
-      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/validation/run', {
-        body: {
-          validationScope: 'externalSystem',
-          runType: 'test',
-          systemIdOrKey: systemKey,
-          includeDebug: true
-        },
-        timeout: 5000
-      });
+      expect(postValidationRunAndOptionalPoll).toHaveBeenCalledWith(
+        expect.objectContaining({ timeoutMs: 5000 })
+      );
     });
   });
 
@@ -291,42 +314,65 @@ describe('Pipeline API', () => {
     };
 
     it('should test datasource via unified validation run endpoint', async() => {
+      postValidationRunAndOptionalPoll.mockResolvedValueOnce({
+        envelope: { ok: true },
+        apiError: null,
+        pollTimedOut: false,
+        incompleteNoAsync: false
+      });
       await pipelineApi.testDatasourceViaPipeline({ dataplaneUrl, systemKey, datasourceKey, authConfig, testData });
 
-      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/validation/run', {
-        body: {
-          validationScope: 'externalDataSource',
-          runType: 'test',
-          systemIdOrKey: systemKey,
-          payloadTemplate: testData.payloadTemplate,
-          datasourceKeys: [datasourceKey]
-        }
-      });
+      expect(postValidationRunAndOptionalPoll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dataplaneUrl,
+          authConfig,
+          body: {
+            validationScope: 'externalDataSource',
+            runType: 'test',
+            systemIdOrKey: systemKey,
+            payloadTemplate: testData.payloadTemplate,
+            datasourceKey
+          }
+        })
+      );
     });
 
     it('should use dataplane URL as base URL', async() => {
+      postValidationRunAndOptionalPoll.mockResolvedValueOnce({
+        envelope: { ok: true },
+        apiError: null,
+        pollTimedOut: false,
+        incompleteNoAsync: false
+      });
       await pipelineApi.testDatasourceViaPipeline({ dataplaneUrl, systemKey, datasourceKey, authConfig, testData });
 
-      expect(mockApiClient).toHaveBeenCalledWith(dataplaneUrl, authConfig);
+      expect(postValidationRunAndOptionalPoll).toHaveBeenCalledWith(
+        expect.objectContaining({ dataplaneUrl })
+      );
     });
 
     it('should pass timeout option when provided', async() => {
+      postValidationRunAndOptionalPoll.mockResolvedValueOnce({
+        envelope: { ok: true },
+        apiError: null,
+        pollTimedOut: false,
+        incompleteNoAsync: false
+      });
       const options = { timeout: 60000 };
       await pipelineApi.testDatasourceViaPipeline({ dataplaneUrl, systemKey, datasourceKey, authConfig, testData, options });
 
-      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/validation/run', {
-        body: {
-          validationScope: 'externalDataSource',
-          runType: 'test',
-          systemIdOrKey: systemKey,
-          payloadTemplate: testData.payloadTemplate,
-          datasourceKeys: [datasourceKey]
-        },
-        timeout: 60000
-      });
+      expect(postValidationRunAndOptionalPoll).toHaveBeenCalledWith(
+        expect.objectContaining({ timeoutMs: 60000 })
+      );
     });
 
     it('should return success response', async() => {
+      postValidationRunAndOptionalPoll.mockResolvedValueOnce({
+        envelope: { ok: true },
+        apiError: null,
+        pollTimedOut: false,
+        incompleteNoAsync: false
+      });
       const response = await pipelineApi.testDatasourceViaPipeline({ dataplaneUrl, systemKey, datasourceKey, authConfig, testData });
 
       expect(response.success).toBe(true);
@@ -334,10 +380,11 @@ describe('Pipeline API', () => {
     });
 
     it('should handle error response', async() => {
-      mockClient.post.mockResolvedValueOnce({
-        success: false,
-        error: 'Test failed',
-        formattedError: 'Test failed: Invalid payload'
+      postValidationRunAndOptionalPoll.mockResolvedValueOnce({
+        envelope: null,
+        apiError: { success: false, error: 'Test failed', formattedError: 'Test failed: Invalid payload' },
+        pollTimedOut: false,
+        incompleteNoAsync: false
       });
 
       const response = await pipelineApi.testDatasourceViaPipeline({ dataplaneUrl, systemKey, datasourceKey, authConfig, testData });

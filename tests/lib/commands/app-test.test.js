@@ -22,8 +22,19 @@ jest.mock('../../../lib/core/secrets-env-write', () => ({ resolveAndWriteEnvFile
 jest.mock('child_process', () => ({ spawn: jest.fn() }));
 
 const containerHelpers = require('../../../lib/utils/app-run-containers');
+const logger = require('../../../lib/utils/logger');
 const { runAppTest, getTestCommand, getTestE2eCommand, getTestIntegrationCommand, getLintCommand, runAppTestE2e, runAppTestIntegration, runAppLint } = require('../../../lib/commands/app-test');
 const spawn = require('child_process').spawn;
+
+function stripAnsi(s) {
+  const ESC = String.fromCharCode(27);
+  const re = new RegExp(`${ESC}\\[[0-9;]*m`, 'g');
+  return String(s).replace(re, '');
+}
+
+function joinedLogText() {
+  return logger.log.mock.calls.map(c => stripAnsi(String(c[0]))).join('\n');
+}
 
 describe('app-test command', () => {
   beforeEach(() => {
@@ -107,6 +118,9 @@ describe('app-test command', () => {
       await runAppTest('myapp', { env: 'dev' });
       expect(secretsEnvWrite.resolveAndWriteEnvFile).toHaveBeenCalledWith('myapp', {});
       expect(spawn).toHaveBeenCalledWith('docker', expect.arrayContaining(['exec', '--env-file', '/tmp/test.env', 'aifabrix-dev01-myapp', 'sh', '-c', 'pnpm test']), expect.any(Object));
+      const out = joinedLogText();
+      expect(out).toMatch(/Running tests in container.*pnpm test/);
+      expect(out).toContain('✔ Tests completed.');
       exitSpy.mockRestore();
     });
     it('runs test in ephemeral container for tst with env file', async() => {
@@ -115,6 +129,8 @@ describe('app-test command', () => {
       await runAppTest('myapp', { env: 'tst' });
       expect(secretsEnvWrite.resolveAndWriteEnvFile).toHaveBeenCalledWith('myapp', {});
       expect(spawn).toHaveBeenCalledWith('docker', expect.arrayContaining(['run', '--rm', '--env-file', '/tmp/test.env', 'myapp:latest', 'sh', '-c', 'pnpm test']), expect.any(Object));
+      expect(joinedLogText()).toMatch(/Running tests in ephemeral container.*pnpm test/);
+      expect(joinedLogText()).toContain('✔ Tests completed.');
       exitSpy.mockRestore();
     });
     it('calls process.exit with code when docker exec returns non-zero in dev', async() => {
@@ -165,6 +181,8 @@ describe('app-test command', () => {
       await runAppTestE2e('myapp', { env: 'tst' });
       expect(secretsEnvWrite.resolveAndWriteEnvFile).toHaveBeenCalledWith('myapp', {});
       expect(spawn).toHaveBeenCalledWith('docker', expect.arrayContaining(['run', '--rm', '--env-file', '/tmp/test.env', 'myapp:latest', 'sh', '-c', 'pnpm test:e2e']), expect.any(Object));
+      expect(joinedLogText()).toMatch(/Running test-e2e in ephemeral container.*pnpm test:e2e/);
+      expect(joinedLogText()).toContain('✔ Test-e2e completed.');
       exitSpy.mockRestore();
     });
   });
@@ -216,6 +234,8 @@ describe('app-test command', () => {
       await runAppLint('myapp', { env: 'tst' });
       expect(secretsEnvWrite.resolveAndWriteEnvFile).toHaveBeenCalledWith('myapp', {});
       expect(spawn).toHaveBeenCalledWith('docker', expect.arrayContaining(['run', '--rm', '--env-file', '/tmp/test.env', 'myapp:latest', 'sh', '-c', 'pnpm lint']), expect.any(Object));
+      expect(joinedLogText()).toMatch(/Running lint in ephemeral container.*pnpm lint/);
+      expect(joinedLogText()).toContain('✔ Lint completed.');
       exitSpy.mockRestore();
     });
   });

@@ -184,8 +184,8 @@ describe('Datasource Commands Module', () => {
     it('should register test-e2e command', () => {
       setupDatasourceCommands(program);
       const datasourceGroup = program._datasourceGroup;
-      expect(datasourceGroup.command).toHaveBeenCalledWith('test-e2e <datasourceKey>');
-      const cmd = datasourceGroup._subCommands?.find(c => c.name === 'test-e2e <datasourceKey>');
+      expect(datasourceGroup.command).toHaveBeenCalledWith('test-e2e <datasourceKey> [capabilityKey]');
+      const cmd = datasourceGroup._subCommands?.find(c => c.name === 'test-e2e <datasourceKey> [capabilityKey]');
       expect(cmd).toBeDefined();
       expect(cmd.command.description).toHaveBeenCalledWith(
         'E2E test one datasource (unified validation API, runType=e2e)'
@@ -202,7 +202,7 @@ describe('Datasource Commands Module', () => {
       for (const name of [
         'test <datasourceKey>',
         'test-integration <datasourceKey>',
-        'test-e2e <datasourceKey>'
+        'test-e2e <datasourceKey> [capabilityKey]'
       ]) {
         const cmd = datasourceGroup._subCommands?.find(c => c.name === name);
         expect(cmd).toBeDefined();

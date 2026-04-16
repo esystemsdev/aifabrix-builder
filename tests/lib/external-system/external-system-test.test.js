@@ -366,6 +366,13 @@ describe('External System Test Module', () => {
       const { testExternalSystem } = require('../../../lib/external-system/test');
       await expect(testExternalSystem(appName, {})).rejects.toThrow(/application\.yaml not found|Application config|ENOENT/);
     });
+
+    it('should write debug log when --debug is set', async() => {
+      const { testExternalSystem } = require('../../../lib/external-system/test');
+      await testExternalSystem(appName, { debug: true });
+      expect(fsPromises.writeFile).toHaveBeenCalled();
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Debug log:'));
+    });
   });
 
   describe('testExternalSystemIntegration', () => {

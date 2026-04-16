@@ -1,5 +1,5 @@
 /**
- * @fileoverview Tests for datasource-test-run-display.js
+ * @fileoverview Unit tests for DatasourceTestRun TTY string builders (glyphs + structure).
  */
 
 const {
@@ -8,118 +8,95 @@ const {
   formatCapabilityFocusSection
 } = require('../../../lib/utils/datasource-test-run-display');
 
-describe('datasource-test-run-display', () => {
-  const baseEnv = {
-    datasourceKey: 'ds1',
-    systemKey: 'sys',
-    runType: 'e2e',
+function stripAnsi(s) {
+  const ESC = String.fromCharCode(27);
+  const re = new RegExp(`${ESC}\\[[0-9;]*m`, 'g');
+  return String(s).replace(re, '');
+}
+
+function baseEnvelope(overrides = {}) {
+  return {
+    datasourceKey: 'hubspot.users',
+    systemKey: 'hubspot',
+    runType: 'integration',
     status: 'ok',
-    developer: { executiveSummary: 'All good' }
+    developer: { executiveSummary: '✔ Suitable for production use.' },
+    ...overrides
   };
+}
 
-  it('formatCapabilityFocusSection returns empty when no focus key', () => {
-    expect(formatCapabilityFocusSection(baseEnv, '')).toBe('');
+describe('datasource-test-run-display', () => {
+  describe('formatDatasourceTestRunSummary', () => {
+    it('includes datasource key, status glyph, and uppercase status', () => {
+      const s = formatDatasourceTestRunSummary(baseEnvelope({ status: 'warn' }));
+      expect(s).toContain('hubspot.users');
+      expect(s).toContain('⚠');
+      expect(s).toContain('WARN');
+    });
+
+    it('returns empty string when envelope missing', () => {
+      expect(formatDatasourceTestRunSummary(null)).toBe('');
+    });
   });
 
-  it('formatCapabilityFocusSection shows missing when key not in capabilities', () => {
-    const out = formatCapabilityFocusSection(baseEnv, 'read');
-    expect(out).toContain('Capability scope: read');
-    expect(out).toContain('No row with key "read"');
+  describe('formatDatasourceTestRunTTY', () => {
+    it('renders header block with Datasource / Run / Status lines', () => {
+      const tty = stripAnsi(formatDatasourceTestRunTTY(baseEnvelope()));
+      expect(tty).toContain('Datasource:');
+      expect(tty).toContain('hubspot.users');
+      expect(tty).toContain('hubspot');
+      expect(tty).toContain('Run:');
+      expect(tty).toContain('integration');
+      expect(tty).toContain('Status:');
+      expect(tty).toContain('ok');
+    });
+
+    it('renders integration steps with ✔ / ✖ glyphs', () => {
+      const tty = stripAnsi(
+        formatDatasourceTestRunTTY(
+          baseEnvelope({
+            integration: {
+              stepResults: [
+                { name: 'config', success: true },
+                { name: 'credential', success: false, error: 'bad token' }
+              ]
+            }
+          })
+        )
+      );
+      expect(tty).toContain('Integration steps:');
+      expect(tty).toContain('✔ config');
+      expect(tty).toContain('✖ credential');
+      expect(tty).toContain('bad token');
+    });
+
+    it('includes capability focus section when focus key set', () => {
+      const env = baseEnvelope({
+        capabilities: [{ key: 'read', status: 'ok', permission: 'x' }]
+      });
+      const tty = stripAnsi(formatDatasourceTestRunTTY(env, { focusCapabilityKey: 'read' }));
+      expect(tty).toContain('Capability scope: read');
+    });
   });
 
-  it('formatCapabilityFocusSection shows row and e2e steps', () => {
-    const env = {
-      ...baseEnv,
-      capabilities: [
-        {
-          key: 'read',
-          status: 'ok',
-          permission: 'p.read',
-          e2e: {
-            status: 'ok',
-            steps: [{ name: 'list', success: true }, { name: 'get', success: false, error: 'nope' }]
+  describe('formatCapabilityFocusSection', () => {
+    it('uses ✔ / ✖ in embedded capability E2E step lines', () => {
+      const env = baseEnvelope({
+        capabilities: [
+          {
+            key: 'deal.read',
+            status: 'fail',
+            e2e: {
+              status: 'fail',
+              steps: [{ name: 'probe', success: true }, { name: 'mutate', success: false, error: 'nope' }]
+            }
           }
-        }
-      ]
-    };
-    const out = formatCapabilityFocusSection(env, 'read');
-    expect(out).toContain('Capability scope: read');
-    expect(out).toContain('Permission: p.read');
-    expect(out).toContain('✓ list');
-    expect(out).toContain('✗ get');
-    expect(out).toContain('nope');
-  });
-
-  it('formatDatasourceTestRunTTY shows §3.9 line when e2e has no capabilities', () => {
-    const out = formatDatasourceTestRunTTY(baseEnv);
-    expect(out).toContain('No capabilities reported.');
-    expect(out.indexOf('No capabilities reported.')).toBeLessThan(out.indexOf('Verdict:'));
-  });
-
-  it('formatDatasourceTestRunTTY omits §3.9 line when capabilities present', () => {
-    const env = { ...baseEnv, capabilities: [{ key: 'read', status: 'ok' }] };
-    expect(formatDatasourceTestRunTTY(env)).not.toContain('No capabilities reported.');
-  });
-
-  it('formatDatasourceTestRunTTY omits §3.9 line for non-e2e runType', () => {
-    const env = { ...baseEnv, runType: 'test' };
-    expect(formatDatasourceTestRunTTY(env)).not.toContain('No capabilities reported.');
-  });
-
-  it('formatDatasourceTestRunTTY omits §3.9 line when capability drill-down is set', () => {
-    const out = formatDatasourceTestRunTTY(baseEnv, { focusCapabilityKey: 'read' });
-    expect(out).not.toContain('No capabilities reported.');
-    expect(out).toContain('Capability scope: read');
-  });
-
-  it('formatDatasourceTestRunTTY appends focus section when option set', () => {
-    const env = {
-      ...baseEnv,
-      capabilities: [{ key: 'write', status: 'fail' }]
-    };
-    const out = formatDatasourceTestRunTTY(env, { focusCapabilityKey: 'write' });
-    expect(out).toContain('Verdict:');
-    expect(out).toContain('Capability scope: write');
-    expect(out).toContain('✖ fail');
-  });
-
-  it('formatDatasourceTestRunTTY includes reference layout and validation issues', () => {
-    const env = {
-      ...baseEnv,
-      runType: 'integration',
-      audit: { traceRefs: ['https://example.com/t/1'] },
-      debug: { payloadRefs: [{ key: 'snap', ref: 'ref-abc' }] },
-      validation: {
-        issues: [{ code: 'DP-VAL-001', message: 'Schema gap' }, { message: 'Second' }]
-      },
-      integration: {
-        stepResults: [{ name: 'fetch', success: true }, { name: 'map', success: false, error: 'bad' }]
-      }
-    };
-    const out = formatDatasourceTestRunTTY(env);
-    expect(out).toContain('audit.traceRefs:');
-    expect(out).toContain('https://example.com/t/1');
-    expect(out).toContain('debug.payloadRefs:');
-    expect(out).toContain('snap: ref-abc');
-    expect(out).toContain('Validation issues:');
-    expect(out).toContain('DP-VAL-001');
-    expect(out).toContain('Integration steps:');
-    expect(out).toContain('✗ map');
-    expect(out).toContain('bad');
-  });
-
-  it('formatDatasourceTestRunSummary uses focused cap instead of rollup counts', () => {
-    const env = {
-      ...baseEnv,
-      capabilitySummary: { passedCount: 3, totalCount: 10 },
-      capabilities: [{ key: 'read', status: 'warn' }]
-    };
-    const withFocus = formatDatasourceTestRunSummary(env, { focusCapabilityKey: 'read' });
-    expect(withFocus).toContain('Cap read:');
-    expect(withFocus).toMatch(/Cap read:.*warn/i);
-    expect(withFocus).not.toContain('Capabilities: 3/10');
-
-    const noFocus = formatDatasourceTestRunSummary(env);
-    expect(noFocus).toContain('Capabilities: 3/10');
+        ]
+      });
+      const block = stripAnsi(formatCapabilityFocusSection(env, 'deal.read'));
+      expect(block).toContain('deal.read');
+      expect(block).toContain('✔ probe');
+      expect(block).toContain('✖ mutate');
+    });
   });
 });

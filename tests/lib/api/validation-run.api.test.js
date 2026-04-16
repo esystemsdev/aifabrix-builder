@@ -39,7 +39,7 @@ describe('validation-run.api', () => {
 
   it('getValidationRun encodes testRunId in path', async() => {
     await validationRunApi.getValidationRun(dataplaneUrl, auth, 'run/a');
-    expect(mockClient.get).toHaveBeenCalledWith('/api/v1/validation/run/run%2Fa');
+    expect(mockClient.get).toHaveBeenCalledWith('/api/v1/validation/run/run%2Fa', { headers: undefined });
   });
 
   it('extractTestRunId reads string testRunId', () => {
