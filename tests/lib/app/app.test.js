@@ -1,6 +1,9 @@
 /**
  * Tests for AI Fabrix Builder Application Module
  *
+ * Isolated Jest project `app-module` — uses real `fs` + `util.promisify` partial mock; avoid sharing
+ * a worker with suites that `jest.mock('fs')` or fully mock `util`.
+ *
  * @fileoverview Unit tests for app.js module
  * @author AI Fabrix Team
  * @version 2.0.0
