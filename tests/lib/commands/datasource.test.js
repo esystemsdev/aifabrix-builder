@@ -36,12 +36,16 @@ jest.mock('../../../lib/datasource/diff', () => ({
 jest.mock('../../../lib/datasource/deploy', () => ({
   deployDatasource: jest.fn()
 }));
+jest.mock('../../../lib/datasource/log-viewer', () => ({
+  runLogViewer: jest.fn().mockResolvedValue(undefined)
+}));
 
 const logger = require('../../../lib/utils/logger');
 const { validateDatasourceFile } = require('../../../lib/datasource/validate');
 const { listDatasources } = require('../../../lib/datasource/list');
 const { compareDatasources } = require('../../../lib/datasource/diff');
 const { deployDatasource } = require('../../../lib/datasource/deploy');
+const { runLogViewer } = require('../../../lib/datasource/log-viewer');
 
 describe('Datasource Commands Module', () => {
   let program;
@@ -243,6 +247,32 @@ describe('Datasource Commands Module', () => {
       expect(logInt).toBeDefined();
       expect(logInt.command.option).toHaveBeenCalledWith('-a, --app <app>', expect.any(String));
       expect(logInt.command.option).toHaveBeenCalledWith('-f, --file <path>', expect.any(String));
+    });
+
+    it('should register log-test command', () => {
+      setupDatasourceCommands(program);
+      const datasourceGroup = program._datasourceGroup;
+      expect(datasourceGroup.command).toHaveBeenCalledWith('log-test <datasourceKey>');
+      const logTest = datasourceGroup._subCommands?.find(c => c.name === 'log-test <datasourceKey>');
+      expect(logTest).toBeDefined();
+      expect(logTest.command.option).toHaveBeenCalledWith('-a, --app <app>', expect.any(String));
+      expect(logTest.command.option).toHaveBeenCalledWith('-f, --file <path>', expect.any(String));
+    });
+
+    it('log-test action calls runLogViewer with logType test', async() => {
+      setupDatasourceCommands(program);
+      const datasourceGroup = program._datasourceGroup;
+      const logTest = datasourceGroup._subCommands?.find(c => c.name === 'log-test <datasourceKey>');
+      const actionFn = logTest.command.action.mock.calls[0][0];
+      await actionFn('hubspot-users', { app: 'hubspot', file: '/tmp/log.json' });
+      expect(runLogViewer).toHaveBeenCalledWith(
+        'hubspot-users',
+        expect.objectContaining({
+          app: 'hubspot',
+          file: '/tmp/log.json',
+          logType: 'test'
+        })
+      );
     });
   });
 

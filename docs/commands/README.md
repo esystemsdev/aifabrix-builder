@@ -103,6 +103,7 @@ Complete command reference organized by concept with examples and troubleshootin
     - [`aifabrix datasource test <datasourceKey>`](external-integration.md#aifabrix-datasource-test-datasourcekey) - Structural/policy validation run for one datasource (unified dataplane API, run type test)
     - [`aifabrix datasource test-integration <datasourceKey>`](external-integration.md#aifabrix-datasource-test-integration-datasourcekey) - Integration validation run for one datasource (unified dataplane API)
     - [`aifabrix datasource test-e2e <datasourceKey>`](external-integration.md#aifabrix-datasource-test-e2e-datasourcekey) - E2E validation run for one datasource (unified dataplane API)
+    - [`aifabrix datasource log-test <datasourceKey>`](external-integration.md#aifabrix-datasource-log-test-datasourcekey) - Show latest structural validation debug log (`test-*.json`)
 
 ### Utilities
 - [Utility Commands](utilities.md) - Configuration and secret management

@@ -512,6 +512,7 @@ Manage external data sources.
 - `test` - Run structural/policy validation for one datasource (unified dataplane validation API)
 - `test-integration` - Run integration validation for one datasource (same unified API, run type integration)
 - `test-e2e` - Run E2E validation for one datasource (same unified API, run type e2e; config, credential, sync, data, CIP)
+- `log-test` - Display latest or specified structural validation log (`test-*.json` from `datasource test --debug`)
 - `log-e2e` - Display latest or specified E2E test log in readable format
 - `log-integration` - Display latest or specified integration test log in readable format
 
@@ -525,6 +526,7 @@ Manage external data sources.
 - [aifabrix datasource test](#aifabrix-datasource-test-datasourcekey)
 - [aifabrix datasource test-integration](#aifabrix-datasource-test-integration-datasourcekey)
 - [aifabrix datasource test-e2e](#aifabrix-datasource-test-e2e-datasourcekey)
+- [aifabrix datasource log-test](#aifabrix-datasource-log-test-datasourcekey)
 - [aifabrix datasource log-e2e](#aifabrix-datasource-log-e2e-datasourcekey)
 - [aifabrix datasource log-integration](#aifabrix-datasource-log-integration-datasourcekey)
 
@@ -845,7 +847,7 @@ After upload:
 - Run structural dataplane validation: `aifabrix datasource test <datasourceKey>` (add `--app <app>` only if needed)
 - Run integration test: `aifabrix datasource test-integration <datasourceKey>` (add `--app <app>` only if needed)
 - Run E2E test: `aifabrix datasource test-e2e <datasourceKey>` (add `--app <app>` only if needed)
-- View last E2E or integration log: `aifabrix datasource log-e2e <key>` or `aifabrix datasource log-integration <key>` (after a run with `--debug`; those commands locate **`test-e2e-*.json`** / **`test-integration-*.json`**). Structural runs write **`test-*.json`** to the same folder—the CLI prints the path; open that file directly (it is not selected by the E2E/integration log viewers, which filter on their own prefixes).
+- View saved debug logs: `aifabrix datasource log-test <key>` (structural **`test-*.json`**), `datasource log-integration <key>`, or `datasource log-e2e <key>` (after the matching run with **`--debug`**). Each command resolves the latest file for its prefix under `integration/<systemKey>/logs/`, or use **`--file`** with a path you already have.
 - Check datasource status in controller dashboard
 - Monitor dataplane for datasource activity
 
@@ -992,7 +994,31 @@ aifabrix datasource log-e2e hubspot-contacts --app hubspot
 
 **Options:** `-a, --app <app>` – Integration folder (optional; same resolution as test-e2e). `-f, --file <path>` – Path to the log file (relative to current directory). If omitted, the latest `test-e2e-*.json` in `integration/<systemKey>/logs/` is used.
 
-**Prerequisites:** For “latest” mode: at least one E2E test run with `--debug` so a **`test-e2e-*.json`** log exists in the app’s logs folder. Structural **`test-*.json`** logs from `datasource test --debug` are **not** picked as “latest” here—open them directly or pass **`--file`**. For `--file`: the file must exist and be valid JSON.
+**Prerequisites:** For “latest” mode: at least one E2E test run with `--debug` so a **`test-e2e-*.json`** log exists in the app’s logs folder. For structural **`test-*.json`** logs from `datasource test --debug`, use **`aifabrix datasource log-test`** (or pass **`--file`** here if you want the E2E formatter on a specific path). For `--file`: the file must exist and be valid JSON.
+
+---
+
+<a id="aifabrix-datasource-log-test-datasourcekey"></a>
+### aifabrix datasource log-test <datasourceKey>
+
+Display the latest structural validation debug log (or a specified log file) after `aifabrix datasource test <datasourceKey> --debug`.
+
+**What:** Reads JSON written as **`test-*.json`** under `integration/<systemKey>/logs/` (same folder as other datasource test logs). The summary shows the saved **request** metadata and a short **DatasourceTestRun** envelope summary (status, completeness, run id when present).
+
+**When:** Reviewing the last structural validation run without re-querying the dataplane.
+
+**Usage:**
+```bash
+aifabrix datasource log-test hubspot-company
+aifabrix datasource log-test hubspot-company --app hubspot
+aifabrix datasource log-test hubspot-company --file integration/hubspot/logs/test-2026-01-15T12-00-00-000Z.json
+```
+
+**Arguments:** `<datasourceKey>` – Datasource key (used to resolve the integration app when `--file` is not set).
+
+**Options:** `-a, --app <app>` – Integration folder (optional; same resolution as `datasource test`). `-f, --file <path>` – Path to a log file. If omitted, the latest matching **`test-*.json`** is used, excluding **`test-e2e-*`** and **`test-integration-*`** file names.
+
+**Prerequisites:** A prior `datasource test` with **`--debug`** so a log file exists, or a valid **`--file`**.
 
 ---
 
