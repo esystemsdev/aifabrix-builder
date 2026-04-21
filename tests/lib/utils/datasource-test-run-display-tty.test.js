@@ -52,4 +52,19 @@ describe('formatDatasourceTestRunTTY', () => {
     expect(s).not.toContain('No capabilities reported');
     expect(s).toContain('Capability scope: read');
   });
+
+  it('rounds debug.executionSummary seconds to 3 decimals in TTY output', () => {
+    const raw = formatDatasourceTestRunTTY({
+      datasourceKey: 'x.ds',
+      systemKey: 'x',
+      runType: 'e2e',
+      status: 'ok',
+      audit: { traceRefs: ['t1'] },
+      debug: { executionSummary: 'Async E2E duration 1.1713749803602695s' }
+    });
+    const s = stripAnsi(raw);
+    expect(s).toContain('debug.executionSummary:');
+    expect(s).toContain('Async E2E duration 1.171s');
+    expect(s).not.toContain('1.1713749803602695s');
+  });
 });

@@ -1,5 +1,6 @@
 /**
  * Tests for AI Fabrix Builder Generator Validation
+ * Isolated project `generator-validation` — `jest.mock('fs')` must not share a default worker with real-fs suites.
  *
  * @fileoverview Unit tests for generator validation functionality
  * @author AI Fabrix Team

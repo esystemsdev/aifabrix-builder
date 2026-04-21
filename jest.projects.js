@@ -69,6 +69,9 @@ const defaultProject = {
       'lib/utils/datasource-validation-watch.test.js',
       'dev-hosts-helper\\.test\\.js',
       'declarative-url-matrix-d-reload\\.test\\.js',
+      '/tests/lib/datasource/log-viewer.test.js',
+      '\\\\tests\\\\lib\\\\datasource\\\\log-viewer.test.js',
+      'lib/datasource/log-viewer.test.js',
       '/tests/lib/commands/parameters-validate.test.js',
       '\\\\tests\\\\lib\\\\commands\\\\parameters-validate.test.js',
       'lib/commands/parameters-validate.test.js',
@@ -175,6 +178,10 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\generator\\\\generator-error-paths.test.js',
       'lib/generator/generator-error-paths.test.js',
       'generator-error-paths\\.test\\.js',
+      '/tests/lib/generator/generator-validation.test.js',
+      '\\\\tests\\\\lib\\\\generator\\\\generator-validation.test.js',
+      'lib/generator/generator-validation.test.js',
+      'generator-validation\\.test\\.js',
       '/tests/lib/core/secrets-databaselog.test.js',
       '\\\\tests\\\\lib\\\\core\\\\secrets-databaselog.test.js',
       'lib/core/secrets-databaselog.test.js',
@@ -215,6 +222,7 @@ const isolatedProjects = [
   makeIsolatedProject('datasource-validation-watch', [
     '**/tests/lib/utils/datasource-validation-watch.test.js'
   ]),
+  makeIsolatedProject('log-viewer', ['**/tests/lib/datasource/log-viewer.test.js']),
   makeIsolatedProject('datasource-test-run-schema-sync', [
     '**/tests/lib/utils/datasource-test-run-schema-sync.test.js'
   ]),
@@ -274,6 +282,7 @@ const isolatedProjects = [
     '**/tests/lib/utils/ensure-dev-certs-for-remote-docker.test.js'
   ]),
   makeIsolatedProject('generator-error-paths', ['**/tests/lib/generator/generator-error-paths.test.js']),
+  makeIsolatedProject('generator-validation', ['**/tests/lib/generator/generator-validation.test.js']),
   makeIsolatedProject('secrets-databaselog', ['**/tests/lib/core/secrets-databaselog.test.js']),
   makeIsolatedProject('schema-241-alignment', ['**/tests/lib/validation/schema-241-alignment.test.js']),
   makeIsolatedProject('app-module', ['**/tests/lib/app/app.test.js']),

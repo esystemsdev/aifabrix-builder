@@ -1,5 +1,6 @@
 /**
  * @fileoverview runLogViewer with logType test (via --file path).
+ * Uses node:fs for temp files so other suites' jest.mock('fs') cannot no-op writes in this worker.
  */
 
 jest.mock('../../../lib/utils/logger', () => ({
@@ -8,7 +9,7 @@ jest.mock('../../../lib/utils/logger', () => ({
   error: jest.fn()
 }));
 
-const fs = require('fs');
+const fs = require('node:fs');
 const path = require('path');
 const os = require('os');
 

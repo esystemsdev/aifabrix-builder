@@ -4,6 +4,7 @@
 
 const {
   computeExitCodeFromDatasourceTestRun,
+  computeSystemExitCodeFromDatasourceRows,
   exitCodeForPollTimeout
 } = require('../../../lib/utils/datasource-test-run-exit');
 
@@ -93,5 +94,70 @@ describe('datasource-test-run-exit', () => {
     expect(exitCodeForPollTimeout({ status: 'fail' })).toBe(1);
     expect(exitCodeForPollTimeout({ status: 'ok' })).toBe(3);
     expect(exitCodeForPollTimeout(null)).toBe(3);
+  });
+
+  it('computeSystemExitCodeFromDatasourceRows: all ok → 0', () => {
+    const rows = [
+      {
+        key: 'a',
+        success: true,
+        datasourceTestRun: { status: 'ok', datasourceKey: 'a', certificate: { status: 'passed' } }
+      }
+    ];
+    expect(computeSystemExitCodeFromDatasourceRows(rows)).toBe(0);
+  });
+
+  it('computeSystemExitCodeFromDatasourceRows: any fail → 1', () => {
+    const rows = [
+      {
+        key: 'a',
+        success: true,
+        datasourceTestRun: { status: 'ok', datasourceKey: 'a' }
+      },
+      {
+        key: 'b',
+        success: false,
+        datasourceTestRun: { status: 'fail', datasourceKey: 'b' }
+      }
+    ];
+    expect(computeSystemExitCodeFromDatasourceRows(rows)).toBe(1);
+  });
+
+  it('computeSystemExitCodeFromDatasourceRows: warn + warningsAsErrors → 1', () => {
+    const rows = [
+      {
+        key: 'a',
+        success: true,
+        datasourceTestRun: { status: 'warn', datasourceKey: 'a' }
+      }
+    ];
+    expect(computeSystemExitCodeFromDatasourceRows(rows, { warningsAsErrors: true })).toBe(1);
+  });
+
+  it('computeSystemExitCodeFromDatasourceRows: requireCert + not_passed rollup → 2', () => {
+    const rows = [
+      {
+        key: 'a',
+        success: true,
+        datasourceTestRun: { status: 'ok', datasourceKey: 'a', certificate: { status: 'passed' } }
+      },
+      {
+        key: 'b',
+        success: true,
+        datasourceTestRun: { status: 'ok', datasourceKey: 'b', certificate: { status: 'not_passed' } }
+      }
+    ];
+    expect(computeSystemExitCodeFromDatasourceRows(rows, { requireCert: true })).toBe(2);
+  });
+
+  it('computeSystemExitCodeFromDatasourceRows: success false overrides envelope ok (e.g. poll timeout)', () => {
+    const rows = [
+      {
+        key: 'a',
+        success: false,
+        datasourceTestRun: { status: 'ok', datasourceKey: 'a' }
+      }
+    ];
+    expect(computeSystemExitCodeFromDatasourceRows(rows)).toBe(1);
   });
 });
