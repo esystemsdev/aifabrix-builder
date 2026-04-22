@@ -1,0 +1,15 @@
+---
+description: Mandatory structure for Builder CLI anchor-docs.
+globs: anchor-docs/**/*.md
+alwaysApply: false
+---
+
+# anchor-docs (Builder)
+
+When editing `anchor-docs/**/*.md` (only `README.md` is exempt). Copy `anchor-docs/_TEMPLATE` to create a new anchor (no `.md` extension — not validated):
+
+- Include YAML frontmatter: `title`, `navigation_id`, `owner`, `last_verified_commit`.
+- `navigation_id` must match **aifabrix-docs** `docs/builder/navigation.yaml` entries (`builder/<url>`).
+- Sections required: `## Summary`, `## Details`, `## Examples`, `## Paths`.
+- Reference repo files with **`[path:aifabrix-builder/...]`**; avoid backtick-only paths for the same references.
+- Align with CLI user-doc rules: keep HTTP/API endpoint names out of `docs/commands/` user text; technical anchors may cite code paths.

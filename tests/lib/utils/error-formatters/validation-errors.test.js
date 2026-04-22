@@ -18,7 +18,7 @@ describe('Validation Error Formatters', () => {
         errors: []
       };
       const result = validationErrors.formatValidationError(errorData);
-      expect(result).toContain('❌ Validation Error');
+      expect(result).toContain('✖ Validation Error');
       expect(result).toContain('Validation failed');
     });
 
@@ -28,7 +28,7 @@ describe('Validation Error Formatters', () => {
         errors: []
       };
       const result = validationErrors.formatValidationError(errorData);
-      expect(result).toContain('❌ Validation Error');
+      expect(result).toContain('✖ Validation Error');
       expect(result).toContain('Validation Error Title');
     });
 
@@ -39,7 +39,7 @@ describe('Validation Error Formatters', () => {
         errors: []
       };
       const result = validationErrors.formatValidationError(errorData);
-      expect(result).toContain('❌ Validation Error');
+      expect(result).toContain('✖ Validation Error');
       expect(result).toContain('Error description');
       expect(result).toContain('Error code: ERROR_CODE');
     });
@@ -50,7 +50,7 @@ describe('Validation Error Formatters', () => {
         errors: []
       };
       const result = validationErrors.formatValidationError(errorData);
-      expect(result).toContain('❌ Validation Error');
+      expect(result).toContain('✖ Validation Error');
       expect(result).toContain('Validation message');
     });
 
@@ -60,7 +60,7 @@ describe('Validation Error Formatters', () => {
         errors: []
       };
       const result = validationErrors.formatValidationError(errorData);
-      expect(result).toContain('❌ Validation Error');
+      expect(result).toContain('✖ Validation Error');
       expect(result).toContain('Validation error');
     });
 
@@ -212,7 +212,7 @@ describe('Validation Error Formatters', () => {
         errors: []
       };
       const result = validationErrors.formatValidationError(errorData);
-      expect(result).toContain('❌ Validation Error');
+      expect(result).toContain('✖ Validation Error');
       expect(result).not.toContain('Validation errors:');
     });
 
@@ -221,13 +221,13 @@ describe('Validation Error Formatters', () => {
         errors: null
       };
       const result = validationErrors.formatValidationError(errorData);
-      expect(result).toContain('❌ Validation Error');
+      expect(result).toContain('✖ Validation Error');
     });
 
     it('should handle missing errors field', () => {
       const errorData = {};
       const result = validationErrors.formatValidationError(errorData);
-      expect(result).toContain('❌ Validation Error');
+      expect(result).toContain('✖ Validation Error');
     });
 
     it('should handle errors with missing message', () => {

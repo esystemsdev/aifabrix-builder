@@ -17,7 +17,7 @@ describe('HTTP Status Error Formatters', () => {
         message: 'Invalid credentials'
       };
       const result = httpStatusErrors.formatAuthenticationError(errorData);
-      expect(result).toContain('❌ Authentication Failed');
+      expect(result).toContain('✖ Authentication Failed');
       expect(result).toContain('Invalid credentials');
       expect(result).toContain('aifabrix login');
     });
@@ -25,7 +25,7 @@ describe('HTTP Status Error Formatters', () => {
     it('should format authentication error without message', () => {
       const errorData = {};
       const result = httpStatusErrors.formatAuthenticationError(errorData);
-      expect(result).toContain('❌ Authentication Failed');
+      expect(result).toContain('✖ Authentication Failed');
       expect(result).toContain('Your authentication token is invalid or has expired');
       expect(result).toContain('aifabrix login');
     });
@@ -46,7 +46,7 @@ describe('HTTP Status Error Formatters', () => {
         missing: { permissions: ['wizard:session:create'] }
       };
       const result = httpStatusErrors.formatAuthenticationError(errorData);
-      expect(result).toContain('❌ Authentication Failed');
+      expect(result).toContain('✖ Authentication Failed');
       expect(result).toContain('Invalid token or insufficient permissions');
       expect(result).toContain('Missing permissions:');
       expect(result).toContain('- wizard:session:create');
@@ -57,7 +57,7 @@ describe('HTTP Status Error Formatters', () => {
     it('should not add permission section when no permission data in error', () => {
       const errorData = { message: 'Unauthorized' };
       const result = httpStatusErrors.formatAuthenticationError(errorData);
-      expect(result).toContain('❌ Authentication Failed');
+      expect(result).toContain('✖ Authentication Failed');
       expect(result).not.toContain('Missing permissions:');
       expect(result).not.toContain('Required permissions:');
     });
@@ -69,7 +69,7 @@ describe('HTTP Status Error Formatters', () => {
         detail: 'Internal server error occurred'
       };
       const result = httpStatusErrors.formatServerError(errorData);
-      expect(result).toContain('❌ Server Error');
+      expect(result).toContain('✖ Server Error');
       expect(result).toContain('Internal server error occurred');
       expect(result).toContain('Please try again later');
     });
@@ -79,14 +79,14 @@ describe('HTTP Status Error Formatters', () => {
         message: 'Server error message'
       };
       const result = httpStatusErrors.formatServerError(errorData);
-      expect(result).toContain('❌ Server Error');
+      expect(result).toContain('✖ Server Error');
       expect(result).toContain('Server error message');
     });
 
     it('should format server error without detail or message', () => {
       const errorData = {};
       const result = httpStatusErrors.formatServerError(errorData);
-      expect(result).toContain('❌ Server Error');
+      expect(result).toContain('✖ Server Error');
       expect(result).toContain('An internal server error occurred');
     });
 
@@ -106,7 +106,7 @@ describe('HTTP Status Error Formatters', () => {
         detail: 'Application already exists in this environment'
       };
       const result = httpStatusErrors.formatConflictError(errorData);
-      expect(result).toContain('❌ Conflict');
+      expect(result).toContain('✖ Conflict');
       expect(result).toContain('This application already exists');
       expect(result).toContain('Use a different environment');
       expect(result).toContain('aifabrix app list');
@@ -117,7 +117,7 @@ describe('HTTP Status Error Formatters', () => {
         detail: 'Resource conflict occurred'
       };
       const result = httpStatusErrors.formatConflictError(errorData);
-      expect(result).toContain('❌ Conflict');
+      expect(result).toContain('✖ Conflict');
       expect(result).toContain('Resource conflict occurred');
     });
 
@@ -126,14 +126,14 @@ describe('HTTP Status Error Formatters', () => {
         message: 'Conflict message'
       };
       const result = httpStatusErrors.formatConflictError(errorData);
-      expect(result).toContain('❌ Conflict');
+      expect(result).toContain('✖ Conflict');
       expect(result).toContain('Conflict message');
     });
 
     it('should format conflict error without detail or message', () => {
       const errorData = {};
       const result = httpStatusErrors.formatConflictError(errorData);
-      expect(result).toContain('❌ Conflict');
+      expect(result).toContain('✖ Conflict');
       expect(result).toContain('A conflict occurred');
     });
 
@@ -202,7 +202,7 @@ describe('HTTP Status Error Formatters', () => {
         detail: 'Resource not found'
       };
       const result = httpStatusErrors.formatNotFoundError(errorData);
-      expect(result).toContain('❌ Not Found');
+      expect(result).toContain('✖ Not Found');
       expect(result).toContain('Resource not found');
       expect(result).toContain('Options:');
     });
@@ -212,14 +212,14 @@ describe('HTTP Status Error Formatters', () => {
         message: 'Not found message'
       };
       const result = httpStatusErrors.formatNotFoundError(errorData);
-      expect(result).toContain('❌ Not Found');
+      expect(result).toContain('✖ Not Found');
       expect(result).toContain('Not found message');
     });
 
     it('should format not found error without detail or message', () => {
       const errorData = {};
       const result = httpStatusErrors.formatNotFoundError(errorData);
-      expect(result).toContain('❌ Not Found');
+      expect(result).toContain('✖ Not Found');
       expect(result).toContain('Options:');
     });
 
@@ -255,7 +255,7 @@ describe('HTTP Status Error Formatters', () => {
         detail: 'Generic error detail'
       };
       const result = httpStatusErrors.formatGenericError(errorData, 403);
-      expect(result).toContain('❌ Error (HTTP 403)');
+      expect(result).toContain('✖ Error (HTTP 403)');
       expect(result).toContain('Generic error detail');
     });
 
@@ -264,7 +264,7 @@ describe('HTTP Status Error Formatters', () => {
         message: 'Generic error message'
       };
       const result = httpStatusErrors.formatGenericError(errorData, 403);
-      expect(result).toContain('❌ Error (HTTP 403)');
+      expect(result).toContain('✖ Error (HTTP 403)');
       expect(result).toContain('Generic error message');
     });
 
@@ -273,14 +273,14 @@ describe('HTTP Status Error Formatters', () => {
         error: 'Generic error'
       };
       const result = httpStatusErrors.formatGenericError(errorData, 403);
-      expect(result).toContain('❌ Error (HTTP 403)');
+      expect(result).toContain('✖ Error (HTTP 403)');
       expect(result).toContain('Generic error');
     });
 
     it('should format generic error without detail, message, or error', () => {
       const errorData = {};
       const result = httpStatusErrors.formatGenericError(errorData, 403);
-      expect(result).toContain('❌ Error (HTTP 403)');
+      expect(result).toContain('✖ Error (HTTP 403)');
       expect(result).toContain('An error occurred while processing your request');
     });
 

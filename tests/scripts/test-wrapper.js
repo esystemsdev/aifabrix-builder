@@ -126,7 +126,7 @@ function runCommand(command, args) {
       }
       if (!childProcess.killed && childProcess.pid) {
         // eslint-disable-next-line no-console
-        console.log(`\n⚠️  Jest hung (${reason}), forcing exit...`);
+        console.log(`\n⚠  Jest hung (${reason}), forcing exit...`);
         childProcess.kill('SIGKILL');
       }
       // Resolve with code 1 (Jest's error) but we'll check results in processTestResults
@@ -299,7 +299,7 @@ function parseTestResults(output) {
   const failMatches = (searchForPass.match(/FAIL\s+tests\/[^\n]+/g) || []).length;
 
   // Check for "ALL TESTS PASSED" message
-  const allPassedMessage = searchOutput.includes('ALL TESTS PASSED') || searchOutput.includes('✓ ALL TESTS PASSED');
+  const allPassedMessage = searchOutput.includes('ALL TESTS PASSED') || searchOutput.includes('✔ ALL TESTS PASSED');
 
   if ((passMatches > 0 && failMatches === 0) || allPassedMessage) {
     // If we see PASS but no FAIL, or explicit success message, tests likely passed
@@ -330,18 +330,18 @@ function handleJestErrors(output, parsedResults, hasExitError, hasCovError, hasS
     // eslint-disable-next-line no-console
     console.log('\n' + '='.repeat(60));
     // eslint-disable-next-line no-console
-    console.log('✓ ALL TESTS PASSED!');
+    console.log('✔ ALL TESTS PASSED!');
     if (hasExitError) {
       // eslint-disable-next-line no-console
-      console.log('⚠️  Jest exit handler error (known Jest bug, ignoring)');
+      console.log('⚠  Jest exit handler error (known Jest bug, ignoring)');
     }
     if (hasCovError) {
       // eslint-disable-next-line no-console
-      console.log('⚠️  Coverage merge error (known Jest bug, ignoring)');
+      console.log('⚠  Coverage merge error (known Jest bug, ignoring)');
     }
     if (hasSignal) {
       // eslint-disable-next-line no-console
-      console.log('⚠️  Process exited with signal after tests (coverage written; known Jest/Node issue)');
+      console.log('⚠  Process exited with signal after tests (coverage written; known Jest/Node issue)');
     }
     // eslint-disable-next-line no-console
     console.log('='.repeat(60));
@@ -398,7 +398,7 @@ function displayFailure(suiteMatch, hasJestError = false, jestOutput = '', parse
   // Note: Jest's failure details should already be visible in the output
   // since we forward stdout/stderr in real-time. This is just a summary.
   // eslint-disable-next-line no-console
-  console.error('\n✗ Tests failed!');
+  console.error('\n✖ Tests failed!');
 
   let failed = 0;
   let passed = 0;
@@ -446,11 +446,11 @@ function displayFailure(suiteMatch, hasJestError = false, jestOutput = '', parse
         console.error('\nFailed test suites:');
         failedTests.forEach(test => {
           // eslint-disable-next-line no-console
-          console.error(`  ✗ ${test}`);
+          console.error(`  ✖ ${test}`);
         });
       } else if (failed > 0) {
         // eslint-disable-next-line no-console
-        console.error('\n⚠️  Warning: Failed tests detected but could not extract test names from output.');
+        console.error('\n⚠  Warning: Failed tests detected but could not extract test names from output.');
       }
     }
   }
@@ -470,7 +470,7 @@ function displayFailure(suiteMatch, hasJestError = false, jestOutput = '', parse
 
   if (hasJestError) {
     // eslint-disable-next-line no-console
-    console.error('\n⚠️  Note: Jest also encountered an exit handler error (known Jest bug)');
+    console.error('\n⚠  Note: Jest also encountered an exit handler error (known Jest bug)');
     // eslint-disable-next-line no-console
     console.error('   However, tests had real failures, so build is failing.');
     // eslint-disable-next-line no-console
@@ -480,7 +480,7 @@ function displayFailure(suiteMatch, hasJestError = false, jestOutput = '', parse
   // If Jest output doesn't contain failure details, something went wrong
   if (jestOutput && !jestOutput.includes('FAIL') && !jestOutput.includes('●') && !jestOutput.includes('Test Suites:')) {
     // eslint-disable-next-line no-console
-    console.error('\n⚠️  Warning: Jest output may be incomplete. Check Jest output above for details.');
+    console.error('\n⚠  Warning: Jest output may be incomplete. Check Jest output above for details.');
   }
 }
 
@@ -494,7 +494,7 @@ function displaySuccess(suiteMatch, testMatch) {
   // eslint-disable-next-line no-console
   console.log('\n' + '='.repeat(60));
   // eslint-disable-next-line no-console
-  console.log('✓ ALL TESTS PASSED!');
+  console.log('✔ ALL TESTS PASSED!');
   // eslint-disable-next-line no-console
   console.log('='.repeat(60));
   if (suiteMatch) {
@@ -571,22 +571,38 @@ function processTestResults(testResult, parsedResults) {
  * @returns {Promise<void>} Resolves when tests complete
  */
 async function main() {
-  const jestArgs = process.env.RUN_COVERAGE === '1'
-    ? [
+  if (process.env.RUN_COVERAGE === '1') {
+    const testResult = await runCommand('npx', [
       'jest',
       '--ci',
       '--watchAll=false',
       '--coverage',
       '--config', 'jest.config.coverage.js',
       '--runInBand'
-    ]
-    : ['jest', '--ci', '--watchAll=false'];
+    ]);
+    const parsedResults = parseTestResults(testResult.output);
+    const exitCode = processTestResults(testResult, parsedResults);
+    process.exit(exitCode);
+    return;
+  }
 
-  const testResult = await runCommand('npx', jestArgs);
+  const baseArgs = ['jest', '--ci', '--watchAll=false'];
+  const rDefault = await runCommand('npx', [...baseArgs, '--config', 'jest.config.default.js']);
+  if (rDefault.code !== 0) {
+    const parsedResults = parseTestResults(rDefault.output);
+    process.exit(processTestResults(rDefault, parsedResults));
+    return;
+  }
 
-  const parsedResults = parseTestResults(testResult.output);
-  const exitCode = processTestResults(testResult, parsedResults);
-  process.exit(exitCode);
+  const rIsolated = await runCommand('npx', [...baseArgs, '--config', 'jest.config.isolated.js']);
+  if (rIsolated.code !== 0) {
+    const parsedResults = parseTestResults(rIsolated.output);
+    process.exit(processTestResults(rIsolated, parsedResults));
+    return;
+  }
+
+  displaySuccess(null, null);
+  process.exit(0);
 }
 
 main().catch((error) => {

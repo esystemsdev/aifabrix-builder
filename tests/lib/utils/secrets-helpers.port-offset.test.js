@@ -38,9 +38,9 @@ describe('adjustLocalEnvPortsInContent - developer-id app PORT and localhost URL
 
     const output = await adjustLocalEnvPortsInContent(input);
 
-    // dev-id 2 => appPort 3200, postgres 5632, redis 6579
-    expect(output).toMatch(/^PORT=3200$/m);
-    expect(output).toMatch(/ALLOWED_ORIGINS=http:\/\/localhost:3200,http:\/\/localhost:5173/);
+    // dev-id 2 => app local port 3000+10+200=3210, postgres 5632, redis 6579
+    expect(output).toMatch(/^PORT=3210$/m);
+    expect(output).toMatch(/ALLOWED_ORIGINS=http:\/\/localhost:3210,http:\/\/localhost:5173/);
     expect(output).toMatch(/^DATABASE_PORT=5632$/m);
     expect(output).toMatch(/^REDIS_URL=redis:\/\/localhost:6579$/m);
     expect(output).toMatch(/^REDIS_HOST=localhost:6579$/m);
@@ -49,7 +49,7 @@ describe('adjustLocalEnvPortsInContent - developer-id app PORT and localhost URL
   it('appends PORT if not present in env content', async() => {
     const input = 'SOME_VAR=value';
     const output = await adjustLocalEnvPortsInContent(input);
-    expect(output).toMatch(/^PORT=3200$/m); // base 3000 + 200
+    expect(output).toMatch(/^PORT=3210$/m); // 3000 + 10 + 200
   });
 });
 describe('processEnvVariables - copied .env PORT/localhost URL offsets', () => {
@@ -104,9 +104,9 @@ describe('processEnvVariables - copied .env PORT/localhost URL offsets', () => {
     const [writtenPath, writtenContent] = fs.writeFileSync.mock.calls[0];
     expect(writtenPath).toBe(outEnvPath);
 
-    // dev-id 2 => appPort 3200
-    expect(writtenContent).toMatch(/^PORT=3200$/m);
-    expect(writtenContent).toMatch(/ALLOWED_ORIGINS=http:\/\/localhost:3200,http:\/\/localhost:5173/);
+    // dev-id 2 => local host port 3210
+    expect(writtenContent).toMatch(/^PORT=3210$/m);
+    expect(writtenContent).toMatch(/ALLOWED_ORIGINS=http:\/\/localhost:3210,http:\/\/localhost:5173/);
   });
 
   it('uses port + offset when developer id is set', async() => {
@@ -144,6 +144,6 @@ describe('processEnvVariables - copied .env PORT/localhost URL offsets', () => {
 
     const [writtenPath, writtenContent] = fs.writeFileSync.mock.calls[0];
     expect(writtenPath).toBe(outEnvPath);
-    expect(writtenContent).toMatch(/^PORT=4100$/m); // 4000 + 100
+    expect(writtenContent).toMatch(/^PORT=4110$/m); // 4000 + 10 + 100
   });
 });

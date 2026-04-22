@@ -1,18 +1,18 @@
 {
   "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "$id":"https://raw.githubusercontent.com/esystemsdev/aifabrix-builder/refs/heads/main/lib/schema/external-datasource.schema.json",
+  "$id":"aifabrix://schema/external-datasource.schema.json",
   "title":"External Data Source",
   "description":"Configuration for AI Fabrix ExternalDataSource entities. Includes metadata schema, data dimensions, transformation mappings, OpenAPI/MCP exposure, execution logic, and sync behavior.",
         "metadata":{
         "key":"external-datasource-schema",
         "name":"External Data Source Configuration Schema",
         "description":"JSON schema for validating ExternalDataSource configuration files",
-        "version":"2.3.0",
+        "version":"2.4.5",
         "type":"schema",
         "category":"integration",
         "author":"AI Fabrix Team",
         "createdAt":"2024-01-01T00:00:00Z",
-        "updatedAt":"2026-01-19T00:00:00Z",
+        "updatedAt":"2026-04-07T00:00:00Z",
         "compatibility":{
            "minVersion":"1.0.0",
            "maxVersion":"3.0.0",
@@ -96,7 +96,7 @@
            "version":"2.2.0",
            "date":"2026-02-26T00:00:00Z",
            "changes":[
-              "capabilities: preferred format is array [\"list\",\"get\",...]. Schema oneOf accepts both array and legacy object; runtime accepts both for backward compatibility."
+              "capabilities: preferred format is array [\"list\",\"get\",...]."
            ],
            "breaking":false
         },
@@ -107,6 +107,74 @@
               "BREAKING: Added required primaryKey (array of normalized attribute names). Used for get/update/delete and table indexing. Migration: add primaryKey array (e.g. [\"id\"] or [\"externalId\"]) to each datasource config."
            ],
            "breaking":true
+        },
+        {
+           "version":"2.4.0",
+           "date":"2026-03-24T00:00:00Z",
+           "changes":[
+              "BREAKING: Consolidated freeze baseline into 2.4.0 on feature branch before merge.",
+              "BREAKING: Removed metadataSchema.foreignKey, top-level references, and relationContract.",
+              "BREAKING: Removed fieldMappings.dimensions and datasource config.abac* contract surfaces.",
+              "BREAKING: Added root contract gate for entityType='none' (orchestration/chaining only).",
+              "BREAKING: Removed indexing section from datasource root; index/filter are metadataSchema-driven.",
+              "BREAKING: Simplified fieldMappings.attributes to expression-only normalization contract.",
+              "Updated expression contract to strict roots: raw.*, fk.*, dimension.* with FK traversal support.",
+              "Added top-level dimensions and strict foreignKeys[] contract (required name/fields/targetDatasource).",
+              "Simplified sync contract to mode/schedule/batchSize.",
+              "Hardened metadataSchema index/filter scalar-only constraints.",
+              "Applied naming guardrails for metadata fields (camelCase) and FK names (camelCase).",
+              "Added datetime representation guidance: type=string + format=date-time with UTC/native DB timestamp mapping.",
+              "Allowed contract/config.extensions for entityType=none orchestration datasources.",
+              "Added actor/operator strict defaults in dimensionBinding (eq for displayName/email/userId, in for groups/roles)."
+           ],
+           "breaking":true
+        },
+        {
+           "version":"2.4.1",
+           "date":"2026-03-29T00:00:00Z",
+           "changes":[
+              "CIP execution.cip.operations allows custom operation keys matching the same pattern as capabilities[].",
+              "recordStorage/documentStorage: dimensions are no longer JSON Schema-required; validator warns when missing or empty.",
+              "dimensionBinding type=fk: via remains required; actor is optional (warn when omitted).",
+              "dimensions object may be empty at schema level; recommend ≥1 binding via application validation warning.",
+              "testPayload: unknown top-level keys rejected by application validator (strict contract beyond JSON Schema).",
+              "cipStepFetch: fetch.openapiRef and fetch.operation (source=datasource) use the same naming pattern as capabilities[] and execution.cip.operations keys (^[a-z][a-zA-Z0-9]*$), not a fixed CRUD enum. Standard names list/get/create/update/delete remain valid; custom keys must match openapi.operations.<name> or the target datasource CIP operation."
+           ],
+           "breaking":false
+        },
+        {
+           "version":"2.4.2",
+           "date":"2026-03-31T00:00:00Z",
+           "changes":[
+              "recordStorage/documentStorage: metadataSchema.properties.externalId required (type=string, index=true) as global join identity (346.rules §10.1; plans SC-025/SC-029).",
+              "foreignKeys.targetFields: when omitted, resolution defaults to target externalId (not primaryKey); composite primaryKey must not be used as explicit cross-datasource join key (SC-026/SC-028).",
+              "Application validator enforces externalId field mapping and FK join semantics in lockstep with JSON Schema."
+           ],
+           "breaking":true
+        },
+        {
+           "version":"2.4.3",
+           "date":"2026-04-04T00:00:00Z",
+           "changes":[
+              "BREAKING: Removed CIP filter.enforceAbac from cipStepFilter.filter (WP-H / 346.13 matrix 18). Use filter.abac.mode (mandatory | optional | disabled) instead."
+           ],
+           "breaking":true
+        },
+        {
+           "version":"2.4.4",
+           "date":"2026-04-06T00:00:00Z",
+           "changes":[
+              "Added optional root mcpContract object for embedded MCP securityModel (tools/abac policy buckets). Required for integration manifests when CIP filter.abac uses mandatory datasource-scoped policies (static readiness vs runtime ExternalDataSource.mcpContract)."
+           ],
+           "breaking":false
+        },
+        {
+           "version":"2.4.5",
+           "date":"2026-04-07T00:00:00Z",
+           "changes":[
+              "exposed.profiles object profiles: attributes may be an object map (property names = field keys; values ignored), matching runtime exposed_profile_field_names and CIP/ExposedFieldsValidator behavior."
+           ],
+           "breaking":false
         }
      ]
   },
@@ -116,9 +184,7 @@
      "displayName",
      "systemKey",
      "entityType",
-     "resourceType",
-     "fieldMappings",
-     "primaryKey"
+     "resourceType"
   ],
   "properties":{
      "key":{
@@ -145,8 +211,8 @@
      },
      "entityType":{
         "type":"string",
-        "enum":["document-storage","documentStorage","vector-store","vectorStore","record-storage","recordStorage","message-service","messageService","none"],
-        "description":"Entity type identifier. Defines storage semantics and behavior: 'document-storage' or 'documentStorage' (creates document storage service with vector-storage), 'vector-store' or 'vectorStore' (external vector storage system), 'record-storage' or 'recordStorage' (creates record-based system with metadata sync and access rights), 'message-service' or 'messageService' (message service for notifications - Slack, Teams, Email), 'none' (uses external system data directly or connects other data sources). Required field. Supports both camelCase and kebab-case formats for backward compatibility."
+        "enum":["documentStorage","vectorStore","recordStorage","messageService","none"],
+        "description":"Entity type identifier. Defines storage semantics and behavior: 'documentStorage' (creates document storage service with vector-storage), 'vectorStore' (external vector storage system), 'recordStorage' (creates record-based system with metadata sync and access rights), 'messageService' (message service for notifications - Slack, Teams, Email), 'none' (uses external system data directly or connects other data sources). Required field. Canonical values are camelCase."
      },
      "resourceType":{
         "type":"string",
@@ -160,74 +226,71 @@
         "default":"1.0.0"
      },
      "metadataSchema":{
-        "type":"object",
-        "description":"Subset of JSON Schema used to validate raw input metadata.",
-        "additionalProperties":true
+        "$ref":"#/$defs/metadataSchemaNode"
      },
      "primaryKey":{
         "type":"array",
-        "description":"Normalized field names that uniquely identify a record (used for get/update/delete and table indexing). Each element must exist in fieldMappings.dimensions or fieldMappings.attributes.",
+        "description":"Normalized field names that uniquely identify a record (used for get/update/delete and table indexing). Each element must exist in metadataSchema and be index=true.",
         "minItems":1,
         "items":{
            "type":"string",
-           "pattern":"^[a-zA-Z0-9_]+$"
+           "pattern":"^[a-z][a-zA-Z0-9]*$"
         },
         "uniqueItems":true
      },
+     "labelKey":{
+        "type":"array",
+        "description":"Normalized field names used for display and dimension labels. Each element must exist in metadataSchema and be scalar with index=true or filter=true.",
+        "minItems":1,
+        "items":{
+           "type":"string",
+           "pattern":"^[a-z][a-zA-Z0-9]*$"
+        },
+        "uniqueItems":true
+     },
+     "foreignKeys":{
+        "type":"array",
+        "description":"Foreign key definitions referencing other datasources. Defines relational integrity and join capability.",
+        "items":{
+           "$ref":"#/$defs/foreignKeyDefinition"
+        },
+        "uniqueItems":true
+     },
+     "dimensions":{
+        "type":"object",
+        "description":"Canonical dimension bindings for this datasource. Keys must exist in Dimension Catalog when catalog validation runs. For recordStorage/documentStorage, at least one binding is recommended (application validator may warn if missing or empty).",
+        "propertyNames":{
+           "pattern":"^[a-zA-Z0-9_]+$"
+        },
+        "additionalProperties":{
+           "$ref":"#/$defs/dimensionBinding"
+        }
+     },
      "fieldMappings":{
         "type":"object",
-        "description":"Transformation rules and data dimensions. Maps canonical dimensions to system attributes.",
+        "description":"Normalization rules only (raw/fk traversal to normalized attributes). For storage datasources, attribute keys must correspond to metadataSchema fields (builder/runtime validation).",
         "required":[
-           "dimensions",
            "attributes"
         ],
         "properties":{
-           "dimensions":{
-              "type":"object",
-              "description":"Data dimensions mapping. Key = dimension key (from Dimension Catalog), Value = attribute path (e.g., 'metadata.department').",
-              "additionalProperties":{
-                 "type":"string",
-                 "pattern":"^[a-zA-Z0-9_.]+$"
-              },
-              "minProperties":0
-           },
            "attributes":{
               "type":"object",
-              "description":"Key = normalized attribute name. Value = transformation expression + type.",
+              "description":"Key = normalized attribute name. Value = transformation configuration.",
+              "propertyNames":{
+                 "pattern":"^[a-z][a-zA-Z0-9]*$"
+              },
               "additionalProperties":{
                  "type":"object",
-                 "required":[
-                    "expression",
-                    "type"
-                 ],
                  "properties":{
                     "expression":{
                        "type":"string",
-                       "description":"Pipe-based DSL expression: '{{raw.path}} | toLower | trim' or record reference: 'record_ref:customer'.",
-                       "pattern":"^\\s*((\\{\\{[^}]+\\}\\}(\\s*\\|\\s*[a-zA-Z0-9_]+(\\([^)]*\\))?)*)|(record_ref:[a-z0-9-]+))\\s*$"
-                    },
-                    "type":{
-                       "type":"string",
-                       "enum":[
-                          "string",
-                          "number",
-                          "integer",
-                          "boolean",
-                          "array",
-                          "object"
-                       ]
-                    },
-                    "indexed":{
-                       "type":"boolean",
-                       "default":false,
-                       "description":"If true, creates database index for fast search/filtering. Dimensions are automatically indexed."
+                       "description":"Pipe-based DSL expression. Allowed roots: raw.<path>, fk.<fk>.metadata.<field>, fk.<fk>.dimension.<dimension>[.label], dimension.<dimension>[.label]. FK traversal in DSL is one-hop only.",
+                       "maxLength":512,
+                       "pattern":"^\\s*\\{\\{(raw\\.[a-zA-Z0-9_.]+|fk\\.[a-z][a-zA-Z0-9]*\\.metadata\\.[a-z][a-zA-Z0-9]*|fk\\.[a-z][a-zA-Z0-9]*\\.dimension\\.[a-zA-Z0-9_]+(\\.label)?|dimension\\.[a-zA-Z0-9_]+(\\.label)?)\\}\\}(\\s*\\|\\s*[a-zA-Z0-9_]+(\\([^)]*\\))?)*\\s*$"
                     },
                     "description":{
                        "type":"string",
                        "description":"Technical description of the normalized field."
-                    },
-                    "required":{
-                       "type":"boolean"
                     },
                     "semantic":{
                        "type":"object",
@@ -265,53 +328,61 @@
                     "lineage":{
                        "$ref":"#/$defs/fieldMappingLineage"
                     }
-                 }
+                 },
+                 "required":[
+                    "expression"
+                 ],
+                 "additionalProperties":false
               }
            }
-        }
+        },
+        "additionalProperties":false
      },
      "exposed":{
         "type":"object",
-        "description":"Defines which normalized fields are exposed through MCP/OpenAPI. Ensures ISO27001-safe output and predictable AI model behavior.",
+        "description":"Defines public API exposure contract. v2.4.0 freeze requires exposed.schema as canonical response shape.",
         "properties":{
-           "attributes":{
-              "type":"array",
-              "description":"List of normalized attributes (from fieldMappings.attributes keys) that the MCP/OpenAPI layers will return.",
-              "items":{
-                 "type":"string",
-                 "pattern":"^[a-zA-Z0-9_]+$"
-              },
-              "minItems":1,
-              "uniqueItems":true
+           "schema":{
+              "type":"object",
+              "description":"Canonical public response contract. Keys define output shape; values are expressions using metadata./fk./dimension paths.",
+              "minProperties":1,
+              "additionalProperties":{
+                 "$ref":"#/$defs/exposedSchemaNode"
+              }
            },
            "omit":{
               "type":"array",
               "description":"Fields that exist in normalized metadata but must NEVER be exposed by MCP/OpenAPI (e.g., secrets, internal IDs). Overrides 'fields'.",
               "items":{
                  "type":"string",
-                 "pattern":"^[a-zA-Z0-9_]+$"
+                 "pattern":"^[a-z][a-zA-Z0-9]*$"
               },
               "uniqueItems":true
            },
-           "groups":{
-              "type":"object",
-              "description":"Optional logical grouping for OpenAPI/MCP schema generation (e.g., 'default', 'analytics', 'light').",
-              "additionalProperties":{
-                 "type":"array",
-                 "items":{
-                    "type":"string",
-                    "pattern":"^[a-zA-Z0-9_]+$"
-                 },
-                 "minItems":1,
-                 "uniqueItems":true
-              }
+           "filterable":{
+              "type":"array",
+              "description":"Fields that may be used as deterministic filters in exposed APIs. Must reference materialized fields (`index=true` or `filter=true`).",
+              "items":{
+                 "type":"string",
+                 "pattern":"^[a-z][a-zA-Z0-9]*$"
+              },
+              "uniqueItems":true
+           },
+           "required":{
+              "type":"array",
+              "description":"Fields that profile contracts require to be present.",
+              "items":{
+                 "type":"string",
+                 "pattern":"^[a-z][a-zA-Z0-9]*$"
+              },
+              "uniqueItems":true
            },
            "readonly":{
               "type":"array",
               "description":"Fields exposed via MCP/OpenAPI but cannot be modified via write operations.",
               "items":{
                  "type":"string",
-                 "pattern":"^[a-zA-Z0-9_]+$"
+                 "pattern":"^[a-z][a-zA-Z0-9]*$"
               },
               "uniqueItems":true
            },
@@ -321,20 +392,74 @@
            },
            "profiles":{
               "type":"object",
-              "description":"Named exposure profiles mapping profile keys to lists of normalized field names. Useful for AI-light, AI-embedding, analytics, etc.",
+              "description":"Named exposure profiles mapping profile keys to deterministic field contracts.",
               "additionalProperties":{
-                 "type":"array",
-                 "items":{
-                    "type":"string",
-                    "pattern":"^[a-zA-Z0-9_]+$"
-                 },
-                 "minItems":1,
-                 "uniqueItems":true
+                 "oneOf":[
+                    {
+                       "type":"array",
+                       "items":{
+                          "type":"string",
+                         "pattern":"^[a-z][a-zA-Z0-9]*$"
+                       },
+                       "minItems":1,
+                       "uniqueItems":true
+                    },
+                    {
+                       "type":"object",
+                       "properties":{
+                          "attributes":{
+                             "oneOf":[
+                                {
+                                   "type":"array",
+                                   "items":{
+                                      "type":"string",
+                                      "pattern":"^[a-z][a-zA-Z0-9]*$"
+                                   },
+                                   "minItems":1,
+                                   "uniqueItems":true
+                                },
+                                {
+                                   "type":"object",
+                                   "minProperties":1,
+                                   "propertyNames":{
+                                      "pattern":"^[a-z][a-zA-Z0-9]*$"
+                                   },
+                                   "additionalProperties":true
+                                }
+                             ]
+                          },
+                          "required":{
+                             "type":"array",
+                             "items":{
+                                "type":"string",
+                                "pattern":"^[a-z][a-zA-Z0-9]*$"
+                             },
+                             "uniqueItems":true
+                          },
+                          "readonly":{
+                             "type":"array",
+                             "items":{
+                                "type":"string",
+                                "pattern":"^[a-z][a-zA-Z0-9]*$"
+                             },
+                             "uniqueItems":true
+                          }
+                       },
+                       "anyOf":[
+                          {
+                             "required":[
+                                "attributes"
+                             ]
+                          }
+                       ],
+                       "additionalProperties":false
+                    }
+                 ]
               }
            }
         },
-        "required":[
-           "attributes"
+       "required":[
+          "schema"
         ],
         "additionalProperties":false
      },
@@ -352,21 +477,18 @@
               "default":"pull"
            },
            "schedule":{
-              "type":"string"
+              "type":"string",
+              "description":"Cron schedule for sync execution. Supports 5-field cron syntax or @hourly/@daily/@weekly/@monthly.",
+              "pattern":"^(@hourly|@daily|@weekly|@monthly|([0-9*/,-]+\\s+){4}[0-9*/,-]+)$"
            },
            "batchSize":{
               "type":"integer",
               "minimum":1,
               "maximum":10000,
               "default":500
-           },
-           "maxParallelRequests":{
-              "type":"integer",
-              "minimum":1,
-              "maximum":50,
-              "default":5
            }
-        }
+        },
+        "additionalProperties":false
      },
      "openapi":{
         "type":"object",
@@ -377,7 +499,8 @@
               "default":false
            },
            "documentKey":{
-              "type":"string"
+              "type":"string",
+              "description":"OpenAPI document key used to resolve selected operations. Warning-only in this story when unresolved at validation time."
            },
            "baseUrl":{
               "type":"string",
@@ -391,106 +514,35 @@
               "description":"Selected operations from the OpenAPI document. Only endpoints chosen during wizard onboarding are included.",
               "properties":{
                  "list":{
-                    "type":"object",
+                    "$ref":"#/$defs/openapiOperation",
                     "required":[
                        "operationId"
-                    ],
-                    "properties":{
-                       "operationId":{
-                          "type":"string"
-                       },
-                       "method":{
-                          "type":"string",
-                          "enum":[
-                             "GET",
-                             "POST"
-                          ]
-                       },
-                       "path":{
-                          "type":"string"
-                       }
-                    }
+                    ]
                  },
                  "get":{
-                    "type":"object",
+                    "$ref":"#/$defs/openapiOperation",
                     "required":[
                        "operationId"
-                    ],
-                    "properties":{
-                       "operationId":{
-                          "type":"string"
-                       },
-                       "method":{
-                          "type":"string",
-                          "enum":[
-                             "GET"
-                          ]
-                       },
-                       "path":{
-                          "type":"string"
-                       }
-                    }
+                    ]
                  },
                  "create":{
-                    "type":"object",
-                    "properties":{
-                       "operationId":{
-                          "type":"string"
-                       },
-                       "method":{
-                          "type":"string",
-                          "enum":[
-                             "POST",
-                             "PUT"
-                          ]
-                       },
-                       "path":{
-                          "type":"string"
-                       }
-                    }
+                    "$ref":"#/$defs/openapiOperation"
                  },
                  "update":{
-                    "type":"object",
-                    "properties":{
-                       "operationId":{
-                          "type":"string"
-                       },
-                       "method":{
-                          "type":"string",
-                          "enum":[
-                             "PATCH",
-                             "PUT",
-                             "POST"
-                          ]
-                       },
-                       "path":{
-                          "type":"string"
-                       }
-                    }
+                    "$ref":"#/$defs/openapiOperation"
                  },
                  "delete":{
-                    "type":"object",
-                    "properties":{
-                       "operationId":{
-                          "type":"string"
-                       },
-                       "method":{
-                          "type":"string",
-                          "enum":[
-                             "DELETE"
-                          ]
-                       },
-                       "path":{
-                          "type":"string"
-                       }
-                    }
+                    "$ref":"#/$defs/openapiOperation"
                  }
+              },
+              "additionalProperties":{
+                 "$ref":"#/$defs/openapiOperation"
               }
            },
            "autoRbac":{
               "type":"boolean",
               "default":false,
-              "description":"Generates <system>.<entity>.<action> RBAC permissions."
+              "description":"When true and no explicit operation security scopes are configured, the runtime resolves required RBAC permission as '<resourceType>:<operation>' for each operation (resourceType from the datasource config, default document), matching builder repair RBAC permission names. Explicit operation-level scopes (openapi.operations.*.security/permissions) take precedence and disable autoRbac for that operation."
            }
         }
      },
@@ -522,8 +574,8 @@
                        "type":"string",
                        "enum":[
                           "reject",
-                          "latest-wins",
-                          "first-wins",
+                          "lastWriteWins",
+                          "firstWriteWins",
                           "merge"
                        ]
                     },
@@ -554,7 +606,7 @@
                  "properties":{
                     "field":{
                        "type":"string",
-                       "pattern":"^[a-zA-Z0-9_]+$",
+                       "pattern":"^[a-z][a-zA-Z0-9]*$",
                        "description":"Normalized field name to evaluate."
                     },
                     "operator":{
@@ -581,39 +633,6 @@
                  },
                  "additionalProperties":false
               }
-           }
-        },
-        "additionalProperties":false
-     },
-     "indexing":{
-        "type":"object",
-        "description":"Indexing and embedding strategy for this datasource.",
-        "properties":{
-           "embedding":{
-              "type":"array",
-              "description":"List of normalized fields whose values should be concatenated and embedded for vector search.",
-              "items":{
-                 "type":"string",
-                 "pattern":"^[a-zA-Z0-9_]+$"
-              },
-              "minItems":1,
-              "uniqueItems":true
-           },
-           "uniqueKey":{
-              "type":"string",
-              "pattern":"^[a-zA-Z0-9_]+$",
-              "description":"Normalized field used as unique identifier for deduplication and upserts."
-           },
-           "dedupeStrategy":{
-              "type":"string",
-              "enum":[
-                 "reject",
-                 "latest-wins",
-                 "first-wins",
-                 "merge"
-              ],
-              "default":"latest-wins",
-              "description":"Strategy to apply when multiple records share the same uniqueKey."
            }
         },
         "additionalProperties":false
@@ -647,146 +666,71 @@
         "additionalProperties":false
      },
      "documentStorage":{
-        "type":"object",
-        "description":"Document storage configuration (optional, enables vector storage). Validated against type/document-storage.json schema.",
-        "properties":{
-           "enabled":{
-              "type":"boolean",
-              "default":true
-           },
-           "twoPhaseSync":{
-              "type":"boolean",
-              "default":true,
-              "description":"Enable two-phase sync pattern. When true: validates metadata first (quality rules, comparison with DocumentRecords), then fetches binaries via CIP for changed/new documents. When false: fetches binaries directly without metadata validation phase (single-phase sync). Note: Files are never synced back to external systems (one-way sync only: external → dataplane)."
-           },
-           "ingestAfterSync":{
-              "type":"boolean",
-              "default":false,
-              "description":"When true, chunk and embed each document after store during sync so vector search returns hits immediately. When false, ingestion runs later (e.g. Celery task or on approval). Set true for E2E tests that validate vector step."
-           },
-           "binaryOperationRef":{
-              "type":"string",
-              "default":"get",
-              "description":"CIP operation name for binary document retrieval. Must exist in execution.cip.operations. Defaults to 'get' operation."
-           },
-           "responseType":{
-              "type":"string",
-              "enum":[
-                 "binary",
-                 "base64",
-                 "json"
-              ],
-              "default":"binary",
-              "description":"Expected response type from CIP operation. 'binary' for raw binary data, 'base64' for base64-encoded data, 'json' for JSON response with binary field."
-           },
-           "binaryField":{
-              "type":"string",
-              "description":"Field name containing binary data if responseType is 'json' or 'base64'. Required when responseType is not 'binary'."
-           },
-           "parameterMapping":{
-              "type":"object",
-              "additionalProperties":{
-                 "type":"string"
-              },
-              "description":"Map metadata record fields to CIP operation parameters. Example: {\"fileId\": \"{{key}}\", \"downloadUrl\": \"{{metadata.downloadUrl}}\"}"
-           },
-           "processing":{
-              "type":"object",
-              "properties":{
-                 "fileStoragePath":{
-                    "type":"string",
-                    "default":"/data/documents"
-                 },
-                 "aiValidation":{
-                    "type":"object"
-                 },
-                 "spacyEnrichment":{
-                    "type":"object"
-                 },
-                 "notifications":{
-                    "type":"object"
-                 },
-                 "ingestAfterSync":{
-                    "type":"boolean",
-                    "default":false,
-                    "description":"When true, chunk and embed each document after store during sync so vector search returns hits."
-                 }
-              },
-              "additionalProperties":false
-           },
-           "credentialId":{
-              "type":"string"
-           }
-        },
-        "required":[
-           "enabled"
-        ],
-        "additionalProperties":false
+        "$ref":"aifabrix://schema/type/document-storage.json",
+        "description":"Document storage configuration (optional). Schema is canonical under type/document-storage.json."
      },
-     "portalInput":{
-        "type":"array",
-        "description":"Optional UI metadata definition for the AI Fabrix portal.",
-        "items":{
-           "type":"object",
-           "required":[
-              "name",
-              "field",
-              "label"
-           ],
-           "properties":{
-              "name":{
-                 "type":"string"
-              },
-              "field":{
-                 "type":"string",
-                 "enum":[
-                    "text",
-                    "textarea",
-                    "select",
-                    "json",
-                    "boolean",
-                    "number"
-                 ]
-              },
-              "label":{
-                 "type":"string"
-              },
-              "placeholder":{
-                 "type":"string"
-              },
-              "options":{
-                 "type":"array",
-                 "items":{
-                    "type":"string"
-                 }
-              },
-              "masked":{
-                 "type":"boolean"
-              },
-              "validation":{
-                 "type":"object",
-                 "properties":{
-                    "minLength":{
-                       "type":"integer"
-                    },
-                    "maxLength":{
-                       "type":"integer"
-                    },
-                    "pattern":{
-                       "type":"string"
-                    },
-                    "required":{
-                       "type":"boolean"
-                    }
-                 }
-              }
-           }
-        }
+     "messageService":{
+        "$ref":"aifabrix://schema/type/message-service.json",
+        "description":"Message service configuration (optional). Schema is canonical under type/message-service.json."
      },
      "testPayload":{
         "type":"object",
-        "description":"Test payload configuration for unit and integration testing",
+        "description":"Execution-aware test payload configuration for unit and integration testing. Only the listed properties are allowed at this level; nested shapes for payloadTemplate/expectedResult/fk fixtures are validated strictly by the application validator where required.",
         "properties":{
+           "mode":{
+              "type":"string",
+              "enum":[
+                 "mock",
+                 "live"
+              ]
+           },
+           "primaryKey":{
+              "type":"object",
+              "description":"Optional key/value payload for primary-key focused operation tests.",
+              "additionalProperties":true
+           },
+           "scenarios":{
+              "type":"array",
+              "description":"Optional operation-specific test scenarios.",
+              "items":{
+                 "type":"object",
+                 "required":[
+                    "operation"
+                 ],
+                 "properties":{
+                    "operation":{
+                       "type":"string",
+                       "pattern":"^[a-z][a-zA-Z0-9]*$"
+                    },
+                    "input":{
+                       "type":"object",
+                       "additionalProperties":true
+                    }
+                 },
+                 "additionalProperties":false
+              }
+           },
+           "fk":{
+              "type":"object",
+              "description":"Optional FK fixture payload used by expression and join tests.",
+              "additionalProperties":true
+           },
+           "actors":{
+              "type":"array",
+              "description":"Optional actor fixture list for ABAC/runtime tests.",
+              "items":{
+                 "type":"object",
+                 "properties":{
+                    "email":{
+                       "type":"string"
+                    },
+                    "userId":{
+                       "type":"string"
+                    }
+                 },
+                 "additionalProperties":true
+              }
+           },
            "payloadTemplate":{
               "type":"object",
               "description":"Sample payload matching the expected API response structure. Used for testing field mappings and metadata schema validation.",
@@ -801,31 +745,17 @@
         "additionalProperties":false
      },
      "capabilities":{
-        "oneOf":[
-           {
-              "type":"array",
-              "description":"Preferred: list of supported operation names. Values: list, get, create, update, delete.",
-              "items":{"type":"string","enum":["list","get","create","update","delete"]},
-              "uniqueItems":true
-           },
-           {
-              "type":"object",
-              "description":"Legacy: object with boolean flags per operation. Accepted for backward compatibility.",
-              "properties":{
-                 "list":{"type":"boolean"},
-                 "get":{"type":"boolean"},
-                 "create":{"type":"boolean"},
-                 "update":{"type":"boolean"},
-                 "delete":{"type":"boolean"}
-              },
-              "additionalProperties":false
-           }
-        ],
-        "description":"Supported operations. When omitted, derived from execution.engine (CIP operations or list-only for Python)."
+        "type":"array",
+        "description":"Supported operations list.",
+        "items":{
+           "type":"string",
+           "pattern":"^[a-z][a-zA-Z0-9]*$"
+        },
+        "uniqueItems":true
      },
      "execution":{
         "type":"object",
-        "description":"Execution engine configuration for this datasource (CIP or Python). CIP is the native declarative mode.",
+        "description":"Execution engine configuration for this datasource (CIP, Python, or datasource-chaining). CIP is the native declarative mode.",
         "required":[
            "engine"
         ],
@@ -834,9 +764,10 @@
               "type":"string",
               "enum":[
                  "cip",
-                 "python"
+                 "python",
+                 "datasource"
               ],
-              "description":"Execution engine. 'cip' for declarative pipelines, 'python' for custom handlers."
+              "description":"Execution engine. 'cip' for declarative pipelines, 'python' for custom handlers, 'datasource' for datasource-chained CIP execution."
            },
            "cip":{
               "$ref":"#/$defs/cipDefinition"
@@ -849,56 +780,747 @@
      },
      "config":{
         "type":"object",
-        "description":"Additional configuration for this datasource, including ABAC settings, MCP contracts, and other metadata.",
+        "description":"Additional configuration for this datasource.",
         "properties":{
-           "abac":{
+           "extensions":{
               "type":"object",
-              "description":"Attribute-Based Access Control (ABAC) configuration for this datasource.",
-              "properties":{
-                 "dimensions":{
-                    "type":"object",
-                    "description":"Data dimensions mapping. Key = dimension key (from Dimension Catalog), Value = attribute path. Overrides fieldMappings.dimensions if specified.",
-                    "additionalProperties":{
-                       "type":"string",
-                       "pattern":"^[a-zA-Z0-9_.]+$"
-                    }
-                 },
-                 "crossSystemSql":{
-                    "type":"string",
-                    "description":"Cross-system ABAC filter expression in SQL format (advanced, for developers). Example: 'hubspot-companies.country = user.country AND hubspot-companies.revenue >= 1000000'"
-                 },
-                 "crossSystemJson":{
-                    "type":"object",
-                    "description":"Cross-system ABAC filter expression in JSON format (simple, for UI). Example: {'hubspot-companies.country': {'eq': 'user.country'}, 'hubspot-companies.revenue': {'gte': 1000000}}",
-                    "additionalProperties":{
-                       "type":"object",
-                       "properties":{
-                          "eq":{"type":["string","number","boolean"]},
-                          "ne":{"type":["string","number","boolean"]},
-                          "gt":{"type":["string","number"]},
-                          "lt":{"type":["string","number"]},
-                          "gte":{"type":["string","number"]},
-                          "lte":{"type":["string","number"]},
-                          "in":{"type":"array"},
-                          "nin":{"type":"array"},
-                          "contains":{"type":"string"},
-                          "like":{"type":"string"},
-                          "isNull":{"type":"null"},
-                          "isNotNull":{"type":"null"}
-                       }
-                    }
-                 }
+              "description":"Vendor extensions namespace for controlled schema evolution.",
+              "propertyNames":{
+                 "pattern":"^x[A-Z][a-zA-Z0-9]*$"
               },
-              "additionalProperties":false
+              "additionalProperties":true
            }
         },
-        "additionalProperties":true
+        "additionalProperties":false
      },
      "contract":{
         "$ref":"#/$defs/contractConfig"
+     },
+     "mcpContract":{
+        "type":"object",
+        "description":"Optional embedded MCP contract material (e.g. securityModel.tools and securityModel.abac) for manifest validation and CIP filter.abac policy-scope readiness. Persisted on ExternalDataSource.mcpContract when published.",
+        "additionalProperties":true
      }
   },
+  "allOf":[
+     {
+        "if":{
+           "properties":{
+              "entityType":{
+                 "const":"none"
+              }
+           },
+           "required":[
+              "entityType"
+           ]
+        },
+        "then":{
+           "not":{
+              "anyOf":[
+                 {
+                    "required":[
+                       "metadataSchema"
+                    ]
+                 },
+                 {
+                    "required":[
+                       "primaryKey"
+                    ]
+                 },
+                 {
+                    "required":[
+                       "labelKey"
+                    ]
+                 },
+                 {
+                    "required":[
+                       "foreignKeys"
+                    ]
+                 },
+                 {
+                    "required":[
+                       "dimensions"
+                    ]
+                 },
+                 {
+                    "required":[
+                       "fieldMappings"
+                    ]
+                 },
+                 {
+                    "required":[
+                       "sync"
+                    ]
+                 },
+                 {
+                    "required":[
+                       "quality"
+                    ]
+                 },
+                 {
+                    "required":[
+                       "context"
+                    ]
+                 },
+                 {
+                    "required":[
+                       "validation"
+                    ]
+                 },
+                 {
+                    "required":[
+                       "documentStorage"
+                    ]
+                 }
+              ]
+           }
+        },
+        "else":{
+           "required":[
+              "metadataSchema",
+              "primaryKey",
+              "labelKey",
+              "fieldMappings"
+           ]
+        }
+     },
+     {
+        "if":{
+           "properties":{
+              "entityType":{
+                 "enum":[
+                    "recordStorage",
+                    "documentStorage"
+                 ]
+              }
+           },
+           "required":[
+              "entityType"
+           ]
+        },
+        "then":{
+           "properties":{
+              "metadataSchema":{
+                 "allOf":[
+                    {
+                       "$ref":"#/$defs/metadataSchemaNode"
+                    },
+                    {
+                       "type":"object",
+                       "required":[
+                          "properties"
+                       ],
+                       "properties":{
+                          "properties":{
+                             "type":"object",
+                             "required":[
+                                "externalId"
+                             ],
+                             "properties":{
+                                "externalId":{
+                                   "allOf":[
+                                      {
+                                         "$ref":"#/$defs/metadataSchemaNode"
+                                      },
+                                      {
+                                         "type":"object",
+                                         "properties":{
+                                            "type":{
+                                               "const":"string"
+                                            },
+                                            "index":{
+                                               "const":true
+                                            }
+                                         },
+                                         "required":[
+                                            "type",
+                                            "index"
+                                         ]
+                                      }
+                                   ]
+                                }
+                             }
+                          }
+                       }
+                    }
+                 ]
+              }
+           }
+        }
+     }
+  ],
   "$defs":{
+     "metadataSchemaNode":{
+        "type":"object",
+        "description":"Strict supported subset of JSON Schema for metadataSchema.",
+        "properties":{
+           "description":{
+              "type":"string"
+           },
+           "type":{
+              "type":"string",
+              "enum":[
+                 "object",
+                 "array",
+                 "string",
+                 "number",
+                 "integer",
+                 "boolean",
+                 "null"
+              ]
+           },
+           "properties":{
+              "type":"object",
+              "propertyNames":{
+                 "pattern":"^[a-z][a-zA-Z0-9]*$"
+              },
+              "additionalProperties":{
+                 "$ref":"#/$defs/metadataSchemaNode"
+              }
+           },
+           "required":{
+              "type":"array",
+              "items":{
+                 "type":"string"
+              },
+              "uniqueItems":true
+           },
+           "items":{
+              "$ref":"#/$defs/metadataSchemaNode"
+           },
+           "additionalProperties":{
+              "oneOf":[
+                 {
+                    "type":"boolean"
+                 },
+                 {
+                    "$ref":"#/$defs/metadataSchemaNode"
+                 }
+              ]
+           },
+           "index":{
+              "type":"boolean",
+              "description":"Storage/index hint for metadata persistence. True marks this field as index-eligible."
+           },
+           "filter":{
+              "type":"boolean",
+              "description":"Filterability hint for metadata-driven query planning."
+           },
+           "nullable":{
+              "type":"boolean"
+           },
+           "format":{
+              "type":"string",
+              "description":"For datetime semantics use type='string' with format='date-time' (UTC at runtime)."
+           },
+           "pattern":{
+              "type":"string"
+           },
+           "minimum":{
+              "type":"number"
+           },
+           "maximum":{
+              "type":"number"
+           },
+           "exclusiveMinimum":{
+              "type":"number"
+           },
+           "exclusiveMaximum":{
+              "type":"number"
+           },
+           "multipleOf":{
+              "type":"number",
+              "exclusiveMinimum":0
+           },
+           "minLength":{
+              "type":"integer",
+              "minimum":0
+           },
+           "maxLength":{
+              "type":"integer",
+              "minimum":0
+           },
+           "minItems":{
+              "type":"integer",
+              "minimum":0
+           },
+           "maxItems":{
+              "type":"integer",
+              "minimum":0
+           },
+           "uniqueItems":{
+              "type":"boolean"
+           },
+           "minProperties":{
+              "type":"integer",
+              "minimum":0
+           },
+           "maxProperties":{
+              "type":"integer",
+              "minimum":0
+           }
+        },
+        "allOf":[
+           {
+              "if":{
+                 "properties":{
+                    "format":{
+                       "const":"date-time"
+                    }
+                 },
+                 "required":[
+                    "format"
+                 ]
+              },
+              "then":{
+                 "properties":{
+                    "type":{
+                       "const":"string"
+                    }
+                 },
+                 "required":[
+                    "type"
+                 ]
+              }
+           },
+           {
+              "if":{
+                 "properties":{
+                    "index":{
+                       "const":true
+                    }
+                 },
+                 "required":[
+                    "index"
+                 ]
+              },
+              "then":{
+                 "properties":{
+                    "type":{
+                       "type":"string",
+                       "enum":[
+                          "string",
+                          "number",
+                          "integer",
+                          "boolean"
+                       ]
+                    }
+                 },
+                 "not":{
+                    "anyOf":[
+                       {
+                          "required":[
+                             "properties"
+                          ]
+                       },
+                       {
+                          "required":[
+                             "items"
+                          ]
+                       }
+                    ]
+                 }
+              }
+           },
+           {
+              "if":{
+                 "properties":{
+                    "filter":{
+                       "const":true
+                    }
+                 },
+                 "required":[
+                    "filter"
+                 ]
+              },
+              "then":{
+                 "properties":{
+                    "type":{
+                       "type":"string",
+                       "enum":[
+                          "string",
+                          "number",
+                          "integer",
+                          "boolean"
+                       ]
+                    }
+                 },
+                 "not":{
+                    "anyOf":[
+                       {
+                          "required":[
+                             "properties"
+                          ]
+                       },
+                       {
+                          "required":[
+                             "items"
+                          ]
+                       }
+                    ]
+                 }
+              }
+           }
+        ],
+        "additionalProperties":false
+     },
+     "foreignKeyDefinition":{
+        "type":"object",
+        "required":[
+           "name",
+           "fields",
+           "targetDatasource"
+        ],
+        "properties":{
+           "name":{
+              "type":"string",
+              "pattern":"^[a-z][a-zA-Z0-9]*$",
+              "description":"Mandatory foreign key name (camelCase) for debugging, UI, and generated contracts (must be unique per datasource)."
+           },
+           "fields":{
+              "type":"array",
+              "description":"Local normalized fields forming the foreign key. Each field must exist in metadataSchema and have index=true (builder/runtime enforced).",
+              "minItems":1,
+              "items":{
+                 "type":"string",
+                 "pattern":"^[a-z][a-zA-Z0-9]*$"
+              },
+              "uniqueItems":true
+           },
+           "targetDatasource":{
+              "type":"string",
+              "pattern":"^[a-z0-9-]+$",
+              "description":"Target datasource key"
+           },
+           "targetFields":{
+              "type":"array",
+              "description":"Target fields joined by this FK. If omitted, defaults to target metadataSchema externalId ([\"externalId\"]) for cross-datasource identity (not target primaryKey). Explicit multi-field lists must not mirror the target composite primaryKey as the join contract.",
+              "items":{
+                 "type":"string",
+                 "pattern":"^[a-z][a-zA-Z0-9]*$"
+              },
+              "minItems":1
+           },
+           "required":{
+              "type":"boolean",
+              "default":false,
+              "description":"If true, missing or invalid reference causes validation failure"
+           },
+           "description":{
+              "type":"string"
+           }
+        },
+        "additionalProperties":false
+     },
+     "dimensionBinding":{
+        "type":"object",
+        "required":[
+           "type"
+        ],
+        "properties":{
+           "type":{
+              "type":"string",
+              "enum":[
+                 "local",
+                 "fk"
+              ]
+           },
+           "field":{
+              "type":"string",
+              "pattern":"^[a-z][a-zA-Z0-9]*$"
+           },
+           "actor":{
+              "type":"string",
+              "enum":[
+                 "displayName",
+                 "email",
+                 "userId",
+                 "groups",
+                 "roles"
+              ]
+           },
+           "operator":{
+              "type":"string",
+              "enum":[
+                 "eq",
+                 "in"
+              ]
+           },
+           "via":{
+              "type":"array",
+              "minItems":1,
+              "items":{
+                 "$ref":"#/$defs/dimensionVia"
+              }
+           },
+           "required":{
+              "type":"boolean",
+              "default":true
+           }
+        },
+        "oneOf":[
+           {
+              "required":[
+                 "field"
+              ]
+           },
+           {
+              "required":[
+                 "via"
+              ]
+           }
+        ],
+        "allOf":[
+           {
+              "if":{
+                 "properties":{
+                    "type":{
+                       "const":"local"
+                    }
+                 },
+                 "required":[
+                    "type"
+                 ]
+              },
+              "then":{
+                 "required":[
+                    "field"
+                 ],
+                 "not":{
+                    "required":[
+                       "via"
+                    ]
+                 }
+              }
+           },
+           {
+              "if":{
+                 "properties":{
+                    "type":{
+                       "const":"fk"
+                    }
+                 },
+                 "required":[
+                    "type"
+                 ]
+              },
+              "then":{
+                 "required":[
+                    "via"
+                 ],
+                 "not":{
+                    "required":[
+                       "field"
+                    ]
+                 }
+              }
+           },
+           {
+              "if":{
+                 "properties":{
+                    "actor":{
+                       "enum":[
+                          "displayName",
+                          "email",
+                          "userId"
+                       ]
+                    }
+                 },
+                 "required":[
+                    "actor"
+                 ]
+              },
+              "then":{
+                 "properties":{
+                    "operator":{
+                       "const":"eq",
+                       "default":"eq"
+                    }
+                 }
+              }
+           },
+           {
+              "if":{
+                 "properties":{
+                    "actor":{
+                       "enum":[
+                          "groups",
+                          "roles"
+                       ]
+                    }
+                 },
+                 "required":[
+                    "actor"
+                 ]
+              },
+              "then":{
+                 "properties":{
+                    "operator":{
+                       "const":"in",
+                       "default":"in"
+                    }
+                 }
+              }
+           }
+        ],
+        "additionalProperties":false
+     },
+     "dimensionVia":{
+        "type":"object",
+        "required":[
+           "fk",
+           "dimension"
+        ],
+        "properties":{
+           "fk":{
+              "type":"string",
+              "pattern":"^[a-z][a-zA-Z0-9]*$"
+           },
+           "dimension":{
+              "type":"string",
+              "pattern":"^[a-zA-Z0-9_]+$"
+           }
+        },
+        "additionalProperties":false
+     },
+     "exposedSchemaNode":{
+        "description":"Recursive exposed.schema node. Object values create nested API objects; string values are expression leaves.",
+        "oneOf":[
+           {
+              "type":"string",
+              "maxLength":512,
+              "pattern":"^(metadata\\.[a-z][a-zA-Z0-9]*(\\.[a-zA-Z0-9_]+)*|fk\\.[a-z][a-zA-Z0-9]*\\.metadata\\.[a-z][a-zA-Z0-9]*|fk\\.[a-z][a-zA-Z0-9]*\\.dimension\\.[a-zA-Z0-9_]+(\\.label)?|dimension\\.[a-zA-Z0-9_]+(\\.label)?)$"
+           },
+           {
+              "type":"object",
+              "minProperties":1,
+              "additionalProperties":{
+                 "$ref":"#/$defs/exposedSchemaNode"
+              }
+           }
+        ]
+     },
+     "openapiOperation":{
+        "type":"object",
+        "description":"Selected OpenAPI operation contract with explicit security metadata.",
+        "properties":{
+           "operationId":{
+              "type":"string"
+           },
+           "method":{
+              "type":"string",
+              "enum":[
+                 "GET",
+                 "POST",
+                 "PUT",
+                 "PATCH",
+                 "DELETE"
+              ]
+           },
+           "path":{
+              "type":"string"
+           },
+           "permissions":{
+              "oneOf":[
+                 {
+                    "type":"string"
+                 },
+                 {
+                    "type":"array",
+                    "items":{
+                       "type":"string"
+                    },
+                    "minItems":1,
+                    "uniqueItems":true
+                 }
+              ]
+           },
+           "security":{
+              "description":"OpenAPI security requirements. Supports object/list/string forms consumed by RBAC coverage validation.",
+              "oneOf":[
+                 {
+                    "type":"string"
+                 },
+                 {
+                    "type":"object",
+                    "additionalProperties":{
+                       "oneOf":[
+                          {
+                             "type":"string"
+                          },
+                          {
+                             "type":"array",
+                             "items":{
+                                "type":"string"
+                             }
+                          }
+                       ]
+                    }
+                 },
+                 {
+                    "type":"array",
+                    "items":{
+                       "oneOf":[
+                          {
+                             "type":"string"
+                          },
+                          {
+                             "type":"object",
+                             "additionalProperties":{
+                                "oneOf":[
+                                   {
+                                      "type":"string"
+                                   },
+                                   {
+                                      "type":"array",
+                                      "items":{
+                                         "type":"string"
+                                      }
+                                   }
+                                ]
+                             }
+                          }
+                       ]
+                    }
+                 }
+              ]
+           }
+        },
+        "additionalProperties":false
+     },
+     "cipRuntimeContext":{
+        "type":"object",
+        "description":"Runtime context requirements for CIP execution.",
+        "properties":{
+           "requires":{
+              "type":"array",
+              "items":{
+                 "type":"string",
+                 "enum":[
+                    "user",
+                    "groups",
+                    "environment",
+                    "request"
+                 ]
+              },
+              "uniqueItems":true
+           },
+           "optional":{
+              "type":"array",
+              "items":{
+                 "type":"string",
+                 "enum":[
+                    "user",
+                    "groups",
+                    "environment",
+                    "request"
+                 ]
+              },
+              "uniqueItems":true
+           }
+        },
+        "additionalProperties":false
+     },
      "pythonExecution":{
         "type":"object",
         "description":"Python-based execution config for advanced/custom use cases.",
@@ -962,7 +1584,10 @@
            },
            "operations":{
               "type":"object",
-              "description":"Logical operations (list/get/create/update/delete) implemented for this datasource.",
+              "description":"Logical operations implemented for this datasource. Standard names: list, get, create, update, delete. Additional keys are allowed when they match the capability naming pattern (same as capabilities[] items).",
+              "propertyNames":{
+                 "pattern":"^[a-z][a-zA-Z0-9]*$"
+              },
               "properties":{
                  "list":{
                     "$ref":"#/$defs/cipOperation"
@@ -980,10 +1605,15 @@
                     "$ref":"#/$defs/cipOperation"
                  }
               },
-              "additionalProperties":false
+              "additionalProperties":{
+                 "$ref":"#/$defs/cipOperation"
+              }
            },
            "idempotency":{
               "$ref":"#/$defs/idempotencyConfig"
+           },
+           "runtimeContext":{
+              "$ref":"#/$defs/cipRuntimeContext"
            }
         },
         "additionalProperties":false
@@ -1001,8 +1631,40 @@
               "type":"boolean",
               "default":true
            },
+           "method":{
+              "type":"string",
+              "enum":[
+                 "GET",
+                 "POST",
+                 "PUT",
+                 "PATCH",
+                 "DELETE"
+              ],
+              "description":"Optional canonical HTTP method for this operation contract."
+           },
+           "path":{
+              "type":"string",
+              "description":"Optional canonical route/path for this operation contract."
+           },
+           "input":{
+              "type":"object",
+              "description":"Optional operation input contract schema.",
+              "additionalProperties":true
+           },
+           "output":{
+              "type":"object",
+              "description":"Optional operation output contract schema.",
+              "additionalProperties":true
+           },
+           "safe":{
+              "type":"boolean",
+              "description":"Optional safety hint for operation execution."
+           },
            "lineage":{
               "$ref":"#/$defs/cipLineage"
+           },
+           "identity":{
+              "$ref":"#/$defs/identitySpec"
            },
            "steps":{
               "type":"array",
@@ -1037,6 +1699,48 @@
            }
         ]
      },
+     "identityMode":{
+        "type":"string",
+        "enum":[
+           "impersonation",
+           "attribution",
+           "system"
+        ],
+        "description":"Identity execution mode for operation-level override."
+     },
+     "identitySpec":{
+        "type":"object",
+        "description":"Operation-level identity override. When omitted, external-system default applies.",
+        "required":[
+           "mode"
+        ],
+        "properties":{
+           "mode":{
+              "$ref":"#/$defs/identityMode"
+           },
+           "required":{
+              "type":"boolean",
+              "default":false,
+              "description":"When true, fail operation if requested mode cannot be applied."
+           },
+           "fallback":{
+              "type":"array",
+              "description":"Fallback mode chain evaluated when primary mode fails.",
+              "items":{
+                 "$ref":"#/$defs/identityMode"
+              },
+              "uniqueItems":true
+           },
+           "scopes":{
+              "type":"array",
+              "description":"Optional scopes requested for impersonation minting.",
+              "items":{
+                 "type":"string"
+              }
+           }
+        },
+        "additionalProperties":false
+     },
      "cipStepFetch":{
         "type":"object",
         "required":[
@@ -1054,20 +1758,15 @@
                     "type":"string",
                     "enum":[
                        "openapi",
-                       "http"
+                      "http",
+                      "datasource"
                     ],
-                    "description":"If 'openapi', refer to openapi.operations.*. If 'http', use explicit method/path."
+                   "description":"If 'openapi', refer to openapi.operations.*. If 'http', use explicit method/path. If 'datasource', execute another datasource operation."
                  },
                  "openapiRef":{
                     "type":"string",
-                    "enum":[
-                       "list",
-                       "get",
-                       "create",
-                       "update",
-                       "delete"
-                    ],
-                    "description":"Reference to openapi.operations.<openapiRef> entry."
+                    "pattern":"^[a-z][a-zA-Z0-9]*$",
+                    "description":"Key under openapi.operations (standard CRUD: list, get, create, update, delete, or any custom name matching capabilities[] / execution.cip.operations naming)."
                  },
                  "operationId":{
                     "type":"string",
@@ -1088,6 +1787,22 @@
                     "type":"string",
                     "description":"Explicit HTTP path when source='http'."
                  },
+                "datasource":{
+                   "type":"string",
+                   "pattern":"^[a-z0-9-]+$",
+                   "description":"Target datasource key when source='datasource'."
+                },
+                "operation":{
+                   "type":"string",
+                   "pattern":"^[a-z][a-zA-Z0-9]*$",
+                   "default":"list",
+                   "description":"Target datasource operation when source='datasource' (standard CRUD or custom CIP operation key on the target). Defaults to list."
+                },
+                "parameters":{
+                   "type":"object",
+                   "description":"Optional operation parameters forwarded to datasource execution when source='datasource'.",
+                   "additionalProperties":true
+                },
                  "query":{
                     "type":"object",
                     "description":"Static query parameters. ABAC/runtime can still override or append at runtime.",
@@ -1104,9 +1819,13 @@
                     "description":"Optional static request body or template for POST/PUT/PATCH fetches.",
                     "type":["object","string","null"]
                  },
+                 "expectedItemsPath":{
+                    "type":"string",
+                    "description":"Optional response shape guard. When set, runtime validates this path exists and is non-null in fetch response."
+                 },
                  "headers":{
                     "type":"object",
-                    "description":"Optional HTTP headers for the request.",
+                    "description":"Optional HTTP headers for the request (compatibility contract; runtime support may depend on executor path).",
                     "additionalProperties":{
                        "type":"string"
                     }
@@ -1150,6 +1869,20 @@
                           "path"
                        ]
                     }
+                },
+                {
+                   "if":{
+                      "properties":{
+                         "source":{
+                            "const":"datasource"
+                         }
+                      }
+                   },
+                   "then":{
+                      "required":[
+                         "datasource"
+                      ]
+                   }
                  }
               ],
               "additionalProperties":false
@@ -1286,27 +2019,52 @@
         "properties":{
            "filter":{
               "type":"object",
-              "description":"Filter mapped records before output. Dimension enforcement is applied automatically based on fieldMappings.dimensions.",
+              "description":"Filter mapped records before output.",
               "properties":{
-                 "enforceAbac":{
-                    "type":"boolean",
-                    "default":true
+                 "abac":{
+                    "type":"object",
+                    "description":"ABAC filtering behavior for this step.",
+                    "properties":{
+                       "mode":{
+                          "type":"string",
+                          "enum":[
+                             "mandatory",
+                             "optional",
+                             "disabled"
+                          ],
+                          "default":"mandatory"
+                       },
+                       "policyScope":{
+                          "type":"string",
+                          "enum":[
+                             "datasource",
+                             "system",
+                             "cross-system"
+                          ],
+                          "default":"datasource"
+                       },
+                       "explain":{
+                          "type":"boolean",
+                          "default":false
+                       }
+                    },
+                    "additionalProperties":false
                  },
                  "expression":{
-                    "oneOf":[
-                       {
-                          "type":"string",
-                          "description":"SQL filter expression (e.g., 'status = \"active\" AND revenue >= 1000000')"
-                       },
-                       {
-                          "type":"object",
-                          "description":"JSON filter expression (e.g., {'status': {'eq': 'active'}, 'revenue': {'gte': 1000000}})",
-                          "additionalProperties":{
-                             "type":"object"
-                          }
-                       }
+                    "type":"string",
+                    "description":"JMESPath expression evaluated after ABAC filtering."
+                 },
+                 "expressionLanguage":{
+                    "type":"string",
+                    "enum":[
+                       "jmespath"
                     ],
-                    "description":"Optional additional filter expression. Supports both SQL and JSON formats."
+                    "default":"jmespath"
+                 },
+                 "maxComplexity":{
+                    "type":"integer",
+                    "minimum":1,
+                    "default":50
                  }
               },
               "additionalProperties":false
@@ -1432,7 +2190,7 @@
      },
      "cipCompensationConfig":{
         "type":"object",
-        "description":"Compensation (rollback) configuration for error handling.",
+        "description":"Compensation (rollback) configuration for error handling. Current runtime compensation execution is focused on fetch/map step flows.",
         "properties":{
            "enabled":{
               "type":"boolean",

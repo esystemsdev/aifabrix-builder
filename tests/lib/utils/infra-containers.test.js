@@ -6,10 +6,10 @@
  * @version 2.0.0
  */
 
-// Mock util.promisify to return a mock function we can control
+// execWithDockerEnv is the code path under test; mock it like the old promisify(exec) hook
 const mockExecAsync = jest.fn();
-jest.mock('util', () => ({
-  promisify: jest.fn(() => mockExecAsync)
+jest.mock('../../../lib/utils/docker-exec', () => ({
+  execWithDockerEnv: (cmd, opts) => mockExecAsync(cmd, opts ?? {})
 }));
 
 // Mock config module
@@ -37,7 +37,10 @@ describe('Infrastructure Container Utilities', () => {
       const result = await findContainer('postgres', 0);
 
       expect(result).toBe('aifabrix-postgres');
-      expect(mockExecAsync).toHaveBeenCalledWith('docker ps --filter "name=aifabrix-postgres" --format "{{.Names}}"');
+      expect(mockExecAsync).toHaveBeenCalledWith(
+        'docker ps --filter "name=aifabrix-postgres" --format "{{.Names}}"',
+        {}
+      );
     });
 
     it('should find container with devId > 0', async() => {
@@ -46,7 +49,10 @@ describe('Infrastructure Container Utilities', () => {
       const result = await findContainer('postgres', 5);
 
       expect(result).toBe('aifabrix-dev5-postgres');
-      expect(mockExecAsync).toHaveBeenCalledWith('docker ps --filter "name=aifabrix-dev5-postgres" --format "{{.Names}}"');
+      expect(mockExecAsync).toHaveBeenCalledWith(
+        'docker ps --filter "name=aifabrix-dev5-postgres" --format "{{.Names}}"',
+        {}
+      );
     });
 
     it('should load devId from config when not provided', async() => {
@@ -57,7 +63,10 @@ describe('Infrastructure Container Utilities', () => {
 
       expect(result).toBe('aifabrix-dev3-redis');
       expect(config.getDeveloperId).toHaveBeenCalled();
-      expect(mockExecAsync).toHaveBeenCalledWith('docker ps --filter "name=aifabrix-dev3-redis" --format "{{.Names}}"');
+      expect(mockExecAsync).toHaveBeenCalledWith(
+        'docker ps --filter "name=aifabrix-dev3-redis" --format "{{.Names}}"',
+        {}
+      );
     });
 
     it('should fallback to old naming pattern when primary pattern not found', async() => {
@@ -71,8 +80,16 @@ describe('Infrastructure Container Utilities', () => {
 
       expect(result).toBe('infra-postgres');
       expect(mockExecAsync).toHaveBeenCalledTimes(2);
-      expect(mockExecAsync).toHaveBeenNthCalledWith(1, 'docker ps --filter "name=aifabrix-postgres" --format "{{.Names}}"');
-      expect(mockExecAsync).toHaveBeenNthCalledWith(2, 'docker ps --filter "name=infra-postgres" --format "{{.Names}}"');
+      expect(mockExecAsync).toHaveBeenNthCalledWith(
+        1,
+        'docker ps --filter "name=aifabrix-postgres" --format "{{.Names}}"',
+        {}
+      );
+      expect(mockExecAsync).toHaveBeenNthCalledWith(
+        2,
+        'docker ps --filter "name=infra-postgres" --format "{{.Names}}"',
+        {}
+      );
     });
 
     it('should fallback to aifabrix- pattern when both primary and old pattern not found', async() => {
@@ -87,9 +104,21 @@ describe('Infrastructure Container Utilities', () => {
 
       expect(result).toBe('aifabrix-postgres');
       expect(mockExecAsync).toHaveBeenCalledTimes(3);
-      expect(mockExecAsync).toHaveBeenNthCalledWith(1, 'docker ps --filter "name=aifabrix-postgres" --format "{{.Names}}"');
-      expect(mockExecAsync).toHaveBeenNthCalledWith(2, 'docker ps --filter "name=infra-postgres" --format "{{.Names}}"');
-      expect(mockExecAsync).toHaveBeenNthCalledWith(3, 'docker ps --filter "name=aifabrix-postgres" --format "{{.Names}}"');
+      expect(mockExecAsync).toHaveBeenNthCalledWith(
+        1,
+        'docker ps --filter "name=aifabrix-postgres" --format "{{.Names}}"',
+        {}
+      );
+      expect(mockExecAsync).toHaveBeenNthCalledWith(
+        2,
+        'docker ps --filter "name=infra-postgres" --format "{{.Names}}"',
+        {}
+      );
+      expect(mockExecAsync).toHaveBeenNthCalledWith(
+        3,
+        'docker ps --filter "name=aifabrix-postgres" --format "{{.Names}}"',
+        {}
+      );
     });
 
     it('should return empty string when container not found with any pattern', async() => {
@@ -131,7 +160,11 @@ describe('Infrastructure Container Utilities', () => {
 
       expect(result).toBe('healthy');
       expect(mockExecAsync).toHaveBeenCalledTimes(2);
-      expect(mockExecAsync).toHaveBeenNthCalledWith(2, 'docker inspect --format=\'{{.State.Health.Status}}\' aifabrix-postgres');
+      expect(mockExecAsync).toHaveBeenNthCalledWith(
+        2,
+        'docker inspect --format=\'{{.State.Health.Status}}\' aifabrix-postgres',
+        {}
+      );
     });
 
     it('should return healthy status when container is starting', async() => {
@@ -226,7 +259,11 @@ describe('Infrastructure Container Utilities', () => {
 
       expect(result).toBe('healthy');
       expect(mockExecAsync).toHaveBeenCalledTimes(2);
-      expect(mockExecAsync).toHaveBeenNthCalledWith(2, 'docker inspect --format=\'{{.State.Status}}\' aifabrix-redis');
+      expect(mockExecAsync).toHaveBeenNthCalledWith(
+        2,
+        'docker inspect --format=\'{{.State.Status}}\' aifabrix-redis',
+        {}
+      );
     });
 
     it('should return healthy status when container status is healthy', async() => {

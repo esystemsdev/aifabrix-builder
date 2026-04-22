@@ -1,5 +1,6 @@
 /**
  * Tests for AI Fabrix Builder Secrets Generator Module
+ * Isolated Jest project `secrets-generator` — jest.mock('fs') + catalog passthrough; do not leak mocks to other workers.
  *
  * @fileoverview Unit tests for secrets-generator.js module
  * @author AI Fabrix Team
@@ -22,6 +23,9 @@ jest.mock('../../../lib/utils/logger', () => ({
 
 const secretsGenerator = require('../../../lib/utils/secrets-generator');
 const pathsUtil = require('../../../lib/utils/paths');
+const infraParameterCatalog = require('../../../lib/parameters/infra-parameter-catalog');
+const { clearInfraParameterCatalogCache, loadInfraParameterCatalog, DEFAULT_CATALOG_PATH } =
+  infraParameterCatalog;
 
 // Mock fs module
 jest.mock('fs');
@@ -123,6 +127,42 @@ describe('Secrets Generator Module', () => {
   });
 
   describe('generateSecretValue', () => {
+    const realFs = jest.requireActual('fs');
+
+    beforeEach(() => {
+      clearInfraParameterCatalogCache();
+      fs.existsSync.mockImplementation((filePath) => {
+        const s = String(filePath);
+        if (s.includes('infra.parameter.yaml') || s.includes('infra-parameter.schema.json')) {
+          return realFs.existsSync(filePath);
+        }
+        if (s.includes(`${path.sep}templates${path.sep}applications${path.sep}`)) {
+          return realFs.existsSync(filePath);
+        }
+        return false;
+      });
+      fs.readFileSync.mockImplementation((filePath, encoding) => {
+        const s = String(filePath);
+        if (s.includes('infra.parameter.yaml') || s.includes('infra-parameter.schema.json')) {
+          return realFs.readFileSync(filePath, encoding);
+        }
+        if (s.includes(`${path.sep}templates${path.sep}applications${path.sep}`)) {
+          return realFs.readFileSync(filePath, encoding);
+        }
+        return '';
+      });
+    });
+
+    afterEach(() => {
+      // Do not mockReset (strips impl) or delegate to realFs (leaks real I/O into other worker suites).
+      fs.existsSync.mockImplementation(() => false);
+      fs.readFileSync.mockImplementation(() => '');
+    });
+
+    it('should generate default semver for catalog key version (kv://version backfill)', () => {
+      expect(secretsGenerator.generateSecretValue('version')).toBe('1.0.0');
+    });
+
     it('should generate database password for databases-{app}-{index}-passwordKeyVault format', () => {
       const key = 'databases-myapp-0-passwordKeyVault';
 
@@ -147,15 +187,13 @@ describe('Secrets Generator Module', () => {
       expect(result).toBe('miso_pass123');
     });
 
-    it('should generate random password for generic password key', () => {
-      const key = 'some-password-key';
+    it('should generate randomBytes32 for *KeyVault keys via catalog catch-all', () => {
+      const key = 'custom-generated-secretKeyVault';
 
       const result = secretsGenerator.generateSecretValue(key);
 
       expect(result).toBeTruthy();
       expect(typeof result).toBe('string');
-      expect(result.length).toBeGreaterThan(0);
-      // Base64 encoding of 32 bytes = 44 characters
       expect(result.length).toBe(44);
     });
 
@@ -183,76 +221,102 @@ describe('Secrets Generator Module', () => {
       expect(result).toBe('postgresql://miso_user:miso_pass123@${DB_HOST}:${DB_PORT}/miso');
     });
 
-    it('should return empty string for URL keys that are not database URLs', () => {
-      const key = 'some-url-key';
+    it('should generate miso_logs_user / miso-logs URL for miso-controller database index 1', () => {
+      const key = 'databases-miso-controller-1-urlKeyVault';
 
       const result = secretsGenerator.generateSecretValue(key);
 
-      expect(result).toBe('');
+      expect(result).toBe(
+        'postgresql://miso_logs_user:miso_logs_pass123@${DB_HOST}:${DB_PORT}/miso-logs'
+      );
     });
 
-    it('should return empty string for URI keys that are not database URIs', () => {
-      const key = 'some-uri-key';
+    it('should generate miso_logs_pass123 for miso-controller database index 1 password', () => {
+      const key = 'databases-miso-controller-1-passwordKeyVault';
 
       const result = secretsGenerator.generateSecretValue(key);
 
-      expect(result).toBe('');
+      expect(result).toBe('miso_logs_pass123');
     });
 
-    it('should generate random key for key pattern', () => {
-      const key = 'some-api-key';
+    it('should return empty string for *-url keys via catalog (non-database)', () => {
+      expect(secretsGenerator.generateSecretValue('acme-placeholder-url')).toBe('');
+    });
+
+    it('should throw when catalog loads but key matches no rule', () => {
+      expect(() => secretsGenerator.generateSecretValue('some-unknown-value-setting')).toThrow(
+        /no matching rule in infra\.parameter\.yaml/
+      );
+    });
+
+    it('should generate randomBytes32 for KeyVault-suffixed API secret keys', () => {
+      const key = 'custom-api-secretKeyVault';
 
       const result = secretsGenerator.generateSecretValue(key);
 
-      expect(result).toBeTruthy();
-      expect(typeof result).toBe('string');
       expect(result.length).toBe(44);
     });
 
-    it('should generate random key for secret pattern', () => {
-      const key = 'some-secret-key';
+    it('should generate randomBytes32 for KeyVault-suffixed shared secret keys', () => {
+      const key = 'custom-shared-secretKeyVault';
 
       const result = secretsGenerator.generateSecretValue(key);
 
-      expect(result).toBeTruthy();
-      expect(typeof result).toBe('string');
       expect(result.length).toBe(44);
     });
 
-    it('should generate random key for token pattern', () => {
-      const key = 'some-token-key';
+    it('should generate randomBytes32 for KeyVault-suffixed token keys', () => {
+      const key = 'custom-token-secretKeyVault';
 
       const result = secretsGenerator.generateSecretValue(key);
 
-      expect(result).toBeTruthy();
-      expect(typeof result).toBe('string');
       expect(result.length).toBe(44);
     });
 
-    it('should return empty string for unknown key pattern', () => {
-      const key = 'some-unknown-value-setting';
-
-      const result = secretsGenerator.generateSecretValue(key);
-
-      expect(result).toBe('');
+    it('should use catalog literal for miso-controller onboarding admin email', () => {
+      expect(secretsGenerator.generateSecretValue('miso-controller-admin-emailKeyVault')).toBe('admin@aifabrix.dev');
     });
 
-    it('should handle case-insensitive password matching', () => {
-      const key = 'PASSWORD-KEY';
-
-      const result = secretsGenerator.generateSecretValue(key);
-
-      expect(result).toBeTruthy();
-      expect(typeof result).toBe('string');
-      expect(result.length).toBe(44);
+    it('should use catalog literal for miso-controller onboarding admin password (local default)', () => {
+      expect(secretsGenerator.generateSecretValue('miso-controller-admin-passwordKeyVault')).toBe('admin123');
     });
 
-    it('should handle case-insensitive URL matching', () => {
-      const key = 'URL-KEY';
+    it('should apply placeholderContext for shared {{adminPassword}} literals', () => {
+      clearInfraParameterCatalogCache();
+      expect(
+        secretsGenerator.generateSecretValue('postgres-passwordKeyVault', {
+          adminPassword: 'from-cli',
+          adminEmail: 'e@e.e',
+          userPassword: 'uu'
+        })
+      ).toBe('from-cli');
+      expect(
+        secretsGenerator.generateSecretValue('keycloak-default-passwordKeyVault', {
+          adminPassword: 'x',
+          userPassword: 'uu'
+        })
+      ).toBe('uu');
+    });
 
-      const result = secretsGenerator.generateSecretValue(key);
-
-      expect(result).toBe('');
+    it('should use catalog password generator (8-char [a-zA-Z0-9])', () => {
+      const realCat = loadInfraParameterCatalog(DEFAULT_CATALOG_PATH);
+      const spy = jest.spyOn(infraParameterCatalog, 'getInfraParameterCatalog').mockImplementation(() => ({
+        findEntryForKey: (key) => {
+          if (key === 'jest-password-generator-demoKeyVault') {
+            return { generator: { type: 'password' }, ensureOn: ['resolveApp'] };
+          }
+          return realCat.findEntryForKey(key);
+        }
+      }));
+      try {
+        clearInfraParameterCatalogCache();
+        const v = secretsGenerator.generateSecretValue('jest-password-generator-demoKeyVault');
+        expect(v).toHaveLength(8);
+        expect(v).toMatch(/^[a-zA-Z0-9]+$/);
+      } finally {
+        spy.mockRestore();
+        clearInfraParameterCatalogCache();
+      }
     });
   });
 
@@ -274,9 +338,16 @@ describe('Secrets Generator Module', () => {
       expect(secretsGenerator.loadYamlTolerantOfDuplicateKeys(null)).toEqual({});
     });
 
-    it('should throw on non-duplicate YAML errors', () => {
-      expect(() => secretsGenerator.loadYamlTolerantOfDuplicateKeys('invalid: [unclosed'))
-        .toThrow();
+    it('falls back to line parse when strict YAML fails (e.g. unclosed bracket)', () => {
+      const r = secretsGenerator.loadYamlTolerantOfDuplicateKeys('invalid: [unclosed');
+      expect(r).toEqual({ invalid: '[unclosed' });
+    });
+
+    it('recovers {} then appended key lines (invalid multi-document concat)', () => {
+      const content = '{}\nmiso-controller-admin-passwordKeyVault: secret123\n';
+      expect(secretsGenerator.loadYamlTolerantOfDuplicateKeys(content)).toEqual({
+        'miso-controller-admin-passwordKeyVault': 'secret123'
+      });
     });
   });
 
@@ -341,15 +412,13 @@ describe('Secrets Generator Module', () => {
       expect(result).toEqual({});
     });
 
-    it('should handle invalid YAML gracefully', () => {
-      const logger = require('../../../lib/utils/logger');
+    it('should handle invalid YAML gracefully (line parse yields no keys)', () => {
       fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue('invalid yaml content: [unclosed');
+      fs.readFileSync.mockReturnValue('not yaml {{{ no key value pairs');
 
       const result = secretsGenerator.loadExistingSecrets(mockSecretsPath);
 
       expect(result).toEqual({});
-      expect(logger.warn).toHaveBeenCalled();
     });
 
     it('should tolerate duplicate keys and use last value (loadYamlTolerantOfDuplicateKeys)', () => {
@@ -467,6 +536,20 @@ describe('Secrets Generator Module', () => {
       expect(writeCall[1]).toContain('old-key: old-value');
       expect(writeCall[1]).toContain('new-key');
       expect(writeCall[1]).toContain('new-value');
+    });
+
+    it('rewrites file when strict YAML fails (e.g. {} plus appended keys)', () => {
+      const broken = '{}\nold-key: old-value\n';
+      const secrets = { 'new-key': 'new-value' };
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(broken);
+
+      secretsGenerator.appendSecretsToFile(mockSecretsPath, secrets);
+
+      const writeCall = fs.writeFileSync.mock.calls[0];
+      const parsed = yaml.load(writeCall[1]);
+      expect(parsed['old-key']).toBe('old-value');
+      expect(parsed['new-key']).toBe('new-value');
     });
 
     it('should do nothing when secrets object is empty', () => {
@@ -645,12 +728,13 @@ describe('Secrets Generator Module', () => {
     });
 
     it('should handle multiple missing keys', async() => {
-      const envTemplate = 'KEY1=kv://secret1\nKEY2=kv://secret2';
+      const envTemplate =
+        'KEY1=kv://multi-missing-one-secretKeyVault\nKEY2=kv://multi-missing-two-secretKeyVault';
       fs.existsSync.mockReturnValue(false);
 
       const result = await secretsGenerator.generateMissingSecrets(envTemplate, mockSecretsPath);
 
-      expect(result).toEqual(['secret1', 'secret2']);
+      expect(result).toEqual(['multi-missing-one-secretKeyVault', 'multi-missing-two-secretKeyVault']);
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
@@ -679,12 +763,13 @@ describe('Secrets Generator Module', () => {
     });
 
     it('should handle duplicate kv:// references', async() => {
-      const envTemplate = 'KEY1=kv://same-secret\nKEY2=kv://same-secret';
+      const envTemplate =
+        'KEY1=kv://duplicate-test-secretKeyVault\nKEY2=kv://duplicate-test-secretKeyVault';
       fs.existsSync.mockReturnValue(false);
 
       const result = await secretsGenerator.generateMissingSecrets(envTemplate, mockSecretsPath);
 
-      expect(result).toEqual(['same-secret']);
+      expect(result).toEqual(['duplicate-test-secretKeyVault']);
     });
   });
 
@@ -742,7 +827,7 @@ describe('Secrets Generator Module', () => {
       expect(content).toContain('redis-passwordKeyVault');
       expect(content).toContain('redis-url');
       expect(content).toContain('keycloak-admin-passwordKeyVault');
-      expect(content).toContain('keycloak-server-url:');
+      expect(content).toContain('keycloak-web-server-url:');
     });
 
     it('should write file with correct permissions', async() => {
@@ -785,12 +870,44 @@ describe('Secrets Generator Module', () => {
     });
   });
 
+  describe('saveSecretsFile (preserve comments)', () => {
+    it('preserves comments/blank lines and supports add/update/delete for flat secrets.local.yaml', () => {
+      const target = '/home/user/.aifabrix/secrets.local.yaml';
+      const existing =
+        '# Header comment stays\n' +
+        '\n' +
+        'keepKey: keepVal # inline comment stays\n' +
+        'updateKey: oldVal\n' +
+        'deleteKey: bye\n';
+
+      fs.existsSync.mockImplementation((p) => {
+        if (p === path.dirname(target)) return true;
+        if (p === target) return true;
+        return true;
+      });
+      fs.readFileSync.mockReturnValue(existing);
+
+      secretsGenerator.saveSecretsFile(target, {
+        keepKey: 'keepVal',
+        updateKey: 'newVal',
+        addKey: 'added'
+      });
+
+      const written = fs.writeFileSync.mock.calls[0][1];
+      expect(written).toContain('# Header comment stays');
+      expect(written).toContain('keepKey: keepVal # inline comment stays');
+      expect(written).toContain('updateKey: newVal');
+      expect(written).toContain('addKey: added');
+      expect(written).not.toContain('deleteKey:');
+    });
+  });
+
   describe('Integration tests', () => {
     it('should generate and save secrets in correct format', async() => {
       const envTemplate = `
 DATABASE_PASSWORD=kv://databases-myapp-0-passwordKeyVault
 DATABASE_URL=kv://databases-myapp-0-urlKeyVault
-API_KEY=kv://myapp-api-key
+API_KEY=kv://myapp-api-key-secretKeyVault
 `;
       fs.existsSync.mockReturnValue(false);
 
@@ -798,7 +915,7 @@ API_KEY=kv://myapp-api-key
 
       expect(result).toContain('databases-myapp-0-passwordKeyVault');
       expect(result).toContain('databases-myapp-0-urlKeyVault');
-      expect(result).toContain('myapp-api-key');
+      expect(result).toContain('myapp-api-key-secretKeyVault');
 
       const writeCall = fs.writeFileSync.mock.calls[0];
       const yamlContent = writeCall[1];
@@ -806,17 +923,17 @@ API_KEY=kv://myapp-api-key
 
       expect(parsed['databases-myapp-0-passwordKeyVault']).toBe('myapp_pass123');
       expect(parsed['databases-myapp-0-urlKeyVault']).toBe('postgresql://myapp_user:myapp_pass123@${DB_HOST}:${DB_PORT}/myapp');
-      expect(parsed['myapp-api-key']).toBeTruthy();
-      expect(typeof parsed['myapp-api-key']).toBe('string');
-      expect(parsed['myapp-api-key'].length).toBe(44);
+      expect(parsed['myapp-api-key-secretKeyVault']).toBeTruthy();
+      expect(typeof parsed['myapp-api-key-secretKeyVault']).toBe('string');
+      expect(parsed['myapp-api-key-secretKeyVault'].length).toBe(44);
     });
 
     it('should handle complex template with multiple secret types', async() => {
       const envTemplate = `
-PASSWORD=kv://generic-password
-SECRET_KEY=kv://secret-key
-TOKEN=kv://api-token
-URL=kv://some-url
+PASSWORD=kv://generic-passwordKeyVault
+SECRET_KEY=kv://secret-key-sharedKeyVault
+TOKEN=kv://api-token-secretKeyVault
+URL=kv://integration-test-placeholder-url
 `;
       fs.existsSync.mockReturnValue(false);
 
@@ -826,10 +943,10 @@ URL=kv://some-url
       const yamlContent = writeCall[1];
       const parsed = yaml.load(yamlContent);
 
-      expect(parsed['generic-password']).toBeTruthy();
-      expect(parsed['secret-key']).toBeTruthy();
-      expect(parsed['api-token']).toBeTruthy();
-      expect(parsed['some-url']).toBe('');
+      expect(parsed['generic-passwordKeyVault']).toBeTruthy();
+      expect(parsed['secret-key-sharedKeyVault']).toBeTruthy();
+      expect(parsed['api-token-secretKeyVault']).toBeTruthy();
+      expect(parsed['integration-test-placeholder-url']).toBe('');
     });
   });
 });

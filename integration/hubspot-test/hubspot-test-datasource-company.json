@@ -3,508 +3,104 @@
   "displayName": "HubSpot Company",
   "description": "HubSpot companies datasource with field mappings for CRM company data",
   "systemKey": "hubspot-test",
-  "entityType": "record-storage",
+  "entityType": "recordStorage",
   "resourceType": "customer",
   "enabled": true,
   "version": "1.0.0",
-  "primaryKey": ["id"],
+  "primaryKey": [
+    "id"
+  ],
+  "labelKey": [
+    "name"
+  ],
   "metadataSchema": {
     "type": "object",
+    "required": [
+      "id",
+      "externalId",
+      "properties"
+    ],
     "properties": {
       "id": {
-        "type": "string"
+        "type": "string",
+        "index": true
+      },
+      "externalId": {
+        "type": "string",
+        "index": true
+      },
+      "name": {
+        "type": "string",
+        "filter": true
       },
       "properties": {
         "type": "object",
-        "properties": {
-          "name": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "domain": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "country": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "city": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "industry": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "website": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "phone": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "createdate": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "hs_lastmodifieddate": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "string"
-              }
-            }
-          }
-        }
+        "additionalProperties": true
       }
+    }
+  },
+  "dimensions": {
+    "country": {
+      "type": "local",
+      "field": "country"
     },
-    "required": [
-      "id",
-      "properties"
-    ]
+    "domain": {
+      "type": "local",
+      "field": "domain"
+    }
   },
   "fieldMappings": {
-    "dimensions": {
-      "country": "metadata.country",
-      "domain": "metadata.domain"
-    },
     "attributes": {
       "id": {
-        "expression": "{{id}}",
-        "type": "string",
-        "description": "Unique company identifier",
-        "indexed": true
+        "expression": "{{raw.id}}"
+      },
+      "externalId": {
+        "expression": "{{raw.id}}"
       },
       "name": {
-        "expression": "{{properties.name.value}} | trim",
-        "type": "string",
-        "description": "Company name",
-        "indexed": false
+        "expression": "{{raw.properties.name.value}} | trim"
       },
       "domain": {
-        "expression": "{{properties.domain.value}} | toLower | trim",
-        "type": "string",
-        "description": "Company domain for ABAC filtering",
-        "indexed": false
+        "expression": "{{raw.properties.domain.value}} | toLower | trim"
       },
       "country": {
-        "expression": "{{properties.country.value}} | toUpper | trim",
-        "type": "string",
-        "description": "Country code for ABAC filtering",
-        "indexed": false
+        "expression": "{{raw.properties.country.value}} | toUpper | trim"
       },
       "city": {
-        "expression": "{{properties.city.value}} | trim",
-        "type": "string",
-        "description": "City name",
-        "indexed": false
+        "expression": "{{raw.properties.city.value}} | trim"
       },
       "industry": {
-        "expression": "{{properties.industry.value}} | trim",
-        "type": "string",
-        "description": "Industry classification",
-        "indexed": false
+        "expression": "{{raw.properties.industry.value}} | trim"
       },
       "website": {
-        "expression": "{{properties.website.value}} | trim",
-        "type": "string",
-        "description": "Company website URL",
-        "indexed": false
+        "expression": "{{raw.properties.website.value}} | trim"
       },
       "phone": {
-        "expression": "{{properties.phone.value}} | trim",
-        "type": "string",
-        "description": "Phone number",
-        "indexed": false
+        "expression": "{{raw.properties.phone.value}} | trim"
       },
       "createdAt": {
-        "expression": "{{properties.createdate.value}}",
-        "type": "string",
-        "description": "Creation timestamp",
-        "indexed": false
+        "expression": "{{raw.properties.createdate.value}}"
       },
       "updatedAt": {
-        "expression": "{{properties.hs_lastmodifieddate.value}}",
-        "type": "string",
-        "description": "Last modification timestamp",
-        "indexed": false
-      }
-    },
-    "compiledAttributes": {
-      "id": {
-        "raw_path": [
-          "id"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Unique company identifier",
-        "indexed": true
-      },
-      "name": {
-        "raw_path": [
-          "properties",
-          "name",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Company name",
-        "indexed": false
-      },
-      "domain": {
-        "raw_path": [
-          "properties",
-          "domain",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "toLower",
-            "args": []
-          },
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Company domain for ABAC filtering",
-        "indexed": false
-      },
-      "country": {
-        "raw_path": [
-          "properties",
-          "country",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "toUpper",
-            "args": []
-          },
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Country code for ABAC filtering",
-        "indexed": false
-      },
-      "city": {
-        "raw_path": [
-          "properties",
-          "city",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "City name",
-        "indexed": false
-      },
-      "industry": {
-        "raw_path": [
-          "properties",
-          "industry",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Industry classification",
-        "indexed": false
-      },
-      "website": {
-        "raw_path": [
-          "properties",
-          "website",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Company website URL",
-        "indexed": false
-      },
-      "phone": {
-        "raw_path": [
-          "properties",
-          "phone",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Phone number",
-        "indexed": false
-      },
-      "createdAt": {
-        "raw_path": [
-          "properties",
-          "createdate",
-          "value"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Creation timestamp",
-        "indexed": false
-      },
-      "updatedAt": {
-        "raw_path": [
-          "properties",
-          "hs_lastmodifieddate",
-          "value"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Last modification timestamp",
-        "indexed": false
-      }
-    },
-    "compiledFields": {
-      "id": {
-        "raw_path": [
-          "id"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Unique company identifier",
-        "indexed": true
-      },
-      "name": {
-        "raw_path": [
-          "properties",
-          "name",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Company name",
-        "indexed": false
-      },
-      "domain": {
-        "raw_path": [
-          "properties",
-          "domain",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "toLower",
-            "args": []
-          },
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Company domain for ABAC filtering",
-        "indexed": false
-      },
-      "country": {
-        "raw_path": [
-          "properties",
-          "country",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "toUpper",
-            "args": []
-          },
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Country code for ABAC filtering",
-        "indexed": false
-      },
-      "city": {
-        "raw_path": [
-          "properties",
-          "city",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "City name",
-        "indexed": false
-      },
-      "industry": {
-        "raw_path": [
-          "properties",
-          "industry",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Industry classification",
-        "indexed": false
-      },
-      "website": {
-        "raw_path": [
-          "properties",
-          "website",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Company website URL",
-        "indexed": false
-      },
-      "phone": {
-        "raw_path": [
-          "properties",
-          "phone",
-          "value"
-        ],
-        "functions": [
-          {
-            "name": "trim",
-            "args": []
-          }
-        ],
-        "type": "string",
-        "required": false,
-        "description": "Phone number",
-        "indexed": false
-      },
-      "createdAt": {
-        "raw_path": [
-          "properties",
-          "createdate",
-          "value"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Creation timestamp",
-        "indexed": false
-      },
-      "updatedAt": {
-        "raw_path": [
-          "properties",
-          "hs_lastmodifieddate",
-          "value"
-        ],
-        "functions": [],
-        "type": "string",
-        "required": false,
-        "description": "Last modification timestamp",
-        "indexed": false
+        "expression": "{{raw.properties.hs_lastmodifieddate.value}}"
       }
     }
   },
   "exposed": {
-    "attributes": [
-      "id",
-      "name",
-      "domain",
-      "country",
-      "city",
-      "industry",
-      "website",
-      "phone",
-      "createdAt",
-      "updatedAt"
-    ],
-    "description": "Exposed fields for HubSpot companies"
+    "description": "Exposed fields for HubSpot companies",
+    "schema": {
+      "id": "metadata.id",
+      "externalId": "metadata.externalId",
+      "name": "metadata.name",
+      "domain": "metadata.domain",
+      "country": "metadata.country",
+      "city": "metadata.city",
+      "industry": "metadata.industry",
+      "website": "metadata.website",
+      "phone": "metadata.phone",
+      "createdAt": "metadata.createdAt",
+      "updatedAt": "metadata.updatedAt"
+    }
   },
   "openapi": {
     "enabled": true,

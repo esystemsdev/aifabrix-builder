@@ -52,7 +52,7 @@ describe('abac-validator', () => {
       expect(errors.some(e => e.includes('nonexistentAttr') && e.includes('fieldMappings.attributes'))).toBe(true);
     });
 
-    it('validates fieldMappings.dimensions keys and paths', () => {
+    it('does not validate legacy fieldMappings.dimensions (use root dimensions + schema)', () => {
       const parsed = {
         fieldMappings: {
           attributes: { id: {} },
@@ -60,8 +60,7 @@ describe('abac-validator', () => {
         },
         config: { abac: {} }
       };
-      const errors = validateAbac(parsed);
-      expect(errors.some(e => e.includes('fieldMappings.dimensions') && e.includes('bad-key'))).toBe(true);
+      expect(validateAbac(parsed)).toEqual([]);
     });
 
     it('returns [] for valid config.abac.dimensions', () => {

@@ -1,0 +1,9 @@
+{
+  "reportVersion": "1.1.0",
+  "datasourceKey": "hubspot.deals",
+  "systemKey": "hubspot",
+  "runType": "test",
+  "status": "ok",
+  "reportCompleteness": "full",
+  "runId": "run_fixture_1"
+}

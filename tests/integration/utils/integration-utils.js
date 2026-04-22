@@ -169,8 +169,8 @@ async function testDatabaseUserExists(userName, containerName = 'aifabrix-postgr
  * @returns {Promise<boolean>} True if connection successful
  */
 async function testDatabaseConnection(containerName, host, port, database, user, password) {
-  const dbNameUnderscore = database.replace(/-/g, '_');
-  const command = `PGPASSWORD='${password}' psql -h ${host} -p ${port} -U ${user} -d ${dbNameUnderscore} -c 'SELECT 1;'`;
+  // Compose creates DB with quoted app.key (hyphens allowed); do not map to underscores.
+  const command = `PGPASSWORD='${password}' psql -h ${host} -p ${port} -U ${user} -d ${database} -c 'SELECT 1;'`;
   const fullCommand = `docker exec ${containerName} sh -c "${command}"`;
   const result = await execCommand(fullCommand, 10000);
   return result.exitCode === 0 && result.stdout.includes('1');
@@ -323,13 +323,49 @@ function getLanguageDockerfilePattern(language) {
 }
 
 /**
- * Convert app name to database name format (hyphens to underscores)
+ * Convert app name to database name format (hyphens to underscores).
+ * @deprecated For PostgreSQL databases created by compose db-init, use {@link getComposeDatabaseName}
+ *   (quoted `app.key` keeps hyphens). This helper remains for legacy callers that expect underscores.
  * @function convertAppNameToDbName
  * @param {string} appName - Application name
- * @returns {string} Database name
+ * @returns {string} Database name with hyphens replaced by underscores
  */
 function convertAppNameToDbName(appName) {
   return appName.replace(/-/g, '_');
+}
+
+/**
+ * PostgreSQL database name as created by compose db-init (quoted `CREATE DATABASE "{{app.key}}"`).
+ * @function getComposeDatabaseName
+ * @param {string} appKey - application.yaml app.key (same as builder folder name)
+ * @returns {string} Database name passed to Postgres
+ */
+function getComposeDatabaseName(appKey) {
+  return String(appKey);
+}
+
+/**
+ * Role name for app DB user (matches compose-handlebars-helpers `pgUserName`).
+ * @function getComposePgUserName
+ * @param {string} appKey - application app.key
+ * @returns {string} e.g. test_py_app_user for test-py-app
+ */
+function getComposePgUserName(appKey) {
+  return `${String(appKey).replace(/-/g, '_')}_user`;
+}
+
+/**
+ * Infra Postgres container name (matches templates/infra/compose and infra-containers findContainer).
+ * @function getPostgresInfraContainerName
+ * @param {string|number} developerId - Developer ID from config (preserve string for leading zeros)
+ * @returns {string} Container name
+ */
+function getPostgresInfraContainerName(developerId) {
+  const idNum = typeof developerId === 'string' ? parseInt(developerId, 10) : developerId;
+  if (idNum === 0) {
+    return 'aifabrix-postgres';
+  }
+  return `aifabrix-dev${developerId}-postgres`;
 }
 
 /**
@@ -389,6 +425,9 @@ module.exports = {
   getLanguageFiles,
   getLanguageDockerfilePattern,
   convertAppNameToDbName,
+  getComposeDatabaseName,
+  getComposePgUserName,
+  getPostgresInfraContainerName,
   cleanupApp,
   sleep
 };

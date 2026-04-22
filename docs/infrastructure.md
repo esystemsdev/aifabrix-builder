@@ -18,7 +18,7 @@ When you run `aifabrix up-infra`, you get shared baseline services for local dev
 | Redis Commander | 8081 | Optional | Web UI for Redis. Access: http://localhost:8081 |
 | Traefik | 80/443 | Optional | Reverse proxy for local routing |
 
-**Default credentials:** Postgres user `pgadmin`, pgAdmin login `admin@aifabrix.dev` / admin123, Redis Commander login admin / admin123. First-time run creates secrets; use `--adminPwd <password>` for a custom admin password.
+**Default credentials:** Postgres user `pgadmin`, pgAdmin login and passwords come from the builder **infra parameter catalog** `defaults` in `infra.parameter.yaml` (shipped: `admin@aifabrix.dev` / `admin123` for admin flows, `user123` for Keycloak default-user literals). Redis Commander uses the same admin password as Postgres. Override on one run with `aifabrix up-infra --adminPassword … --adminEmail … --userPassword …`.
 
 ---
 
@@ -48,10 +48,14 @@ aifabrix up-infra --pgAdmin --redisAdmin --traefik
 | `--no-redisAdmin` | Exclude Redis Commander and save to config |
 | `--traefik` | Include Traefik reverse proxy and save to config |
 | `--no-traefik` | Exclude Traefik and save to config |
-| `--adminPwd <password>` | Override default admin password (Postgres, pgAdmin, Redis Commander) |
+| `--tls` | Save TLS mode on; `${TLS_ENABLED}` → `true`, `${HTTP_ENABLED}` → `false` in deployment JSON |
+| `--no-tls` | Save TLS mode off; `${TLS_ENABLED}` → `false`, `${HTTP_ENABLED}` → `true` (cannot combine with `--tls`) |
+| `--adminPassword <password>` | Override default admin password (Postgres, pgAdmin, Redis Commander) |
 | `-d, --developer <id>` | Use developer-specific ports and network |
 
 Settings are stored in `~/.aifabrix/config.yaml`. When flags are omitted, saved values are used (pgAdmin and Redis Commander default to enabled).
+
+**`${TLS_ENABLED}` and `${HTTP_ENABLED}` in `application.yaml`:** **`${HTTP_ENABLED}`** is always the logical opposite of **`${TLS_ENABLED}`** (both expand to the strings **`true`** or **`false`**). Default **`${TLS_ENABLED}`** is **`false`** and **`${HTTP_ENABLED}`** is **`true`**. Run **`aifabrix up-infra --tls`** or **`aifabrix up-infra --no-tls`** to set **`tlsEnabled`** in **`~/.aifabrix/config.yaml`**. Commands that build the deployment manifest (for example **`aifabrix json <app>`**) substitute these placeholders like **`${REDIS_HOST}`**. Catalog literals can use **`{{TLS_ENABLED}}`** and **`{{HTTP_ENABLED}}`** the same way. This is separate from Traefik and from HTTPS certificates on the reverse proxy.
 
 **Example with all optional services:**
 ```bash
@@ -65,18 +69,18 @@ aifabrix up-infra --pgAdmin --redisAdmin --traefik
 ### PostgreSQL (always on)
 - **Access:** localhost:5432
 - **Username:** pgadmin
-- **Password:** from admin-secrets (default admin123 on first run)
+- **Password:** from admin-secrets (catalog default on first run; see `defaults.adminPassword` in `infra.parameter.yaml`)
 
 ### Redis (always on)
 - **Access:** localhost:6379
 
 ### pgAdmin (optional)
 - **Access:** http://localhost:5050 (port 5050 for dev 0; add 100 per developer ID)
-- **Login:** admin@aifabrix.dev / admin123 (or your `--adminPwd`)
+- **Login:** values from catalog `defaults.adminEmail` / `defaults.adminPassword` (or `--adminEmail` / `--adminPassword` on `up-infra`)
 
 ### Redis Commander (optional)
 - **Access:** http://localhost:8081 (port 8081 for dev 0; add 100 per developer ID)
-- **Login:** admin / admin123 (or your `--adminPwd`)
+- **Login:** admin / same password as Postgres (catalog default or `--adminPassword`)
 
 ### Traefik (optional)
 - **Access:** http://localhost:80, https://localhost:443

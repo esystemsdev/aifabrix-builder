@@ -31,8 +31,11 @@ jest.mock('../../../lib/core/config');
 jest.mock('chalk', () => {
   const createMockFn = (text) => text;
   const mockChalk = createMockFn;
-  ['blue', 'green', 'red', 'yellow', 'gray'].forEach(prop => {
+  ['blue', 'green', 'red', 'yellow', 'gray', 'cyan'].forEach(prop => {
     mockChalk[prop] = createMockFn;
+  });
+  mockChalk.white = Object.assign(createMockFn, {
+    bold: createMockFn
   });
   return mockChalk;
 });

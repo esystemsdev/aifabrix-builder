@@ -93,11 +93,11 @@ aifabrix create myapp
 - Controller URL? *(if Controller=yes)*
 
 **What gets created:**
-- `builder/<app>/application.yaml` - App configuration
-- `builder/<app>/env.template` - Environment variables  
-- `builder/<app>/rbac.yaml` - Roles & permissions (if authentication=yes)
-- `builder/<app>/<appKey>-deploy.json` - Deployment manifest (e.g. `builder/myapp/myapp-deploy.json`)
-- `builder/<app>/README.md` - Application documentation
+- `builder/<appKey>/application.yaml` - App configuration
+- `builder/<appKey>/env.template` - Environment variables  
+- `builder/<appKey>/rbac.yaml` - Roles & permissions (if authentication=yes)
+- `builder/<appKey>/<appKey>-deploy.json` - Deployment manifest (e.g. `builder/myapp/myapp-deploy.json`)
+- `builder/<appKey>/README.md` - Application documentation
 
 ```mermaid
 %%{init: {
@@ -172,12 +172,12 @@ aifabrix create hubspot-test
 Prompts for: system key, display name, description, system type (openapi/mcp/custom), authentication type (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none), entity type (recordStorage, documentStorage, vectorStore, messageService, none), number of datasources. Create fails if `integration/<name>` or `builder/<name>` already exists—use a different name or remove the existing directory.
 
 **What gets created for external systems:**
-- `integration/<app>/application.yaml` - App configuration with `app.type: "external"` and `externalIntegration` block
-- `integration/<app>/<systemKey>-system.yaml` - External system configuration
-- `integration/<app>/<systemKey>-datasource-<datasource-key>.yaml` - Datasource JSON files (all in same folder)
-- `integration/<app>/<systemKey>-deploy.json` - Deployment manifest (generated)
-- `integration/<app>/env.template` - Environment variables template
-- `integration/<app>/README.md` - Application documentation
+- `integration/<systemKey>/application.yaml` - App configuration with `app.type: "external"` and `externalIntegration` block
+- `integration/<systemKey>/<systemKey>-system.yaml` - External system configuration
+- `integration/<systemKey>/<systemKey>-datasource-<datasource-key>.yaml` - Datasource JSON files (all in same folder)
+- `integration/<systemKey>/<systemKey>-deploy.json` - Deployment manifest (generated)
+- `integration/<systemKey>/env.template` - Environment variables template
+- `integration/<systemKey>/README.md` - Application documentation
 
 **Note:** External systems don't require Docker images, ports, or build configuration. They use the pipeline API for deployment via Miso Controller.
 
@@ -287,7 +287,7 @@ aifabrix build myapp
 1. Looks for `Dockerfile` in your app root (or uses `build.context`)
 2. If not found, generates from template (Node 20 Alpine or Python 3.11 Alpine)
 3. Builds Docker image: `myapp:latest`
-4. Resolves env from `env.template` and secrets; the only persisted `.env` is written to `build.envOutputPath` when set (for run, a temp path is used when envOutputPath is not set). No `.env` under `builder/<app>/` or `integration/<app>/`.
+4. Resolves env from `env.template` and secrets; the only persisted `.env` is written to `build.envOutputPath` when set (for run, a temp path is used when envOutputPath is not set). No `.env` under `builder/<appKey>/` or `integration/<systemKey>/`.
 
 **Want to use your own Dockerfile?**  
 Place it in your app root - the SDK will use it.

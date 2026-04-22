@@ -10,6 +10,7 @@
 jest.mock('chalk', () => {
   const mockChalk = (text) => text;
   mockChalk.green = jest.fn((text) => text);
+  mockChalk.blue = jest.fn((text) => text);
   return mockChalk;
 });
 
@@ -37,11 +38,20 @@ jest.mock('../../../lib/validation/validator', () => ({
   validateVariables: jest.fn()
 }));
 
+jest.mock('../../../lib/core/config', () => ({
+  getDeveloperId: jest.fn().mockResolvedValue(2)
+}));
+
+jest.mock('../../../lib/utils/docker-exec', () => ({
+  execWithDockerEnv: jest.fn().mockResolvedValue({ stdout: '', stderr: '' })
+}));
+
 const path = require('path');
 const logger = require('../../../lib/utils/logger');
 const dockerfileUtils = require('../../../lib/utils/dockerfile-utils');
 const { loadVariablesYaml } = require('../../../lib/build');
 const validator = require('../../../lib/validation/validator');
+const { execWithDockerEnv } = require('../../../lib/utils/docker-exec');
 const {
   determineDockerfile,
   loadAndValidateConfig
@@ -63,18 +73,52 @@ describe('Build Helpers Module', () => {
       };
       const generateDockerfileFn = jest.fn();
       const templateDockerfilePath = path.join(process.cwd(), 'builder', appName, 'Dockerfile');
-      dockerfileUtils.checkTemplateDockerfile.mockReturnValue(templateDockerfilePath);
       dockerfileUtils.checkProjectDockerfile.mockReturnValue(null);
+      dockerfileUtils.checkTemplateDockerfile.mockReturnValue(templateDockerfilePath);
 
       const result = await determineDockerfile(appName, options, generateDockerfileFn);
 
       expect(result).toBe(templateDockerfilePath);
+      expect(dockerfileUtils.checkProjectDockerfile).toHaveBeenCalled();
       expect(dockerfileUtils.checkTemplateDockerfile).toHaveBeenCalledWith(
         path.join(process.cwd(), 'builder', appName),
         appName,
         false
       );
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ Using existing Dockerfile:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Using existing Dockerfile:'));
+      expect(generateDockerfileFn).not.toHaveBeenCalled();
+    });
+
+    it('should prefer build.dockerfile over devDir Dockerfile when both exist', async() => {
+      const appName = 'builder-server';
+      const devDir = '/home/user/.aifabrix/applications';
+      const contextPath = '/home/user/aifabrix-setup';
+      const canonicalDockerfile = path.join(contextPath, 'builder/builder-server/Dockerfile');
+      const staleDevDirDockerfile = path.join(devDir, 'Dockerfile');
+      const options = {
+        language: 'typescript',
+        config: {},
+        buildConfig: { dockerfile: 'builder/builder-server/Dockerfile', context: '../..' },
+        contextPath,
+        devDir,
+        forceTemplate: false
+      };
+      const generateDockerfileFn = jest.fn();
+      dockerfileUtils.checkProjectDockerfile.mockReturnValue(canonicalDockerfile);
+      dockerfileUtils.checkTemplateDockerfile.mockReturnValue(staleDevDirDockerfile);
+
+      const result = await determineDockerfile(appName, options, generateDockerfileFn);
+
+      expect(result).toBe(canonicalDockerfile);
+      expect(dockerfileUtils.checkProjectDockerfile).toHaveBeenCalledWith(
+        devDir,
+        appName,
+        options.buildConfig,
+        contextPath,
+        false
+      );
+      expect(dockerfileUtils.checkTemplateDockerfile).not.toHaveBeenCalled();
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Using custom Dockerfile:'));
       expect(generateDockerfileFn).not.toHaveBeenCalled();
     });
 
@@ -104,7 +148,7 @@ describe('Build Helpers Module', () => {
         options.contextPath,
         false
       );
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ Using custom Dockerfile:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Using custom Dockerfile:'));
       expect(generateDockerfileFn).not.toHaveBeenCalled();
     });
 
@@ -130,7 +174,7 @@ describe('Build Helpers Module', () => {
         options.buildConfig,
         undefined
       );
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✓ Generated Dockerfile from template:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Generated Dockerfile from template:'));
     });
 
     it('should use devDir if provided', async() => {
@@ -184,6 +228,25 @@ describe('Build Helpers Module', () => {
   });
 
   describe('loadAndValidateConfig', () => {
+    it('should resolve image from local Docker when image omitted', async() => {
+      const appName = 'keycloak';
+      const variables = {
+        app: { key: 'keycloak' },
+        build: {}
+      };
+      loadVariablesYaml.mockResolvedValue(variables);
+      validator.validateVariables.mockResolvedValue({ valid: true, errors: [] });
+      execWithDockerEnv.mockResolvedValueOnce({
+        stdout: 'aifabrix/keycloak-dev2:latest\n',
+        stderr: ''
+      });
+
+      const result = await loadAndValidateConfig(appName);
+
+      expect(result.imageName).toBe('aifabrix/keycloak');
+      expect(execWithDockerEnv).toHaveBeenCalled();
+    });
+
     it('should load and validate config successfully', async() => {
       const appName = 'test-app';
       const variables = {

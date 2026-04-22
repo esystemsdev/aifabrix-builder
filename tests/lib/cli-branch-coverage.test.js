@@ -57,7 +57,7 @@ describe('CLI Branch Coverage Tests', () => {
     it('should handle permission errors', () => {
       const error = new Error('EACCES: permission denied');
       handleCommandError(error, 'build');
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Permission'));
+      expect(console.error).toHaveBeenCalledWith(expect.stringMatching(/permission/i));
     });
 
     it('should handle Azure CLI errors', () => {

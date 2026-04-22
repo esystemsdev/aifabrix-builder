@@ -6,8 +6,10 @@
  * @version 2.0.0
  */
 
+const path = require('path');
 const fs = require('fs').promises;
 const auditLogger = require('../../../lib/core/audit-logger');
+const pathsMod = require('../../../lib/utils/paths');
 
 // Mock fs module
 jest.mock('fs', () => ({
@@ -19,7 +21,8 @@ jest.mock('fs', () => ({
 
 // Mock paths module
 jest.mock('../../../lib/utils/paths', () => ({
-  getAifabrixHome: jest.fn(() => '/mock/home/.aifabrix')
+  getAifabrixHome: jest.fn(() => '/mock/home/.aifabrix'),
+  getAifabrixSystemDir: jest.fn(() => '/mock/home/.aifabrix')
 }));
 
 describe('Audit Logger Module', () => {
@@ -38,6 +41,8 @@ describe('Audit Logger Module', () => {
     // Reset mocks
     fs.mkdir.mockResolvedValue();
     fs.appendFile.mockResolvedValue();
+    auditLogger.resetAuditLogPathCache();
+    pathsMod.getAifabrixSystemDir.mockReturnValue('/mock/home/.aifabrix');
   });
 
   afterEach(() => {
@@ -150,6 +155,17 @@ describe('Audit Logger Module', () => {
       expect(logData.level).toBe('INFO');
       expect(logData.message).toBe('Test message');
       expect(logData.metadata.key).toBe('value');
+    });
+
+    it('writes audit.log under getAifabrixSystemDir', async() => {
+      pathsMod.getAifabrixSystemDir.mockReturnValue('/resolved/config-dir');
+      fs.appendFile.mockResolvedValue();
+      await auditLogger.auditLog('INFO', 'path probe', {});
+      expect(fs.appendFile).toHaveBeenCalledWith(
+        path.join('/resolved/config-dir', 'audit.log'),
+        expect.any(String),
+        'utf8'
+      );
     });
 
     it('should log to console.error when file write fails (line 137)', async() => {

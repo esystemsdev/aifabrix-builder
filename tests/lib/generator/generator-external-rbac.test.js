@@ -1,5 +1,6 @@
 /**
  * Tests for External System RBAC Support in Generator
+ * Isolated Jest project `generator-external-rbac` — jest.mock('fs') must not share a worker with real-fs suites.
  *
  * @fileoverview Unit tests for external system RBAC merging in generator.js
  * @author AI Fabrix Team

@@ -519,11 +519,32 @@ describe('Generator Split Functions', () => {
       expect(result).toContain('HubSpot CRM integration');
       expect(result).toContain('test-hubspot');
       expect(result).toContain('openapi');
+      expect(result).toContain('application.json');
+      expect(result).toContain('test-hubspot-system.json');
+      expect(result).toContain('rbac.json');
       expect(result).toContain('Extend External System');
       expect(result).toContain('aifabrix wizard --app test-hubspot');
       expect(result).toContain('integration/test-hubspot');
       expect(result).toContain('Datasource: Companies Data');
       expect(result).toContain('Datasource: Deals Data');
+    });
+
+    it('should use fileExt .yaml when options request split-style YAML layout', () => {
+      const deployment = {
+        system: {
+          key: 'split-sys',
+          displayName: 'Split Sys',
+          description: 'Desc',
+          type: 'openapi'
+        },
+        dataSources: [{ key: 'split-sys-a', displayName: 'A', systemKey: 'split-sys' }]
+      };
+
+      const result = generator.generateReadmeFromDeployJson(deployment, { fileExt: '.yaml' });
+
+      expect(result).toContain('application.yaml');
+      expect(result).toContain('split-sys-system.yaml');
+      expect(result).toContain('rbac.yaml');
     });
 
     it('should throw error for invalid deployment', () => {

@@ -25,7 +25,7 @@ describe('Manual API tests – datasources-core.api (real Dataplane)', () => {
     authConfig = ctx.authConfig;
   });
 
-  it('GET /api/v1/external/ returns response when Dataplane available', async() => {
+  it('GET /api/v1/external returns response when Dataplane available', async() => {
     if (!dataplaneUrl) {
       return;
     }

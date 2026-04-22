@@ -203,10 +203,8 @@ node bin/aifabrix.js deploy my-hubspot \
   --controller http://localhost:3110 \
   --environment miso
 
-# Or deploy individual datasources
-node bin/aifabrix.js datasource upload hubspot-company \
-  --environment miso \
-  --file integration/my-hubspot/hubspot-datasource-company.json
+# Or deploy individual datasources (path or datasource key; systemKey comes from the JSON)
+node bin/aifabrix.js datasource upload integration/my-hubspot/hubspot-datasource-company.json
 ```
 
 ## Step 8: Delete HubSpot Integration

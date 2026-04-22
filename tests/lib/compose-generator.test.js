@@ -112,6 +112,132 @@ describe('Compose Generator Module', () => {
     });
   });
 
+  describe('expandFrontDoorHostPlaceholders', () => {
+    const { expandFrontDoorHostPlaceholders, buildTraefikConfig } = composeGenerator;
+
+    it('inserts dot between adjacent DEV_USERNAME and REMOTE_HOST tokens', () => {
+      expect(
+        expandFrontDoorHostPlaceholders('${DEV_USERNAME}${REMOTE_HOST}', 1, 'https://builder02.local/path')
+      ).toBe('dev01.builder02.local');
+    });
+
+    it('expands explicit dotted template from remote-server URL', () => {
+      expect(
+        expandFrontDoorHostPlaceholders('${DEV_USERNAME}.${REMOTE_HOST}', 2, 'https://x.example.com:8443')
+      ).toBe('dev02.x.example.com');
+    });
+
+    it('trims trailing dots when remote-server is missing or empty', () => {
+      expect(expandFrontDoorHostPlaceholders('${DEV_USERNAME}.${REMOTE_HOST}', 1, null)).toBe('dev01');
+      expect(expandFrontDoorHostPlaceholders('${DEV_USERNAME}${REMOTE_HOST}', 1, '')).toBe('dev01');
+    });
+
+    it('omits dev label for developer-id 0 or empty so host is bare REMOTE_HOST (no leading dot)', () => {
+      expect(
+        expandFrontDoorHostPlaceholders('${DEV_USERNAME}.${REMOTE_HOST}', 0, 'https://builder02.local')
+      ).toBe('builder02.local');
+      expect(
+        expandFrontDoorHostPlaceholders('${DEV_USERNAME}.${REMOTE_HOST}', '0', 'https://builder02.local')
+      ).toBe('builder02.local');
+      expect(
+        expandFrontDoorHostPlaceholders('${DEV_USERNAME}${REMOTE_HOST}', 0, 'https://x.example.com')
+      ).toBe('x.example.com');
+      expect(expandFrontDoorHostPlaceholders('${DEV_USERNAME}.${REMOTE_HOST}', '', null)).toBe('');
+    });
+
+    it('uses expanded host in buildTraefikConfig when frontDoor enabled', () => {
+      const cfg = {
+        frontDoorRouting: {
+          enabled: true,
+          pattern: '/data/*',
+          host: '${DEV_USERNAME}.${REMOTE_HOST}',
+          tls: false
+        }
+      };
+      const t = buildTraefikConfig(cfg, 1, null, 'https://builder02.local');
+      expect(t.enabled).toBe(true);
+      expect(t.host).toBe('dev01.builder02.local');
+      expect(t.path).toBe('/data');
+    });
+
+    it('buildTraefikConfig uses bare remote hostname when developer-id is 0', () => {
+      const cfg = {
+        frontDoorRouting: {
+          enabled: true,
+          pattern: '/data/*',
+          host: '${DEV_USERNAME}.${REMOTE_HOST}',
+          tls: false
+        }
+      };
+      const t = buildTraefikConfig(cfg, 0, null, 'https://builder02.local');
+      expect(t.host).toBe('builder02.local');
+    });
+
+    it('buildTraefikConfig treats tls string "false" like boolean false', () => {
+      const cfg = {
+        frontDoorRouting: {
+          enabled: true,
+          pattern: '/data/*',
+          host: 'dev01.builder02.local',
+          tls: 'false'
+        }
+      };
+      const t = buildTraefikConfig(cfg, 1, null, 'https://builder02.local');
+      expect(t.tls).toBe(false);
+    });
+
+    it('buildTraefikConfig prefixes Traefik path with /dev when env-scoped resources apply (dataplane-style)', () => {
+      const cfg = {
+        frontDoorRouting: {
+          enabled: true,
+          pattern: '/data/*',
+          host: '${DEV_USERNAME}.${REMOTE_HOST}',
+          tls: false
+        }
+      };
+      const scope = {
+        effectiveEnvironmentScopedResources: true,
+        runEnvKey: 'dev'
+      };
+      const t = buildTraefikConfig(cfg, 1, scope, 'https://builder02.local');
+      expect(t.path).toBe('/dev/data');
+    });
+
+    it('buildTraefikConfig uses /tst/data when run env is tst', () => {
+      const cfg = {
+        frontDoorRouting: {
+          enabled: true,
+          pattern: '/data/*',
+          host: '${DEV_USERNAME}.${REMOTE_HOST}',
+          tls: false
+        }
+      };
+      const scope = {
+        effectiveEnvironmentScopedResources: true,
+        runEnvKey: 'tst'
+      };
+      const t = buildTraefikConfig(cfg, 2, scope, 'https://builder02.local');
+      expect(t.path).toBe('/tst/data');
+    });
+
+    it('buildTraefikConfig leaves /miso base path when env-scoped (same generator; miso template omits app flag)', () => {
+      const cfg = {
+        frontDoorRouting: {
+          enabled: true,
+          pattern: '/miso/*',
+          host: '${DEV_USERNAME}.${REMOTE_HOST}',
+          tls: false
+        }
+      };
+      const scope = {
+        effectiveEnvironmentScopedResources: true,
+        runEnvKey: 'dev'
+      };
+      const t = buildTraefikConfig(cfg, 1, scope, 'https://builder02.local');
+      expect(t.path).toBe('/dev/miso');
+    });
+  });
+
   beforeEach(() => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-compose-test-'));
     originalCwd = process.cwd();
@@ -299,6 +425,15 @@ describe('Compose Generator Module', () => {
   });
 
   describe('Traefik configuration helpers', () => {
+    it('buildDevUsernameForFrontDoorHost is empty for id 0 and non-zero padded otherwise', () => {
+      expect(composeGenerator.buildDevUsernameForFrontDoorHost(0)).toBe('');
+      expect(composeGenerator.buildDevUsernameForFrontDoorHost('0')).toBe('');
+      expect(composeGenerator.buildDevUsernameForFrontDoorHost(null)).toBe('');
+      expect(composeGenerator.buildDevUsernameForFrontDoorHost('')).toBe('');
+      expect(composeGenerator.buildDevUsernameForFrontDoorHost(1)).toBe('dev01');
+      expect(composeGenerator.buildDevUsernameForFrontDoorHost(12)).toBe('dev12');
+    });
+
     it('should derive base path from pattern', () => {
       expect(composeGenerator.derivePathFromPattern('/api/*')).toBe('/api');
       expect(composeGenerator.derivePathFromPattern('/api/v1/*')).toBe('/api/v1');
@@ -330,7 +465,8 @@ describe('Compose Generator Module', () => {
         host: 'dev01.aifabrix.dev',
         path: '/api',
         tls: false,
-        certStore: null
+        certStore: null,
+        stripPathPrefix: true
       });
     });
 
@@ -350,8 +486,9 @@ describe('Compose Generator Module', () => {
         enabled: true,
         host: 'dev01.aifabrix.dev',
         path: '/api',
-        tls: true,
-        certStore: 'wildcard'
+        tls: false,
+        certStore: null,
+        stripPathPrefix: true
       });
     });
 
@@ -370,8 +507,31 @@ describe('Compose Generator Module', () => {
         enabled: true,
         host: 'dev01.aifabrix.dev',
         path: '/api',
+        tls: false,
+        certStore: null,
+        stripPathPrefix: true
+      });
+    });
+
+    it('should keep Traefik TLS labels for developer-id 0 when frontDoor tls is true', () => {
+      const config = {
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.aifabrix.dev',
+          pattern: '/api/*',
+          tls: true,
+          certStore: 'wildcard'
+        }
+      };
+
+      const result = composeGenerator.buildTraefikConfig(config, '0');
+      expect(result).toEqual({
+        enabled: true,
+        host: 'aifabrix.dev',
+        path: '/api',
         tls: true,
-        certStore: null
+        certStore: 'wildcard',
+        stripPathPrefix: true
       });
     });
 
@@ -390,6 +550,142 @@ describe('Compose Generator Module', () => {
 
       expect(() => composeGenerator.buildTraefikConfig(config, '1'))
         .toThrow('frontDoorRouting.host is required when frontDoorRouting.enabled is true');
+    });
+
+    it('computeAlignedHealthCheckPath uses Traefik path + explicit suffix', () => {
+      const config = {
+        healthCheck: { interval: 30 },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'h.test',
+          pattern: '/auth/*'
+        }
+      };
+      expect(composeGenerator.computeAlignedHealthCheckPath(config, 1, null, null, '/health/ready')).toBe(
+        '/auth/health/ready'
+      );
+    });
+
+    it('computeAlignedHealthCheckPath prefixes /dev when env-scoped opts apply', () => {
+      const config = {
+        healthCheck: { interval: 30 },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'h.test',
+          pattern: '/auth/*'
+        }
+      };
+      const scopeOpts = { effectiveEnvironmentScopedResources: true, runEnvKey: 'dev' };
+      expect(
+        composeGenerator.computeAlignedHealthCheckPath(config, 1, scopeOpts, null, '/health/ready')
+      ).toBe('/dev/auth/health/ready');
+    });
+
+    it('computeAlignedHealthCheckPath returns suffix only when front door inactive', () => {
+      const config = {
+        healthCheck: { interval: 30 }
+      };
+      expect(composeGenerator.computeAlignedHealthCheckPath(config, 1, null, null)).toBe('/health/ready');
+    });
+
+    it('resolveHealthCheckPathWithFrontDoorVdir prepends vdir to healthCheck.path', () => {
+      const config = {
+        healthCheck: { path: '/health/ready', interval: 30 },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'h.test',
+          pattern: '/auth/*'
+        }
+      };
+      expect(composeGenerator.resolveHealthCheckPathWithFrontDoorVdir(config, 1, null, null)).toBe(
+        '/auth/health/ready'
+      );
+    });
+
+    it('resolveHealthCheckPathWithFrontDoorVdir leaves path unchanged when it already starts with vdir', () => {
+      const config = {
+        healthCheck: { path: '/auth/health/ready', interval: 30 },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'h.test',
+          pattern: '/auth/*'
+        }
+      };
+      expect(composeGenerator.resolveHealthCheckPathWithFrontDoorVdir(config, 1, null, null)).toBe(
+        '/auth/health/ready'
+      );
+    });
+
+    it('resolveHealthCheckPathWithFrontDoorVdir leaves bare /health when skipVdirMergeWhenPathIsBareHealth (compose)', () => {
+      const config = {
+        healthCheck: { path: '/health', interval: 30 },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'h.test',
+          pattern: '/miso/*'
+        }
+      };
+      expect(
+        composeGenerator.resolveHealthCheckPathWithFrontDoorVdir(config, 1, null, null, {
+          skipVdirMergeWhenPathIsBareHealth: true
+        })
+      ).toBe('/health');
+    });
+
+    it('resolveHealthCheckPathWithFrontDoorVdir prepends vdir to bare /health when caller omits skip (legacy / explicit public path)', () => {
+      const config = {
+        healthCheck: { path: '/health', interval: 30 },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'h.test',
+          pattern: '/miso/*'
+        }
+      };
+      expect(composeGenerator.resolveHealthCheckPathWithFrontDoorVdir(config, 0, null, null)).toBe('/miso/health');
+    });
+
+    it('buildTraefikConfig sets stripPathPrefix false when compose health is under /auth (no frontDoor.stripPathPrefix)', () => {
+      const config = {
+        healthCheck: { path: '/health/ready', interval: 30 },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'dev01.aifabrix.dev',
+          pattern: '/auth/*',
+          tls: false
+        }
+      };
+      const t = composeGenerator.buildTraefikConfig(config, '1');
+      expect(t.stripPathPrefix).toBe(false);
+    });
+
+    it('buildTraefikConfig sets stripPathPrefix true for miso-style bare /health', () => {
+      const config = {
+        healthCheck: { path: '/health', interval: 30 },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'h.test',
+          pattern: '/miso/*',
+          tls: false
+        }
+      };
+      const t = composeGenerator.buildTraefikConfig(config, '1');
+      expect(t.stripPathPrefix).toBe(true);
+    });
+
+    it('buildTraefikConfig sets stripPathPrefix false for scoped /dev/auth and /health/ready', () => {
+      const config = {
+        healthCheck: { path: '/health/ready', interval: 30 },
+        frontDoorRouting: {
+          enabled: true,
+          host: 'h.test',
+          pattern: '/auth/*',
+          tls: false
+        }
+      };
+      const scope = { effectiveEnvironmentScopedResources: true, runEnvKey: 'dev' };
+      const t = composeGenerator.buildTraefikConfig(config, '1', scope, null);
+      expect(t.path).toBe('/dev/auth');
+      expect(t.stripPathPrefix).toBe(false);
     });
   });
 
@@ -995,9 +1291,100 @@ describe('Compose Generator Module', () => {
       expect(result).toContain('traefik.enable=true');
       expect(result).toContain('Host(`dev01.aifabrix.dev`)');
       expect(result).toContain('PathPrefix(`/api`)');
-      expect(result).toContain('traefik.http.routers.test-app.entrypoints=websecure');
+      expect(result).toContain('traefik.http.routers.test-app.entrypoints=web');
+      expect(result).toContain('traefik.http.routers.test-app.service=test-app');
+      expect(result).not.toContain('traefik.http.routers.test-app-http.');
+      expect(result).not.toContain('entrypoints=websecure');
       expect(result).toContain('BASE_PATH=/api');
       expect(result).toContain('X_FORWARDED_PREFIX=/api');
+      expect(result).toContain('stripprefix');
+    });
+
+    it('should omit Traefik StripPrefix for /auth when healthCheck.path is under vdir (derived, no YAML flag)', async() => {
+      const configModule = require('../../lib/core/config');
+      configModule.getDeveloperId.mockResolvedValue(1);
+
+      const actualDevDir = await getAndEnsureDevDir('test-app-strip');
+      const envPath = path.join(actualDevDir, '.env');
+      fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+      const config = {
+        port: 3000,
+        requires: { database: true },
+        healthCheck: { path: '/health/ready', interval: 30 },
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.aifabrix.dev',
+          pattern: '/auth/*',
+          tls: true
+        }
+      };
+
+      const result = await composeGenerator.generateDockerCompose('kc-style', config, {});
+      expect(result).toContain('PathPrefix(`/auth`)');
+      expect(result).not.toContain('stripprefix');
+    });
+
+    it('should healthcheck use vdir + healthCheck.path when frontDoorRouting.enabled', async() => {
+      const configModule = require('../../lib/core/config');
+      configModule.getDeveloperId.mockResolvedValue(1);
+
+      const actualDevDir = await getAndEnsureDevDir('vdir-compose-health');
+      const envPath = path.join(actualDevDir, '.env');
+      fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+      const config = {
+        port: 8082,
+        build: { language: 'typescript', containerPort: 8080 },
+        requires: { database: true },
+        healthCheck: {
+          path: '/health/ready',
+          bashProbe: true,
+          interval: 30
+        },
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.aifabrix.dev',
+          pattern: '/auth/*',
+          tls: false
+        }
+      };
+
+      const result = await composeGenerator.generateDockerCompose('idp-svc', config, {});
+      expect(result).toContain('GET /auth/health/ready');
+      expect(result).toContain('CMD-SHELL');
+      expect(result).not.toContain('stripprefix');
+    });
+
+    it('should healthcheck keep bare /health for compose when frontDoorRouting.enabled (internal listener)', async() => {
+      const configModule = require('../../lib/core/config');
+      configModule.getDeveloperId.mockResolvedValue(1);
+
+      const actualDevDir = await getAndEnsureDevDir('vdir-compose-bare-health');
+      const envPath = path.join(actualDevDir, '.env');
+      fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+      const config = {
+        port: 3000,
+        build: { language: 'typescript', containerPort: 3000 },
+        requires: { database: true },
+        healthCheck: {
+          path: '/health',
+          bashProbe: true,
+          interval: 30
+        },
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.aifabrix.dev',
+          pattern: '/miso/*',
+          tls: false
+        }
+      };
+
+      const result = await composeGenerator.generateDockerCompose('miso-style-app', config, {});
+      expect(result).toContain('GET /health');
+      expect(result).not.toContain('GET /miso/health');
+      expect(result).toContain('stripprefix');
     });
 
     it('should include certStore label when certStore is provided', async() => {
@@ -1022,9 +1409,10 @@ describe('Compose Generator Module', () => {
 
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
       expect(result).toContain('traefik.enable=true');
-      expect(result).toContain('traefik.http.routers.test-app.entrypoints=websecure');
-      expect(result).toContain('traefik.http.routers.test-app.tls.certstore=wildcard');
-      expect(result).not.toContain('traefik.http.routers.test-app.tls.certstore=null');
+      expect(result).toContain('traefik.http.routers.test-app.entrypoints=web');
+      expect(result).toContain('traefik.http.routers.test-app.service=test-app');
+      expect(result).not.toContain('traefik.http.routers.test-app.tls.certstore');
+      expect(result).not.toContain('entrypoints=websecure');
     });
 
     it('should not include certStore label when certStore is not provided', async() => {
@@ -1047,7 +1435,10 @@ describe('Compose Generator Module', () => {
       };
 
       const result = await composeGenerator.generateDockerCompose('test-app', config, {});
-      expect(result).toContain('traefik.http.routers.test-app.entrypoints=websecure');
+      expect(result).toContain('traefik.http.routers.test-app.entrypoints=web');
+      expect(result).toContain('traefik.http.routers.test-app.service=test-app');
+      expect(result).not.toContain('traefik.http.routers.test-app-http.');
+      expect(result).not.toContain('entrypoints=websecure');
       expect(result).not.toContain('traefik.http.routers.test-app.tls.certstore');
     });
 
@@ -1119,6 +1510,23 @@ describe('Compose Generator Module', () => {
         expect(result).toContain('cd /app && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001} --reload');
         expect(result).toMatch(/PORT=3001/);
       });
+    });
+  });
+
+  describe('resolveMisoEnvironment', () => {
+    const { resolveMisoEnvironment } = composeGenerator;
+
+    it('defaults to dev', () => {
+      expect(resolveMisoEnvironment({})).toBe('dev');
+    });
+
+    it('returns tst or pro when env matches (case-insensitive)', () => {
+      expect(resolveMisoEnvironment({ env: 'TST' })).toBe('tst');
+      expect(resolveMisoEnvironment({ env: 'pro' })).toBe('pro');
+    });
+
+    it('maps unknown env to dev', () => {
+      expect(resolveMisoEnvironment({ env: 'staging' })).toBe('dev');
     });
   });
 });

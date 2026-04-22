@@ -22,6 +22,7 @@ jest.mock('../../../lib/utils/logger', () => ({
 jest.mock('js-yaml', () => {
   const actualYaml = jest.requireActual('js-yaml');
   return {
+    ...actualYaml,
     load: jest.fn((content) => {
       // Default implementation that actually parses YAML
       return actualYaml.load(content);
@@ -32,10 +33,15 @@ jest.mock('js-yaml', () => {
 // Mock fs and os modules
 jest.mock('fs');
 jest.mock('os');
-jest.mock('../../../lib/utils/paths', () => ({
-  getAifabrixHome: jest.fn(),
-  getConfigDirForPaths: jest.fn()
-}));
+jest.mock('../../../lib/utils/paths', () => {
+  const pathMod = require('path');
+  const getConfigDirForPaths = jest.fn();
+  const getAifabrixHome = jest.fn();
+  const getPrimaryUserSecretsLocalPath = jest.fn(() =>
+    pathMod.join(getConfigDirForPaths(), 'secrets.local.yaml')
+  );
+  return { getAifabrixHome, getConfigDirForPaths, getPrimaryUserSecretsLocalPath };
+});
 
 const yaml = require('js-yaml');
 
@@ -100,9 +106,10 @@ describe('Secrets Utils Module', () => {
       expect(result).toEqual({});
     });
 
-    it('should return empty object and log warning on YAML parse error', async() => {
+    it('should return empty object when YAML fails and line-parse finds no keys', async() => {
       fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue('invalid: yaml: content: [');
+      // No `key: value` lines so tolerant fallback line-parse yields {} (unlike `invalid: ...`).
+      fs.readFileSync.mockReturnValue('[\n  unclosed flow');
       yaml.load.mockImplementation(() => {
         throw new Error('YAML parse error');
       });
@@ -110,9 +117,8 @@ describe('Secrets Utils Module', () => {
       const result = await secretsUtils.loadSecretsFromFile('/path/to/secrets.yaml');
 
       expect(result).toEqual({});
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Warning: Could not read secrets file')
-      );
+      // Tolerant parse recovers without throwing; no file-level warning for this path.
+      expect(logger.warn).not.toHaveBeenCalled();
     });
 
     it('should return empty object and log warning on file read error', async() => {
@@ -164,7 +170,7 @@ describe('Secrets Utils Module', () => {
       fs.existsSync.mockReturnValue(true);
       const userSecrets = {
         'dataplane-web-server-url': 'http://localhost:3001',
-        'keycloak-server-url': 'http://localhost:8080'
+        'keycloak-web-server-url': 'http://localhost:8080'
       };
       fs.readFileSync.mockReturnValue(
         'dataplane-web-server-url: "http://localhost:3001"\nkeycloak-server-url: "http://localhost:8080"'
@@ -185,15 +191,16 @@ describe('Secrets Utils Module', () => {
       const result = secretsUtils.loadUserSecrets();
 
       expect(result).toEqual({});
-      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
+      expect(pathsUtil.getPrimaryUserSecretsLocalPath).toHaveBeenCalled();
       expect(fs.existsSync).toHaveBeenCalledWith(mockUserSecretsPath);
       expect(fs.readFileSync).not.toHaveBeenCalled();
     });
 
-    it('should respect config.yaml aifabrix-home override', () => {
-      const overrideHome = '/custom/aifabrix';
-      const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
-      pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+    it('should load from config directory even when aifabrix-home points elsewhere', () => {
+      const configDir = '/workspace/.aifabrix';
+      const expectedPath = path.join(configDir, 'secrets.local.yaml');
+      pathsUtil.getConfigDirForPaths.mockReturnValue(configDir);
+      pathsUtil.getAifabrixHome.mockReturnValue('/home/dev02');
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('test-key: "test-value"');
       yaml.load.mockReturnValue({ 'test-key': 'test-value' });
@@ -201,13 +208,12 @@ describe('Secrets Utils Module', () => {
       const result = secretsUtils.loadUserSecrets();
 
       expect(result).toEqual({ 'test-key': 'test-value' });
-      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
-      expect(fs.existsSync).toHaveBeenCalledWith(overrideSecretsPath);
-      expect(fs.readFileSync).toHaveBeenCalledWith(overrideSecretsPath, 'utf8');
+      expect(fs.existsSync).toHaveBeenCalledWith(expectedPath);
+      expect(fs.readFileSync).toHaveBeenCalledWith(expectedPath, 'utf8');
     });
 
-    it('should fall back to default when override not set', () => {
-      pathsUtil.getAifabrixHome.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
+    it('should use default config dir when unset', () => {
+      pathsUtil.getConfigDirForPaths.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('test-key: "test-value"');
       yaml.load.mockReturnValue({ 'test-key': 'test-value' });
@@ -215,7 +221,6 @@ describe('Secrets Utils Module', () => {
       const result = secretsUtils.loadUserSecrets();
 
       expect(result).toEqual({ 'test-key': 'test-value' });
-      expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
       expect(fs.existsSync).toHaveBeenCalledWith(mockUserSecretsPath);
     });
 
@@ -232,25 +237,27 @@ describe('Secrets Utils Module', () => {
       expect(fs.readFileSync).toHaveBeenCalledWith(mockUserSecretsPath, 'utf8');
     });
 
-    it('should throw error when secrets is not an object', () => {
+    it('should return empty object when YAML document is a scalar (not a mapping)', () => {
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('"just a string"');
-      yaml.load.mockReturnValue('just a string');
+      // parseSecretsContent uses tolerant loader (real js-yaml); scalars normalize to {}.
+      const result = secretsUtils.loadUserSecrets();
 
-      expect(() => secretsUtils.loadUserSecrets()).toThrow('Invalid secrets file format');
+      expect(result).toEqual({});
     });
 
-    it('should throw error when secrets is null', () => {
+    it('should return empty object when YAML document is null', () => {
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('null');
-      yaml.load.mockReturnValue(null);
 
-      expect(() => secretsUtils.loadUserSecrets()).toThrow('Invalid secrets file format');
+      const result = secretsUtils.loadUserSecrets();
+
+      expect(result).toEqual({});
     });
 
-    it('should return empty object and log warning on YAML parse error', () => {
+    it('should return empty object when YAML fails and line-parse finds no keys', () => {
       fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue('invalid: yaml: content: [');
+      fs.readFileSync.mockReturnValue('[\n  unclosed flow');
       yaml.load.mockImplementation(() => {
         throw new Error('YAML parse error');
       });
@@ -258,9 +265,7 @@ describe('Secrets Utils Module', () => {
       const result = secretsUtils.loadUserSecrets();
 
       expect(result).toEqual({});
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Warning: Could not read secrets file')
-      );
+      expect(logger.warn).not.toHaveBeenCalled();
     });
 
     it('should return empty object and log warning on file read error', () => {
@@ -777,6 +782,34 @@ build:
       const result = secretsUtils.resolveUrlPort(protocol, misoHostname, '3010', urlPath, misoHostnameToService);
 
       expect(result).toBe(`${protocol}${misoHostname}:3000${urlPath}`);
+    });
+  });
+
+  describe('ensurePrimaryUserSecretsFileExists', () => {
+    it('does nothing when file already exists', () => {
+      fs.existsSync.mockReturnValue(true);
+
+      secretsUtils.ensurePrimaryUserSecretsFileExists();
+
+      expect(fs.writeFileSync).not.toHaveBeenCalled();
+      expect(fs.mkdirSync).not.toHaveBeenCalled();
+    });
+
+    it('creates config directory and secrets.local.yaml when missing', () => {
+      fs.existsSync.mockReturnValue(false);
+      fs.mkdirSync.mockImplementation(() => {});
+      fs.writeFileSync.mockImplementation(() => {});
+
+      secretsUtils.ensurePrimaryUserSecretsFileExists();
+
+      const dirPath = path.join(mockHomeDir, '.aifabrix');
+      const primaryPath = path.join(dirPath, 'secrets.local.yaml');
+      expect(fs.mkdirSync).toHaveBeenCalledWith(dirPath, { recursive: true, mode: 0o700 });
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        primaryPath,
+        expect.stringContaining('# Local secrets for AI Fabrix CLI'),
+        { mode: 0o600 }
+      );
     });
   });
 });

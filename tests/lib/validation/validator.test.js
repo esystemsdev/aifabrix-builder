@@ -33,7 +33,9 @@ if (!global.fetch || typeof global.fetch.mockResolvedValue !== 'function') {
 jest.mock('fs');
 jest.mock('os');
 jest.mock('../../../lib/core/config', () => ({
-  getDeveloperId: jest.fn().mockResolvedValue('0')
+  getDeveloperId: jest.fn().mockResolvedValue('0'),
+  getDockerEndpoint: jest.fn().mockResolvedValue(null),
+  getDockerTlsSkipVerify: jest.fn().mockResolvedValue(false)
 }));
 jest.mock('../../../lib/utils/dev-config', () => ({
   getDevPorts: jest.fn((id) => ({
@@ -94,8 +96,8 @@ jest.mock('child_process', () => {
     exec: jest.fn((command, options, callback) => {
       const cb = typeof options === 'function' ? options : callback;
       if (typeof cb === 'function') {
-        // Default: return success for docker commands
-        setImmediate(() => cb(null, { stdout: 'Docker version 20.10.0', stderr: '' }));
+        // Default: return success for docker commands (exec callback: err, stdout, stderr strings)
+        setImmediate(() => cb(null, 'Docker version 20.10.0', ''));
       }
       return { stdout: 'Docker version 20.10.0', stderr: '' };
     })
@@ -129,8 +131,8 @@ describe('Validator Module', () => {
     exec.mockImplementation((command, options, callback) => {
       const cb = typeof options === 'function' ? options : callback;
       if (typeof cb === 'function') {
-        // Default: return success for docker commands
-        setImmediate(() => cb(null, { stdout: 'Docker version 20.10.0', stderr: '' }));
+        // Default: return success for docker commands (exec callback: err, stdout, stderr strings)
+        setImmediate(() => cb(null, 'Docker version 20.10.0', ''));
       }
       return { stdout: 'Docker version 20.10.0', stderr: '' };
     });
@@ -241,6 +243,28 @@ frontDoorRouting:
 
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('frontDoorRouting.pattern must start with "/"');
+    });
+
+    it('should accept frontDoorRouting host with ${DEV_USERNAME}.${REMOTE_HOST} placeholders', async() => {
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(`key: testapp
+displayName: Test App
+description: A test application
+type: webapp
+image: testapp:latest
+registryMode: public
+port: 3000
+requiresDatabase: false
+requiresRedis: false
+requiresStorage: false
+frontDoorRouting:
+  enabled: true
+  host: \${DEV_USERNAME}.\${REMOTE_HOST}
+  pattern: /api/*`);
+
+      const result = await validator.validateVariables(appName);
+
+      expect(result.valid).toBe(true);
     });
   });
 
@@ -691,8 +715,11 @@ frontDoorRouting:
 
   describe('checkEnvironment', () => {
     it('should return ok status when everything is working', async() => {
-      exec.mockImplementation((command, callback) => {
-        callback(null, 'Docker version 20.10.0', '');
+      exec.mockImplementation((command, options, callback) => {
+        const cb = typeof options === 'function' ? options : callback;
+        if (typeof cb === 'function') {
+          cb(null, 'Docker version 20.10.0', '');
+        }
       });
 
       const mockServer = {
@@ -722,8 +749,11 @@ frontDoorRouting:
     }, 10000);
 
     it('should return error when Docker is not available', async() => {
-      exec.mockImplementation((command, callback) => {
-        callback(new Error('Command not found'), '', '');
+      exec.mockImplementation((command, options, callback) => {
+        const cb = typeof options === 'function' ? options : callback;
+        if (typeof cb === 'function') {
+          cb(new Error('Command not found'), '', '');
+        }
       });
 
       const result = await validator.checkEnvironment();
@@ -733,8 +763,11 @@ frontDoorRouting:
     }, 10000);
 
     it('should return warning when ports are in use', async() => {
-      exec.mockImplementation((command, callback) => {
-        callback(null, 'Docker version 20.10.0', '');
+      exec.mockImplementation((command, options, callback) => {
+        const cb = typeof options === 'function' ? options : callback;
+        if (typeof cb === 'function') {
+          cb(null, 'Docker version 20.10.0', '');
+        }
       });
 
       const mockServer = {
@@ -763,8 +796,11 @@ frontDoorRouting:
     }, 10000);
 
     it('should return missing when secrets file not found', async() => {
-      exec.mockImplementation((command, callback) => {
-        callback(null, 'Docker version 20.10.0', '');
+      exec.mockImplementation((command, options, callback) => {
+        const cb = typeof options === 'function' ? options : callback;
+        if (typeof cb === 'function') {
+          cb(null, 'Docker version 20.10.0', '');
+        }
       });
 
       const mockServer = {
@@ -1149,6 +1185,29 @@ permissions:
       expect(validator.findUnresolvedVariablesInObject(null)).toEqual([]);
       expect(validator.findUnresolvedVariablesInObject(undefined)).toEqual([]);
     });
+
+    it('allows only DEV_USERNAME and REMOTE_HOST placeholders under frontDoorRouting.host', () => {
+      expect(
+        validator.findUnresolvedVariablesInObject({
+          frontDoorRouting: { host: '${DEV_USERNAME}.${REMOTE_HOST}', enabled: true }
+        })
+      ).toEqual([]);
+      expect(
+        validator.findUnresolvedVariablesInObject({
+          frontDoorRouting: { host: '${DEV_USERNAME}${REMOTE_HOST}' }
+        })
+      ).toEqual([]);
+      expect(
+        validator.findUnresolvedVariablesInObject({
+          frontDoorRouting: { host: '${DEV_USERNAME}.aifabrix.dev' }
+        })
+      ).toEqual([]);
+      const bad = validator.findUnresolvedVariablesInObject({
+        frontDoorRouting: { host: '${DEV_USERNAME}.${REMOTE_HOST}.${OTHER}' }
+      });
+      expect(bad.length).toBeGreaterThan(0);
+      expect(bad.some((s) => s.includes('${OTHER}'))).toBe(true);
+    });
   });
 
   describe('validateNoUnresolvedVariablesInDeployment', () => {
@@ -1177,6 +1236,21 @@ permissions:
       expect(() => validator.validateNoUnresolvedVariablesInDeployment(deployment)).toThrow(
         /Deployment manifest contains unresolved variables/
       );
+    });
+
+    it('does not throw when only frontDoorRouting.host uses DEV_USERNAME/REMOTE_HOST templates', () => {
+      const deployment = {
+        port: 3000,
+        key: 'app',
+        configuration: [],
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.${REMOTE_HOST}',
+          pattern: '/miso/*',
+          tls: false
+        }
+      };
+      expect(() => validator.validateNoUnresolvedVariablesInDeployment(deployment)).not.toThrow();
     });
   });
 });

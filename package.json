@@ -1,6 +1,6 @@
 {
   "name": "@aifabrix/builder",
-  "version": "2.43.0",
+  "version": "2.44.0",
   "description": "AI Fabrix Local Fabric & Deployment SDK",
   "main": "lib/index.js",
   "bin": {
@@ -8,6 +8,7 @@
     "af": "bin/aifabrix.js"
   },
   "scripts": {
+    "all": "npm run precommit && npm run test:manual && npm run test:integration:fixtures && npm run test:hubspot-wizard",
     "test": "node tests/scripts/test-wrapper.js",
     "test:ci": "bash tests/scripts/ci-simulate.sh",
     "test:same-as-github": "npm run build:ci",
@@ -15,6 +16,7 @@
     "test:coverage:nyc": "nyc --reporter=text --reporter=lcov --reporter=html jest --config jest.config.coverage.js --runInBand",
     "test:watch": "jest --watch",
     "test:integration": "jest --config jest.config.integration.js --runInBand",
+    "test:integration:fixtures": "jest --config jest.config.integration.fixtures.js --runInBand",
     "test:integration:python": "cross-env TEST_LANGUAGE=python jest --config jest.config.integration.js --runInBand",
     "test:integration:typescript": "cross-env TEST_LANGUAGE=typescript jest --config jest.config.integration.js --runInBand",
     "test:hubspot-wizard": "node integration/hubspot-test/test.js",
@@ -32,8 +34,10 @@
     "validate": "npm run build",
     "prepublishOnly": "npm run validate",
     "precommit": "npm run lint:fix && npm run test",
-    "install:local": "node scripts/install-local.js",
-    "uninstall:local": "node scripts/install-local.js uninstall"
+    "install:local": "node scripts/install-local.js && which aifabrix && which af",
+    "uninstall:local": "node scripts/install-local.js uninstall && which aifabrix && which af",
+    "diagnose:cli": "node scripts/diagnose-cli.js",
+    "check:schema-sync": "node scripts/check-datasource-test-run-schema-sync.js"
   },
   "keywords": [
     "aifabrix",

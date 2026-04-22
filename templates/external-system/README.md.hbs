@@ -20,7 +20,7 @@
 - `deploy.js` – Deploy script for the integration
 - `wizard.yaml` – Wizard configuration (if created via wizard)
 
-Optional: `rbac.yaml` – Roles and permissions merged into the system when present.
+Optional: `{{rbacOptionalFile}}` – Roles and permissions merged into the system when present.
 
 ## Quick Start
 
@@ -43,7 +43,7 @@ aifabrix wizard --app {{appName}}
 Edit files in `integration/{{appName}}/`:
 
 - **Authentication**: `{{systemKey}}-system{{fileExt}}` (auth type, credentials placeholders)
-- **Field mappings**: `{{systemKey}}-datasource-*-datasource{{fileExt}}` (dimensions, attributes, operations)
+- **Field mappings**: `{{systemKey}}-datasource-*{{fileExt}}` (dimensions, attributes, operations)
 - **Credential and configuration**: `env.template` (security settings and configuration variables)
 
 {{#if secretPaths}}{{#if secretPaths.length}}
@@ -58,11 +58,15 @@ aifabrix secret set {{path}} <your value>   # {{description}}
 ```
 {{/if}}{{/if}}
 
-### 3. Validate Configuration
+### 3. Validate configuration (local only)
+
+`aifabrix validate` runs **on your machine**: it loads files under `integration/{{appName}}/`, checks them against the application and external-system / external-datasource JSON schemas, and runs related manifest rules. It does **not** call the dataplane or any other remote API.
 
 ```bash
 aifabrix validate {{appName}}
 ```
+
+Use this before upload or deploy to catch structural and policy errors early.
 
 ### 4. Repair Deployment Manifest
 
@@ -88,19 +92,28 @@ aifabrix upload {{appName}}
 
 ## Testing
 
-### Unit Tests (Local Validation, No API)
+| Command | Where it runs | Calls dataplane? |
+|--------|----------------|------------------|
+| `aifabrix validate {{appName}}` | Local (schemas / files) | No |
+| `aifabrix test {{appName}}` | Local (manifest / payload checks) | No |
+| `aifabrix test-integration {{appName}}`, `aifabrix test-e2e {{appName}}`, `aifabrix datasource test …`, `aifabrix datasource test-integration …`, `aifabrix datasource test-e2e …` | Through configured auth | Yes — unified validation / pipeline API |
+
+So: **validate** (and **`test`**) stay offline; **all integration and E2E test commands** exercise the system **via the API** (after login and a reachable dataplane).
+
+### Local checks (no API)
 
 ```bash
+aifabrix validate {{appName}}
 aifabrix test {{appName}}
 ```
 
-### Integration Tests (Via Dataplane)
+### Integration tests (dataplane API)
 
 ```bash
 aifabrix test-integration {{appName}}
 ```
 
-### End-to-end Tests (Via Dataplane)
+### End-to-end tests (dataplane API)
 
 ```bash
 aifabrix test-e2e {{appName}}
@@ -147,6 +160,6 @@ aifabrix deploy {{appName}}
 
 ## Troubleshooting
 
-- **Validation errors**: Run `aifabrix validate {{appName}}` to see schema and manifest errors.
+- **Local validation errors**: Run `aifabrix validate {{appName}}` (and `aifabrix test {{appName}}`) — these only inspect files on disk, not the dataplane.
 - **Deployment / auth**: Run `aifabrix auth config --set-controller <url> --set-environment <env>` and `aifabrix login` before `aifabrix deploy`.
 - **File not found**: Run commands from the project root (where `package.json` and `integration/` live).

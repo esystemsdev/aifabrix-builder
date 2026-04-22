@@ -3,17 +3,19 @@
  *
  * @fileoverview Unit tests for lib/commands/repair-datasource.js
  * @author AI Fabrix Team
- * @version 2.0.0
+ * @version 2.2.0
  */
 
 const {
   getAttributeKeys,
   parsePathsFromExpressions,
-  repairDimensionsFromAttributes,
+  repairDimensionBindingShape,
+  repairRootDimensionsFromAttributes,
   repairMetadataSchemaFromAttributes,
   repairExposeFromAttributes,
   repairSyncSection,
   repairTestPayload,
+  sanitizeTestPayloadTopLevel,
   repairDatasourceFile,
   MINIMAL_METADATA_SCHEMA,
   DEFAULT_SYNC
@@ -51,6 +53,14 @@ describe('repair-datasource', () => {
       expect(topLevelKeys).toEqual(new Set(['metadata', 'properties']));
       expect(referencedSchemaPropertyNames).toEqual(new Set(['email']));
     });
+    it('strips raw. prefix for path analysis', () => {
+      const attrs = {
+        id: { expression: '{{ raw.properties.id }}', type: 'string' }
+      };
+      const { paths, topLevelKeys } = parsePathsFromExpressions(attrs);
+      expect(paths).toContain('properties.id');
+      expect(topLevelKeys).toEqual(new Set(['properties']));
+    });
     it('skips record_ref expressions', () => {
       const attrs = {
         ref: { expression: 'record_ref:customer', type: 'string' }
@@ -62,61 +72,72 @@ describe('repair-datasource', () => {
     });
   });
 
-  describe('repairDimensionsFromAttributes', () => {
-    it('removes dimension when metadata.attr not in attributes', () => {
+  describe('repairDimensionBindingShape', () => {
+    it('removes field from FK binding and operator without actor', () => {
+      const changes = [];
+      const parsed = {
+        dimensions: {
+          d1: { type: 'fk', field: 'x', via: [{ fk: 'c', dimension: 'country' }], operator: 'eq' }
+        }
+      };
+      expect(repairDimensionBindingShape(parsed, changes)).toBe(true);
+      expect(parsed.dimensions.d1.field).toBeUndefined();
+      expect(parsed.dimensions.d1.operator).toBeUndefined();
+      expect(parsed.dimensions.d1.via).toBeDefined();
+    });
+    it('removes via from local binding', () => {
+      const changes = [];
+      const parsed = {
+        dimensions: {
+          d1: { type: 'local', field: 'country', via: [] }
+        }
+      };
+      expect(repairDimensionBindingShape(parsed, changes)).toBe(true);
+      expect(parsed.dimensions.d1.via).toBeUndefined();
+    });
+  });
+
+  describe('repairRootDimensionsFromAttributes', () => {
+    it('removes local bindings whose field is not in attributes; keeps FK bindings', () => {
       const changes = [];
       const parsed = {
         fieldMappings: {
-          attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } },
-          dimensions: {
-            email: 'metadata.email',
-            country: 'metadata.country'
-          }
+          attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } }
+        },
+        dimensions: {
+          email: { type: 'local', field: 'email' },
+          country: { type: 'local', field: 'country' },
+          viaDim: { type: 'fk', via: [{ fk: 'company', dimension: 'country' }] }
         }
       };
-      const updated = repairDimensionsFromAttributes(parsed, changes);
+      const updated = repairRootDimensionsFromAttributes(parsed, changes);
       expect(updated).toBe(true);
-      expect(parsed.fieldMappings.dimensions).toEqual({ email: 'metadata.email' });
-      expect(changes.some(c => c.includes('country') && c.includes('not in'))).toBe(true);
-    });
-    it('leaves dimensions that reference existing attributes', () => {
-      const changes = [];
-      const parsed = {
-        fieldMappings: {
-          attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } },
-          dimensions: { email: 'metadata.email' }
-        }
-      };
-      const updated = repairDimensionsFromAttributes(parsed, changes);
-      expect(updated).toBe(false);
-      expect(parsed.fieldMappings.dimensions).toEqual({ email: 'metadata.email' });
-    });
-    it('ignores non-metadata dimension values', () => {
-      const changes = [];
-      const parsed = {
-        fieldMappings: {
-          attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } },
-          dimensions: { other: 'other.path' }
-        }
-      };
-      const updated = repairDimensionsFromAttributes(parsed, changes);
-      expect(updated).toBe(false);
-      expect(parsed.fieldMappings.dimensions.other).toBe('other.path');
+      expect(parsed.dimensions.email).toBeDefined();
+      expect(parsed.dimensions.country).toBeUndefined();
+      expect(parsed.dimensions.viaDim).toBeDefined();
     });
   });
 
   describe('repairMetadataSchemaFromAttributes', () => {
-    it('adds minimal metadataSchema when missing', () => {
+    it('does not add metadataSchema when entityType is none', () => {
       const changes = [];
-      const parsed = { fieldMappings: { attributes: {} } };
+      const parsed = { entityType: 'none', fieldMappings: { attributes: {} } };
+      expect(repairMetadataSchemaFromAttributes(parsed, changes)).toBe(false);
+      expect(parsed.metadataSchema).toBeUndefined();
+    });
+    it('adds minimal metadataSchema when missing for storage entity', () => {
+      const changes = [];
+      const parsed = { entityType: 'recordStorage', fieldMappings: { attributes: {} } };
       const updated = repairMetadataSchemaFromAttributes(parsed, changes);
       expect(updated).toBe(true);
-      expect(parsed.metadataSchema).toEqual(MINIMAL_METADATA_SCHEMA);
+      expect(parsed.metadataSchema).toMatchObject({ type: 'object' });
+      expect(parsed.metadataSchema.properties.externalId).toMatchObject({ type: 'string', index: true });
       expect(changes.some(c => c.includes('Added minimal metadataSchema'))).toBe(true);
     });
     it('prunes schema properties not referenced by metadata.xxx expressions', () => {
       const changes = [];
       const parsed = {
+        entityType: 'recordStorage',
         fieldMappings: {
           attributes: {
             email: { expression: '{{ metadata.email }}', type: 'string' },
@@ -139,6 +160,8 @@ describe('repair-datasource', () => {
       expect(updated).toBe(true);
       expect(parsed.metadataSchema.properties).toHaveProperty('id');
       expect(parsed.metadataSchema.properties).toHaveProperty('email');
+      expect(parsed.metadataSchema.properties).toHaveProperty('externalId');
+      expect(parsed.metadataSchema.properties.externalId).toMatchObject({ type: 'string', index: true });
       expect(parsed.metadataSchema.properties).not.toHaveProperty('notReferenced');
       expect(parsed.metadataSchema.properties).not.toHaveProperty('type');
       expect(parsed.metadataSchema.properties).not.toHaveProperty('results');
@@ -146,6 +169,7 @@ describe('repair-datasource', () => {
     it('does not prune when no metadata.xxx paths exist (preserves full schema)', () => {
       const changes = [];
       const parsed = {
+        entityType: 'recordStorage',
         fieldMappings: { attributes: {} },
         metadataSchema: {
           type: 'object',
@@ -156,32 +180,54 @@ describe('repair-datasource', () => {
         }
       };
       const updated = repairMetadataSchemaFromAttributes(parsed, changes);
-      expect(updated).toBe(false);
+      expect(updated).toBe(true);
       expect(parsed.metadataSchema.properties).toHaveProperty('id');
       expect(parsed.metadataSchema.properties).toHaveProperty('type');
+      expect(parsed.metadataSchema.properties.externalId).toMatchObject({ type: 'string', index: true });
+      expect(changes.some(c => c.includes('externalId'))).toBe(true);
+    });
+    it('adds property stubs for referenced metadata paths', () => {
+      const changes = [];
+      const parsed = {
+        entityType: 'recordStorage',
+        fieldMappings: {
+          attributes: {
+            email: { expression: '{{ metadata.email }}', type: 'string' }
+          }
+        },
+        metadataSchema: {
+          type: 'object',
+          properties: {},
+          additionalProperties: true
+        }
+      };
+      const updated = repairMetadataSchemaFromAttributes(parsed, changes);
+      expect(updated).toBe(true);
+      expect(parsed.metadataSchema.properties.email).toEqual({ type: 'string' });
+      expect(parsed.metadataSchema.properties.externalId).toMatchObject({ type: 'string', index: true });
     });
   });
 
   describe('repairExposeFromAttributes', () => {
-    it('sets exposed.attributes to sorted attribute keys', () => {
+    it('sets exposed.schema to metadata.* leaves for sorted attribute keys', () => {
       const changes = [];
       const parsed = {
         fieldMappings: {
           attributes: {
-            z: { expression: '{{ x }}', type: 'string' },
-            a: { expression: '{{ y }}', type: 'string' }
+            z: { expression: '{{ raw.x }}', type: 'string' },
+            a: { expression: '{{ raw.y }}', type: 'string' }
           }
         }
       };
       const updated = repairExposeFromAttributes(parsed, changes);
       expect(updated).toBe(true);
-      expect(parsed.exposed.attributes).toEqual(['a', 'z']);
+      expect(parsed.exposed.schema).toEqual({ a: 'metadata.a', z: 'metadata.z' });
     });
     it('does not update when already same', () => {
       const changes = [];
       const parsed = {
         fieldMappings: { attributes: { a: {}, b: {} } },
-        exposed: { attributes: ['a', 'b'] }
+        exposed: { schema: { a: 'metadata.a', b: 'metadata.b' } }
       };
       const updated = repairExposeFromAttributes(parsed, changes);
       expect(updated).toBe(false);
@@ -191,17 +237,40 @@ describe('repair-datasource', () => {
   describe('repairSyncSection', () => {
     it('adds default sync when missing', () => {
       const changes = [];
-      const parsed = {};
+      const parsed = { entityType: 'recordStorage' };
       const updated = repairSyncSection(parsed, changes);
       expect(updated).toBe(true);
       expect(parsed.sync).toEqual(DEFAULT_SYNC);
     });
+    it('does not add sync for entityType none', () => {
+      const changes = [];
+      const parsed = { entityType: 'none' };
+      expect(repairSyncSection(parsed, changes)).toBe(false);
+      expect(parsed.sync).toBeUndefined();
+    });
     it('does not overwrite existing sync', () => {
       const changes = [];
-      const parsed = { sync: { mode: 'pull', batchSize: 100 } };
+      const parsed = { entityType: 'recordStorage', sync: { mode: 'pull', batchSize: 100 } };
       const updated = repairSyncSection(parsed, changes);
       expect(updated).toBe(false);
       expect(parsed.sync.batchSize).toBe(100);
+    });
+  });
+
+  describe('sanitizeTestPayloadTopLevel', () => {
+    it('removes keys not in allowlist', () => {
+      const changes = [];
+      const parsed = {
+        testPayload: {
+          payloadTemplate: {},
+          expectedResult: {},
+          typoKey: 1,
+          scenarios: []
+        }
+      };
+      expect(sanitizeTestPayloadTopLevel(parsed, changes)).toBe(true);
+      expect(parsed.testPayload.typoKey).toBeUndefined();
+      expect(parsed.testPayload.scenarios).toEqual([]);
     });
   });
 
@@ -225,42 +294,63 @@ describe('repair-datasource', () => {
   });
 
   describe('repairDatasourceFile', () => {
-    it('runs core repair (dimensions + metadataSchema) only when no flags', () => {
+    it('runs root dimensions + metadataSchema for storage entity without flags', () => {
       const parsed = {
+        entityType: 'recordStorage',
         fieldMappings: {
-          attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } },
-          dimensions: { country: 'metadata.country' }
+          attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } }
+        },
+        dimensions: {
+          email: { type: 'local', field: 'email' },
+          country: { type: 'local', field: 'country' }
         }
       };
       const { updated, changes } = repairDatasourceFile(parsed, {});
       expect(updated).toBe(true);
-      expect(parsed.fieldMappings.dimensions).not.toHaveProperty('country');
+      expect(parsed.dimensions.country).toBeUndefined();
       expect(parsed.metadataSchema).toBeDefined();
+      expect(parsed.metadataSchema.type).toBe('object');
       expect(parsed.exposed).toBeUndefined();
       expect(parsed.sync).toBeUndefined();
       expect(parsed.testPayload).toBeUndefined();
+      expect(changes.some(c => c.includes('Removed root dimension'))).toBe(true);
+    });
+    it('skips metadata and sync for entityType none', () => {
+      const parsed = { entityType: 'none', fieldMappings: { attributes: {} } };
+      const { updated } = repairDatasourceFile(parsed, {});
+      expect(updated).toBe(false);
+      expect(parsed.metadataSchema).toBeUndefined();
     });
     it('applies --expose when options.expose is true', () => {
       const parsed = {
-        fieldMappings: { attributes: { a: { expression: '{{ x }}', type: 'string' } } }
+        entityType: 'recordStorage',
+        fieldMappings: { attributes: { a: { expression: '{{ raw.x }}', type: 'string' } } }
       };
       repairDatasourceFile(parsed, { expose: true });
-      expect(parsed.exposed.attributes).toEqual(['a']);
+      expect(parsed.exposed.schema).toEqual({ a: 'metadata.a' });
     });
     it('applies --sync when options.sync is true', () => {
-      const parsed = { fieldMappings: { attributes: { a: {} } } };
+      const parsed = { entityType: 'recordStorage', fieldMappings: { attributes: { a: {} } } };
       repairDatasourceFile(parsed, { sync: true });
       expect(parsed.sync).toEqual(DEFAULT_SYNC);
     });
+    it('does not apply --sync for none', () => {
+      const parsed = { entityType: 'none' };
+      repairDatasourceFile(parsed, { sync: true });
+      expect(parsed.sync).toBeUndefined();
+    });
     it('applies --test when options.test is true', () => {
       const parsed = {
+        entityType: 'recordStorage',
         fieldMappings: {
           attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } }
-        }
+        },
+        testPayload: { junkTop: true }
       };
       repairDatasourceFile(parsed, { test: true });
       expect(parsed.testPayload.payloadTemplate).toBeDefined();
       expect(parsed.testPayload.expectedResult).toBeDefined();
+      expect(parsed.testPayload.junkTop).toBeUndefined();
     });
   });
 });

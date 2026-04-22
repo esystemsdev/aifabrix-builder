@@ -1,0 +1,421 @@
+# Builder catalog: local kv:// secret keys, generators, and Azure KV naming hints.
+# Local keys use suffixes like databases-{appKey}-{index}-urlKeyVault; Azure often prefixes {app-key}- (see .cursor/plans/keyvault.md).
+# Maintenance: cross-check SecretName= lines in aifabrix-miso infrastructure/bicep/modules/05_miso-webapp.bicep
+# and 07_keycloak-webapp.bicep with docs/configuration/infra-parameters.md (§ Bicep audit).
+version: 1
+# Shared {{adminEmail}} / {{adminPassword}} / {{userPassword}} for catalog literals and admin-secrets backfill.
+# Override any time with: aifabrix up-infra --adminPassword … --adminEmail … --userPassword …
+defaults:
+  adminEmail: admin@aifabrix.dev
+  adminPassword: admin123
+  userPassword: user123
+# Always ensured on up-infra even when no workspace env.template references these kv:// keys (bootstrap defaults).
+standardUpInfraEnsureKeys:
+  - databases-miso-controller-0-urlKeyVault
+  - databases-miso-controller-0-passwordKeyVault
+  - databases-miso-controller-1-urlKeyVault
+  - databases-miso-controller-1-passwordKeyVault
+  # Dataplane (four DB slots) — bootstrap before builder/dataplane is copied
+  - databases-dataplane-0-urlKeyVault
+  - databases-dataplane-0-passwordKeyVault
+  - databases-dataplane-1-urlKeyVault
+  - databases-dataplane-1-passwordKeyVault
+  - databases-dataplane-2-urlKeyVault
+  - databases-dataplane-2-passwordKeyVault
+  - databases-dataplane-3-urlKeyVault
+  - databases-dataplane-3-passwordKeyVault
+parameters:
+  - key: postgres-passwordKeyVault
+    scope: infra
+    generator:
+      type: literal
+      value: '{{adminPassword}}'
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretName: postgres-passwordKeyVault
+      notes: >-
+        Shared Docker Postgres admin password for local up-infra. This is separate from Keycloak’s
+        Azure Postgres admin secret `{appKey}-postgres-admin-password` in aifabrix-miso
+        infrastructure/bicep/modules/07_keycloak-webapp.bicep.
+
+  - key: redis-passwordKeyVault
+    scope: infra
+    generator:
+      type: emptyAllowed
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretName: redis-passwordKeyVault
+      notes: >-
+        Local `up-infra` Redis has no requirepass; absent key resolves to empty string at `aifabrix resolve`.
+        Set a value in secrets when using authenticated Redis or Azure.
+
+  - key: redis-url
+    scope: infra
+    generator:
+      type: literal
+      value: 'redis://${REDIS_HOST}:${REDIS_PORT}'
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Not a Key Vault secret in local dev; URL built from infra endpoints in Azure.
+
+  - key: keycloak-admin-passwordKeyVault
+    scope: shared-service
+    generator:
+      type: literal
+      value: '{{adminPassword}}'
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretNamePattern: '{appKey}-keycloak-admin-password'
+      notes: >-
+        Local kv:// and secrets.local.yaml use the *KeyVault suffix. Miso install Bicep references
+        SecretName `${prefix}-keycloak-admin-password` (no KeyVault suffix) in
+        infrastructure/bicep/modules/05_miso-webapp.bicep and 07_keycloak-webapp.bicep.
+
+  - key: keycloak-web-server-url
+    scope: shared-service
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretName: keycloak-web-server-url
+      notes: >-
+        Bicep (05_miso-webapp.bicep) uses unprefixed SecretName `keycloak-web-server-url` (same as local key).
+        Shipped miso-controller/dataplane env templates use url://keycloak-public instead of this kv:// for local resolve.
+
+  - key: keycloak-internal-server-url
+    scope: shared-service
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretName: keycloak-internal-server-url
+      notes: >-
+        Bicep (05_miso-webapp.bicep) uses unprefixed SecretName `keycloak-internal-server-url`.
+        Shipped templates use url://keycloak-internal for local resolve.
+
+  # When env.template uses kv://keycloak-client-idKeyVault (multi-realm / dev naming).
+  - key: keycloak-client-idKeyVault
+    scope: shared-service
+    generator:
+      type: literal
+      value: 'miso-controller-miso-keycloak'
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: >-
+        Default OAuth client id for controller ↔ Keycloak when resolved from secrets; override per environment.
+
+  - key: keycloak-client-secretKeyVault
+    scope: shared-service
+    generator:
+      type: randomBytes32
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretName: keycloak-client-secretKeyVault
+      notes: Per-app OAuth client secret from Keycloak registration; generated on first ensure.
+
+  - key: keycloak-default-passwordKeyVault
+    scope: shared-service
+    generator:
+      type: literal
+      value: '{{userPassword}}'
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: >-
+        Keycloak default-user password for local/bootstrap; explicit literal so it is not randomBytes32.
+
+  - key: miso-controller-secrets-encryptionKeyVault
+    scope: app
+    generator:
+      type: randomBytes32
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretNamePattern: '{appKey}-secrets-encryptionKeyVault'
+      notes: >-
+        32-byte secret as base64; generated on first ensure. Rotate in production.
+
+  # Local kv:// name matches miso-controller env.template (JWT_SECRET); not the generic {appKey}-secrets-jwtKeyVault Azure name.
+  - key: miso-controller-jwt-secretKeyVault
+    scope: app
+    generator:
+      type: randomBytes32
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretNamePattern: '{appKey}-secrets-jwtKeyVault'
+      notes: >-
+        JWT signing secret; generated on first ensure. Azure Bicep typically uses `${prefix}-secrets-jwtKeyVault`.
+
+  # Exact entry so this is not caught by *KeyVault → randomBytes32 (invalid email).
+  - key: miso-controller-admin-emailKeyVault
+    scope: app
+    generator:
+      type: literal
+      value: '{{adminEmail}}'
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Onboarding admin email; align with controller onboarding defaults.
+
+  # Local first-time install / onboarding default (change in production).
+  - key: miso-controller-admin-passwordKeyVault
+    scope: app
+    generator:
+      type: literal
+      value: '{{adminPassword}}'
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: >-
+        Matches controller onboarding default; override in secrets for non-dev.
+        Same secret backs ONBOARDING_ADMIN_PASSWORD and MISO_ADMIN_PASSWORD in env.template.
+
+  # DEPLOYMENT=azure only; local/docker leave empty (do not generate random placeholders).
+  - key: azure-subscription-idKeyVault
+    scope: infra
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Production Key Vault / app settings; empty locally.
+
+  - key: azure-tenant-idKeyVault
+    scope: infra
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Production only; empty locally.
+
+  - key: azure-service-nameKeyVault
+    scope: infra
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Production only; empty locally.
+
+  - key: azure-client-idKeyVault
+    scope: infra
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Production only; empty locally.
+
+  - key: azure-client-secretKeyVault
+    scope: infra
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Production only; empty locally.
+
+  # Optional private npm; local scaffold leaves empty.
+  - key: BASH_NPM_TOKEN
+    scope: infra
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Not a typical Key Vault name; local optional npm token.
+
+  # Optional private pypi; local scaffold leaves empty.
+  - key: BASH_PYPI_TOKEN
+    scope: infra
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Not a typical Key Vault name; local optional pypi token.
+
+  # Default client id for controller app in local multi-service layout; override after register if needed.
+  - key: miso-controller-client-idKeyVault
+    scope: app
+    generator:
+      type: literal
+      value: 'miso-controller-miso-miso-controller'
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: >-
+        Per-app OAuth client id from controller registration; literal default matches local Keycloak client naming.
+
+  # Dataplane ↔ controller OAuth (builder/dataplane env.template MISO_CLIENTID / MISO_CLIENTSECRET).
+  - key: dataplane-client-idKeyVault
+    scope: app
+    generator:
+      type: literal
+      value: 'miso-controller-dev-dataplane'
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: >-
+        Per-app OAuth client id from controller registration; literal default matches local Keycloak client naming
+        (override for environments such as miso-controller-dev-dataplane).
+
+  - key: dataplane-client-secretKeyVault
+    scope: app
+    generator:
+      type: randomBytes32
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretName: dataplane-client-secretKeyVault
+      notes: Per-app OAuth client secret for dataplane; generated on first ensure.
+
+  # Mori / telemetry: optional locally (LICENSE_JWT=DEVELOPMENT skips Mori); empty until integrated.
+  - key: mori-controller-api-keyKeyVault
+    scope: infra
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Empty locally; set when calling Mori with API key auth.
+
+  - key: mori-controller-basic-usernameKeyVault
+    scope: infra
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Empty locally; Mori basic auth optional.
+
+  - key: mori-controller-basic-passwordKeyVault
+    scope: infra
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Empty locally; Mori basic auth optional.
+
+  - key: appinsights-connectionStringKeyVault
+    scope: infra
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretName: appinsights-connectionStringKeyVault
+      notes: >-
+        Aligns with keyvault.md / Azure naming (appinsights.connectionStringKeyVault). Empty locally until set from Azure Portal.
+
+  # Dataplane builder/dataplane env.template (AI/LLM); optional until OpenAI or Azure OpenAI is configured.
+  - key: secrets-openaiApiKeyVault
+    scope: app
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Empty until set; user-supplied OpenAI API key (not auto-generated).
+
+  - key: azure-openaiapi-urlKeyVault
+    scope: app
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Empty until set; Azure OpenAI endpoint URL.
+
+  - key: secrets-azureOpenaiApiKeyVault
+    scope: app
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Empty until set; user-supplied Azure OpenAI API key (not auto-generated).
+
+  # Legacy unprefixed name (scaffold / old env.template); prefer *KeyVault suffix or {appKey}-secrets-apiKeyVault (keyvault.md).
+  - key: api-key
+    scope: app
+    generator:
+      type: randomBytes32
+    ensureOn: [resolveApp]
+    azure:
+      notes: >-
+        Legacy kv://api-key; new apps should use kv://api-keyKeyVault or {appKey}-secrets-apiKeyVault.
+
+  # Legacy unprefixed name; prefer kv://{appKey}-secrets-apiKeyVault in env.template (keyvault.md secrets.apiKeyVault).
+  - key: miso-controller-secrets-apiKeyVault
+    scope: app
+    generator:
+      type: randomBytes32
+    ensureOn: [resolveApp]
+    azure:
+      notes: >-
+        Prefer {appKey}-secrets-apiKeyVault locally; dataplane shares miso-controller's entry for pipeline Bearer bypass.
+
+  # App semver when env.template / conversion yields kv://version (local secrets backfill).
+  - key: version
+    scope: app
+    generator:
+      type: literal
+      value: '1.0.0'
+    ensureOn: [resolveApp]
+    azure:
+      notes: >-
+        Default application version for kv://version; override in secrets when needed.
+
+  # Per-index database secrets (local names). Index must match requires.databases order in application.yaml.
+  - keyPattern: '^databases-[a-z0-9-]+-\d+-urlKeyVault$'
+    scope: app
+    generator:
+      type: databaseUrl
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretNamePattern: '{appKey}-databases-{index}-urlKeyVault'
+      notes: Azure vault secret name prefixes app key; local kv:// key has no app prefix.
+
+  - keyPattern: '^databases-[a-z0-9-]+-\d+-passwordKeyVault$'
+    scope: app
+    generator:
+      type: databasePassword
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      vaultSecretNamePattern: '{appKey}-databases-{index}-passwordKeyVault'
+
+  # Keycloak and other *-url keys (non-database).
+  - keyPattern: '^keycloak-.+-url$'
+    scope: shared-service
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+
+  # App-scoped URL placeholders (filled at resolve / deploy).
+  - keyPattern: '^[a-z0-9-]+-url$'
+    scope: app
+    generator:
+      type: emptyString
+    ensureOn: [resolveApp]
+
+  # Deploy manifest maps frontDoorRouting.host templates to this secret (Azure / pipeline).
+  - keyPattern: '^[a-z0-9-]+-frontdoor-routing-host$'
+    scope: app
+    generator:
+      type: emptyString
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: Hostname template for Traefik / Front Door; filled at deploy.
+
+  - keyPattern: '^[a-z0-9-]+-vdir-public$'
+    scope: app
+    generator:
+      type: emptyString
+    ensureOn: [resolveApp]
+
+  - keyPattern: '^[a-z0-9-]+-vdir-internal$'
+    scope: app
+    generator:
+      type: emptyString
+    ensureOn: [resolveApp]
+
+  - keyPattern: '^[a-z0-9-]+-host-public$'
+    scope: app
+    generator:
+      type: emptyString
+    ensureOn: [resolveApp]
+
+  - keyPattern: '^[a-z0-9-]+-host-internal$'
+    scope: app
+    generator:
+      type: emptyString
+    ensureOn: [resolveApp]
+
+  # Remaining *KeyVault secrets — generated tokens/passwords (not database rows above).
+  - keyPattern: '^[a-zA-Z0-9_-]+KeyVault$'
+    scope: app
+    generator:
+      type: randomBytes32
+    ensureOn: [resolveApp]

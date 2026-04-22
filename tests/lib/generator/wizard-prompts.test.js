@@ -183,7 +183,7 @@ describe('Wizard Prompts', () => {
       await wizardPrompts.promptForExistingCredential(credentialsList);
       const call = inquirer.prompt.mock.calls[0][0][0];
       expect(call.choices).toHaveLength(2);
-      expect(call.choices[0].name).toContain(' ✓');
+      expect(call.choices[0].name).toContain(' ✔');
       expect(call.choices[0].name).toContain('OK Credential');
       expect(call.choices[0].name).toContain(' (Valid)');
       expect(call.choices[1].name).toContain(' ○');

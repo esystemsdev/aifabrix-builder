@@ -48,7 +48,7 @@ function isLoggedIn() {
 
 console.log('🔍 Checking authentication...');
 if (!isLoggedIn()) {
-  console.log('⚠️  Not logged in. Run login (e.g. aifabrix login --controller <url> --method device --environment ' + env + ').');
+  console.log('⚠  Not logged in. Run login (e.g. aifabrix login --controller <url> --method device --environment ' + env + ').');
   run('aifabrix login --environment ' + env);
 }
 
@@ -56,16 +56,16 @@ console.log('🔍 Validating configuration...');
 {{#each allJsonFiles}}
 run('aifabrix validate "' + path.join(scriptDir, '{{this}}') + '"');
 {{/each}}
-console.log('✅ Validation passed');
+console.log('✔ Validation passed');
 
 console.log('🚀 Deploying ' + appKey + '...');
 run('aifabrix deploy ' + appKey, { cwd: projectRoot });
-console.log('✅ Deployment complete');
+console.log('✔ Deployment complete');
 
 if (process.env.RUN_TESTS !== 'false') {
   console.log('🧪 Running integration tests...');
   run('aifabrix test-integration ' + appKey, { cwd: projectRoot });
-  console.log('✅ Tests passed');
+  console.log('✔ Tests passed');
 }
 
-console.log('✅ Done.');
+console.log('✔ Done.');

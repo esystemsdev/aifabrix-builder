@@ -1,0 +1,23 @@
+# Headless wizard: regenerate HubSpot integration under integration/hubspot-test/
+# Requires dataplane access (controller → dataplane) and auth (login or client credentials).
+#
+# From repo root:
+#   node bin/aifabrix.js wizard --config integration/hubspot-test/wizard-hubspot-test-headless.yaml \
+#     --controller <CONTROLLER_URL> --environment <ENV>
+#
+# Or set deployment.controller / deployment.environment below and omit CLI flags if your
+# wizard runner merges them (see docs/commands/external-integration.md).
+
+appName: hubspot-test
+mode: create-system
+source:
+  type: known-platform
+  platform: hubspot
+credential:
+  action: skip
+preferences:
+  intent: "HubSpot CRM integration (hubspot-test fixtures)"
+  fieldOnboardingLevel: standard
+deployment:
+  controller: http://localhost:3110
+  environment: dev

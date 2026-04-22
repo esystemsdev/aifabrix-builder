@@ -182,9 +182,11 @@ describe('repair', () => {
             key: 'test-hubspot-record-storage',
             systemKey: appName,
             metadataSchema: { type: 'object', properties: { email: { type: 'string' } } },
+            dimensions: {
+              email: { type: 'local', field: 'email', actor: 'displayName', operator: 'eq' }
+            },
             fieldMappings: {
-              attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } },
-              dimensions: { email: 'metadata.email' }
+              attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } }
             }
           };
         }
@@ -557,9 +559,11 @@ describe('repair', () => {
             key: 'record-storage',
             systemKey: appName,
             metadataSchema: { type: 'object', properties: { email: { type: 'string' } } },
+            dimensions: {
+              email: { type: 'local', field: 'email', actor: 'displayName', operator: 'eq' }
+            },
             fieldMappings: {
-              attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } },
-              dimensions: { email: 'metadata.email' }
+              attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } }
             }
           };
         }
@@ -1691,9 +1695,13 @@ describe('repair', () => {
           return {
             key: 'hubspot-contact',
             systemKey: 'hubspot-test',
+            entityType: 'recordStorage',
             fieldMappings: {
-              attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } },
-              dimensions: { email: 'metadata.email', country: 'metadata.country' }
+              attributes: { email: { expression: '{{ metadata.email }}', type: 'string' } }
+            },
+            dimensions: {
+              email: { type: 'local', field: 'email', actor: 'displayName', operator: 'eq' },
+              country: { type: 'local', field: 'country' }
             }
           };
         }
@@ -1706,13 +1714,18 @@ describe('repair', () => {
       expect(result.updated).toBe(true);
       const dsWrite = writeConfigFile.mock.calls.find(c => path.basename(c[0]) === normalizedDsName);
       expect(dsWrite).toBeDefined();
-      expect(dsWrite[1].fieldMappings.dimensions).not.toHaveProperty('country');
-      expect(dsWrite[1].fieldMappings.dimensions.email).toBe('metadata.email');
+      expect(dsWrite[1].dimensions.email).toMatchObject({
+        type: 'local',
+        field: 'email',
+        actor: 'displayName',
+        operator: 'eq'
+      });
+      expect(dsWrite[1].dimensions.country).toBeUndefined();
       expect(dsWrite[1].metadataSchema).toBeDefined();
       expect(dsWrite[1].metadataSchema.type).toBe('object');
     });
 
-    it('with --expose sets exposed.attributes on datasource', async() => {
+    it('with --expose sets exposed.schema on datasource', async() => {
       // Use canonical names so normalizeDatasourceKeysAndFilenames skips; repair then writes same path
       const dsPath = path.join(appPath, 'hubspot-test-datasource-contact.json');
       existsSyncSpy.mockImplementation((p) => {
@@ -1745,9 +1758,12 @@ describe('repair', () => {
           return {
             key: 'hubspot-test-contact',
             systemKey: 'hubspot-test',
+            entityType: 'recordStorage',
             fieldMappings: {
-              attributes: { email: { expression: '{{ metadata.email }}', type: 'string' }, name: {} },
-              dimensions: { email: 'metadata.email' }
+              attributes: { email: { expression: '{{ metadata.email }}', type: 'string' }, name: {} }
+            },
+            dimensions: {
+              email: { type: 'local', field: 'email' }
             }
           };
         }
@@ -1760,7 +1776,10 @@ describe('repair', () => {
       const dsWrite = writeConfigFile.mock.calls.find(c => c[0] === dsPath);
       expect(dsWrite).toBeDefined();
       expect(dsWrite[1].exposed).toBeDefined();
-      expect(dsWrite[1].exposed.attributes).toEqual(expect.arrayContaining(['email', 'name']));
+      expect(dsWrite[1].exposed.schema).toMatchObject({
+        email: 'metadata.email',
+        name: 'metadata.name'
+      });
     });
 
     it('with --rbac adds permissions and default Admin/Reader roles to rbac.yaml', async() => {
@@ -1799,7 +1818,7 @@ describe('repair', () => {
             systemKey: 'hubspot-test',
             resourceType: 'contact',
             capabilities: ['list', 'get'],
-            fieldMappings: { attributes: { email: {} }, dimensions: {} }
+            fieldMappings: { attributes: { email: {} } }
           };
         }
         return {};
@@ -1858,7 +1877,7 @@ describe('repair', () => {
             systemKey: 'hubspot-test',
             resourceType: 'contact',
             capabilities: ['list', 'get'],
-            fieldMappings: { attributes: { email: {} }, dimensions: {} }
+            fieldMappings: { attributes: { email: {} } }
           };
         }
         return {};

@@ -19,6 +19,10 @@ jest.mock('../../lib/core/config', () => {
   const mockSaveConfig = jest.fn().mockResolvedValue();
   const mockClearConfig = jest.fn().mockResolvedValue();
   const mockGetCurrentEnvironment = jest.fn().mockResolvedValue('dev');
+  const mockGetTlsEnabled = jest.fn().mockResolvedValue(false);
+  const mockGetRemoteServer = jest.fn().mockResolvedValue(null);
+  const mockGetUseEnvironmentScopedResources = jest.fn().mockResolvedValue(false);
+  const mockGetTraefikEnabled = jest.fn().mockResolvedValue(false);
   const mockSetCurrentEnvironment = jest.fn().mockResolvedValue();
   const mockSetControllerUrl = jest.fn().mockResolvedValue();
   const mockGetControllerUrl = jest.fn().mockResolvedValue(null);
@@ -34,6 +38,10 @@ jest.mock('../../lib/core/config', () => {
     saveConfig: mockSaveConfig,
     clearConfig: mockClearConfig,
     getCurrentEnvironment: mockGetCurrentEnvironment,
+    getTlsEnabled: mockGetTlsEnabled,
+    getRemoteServer: mockGetRemoteServer,
+    getUseEnvironmentScopedResources: mockGetUseEnvironmentScopedResources,
+    getTraefikEnabled: mockGetTraefikEnabled,
     setCurrentEnvironment: mockSetCurrentEnvironment,
     setControllerUrl: mockSetControllerUrl,
     getControllerUrl: mockGetControllerUrl,
@@ -118,6 +126,14 @@ describe('CLI Comprehensive Tests', () => {
     config.getConfig.mockResolvedValue({ 'developer-id': 1, environment: 'dev', environments: {} });
     config.getCurrentEnvironment.mockClear();
     config.getCurrentEnvironment.mockResolvedValue('dev');
+    config.getTlsEnabled.mockClear();
+    config.getTlsEnabled.mockResolvedValue(false);
+    config.getRemoteServer.mockClear();
+    config.getRemoteServer.mockResolvedValue(null);
+    config.getUseEnvironmentScopedResources.mockClear();
+    config.getUseEnvironmentScopedResources.mockResolvedValue(false);
+    config.getTraefikEnabled.mockClear();
+    config.getTraefikEnabled.mockResolvedValue(false);
     config.setCurrentEnvironment.mockClear();
     config.setCurrentEnvironment.mockResolvedValue();
     config.setControllerUrl.mockClear();
@@ -181,7 +197,7 @@ describe('CLI Comprehensive Tests', () => {
       setupCommands(mockProgram);
       expect(mockProgram.command).toHaveBeenCalledWith('login');
       expect(mockProgram.command).toHaveBeenCalledWith('up-infra');
-      expect(mockProgram.command).toHaveBeenCalledWith('down-infra [app]');
+      expect(mockProgram.command).toHaveBeenCalledWith('down-infra [service|app]');
       expect(mockProgram.command).toHaveBeenCalledWith('create <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('build <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('run <app>');
@@ -193,7 +209,7 @@ describe('CLI Comprehensive Tests', () => {
       expect(deployCmdMock.option).toHaveBeenCalledWith('--local', expect.any(String));
       expect(mockProgram.command).toHaveBeenCalledWith('doctor');
       expect(mockProgram.command).toHaveBeenCalledWith('status');
-      expect(mockProgram.command).toHaveBeenCalledWith('restart <service>');
+      expect(mockProgram.command).toHaveBeenCalledWith('restart <service|app>');
       expect(mockProgram.command).toHaveBeenCalledWith('resolve <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('json <app>');
       expect(mockProgram.command).toHaveBeenCalledWith('dockerfile <app>');
@@ -360,7 +376,7 @@ describe('CLI Comprehensive Tests', () => {
     it('should stop infrastructure without volumes', async() => {
       infra.stopInfra.mockResolvedValue();
 
-      const action = commandActions['down-infra [app]'];
+      const action = commandActions['down-infra [service|app]'];
       await action(undefined, {});
 
       expect(infra.stopInfra).toHaveBeenCalled();
@@ -370,7 +386,7 @@ describe('CLI Comprehensive Tests', () => {
     it('should stop infrastructure with volumes', async() => {
       infra.stopInfraWithVolumes = jest.fn().mockResolvedValue();
 
-      const action = commandActions['down-infra [app]'];
+      const action = commandActions['down-infra [service|app]'];
       await action(undefined, { volumes: true });
 
       expect(infra.stopInfraWithVolumes).toHaveBeenCalled();
@@ -379,7 +395,7 @@ describe('CLI Comprehensive Tests', () => {
     it('should handle stop errors', async() => {
       infra.stopInfra.mockRejectedValue(new Error('Stop failed'));
 
-      const action = commandActions['down-infra [app]'];
+      const action = commandActions['down-infra [service|app]'];
       await action(undefined, {});
 
       expect(console.error).toHaveBeenCalled();
@@ -454,9 +470,9 @@ describe('CLI Comprehensive Tests', () => {
 
       try {
         const imageTag = await app.buildApp(appName, options);
-        console.log(`✅ Built image: ${imageTag}`);
+        console.log(`✔ Built image: ${imageTag}`);
         expect(app.buildApp).toHaveBeenCalledWith(appName, options);
-        expect(console.log).toHaveBeenCalledWith('✅ Built image: test-app:latest');
+        expect(console.log).toHaveBeenCalledWith('✔ Built image: test-app:latest');
       } catch (error) {
         const { handleCommandError } = require('../../lib/cli');
         handleCommandError(error, 'build');
@@ -784,9 +800,9 @@ describe('CLI Comprehensive Tests', () => {
       const service = 'postgres';
       try {
         await infra.restartService(service);
-        console.log(`✅ ${service} service restarted successfully`);
+        console.log(`✔ ${service} service restarted successfully`);
         expect(infra.restartService).toHaveBeenCalledWith(service);
-        expect(console.log).toHaveBeenCalledWith('✅ postgres service restarted successfully');
+        expect(console.log).toHaveBeenCalledWith('✔ postgres service restarted successfully');
       } catch (error) {
         const { handleCommandError } = require('../../lib/cli');
         handleCommandError(error, 'restart');
@@ -821,9 +837,9 @@ describe('CLI Comprehensive Tests', () => {
       const appName = 'test-app';
       try {
         const envPath = await secrets.generateEnvFile(appName);
-        console.log(`✓ Generated .env file: ${envPath}`);
+        console.log(`✔ Generated .env file: ${envPath}`);
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName);
-        expect(console.log).toHaveBeenCalledWith('✓ Generated .env file: /path/to/.env');
+        expect(console.log).toHaveBeenCalledWith('✔ Generated .env file: /path/to/.env');
       } catch (error) {
         const { handleCommandError } = require('../../lib/cli');
         handleCommandError(error, 'resolve');
@@ -866,9 +882,9 @@ describe('CLI Comprehensive Tests', () => {
       try {
         const result = await generator.generateDeployJsonWithValidation(appName);
         if (result.success) {
-          console.log(`✓ Generated deployment JSON: ${result.path}`);
+          console.log(`✔ Generated deployment JSON: ${result.path}`);
           if (result.validation.warnings.length > 0) {
-            console.log('\n⚠️  Warnings:');
+            console.log('\n⚠  Warnings:');
             result.validation.warnings.forEach(warning => console.log(`   • ${warning}`));
           }
         }
@@ -894,11 +910,11 @@ describe('CLI Comprehensive Tests', () => {
       try {
         const result = await generator.generateDeployJsonWithValidation(appName);
         if (!result.success) {
-          console.log('❌ Validation failed:');
+          console.log('✖ Validation failed:');
           result.validation.errors.forEach(error => console.log(`   • ${error}`));
           process.exit(1);
         }
-        expect(console.log).toHaveBeenCalledWith('❌ Validation failed:');
+        expect(console.log).toHaveBeenCalledWith('✖ Validation failed:');
         expect(process.exit).toHaveBeenCalledWith(1);
       } catch (error) {
         const { handleCommandError } = require('../../lib/cli');
@@ -935,7 +951,7 @@ describe('CLI Comprehensive Tests', () => {
       const options = { language: 'typescript', force: true };
       try {
         const dockerfilePath = await app.generateDockerfileForApp(appName, options);
-        console.log('\n✅ Dockerfile generated successfully!');
+        console.log('\n✔ Dockerfile generated successfully!');
         console.log(`Location: ${dockerfilePath}`);
         expect(app.generateDockerfileForApp).toHaveBeenCalledWith(appName, options);
         expect(console.log).toHaveBeenCalled();

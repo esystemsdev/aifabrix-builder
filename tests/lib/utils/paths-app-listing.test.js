@@ -1,0 +1,79 @@
+/**
+ * Real-filesystem coverage for listIntegrationAppNames / listBuilderAppNames.
+ * Runs in the isolated Jest project `paths-app-listing` (see jest.projects.js) so other suites’
+ * jest.mock('fs') / jest.mock('paths') cannot leak into the same worker. Uses real disk via node:fs.
+ * @fileoverview
+ */
+'use strict';
+
+// Use real fs: other suites (e.g. paths.test.js) call jest.mock('fs'); require('fs') would be a mock
+// and would not create dirs while lib/utils/paths reads via node-fs (real disk) → flaky [].
+const fs = jest.requireActual('node:fs');
+const os = require('os');
+const path = require('path');
+
+describe('paths app listing (real fs, broken symlinks)', () => {
+  let tmp;
+  let savedCwd;
+  let savedProjectRoot;
+
+  beforeEach(() => {
+    savedCwd = process.cwd();
+    savedProjectRoot = global.PROJECT_ROOT;
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aifx-paths-list-'));
+    fs.writeFileSync(path.join(tmp, 'package.json'), '{}');
+    process.chdir(tmp);
+    global.PROJECT_ROOT = tmp;
+    jest.resetModules();
+  });
+
+  afterEach(() => {
+    process.chdir(savedCwd);
+    global.PROJECT_ROOT = savedProjectRoot;
+    try {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
+    jest.resetModules();
+    const paths = require('../../../lib/utils/paths');
+    paths.clearProjectRootCache();
+  });
+
+  function trySymlink(target, linkPath) {
+    try {
+      fs.symlinkSync(target, linkPath);
+      return true;
+    } catch (err) {
+      if (
+        err &&
+        (err.code === 'EPERM' ||
+          err.code === 'EOPNOTSUPP' ||
+          err.code === 'ENOENT')
+      ) {
+        return false;
+      }
+      throw err;
+    }
+  }
+
+  it('listIntegrationAppNames omits broken symlink entries (e.g. dataplane)', () => {
+    fs.mkdirSync(path.join(tmp, 'integration', 'goodapp'), { recursive: true });
+    const ok = trySymlink(path.join(tmp, '__no_such_target__'), path.join(tmp, 'integration', 'dataplane'));
+    if (!ok) {
+      return;
+    }
+    const paths = require('../../../lib/utils/paths');
+    expect(paths.listIntegrationAppNames()).toEqual(['goodapp']);
+  });
+
+  it('listBuilderAppNames omits broken symlink entries', () => {
+    fs.mkdirSync(path.join(tmp, 'builder', 'app'), { recursive: true });
+    const ok = trySymlink(path.join(tmp, '__no_such_builder_link__'), path.join(tmp, 'builder', 'badlink'));
+    if (!ok) {
+      return;
+    }
+    const paths = require('../../../lib/utils/paths');
+    expect(paths.listBuilderAppNames()).toEqual(['app']);
+  });
+});

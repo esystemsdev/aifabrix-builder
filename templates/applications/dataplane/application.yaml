@@ -5,7 +5,7 @@ app:
   description: "AI Fabrix Dataplane is a secure, in-tenant integration and automation layer that supplies governed, normalized, and explainable enterprise data to AI agents. Using CIP as a declarative standard, it enforces RBAC and ABAC, executes integrations, and exposes trusted data via MCP and OpenAPI."
   type: webapp
   language: python  # Explicitly specify Python language
-  version: 1.8.0
+  version: 1.9.5
 
 # Image Configuration
 # Set tag to match your build (e.g. aifabrix build dataplane -t v1.0.0 then tag: v1.0.0)
@@ -18,6 +18,16 @@ image:
 
 # Port Configuration
 port: 3001
+environmentScopedResources: true
+
+# Public path behind Azure Front Door / reverse proxy (used by url://public and urls.local.yaml).
+# Traefik: host is expanded from developer-id + remote-server (hostname of `remote-server` in ~/.aifabrix/config.yaml).
+# Path uses pattern below plus optional /dev|/tst prefix when env-scoped resources are effective (plan 117).
+frontDoorRouting:
+  pattern: /data/*
+  enabled: true
+  host: ${DEV_USERNAME}.${REMOTE_HOST}
+  tls: ${TLS_ENABLED}
 
 # Azure Requirements
 requires:
@@ -51,7 +61,6 @@ build:
   context: ../..                  # Docker build context (relative to builder/dataplane/)
   dockerfile: builder/dataplane/Dockerfile  # Dockerfile path (relative to project root)
   envOutputPath: ../../.env       # Copy to repo root for local dev
-  localPort: 3011                 # Port for local development (different from Docker port)
   language: python                # Runtime language for template selection (typescript or python)
   reloadStart: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001} --reload  # PORT set from port above at run time; default 3001 must match port
 
@@ -97,6 +106,47 @@ configuration:
         - summary
         - detailed
         - explain
+
+  - name: TRUST_CUSTOMER_POLICY_LEVEL
+    portalInput:
+      field: select
+      label: "Trust policy level (no-policy defaults)"
+      options:
+        - strict
+        - standard
+        - relaxed
+
+  - name: TRUST_PUBLISH_GATE_ENABLED
+    portalInput:
+      field: select
+      label: "Enforce trust gate on datasource publish"
+      options:
+        - "false"
+        - "true"
+
+  - name: TRUST_PROMOTE_GATE_ENABLED
+    portalInput:
+      field: select
+      label: "Enforce trust gate on external system publish (promote scope)"
+      options:
+        - "false"
+        - "true"
+
+  - name: TRUST_RUNTIME_GATE_ENABLED
+    portalInput:
+      field: select
+      label: "Enforce trust gate on CIP execution (runtime scope)"
+      options:
+        - "false"
+        - "true"
+
+  - name: TRUST_AI_EXPOSURE_GATE_ENABLED
+    portalInput:
+      field: select
+      label: "Enforce trust gate on AI document-storage prompt generation"
+      options:
+        - "false"
+        - "true"
 
   # -------------------------------------------------------------------------
   # CIP Execution - Resource Limits

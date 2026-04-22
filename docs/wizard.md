@@ -21,9 +21,9 @@ The wizard produces configuration that you then **deploy** (via the controller) 
 
 | Option | Description |
 | ------ | ----------- |
-| `[appName]` or `-a, --app <app>` | Application/integration key. When set, the wizard uses `integration/<appName>/wizard.yaml` for load/save and `error.log`. |
+| `[systemKey]` or `-a, --app <app>` | Application/integration folder key. When set, the wizard uses `integration/<systemKey>/wizard.yaml` for load/save and `error.log`. |
 | `--config <file>` | Run headless using the given wizard config file (any path). Skips all prompts. |
-| `--silent` | Run headless using **only** `integration/<appName>/wizard.yaml` (requires app name). No prompts; file must exist and be valid. |
+| `--silent` | Run headless using **only** `integration/<systemKey>/wizard.yaml` (requires system key). No prompts; file must exist and be valid. |
 | `--debug` | Enable debug output and save debug manifests on validation failure (`debug.log`, `debug-system.yaml`, `debug-datasource.yaml`). |
 
 ### Interactive Mode
@@ -34,7 +34,7 @@ Run the wizard command (mode is asked first, then app name or system for add-dat
 aifabrix wizard
 ```
 
-Or with an app name (loads `integration/<appName>/wizard.yaml` if present; saves state and errors there):
+Or with a system key (loads `integration/<systemKey>/wizard.yaml` if present; saves state and errors there):
 
 ```bash
 aifabrix wizard my-integration
@@ -48,7 +48,7 @@ With debug output (saves debug manifests on validation failure):
 aifabrix wizard hubspot-test --debug
 ```
 
-If `integration/<appName>/wizard.yaml` exists and is valid, the wizard shows a short summary and asks **Run with saved config?** — choose **Yes** to run headless with that config, or **No** to be told to edit the file and run `aifabrix wizard <appName>` again.
+If `integration/<systemKey>/wizard.yaml` exists and is valid, the wizard shows a short summary and asks **Run with saved config?** — choose **Yes** to run headless with that config, or **No** to be told to edit the file and run `aifabrix wizard <systemKey>` again.
 
 You can also use the wizard when creating an external system:
 
@@ -81,7 +81,7 @@ This runs headless using **only** `integration/my-integration/wizard.yaml`. No p
 - When you provide an app name (e.g. `aifabrix wizard my-integration`), the wizard uses the folder `integration/my-integration/` for:
   - **wizard.yaml** – Loaded at start if it exists. If valid, a summary is shown and you are asked **Run with saved config?** (Yes = run headless with that config; No = exit with a message to edit the file and run again). Saved on success or on error (partial state).
   - **error.log** – Errors are appended here (timestamp + message; validation details from the API are included when available; no secrets).
-- To resume after an error: run `aifabrix wizard <appKey>` again. The CLI will show: `To resume: aifabrix wizard <appKey>` and `See integration/<appKey>/error.log for details.`
+- To resume after an error: run `aifabrix wizard <systemKey>` again. The CLI will show: `To resume: aifabrix wizard <systemKey>` and `See integration/<systemKey>/error.log for details.`
 
 ## Wizard Workflow
 
@@ -100,19 +100,19 @@ The wizard asks **mode first** (before app name or system selection), creates a 
 
 ### Quick Integration Flow
 
-1. Run `aifabrix wizard [appName]` or `aifabrix wizard --config wizard.yaml`
+1. Run `aifabrix wizard [systemKey]` or `aifabrix wizard --config wizard.yaml`
 2. Complete Steps 1–5 (mode, source, credential, type, preferences)
 3. At Step 6: Review the **preview summary** (fetched from dataplane); choose **Accept and save** or **Cancel**
-4. Wizard saves files to `integration/<appKey>/`
-5. Deploy: `aifabrix deploy <appKey>` or `node deploy.js` from the integration folder
+4. Wizard saves files to `integration/<systemKey>/`
+5. Deploy: `aifabrix deploy <app>` or `node deploy.js` from the integration folder
 
 ### Step 1: Mode and Create Session
 
 **When app name is given** (`aifabrix wizard my-integration`) **and no valid saved config exists:** The mode prompt is skipped. The wizard goes directly to "Create a new external system" (Known platform is available). "Add datasource" is not shown because the integration folder already exists for the given app.
 
 **When no app name is given** (`aifabrix wizard`), the first question is: **What would you like to do?**
-- **Create a new external system** – You are then prompted for application name. The folder `integration/<appKey>/` is created and used for wizard.yaml and error.log.
-- **Add datasource to existing system** – You are prompted to select or enter the existing system. The wizard lists systems with **Name** and **appKey** (e.g. `HubSpot CRM (hubspot-test)`), 10 items per page. The builder validates that the system exists on the dataplane (and re-prompts if not). The integration folder is derived from the system key. **Note:** In add-datasource mode, "Known platform" is hidden in Step 2 because the system already exists on the dataplane and uses its existing OpenAPI/MCP source.
+- **Create a new external system** – You are then prompted for application name. The folder `integration/<systemKey>/` is created and used for wizard.yaml and error.log.
+- **Add datasource to existing system** – You are prompted to select or enter the existing system. The wizard lists systems with **Name** and **system key** (e.g. `HubSpot CRM (hubspot-test)`), 10 items per page. The builder validates that the system exists on the dataplane (and re-prompts if not). The integration folder is derived from the system key. **Note:** In add-datasource mode, "Known platform" is hidden in Step 2 because the system already exists on the dataplane and uses its existing OpenAPI/MCP source.
 
 After that, a wizard session is created on the dataplane.
 
@@ -208,7 +208,7 @@ After reviewing, choose **Accept and save** or **Cancel**. On accept, the wizard
 
 ### Step 7: Save Files
 
-The wizard saves all files to `integration/<appKey>/`:
+The wizard saves all files to `integration/<systemKey>/`:
 - `wizard.yaml` - Saved wizard state (loaded on resume; saved on success or on error as partial state)
 - `error.log` - Errors appended here (timestamp + message; validation details when the API returns them)
 - `application.yaml` (or `application.json`) - Application variables and external integration configuration
@@ -227,7 +227,7 @@ The wizard **includes deployment** configuration so you can target a specific co
 
 For automated deployments, use a `wizard.yaml` file. When running interactively with an app name (e.g. `aifabrix wizard my-integration`), the wizard reads and writes `integration/my-integration/wizard.yaml` for load/save and resume.
 
-Example location: `integration/<appKey>/wizard.yaml`
+Example location: `integration/<systemKey>/wizard.yaml`
 
 ```yaml
 # wizard.yaml - Headless configuration for external system wizard
@@ -426,7 +426,7 @@ Validation errors are displayed before saving files.
 The wizard creates the following file structure:
 
 ```yaml
-integration/<appKey>/
+integration/<systemKey>/
 ├── wizard.yaml                    # Saved wizard state (load/save and resume)
 ├── error.log                      # Errors appended (timestamp + message; validation details when available)
 ├── debug.log                      # (When debug: true) Detailed generation steps from dataplane
@@ -460,31 +460,31 @@ Set credential values via the Miso Controller or Dataplane portal when configuri
 
 ## Deployment
 
-After the wizard completes, you can test the integration on the dataplane with **`aifabrix upload <system-key>`** before promoting with **`aifabrix deploy <app>`**. See [External Integration Commands](commands/external-integration.md#aifabrix-upload-system-key). You can also deploy using the generated `deploy.js` script or the CLI directly.
+After the wizard completes, you can test the integration on the dataplane with **`aifabrix upload <systemKey>`** before promoting with **`aifabrix deploy <app>`**. See [External Integration Commands](commands/external-integration.md#aifabrix-upload-system-key). You can also deploy using the generated `deploy.js` script or the CLI directly.
 
 ### Using deploy.js
 
 The wizard generates a Node script `deploy.js`. Run it for the full flow:
 
 ```bash
-cd integration/<appKey>
+cd integration/<systemKey>
 node deploy.js
 ```
 
 **What the script does:**
 1. **Check auth** – Runs `aifabrix auth status`; if not logged in, runs `aifabrix login --environment <env>` so you can complete device or credentials flow.
 2. **Validate** – Validates all JSON configuration files.
-3. **Deploy** – Runs `aifabrix deploy <appKey>` to send the deployment to the Miso Controller.
-4. **Run integration tests** – Runs `aifabrix test-integration <appKey>` (unless `RUN_TESTS=false`).
+3. **Deploy** – Runs `aifabrix deploy <app>` to send the deployment to the Miso Controller.
+4. **Run integration tests** – Runs `aifabrix test-integration <app>` (unless `RUN_TESTS=false`).
 
 Controller URL and environment come from config (`aifabrix auth config`) or from `CONTROLLER` and `ENVIRONMENT` environment variables. You can extend the script (e.g. add steps or different test commands).
 
 ### Using CLI Directly
 
-You can also deploy using the CLI directly. For external systems in `integration/<appKey>/`, the CLI resolves the app path automatically (integration first, then builder). No app register needed; the controller creates and deploys automatically:
+You can also deploy using the CLI directly. For external systems in `integration/<systemKey>/`, the CLI resolves the app path automatically (integration first, then builder). No app register needed; the controller creates and deploys automatically:
 
 ```bash
-aifabrix deploy <appKey>
+aifabrix deploy <app>
 ```
 
 ## Troubleshooting
@@ -535,7 +535,7 @@ If OpenAPI parsing fails:
 ### Configuration Generation Failed
 
 If AI generation fails (e.g. "Request validation failed"):
-- The CLI shows validation details when the dataplane returns them (field-level errors, configuration errors). The same details are written to `integration/<appKey>/error.log` (plain text, no ANSI codes) so you can inspect exactly which fields failed.
+- The CLI shows validation details when the dataplane returns them (field-level errors, configuration errors). The same details are written to `integration/<systemKey>/error.log` (plain text, no ANSI codes) so you can inspect exactly which fields failed.
 - Check your dataplane connection
 - Verify authentication is working
 - Try again (generation may timeout on large specifications)
@@ -543,14 +543,14 @@ If AI generation fails (e.g. "Request validation failed"):
 ### Validation Errors
 
 If validation fails:
-- Review the error messages (and `integration/<appKey>/error.log` for full validation details when the API returns them)
-- Fix the configuration: edit `integration/<appKey>/wizard.yaml` and run `aifabrix wizard <appKey>` again, or re-run the wizard interactively from step 1
+- Review the error messages (and `integration/<systemKey>/error.log` for full validation details when the API returns them)
+- Fix the configuration: edit `integration/<systemKey>/wizard.yaml` and run `aifabrix wizard <systemKey>` again, or re-run the wizard interactively from step 1
 
-**Debug manifest:** When `preferences.debug: true` in wizard.yaml and validation fails, the Builder saves a debug manifest to `integration/<appKey>/`:
+**Debug manifest:** When `preferences.debug: true` in wizard.yaml and validation fails, the Builder saves a debug manifest to `integration/<systemKey>/`:
 - `debug.log` – detailed generation steps from the dataplane
 - `debug-system.yaml` and `debug-datasource.yaml` – configuration snapshots for manual fix (when the API returns them)
 
-The CLI prints: *"Debug manifest saved to integration/<appKey>/. Review debug.log and fix the manifest manually, then run: aifabrix wizard <appKey>"*
+The CLI prints: *"Debug manifest saved to integration/<systemKey>/. Review debug.log and fix the manifest manually, then run: aifabrix wizard <systemKey>"*
 
 For detailed validation information, see [Validation Commands](commands/validation.md).
 
@@ -587,11 +587,11 @@ aifabrix wizard --app my-api
 # Option 1: Config file (any path)
 aifabrix wizard --config wizard.yaml
 
-# Option 2: Silent mode (uses integration/<app>/wizard.yaml; no prompts)
+# Option 2: Silent mode (uses integration/<systemKey>/wizard.yaml; no prompts)
 aifabrix wizard my-integration --silent
 ```
 
-Create `wizard.yaml` in your repo (or under `integration/<app>/wizard.yaml` for silent mode). You can include `deployment.controller` and `deployment.environment` to override config.
+Create `wizard.yaml` in your repo (or under `integration/<systemKey>/wizard.yaml` for silent mode). You can include `deployment.controller` and `deployment.environment` to override config.
 
 ## Reference
 

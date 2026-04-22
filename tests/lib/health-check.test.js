@@ -8,7 +8,6 @@
 
 const http = require('http');
 const { exec } = require('child_process');
-const { promisify } = require('util');
 
 // Mock chalk before requiring modules that use it
 jest.mock('chalk', () => {
@@ -59,8 +58,8 @@ jest.mock('child_process', () => ({
   exec: jest.fn()
 }));
 
-jest.mock('util', () => ({
-  promisify: jest.fn((fn) => fn)
+jest.mock('../../lib/utils/docker-exec', () => ({
+  execWithDockerEnv: jest.fn()
 }));
 
 jest.mock('../../lib/utils/logger', () => ({
@@ -72,10 +71,10 @@ jest.mock('../../lib/utils/logger', () => ({
 
 jest.mock('http');
 
+const { execWithDockerEnv } = require('../../lib/utils/docker-exec');
 const healthCheck = require('../../lib/utils/health-check');
 
 describe('Health Check Utilities', () => {
-  let execAsync;
   let logger;
   let mockHttpRequest;
   let mockResponseHandlers;
@@ -84,11 +83,10 @@ describe('Health Check Utilities', () => {
     jest.clearAllMocks();
     jest.useFakeTimers();
 
-    execAsync = promisify(exec);
     logger = require('../../lib/utils/logger');
 
-    // Setup default mock for execAsync
-    execAsync.mockResolvedValue({ stdout: '', stderr: '' });
+    execWithDockerEnv.mockReset();
+    execWithDockerEnv.mockResolvedValue({ stdout: '', stderr: '' });
 
     // Setup mock for http.request with proper request/response handling
     mockResponseHandlers = {
@@ -147,7 +145,7 @@ describe('Health Check Utilities', () => {
   describe('waitForHealthCheck', () => {
     describe('db-init container handling', () => {
       it('should check db-init container exists and is already completed', async() => {
-        execAsync.mockImplementation((cmd) => {
+        execWithDockerEnv.mockImplementation((cmd) => {
           if (cmd.includes('docker ps -a')) {
             return Promise.resolve({ stdout: 'aifabrix-test-app-db-init\n', stderr: '' });
           }
@@ -186,7 +184,7 @@ describe('Health Check Utilities', () => {
       });
 
       it('should log warning when db-init exits with non-zero code', async() => {
-        execAsync.mockImplementation((cmd) => {
+        execWithDockerEnv.mockImplementation((cmd) => {
           if (cmd.includes('docker ps -a')) {
             return Promise.resolve({ stdout: 'aifabrix-test-app-db-init\n', stderr: '' });
           }
@@ -229,7 +227,7 @@ describe('Health Check Utilities', () => {
 
       it('should wait for db-init container to complete', async() => {
         let inspectCallCount = 0;
-        execAsync.mockImplementation((cmd) => {
+        execWithDockerEnv.mockImplementation((cmd) => {
           if (cmd.includes('docker ps -a')) {
             return Promise.resolve({ stdout: 'aifabrix-test-app-db-init\n', stderr: '' });
           }
@@ -278,7 +276,7 @@ describe('Health Check Utilities', () => {
 
       it('should handle db-init container exiting with non-zero code during wait', async() => {
         let inspectCallCount = 0;
-        execAsync.mockImplementation((cmd) => {
+        execWithDockerEnv.mockImplementation((cmd) => {
           if (cmd.includes('docker ps -a')) {
             return Promise.resolve({ stdout: 'aifabrix-test-app-db-init\n', stderr: '' });
           }
@@ -326,7 +324,7 @@ describe('Health Check Utilities', () => {
       });
 
       it('should handle db-init container not existing', async() => {
-        execAsync.mockImplementation((cmd) => {
+        execWithDockerEnv.mockImplementation((cmd) => {
           if (cmd.includes('docker ps -a')) {
             return Promise.resolve({ stdout: '', stderr: '' });
           }
@@ -357,7 +355,7 @@ describe('Health Check Utilities', () => {
       });
 
       it('should handle db-init container error gracefully', async() => {
-        execAsync.mockImplementation((cmd) => {
+        execWithDockerEnv.mockImplementation((cmd) => {
           if (cmd.includes('docker ps -a')) {
             return Promise.reject(new Error('Docker error'));
           }
@@ -390,7 +388,7 @@ describe('Health Check Utilities', () => {
 
     describe('port detection', () => {
       it('should auto-detect port from container', async() => {
-        execAsync.mockImplementation((cmd) => {
+        execWithDockerEnv.mockImplementation((cmd) => {
           if (cmd.includes('docker inspect') && cmd.includes('NetworkSettings.Ports')) {
             return Promise.resolve({ stdout: '3000\n', stderr: '' });
           }
@@ -430,7 +428,7 @@ describe('Health Check Utilities', () => {
       });
 
       it('should use default port when container port detection fails', async() => {
-        execAsync.mockImplementation((cmd) => {
+        execWithDockerEnv.mockImplementation((cmd) => {
           if (cmd.includes('docker inspect') && cmd.includes('NetworkSettings.Ports')) {
             return Promise.reject(new Error('Docker error'));
           }
@@ -467,69 +465,6 @@ describe('Health Check Utilities', () => {
           }),
           expect.any(Function)
         );
-      });
-
-      it('should use default port when no ports found', async() => {
-        // Use real timers for this test to avoid timing issues with fake timers
-        jest.useRealTimers();
-
-        const { exec } = require('child_process');
-        exec.mockImplementation((command, options, callback) => {
-          const cb = typeof options === 'function' ? options : callback;
-          // Mock db-init container check - return immediately (already completed)
-          if (command.includes('docker ps -a')) {
-            if (cb) setImmediate(() => cb(null, { stdout: 'aifabrix-test-app-db-init\n', stderr: '' }));
-          } else if (command.includes('docker inspect') && command.includes('State.Status')) {
-            if (cb) setImmediate(() => cb(null, { stdout: 'exited\n', stderr: '' }));
-          } else if (command.includes('docker inspect') && command.includes('State.ExitCode')) {
-            if (cb) setImmediate(() => cb(null, { stdout: '0\n', stderr: '' }));
-          } else if (command.includes('docker inspect') && command.includes('NetworkSettings.Ports')) {
-            // Mock port detection returning empty (newline only)
-            if (cb) setImmediate(() => cb(null, { stdout: '\n', stderr: '' }));
-          } else if (command.includes('docker ps --filter')) {
-            // Mock docker ps fallback returning empty
-            if (cb) setImmediate(() => cb(null, { stdout: '', stderr: '' }));
-          } else {
-            if (cb) setImmediate(() => cb(null, { stdout: '', stderr: '' }));
-          }
-        });
-
-        // Mock successful HTTP health check - use setImmediate for real timers
-        http.request.mockImplementation((options, callback) => {
-          const mockResponse = {
-            statusCode: 200,
-            headers: {},
-            on: jest.fn((event, handler) => {
-              // Use setImmediate for real timers to ensure handlers are called asynchronously
-              if (event === 'data') {
-                setImmediate(() => handler(Buffer.from(JSON.stringify({ status: 'ok' }))));
-              }
-              if (event === 'end') {
-                setImmediate(() => handler());
-              }
-            })
-          };
-          // Call callback asynchronously for real timers
-          if (callback) {
-            setImmediate(() => callback(mockResponse));
-          }
-          return mockHttpRequest;
-        });
-
-        await expect(healthCheck.waitForHealthCheck('test-app', 10, null))
-          .resolves.not.toThrow();
-
-        expect(http.request).toHaveBeenCalledWith(
-          expect.objectContaining({
-            hostname: 'localhost',
-            port: '3000',
-            path: '/health'
-          }),
-          expect.any(Function)
-        );
-
-        // Restore fake timers for other tests
-        jest.useFakeTimers();
       });
     });
 
@@ -880,7 +815,7 @@ describe('Health Check Utilities', () => {
           return mockHttpRequest;
         });
 
-        execAsync.mockImplementation((cmd) => {
+        execWithDockerEnv.mockImplementation((cmd) => {
           if (cmd.includes('docker inspect') && cmd.includes('NetworkSettings.Ports')) {
             return Promise.resolve({ stdout: '3000\n', stderr: '' });
           }

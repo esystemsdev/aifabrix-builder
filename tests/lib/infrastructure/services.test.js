@@ -31,6 +31,10 @@ jest.mock('../../../lib/core/config', () => ({
   getDeveloperId: jest.fn().mockResolvedValue(0)
 }));
 
+jest.mock('../../../lib/utils/remote-docker-env', () => ({
+  getDockerExecEnv: jest.fn().mockImplementation(async() => ({ ...process.env }))
+}));
+
 jest.mock('../../../lib/utils/infra-containers', () => ({
   checkServiceWithHealthCheck: jest.fn().mockResolvedValue('healthy'),
   checkServiceWithoutHealthCheck: jest.fn().mockResolvedValue('healthy')

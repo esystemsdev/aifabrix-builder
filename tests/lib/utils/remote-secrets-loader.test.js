@@ -6,7 +6,8 @@
 jest.mock('../../../lib/core/config');
 jest.mock('../../../lib/utils/remote-dev-auth', () => ({
   isRemoteSecretsUrl: jest.fn(),
-  getRemoteDevAuth: jest.fn()
+  getRemoteDevAuth: jest.fn(),
+  resolveSharedSecretsEndpoint: jest.fn(async(p) => p)
 }));
 jest.mock('../../../lib/api/dev.api');
 
@@ -54,7 +55,12 @@ describe('remote-secrets-loader', () => {
       ]);
       const result = await loadRemoteSharedSecrets();
       expect(result).toEqual({ KEY1: 'v1', KEY2: '123' });
-      expect(devApi.listSecrets).toHaveBeenCalledWith('https://dev.example.com', 'pem');
+      expect(devApi.listSecrets).toHaveBeenCalledWith(
+        'https://dev.example.com',
+        'pem',
+        undefined,
+        'https://dev.example.com/secrets'
+      );
     });
 
     it('returns null on API error', async() => {

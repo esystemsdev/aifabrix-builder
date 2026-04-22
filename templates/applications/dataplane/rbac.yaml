@@ -184,6 +184,10 @@ permissions:
   - name: "document-record:approve"
     roles: ["aifabrix-platform-admin", "aifabrix-compliance-admin"]
     description: "Approve document records"
+
+  - name: "document-record:triage-unowned"
+    roles: ["aifabrix-platform-admin", "aifabrix-compliance-admin"]
+    description: "Include unowned pending documents (createdBy null) in the pending validation queue"
   
   # External record management
   - name: "external-record:create"
@@ -250,6 +254,10 @@ permissions:
   - name: "record-relation:create"
     roles: ["aifabrix-platform-admin", "aifabrix-developer"]
     description: "Create record relations"
+
+  - name: "record-relation:update"
+    roles: ["aifabrix-platform-admin", "aifabrix-developer"]
+    description: "Update mutable fields on record relations (direction, confidence, catalogId, createdBy)"
   
   - name: "record-relation:read"
     roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]

@@ -1,66 +1,39 @@
 # validate-tests-ci
 
-When the `/validate-tests-ci` command is used, the agent must run CI test validation to ensure all tests pass in a clean CI-like environment. This command focuses specifically on GitHub CI testing validation by running the CI simulation script.
+Run from the **aifabrix-builder** repo root:
 
-**Execution Process:**
-
-1. **CI Simulation**:
-   - Run `pnpm test:ci` to execute the CI simulation script
-   - This simulates the GitHub CI environment by:
-     - Copying the project to a temporary directory
-     - Installing dependencies with `npm ci`
-     - Running linting
-     - Running all tests (excluding local tests)
-   - Wait for completion and capture results
-
-2. **Result Analysis**:
-   - Check if CI simulation passed or failed
-   - If failed, analyze the failure report:
-     - Read `/workspace/aifabrix-builder/temp/ci-reports/last-run-summary.txt`
-     - Read `/workspace/aifabrix-builder/temp/ci-reports/last-run-failures.txt`
-     - Identify which tests failed and why
-   - Report the status clearly to the user
-
-3. **Failure Handling**:
-   - If tests fail, provide a summary of:
-     - Which test suites failed
-     - Common error patterns detected
-     - Specific failure reasons
-   - Do NOT attempt to fix failures automatically unless explicitly requested
-   - Provide actionable information about what needs to be fixed
-
-4. **Success Confirmation**:
-   - If all tests pass, confirm that the codebase is ready for CI
-   - Report test statistics (test suites passed, total tests passed)
-   - Indicate that the code will pass GitHub Actions CI
-
-**Important Notes:**
-
-- This command runs tests in a clean environment similar to GitHub CI
-- Local tests in `tests/local/` are automatically excluded in CI environments (see `jest.config.js` when `INCLUDE_LOCAL_TESTS` is not `'true'`). This includes complex tests such as `app-coverage-uncovered.test.js` that rely on temp-dir and path resolution and are kept out of CI scope.
-- The CI simulation may take several minutes to complete
-- Test results are saved to `temp/ci-reports/` for review
-- This validation is more strict than local testing and catches environment-specific issues
-
-**Expected Output:**
-
-```
-✓ Linting passed
-✓ All tests passed
-Test Suites: 181 passed, 181 total
-Tests: 3978 passed
+```bash
+npm run test:ci
 ```
 
-Or if failures occur:
+This runs `tests/scripts/ci-simulate.sh`: copy tree to a temp dir, `npm ci`, `npm run lint`, then `npm test` (same two-pass flow as local: default Jest config + isolated Jest config).
 
-```
-✗ Tests failed
-Failed Test Summary:
-FAIL tests/lib/some-test.test.js
-  ● Test description
-    Error message
-```
+## Reading the report
 
-**Usage:**
+- `temp/ci-reports/last-run-summary.txt` — lint + combined Jest summaries (default **and** isolated).
+- `temp/ci-reports/last-run-tests.txt` — full log.
+- `temp/ci-reports/last-run-failures.txt` — failure excerpt when tests fail.
 
-The user can invoke this command to validate that their changes will pass GitHub CI before pushing or creating a pull request. This helps catch issues early and ensures CI builds succeed.
+The summary lists **two** Jest runs: first block is the default project (~294 suites), second is isolated single-file projects (~30 suites). Both must pass.
+
+## Environment
+
+`tests/setup.js` clears `AIFABRIX_HOME`, `AIFABRIX_WORK`, and `AIFABRIX_CONFIG` unless `PRESERVE_AIFABRIX_TEST_ENV=true`.
+
+## Flaky / order-sensitive tests
+
+Prefer **isolated Jest projects** (`jest.projects.js`: `testPathIgnorePatterns` + `makeIsolatedProject`) for suites that:
+
+- `jest.mock('fs')` with custom `mockImplementation` that must not leak to other files, or
+- need real `node:fs` while other suites mock `fs`, or
+- partially mock `paths` / other singletons.
+
+Do **not** use a top-level `afterAll` that permanently sets `fs.existsSync` / `fs.readFileSync` to stubs — that poisons the next test file on the same Jest worker (this broke `secrets-generator` then `app-uncovered-lines` on GitHub Actions Node 18 until removed).
+
+## Moving tests out of CI default scope
+
+`tests/local/` is excluded from default and isolated CI runs unless `INCLUDE_LOCAL_TESTS=true`. Use that only for **opt-in** heavy or environment-bound suites—not as the first fix for Jest ordering; prefer isolation above.
+
+## GitHub Actions
+
+Use **Node 20+** in workflows if devDependencies declare `engines: { node: '>=20' }` (e.g. `cross-env`, `markdownlint`) to avoid `EBADENGINE` noise and align with local dev. The package test suite is validated on the repo’s supported Node version used in CI.

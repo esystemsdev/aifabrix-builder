@@ -1,0 +1,13 @@
+app:
+  key: roundtrip-test-local
+  displayName: Roundtrip Test
+  description: Roundtrip validation test
+  type: external
+externalIntegration:
+  schemaBasePath: ./
+  systems:
+    - roundtrip-test-local-system.yaml
+  dataSources:
+    - roundtrip-test-local-datasource-roundtrip-test-company.yaml
+  autopublish: true
+  version: 1.0.0

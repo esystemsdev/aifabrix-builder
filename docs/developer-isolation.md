@@ -6,6 +6,8 @@
 
 The AI Fabrix Builder supports developer isolation, allowing multiple developers to run applications simultaneously on the same machine without port conflicts. Each developer has a unique numeric ID (1, 2, 3, etc.) that determines their port assignments and infrastructure resources.
 
+**Infra secrets and `kv://` keys:** Port and controller URLs here are separate from **secret key naming**. For where secrets live (`config.yaml`, `secrets.local.yaml`, `builder/<appKey>/env.template`), how **`aifabrix up-infra`** and **`aifabrix resolve`** create keys, and how **local** key suffixes relate to **Azure** Key Vault names, see [Infra parameters (configuration)](configuration/infra-parameters.md).
+
 ## Port Calculation
 
 Ports are calculated using the formula: `basePort + (developer-id * 100)`
@@ -26,6 +28,9 @@ Ports are calculated using the formula: `basePort + (developer-id * 100)`
 - Redis: 6479
 - pgAdmin: 5150
 - Redis Commander: 8181
+- Keycloak (host): 8182
+- Miso-Controller: 3100
+- Dataplane: 3101
 
 **Developer ID 2** (all ports +200):
 - App: 3200
@@ -33,6 +38,9 @@ Ports are calculated using the formula: `basePort + (developer-id * 100)`
 - Redis: 6579
 - pgAdmin: 5250
 - Redis Commander: 8281
+- Keycloak (host): 8282
+- Miso-Controller: 3200
+- Dataplane: 3201 
 
 **Developer ID 3** (all ports +300):
 - App: 3300
@@ -40,6 +48,17 @@ Ports are calculated using the formula: `basePort + (developer-id * 100)`
 - Redis: 6679
 - pgAdmin: 5350
 - Redis Commander: 8381
+- Keycloak (host): 8382
+- Miso-Controller: 3300
+- Dataplane: 3301 
+
+### Keycloak and authentication
+
+**Keycloak is always started** whenever you bring up the standard Miso stack: **`aifabrix up-miso`** runs **Keycloak first**, then **Miso Controller** (both are part of that command—there is no “Miso only” variant). **`aifabrix up-platform`** does the same Keycloak + Miso step and then starts **dataplane**. So in normal local development you get Keycloak **every time** you use those platform commands (after **`aifabrix up-infra`** for Postgres/Redis).
+
+**Not included in bare infra:** **`aifabrix up-infra`** starts Postgres, Redis, and optional pgAdmin / Redis Commander / Traefik only—it does **not** start Keycloak or Miso. Run **`up-miso`** or **`up-platform`** when you need the controller and IdP.
+
+**CLI auth vs Keycloak:** Commands such as **`aifabrix login`**, **`aifabrix auth status`**, and **`aifabrix auth config`** target the **controller** (Miso) URL and device / client credentials — not the Keycloak admin console. Keycloak is for **application SSO** (users signing into Miso and related flows), not for replacing Builder CLI authentication to the controller.
 
 ## Controller URL Calculation
 
@@ -174,6 +193,18 @@ frontDoorRouting:
 ```
 
 This ensures each developer gets their own domain for testing, avoiding conflicts when multiple developers run apps locally. When using wildcard certificates, specify the `certStore` name that matches your Traefik certificate store configuration.
+
+### Front-door URL paths (Traefik)
+
+Nginx on a shared builder host forwards the **full path** to per-developer Traefik; routing uses **`Host(…)` and `PathPrefix(…)`** from generated compose labels.
+
+| Shipped app (template) | `frontDoorRouting.pattern` | Env-scoped prefix (optional) |
+|------------------------|----------------------------|------------------------------|
+| Miso Controller | `/miso/*` | Not used by default (`environmentScopedResources` is off in the template). |
+| Keycloak (IdP) | `/auth/*` | Not used by default. Traefik exposes Keycloak’s reverse-proxy path so browsers hit **`https://devNN.<host>/auth/…`** (realms, login, admin) behind the same host as other apps. |
+| Dataplane | `/data/*` | When **effective** env-scoping applies, Traefik path becomes **`/dev/data`** or **`/tst/data`** (see below). |
+
+**When the `/dev` or `/tst` prefix applies:** `useEnvironmentScopedResources: true` in `~/.aifabrix/config.yaml`, the app’s `application.yaml` has `environmentScopedResources: true`, and the run environment is **`dev`** or **`tst`**. Then the Traefik base path is `/{env}` + pattern base (e.g. `/data` → `/dev/data`, `/auth` → `/dev/auth`). Shared **pro** (or other) environments keep the unprefixed pattern base.
 
 ### Port Mapping
 
@@ -396,6 +427,8 @@ If you see container name conflicts:
 
 When your `~/.aifabrix/config.yaml` includes a `remote-server` URL, the CLI uses a **remote Docker host** for run and build instead of your local machine. Each developer still has an isolated network and workspace on the remote host (same developer-id model as local). Access to the remote server uses **client certificates (mTLS)**; there is no SSH or direct host access.
 
+**Shared builder host:** If `remote-server` points at a **non-localhost** host (not `localhost` or `127.0.0.1`), you **must** set **`developer-id`** to a **positive integer** (`1`, `2`, …). **`developer-id: 0`** is only for **local Docker Desktop** (solo machine). The CLI enforces this before `aifabrix up-infra` and `aifabrix run` so stacks use the correct Traefik HTTP port (`80 + developer-id × 100`) behind the nginx edge. See [SETUP.md](https://github.com/esystemsdev/aifabrix-setup/blob/main/SETUP.md) for nginx → Traefik routing on the server.
+
 #### One-time setup
 
 Before using remote Docker, run:
@@ -561,7 +594,7 @@ See also [Secrets and config](configuration/secrets-and-config.md) and [Commands
 
 | Template/Secret | Value | Interpolated (Dev ID 1) |
 | ---------------- | ----- | ----------------------- |
-| `KEYCLOAK_SERVER_URL=kv://keycloak-server-url` | `"http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}"` | `http://localhost:8082` |
+| `KEYCLOAK_SERVER_URL=kv://keycloak-web-server-url` | `"http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}"` | `http://localhost:8082` |
 | `KC_PORT=${KEYCLOAK_PORT}` | (from env-config.yaml) | `8082` |
 | `DATABASE_URL=kv://db-urlKeyVault` | `"postgresql://user:pass@${DB_HOST}:${DB_PORT}/db"` | `postgresql://localhost:5532/db` |
 

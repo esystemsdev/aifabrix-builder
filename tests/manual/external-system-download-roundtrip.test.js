@@ -55,20 +55,20 @@ describe('External System Download Roundtrip', () => {
           authorizationUrl: 'https://api.example.com/oauth/authorize'
         },
         security: {
-          clientId: 'kv://roundtrip-test/clientId',
-          clientSecret: 'kv://roundtrip-test/clientSecret'
+          clientId: `kv://${systemKey}/clientId`,
+          clientSecret: `kv://${systemKey}/clientSecret`
         }
       },
       configuration: [
         {
           name: 'KV_ROUNDTRIP_TEST_CLIENTID',
-          value: 'roundtrip-test/clientId',
+          value: `${systemKey}/clientId`,
           location: 'keyvault',
           required: true
         },
         {
           name: 'KV_ROUNDTRIP_TEST_CLIENTSECRET',
-          value: 'roundtrip-test/clientSecret',
+          value: `${systemKey}/clientSecret`,
           location: 'keyvault',
           required: true
         }
@@ -76,16 +76,31 @@ describe('External System Download Roundtrip', () => {
       dataSources: ['roundtrip-test-company']
     };
     const datasource = {
-      key: 'roundtrip-test-company',
+      key: `${systemKey}-company`,
       displayName: 'Company',
       systemKey,
-      entityType: 'record-storage',
-      resourceType: 'customer',
-      primaryKey: ['country'],
+      entityType: 'recordStorage',
+      resourceType: 'record',
+      primaryKey: ['id'],
+      labelKey: ['id'],
+      metadataSchema: {
+        type: 'object',
+        required: ['id', 'externalId'],
+        properties: {
+          id: { type: 'string', index: true },
+          externalId: { type: 'string', index: true }
+        }
+      },
       fieldMappings: {
-        dimensions: { country: 'metadata.country' },
         attributes: {
-          country: { expression: '{{metadata.country}}', type: 'string' }
+          id: { expression: '{{raw.id}}' },
+          externalId: { expression: '{{raw.externalId}}' }
+        }
+      },
+      exposed: {
+        schema: {
+          id: 'metadata.id',
+          externalId: 'metadata.externalId'
         }
       }
     };

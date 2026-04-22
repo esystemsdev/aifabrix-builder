@@ -94,6 +94,29 @@ if [ ! -f "$TEST_PROJECT_DIR/package.json" ]; then
     echo -e "${RED}✗ Failed to copy project${NC}"
     exit 1
 fi
+
+# Bundled catalog + schema (infra-parameter-catalog, secrets-ensure, validation). Sparse checkouts often omit these.
+REQUIRED_LIB_SCHEMA=(
+    "lib/schema/infra.parameter.yaml"
+    "lib/schema/infra-parameter.schema.json"
+    "lib/schema/external-datasource.schema.json"
+    "lib/schema/external-system.schema.json"
+)
+SCHEMA_MISSING=()
+for rel in "${REQUIRED_LIB_SCHEMA[@]}"; do
+    if [ ! -f "$TEST_PROJECT_DIR/$rel" ]; then
+        SCHEMA_MISSING+=("$rel")
+    fi
+done
+if [ "${#SCHEMA_MISSING[@]}" -gt 0 ]; then
+    echo -e "${RED}✗ Required files missing under test copy (tests will fail):${NC}"
+    for rel in "${SCHEMA_MISSING[@]}"; do
+        echo "    - $rel"
+    done
+    echo "  Restore from git: git checkout HEAD -- lib/schema/"
+    exit 1
+fi
+
 echo -e "${GREEN}✓ Project copied${NC}"
 echo ""
 
@@ -146,7 +169,8 @@ timeout 900 npm test > "$REPORT_FILE" 2>&1 || {
 # Extract test results
 if [ $TEST_EXIT -eq 0 ]; then
     echo -e "${GREEN}✓ All tests passed${NC}"
-    TEST_SUMMARY=$(grep -E "(Test Suites|Tests:)" "$REPORT_FILE" | tail -2)
+    # test-wrapper runs Jest twice (default + isolated); capture both summaries (last 4 lines).
+    TEST_SUMMARY=$(grep -E '^Test Suites:|^Tests:' "$REPORT_FILE" | tail -4)
     echo "$TEST_SUMMARY"
 else
     echo -e "${RED}✗ Tests failed${NC}"
@@ -192,8 +216,8 @@ $(if [ $LINT_EXIT -eq 0 ]; then echo "  ✓ PASSED"; else echo "  ✗ FAILED"; f
 TESTING:
 $(if [ $TEST_EXIT -eq 0 ]; then echo "  ✓ PASSED"; else echo "  ✗ FAILED"; fi)
 
-TEST SUMMARY:
-$(grep -E "(Test Suites|Tests:)" "$REPORT_FILE" | tail -2 || echo "  No summary available")
+TEST SUMMARY (default Jest + isolated Jest):
+$(grep -E '^Test Suites:|^Tests:' "$REPORT_FILE" | tail -4 || echo "  No summary available")
 
 FAILED TESTS:
 $(if [ $TEST_EXIT -ne 0 ]; then

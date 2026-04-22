@@ -74,7 +74,7 @@ jest.mock('chalk', () => {
 
 // Mock other chalk-dependent packages
 jest.mock('log-symbols', () => ({
-  success: '✓',
+  success: '✔',
   error: '✖',
   warning: '⚠',
   info: 'ℹ'
@@ -118,7 +118,6 @@ jest.mock('../../lib/utils/paths', () => {
 const chalk = require('chalk');
 const secrets = require('../../lib/core/secrets');
 const generator = require('../../lib/generator');
-const keyGenerator = require('../../lib/core/key-generator');
 const validator = require('../../lib/validation/validator');
 const validate = require('../../lib/validation/validate');
 const infra = require('../../lib/infrastructure');
@@ -128,6 +127,12 @@ const logger = require('../../lib/utils/logger');
 const { handleLogin } = require('../../lib/commands/login');
 const config = require('../../lib/core/config');
 const devConfig = require('../../lib/utils/dev-config');
+const {
+  loadInfraStatusSummary,
+  formatInfraStatusTitleLine,
+  logInfraStatusConfigurationSummary,
+  logPaddedFieldRow
+} = require('../../lib/utils/infra-status-display');
 
 describe('CLI Commands', () => {
   const mockHomeDir = '/home/test';
@@ -167,15 +172,12 @@ describe('CLI Commands', () => {
       });
       validate.displayValidationResults.mockImplementation(() => {});
 
-      // Import CLI module after mocking
-      const cli = require('../../lib/cli');
-
       // Simulate the command action: getResolveAppPath then generateEnvFile with options
       const paths = require('../../lib/utils/paths');
       try {
         const { appPath, envOnly } = await paths.getResolveAppPath(appName);
         const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', false, { appPath, envOnly });
-        logger.log(`✓ Generated .env file: ${envPath}`);
+        logger.log(`✔ Generated .env file: ${envPath}`);
         if (!envOnly) {
           const result = await validate.validateAppOrFile(appName);
           validate.displayValidationResults(result);
@@ -209,12 +211,12 @@ describe('CLI Commands', () => {
       try {
         const { appPath, envOnly } = await paths.getResolveAppPath(appName);
         const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', false, { appPath, envOnly });
-        logger.log(`✓ Generated .env file: ${envPath}`);
+        logger.log(`✔ Generated .env file: ${envPath}`);
         if (!envOnly) {
           const result = await validate.validateAppOrFile(appName);
           validate.displayValidationResults(result);
           if (!result.valid) {
-            logger.log(chalk.yellow('\n⚠️  Validation found errors. Fix them before deploying.'));
+            logger.log(chalk.yellow('\n⚠  Validation found errors. Fix them before deploying.'));
             process.exit(1);
           }
         }
@@ -237,7 +239,7 @@ describe('CLI Commands', () => {
       try {
         const { appPath, envOnly } = await paths.getResolveAppPath(appName);
         const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', false, { appPath, envOnly });
-        logger.log(`✓ Generated .env file: ${envPath}`);
+        logger.log(`✔ Generated .env file: ${envPath}`);
         // When skip-validation: validation not run (simulated by not calling validate when envOnly, or by option)
         const expectedAppPath = path.join(process.cwd(), 'builder', appName);
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', false, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
@@ -299,20 +301,20 @@ describe('CLI Commands', () => {
         const result = await generator.generateDeployJsonWithValidation(appName);
 
         if (result.success) {
-          console.log(`✓ Generated deployment JSON: ${result.path}`);
+          console.log(`✔ Generated deployment JSON: ${result.path}`);
 
           if (result.validation.warnings.length > 0) {
-            console.log('\n⚠️  Warnings:');
+            console.log('\n⚠  Warnings:');
             result.validation.warnings.forEach(warning => console.log(`   • ${warning}`));
           }
         } else {
-          console.log('❌ Validation failed:');
+          console.log('✖ Validation failed:');
           result.validation.errors.forEach(error => console.log(`   • ${error}`));
           process.exit(1);
         }
 
         expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName);
-        expect(console.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
+        expect(console.log).toHaveBeenCalledWith(`✔ Generated deployment JSON: ${expectedJsonPath}`);
         expect(process.exit).not.toHaveBeenCalled();
       } catch (error) {
         expect(true).toBe(false); // Should not reach here
@@ -342,15 +344,15 @@ describe('CLI Commands', () => {
         const result = await generator.generateDeployJsonWithValidation(appName);
 
         if (result.success) {
-          console.log(`✓ Generated deployment JSON: ${result.path}`);
+          console.log(`✔ Generated deployment JSON: ${result.path}`);
 
           if (result.validation.warnings.length > 0) {
-            console.log('\n⚠️  Warnings:');
+            console.log('\n⚠  Warnings:');
             result.validation.warnings.forEach(warning => console.log(`   • ${warning}`));
           }
         }
 
-        expect(console.log).toHaveBeenCalledWith('\n⚠️  Warnings:');
+        expect(console.log).toHaveBeenCalledWith('\n⚠  Warnings:');
         expect(console.log).toHaveBeenCalledWith('   • Health check path should start with /');
         expect(console.log).toHaveBeenCalledWith('   • Port should be between 1 and 65535');
       } catch (error) {
@@ -377,14 +379,14 @@ describe('CLI Commands', () => {
         const result = await generator.generateDeployJsonWithValidation(appName);
 
         if (result.success) {
-          console.log(`✓ Generated deployment JSON: ${result.path}`);
+          console.log(`✔ Generated deployment JSON: ${result.path}`);
         } else {
-          console.log('❌ Validation failed:');
+          console.log('✖ Validation failed:');
           result.validation.errors.forEach(error => console.log(`   • ${error}`));
           process.exit(1);
         }
 
-        expect(console.log).toHaveBeenCalledWith('❌ Validation failed:');
+        expect(console.log).toHaveBeenCalledWith('✖ Validation failed:');
         expect(console.log).toHaveBeenCalledWith('   • Missing required field: key');
         expect(console.log).toHaveBeenCalledWith('   • Invalid port: must be between 1 and 65535');
         expect(process.exit).toHaveBeenCalledWith(1);
@@ -431,9 +433,9 @@ describe('CLI Commands', () => {
         const result = await validator.checkEnvironment();
         console.log('\n🔍 AI Fabrix Environment Check\n');
 
-        console.log(`Docker: ${result.docker === 'ok' ? '✅ Running' : '❌ Not available'}`);
-        console.log(`Ports: ${result.ports === 'ok' ? '✅ Available' : '⚠️  Some ports in use'}`);
-        console.log(`Secrets: ${result.secrets === 'ok' ? '✅ Configured' : '❌ Missing'}`);
+        console.log(`Docker: ${result.docker === 'ok' ? '✔ Running' : '✖ Not available'}`);
+        console.log(`Ports: ${result.ports === 'ok' ? '✔ Available' : '⚠  Some ports in use'}`);
+        console.log(`Secrets: ${result.secrets === 'ok' ? '✔ Configured' : '✖ Missing'}`);
 
         if (result.recommendations.length > 0) {
           console.log('\n📋 Recommendations:');
@@ -446,7 +448,7 @@ describe('CLI Commands', () => {
             const health = await infra.checkInfraHealth();
             console.log('\n🏥 Infrastructure Health:');
             Object.entries(health).forEach(([service, status]) => {
-              const icon = status === 'healthy' ? '✅' : status === 'unknown' ? '❓' : '❌';
+              const icon = status === 'healthy' ? '✔' : status === 'unknown' ? '❓' : '✖';
               console.log(`  ${icon} ${service}: ${status}`);
             });
           } catch (error) {
@@ -458,12 +460,12 @@ describe('CLI Commands', () => {
 
         expect(validator.checkEnvironment).toHaveBeenCalled();
         expect(infra.checkInfraHealth).toHaveBeenCalled();
-        expect(console.log).toHaveBeenCalledWith('Docker: ✅ Running');
-        expect(console.log).toHaveBeenCalledWith('Ports: ✅ Available');
-        expect(console.log).toHaveBeenCalledWith('Secrets: ✅ Configured');
+        expect(console.log).toHaveBeenCalledWith('Docker: ✔ Running');
+        expect(console.log).toHaveBeenCalledWith('Ports: ✔ Available');
+        expect(console.log).toHaveBeenCalledWith('Secrets: ✔ Configured');
         expect(console.log).toHaveBeenCalledWith('\n🏥 Infrastructure Health:');
-        expect(console.log).toHaveBeenCalledWith('  ✅ postgres: healthy');
-        expect(console.log).toHaveBeenCalledWith('  ✅ redis: healthy');
+        expect(console.log).toHaveBeenCalledWith('  ✔ postgres: healthy');
+        expect(console.log).toHaveBeenCalledWith('  ✔ redis: healthy');
       } catch (error) {
         expect(true).toBe(false); // Should not reach here
       }
@@ -487,9 +489,9 @@ describe('CLI Commands', () => {
         const result = await validator.checkEnvironment();
         console.log('\n🔍 AI Fabrix Environment Check\n');
 
-        console.log(`Docker: ${result.docker === 'ok' ? '✅ Running' : '❌ Not available'}`);
-        console.log(`Ports: ${result.ports === 'ok' ? '✅ Available' : '⚠️  Some ports in use'}`);
-        console.log(`Secrets: ${result.secrets === 'ok' ? '✅ Configured' : '❌ Missing'}`);
+        console.log(`Docker: ${result.docker === 'ok' ? '✔ Running' : '✖ Not available'}`);
+        console.log(`Ports: ${result.ports === 'ok' ? '✔ Available' : '⚠  Some ports in use'}`);
+        console.log(`Secrets: ${result.secrets === 'ok' ? '✔ Configured' : '✖ Missing'}`);
 
         if (result.recommendations.length > 0) {
           console.log('\n📋 Recommendations:');
@@ -498,9 +500,9 @@ describe('CLI Commands', () => {
 
         console.log('');
 
-        expect(console.log).toHaveBeenCalledWith('Docker: ❌ Not available');
-        expect(console.log).toHaveBeenCalledWith('Ports: ⚠️  Some ports in use');
-        expect(console.log).toHaveBeenCalledWith('Secrets: ❌ Missing');
+        expect(console.log).toHaveBeenCalledWith('Docker: ✖ Not available');
+        expect(console.log).toHaveBeenCalledWith('Ports: ⚠  Some ports in use');
+        expect(console.log).toHaveBeenCalledWith('Secrets: ✖ Missing');
         expect(console.log).toHaveBeenCalledWith('\n📋 Recommendations:');
         expect(console.log).toHaveBeenCalledWith('  • Install Docker and Docker Compose');
         expect(console.log).toHaveBeenCalledWith('  • Some required ports (5432, 6379, 5050, 8081) are in use');
@@ -652,10 +654,10 @@ describe('CLI Commands', () => {
 
       try {
         const result = await app.buildApp(appName, options);
-        logger.log(`✅ Built image: ${result}`);
+        logger.log(`✔ Built image: ${result}`);
 
         expect(app.buildApp).toHaveBeenCalledWith(appName, options);
-        expect(logger.log).toHaveBeenCalledWith(`✅ Built image: ${imageTag}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Built image: ${imageTag}`);
       } catch (error) {
         expect(true).toBe(false); // Should not reach here
       }
@@ -771,6 +773,13 @@ describe('CLI Commands', () => {
   });
 
   describe('status command', () => {
+    const EM = '\u2013';
+    const LABEL = 18;
+    function statusRow(label, value) {
+      const v = value === null || value === undefined || value === '' ? EM : String(value);
+      return `  ${label.padEnd(LABEL)} ${v}`;
+    }
+
     it('should show infrastructure status successfully', async() => {
       const mockStatus = {
         postgres: { status: 'running', port: 5432, url: 'postgresql://localhost:5432' },
@@ -780,25 +789,41 @@ describe('CLI Commands', () => {
       };
 
       infra.getInfraStatus.mockResolvedValue(mockStatus);
+      config.getDeveloperId.mockResolvedValue('2');
+      config.getCurrentEnvironment.mockResolvedValue('dev');
+      config.getTlsEnabled.mockResolvedValue(true);
+      config.getRemoteServer.mockResolvedValue('https://builder02.local');
+      config.getUseEnvironmentScopedResources.mockResolvedValue(false);
+      config.getTraefikEnabled.mockResolvedValue(true);
 
       try {
+        const summary = await loadInfraStatusSummary();
         const status = await infra.getInfraStatus();
-        logger.log('\n📊 Infrastructure Status\n');
+        logger.log('');
+        logger.log(formatInfraStatusTitleLine(summary.devIdStr, summary.remoteServer));
+        logger.log('');
+        logInfraStatusConfigurationSummary(summary);
 
         Object.entries(status).forEach(([service, info]) => {
-          const icon = info.status === 'running' ? '✅' : '❌';
-          logger.log(`${icon} ${service}:`);
-          logger.log(`   Status: ${info.status}`);
-          logger.log(`   Port: ${info.port}`);
-          logger.log(`   URL: ${info.url}`);
+          const icon = String(info.status).trim().toLowerCase() === 'running' ? '✔' : '✖';
+          logger.log(`${icon} ${service}`);
+          logPaddedFieldRow('Status', info.status);
+          logPaddedFieldRow('Port', info.port);
+          logPaddedFieldRow('URL', info.url);
           logger.log('');
         });
 
         expect(infra.getInfraStatus).toHaveBeenCalled();
-        expect(logger.log).toHaveBeenCalledWith('\n📊 Infrastructure Status\n');
-        expect(logger.log).toHaveBeenCalledWith('✅ postgres:');
-        expect(logger.log).toHaveBeenCalledWith('   Status: running');
-        expect(logger.log).toHaveBeenCalledWith('   Port: 5432');
+        expect(logger.log).toHaveBeenCalledWith('📊 Infrastructure Status (dev02 @ builder02.local)');
+        expect(logger.log).toHaveBeenCalledWith('⚙️ Configuration');
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Server', 'https://builder02.local'));
+        expect(logger.log).toHaveBeenCalledWith(statusRow('TLS/SSL', 'ON 🔒'));
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Traefik proxy', 'ON 🟢'));
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Environment', 'DEV'));
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Scoped resources', 'OFF (DEFAULT)'));
+        expect(logger.log).toHaveBeenCalledWith('✔ postgres');
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Status', 'running'));
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Port', '5432'));
       } catch (error) {
         expect(true).toBe(false); // Should not reach here
       }
@@ -826,10 +851,10 @@ describe('CLI Commands', () => {
 
       try {
         await infra.restartService(service);
-        logger.log(`✅ ${service} service restarted successfully`);
+        logger.log(`✔ ${service} service restarted successfully`);
 
         expect(infra.restartService).toHaveBeenCalledWith(service);
-        expect(logger.log).toHaveBeenCalledWith(`✅ ${service} service restarted successfully`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ ${service} service restarted successfully`);
       } catch (error) {
         expect(true).toBe(false); // Should not reach here
       }
@@ -896,11 +921,11 @@ describe('CLI Commands', () => {
 
       try {
         const result = await app.generateDockerfileForApp(appName, options);
-        logger.log(chalk.green('\n✅ Dockerfile generated successfully!'));
+        logger.log(chalk.green('\n✔ Dockerfile generated successfully!'));
         logger.log(chalk.gray(`Location: ${result}`));
 
         expect(app.generateDockerfileForApp).toHaveBeenCalledWith(appName, options);
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('\n✅ Dockerfile generated successfully!'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('\n✔ Dockerfile generated successfully!'));
         expect(logger.log).toHaveBeenCalledWith(chalk.gray(`Location: ${dockerfilePath}`));
       } catch (error) {
         expect(true).toBe(false); // Should not reach here
@@ -924,14 +949,6 @@ describe('CLI Commands', () => {
   });
 
   describe('CLI command handlers - direct execution', () => {
-    let cli;
-
-    beforeEach(() => {
-      // Clear module cache to get fresh instance
-      jest.resetModules();
-      cli = require('../../lib/cli');
-    });
-
     describe('create command handler', () => {
       it('should execute create command handler successfully', async() => {
         const appName = 'testapp';
@@ -986,7 +1003,7 @@ describe('CLI Commands', () => {
         const action = async(appName, options) => {
           try {
             const imageTag = await app.buildApp(appName, options);
-            logger.log(`✅ Built image: ${imageTag}`);
+            logger.log(`✔ Built image: ${imageTag}`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'build');
             process.exit(1);
@@ -995,7 +1012,7 @@ describe('CLI Commands', () => {
 
         await action(appName, options);
         expect(app.buildApp).toHaveBeenCalledWith(appName, options);
-        expect(logger.log).toHaveBeenCalledWith(`✅ Built image: ${imageTag}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Built image: ${imageTag}`);
         expect(process.exit).not.toHaveBeenCalled();
       });
 
@@ -1009,7 +1026,7 @@ describe('CLI Commands', () => {
         const action = async(appName, options) => {
           try {
             const imageTag = await app.buildApp(appName, options);
-            logger.log(`✅ Built image: ${imageTag}`);
+            logger.log(`✔ Built image: ${imageTag}`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'build');
             process.exit(1);
@@ -1160,7 +1177,7 @@ describe('CLI Commands', () => {
         const action = async(service) => {
           try {
             await infra.restartService(service);
-            logger.log(`✅ ${service} service restarted successfully`);
+            logger.log(`✔ ${service} service restarted successfully`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'restart');
             process.exit(1);
@@ -1169,7 +1186,7 @@ describe('CLI Commands', () => {
 
         await action(service);
         expect(infra.restartService).toHaveBeenCalledWith(service);
-        expect(logger.log).toHaveBeenCalledWith(`✅ ${service} service restarted successfully`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ ${service} service restarted successfully`);
         expect(process.exit).not.toHaveBeenCalled();
       });
 
@@ -1182,7 +1199,7 @@ describe('CLI Commands', () => {
         const action = async(service) => {
           try {
             await infra.restartService(service);
-            logger.log(`✅ ${service} service restarted successfully`);
+            logger.log(`✔ ${service} service restarted successfully`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'restart');
             process.exit(1);
@@ -1206,7 +1223,7 @@ describe('CLI Commands', () => {
           try {
             const { appPath, envOnly } = await paths.getResolveAppPath(appName);
             const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', undefined, { appPath, envOnly });
-            logger.log(`✓ Generated .env file: ${envPath}`);
+            logger.log(`✔ Generated .env file: ${envPath}`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'resolve');
             process.exit(1);
@@ -1216,7 +1233,7 @@ describe('CLI Commands', () => {
         await action(appName);
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', undefined, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
         expect(process.exit).not.toHaveBeenCalled();
       });
 
@@ -1231,7 +1248,7 @@ describe('CLI Commands', () => {
           try {
             const { appPath, envOnly } = await paths.getResolveAppPath(appName);
             const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', undefined, { appPath, envOnly });
-            logger.log(`✓ Generated .env file: ${envPath}`);
+            logger.log(`✔ Generated .env file: ${envPath}`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'resolve');
             process.exit(1);
@@ -1269,14 +1286,14 @@ describe('CLI Commands', () => {
           try {
             const result = await generator.generateDeployJsonWithValidation(appName, options);
             if (result.success) {
-              logger.log(`✓ Generated deployment JSON: ${result.path}`);
+              logger.log(`✔ Generated deployment JSON: ${result.path}`);
 
               if (result.validation.warnings.length > 0) {
-                logger.log('\n⚠️  Warnings:');
+                logger.log('\n⚠  Warnings:');
                 result.validation.warnings.forEach(warning => logger.log(`   • ${warning}`));
               }
             } else {
-              logger.log('❌ Validation failed:');
+              logger.log('✖ Validation failed:');
               result.validation.errors.forEach(error => logger.log(`   • ${error}`));
               process.exit(1);
             }
@@ -1288,7 +1305,7 @@ describe('CLI Commands', () => {
 
         await action(appName, {});
         expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName, {});
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated deployment JSON: ${expectedJsonPath}`);
         expect(process.exit).not.toHaveBeenCalled();
       });
 
@@ -1303,9 +1320,9 @@ describe('CLI Commands', () => {
           try {
             const result = await generator.generateDeployJsonWithValidation(appName);
             if (result.success) {
-              logger.log(`✓ Generated deployment JSON: ${result.path}`);
+              logger.log(`✔ Generated deployment JSON: ${result.path}`);
             } else {
-              logger.log('❌ Validation failed:');
+              logger.log('✖ Validation failed:');
               result.validation.errors.forEach(error => logger.log(`   • ${error}`));
               process.exit(1);
             }
@@ -1332,7 +1349,7 @@ describe('CLI Commands', () => {
         const action = async(appName, options) => {
           try {
             const dockerfilePath = await app.generateDockerfileForApp(appName, options);
-            logger.log(chalk.green('\n✅ Dockerfile generated successfully!'));
+            logger.log(chalk.green('\n✔ Dockerfile generated successfully!'));
             logger.log(chalk.gray(`Location: ${dockerfilePath}`));
           } catch (error) {
             cliUtils.handleCommandError(error, 'dockerfile');
@@ -1342,7 +1359,7 @@ describe('CLI Commands', () => {
 
         await action(appName, options);
         expect(app.generateDockerfileForApp).toHaveBeenCalledWith(appName, options);
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('\n✅ Dockerfile generated successfully!'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('\n✔ Dockerfile generated successfully!'));
         expect(logger.log).toHaveBeenCalledWith(chalk.gray(`Location: ${dockerfilePath}`));
         expect(process.exit).not.toHaveBeenCalled();
       });
@@ -1358,7 +1375,7 @@ describe('CLI Commands', () => {
         const action = async(appName, options) => {
           try {
             const dockerfilePath = await app.generateDockerfileForApp(appName, options);
-            logger.log(chalk.green('\n✅ Dockerfile generated successfully!'));
+            logger.log(chalk.green('\n✔ Dockerfile generated successfully!'));
             logger.log(chalk.gray(`Location: ${dockerfilePath}`));
           } catch (error) {
             cliUtils.handleCommandError(error, 'dockerfile');
@@ -1385,14 +1402,14 @@ describe('CLI Commands', () => {
           try {
             await handleLogin(options);
           } catch (error) {
-            logger.error(chalk.red('\n❌ Login failed:'), error.message);
+            logger.error(chalk.red('\n✖ Login failed:'), error.message);
             process.exit(1);
           }
         };
 
         await action({ url: 'http://localhost:3000' });
         expect(handleLogin).toHaveBeenCalledWith({ url: 'http://localhost:3000' });
-        expect(logger.error).toHaveBeenCalledWith(chalk.red('\n❌ Login failed:'), errorMessage);
+        expect(logger.error).toHaveBeenCalledWith(chalk.red('\n✖ Login failed:'), errorMessage);
         expect(process.exit).toHaveBeenCalledWith(1);
       });
     });
@@ -1480,7 +1497,7 @@ describe('CLI Commands', () => {
           try {
             const { appPath, envOnly } = await paths.getResolveAppPath(appName);
             const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', options.force, { appPath, envOnly });
-            logger.log(`✓ Generated .env file: ${envPath}`);
+            logger.log(`✔ Generated .env file: ${envPath}`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'resolve');
             process.exit(1);
@@ -1490,7 +1507,7 @@ describe('CLI Commands', () => {
         await action(appName, { force: true });
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', true, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
         expect(process.exit).not.toHaveBeenCalled();
       });
 
@@ -1504,7 +1521,7 @@ describe('CLI Commands', () => {
           try {
             const { appPath, envOnly } = await paths.getResolveAppPath(appName);
             const envPath = await secrets.generateEnvFile(appName, undefined, 'docker', options.force, { appPath, envOnly });
-            logger.log(`✓ Generated .env file: ${envPath}`);
+            logger.log(`✔ Generated .env file: ${envPath}`);
           } catch (error) {
             cliUtils.handleCommandError(error, 'resolve');
             process.exit(1);
@@ -1514,7 +1531,7 @@ describe('CLI Commands', () => {
         await action(appName, { force: false });
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', false, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
         expect(process.exit).not.toHaveBeenCalled();
       });
     });
@@ -1541,14 +1558,14 @@ describe('CLI Commands', () => {
           try {
             const result = await generator.generateDeployJsonWithValidation(appName);
             if (result.success) {
-              logger.log(`✓ Generated deployment JSON: ${result.path}`);
+              logger.log(`✔ Generated deployment JSON: ${result.path}`);
 
               if (result.validation.warnings && result.validation.warnings.length > 0) {
-                logger.log('\n⚠️  Warnings:');
+                logger.log('\n⚠  Warnings:');
                 result.validation.warnings.forEach(warning => logger.log(`   • ${warning}`));
               }
             } else {
-              logger.log('❌ Validation failed:');
+              logger.log('✖ Validation failed:');
               if (result.validation.errors && result.validation.errors.length > 0) {
                 result.validation.errors.forEach(error => logger.log(`   • ${error}`));
               }
@@ -1561,7 +1578,7 @@ describe('CLI Commands', () => {
         };
 
         await action(appName);
-        expect(logger.log).toHaveBeenCalledWith('❌ Validation failed:');
+        expect(logger.log).toHaveBeenCalledWith('✖ Validation failed:');
         expect(logger.log).toHaveBeenCalledWith('   • Missing required field: key');
         expect(process.exit).toHaveBeenCalledWith(1);
       });
@@ -1591,14 +1608,14 @@ describe('CLI Commands', () => {
           try {
             const result = await generator.generateDeployJsonWithValidation(appName);
             if (result.success) {
-              logger.log(`✓ Generated deployment JSON: ${result.path}`);
+              logger.log(`✔ Generated deployment JSON: ${result.path}`);
 
               if (result.validation.warnings && result.validation.warnings.length > 0) {
-                logger.log('\n⚠️  Warnings:');
+                logger.log('\n⚠  Warnings:');
                 result.validation.warnings.forEach(warning => logger.log(`   • ${warning}`));
               }
             } else {
-              logger.log('❌ Validation failed:');
+              logger.log('✖ Validation failed:');
               if (result.validation.errors && result.validation.errors.length > 0) {
                 result.validation.errors.forEach(error => logger.log(`   • ${error}`));
               }
@@ -1611,8 +1628,8 @@ describe('CLI Commands', () => {
         };
 
         await action(appName);
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
-        expect(logger.log).toHaveBeenCalledWith('\n⚠️  Warnings:');
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated deployment JSON: ${expectedJsonPath}`);
+        expect(logger.log).toHaveBeenCalledWith('\n⚠  Warnings:');
         expect(logger.log).toHaveBeenCalledWith('   • Health check path should start with /');
         expect(process.exit).not.toHaveBeenCalled();
       });
@@ -1636,9 +1653,9 @@ describe('CLI Commands', () => {
             const result = await validator.checkEnvironment();
             logger.log('\n🔍 AI Fabrix Environment Check\n');
 
-            logger.log(`Docker: ${result.docker === 'ok' ? '✅ Running' : '❌ Not available'}`);
-            logger.log(`Ports: ${result.ports === 'ok' ? '✅ Available' : '⚠️  Some ports in use'}`);
-            logger.log(`Secrets: ${result.secrets === 'ok' ? '✅ Configured' : '❌ Missing'}`);
+            logger.log(`Docker: ${result.docker === 'ok' ? '✔ Running' : '✖ Not available'}`);
+            logger.log(`Ports: ${result.ports === 'ok' ? '✔ Available' : '⚠  Some ports in use'}`);
+            logger.log(`Secrets: ${result.secrets === 'ok' ? '✔ Configured' : '✖ Missing'}`);
 
             if (result.recommendations.length > 0) {
               logger.log('\n📋 Recommendations:');
@@ -1651,7 +1668,7 @@ describe('CLI Commands', () => {
                 const health = await infra.checkInfraHealth();
                 logger.log('\n🏥 Infrastructure Health:');
                 Object.entries(health).forEach(([service, status]) => {
-                  const icon = status === 'healthy' ? '✅' : status === 'unknown' ? '❓' : '❌';
+                  const icon = status === 'healthy' ? '✔' : status === 'unknown' ? '❓' : '✖';
                   logger.log(`  ${icon} ${service}: ${status}`);
                 });
               } catch (error) {
@@ -1667,7 +1684,7 @@ describe('CLI Commands', () => {
         };
 
         await action();
-        expect(logger.log).toHaveBeenCalledWith('Docker: ❌ Not available');
+        expect(logger.log).toHaveBeenCalledWith('Docker: ✖ Not available');
         expect(infra.checkInfraHealth).not.toHaveBeenCalled();
       });
 
@@ -1694,9 +1711,9 @@ describe('CLI Commands', () => {
             const result = await validator.checkEnvironment();
             logger.log('\n🔍 AI Fabrix Environment Check\n');
 
-            logger.log(`Docker: ${result.docker === 'ok' ? '✅ Running' : '❌ Not available'}`);
-            logger.log(`Ports: ${result.ports === 'ok' ? '✅ Available' : '⚠️  Some ports in use'}`);
-            logger.log(`Secrets: ${result.secrets === 'ok' ? '✅ Configured' : '❌ Missing'}`);
+            logger.log(`Docker: ${result.docker === 'ok' ? '✔ Running' : '✖ Not available'}`);
+            logger.log(`Ports: ${result.ports === 'ok' ? '✔ Available' : '⚠  Some ports in use'}`);
+            logger.log(`Secrets: ${result.secrets === 'ok' ? '✔ Configured' : '✖ Missing'}`);
 
             if (result.recommendations.length > 0) {
               logger.log('\n📋 Recommendations:');
@@ -1709,7 +1726,7 @@ describe('CLI Commands', () => {
                 const health = await infra.checkInfraHealth();
                 logger.log('\n🏥 Infrastructure Health:');
                 Object.entries(health).forEach(([service, status]) => {
-                  const icon = status === 'healthy' ? '✅' : status === 'unknown' ? '❓' : '❌';
+                  const icon = status === 'healthy' ? '✔' : status === 'unknown' ? '❓' : '✖';
                   logger.log(`  ${icon} ${service}: ${status}`);
                 });
               } catch (error) {
@@ -1726,11 +1743,18 @@ describe('CLI Commands', () => {
 
         await action();
         expect(logger.log).toHaveBeenCalledWith('  ❓ postgres: unknown');
-        expect(logger.log).toHaveBeenCalledWith('  ❌ redis: unhealthy');
+        expect(logger.log).toHaveBeenCalledWith('  ✖ redis: unhealthy');
       });
     });
 
     describe('status command with stopped services', () => {
+      const EM = '\u2013';
+      const LABEL = 18;
+      function statusRow(label, value) {
+        const v = value === null || value === undefined || value === '' ? EM : String(value);
+        return `  ${label.padEnd(LABEL)} ${v}`;
+      }
+
       it('should show status for stopped services', async() => {
         const mockStatus = {
           postgres: { status: 'stopped', port: 5432, url: 'postgresql://localhost:5432' },
@@ -1739,19 +1763,28 @@ describe('CLI Commands', () => {
 
         infra.getInfraStatus.mockResolvedValue(mockStatus);
         logger.log.mockImplementation(() => {});
+        config.getDeveloperId.mockResolvedValue('2');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getTlsEnabled.mockResolvedValue(false);
+        config.getRemoteServer.mockResolvedValue(null);
+        config.getUseEnvironmentScopedResources.mockResolvedValue(false);
+        config.getTraefikEnabled.mockResolvedValue(false);
 
-        // Simulate the command handler action from cli.js line 194-211
         const action = async() => {
           try {
+            const summary = await loadInfraStatusSummary();
             const status = await infra.getInfraStatus();
-            logger.log('\n📊 Infrastructure Status\n');
+            logger.log('');
+            logger.log(formatInfraStatusTitleLine(summary.devIdStr, summary.remoteServer));
+            logger.log('');
+            logInfraStatusConfigurationSummary(summary);
 
             Object.entries(status).forEach(([service, info]) => {
-              const icon = info.status === 'running' ? '✅' : '❌';
-              logger.log(`${icon} ${service}:`);
-              logger.log(`   Status: ${info.status}`);
-              logger.log(`   Port: ${info.port}`);
-              logger.log(`   URL: ${info.url}`);
+              const icon = String(info.status).trim().toLowerCase() === 'running' ? '✔' : '✖';
+              logger.log(`${icon} ${service}`);
+              logPaddedFieldRow('Status', info.status);
+              logPaddedFieldRow('Port', info.port);
+              logPaddedFieldRow('URL', info.url);
               logger.log('');
             });
           } catch (error) {
@@ -1761,10 +1794,11 @@ describe('CLI Commands', () => {
         };
 
         await action();
-        expect(logger.log).toHaveBeenCalledWith('❌ postgres:');
-        expect(logger.log).toHaveBeenCalledWith('   Status: stopped');
-        expect(logger.log).toHaveBeenCalledWith('✅ redis:');
-        expect(logger.log).toHaveBeenCalledWith('   Status: running');
+        expect(logger.log).toHaveBeenCalledWith('📊 Infrastructure Status (dev02)');
+        expect(logger.log).toHaveBeenCalledWith('✖ postgres');
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Status', 'stopped'));
+        expect(logger.log).toHaveBeenCalledWith('✔ redis');
+        expect(logger.log).toHaveBeenCalledWith(statusRow('Status', 'running'));
       });
     });
   });
@@ -1816,9 +1850,7 @@ describe('CLI Commands', () => {
 
     // Helper function to setup commands and reset logger
     function setupCommandsAndResetLogger() {
-      // Reset commandActions to ensure clean state
       commandActions = {};
-      // Recreate mockProgram to ensure fresh action handlers
       mockProgram = {
         command: jest.fn((cmdName) => {
           const mockCommand = {
@@ -1830,7 +1862,6 @@ describe('CLI Commands', () => {
               commandActions[cmdName] = action;
               return this;
             },
-            // Support nested commands for command groups (e.g., 'secret set')
             command: jest.fn((subCmdName) => {
               const fullCmdName = `${cmdName} ${subCmdName}`;
               const mockSubCommand = {
@@ -1850,56 +1881,37 @@ describe('CLI Commands', () => {
         })
       };
 
-      // Reset modules to ensure fresh logger reference is captured by handlers
-      jest.resetModules();
-
-      // Re-require logger after resetModules to get fresh mock
-      const freshLogger = require('../../lib/utils/logger');
-      // Set up logger mock functions
-      freshLogger.log = jest.fn();
-      freshLogger.error = jest.fn();
-      freshLogger.warn = jest.fn();
-      freshLogger.info = jest.fn();
-
-      // Update the outer scope logger reference
-      Object.assign(logger, freshLogger);
-
-      // Re-require other mocked modules that CLI depends on
-      const freshKeyGenerator = require('../../lib/core/key-generator');
-      const freshApp = require('../../lib/app');
-      const freshSecrets = require('../../lib/core/secrets');
-      const freshGenerator = require('../../lib/generator');
-      const freshValidator = require('../../lib/validation/validator');
-      const freshInfra = require('../../lib/infrastructure');
-      const freshCliUtils = require('../../lib/utils/cli-utils');
-      const freshHandleLoginModule = require('../../lib/commands/login');
-      const freshConfig = require('../../lib/core/config');
-      const freshDevConfig = require('../../lib/utils/dev-config');
-
-      // Update outer scope references
-      Object.assign(keyGenerator, freshKeyGenerator);
-      Object.assign(app, freshApp);
-      Object.assign(secrets, freshSecrets);
-      Object.assign(generator, freshGenerator);
-      Object.assign(validator, freshValidator);
-      Object.assign(infra, freshInfra);
-      Object.assign(cliUtils, freshCliUtils);
-      Object.assign(config, freshConfig);
-      Object.assign(devConfig, freshDevConfig);
-      // handleLogin is a destructured export, so update the module's handleLogin property
-      // This ensures the fresh module has the mocked handleLogin
-      if (freshHandleLoginModule.handleLogin) {
-        freshHandleLoginModule.handleLogin = handleLogin;
-      }
+      logger.log = jest.fn();
+      logger.error = jest.fn();
+      logger.warn = jest.fn();
+      logger.info = jest.fn();
 
       const { setupCommands } = require('../../lib/cli');
       setupCommands(mockProgram);
 
-      // Clear mock calls after setupCommands so we can track new calls from handlers
       logger.log.mockClear();
       logger.error.mockClear();
       logger.warn.mockClear();
       logger.info.mockClear();
+    }
+
+    /** After setupCommandsAndResetLogger, re-prime config getters used by dev show display. */
+    function primeDevShowConfigMocks() {
+      config.getFormat.mockResolvedValue(null);
+      if (typeof config.getUseEnvironmentScopedResources !== 'function') {
+        config.getUseEnvironmentScopedResources = jest.fn();
+      }
+      config.getUseEnvironmentScopedResources.mockResolvedValue(false);
+      config.getRemoteServer.mockResolvedValue(null);
+      config.getDockerEndpoint.mockResolvedValue(null);
+      config.getDockerTlsSkipVerify.mockResolvedValue(false);
+      config.getUserMutagenFolder.mockResolvedValue(null);
+      config.getSyncSshUser.mockResolvedValue(null);
+      config.getSyncSshHost.mockResolvedValue(null);
+      if (typeof config.getTlsEnabled !== 'function') {
+        config.getTlsEnabled = jest.fn();
+      }
+      config.getTlsEnabled.mockResolvedValue(false);
     }
 
     describe('dockerfile command handler execution', () => {
@@ -1919,7 +1931,7 @@ describe('CLI Commands', () => {
         await handler(appName, options);
 
         expect(app.generateDockerfileForApp).toHaveBeenCalledWith(appName, options);
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('\n✅ Dockerfile generated successfully!'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('\n✔ Dockerfile generated successfully!'));
         expect(logger.log).toHaveBeenCalledWith(chalk.gray(`Location: ${dockerfilePath}`));
       });
 
@@ -1959,7 +1971,7 @@ describe('CLI Commands', () => {
 
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', true, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
       });
 
       it('should execute resolve command handler without force option via setupCommands', async() => {
@@ -1977,7 +1989,7 @@ describe('CLI Commands', () => {
 
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', undefined, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated .env file: ${envPath}`);
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
       });
 
       it('should handle resolve command handler error via setupCommands', async() => {
@@ -2023,8 +2035,8 @@ describe('CLI Commands', () => {
         await handler(appName);
 
         expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName, undefined);
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
-        expect(logger.log).toHaveBeenCalledWith('\n⚠️  Warnings:');
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated deployment JSON: ${expectedJsonPath}`);
+        expect(logger.log).toHaveBeenCalledWith('\n⚠  Warnings:');
         expect(logger.log).toHaveBeenCalledWith('   • Warning 1');
         expect(logger.log).toHaveBeenCalledWith('   • Warning 2');
       });
@@ -2051,7 +2063,7 @@ describe('CLI Commands', () => {
         await handler(appName);
 
         expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName, undefined);
-        expect(logger.log).toHaveBeenCalledWith('❌ Validation failed:');
+        expect(logger.log).toHaveBeenCalledWith('✖ Validation failed:');
         expect(logger.log).toHaveBeenCalledWith('   • Error 1');
         expect(logger.log).toHaveBeenCalledWith('   • Error 2');
         expect(process.exit).toHaveBeenCalledWith(1);
@@ -2097,7 +2109,7 @@ describe('CLI Commands', () => {
         await handler(appName);
 
         expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName, undefined);
-        expect(logger.log).toHaveBeenCalledWith('❌ Validation failed:');
+        expect(logger.log).toHaveBeenCalledWith('✖ Validation failed:');
         expect(process.exit).toHaveBeenCalledWith(1);
       });
 
@@ -2123,8 +2135,8 @@ describe('CLI Commands', () => {
         await handler(appName, {});
 
         expect(generator.generateDeployJsonWithValidation).toHaveBeenCalledWith(appName, {});
-        expect(logger.log).toHaveBeenCalledWith(`✓ Generated deployment JSON: ${expectedJsonPath}`);
-        expect(logger.log).not.toHaveBeenCalledWith('\n⚠️  Warnings:');
+        expect(logger.log).toHaveBeenCalledWith(`✔ Generated deployment JSON: ${expectedJsonPath}`);
+        expect(logger.log).not.toHaveBeenCalledWith('\n⚠  Warnings:');
       });
     });
 
@@ -2158,7 +2170,7 @@ describe('CLI Commands', () => {
 
         await handler(options);
 
-        expect(logger.error).toHaveBeenCalledWith(chalk.red('\n❌ Login failed:'), errorMessage);
+        expect(logger.error).toHaveBeenCalledWith(chalk.red('\n✖ Login failed:'), errorMessage);
         expect(process.exit).toHaveBeenCalledWith(1);
       });
     });
@@ -2171,7 +2183,7 @@ describe('CLI Commands', () => {
         infra.stopInfraWithVolumes.mockResolvedValue();
         cliUtils.handleCommandError.mockImplementation(() => {});
 
-        const handler = commandActions['down-infra [app]'];
+        const handler = commandActions['down-infra [service|app]'];
         expect(handler).toBeDefined();
 
         await handler(undefined, options);
@@ -2187,7 +2199,7 @@ describe('CLI Commands', () => {
         infra.stopInfra.mockResolvedValue();
         cliUtils.handleCommandError.mockImplementation(() => {});
 
-        const handler = commandActions['down-infra [app]'];
+        const handler = commandActions['down-infra [service|app]'];
         expect(handler).toBeDefined();
 
         await handler(undefined, options);
@@ -2205,7 +2217,7 @@ describe('CLI Commands', () => {
         cliUtils.handleCommandError.mockImplementation(() => {});
         process.exit.mockImplementation(() => {});
 
-        const handler = commandActions['down-infra [app]'];
+        const handler = commandActions['down-infra [service|app]'];
         expect(handler).toBeDefined();
 
         await handler(undefined, options);
@@ -2222,7 +2234,7 @@ describe('CLI Commands', () => {
         app.downApp.mockResolvedValue();
         cliUtils.handleCommandError.mockImplementation(() => {});
 
-        const handler = commandActions['down-infra [app]'];
+        const handler = commandActions['down-infra [service|app]'];
         expect(handler).toBeDefined();
 
         await handler(appName, options);
@@ -2259,13 +2271,13 @@ describe('CLI Commands', () => {
 
         expect(validator.checkEnvironment).toHaveBeenCalled();
         expect(infra.checkInfraHealth).toHaveBeenCalled();
-        expect(logger.log).toHaveBeenCalledWith('Docker: ✅ Running');
-        expect(logger.log).toHaveBeenCalledWith('Ports: ✅ Available');
-        expect(logger.log).toHaveBeenCalledWith('Secrets: ✅ Configured');
+        expect(logger.log).toHaveBeenCalledWith('Docker: ✔ Running');
+        expect(logger.log).toHaveBeenCalledWith('Ports: ✔ Available');
+        expect(logger.log).toHaveBeenCalledWith('Secrets: ✔ Configured');
         expect(logger.log).toHaveBeenCalledWith('\n🏥 Infrastructure Health:');
-        expect(logger.log).toHaveBeenCalledWith('  ✅ postgres: healthy');
+        expect(logger.log).toHaveBeenCalledWith('  ✔ postgres: healthy');
         expect(logger.log).toHaveBeenCalledWith('  ❓ redis: unknown');
-        expect(logger.log).toHaveBeenCalledWith('  ❌ pgadmin: unhealthy');
+        expect(logger.log).toHaveBeenCalledWith('  ✖ pgadmin: unhealthy');
       });
 
       it('should execute doctor command handler without health check when docker not ok via setupCommands', async() => {
@@ -2286,7 +2298,7 @@ describe('CLI Commands', () => {
 
         expect(validator.checkEnvironment).toHaveBeenCalled();
         expect(infra.checkInfraHealth).not.toHaveBeenCalled();
-        expect(logger.log).toHaveBeenCalledWith('Docker: ❌ Not available');
+        expect(logger.log).toHaveBeenCalledWith('Docker: ✖ Not available');
       });
 
       it('should execute doctor command handler with health check error via setupCommands', async() => {
@@ -2335,6 +2347,22 @@ describe('CLI Commands', () => {
     });
 
     describe('status command handler execution', () => {
+      const EM = '\u2013';
+      const L = 18;
+      const sr = (label, value) => {
+        const v = value === null || value === undefined || value === '' ? EM : String(value);
+        return `  ${label.padEnd(L)} ${v}`;
+      };
+
+      beforeEach(() => {
+        config.getDeveloperId.mockResolvedValue('0');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getTlsEnabled.mockResolvedValue(false);
+        config.getRemoteServer.mockResolvedValue(null);
+        config.getUseEnvironmentScopedResources.mockResolvedValue(false);
+        config.getTraefikEnabled.mockResolvedValue(false);
+      });
+
       it('should execute status command handler via setupCommands', async() => {
         setupCommandsAndResetLogger();
 
@@ -2350,11 +2378,17 @@ describe('CLI Commands', () => {
         await handler();
 
         expect(infra.getInfraStatus).toHaveBeenCalled();
-        expect(logger.log).toHaveBeenCalledWith('\n📊 Infrastructure Status\n');
-        expect(logger.log).toHaveBeenCalledWith('✅ postgres:');
-        expect(logger.log).toHaveBeenCalledWith('   Status: running');
-        expect(logger.log).toHaveBeenCalledWith('❌ redis:');
-        expect(logger.log).toHaveBeenCalledWith('   Status: stopped');
+        expect(logger.log).toHaveBeenCalledWith('📊 Infrastructure Status (dev00)');
+        expect(logger.log).toHaveBeenCalledWith('⚙️ Configuration');
+        expect(logger.log).toHaveBeenCalledWith(sr('Server', null));
+        expect(logger.log).toHaveBeenCalledWith(sr('TLS/SSL', 'OFF 🕐'));
+        expect(logger.log).toHaveBeenCalledWith(sr('Traefik proxy', 'OFF 🟡'));
+        expect(logger.log).toHaveBeenCalledWith(sr('Environment', 'DEV'));
+        expect(logger.log).toHaveBeenCalledWith(sr('Scoped resources', 'OFF (DEFAULT)'));
+        expect(logger.log).toHaveBeenCalledWith('✔ postgres');
+        expect(logger.log).toHaveBeenCalledWith(sr('Status', 'running'));
+        expect(logger.log).toHaveBeenCalledWith('✖ redis');
+        expect(logger.log).toHaveBeenCalledWith(sr('Status', 'stopped'));
       });
 
       it('should handle status command handler error via setupCommands', async() => {
@@ -2396,7 +2430,7 @@ describe('CLI Commands', () => {
 
         expect(config.setDeveloperId).toHaveBeenCalledWith(1);
         expect(process.env.AIFABRIX_DEVELOPERID).toBe('1');
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Developer ID set to 1'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Developer ID set to 1'));
         expect(infra.startInfra).toHaveBeenCalledWith(1, expect.objectContaining({ traefik: false }));
       });
 
@@ -2458,7 +2492,7 @@ describe('CLI Commands', () => {
         await handler({ traefik: true });
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ traefik: true }));
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Traefik enabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Traefik enabled and saved to config'));
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: true }));
       });
 
@@ -2472,7 +2506,7 @@ describe('CLI Commands', () => {
         await handler({ traefik: false }); // --no-traefik sets options.traefik to false
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ traefik: false }));
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Traefik disabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Traefik disabled and saved to config'));
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: false }));
       });
 
@@ -2486,8 +2520,8 @@ describe('CLI Commands', () => {
         await handler({ pgAdmin: true, redisAdmin: true });
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ pgadmin: true, redisCommander: true }));
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ pgAdmin enabled and saved to config'));
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Redis Commander enabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ pgAdmin enabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Redis Commander enabled and saved to config'));
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({
           traefik: false,
           pgadmin: true,
@@ -2505,8 +2539,8 @@ describe('CLI Commands', () => {
         await handler({ pgAdmin: false, redisAdmin: false });
 
         expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ pgadmin: false, redisCommander: false }));
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ pgAdmin disabled and saved to config'));
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Redis Commander disabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ pgAdmin disabled and saved to config'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Redis Commander disabled and saved to config'));
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({
           pgadmin: false,
           redisCommander: false
@@ -2523,6 +2557,123 @@ describe('CLI Commands', () => {
 
         expect(config.saveConfig).not.toHaveBeenCalled();
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: true }));
+      });
+
+      it('should pass adminPassword adminEmail userPassword through to startInfra', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({
+          adminPassword: 'sec1',
+          adminEmail: 'admin@test.dev',
+          userPassword: 'userSec'
+        });
+
+        expect(infra.startInfra).toHaveBeenCalledWith(
+          null,
+          expect.objectContaining({
+            adminPassword: 'sec1',
+            adminPwd: 'sec1',
+            adminEmail: 'admin@test.dev',
+            userPassword: 'userSec'
+          })
+        );
+      });
+
+      it('should treat adminPwd as alias for adminPassword', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({ adminPwd: 'alias1' });
+
+        expect(infra.startInfra).toHaveBeenCalledWith(
+          null,
+          expect.objectContaining({ adminPassword: 'alias1', adminPwd: 'alias1' })
+        );
+      });
+
+      it('should persist tlsEnabled with --tls and pass tlsEnabled to startInfra', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
+        config.saveConfig.mockResolvedValue();
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({ tls: true });
+
+        expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ tlsEnabled: true }));
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ tlsEnabled: true }));
+      });
+
+      it('should persist tlsEnabled with --no-tls', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({ tlsEnabled: true });
+        config.saveConfig.mockResolvedValue();
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({ tls: false });
+
+        expect(config.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ tlsEnabled: false }));
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ tlsEnabled: false }));
+      });
+
+      it('should persist combined up-infra flags to config.yaml and pass all credentials to startInfra', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
+        config.saveConfig.mockResolvedValue();
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({
+          traefik: false,
+          tls: false,
+          pgAdmin: true,
+          adminPassword: 'admin1234',
+          adminEmail: 'admin@esystems.fi',
+          userPassword: 'user1234'
+        });
+
+        const saves = config.saveConfig.mock.calls.map((c) => c[0]);
+        expect(saves.length).toBeGreaterThanOrEqual(3);
+        const lastSaved = saves[saves.length - 1];
+        expect(lastSaved).toEqual(
+          expect.objectContaining({
+            traefik: false,
+            pgadmin: true,
+            tlsEnabled: false
+          })
+        );
+
+        expect(infra.startInfra).toHaveBeenCalledWith(
+          null,
+          expect.objectContaining({
+            traefik: false,
+            pgadmin: true,
+            redisCommander: true,
+            tlsEnabled: false,
+            adminPassword: 'admin1234',
+            adminPwd: 'admin1234',
+            adminEmail: 'admin@esystems.fi',
+            userPassword: 'user1234'
+          })
+        );
+      });
+
+      it('should pass tlsEnabled from config when tls flags omitted', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({ tlsEnabled: true });
+        infra.startInfra.mockResolvedValue();
+
+        const handler = commandActions['up-infra'];
+        await handler({});
+
+        expect(config.saveConfig).not.toHaveBeenCalled();
+        expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ tlsEnabled: true }));
       });
 
       it('should handle up command error via setupCommands', async() => {
@@ -2545,6 +2696,21 @@ describe('CLI Commands', () => {
     });
 
     describe('status command with running applications', () => {
+      const EM = '\u2013';
+      const L = 18;
+      const sr = (label, value) => {
+        const v = value === null || value === undefined || value === '' ? EM : String(value);
+        return `  ${label.padEnd(L)} ${v}`;
+      };
+
+      beforeEach(() => {
+        config.getDeveloperId.mockResolvedValue('0');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getTlsEnabled.mockResolvedValue(false);
+        config.getRemoteServer.mockResolvedValue(null);
+        config.getUseEnvironmentScopedResources.mockResolvedValue(false);
+      });
+
       it('should execute status command with running applications via setupCommands', async() => {
         setupCommandsAndResetLogger();
 
@@ -2566,18 +2732,18 @@ describe('CLI Commands', () => {
 
         expect(infra.getInfraStatus).toHaveBeenCalled();
         expect(infra.getAppStatus).toHaveBeenCalled();
-        expect(logger.log).toHaveBeenCalledWith('\n📊 Infrastructure Status\n');
+        expect(logger.log).toHaveBeenCalledWith('📊 Infrastructure Status (dev00)');
         expect(logger.log).toHaveBeenCalledWith('📱 Running Applications\n');
-        expect(logger.log).toHaveBeenCalledWith('✅ testapp:');
-        expect(logger.log).toHaveBeenCalledWith('   Container: testapp-container');
-        expect(logger.log).toHaveBeenCalledWith('   Port: 3000');
-        expect(logger.log).toHaveBeenCalledWith('   Status: running');
-        expect(logger.log).toHaveBeenCalledWith('   URL: http://localhost:3000');
-        expect(logger.log).toHaveBeenCalledWith('✅ testapp2:');
-        expect(logger.log).toHaveBeenCalledWith('   Container: testapp2-container');
-        expect(logger.log).toHaveBeenCalledWith('   Port: 3001');
-        expect(logger.log).toHaveBeenCalledWith('   Status: up');
-        expect(logger.log).toHaveBeenCalledWith('   URL: http://localhost:3001');
+        expect(logger.log).toHaveBeenCalledWith('✔ testapp');
+        expect(logger.log).toHaveBeenCalledWith(sr('Container', 'testapp-container'));
+        expect(logger.log).toHaveBeenCalledWith(sr('Port', '3000'));
+        expect(logger.log).toHaveBeenCalledWith(sr('Status', 'running'));
+        expect(logger.log).toHaveBeenCalledWith(sr('URL', 'http://localhost:3000'));
+        expect(logger.log).toHaveBeenCalledWith('✔ testapp2');
+        expect(logger.log).toHaveBeenCalledWith(sr('Container', 'testapp2-container'));
+        expect(logger.log).toHaveBeenCalledWith(sr('Port', '3001'));
+        expect(logger.log).toHaveBeenCalledWith(sr('Status', 'up'));
+        expect(logger.log).toHaveBeenCalledWith(sr('URL', 'http://localhost:3001'));
       });
 
       it('should execute status command without running applications via setupCommands', async() => {
@@ -2618,21 +2784,30 @@ describe('CLI Commands', () => {
         await handler();
 
         expect(logger.log).toHaveBeenCalledWith('📱 Running Applications\n');
-        expect(logger.log).toHaveBeenCalledWith('❌ testapp:');
-        expect(logger.log).toHaveBeenCalledWith('   Status: stopped');
+        expect(logger.log).toHaveBeenCalledWith('✖ testapp');
+        expect(logger.log).toHaveBeenCalledWith(sr('Status', 'stopped'));
       });
     });
 
     describe('dev show and dev set-id command handler execution', () => {
+      const EM = '\u2013';
+      const devShowHeader = '\n🔧 AI Fabrix • Developer Configuration\n';
+      const paddedDevRow = (label, value) => {
+        const v =
+          value === null || value === undefined || value === ''
+            ? EM
+            : String(value);
+        return `  ${label.padEnd(18)} ${v}`;
+      };
+
       it('should execute dev set-id command via setupCommands', async() => {
         setupCommandsAndResetLogger();
+        primeDevShowConfigMocks();
 
         config.setDeveloperId.mockResolvedValue();
         config.getCurrentEnvironment.mockResolvedValue('dev');
         config.getControllerUrl.mockResolvedValue(null);
-        config.getAifabrixHomeOverride.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
-        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
         devConfig.getDevPorts.mockReturnValue({
           app: 3100,
           postgres: 5532,
@@ -2651,29 +2826,27 @@ describe('CLI Commands', () => {
         expect(config.setDeveloperId).toHaveBeenCalledWith('1');
         expect(process.env.AIFABRIX_DEVELOPERID).toBe('1');
         expect(devConfig.getDevPorts).toHaveBeenCalledWith(1);
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Developer ID set to 1'));
-        expect(logger.log).toHaveBeenCalledWith('\n🔧 Developer Configuration\n');
-        expect(logger.log).toHaveBeenCalledWith('Developer ID: 1');
-        expect(logger.log).toHaveBeenCalledWith('\nPorts:');
-        expect(logger.log).toHaveBeenCalledWith('  App: 3100');
-        expect(logger.log).toHaveBeenCalledWith('  Postgres: 5532');
-        expect(logger.log).toHaveBeenCalledWith('  Redis: 6479');
-        expect(logger.log).toHaveBeenCalledWith('  pgAdmin: 5150');
-        expect(logger.log).toHaveBeenCalledWith('  Redis Commander: 8181');
-        expect(config.getAifabrixHomeOverride).toHaveBeenCalled();
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Developer ID set to 1'));
+        expect(logger.log).toHaveBeenCalledWith(devShowHeader);
+        expect(logger.log).toHaveBeenCalledWith('👤 Developer');
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('ID', '1'));
+        expect(logger.log).toHaveBeenCalledWith('🚀 Ports');
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('App', '3100'));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Postgres', '5532'));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Redis', '6479'));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('pgAdmin', '5150'));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Redis Commander', '8181'));
         expect(config.getAifabrixSecretsPath).toHaveBeenCalled();
-        expect(config.getAifabrixEnvConfigPath).toHaveBeenCalled();
       });
 
       it('should execute dev set-id with id 2 via setupCommands', async() => {
         setupCommandsAndResetLogger();
+        primeDevShowConfigMocks();
 
         config.setDeveloperId.mockResolvedValue();
         config.getCurrentEnvironment.mockResolvedValue('dev');
         config.getControllerUrl.mockResolvedValue(null);
-        config.getAifabrixHomeOverride.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
-        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
         devConfig.getDevPorts.mockReturnValue({
           app: 3200,
           postgres: 5632,
@@ -2691,20 +2864,18 @@ describe('CLI Commands', () => {
 
         expect(config.setDeveloperId).toHaveBeenCalledWith('2');
         expect(devConfig.getDevPorts).toHaveBeenCalledWith(2);
-        expect(config.getAifabrixHomeOverride).toHaveBeenCalled();
+        expect(config.getRemoteServer).toHaveBeenCalled();
         expect(config.getAifabrixSecretsPath).toHaveBeenCalled();
-        expect(config.getAifabrixEnvConfigPath).toHaveBeenCalled();
       });
 
       it('should preserve leading zeros in developer ID (e.g., "01") via dev set-id', async() => {
         setupCommandsAndResetLogger();
+        primeDevShowConfigMocks();
 
         config.setDeveloperId.mockResolvedValue();
         config.getCurrentEnvironment.mockResolvedValue('dev');
         config.getControllerUrl.mockResolvedValue(null);
-        config.getAifabrixHomeOverride.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
-        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
         devConfig.getDevPorts.mockReturnValue({
           app: 3100,
           postgres: 5532,
@@ -2723,23 +2894,20 @@ describe('CLI Commands', () => {
         expect(config.setDeveloperId).toHaveBeenCalledWith('01');
         expect(process.env.AIFABRIX_DEVELOPERID).toBe('01');
         expect(devConfig.getDevPorts).toHaveBeenCalledWith(1);
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Developer ID set to 01'));
-        expect(logger.log).toHaveBeenCalledWith('\n🔧 Developer Configuration\n');
-        expect(logger.log).toHaveBeenCalledWith('Developer ID: 01');
-        expect(config.getAifabrixHomeOverride).toHaveBeenCalled();
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Developer ID set to 01'));
+        expect(logger.log).toHaveBeenCalledWith(devShowHeader);
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('ID', '01'));
         expect(config.getAifabrixSecretsPath).toHaveBeenCalled();
-        expect(config.getAifabrixEnvConfigPath).toHaveBeenCalled();
       });
 
       it('should execute dev show command via setupCommands', async() => {
         setupCommandsAndResetLogger();
+        primeDevShowConfigMocks();
 
         config.getDeveloperId.mockResolvedValue('0');
         config.getCurrentEnvironment.mockResolvedValue('dev');
         config.getControllerUrl.mockResolvedValue(null);
-        config.getAifabrixHomeOverride.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
-        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
         devConfig.getDevPorts.mockReturnValue({
           app: 3000,
           postgres: 5432,
@@ -2756,28 +2924,26 @@ describe('CLI Commands', () => {
         expect(config.getDeveloperId).toHaveBeenCalled();
         expect(config.setDeveloperId).not.toHaveBeenCalled();
         expect(devConfig.getDevPorts).toHaveBeenCalledWith(0);
-        expect(logger.log).toHaveBeenCalledWith('\n🔧 Developer Configuration\n');
-        expect(logger.log).toHaveBeenCalledWith('Developer ID: 0');
-        expect(logger.log).toHaveBeenCalledWith('\nPorts:');
-        expect(logger.log).toHaveBeenCalledWith('  App: 3000');
-        expect(logger.log).toHaveBeenCalledWith('  Postgres: 5432');
-        expect(logger.log).toHaveBeenCalledWith('  Redis: 6379');
-        expect(logger.log).toHaveBeenCalledWith('  pgAdmin: 5050');
-        expect(logger.log).toHaveBeenCalledWith('  Redis Commander: 8081');
-        expect(config.getAifabrixHomeOverride).toHaveBeenCalled();
+        expect(logger.log).toHaveBeenCalledWith(devShowHeader);
+        expect(logger.log).toHaveBeenCalledWith('👤 Developer');
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('ID', '0'));
+        expect(logger.log).toHaveBeenCalledWith('🚀 Ports');
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('App', '3000'));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Postgres', '5432'));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Redis', '6379'));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('pgAdmin', '5050'));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Redis Commander', '8081'));
         expect(config.getAifabrixSecretsPath).toHaveBeenCalled();
-        expect(config.getAifabrixEnvConfigPath).toHaveBeenCalled();
       });
 
       it('should display configuration variables when running dev show via setupCommands', async() => {
         setupCommandsAndResetLogger();
+        primeDevShowConfigMocks();
 
         config.getDeveloperId.mockResolvedValue('1');
         config.getCurrentEnvironment.mockResolvedValue('dev');
         config.getControllerUrl.mockResolvedValue('http://localhost:3610');
-        config.getAifabrixHomeOverride.mockResolvedValue('/workspace/.aifabrix');
         config.getAifabrixSecretsPath.mockResolvedValue('/workspace/aifabrix-miso/builder/secrets.local.yaml');
-        config.getAifabrixEnvConfigPath.mockResolvedValue('/workspace/aifabrix-miso/builder/env-config.yaml');
         devConfig.getDevPorts.mockReturnValue({
           app: 3100,
           postgres: 5532,
@@ -2793,27 +2959,50 @@ describe('CLI Commands', () => {
 
         expect(config.getDeveloperId).toHaveBeenCalled();
         expect(devConfig.getDevPorts).toHaveBeenCalledWith(1);
-        expect(logger.log).toHaveBeenCalledWith('\n🔧 Developer Configuration\n');
-        expect(logger.log).toHaveBeenCalledWith('Developer ID: 1');
-        expect(logger.log).toHaveBeenCalledWith('\nPorts:');
-        expect(logger.log).toHaveBeenCalledWith('  App: 3100');
-        expect(logger.log).toHaveBeenCalledWith('\nConfiguration:');
-        expect(logger.log).toHaveBeenCalledWith('  environment: \'dev\'');
-        expect(logger.log).toHaveBeenCalledWith('  controller: \'http://localhost:3610\'');
-        expect(logger.log).toHaveBeenCalledWith('  aifabrix-home: /workspace/.aifabrix');
-        expect(logger.log).toHaveBeenCalledWith('  aifabrix-secrets: /workspace/aifabrix-miso/builder/secrets.local.yaml');
-        expect(logger.log).toHaveBeenCalledWith('  aifabrix-env-config: /workspace/aifabrix-miso/builder/env-config.yaml');
+        expect(logger.log).toHaveBeenCalledWith(devShowHeader);
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('ID', '1'));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('App', '3100'));
+        expect(logger.log).toHaveBeenCalledWith('⚙️ Configuration');
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('TLS/SSL', 'OFF 🕐'));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Environment', 'dev'));
+        expect(logger.log).toHaveBeenCalledWith(
+          paddedDevRow('Controller', 'http://localhost:3610')
+        );
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Format', EM));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Scoped resources', 'off (default)'));
+        expect(logger.log).toHaveBeenCalledWith(
+          paddedDevRow('URLs registry', path.join(mockHomeDir, '.aifabrix', 'urls.local.yaml'))
+        );
+        expect(logger.log).toHaveBeenCalledWith('📁 Paths');
+        expect(logger.log).toHaveBeenCalledWith(
+          paddedDevRow('Home', path.join(mockHomeDir, '.aifabrix'))
+        );
+        expect(logger.log).toHaveBeenCalledWith('🔗 Integrations');
+        expect(logger.log).toHaveBeenCalledWith(
+          paddedDevRow('Secrets API', '/workspace/aifabrix-miso/builder/secrets.local.yaml')
+        );
       });
 
-      it('should display partial configuration variables via dev show when only some are set', async() => {
+      it('should show aifabrix-secrets (effective) when resolved API URL differs from config path', async() => {
         setupCommandsAndResetLogger();
+        primeDevShowConfigMocks();
+
+        const remoteDevAuth = require('../../lib/utils/remote-dev-auth');
+        jest.spyOn(remoteDevAuth, 'resolveSharedSecretsEndpoint').mockResolvedValue('http://builder02.local:3000/api/dev/secrets');
 
         config.getDeveloperId.mockResolvedValue('1');
         config.getCurrentEnvironment.mockResolvedValue('dev');
         config.getControllerUrl.mockResolvedValue(null);
-        config.getAifabrixHomeOverride.mockResolvedValue('/workspace/.aifabrix');
-        config.getAifabrixSecretsPath.mockResolvedValue(null);
-        config.getAifabrixEnvConfigPath.mockResolvedValue('/workspace/aifabrix-miso/builder/env-config.yaml');
+        config.getFormat.mockResolvedValue(null);
+        config.getAifabrixHomeOverride.mockResolvedValue(null);
+        config.getAifabrixWorkOverride.mockResolvedValue(null);
+        config.getRemoteServer.mockResolvedValue(null);
+        config.getDockerEndpoint.mockResolvedValue(null);
+        config.getDockerTlsSkipVerify.mockResolvedValue(false);
+        config.getUserMutagenFolder.mockResolvedValue(null);
+        config.getSyncSshUser.mockResolvedValue(null);
+        config.getSyncSshHost.mockResolvedValue(null);
+        config.getAifabrixSecretsPath.mockResolvedValue('/aifabrix-miso/builder/secrets.local.yaml');
         devConfig.getDevPorts.mockReturnValue({
           app: 3100,
           postgres: 5532,
@@ -2827,12 +3016,68 @@ describe('CLI Commands', () => {
 
         await handler();
 
-        expect(logger.log).toHaveBeenCalledWith('\nConfiguration:');
-        expect(logger.log).toHaveBeenCalledWith('  environment: \'dev\'');
-        expect(logger.log).toHaveBeenCalledWith('  controller: (not set)');
-        expect(logger.log).toHaveBeenCalledWith('  aifabrix-home: /workspace/.aifabrix');
-        expect(logger.log).toHaveBeenCalledWith('  aifabrix-secrets: (not set)');
-        expect(logger.log).toHaveBeenCalledWith('  aifabrix-env-config: /workspace/aifabrix-miso/builder/env-config.yaml');
+        expect(logger.log).toHaveBeenCalledWith(
+          paddedDevRow('Secrets API', 'http://builder02.local:3000/api/dev/secrets')
+        );
+      });
+
+      it('should display partial configuration variables via dev show when only some are set', async() => {
+        setupCommandsAndResetLogger();
+        primeDevShowConfigMocks();
+
+        config.getDeveloperId.mockResolvedValue('1');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
+        config.getAifabrixSecretsPath.mockResolvedValue(null);
+        devConfig.getDevPorts.mockReturnValue({
+          app: 3100,
+          postgres: 5532,
+          redis: 6479,
+          pgadmin: 5150,
+          redisCommander: 8181
+        });
+
+        const handler = commandActions['dev show'];
+        expect(handler).toBeDefined();
+
+        await handler();
+
+        expect(logger.log).toHaveBeenCalledWith('⚙️ Configuration');
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('TLS/SSL', 'OFF 🕐'));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Environment', 'dev'));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Controller', EM));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Format', EM));
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Scoped resources', 'off (default)'));
+        expect(logger.log).toHaveBeenCalledWith(
+          paddedDevRow('URLs registry', path.join(mockHomeDir, '.aifabrix', 'urls.local.yaml'))
+        );
+        expect(logger.log).toHaveBeenCalledWith(
+          paddedDevRow('Home', path.join(mockHomeDir, '.aifabrix'))
+        );
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('Secrets API', EM));
+      });
+
+      it('should show TLS/SSL ON when tlsEnabled is true in config', async() => {
+        setupCommandsAndResetLogger();
+        primeDevShowConfigMocks();
+        config.getTlsEnabled.mockResolvedValue(true);
+
+        config.getDeveloperId.mockResolvedValue('1');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
+        config.getAifabrixSecretsPath.mockResolvedValue(null);
+        devConfig.getDevPorts.mockReturnValue({
+          app: 3100,
+          postgres: 5532,
+          redis: 6479,
+          pgadmin: 5150,
+          redisCommander: 8181
+        });
+
+        const handler = commandActions['dev show'];
+        await handler();
+
+        expect(logger.log).toHaveBeenCalledWith(paddedDevRow('TLS/SSL', 'ON 🔒'));
       });
 
       it('should handle dev set-id command with invalid id via setupCommands', async() => {
@@ -2869,6 +3114,7 @@ describe('CLI Commands', () => {
     describe('dev set-format command handler execution', () => {
       it('should execute dev set-format json via setupCommands', async() => {
         setupCommandsAndResetLogger();
+        primeDevShowConfigMocks();
 
         config.setFormat.mockResolvedValue();
         config.getDeveloperId.mockResolvedValue('0');
@@ -2877,7 +3123,6 @@ describe('CLI Commands', () => {
         config.getFormat.mockResolvedValue('json');
         config.getAifabrixHomeOverride.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
-        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
         devConfig.getDevPorts.mockReturnValue({
           app: 3000, postgres: 5432, redis: 6379,
           pgadmin: 5050, redisCommander: 8081
@@ -2890,11 +3135,12 @@ describe('CLI Commands', () => {
         await handler('json');
 
         expect(config.setFormat).toHaveBeenCalledWith('json');
-        expect(logger.log).toHaveBeenCalledWith(chalk.green('✓ Format set to json'));
+        expect(logger.log).toHaveBeenCalledWith(chalk.green('✔ Format set to json'));
       });
 
       it('should execute dev set-format yaml via setupCommands', async() => {
         setupCommandsAndResetLogger();
+        primeDevShowConfigMocks();
 
         config.setFormat.mockResolvedValue();
         config.getDeveloperId.mockResolvedValue('0');
@@ -2903,7 +3149,6 @@ describe('CLI Commands', () => {
         config.getFormat.mockResolvedValue('yaml');
         config.getAifabrixHomeOverride.mockResolvedValue(null);
         config.getAifabrixSecretsPath.mockResolvedValue(null);
-        config.getAifabrixEnvConfigPath.mockResolvedValue(null);
         devConfig.getDevPorts.mockReturnValue({
           app: 3000, postgres: 5432, redis: 6379,
           pgadmin: 5050, redisCommander: 8081
@@ -2927,6 +3172,57 @@ describe('CLI Commands', () => {
         await handler('xml');
 
         expect(cliUtils.handleCommandError).toHaveBeenCalledWith(expect.any(Error), 'dev set-format');
+        expect(process.exit).toHaveBeenCalledWith(1);
+      });
+    });
+
+    describe('dev set-scoped-resources command handler execution', () => {
+      it('should execute dev set-scoped-resources true via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+        primeDevShowConfigMocks();
+
+        config.setUseEnvironmentScopedResources.mockResolvedValue();
+        config.getDeveloperId.mockResolvedValue('0');
+        config.getCurrentEnvironment.mockResolvedValue('dev');
+        config.getControllerUrl.mockResolvedValue(null);
+        config.getAifabrixSecretsPath.mockResolvedValue(null);
+        config.getUseEnvironmentScopedResources.mockResolvedValue(true);
+        devConfig.getDevPorts.mockReturnValue({
+          app: 3000,
+          postgres: 5432,
+          redis: 6379,
+          pgadmin: 5050,
+          redisCommander: 8081
+        });
+        chalk.green.mockImplementation((text) => text);
+        chalk.gray.mockImplementation((text) => text);
+
+        const handler = commandActions['dev set-scoped-resources <value>'];
+        expect(handler).toBeDefined();
+
+        await handler('true');
+
+        expect(config.setUseEnvironmentScopedResources).toHaveBeenCalledWith(true);
+        expect(logger.log).toHaveBeenCalledWith(
+          chalk.green('✔ Environment-scoped resources activated in ~/.aifabrix/config.yaml')
+        );
+      });
+
+      it('should handle invalid value via setupCommands', async() => {
+        setupCommandsAndResetLogger();
+
+        cliUtils.handleCommandError.mockImplementation(() => {});
+        process.exit.mockImplementation(() => {});
+
+        const handler = commandActions['dev set-scoped-resources <value>'];
+        expect(handler).toBeDefined();
+
+        await handler('maybe');
+
+        expect(cliUtils.handleCommandError).toHaveBeenCalledWith(
+          expect.any(Error),
+          'dev set-scoped-resources'
+        );
         expect(process.exit).toHaveBeenCalledWith(1);
       });
     });

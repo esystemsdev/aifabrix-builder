@@ -5,7 +5,7 @@
 Environment variables in `env.template` can use `${VAR}` syntax; values are resolved from `env-config.yaml` based on deployment context. The only persisted `.env` is written at `build.envOutputPath` when set (or a temp path for run); there is no separate "docker vs local" file location.
 
 **System file:** `lib/schema/env-config.yaml`  
-**User override:** Set `aifabrix-env-config` in `~/.aifabrix/config.yaml` to your custom file; it is merged with system defaults.
+**User override:** Set `aifabrix-env-config` in `~/.aifabrix/config.yaml` to your custom file; it is merged with system defaults. If the path is relative, the CLI resolves it against **`aifabrix-work`** / `AIFABRIX_WORK` first, then **`aifabrix-home`** / Fabrix home—not against the shell’s current directory.
 
 **Supported variables:** `${NODE_ENV}`, `${PORT}`, `${MISO_HOST}`, `${MISO_PORT}`, `${MISO_PUBLIC_PORT}`, `${DB_HOST}`, `${DB_PORT}`, `${DB_PUBLIC_PORT}`, `${REDIS_HOST}`, `${REDIS_PORT}`, `${KEYCLOAK_HOST}`, `${KEYCLOAK_PORT}`, `${KEYCLOAK_PUBLIC_PORT}`, and language-specific (`PYTHONUNBUFFERED`, etc.). `${PORT}` is resolved from `application.yaml` → `port` (with developer-id offset when applicable), so values like `WEB_SERVER_URL=http://localhost:${PORT}` work.
 

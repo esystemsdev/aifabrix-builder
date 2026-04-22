@@ -16,6 +16,14 @@ image:
 # Port Configuration (base for host; host port = 8082 + developer_id*100 from ~/.aifabrix/config.yaml)
 port: 8082
 
+# Public path behind Azure Front Door / reverse proxy (used by url://public and urls.local.yaml).
+# Traefik: host is expanded from developer-id + remote-server (hostname of `remote-server` in ~/.aifabrix/config.yaml).
+frontDoorRouting:
+  pattern: /auth/*
+  enabled: true
+  host: ${DEV_USERNAME}.${REMOTE_HOST}
+  tls: ${TLS_ENABLED}
+
 # Azure Requirements
 requires:
   database: true
@@ -27,6 +35,7 @@ requires:
 # Health Check
 healthCheck:
   path: /health/ready
+  bashProbe: true
   interval: 30
   probePath: /health/ready
   probeRequestType: GET
@@ -41,6 +50,5 @@ authentication:
 build:
   context: .. # Docker build context (relative to builder/)
   dockerfile: builder/Dockerfile # Dockerfile name (empty = use template)
-  localPort: 8082 # Port for local development (different from Docker port)
   containerPort: 8080 # Container port (different from local port)
   language: typescript # Runtime language for template selection

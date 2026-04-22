@@ -21,7 +21,7 @@ aifabrix build myapp
    - If not found, generates from template
 4. **Builds Docker image** with proper context (`build.context` is the canonical app code directory; it is also used for `run --reload` as the local mount path and, for remote Docker, as the Mutagen local path)
 5. **Builds image as** `myapp-dev<developerId>:<tag>` and also tags `myapp:<tag>` for compatibility
-6. **Resolves env** from env.template + secrets in memory; the **only** persisted `.env` is written to `build.envOutputPath` when set (for run, compose uses this path or a temp path; no `.env` under `builder/<app>/` or `integration/<app>/`)
+6. **Resolves env** from env.template + secrets in memory; the **only** persisted `.env` is written to `build.envOutputPath` when set (for run, compose uses this path or a temp path; no `.env` under `builder/<appKey>/` or `integration/<systemKey>/`)
    - Container runtime: compose's `env_file` points to that single path (envOutputPath or temp for run)
    - Uses `port` from application.yaml; uses docker service names (redis, postgres) for container-to-container; all ports get developer-id adjustment where applicable
 
@@ -246,8 +246,23 @@ build:
 
 ### When SDK Uses Your Dockerfile
 
-- ✓ Dockerfile exists at specified path
-- ✓ You haven't used `--force-template`
+Resolution order:
+
+1. **`build.dockerfile` in `application.yaml`** (path resolved from `build.context`, e.g. repo-root `builder/builder-server/Dockerfile`) when the file exists and you did not pass `--force-template`.
+2. Otherwise **`Dockerfile` in the developer app directory** (e.g. `~/.aifabrix/applications/Dockerfile` after a copy).
+3. Otherwise generate from the language template.
+
+So a monorepo app that sets `build.dockerfile` always uses that canonical Dockerfile, even if an older `Dockerfile` was left in `~/.aifabrix/...` from a previous build.
+
+### Force a full image rebuild
+
+Docker may reuse cached layers (`CACHED` in build output) so the image id does not change even when you expect new code. Run:
+
+```bash
+aifabrix build <app> --no-cache
+```
+
+That passes `docker build --no-cache` (slower, but guarantees layers re-run).
 
 ### Force Regenerate Template
 
@@ -313,7 +328,7 @@ docker images | grep myapp-dev
 
 ### .env (single file)
 
-Secrets are resolved in memory; the **only** persisted `.env` is written to `build.envOutputPath` when set. For run, compose uses this path or a temp path; there is no `.env` under `builder/<app>/` or `integration/<app>/`.
+Secrets are resolved in memory; the **only** persisted `.env` is written to `build.envOutputPath` when set. For run, compose uses this path or a temp path; there is no `.env` under `builder/<appKey>/` or `integration/<systemKey>/`.
 
 **When `build.envOutputPath` is set:**  
 **Location:** Path specified in `build.envOutputPath` (e.g., `../../apps/myapp/.env`)  

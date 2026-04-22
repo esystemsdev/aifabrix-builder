@@ -215,8 +215,8 @@ describe('External System Download Helpers Module', () => {
         },
         externalIntegration: {
           schemaBasePath: './',
-          systems: ['hubspot-system.json'],
-          dataSources: ['hubspot-datasource-contact.json', 'hubspot-datasource-company.json'],
+          systems: ['hubspot-system.yaml'],
+          dataSources: ['hubspot-datasource-contact.yaml', 'hubspot-datasource-company.yaml'],
           autopublish: false,
           version: '2.0.0'
         }
@@ -264,8 +264,8 @@ describe('External System Download Helpers Module', () => {
       const result = generateVariablesYaml(systemKey, application, dataSources);
 
       expect(result.externalIntegration.dataSources).toEqual([
-        'hubspot-datasource-contact.json',
-        'hubspot-datasource-company.json'
+        'hubspot-datasource-contact.yaml',
+        'hubspot-datasource-company.yaml'
       ]);
     });
 
@@ -280,8 +280,8 @@ describe('External System Download Helpers Module', () => {
       const result = generateVariablesYaml(systemKey, application, dataSources);
 
       expect(result.externalIntegration.dataSources).toEqual([
-        'hubspot-datasource-contact.json',
-        'hubspot-datasource-company.json'
+        'hubspot-datasource-contact.yaml',
+        'hubspot-datasource-company.yaml'
       ]);
     });
 
@@ -296,8 +296,8 @@ describe('External System Download Helpers Module', () => {
       const result = generateVariablesYaml(systemKey, application, dataSources);
 
       expect(result.externalIntegration.dataSources).toEqual([
-        'hubspot-datasource-contact.json',
-        'hubspot-datasource-company.json'
+        'hubspot-datasource-contact.yaml',
+        'hubspot-datasource-company.yaml'
       ]);
     });
 
@@ -321,7 +321,7 @@ describe('External System Download Helpers Module', () => {
       const result = generateVariablesYaml(systemKey, application, dataSources);
 
       expect(result.externalIntegration.dataSources).toEqual([
-        'hubspot-datasource-custom-object-123.json'
+        'hubspot-datasource-custom-object-123.yaml'
       ]);
     });
   });
@@ -352,9 +352,11 @@ describe('External System Download Helpers Module', () => {
       expect(result).toContain('Datasource: Contacts');
       expect(result).toContain('Datasource: Companies');
       expect(result).toContain('`env.template`');
-      expect(result).toContain('aifabrix validate hubspot --type external');
-      expect(result).toContain('aifabrix json hubspot --type external');
-      expect(result).toContain('aifabrix deploy hubspot --controller <url> --environment dev');
+      expect(result).toContain('aifabrix validate hubspot');
+      expect(result).not.toContain('validate hubspot --type external');
+      expect(result).toContain('aifabrix json hubspot');
+      expect(result).toContain('aifabrix deploy hubspot');
+      expect(result).not.toMatch(/aifabrix deploy hubspot --controller/);
     });
 
     it('should use systemKey as displayName if not provided', () => {
@@ -437,10 +439,10 @@ describe('External System Download Helpers Module', () => {
       const result = generateReadme(systemKey, application, dataSources);
 
       expect(result).toContain('## Quick Start');
-      expect(result).toContain('Create External System');
+      expect(result).toContain('Extend External System');
       expect(result).toContain('Configure Authentication and Datasources');
-      expect(result).toContain('Validate Configuration');
-      expect(result).toContain('Generate Deployment JSON');
+      expect(result).toContain('Validate configuration (local only)');
+      expect(result).toContain('Repair Deployment Manifest');
     });
 
     it('should include testing section', () => {
@@ -451,8 +453,9 @@ describe('External System Download Helpers Module', () => {
       const result = generateReadme(systemKey, application, dataSources);
 
       expect(result).toContain('## Testing');
-      expect(result).toContain('Unit Tests (Local Validation)');
-      expect(result).toContain('Integration Tests (Via Dataplane)');
+      expect(result).toContain('Calls dataplane?');
+      expect(result).toContain('Local checks (no API)');
+      expect(result).toContain('Integration tests (dataplane API)');
     });
 
     it('should include deployment section', () => {
@@ -463,7 +466,7 @@ describe('External System Download Helpers Module', () => {
       const result = generateReadme(systemKey, application, dataSources);
 
       expect(result).toContain('## Deployment');
-      expect(result).toContain('Deploy to dataplane via miso-controller:');
+      expect(result).toContain('miso-controller pipeline');
     });
 
     it('should handle empty datasources array', () => {

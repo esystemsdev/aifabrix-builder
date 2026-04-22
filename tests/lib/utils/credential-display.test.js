@@ -25,9 +25,9 @@ const {
 describe('credential-display', () => {
   describe('STATUS_ICONS', () => {
     it('should have icons for all statuses', () => {
-      expect(STATUS_ICONS.verified).toBe(' ✓');
+      expect(STATUS_ICONS.verified).toBe(' ✔');
       expect(STATUS_ICONS.pending).toBe(' ○');
-      expect(STATUS_ICONS.failed).toBe(' ✗');
+      expect(STATUS_ICONS.failed).toBe(' ✖');
       expect(STATUS_ICONS.expired).toBe(' ⊘');
     });
   });
@@ -36,7 +36,7 @@ describe('credential-display', () => {
     it('should return status info for verified', () => {
       const result = formatCredentialStatus('verified');
       expect(result).toEqual({
-        icon: ' ✓',
+        icon: ' ✔',
         color: expect.any(Function),
         label: 'Valid'
       });
@@ -54,7 +54,7 @@ describe('credential-display', () => {
     it('should return status info for failed', () => {
       const result = formatCredentialStatus('failed');
       expect(result).toEqual({
-        icon: ' ✗',
+        icon: ' ✖',
         color: expect.any(Function),
         label: 'Connection failed'
       });
@@ -72,7 +72,7 @@ describe('credential-display', () => {
     it('should accept uppercase status', () => {
       const result = formatCredentialStatus('VERIFIED');
       expect(result).toBeTruthy();
-      expect(result.icon).toBe(' ✓');
+      expect(result.icon).toBe(' ✔');
     });
 
     it('should return null for missing status', () => {
@@ -97,7 +97,7 @@ describe('credential-display', () => {
       const result = formatCredentialWithStatus(cred);
       expect(result.key).toBe('hubspot-cred');
       expect(result.name).toBe('HubSpot API Key');
-      expect(result.statusFormatted).toContain(' ✓');
+      expect(result.statusFormatted).toContain(' ✔');
       expect(result.statusLabel).toBe(' (Valid)');
     });
 
@@ -115,7 +115,7 @@ describe('credential-display', () => {
       const result = formatCredentialWithStatus(cred);
       expect(result.key).toBe('by-id');
       expect(result.name).toBe('ByName');
-      expect(result.statusFormatted).toContain(' ✗');
+      expect(result.statusFormatted).toContain(' ✖');
     });
 
     it('should handle status pending with gray', () => {

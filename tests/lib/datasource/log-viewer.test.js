@@ -5,7 +5,14 @@
  * @version 2.0.0
  */
 
-jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn(), warn: jest.fn(), error: jest.fn() }));
+// Plain logger (no jest.fn()) avoids Symbol.hasInstance stack overflow when this file shares a worker
+// with other suites that mock logger differently.
+const logViewerLoggerCalls = { log: [], warn: [], error: [] };
+jest.mock('../../../lib/utils/logger', () => ({
+  log: (...args) => logViewerLoggerCalls.log.push(args),
+  warn: (...args) => logViewerLoggerCalls.warn.push(args),
+  error: (...args) => logViewerLoggerCalls.error.push(args)
+}));
 jest.mock('../../../lib/datasource/resolve-app', () => ({
   resolveAppKeyForDatasource: jest.fn()
 }));
@@ -22,11 +29,23 @@ const {
   runLogViewer
 } = require('../../../lib/datasource/log-viewer');
 const { resolveAppKeyForDatasource } = require('../../../lib/datasource/resolve-app');
-const logger = require('../../../lib/utils/logger');
+
+/** @param {string} s */
+function stripAnsi(s) {
+  const ansiSeq = new RegExp(`${String.fromCharCode(0x1b)}\\[[0-9;?]*[ -/]*[@-~]`, 'g');
+  return String(s).replace(ansiSeq, '');
+}
+
+function logMessages() {
+  return logViewerLoggerCalls.log.map(c => String(c[0]));
+}
 
 describe('log-viewer', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    logViewerLoggerCalls.log.length = 0;
+    logViewerLoggerCalls.warn.length = 0;
+    logViewerLoggerCalls.error.length = 0;
     resolveAppKeyForDatasource.mockResolvedValue({ appKey: 'myapp' });
   });
 
@@ -62,11 +81,13 @@ describe('log-viewer', () => {
         request: { sourceIdOrKey: 'ds-key', includeDebug: true },
         response: { success: true, steps: [{ name: 'config', success: true }] }
       }, 'test-e2e', 'test-e2e-123.json');
-      expect(logger.log).toHaveBeenCalled();
-      const calls = logger.log.mock.calls.map(c => String(c[0]));
-      expect(calls.some(s => s.includes('E2E Log') && s.includes('test-e2e-123'))).toBe(true);
+      expect(logViewerLoggerCalls.log.length).toBeGreaterThan(0);
+      const calls = logMessages();
+      expect(calls.some(s => stripAnsi(s).toLowerCase().includes('e2e log'))).toBe(true);
+      expect(calls.some(s => s.includes('test-e2e-123'))).toBe(true);
       expect(calls.some(s => s.includes('sourceIdOrKey'))).toBe(true);
-      expect(calls.some(s => s.includes('✓ config'))).toBe(true);
+      // Chalk may wrap only the checkmark (FORCE_COLOR); contiguous "✔ config" is not guaranteed.
+      expect(calls.some(s => stripAnsi(s).includes('✔ config'))).toBe(true);
     });
 
     it('should show full executionId and execution link when dataplaneUrl in request', () => {
@@ -81,7 +102,7 @@ describe('log-viewer', () => {
           auditLog: [{ executionId: fullExecutionId }]
         }
       }, 'test-e2e', 'test-e2e-log.json');
-      const calls = logger.log.mock.calls.map(c => String(c[0]));
+      const calls = logMessages();
       expect(calls.some(s => s.includes(fullExecutionId) && s.includes('executionId:'))).toBe(true);
       expect(calls.some(s =>
         s.includes('Link:') && s.includes('/api/v1/external/test-e2e-sharepoint-documents/executions/' + fullExecutionId)
@@ -94,7 +115,7 @@ describe('log-viewer', () => {
         request: { sourceIdOrKey: 'my-ds' },
         response: { success: true, auditLog: [{ executionId: fullExecutionId }] }
       }, 'test-e2e');
-      const calls = logger.log.mock.calls.map(c => String(c[0]));
+      const calls = logMessages();
       expect(calls.some(s => s.includes(fullExecutionId))).toBe(true);
       expect(calls.some(s => s.includes('Link:') && s.includes('/api/v1/external/'))).toBe(false);
     });
@@ -108,9 +129,9 @@ describe('log-viewer', () => {
           fieldMappingResults: { mappingCount: 5 }
         }
       }, 'test-integration', 'test-integration-123.json');
-      expect(logger.log).toHaveBeenCalled();
-      const calls = logger.log.mock.calls.map(c => String(c[0]));
-      expect(calls.some(s => s.includes('Integration Log'))).toBe(true);
+      expect(logViewerLoggerCalls.log.length).toBeGreaterThan(0);
+      const calls = logMessages();
+      expect(calls.some(s => stripAnsi(s).toLowerCase().includes('integration log'))).toBe(true);
       expect(calls.some(s => s.includes('systemKey'))).toBe(true);
       expect(calls.some(s => s.includes('mappingCount'))).toBe(true);
     });

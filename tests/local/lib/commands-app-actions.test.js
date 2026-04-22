@@ -218,7 +218,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
           expect.objectContaining({ method: 'POST' }),
           expect.objectContaining({ token: 'test-token' })
         );
-        expect(console.log).toHaveBeenCalledWith(expect.stringContaining('✅ Application registered successfully!'));
+        expect(console.log).toHaveBeenCalledWith(expect.stringContaining('✔ Application registered successfully!'));
       } else {
         expect(true).toBe(false); // Action was not captured
       }
@@ -584,7 +584,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
         token: 'test-token',
         controller: 'http://localhost:3000'
       });
-      formatApiError.mockReturnValue('❌ Error');
+      formatApiError.mockReturnValue('✖ Error');
 
       listEnvironmentApplications.mockResolvedValue({
         success: false
@@ -592,7 +592,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
       if (listAction) {
         await listAction({ environment: 'dev' });
-        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('❌ Error'));
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('✖ Error'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });
@@ -614,7 +614,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
         token: 'test-token',
         controller: 'http://localhost:3000'
       });
-      formatApiError.mockReturnValue('❌ Unknown error occurred');
+      formatApiError.mockReturnValue('✖ Unknown error occurred');
 
       listEnvironmentApplications.mockResolvedValue({
         success: true,
@@ -623,7 +623,7 @@ describe('Application Commands Actions - Invoke Handlers', () => {
 
       if (listAction) {
         await listAction({ environment: 'dev' });
-        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('❌ Unknown error occurred'));
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('✖ Unknown error occurred'));
         expect(process.exit).toHaveBeenCalledWith(1);
       }
     });

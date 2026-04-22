@@ -13,12 +13,23 @@ jest.mock('chalk', () => {
   return m;
 });
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn() }));
-jest.mock('../../../lib/core/config', () => ({ getAifabrixSecretsPath: jest.fn() }));
-jest.mock('../../../lib/utils/paths', () => ({ getAifabrixHome: jest.fn(() => '/home/.aifabrix') }));
-jest.mock('../../../lib/utils/remote-dev-auth', () => ({
-  isRemoteSecretsUrl: jest.fn(),
-  getRemoteDevAuth: jest.fn()
+jest.mock('../../../lib/core/config', () => ({
+  getAifabrixSecretsPath: jest.fn(),
+  getRemoteServer: jest.fn().mockResolvedValue(null),
+  getDeveloperId: jest.fn().mockResolvedValue('1')
 }));
+jest.mock('../../../lib/utils/paths', () => ({
+  getPrimaryUserSecretsLocalPath: jest.fn(() => '/home/.aifabrix/secrets.local.yaml'),
+  getAifabrixWork: jest.fn(() => null)
+}));
+jest.mock('../../../lib/utils/remote-dev-auth', () => {
+  const actual = jest.requireActual('../../../lib/utils/remote-dev-auth');
+  return {
+    ...actual,
+    isRemoteSecretsUrl: jest.fn(),
+    getRemoteDevAuth: jest.fn()
+  };
+});
 jest.mock('../../../lib/api/dev.api');
 jest.mock('fs');
 jest.mock('js-yaml', () => ({ load: jest.fn().mockReturnValue({}) }));
@@ -34,6 +45,9 @@ describe('secrets-list command', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     config.getAifabrixSecretsPath.mockResolvedValue(null);
+    const actual = jest.requireActual('../../../lib/utils/remote-dev-auth');
+    isRemoteSecretsUrl.mockImplementation(actual.isRemoteSecretsUrl);
+    getRemoteDevAuth.mockResolvedValue(null);
   });
 
   it('lists user secrets (key and value) sorted, in table format', async() => {
@@ -42,8 +56,8 @@ describe('secrets-list command', () => {
     await handleSecretsList({ shared: false });
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('User secrets'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/^Key\s+Value$/));
-    const key1Row = 'KEY1'.padEnd(45) + 'v1';
-    const key2Row = 'KEY2'.padEnd(45) + 'v2';
+    const key1Row = 'KEY1'.padEnd(55) + 'v1';
+    const key2Row = 'KEY2'.padEnd(55) + 'v2';
     expect(logger.log).toHaveBeenCalledWith(key1Row);
     expect(logger.log).toHaveBeenCalledWith(key2Row);
   });
@@ -65,10 +79,15 @@ describe('secrets-list command', () => {
     getRemoteDevAuth.mockResolvedValue({ serverUrl: 'https://dev.example.com', clientCertPem: 'pem' });
     devApi.listSecrets.mockResolvedValue([{ name: 'S1', value: 'val1' }, { name: 'S2', value: 'val2' }]);
     await handleSecretsList({ shared: true });
-    expect(devApi.listSecrets).toHaveBeenCalledWith('https://dev.example.com', 'pem');
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Shared secrets (remote)'));
-    expect(logger.log).toHaveBeenCalledWith('S1'.padEnd(45) + 'val1');
-    expect(logger.log).toHaveBeenCalledWith('S2'.padEnd(45) + 'val2');
+    expect(devApi.listSecrets).toHaveBeenCalledWith(
+      'https://dev.example.com',
+      'pem',
+      undefined,
+      'https://dev.example.com/secrets'
+    );
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Shared secrets (remote - dev.example.com)'));
+    expect(logger.log).toHaveBeenCalledWith('S1'.padEnd(55) + 'val1');
+    expect(logger.log).toHaveBeenCalledWith('S2'.padEnd(55) + 'val2');
   });
 
   it('uses key when name missing in remote API item', async() => {
@@ -77,7 +96,7 @@ describe('secrets-list command', () => {
     getRemoteDevAuth.mockResolvedValue({ serverUrl: 'https://dev.example.com', clientCertPem: 'pem' });
     devApi.listSecrets.mockResolvedValue([{ key: 'LEGACY_KEY', value: 'legacy-val' }]);
     await handleSecretsList({ shared: true });
-    expect(logger.log).toHaveBeenCalledWith('LEGACY_KEY'.padEnd(45) + 'legacy-val');
+    expect(logger.log).toHaveBeenCalledWith('LEGACY_KEY'.padEnd(55) + 'legacy-val');
   });
 
   it('throws when remote URL but auth not configured', async() => {
@@ -94,16 +113,16 @@ describe('secrets-list command', () => {
     require('js-yaml').load.mockReturnValue({ SHARED_A: 'secret1', SHARED_B: 'secret2' });
     await handleSecretsList({ shared: true });
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Shared secrets (file: /path/to/shared.yaml)'));
-    expect(logger.log).toHaveBeenCalledWith('SHARED_A'.padEnd(45) + 'secret1');
-    expect(logger.log).toHaveBeenCalledWith('SHARED_B'.padEnd(45) + 'secret2');
+    expect(logger.log).toHaveBeenCalledWith('SHARED_A'.padEnd(55) + 'secret1');
+    expect(logger.log).toHaveBeenCalledWith('SHARED_B'.padEnd(55) + 'secret2');
   });
 
   it('formats null or missing value as empty string (sorted by key)', async() => {
     fs.existsSync.mockReturnValue(true);
     require('js-yaml').load.mockReturnValue({ HAS_VAL: 'x', NO_VAL: null, EMPTY: '' });
     await handleSecretsList({ shared: false });
-    expect(logger.log).toHaveBeenCalledWith('EMPTY'.padEnd(45) + '');
-    expect(logger.log).toHaveBeenCalledWith('HAS_VAL'.padEnd(45) + 'x');
-    expect(logger.log).toHaveBeenCalledWith('NO_VAL'.padEnd(45) + '');
+    expect(logger.log).toHaveBeenCalledWith('EMPTY'.padEnd(55) + '');
+    expect(logger.log).toHaveBeenCalledWith('HAS_VAL'.padEnd(55) + 'x');
+    expect(logger.log).toHaveBeenCalledWith('NO_VAL'.padEnd(55) + '');
   });
 });

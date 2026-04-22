@@ -1,3 +1,14 @@
+## [Unreleased]
+
+---
+
+## [2.44.0] - 2026-04-16
+
+### Changed
+- Validation-engine work: schema/deployment alignment, env URL resolution, datasource validate/upload UX, Traefik and health-check templates, Jest layout and tests.
+
+---
+
 ## [2.43.0] - 2026-03-16
 
 ### Added
@@ -19,7 +30,7 @@
 ## [2.42.3] - 2026-03-14
 
 ### Added
-- **Repair --doc:** `aifabrix repair <app> --doc` regenerates `integration/<app>/README.md` from the current deployment manifest. Plan 106.
+- **Repair --doc:** `aifabrix repair <app> --doc` regenerates `integration/<systemKey>/README.md` from the current deployment manifest. Plan 106.
 - **External env.template template:** Handlebars-based env.template for external systems with **Authentication** and **Configuration** sections and inline comments. Create, download, split, and repair all use the same template; auth type, secure vars (kv paths), and configuration with portalInput hints. Plan 106.
 - **Datasource test-e2e -v:** With `aifabrix datasource test-e2e <key> --verbose`, the CLI shows managed record counts (inserted/updated/deleted/totalProcessed) for sync steps and CIP execution trace summary when the dataplane returns audit data. Plan 107.
 - **Datasource test-integration -v:** `aifabrix datasource test-integration <key> -v` shows detailed validation, field mapping, and endpoint test output. Plan 107.
@@ -111,10 +122,10 @@
 ## [2.41.0] - 2026-02-22
 
 ### Added
-- **Resolve for external integrations without application.yaml:** `aifabrix resolve <app>` now works for external integrations when only `env.template` exists in `integration/<app>/` (no `application.yaml` required). When `integration/<app>/env.template` is present, resolve uses that directory, runs kv resolution from the same secrets file(s), and writes `integration/<app>/.env`. Post-resolve validation is skipped in this **env-only** mode; run `aifabrix validate <app>` when you have full config. Documented in [utilities](docs/commands/utilities.md), [env-template](docs/configuration/env-template.md), and [external-integration](docs/commands/external-integration.md).
+- **Resolve for external integrations without application.yaml:** `aifabrix resolve <app>` now works for external integrations when only `env.template` exists in `integration/<systemKey>/` (no `application.yaml` required). When `integration/<systemKey>/env.template` is present, resolve uses that directory, runs kv resolution from the same secrets file(s), and writes `integration/<systemKey>/.env`. Post-resolve validation is skipped in this **env-only** mode; run `aifabrix validate <app>` when you have full config. Documented in [utilities](docs/commands/utilities.md), [env-template](docs/configuration/env-template.md), and [external-integration](docs/commands/external-integration.md).
 - **Vector DB extension convention (plan 68)**: Any database whose name **ends with `vector`** (case-insensitive) is treated as a vector store. **db-init** runs `CREATE EXTENSION IF NOT EXISTS vector` on those databases so local Postgres gets pgvector automatically; for Azure or managed Postgres, a DBA may need to run it as superuser if the app user cannot. **Implementation:** Handlebars helper `isVectorDatabase(name)` in compose-generator (and exported `isVectorDatabaseName` for tests); Python and TypeScript docker-compose templates run the extension creation in the db-init `{{#each databases}}` block for each vector DB. **Docs:** `docs/running.md` and `docs/configuration/application-yaml.md` describe the convention and the Azure/managed Postgres note.
 - **Remote Docker development (plan 65)**: Full remote dev flow for dev/tst/pro with certificate (mTLS) authentication. **Config:** `~/.aifabrix/config.yaml` supports `remote-server`, and `docker-endpoint`; when `remote-server` is set, Docker commands use the remote endpoint. **Onboarding:** `aifabrix init` (or `aifabrix dev init`) with `--dev-id`, `--server`, `--pin` — generates CSR, calls `POST /api/dev/issue-cert`, stores certificate in `~/.aifabrix/certs/<dev-id>/`, fetches settings via `GET /api/dev/settings`, and registers SSH public key via `POST /api/dev/users/{id}/ssh-keys` so Mutagen works without username/password (ed25519 key generation on Windows/Mac). **Dev API (cert-authenticated):** Users — `GET/POST/PATCH/DELETE /api/dev/users`, `POST /api/dev/users/{id}/pin`; SSH keys — `GET/POST/DELETE /api/dev/users/{id}/ssh-keys`; Secrets — when `aifabrix-secrets` is an http(s) URL, `GET/POST/DELETE /api/dev/secrets` for shared secrets (values never stored on disk). **Run:** `aifabrix run <app> --reload` (dev) uses Mutagen sync (local ↔ remote path), then container with `-v <remote_path>:/app`; `--env tst`/`pro` run immutable image on the same per-developer network. **Infra:** One Docker network per developer; dev/tst/pro share that network. Mutagen binary under `~/.aifabrix/bin/` (auto-download if missing). Backend contract: `.cursor/plans/swagger.json`.
-- **Local Docker and single .env (plan 66)**: `aifabrix run <appKey> --reload` with **local** Docker (Windows/Mac, local HDD). **Content mapping:** `build.context` in `application.yaml` is the canonical app code directory for both local and remote — local run mounts resolved `build.context`; remote run uses it as Mutagen local path. **Single .env:** Secrets resolved in memory; .env is written **only** to `build.envOutputPath` (code folder). No .env under `builder/<appKey>/` or `integration/<appKey>/`; compose `env_file` uses that single path (or temp when envOutputPath unset). **Port:** `build.localPort` removed from schema and code; app port comes only from `port` in `application.yaml` (developer offset for multi-dev unchanged).
+- **Local Docker and single .env (plan 66)**: `aifabrix run <appKey> --reload` with **local** Docker (Windows/Mac, local HDD). **Content mapping:** `build.context` in `application.yaml` is the canonical app code directory for both local and remote — local run mounts resolved `build.context`; remote run uses it as Mutagen local path. **Single .env:** Secrets resolved in memory; .env is written **only** to `build.envOutputPath` (code folder). No .env under `builder/<appKey>/` or `integration/<systemKey>/`; compose `env_file` uses that single path (or temp when envOutputPath unset). **Port:** `build.localPort` removed from schema and code; app port comes only from `port` in `application.yaml` (developer offset for multi-dev unchanged).
 - **Configurable remote path and localhost guard (plan 69)**: Optional **build.remoteSyncPath** in `application.yaml` — relative path under user-mutagen-folder for remote sync and Docker `-v`; when unset, default remains `dev/<appKey>`. **Localhost guard:** When Docker endpoint, remote-server URL, or sync-ssh-host is localhost/127.0.0.1, the CLI does not start Mutagen; `ensureReloadSync` returns null and the run flow uses the local code path as `devMountPath` (same as when no remote is configured). Schema, mutagen `getRemotePath`, run flow, and docs updated.
 - **Credential secrets push on upload (plan 70)**: Before **aifabrix upload** (upload → validate → publish), the CLI pushes credential secrets to the dataplane. **Sources:** (1) **KV_*** variables from `integration/<system-key>/.env` — keys map to `kv://` paths (e.g. `KV_SECRETS_CLIENT_SECRET` → `kv://secrets/client-secret`); values that are `kv://` refs are resolved from Builder secrets before send. (2) **kv:// refs in the upload payload** (application + dataSources) not already supplied via .env — resolved from aifabrix secret systems (local file or remote) and pushed. **API:** `POST /api/v1/credential/secret` (Dataplane; requires **credential:create**). Best-effort: on 403/401 log warning and continue so upload succeeds; secrets then rely on dataplane env or manual setup. **Implementation:** `lib/api/credential.api.js`, `lib/utils/credential-secrets-env.js`; upload command integration; docs (external-integration, secrets-and-config, permissions).
 - **Offline field reference validation (plan 71):** `aifabrix datasource validate <file>` and deploy validation now check that every field reference in **indexing.embedding**, **indexing.uniqueKey**, **validation.repeatingValues[].field**, and **quality.rejectIf[].field** exists in **fieldMappings.attributes**. Invalid references are reported with clear errors (e.g. `indexing.embedding[0]: field 'x' does not exist in fieldMappings.attributes`), matching dataplane `invalid_reference` semantics. New `lib/datasource/field-reference-validator.js`; wired into `validateDatasourceFile` in `lib/datasource/validate.js`. Builder-only; no schema changes.
@@ -163,7 +174,7 @@
 - **Docs (Controller and Dataplane)**: New section in `docs/deploying.md` — **"Controller and Dataplane: What, Why, When"** (roles, when to use deploy vs upload, when MCP/OpenAPI docs are available, how to get OpenAPI and MCP docs, `showOpenApiDocs`). Three Mermaid diagrams: deployment paths (CLI → Controller/Dataplane), when MCP/OpenAPI docs become available, deploy vs upload. Cross-links and "when docs available" in `docs/external-systems.md`, `docs/wizard.md`, `docs/commands/deployment.md`, and `docs/commands/external-integration.md`.
 
 ### Changed
-- **Path resolution (no `--type` override)**: The `--type app` and `--type external` options are **removed** from deploy, json, validate, convert, split-json, and delete. Path resolution is **fixed**: the CLI always checks **`integration/<app>`** first, then **`builder/<app>`**; if neither exists, it errors. There is no option to override this order. Commands such as `aifabrix json hubspot`, `aifabrix validate my-hubspot`, `aifabrix deploy hubspot`, `aifabrix delete hubspot` resolve the app path automatically.
+- **Path resolution (no `--type` override)**: The `--type app` and `--type external` options are **removed** from deploy, json, validate, convert, split-json, and delete. Path resolution is **fixed**: the CLI always checks **`integration/<systemKey>`** first, then **`builder/<appKey>`**; if neither exists, it errors. There is no option to override this order. Commands such as `aifabrix json hubspot`, `aifabrix validate my-hubspot`, `aifabrix deploy hubspot`, `aifabrix delete hubspot` resolve the app path automatically.
 - **Create keeps `--type`**: The create command still accepts `--type` for **application kind** only: `webapp`, `api`, `service`, `functionapp`, or `external` (e.g. `aifabrix create test-hubspot --type external`). This specifies what is being created, not which path to use for existing apps.
 - **Create validation**: Create fails with a clear error if `integration/<name>` or `builder/<name>` already exists; use a different name or remove the existing directory. Documented in application-development, your-own-applications, and plan 58.
 - **Delete**: `aifabrix delete <system-key>` has no `--type` option; path is resolved (integration first, then builder).
@@ -300,10 +311,10 @@
 - **Environment deploy polling**: Status line per attempt: `Attempt N/60... Status: <status> (progress%)`; completion when deployment record has `status: 'completed'`
 
 ### Changed
-- **Deploy**: `aifabrix deploy <app>` falls back to external deployment when only `integration/<app>` exists (no `builder/<app>`); deploy command option `--type external` documented in CLI
+- **Deploy**: `aifabrix deploy <app>` falls back to external deployment when only `integration/<systemKey>` exists (no `builder/<appKey>`); deploy command option `--type external` documented in CLI
 - **App list**: External apps show 🔗 icon; hint added for `aifabrix app show <appKey>`
 - **Documentation**: Deployment docs updated to clarify external system deployment (README, deployment, external-integration, reference, deploying, external-systems, wizard, your-own-applications)
-- **Paths**: `getIntegrationPath` and `getBuilderPath` use project root when cwd is inside project so deploy works when run from `integration/<app>` (e.g. `node deploy.js`); new `getIntegrationBuilderBaseDir()`
+- **Paths**: `getIntegrationPath` and `getBuilderPath` use project root when cwd is inside project so deploy works when run from `integration/<systemKey>` (e.g. `node deploy.js`); new `getIntegrationBuilderBaseDir()`
 - **Secrets**: `findMissingSecretKeys` and `collectMissingSecrets` skip commented and empty lines when scanning env.template for `kv://` references
 - **Deployer**: Bearer-only auth supported when no client credentials; external manifests sent as-is via `transformExternalManifestForPipeline`
 - **External system test-auth**: Dataplane URL discovered from controller (`resolveDataplaneUrl`); optional `options.dataplane` override for tests
@@ -361,7 +372,7 @@
 
 ### Added
 - **`aifabrix show <appKey>`**: New top-level command to display app info; default (offline) loads from builder/ or integration/ (application.yaml); `--online` fetches from controller; `--json` for machine output; clear Source label (offline/online); roles, permissions, authentication, portal input configs, databases; for external type online, External system (dataplane) section with dataSources and OpenAPI
-- **Wizard improvements**: `wizard [appName]` positional; mode-first flow (Create new | Add datasource); load/save `integration/<appKey>/wizard.yaml`; known platforms from dataplane (`getWizardPlatforms`); add-datasource validation via `getExternalSystem`; credential step selection (`promptForCredentialAction`); error.log helper (`appendWizardError`) and resume instructions; removed "Edit configuration manually" from review step
+- **Wizard improvements**: `wizard [systemKey]` positional; mode-first flow (Create new | Add datasource); load/save `integration/<systemKey>/wizard.yaml`; known platforms from dataplane (`getWizardPlatforms`); add-datasource validation via `getExternalSystem`; credential step selection (`promptForCredentialAction`); error.log helper (`appendWizardError`) and resume instructions; removed "Edit configuration manually" from review step
 
 ### Changed
 - **Wizard**: Flow reorder (Step 1 = mode), config path resolution; documentation (wizard.md, cli-reference, external-integration)
@@ -1564,7 +1575,7 @@
 - **New CLI Command: `aifabrix down [app] --volumes`**
   - Stop and remove a specific application container: `aifabrix down myapp`
   - Optionally remove the app's named Docker volume: `aifabrix down myapp --volumes`
-  - Preserves `builder/<app>` and `apps/<app>` files (no file deletions)
+  - Preserves `builder/<appKey>` and `apps/<appKey>` files (no file deletions)
   - Handles developer-specific volume naming (dev0 vs dev{id} patterns)
   - New module: `lib/app-down.js` with comprehensive container and volume management
 - **Environment Configuration System**
@@ -1678,7 +1689,7 @@
   - All path resolution now derives from `config.yaml` (single source of truth)
 - Secrets resolution precedence clarified and enforced:
   1) User-local: `<home>/secrets.local.yaml` (highest)
-  2) App build secrets: `builder/<app>/application.yaml` → `build.secrets` (fills only missing keys)
+  2) App build secrets: `builder/<appKey>/application.yaml` → `build.secrets` (fills only missing keys)
   3) Default fallback: `<home>/secrets.yaml`
 
 ### Removed

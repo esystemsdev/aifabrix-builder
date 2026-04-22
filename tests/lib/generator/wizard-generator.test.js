@@ -467,7 +467,7 @@ describe('Wizard Generator', () => {
       });
     });
 
-    it('should run deploy and test-integration from project root (cwd) so script works when run from integration/<app>/', async() => {
+    it('should run deploy and test-integration from project root (cwd) so script works when run from integration/<systemKey>/', async() => {
       await wizardGenerator.generateDeployScripts(
         appPath,
         systemKey,

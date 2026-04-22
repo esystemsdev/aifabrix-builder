@@ -501,7 +501,7 @@ describe('Variable Transformer Module', () => {
         expect(result.build).toBeUndefined();
       });
 
-      it('should include build with localPort when present (secrets empty string excluded)', () => {
+      it('should omit build when only legacy localPort is set (removed from schema)', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
@@ -513,10 +513,10 @@ describe('Variable Transformer Module', () => {
 
         const result = transformVariablesForValidation(variables, defaultAppName);
 
-        expect(result.build).toEqual({ localPort: 3001 });
+        expect(result.build).toBeUndefined();
       });
 
-      it('should include build when only localPort is set', () => {
+      it('should omit build when only localPort is set', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
@@ -527,7 +527,7 @@ describe('Variable Transformer Module', () => {
 
         const result = transformVariablesForValidation(variables, defaultAppName);
 
-        expect(result.build).toEqual({ localPort: 3001 });
+        expect(result.build).toBeUndefined();
       });
 
       it('should include build with language', () => {
@@ -646,7 +646,7 @@ describe('Variable Transformer Module', () => {
         expect(result.build).toBeUndefined();
       });
 
-      it('should include build with all fields including localPort', () => {
+      it('should include build with standard fields (localPort stripped)', () => {
         const variables = {
           app: { key: 'myapp' },
           image: { name: 'myapp', tag: 'latest' },
@@ -665,8 +665,7 @@ describe('Variable Transformer Module', () => {
           envOutputPath: '.env',
           language: 'typescript',
           context: './src',
-          dockerfile: 'Dockerfile.prod',
-          localPort: 3001
+          dockerfile: 'Dockerfile.prod'
         });
       });
     });
@@ -871,7 +870,6 @@ describe('Variable Transformer Module', () => {
           },
           build: {
             envOutputPath: '.env.prod',
-            localPort: 3001,
             language: 'typescript',
             context: './',
             dockerfile: 'Dockerfile.prod'

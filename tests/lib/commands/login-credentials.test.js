@@ -88,7 +88,7 @@ describe('Login Credentials Module', () => {
       const result = await tryLoadCredentialsFromSecrets('test-app');
 
       expect(result).toBeNull();
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('⚠️  Credentials not found'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('⚠  Credentials not found'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('test-app-client-idKeyVault'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('test-app-client-secretKeyVault'));
     });

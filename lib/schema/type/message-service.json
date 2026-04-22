@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aifabrix://schema/type/message-service.json",
+  "title": "Message Service Configuration Schema",
+  "description": "Internal schema for validating message service configurations in ExternalDataSource. Supports Slack, Teams, and Email message services for notifications.",
+  "metadata": {
+    "key": "message-service-schema",
+    "name": "Message Service Configuration Schema",
+    "description": "JSON schema for validating message service configurations",
+    "version": "1.0.0",
+    "type": "schema",
+    "category": "message-service",
+    "author": "AI Fabrix Team",
+    "createdAt": "2026-01-15T00:00:00Z",
+    "updatedAt": "2026-01-15T00:00:00Z",
+    "compatibility": {
+      "minVersion": "1.0.0",
+      "maxVersion": "2.0.0",
+      "deprecated": false
+    },
+    "tags": [
+      "schema",
+      "message-service",
+      "dataplane",
+      "validation",
+      "notifications"
+    ],
+    "dependencies": [],
+    "changelog": [
+      {
+        "version": "1.0.0",
+        "date": "2026-01-15T00:00:00Z",
+        "changes": [
+          "Initial schema for message service validation",
+          "Support for Slack, Teams, and Email message services",
+          "CIP-based configuration for Slack and Teams",
+          "Provider-based configuration for Email (SendGrid, SES, SMTP)"
+        ],
+        "breaking": false
+      }
+    ]
+  },
+  "type": "object",
+  "required": ["enabled", "messageServiceType"],
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether message service is enabled"
+    },
+    "messageServiceType": {
+      "type": "string",
+      "enum": ["slack", "teams", "email"],
+      "description": "Type of message service: 'slack' for Slack notifications, 'teams' for Microsoft Teams notifications, 'email' for email notifications"
+    },
+    "datasourceKey": {
+      "type": "string",
+      "description": "ExternalDataSource key for CIP-based services (Slack, Teams). Required when messageServiceType is 'slack' or 'teams'."
+    },
+    "email": {
+      "type": "object",
+      "description": "Email service configuration (required when messageServiceType is 'email')",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["sendgrid", "ses", "smtp"],
+          "description": "Email provider: 'sendgrid' for SendGrid API, 'ses' for AWS SES, 'smtp' for SMTP server"
+        },
+        "apiKey": {
+          "type": "string",
+          "description": "API key for SendGrid (required when provider is 'sendgrid')"
+        },
+        "accessKey": {
+          "type": "string",
+          "description": "AWS access key for SES (required when provider is 'ses')"
+        },
+        "secretKey": {
+          "type": "string",
+          "description": "AWS secret key for SES (required when provider is 'ses')"
+        },
+        "region": {
+          "type": "string",
+          "description": "AWS region for SES (required when provider is 'ses')"
+        },
+        "host": {
+          "type": "string",
+          "description": "SMTP server host (required when provider is 'smtp')"
+        },
+        "port": {
+          "type": "integer",
+          "description": "SMTP server port (required when provider is 'smtp')"
+        },
+        "useTls": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use TLS for SMTP (when provider is 'smtp')"
+        },
+        "username": {
+          "type": "string",
+          "description": "SMTP username (optional when provider is 'smtp')"
+        },
+        "password": {
+          "type": "string",
+          "description": "SMTP password (optional when provider is 'smtp')"
+        },
+        "fromEmail": {
+          "type": "string",
+          "description": "From email address (required when messageServiceType is 'email')"
+        },
+        "recipients": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Default recipient email addresses (optional)"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
+

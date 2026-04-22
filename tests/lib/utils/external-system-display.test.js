@@ -27,9 +27,14 @@ function expectLogCalled() {
   expect(loggerCallArrays.log.length).toBeGreaterThan(0);
 }
 
+function stripAnsi(s) {
+  const esc = String.fromCharCode(0x1b);
+  return String(s).replace(new RegExp(`${esc}\\[[0-9;]*m`, 'g'), '');
+}
+
 function expectLogContains(...substrings) {
   expectLogCalled();
-  const logCalls = loggerCallArrays.log.map(args => String(args[0]));
+  const logCalls = loggerCallArrays.log.map(args => stripAnsi(String(args[0])));
   for (const sub of substrings) {
     expect(logCalls.some(msg => msg.includes(sub))).toBe(true);
   }
@@ -43,9 +48,10 @@ describe('External System Display Helpers', () => {
   });
 
   describe('displayTestResults', () => {
-    it('should display test results correctly', () => {
+    it('should use structured local validation report layout for passing run', () => {
       const results = {
         valid: true,
+        systemKey: 'myapp',
         systemResults: [{ file: 'system.json', valid: true }],
         datasourceResults: [
           {
@@ -60,26 +66,28 @@ describe('External System Display Helpers', () => {
         warnings: []
       };
 
-      displayTestResults(results, false);
-      expectLogCalled();
+      displayTestResults(results, false, 'myapp');
+      expectLogContains('System: myapp', 'Run: test (local)', 'Data Quality:', 'Ready');
     });
 
-    it('should display invalid system results', () => {
+    it('should show fail status when system file invalid', () => {
       const results = {
         valid: false,
-        systemResults: [{ file: 'system.json', valid: false }],
+        systemKey: 'x',
+        systemResults: [{ file: 'system.json', valid: false, errors: ['schema mismatch'] }],
         datasourceResults: [],
         errors: [],
         warnings: []
       };
 
-      displayTestResults(results, false);
-      expectLogContains('✗');
+      displayTestResults(results, false, 'x');
+      expectLogContains('FAIL', 'Failures:', 'schema mismatch');
     });
 
-    it('should display invalid datasource results with errors in verbose mode', () => {
+    it('should list datasource errors in verbose inventory', () => {
       const results = {
         valid: false,
+        systemKey: 'x',
         systemResults: [],
         datasourceResults: [
           {
@@ -94,13 +102,14 @@ describe('External System Display Helpers', () => {
         warnings: []
       };
 
-      displayTestResults(results, true);
-      expectLogContains('✗', 'Error 1', 'Error 2');
+      displayTestResults(results, true, 'x');
+      expectLogContains('Error 1', 'Error 2');
     });
 
-    it('should display invalid metadata schema in verbose mode', () => {
+    it('should show invalid metadata schema in verbose inventory', () => {
       const results = {
         valid: true,
+        systemKey: 'x',
         systemResults: [],
         datasourceResults: [
           {
@@ -116,95 +125,49 @@ describe('External System Display Helpers', () => {
         warnings: []
       };
 
-      displayTestResults(results, true);
-      expectLogContains('Metadata schema: ✗ Invalid');
+      displayTestResults(results, true, 'x');
+      expectLogContains('Metadata schema: ✖ Invalid');
     });
 
-    it('should display errors array', () => {
+    it('should surface top-level errors under Failures', () => {
       const results = {
         valid: false,
+        systemKey: 'x',
         systemResults: [],
         datasourceResults: [],
         errors: ['Error 1', 'Error 2'],
         warnings: []
       };
 
-      displayTestResults(results, false);
-      expectLogContains('❌ Errors:', 'Error 1', 'Error 2');
+      displayTestResults(results, false, 'x');
+      expectLogContains('[manifest]', 'Error 1');
     });
 
-    it('should display warnings array', () => {
+    it('should list other warnings when present', () => {
       const results = {
         valid: true,
+        systemKey: 'x',
         systemResults: [],
         datasourceResults: [],
         errors: [],
         warnings: ['Warning 1', 'Warning 2']
       };
 
-      displayTestResults(results, false);
-      expectLogContains('⚠ Warnings:', 'Warning 1', 'Warning 2');
+      displayTestResults(results, false, 'x');
+      expectLogContains('Other warnings:', 'Warning 1');
     });
 
-    it('should display failed tests message', () => {
+    it('should handle empty system and datasource lists', () => {
       const results = {
-        valid: false,
+        valid: true,
+        systemKey: 'x',
         systemResults: [],
         datasourceResults: [],
         errors: [],
         warnings: []
       };
 
-      displayTestResults(results, false);
-      expectLogContains('❌ Some tests failed');
-    });
-
-    it('should display verbose output when requested', () => {
-      const results = {
-        valid: true,
-        systemResults: [],
-        datasourceResults: [
-          {
-            key: 'datasource1',
-            file: 'datasource1.json',
-            valid: true,
-            errors: [],
-            warnings: ['Warning'],
-            fieldMappingResults: { mappedFields: { field1: 'expr1' } },
-            metadataSchemaResults: { valid: true }
-          }
-        ],
-        errors: [],
-        warnings: []
-      };
-
-      displayTestResults(results, true);
-      expectLogContains('Warning');
-    });
-
-    it('should handle empty system results', () => {
-      const results = {
-        valid: true,
-        systemResults: [],
-        datasourceResults: [],
-        errors: [],
-        warnings: []
-      };
-
-      displayTestResults(results, false);
-      expectLogCalled();
-    });
-
-    it('should handle empty datasource results', () => {
-      const results = {
-        valid: true,
-        systemResults: [{ file: 'system.json', valid: true }],
-        datasourceResults: [],
-        errors: [],
-        warnings: []
-      };
-
-      displayTestResults(results, false);
+      displayTestResults(results, false, 'x');
       expectLogCalled();
     });
   });
@@ -270,7 +233,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, false);
-      expectLogContains('✗', 'Error: Connection failed');
+      expectLogContains('✖', 'Error: Connection failed');
     });
 
     it('should display failed integration tests message', () => {
@@ -288,7 +251,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, false);
-      expectLogContains('❌ Some integration tests failed');
+      expectLogContains('✖ Some integration tests failed.');
     });
 
     it('should display verbose validation results when valid', () => {
@@ -310,7 +273,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, true);
-      expectLogContains('Validation: ✓ Valid');
+      expectLogContains('Validation: ✔ Valid');
     });
 
     it('should display verbose validation results when invalid', () => {
@@ -332,7 +295,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, true);
-      expectLogContains('Validation: ✗ Invalid', 'Validation error 1', 'Validation error 2', 'Warning 1');
+      expectLogContains('Validation: ✖ Invalid', 'Validation error 1', 'Validation error 2', 'Warning 1');
     });
 
     it('should display verbose field mapping results', () => {
@@ -402,7 +365,7 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, true);
-      expectLogContains('Endpoint: ✓ Configured');
+      expectLogContains('Endpoint: ✔ Configured');
     });
 
     it('should display verbose endpoint test results when not configured', () => {
@@ -454,7 +417,70 @@ describe('External System Display Helpers', () => {
       };
 
       displayIntegrationTestResults(results, true);
-      expectLogContains('Validation: ✓ Valid', 'Field mappings: 10 attributes', 'Endpoint: ✓ Configured');
+      expectLogContains('Validation: ✔ Valid', 'Field mappings: 10 attributes', 'Endpoint: ✔ Configured');
+    });
+
+    it('should mirror datasource test TTY when a single DatasourceTestRun envelope is present', () => {
+      const envelope = {
+        datasourceKey: 'datasource1',
+        systemKey: 'hubspot',
+        runType: 'integration',
+        status: 'ok',
+        developer: { executiveSummary: 'ok summary' }
+      };
+      const results = {
+        success: true,
+        systemKey: 'hubspot',
+        datasourceResults: [
+          {
+            key: 'datasource1',
+            skipped: false,
+            success: true,
+            datasourceTestRun: envelope
+          }
+        ]
+      };
+
+      displayIntegrationTestResults(results, false, { runType: 'integration' });
+      const flat = loggerCallArrays.log.map(a => stripAnsi(String(a[0]))).join('\n');
+      expect(flat).toContain('Verdict:');
+      expect(flat).toContain('ok summary');
+      expect(flat).toContain('Datasource: datasource1');
+      expect(flat).toContain('(hubspot)');
+      expect(flat).not.toContain('Server test results');
+      expect(flat).not.toContain('test-integration (dataplane)');
+      expect(flat).not.toContain('All server tests passed.');
+    });
+
+    it('should show server wrapper when multiple DatasourceTestRun envelopes are present', () => {
+      const mk = (key) => ({
+        datasourceKey: key,
+        systemKey: 'hubspot',
+        runType: 'integration',
+        status: 'ok',
+        developer: { executiveSummary: `ok ${key}` }
+      });
+      const results = {
+        success: true,
+        systemKey: 'hubspot',
+        datasourceResults: [
+          {
+            key: 'ds-a',
+            skipped: false,
+            success: true,
+            datasourceTestRun: mk('ds-a')
+          },
+          {
+            key: 'ds-b',
+            skipped: false,
+            success: true,
+            datasourceTestRun: mk('ds-b')
+          }
+        ]
+      };
+
+      displayIntegrationTestResults(results, false, { runType: 'integration' });
+      expectLogContains('Server test results', 'test-integration (dataplane)', 'All server tests passed.');
     });
   });
 
@@ -467,7 +493,7 @@ describe('External System Display Helpers', () => {
         ]
       };
       displayE2EResults(data, false);
-      expectLogContains('✓ config', '✓ credential', '✅ E2E test passed!');
+      expectLogContains('✔ config', '✔ credential', '✔ E2E test passed.');
     });
 
     it('should display poll response with status and completedActions (running)', () => {
@@ -476,7 +502,7 @@ describe('External System Display Helpers', () => {
         completedActions: [{ name: 'config', success: true }]
       };
       displayE2EResults(data, true);
-      expectLogContains('running', '✓ config', 'step(s) completed so far');
+      expectLogContains('running', '✔ config', 'step(s) completed so far');
     });
 
     it('should display final poll response with status completed and steps', () => {
@@ -486,7 +512,7 @@ describe('External System Display Helpers', () => {
         success: true
       };
       displayE2EResults(data, false);
-      expectLogContains('completed', '✓ config', '✅ E2E test passed!');
+      expectLogContains('completed', '✔ config', '✔ E2E test passed.');
     });
 
     it('should display failed E2E with status failed and error', () => {
@@ -496,7 +522,7 @@ describe('External System Display Helpers', () => {
         error: 'Credential check failed'
       };
       displayE2EResults(data, false);
-      expectLogContains('failed', 'Credential check failed', 'E2E test failed');
+      expectLogContains('failed', 'Credential check failed', 'E2E test failed.');
     });
 
     it('should display step failure when a step has success false or error', () => {
@@ -507,7 +533,7 @@ describe('External System Display Helpers', () => {
         ]
       };
       displayE2EResults(data, false);
-      expectLogContains('✗ credential', 'Invalid token', '❌ E2E test failed');
+      expectLogContains('✖ credential', 'Invalid token', '✖ E2E test failed.');
     });
 
     it('should display sync step evidence (managed records) when verbose', () => {
@@ -530,7 +556,7 @@ describe('External System Display Helpers', () => {
         ]
       };
       displayE2EResults(data, true);
-      expectLogContains('✓ sync', 'Managed records', '96', 'updated: 96');
+      expectLogContains('✔ sync', 'Managed records', '96', 'updated: 96');
     });
 
     it('should display CIP execution trace count when verbose and auditLog present', () => {

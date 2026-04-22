@@ -31,12 +31,20 @@ jest.mock('../../../lib/utils/logger', () => ({
 // Mock config BEFORE requiring secrets-set command (getSecretsEncryptionKey for local-secrets encrypt path)
 jest.mock('../../../lib/core/config', () => ({
   getAifabrixSecretsPath: jest.fn(),
-  getSecretsEncryptionKey: jest.fn().mockResolvedValue(null)
+  getSecretsEncryptionKey: jest.fn().mockResolvedValue(null),
+  getRemoteServer: jest.fn().mockResolvedValue(null),
+  getDeveloperId: jest.fn().mockResolvedValue('1')
 }));
 
-// Mock paths BEFORE requiring secrets-set command
+// Mock paths BEFORE requiring secrets-set command (getAifabrixWork used by resolveSharedSecretsEndpoint)
 jest.mock('../../../lib/utils/paths', () => ({
-  getAifabrixHome: jest.fn()
+  getAifabrixHome: jest.fn(),
+  getPrimaryUserSecretsLocalPath: jest.fn(),
+  getAifabrixWork: jest.fn(() => null)
+}));
+
+jest.mock('../../../lib/api/dev.api', () => ({
+  addSecret: jest.fn().mockResolvedValue({})
 }));
 
 const fs = require('fs');
@@ -46,13 +54,19 @@ const yaml = require('js-yaml');
 
 const { handleSecretsSet } = require('../../../lib/commands/secrets-set');
 const config = require('../../../lib/core/config');
+const devApi = require('../../../lib/api/dev.api');
 const logger = require('../../../lib/utils/logger');
 const pathsUtil = require('../../../lib/utils/paths');
+const remoteDevAuth = require('../../../lib/utils/remote-dev-auth');
 
 describe('secret set command', () => {
   const mockHomeDir = '/home/test';
   const mockUserSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
   const mockGeneralSecretsPath = '/project/secrets.yaml';
+
+  beforeAll(() => {
+    jest.spyOn(remoteDevAuth, 'getRemoteDevAuth');
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -64,6 +78,10 @@ describe('secret set command', () => {
 
     os.homedir.mockReturnValue(mockHomeDir);
     pathsUtil.getAifabrixHome.mockReturnValue(path.join(mockHomeDir, '.aifabrix'));
+    pathsUtil.getPrimaryUserSecretsLocalPath.mockReturnValue(mockUserSecretsPath);
+    pathsUtil.getAifabrixWork.mockReturnValue(null);
+
+    remoteDevAuth.getRemoteDevAuth.mockResolvedValue(null);
 
     fs.existsSync.mockReturnValue(false);
     fs.readFileSync.mockReturnValue('');
@@ -176,7 +194,7 @@ describe('secret set command', () => {
       });
 
       it('should support full URLs as values', async() => {
-        const key = 'keycloak-server-url';
+        const key = 'keycloak-web-server-url';
         const value = 'https://mydomain.com/keycloak';
         const options = {};
 
@@ -190,7 +208,7 @@ describe('secret set command', () => {
       });
 
       it('should support environment variable interpolation in values', async() => {
-        const key = 'keycloak-server-url';
+        const key = 'keycloak-web-server-url';
         const value = 'https://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}';
         const options = {};
 
@@ -287,6 +305,32 @@ describe('secret set command', () => {
         const parsed = yaml.load(writtenContent);
         expect(parsed['existing-keyKeyVault']).toBe('existing-value');
         expect(parsed[key]).toBe(value);
+      });
+
+      it('should use Builder secrets API when remote auth is set and aifabrix-secrets is a server-side path', async() => {
+        const key = 'BASH_NPM_TOKEN';
+        const value = 'npm_token_value';
+        const options = { shared: true };
+        const serverSidePath = '/aifabrix-miso/builder/secrets.local.yaml';
+
+        config.getAifabrixSecretsPath.mockResolvedValue(serverSidePath);
+        remoteDevAuth.getRemoteDevAuth.mockResolvedValue({
+          serverUrl: 'http://builder02.local:3000',
+          clientCertPem: '-----BEGIN CERTIFICATE-----\nX\n-----END CERTIFICATE-----',
+          serverCaPem: null
+        });
+
+        await handleSecretsSet(key, value, options);
+
+        expect(devApi.addSecret).toHaveBeenCalledWith(
+          'http://builder02.local:3000',
+          '-----BEGIN CERTIFICATE-----\nX\n-----END CERTIFICATE-----',
+          { key, value },
+          undefined,
+          'http://builder02.local:3000/api/dev/secrets'
+        );
+        expect(fs.writeFileSync).not.toHaveBeenCalled();
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('shared secrets (remote - builder02.local)'));
       });
     });
 
@@ -395,11 +439,12 @@ describe('secret set command', () => {
       });
     });
 
-    describe('path resolution with aifabrix-home override', () => {
-      it('should respect config.yaml aifabrix-home override when saving to user secrets', async() => {
-        const overrideHome = '/custom/aifabrix';
-        const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
-        pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+    describe('path resolution for user secrets file', () => {
+      it('saves to getPrimaryUserSecretsLocalPath (config dir), not aifabrix-home alone', async() => {
+        const configDir = '/custom/aifabrix';
+        const userSecretsPath = path.join(configDir, 'secrets.local.yaml');
+        pathsUtil.getPrimaryUserSecretsLocalPath.mockReturnValue(userSecretsPath);
+        pathsUtil.getAifabrixHome.mockReturnValue('/home/dev02');
 
         const key = 'test-keyKeyVault';
         const value = 'test-value';
@@ -409,18 +454,17 @@ describe('secret set command', () => {
 
         await handleSecretsSet(key, value, options);
 
-        expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
-        expect(fs.mkdirSync).toHaveBeenCalledWith(path.normalize(overrideHome), { recursive: true, mode: 0o700 });
+        expect(pathsUtil.getPrimaryUserSecretsLocalPath).toHaveBeenCalled();
+        expect(fs.mkdirSync).toHaveBeenCalledWith(path.normalize(configDir), { recursive: true, mode: 0o700 });
         expect(fs.writeFileSync).toHaveBeenCalled();
         const writeCall = fs.writeFileSync.mock.calls[0];
-        expect(writeCall[0]).toBe(path.normalize(overrideSecretsPath));
-        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining(overrideSecretsPath));
+        expect(writeCall[0]).toBe(path.normalize(userSecretsPath));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining(userSecretsPath));
       });
 
-      it('should use paths.getAifabrixHome() instead of os.homedir()', async() => {
-        const overrideHome = '/workspace/.aifabrix';
-        const overrideSecretsPath = path.join(overrideHome, 'secrets.local.yaml');
-        pathsUtil.getAifabrixHome.mockReturnValue(overrideHome);
+      it('uses primary user path from paths, not os.homedir()', async() => {
+        const workspacePath = '/workspace/.aifabrix/secrets.local.yaml';
+        pathsUtil.getPrimaryUserSecretsLocalPath.mockReturnValue(workspacePath);
 
         const key = 'test-keyKeyVault';
         const value = 'test-value';
@@ -430,12 +474,9 @@ describe('secret set command', () => {
 
         await handleSecretsSet(key, value, options);
 
-        // Verify paths.getAifabrixHome() was called
-        expect(pathsUtil.getAifabrixHome).toHaveBeenCalled();
-        // Verify it wrote to the override path, not the default os.homedir() path
+        expect(pathsUtil.getPrimaryUserSecretsLocalPath).toHaveBeenCalled();
         const writeCall = fs.writeFileSync.mock.calls[0];
-        expect(writeCall[0]).toBe(overrideSecretsPath);
-        // Verify it did NOT use os.homedir() path
+        expect(writeCall[0]).toBe(workspacePath);
         const defaultPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
         expect(writeCall[0]).not.toBe(defaultPath);
       });

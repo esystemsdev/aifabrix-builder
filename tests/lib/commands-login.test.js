@@ -442,7 +442,7 @@ describe('Login Command Module', () => {
         expect(error.message).toContain('process.exit(1)');
       }
 
-      expect(logger.error).toHaveBeenCalledWith(chalk.red('❌ Invalid method: invalid-method. Must be \'device\' or \'credentials\''));
+      expect(logger.error).toHaveBeenCalledWith(chalk.red('✖ Invalid method: invalid-method. Must be \'device\' or \'credentials\''));
       expect(mockExit).toHaveBeenCalledWith(1);
     });
 
@@ -1042,7 +1042,7 @@ describe('Login Command Module', () => {
       }
 
       expect(logger.error).toHaveBeenCalledWith(
-        chalk.red('\n❌ Device code flow failed: Failed to initiate device code flow')
+        chalk.red('\n✖ Device code flow failed: Failed to initiate device code flow')
       );
       expect(mockExit).toHaveBeenCalledWith(1);
     });
@@ -1106,7 +1106,7 @@ describe('Login Command Module', () => {
       }
 
       expect(logger.error).toHaveBeenCalledWith(
-        chalk.red('\n❌ Device code flow failed: Device code flow initiation returned no response')
+        chalk.red('\n✖ Device code flow failed: Device code flow initiation returned no response')
       );
       expect(mockExit).toHaveBeenCalledWith(1);
     });
@@ -1121,7 +1121,7 @@ describe('Login Command Module', () => {
       initiateDeviceCodeFlow.mockResolvedValue({
         success: false,
         error: 'Validation failed',
-        formattedError: '❌ Validation Error\nValidation failed'
+        formattedError: '✖ Validation Error\nValidation failed'
       });
 
       try {
@@ -1132,9 +1132,9 @@ describe('Login Command Module', () => {
       }
 
       expect(logger.error).toHaveBeenCalledWith(
-        chalk.red('\n❌ Device code flow failed:')
+        chalk.red('\n✖ Device code flow failed:')
       );
-      expect(logger.log).toHaveBeenCalledWith('❌ Validation Error\nValidation failed');
+      expect(logger.log).toHaveBeenCalledWith('✖ Validation Error\nValidation failed');
       expect(mockExit).toHaveBeenCalledWith(1);
     });
 
@@ -1158,7 +1158,7 @@ describe('Login Command Module', () => {
       }
 
       expect(logger.error).toHaveBeenCalledWith(
-        chalk.red('\n❌ Device code flow failed: Device code flow initiation returned no data')
+        chalk.red('\n✖ Device code flow failed: Device code flow initiation returned no data')
       );
       expect(mockExit).toHaveBeenCalledWith(1);
     });
@@ -1183,7 +1183,7 @@ describe('Login Command Module', () => {
       }
 
       expect(logger.error).toHaveBeenCalledWith(
-        chalk.red('\n❌ Device code flow failed: API request failed')
+        chalk.red('\n✖ Device code flow failed: API request failed')
       );
       expect(mockExit).toHaveBeenCalledWith(1);
     });
@@ -1456,7 +1456,7 @@ describe('Login Command Module', () => {
 
       await handleLogin(options);
 
-      expect(logger.log).toHaveBeenCalledWith(chalk.green('\n✅ Successfully logged in!'));
+      expect(logger.log).toHaveBeenCalledWith(chalk.green('\n✔ Successfully logged in!'));
       expect(logger.log).toHaveBeenCalledWith(chalk.gray('Controller: http://localhost:3000'));
       expect(logger.log).toHaveBeenCalledWith(chalk.gray('Environment: dev'));
       expect(logger.log).toHaveBeenCalledWith(chalk.gray('App: test-app'));

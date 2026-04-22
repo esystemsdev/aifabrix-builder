@@ -94,14 +94,14 @@ describe('help-builder', () => {
       program.command('shell <app>').description('Open interactive shell');
       program.command('logs <app>').description('Show application container logs');
       program.command('stop <app>').description('Stop and remove application container');
-      program.command('show <appKey>').description('Show application info');
+      program.command('show <app>').description('Show application info');
       program.command('service-user').description('Create and manage service users');
 
       const help = buildCategorizedHelp(program);
       expect(help).toContain('shell <app>');
       expect(help).toContain('logs <app>');
       expect(help).toContain('stop <app>');
-      expect(help).toContain('show <appKey>');
+      expect(help).toContain('show <app>');
       expect(help).toContain('service-user');
     });
 
@@ -113,18 +113,20 @@ describe('help-builder', () => {
       const help = buildCategorizedHelp(program);
       expect(help).toContain('Help:');
       expect(help).toContain('help [command]');
+      expect(help).toContain('Tip:');
+      expect(help).toContain('aifabrix <command> --help');
     });
 
     it('should include upload, convert, credential, deployment when those commands are registered', () => {
       const program = new Command();
       program.name('aifabrix').description('Test');
-      program.command('upload <system-key>').description('Upload external system to dataplane');
+      program.command('upload <systemKey>').description('Upload external system to dataplane');
       program.command('convert <app>').description('Convert config between JSON and YAML');
       program.command('credential').description('Manage credentials');
       program.command('deployment').description('List deployments');
 
       const help = buildCategorizedHelp(program);
-      expect(help).toContain('upload <system-key>');
+      expect(help).toContain('upload <systemKey>');
       expect(help).toContain('convert <app>');
       expect(help).toContain('credential');
       expect(help).toContain('deployment');
@@ -148,6 +150,34 @@ describe('help-builder', () => {
         .filter((c) => !inHelp.has(c.name()) && !allowedOmissions.has(c.name()))
         .map((c) => c.name());
       expect(missing).toEqual([]);
+    });
+  });
+
+  describe('CLI command descriptions', () => {
+    /**
+     * @param {import('commander').Command} cmd
+     * @param {string[]} lineage
+     * @param {string[]} issues
+     */
+    function assertNonEmptyDescriptions(cmd, lineage, issues) {
+      for (const sub of cmd.commands || []) {
+        const next = [...lineage, sub.name()].filter(Boolean);
+        const desc = sub.description();
+        if (!desc || !String(desc).trim()) {
+          issues.push(next.join(' '));
+        }
+        assertNonEmptyDescriptions(sub, next, issues);
+      }
+    }
+
+    it('should give every registered command and subcommand a non-empty description', () => {
+      const program = new Command();
+      program.name('aifabrix').description('Test');
+      const cli = require('../../../lib/cli');
+      cli.setupCommands(program);
+      const issues = [];
+      assertNonEmptyDescriptions(program, [], issues);
+      expect(issues).toEqual([]);
     });
   });
 });

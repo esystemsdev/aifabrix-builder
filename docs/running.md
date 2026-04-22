@@ -6,9 +6,9 @@ How to run your application in Docker for local development.
 
 **Use the builder instead of raw Docker:** Commands like `aifabrix run`, `aifabrix logs`, and `aifabrix down-app` use compose, resolve `.env` from `env.template`, run db-init when needed, and keep behavior consistent. Plain `docker run` / `docker logs` do not—so prefer the builder for start, stop, logs, and running a different image tag.
 
-**Run only uses builder:** `aifabrix run <app>` only runs applications that exist in `builder/<app>/`. External systems in `integration/` are not run as Docker containers. For them: run `aifabrix validate <integration-name>`, then upload or deploy via the controller (e.g. `aifabrix upload <system-key>` or `aifabrix deploy <app>`), then test via OpenAPI endpoints.
+**Run only uses builder:** `aifabrix run <app>` only runs applications that exist in `builder/<appKey>/`. External systems in `integration/` are not run as Docker containers. For them: run `aifabrix validate <integration-name>`, then upload or deploy via the controller (e.g. `aifabrix upload <systemKey>` or `aifabrix deploy <app>`), then test via OpenAPI endpoints.
 
-**Prerequisites:** Env is generated at run time: the builder resolves secrets and writes the only `.env` to `build.envOutputPath` when set, or to a temp path for run. You do not need a pre-existing `.env` file in `builder/<app>/`; set `build.envOutputPath` in application.yaml if you want a persisted env file for run.
+**Prerequisites:** Env is generated at run time: the builder resolves secrets and writes the only `.env` to `build.envOutputPath` when set, or to a temp path for run. You do not need a pre-existing `.env` file in `builder/<appKey>/`; set `build.envOutputPath` in application.yaml if you want a persisted env file for run.
 
 ## Start Your App
 
@@ -19,7 +19,7 @@ aifabrix run myapp
 ### What Happens
 
 1. **Checks infrastructure** - Postgres and Redis running?
-2. **Resolves env** - Resolves `env.template` and secrets in memory and writes the only persisted `.env` to `build.envOutputPath` when set (or to a temp path for run); no `.env` under `builder/<app>/` or `integration/<app>/`.
+2. **Resolves env** - Resolves `env.template` and secrets in memory and writes the only persisted `.env` to `build.envOutputPath` when set (or to a temp path for run); no `.env` under `builder/<appKey>/` or `integration/<systemKey>/`.
 3. **Generates docker-compose** - Creates container configuration
 4. **Creates database** - Automatically creates database and user (if app requires database)
 5. **Starts container** - Named `aifabrix-myapp`
@@ -169,7 +169,7 @@ Database initialization complete!
 
 ### Configuration
 
-To enable automatic database creation, ensure your `builder/<app>/application.yaml` includes:
+To enable automatic database creation, ensure your `builder/<appKey>/application.yaml` includes:
 
 ```yaml
 requires:
@@ -452,7 +452,7 @@ docker cp ./file.txt aifabrix-myapp:/mnt/data/
 
 ## Environment Variables
 
-Your app sees variables from the resolved env. The builder resolves `env.template` and secrets in memory and writes the **only** persisted `.env` to `build.envOutputPath` when set (or to a temp path for run); there is no `.env` in `builder/<app>/` or `integration/<app>/`.
+Your app sees variables from the resolved env. The builder resolves `env.template` and secrets in memory and writes the **only** persisted `.env` to `build.envOutputPath` when set (or to a temp path for run); there is no `.env` in `builder/<appKey>/` or `integration/<systemKey>/`.
 
 **Workflow:** Edit **only** `env.template`, then run **one command** to apply settings:
 
