@@ -22,6 +22,14 @@ Technologies:
 - Jest for testing
 - Docker for containerization
 
+## CLI layout and output
+
+When adding or changing CLI commands, subcommands, flags, help text, or terminal output (`lib/cli.js`, `lib/cli/**`, `lib/commands/**`, shared `lib/utils/cli-*layout*.js`), you must follow the CLI layout rule and its referenced source-of-truth docs:
+
+- **Rule**: `.cursor/rules/cli-layout.mdc`
+- **Visual/layout spec**: `.cursor/rules/layout.md`
+- **Per-command output profiles**: `.cursor/rules/cli-output-command-matrix.md` (update for every new leaf command)
+
 ## Architecture Patterns
 
 > **Visual Documentation**: When documenting architecture, workflows, or command flows, use the canonical Mermaid diagram templates from [flows-and-visuals.md](flows-and-visuals.md). These templates ensure consistent styling and accurate representation of Builder architecture.

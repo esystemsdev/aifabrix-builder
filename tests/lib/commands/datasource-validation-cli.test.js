@@ -55,6 +55,24 @@ describe('datasource-validation-cli', () => {
       expect(finalizeAfterIntegrationDisplay({ success: true, datasourceTestRun: { status: 'ok' } })).toBe(0);
       expect(finalizeAfterIntegrationDisplay({ success: true, datasourceTestRun: { status: 'fail' } })).toBe(1);
     });
+
+    it('requireCert without certificate logs and returns 2', () => {
+      const code = finalizeAfterIntegrationDisplay(
+        { success: true, datasourceTestRun: { status: 'ok' } },
+        { requireCert: true }
+      );
+      expect(code).toBe(2);
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('warningsAsErrors upgrades warn to exit 1', () => {
+      expect(
+        finalizeAfterIntegrationDisplay(
+          { success: true, datasourceTestRun: { status: 'warn' } },
+          { warningsAsErrors: true }
+        )
+      ).toBe(1);
+    });
   });
 
   describe('finalizeUnifiedValidationResult', () => {

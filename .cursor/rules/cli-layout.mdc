@@ -1,0 +1,75 @@
+---
+description: Apply when adding or changing aifabrix CLI commands, subcommands, flags, help text, terminal output (chalk), TTY vs JSON/--json, or CLI tests. Ensures layout, glyphs, and output profiles match repo standards.
+alwaysApply: false
+---
+
+# Builder CLI layout rules
+
+When you touch **CLI surface** (`bin/aifabrix.js`, `lib/cli.js`, `lib/cli/**`, `lib/commands/**`) or **shared CLI formatters**, you must keep behavior aligned with the canonical docs in this folder.
+
+## Sources of truth (read before shipping)
+
+| Document | Role |
+| -------- | ---- |
+| [layout.md](./layout.md) | Visual and semantic spec: colors, sections, glyphs, blocking vs warning, non-TTY/CI, helper map to `cli-test-layout-chalk.js`. |
+| [cli-output-command-matrix.md](./cli-output-command-matrix.md) | **One row per leaf command**: expected **output profile** (layout-blocks, tty-summary, stream-logs, json-opt, stdout-only, delegate). |
+
+If implementation and `layout.md` disagree, **fix implementation** or **update docs** in the same change so they stay one story.
+
+## Output profiles (from the matrix)
+
+Use the matrix row for your command to decide UX:
+
+- **layout-blocks** — Structured blocks (header, verdict, lists, failures). Prefer helpers from `lib/utils/cli-test-layout-chalk.js` (or `lib/utils/cli-layout-chalk.js` re-export). Respect **`--json`**: skip TTY-only layout when the command is classified **json-opt** or when JSON mode is documented for that flow.
+- **tty-summary** — Short chalk lines / tables; still use canonical glyphs and semantic colors.
+- **stream-logs** — Tail/stream style; do not force layout-blocks around raw log lines unless product asks for a wrapper.
+- **json-opt** — Human TTY layout when interactive; **machine-oriented** output when `--json` (no decorative layout).
+- **stdout-only** — Stable, script-friendly stdout; minimal chalk; often used for diffs or piping.
+- **delegate** — Output comes from delegated library (wizard, etc.); still avoid forbidden glyphs and spurious decoration in anything you add.
+
+**New leaf command:** add a row to [cli-output-command-matrix.md](./cli-output-command-matrix.md) with the correct profile combination.
+
+## Glyphs and semantics (terminal only)
+
+From [layout.md](./layout.md) contributor appendix:
+
+| Role | Use | Do not use |
+| ---- | --- | ----------- |
+| Success | **✔** | ✓, heavy check, decorative check emoji |
+| Warning | **⚠** | ‼, random emoji |
+| Failure | **✖** | ✗, `x`, decorative X |
+| Skipped | **⏭** | — |
+| In progress | **⏳** | Hourglass as pure decoration |
+
+- **Red = blocking only** (hard failure / non-zero exit when that line is the verdict). **Yellow = non-blocking** warnings. Never use red for warnings.
+- **Non-TTY / CI** (`NO_COLOR`, chalk level 0): **same glyphs and line structure**; colors become no-ops. Do not invent a second plain-text vocabulary (e.g. `[OK]` instead of ✔) unless the command is explicitly **stdout-only machine** output.
+
+Markdown headings in `layout.md` may use emoji for doc navigation; **user-facing terminal strings** follow the semantic glyph table only.
+
+## Implementation
+
+- **Canonical helpers:** `lib/utils/cli-test-layout-chalk.js` (see symbol → helper table in [layout.md](./layout.md) § “Implementation map”).
+- **Preferred import alias:** `lib/utils/cli-layout-chalk.js` re-exports the same API when the path should not contain `test`.
+- **Prefer** `formatSuccessLine`, `formatSuccessParagraph`, `formatBlockingError`, `failureGlyph`, `successGlyph`, and other exported section helpers over ad hoc `` chalk.green(`✔ …`) `` for one-off success/error lines.
+- **Composite / indented lines** (e.g. `successGlyph()` + `chalk.white(…)`, or `  ✔ …` in validate-style output) may stay raw chalk **only** when a single helper would not match the spec; keep glyphs canonical.
+- **Tests:** extend or add tests under `tests/lib/utils/cli-test-layout-chalk.test.js` (and command tests) when behavior or snapshots encode layout.
+
+## Code entry points and maintenance
+
+- **Shared formatters:** `lib/utils/cli-test-layout-chalk.js` (canonical exports).
+- **Neutral re-export:** `lib/utils/cli-layout-chalk.js` → same module.
+- **Unit tests:** `tests/lib/utils/cli-test-layout-chalk.test.js`.
+
+**Optional follow-up:** If you touch centralized command error handling (e.g. `handleCommandError`), consider aligning it with `formatBlockingError` (but preserve `--json` / stdout-only behavior for script modes).
+
+## Commander and UX checklist
+
+- [ ] **Help**: `.description()` and `.option()` texts clear; default values and env overrides documented when behavior is non-obvious.
+- [ ] **Profile**: Matrix row added/updated for every new **leaf** command path.
+- [ ] **JSON / script**: If the command supports `--json` or machine output, JSON path skips TTY layout and stays stable for scripts.
+- [ ] **Errors**: Blocking failures use **✖** + red via shared helpers where possible; non-blocking issues use **⚠** + yellow.
+- [ ] **Docs**: User-facing CLI documentation lives under `docs/` per [docs-rules.mdc](./docs-rules.mdc) (command-centric; no raw HTTP/API tutorial in user docs unless that doc is explicitly contributor-focused).
+
+## Related plans
+
+Historical adoption context: `.cursor/plans/Done/129-cli_layout_adoption.plan.md`. Keep **cli-output-command-matrix.md** accurate when profiles or helper adoption change.

@@ -95,4 +95,4 @@ Profiles: **layout-blocks** (header/status/list/helpers); **tty-summary** (chalk
 | aifabrix app show | json-opt |
 | aifabrix app deployment | tty-summary |
 
-_Generated for adoption tracking; see [129-cli_layout_adoption.plan.md](./129-cli_layout_adoption.plan.md) and [layout.md](./layout.md)._
+_Generated for adoption tracking; see `.cursor/plans/Done/129-cli_layout_adoption.plan.md` and [layout.md](./layout.md)._

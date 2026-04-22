@@ -203,6 +203,31 @@ describe('displaySystemAggregateDatasourceTestRuns', () => {
     expect(out).not.toContain('extra:');
   });
 
+  it('system aggregate TTY matches snapshot (integration, single ok row)', () => {
+    const results = {
+      systemKey: 'snap-sys',
+      success: true,
+      datasourceResults: [
+        {
+          key: 'snap-sys.a',
+          skipped: false,
+          success: true,
+          datasourceTestRun: {
+            reportVersion: '1.1.0',
+            datasourceKey: 'snap-sys.a',
+            systemKey: 'snap-sys',
+            runType: 'integration',
+            status: 'ok',
+            validation: { status: 'ok', dataReadiness: 'ready' },
+            certificate: { status: 'passed', level: 'bronze' }
+          }
+        }
+      ]
+    };
+    displaySystemAggregateDatasourceTestRuns(results, { runType: 'integration', verbose: false });
+    expect(joinedLogs()).toMatchSnapshot();
+  });
+
   it('verbose mode lists all datasources including ok rows', () => {
     const results = {
       systemKey: 's',
