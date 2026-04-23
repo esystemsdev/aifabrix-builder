@@ -410,7 +410,7 @@ describe('Infrastructure Compose Module', () => {
         expect.objectContaining({
           infraDir: mockInfraDir,
           initScriptsBind: compose.toDockerBindMountSource(path.join(mockInfraDir, 'init-scripts')),
-          infraDirBind: compose.toDockerBindMountSource(mockInfraDir)
+          serversJsonBind: compose.toDockerBindMountSource(path.join(mockInfraDir, 'servers.json'))
         })
       );
     });
@@ -517,7 +517,10 @@ describe('Infrastructure Compose Module', () => {
 
       expect(mockCompiledTemplate).toHaveBeenCalledWith(
         expect.objectContaining({
-          pgadmin: { enabled: true },
+          pgadmin: {
+            enabled: true,
+            pgpassBootstrapBind: compose.toDockerBindMountSource(path.join(mockInfraDir, '.pgpass.bootstrap'))
+          },
           redisCommander: { enabled: true }
         })
       );
@@ -542,7 +545,10 @@ describe('Infrastructure Compose Module', () => {
 
       expect(mockCompiledTemplate).toHaveBeenCalledWith(
         expect.objectContaining({
-          pgadmin: { enabled: true },
+          pgadmin: {
+            enabled: true,
+            pgpassBootstrapBind: compose.toDockerBindMountSource(path.join(mockInfraDir, '.pgpass.bootstrap'))
+          },
           redisCommander: { enabled: true }
         })
       );

@@ -56,28 +56,29 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
+      # Docker has no OS password store; without this pgAdmin prompts for a master password on each restart.
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      # load-servers runs without --user in desktop mode; servers attach to DESKTOP_USER (default pgadmin4@pgadmin.org).
+      # Must match PGADMIN_DEFAULT_EMAIL or the tree stays empty after login.
+      PGADMIN_CONFIG_DESKTOP_USER: "'${PGADMIN_DEFAULT_EMAIL}'"
       PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
       PGADMIN_REPLACE_SERVERS_ON_STARTUP: 'True'
-      PGPASS_FILE: /pgpass
+      PGPASS_FILE: /pgadmin4/bootstrap.pgpass
     ports:
       - "{{pgadminPort}}:80"
     volumes:
       - {{#if (eq devId 0)}}pgadmin_data{{else}}dev{{devId}}_pgadmin_data{{/if}}:/var/lib/pgadmin
+      # File binds under /pgadmin4 (image paths). pgpass must exist before first entrypoint run.
       - type: bind
-        source: "{{infraDirBind}}"
-        target: /host-config
+        source: "{{serversJsonBind}}"
+        target: /pgadmin4/servers.json
         read_only: true
-    command: >
-      sh -c "
-      if [ -f /host-config/servers.json ]; then
-        cp /host-config/servers.json /pgadmin4/servers.json;
-      fi &&
-      if [ -f /host-config/pgpass ]; then
-        cp /host-config/pgpass /pgpass;
-        chmod 600 /pgpass;
-      fi &&
-      /entrypoint.sh
-      "
+{{#if pgadmin.pgpassBootstrapBind}}
+      - type: bind
+        source: "{{pgadmin.pgpassBootstrapBind}}"
+        target: /pgadmin4/bootstrap.pgpass
+        read_only: true
+{{/if}}
     restart: unless-stopped
     depends_on:
       postgres:

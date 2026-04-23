@@ -7,8 +7,10 @@
       "Port": 5432,
       "MaintenanceDB": "postgres",
       "Username": "pgadmin",
-      "PassFile": "/pgpass",
       "SSLMode": "prefer",
+      "ConnectionParameters": {
+        "passfile": "/pgadmin4/bootstrap.pgpass"
+      },
       "Comment": "Auto-registered PostgreSQL server with pgvector extension"
     }
   }

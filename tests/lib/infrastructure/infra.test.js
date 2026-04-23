@@ -110,7 +110,6 @@ jest.mock('../../../lib/utils/docker', () => ({
 jest.mock('../../../lib/infrastructure/services', () => ({
   execAsyncWithCwd: jest.fn().mockResolvedValue({ stdout: '', stderr: '' }),
   startDockerServices: jest.fn().mockResolvedValue(),
-  copyPgAdminConfig: jest.fn().mockResolvedValue(),
   startDockerServicesAndConfigure: jest.fn().mockResolvedValue(),
   waitForServices: jest.fn().mockResolvedValue(),
   checkInfraHealth: jest.fn().mockResolvedValue({

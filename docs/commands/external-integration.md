@@ -2,7 +2,7 @@
 
 ← [Documentation index](../README.md) · [Commands index](README.md)
 
-Commands for creating, testing, and managing external system integrations. Commands that call the Dataplane require login and the appropriate Dataplane permissions (e.g. **external-system:read**, **external-system:create**, **credential:read**). See [Online Commands and Permissions](permissions.md). For detailed testing documentation (unit and integration tests, test payloads, troubleshooting), see [External Integration Testing](external-integration-testing.md).
+Commands for creating, testing, and managing external system integrations. Commands that call the Dataplane require login and the appropriate Dataplane permissions (e.g. **external-system:read**, **external-system:create**, **credential:read**). See [Online Commands and Permissions](permissions.md). For how the CLI refreshes the **`certification`** section in your local system file after upload, deploy, tests, or optional **`validate --cert-sync`**, see [Certification and trust (CLI)](certification-and-trust.md). For detailed testing documentation (unit and integration tests, test payloads, troubleshooting), see [External Integration Testing](external-integration-testing.md).
 
 **Implementation:** External system CLI commands (`download`, `upload`, `delete`, `test-integration`) are registered in `lib/cli/setup-external-system.js`.
 
