@@ -160,4 +160,21 @@ describe('Schema 2.4.x alignment', () => {
     const validate = loadExternalSystemSchema();
     expect(validate(withOpt)).toBe(true);
   });
+
+  it('validates external-system certification with HS256 (local dev integration certificate)', () => {
+    const hubspotSystemPath = path.join(__dirname, '../../fixtures/hubspot-test-system.json');
+    const base = JSON.parse(fs.readFileSync(hubspotSystemPath, 'utf8'));
+    const withOpt = {
+      ...base,
+      certification: {
+        enabled: true,
+        publicKey: 'HS256-DEV-NO-PEM:AIC-20260101-test',
+        algorithm: 'HS256',
+        issuer: 'aifabrix-test',
+        version: '1.0.0'
+      }
+    };
+    const validate = loadExternalSystemSchema();
+    expect(validate(withOpt)).toBe(true);
+  });
 });

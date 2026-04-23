@@ -32,6 +32,12 @@ jest.mock('../../../lib/utils/dataplane-resolver');
 jest.mock('../../../lib/generator');
 jest.mock('../../../lib/utils/api-error-handler');
 jest.mock('../../../lib/utils/error-formatters/http-status-errors');
+jest.mock('../../../lib/app/certification-show-enrich', () => ({
+  attachLocalCertification: jest.fn(),
+  attachCertificationVerifyFromDataplane: jest.fn().mockResolvedValue(undefined),
+  sanitizeCertificationForJson: jest.fn(() => null),
+  truncatePublicKeyPreview: jest.fn((pem) => (pem && String(pem).slice(0, 8)) || '—')
+}));
 jest.mock('../../../lib/utils/logger', () => ({
   log: jest.fn(),
   error: jest.fn(),

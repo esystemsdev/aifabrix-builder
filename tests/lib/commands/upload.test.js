@@ -140,7 +140,7 @@ describe('upload command', () => {
       expect(logDataplanePipelineWarning).toHaveBeenCalledTimes(1);
     });
 
-    it('should call validation/run with payloadTemplate for --probe (payload test path, not full engine RBAC)', async() => {
+    it('should call validation/run without payloadTemplate for --probe (full engine path)', async() => {
       const { uploadExternalSystem } = require('../../../lib/commands/upload');
       const { testSystemViaPipeline } = require('../../../lib/api/pipeline.api');
       await uploadExternalSystem(systemKey, { probe: true });
@@ -148,7 +148,7 @@ describe('upload command', () => {
         'http://dataplane:4000',
         systemKey,
         { type: 'bearer', token: 'token' },
-        { payloadTemplate: {} },
+        {},
         expect.objectContaining({ timeout: 120000 })
       );
     });

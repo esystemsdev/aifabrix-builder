@@ -9,6 +9,10 @@ Run ID: run_fixture_rich
 Verdict:
 Cert ok
 
+Certification:
+  ✔ passed — tier bronze
+  Cert ok
+
 ────────────────────────────────
 Integration steps:
   ✔ fetch"

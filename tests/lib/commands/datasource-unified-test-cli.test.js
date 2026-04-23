@@ -26,6 +26,10 @@ jest.mock('../../../lib/utils/test-log-writer', () => ({
   writeTestLog: jest.fn()
 }));
 
+jest.mock('../../../lib/certification/post-unified-cert-sync', () => ({
+  afterUnifiedValidationCertSync: jest.fn().mockResolvedValue(undefined)
+}));
+
 jest.mock('../../../lib/commands/datasource-validation-cli', () => ({
   exitFromUnifiedValidationResult: jest.fn(),
   finalizeUnifiedValidationResult: jest.fn().mockReturnValue(0),
@@ -44,8 +48,15 @@ const logger = require('../../../lib/utils/logger');
 const { datasourceTestCommandAction } = require('../../../lib/commands/datasource-unified-test-cli');
 
 describe('datasource-unified-test-cli (datasource test)', () => {
+  let exitSpy;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    exitSpy.mockRestore();
   });
 
   it('writes debug log file when --debug is set', async() => {

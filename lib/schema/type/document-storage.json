@@ -7,12 +7,12 @@
     "key": "document-storage-schema",
     "name": "Document Storage Configuration Schema",
     "description": "JSON schema for validating document storage configurations",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "type": "schema",
     "category": "document-storage",
     "author": "AI Fabrix Team",
     "createdAt": "2026-01-02T00:00:00Z",
-    "updatedAt": "2026-03-31T00:00:00Z",
+    "updatedAt": "2026-04-22T00:00:00Z",
     "compatibility": {
       "minVersion": "1.0.0",
       "maxVersion": "2.0.0",
@@ -61,6 +61,14 @@
         "date": "2026-03-31T00:00:00Z",
         "changes": [
           "Added optional securityLevel classification field (public/internal/restricted/confidential)"
+        ],
+        "breaking": false
+      },
+      {
+        "version": "1.3.0",
+        "date": "2026-04-22T00:00:00Z",
+        "changes": [
+          "Added optional parameterLookupCoalesceNestedItemScope (boolean, default true) for manifest-controlled binary parameter lookup enrichment"
         ],
         "breaking": false
       }
@@ -119,6 +127,11 @@
       "type": "boolean",
       "default": false,
       "description": "If true, removes fetch.query when applying binary retrieval path override."
+    },
+    "parameterLookupCoalesceNestedItemScope": {
+      "type": "boolean",
+      "default": true,
+      "description": "When true, binary parameterMapping and HTTP path templates use a lookup view that merges metadata and coalesces storage-scope ids from a nested item parentReference when the row's parentReference omits them. Set false for strict manifest-only paths."
     },
     "processing": {
       "type": "object",

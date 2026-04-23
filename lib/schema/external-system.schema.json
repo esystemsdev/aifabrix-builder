@@ -679,12 +679,15 @@
            "publicKey":{
               "type":"string",
               "minLength":1,
-              "description":"Public key used to verify RS256 signatures. Private key must never appear in schema."
+              "description":"Public verification material (SPKI PEM for RS256; dev placeholder for HS256). Private keys must never appear in config."
            },
            "algorithm":{
               "type":"string",
-              "const":"RS256",
-              "description":"Signing algorithm. Must be RS256."
+              "enum":[
+                 "RS256",
+                 "HS256"
+              ],
+              "description":"Signing algorithm for certificate verification (RS256 in production; HS256 only for local dev when the dataplane uses the dev HMAC signer)."
            },
            "issuer":{
               "type":"string",
@@ -695,6 +698,25 @@
               "type":"string",
               "minLength":1,
               "description":"Certification version identifier; must align with external system versioning."
+           },
+           "status":{
+              "type":"string",
+              "enum":[
+                 "passed",
+                 "not_passed",
+                 "pending"
+              ],
+              "description":"Outcome of certification evaluation for this block (aligns with DatasourceTestRun certificate.status)."
+           },
+           "level":{
+              "type":"string",
+              "enum":[
+                 "BRONZE",
+                 "SILVER",
+                 "GOLD",
+                 "PLATINUM"
+              ],
+              "description":"Achieved certification tier (aligns with integration certificate certificationLevel)."
            }
         },
         "additionalProperties":false
