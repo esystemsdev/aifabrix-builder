@@ -88,6 +88,7 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix diff <file1> <file2>`](validation.md#aifabrix-diff-file1-file2) - Diff two config files (optional schema validate)
 
 ### External Integration
+- [Certification and trust (CLI)](certification-and-trust.md) - Local `certification` section sync, `--no-cert-sync`, `--verify-cert`, `validate --cert-sync`
 - [External Integration Commands](external-integration.md) - External system integration. See [External Integration Testing](external-integration-testing.md) for unit/integration test details and payloads.
   - [`aifabrix wizard [systemKey] [--debug]`](external-integration.md#aifabrix-wizard) - Guided external system setup (OpenAPI, MCP, HubSpot, …) or headless `wizard.yaml`; `--debug` for debug manifests
   - [`aifabrix download <systemKey>`](external-integration.md#aifabrix-download-system-key) - Pull external system from dataplane into `integration/<key>/`
@@ -103,6 +104,7 @@ Complete command reference organized by concept with examples and troubleshootin
     - [`aifabrix datasource test <datasourceKey>`](external-integration.md#aifabrix-datasource-test-datasourcekey) - Structural/policy validation run for one datasource (unified dataplane API, run type test)
     - [`aifabrix datasource test-integration <datasourceKey>`](external-integration.md#aifabrix-datasource-test-integration-datasourcekey) - Integration validation run for one datasource (unified dataplane API)
     - [`aifabrix datasource test-e2e <datasourceKey>`](external-integration.md#aifabrix-datasource-test-e2e-datasourcekey) - E2E validation run for one datasource (unified dataplane API)
+    - [`aifabrix datasource log-test <datasourceKey>`](external-integration.md#aifabrix-datasource-log-test-datasourcekey) - Show latest structural validation debug log (`test-*.json`)
 
 ### Utilities
 - [Utility Commands](utilities.md) - Configuration and secret management
@@ -142,6 +144,7 @@ Shortcuts to all command pages and key guides (same categories as the [Table of 
 - [Deployment Commands](deployment.md) - Deploy to Azure
 
 **External Systems:**
+- [Certification and trust (CLI)](certification-and-trust.md) - Trust metadata in the system file and CLI sync flags
 - [External Integration Commands](external-integration.md) - Create and manage external system integrations
 - [External Integration Testing](external-integration-testing.md) - Unit and integration testing, test payloads
 - [Wizard Guide](../wizard.md) - Interactive wizard documentation

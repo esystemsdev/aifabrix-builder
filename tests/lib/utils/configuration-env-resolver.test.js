@@ -72,18 +72,20 @@ describe('configuration-env-resolver', () => {
       resolveConfigurationValues(config, { SITE_ID: '123' }, {}, 'my-app');
       expect(config[0].value).toBe('123');
     });
-    it('should resolve keyvault location from secrets', () => {
+    it('should leave keyvault kv:// reference unchanged (secret pushed separately)', () => {
       const config = [{ name: 'SECRET', value: 'kv://secrets/foo', location: 'keyvault' }];
       resolveConfigurationValues(config, {}, { 'secrets/foo': 'secret-val' }, 'my-app');
-      expect(config[0].value).toBe('secret-val');
+      expect(config[0].value).toBe('kv://secrets/foo');
     });
     it('should throw for variable location when env var missing', () => {
       const config = [{ name: 'X', value: '{{X}}', location: 'variable' }];
       expect(() => resolveConfigurationValues(config, {}, {}, 'my-app')).toThrow('Missing configuration env var: X');
     });
-    it('should throw for keyvault when secret unresolved', () => {
-      const config = [{ name: 'S', value: 'kv://missing', location: 'keyvault' }];
-      expect(() => resolveConfigurationValues(config, {}, {}, 'my-app')).toThrow('Unresolved keyvault reference');
+    it('should throw for keyvault when value is not kv://', () => {
+      const config = [{ name: 'S', value: '{{S}}', location: 'keyvault' }];
+      expect(() => resolveConfigurationValues(config, { S: 'x' }, {}, 'my-app')).toThrow(
+        /location 'keyvault' but value is not kv:\/\//i
+      );
     });
     it('should throw when variable location has kv:// value', () => {
       const config = [{ name: 'S', value: 'kv://secrets/x', location: 'variable' }];
@@ -102,10 +104,6 @@ describe('configuration-env-resolver', () => {
       resolveConfigurationValues(null, {}, {});
       resolveConfigurationValues(undefined, {}, {});
     });
-    it('should throw for keyvault when secret is missing from secrets object', () => {
-      const config = [{ name: 'S', value: 'kv://missing/key', location: 'keyvault' }];
-      expect(() => resolveConfigurationValues(config, {}, {}, 'my-app')).toThrow('Unresolved keyvault reference');
-    });
     it('should skip items with location neither variable nor keyvault', () => {
       const config = [{ name: 'X', value: 'plain', location: 'other' }];
       resolveConfigurationValues(config, {}, {});
@@ -114,19 +112,10 @@ describe('configuration-env-resolver', () => {
   });
 
   describe('resolveConfigurationValues (auth-section / keyvault)', () => {
-    it('should throw for auth-style keyvault entry when secret is missing and message must not expose secret', () => {
+    it('keeps auth-style keyvault entry unchanged (kv:// stays in config; secret pushed separately)', () => {
       const config = [{ name: 'KV_MYAPP_CLIENTSECRET', value: 'kv://myapp/clientsecret', location: 'keyvault' }];
-      let err;
-      try {
-        resolveConfigurationValues(config, {}, {}, 'myapp');
-      } catch (e) {
-        err = e;
-      }
-      expect(err).toBeDefined();
-      expect(err.message).toMatch(/Unresolved keyvault reference/);
-      expect(err.message).toMatch(/configuration 'KV_MYAPP_CLIENTSECRET'/);
-      expect(err.message).toMatch(/aifabrix resolve myapp/);
-      expect(err.message).not.toMatch(/\bsecret-val\b|password:\s*\S+/);
+      expect(() => resolveConfigurationValues(config, {}, {}, 'myapp')).not.toThrow();
+      expect(config[0].value).toBe('kv://myapp/clientsecret');
     });
     it('should throw for auth-style variable entry when env var missing and message suggests resolve', () => {
       const config = [{ name: 'API_BASE_URL', value: '{{API_BASE_URL}}', location: 'variable' }];

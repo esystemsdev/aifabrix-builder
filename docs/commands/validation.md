@@ -39,6 +39,7 @@ The validation system validates:
 
 - [Wizard Guide](../wizard.md) - Wizard validation and configuration
 - [External Integration Commands](external-integration.md) - External system validation commands
+- [Certification and trust (CLI)](certification-and-trust.md) - Optional `validate --cert-sync` to refresh the local `certification` section after success
 - [External Systems Guide](../external-systems.md) - ABAC dimensions and field mappings
 - [Infra parameters catalog](../configuration/infra-parameters.md) - `infra.parameter.yaml`, local `kv://` vs Azure naming, workspace discovery
 
@@ -380,6 +381,7 @@ aifabrix validate --integration --builder
 - **`--integration`** — Validate every application under `integration/` in one run (each as external system). When used, `appOrFile` is optional.
 - **`--builder`** — Validate every application under `builder/` in one run. When used, `appOrFile` is optional.
 - **`--format <format>`** — Output format: `json` or `default` (human-readable). For batch mode, `json` prints the full batch result (per-app results and summary).
+- **`--cert-sync`** — After **successful** validation of an external integration under `integration/`, refresh **only** the `certification` object in the local `*-system` file from the dataplane (requires **login** and read access; no-op if the dataplane has nothing to merge). See [Certification and trust (CLI)](certification-and-trust.md).
 
 **Batch mode:** When **`--integration`** or **`--builder`** (or both) is used, the command validates all apps under the corresponding directory(ies). Output shows per-app results and an overall summary (e.g. “N passed, M failed”). Exit code is **1** if any app fails; otherwise **0**. When using these options, `appOrFile` is not required and is ignored if provided.
 

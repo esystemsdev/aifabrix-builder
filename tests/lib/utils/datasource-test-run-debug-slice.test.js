@@ -23,4 +23,22 @@ describe('datasource-test-run-debug-slice', () => {
     expect(slice.capabilities).toHaveLength(1);
     expect(slice.capabilities[0].e2e.status).toBe('ok');
   });
+
+  it('caps validation issues at 50 entries (plan §3.7)', () => {
+    const issues = Array.from({ length: 51 }, (_, i) => ({ message: `m${i}` }));
+    const slice = buildDebugEnvelopeSlice({
+      validation: { status: 'warn', issues }
+    });
+    expect(slice.validation.issues).toHaveLength(50);
+    expect(slice.validation.issues[0].message).toBe('m0');
+    expect(slice.validation.issues[49].message).toBe('m49');
+  });
+
+  it('caps certificate blockers at 30 entries', () => {
+    const blockers = Array.from({ length: 31 }, (_, i) => ({ message: `b${i}` }));
+    const slice = buildDebugEnvelopeSlice({
+      certificate: { status: 'not_passed', blockers }
+    });
+    expect(slice.certificate.blockers).toHaveLength(30);
+  });
 });

@@ -55,6 +55,24 @@ describe('datasource-validation-cli', () => {
       expect(finalizeAfterIntegrationDisplay({ success: true, datasourceTestRun: { status: 'ok' } })).toBe(0);
       expect(finalizeAfterIntegrationDisplay({ success: true, datasourceTestRun: { status: 'fail' } })).toBe(1);
     });
+
+    it('requireCert without certificate logs and returns 2', () => {
+      const code = finalizeAfterIntegrationDisplay(
+        { success: true, datasourceTestRun: { status: 'ok' } },
+        { requireCert: true }
+      );
+      expect(code).toBe(2);
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('warningsAsErrors upgrades warn to exit 1', () => {
+      expect(
+        finalizeAfterIntegrationDisplay(
+          { success: true, datasourceTestRun: { status: 'warn' } },
+          { warningsAsErrors: true }
+        )
+      ).toBe(1);
+    });
   });
 
   describe('finalizeUnifiedValidationResult', () => {
@@ -112,6 +130,73 @@ describe('datasource-validation-cli', () => {
       );
       expect(code).toBe(0);
       expect(logger.log).toHaveBeenCalledWith(JSON.stringify(env));
+    });
+
+    it('returns 1 when status warn and warningsAsErrors', () => {
+      const code = finalizeUnifiedValidationResult(
+        {
+          apiError: null,
+          pollTimedOut: false,
+          incompleteNoAsync: false,
+          envelope: { status: 'warn' }
+        },
+        { json: true, warningsAsErrors: true }
+      );
+      expect(code).toBe(1);
+    });
+
+    it('returns 2 when requireCert and certificate missing', () => {
+      const code = finalizeUnifiedValidationResult(
+        {
+          apiError: null,
+          pollTimedOut: false,
+          incompleteNoAsync: false,
+          envelope: { status: 'ok' }
+        },
+        { json: true, requireCert: true }
+      );
+      expect(code).toBe(2);
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('strictCapabilityScope bumps exit to 1 when multiple capability rows', () => {
+      const code = finalizeUnifiedValidationResult(
+        {
+          apiError: null,
+          pollTimedOut: false,
+          incompleteNoAsync: false,
+          envelope: {
+            status: 'ok',
+            capabilities: [{ key: 'read' }, { key: 'write' }]
+          }
+        },
+        {
+          json: true,
+          requestedCapabilityKey: 'read',
+          strictCapabilityScope: true
+        }
+      );
+      expect(code).toBe(1);
+    });
+
+    it('strictCapabilityScope does not bump when single capability row', () => {
+      const code = finalizeUnifiedValidationResult(
+        {
+          apiError: null,
+          pollTimedOut: false,
+          incompleteNoAsync: false,
+          envelope: {
+            status: 'ok',
+            capabilities: [{ key: 'read' }]
+          }
+        },
+        {
+          json: true,
+          requestedCapabilityKey: 'read',
+          strictCapabilityScope: true
+        }
+      );
+      expect(code).toBe(0);
     });
   });
 });

@@ -1,5 +1,7 @@
 /**
  * Tests for log-viewer.js
+ * Isolated project `log-viewer` — mocks `node:fs` and must not share a worker with `log-viewer-structural.test.js`.
+ *
  * @fileoverview Unit tests for lib/datasource/log-viewer.js
  * @author AI Fabrix Team
  * @version 2.0.0
@@ -20,8 +22,8 @@ jest.mock('../../../lib/utils/paths', () => ({
   getIntegrationPath: jest.fn((app) => `/integration/${app}`)
 }));
 
-const fs = require('fs').promises;
-jest.mock('fs', () => ({ promises: { readdir: jest.fn(), stat: jest.fn(), readFile: jest.fn() } }));
+const fsp = require('node:fs').promises;
+jest.mock('node:fs', () => ({ promises: { readdir: jest.fn(), stat: jest.fn(), readFile: jest.fn() } }));
 
 const {
   getLatestLogPath,
@@ -51,11 +53,11 @@ describe('log-viewer', () => {
 
   describe('getLatestLogPath', () => {
     it('should return latest file by mtime for matching pattern', async() => {
-      fs.readdir = jest.fn().mockResolvedValue([
+      fsp.readdir = jest.fn().mockResolvedValue([
         { name: 'test-e2e-2026-01-01T12-00-00-000Z.json', isFile: () => true },
         { name: 'test-e2e-2026-01-02T12-00-00-000Z.json', isFile: () => true }
       ]);
-      fs.stat = jest.fn()
+      fsp.stat = jest.fn()
         .mockResolvedValueOnce({ mtimeMs: 1000 })
         .mockResolvedValueOnce({ mtimeMs: 2000 });
       const result = await getLatestLogPath('/logs', 'test-e2e-');
@@ -63,13 +65,13 @@ describe('log-viewer', () => {
     });
 
     it('should return null when directory does not exist', async() => {
-      fs.readdir = jest.fn().mockRejectedValue({ code: 'ENOENT' });
+      fsp.readdir = jest.fn().mockRejectedValue({ code: 'ENOENT' });
       const result = await getLatestLogPath('/nonexistent', 'test-e2e-');
       expect(result).toBeNull();
     });
 
     it('should return null when no files match', async() => {
-      fs.readdir = jest.fn().mockResolvedValue([{ name: 'other.log', isFile: () => true }]);
+      fsp.readdir = jest.fn().mockResolvedValue([{ name: 'other.log', isFile: () => true }]);
       const result = await getLatestLogPath('/logs', 'test-e2e-');
       expect(result).toBeNull();
     });
@@ -139,32 +141,32 @@ describe('log-viewer', () => {
 
   describe('runLogViewer', () => {
     it('should use --file when provided', async() => {
-      fs.readFile = jest.fn().mockResolvedValue(JSON.stringify({
+      fsp.readFile = jest.fn().mockResolvedValue(JSON.stringify({
         request: { sourceIdOrKey: 'ds-key' },
         response: { success: true }
       }));
       await runLogViewer('ignored-key', { file: '/path/to/log.json', logType: 'test-e2e' });
       expect(resolveAppKeyForDatasource).not.toHaveBeenCalled();
-      expect(fs.readFile).toHaveBeenCalledWith(expect.stringContaining('log.json'), 'utf8');
+      expect(fsp.readFile).toHaveBeenCalledWith(expect.stringContaining('log.json'), 'utf8');
     });
 
     it('should resolve app and get latest log when --file not provided', async() => {
       const path = require('path');
-      fs.readdir = jest.fn().mockResolvedValue([
+      fsp.readdir = jest.fn().mockResolvedValue([
         { name: 'test-e2e-2026-01-01T12-00-00-000Z.json', isFile: () => true }
       ]);
-      fs.stat = jest.fn().mockResolvedValue({ mtimeMs: 1000 });
-      fs.readFile = jest.fn().mockResolvedValue(JSON.stringify({
+      fsp.stat = jest.fn().mockResolvedValue({ mtimeMs: 1000 });
+      fsp.readFile = jest.fn().mockResolvedValue(JSON.stringify({
         request: {},
         response: { success: true }
       }));
       await runLogViewer('my-datasource', { app: 'myapp', logType: 'test-e2e' });
       expect(resolveAppKeyForDatasource).toHaveBeenCalledWith('my-datasource', 'myapp');
-      expect(fs.readFile).toHaveBeenCalled();
+      expect(fsp.readFile).toHaveBeenCalled();
     });
 
     it('should throw when no log file found in app logs dir', async() => {
-      fs.readdir = jest.fn().mockResolvedValue([]);
+      fsp.readdir = jest.fn().mockResolvedValue([]);
       await expect(
         runLogViewer('my-datasource', { logType: 'test-e2e' })
       ).rejects.toThrow('No test-e2e log found');
@@ -177,7 +179,7 @@ describe('log-viewer', () => {
     });
 
     it('should throw when file content is invalid JSON', async() => {
-      fs.readFile = jest.fn().mockResolvedValue('not valid json {');
+      fsp.readFile = jest.fn().mockResolvedValue('not valid json {');
       await expect(
         runLogViewer('any-key', { file: '/path/to/log.json', logType: 'test-e2e' })
       ).rejects.toThrow(/Invalid JSON/);

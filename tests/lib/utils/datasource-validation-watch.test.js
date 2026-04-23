@@ -191,4 +191,45 @@ describe('datasource-validation-watch', () => {
       exitSpy.mockRestore();
     }
   });
+
+  it('runDatasourceValidationWatchLoop with watchCi exits 0 when first run succeeds', async() => {
+    const intRoot = path.join(tmp, 'integration-app');
+    fs.mkdirSync(intRoot, { recursive: true });
+    getIntegrationPath.mockReturnValue(intRoot);
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    const runOnce = jest.fn().mockResolvedValue({ exitCode: 0, envelope: { status: 'ok' } });
+    try {
+      await runDatasourceValidationWatchLoop({
+        appKey: 'app',
+        watchCi: true,
+        runOnce
+      });
+      expect(runOnce).toHaveBeenCalledTimes(1);
+      expect(exitSpy).toHaveBeenCalledWith(0);
+    } finally {
+      process.removeAllListeners('SIGINT');
+      process.removeAllListeners('SIGTERM');
+      exitSpy.mockRestore();
+    }
+  });
+
+  it('runDatasourceValidationWatchLoop with watchCi does not register SIG handlers (early return)', async() => {
+    const intRoot = path.join(tmp, 'integration-app');
+    fs.mkdirSync(intRoot, { recursive: true });
+    getIntegrationPath.mockReturnValue(intRoot);
+    const sigIntCountBefore = process.listenerCount('SIGINT');
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    const runOnce = jest.fn().mockResolvedValue({ exitCode: 1, envelope: null });
+    try {
+      await runDatasourceValidationWatchLoop({
+        appKey: 'app',
+        watchCi: true,
+        runOnce
+      });
+      expect(process.listenerCount('SIGINT')).toBe(sigIntCountBefore);
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      exitSpy.mockRestore();
+    }
+  });
 });

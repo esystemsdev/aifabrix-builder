@@ -107,6 +107,19 @@ describe('validation-run-post-retry', () => {
       expect(res.success).toBe(false);
       expect(postValidationRun).toHaveBeenCalledTimes(1);
     });
+
+    it('forwards transportOpts.timeoutMs to postValidationRun on each attempt', async() => {
+      postValidationRun.mockResolvedValue({ success: true, data: {}, status: 200 });
+      await postValidationRunWithTransportRetry('https://dp', { token: 't' }, { runType: 'e2e' }, {
+        timeoutMs: 900000
+      });
+      expect(postValidationRun).toHaveBeenCalledWith(
+        'https://dp',
+        { token: 't' },
+        { runType: 'e2e' },
+        { timeoutMs: 900000 }
+      );
+    });
   });
 
   describe('getValidationRunWithTransportRetry', () => {
@@ -136,6 +149,19 @@ describe('validation-run-post-retry', () => {
 
       expect(res.success).toBe(true);
       expect(getValidationRun).toHaveBeenCalledTimes(2);
+    });
+
+    it('forwards transportOpts.timeoutMs to getValidationRun', async() => {
+      getValidationRun.mockResolvedValue({ success: true, data: { reportCompleteness: 'full' }, status: 200 });
+      await getValidationRunWithTransportRetry('https://dp', { token: 't' }, 'run-2', {
+        timeoutMs: 600000
+      });
+      expect(getValidationRun).toHaveBeenCalledWith(
+        'https://dp',
+        { token: 't' },
+        'run-2',
+        { timeoutMs: 600000 }
+      );
     });
   });
 });

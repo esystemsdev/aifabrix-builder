@@ -77,6 +77,28 @@ describe('datasource-test-run-display', () => {
       const tty = stripAnsi(formatDatasourceTestRunTTY(env, { focusCapabilityKey: 'read' }));
       expect(tty).toContain('Capability scope: read');
     });
+
+    it('renders Certification section for E2E envelope with certificate', () => {
+      const tty = stripAnsi(
+        formatDatasourceTestRunTTY(
+          baseEnvelope({
+            runType: 'e2e',
+            developer: { executiveSummary: 'E2E run completed' },
+            certificate: {
+              status: 'passed',
+              level: 'bronze',
+              summary: 'Tier summary line',
+              blockers: [{ code: 'X', message: 'ICC below threshold' }]
+            }
+          })
+        )
+      );
+      expect(tty).toContain('Certification:');
+      expect(tty).toContain('passed');
+      expect(tty).toContain('tier bronze');
+      expect(tty).toContain('Tier summary line');
+      expect(tty).toContain('ICC below threshold');
+    });
   });
 
   describe('formatCapabilityFocusSection', () => {

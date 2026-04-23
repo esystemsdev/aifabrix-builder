@@ -1,6 +1,10 @@
 /**
  * Tests for admin-secrets read/decrypt and env serialization.
  *
+ * Isolated Jest project `admin-secrets` — mocks {@link module:lib/internal/fs-real-sync} with
+ * `existsSync` always true by default; that breaks `getAifabrixRuntimeConfigDir` / builder overlay
+ * tests in the default worker if this file shares a process with them.
+ *
  * @fileoverview Unit tests for lib/core/admin-secrets.js
  * @author AI Fabrix Team
  * @version 2.0.0

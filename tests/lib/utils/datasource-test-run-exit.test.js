@@ -4,12 +4,30 @@
 
 const {
   computeExitCodeFromDatasourceTestRun,
+  computeSystemExitCodeFromDatasourceRows,
   exitCodeForPollTimeout
 } = require('../../../lib/utils/datasource-test-run-exit');
 
 describe('datasource-test-run-exit', () => {
   it('fail → 1', () => {
     expect(computeExitCodeFromDatasourceTestRun({ status: 'fail' })).toBe(1);
+  });
+
+  it('fail → 1 even when requireCert (status evaluated first)', () => {
+    expect(
+      computeExitCodeFromDatasourceTestRun(
+        { status: 'fail', certificate: { status: 'not_passed' } },
+        { requireCert: true }
+      )
+    ).toBe(1);
+  });
+
+  it('ok → 0', () => {
+    expect(computeExitCodeFromDatasourceTestRun({ status: 'ok' })).toBe(0);
+  });
+
+  it('skipped → 0', () => {
+    expect(computeExitCodeFromDatasourceTestRun({ status: 'skipped' })).toBe(0);
   });
 
   it('warn → 0 unless warningsAsErrors', () => {
@@ -43,12 +61,103 @@ describe('datasource-test-run-exit', () => {
     ).toBe(0);
   });
 
+  it('requireCert with non-not_passed certificate → 0', () => {
+    expect(
+      computeExitCodeFromDatasourceTestRun(
+        { status: 'ok', certificate: { status: 'pending' } },
+        { requireCert: true }
+      )
+    ).toBe(0);
+  });
+
+  it('warn + requireCert + missing certificate → 2', () => {
+    expect(
+      computeExitCodeFromDatasourceTestRun({ status: 'warn' }, { requireCert: true })
+    ).toBe(2);
+  });
+
+  it('skipped + requireCert + missing certificate → 2', () => {
+    expect(
+      computeExitCodeFromDatasourceTestRun({ status: 'skipped' }, { requireCert: true })
+    ).toBe(2);
+  });
+
   it('invalid body → 3', () => {
     expect(computeExitCodeFromDatasourceTestRun(null)).toBe(3);
+  });
+
+  it('unknown status → 3', () => {
+    expect(computeExitCodeFromDatasourceTestRun({ status: 'unknown' })).toBe(3);
   });
 
   it('exitCodeForPollTimeout', () => {
     expect(exitCodeForPollTimeout({ status: 'fail' })).toBe(1);
     expect(exitCodeForPollTimeout({ status: 'ok' })).toBe(3);
+    expect(exitCodeForPollTimeout(null)).toBe(3);
+  });
+
+  it('computeSystemExitCodeFromDatasourceRows: all ok → 0', () => {
+    const rows = [
+      {
+        key: 'a',
+        success: true,
+        datasourceTestRun: { status: 'ok', datasourceKey: 'a', certificate: { status: 'passed' } }
+      }
+    ];
+    expect(computeSystemExitCodeFromDatasourceRows(rows)).toBe(0);
+  });
+
+  it('computeSystemExitCodeFromDatasourceRows: any fail → 1', () => {
+    const rows = [
+      {
+        key: 'a',
+        success: true,
+        datasourceTestRun: { status: 'ok', datasourceKey: 'a' }
+      },
+      {
+        key: 'b',
+        success: false,
+        datasourceTestRun: { status: 'fail', datasourceKey: 'b' }
+      }
+    ];
+    expect(computeSystemExitCodeFromDatasourceRows(rows)).toBe(1);
+  });
+
+  it('computeSystemExitCodeFromDatasourceRows: warn + warningsAsErrors → 1', () => {
+    const rows = [
+      {
+        key: 'a',
+        success: true,
+        datasourceTestRun: { status: 'warn', datasourceKey: 'a' }
+      }
+    ];
+    expect(computeSystemExitCodeFromDatasourceRows(rows, { warningsAsErrors: true })).toBe(1);
+  });
+
+  it('computeSystemExitCodeFromDatasourceRows: requireCert + not_passed rollup → 2', () => {
+    const rows = [
+      {
+        key: 'a',
+        success: true,
+        datasourceTestRun: { status: 'ok', datasourceKey: 'a', certificate: { status: 'passed' } }
+      },
+      {
+        key: 'b',
+        success: true,
+        datasourceTestRun: { status: 'ok', datasourceKey: 'b', certificate: { status: 'not_passed' } }
+      }
+    ];
+    expect(computeSystemExitCodeFromDatasourceRows(rows, { requireCert: true })).toBe(2);
+  });
+
+  it('computeSystemExitCodeFromDatasourceRows: success false overrides envelope ok (e.g. poll timeout)', () => {
+    const rows = [
+      {
+        key: 'a',
+        success: false,
+        datasourceTestRun: { status: 'ok', datasourceKey: 'a' }
+      }
+    ];
+    expect(computeSystemExitCodeFromDatasourceRows(rows)).toBe(1);
   });
 });

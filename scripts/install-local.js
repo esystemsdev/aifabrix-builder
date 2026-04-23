@@ -15,6 +15,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const { runPnpmGlobalRemove } = require('./pnpm-global-remove');
+
 const PACKAGE_NAME = '@aifabrix/builder';
 /** Primary CLI name used for “current version” before link */
 const PRIMARY_BIN = 'aifabrix';
@@ -465,7 +467,8 @@ function uninstallLocal() {
 
   try {
     if (pm === 'pnpm') {
-      execSync(`pnpm unlink --global ${PACKAGE_NAME}`, { stdio: 'inherit', env: pnpmEnv() });
+      const env = { ...pnpmEnv(), CI: 'true' };
+      runPnpmGlobalRemove(env, PACKAGE_NAME);
       displayUninstallSuccess(pm, currentVersion);
     } else {
       execSync(`npm unlink -g ${PACKAGE_NAME}`, { stdio: 'inherit' });

@@ -24,10 +24,10 @@ describe('compose.yaml.hbs Traefik forwarded headers', () => {
       traefikHttpsPort: 443,
       networkName: 'infra-dev1-aifabrix-network',
       serversJsonPath: '/tmp/servers.json',
+      serversJsonBind: '/tmp/servers.json',
       pgpassPath: '/tmp/pgpass',
       infraDir: '/tmp/infra',
       initScriptsBind: '/tmp/init',
-      infraDirBind: '/tmp/infra',
       pgadmin: { enabled: false },
       redisCommander: { enabled: false },
       traefik: {
@@ -61,5 +61,27 @@ describe('compose.yaml.hbs Traefik forwarded headers', () => {
   it('includes providers.docker.allowEmptyServices for local dev routing during Docker health start', () => {
     const yaml = render({ trustForwardedHeaders: false });
     expect(yaml).toContain('--providers.docker.allowEmptyServices=true');
+  });
+
+  it('includes MASTER_PASSWORD_REQUIRED=False when pgAdmin is enabled (Docker has no OS keyring)', () => {
+    registerHandlebarsHelper();
+    const raw = fs.readFileSync(tplPath, 'utf8');
+    const tpl = handlebars.compile(raw);
+    const ctx = baseContext({ trustForwardedHeaders: false });
+    ctx.pgadmin = { enabled: true, pgpassBootstrapBind: '/tmp/.pgpass.bootstrap' };
+    const yaml = tpl(ctx);
+    expect(yaml).toContain('PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED');
+    expect(yaml).toContain('\'False\'');
+  });
+
+  it('includes DESKTOP_USER bound to PGADMIN_DEFAULT_EMAIL when pgAdmin is enabled', () => {
+    registerHandlebarsHelper();
+    const raw = fs.readFileSync(tplPath, 'utf8');
+    const tpl = handlebars.compile(raw);
+    const ctx = baseContext({ trustForwardedHeaders: false });
+    ctx.pgadmin = { enabled: true, pgpassBootstrapBind: '/tmp/.pgpass.bootstrap' };
+    const yaml = tpl(ctx);
+    expect(yaml).toContain('PGADMIN_CONFIG_DESKTOP_USER');
+    expect(yaml).toContain('\'${PGADMIN_DEFAULT_EMAIL}\'');
   });
 });

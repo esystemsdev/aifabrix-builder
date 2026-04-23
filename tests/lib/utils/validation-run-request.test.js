@@ -57,4 +57,20 @@ describe('validation-run-request', () => {
     expect(e.testCrud).toBe(true);
     expect(e.customFlag).toBe(true);
   });
+
+  it('buildE2eOptionsFromCli maps numeric E2E assertions', () => {
+    const e = buildE2eOptionsFromCli({
+      minVectorHits: 7,
+      minProcessed: 3,
+      minRecordCount: 10
+    });
+    expect(e.minVectorHits).toBe(7);
+    expect(e.minProcessed).toBe(3);
+    expect(e.minRecordCount).toBe(10);
+  });
+
+  it('buildE2eOptionsFromCli ignores invalid assertion numbers', () => {
+    expect(buildE2eOptionsFromCli({ minVectorHits: 'x' })).toEqual({});
+    expect(buildE2eOptionsFromCli({ minVectorHits: -1 })).toEqual({});
+  });
 });

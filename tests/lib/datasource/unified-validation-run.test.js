@@ -91,6 +91,13 @@ describe('unified-validation-run', () => {
     expect(postValidationRunAndOptionalPoll).toHaveBeenCalled();
   });
 
+  it('forwards verbosePoll when verbose is true', async() => {
+    await runUnifiedDatasourceValidation('ds-one', { app: 'app-one', runType: 'test', verbose: true });
+    expect(postValidationRunAndOptionalPoll).toHaveBeenCalledWith(
+      expect.objectContaining({ verbosePoll: true })
+    );
+  });
+
   it('does not publish when sync is false or omitted', async() => {
     publishDatasourceViaPipeline.mockResolvedValue({ success: true });
 

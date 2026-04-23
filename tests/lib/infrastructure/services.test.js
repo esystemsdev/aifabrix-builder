@@ -17,8 +17,7 @@ const fs = require('fs');
 jest.mock('fs', () => ({
   existsSync: jest.fn(() => true),
   writeFileSync: jest.fn(),
-  unlinkSync: jest.fn(),
-  readFileSync: jest.fn()
+  unlinkSync: jest.fn()
 }));
 
 jest.mock('../../../lib/utils/docker', () => ({
@@ -73,22 +72,19 @@ describe('Infrastructure services', () => {
     services.checkInfraHealth.mockRestore();
   });
 
-  it('startDockerServicesAndConfigure writes temp .env and .pgpass.run and unlinks both in finally', async() => {
+  it('startDockerServicesAndConfigure writes temp .env.run and unlinks it in finally', async() => {
     const infraDir = '/home/.aifabrix/infra';
     const runEnvPath = path.join(infraDir, '.env.run');
-    const pgpassRunPath = path.join(infraDir, '.pgpass.run');
 
     await services.startDockerServicesAndConfigure('/path/compose.yaml', 0, 0, infraDir);
 
     expect(adminSecrets.readAndDecryptAdminSecrets).toHaveBeenCalled();
     expect(adminSecrets.envObjectToContent).toHaveBeenCalledWith(expect.any(Object));
     expect(fs.writeFileSync).toHaveBeenCalledWith(runEnvPath, expect.any(String), { mode: 0o600 });
-    expect(fs.writeFileSync).toHaveBeenCalledWith(pgpassRunPath, expect.stringContaining('postgres:5432:postgres:pgadmin:'), { mode: 0o600 });
     expect(fs.unlinkSync).toHaveBeenCalledWith(runEnvPath);
-    expect(fs.unlinkSync).toHaveBeenCalledWith(pgpassRunPath);
   });
 
-  it('startDockerServicesAndConfigure skips pgpass when pgadmin is disabled', async() => {
+  it('startDockerServicesAndConfigure writes only .env.run when pgadmin is disabled', async() => {
     const infraDir = '/home/.aifabrix/infra';
     const runEnvPath = path.join(infraDir, '.env.run');
 

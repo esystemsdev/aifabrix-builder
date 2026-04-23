@@ -33,6 +33,10 @@ jest.mock('../../../lib/utils/external-system-display', () => ({
   displayE2EResults: jest.fn()
 }));
 
+jest.mock('../../../lib/certification/post-unified-cert-sync', () => ({
+  afterUnifiedValidationCertSync: jest.fn().mockResolvedValue(undefined)
+}));
+
 const logger = require('../../../lib/utils/logger');
 const { runUnifiedDatasourceValidation } = require('../../../lib/datasource/unified-validation-run');
 const { runDatasourceTestIntegration } = require('../../../lib/datasource/test-integration');

@@ -1,0 +1,19 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`datasource-test-run-display snapshots formatDatasourceTestRunTTY stable fixture 1`] = `
+"Datasource: fixture.ds (fixture)
+Run: e2e
+Status: ✔ ok
+Run ID: run_fixture_rich
+
+Verdict:
+Cert ok
+
+Certification:
+  ✔ passed — tier bronze
+  Cert ok
+
+────────────────────────────────
+Integration steps:
+  ✔ fetch"
+`;

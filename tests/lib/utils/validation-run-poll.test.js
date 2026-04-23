@@ -36,6 +36,23 @@ describe('validation-run-poll', () => {
     expect(r.envelope.reportCompleteness).toBe('full');
     expect(r.timedOut).toBe(false);
     expect(fetchRun).toHaveBeenCalledTimes(1);
+    expect(fetchRun).toHaveBeenCalledWith('https://x', {}, 't1', {});
+  });
+
+  it('pollValidationRunUntilComplete passes pollRequestTimeoutMs as fourth arg to fetchRun', async() => {
+    const fetchRun = jest.fn().mockResolvedValue({
+      success: true,
+      data: { reportCompleteness: 'full', status: 'ok' }
+    });
+    await pollValidationRunUntilComplete({
+      dataplaneUrl: 'https://x',
+      authConfig: {},
+      testRunId: 't1',
+      budgetMs: 60000,
+      fetchRun,
+      pollRequestTimeoutMs: 120000
+    });
+    expect(fetchRun).toHaveBeenCalledWith('https://x', {}, 't1', { timeoutMs: 120000 });
   });
 
   it('pollValidationRunUntilComplete returns api error from fetchRun', async() => {

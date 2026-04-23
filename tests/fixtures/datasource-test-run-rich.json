@@ -1,0 +1,31 @@
+{
+  "reportVersion": "1.1.0",
+  "datasourceKey": "fixture.ds",
+  "systemKey": "fixture",
+  "runType": "e2e",
+  "status": "ok",
+  "reportCompleteness": "full",
+  "runId": "run_fixture_rich",
+  "validation": {
+    "status": "ok",
+    "summary": "Structural validation passed"
+  },
+  "integration": {
+    "status": "ok",
+    "summary": "Pipeline ok",
+    "stepResults": [{ "name": "fetch", "success": true }]
+  },
+  "certificate": {
+    "status": "passed",
+    "level": "bronze",
+    "summary": "Cert ok"
+  },
+  "capabilitySummary": { "total": 1, "passed": 1, "failed": 0 },
+  "capabilities": [
+    {
+      "key": "read",
+      "status": "ok",
+      "e2e": { "status": "ok", "strategy": "read", "steps": [] }
+    }
+  ]
+}

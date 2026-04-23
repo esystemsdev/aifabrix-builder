@@ -72,9 +72,22 @@ describe('Manual API tests – validation-run.api (unified validation, real Data
     expect(res).toBeDefined();
     if (res.success) {
       expect(res.data).toBeDefined();
-    } else {
-      const msg = String(res.formattedError || res.error || res.message || '').toLowerCase();
-      expect(res.status === 404 || msg.includes('not found') || msg.includes('404')).toBe(true);
+      return;
     }
+    const httpStatus = Number(res.status) || 0;
+    const ed = res.errorData && typeof res.errorData === 'object' ? res.errorData : {};
+    const detail = String(ed.detail || ed.title || ed.message || '').toLowerCase();
+    const msg = String(res.formattedError || res.error || res.message || '').toLowerCase();
+    const combined = `${msg} ${detail} ${JSON.stringify(ed).toLowerCase()}`;
+    const bodyStatus = Number(ed.statusCode ?? ed.status);
+    const looksNotFound =
+      httpStatus === 404 ||
+      bodyStatus === 404 ||
+      res.errorType === 'notfound' ||
+      combined.includes('not found') ||
+      combined.includes('expired') ||
+      combined.includes('"404"') ||
+      /\b404\b/.test(combined);
+    expect(looksNotFound).toBe(true);
   });
 });
