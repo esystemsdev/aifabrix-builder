@@ -32,6 +32,7 @@ tmp-imgver*/
 .env
 .env.local
 .env.*.local
+.npmrc.token
 
 # Build artifacts
 dist/

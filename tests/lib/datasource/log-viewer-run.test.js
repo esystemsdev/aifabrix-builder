@@ -54,6 +54,6 @@ describe('runLogViewer (structural / test)', () => {
     fs.writeFileSync(tmpFile, '{ not json', 'utf8');
     await expect(
       runLogViewer('k', { file: tmpFile, logType: 'test' })
-    ).rejects.toThrow(/Invalid JSON/);
+    ).rejects.toThrow(/invalid json/i);
   });
 });

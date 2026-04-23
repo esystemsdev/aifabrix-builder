@@ -4,9 +4,10 @@
 
 'use strict';
 
-const fs = require('node:fs');
-const path = require('path');
 const { formatDatasourceTestRunTTY } = require('../../../lib/utils/datasource-test-run-display');
+
+/** Same fixture as AJV tests — require() so path resolves from this file regardless of cwd. */
+const fixtureRich = require('../../fixtures/datasource-test-run-rich.json');
 
 function stripAnsi(s) {
   const esc = String.fromCharCode(27);
@@ -15,11 +16,6 @@ function stripAnsi(s) {
 
 describe('datasource-test-run-display snapshots', () => {
   it('formatDatasourceTestRunTTY stable fixture', () => {
-    const raw = fs.readFileSync(
-      path.join(__dirname, '../../fixtures/datasource-test-run-rich.json'),
-      'utf8'
-    );
-    const env = JSON.parse(raw);
-    expect(stripAnsi(formatDatasourceTestRunTTY(env))).toMatchSnapshot();
+    expect(stripAnsi(formatDatasourceTestRunTTY(fixtureRich))).toMatchSnapshot();
   });
 });
