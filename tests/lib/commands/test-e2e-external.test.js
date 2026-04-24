@@ -191,5 +191,15 @@ describe('test-e2e-external', () => {
 
       expect(keys).toEqual(['hubspot-demo-companies']);
     });
+
+    it('preserves system dataSources order (no alphabetical sort) for FK-friendly sequencing', () => {
+      const variables = { externalIntegration: { dataSources: [] } };
+      const systemParsed = {
+        key: 'acme',
+        dataSources: ['acme-zebra', 'acme-apple', 'acme-mango']
+      };
+      const keys = getDatasourceKeys('/tmp', '/tmp/app.yaml', variables, 'acme', systemParsed, []);
+      expect(keys).toEqual(['acme-zebra', 'acme-apple', 'acme-mango']);
+    });
   });
 });
