@@ -7,12 +7,12 @@
      "key":"external-system-schema",
      "name":"External System Configuration Schema",
      "description":"JSON schema for validating ExternalSystem configuration files",
-     "version":"1.6.0",
+     "version":"1.6.2",
      "type":"schema",
      "category":"integration",
      "author":"AI Fabrix Team",
      "createdAt":"2024-01-01T00:00:00Z",
-     "updatedAt":"2026-04-09T00:00:00Z",
+     "updatedAt":"2026-04-23T00:00:00Z",
      "compatibility":{
         "minVersion":"1.4.0",
         "maxVersion":"2.0.0",
@@ -29,6 +29,20 @@
         
      ],
      "changelog":[
+        {
+           "version":"1.6.2",
+           "date":"2026-04-23T00:00:00Z",
+           "changes":[
+              "certification.algorithm: RS256 only (removed HS256 from enum)"
+           ]
+        },
+        {
+           "version":"1.6.1",
+           "date":"2026-04-22T00:00:00Z",
+           "changes":[
+              "Optional certification.publicKeyFingerprint (sha256: hex of SPKI DER) for RS256 public key verification"
+           ]
+        },
         {
            "version":"1.6.0",
            "date":"2026-04-09T00:00:00Z",
@@ -679,15 +693,24 @@
            "publicKey":{
               "type":"string",
               "minLength":1,
-              "description":"Public verification material (SPKI PEM for RS256; dev placeholder for HS256). Private keys must never appear in config."
+              "description":"Public verification material (SPKI PEM for RS256). Private keys must never appear in config."
+           },
+           "publicKeyFingerprint":{
+              "type":"string",
+              "pattern":"^sha256:[0-9a-f]{64}$",
+              "description":"SHA-256 fingerprint of the SubjectPublicKeyInfo DER (same convention as integration certificate publicKeyFingerprint); must match embedded publicKey."
+           },
+           "contractHash":{
+              "type":"string",
+              "pattern":"^sha256:[0-9a-f]{64}$",
+              "description":"Optional copy of the active integration certificate contractHash (certification contract material digest) for drift checks; should match the dataplane active trusted certificate when present."
            },
            "algorithm":{
               "type":"string",
               "enum":[
-                 "RS256",
-                 "HS256"
+                 "RS256"
               ],
-              "description":"Signing algorithm for certificate verification (RS256 in production; HS256 only for local dev when the dataplane uses the dev HMAC signer)."
+              "description":"Signing algorithm for integration certificate verification (RS256 only)."
            },
            "issuer":{
               "type":"string",

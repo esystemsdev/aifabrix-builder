@@ -49,6 +49,7 @@ const baseCert = {
 const artifactWithKey = {
   version: '2.0.0',
   publicKey: 'ARTIFACT-PEM',
+  contractHash: `sha256:${'e'.repeat(64)}`,
   licenseLevelIssuer: 'TrustLine',
   issuedBy: 'dataplane'
 };
@@ -146,12 +147,13 @@ describe('syncSystemCertificationFromDataplane', () => {
       algorithm: 'RS256',
       issuer: 'TrustLine',
       version: '2.0.0',
-      status: 'passed'
+      status: 'passed',
+      contractHash: `sha256:${'e'.repeat(64)}`
     });
     expect(body.key).toBe('hub');
   });
 
-  it('writes certification for HS256 dev artifact without PEM publicKey', async() => {
+  it('does not write certification when artifact has no PEM publicKey to merge', async() => {
     getIntegrationPath.mockReturnValue('/integration/hub');
     discoverIntegrationFiles.mockReturnValue({ systemFiles: ['hub-system.json'], datasourceFiles: [] });
     loadConfigFile.mockReturnValue({
@@ -175,11 +177,12 @@ describe('syncSystemCertificationFromDataplane', () => {
       authConfig: { token: 't' },
       datasourceKeys: ['users']
     });
-    expect(r.written).toBe(true);
-    const [, body] = writeConfigFile.mock.calls[0];
-    expect(body.certification.algorithm).toBe('HS256');
-    expect(body.certification.publicKey).toBe('HS256-DEV-NO-PEM:AIC-20260101-xyz');
-    expect(body.certification.status).toBe('passed');
+    expect(r).toEqual({
+      written: false,
+      reason: 'incomplete_certification',
+      detail: 'no_public_key'
+    });
+    expect(writeConfigFile).not.toHaveBeenCalled();
   });
 
   it('returns no_system_file when discovery is empty', async() => {

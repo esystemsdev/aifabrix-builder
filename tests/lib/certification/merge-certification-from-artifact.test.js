@@ -44,7 +44,7 @@ describe('buildCertificationFromArtifact', () => {
     expect(buildCertificationFromArtifact(art, {})).toBeNull();
   });
 
-  it('uses HS256 dev placeholder when artifact has HS256 and omits publicKey', () => {
+  it('returns null when artifact has no PEM publicKey (legacy HS256-only artifact)', () => {
     const art = {
       certificateId: 'AIC-20260101-abc123',
       algorithm: 'HS256',
@@ -52,14 +52,66 @@ describe('buildCertificationFromArtifact', () => {
       licenseLevelIssuer: 'Dataplane - community edition',
       issuedBy: 'e2e-auto'
     };
-    expect(buildCertificationFromArtifact(art, {})).toEqual({
-      enabled: true,
-      publicKey: 'HS256-DEV-NO-PEM:AIC-20260101-abc123',
-      algorithm: 'HS256',
-      issuer: 'Dataplane - community edition',
-      version: '1.0.0',
-      status: 'passed'
-    });
+    expect(buildCertificationFromArtifact(art, {})).toBeNull();
+  });
+
+  it('includes publicKeyFingerprint from artifact when present', () => {
+    const fp = `sha256:${'a'.repeat(64)}`;
+    const art = {
+      certificateId: 'c1',
+      publicKey: 'KEY',
+      issuedBy: 'dp',
+      publicKeyFingerprint: fp
+    };
+    const out = buildCertificationFromArtifact(art, {});
+    expect(out.publicKeyFingerprint).toBe(fp);
+    expect(out.algorithm).toBe('RS256');
+  });
+
+  it('includes contractHash from artifact when present and valid', () => {
+    const ch = `sha256:${'f'.repeat(64)}`;
+    const art = {
+      certificateId: 'c1',
+      publicKey: 'KEY',
+      issuedBy: 'dp',
+      contractHash: ch
+    };
+    const out = buildCertificationFromArtifact(art, {});
+    expect(out.contractHash).toBe(ch);
+  });
+
+  it('uses integrationHash when contractHash absent on artifact', () => {
+    const ch = `sha256:${'0'.repeat(64)}`;
+    const art = {
+      certificateId: 'c1',
+      publicKey: 'KEY',
+      issuedBy: 'dp',
+      integrationHash: ch
+    };
+    expect(buildCertificationFromArtifact(art, {}).contractHash).toBe(ch);
+  });
+
+  it('prefers file contractHash when artifact omits valid hash', () => {
+    const ch = `sha256:${'1'.repeat(64)}`;
+    const art = {
+      certificateId: 'c1',
+      publicKey: 'KEY',
+      issuedBy: 'dp',
+      contractHash: 'invalid'
+    };
+    const ex = { publicKey: 'KEY', issuer: 'x', version: '1', contractHash: ch };
+    expect(buildCertificationFromArtifact(art, ex).contractHash).toBe(ch);
+  });
+
+  it('omits contractHash when no valid digest on artifact or file', () => {
+    const art = {
+      certificateId: 'c1',
+      publicKey: 'KEY',
+      issuedBy: 'dp',
+      contractHash: 'not-valid'
+    };
+    const out = buildCertificationFromArtifact(art, {});
+    expect(out.contractHash).toBeUndefined();
   });
 
   it('uses file publicKey when artifact omits it', () => {
