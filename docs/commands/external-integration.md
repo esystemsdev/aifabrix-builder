@@ -8,7 +8,7 @@ Commands for creating, testing, and managing external system integrations. Comma
 
 **Dataplane commands:** `aifabrix upload <systemKey>` and `aifabrix datasource upload <file-or-key>` send configuration to the dataplane. The CLI displays a warning before doing so—ensure you are targeting the correct environment and have the required permissions (see [Permissions](permissions.md)).
 
-**Resolve:** You can run `aifabrix resolve <app>` for external integrations when `integration/<systemKey>/env.template` exists. If `application.yaml` is missing, resolve still runs in **env-only** mode and writes `integration/<systemKey>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
+**Resolve:** You can run `aifabrix resolve <app>` for external integrations when `integration/<systemKey>/env.template` exists. If no application config file is present in that folder (`application.yaml`, `application.yml`, `application.json`, or legacy `variables.yaml`), resolve still runs in **env-only** mode and writes `integration/<systemKey>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
 
 **Create:** To create an external system, run `aifabrix create <app>` (external is the default type). Use `aifabrix create <app> --type webapp` for a builder app. The generated README in `integration/<systemKey>/` includes a **Secrets** section with `aifabrix secret set <systemKey>/<key> <your value>` commands per authentication type (key has no `kv://` prefix).
 

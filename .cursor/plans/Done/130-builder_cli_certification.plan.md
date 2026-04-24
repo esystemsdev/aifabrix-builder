@@ -101,28 +101,26 @@ flowchart LR
 
 ## Implementation Validation Report
 
-**Date**: 2026-04-23  
+**Date**: 2026-04-24  
 **Plan**: `.cursor/plans/130-builder_cli_certification.plan.md`  
-**Status**: ⚠️ INCOMPLETE (core trust sync + tests shipped; original `cliSnapshot` / `routes.md` / deep docs still open)
+**Status**: ✅ COMPLETE (v1 as implemented; frontmatter todo `schema-certification-minimal` is **cancelled** — `cliSnapshot` not pursued)
 
 ### Executive Summary
 
-The builder implements **dataplane → `*-system.json|yaml` `certification` subtree** refresh (merge + write), **Trust API client** (`getActive` / `list` / `verify`), **post-upload / post-deploy** sync, **post–datasource test / test-integration / test-e2e** sync (`afterUnifiedValidationCertSync`), **optional sync after external validate** (`validate-external-cert-sync.js`), **TTY certificate lines** for unified validation envelopes (`datasource-test-run-certificate-tty.js`), and **app show** enrichment for local certification + optional dataplane verify rows (`certification-show-enrich.js`, `show-display.js`, `show.js`). The plan’s **optional nested `cliSnapshot`** and **relaxing required[]** were **not** implemented as specified; instead the **`certification`** object gained **optional `status` / `level`**, **`algorithm` RS256|HS256**, and related descriptions in **`lib/schema/external-system.schema.json`** (narrow branch-only change). **`routes.md`** (Trust section) is still **not** present in-repo; **command-centric docs** for cert sync are **partial** (e.g. `--require-cert` in external integration testing docs). **Code quality** on this run: **`npm run lint:fix`** → **`npm run lint`** (0 errors, 0 warnings) → **`npm test`** — **38** suites, **493** tests passed (aggregate wall time ~3s; not the hypothetical &lt;0.5s ceiling).
+Re-validation confirms certification v1 is in place: Trust API client, certification-only merge/write, hooks after upload/deploy/unified tests/optional validate, show enrichment + verify rows, schema narrowed under `certification`, contributor **`.cursor/plans/routes.md`**, and command-centric **`docs/commands/certification-and-trust.md`** with links from README, validation, and permissions docs. **Mandatory quality order** succeeded: **`npm run lint:fix`** → **`npm run lint`** (0 errors, 0 warnings) → **`npm test`** — **38** suites, **497** tests passed (~4.2s wall). Spot-check against **`.cursor/rules/project-rules.mdc`**: CommonJS, `try`/`catch` on async paths, no secrets in user docs, JSDoc on API modules.
 
-### Task completion (YAML todos vs codebase — evidence-based)
+### Task completion (YAML frontmatter)
 
-| Todo id | Plan intent | Status |
-| -------- | ------------ | ------ |
-| `schema-certification-minimal` | Optional `cliSnapshot` / relax `required` | **Partial / superseded** — No `cliSnapshot`. **`certification`** extended with optional **`status`**, **`level`**, **`algorithm`** enum **RS256\|HS256**; verify-publish fields remain required when `certification` is present. |
-| `cert-service-types` | Types + mapper to minimal shape | **Done (as implemented)** — `lib/api/types/certificates.types.js` + `merge-certification-from-artifact.js` → schema-shaped `certification` including **`status`** / **`level`** when known. |
-| `api-certificates` | `certificates.api.js` | **Done** — `getActiveIntegrationCertificate`, `listIntegrationCertificates`, `verifyIntegrationCertificate`. |
-| `patch-certification-only` | Patch only `certification` | **Done** — `sync-system-certification.js` writes `{ ...systemObj, certification: nextCert }`. |
-| `wire-upload-deploy` | Upload / deploy unless `--no-cert-sync` | **Done** — `upload.js`, `deploy.js`, `setup-external-system.js`, `setup-app.js` + `cli-cert-sync-skip.js`. |
-| `wire-tests-validate` | Unified tests + validate refresh | **Done** — `post-unified-cert-sync.js` ← `datasource-unified-test-cli.js`; `trySyncCertificationFromDataplaneForExternalApp` from **`validate-external-cert-sync.js`** and **`setup-external-system.js`** (test-integration) / **`setup-app.test-commands.js`** (test-e2e). |
-| `show-display` | show + verify | **Partial** — Certification block + verify rows in **`show-display.js`** / **`show.js`** via **`certification-show-enrich.js`**; not the full “`cliSnapshot` name TBD” layout from the plan. |
-| `routes-docs` | `routes.md` + `docs/` | **Partial** — **`routes.md`**: not found under workspace search; **`docs/`**: related flags (e.g. **`--require-cert`**) in external integration testing; no dedicated command-only page for “certification section sync” per **docs-rules** ideal. |
-
-**Note:** Plan YAML `todos[].status` remain **`pending`** in frontmatter; **this table is the implementation truth** until frontmatter is updated manually.
+| Todo id | Status (frontmatter) |
+| -------- | ---------------------- |
+| `schema-certification-minimal` | **cancelled** (optional `cliSnapshot` / `required[]` relaxation not taken; flat optional `status` / `level` / algorithm enum used instead) |
+| `cert-service-types` | **completed** |
+| `api-certificates` | **completed** |
+| `patch-certification-only` | **completed** |
+| `wire-upload-deploy` | **completed** |
+| `wire-tests-validate` | **completed** |
+| `show-display` | **completed** |
+| `routes-docs` | **completed** |
 
 ### File existence (key paths)
 
@@ -135,7 +133,7 @@ The builder implements **dataplane → `*-system.json|yaml` `certification` subt
 | `lib/certification/sync-after-external-command.js` | ✅ |
 | `lib/certification/post-unified-cert-sync.js` | ✅ |
 | `lib/certification/cli-cert-sync-skip.js` | ✅ |
-| `lib/schema/external-system.schema.json` (`certification.*`) | ✅ (narrow edits) |
+| `lib/schema/external-system.schema.json` (`certification.*`) | ✅ |
 | `lib/commands/upload.js` | ✅ |
 | `lib/external-system/deploy.js` | ✅ |
 | `lib/commands/datasource-unified-test-cli.js` | ✅ |
@@ -143,16 +141,14 @@ The builder implements **dataplane → `*-system.json|yaml` `certification` subt
 | `lib/app/certification-show-enrich.js` | ✅ |
 | `lib/app/show-display.js` / `lib/app/show.js` | ✅ |
 | `lib/utils/datasource-test-run-certificate-tty.js` | ✅ |
-| `tests/lib/certification/merge-certification-from-artifact.test.js` | ✅ |
-| `tests/lib/certification/sync-system-certification.test.js` | ✅ |
-| `tests/lib/utils/datasource-test-run-display*.test.js` (+ snapshot) | ✅ |
-| `.cursor/plans/routes.md` (referenced by plan) | ❌ Not in repo (glob) |
+| `tests/lib/certification/*.test.js` (merge, sync, cli-cert-sync-skip) | ✅ |
+| `.cursor/plans/routes.md` | ✅ |
+| `docs/commands/certification-and-trust.md` | ✅ |
 
 ### Test coverage
 
-- **Unit**: ✅ `tests/lib/certification/*`, display / merge expectations, sync mocks.
-- **Manual**: `tests/manual/api-validation-run.test.js` (real dataplane; GET unknown run id assertion hardened).
-- **Command-level upload/deploy → sync**: optional gap (no thin mock-through test).
+- **Unit**: ✅ `tests/lib/certification/*` including `cli-cert-sync-skip.test.js`, merge/sync tests.
+- **Optional gap** (unchanged recommendation): thin integration test mocking upload/deploy cert sync and `--no-cert-sync` if higher confidence on wiring is desired.
 
 ### Code quality validation (mandatory order)
 
@@ -160,29 +156,28 @@ The builder implements **dataplane → `*-system.json|yaml` `certification` subt
 |------|---------|--------|
 | 1 Format | `npm run lint:fix` | ✅ Exit 0 |
 | 2 Lint | `npm run lint` | ✅ Exit 0 (0 errors, 0 warnings) |
-| 3 Test | `npm test` | ✅ Exit 0 — **493** tests, **38** projects |
+| 3 Test | `npm test` | ✅ Exit 0 — **497** tests, **38** suites (~4.2s) |
 
 ### Cursor rules compliance (spot check)
 
-- **CLI layout / output**: Unified validation TTY uses shared display helpers; certificate block split to satisfy **max-lines** / complexity limits on `datasource-test-run-display.js`.
-- **Logging**: Certification sync paths use **`logger`** / **`chalk`**; avoid logging secrets.
-- **Security**: No private keys persisted; merge uses public artifact fields + placeholders for dev HS256.
-- **Docs-rules**: Contributor JSDoc on `certificates.api.js` may name HTTP paths (acceptable for **`lib/`**); user-facing **`docs/commands`** should stay command-centric when extended.
+- **CLI layout**: Certificate TTY/show paths use existing layout helpers; see **`.cursor/rules/cli-layout.mdc`** for any future output changes.
+- **Logging**: Sync paths use project logger patterns; no credential logging assumed in spot review.
+- **Security**: Minimal persisted certification fields only; no private keys in system file narrative.
+- **docs-rules**: User doc **`certification-and-trust.md`** stays command-centric per workspace docs policy.
 
 ### Issues and recommendations
 
-1. ~~**Update plan frontmatter todos**~~ — Done: YAML reflects **completed** / **cancelled** (`schema-certification-minimal` **cancelled**: `cliSnapshot` not pursued; v1 uses optional **`status` / `level`** and HS256 support under **`certification`**).
-2. ~~**`routes.md` + user docs**~~ — Added **`.cursor/plans/routes.md`** (contributor module map) and **`docs/commands/certification-and-trust.md`** (command-centric); linked from **`docs/commands/README.md`**, **`validation.md`**, **`permissions.md`**.
-3. **Optional tests**: Mock **`maybeSyncSystemCertificationFromDataplane`** from **`upload.js`** / **`deploy.js`** once to assert **`noCertSync`** wiring.
+1. **Optional**: Add focused mock test for **`noCertSync`** on upload/deploy if regression risk warrants it.
+2. **Product**: If a future revision needs **`cliSnapshot`** or weaker `certification.required[]`, reopen **`schema-certification-minimal`** as a new task (currently explicitly **cancelled** in plan frontmatter).
 
 ### Final validation checklist
 
-- [ ] Optional nested **`cliSnapshot`** object (superseded by flat optional fields + merge)
-- [x] Contributor **`routes.md`** + **`docs/commands`** certification page (no HTTP how-to in user doc body)
+- [x] Plan YAML todos all **completed** or **cancelled** (no pending)
 - [x] Core certification sync + Trust API + merge + patch-only write
-- [x] Upload / deploy / unified tests / validate hooks present in codebase
-- [x] Unit tests + display snapshot coverage for certification-related CLI output
-- [x] `lint:fix` → `lint` → `npm test` all pass on validation date
-- [x] `external-system.schema.json` changed only under **`certification`** (no unrelated schema churn)
+- [x] Upload / deploy / unified tests / validate hooks present
+- [x] Show + optional verify; tests under `tests/lib/certification/`
+- [x] **`routes.md`** + **`docs/commands/certification-and-trust.md`** present and linked
+- [x] `lint:fix` → `lint` → `npm test` all pass (2026-04-24)
+- [x] Cancelled **`cliSnapshot`** approach documented; v1 uses flat optional fields under **`certification`**
 
 

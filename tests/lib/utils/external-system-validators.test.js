@@ -33,6 +33,14 @@ describe('External System Validators', () => {
       expect(result.error).toContain('Unknown transformation');
     });
 
+    it('should accept coalesce pipeline (SharePoint-style field mappings)', () => {
+      const result = validateFieldMappingExpression(
+        '{{raw.driveItem.name}} | coalesce(raw.fields.FileLeafRef) | coalesce(raw.fields.LinkFilename)'
+      );
+      expect(result.isValid).toBe(true);
+      expect(result.error).toBeNull();
+    });
+
     it('should reject empty expression', () => {
       const result = validateFieldMappingExpression('');
       expect(result.isValid).toBe(false);
