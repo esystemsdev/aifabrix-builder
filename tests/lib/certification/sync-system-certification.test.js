@@ -210,6 +210,23 @@ describe('syncSystemCertificationFromDataplane', () => {
     expect(getActiveIntegrationCertificate).not.toHaveBeenCalled();
   });
 
+  it('accepts apiKey without token and fetches active certificates', async() => {
+    setupHappyPathFilesystem();
+    const r = await syncSystemCertificationFromDataplane({
+      systemKey: 'hub',
+      dataplaneUrl: 'http://dp.test',
+      authConfig: { apiKey: 'dp-api-key' },
+      datasourceKeys: ['users']
+    });
+    expect(r.written).toBe(true);
+    expect(getActiveIntegrationCertificate).toHaveBeenCalledWith(
+      'http://dp.test',
+      { apiKey: 'dp-api-key' },
+      'hub',
+      'users'
+    );
+  });
+
   it('returns invalid_system when loadConfigFile throws', async() => {
     getIntegrationPath.mockReturnValue('/integration/hub');
     discoverIntegrationFiles.mockReturnValue({ systemFiles: ['hub-system.json'], datasourceFiles: [] });
