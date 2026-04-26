@@ -7,12 +7,12 @@
     "key": "document-storage-schema",
     "name": "Document Storage Configuration Schema",
     "description": "JSON schema for validating document storage configurations",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "type": "schema",
     "category": "document-storage",
     "author": "AI Fabrix Team",
     "createdAt": "2026-01-02T00:00:00Z",
-    "updatedAt": "2026-04-22T00:00:00Z",
+    "updatedAt": "2026-04-26T00:00:00Z",
     "compatibility": {
       "minVersion": "1.0.0",
       "maxVersion": "2.0.0",
@@ -71,6 +71,14 @@
           "Added optional parameterLookupCoalesceNestedItemScope (boolean, default true) for manifest-controlled binary parameter lookup enrichment"
         ],
         "breaking": false
+      },
+      {
+        "version": "1.4.0",
+        "date": "2026-04-26T00:00:00Z",
+        "changes": [
+          "Added optional maxBinaryFetchesPerSync (integer >= 1) to cap binary fetch+store operations per sync run"
+        ],
+        "breaking": false
       }
     ]
   },
@@ -96,6 +104,11 @@
       "type": "boolean",
       "default": false,
       "description": "When true, chunk and embed each document after store during sync so vector search returns hits immediately. When false, ingestion runs later (e.g. Celery task or on approval). Set true for E2E tests that validate vector step."
+    },
+    "maxBinaryFetchesPerSync": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "When set, caps binary fetch + store operations per sync run (metadata list may still return more rows). Optional for fast integration/E2E; omit in production for full sync."
     },
     "binaryOperationRef": {
       "type": "string",
@@ -132,6 +145,22 @@
       "type": "boolean",
       "default": true,
       "description": "When true, binary parameterMapping and HTTP path templates use a lookup view that merges metadata and coalesces storage-scope ids from a nested item parentReference when the row's parentReference omits them. Set false for strict manifest-only paths."
+    },
+    "jsonNestedDownloadUrlKeys": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Optional JSON object key names (exact match) searched depth-first when a binary GET returns JSON without bytes; requires preAuthenticatedDownloadUrlHostSuffixAllowlist. Merged into binaryOperation when using binaryOperationRef."
+    },
+    "preAuthenticatedDownloadUrlHostSuffixAllowlist": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Substrings the discovered follow-up URL must contain (case-insensitive) before an unauthenticated GET. Required when jsonNestedDownloadUrlKeys is set."
     },
     "processing": {
       "type": "object",

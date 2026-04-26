@@ -1,5 +1,7 @@
 /**
  * @fileoverview Tests for datasource declaration order vs system JSON (schema-resolver).
+ * Isolated Jest project `schema-resolver-order`: other suites use jest.mock('fs'); real
+ * tempdir reads here must not share a worker with those mocks.
  */
 
 'use strict';

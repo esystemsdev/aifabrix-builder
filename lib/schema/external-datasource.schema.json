@@ -7,12 +7,12 @@
         "key":"external-datasource-schema",
         "name":"External Data Source Configuration Schema",
         "description":"JSON schema for validating ExternalDataSource configuration files",
-        "version":"2.4.5",
+    "version":"2.4.6",
         "type":"schema",
         "category":"integration",
         "author":"AI Fabrix Team",
         "createdAt":"2024-01-01T00:00:00Z",
-        "updatedAt":"2026-04-07T00:00:00Z",
+        "updatedAt":"2026-04-20T00:00:00Z",
         "compatibility":{
            "minVersion":"1.0.0",
            "maxVersion":"3.0.0",
@@ -173,6 +173,14 @@
            "date":"2026-04-07T00:00:00Z",
            "changes":[
               "exposed.profiles object profiles: attributes may be an object map (property names = field keys; values ignored), matching runtime exposed_profile_field_names and CIP/ExposedFieldsValidator behavior."
+           ],
+           "breaking":false
+        },
+        {
+           "version":"2.4.6",
+           "date":"2026-04-24T00:00:00Z",
+           "changes":[
+              "Added optional fetch.httpResponseNormalization for manifest-driven GET response shaping (302 Location follow, JSON redirect envelopes, nested JSON string URL follow-up)."
            ],
            "breaking":false
         }
@@ -950,6 +958,83 @@
      }
   ],
   "$defs":{
+     "httpResponseNormalization":{
+        "type":"object",
+        "description":"Optional GET response shaping for miso-client adapter dicts and native 302 Location follows. Omitted = disabled.",
+        "additionalProperties":false,
+        "properties":{
+           "applyWhenUrlContains":{
+              "type":"array",
+              "items":{
+                 "type":"string",
+                 "minLength":1
+              },
+              "description":"When non-empty, normalization applies only if the request URL (path plus query, lowercased) contains at least one substring (case-insensitive)."
+           },
+           "followRedirectJsonEnvelope":{
+              "type":"object",
+              "additionalProperties":false,
+              "properties":{
+                 "enabled":{
+                    "type":"boolean",
+                    "default":false
+                 },
+                 "locationHostSuffixAllowlist":{
+                    "type":"array",
+                    "items":{
+                       "type":"string",
+                       "minLength":1
+                    },
+                    "description":"Location header URL must contain one of these substrings (case-insensitive) before an unauthenticated follow-up GET."
+                 }
+              }
+           },
+           "followNestedJsonStringUrl":{
+              "type":"object",
+              "additionalProperties":false,
+              "properties":{
+                 "enabled":{
+                    "type":"boolean",
+                    "default":false
+                 },
+                 "jsonKeys":{
+                    "type":"array",
+                    "items":{
+                       "type":"string",
+                       "minLength":1
+                    },
+                    "description":"JSON object key names searched depth-first for a non-empty string URL."
+                 },
+                 "targetUrlHostSuffixAllowlist":{
+                    "type":"array",
+                    "items":{
+                       "type":"string",
+                       "minLength":1
+                    },
+                    "description":"Discovered URL must contain one of these substrings before an unauthenticated follow-up GET."
+                 }
+              }
+           },
+           "followNativeHttpRedirect302":{
+              "type":"object",
+              "additionalProperties":false,
+              "properties":{
+                 "enabled":{
+                    "type":"boolean",
+                    "default":false
+                 },
+                 "locationHostSuffixAllowlist":{
+                    "type":"array",
+                    "items":{
+                       "type":"string",
+                       "minLength":1
+                    },
+                    "description":"Native httpx 302 Location URL must contain one of these substrings before follow-up GET."
+                 }
+              }
+           }
+        }
+     },
      "metadataSchemaNode":{
         "type":"object",
         "description":"Strict supported subset of JSON Schema for metadataSchema.",
@@ -1829,6 +1914,9 @@
                     "additionalProperties":{
                        "type":"string"
                     }
+                 },
+                 "httpResponseNormalization":{
+                    "$ref":"#/$defs/httpResponseNormalization"
                  }
               },
               "allOf":[

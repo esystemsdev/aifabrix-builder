@@ -422,29 +422,29 @@ aifabrix validate --integration --builder
    - **Step 3:** Full deployment manifest validation (generated manifest with inline system/dataSources)
 
 **Output (app validation with external files):**
-```yaml
-✓ Validation passed!
+```text
+✔ Validation passed!
 
-Application:
-  ✓ Application configuration is valid
+Application
+  ✔ Application configuration is valid
 
-External Integration Files:
-  ✓ hubspot-system.yaml (system)
-  ✓ hubspot-datasource-company.yaml (datasource)
-  ✓ hubspot-datasource-contact.yaml (datasource)
+External integration files
+  ✔ hubspot-system.yaml (system)
+  ✔ hubspot-datasource-company.yaml (datasource)
+  ✔ hubspot-datasource-contact.yaml (datasource)
 ```
 
 **Output (validation failed):**
-```yaml
-✗ Validation failed!
+```text
+✖ Validation failed!
 
-Application:
-  ✗ Application configuration has errors:
+Application
+  ✖ Application configuration has errors:
     • Field "app.key": Missing required property
     • Field "app.port": Expected number, got string
 
-External Integration Files:
-  ✗ hubspot-system.yaml (system):
+External integration files
+  ✖ hubspot-system.yaml (system)
     • Field "key": Missing required field
     • Field "version": Invalid value "1.0" - must match pattern ^[0-9]+\.[0-9]+\.[0-9]+$
 ```

@@ -133,51 +133,57 @@ describe('help-builder', () => {
     });
   });
 
-  describe('help coverage', () => {
-    it('should list every registered top-level command in CATEGORIES', () => {
-      const program = new Command();
-      program.name('aifabrix').description('Test');
-      const cli = require('../../../lib/cli');
-      cli.setupCommands(program);
-
-      const inHelp = new Set();
-      for (const cat of CATEGORIES) {
-        for (const spec of cat.commands) inHelp.add(spec.name);
-      }
-
-      const allowedOmissions = new Set(['down-app']); // alias for stop; only stop is shown in help
-      const missing = program.commands
-        .filter((c) => !inHelp.has(c.name()) && !allowedOmissions.has(c.name()))
-        .map((c) => c.name());
-      expect(missing).toEqual([]);
+  describe('full CLI registration', () => {
+    /** Load full CLI once for both integration checks (module load not counted in per-test duration). */
+    let setupCommands;
+    beforeAll(() => {
+      setupCommands = require('../../../lib/cli').setupCommands;
     });
-  });
 
-  describe('CLI command descriptions', () => {
-    /**
-     * @param {import('commander').Command} cmd
-     * @param {string[]} lineage
-     * @param {string[]} issues
-     */
-    function assertNonEmptyDescriptions(cmd, lineage, issues) {
-      for (const sub of cmd.commands || []) {
-        const next = [...lineage, sub.name()].filter(Boolean);
-        const desc = sub.description();
-        if (!desc || !String(desc).trim()) {
-          issues.push(next.join(' '));
+    describe('help coverage', () => {
+      it('should list every registered top-level command in CATEGORIES', () => {
+        const program = new Command();
+        program.name('aifabrix').description('Test');
+        setupCommands(program);
+
+        const inHelp = new Set();
+        for (const cat of CATEGORIES) {
+          for (const spec of cat.commands) inHelp.add(spec.name);
         }
-        assertNonEmptyDescriptions(sub, next, issues);
-      }
-    }
 
-    it('should give every registered command and subcommand a non-empty description', () => {
-      const program = new Command();
-      program.name('aifabrix').description('Test');
-      const cli = require('../../../lib/cli');
-      cli.setupCommands(program);
-      const issues = [];
-      assertNonEmptyDescriptions(program, [], issues);
-      expect(issues).toEqual([]);
+        const allowedOmissions = new Set(['down-app']); // alias for stop; only stop is shown in help
+        const missing = program.commands
+          .filter((c) => !inHelp.has(c.name()) && !allowedOmissions.has(c.name()))
+          .map((c) => c.name());
+        expect(missing).toEqual([]);
+      });
+    });
+
+    describe('CLI command descriptions', () => {
+      /**
+       * @param {import('commander').Command} cmd
+       * @param {string[]} lineage
+       * @param {string[]} issues
+       */
+      function assertNonEmptyDescriptions(cmd, lineage, issues) {
+        for (const sub of cmd.commands || []) {
+          const next = [...lineage, sub.name()].filter(Boolean);
+          const desc = sub.description();
+          if (!desc || !String(desc).trim()) {
+            issues.push(next.join(' '));
+          }
+          assertNonEmptyDescriptions(sub, next, issues);
+        }
+      }
+
+      it('should give every registered command and subcommand a non-empty description', () => {
+        const program = new Command();
+        program.name('aifabrix').description('Test');
+        setupCommands(program);
+        const issues = [];
+        assertNonEmptyDescriptions(program, [], issues);
+        expect(issues).toEqual([]);
+      });
     });
   });
 });

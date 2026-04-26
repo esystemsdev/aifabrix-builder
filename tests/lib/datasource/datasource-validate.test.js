@@ -57,6 +57,8 @@ describe('Datasource Validation Module', () => {
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
       expect(result.warnings).toEqual([]);
+      expect(result.summary).toBeDefined();
+      expect(result.summary.key).toBe('test-datasource');
       expect(mockValidate).toHaveBeenCalledWith(JSON.parse(mockContent));
     });
 

@@ -345,7 +345,7 @@ describe('Datasource Commands Module', () => {
         if (actionCall && typeof actionCall[0] === 'function') {
           await actionCall[0]('/path/to/file.json', {});
 
-          expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Validation failed'), expect.anything());
+          expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Validation failed'));
           expect(process.exit).toHaveBeenCalledWith(1);
         }
       }

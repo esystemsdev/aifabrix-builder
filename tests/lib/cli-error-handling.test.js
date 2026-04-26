@@ -68,6 +68,8 @@ jest.mock('../../lib/infrastructure');
 jest.mock('../../lib/app');
 jest.mock('../../lib/build');
 
+const { handleCommandError, validateCommand } = require('../../lib/utils/cli-utils');
+
 describe('CLI Error Handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -90,13 +92,12 @@ describe('CLI Error Handling', () => {
   describe('Error handling', () => {
     it('should handle command errors with helpful messages', () => {
       const { getDockerDaemonStartHintSentence, getDockerApiOverTcpHintLines } = require('../../lib/utils/docker-not-running-hint');
-      const cli = require('../../lib/cli');
 
-      // Test the handleCommandError function
+      // Test the handleCommandError function (cli-utils avoids loading full lib/cli)
       const error = new Error('Docker is not running');
       const command = 'build';
 
-      cli.handleCommandError(error, command);
+      handleCommandError(error, command);
 
       expect(console.error).toHaveBeenCalledWith('\n✖ Error in build command:');
       expect(console.error).toHaveBeenCalledWith('   Docker is not running or not installed.');
@@ -108,12 +109,10 @@ describe('CLI Error Handling', () => {
     });
 
     it('should handle port conflict errors', () => {
-      const cli = require('../../lib/cli');
-
       const error = new Error('port 5432 is already in use');
       const command = 'up-infra';
 
-      cli.handleCommandError(error, command);
+      handleCommandError(error, command);
 
       expect(console.error).toHaveBeenCalledWith('\n✖ Error in up-infra command:');
       expect(console.error).toHaveBeenCalledWith('   Port conflict detected.');
@@ -121,12 +120,10 @@ describe('CLI Error Handling', () => {
     });
 
     it('should handle API permission errors with hint', () => {
-      const cli = require('../../lib/cli');
-
       const error = new Error('permission denied');
       const command = 'build';
 
-      cli.handleCommandError(error, command);
+      handleCommandError(error, command);
 
       expect(console.error).toHaveBeenCalledWith('\n✖ Error in build command:');
       expect(console.error).toHaveBeenCalledWith('   permission denied');
@@ -135,12 +132,11 @@ describe('CLI Error Handling', () => {
 
     it('should handle Docker permission denied errors', () => {
       const { getDockerApiOverTcpHintLines } = require('../../lib/utils/docker-not-running-hint');
-      const cli = require('../../lib/cli');
 
       const error = new Error('Got permission denied while trying to connect to the Docker daemon socket');
       const command = 'run';
 
-      cli.handleCommandError(error, command);
+      handleCommandError(error, command);
 
       expect(console.error).toHaveBeenCalledWith('\n✖ Error in run command:');
       expect(console.error).toHaveBeenCalledWith(
@@ -155,72 +151,60 @@ describe('CLI Error Handling', () => {
     });
 
     it('should handle Azure CLI errors', () => {
-      const cli = require('../../lib/cli');
-
       const error = new Error('Azure CLI is not installed');
       const command = 'push';
 
-      cli.handleCommandError(error, command);
+      handleCommandError(error, command);
 
       expect(console.error).toHaveBeenCalledWith('\n✖ Error in push command:');
       expect(console.error).toHaveBeenCalledWith('   Azure CLI is not installed or not working properly.');
     });
 
     it('should handle ACR authentication errors', () => {
-      const cli = require('../../lib/cli');
-
       const error = new Error('ACR authentication failed');
       const command = 'push';
 
-      cli.handleCommandError(error, command);
+      handleCommandError(error, command);
 
       expect(console.error).toHaveBeenCalledWith('   Azure Container Registry authentication failed.');
       expect(console.error).toHaveBeenCalledWith('   Run: az acr login --name <registry-name>');
     });
 
     it('should handle image not found errors', () => {
-      const cli = require('../../lib/cli');
-
       const error = new Error('image not found locally');
       const command = 'run';
 
-      cli.handleCommandError(error, command);
+      handleCommandError(error, command);
 
       expect(console.error).toHaveBeenCalledWith('   Docker image not found.');
       expect(console.error).toHaveBeenCalledWith('   Run: aifabrix build <app> first');
     });
 
     it('should handle invalid registry URL errors', () => {
-      const cli = require('../../lib/cli');
-
       const error = new Error('Expected format: *.azurecr.io');
       const command = 'push';
 
-      cli.handleCommandError(error, command);
+      handleCommandError(error, command);
 
       expect(console.error).toHaveBeenCalledWith('   Invalid registry URL format.');
       expect(console.error).toHaveBeenCalledWith('   Use format: *.azurecr.io (e.g., myacr.azurecr.io)');
     });
 
     it('should handle registry URL required errors', () => {
-      const cli = require('../../lib/cli');
-
       const error = new Error('Registry URL is required');
       const command = 'push';
 
-      cli.handleCommandError(error, command);
+      handleCommandError(error, command);
 
       expect(console.error).toHaveBeenCalledWith('   Registry URL is required.');
       expect(console.error).toHaveBeenCalledWith('   Provide via --registry flag or configure in application.yaml under image.registry');
     });
 
     it('should handle generic errors', () => {
-      const cli = require('../../lib/cli');
-
       const error = new Error('Something went wrong');
       const command = 'deploy';
 
-      cli.handleCommandError(error, command);
+      handleCommandError(error, command);
 
       expect(console.error).toHaveBeenCalledWith('\n✖ Error in deploy command:');
       expect(console.error).toHaveBeenCalledWith('   Something went wrong');
@@ -229,9 +213,7 @@ describe('CLI Error Handling', () => {
 
   describe('Command validation', () => {
     it('should validate command arguments', () => {
-      const cli = require('../../lib/cli');
-
-      const result = cli.validateCommand('build', {});
+      const result = validateCommand('build', {});
       expect(result).toBe(true);
     });
   });

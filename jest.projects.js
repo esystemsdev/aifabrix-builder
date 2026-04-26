@@ -190,6 +190,10 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\validation\\\\schema-241-alignment.test.js',
       'lib/validation/schema-241-alignment.test.js',
       'schema-241-alignment\\.test\\.js',
+      '/tests/lib/utils/schema-resolver-order.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\schema-resolver-order.test.js',
+      'lib/utils/schema-resolver-order.test.js',
+      'schema-resolver-order\\.test\\.js',
       '/tests/lib/app/app.test.js',
       '\\\\tests\\\\lib\\\\app\\\\app.test.js',
       'lib/app/app.test.js',
@@ -285,6 +289,7 @@ const isolatedProjects = [
   makeIsolatedProject('generator-validation', ['**/tests/lib/generator/generator-validation.test.js']),
   makeIsolatedProject('secrets-databaselog', ['**/tests/lib/core/secrets-databaselog.test.js']),
   makeIsolatedProject('schema-241-alignment', ['**/tests/lib/validation/schema-241-alignment.test.js']),
+  makeIsolatedProject('schema-resolver-order', ['**/tests/lib/utils/schema-resolver-order.test.js']),
   makeIsolatedProject('app-module', ['**/tests/lib/app/app.test.js']),
   makeIsolatedProject('admin-secrets', ['**/tests/lib/core/admin-secrets.test.js'])
 ];
