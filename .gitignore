@@ -27,6 +27,7 @@ coverage/
 .temp/
 temp/
 tmp-imgver*/
+tests/lib/utils/__snapshots__
 
 # Environment files
 .env

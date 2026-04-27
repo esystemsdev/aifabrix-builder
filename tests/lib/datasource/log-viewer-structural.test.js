@@ -31,7 +31,8 @@ describe('log-viewer structural filenames', () => {
       const got = await getLatestStructuralTestLogPath(logsDir);
       expect(got).toBe(newer);
     } finally {
-      fs.rmSync(root, { recursive: true, force: true });
+      // Node's recursive delete can occasionally hit transient ENOTEMPTY on some filesystems.
+      fs.rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 10 });
     }
   });
 });
