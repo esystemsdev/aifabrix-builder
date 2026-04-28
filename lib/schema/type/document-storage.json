@@ -7,12 +7,12 @@
     "key": "document-storage-schema",
     "name": "Document Storage Configuration Schema",
     "description": "JSON schema for validating document storage configurations",
-    "version": "1.4.0",
+    "version": "1.6.0",
     "type": "schema",
     "category": "document-storage",
     "author": "AI Fabrix Team",
     "createdAt": "2026-01-02T00:00:00Z",
-    "updatedAt": "2026-04-26T00:00:00Z",
+    "updatedAt": "2026-04-28T00:00:00Z",
     "compatibility": {
       "minVersion": "1.0.0",
       "maxVersion": "2.0.0",
@@ -79,6 +79,22 @@
           "Added optional maxBinaryFetchesPerSync (integer >= 1) to cap binary fetch+store operations per sync run"
         ],
         "breaking": false
+      },
+      {
+        "version": "1.5.0",
+        "date": "2026-04-27T00:00:00Z",
+        "changes": [
+          "ingestAfterSync: post-sync chunk+embed no longer waits on trust (eligibility/schema gates unchanged)"
+        ],
+        "breaking": false
+      },
+      {
+        "version": "1.6.0",
+        "date": "2026-04-28T00:00:00Z",
+        "changes": [
+          "Added documentStorage.changeDetection.ignoreMetadataKeys / ignoreMetadataPaths for stable contentHash when volatile metadata changes"
+        ],
+        "breaking": false
       }
     ]
   },
@@ -103,7 +119,7 @@
     "ingestAfterSync": {
       "type": "boolean",
       "default": false,
-      "description": "When true, chunk and embed each document after store during sync so vector search returns hits immediately. When false, ingestion runs later (e.g. Celery task or on approval). Set true for E2E tests that validate vector step."
+      "description": "When true, chunk and embed each document after store during sync without requiring trust promotion first; eligibility (validation/schema/dimensions) still enforced. When false, ingestion runs later."
     },
     "maxBinaryFetchesPerSync": {
       "type": "integer",
@@ -245,6 +261,27 @@
             }
           },
           "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "changeDetection": {
+      "type": "object",
+      "description": "Optional configuration to ignore volatile metadata keys/paths during contentHash / change detection only.",
+      "properties": {
+        "ignoreMetadataKeys": {
+          "type": "array",
+          "description": "Top-level metadata keys to ignore when computing contentHash / change detection.",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true,
+          "default": []
+        },
+        "ignoreMetadataPaths": {
+          "type": "array",
+          "description": "Optional dot-path patterns to ignore (e.g. 'analytics.*', 'versions').",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true,
+          "default": []
         }
       },
       "additionalProperties": false
