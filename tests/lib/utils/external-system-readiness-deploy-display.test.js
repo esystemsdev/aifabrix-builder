@@ -67,5 +67,45 @@ describe('external-system-readiness-deploy-display', () => {
     expect(out).toContain('Unable to fetch system details from dataplane');
     expect(out).toContain('Deployment succeeded, but readiness could not be verified.');
   });
+
+  it('prints configured datasources then runtime probe when probeData present', () => {
+    logDeployReadinessSummary({
+      environment: 'dev',
+      dataplaneUrl: 'http://localhost:3111',
+      manifest: {
+        key: 'hubspot',
+        system: { authentication: { method: 'apikey' }, generateMcpContract: true },
+        dataSources: [
+          { key: 'contacts', status: 'published', isActive: true },
+          { key: 'deals', status: 'published', isActive: true }
+        ]
+      },
+      datasources: [
+        { key: 'contacts', status: 'published', isActive: true, mcpContract: {} },
+        { key: 'deals', status: 'published', isActive: true, mcpContract: {} }
+      ],
+      systemFromDataplane: { openApiDocsPageUrl: 'http://docs' },
+      fetchError: null,
+      deploymentOk: true,
+      deploymentDetail: null,
+      probeData: {
+        reportVersion: '1.2.0',
+        datasourceKey: 'contacts',
+        systemKey: 'hubspot',
+        status: 'ok',
+        runType: 'test',
+        validation: { status: 'ok', issues: [] },
+        datasourceSummaries: [
+          { datasourceKey: 'contacts', status: 'ok', validationStatus: 'ok', issues: [] },
+          { datasourceKey: 'deals', status: 'ok', validationStatus: 'ok', issues: [] }
+        ]
+      }
+    });
+
+    const out = joined();
+    expect(out).toContain('Configured datasources:');
+    expect(out).toContain('Runtime Readiness:');
+    expect(out).toContain('Per datasource:');
+  });
 });
 

@@ -93,7 +93,7 @@ describe('external-system-readiness-core', () => {
 
     it('maps DatasourceTestRun envelope to one legacy row', () => {
       const run = {
-        reportVersion: '1.1.0',
+        reportVersion: '1.2.0',
         datasourceKey: 'ds-1',
         systemKey: 'sys',
         status: 'ok',
@@ -104,6 +104,37 @@ describe('external-system-readiness-core', () => {
       expect(out).toHaveLength(1);
       expect(out[0].sourceKey).toBe('ds-1');
       expect(out[0].validationResults.isValid).toBe(true);
+    });
+
+    it('prefers datasourceSummaries when present', () => {
+      const run = {
+        reportVersion: '1.2.0',
+        datasourceKey: 'ds-1',
+        systemKey: 'sys',
+        status: 'fail',
+        runType: 'test',
+        validation: { status: 'fail', issues: [] },
+        datasourceSummaries: [
+          {
+            datasourceKey: 'a',
+            status: 'ok',
+            validationStatus: 'ok',
+            certificateStatus: 'passed',
+            issues: []
+          },
+          {
+            datasourceKey: 'b',
+            status: 'warn',
+            validationStatus: 'warn',
+            certificateStatus: 'passed',
+            issues: [{ severity: 'warning', message: 'x' }]
+          }
+        ]
+      };
+      const out = coerceProbeRunToResultRows(run);
+      expect(out).toHaveLength(2);
+      expect(out.map(r => r.sourceKey).sort()).toEqual(['a', 'b']);
+      expect(out[1].validationResults.warnings.length).toBeGreaterThan(0);
     });
 
     it('returns empty when envelope unrecognized', () => {
