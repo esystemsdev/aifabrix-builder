@@ -72,6 +72,9 @@ const defaultProject = {
       '/tests/lib/datasource/log-viewer.test.js',
       '\\\\tests\\\\lib\\\\datasource\\\\log-viewer.test.js',
       'lib/datasource/log-viewer.test.js',
+      '/tests/lib/datasource/log-viewer-structural.test.js',
+      '\\\\tests\\\\lib\\\\datasource\\\\log-viewer-structural.test.js',
+      'lib/datasource/log-viewer-structural.test.js',
       '/tests/lib/commands/parameters-validate.test.js',
       '\\\\tests\\\\lib\\\\commands\\\\parameters-validate.test.js',
       'lib/commands/parameters-validate.test.js',
@@ -226,7 +229,10 @@ const isolatedProjects = [
   makeIsolatedProject('datasource-validation-watch', [
     '**/tests/lib/utils/datasource-validation-watch.test.js'
   ]),
-  makeIsolatedProject('log-viewer', ['**/tests/lib/datasource/log-viewer.test.js']),
+  makeIsolatedProject('log-viewer', [
+    '**/tests/lib/datasource/log-viewer.test.js',
+    '**/tests/lib/datasource/log-viewer-structural.test.js'
+  ]),
   makeIsolatedProject('datasource-test-run-schema-sync', [
     '**/tests/lib/utils/datasource-test-run-schema-sync.test.js'
   ]),

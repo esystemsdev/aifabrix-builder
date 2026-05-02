@@ -276,6 +276,24 @@ describe('syncSystemCertificationFromDataplane', () => {
     expect(writeConfigFile).not.toHaveBeenCalled();
   });
 
+  it('logs issuance-specific guidance when no_active and CERTIFICATION_NOT_PASSED hint', async() => {
+    getIntegrationPath.mockReturnValue('/integration/hub');
+    discoverIntegrationFiles.mockReturnValue({ systemFiles: ['hub-system.json'], datasourceFiles: [] });
+    loadConfigFile.mockReturnValue({ key: 'hub', certification: {} });
+    getActiveIntegrationCertificate.mockResolvedValue({ success: false, status: 404 });
+    await syncSystemCertificationFromDataplane({
+      systemKey: 'hub',
+      dataplaneUrl: 'http://dp.test',
+      authConfig: { token: 't' },
+      datasourceKeys: ['users'],
+      issuanceFailureHint: 'CERTIFICATION_NOT_PASSED: Certification did not pass'
+    });
+    const combined = logger.log.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(combined).toMatch(/issuance validation pass/i);
+    expect(combined).toMatch(/re-validates the whole system/i);
+    expect(combined).toMatch(/Auto-issue detail:/);
+  });
+
   it('returns write_error when writeConfigFile throws', async() => {
     setupHappyPathFilesystem();
     writeConfigFile.mockImplementation(() => {

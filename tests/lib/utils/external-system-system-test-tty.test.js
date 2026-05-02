@@ -228,6 +228,46 @@ describe('displaySystemAggregateDatasourceTestRuns', () => {
     expect(joinedLogs()).toMatchSnapshot();
   });
 
+  it('does not print Blocking datasource line when every row is ok', () => {
+    const results = {
+      systemKey: 'all-green',
+      success: true,
+      datasourceResults: [
+        {
+          key: 'all-green.a',
+          skipped: false,
+          success: true,
+          datasourceTestRun: {
+            reportVersion: '1.1.0',
+            datasourceKey: 'all-green.a',
+            systemKey: 'all-green',
+            runType: 'e2e',
+            status: 'ok',
+            validation: { status: 'ok', dataReadiness: 'ready' }
+          }
+        },
+        {
+          key: 'all-green.b',
+          skipped: false,
+          success: true,
+          datasourceTestRun: {
+            reportVersion: '1.1.0',
+            datasourceKey: 'all-green.b',
+            systemKey: 'all-green',
+            runType: 'e2e',
+            status: 'ok',
+            validation: { status: 'ok', dataReadiness: 'ready' }
+          }
+        }
+      ]
+    };
+    displaySystemAggregateDatasourceTestRuns(results, { runType: 'e2e', verbose: false });
+    const out = joinedLogs();
+    expect(out).not.toContain('Blocking datasource:');
+    expect(out).toContain('Use:');
+    expect(out).toContain('aifabrix datasource test-e2e all-green.a');
+  });
+
   it('verbose mode lists all datasources including ok rows', () => {
     const results = {
       systemKey: 's',

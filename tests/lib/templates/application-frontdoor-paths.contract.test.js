@@ -8,7 +8,8 @@
 // Real fs: other suites jest.mock('fs') with existsSync always true; that would fake a marker under tests/ and break repo root.
 const fs = jest.requireActual('node:fs');
 const path = require('path');
-const yaml = require('js-yaml');
+// Real js-yaml: other suites jest.mock('js-yaml', () => ({ load: () => ({}) })); must not yield empty docs here.
+const yaml = jest.requireActual('js-yaml');
 
 /**
  * Repo root for shipped app YAML under templates/applications (each app folder has application.yaml).
