@@ -11,7 +11,10 @@ const os = require('os');
 jest.mock('../../../lib/utils/paths', () => ({
   ...jest.requireActual('../../../lib/utils/paths'),
   getAifabrixHome: jest.fn(),
-  getProjectRoot: jest.fn()
+  getProjectRoot: jest.fn(),
+  // refreshUrlsLocalRegistryFromBuilder also scans getBuilderRoot(); internal paths use the real
+  // getProjectRoot, so a mocked project root must align or the second merge overwrites the temp tree.
+  getBuilderRoot: jest.fn()
 }));
 
 const pathsUtil = require('../../../lib/utils/paths');
@@ -110,6 +113,7 @@ describe('expandDeclarativeUrlsInEnvContent', () => {
     fs.mkdirSync(fakeHome, { recursive: true });
     pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
     pathsUtil.getProjectRoot.mockReturnValue(fakeProject);
+    pathsUtil.getBuilderRoot.mockReturnValue(path.join(fakeProject, 'builder'));
   });
 
   afterEach(() => {

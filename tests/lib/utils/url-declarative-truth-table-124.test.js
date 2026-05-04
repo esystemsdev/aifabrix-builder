@@ -12,7 +12,8 @@ const os = require('os');
 jest.mock('../../../lib/utils/paths', () => ({
   ...jest.requireActual('../../../lib/utils/paths'),
   getAifabrixHome: jest.fn(),
-  getProjectRoot: jest.fn()
+  getProjectRoot: jest.fn(),
+  getBuilderRoot: jest.fn()
 }));
 
 const pathsUtil = require('../../../lib/utils/paths');
@@ -57,6 +58,7 @@ describe('plan 124 matrix — expandDeclarativeUrlsInEnvContent', () => {
     fs.mkdirSync(fakeProject, { recursive: true });
     pathsUtil.getAifabrixHome.mockReturnValue(path.join(tmp, 'home'));
     pathsUtil.getProjectRoot.mockReturnValue(fakeProject);
+    pathsUtil.getBuilderRoot.mockReturnValue(path.join(fakeProject, 'builder'));
   });
 
   afterEach(() => {

@@ -16,7 +16,8 @@ const os = require('os');
 jest.mock('../../../lib/utils/paths', () => ({
   ...jest.requireActual('../../../lib/utils/paths'),
   getAifabrixHome: jest.fn(),
-  getProjectRoot: jest.fn()
+  getProjectRoot: jest.fn(),
+  getBuilderRoot: jest.fn()
 }));
 
 const pathsUtil = require('../../../lib/utils/paths');
@@ -53,6 +54,7 @@ INTERNAL_URL=url://internal
     fs.mkdirSync(fakeHome, { recursive: true });
     pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
     pathsUtil.getProjectRoot.mockReturnValue(fakeProject);
+    pathsUtil.getBuilderRoot.mockReturnValue(path.join(fakeProject, 'builder'));
     const appDir = path.join(fakeProject, 'builder', 'dataplane');
     fs.mkdirSync(appDir, { recursive: true });
     variablesPath = path.join(appDir, 'application.yaml');
