@@ -240,5 +240,43 @@ frontDoorRouting:
       expect(merged['dataplane-port']).toBe(3001);
       expect(merged['dataplane-pattern']).toBe('/data/*');
     });
+
+    it('projectRoot/builder wins when AIFABRIX_BUILDER_DIR does not match getBuilderRoot (stray CI env)', () => {
+      const altBuilder = path.join(tmp, 'alt-builder');
+      const writerAlt = path.join(altBuilder, 'writer');
+      fs.mkdirSync(writerAlt, { recursive: true });
+      fs.writeFileSync(
+        path.join(writerAlt, 'application.yaml'),
+        `port: 9999
+app:
+  key: writer
+`,
+        'utf8'
+      );
+      const writerPrimary = path.join(fakeProject, 'builder', 'writer');
+      fs.mkdirSync(writerPrimary, { recursive: true });
+      fs.writeFileSync(
+        path.join(writerPrimary, 'application.yaml'),
+        `port: 4000
+app:
+  key: writer
+`,
+        'utf8'
+      );
+
+      pathsUtil.getBuilderRoot.mockReturnValue(altBuilder);
+      const prev = process.env.AIFABRIX_BUILDER_DIR;
+      process.env.AIFABRIX_BUILDER_DIR = '/some/ci/default/not-the-alt-builder';
+      try {
+        const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+        expect(merged['writer-port']).toBe(4000);
+      } finally {
+        if (prev === undefined) {
+          delete process.env.AIFABRIX_BUILDER_DIR;
+        } else {
+          process.env.AIFABRIX_BUILDER_DIR = prev;
+        }
+      }
+    });
   });
 });
