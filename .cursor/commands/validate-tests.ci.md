@@ -41,3 +41,9 @@ Do **not** use a top-level `afterAll` that permanently sets `fs.existsSync` / `f
 ## GitHub Actions
 
 Use **Node 20+** in workflows if devDependencies declare `engines: { node: '>=20' }` (e.g. `cross-env`, `markdownlint`) to avoid `EBADENGINE` noise and align with local dev. The package test suite is validated on the repo’s supported Node version used in CI.
+
+### Release branches and NPM deploy
+
+Deploy workflows that checkout a **`release/builder-*`** branch must include the Jest isolation for **`register-aifabrix-shell-env`** and **`log-viewer-run`** (see `jest.projects.js`: those paths are excluded from the default project and run in isolated projects). If a release is cut **without** that change, `npm test` / `build:ci` can fail on GitHub Actions with real disk I/O tests failing under the default worker (`FAIL default …register-aifabrix-shell-env.test.js`, `FAIL default …log-viewer-run.test.js`) even though the same commit passes locally in isolation.
+
+**Fix:** cherry-pick or merge the change that adds isolated Jest projects for `register-aifabrix-shell-env` and extends `log-viewer` with `log-viewer-run` (see `jest.projects.js` history), into the release branch, or tag from a branch that already contains it. Prefer that over moving these suites to `tests/local/`, which drops CI coverage.

@@ -487,7 +487,7 @@ aifabrix test-e2e hubspot-demo
 aifabrix test-e2e hubspot-demo --env tst -v --debug
 ```
 
-**Options (external system in `integration/<systemKey>/`):** `-e, --env <env>` — Environment (dev, tst, pro). `-v, --verbose` — Show detailed step output and poll progress. `-d, --debug` — Include debug output and write logs under `integration/<systemKey>/logs/` where applicable. The external rollup **always waits for completion** (async polling on the dataplane side); there is **no** `--no-async` on this top-level command—use `aifabrix datasource test-e2e <datasourceKey>` if you need `--no-async` for a single datasource.
+**Options (external system in `integration/<systemKey>/`):** `-e, --env <env>` — Environment (dev, tst, pro). `-v, --verbose` — Show detailed step output and poll progress. `-d, --debug` — Include debug output and write logs under `integration/<systemKey>/logs/` where applicable. By default the CLI publishes local integration files to the dataplane before the rollup (same as `aifabrix upload <systemKey>`). `--no-sync` skips that step so E2E uses config already on the dataplane. The external rollup **always waits for completion** (async polling on the dataplane side); there is **no** `--no-async` on this top-level command—use `aifabrix datasource test-e2e <datasourceKey>` if you need `--no-async` for a single datasource.
 
 **Options (builder app in `builder/<appKey>/`):** `--env <dev|tst>` — Run the configured E2E script in a dev (exec) or tst (ephemeral) container. Override the script with `build.scripts.test:e2e` or `build.scripts.testE2e`; see [Scripts and commands](#scripts-and-commands). `-v` / `-d` are accepted by the CLI parser but **do not change** the builder-container E2E run today (they apply to the external integration path).
 
