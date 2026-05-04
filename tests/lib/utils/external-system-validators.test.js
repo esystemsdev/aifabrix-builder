@@ -33,6 +33,14 @@ describe('External System Validators', () => {
       expect(result.error).toContain('Unknown transformation');
     });
 
+    it('should accept coalesce pipeline (SharePoint-style field mappings)', () => {
+      const result = validateFieldMappingExpression(
+        '{{raw.driveItem.name}} | coalesce(raw.fields.FileLeafRef) | coalesce(raw.fields.LinkFilename)'
+      );
+      expect(result.isValid).toBe(true);
+      expect(result.error).toBeNull();
+    });
+
     it('should reject empty expression', () => {
       const result = validateFieldMappingExpression('');
       expect(result.isValid).toBe(false);
@@ -116,6 +124,27 @@ describe('External System Validators', () => {
       };
       const result = validateFieldMappings(datasourceWithMissingPath, mockTestPayload);
       expect(result.warnings.length).toBeGreaterThan(0);
+    });
+
+    it('should resolve {{raw.*}} paths when payloadTemplate omits raw wrapper', () => {
+      const ds = {
+        fieldMappings: {
+          attributes: {
+            id: { expression: '{{raw.id}}', type: 'string' },
+            name: { expression: '{{raw.properties.name}}', type: 'string' }
+          }
+        }
+      };
+      const tp = {
+        payloadTemplate: {
+          id: '1',
+          properties: { name: 'Acme' }
+        }
+      };
+      const result = validateFieldMappings(ds, tp);
+      expect(result.valid).toBe(true);
+      expect(result.warnings).toHaveLength(0);
+      expect(Object.keys(result.mappedFields)).toEqual(['id', 'name']);
     });
   });
 

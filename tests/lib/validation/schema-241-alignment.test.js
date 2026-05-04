@@ -161,15 +161,17 @@ describe('Schema 2.4.x alignment', () => {
     expect(validate(withOpt)).toBe(true);
   });
 
-  it('validates external-system certification with HS256 (local dev integration certificate)', () => {
+  it('validates external-system certification with RS256 and publicKeyFingerprint', () => {
     const hubspotSystemPath = path.join(__dirname, '../../fixtures/hubspot-test-system.json');
     const base = JSON.parse(fs.readFileSync(hubspotSystemPath, 'utf8'));
     const withOpt = {
       ...base,
       certification: {
         enabled: true,
-        publicKey: 'HS256-DEV-NO-PEM:AIC-20260101-test',
-        algorithm: 'HS256',
+        publicKey:
+          '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAfixture\n-----END PUBLIC KEY-----',
+        publicKeyFingerprint: `sha256:${'d'.repeat(64)}`,
+        algorithm: 'RS256',
         issuer: 'aifabrix-test',
         version: '1.0.0'
       }

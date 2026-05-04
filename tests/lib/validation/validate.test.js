@@ -21,11 +21,17 @@ jest.mock('fs', () => {
   };
 });
 jest.mock('chalk', () => {
-  const mockChalk = (text) => text;
-  mockChalk.green = jest.fn((text) => text);
-  mockChalk.red = jest.fn((text) => text);
-  mockChalk.blue = jest.fn((text) => text);
-  mockChalk.yellow = jest.fn((text) => text);
+  const id = text => text;
+  const mockChalk = jest.fn(id);
+  mockChalk.green = jest.fn(id);
+  mockChalk.red = jest.fn(id);
+  mockChalk.blue = jest.fn(id);
+  mockChalk.yellow = jest.fn(id);
+  mockChalk.gray = jest.fn(id);
+  mockChalk.cyan = jest.fn(id);
+  const white = jest.fn(id);
+  white.bold = jest.fn(id);
+  mockChalk.white = white;
   return mockChalk;
 });
 jest.mock('../../../lib/utils/logger', () => ({
@@ -588,8 +594,9 @@ describe('Validation Module', () => {
         ]
       };
       displayBatchValidationResults(batchResult);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('--- app1 ---'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('--- app2 ---'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('app1'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('app2'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('──'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/passed.*failed|failed/));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Summary'));
     });
@@ -666,7 +673,7 @@ describe('Validation Module', () => {
 
       displayValidationResults(result);
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('External Integration Files'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('External integration files'));
     });
 
     it('should display file validation results', () => {
@@ -711,7 +718,7 @@ describe('Validation Module', () => {
 
       displayValidationResults(result);
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('RBAC Configuration'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('RBAC configuration'));
     });
 
     it('should display RBAC errors when invalid', () => {

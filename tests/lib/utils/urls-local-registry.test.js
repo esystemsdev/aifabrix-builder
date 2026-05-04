@@ -12,7 +12,8 @@ jest.mock('../../../lib/utils/paths', () => ({
   ...jest.requireActual('../../../lib/utils/paths'),
   getAifabrixHome: jest.fn(),
   getConfigDirForPaths: jest.fn(),
-  getProjectRoot: jest.fn()
+  getProjectRoot: jest.fn(),
+  getBuilderRoot: jest.fn()
 }));
 
 const pathsUtil = require('../../../lib/utils/paths');
@@ -39,6 +40,7 @@ describe('urls-local-registry', () => {
     pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
     pathsUtil.getConfigDirForPaths.mockReturnValue(fakeHome);
     pathsUtil.getProjectRoot.mockReturnValue(fakeProject);
+    pathsUtil.getBuilderRoot.mockImplementation(() => path.join(fakeProject, 'builder'));
   });
 
   afterEach(() => {
@@ -207,9 +209,74 @@ app:
 
     it('writes empty merge when project root null', () => {
       pathsUtil.getProjectRoot.mockReturnValue(null);
+      pathsUtil.getBuilderRoot.mockReturnValue(path.join(fakeHome, 'missing-builder'));
       writeUrlsLocalRegistrySync({ keep: true });
       const merged = refreshUrlsLocalRegistryFromBuilder(null);
       expect(merged.keep).toBe(true);
+    });
+
+    it('scans getBuilderRoot when package root has no builder/ (npm global install)', () => {
+      const fakeNpmPackage = path.join(tmp, 'npm-global-atifabrix-builder');
+      fs.mkdirSync(fakeNpmPackage, { recursive: true });
+      fs.writeFileSync(path.join(fakeNpmPackage, 'package.json'), '{}\n', 'utf8');
+      const userBuilder = path.join(tmp, 'user-builder');
+      const dpDir = path.join(userBuilder, 'dataplane');
+      fs.mkdirSync(dpDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dpDir, 'application.yaml'),
+        `port: 3001
+app:
+  key: dataplane
+frontDoorRouting:
+  pattern: /data/*
+`,
+        'utf8'
+      );
+
+      pathsUtil.getProjectRoot.mockReturnValue(fakeNpmPackage);
+      pathsUtil.getBuilderRoot.mockReturnValue(userBuilder);
+
+      const merged = refreshUrlsLocalRegistryFromBuilder(fakeNpmPackage);
+      expect(merged['dataplane-port']).toBe(3001);
+      expect(merged['dataplane-pattern']).toBe('/data/*');
+    });
+
+    it('projectRoot/builder wins when AIFABRIX_BUILDER_DIR does not match getBuilderRoot (stray CI env)', () => {
+      const altBuilder = path.join(tmp, 'alt-builder');
+      const writerAlt = path.join(altBuilder, 'writer');
+      fs.mkdirSync(writerAlt, { recursive: true });
+      fs.writeFileSync(
+        path.join(writerAlt, 'application.yaml'),
+        `port: 9999
+app:
+  key: writer
+`,
+        'utf8'
+      );
+      const writerPrimary = path.join(fakeProject, 'builder', 'writer');
+      fs.mkdirSync(writerPrimary, { recursive: true });
+      fs.writeFileSync(
+        path.join(writerPrimary, 'application.yaml'),
+        `port: 4000
+app:
+  key: writer
+`,
+        'utf8'
+      );
+
+      pathsUtil.getBuilderRoot.mockReturnValue(altBuilder);
+      const prev = process.env.AIFABRIX_BUILDER_DIR;
+      process.env.AIFABRIX_BUILDER_DIR = '/some/ci/default/not-the-alt-builder';
+      try {
+        const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+        expect(merged['writer-port']).toBe(4000);
+      } finally {
+        if (prev === undefined) {
+          delete process.env.AIFABRIX_BUILDER_DIR;
+        } else {
+          process.env.AIFABRIX_BUILDER_DIR = prev;
+        }
+      }
     });
   });
 });

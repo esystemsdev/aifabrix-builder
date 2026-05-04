@@ -1,6 +1,10 @@
 /**
  * @fileoverview Contract: shipped application.yaml front-door paths align with nginx → Traefik docs (plan 018 frontdoor-paths).
  * Miso: /miso/*; Dataplane: /data/* with optional /dev|/tst prefix when env-scoped resources apply.
+ *
+ * Isolated Jest project `application-frontdoor-paths-contract`: default worker can still see
+ * `jest.mock('js-yaml')` / `jest.mock('fs')` side effects on GitHub Actions; run in a fresh process
+ * (see jest.projects.js), like infra-platform-contract and register-aifabrix-shell-env.
  */
 
 'use strict';
@@ -8,7 +12,8 @@
 // Real fs: other suites jest.mock('fs') with existsSync always true; that would fake a marker under tests/ and break repo root.
 const fs = jest.requireActual('node:fs');
 const path = require('path');
-const yaml = require('js-yaml');
+// Real js-yaml: other suites jest.mock('js-yaml', () => ({ load: () => ({}) })); must not yield empty docs here.
+const yaml = jest.requireActual('js-yaml');
 
 /**
  * Repo root for shipped app YAML under templates/applications (each app folder has application.yaml).

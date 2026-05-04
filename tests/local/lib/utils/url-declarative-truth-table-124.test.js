@@ -1,6 +1,7 @@
 /**
  * Plan 124 declarative URL truth table — pathPrefix × pathActive × traefik × profile.
- * Isolated Jest project `url-declarative-truth-table-124` — partial paths mock + expand tests need a clean worker.
+ *
+ * Local-only: excluded from default CI (same brittleness as expand suite). Run with INCLUDE_LOCAL_TESTS=true.
  */
 
 'use strict';
@@ -9,21 +10,22 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-jest.mock('../../../lib/utils/paths', () => ({
-  ...jest.requireActual('../../../lib/utils/paths'),
+jest.mock('../../../../lib/utils/paths', () => ({
+  ...jest.requireActual('../../../../lib/utils/paths'),
   getAifabrixHome: jest.fn(),
-  getProjectRoot: jest.fn()
+  getProjectRoot: jest.fn(),
+  getBuilderRoot: jest.fn()
 }));
 
-const pathsUtil = require('../../../lib/utils/paths');
+const pathsUtil = require('../../../../lib/utils/paths');
 const {
   expandDeclarativeUrlsInEnvContent,
   parseSimpleEnvMap
-} = require('../../../lib/utils/url-declarative-resolve');
+} = require('../../../../lib/utils/url-declarative-resolve');
 const {
   computePathActive,
   computeDeclarativePathPrefix
-} = require('../../../lib/utils/url-declarative-url-flags');
+} = require('../../../../lib/utils/url-declarative-url-flags');
 
 describe('url-declarative-url-flags (plan 124)', () => {
   it('computePathActive requires traefik and enabled === true', () => {
@@ -57,6 +59,7 @@ describe('plan 124 matrix — expandDeclarativeUrlsInEnvContent', () => {
     fs.mkdirSync(fakeProject, { recursive: true });
     pathsUtil.getAifabrixHome.mockReturnValue(path.join(tmp, 'home'));
     pathsUtil.getProjectRoot.mockReturnValue(fakeProject);
+    pathsUtil.getBuilderRoot.mockReturnValue(path.join(fakeProject, 'builder'));
   });
 
   afterEach(() => {

@@ -123,8 +123,7 @@ Options:
   -e, --env <env>                    Environment: dev, tst, or pro
   -v, --verbose                      Show detailed step output and poll progress
   --debug                            Include debug output and write log to integration/roundtrip-test-local/logs/
-  --test-crud                        Enable CRUD lifecycle test (body testCrud: true)
-  --record-id <id>                   Record ID for test (body recordId)
+  --no-run-scenarios                 Skip expanding testPayload.scenarios in capacity step
   --no-cleanup                       Disable cleanup after test (body cleanup: false)
   --primary-key-value <value|@path>  Primary key value or path to JSON file (e.g. @pk.json) for body primaryKeyValue
   --no-async                         Use sync mode (no polling); single POST, no asyncRun

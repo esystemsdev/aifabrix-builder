@@ -27,11 +27,13 @@ coverage/
 .temp/
 temp/
 tmp-imgver*/
+tests/lib/utils/__snapshots__
 
 # Environment files
 .env
 .env.local
 .env.*.local
+.npmrc.token
 
 # Build artifacts
 dist/

@@ -7,10 +7,17 @@
 jest.unmock('fs');
 jest.unmock('node:fs');
 
+jest.mock('../../../lib/utils/paths', () => ({
+  ...jest.requireActual('../../../lib/utils/paths'),
+  getProjectRoot: jest.fn(),
+  getBuilderRoot: jest.fn()
+}));
+
 const fs = jest.requireActual('fs');
 const path = require('path');
 const os = require('os');
 
+const pathsUtil = require('../../../lib/utils/paths');
 const {
   buildAppServiceEnvOverlay,
   localWorkstationPortsForDoc,
@@ -18,6 +25,11 @@ const {
 } = require('../../../lib/utils/app-service-env-from-builder');
 
 describe('app-service-env-from-builder', () => {
+  beforeEach(() => {
+    pathsUtil.getProjectRoot.mockImplementation(() => jest.requireActual('../../../lib/utils/paths').getProjectRoot());
+    pathsUtil.getBuilderRoot.mockImplementation(() => jest.requireActual('../../../lib/utils/paths').getBuilderRoot());
+  });
+
   function withTempProject(layoutFn) {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aifb-app-svc-env-'));
     try {
@@ -89,5 +101,30 @@ describe('app-service-env-from-builder', () => {
   it('localWorkstationPortsForDoc uses manifest when published differs from container', () => {
     const doc = { port: 8082, build: { containerPort: 8080 } };
     expect(localWorkstationPortsForDoc(doc)).toEqual({ port: 8082, publicPort: 8082 });
+  });
+
+  it('uses getBuilderRoot when package root has no builder/ (global npm install)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aifb-app-svc-npm-'));
+    try {
+      const fakeNpmPackage = path.join(tmp, 'global-atifabrix-builder');
+      fs.mkdirSync(fakeNpmPackage, { recursive: true });
+      fs.writeFileSync(path.join(fakeNpmPackage, 'package.json'), '{}\n', 'utf8');
+      const userBuilder = path.join(tmp, 'user-builder');
+      const dpDir = path.join(userBuilder, 'dataplane');
+      fs.mkdirSync(dpDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dpDir, 'application.yaml'),
+        'app:\n  key: dataplane\nport: 3001\n',
+        'utf8'
+      );
+      pathsUtil.getProjectRoot.mockReturnValue(fakeNpmPackage);
+      pathsUtil.getBuilderRoot.mockReturnValue(userBuilder);
+
+      const o = buildAppServiceEnvOverlay(fakeNpmPackage);
+      expect(o.docker.DATAPLANE_PORT).toBe(3001);
+      expect(o.local.DATAPLANE_PORT).toBe(3011);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });

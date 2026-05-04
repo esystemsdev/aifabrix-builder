@@ -7,12 +7,12 @@
     "key": "document-storage-schema",
     "name": "Document Storage Configuration Schema",
     "description": "JSON schema for validating document storage configurations",
-    "version": "1.3.0",
+    "version": "1.7.0",
     "type": "schema",
     "category": "document-storage",
     "author": "AI Fabrix Team",
     "createdAt": "2026-01-02T00:00:00Z",
-    "updatedAt": "2026-04-22T00:00:00Z",
+    "updatedAt": "2026-05-01T00:00:00Z",
     "compatibility": {
       "minVersion": "1.0.0",
       "maxVersion": "2.0.0",
@@ -71,6 +71,38 @@
           "Added optional parameterLookupCoalesceNestedItemScope (boolean, default true) for manifest-controlled binary parameter lookup enrichment"
         ],
         "breaking": false
+      },
+      {
+        "version": "1.4.0",
+        "date": "2026-04-26T00:00:00Z",
+        "changes": [
+          "Added optional maxBinaryFetchesPerSync (integer >= 1) to cap binary fetch+store operations per sync run"
+        ],
+        "breaking": false
+      },
+      {
+        "version": "1.5.0",
+        "date": "2026-04-27T00:00:00Z",
+        "changes": [
+          "ingestAfterSync: post-sync chunk+embed no longer waits on trust (eligibility/schema gates unchanged)"
+        ],
+        "breaking": false
+      },
+      {
+        "version": "1.6.0",
+        "date": "2026-04-28T00:00:00Z",
+        "changes": [
+          "Added documentStorage.changeDetection.ignoreMetadataKeys / ignoreMetadataPaths for stable contentHash when volatile metadata changes"
+        ],
+        "breaking": false
+      },
+      {
+        "version": "1.7.0",
+        "date": "2026-05-01T00:00:00Z",
+        "changes": [
+          "Added optional maxBinaryFetchConcurrency (integer >= 1, default 1) to bound parallel binary fetches in two-phase sync phase 3"
+        ],
+        "breaking": false
       }
     ]
   },
@@ -95,7 +127,18 @@
     "ingestAfterSync": {
       "type": "boolean",
       "default": false,
-      "description": "When true, chunk and embed each document after store during sync so vector search returns hits immediately. When false, ingestion runs later (e.g. Celery task or on approval). Set true for E2E tests that validate vector step."
+      "description": "When true, chunk and embed each document after store during sync without requiring trust promotion first; eligibility (validation/schema/dimensions) still enforced. When false, ingestion runs later."
+    },
+    "maxBinaryFetchesPerSync": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "When set, caps binary fetch + store operations per sync run (metadata list may still return more rows). Optional for fast integration/E2E; omit in production for full sync."
+    },
+    "maxBinaryFetchConcurrency": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Maximum concurrent binary CIP/HTTP fetches during two-phase sync phase 3. Default 1 (sequential). Increase cautiously; external APIs may throttle."
     },
     "binaryOperationRef": {
       "type": "string",
@@ -132,6 +175,22 @@
       "type": "boolean",
       "default": true,
       "description": "When true, binary parameterMapping and HTTP path templates use a lookup view that merges metadata and coalesces storage-scope ids from a nested item parentReference when the row's parentReference omits them. Set false for strict manifest-only paths."
+    },
+    "jsonNestedDownloadUrlKeys": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Optional JSON object key names (exact match) searched depth-first when a binary GET returns JSON without bytes; requires preAuthenticatedDownloadUrlHostSuffixAllowlist. Merged into binaryOperation when using binaryOperationRef."
+    },
+    "preAuthenticatedDownloadUrlHostSuffixAllowlist": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Substrings the discovered follow-up URL must contain (case-insensitive) before an unauthenticated GET. Required when jsonNestedDownloadUrlKeys is set."
     },
     "processing": {
       "type": "object",
@@ -216,6 +275,27 @@
             }
           },
           "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "changeDetection": {
+      "type": "object",
+      "description": "Optional configuration to ignore volatile metadata keys/paths during contentHash / change detection only.",
+      "properties": {
+        "ignoreMetadataKeys": {
+          "type": "array",
+          "description": "Top-level metadata keys to ignore when computing contentHash / change detection.",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true,
+          "default": []
+        },
+        "ignoreMetadataPaths": {
+          "type": "array",
+          "description": "Optional dot-path patterns to ignore (e.g. 'analytics.*', 'versions').",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true,
+          "default": []
         }
       },
       "additionalProperties": false

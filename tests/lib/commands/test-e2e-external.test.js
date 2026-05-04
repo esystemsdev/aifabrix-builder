@@ -113,8 +113,8 @@ describe('test-e2e-external', () => {
       );
     });
 
-    it('calls uploadExternalSystem once before E2E when sync is true', async() => {
-      await runTestE2EForExternalSystem('hubspot-demo', { sync: true, verbose: true });
+    it('calls uploadExternalSystem once before E2E by default', async() => {
+      await runTestE2EForExternalSystem('hubspot-demo', { verbose: true });
 
       expect(upload.uploadExternalSystem).toHaveBeenCalledTimes(1);
       expect(upload.uploadExternalSystem).toHaveBeenCalledWith(
@@ -124,8 +124,8 @@ describe('test-e2e-external', () => {
       expect(runDatasourceTestE2E).toHaveBeenCalled();
     });
 
-    it('does not call upload when sync is false', async() => {
-      await runTestE2EForExternalSystem('hubspot-demo');
+    it('does not call upload when noSync is true', async() => {
+      await runTestE2EForExternalSystem('hubspot-demo', { noSync: true });
 
       expect(upload.uploadExternalSystem).not.toHaveBeenCalled();
     });
@@ -190,6 +190,16 @@ describe('test-e2e-external', () => {
       const keys = getDatasourceKeys(appPath, configPath, variables, 'hubspot-demo', systemParsed, datasourceFiles);
 
       expect(keys).toEqual(['hubspot-demo-companies']);
+    });
+
+    it('preserves system dataSources order (no alphabetical sort) for FK-friendly sequencing', () => {
+      const variables = { externalIntegration: { dataSources: [] } };
+      const systemParsed = {
+        key: 'acme',
+        dataSources: ['acme-zebra', 'acme-apple', 'acme-mango']
+      };
+      const keys = getDatasourceKeys('/tmp', '/tmp/app.yaml', variables, 'acme', systemParsed, []);
+      expect(keys).toEqual(['acme-zebra', 'acme-apple', 'acme-mango']);
     });
   });
 });

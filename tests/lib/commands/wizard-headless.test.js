@@ -358,8 +358,11 @@ describe('Wizard Headless Mode Handler', () => {
         mockSystemConfig,
         mockDatasourceConfigs,
         'test-app', // Uses appName when systemKey not provided
-        mockDataplaneUrl,
-        mockAuthConfig
+        {
+          dataplaneUrl: mockDataplaneUrl,
+          authConfig: mockAuthConfig,
+          enableRBAC: false
+        }
       );
     });
 

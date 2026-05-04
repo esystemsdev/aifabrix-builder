@@ -267,7 +267,7 @@ describe('getResolveAppPath', () => {
     });
   });
 
-  it('returns integration path and envOnly true when integration has both env.template and application.yaml', async() => {
+  it('returns integration path and envOnly false when integration has env.template and application.yaml', async() => {
     const appName = 'myapp';
     createTempDirReal(path.join(tempDir, 'integration', appName));
     writeFileReal(
@@ -278,7 +278,22 @@ describe('getResolveAppPath', () => {
     const result = getResolveAppPathInSubprocess(appName);
     expect(result).toEqual({
       appPath: path.join(tempDir, 'integration', appName),
-      envOnly: true
+      envOnly: false
+    });
+  });
+
+  it('returns integration path and envOnly false when integration has env.template and application.json', async() => {
+    const appName = 'myapp-json';
+    createTempDirReal(path.join(tempDir, 'integration', appName));
+    writeFileReal(
+      path.join(tempDir, 'integration', appName, 'application.json'),
+      JSON.stringify({ app: { name: appName, type: 'external' } }, null, 2)
+    );
+    writeFileReal(path.join(tempDir, 'integration', appName, 'env.template'), 'API_KEY=kv://api-key\n');
+    const result = getResolveAppPathInSubprocess(appName);
+    expect(result).toEqual({
+      appPath: path.join(tempDir, 'integration', appName),
+      envOnly: false
     });
   });
 

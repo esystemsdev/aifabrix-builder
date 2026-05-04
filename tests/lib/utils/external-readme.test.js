@@ -4,7 +4,11 @@
  */
 
 const path = require('path');
-const { buildExternalReadmeContext } = require('../../../lib/utils/external-readme');
+const {
+  buildExternalReadmeContext,
+  wrapPlainTextForMarkdown,
+  collapseConsecutiveBlankLines
+} = require('../../../lib/utils/external-readme');
 
 const projectRoot = path.resolve(__dirname, '..', '..', '..');
 
@@ -101,6 +105,32 @@ describe('external-readme (context only)', () => {
         authType: 'none'
       });
       expect(ctx.secretPaths).toEqual([]);
+    });
+
+    it('wraps long description lines for Markdown (MD013)', () => {
+      const long =
+        'Word '.repeat(30).trim();
+      const ctx = buildExternalReadmeContext({
+        systemKey: 'x',
+        description: long
+      });
+      const lines = ctx.description.split('\n');
+      expect(lines.every((ln) => ln.length <= 80)).toBe(true);
+    });
+  });
+
+  describe('wrapPlainTextForMarkdown', () => {
+    it('preserves paragraph breaks', () => {
+      const out = wrapPlainTextForMarkdown('First para words here.\n\nSecond para.');
+      expect(out).toContain('First para');
+      expect(out).toContain('\n\nSecond para');
+    });
+  });
+
+  describe('collapseConsecutiveBlankLines', () => {
+    it('replaces 3+ newlines with 2 (MD012)', () => {
+      expect(collapseConsecutiveBlankLines('a\n\n\nb')).toBe('a\n\nb');
+      expect(collapseConsecutiveBlankLines('a\n\n\n\nb')).toBe('a\n\nb');
     });
   });
 });

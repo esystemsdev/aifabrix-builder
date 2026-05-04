@@ -1,5 +1,8 @@
 /**
  * @fileoverview expandDeclarativeUrlsInEnvContent + parseSimpleEnvMap (plan 122 E2E-style)
+ *
+ * Local-only: excluded from default CI (path / registry / temp-dir resolution differs on GitHub Actions).
+ * Run: `INCLUDE_LOCAL_TESTS=true npm test` or `npm test -- tests/local/lib/utils/url-declarative-resolve-expand.test.js`
  */
 
 'use strict';
@@ -8,19 +11,22 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-jest.mock('../../../lib/utils/paths', () => ({
-  ...jest.requireActual('../../../lib/utils/paths'),
+jest.mock('../../../../lib/utils/paths', () => ({
+  ...jest.requireActual('../../../../lib/utils/paths'),
   getAifabrixHome: jest.fn(),
-  getProjectRoot: jest.fn()
+  getProjectRoot: jest.fn(),
+  // refreshUrlsLocalRegistryFromBuilder also scans getBuilderRoot(); internal paths use the real
+  // getProjectRoot, so a mocked project root must align or the second merge overwrites the temp tree.
+  getBuilderRoot: jest.fn()
 }));
 
-const pathsUtil = require('../../../lib/utils/paths');
+const pathsUtil = require('../../../../lib/utils/paths');
 const {
   expandDeclarativeUrlsInEnvContent,
   expandDeclarativeUrlListValue,
   parseSimpleEnvMap,
   parseUrlToken
-} = require('../../../lib/utils/url-declarative-resolve');
+} = require('../../../../lib/utils/url-declarative-resolve');
 
 describe('parseUrlToken', () => {
   it('parses full, host, and vdir variants (current and cross-app)', () => {
@@ -110,6 +116,7 @@ describe('expandDeclarativeUrlsInEnvContent', () => {
     fs.mkdirSync(fakeHome, { recursive: true });
     pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
     pathsUtil.getProjectRoot.mockReturnValue(fakeProject);
+    pathsUtil.getBuilderRoot.mockReturnValue(path.join(fakeProject, 'builder'));
   });
 
   afterEach(() => {

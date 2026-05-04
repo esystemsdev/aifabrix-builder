@@ -9,7 +9,7 @@
     "reportVersion": {
       "type": "string",
       "description": "Semver-style contract version for this envelope. Policy: additive fields => minor bump within same major; removed/renamed fields => major bump. Route migrations must cite target reportVersion.",
-      "example": "1.1.0"
+      "example": "1.3.0"
     },
     "runType": {
       "type": "string",
@@ -51,6 +51,10 @@
     "certificate": {
       "$ref": "#/$defs/CertificateResult"
     },
+    "certificateIssuance": {
+      "$ref": "#/$defs/CertificateIssuanceResult",
+      "description": "Integration-certificate auto-issue outcome for this datasource scope (VALIDATION_AUTO_ISSUE_INTEGRATION_CERTIFICATE)."
+    },
     "capabilitySummary": {
       "$ref": "#/$defs/CapabilitySummary"
     },
@@ -69,9 +73,50 @@
     },
     "developer": {
       "$ref": "#/$defs/DeveloperSummary"
+    },
+    "datasourceSummaries": {
+      "type": "array",
+      "description": "Optional per-datasource rollups when the underlying run evaluated multiple datasources (e.g. validationScope=externalSystem).",
+      "items": {
+        "$ref": "#/$defs/DatasourceSummary"
+      }
     }
   },
   "$defs": {
+    "DatasourceSummary": {
+      "type": "object",
+      "required": ["datasourceKey", "status"],
+      "additionalProperties": false,
+      "description": "Lightweight per-datasource rollup for system-scoped runs.",
+      "properties": {
+        "datasourceKey": {
+          "type": "string",
+          "description": "Datasource key within the system."
+        },
+        "status": {
+          "type": "string",
+          "description": "Datasource rollup: ok | warn | fail | skipped.",
+          "enum": ["ok", "warn", "fail", "skipped"]
+        },
+        "validationStatus": {
+          "type": "string",
+          "description": "Validation layer rollup for this datasource.",
+          "enum": ["ok", "warn", "fail"]
+        },
+        "certificateStatus": {
+          "type": "string",
+          "description": "Certification rollup for this datasource.",
+          "enum": ["passed", "not_passed"]
+        },
+        "issues": {
+          "type": "array",
+          "description": "Blocking/warning issues for this datasource.",
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        }
+      }
+    },
     "ValidationLayerResult": {
       "type": "object",
       "required": ["status"],
@@ -158,6 +203,39 @@
           "type": "object",
           "description": "Structured evidence (timings, counts, IDs); shape is implementation-defined.",
           "additionalProperties": true
+        }
+      }
+    },
+    "CertificateIssuanceResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "systemKey", "datasourceKey"],
+      "description": "Structured result when the dataplane evaluates integration-certificate auto-issue (safe for clients and logs).",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["issued", "reusedActive", "skipped", "failed"],
+          "description": "issued | reusedActive | skipped | failed."
+        },
+        "reasonCode": {
+          "type": "string",
+          "description": "Stable machine code when status is skipped or failed."
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable summary."
+        },
+        "validationHint": {
+          "type": "string",
+          "description": "Optional remediation hint."
+        },
+        "systemKey": {
+          "type": "string",
+          "description": "External system key for this issuance scope."
+        },
+        "datasourceKey": {
+          "type": "string",
+          "description": "Datasource key for this issuance scope."
         }
       }
     },

@@ -1,17 +1,19 @@
 /**
  * @fileoverview System-level (§17) TTY renderer tests for aggregated DatasourceTestRun results.
+ *
+ * Local-only: includes snapshot assertions sensitive to chalk / CI environment (same class as expand-url tests).
  */
 
-jest.mock('../../../lib/utils/logger', () => ({
+jest.mock('../../../../lib/utils/logger', () => ({
   log: jest.fn(),
   warn: jest.fn(),
   error: jest.fn()
 }));
 
-const logger = require('../../../lib/utils/logger');
+const logger = require('../../../../lib/utils/logger');
 const {
   displaySystemAggregateDatasourceTestRuns
-} = require('../../../lib/utils/external-system-system-test-tty');
+} = require('../../../../lib/utils/external-system-system-test-tty');
 
 function stripAnsi(s) {
   const esc = String.fromCharCode(27);
@@ -226,6 +228,46 @@ describe('displaySystemAggregateDatasourceTestRuns', () => {
     };
     displaySystemAggregateDatasourceTestRuns(results, { runType: 'integration', verbose: false });
     expect(joinedLogs()).toMatchSnapshot();
+  });
+
+  it('does not print Blocking datasource line when every row is ok', () => {
+    const results = {
+      systemKey: 'all-green',
+      success: true,
+      datasourceResults: [
+        {
+          key: 'all-green.a',
+          skipped: false,
+          success: true,
+          datasourceTestRun: {
+            reportVersion: '1.1.0',
+            datasourceKey: 'all-green.a',
+            systemKey: 'all-green',
+            runType: 'e2e',
+            status: 'ok',
+            validation: { status: 'ok', dataReadiness: 'ready' }
+          }
+        },
+        {
+          key: 'all-green.b',
+          skipped: false,
+          success: true,
+          datasourceTestRun: {
+            reportVersion: '1.1.0',
+            datasourceKey: 'all-green.b',
+            systemKey: 'all-green',
+            runType: 'e2e',
+            status: 'ok',
+            validation: { status: 'ok', dataReadiness: 'ready' }
+          }
+        }
+      ]
+    };
+    displaySystemAggregateDatasourceTestRuns(results, { runType: 'e2e', verbose: false });
+    const out = joinedLogs();
+    expect(out).not.toContain('Blocking datasource:');
+    expect(out).toContain('Use:');
+    expect(out).toContain('aifabrix datasource test-e2e all-green.a');
   });
 
   it('verbose mode lists all datasources including ok rows', () => {

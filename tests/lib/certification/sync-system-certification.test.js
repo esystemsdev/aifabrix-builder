@@ -49,6 +49,7 @@ const baseCert = {
 const artifactWithKey = {
   version: '2.0.0',
   publicKey: 'ARTIFACT-PEM',
+  contractHash: `sha256:${'e'.repeat(64)}`,
   licenseLevelIssuer: 'TrustLine',
   issuedBy: 'dataplane'
 };
@@ -146,12 +147,13 @@ describe('syncSystemCertificationFromDataplane', () => {
       algorithm: 'RS256',
       issuer: 'TrustLine',
       version: '2.0.0',
-      status: 'passed'
+      status: 'passed',
+      contractHash: `sha256:${'e'.repeat(64)}`
     });
     expect(body.key).toBe('hub');
   });
 
-  it('writes certification for HS256 dev artifact without PEM publicKey', async() => {
+  it('does not write certification when artifact has no PEM publicKey to merge', async() => {
     getIntegrationPath.mockReturnValue('/integration/hub');
     discoverIntegrationFiles.mockReturnValue({ systemFiles: ['hub-system.json'], datasourceFiles: [] });
     loadConfigFile.mockReturnValue({
@@ -175,11 +177,12 @@ describe('syncSystemCertificationFromDataplane', () => {
       authConfig: { token: 't' },
       datasourceKeys: ['users']
     });
-    expect(r.written).toBe(true);
-    const [, body] = writeConfigFile.mock.calls[0];
-    expect(body.certification.algorithm).toBe('HS256');
-    expect(body.certification.publicKey).toBe('HS256-DEV-NO-PEM:AIC-20260101-xyz');
-    expect(body.certification.status).toBe('passed');
+    expect(r).toEqual({
+      written: false,
+      reason: 'incomplete_certification',
+      detail: 'no_public_key'
+    });
+    expect(writeConfigFile).not.toHaveBeenCalled();
   });
 
   it('returns no_system_file when discovery is empty', async() => {
@@ -205,6 +208,23 @@ describe('syncSystemCertificationFromDataplane', () => {
     });
     expect(r).toEqual({ written: false, reason: 'no_auth' });
     expect(getActiveIntegrationCertificate).not.toHaveBeenCalled();
+  });
+
+  it('accepts apiKey without token and fetches active certificates', async() => {
+    setupHappyPathFilesystem();
+    const r = await syncSystemCertificationFromDataplane({
+      systemKey: 'hub',
+      dataplaneUrl: 'http://dp.test',
+      authConfig: { apiKey: 'dp-api-key' },
+      datasourceKeys: ['users']
+    });
+    expect(r.written).toBe(true);
+    expect(getActiveIntegrationCertificate).toHaveBeenCalledWith(
+      'http://dp.test',
+      { apiKey: 'dp-api-key' },
+      'hub',
+      'users'
+    );
   });
 
   it('returns invalid_system when loadConfigFile throws', async() => {
@@ -254,6 +274,43 @@ describe('syncSystemCertificationFromDataplane', () => {
     });
     expect(r).toEqual({ written: false, reason: 'incomplete_certification', detail: 'no_active' });
     expect(writeConfigFile).not.toHaveBeenCalled();
+  });
+
+  it('logs only primary line when CERTIFICATION_NOT_PASSED hint without verboseCertHints', async() => {
+    getIntegrationPath.mockReturnValue('/integration/hub');
+    discoverIntegrationFiles.mockReturnValue({ systemFiles: ['hub-system.json'], datasourceFiles: [] });
+    loadConfigFile.mockReturnValue({ key: 'hub', certification: {} });
+    getActiveIntegrationCertificate.mockResolvedValue({ success: false, status: 404 });
+    await syncSystemCertificationFromDataplane({
+      systemKey: 'hub',
+      dataplaneUrl: 'http://dp.test',
+      authConfig: { token: 't' },
+      datasourceKeys: ['users'],
+      issuanceFailureHint: 'CERTIFICATION_NOT_PASSED: Certification did not pass'
+    });
+    const combined = logger.log.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(combined).toMatch(/issuance validation pass/i);
+    expect(combined).not.toMatch(/re-validates the whole system/i);
+    expect(combined).not.toMatch(/Auto-issue detail:/);
+  });
+
+  it('logs extended issuance guidance when verboseCertHints', async() => {
+    getIntegrationPath.mockReturnValue('/integration/hub');
+    discoverIntegrationFiles.mockReturnValue({ systemFiles: ['hub-system.json'], datasourceFiles: [] });
+    loadConfigFile.mockReturnValue({ key: 'hub', certification: {} });
+    getActiveIntegrationCertificate.mockResolvedValue({ success: false, status: 404 });
+    await syncSystemCertificationFromDataplane({
+      systemKey: 'hub',
+      dataplaneUrl: 'http://dp.test',
+      authConfig: { token: 't' },
+      datasourceKeys: ['users'],
+      issuanceFailureHint: 'CERTIFICATION_NOT_PASSED: Certification did not pass',
+      verboseCertHints: true
+    });
+    const combined = logger.log.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(combined).toMatch(/issuance validation pass/i);
+    expect(combined).toMatch(/re-validates the whole system/i);
+    expect(combined).toMatch(/Auto-issue detail:/);
   });
 
   it('returns write_error when writeConfigFile throws', async() => {
@@ -339,6 +396,7 @@ describe('maybeSyncSystemCertificationFromDataplane', () => {
       datasourceKeys: ['users']
     });
     const combined = logger.log.mock.calls.flat().join(' ');
-    expect(combined).toMatch(/Certification block not updated|Could not build certification/);
+    expect(combined).toMatch(/Certification not written|no active trusted certificate/i);
+    expect(combined).not.toMatch(/Could not build certification/);
   });
 });

@@ -47,7 +47,16 @@ describe('repair-rbac', () => {
 
     it('returns default when capabilities is empty array', () => {
       const parsed = { capabilities: [] };
-      expect(getCapabilitiesFromDatasource(parsed)).toEqual([]);
+      expect(getCapabilitiesFromDatasource(parsed)).toEqual([
+        'list', 'get', 'create', 'update', 'delete'
+      ]);
+    });
+
+    it('returns default when capabilities is empty object', () => {
+      const parsed = { capabilities: {} };
+      expect(getCapabilitiesFromDatasource(parsed)).toEqual([
+        'list', 'get', 'create', 'update', 'delete'
+      ]);
     });
   });
 

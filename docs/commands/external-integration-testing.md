@@ -166,6 +166,7 @@ The CLI prints progress hints (for example authentication and dataplane discover
 Test **one** datasource via the dataplane unified validation API (integration run type) without running tests for the whole system. Useful in CI or when iterating on a single datasource.
 
 **Command:**
+
 ```bash
 aifabrix datasource test-integration <datasourceKey> [options]
 ```
@@ -177,6 +178,7 @@ aifabrix datasource test-integration <datasourceKey> [options]
 **Auth:** Deployment auth from `aifabrix login`, cached client token, or client credentials exchanged for an app token (CI/CD)—same path as `aifabrix datasource test-e2e`.
 
 **Example:**
+
 ```bash
 cd integration/hubspot
 aifabrix datasource test-integration hubspot-company
@@ -204,13 +206,13 @@ Run a full end-to-end test for **one** datasource: the dataplane runs config val
 
 The dataplane runs these steps in sequence. All run by default; you can interpret the output to see which step failed.
 
-| Step   | What it does (user terms) |
-|--------|---------------------------|
-| Config | Validates payload against metadata schema and field mappings (no external calls). |
-| Credential | Tests that the configured credential can connect to the external API (e.g. OAuth/token). |
-| Sync   | Creates and runs a sync job, then waits until it completes. |
-| Data   | Checks that records or documents are stored and (where applicable) vectorized. |
-| CIP    | Runs list/get with capacity input to exercise the CIP pipeline. |
+| Step       | What it does (user terms)                                                                 |
+|------------|-------------------------------------------------------------------------------------------|
+| Config     | Validates payload against metadata schema and field mappings (no external calls).         |
+| Credential | Tests that the configured credential can connect to the external API (e.g. OAuth/token).  |
+| Sync       | Creates and runs a sync job, then waits until it completes.                               |
+| Data       | Checks that records or documents are stored and (where applicable) vectorized.            |
+| CIP        | Runs list/get with capacity input to exercise the CIP pipeline.                           |
 
 Run the command, inspect the response (and optional debug log), fix configuration or credentials if a step fails, then run again until all steps pass.
 
@@ -227,20 +229,20 @@ By default the command starts the E2E run asynchronously, then polls the datapla
 The same unified flow is used for **`datasource test`** and **`datasource test-integration`** when async polling applies. Transient connection errors on the first request or on **poll** requests (e.g. reset/timeout) are retried a few times with short backoff; HTTP error responses are not retried.
 
 **Command:**
+
 ```bash
 aifabrix datasource test-e2e <datasourceKey> [capabilityKey] [options]
 ```
 
-**Options:** `-a, --app <app>`, `-e, --env <env>`, `-v, --verbose`, `-d, --debug [level]`, `--test-crud`, `--record-id <id>`, `--no-cleanup`, `--primary-key-value <value|@path>`, `--no-async`, `--timeout <ms>`, positional **`[capabilityKey]`** (preferred) or deprecated **`--capability <key>`**, `--strict-capability-scope`, `--json`, `--summary`, `--warnings-as-errors`, `--require-cert`.
+**Options:** `-a, --app <app>`, `-e, --env <env>`, `-v, --verbose`, `-d, --debug [level]`, `--no-run-scenarios`, `--no-cleanup`, `--primary-key-value <value|@path>`, `--no-async`, `--timeout <ms>`, positional **`[capabilityKey]`** (preferred) or deprecated **`--capability <key>`**, `--strict-capability-scope`, `--json`, `--summary`, `--warnings-as-errors`, `--require-cert`.
 
 **Option details:**
-- **`--test-crud`** – Enable full CRUD lifecycle test (create → get → update → delete) when the datasource supports it.
-- **`--record-id <id>`** – Use this record ID for get/update/delete when create is not supported or when targeting a specific record for CRUD.
+- **Capacity / CRUD** – The dataplane merges request options with each datasource’s `testPayload` (`payloadTemplate`, `primaryKey`, `scenarios`). When capabilities and fixtures align, the capacity step runs list/get/create/update/delete without extra flags. Use **`--no-run-scenarios`** to skip expanding `testPayload.scenarios` and use the default capacity path only.
 - **`--no-cleanup`** – Do not delete the created/test record at the end; leave it for inspection.
 - **`--primary-key-value <value|@path>`** – Primary key of an existing record. When set, the dataplane can fetch that record and use it as the payload template for create (no separate payload template needed). For composite keys, use a JSON file path (e.g. `@pk.json`).
 - **`--debug [level]`** – Richer debug from the dataplane, optional appendix on the terminal, and (for this command) a log file under **`integration/<systemKey>/logs/`**. Levels: **`summary`** (default), **`full`**, **`raw`** (see [Debug output](#debug-output-datasource-commands)). Omit the appendix with **`--json`**.
 - **`--timeout <ms>`** – Aggregate time budget for the POST and any polling (default fifteen minutes in the CLI).
-- **`[capabilityKey]`** (positional) – Ask the dataplane to focus the run on one capability when that contract is supported. Human output (default TTY and **`--summary`**) highlights **that** capability’s status and any per-capability E2E steps when the report includes them. If the report still lists **more than one** capability row, the CLI prints a **warning** to stderr; use **`--strict-capability-scope`** to exit with status **1** in that case (plan §2.3).
+- **`[capabilityKey]`** (positional) – Ask the dataplane to focus the run on one capability when that contract is supported. Human output (default TTY and **`--summary`**) highlights **that** capability’s status and any per-capability E2E steps when the report includes them. If the report still lists **more than one** capability row, the CLI prints a **warning** to stderr; use **`--strict-capability-scope`** to exit with status **1** in that case (plan section 2.3).
 - **`--capability <key>`** – Deprecated alias for the positional **`[capabilityKey]`**; if both are provided and differ, the positional value wins and the CLI warns.
 - **`--strict-capability-scope`** – When a capability drill-down is requested, fail the process when the envelope lists multiple capability rows (client contract check).
 - **`--json` / `--summary` / `--warnings-as-errors` / `--require-cert`** – Machine-oriented output and stricter exit codes; see `aifabrix datasource test-e2e --help`.
@@ -248,6 +250,7 @@ aifabrix datasource test-e2e <datasourceKey> [capabilityKey] [options]
 **Datasource config – primaryKey:** The datasource configuration must include `primaryKey` (required by the schema). It is an array of normalized attribute names (e.g. `["id"]` or `["externalId"]`) used for CRUD operations and table indexing. Validation fails if `primaryKey` is missing.
 
 **Example:**
+
 ```bash
 aifabrix datasource test-e2e hubspot-contacts --app hubspot --verbose
 
@@ -268,11 +271,11 @@ aifabrix datasource test-e2e hubspot-contacts --app hubspot read
 
 ### Data safety
 
-E2E tests use real external systems and credentials. Prefer:
+E2E tests use real external systems and credentials.
 
-- **Test credentials** and **test environments** (e.g. HubSpot dev portal, SharePoint test site).
+- Use **test credentials** and **test environments** (for example HubSpot dev portal, SharePoint test site).
 - Avoid production data.
-- Run in isolated CI environments when possible.
+- Prefer isolated CI environments when possible.
 
 ---
 

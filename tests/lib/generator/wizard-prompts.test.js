@@ -116,6 +116,19 @@ describe('Wizard Prompts', () => {
       const result = await wizardPrompts.promptForUserIntent();
       expect(result).toBe('sales-focused');
     });
+
+    it('should reject intent longer than WIZARD_INTENT_MAX_LENGTH', async() => {
+      const { WIZARD_INTENT_MAX_LENGTH } = wizardPrompts;
+      let validateFn;
+      inquirer.prompt.mockImplementation((questions) => {
+        validateFn = questions[0].validate;
+        return Promise.resolve({ intent: 'ok' });
+      });
+      await wizardPrompts.promptForUserIntent();
+      expect(typeof validateFn).toBe('function');
+      expect(validateFn('a'.repeat(WIZARD_INTENT_MAX_LENGTH + 1))).toMatch(/1000/);
+      expect(validateFn('a'.repeat(WIZARD_INTENT_MAX_LENGTH))).toBe(true);
+    });
   });
 
   describe('promptForUserPreferences', () => {

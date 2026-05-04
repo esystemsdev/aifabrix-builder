@@ -30,7 +30,8 @@ describe('Dataplane Resolver', () => {
       expect(discoverDataplaneUrl).toHaveBeenCalledWith(
         'https://controller.example.com',
         'dev',
-        { token: 'test-token' }
+        { token: 'test-token' },
+        {}
       );
     });
 

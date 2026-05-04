@@ -57,21 +57,28 @@ const defaultProject = {
       '/tests/lib/utils/cli-utils.test.js',
       '/tests/lib/utils/external-system-display.test.js',
       '/tests/lib/utils/dev-hosts-helper.test.js',
-      '/tests/lib/utils/declarative-url-matrix-d-reload.test.js',
+      '/tests/lib/utils/register-aifabrix-shell-env.test.js',
       '/tests/lib/utils/datasource-validation-watch.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\cli-utils.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\external-system-display.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\dev-hosts-helper.test.js',
-      '\\\\tests\\\\lib\\\\utils\\\\declarative-url-matrix-d-reload.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\register-aifabrix-shell-env.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\datasource-validation-watch.test.js',
       'lib/utils/dev-hosts-helper.test.js',
-      'lib/utils/declarative-url-matrix-d-reload.test.js',
+      'lib/utils/register-aifabrix-shell-env.test.js',
       'lib/utils/datasource-validation-watch.test.js',
       'dev-hosts-helper\\.test\\.js',
-      'declarative-url-matrix-d-reload\\.test\\.js',
+      'register-aifabrix-shell-env\\.test\\.js',
       '/tests/lib/datasource/log-viewer.test.js',
       '\\\\tests\\\\lib\\\\datasource\\\\log-viewer.test.js',
       'lib/datasource/log-viewer.test.js',
+      '/tests/lib/datasource/log-viewer-structural.test.js',
+      '/tests/lib/datasource/log-viewer-run.test.js',
+      '\\\\tests\\\\lib\\\\datasource\\\\log-viewer-structural.test.js',
+      '\\\\tests\\\\lib\\\\datasource\\\\log-viewer-run.test.js',
+      'lib/datasource/log-viewer-structural.test.js',
+      'lib/datasource/log-viewer-run.test.js',
+      'log-viewer-run\\.test\\.js',
       '/tests/lib/commands/parameters-validate.test.js',
       '\\\\tests\\\\lib\\\\commands\\\\parameters-validate.test.js',
       'lib/commands/parameters-validate.test.js',
@@ -150,10 +157,6 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\utils\\\\paths-app-listing.test.js',
       'lib/utils/paths-app-listing.test.js',
       'paths-app-listing\\.test\\.js',
-      '/tests/lib/utils/url-declarative-truth-table-124.test.js',
-      '\\\\tests\\\\lib\\\\utils\\\\url-declarative-truth-table-124.test.js',
-      'lib/utils/url-declarative-truth-table-124.test.js',
-      'url-declarative-truth-table-124\\.test\\.js',
       '/tests/lib/generator/generator-external-rbac.test.js',
       '\\\\tests\\\\lib\\\\generator\\\\generator-external-rbac.test.js',
       'lib/generator/generator-external-rbac.test.js',
@@ -190,9 +193,17 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\validation\\\\schema-241-alignment.test.js',
       'lib/validation/schema-241-alignment.test.js',
       'schema-241-alignment\\.test\\.js',
+      '/tests/lib/utils/schema-resolver-order.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\schema-resolver-order.test.js',
+      'lib/utils/schema-resolver-order.test.js',
+      'schema-resolver-order\\.test\\.js',
       '/tests/lib/app/app.test.js',
       '\\\\tests\\\\lib\\\\app\\\\app.test.js',
       'lib/app/app.test.js',
+      '/tests/lib/templates/application-frontdoor-paths.contract.test.js',
+      '\\\\tests\\\\lib\\\\templates\\\\application-frontdoor-paths.contract.test.js',
+      'lib/templates/application-frontdoor-paths.contract.test.js',
+      'application-frontdoor-paths\\.contract\\.test\\.js',
       '/tests/lib/core/admin-secrets.test.js',
       '\\\\tests\\\\lib\\\\core\\\\admin-secrets.test.js',
       'lib/core/admin-secrets.test.js'
@@ -214,20 +225,27 @@ const isolatedProjects = [
   makeIsolatedProject('cli-utils', ['**/tests/lib/utils/cli-utils.test.js']),
   makeIsolatedProject('external-system-display', ['**/tests/lib/utils/external-system-display.test.js']),
   makeIsolatedProject('dev-hosts-helper', ['**/tests/lib/utils/dev-hosts-helper.test.js']),
-  makeIsolatedProject('declarative-url-matrix-d-reload', [
-    '**/tests/lib/utils/declarative-url-matrix-d-reload.test.js'
-  ]),
   makeIsolatedProject('parameters-validate', ['**/tests/lib/commands/parameters-validate.test.js']),
   makeIsolatedProject('paths-app-listing', ['**/tests/lib/utils/paths-app-listing.test.js']),
   makeIsolatedProject('datasource-validation-watch', [
     '**/tests/lib/utils/datasource-validation-watch.test.js'
   ]),
-  makeIsolatedProject('log-viewer', ['**/tests/lib/datasource/log-viewer.test.js']),
+  makeIsolatedProject('log-viewer', [
+    '**/tests/lib/datasource/log-viewer.test.js',
+    '**/tests/lib/datasource/log-viewer-structural.test.js',
+    '**/tests/lib/datasource/log-viewer-run.test.js'
+  ]),
+  makeIsolatedProject('register-aifabrix-shell-env', [
+    '**/tests/lib/utils/register-aifabrix-shell-env.test.js'
+  ]),
   makeIsolatedProject('datasource-test-run-schema-sync', [
     '**/tests/lib/utils/datasource-test-run-schema-sync.test.js'
   ]),
   makeIsolatedProject('infra-platform-contract', [
     '**/tests/lib/parameters/infra-platform-contract.test.js'
+  ]),
+  makeIsolatedProject('application-frontdoor-paths-contract', [
+    '**/tests/lib/templates/application-frontdoor-paths.contract.test.js'
   ]),
   makeIsolatedProject('database-secret-values', [
     '**/tests/lib/parameters/database-secret-values.test.js'
@@ -273,9 +291,6 @@ const isolatedProjects = [
   makeIsolatedProject('helpers-ensure-admin-secrets', [
     '**/tests/lib/infrastructure/helpers-ensure-admin-secrets.test.js'
   ]),
-  makeIsolatedProject('url-declarative-truth-table-124', [
-    '**/tests/lib/utils/url-declarative-truth-table-124.test.js'
-  ]),
   makeIsolatedProject('secrets-generator', ['**/tests/lib/utils/secrets-generator.test.js']),
   makeIsolatedProject('app-uncovered-lines', ['**/tests/lib/app/app-uncovered-lines.test.js']),
   makeIsolatedProject('ensure-dev-certs-for-remote-docker', [
@@ -285,6 +300,7 @@ const isolatedProjects = [
   makeIsolatedProject('generator-validation', ['**/tests/lib/generator/generator-validation.test.js']),
   makeIsolatedProject('secrets-databaselog', ['**/tests/lib/core/secrets-databaselog.test.js']),
   makeIsolatedProject('schema-241-alignment', ['**/tests/lib/validation/schema-241-alignment.test.js']),
+  makeIsolatedProject('schema-resolver-order', ['**/tests/lib/utils/schema-resolver-order.test.js']),
   makeIsolatedProject('app-module', ['**/tests/lib/app/app.test.js']),
   makeIsolatedProject('admin-secrets', ['**/tests/lib/core/admin-secrets.test.js'])
 ];

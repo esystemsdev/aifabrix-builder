@@ -1,6 +1,9 @@
 /**
  * @fileoverview runLogViewer with logType test (via --file path).
  * Uses node:fs for temp files so other suites' jest.mock('fs') cannot no-op writes in this worker.
+ *
+ * Isolated Jest project `log-viewer` (with log-viewer*.test.js): fresh process so `lib/datasource/log-viewer.js`
+ * binds real `node:fs.promises`; default worker can retain mocked `node:fs` from other suites on CI.
  */
 
 jest.mock('../../../lib/utils/logger', () => ({
@@ -54,6 +57,6 @@ describe('runLogViewer (structural / test)', () => {
     fs.writeFileSync(tmpFile, '{ not json', 'utf8');
     await expect(
       runLogViewer('k', { file: tmpFile, logType: 'test' })
-    ).rejects.toThrow(/Invalid JSON/);
+    ).rejects.toThrow(/invalid json/i);
   });
 });

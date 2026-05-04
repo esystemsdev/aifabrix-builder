@@ -30,6 +30,7 @@ jest.mock('../../../lib/utils/secrets-path', () => ({
 const {
   buildResolvedEnvMapForIntegration,
   resolveConfigurationValues,
+  collectResolvedVariableConfigurationNames,
   getEnvTemplateVariableNames,
   retemplateConfigurationFromEnvTemplate,
   retemplateConfigurationForDownload,
@@ -63,6 +64,50 @@ describe('configuration-env-resolver', () => {
     });
     it('should throw when placeholder contains only whitespace (missing from envMap)', () => {
       expect(() => substituteVarPlaceholders('{{  }}', {})).toThrow('Missing configuration env var');
+    });
+  });
+
+  describe('collectResolvedVariableConfigurationNames', () => {
+    it('should return names for resolved variable entries on application and datasources', () => {
+      const payload = {
+        application: {
+          configuration: [
+            { name: 'SHAREPOINT_SITE_ID', value: 'resolved-site', location: 'variable' },
+            { name: 'SHAREPOINT_LIST_ID', value: 'list-guid', location: 'variable' }
+          ]
+        },
+        dataSources: [
+          {
+            configuration: [{ name: 'DS_ONLY', value: 'x', location: 'variable' }]
+          }
+        ]
+      };
+      expect(collectResolvedVariableConfigurationNames(payload)).toEqual([
+        'SHAREPOINT_SITE_ID',
+        'SHAREPOINT_LIST_ID',
+        'DS_ONLY'
+      ]);
+    });
+    it('should skip kv://, unresolved {{}}, empty, non-variable, and duplicate names', () => {
+      const payload = {
+        application: {
+          configuration: [
+            { name: 'A', value: 'kv://ns/secret', location: 'variable' },
+            { name: 'B', value: '{{B}}', location: 'variable' },
+            { name: 'C', value: '   ', location: 'variable' },
+            { name: 'D', value: 'ok', location: 'keyvault' },
+            { name: 'E', value: 'first', location: 'variable' },
+            { name: 'E', value: 'dup-skip', location: 'variable' }
+          ]
+        },
+        dataSources: []
+      };
+      expect(collectResolvedVariableConfigurationNames(payload)).toEqual(['E']);
+    });
+    it('should return empty array for missing or invalid payload', () => {
+      expect(collectResolvedVariableConfigurationNames(null)).toEqual([]);
+      expect(collectResolvedVariableConfigurationNames({})).toEqual([]);
+      expect(collectResolvedVariableConfigurationNames({ application: {} })).toEqual([]);
     });
   });
 

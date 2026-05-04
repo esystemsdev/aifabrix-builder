@@ -1412,7 +1412,7 @@ describe('repair', () => {
       const systemPath = path.join(appPath, 'hubspot-system.yaml');
       expect(writeConfigFile).toHaveBeenCalledWith(
         systemPath,
-        expect.objectContaining({ dataSources: ['hubspot-test-contacts', 'hubspot-test-deals'] })
+        expect.objectContaining({ dataSources: ['hubspot-test-deals', 'hubspot-test-contacts'] })
       );
     });
 

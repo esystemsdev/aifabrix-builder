@@ -27,7 +27,7 @@ Generate `.env` file from template.
 
 **When:** After secrets change, troubleshooting environment issues.
 
-**App path:** Resolve works for **builder** apps and for **external integrations** in `integration/<systemKey>/`. If `integration/<systemKey>/env.template` exists (even without `application.yaml`), that directory is used and resolve runs in **env-only** mode; otherwise the CLI resolves the app via integration then builder using full config (application.yaml or application.json).
+**App path:** Resolve works for **builder** apps and for **external integrations** in `integration/<systemKey>/`. If `integration/<systemKey>/env.template` exists **and** no application config file is present in that folder (`application.yaml`, `application.yml`, `application.json`), that directory is used and resolve runs in **env-only** mode. If an application config file exists there (or under `builder/<appKey>/`), the CLI uses full resolve and runs post-resolve validation unless you pass `--skip-validation`.
 
 **Example:**
 ```bash
@@ -56,9 +56,9 @@ This will generate the .env file without running validation checks afterward.
 - `-f, --force` - Generate missing secret keys in secrets file
 - `--skip-validation` - Skip file validation after generating .env
 
-**Output:** When the app is in **integration** with **env-only** (only `env.template` present, no `application.yaml`), `.env` is written to `integration/<systemKey>/.env`. When the app has full config (builder or integration with `application.yaml`) and `build.envOutputPath` is set, `.env` is written to that path; otherwise behaviour is as documented for run/build (e.g. temp or run-only).
+**Output:** When the app is in **integration** with **env-only** (only `env.template`, no application config file), `.env` is written to `integration/<systemKey>/.env`. When the app has full config (builder or integration with application config) and `build.envOutputPath` is set, `.env` is written to that path; otherwise behaviour is as documented for run/build (e.g. temp or run-only).
 
-**Env-only mode:** When resolving in **env-only** mode (integration + `env.template` only), post-resolve validation is skipped because there is no `application.yaml` to validate. Run `aifabrix validate <app>` separately when you add full config later.
+**Env-only mode:** When resolving in **env-only** mode (integration + `env.template` and no application config file), post-resolve validation is skipped because there is nothing to validate as application config. Run `aifabrix validate <app>` separately when you add full config later.
 
 **Issues:**
 - **"Secrets file not found"** → Create `~/.aifabrix/secrets.yaml`

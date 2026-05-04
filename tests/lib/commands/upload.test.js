@@ -41,10 +41,14 @@ jest.mock('../../../lib/utils/api-error-handler', () => ({
 jest.mock('../../../lib/utils/credential-secrets-env', () => ({
   pushCredentialSecrets: jest.fn().mockResolvedValue({ pushed: 0 })
 }));
-jest.mock('../../../lib/utils/configuration-env-resolver', () => ({
-  buildResolvedEnvMapForIntegration: jest.fn().mockResolvedValue({ envMap: {}, secrets: {} }),
-  resolveConfigurationValues: jest.fn()
-}));
+jest.mock('../../../lib/utils/configuration-env-resolver', () => {
+  const actual = jest.requireActual('../../../lib/utils/configuration-env-resolver');
+  return {
+    ...actual,
+    buildResolvedEnvMapForIntegration: jest.fn(),
+    resolveConfigurationValues: jest.fn()
+  };
+});
 jest.mock('../../../lib/utils/dataplane-pipeline-warning', () => ({
   logDataplanePipelineWarning: jest.fn()
 }));
@@ -107,6 +111,7 @@ describe('upload command', () => {
       data: { success: true, results: [{ sourceKey: 'ds1', success: true, validationResults: { isValid: true } }] }
     });
     buildResolvedEnvMapForIntegration.mockResolvedValue({ envMap: {}, secrets: {} });
+    resolveConfigurationValues.mockImplementation(() => {});
   });
 
   describe('uploadExternalSystem', () => {
@@ -204,6 +209,44 @@ describe('upload command', () => {
       await uploadExternalSystem(systemKey);
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Pushed 2 credential'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('hubspot/clientid'));
+    });
+
+    it('should log resolved integration parameter names when configuration variables are resolved', async() => {
+      const manifestWithConfig = {
+        key: 'test-e2e-sharepoint',
+        version: '1.0.0',
+        system: {
+          key: 'test-e2e-sharepoint',
+          configuration: [
+            { name: 'SHAREPOINT_SITE_ID', value: '{{SHAREPOINT_SITE_ID}}', location: 'variable' },
+            { name: 'SHAREPOINT_LIST_ID', value: '{{SHAREPOINT_LIST_ID}}', location: 'variable' }
+          ]
+        },
+        dataSources: []
+      };
+      generateControllerManifest.mockResolvedValue(manifestWithConfig);
+      buildResolvedEnvMapForIntegration.mockResolvedValue({
+        envMap: {
+          SHAREPOINT_SITE_ID: 'contoso.sharepoint.com,site-guid,web-guid',
+          SHAREPOINT_LIST_ID: 'bfe808fe-2a48-4b8e-806b-55d0b8ccf693'
+        },
+        secrets: {}
+      });
+      resolveConfigurationValues.mockImplementation((arr) => {
+        if (!Array.isArray(arr)) return;
+        for (const item of arr) {
+          if (item?.location !== 'variable' || typeof item.value !== 'string') continue;
+          if (item.value === '{{SHAREPOINT_SITE_ID}}') item.value = 'contoso.sharepoint.com,site-guid,web-guid';
+          if (item.value === '{{SHAREPOINT_LIST_ID}}') item.value = 'bfe808fe-2a48-4b8e-806b-55d0b8ccf693';
+        }
+      });
+      pushCredentialSecrets.mockResolvedValue({ pushed: 1, keys: ['test-e2e-sharepoint/clientId'] });
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await uploadExternalSystem(systemKey);
+      const resolvedLog = (logger.log.mock.calls || []).map((c) => c[0]).find((s) => typeof s === 'string' && s.includes('Resolved 2 integration parameter'));
+      expect(resolvedLog).toBeDefined();
+      expect(resolvedLog).toContain('SHAREPOINT_SITE_ID');
+      expect(resolvedLog).toContain('SHAREPOINT_LIST_ID');
     });
 
     it('should log Secret push skipped in yellow when no secrets to push', async() => {

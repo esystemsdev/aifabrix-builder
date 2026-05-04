@@ -95,6 +95,8 @@ Profiles: **layout-blocks** (header/status/list/helpers); **tty-summary** (chalk
 | aifabrix app show | json-opt |
 | aifabrix app deployment | tty-summary |
 
+_**validate** (human TTY): `lib/validation/validate-display.js` + `lib/utils/cli-test-layout-chalk.js` — bold white section titles, datasource rows via `formatDatasourceListRow`, canonical glyphs (✔ ✖ ⚠ ⏭) per [layout.md](./layout.md)._
+
 _Certification-related flags (output profile unchanged): `validate --cert-sync`; `show` / `app show --verify-cert`; `datasource test|test-integration|test-e2e` and `test-integration` / `test-e2e` with `--no-cert-sync`._
 
 _Generated for adoption tracking; see `.cursor/plans/Done/129-cli_layout_adoption.plan.md` and [layout.md](./layout.md)._

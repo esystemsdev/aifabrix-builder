@@ -9,11 +9,13 @@ const {
 } = require('../../../lib/utils/validation-run-poll');
 
 describe('validation-run-poll', () => {
-  it('nextPollDelayMs doubles and caps at 15s', () => {
-    expect(nextPollDelayMs(0)).toBe(2000);
-    expect(nextPollDelayMs(1)).toBe(4000);
-    expect(nextPollDelayMs(3)).toBe(15000);
-    expect(nextPollDelayMs(4)).toBe(15000);
+  it('nextPollDelayMs uses fast phase then doubles and caps at 15s', () => {
+    expect(nextPollDelayMs(0)).toBe(400);
+    expect(nextPollDelayMs(23)).toBe(400);
+    expect(nextPollDelayMs(24)).toBe(2000);
+    expect(nextPollDelayMs(25)).toBe(4000);
+    expect(nextPollDelayMs(27)).toBe(15000);
+    expect(nextPollDelayMs(28)).toBe(15000);
   });
 
   it('isTerminalReportCompleteness is true only for full', () => {

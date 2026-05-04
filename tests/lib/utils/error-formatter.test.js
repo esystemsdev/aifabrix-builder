@@ -465,6 +465,22 @@ describe('Error Formatter Module', () => {
       expect(result[1]).toContain('at most 65535');
       expect(result[2]).toContain('at least 3 characters');
     });
+
+    it('should dedupe exact duplicate formatted lines when dedupe option is true', () => {
+      const dup = {
+        instancePath: '/metadataSchema/properties/id/type',
+        keyword: 'required',
+        params: { missingProperty: 'format' },
+        message: 'required'
+      };
+      const errors = [dup, dup, dup];
+
+      const result = formatValidationErrors(errors, { dedupe: true });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toContain('metadataSchema/properties/id/type');
+      expect(result[0]).toContain('format');
+    });
   });
 });
 

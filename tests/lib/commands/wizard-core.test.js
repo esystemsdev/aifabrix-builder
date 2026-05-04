@@ -632,9 +632,29 @@ describe('Wizard Core Functions', () => {
       expect(result).toBeNull();
     });
 
-    it('prompts and returns selected entity when entities found', async() => {
+    it('auto-selects when discover-entities returns a single entity', async() => {
       wizardApi.discoverEntities.mockResolvedValue({
         data: { entities: [{ name: 'companies', pathCount: 12 }] }
+      });
+
+      const result = await wizardCore.handleEntitySelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        mockOpenApiSpec
+      );
+
+      expect(result).toBe('companies');
+      expect(inquirer.prompt).not.toHaveBeenCalled();
+    });
+
+    it('prompts and returns selected entity when multiple entities found', async() => {
+      wizardApi.discoverEntities.mockResolvedValue({
+        data: {
+          entities: [
+            { name: 'companies', pathCount: 12 },
+            { name: 'contacts', pathCount: 5 }
+          ]
+        }
       });
       inquirer.prompt.mockResolvedValue({ entityName: 'companies' });
 
@@ -646,6 +666,27 @@ describe('Wizard Core Functions', () => {
 
       expect(result).toBe('companies');
       expect(inquirer.prompt).toHaveBeenCalled();
+    });
+
+    it('uses prefill entityName when valid (skips prompt)', async() => {
+      wizardApi.discoverEntities.mockResolvedValue({
+        data: {
+          entities: [
+            { name: 'companies', pathCount: 12 },
+            { name: 'contacts', pathCount: 5 }
+          ]
+        }
+      });
+
+      const result = await wizardCore.handleEntitySelection(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        mockOpenApiSpec,
+        'companies'
+      );
+
+      expect(result).toBe('companies');
+      expect(inquirer.prompt).not.toHaveBeenCalled();
     });
 
     it('returns null and logs warning when discoverEntities fails', async() => {
@@ -770,6 +811,58 @@ describe('Wizard Core Functions', () => {
         mockDataplaneUrl,
         mockAuthConfig,
         expect.objectContaining({ entityName: 'companies' })
+      );
+    });
+
+    it('should default systemIdOrKey to appName for create-system when systemIdOrKey omitted', async() => {
+      wizardApi.generateConfig.mockResolvedValue({
+        success: true,
+        data: {
+          systemConfig: mockSystemConfig,
+          datasourceConfigs: mockDatasourceConfigs,
+          systemKey: 'hubspot-demo'
+        }
+      });
+      await wizardCore.handleConfigurationGeneration(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        {
+          mode: 'create-system',
+          openapiSpec: mockOpenApiSpec,
+          detectedType: { recommendedType: 'record-based' },
+          appName: 'hubspot-demo'
+        }
+      );
+      expect(wizardApi.generateConfig).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        expect.objectContaining({ systemIdOrKey: 'hubspot-demo' })
+      );
+    });
+
+    it('should keep explicit systemIdOrKey over appName for create-system when both set', async() => {
+      wizardApi.generateConfig.mockResolvedValue({
+        success: true,
+        data: {
+          systemConfig: mockSystemConfig,
+          datasourceConfigs: mockDatasourceConfigs
+        }
+      });
+      await wizardCore.handleConfigurationGeneration(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        {
+          mode: 'create-system',
+          openapiSpec: mockOpenApiSpec,
+          detectedType: { recommendedType: 'record-based' },
+          appName: 'hubspot-demo',
+          systemIdOrKey: 'custom-key'
+        }
+      );
+      expect(wizardApi.generateConfig).toHaveBeenCalledWith(
+        mockDataplaneUrl,
+        mockAuthConfig,
+        expect.objectContaining({ systemIdOrKey: 'custom-key' })
       );
     });
 
@@ -1112,8 +1205,7 @@ describe('Wizard Core Functions', () => {
         mockSystemConfig,
         mockDatasourceConfigs,
         'test-system',
-        mockDataplaneUrl,
-        mockAuthConfig
+        { dataplaneUrl: mockDataplaneUrl, authConfig: mockAuthConfig }
       );
       expect(wizardGenerator.generateWizardFiles).toHaveBeenCalledWith(
         'test-app',
@@ -1149,8 +1241,7 @@ describe('Wizard Core Functions', () => {
         mockSystemConfig,
         mockDatasourceConfigs,
         'test-system',
-        mockDataplaneUrl,
-        mockAuthConfig
+        { dataplaneUrl: mockDataplaneUrl, authConfig: mockAuthConfig }
       );
       expect(wizardGenerator.generateWizardFiles).toHaveBeenCalledWith(
         'test-app',
@@ -1175,8 +1266,7 @@ describe('Wizard Core Functions', () => {
         mockSystemConfig,
         mockDatasourceConfigs,
         'test-system',
-        mockDataplaneUrl,
-        mockAuthConfig
+        { dataplaneUrl: mockDataplaneUrl, authConfig: mockAuthConfig }
       );
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Could not fetch AI-generated README'));
       expect(wizardGenerator.generateWizardFiles).toHaveBeenCalledWith(
@@ -1202,8 +1292,7 @@ describe('Wizard Core Functions', () => {
         mockSystemConfig,
         mockDatasourceConfigs,
         'test-system',
-        mockDataplaneUrl,
-        mockAuthConfig
+        { dataplaneUrl: mockDataplaneUrl, authConfig: mockAuthConfig }
       );
       expect(wizardApi.getDeploymentDocs).toHaveBeenCalledWith(mockDataplaneUrl, mockAuthConfig, 'test-system');
       expect(wizardApi.postDeploymentDocs).not.toHaveBeenCalled();
@@ -1222,9 +1311,44 @@ describe('Wizard Core Functions', () => {
         mockSystemConfig,
         mockDatasourceConfigs,
         'test-system',
-        mockDataplaneUrl,
-        mockAuthConfig
+        { dataplaneUrl: mockDataplaneUrl, authConfig: mockAuthConfig }
       )).rejects.toThrow('File generation failed');
+    });
+
+    it('should merge RBAC from datasources when enableRBAC option is true', async() => {
+      const repairRbac = require('../../../lib/commands/repair-rbac');
+      const mergeSpy = jest.spyOn(repairRbac, 'mergeRbacFromDatasources').mockReturnValue(true);
+      const configFormat = require('../../../lib/utils/config-format');
+      const loadSpy = jest.spyOn(configFormat, 'loadConfigFile').mockReturnValue({
+        key: 'test-app',
+        displayName: 'Test App'
+      });
+      config.getFormat = jest.fn().mockResolvedValue('yaml');
+      wizardGenerator.generateWizardFiles.mockResolvedValue({
+        appPath: '/workspace/integration/test-app',
+        systemFilePath: '/workspace/integration/test-app/test-app-system.yaml',
+        datasourceFilePaths: ['/workspace/integration/test-app/test-app-datasource-one.yaml']
+      });
+      await wizardCore.handleFileSaving(
+        'test-app',
+        mockSystemConfig,
+        mockDatasourceConfigs,
+        'test-system',
+        {
+          dataplaneUrl: mockDataplaneUrl,
+          authConfig: mockAuthConfig,
+          enableRBAC: true
+        }
+      );
+      expect(mergeSpy).toHaveBeenCalledWith(
+        '/workspace/integration/test-app',
+        { key: 'test-app', displayName: 'Test App' },
+        ['test-app-datasource-one.yaml'],
+        repairRbac.extractRbacFromSystem,
+        expect.objectContaining({ format: 'yaml', dryRun: false })
+      );
+      mergeSpy.mockRestore();
+      loadSpy.mockRestore();
     });
   });
 

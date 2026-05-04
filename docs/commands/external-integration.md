@@ -8,7 +8,7 @@ Commands for creating, testing, and managing external system integrations. Comma
 
 **Dataplane commands:** `aifabrix upload <systemKey>` and `aifabrix datasource upload <file-or-key>` send configuration to the dataplane. The CLI displays a warning before doing so—ensure you are targeting the correct environment and have the required permissions (see [Permissions](permissions.md)).
 
-**Resolve:** You can run `aifabrix resolve <app>` for external integrations when `integration/<systemKey>/env.template` exists. If `application.yaml` is missing, resolve still runs in **env-only** mode and writes `integration/<systemKey>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
+**Resolve:** You can run `aifabrix resolve <app>` for external integrations when `integration/<systemKey>/env.template` exists. If no application config file is present in that folder (`application.yaml`, `application.yml`, `application.json`, or legacy `variables.yaml`), resolve still runs in **env-only** mode and writes `integration/<systemKey>/.env`; see [Utility commands – resolve](utilities.md#aifabrix-resolve-app).
 
 **Create:** To create an external system, run `aifabrix create <app>` (external is the default type). Use `aifabrix create <app> --type webapp` for a builder app. The generated README in `integration/<systemKey>/` includes a **Secrets** section with `aifabrix secret set <systemKey>/<key> <your value>` commands per authentication type (key has no `kv://` prefix).
 
@@ -801,7 +801,7 @@ aifabrix datasource upload test-e2e-hubspot-users
 8. Uploads datasource to the dataplane
 9. Displays results
 
-**Output:** 
+**Output:**
 
 ```text
 Datasource upload
@@ -949,8 +949,7 @@ aifabrix datasource test-e2e hubspot-contacts --app hubspot read
 - `-e, --env <env>` – Environment: dev, tst, or pro.
 - `-v, --verbose` – Detailed step output: managed record counts for the sync step, CIP execution trace summary, and when polling, progress (e.g. steps completed so far).
 - `--debug [level]` – Richer debug, optional terminal appendix, and log under `integration/<systemKey>/logs/` (levels: **`summary`**, **`full`**, **`raw`**; see [External Integration Testing](external-integration-testing.md#debug-output-datasource-commands)); no appendix with `--json`.
-- `--test-crud` – Enable CRUD lifecycle test.
-- `--record-id <id>` – Record ID to use for the test.
+- `--no-run-scenarios` – Do not expand `testPayload.scenarios` in the capacity step (use merged `testPayload` fixtures only).
 - `--no-cleanup` – Disable cleanup after the test.
 - `--primary-key-value <value|@path>` – Primary key value, or path to a JSON file (prefix with `@`) for composite keys.
 - `--no-async` – Use sync mode: single request, no polling (useful for short runs or backward compatibility).
