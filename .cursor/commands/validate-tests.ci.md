@@ -26,7 +26,8 @@ Prefer **isolated Jest projects** (`jest.projects.js`: `testPathIgnorePatterns` 
 
 - `jest.mock('fs')` with custom `mockImplementation` that must not leak to other files, or
 - need real `node:fs` / `node:fs.promises` while other suites mock `fs` or `node:fs` (e.g. `register-aifabrix-shell-env`, `log-viewer-run` run with the `log-viewer` isolated group), or
-- partially mock `paths` / other singletons.
+- partially mock `paths` / other singletons, or
+- read shipped `templates/**` YAML with `jest.requireActual('js-yaml')` but still run after other suites on the same worker (e.g. `application-frontdoor-paths.contract.test.js` — isolated as `application-frontdoor-paths-contract`).
 
 Do **not** use a top-level `afterAll` that permanently sets `fs.existsSync` / `fs.readFileSync` to stubs — that poisons the next test file on the same Jest worker (this broke `secrets-generator` then `app-uncovered-lines` on GitHub Actions Node 18 until removed).
 

@@ -1,6 +1,10 @@
 /**
  * @fileoverview Contract: shipped application.yaml front-door paths align with nginx → Traefik docs (plan 018 frontdoor-paths).
  * Miso: /miso/*; Dataplane: /data/* with optional /dev|/tst prefix when env-scoped resources apply.
+ *
+ * Isolated Jest project `application-frontdoor-paths-contract`: default worker can still see
+ * `jest.mock('js-yaml')` / `jest.mock('fs')` side effects on GitHub Actions; run in a fresh process
+ * (see jest.projects.js), like infra-platform-contract and register-aifabrix-shell-env.
  */
 
 'use strict';

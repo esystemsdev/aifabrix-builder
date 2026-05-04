@@ -200,6 +200,10 @@ const defaultProject = {
       '/tests/lib/app/app.test.js',
       '\\\\tests\\\\lib\\\\app\\\\app.test.js',
       'lib/app/app.test.js',
+      '/tests/lib/templates/application-frontdoor-paths.contract.test.js',
+      '\\\\tests\\\\lib\\\\templates\\\\application-frontdoor-paths.contract.test.js',
+      'lib/templates/application-frontdoor-paths.contract.test.js',
+      'application-frontdoor-paths\\.contract\\.test\\.js',
       '/tests/lib/core/admin-secrets.test.js',
       '\\\\tests\\\\lib\\\\core\\\\admin-secrets.test.js',
       'lib/core/admin-secrets.test.js'
@@ -239,6 +243,9 @@ const isolatedProjects = [
   ]),
   makeIsolatedProject('infra-platform-contract', [
     '**/tests/lib/parameters/infra-platform-contract.test.js'
+  ]),
+  makeIsolatedProject('application-frontdoor-paths-contract', [
+    '**/tests/lib/templates/application-frontdoor-paths.contract.test.js'
   ]),
   makeIsolatedProject('database-secret-values', [
     '**/tests/lib/parameters/database-secret-values.test.js'
