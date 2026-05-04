@@ -53,18 +53,63 @@ describe('formatDatasourceTestRunTTY', () => {
     expect(s).toContain('Capability scope: read');
   });
 
-  it('rounds debug.executionSummary seconds to 3 decimals in TTY output', () => {
+  it('omits debug.executionSummary in header unless includeDebugExecutionSummary (CLI --debug)', () => {
     const raw = formatDatasourceTestRunTTY({
       datasourceKey: 'x.ds',
       systemKey: 'x',
       runType: 'e2e',
       status: 'ok',
-      audit: { traceRefs: ['t1'] },
       debug: { executionSummary: 'Async E2E duration 1.1713749803602695s' }
     });
+    const s = stripAnsi(raw);
+    expect(s).not.toContain('debug.executionSummary:');
+  });
+
+  it('rounds debug.executionSummary seconds to 3 decimals when includeDebugExecutionSummary', () => {
+    const raw = formatDatasourceTestRunTTY(
+      {
+        datasourceKey: 'x.ds',
+        systemKey: 'x',
+        runType: 'e2e',
+        status: 'ok',
+        audit: { traceRefs: ['t1'] },
+        debug: { executionSummary: 'Async E2E duration 1.1713749803602695s' }
+      },
+      { includeDebugExecutionSummary: true }
+    );
     const s = stripAnsi(raw);
     expect(s).toContain('debug.executionSummary:');
     expect(s).toContain('Async E2E duration 1.171s');
     expect(s).not.toContain('1.1713749803602695s');
+  });
+
+  it('prints Capacity operations in header without includeDebugExecutionSummary', () => {
+    const raw = formatDatasourceTestRunTTY({
+      datasourceKey: 'ds-a',
+      systemKey: 'sys',
+      runType: 'e2e',
+      status: 'ok',
+      debug: {
+        e2eAsyncDebug: {
+          stepDebug: [
+            {
+              name: 'capacity',
+              evidence: {
+                datasources: [
+                  {
+                    key: 'ds-a',
+                    capabilityDetails: [{ key: 'capacity:create#0', success: true }]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    });
+    const s = stripAnsi(raw);
+    expect(s).toContain('Capacity operations:');
+    expect(s).toContain('insert');
+    expect(s).not.toContain('debug.executionSummary:');
   });
 });

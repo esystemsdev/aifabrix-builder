@@ -1,0 +1,7 @@
+{
+  "$comment": "Used when external-datasource.schema.json is not on disk. standardOperationOrder must match $defs.cipDefinition.properties.operations.properties key order in dataplane app/schemas/json/external-datasource.schema.json.",
+  "standardOperationOrder": ["list", "get", "create", "update", "delete"],
+  "displayAliases": {
+    "create": "insert (create)"
+  }
+}

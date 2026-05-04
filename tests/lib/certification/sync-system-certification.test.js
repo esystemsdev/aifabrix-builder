@@ -276,7 +276,7 @@ describe('syncSystemCertificationFromDataplane', () => {
     expect(writeConfigFile).not.toHaveBeenCalled();
   });
 
-  it('logs issuance-specific guidance when no_active and CERTIFICATION_NOT_PASSED hint', async() => {
+  it('logs only primary line when CERTIFICATION_NOT_PASSED hint without verboseCertHints', async() => {
     getIntegrationPath.mockReturnValue('/integration/hub');
     discoverIntegrationFiles.mockReturnValue({ systemFiles: ['hub-system.json'], datasourceFiles: [] });
     loadConfigFile.mockReturnValue({ key: 'hub', certification: {} });
@@ -287,6 +287,25 @@ describe('syncSystemCertificationFromDataplane', () => {
       authConfig: { token: 't' },
       datasourceKeys: ['users'],
       issuanceFailureHint: 'CERTIFICATION_NOT_PASSED: Certification did not pass'
+    });
+    const combined = logger.log.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(combined).toMatch(/issuance validation pass/i);
+    expect(combined).not.toMatch(/re-validates the whole system/i);
+    expect(combined).not.toMatch(/Auto-issue detail:/);
+  });
+
+  it('logs extended issuance guidance when verboseCertHints', async() => {
+    getIntegrationPath.mockReturnValue('/integration/hub');
+    discoverIntegrationFiles.mockReturnValue({ systemFiles: ['hub-system.json'], datasourceFiles: [] });
+    loadConfigFile.mockReturnValue({ key: 'hub', certification: {} });
+    getActiveIntegrationCertificate.mockResolvedValue({ success: false, status: 404 });
+    await syncSystemCertificationFromDataplane({
+      systemKey: 'hub',
+      dataplaneUrl: 'http://dp.test',
+      authConfig: { token: 't' },
+      datasourceKeys: ['users'],
+      issuanceFailureHint: 'CERTIFICATION_NOT_PASSED: Certification did not pass',
+      verboseCertHints: true
     });
     const combined = logger.log.mock.calls.map((c) => c.join(' ')).join('\n');
     expect(combined).toMatch(/issuance validation pass/i);
@@ -377,6 +396,7 @@ describe('maybeSyncSystemCertificationFromDataplane', () => {
       datasourceKeys: ['users']
     });
     const combined = logger.log.mock.calls.flat().join(' ');
-    expect(combined).toMatch(/Certification block not updated|Could not build certification/);
+    expect(combined).toMatch(/Certification not written|no active trusted certificate/i);
+    expect(combined).not.toMatch(/Could not build certification/);
   });
 });
