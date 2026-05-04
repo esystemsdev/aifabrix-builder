@@ -25,7 +25,7 @@ The summary lists **two** Jest runs: first block is the default project (~294 su
 Prefer **isolated Jest projects** (`jest.projects.js`: `testPathIgnorePatterns` + `makeIsolatedProject`) for suites that:
 
 - `jest.mock('fs')` with custom `mockImplementation` that must not leak to other files, or
-- need real `node:fs` while other suites mock `fs`, or
+- need real `node:fs` / `node:fs.promises` while other suites mock `fs` or `node:fs` (e.g. `register-aifabrix-shell-env`, `log-viewer-run` run with the `log-viewer` isolated group), or
 - partially mock `paths` / other singletons.
 
 Do **not** use a top-level `afterAll` that permanently sets `fs.existsSync` / `fs.readFileSync` to stubs — that poisons the next test file on the same Jest worker (this broke `secrets-generator` then `app-uncovered-lines` on GitHub Actions Node 18 until removed).

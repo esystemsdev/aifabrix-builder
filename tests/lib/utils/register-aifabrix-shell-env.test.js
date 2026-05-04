@@ -1,5 +1,8 @@
 /**
  * @fileoverview Tests for register-aifabrix-shell-env.js
+ *
+ * Isolated Jest project `register-aifabrix-shell-env`: needs real `node:fs.promises`; other suites’
+ * `jest.mock('fs')` / worker order can break disk writes on GitHub Actions if run in default project.
  */
 
 'use strict';
