@@ -50,11 +50,11 @@ describe('validation-run-request', () => {
   it('buildE2eOptionsFromCli merges e2eOptionsExtra', () => {
     const e = buildE2eOptionsFromCli({
       debug: true,
-      testCrud: true,
+      runScenarios: false,
       e2eOptionsExtra: { customFlag: true }
     });
     expect(e.includeDebug).toBe(true);
-    expect(e.testCrud).toBe(true);
+    expect(e.runScenarios).toBe(false);
     expect(e.customFlag).toBe(true);
   });
 

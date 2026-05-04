@@ -801,7 +801,7 @@ aifabrix datasource upload test-e2e-hubspot-users
 8. Uploads datasource to the dataplane
 9. Displays results
 
-**Output:** 
+**Output:**
 
 ```text
 Datasource upload
@@ -949,8 +949,7 @@ aifabrix datasource test-e2e hubspot-contacts --app hubspot read
 - `-e, --env <env>` – Environment: dev, tst, or pro.
 - `-v, --verbose` – Detailed step output: managed record counts for the sync step, CIP execution trace summary, and when polling, progress (e.g. steps completed so far).
 - `--debug [level]` – Richer debug, optional terminal appendix, and log under `integration/<systemKey>/logs/` (levels: **`summary`**, **`full`**, **`raw`**; see [External Integration Testing](external-integration-testing.md#debug-output-datasource-commands)); no appendix with `--json`.
-- `--test-crud` – Enable CRUD lifecycle test.
-- `--record-id <id>` – Record ID to use for the test.
+- `--no-run-scenarios` – Do not expand `testPayload.scenarios` in the capacity step (use merged `testPayload` fixtures only).
 - `--no-cleanup` – Disable cleanup after the test.
 - `--primary-key-value <value|@path>` – Primary key value, or path to a JSON file (prefix with `@`) for composite keys.
 - `--no-async` – Use sync mode: single request, no polling (useful for short runs or backward compatibility).

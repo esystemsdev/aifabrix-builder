@@ -7,12 +7,12 @@
     "key": "document-storage-schema",
     "name": "Document Storage Configuration Schema",
     "description": "JSON schema for validating document storage configurations",
-    "version": "1.6.0",
+    "version": "1.7.0",
     "type": "schema",
     "category": "document-storage",
     "author": "AI Fabrix Team",
     "createdAt": "2026-01-02T00:00:00Z",
-    "updatedAt": "2026-04-28T00:00:00Z",
+    "updatedAt": "2026-05-01T00:00:00Z",
     "compatibility": {
       "minVersion": "1.0.0",
       "maxVersion": "2.0.0",
@@ -95,6 +95,14 @@
           "Added documentStorage.changeDetection.ignoreMetadataKeys / ignoreMetadataPaths for stable contentHash when volatile metadata changes"
         ],
         "breaking": false
+      },
+      {
+        "version": "1.7.0",
+        "date": "2026-05-01T00:00:00Z",
+        "changes": [
+          "Added optional maxBinaryFetchConcurrency (integer >= 1, default 1) to bound parallel binary fetches in two-phase sync phase 3"
+        ],
+        "breaking": false
       }
     ]
   },
@@ -125,6 +133,12 @@
       "type": "integer",
       "minimum": 1,
       "description": "When set, caps binary fetch + store operations per sync run (metadata list may still return more rows). Optional for fast integration/E2E; omit in production for full sync."
+    },
+    "maxBinaryFetchConcurrency": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Maximum concurrent binary CIP/HTTP fetches during two-phase sync phase 3. Default 1 (sequential). Increase cautiously; external APIs may throttle."
     },
     "binaryOperationRef": {
       "type": "string",

@@ -6,6 +6,7 @@ const {
   resolveDebugDisplayMode,
   truncateUtf8String,
   formatDatasourceTestRunDebugBlock,
+  pushE2eTimingSummaryLines,
   FULL_MAX_BYTES_PER_STRING,
   RAW_MAX_LINES
 } = require('../../../lib/utils/datasource-test-run-debug-display');
@@ -30,6 +31,47 @@ describe('datasource-test-run-debug-display', () => {
     const t = truncateUtf8String(long, 20);
     expect(t).toContain('truncated');
     expect(t.length).toBeLessThan(long.length);
+  });
+
+  it('pushE2eTimingSummaryLines prints step durations and sync phase timings', () => {
+    const lines = [];
+    pushE2eTimingSummaryLines(lines, {
+      debug: {
+        e2eAsyncDebug: {
+          timing: {
+            durationSeconds: 12.5,
+            wallClockSeconds: 15,
+            stepDurations: [
+              { step: 'credential', durationSeconds: 1.2 },
+              { step: 'sync', durationSeconds: 9.8 }
+            ]
+          },
+          stepDebug: [
+            {
+              name: 'sync',
+              evidence: {
+                jobs: [
+                  {
+                    audit: {
+                      phaseTimingsSeconds: {
+                        phase1: 0.5,
+                        phase2: 0.1,
+                        phase3: 8.2,
+                        phase4: 0.9
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    });
+    expect(lines).toContain('E2E worker: ~12.500s (wall ~15.000s)');
+    expect(lines).toContain('  credential: ~1.200s');
+    expect(lines).toContain('  sync: ~9.800s');
+    expect(lines.some(l => l.includes('Sync phases (first job):') && l.includes('phase3 ~8.200s'))).toBe(true);
   });
 
   it('formatDatasourceTestRunDebugBlock summary lists ref layout', () => {

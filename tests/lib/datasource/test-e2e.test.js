@@ -93,9 +93,8 @@ describe('Datasource Test E2E', () => {
     it('should pass e2e body options to unified run', async() => {
       await runDatasourceTestE2E('hubspot-contacts', {
         app: 'myapp',
-        testCrud: true,
-        recordId: 'rec-1',
         cleanup: false,
+        runScenarios: false,
         primaryKeyValue: 'pk-val',
         capabilityKey: 'read'
       });
@@ -103,9 +102,8 @@ describe('Datasource Test E2E', () => {
       expect(runUnifiedDatasourceValidation).toHaveBeenCalledWith(
         'hubspot-contacts',
         expect.objectContaining({
-          testCrud: true,
-          recordId: 'rec-1',
           cleanup: false,
+          runScenarios: false,
           primaryKeyValue: 'pk-val',
           capabilityKey: 'read'
         })

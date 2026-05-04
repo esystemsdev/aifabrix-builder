@@ -713,6 +713,10 @@
                     "input":{
                        "type":"object",
                        "additionalProperties":true
+                    },
+                    "order":{
+                       "type":"integer",
+                       "description":"Optional stable sort hint for scenario execution / diagnostics."
                     }
                  },
                  "additionalProperties":false
