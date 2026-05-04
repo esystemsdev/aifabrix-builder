@@ -34,6 +34,8 @@ Do **not** use a top-level `afterAll` that permanently sets `fs.existsSync` / `f
 
 `tests/local/` is excluded from default and isolated CI runs unless `INCLUDE_LOCAL_TESTS=true`. Use that only for **opt-in** heavy or environment-bound suites—not as the first fix for Jest ordering; prefer isolation above.
 
+**Current local-only URL suites** (path/registry/temp-dir brittleness on GitHub Actions): `tests/local/lib/utils/url-declarative-resolve-expand.test.js`, `url-declarative-truth-table-124.test.js`, `declarative-url-matrix-d-reload.test.js`.
+
 ## GitHub Actions
 
 Use **Node 20+** in workflows if devDependencies declare `engines: { node: '>=20' }` (e.g. `cross-env`, `markdownlint`) to avoid `EBADENGINE` noise and align with local dev. The package test suite is validated on the repo’s supported Node version used in CI.

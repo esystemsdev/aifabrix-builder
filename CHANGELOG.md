@@ -1,7 +1,7 @@
 ## [2.44.5] - 2026-05-04
 
 ### Changed
-- **`aifabrix up-platform --force`:** Before cleaning builder app folders, clears all stored device and client tokens in local config, sets `environment` to `dev`, then re-fetches keycloak, miso-controller, and dataplane from templates. Re-login required afterward.
+- **`aifabrix up-platform --force`:** Before cleaning builder app folders, clears all stored device and client tokens in local config, sets `environment` to `dev`, sets `controller` to the default URL for the current developer ID (same port rule as local miso-controller), then re-fetches keycloak, miso-controller, and dataplane from templates. Re-login required afterward.
 
 ---
 
