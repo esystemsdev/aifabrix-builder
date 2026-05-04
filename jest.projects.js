@@ -57,18 +57,14 @@ const defaultProject = {
       '/tests/lib/utils/cli-utils.test.js',
       '/tests/lib/utils/external-system-display.test.js',
       '/tests/lib/utils/dev-hosts-helper.test.js',
-      '/tests/lib/utils/declarative-url-matrix-d-reload.test.js',
       '/tests/lib/utils/datasource-validation-watch.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\cli-utils.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\external-system-display.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\dev-hosts-helper.test.js',
-      '\\\\tests\\\\lib\\\\utils\\\\declarative-url-matrix-d-reload.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\datasource-validation-watch.test.js',
       'lib/utils/dev-hosts-helper.test.js',
-      'lib/utils/declarative-url-matrix-d-reload.test.js',
       'lib/utils/datasource-validation-watch.test.js',
       'dev-hosts-helper\\.test\\.js',
-      'declarative-url-matrix-d-reload\\.test\\.js',
       '/tests/lib/datasource/log-viewer.test.js',
       '\\\\tests\\\\lib\\\\datasource\\\\log-viewer.test.js',
       'lib/datasource/log-viewer.test.js',
@@ -153,10 +149,6 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\utils\\\\paths-app-listing.test.js',
       'lib/utils/paths-app-listing.test.js',
       'paths-app-listing\\.test\\.js',
-      '/tests/lib/utils/url-declarative-truth-table-124.test.js',
-      '\\\\tests\\\\lib\\\\utils\\\\url-declarative-truth-table-124.test.js',
-      'lib/utils/url-declarative-truth-table-124.test.js',
-      'url-declarative-truth-table-124\\.test\\.js',
       '/tests/lib/generator/generator-external-rbac.test.js',
       '\\\\tests\\\\lib\\\\generator\\\\generator-external-rbac.test.js',
       'lib/generator/generator-external-rbac.test.js',
@@ -221,9 +213,6 @@ const isolatedProjects = [
   makeIsolatedProject('cli-utils', ['**/tests/lib/utils/cli-utils.test.js']),
   makeIsolatedProject('external-system-display', ['**/tests/lib/utils/external-system-display.test.js']),
   makeIsolatedProject('dev-hosts-helper', ['**/tests/lib/utils/dev-hosts-helper.test.js']),
-  makeIsolatedProject('declarative-url-matrix-d-reload', [
-    '**/tests/lib/utils/declarative-url-matrix-d-reload.test.js'
-  ]),
   makeIsolatedProject('parameters-validate', ['**/tests/lib/commands/parameters-validate.test.js']),
   makeIsolatedProject('paths-app-listing', ['**/tests/lib/utils/paths-app-listing.test.js']),
   makeIsolatedProject('datasource-validation-watch', [
@@ -282,9 +271,6 @@ const isolatedProjects = [
   ]),
   makeIsolatedProject('helpers-ensure-admin-secrets', [
     '**/tests/lib/infrastructure/helpers-ensure-admin-secrets.test.js'
-  ]),
-  makeIsolatedProject('url-declarative-truth-table-124', [
-    '**/tests/lib/utils/url-declarative-truth-table-124.test.js'
   ]),
   makeIsolatedProject('secrets-generator', ['**/tests/lib/utils/secrets-generator.test.js']),
   makeIsolatedProject('app-uncovered-lines', ['**/tests/lib/app/app-uncovered-lines.test.js']),

@@ -1,6 +1,8 @@
 /**
  * Plan 122 Matrix D — `aifabrix run --reload` / envOutputPath parity with docker-profile url:// expansions.
  * Golden rows reference `.cursor/plans/122-declarative_url_resolution.plan.md` § Matrix D.
+ *
+ * Local-only: excluded from default CI (filesystem + path mocks differ on GitHub Actions).
  */
 
 'use strict';
@@ -13,18 +15,18 @@ const fs = require('node:fs');
 const path = require('path');
 const os = require('os');
 
-jest.mock('../../../lib/utils/paths', () => ({
-  ...jest.requireActual('../../../lib/utils/paths'),
+jest.mock('../../../../lib/utils/paths', () => ({
+  ...jest.requireActual('../../../../lib/utils/paths'),
   getAifabrixHome: jest.fn(),
   getProjectRoot: jest.fn(),
   getBuilderRoot: jest.fn()
 }));
 
-const pathsUtil = require('../../../lib/utils/paths');
+const pathsUtil = require('../../../../lib/utils/paths');
 const {
   expandDeclarativeUrlsInEnvContent,
   parseSimpleEnvMap
-} = require('../../../lib/utils/url-declarative-resolve');
+} = require('../../../../lib/utils/url-declarative-resolve');
 
 describe('Matrix D (plan 122) — reload uses docker-profile url:// expansions', () => {
   let tmp;

@@ -52,7 +52,9 @@ jest.mock('../../../lib/utils/config-format', () => ({
 }));
 
 const fs = require('fs');
+const config = require('../../../lib/core/config');
 const {
+  applyUpPlatformForceConfig,
   cleanBuilderAppDirs,
   ensureAppFromTemplate,
   validateEnvOutputPathFolderOrNull,
@@ -251,6 +253,25 @@ describe('up-common patchEnvOutputPathForDeployOnly', () => {
     patchEnvOutputPathForDeployOnly('miso-controller');
     expect(configFormat.writeConfigFile).toHaveBeenCalled();
     expect(configFormat.writeConfigFile.mock.calls[0][1].build.envOutputPath).toBe(null);
+  });
+});
+
+describe('up-common applyUpPlatformForceConfig', () => {
+  beforeEach(() => {
+    jest.spyOn(config, 'clearAllDeviceTokens').mockResolvedValue(2);
+    jest.spyOn(config, 'clearAllClientTokens').mockResolvedValue(1);
+    jest.spyOn(config, 'setCurrentEnvironment').mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('clears all device and client tokens then sets environment to dev', async() => {
+    await applyUpPlatformForceConfig();
+    expect(config.clearAllDeviceTokens).toHaveBeenCalledTimes(1);
+    expect(config.clearAllClientTokens).toHaveBeenCalledTimes(1);
+    expect(config.setCurrentEnvironment).toHaveBeenCalledWith('dev');
   });
 });
 
