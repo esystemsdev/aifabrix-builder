@@ -49,6 +49,8 @@ npm test -- tests/local/lib/template-validator.test.js
 - `lib/utils/url-declarative-resolve-expand.test.js` - Plan 122 expand / parseSimpleEnvMap / ingress matrix; excluded from CI (paths + `urls.local` registry merge differs on GitHub Actions)
 - `lib/utils/url-declarative-truth-table-124.test.js` - Plan 124 truth table
 - `lib/utils/declarative-url-matrix-d-reload.test.js` - Plan 122 Matrix D reload parity
+- `lib/utils/datasource-test-run-display-snapshot.test.js` - Golden TTY snapshot for `formatDatasourceTestRunTTY` (chalk/CI drift)
+- `lib/utils/external-system-system-test-tty.test.js` - §17 system aggregate TTY + snapshot (chalk/CI drift)
 
 ## CI Exclusion
 

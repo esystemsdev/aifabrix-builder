@@ -1,17 +1,19 @@
 /**
  * @fileoverview System-level (§17) TTY renderer tests for aggregated DatasourceTestRun results.
+ *
+ * Local-only: includes snapshot assertions sensitive to chalk / CI environment (same class as expand-url tests).
  */
 
-jest.mock('../../../lib/utils/logger', () => ({
+jest.mock('../../../../lib/utils/logger', () => ({
   log: jest.fn(),
   warn: jest.fn(),
   error: jest.fn()
 }));
 
-const logger = require('../../../lib/utils/logger');
+const logger = require('../../../../lib/utils/logger');
 const {
   displaySystemAggregateDatasourceTestRuns
-} = require('../../../lib/utils/external-system-system-test-tty');
+} = require('../../../../lib/utils/external-system-system-test-tty');
 
 function stripAnsi(s) {
   const esc = String.fromCharCode(27);

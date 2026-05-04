@@ -36,6 +36,8 @@ Do **not** use a top-level `afterAll` that permanently sets `fs.existsSync` / `f
 
 **Current local-only URL suites** (path/registry/temp-dir brittleness on GitHub Actions): `tests/local/lib/utils/url-declarative-resolve-expand.test.js`, `url-declarative-truth-table-124.test.js`, `declarative-url-matrix-d-reload.test.js`.
 
+**TTY snapshot suites** (chalk / ANSI stripping differs across runners): `tests/local/lib/utils/datasource-test-run-display-snapshot.test.js`, `external-system-system-test-tty.test.js`.
+
 ## GitHub Actions
 
 Use **Node 20+** in workflows if devDependencies declare `engines: { node: '>=20' }` (e.g. `cross-env`, `markdownlint`) to avoid `EBADENGINE` noise and align with local dev. The package test suite is validated on the repo’s supported Node version used in CI.

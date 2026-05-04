@@ -1,0 +1,53 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`displaySystemAggregateDatasourceTestRuns system aggregate TTY matches snapshot (integration, single ok row) 1`] = `
+"
+Server test results
+
+System: snap-sys
+Run: test-integration (dataplane)
+Status: ✔ OK
+
+Verdict:
+✔ Suitable for production use
+
+Summary:
+1 datasource(s): 1 ok, 0 warn, 0 fail
+
+────────────────────────────────
+
+Data Quality:
+✔ Schema coverage — structural coverage aggregated across datasources.
+✔ Data consistency — issues aggregated across datasources.
+✔ Data reliability — issues aggregated across datasources.
+
+Readiness: ✔ Ready
+
+────────────────────────────────
+
+Datasources:
+
+✔ 1 datasource(s) fully ready
+
+────────────────────────────────
+
+Integration health:
+
+snap-sys.a: ✔ ok
+
+────────────────────────────────
+
+Certification:
+
+System level: ✔ Achieved
+
+Breakdown:
+- snap-sys.a: ✔ bronze
+
+────────────────────────────────
+
+Use:
+aifabrix datasource test-integration snap-sys.a
+
+✔ All server tests passed."
+`;
