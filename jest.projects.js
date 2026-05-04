@@ -57,20 +57,28 @@ const defaultProject = {
       '/tests/lib/utils/cli-utils.test.js',
       '/tests/lib/utils/external-system-display.test.js',
       '/tests/lib/utils/dev-hosts-helper.test.js',
+      '/tests/lib/utils/register-aifabrix-shell-env.test.js',
       '/tests/lib/utils/datasource-validation-watch.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\cli-utils.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\external-system-display.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\dev-hosts-helper.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\register-aifabrix-shell-env.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\datasource-validation-watch.test.js',
       'lib/utils/dev-hosts-helper.test.js',
+      'lib/utils/register-aifabrix-shell-env.test.js',
       'lib/utils/datasource-validation-watch.test.js',
       'dev-hosts-helper\\.test\\.js',
+      'register-aifabrix-shell-env\\.test\\.js',
       '/tests/lib/datasource/log-viewer.test.js',
       '\\\\tests\\\\lib\\\\datasource\\\\log-viewer.test.js',
       'lib/datasource/log-viewer.test.js',
       '/tests/lib/datasource/log-viewer-structural.test.js',
+      '/tests/lib/datasource/log-viewer-run.test.js',
       '\\\\tests\\\\lib\\\\datasource\\\\log-viewer-structural.test.js',
+      '\\\\tests\\\\lib\\\\datasource\\\\log-viewer-run.test.js',
       'lib/datasource/log-viewer-structural.test.js',
+      'lib/datasource/log-viewer-run.test.js',
+      'log-viewer-run\\.test\\.js',
       '/tests/lib/commands/parameters-validate.test.js',
       '\\\\tests\\\\lib\\\\commands\\\\parameters-validate.test.js',
       'lib/commands/parameters-validate.test.js',
@@ -220,7 +228,11 @@ const isolatedProjects = [
   ]),
   makeIsolatedProject('log-viewer', [
     '**/tests/lib/datasource/log-viewer.test.js',
-    '**/tests/lib/datasource/log-viewer-structural.test.js'
+    '**/tests/lib/datasource/log-viewer-structural.test.js',
+    '**/tests/lib/datasource/log-viewer-run.test.js'
+  ]),
+  makeIsolatedProject('register-aifabrix-shell-env', [
+    '**/tests/lib/utils/register-aifabrix-shell-env.test.js'
   ]),
   makeIsolatedProject('datasource-test-run-schema-sync', [
     '**/tests/lib/utils/datasource-test-run-schema-sync.test.js'
