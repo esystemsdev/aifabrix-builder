@@ -20,13 +20,15 @@
 - `deploy.js` – Deploy script for the integration
 - `wizard.yaml` – Wizard configuration (if created via wizard)
 
-Optional: `{{rbacOptionalFile}}` – Roles and permissions merged into the system when present.
+Optional: `{{rbacOptionalFile}}` – Roles and permissions merged into the system when
+present.
 
 ## Quick Start
 
 Login to your controller
+
 ```bash
-aifabrix auth config --set-controller <url> --set-environment dev
+aifabrix auth config --set-controller URL --set-environment dev
 aifabrix login
 ```
 
@@ -45,22 +47,25 @@ Edit files in `integration/{{appName}}/`:
 - **Authentication**: `{{systemKey}}-system{{fileExt}}` (auth type, credentials placeholders)
 - **Field mappings**: `{{systemKey}}-datasource-*{{fileExt}}` (dimensions, attributes, operations)
 - **Credential and configuration**: `env.template` (security settings and configuration variables)
-
 {{#if secretPaths}}{{#if secretPaths.length}}
+
 ### Secrets
 
 Secrets are resolved from `.aifabrix` or key vault. Set them with:
 
 ```bash
 {{#each secretPaths}}
-aifabrix secret set {{path}} <your value>   # {{description}}
+aifabrix secret set {{path}} VALUE   # {{description}}
 {{/each}}
 ```
 {{/if}}{{/if}}
 
 ### 3. Validate configuration (local only)
 
-`aifabrix validate` runs **on your machine**: it loads files under `integration/{{appName}}/`, checks them against the application and external-system / external-datasource JSON schemas, and runs related manifest rules. It does **not** call the dataplane or any other remote API.
+`aifabrix validate` runs **on your machine**: it loads files under
+`integration/{{appName}}/`, checks them against the application and
+external-system / external-datasource JSON schemas, and runs related manifest rules.
+It does **not** call the dataplane or any other remote API.
 
 ```bash
 aifabrix validate {{appName}}
@@ -70,19 +75,23 @@ Use this before upload or deploy to catch structural and policy errors early.
 
 ### 4. Repair Deployment Manifest
 
-**Run repair regularly.** It keeps naming conventions, filenames, and the deployment manifest aligned with AI Fabrix platform best practices. Use it after editing datasources, env.template, or system config—and run it often to catch drift early.
+**Run repair regularly.** It keeps naming conventions, filenames, and the deployment
+manifest aligned with AI Fabrix platform best practices. Use it after editing
+datasources, env.template, or system config—and run it often to catch drift early.
 
 ```bash
 aifabrix repair {{appName}}
 ```
 
 Options:
-  --auth <method>  Set authentication method (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none); updates system file and env.template
-  --dry-run        Report changes only; do not write
-  --rbac           Ensure RBAC permissions per datasource and add default Admin/Reader roles if none exist
-  --expose         Set exposed.attributes on each datasource to all fieldMappings.attributes keys
-  --sync           Add default sync section to datasources that lack it
-  --test           Generate testPayload.payloadTemplate and testPayload.expectedResult from attributes
+
+- `--auth METHOD` — Set authentication method (`oauth2`, `aad`, `apikey`, `basic`,
+     `queryParam`, `oidc`, `hmac`, `none`); updates system file and env.template
+- `--dry-run` — Report changes only; do not write
+- `--rbac` — Ensure RBAC permissions per datasource and add default Admin/Reader roles if none exist
+- `--expose` — Set `exposed.attributes` on each datasource to all `fieldMappings.attributes` keys
+- `--sync` — Add default sync section to datasources that lack it
+- `--test` — Generate `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes
 
 ### 5. Upload to dataplane
 
@@ -93,12 +102,16 @@ aifabrix upload {{appName}}
 ## Testing
 
 | Command | Where it runs | Calls dataplane? |
-|--------|----------------|------------------|
+| --- | --- | --- |
 | `aifabrix validate {{appName}}` | Local (schemas / files) | No |
 | `aifabrix test {{appName}}` | Local (manifest / payload checks) | No |
-| `aifabrix test-integration {{appName}}`, `aifabrix test-e2e {{appName}}`, `aifabrix datasource test …`, `aifabrix datasource test-integration …`, `aifabrix datasource test-e2e …` | Through configured auth | Yes — unified validation / pipeline API |
+| `aifabrix test-integration {{appName}}` | Auth + dataplane | Yes |
+| `aifabrix test-e2e {{appName}}` | Auth + dataplane | Yes |
+| Datasource `test` / `test-integration` / `test-e2e` | Auth + dataplane | Yes |
 
-So: **validate** (and **`test`**) stay offline; **all integration and E2E test commands** exercise the system **via the API** (after login and a reachable dataplane).
+So: **validate** (and **`test`**) stay offline; **all integration and E2E test
+commands** exercise the system **via the API** (after login and a reachable
+dataplane).
 
 ### Local checks (no API)
 
@@ -120,14 +133,16 @@ aifabrix test-e2e {{appName}}
 ```
 
 Options:
-  -e, --env <env>  Environment: dev, tst, or pro (builder: dev/tst for container)
-  -v, --verbose    Show detailed step output and poll progress
-  --debug          Include debug output and write log to integration/{{appName}}/logs/
-  --no-async       Use sync mode (no polling); single POST per datasource
+
+- `-e`, `--env ENV` — Environment: `dev`, `tst`, or `pro` (builder: dev/tst for container)
+- `-v`, `--verbose` — Show detailed step output and poll progress
+- `-d`, `--debug` — Include debug output and write log to `integration/{{appName}}/logs/`
+- `--no-async` — Use sync mode (no polling); single POST per datasource
 
 ### E2E tests per datasource
 
-To run a full E2E test for a single datasource (config, credential, sync, data, CIP), use `aifabrix datasource test-e2e` with the datasource key and app:
+To run a full E2E test for a single datasource (config, credential, sync, data,
+CIP), use `aifabrix datasource test-e2e` with the datasource key and app:
 
 {{#if hasDatasources}}
 ```bash
@@ -140,25 +155,37 @@ aifabrix datasource test-e2e {{datasourceKey}} --app {{../appName}}
 {{/if}}
 
 Options:
-  -a, --app {{appName}}              App key (default: resolve from cwd if inside integration/{{appName}}/)
-  -e, --env <env>                    Environment: dev, tst, or pro
-  -v, --verbose                      Show detailed step output and poll progress
-  --debug                            Include debug output and write log to integration/{{appName}}/logs/
-  --no-run-scenarios                 Skip expanding testPayload.scenarios in capacity step
-  --no-cleanup                       Disable cleanup after test (body cleanup: false)
-  --primary-key-value <value|@path>  Primary key value or path to JSON file (e.g. @pk.json) for body primaryKeyValue
-  --no-async                         Use sync mode (no polling); single POST, no asyncRun
+
+- `-a`, `--app {{appName}}` — App key (default: resolve from cwd if inside `integration/{{appName}}/`)
+- `-e`, `--env ENV` — Environment: `dev`, `tst`, or `pro`
+- `-v`, `--verbose` — Show detailed step output and poll progress
+- `-d`, `--debug` — Include debug output and write log to `integration/{{appName}}/logs/`
+- `--no-run-scenarios` — Skip expanding `testPayload.scenarios` in capacity step
+- `--no-cleanup` — Disable cleanup after test (body cleanup: false)
+- `--primary-key-value VALUE` — Primary key value or path to JSON file (e.g.
+  `@pk.json`) for body `primaryKeyValue`
+- `--no-async` — Use sync mode (no polling); single POST, no asyncRun
 
 ## Deployment
 
-Deploy via miso-controller pipeline (same as regular apps). Auth and controller come from `aifabrix login` and `aifabrix auth config`:
+Deploy via miso-controller pipeline (same as regular apps). Auth and controller
+come from `aifabrix login` and `aifabrix auth config`:
 
 ```bash
 aifabrix deploy {{appName}}
 ```
 
+## Delete
+
+```bash
+aifabrix delete {{appName}}
+```
+
 ## Troubleshooting
 
-- **Local validation errors**: Run `aifabrix validate {{appName}}` (and `aifabrix test {{appName}}`) — these only inspect files on disk, not the dataplane.
-- **Deployment / auth**: Run `aifabrix auth config --set-controller <url> --set-environment <env>` and `aifabrix login` before `aifabrix deploy`.
+- **Local validation errors**: Run `aifabrix validate {{appName}}` (and
+  `aifabrix test {{appName}}`) — these only inspect files on disk, not the dataplane.
+- **Deployment / auth**: Run
+  `aifabrix auth config --set-controller URL --set-environment ENV` and
+  `aifabrix login` before `aifabrix deploy`.
 - **File not found**: Run commands from the project root (where `package.json` and `integration/` live).

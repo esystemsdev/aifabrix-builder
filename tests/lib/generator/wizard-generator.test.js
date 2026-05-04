@@ -183,6 +183,35 @@ describe('Wizard Generator', () => {
       expect(writtenContent.displayName).toBe('Test App');
     });
 
+    it('should normalize authentication kv paths and credentialKey to appName when dataplane used a spec-derived system key', async() => {
+      const companiesFromSpec = {
+        key: 'companies',
+        displayName: 'Companies',
+        description: 'Spec title',
+        version: '1.0.0',
+        authentication: {
+          method: 'oauth2',
+          security: {
+            clientId: 'kv://companies/clientId',
+            clientSecret: 'kv://companies/clientSecret'
+          },
+          credentialKey: 'companies-cred',
+          displayName: 'Companies'
+        }
+      };
+      await wizardGenerator.generateWizardFiles(appName, companiesFromSpec, datasourceConfigs, 'companies', {});
+      const systemFileCall = configFormat.writeConfigFile.mock.calls.find(call =>
+        call[0] && String(call[0]).includes(`${appName}-system.yaml`)
+      );
+      expect(systemFileCall).toBeDefined();
+      const written = systemFileCall[1];
+      expect(written.key).toBe(appName);
+      expect(written.authentication.credentialKey).toBe('test-app-cred');
+      expect(written.authentication.security.clientId).toBe('kv://test-app/clientId');
+      expect(written.authentication.security.clientSecret).toBe('kv://test-app/clientSecret');
+      expect(written.authentication.displayName).toBe('Test App');
+    });
+
     it('should write datasource YAML files with appName prefix', async() => {
       await wizardGenerator.generateWizardFiles(appName, systemConfig, datasourceConfigs, systemKey, {});
       // appName takes priority for file naming

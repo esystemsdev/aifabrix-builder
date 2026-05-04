@@ -184,7 +184,7 @@
           "type": "string",
           "description": "User intent (any descriptive text, e.g., 'sales-focused CRM integration')",
           "minLength": 1,
-          "maxLength": 500
+          "maxLength": 1000
         },
         "fieldOnboardingLevel": {
           "type": "string",
