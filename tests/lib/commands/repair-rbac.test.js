@@ -145,6 +145,49 @@ describe('repair-rbac', () => {
       expect(writeConfigFile).toHaveBeenCalledWith(rbacPath, expect.objectContaining({ roles: expect.any(Array), permissions: expect.any(Array) }));
     });
 
+    it('defaults roles for newly-added permissions when roles already exist', () => {
+      const rbacPath = path.join(appPath, 'rbac.json');
+      const existingRbac = {
+        roles: [
+          { name: 'Admin', value: 'hubspot-admin', description: 'Admin', groups: [] },
+          { name: 'Reader', value: 'hubspot-reader', description: 'Reader', groups: [] }
+        ],
+        permissions: [
+          { name: 'record:list', roles: ['hubspot-reader', 'hubspot-admin'], description: 'List' }
+        ]
+      };
+      const dsPath = path.join(appPath, 'hubspot-datasource-companies.json');
+      jest.spyOn(fs, 'existsSync').mockImplementation((p) => {
+        const s = String(p);
+        return s === rbacPath || s === dsPath;
+      });
+      loadConfigFile.mockImplementation((p) => {
+        if (p === rbacPath) return existingRbac;
+        if (p === dsPath) {
+          return { resourceType: 'companies', capabilities: ['list', 'get', 'create', 'update', 'delete'] };
+        }
+        return {};
+      });
+      writeConfigFile.mockImplementation(() => {});
+      const changes = [];
+
+      const result = mergeRbacFromDatasources(
+        appPath,
+        { key: 'hubspot', displayName: 'HubSpot' },
+        ['hubspot-datasource-companies.json'],
+        () => null,
+        { format: 'json', dryRun: false, changes }
+      );
+
+      expect(result).toBe(true);
+      const companiesList = existingRbac.permissions.find(p => p.name === 'companies:list');
+      const companiesCreate = existingRbac.permissions.find(p => p.name === 'companies:create');
+      expect(companiesList.roles).toEqual(expect.arrayContaining(['hubspot-reader', 'hubspot-admin']));
+      expect(companiesCreate.roles).toEqual(expect.arrayContaining(['hubspot-admin']));
+      expect(companiesCreate.roles.length).toBeGreaterThan(0);
+      expect(changes.some(c => c.includes('defaulted empty roles for companies:list'))).toBe(true);
+    });
+
     it('creates rbac.json when no rbac file exists and format is json', () => {
       const rbacJsonPath = path.join(appPath, 'rbac.json');
       const dsPath = path.join(appPath, 'hubspot-datasource-contact.json');

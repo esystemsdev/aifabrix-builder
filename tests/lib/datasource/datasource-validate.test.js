@@ -62,6 +62,32 @@ describe('Datasource Validation Module', () => {
       expect(mockValidate).toHaveBeenCalledWith(JSON.parse(mockContent));
     });
 
+    it('should pass through legacy capabilities object as-is', async() => {
+      const mockFilePath = '/path/to/datasource.json';
+      const mockContent = JSON.stringify({
+        key: 'test-datasource',
+        displayName: 'Test',
+        systemKey: 'hubspot',
+        capabilities: { list: true, get: true, create: false },
+        fieldMappings: {}
+      });
+      const mockValidate = jest.fn().mockReturnValue(true);
+
+      fsSync.existsSync.mockImplementation((filePath) => filePath === mockFilePath);
+      fsSync.readFileSync.mockReturnValue(mockContent);
+      loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+      const { validateDatasourceFile } = require('../../../lib/datasource/validate');
+      const result = await validateDatasourceFile(mockFilePath);
+
+      expect(result.valid).toBe(true);
+      expect(mockValidate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          capabilities: { list: true, get: true, create: false }
+        })
+      );
+    });
+
     it('should return errors for invalid datasource file', async() => {
       const mockFilePath = '/path/to/invalid.json';
       const mockContent = JSON.stringify({

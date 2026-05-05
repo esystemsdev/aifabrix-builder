@@ -694,12 +694,17 @@
            },
            "primaryKey":{
               "type":"object",
-              "description":"Optional key/value payload for primary-key focused operation tests.",
+              "description":"Concrete primary-key field values for list/get/mutations, keyed by the same names as the datasource manifest primaryKey array. Authors may supply a subset of PK fields. Optional primaryKey.search (string legacy filter or JSON filter object) resolves a row via list when implemented for the engine.",
               "additionalProperties":true
+           },
+           "useCopyForMutations":{
+              "type":"boolean",
+              "default":true,
+              "description":"When true (default if scenarios include create), after create the executor merges returned identifiers into the effective primary key for later get/update/delete in that run. When false, mutations use the static manifest primaryKey (destructive on shared fixtures). Ignored when no create scenario exists."
            },
            "scenarios":{
               "type":"array",
-              "description":"Optional operation-specific test scenarios.",
+              "description":"Ordered scenario steps for capacity E2E; execution order is array order (optional order field is a diagnostics hint only).",
               "items":{
                  "type":"object",
                  "required":[
@@ -709,6 +714,11 @@
                     "operation":{
                        "type":"string",
                        "pattern":"^[a-z][a-zA-Z0-9]*$"
+                    },
+                    "enabled":{
+                       "type":"boolean",
+                       "default":true,
+                       "description":"When false, the executor skips this scenario and records an explicit skip (scenario_disabled) in evidence."
                     },
                     "input":{
                        "type":"object",

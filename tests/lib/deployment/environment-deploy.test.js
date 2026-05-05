@@ -79,6 +79,10 @@ jest.mock('../../../lib/api/pipeline.api', () => ({
   getPipelineDeployment: jest.fn()
 }));
 
+jest.mock('../../../lib/api/controller-health.api', () => ({
+  getControllerDeploymentType: jest.fn().mockResolvedValue('azure')
+}));
+
 jest.mock('../../../lib/utils/deployment-errors', () => ({
   handleDeploymentErrors: jest.fn().mockResolvedValue()
 }));

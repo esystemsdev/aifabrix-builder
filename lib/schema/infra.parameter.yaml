@@ -113,6 +113,17 @@ parameters:
       vaultSecretName: keycloak-client-secretKeyVault
       notes: Per-app OAuth client secret from Keycloak registration; generated on first ensure.
 
+  # Keycloak events: webhook signature secret used by miso-controller (KEYCLOAK_EVENTS_SECRET).
+  # This must exist on first boot because up-platform runs containers from templates (no prior resolve).
+  - key: keycloak-events-secretKeyVault
+    scope: shared-service
+    generator:
+      type: randomBytes32
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: >-
+        Shared secret for Keycloak event signature verification. Generated on first ensure for local bootstrap.
+
   - key: keycloak-default-passwordKeyVault
     scope: shared-service
     generator:
@@ -236,6 +247,16 @@ parameters:
       notes: >-
         Per-app OAuth client id from controller registration; literal default matches local Keycloak client naming.
 
+  - key: miso-controller-client-secretKeyVault
+    scope: app
+    generator:
+      type: randomBytes32
+    ensureOn: [upInfra, resolveApp]
+    azure:
+      notes: >-
+        Per-app OAuth client secret used by miso-controller for service-to-service auth (MISO_CLIENTSECRET).
+        Generated on first ensure for local bootstrap.
+
   # Dataplane ↔ controller OAuth (builder/dataplane env.template MISO_CLIENTID / MISO_CLIENTSECRET).
   - key: dataplane-client-idKeyVault
     scope: app
@@ -332,7 +353,7 @@ parameters:
     scope: app
     generator:
       type: randomBytes32
-    ensureOn: [resolveApp]
+    ensureOn: [upInfra, resolveApp]
     azure:
       notes: >-
         Prefer {appKey}-secrets-apiKeyVault locally; dataplane shares miso-controller's entry for pipeline Bearer bypass.
