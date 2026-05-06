@@ -233,7 +233,7 @@ Repair external integration config when `application.yaml` drifts from files on 
 - **env.template key drift** — env.template has wrong or missing KV_* keys or non–path-style kv values; repair aligns names and values with the system's authentication.security and configuration
 - **Stale deploy manifest** — Regenerates `<systemKey>-deploy.json` after config changes
 - **Datasource key and filename normalization** — Repair normalizes datasource keys to `<systemKey>-<resourceType>` (or `<systemKey>-<resourceType>-2`, `-3` for duplicates) and filenames to `<systemKey>-datasource-<suffix>.<ext>`. Keys or filenames that already match the valid pattern (e.g. `customer-extra`, `customer-1`) are left unchanged.
-- **Optional flags** — `--rbac` adds or merges RBAC permissions per datasource and default Admin/Reader roles if none exist; `--expose` sets **`exposed.schema`** on each datasource (each key maps to `metadata.<key>` for every `fieldMappings.attributes` key) and removes deprecated `exposed.attributes` if present; `--sync` adds a default sync section (`mode`, `batchSize`) to datasources that lack it (not applied when `entityType` is `none`); `--test` rebuilds `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes and strips unknown top-level `testPayload` keys
+- **Optional flags** — `--rbac` adds or merges RBAC permissions per datasource and default Admin/Reader roles if none exist, and moves any roles/permissions from the `*-system` file into the rbac file when both are present; `--expose` sets **`exposed.schema`** on each datasource (each key maps to `metadata.<key>` for every `fieldMappings.attributes` key) and removes deprecated `exposed.attributes` if present; `--sync` adds a default sync section (`mode`, `batchSize`) to datasources that lack it (not applied when `entityType` is `none`); `--test` rebuilds `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes and strips unknown top-level `testPayload` keys
 - **Authentication method** — When `--auth <method>` is provided, repair sets the integration’s authentication to that method (canonical variables and security) and updates env.template accordingly
 
 **Usage:**
@@ -258,7 +258,7 @@ aifabrix repair hubspot --doc
 - `--auth <method>` — Set authentication method (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none); updates the system file and env.template
 - `--doc` — Regenerate `README.md` from the deployment manifest
 - `--dry-run` — Report what would be changed; do not write
-- `--rbac` — Ensure RBAC has a permission per datasource endpoint (`<resourceType>:<capability>`) and add default Admin/Reader roles if none exist
+- `--rbac` — Ensure RBAC has a permission per datasource endpoint (`<resourceType>:<capability>`) and add default Admin/Reader roles if none exist; if roles or permissions still live in the external system file while an `rbac.yaml` / `rbac.json` file exists, repair merges them into that rbac file and removes them from the system file
 - `--expose` — Set `exposed.schema` on each datasource from all `fieldMappings.attributes` keys (`metadata.<key>` values); removes deprecated `exposed.attributes` if present
 - `--sync` — Add a default sync section (`mode: pull`, `batchSize: 500`) to datasources that lack it (skipped for `entityType: none`)
 - `--test` — Generate `testPayload.payloadTemplate` and `testPayload.expectedResult` from attributes for each datasource

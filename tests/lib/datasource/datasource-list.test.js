@@ -135,6 +135,28 @@ describe('Datasource List Module', () => {
     });
   });
 
+  describe('filterDatasourcesByKeyPrefix', () => {
+    it('should keep only keys that start with the prefix', () => {
+      const { filterDatasourcesByKeyPrefix } = require('../../../lib/datasource/list');
+      const ds = [
+        { key: 'test-a', displayName: 'A' },
+        { key: 'prod-b', displayName: 'B' },
+        { key: 'testing-c', displayName: 'C' }
+      ];
+      expect(filterDatasourcesByKeyPrefix(ds, 'test')).toEqual([
+        { key: 'test-a', displayName: 'A' },
+        { key: 'testing-c', displayName: 'C' }
+      ]);
+    });
+
+    it('should return all when prefix empty or whitespace', () => {
+      const { filterDatasourcesByKeyPrefix } = require('../../../lib/datasource/list');
+      const ds = [{ key: 'a' }];
+      expect(filterDatasourcesByKeyPrefix(ds, '')).toEqual(ds);
+      expect(filterDatasourcesByKeyPrefix(ds, '   ')).toEqual(ds);
+    });
+  });
+
   describe('displayDatasources', () => {
     it('should display datasources in table format', () => {
       const { displayDatasources } = require('../../../lib/datasource/list');
@@ -160,6 +182,19 @@ describe('Datasource List Module', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Datasources in dev environment'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('ds1'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('ds2'));
+    });
+
+    it('should note key prefix in header when filtering', () => {
+      const { displayDatasources } = require('../../../lib/datasource/list');
+      displayDatasources(
+        [{ key: 'test-x', displayName: 'X', systemKey: 's', version: '1', enabled: true }],
+        'dev',
+        'http://dp',
+        'test'
+      );
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('datasource keys starting with "test"')
+      );
     });
 
     it('should display message when no datasources found', () => {
@@ -237,7 +272,8 @@ describe('Datasource List Module', () => {
           type: 'bearer',
           token: 'test-token',
           controller: 'http://localhost:3010'
-        })
+        }),
+        { page: 1, pageSize: 100 }
       );
       expect(logger.log).toHaveBeenCalled();
     });
@@ -344,8 +380,107 @@ describe('Datasource List Module', () => {
       );
       expect(listDatasourcesFromDataplane).toHaveBeenCalledWith(
         mockDataplaneUrl,
-        expect.any(Object)
+        expect.any(Object),
+        { page: 1, pageSize: 100 }
       );
+    });
+
+    it('should pass key prefix filter to the dataplane API', async() => {
+      const mockConfig = {
+        device: {
+          'http://localhost:3010': {}
+        }
+      };
+      const mockToken = {
+        token: 'test-token',
+        controller: 'http://localhost:3010'
+      };
+      const mockResponse = {
+        success: true,
+        data: {
+          data: [{ key: 'hub-x', displayName: 'X', systemKey: 's', version: '1', enabled: true }],
+          meta: { totalPages: 1, totalItems: 1 }
+        }
+      };
+
+      getConfig.mockResolvedValue(mockConfig);
+      resolveEnvironment.mockResolvedValue('dev');
+      getOrRefreshDeviceToken.mockResolvedValue(mockToken);
+      resolveDataplaneUrl.mockResolvedValue('http://localhost:3111');
+      listDatasourcesFromDataplane.mockResolvedValue(mockResponse);
+
+      const { listDatasources } = require('../../../lib/datasource/list');
+      await listDatasources({ keyPrefix: 'hub' });
+
+      expect(listDatasourcesFromDataplane).toHaveBeenCalledWith(
+        'http://localhost:3111',
+        expect.any(Object),
+        { page: 1, pageSize: 100, filter: 'key:like:hub%' }
+      );
+    });
+
+    it('should fetch subsequent pages until the last page', async() => {
+      const mockConfig = {
+        device: {
+          'http://localhost:3010': {}
+        }
+      };
+      const mockToken = {
+        token: 'test-token',
+        controller: 'http://localhost:3010'
+      };
+      const page1 = {
+        success: true,
+        data: {
+          data: Array.from({ length: 100 }, (_, i) => ({
+            key: `ds-${i}`,
+            displayName: 'D',
+            systemKey: 's',
+            version: '1',
+            enabled: true
+          })),
+          meta: { totalPages: 2, totalItems: 150, currentPage: 1, pageSize: 100 }
+        }
+      };
+      const page2 = {
+        success: true,
+        data: {
+          data: Array.from({ length: 50 }, (_, i) => ({
+            key: `extra-${i}`,
+            displayName: 'E',
+            systemKey: 's',
+            version: '1',
+            enabled: true
+          })),
+          meta: { totalPages: 2, totalItems: 150, currentPage: 2, pageSize: 100 }
+        }
+      };
+
+      getConfig.mockResolvedValue(mockConfig);
+      resolveEnvironment.mockResolvedValue('dev');
+      getOrRefreshDeviceToken.mockResolvedValue(mockToken);
+      resolveDataplaneUrl.mockResolvedValue('http://localhost:3111');
+      listDatasourcesFromDataplane
+        .mockResolvedValueOnce(page1)
+        .mockResolvedValueOnce(page2);
+
+      const { listDatasources } = require('../../../lib/datasource/list');
+      await listDatasources({});
+
+      expect(listDatasourcesFromDataplane).toHaveBeenCalledTimes(2);
+      expect(listDatasourcesFromDataplane).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:3111',
+        expect.any(Object),
+        { page: 1, pageSize: 100 }
+      );
+      expect(listDatasourcesFromDataplane).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:3111',
+        expect.any(Object),
+        { page: 2, pageSize: 100 }
+      );
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('extra-0'));
     });
 
     it('should exit with error if controller URL is empty after trimming', async() => {

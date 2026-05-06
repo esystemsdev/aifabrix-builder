@@ -63,6 +63,11 @@ jest.mock('../../../lib/validation/validate-display', () => ({
 jest.mock('../../../lib/generator/external-controller-manifest', () => ({
   generateControllerManifest: jest.fn()
 }));
+jest.mock('../../../lib/external-system/sync-deploy-manifest', () => ({
+  syncDeployJsonFromSources: jest.fn().mockResolvedValue(
+    `${process.cwd()}/integration/test-external-app/test-external-app-deploy.json`
+  )
+}));
 jest.mock('../../../lib/deployment/deployer', () => ({
   deployToController: jest.fn()
 }));
@@ -94,6 +99,7 @@ const { generateControllerManifest } = require('../../../lib/generator/external-
 const { deployToController } = require('../../../lib/deployment/deployer');
 const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
 const { getExternalSystem } = require('../../../lib/api/external-systems.api');
+const { syncDeployJsonFromSources } = require('../../../lib/external-system/sync-deploy-manifest');
 
 describe('External System Deploy Module', () => {
   const appName = 'test-external-app';
@@ -155,6 +161,7 @@ describe('External System Deploy Module', () => {
       const result = await deployExternalSystem(appName);
 
       expect(validateExternalSystemComplete).toHaveBeenCalledWith(appName, expect.any(Object));
+      expect(syncDeployJsonFromSources).toHaveBeenCalledWith(appName);
       expect(generateControllerManifest).toHaveBeenCalledWith(appName, expect.any(Object));
       expect(getDeploymentAuth).toHaveBeenCalledWith(
         'http://localhost:3000',

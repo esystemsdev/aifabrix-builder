@@ -124,11 +124,17 @@ describe('Datasource Commands Module', () => {
 
       expect(program.command).toHaveBeenCalledWith('datasource');
       const datasourceGroup = program._datasourceGroup;
-      expect(datasourceGroup.command).toHaveBeenCalledWith('list');
+      expect(datasourceGroup.command).toHaveBeenCalledWith('list [prefix]');
       // Check that the subcommand's description was called (no flags)
-      const listCommand = datasourceGroup._subCommands?.find(c => c.name === 'list');
+      const listCommand = datasourceGroup._subCommands?.find(c => c.name === 'list [prefix]');
       expect(listCommand).toBeDefined();
-      expect(listCommand.command.description).toHaveBeenCalledWith('List datasources for environment in config');
+      expect(listCommand.command.description).toHaveBeenCalledWith(
+        'List datasources for environment in config (optional prefix filters datasource keys)'
+      );
+      expect(listCommand.command.addHelpText).toHaveBeenCalledWith(
+        'after',
+        expect.stringMatching(/Examples:\s*\n/)
+      );
     });
 
     it('should register diff command', () => {
@@ -140,7 +146,9 @@ describe('Datasource Commands Module', () => {
       // Check that the subcommand's description was called
       const diffCommand = datasourceGroup._subCommands?.find(c => c.name === 'diff <file1> <file2>');
       expect(diffCommand).toBeDefined();
-      expect(diffCommand.command.description).toHaveBeenCalledWith('Diff two datasource JSON files');
+      expect(diffCommand.command.description).toHaveBeenCalledWith(
+        'Diff two datasource JSON files (two file paths; not datasource keys)'
+      );
     });
 
     it('should register upload command', () => {
@@ -362,7 +370,7 @@ describe('Datasource Commands Module', () => {
 
       // Get the list command's action handler
       const datasourceGroup = program._datasourceGroup;
-      const listCommand = datasourceGroup._subCommands?.find(c => c.name === 'list');
+      const listCommand = datasourceGroup._subCommands?.find(c => c.name === 'list [prefix]');
       if (listCommand) {
         const actionCall = listCommand.command.action.mock.calls[0];
         if (actionCall && typeof actionCall[0] === 'function') {
@@ -371,6 +379,22 @@ describe('Datasource Commands Module', () => {
           expect(listDatasources).toHaveBeenCalledWith({});
         }
       }
+    });
+
+    it('should pass key prefix to list when provided', async() => {
+      jest.spyOn(process, 'exit').mockImplementation(() => {});
+
+      listDatasources.mockResolvedValue();
+
+      setupDatasourceCommands(program);
+
+      const datasourceGroup = program._datasourceGroup;
+      const listCommand = datasourceGroup._subCommands?.find(c => c.name === 'list [prefix]');
+      expect(listCommand).toBeDefined();
+      const actionCall = listCommand.command.action.mock.calls[0];
+      await actionCall[0]('test');
+
+      expect(listDatasources).toHaveBeenCalledWith({ keyPrefix: 'test' });
     });
 
     it('should handle listing errors', async() => {
@@ -382,7 +406,7 @@ describe('Datasource Commands Module', () => {
 
       // Get the list command's action handler
       const datasourceGroup = program._datasourceGroup;
-      const listCommand = datasourceGroup._subCommands?.find(c => c.name === 'list');
+      const listCommand = datasourceGroup._subCommands?.find(c => c.name === 'list [prefix]');
       if (listCommand) {
         const actionCall = listCommand.command.action.mock.calls[0];
         if (actionCall && typeof actionCall[0] === 'function') {

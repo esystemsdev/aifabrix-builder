@@ -204,7 +204,7 @@ After downloading:
 
 Upload full external system (system + all datasources + RBAC) to the dataplane for the current environment.
 
-**What:** Uploads the full manifest (system + datasources) to the dataplane: the CLI validates, then publishes the config and **registers RBAC with the controller**. It does **not** trigger controller-driven container/restart deployment. Use for fast development iteration and testing (e.g. with `aifabrix test-integration`). Promote to full platform with `aifabrix deploy <app>` when ready.
+**What:** Uploads the full manifest (system + datasources) to the dataplane: the CLI validates, **writes `integration/<systemKey>/<systemKey>-deploy.json`** (same combined manifest as `aifabrix json <systemKey>`), then publishes the config and **registers RBAC with the controller**. Skips writing that file when `--dry-run` is set. It does **not** trigger controller-driven container/restart deployment. Use for fast development iteration and testing (e.g. with `aifabrix test-integration`). Promote to full platform with `aifabrix deploy <app>` when ready.
 
 **When:** Develop and test on the dataplane; or when you have only dataplane access or limited controller permissions (e.g. no `applications:deploy` on the controller).
 
@@ -243,17 +243,18 @@ aifabrix upload my-hubspot --probe
 
 **Process:**
 1. Validate locally (`validateExternalSystemComplete`)
-2. Build payload from controller manifest (system with RBAC + datasources) → `{ version, application, dataSources, status: "draft" }`
-3. **Configuration resolution:** The CLI resolves the **configuration** section before sending. Entries with `location: variable` get `{{VAR}}` replaced from the integration’s `.env` (or from resolved env.template if .env is missing). Entries with `location: keyvault` get `kv://` references resolved from your secrets (same as credential push). The payload sent to the dataplane contains **literal values** in configuration. If a variable or keyvault value is missing, the command fails with a message suggesting `aifabrix resolve <systemKey>` or setting the variable in .env / ensuring the key exists in the secrets file.
-4. Resolve dataplane URL and auth (from controller + environment)
-5. **Credential secrets push (automatic):** The CLI reads `integration/<systemKey>/.env` and sends any `KV_*` variables (values resolved from local/remote secrets if they are `kv://`). It also scans the upload payload (application + datasources) for `kv://` references that are **not** in `.env` and resolves their values from aifabrix secret systems (local file or remote), then sends all to the dataplane secret store. This stores secret *values* only; credential structure (type, fields) is created/updated by the publish step itself. So credentials in config can be satisfied from `.env` or from local/remote secrets without extra steps—the CLI handles it automatically.
+2. Regenerate `<systemKey>-deploy.json` from current integration files (unless `--dry-run`)
+3. Build payload from controller manifest (system with RBAC + datasources) → `{ version, application, dataSources, status: "draft" }`
+4. **Configuration resolution:** The CLI resolves the **configuration** section before sending. Entries with `location: variable` get `{{VAR}}` replaced from the integration’s `.env` (or from resolved env.template if .env is missing). Entries with `location: keyvault` get `kv://` references resolved from your secrets (same as credential push). The payload sent to the dataplane contains **literal values** in configuration. If a variable or keyvault value is missing, the command fails with a message suggesting `aifabrix resolve <systemKey>` or setting the variable in .env / ensuring the key exists in the secrets file.
+5. Resolve dataplane URL and auth (from controller + environment)
+6. **Credential secrets push (automatic):** The CLI reads `integration/<systemKey>/.env` and sends any `KV_*` variables (values resolved from local/remote secrets if they are `kv://`). It also scans the upload payload (application + datasources) for `kv://` references that are **not** in `.env` and resolves their values from aifabrix secret systems (local file or remote), then sends all to the dataplane secret store. This stores secret *values* only; credential structure (type, fields) is created/updated by the publish step itself. So credentials in config can be satisfied from `.env` or from local/remote secrets without extra steps—the CLI handles it automatically.
 
    **Skip conditions:** If there is no `.env` file, no `KV_*` keys, or values are empty, the credential push step is skipped.
 
    **KV_* convention:** env.template and .env use `KV_<APPKEY>_<VAR>=value` (e.g. `KV_HUBSPOT_CLIENTID=xxx`, `KV_HUBSPOT_CLIENTSECRET=yyy`). Mapping: `KV_` + segments (underscores) → `kv://segment1/segment2/...` (lowercase). Example: `KV_HUBSPOT_CLIENTID` → `kv://hubspot/clientid`. The manifest must reference `kv://hubspot/clientid` (path style). Use `aifabrix credential env <systemKey>` to prompt for values and write .env; use `aifabrix credential push <systemKey>` to push .env secrets without a full upload.
 
    Dataplane permission **credential:create** is required for this automatic push; if the push fails (e.g. 403), upload still continues but secrets must be available elsewhere (e.g. env on dataplane). See [Secrets and config](../configuration/secrets-and-config.md) and [Permissions](permissions.md).
-6. **Pipeline upload:** Sends the configuration to the Dataplane (upload, validate, and publish in one step). On failure, the CLI shows validation or publish errors and exits.
+7. **Pipeline upload:** Sends the configuration to the Dataplane (upload, validate, and publish in one step). On failure, the CLI shows validation or publish errors and exits.
 
 **Output:** After publish, the CLI prints a **readiness-oriented** summary: registration outcome, upload id, per-datasource status (Ready / Partial / Failed), identity and credential **intent** (resolved test URL without implying connectivity unless you used `--probe`), and suggested next commands. If dataplane details cannot be fetched after a deploy, the CLI warns explicitly instead of staying silent.
 
@@ -506,7 +507,7 @@ Manage external data sources.
 
 **Subcommands:**
 - `validate` - Validate external datasource JSON file
-- `list` - List datasources from environment
+- `list` - List datasources from the environment (optional key prefix limits rows to datasource keys that start with that string)
 - `diff` - Compare two datasource configuration files
 - `upload` - Deploy one datasource JSON to the dataplane (file path or key)
 - `test` - Run structural/policy validation for one datasource (unified dataplane validation API)
@@ -615,25 +616,35 @@ After validation:
 ---
 
 <a id="aifabrix-datasource-list"></a>
-### aifabrix datasource list
+### aifabrix datasource list [prefix]
 
 List datasources from environment.
 
-**What:** Lists all datasources registered in an environment via the Miso Controller API. Displays datasource key, display name, system key, version, and status.
+**What:** Lists datasources registered in the configured environment. Without arguments, every datasource in that environment is shown. With an optional **prefix**, only datasources whose **key** starts with that string (after trimming leading and trailing spaces) are included; matching is **case-sensitive**. Displays datasource key, display name, system key, version, and status. When filtering, the header notes that the list is limited to keys starting with the given prefix.
 
-**When:** Viewing available datasources, checking datasource status, or auditing environment configuration.
+**When:** Viewing available datasources, checking datasource status, auditing environment configuration, or narrowing the table to a naming prefix (for example all keys that start with `test`).
 
 This command uses the active `controller` and `environment` from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is always discovered from the controller.
 
 **Usage:**
 ```bash
-# List datasources in environment (uses config.environment)
+# List all datasources in the environment (uses config.environment)
 aifabrix datasource list
+
+# Only datasources whose key starts with "test"
+aifabrix datasource list test
+
+# Same commands using the ds shorthand
+aifabrix ds list
+aifabrix ds list hubspot
 
 # Switch environment first if needed
 aifabrix auth config --set-environment pro
 aifabrix datasource list
 ```
+
+**Arguments:**
+- `[prefix]` - Optional. When provided, only datasources whose `key` starts with this prefix are listed.
 
 **Prerequisites:**
 - Must be logged in: `aifabrix login`
@@ -642,11 +653,12 @@ aifabrix datasource list
 1. Gets authentication token from config
 2. Lists datasources from controller for the environment
 3. Extracts datasources from response
-4. Displays datasources in formatted table
+4. Optionally keeps only rows whose datasource key starts with the given prefix
+5. Displays datasources in formatted table
 
 **Output:**
 ```yaml
-📋 Datasources in environment: dev
+📋 Datasources in dev environment:
 
 Key                           Display Name                  System Key           Version         Status
 ------------------------------------------------------------------------------------------------------------------------
@@ -654,9 +666,25 @@ hubspot-deal                  HubSpot Deal                 hubspot              
 salesforce-contact            Salesforce Contact            salesforce           2.1.0           enabled
 ```
 
+When a dataplane URL is available for the environment, it appears in parentheses after the environment name (for example `Datasources in dev environment (https://example)`). With a prefix filter, the title line also includes a note such as ` — datasource keys starting with "test"`.
+
+**Output (filtered example):**
+```yaml
+📋 Datasources in dev environment — datasource keys starting with "test":
+
+Key                           Display Name                  System Key           Version         Status
+------------------------------------------------------------------------------------------------------------------------
+test-e2e-companies            Companies E2E                 hubspot              1.0.0           enabled
+```
+
 **Output (no datasources):**
 ```yaml
-No datasources found in environment: dev
+No datasources found in this environment.
+```
+
+**Output (no datasources matching prefix):**
+```yaml
+No datasources with keys starting with "test".
 ```
 
 **Issues:**
@@ -973,7 +1001,7 @@ For details, see [External Integration Testing](external-integration-testing.md#
 
 Display the latest E2E test log (or a specified log file) in a readable, formatted way. Useful after running `aifabrix datasource test-e2e <key> --debug`, which writes logs to `integration/<systemKey>/logs/`.
 
-**What:** Reads a JSON log file produced by the E2E test (with `--debug`) and prints a summary: request (sourceIdOrKey, options), response status, steps with success/message, sync step job record counts (processed, inserted/updated/deleted), and CIP execution trace count when present. No backend URLs or raw payloads are shown.
+**What:** Reads a JSON log file produced by the E2E test (with `--debug`) and prints a summary: request (sourceIdOrKey, options), response status, steps with success/message, sync step job record counts (processed, inserted/updated/deleted), and CIP execution trace count when present. No backend URLs or raw payloads are shown. The log file path is printed as an **absolute path** so you can open it from the terminal (for example in Cursor). When you use **latest** mode and several `test-e2e-*.json` files exist in the logs folder, every matching file is listed with its full path and the one whose contents are shown is indicated.
 
 **When:** Inspecting the outcome of a recent E2E run, debugging sync or step failures, or checking record counts without re-running the test.
 
@@ -1002,7 +1030,7 @@ aifabrix datasource log-e2e hubspot-contacts --app hubspot
 
 Display the latest structural validation debug log (or a specified log file) after `aifabrix datasource test <datasourceKey> --debug`.
 
-**What:** Reads JSON written as **`test-*.json`** under `integration/<systemKey>/logs/` (same folder as other datasource test logs). The summary shows the saved **request** metadata and a short **DatasourceTestRun** envelope summary (status, completeness, run id when present).
+**What:** Reads JSON written as **`test-*.json`** under `integration/<systemKey>/logs/` (same folder as other datasource test logs). The summary shows the saved **request** metadata and a short **DatasourceTestRun** envelope summary (status, completeness, run id when present). The displayed log path is an absolute path; when multiple structural logs exist in **latest** mode, all matching files are listed with full paths and the one shown is marked.
 
 **When:** Reviewing the last structural validation run without re-querying the dataplane.
 
@@ -1026,7 +1054,7 @@ aifabrix datasource log-test hubspot-company --file integration/hubspot/logs/tes
 
 Display the latest integration test log (or a specified log file) in a readable, formatted way. Useful after running `aifabrix datasource test-integration <key> --debug`, which writes logs to `integration/<systemKey>/logs/`.
 
-**What:** Reads a JSON log file produced by the integration test (with `--debug`) and prints a summary: request (systemKey, datasourceKey), response status, validation result (isValid, errors), field mapping (mappingCount, dimensions), endpoint test, and normalized output summary. No backend URLs or raw payloads are shown.
+**What:** Reads a JSON log file produced by the integration test (with `--debug`) and prints a summary: request (systemKey, datasourceKey), response status, validation result (isValid, errors), field mapping (mappingCount, dimensions), endpoint test, and normalized output summary. No backend URLs or raw payloads are shown. The displayed log uses an **absolute path**; with **latest** mode and several `test-integration-*.json` files present, every matching file is listed with its full path and the active file is indicated.
 
 **When:** Inspecting the outcome of a recent integration test run, debugging validation or field mapping, or reviewing normalized output without re-running the test.
 
