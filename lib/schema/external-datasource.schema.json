@@ -766,15 +766,15 @@
         },
         "additionalProperties":false
      },
-     "capabilities":{
-        "type":"array",
-        "description":"Supported operations list.",
-        "items":{
-           "type":"string",
-           "pattern":"^[a-z][a-zA-Z0-9]*$"
-        },
-        "uniqueItems":true
-     },
+   "capabilities":{
+      "description":"Supported operations list.",
+      "type":"array",
+      "items":{
+         "type":"string",
+         "pattern":"^[a-z][a-zA-Z0-9]*$"
+      },
+      "uniqueItems":true
+   },
      "execution":{
         "type":"object",
         "description":"Execution engine configuration for this datasource (CIP, Python, or datasource-chaining). CIP is the native declarative mode.",
