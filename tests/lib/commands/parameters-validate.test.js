@@ -89,6 +89,35 @@ describe('handleParametersValidate', () => {
     }
   });
 
+  it('ignores integration-only apps (parameters validate scans builder apps only)', async() => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pv-int-skip-'));
+    const intDir = path.join(tmp, 'integration', 'evil');
+    fs.mkdirSync(intDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(intDir, 'env.template'),
+      'X=kv://totally-not-in-catalog-zzz\n',
+      'utf8'
+    );
+
+    pathsUtil.listBuilderAppNames.mockReturnValue([]);
+    pathsUtil.listIntegrationAppNames.mockReturnValue(['evil']);
+    const intPathSpy = jest
+      .spyOn(pathsUtil, 'getIntegrationPath')
+      .mockImplementation((n) => path.join(tmp, 'integration', n));
+
+    try {
+      const result = await handleParametersValidate({});
+      expect(result.valid).toBe(true);
+    } finally {
+      intPathSpy.mockRestore();
+      try {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
+    }
+  });
+
   it('returns valid false when env.template references a key not in catalog', async() => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pv-bad-'));
     const appDir = path.join(tmp, 'badapp');

@@ -100,7 +100,7 @@ Shared scalar defaults for those placeholders live under the catalog root **`def
 
 - **`aifabrix up-infra`** — Ensures infra-related keys (catalog `ensureOn` / `standardUpInfraEnsureKeys`, plus keys discovered from workspace `env.template` and `application.yaml` database lists). Applies the CLI placeholder overwrite behavior above when flags are set.
 - **`aifabrix resolve <app> --force`** (and other flows that generate missing secrets) — Uses catalog-driven generators where defined (e.g. index-aware database URL/password for multi-DB apps).
-- **`aifabrix parameters validate`** — Loads the catalog, checks internal generator rules, then checks that `kv://` keys referenced under discovered app directories are covered by the catalog (exact or pattern).
+- **`aifabrix parameters validate`** — Loads the catalog, checks internal generator rules, then checks that `kv://` keys referenced in **`builder/<appKey>/env.template`** files are covered by the catalog (exact or pattern). **`integration/`** apps are not scanned.
 
 ## Workspace discovery limits
 

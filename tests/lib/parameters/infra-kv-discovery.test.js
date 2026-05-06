@@ -13,6 +13,7 @@ const yaml = require('js-yaml');
 const {
   extractKvKeysFromEnvContent,
   listAppDirsForDiscovery,
+  listBuilderAppDirsForDiscovery,
   deriveDatabaseKvKeysFromWorkspace,
   discoverKvKeysFromEnvTemplatesForHook,
   getAllInfraEnsureKeys
@@ -107,6 +108,36 @@ describe('infra-kv-discovery', () => {
         getIntegrationPath: (n) => path.join(tmp, 'integration', n)
       };
       expect(listAppDirsForDiscovery(pathsUtil)).toEqual([{ appKey: 'ext', dir: iDir }]);
+      rmTmp(tmp);
+    });
+  });
+
+  describe('listBuilderAppDirsForDiscovery', () => {
+    it('returns only builder apps', () => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ikv-bonly-'));
+      const bDir = path.join(tmp, 'builder', 'only-b');
+      const iDir = path.join(tmp, 'integration', 'only-i');
+      fs.mkdirSync(bDir, { recursive: true });
+      fs.mkdirSync(iDir, { recursive: true });
+      const pathsUtil = {
+        listBuilderAppNames: () => ['only-b'],
+        listIntegrationAppNames: () => ['only-i'],
+        getBuilderPath: (n) => path.join(tmp, 'builder', n),
+        getIntegrationPath: (n) => path.join(tmp, 'integration', n)
+      };
+      expect(listBuilderAppDirsForDiscovery(pathsUtil)).toEqual([{ appKey: 'only-b', dir: bDir }]);
+      rmTmp(tmp);
+    });
+
+    it('returns empty when no builder apps exist on disk', () => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ikv-bonly-empty-'));
+      const pathsUtil = {
+        listBuilderAppNames: () => ['ghost'],
+        listIntegrationAppNames: () => [],
+        getBuilderPath: (n) => path.join(tmp, 'builder', n),
+        getIntegrationPath: (n) => path.join(tmp, 'integration', n)
+      };
+      expect(listBuilderAppDirsForDiscovery(pathsUtil)).toEqual([]);
       rmTmp(tmp);
     });
   });

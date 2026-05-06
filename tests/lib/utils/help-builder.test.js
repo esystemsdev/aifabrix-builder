@@ -35,10 +35,10 @@ describe('help-builder', () => {
       expect(cfgCat.commands.map(c => c.name)).toContain('show');
     });
 
-    it('should include service-user in Application & Management', () => {
+    it('should include integration-client in Application & Management', () => {
       const mgmtCat = CATEGORIES.find(c => c.name === 'Application & Management');
       expect(mgmtCat).toBeDefined();
-      expect(mgmtCat.commands.map(c => c.name)).toContain('service-user');
+      expect(mgmtCat.commands.map(c => c.name)).toContain('integration-client');
     });
 
     it('should include test-e2e and test-integration in External Systems', () => {
@@ -88,21 +88,21 @@ describe('help-builder', () => {
       expect(help).toContain('Azure or locally');
     });
 
-    it('should include shell, logs, stop, show, service-user when present', () => {
+    it('should include shell, logs, stop, show, integration-client when present', () => {
       const program = new Command();
       program.name('aifabrix').description('Test CLI');
       program.command('shell <app>').description('Open interactive shell');
       program.command('logs <app>').description('Show application container logs');
       program.command('stop <app>').description('Stop and remove application container');
       program.command('show <app>').description('Show application info');
-      program.command('service-user').description('Create and manage service users');
+      program.command('integration-client').description('Manage integration clients');
 
       const help = buildCategorizedHelp(program);
       expect(help).toContain('shell <app>');
       expect(help).toContain('logs <app>');
       expect(help).toContain('stop <app>');
       expect(help).toContain('show <app>');
-      expect(help).toContain('service-user');
+      expect(help).toContain('integration-client');
     });
 
     it('should include Help section with help [command]', () => {

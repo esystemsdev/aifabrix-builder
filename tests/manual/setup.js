@@ -30,5 +30,9 @@ if (result.status !== 0) {
   if (result.stderr) {
     process.stderr.write(result.stderr);
   }
-  process.exit(result.status !== undefined && result.status !== null ? result.status : 1);
+  // Jest treats process.exit() as an error and prints a noisy stack trace.
+  // Preserve the failing exit code while failing the test run cleanly.
+  const code = result.status !== undefined && result.status !== null ? result.status : 1;
+  process.exitCode = code;
+  throw new Error(`Manual test auth setup failed (exit code ${code}). See output above.`);
 }

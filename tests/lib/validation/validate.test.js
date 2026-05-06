@@ -115,6 +115,30 @@ describe('Validation Module', () => {
       expect(result.errors).toEqual([]);
     });
 
+    it('should pass through legacy capabilities object as-is (validate command path)', async() => {
+      const mockFilePath = '/path/to/datasource.json';
+      const mockContent = JSON.stringify({
+        key: 'test',
+        systemKey: 'hubspot',
+        capabilities: { list: true, get: true, create: false }
+      });
+      const mockValidate = jest.fn().mockReturnValue(true);
+
+      fsSync.existsSync.mockImplementation((filePath) => filePath === mockFilePath);
+      fsSync.readFileSync.mockReturnValue(mockContent);
+      loadExternalDataSourceSchema.mockReturnValue(mockValidate);
+
+      const { validateExternalFile } = require('../../../lib/validation/validate');
+      const result = await validateExternalFile(mockFilePath, 'datasource');
+
+      expect(result.valid).toBe(true);
+      expect(mockValidate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          capabilities: { list: true, get: true, create: false }
+        })
+      );
+    });
+
     it('should return post-schema errors for datasource when field refs or ABAC fail', async() => {
       const mockFilePath = '/path/to/datasource.json';
       const mockContent = JSON.stringify({

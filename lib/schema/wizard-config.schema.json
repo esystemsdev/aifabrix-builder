@@ -214,7 +214,7 @@
         },
         "debug": {
           "type": "boolean",
-          "description": "When true, capture detailed generation steps and save to debug.log (dataplane returns debugLog)",
+          "description": "When true, capture detailed generation steps and save to integration/<app>/logs/debug.log (dataplane returns debugLog)",
           "default": false
         }
       }

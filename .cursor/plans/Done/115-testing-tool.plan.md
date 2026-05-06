@@ -40,7 +40,7 @@ isProject: true
 
 # 115 — Builder CLI: full testing and certification support
 
-This document is the **product and implementation plan** for exercising Dataplane validation, integration, E2E, and **certification** through the **AI Fabrix Builder CLI** (`aifabrix` / `aifx`). It aligns three sources of truth:
+This document is the **product and implementation plan** for exercising Dataplane validation, integration, E2E, and **certification** through the **AI Fabrix Builder CLI** (`aifabrix` / `af`). It aligns three sources of truth:
 
 
 | Source                                                                                                                                  | Role                                                                                                                                                                        |
