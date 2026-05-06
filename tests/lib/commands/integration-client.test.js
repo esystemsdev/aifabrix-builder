@@ -14,6 +14,7 @@ jest.mock('chalk', () => {
   mockChalk.bold = (t) => t;
   mockChalk.yellow = (t) => t;
   mockChalk.green = (t) => t;
+  mockChalk.white = Object.assign((t) => t, { bold: (t) => t });
   return mockChalk;
 });
 

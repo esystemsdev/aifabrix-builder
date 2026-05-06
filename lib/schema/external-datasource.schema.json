@@ -1534,6 +1534,29 @@
                  }
               ]
            },
+           "restRuntime":{
+              "type":"object",
+              "description":"Canonical REST path shape for manifest-defined (non-core) operations. Core CRUD keys ignore this block.",
+              "additionalProperties":false,
+              "properties":{
+                 "pathKind":{
+                    "type":"string",
+                    "enum":[
+                       "collection",
+                       "collectionSubresource",
+                       "item",
+                       "itemSubresource"
+                    ]
+                 },
+                 "subpathSegments":{
+                    "type":"array",
+                    "items":{
+                       "type":"string"
+                    },
+                    "description":"Trailing path segments after the resource segment or record identifier (e.g. basic → /{resource}/basic)."
+                 }
+              }
+           },
            "security":{
               "description":"OpenAPI security requirements. Supports object/list/string forms consumed by RBAC coverage validation.",
               "oneOf":[

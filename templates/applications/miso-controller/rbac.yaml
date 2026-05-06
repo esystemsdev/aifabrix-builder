@@ -35,18 +35,18 @@ roles:
     groups: ['AI-Fabrix-Observers']
 
 permissions:
-  # Integration client management (OAuth / API clients)
+  # Integration clients (Keycloak OIDC clients + control-plane metadata)
   - name: 'integration-client:create'
     roles: ['aifabrix-platform-admin', 'aifabrix-security-admin']
-    description: 'Create integration clients and receive one-time secrets'
+    description: 'Create integration clients and Keycloak OIDC clients'
 
   - name: 'integration-client:read'
     roles: ['aifabrix-platform-admin', 'aifabrix-security-admin', 'aifabrix-observer']
-    description: 'View integration clients and their configuration'
+    description: 'View integration clients and their configurations'
 
   - name: 'integration-client:update'
     roles: ['aifabrix-platform-admin', 'aifabrix-security-admin']
-    description: 'Update integration clients and regenerate secrets'
+    description: 'Update integration client configuration and regenerate secrets'
 
   - name: 'integration-client:delete'
     roles: ['aifabrix-platform-admin', 'aifabrix-security-admin']
