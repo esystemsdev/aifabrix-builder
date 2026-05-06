@@ -1817,7 +1817,7 @@ describe('repair', () => {
             key: 'hubspot-test-contact',
             systemKey: 'hubspot-test',
             resourceType: 'contact',
-            capabilities: ['list', 'get'],
+            openapi: { autoRbac: true, operations: { list: {}, get: {} } },
             fieldMappings: { attributes: { email: {} } }
           };
         }
@@ -1876,7 +1876,7 @@ describe('repair', () => {
             key: 'hubspot-test-contact',
             systemKey: 'hubspot-test',
             resourceType: 'contact',
-            capabilities: ['list', 'get'],
+            openapi: { autoRbac: true, operations: { list: {}, get: {} } },
             fieldMappings: { attributes: { email: {} } }
           };
         }
