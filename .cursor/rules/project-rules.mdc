@@ -28,7 +28,7 @@ When adding or changing CLI commands, subcommands, flags, help text, or terminal
 
 - **Rule**: `.cursor/rules/cli-layout.mdc`
 - **Visual/layout spec**: `.cursor/rules/layout.md`
-- **Per-command output profiles**: `.cursor/rules/cli-output-command-matrix.md` (update for every new leaf command)
+- **Per-command output profiles**: `.cursor/rules/cli-output-command-matrix.md` (update for every new leaf command; see matrix **Layout compliance** for `cli-test-layout-chalk` adoption status)
 
 ## Architecture Patterns
 

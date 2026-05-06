@@ -521,6 +521,7 @@ Manage external data sources.
 
 **See Also:**
 - [aifabrix datasource validate](#aifabrix-datasource-validate-file)
+- [Datasource capability commands](#datasource-capability-commands)
 - [aifabrix datasource list](#aifabrix-datasource-list)
 - [aifabrix datasource diff](#aifabrix-datasource-diff-file1-file2)
 - [aifabrix datasource upload](#aifabrix-datasource-upload-myapp-file)
@@ -612,6 +613,25 @@ After validation:
 - Upload validated datasource: `aifabrix datasource upload <file-or-key>`
 
 **See Also:** [Validation Commands](validation.md) - Complete validation documentation including schema details and validation flow.
+
+---
+
+<a id="datasource-capability-commands"></a>
+### Datasource capability commands
+
+Use these when you already have a working datasource JSON and want to **duplicate** or **delete** one capability (OpenAPI operation mapping + CIP operation + optional `exposed.profiles` entry) inside the **same file**.
+
+**Recommended workflow:** finish wizard or download integration → `aifabrix datasource validate <file-or-key>` → `aifabrix datasource capability copy …` (try `--dry-run` first) → adjust profiles if needed → `aifabrix datasource validate` again → upload/publish when ready. To drop an experimental capability: `capability remove --capability <key>` → validate → upload.
+
+**Commands:**
+- `aifabrix datasource capability copy <file-or-key> --from <key> --as <key>` — clone `openapi.operations` and `execution.cip.operations` using **lowercase** operation keys derived from **`--as`**; **`capabilities[]`** and **`exposed.profiles.<as>`** keep **`--as`** casing (typically camelCase). When `exposed.profiles.<from>` exists it is copied to `exposed.profiles.<as>`. Optional **`--test`** also clones matching **`testPayload.scenarios`** rows with **`operation`** set to that lowercase form. Supports **`--dry-run`** (prints planned JSON Patch ops), **`--overwrite`** (replace target capability + profile), **`--no-backup`**. Choose a unique **`--as`** name or use **`--overwrite`** when needed.
+- `aifabrix datasource capability remove <file-or-key> --capability <key>` — remove the capability from `capabilities[]`, `openapi.operations`, and `execution.cip.operations`, delete `exposed.profiles.<key>` when present, and drop `testPayload.scenarios` rows whose `operation` matches the capability. Empty `testPayload.scenarios` arrays, an empty `testPayload` object, and an empty `exposed.profiles` object are removed from the saved JSON. Options: `--dry-run`, `--no-backup`, `--force` (no-op if already absent).
+- `aifabrix datasource capability create <file-or-key> …` (alias `add`) — same as copy when `--from` is set (profiles follow **`--from`** / **`--as`** like copy); reserved flags for future template/OpenAPI-driven creates.
+- `aifabrix datasource capability diff <file-a> <file-b>` — compare one capability’s slices between two JSON files. Pass **`--capability <key>`** for the same key on both sides, or **`--capability-a`** / **`--capability-b`** for different keys. Optional **`--profile`** (or **`--profile-a`** / **`--profile-b`**) includes the matching `exposed.profiles` row in the comparison. Exit code **1** when slices differ (similar to `datasource diff`).
+- `aifabrix datasource capability edit <file-or-key>` — interactive (**TTY** required): choose capability and slice (**openapi**, **cip**, or **exposed.profiles**), edit JSON in **`$VISUAL`** / **`$EDITOR`** (if both unset and **nano** is on PATH, nano is used). **`--editor <cmd>`** sets the editor for that run. For **exposed.profiles**, if a profile row matches the capability you selected (from the prompt or **`--capability`**), that JSON opens directly; otherwise you pick a profile from the list, or pass **`--profile <key>`**. Options **`--capability`**, **`--section`**, **`--profile`** skip the corresponding prompts when set.
+- `aifabrix datasource capability validate <file-or-key>` — same offline validation as `datasource validate`, plus optional `--capability <key>` to confirm the key appears under `capabilities[]`, `openapi.operations`, and `execution.cip.operations`.
+
+Shorthand: `af datasource cap …`.
 
 ---
 

@@ -206,7 +206,23 @@ const defaultProject = {
       'application-frontdoor-paths\\.contract\\.test\\.js',
       '/tests/lib/core/admin-secrets.test.js',
       '\\\\tests\\\\lib\\\\core\\\\admin-secrets.test.js',
-      'lib/core/admin-secrets.test.js'
+      'lib/core/admin-secrets.test.js',
+      '/tests/lib/datasource/validate-datasource-parsed.test.js',
+      '\\\\tests\\\\lib\\\\datasource\\\\validate-datasource-parsed.test.js',
+      'lib/datasource/validate-datasource-parsed.test.js',
+      'validate-datasource-parsed\\.test\\.js',
+      '/tests/lib/datasource/run-capability-copy.test.js',
+      '\\\\tests\\\\lib\\\\datasource\\\\run-capability-copy.test.js',
+      'lib/datasource/run-capability-copy.test.js',
+      'run-capability-copy\\.test\\.js',
+      '/tests/lib/datasource/run-capability-diff.test.js',
+      '\\\\tests\\\\lib\\\\datasource\\\\run-capability-diff.test.js',
+      'lib/datasource/run-capability-diff.test.js',
+      'run-capability-diff\\.test\\.js',
+      '/tests/lib/datasource/run-capability-edit.test.js',
+      '\\\\tests\\\\lib\\\\datasource\\\\run-capability-edit.test.js',
+      'lib/datasource/run-capability-edit.test.js',
+      'run-capability-edit\\.test\\.js'
     ];
     if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
       patterns.push('/tests/local/');
@@ -302,7 +318,15 @@ const isolatedProjects = [
   makeIsolatedProject('schema-241-alignment', ['**/tests/lib/validation/schema-241-alignment.test.js']),
   makeIsolatedProject('schema-resolver-order', ['**/tests/lib/utils/schema-resolver-order.test.js']),
   makeIsolatedProject('app-module', ['**/tests/lib/app/app.test.js']),
-  makeIsolatedProject('admin-secrets', ['**/tests/lib/core/admin-secrets.test.js'])
+  makeIsolatedProject('admin-secrets', ['**/tests/lib/core/admin-secrets.test.js']),
+  makeIsolatedProject('validate-datasource-parsed', [
+    '**/tests/lib/datasource/validate-datasource-parsed.test.js'
+  ]),
+  makeIsolatedProject('capability-run-real-fs', [
+    '**/tests/lib/datasource/run-capability-copy.test.js',
+    '**/tests/lib/datasource/run-capability-diff.test.js',
+    '**/tests/lib/datasource/run-capability-edit.test.js'
+  ])
 ];
 
 const allProjects = [defaultProject, ...isolatedProjects];

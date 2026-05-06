@@ -1817,11 +1817,11 @@ describe('CLI Commands', () => {
             option: jest.fn().mockReturnThis(),
             requiredOption: jest.fn().mockReturnThis(),
             addHelpText: jest.fn().mockReturnThis(),
+            alias: jest.fn().mockReturnThis(),
             action: function(action) {
               commandActions[cmdName] = action;
               return this;
             },
-            // Support nested commands for command groups (e.g., 'secret set')
             command: jest.fn((subCmdName) => {
               const fullCmdName = `${cmdName} ${subCmdName}`;
               const mockSubCommand = {
@@ -1829,10 +1829,25 @@ describe('CLI Commands', () => {
                 option: jest.fn().mockReturnThis(),
                 requiredOption: jest.fn().mockReturnThis(),
                 addHelpText: jest.fn().mockReturnThis(),
+                alias: jest.fn().mockReturnThis(),
                 action: function(action) {
                   commandActions[fullCmdName] = action;
                   return this;
-                }
+                },
+                command: jest.fn((deepName) => {
+                  const deepFull = `${fullCmdName} ${deepName}`;
+                  const deepCmd = {
+                    description: jest.fn().mockReturnThis(),
+                    option: jest.fn().mockReturnThis(),
+                    requiredOption: jest.fn().mockReturnThis(),
+                    addHelpText: jest.fn().mockReturnThis(),
+                    action: function(action) {
+                      commandActions[deepFull] = action;
+                      return this;
+                    }
+                  };
+                  return deepCmd;
+                })
               };
               return mockSubCommand;
             })
@@ -1858,6 +1873,7 @@ describe('CLI Commands', () => {
             option: jest.fn().mockReturnThis(),
             requiredOption: jest.fn().mockReturnThis(),
             addHelpText: jest.fn().mockReturnThis(),
+            alias: jest.fn().mockReturnThis(),
             action: function(action) {
               commandActions[cmdName] = action;
               return this;
@@ -1869,10 +1885,25 @@ describe('CLI Commands', () => {
                 option: jest.fn().mockReturnThis(),
                 requiredOption: jest.fn().mockReturnThis(),
                 addHelpText: jest.fn().mockReturnThis(),
+                alias: jest.fn().mockReturnThis(),
                 action: function(action) {
                   commandActions[fullCmdName] = action;
                   return this;
-                }
+                },
+                command: jest.fn((deepName) => {
+                  const deepFull = `${fullCmdName} ${deepName}`;
+                  const deepCmd = {
+                    description: jest.fn().mockReturnThis(),
+                    option: jest.fn().mockReturnThis(),
+                    requiredOption: jest.fn().mockReturnThis(),
+                    addHelpText: jest.fn().mockReturnThis(),
+                    action: function(action) {
+                      commandActions[deepFull] = action;
+                      return this;
+                    }
+                  };
+                  return deepCmd;
+                })
               };
               return mockSubCommand;
             })

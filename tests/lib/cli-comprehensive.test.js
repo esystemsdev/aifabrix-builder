@@ -163,11 +163,12 @@ describe('CLI Comprehensive Tests', () => {
           option: jest.fn().mockReturnThis(),
           requiredOption: jest.fn().mockReturnThis(),
           addHelpText: jest.fn().mockReturnThis(),
+          alias: jest.fn().mockReturnThis(),
           action: jest.fn((action) => {
             commandActions[cmdName] = action;
             return mockCommand;
           }),
-          // Support nested commands for command groups (e.g., 'secret set')
+          // Nested groups (e.g. secret set) and three-level (datasource capability copy)
           command: jest.fn((subCmdName) => {
             const fullCmdName = `${cmdName} ${subCmdName}`;
             const mockSubCommand = {
@@ -175,9 +176,24 @@ describe('CLI Comprehensive Tests', () => {
               option: jest.fn().mockReturnThis(),
               requiredOption: jest.fn().mockReturnThis(),
               addHelpText: jest.fn().mockReturnThis(),
+              alias: jest.fn().mockReturnThis(),
               action: jest.fn((action) => {
                 commandActions[fullCmdName] = action;
                 return mockSubCommand;
+              }),
+              command: jest.fn((deepName) => {
+                const deepFull = `${fullCmdName} ${deepName}`;
+                const deepCmd = {
+                  description: jest.fn().mockReturnThis(),
+                  option: jest.fn().mockReturnThis(),
+                  requiredOption: jest.fn().mockReturnThis(),
+                  addHelpText: jest.fn().mockReturnThis(),
+                  action: jest.fn((action) => {
+                    commandActions[deepFull] = action;
+                    return deepCmd;
+                  })
+                };
+                return deepCmd;
               })
             };
             return mockSubCommand;

@@ -62,7 +62,8 @@ describe('Datasource Commands Module', () => {
         addHelpText: jest.fn().mockReturnThis(),
         action: jest.fn().mockReturnThis(),
         requiredOption: jest.fn().mockReturnThis(),
-        option: jest.fn().mockReturnThis()
+        option: jest.fn().mockReturnThis(),
+        alias: jest.fn().mockReturnThis()
       };
       // Make command return a new subcommand for chaining
       group.command.mockImplementation((name) => {

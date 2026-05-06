@@ -1,28 +1,28 @@
 ---
 name: Datasource capability CLI
-overview: "Implement capability subcommands in aifabrix-builder with copy-first MVP: same-file JSON mutations, explicit profiles, JSON Patch dry-run, structured reference rewriting, collision/backup defaults, capability validate, then UX/OpenAPI/relate (metadata-only v1)."
+overview: "Implement capability subcommands in aifabrix-builder with copy-first MVP: same-file JSON mutations, explicit profiles, JSON Patch dry-run, structured reference rewriting, collision/backup defaults, capability validate, symmetric remove, then UX/OpenAPI/relate (metadata-only v1)."
 todos:
   - id: phase1-copy-mvp
-    content: "Phase 1: copy + --dry-run (JSON Patch) + AJV + rewriteCapabilityReferences + collision flags + backup + success footer; lib/datasource/capability/*"
-    status: pending
+    content: "Phase 1: copy + remove + --dry-run (JSON Patch) + AJV + rewriteCapabilityReferences + collision flags + backup + success footer; lib/datasource/capability/*"
+    status: completed
   - id: phase1-cli-register
-    content: "Register datasource capability copy|validate|create (alias add); datasource.js; HubSpot golden fixture test"
-    status: pending
+    content: Register datasource capability copy|remove|validate|create (alias add); datasource.js; HubSpot golden fixture test
+    status: completed
   - id: phase1-profiles
     content: Early --profile / --as-profile on copy; --basic-exposure vs --basic documented
-    status: pending
+    status: completed
   - id: phase2-ux
     content: capability diff, --edit (inquirer); relate pipeline deferred
-    status: pending
+    status: completed
   - id: phase3-openapi
-    content: "create requires --from | --template | --openapi-operation; generate via dataplane-first OpenAPI"
+    content: create requires --from | --template | --openapi-operation; generate via dataplane-first OpenAPI
     status: pending
   - id: phase4-relate-meta
     content: relate v1 metadata-only (foreignKeys + optional mappings/schema); --relation-name; no pipeline until verified
     status: pending
   - id: docs-matrix
     content: Docs recommended workflow + cli-output-command-matrix.md + docs/commands per cli-layout
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -30,7 +30,7 @@ isProject: false
 
 ## Overview
 
-Add **`datasource capability`** subcommands so developers copy and refine OpenAPI/CIP capability slices inside a single **`*-datasource-*.json`**, with validation, dry-run, explicit **`exposed.profiles`** handling, and metadata-only **`relate`** before any enrichment pipelines.
+Add **`datasource capability`** subcommands so developers **copy**, **remove**, and refine OpenAPI/CIP capability slices inside a single **`*-datasource-*.json`**, with validation, dry-run, explicit **`exposed.profiles`** handling, and metadata-only **`relate`** before any enrichment pipelines.
 
 ## Rules and Standards
 
@@ -56,10 +56,10 @@ This plan must comply with [`.cursor/rules/project-rules.mdc`](file:///workspace
 
 ## Before Development
 
-- [ ] Read **CLI layout** + **cli-output-command-matrix** for output conventions.
-- [ ] Review existing datasource commands: [`validate`](file:///workspace/aifabrix-builder/lib/datasource/validate.js), [`diff`](file:///workspace/aifabrix-builder/lib/datasource/diff.js), [`datasource.js`](file:///workspace/aifabrix-builder/lib/commands/datasource.js).
-- [ ] Skim **`external-datasource.schema.json`** for `capabilities`, `openapi.operations`, `execution.cip.operations`, `exposed.profiles`, `foreignKeys`.
-- [ ] Confirm HubSpot companies fixture shape for golden tests.
+- [x] Read **CLI layout** + **cli-output-command-matrix** for output conventions.
+- [x] Review existing datasource commands: [`validate`](file:///workspace/aifabrix-builder/lib/datasource/validate.js), [`diff`](file:///workspace/aifabrix-builder/lib/datasource/diff.js), [`datasource.js`](file:///workspace/aifabrix-builder/lib/commands/datasource.js).
+- [x] Skim **`external-datasource.schema.json`** for `capabilities`, `openapi.operations`, `execution.cip.operations`, `exposed.profiles`, `foreignKeys`.
+- [x] Confirm HubSpot companies fixture shape for golden tests.
 
 ## Definition of Done
 
@@ -103,7 +103,8 @@ Namespace: **`datasource capability`** — register via `setupDatasourceCapabili
 | Command | Purpose |
 | --------|---------|
 | **`capability copy`** | Clone coordinated subtrees from `--from` → `--as`; primary developer workflow. |
-| **`capability validate`** | **`--validate-only`**: structural + AJV for file or single `--capability` slice (after manual edits). |
+| **`capability remove`** | Delete one capability: drop **`capabilities[]`** entry, **`openapi.operations.<name>`**, **`execution.cip.operations.<name>`**; optional **`exposed.profiles`** row; then AJV-validate. Mirrored safety to copy (`--dry-run`, backup, `--no-backup`). |
+| **`capability validate`** | Structural + AJV for file or single **`--capability`** slice (after manual edits). |
 | **`capability create`** | New capability **without** non-executable stubs — see creation sources below. Alias: **`add`**. |
 
 Example (profiles explicit — no guessing):
@@ -117,6 +118,23 @@ aifabrix datasource capability copy companies \
 ```
 
 (`companies` = datasource key or path under `integration/<app>/`, same resolution as `datasource validate`.)
+
+Example (**remove** — drop a capability and an exposure profile key when names align):
+
+```bash
+aifabrix datasource capability remove test-e2e-hubspot-companies \
+  --capability createCliTrial \
+  --profile createCliTrial \
+  --dry-run
+```
+
+**`remove` semantics (normative):**
+
+- **Required:** **`--capability <key>`** — capability key to delete (must match `^[a-z][a-zA-Z0-9_]*$`).
+- **Remove from document:** remove **`key`** from **`capabilities[]`**; delete **`openapi.operations[key]`** and **`execution.cip.operations[key]`** if present — default: **fail** if the key is missing from all tracked locations unless **`--force`** (explicit no-op when already absent).
+- **Profiles:** optional **`--profile <name>`** — also delete **`exposed.profiles[name]`** when authors named a profile after the capability or when removing a stale profile row explicitly. Do **not** delete unrelated profiles by default.
+- **References elsewhere:** optional follow-up (Phase 2): strip **`testPayload.scenarios`** entries whose **`operation`** equals the removed key; Phase 1 may **warn** or require **`--prune-test-scenarios`** to avoid silent drift.
+- Same **`--dry-run`** (JSON Patch of removals), **`backup/***.bak`**, **`--no-backup`**, **`validateDatasourceParsed`** before write, and **success footer** as **`copy`**.
 
 **Creation sources for `create` / `add` (no placeholder OpenAPI/CIP):** require **at least one** of:
 
@@ -133,9 +151,9 @@ aifabrix datasource capability copy companies \
 
 ---
 
-## Phase 1 — MVP: **copy** + `--dry-run` + validation + same-file mutation
+## Phase 1 — MVP: **copy** + **`remove`** + `--dry-run` + validation + same-file mutation
 
-**Priority order:** (1) **`copy`**, (2) **`--dry-run`**, (3) **AJV validation**, (4) **atomic write** — defer **`create`** until copy path + profiles + collision + backup are solid.
+**Priority order:** (1) **`copy`**, (2) **`remove`** (inverse mutation reusing shared **`removeCapability`**-style helpers), (3) **`--dry-run`**, (4) **AJV validation**, (5) **atomic write** — defer **`create`** until copy/remove paths + profiles + collision + backup are solid.
 
 ### Resolve path and IO
 
@@ -162,7 +180,7 @@ Walk cloned **`openapi`** / **`cip`** subtrees; rewrite **only known keys** when
 |------|----------|
 | **`--fail-if-exists`** | Default: exit non-zero if **`as`** already exists in `capabilities`, `openapi.operations`, or `execution.cip.operations`. |
 | **`--overwrite`** | Replace existing **`as`** subtrees (document destructive scope). |
-| **`--suffix`** | Deterministic rename on conflict (e.g. `createBasic2`). |
+| **`--suffix`** | Same as **`--auto-suffix`**: deterministic rename on conflict (e.g. `createBasic2`). |
 
 ### JSON Patch + `--dry-run`
 
@@ -185,16 +203,22 @@ Next:
   aifabrix datasource validate <file-or-key>
 ```
 
+### `remove` behavior
+
+- Implement **`applyCapabilityRemove(doc, { capability, profile?, pruneTestScenarios? })`** returning **`doc`**, **`patchOperations`**, **`updatedSections`** (mirror **`applyCapabilityCopy`** structure for **`runCapabilityRemove`**).
+- Reuse path resolution + **`validateDatasourceParsed`** + backup + atomic write from the same runner pattern as **`run-capability-copy.js`**.
+- Default **fail** if **`--capability`** is absent from **`capabilities[]`**, **`openapi.operations`**, and **`execution.cip.operations`** (nothing to do / typo guard), unless **`--force`** is specified for explicit no-op or partial deletes (document exact semantics in CLI help).
+
 ### Golden fixture test
 
-Use HubSpot companies datasource; copy `create` → disposable key with **`--profile` / `--as-profile`**; assert AJV valid; assert **`openapi.operations.create`** unchanged; unit-test **`rewriteCapabilityReferences`**.
+Use HubSpot companies datasource; copy `create` → disposable key with **`--profile` / `--as-profile`**; assert AJV valid; assert **`openapi.operations.create`** unchanged; unit-test **`rewriteCapabilityReferences`**. Add remove round-trip: **`remove`** the disposable key and assert schema-valid file and absence of dropped keys.
 
 ---
 
 ## Phase 2 — UX
 
-- **`--basic-exposure`** vs **`--basic`** (shortcut): reduce **`exposed.profiles`** from **`metadataSchema`** (required + primitives only).
-- **`capability diff`**, **`capability edit`**.
+- **`--basic-exposure`** vs **`--basic`** (shortcut): reduce **`exposed.profiles`** from **`metadataSchema`** (required + primitives only) — **implemented** on **`capability copy`** / **`create`** with **`--as-profile`**.
+- **`capability diff`**, **`capability edit`** — **implemented** (`inquirer` + `$EDITOR` for edit; TTY required).
 
 ---
 
@@ -226,6 +250,8 @@ Recommended workflow (command-centric):
 
 ```text
 wizard → datasource validate → capability copy (profiles) → edit exposed if needed → validate → upload/deploy
+# rollback experiment:
+capability remove <key> [--profile …] → datasource validate → upload/deploy
 ```
 
 ---
@@ -240,7 +266,7 @@ wizard → datasource validate → capability copy (profiles) → edit exposed i
 
 **Type:** Development (CLI + library modules + tests + docs).
 
-Implement **`datasource capability`** commands in the AI Fabrix Builder to mutate external datasource JSON (**capabilities**, **openapi.operations**, **execution.cip.operations**, **exposed.profiles**, later **foreignKeys**) with copy-first workflow, schema validation, dry-run via JSON Patch, and ISO-aligned quality gates.
+Implement **`datasource capability`** commands in the AI Fabrix Builder to mutate external datasource JSON (**capabilities**, **openapi.operations**, **execution.cip.operations**, **exposed.profiles**, later **foreignKeys**) with copy-first workflow and **symmetric remove**, schema validation, dry-run via JSON Patch, and ISO-aligned quality gates.
 
 ### Applicable rules
 
@@ -261,6 +287,7 @@ Implement **`datasource capability`** commands in the AI Fabrix Builder to mutat
 
 ### Plan updates made (this validation pass)
 
+- ✅ Documented **`aifabrix datasource capability remove`** — delete capability slices + optional **`exposed.profiles`** row; **`--dry-run`**, backup, AJV; optional **`testPayload.scenarios`** pruning flag.
 - ✅ Added **Overview**
 - ✅ Added **Rules and Standards** with links to project-rules and cli-layout/docs-rules
 - ✅ Added **Before Development** checklist
@@ -273,3 +300,96 @@ Implement **`datasource capability`** commands in the AI Fabrix Builder to mutat
 - During implementation, register subcommands in [`lib/commands/datasource.js`](file:///workspace/aifabrix-builder/lib/commands/datasource.js) (parent may also touch [`lib/cli.js`](file:///workspace/aifabrix-builder/lib/cli.js) only if top-level wiring is required — follow existing `setupDatasourceCommands` pattern).
 - Run **`npm run build:ci`** before merge if schema sync / flag checks could be affected.
 - Keep **[permissions-guide.md](file:///workspace/aifabrix-builder/docs/commands/permissions.md)** updated only if new code adds Controller/Dataplane API calls with new permission needs.
+
+## Implementation Validation Report
+
+**Date**: 2026-05-06  
+**Plan**: [`.cursor/plans/132-datasource_capability_cli.plan.md`](file:///workspace/aifabrix-builder/.cursor/plans/132-datasource_capability_cli.plan.md)  
+**Status**: ⚠️ **PARTIAL — roadmap incomplete** — ✅ **Phase 1 + Phase 2 UX shipped**; ❌ **Phase 3 (OpenAPI-assisted create)** and **Phase 4 (`relate`)** remain **pending** in YAML frontmatter.
+
+### Executive Summary
+
+Implemented **`datasource capability`** commands: **`copy`**, **`remove`**, **`validate`**, **`create`/`add`**, **`diff`**, **`edit`** (TTY + `$EDITOR` / nano fallback / `--editor`), with **`lib/datasource/capability/*`**, **`validateDatasourceParsed`**, **`docs/commands/external-integration.md`**, and **cli-output-command-matrix** rows for capability leaf commands. Optional HubSpot integration test skips when the dataplane fixture path is absent.
+
+YAML **`todos`**: **`phase1-*`**, **`docs-matrix`**, **`phase2-ux`** → **`completed`**; **`phase3-openapi`**, **`phase4-relate-meta`** → **`pending`**. **Before Development** checklist (markdown) is fully checked.
+
+This validation pass ran **`npm run lint:fix`** → **`npm run lint`** → **`npm test`** (all exit **0**). **`jest.projects.js`** — isolated project **`run-capability-copy`** added so **`tests/lib/datasource/run-capability-copy.test.js`** runs in a fresh worker (**`jest.mock('fs')`** bleed from other suites had caused intermittent **`File not found`** on temp JSON paths).
+
+### Task Completion
+
+| Source | Total | Completed | Incomplete | Completion |
+| ------ | ----- | ----------- | ---------- | ---------- |
+| YAML `todos` (frontmatter) | 7 | 5 | 2 | ~71% |
+| Markdown checkboxes (“Before Development”) | 4 | 4 | 0 | 100% |
+
+**Pending YAML todos:** `phase3-openapi`, `phase4-relate-meta`.
+
+**Completed YAML todos:** `phase1-copy-mvp`, `phase1-cli-register`, `phase1-profiles`, `phase2-ux`, `docs-matrix`.
+
+### File Existence Validation
+
+| Path | Status |
+| ---- | ------ |
+| [`lib/commands/datasource.js`](file:///workspace/aifabrix-builder/lib/commands/datasource.js) (`setupDatasourceCapabilityCommands`) | ✅ |
+| [`lib/commands/datasource-capability.js`](file:///workspace/aifabrix-builder/lib/commands/datasource-capability.js) | ✅ |
+| [`lib/datasource/validate.js`](file:///workspace/aifabrix-builder/lib/datasource/validate.js) (`validateDatasourceParsed`, `resolveValidateInputPath`) | ✅ |
+| `lib/datasource/capability/` — `capability-key.js`, `capability-resolve.js`, `capability-storage-keys.js`, `copy-operations.js`, `copy-test-payload.js`, `json-pointer.js`, `reference-rewrite.js`, `remove-operations.js`, `basic-exposure.js`, `capability-diff-slice.js`, `run-capability-copy.js`, `run-capability-remove.js`, `run-capability-diff.js`, `run-capability-edit.js`, `validate-capability-slice.js` | ✅ |
+| [`lib/schema/external-datasource.schema.json`](file:///workspace/aifabrix-builder/lib/schema/external-datasource.schema.json) | ✅ |
+| [`docs/commands/external-integration.md`](file:///workspace/aifabrix-builder/docs/commands/external-integration.md) (capability subsection) | ✅ |
+| [`.cursor/rules/cli-output-command-matrix.md`](file:///workspace/aifabrix-builder/.cursor/rules/cli-output-command-matrix.md) | ✅ |
+| Dataplane HubSpot fixture (optional integration test) | ⚠️ **`capability-hubspot-copy.integration.test.js`** skips unless fixture path exists (e.g. sibling **`aifabrix-dataplane`** checkout) |
+
+**Deferred per plan:** `lib/datasource/capability/templates/` (Phase 3 templates), OpenAPI-assisted **`create`/`generate`**, **`capability relate`** (Phase 4).
+
+### Test Coverage
+
+| Area | Status |
+| ---- | ------ |
+| Unit / CLI tests mirroring `lib/datasource/capability/*` and `datasource-capability` (`tests/lib/datasource/run-capability-*.test.js`, `capability-*`, `datasource-capability-*.test.js`, etc.) | ✅ Present |
+| HubSpot integration (`capability-hubspot-copy.integration.test.js`) | ⚠️ Skipped when fixture unavailable |
+| **Coverage ≥80% on new code** | ⚠️ Not run in this pass (`npm run test:coverage` optional) |
+
+### Code Quality Validation
+
+| Step | Result |
+| ---- | ------ |
+| **STEP 1 — ESLint fix** (`npm run lint:fix`) | ✅ PASSED (exit 0) |
+| **STEP 2 — Lint** (`npm run lint`) | ✅ PASSED (0 errors, 0 warnings) |
+| **STEP 3 — Test** (`npm test`) | ✅ PASSED — multi-project wrapper (**41** projects); latest run **43** suites / **507** tests (counts vary by wrapper aggregation) |
+
+**Note:** Wall-clock full suite ~**12–21s** in CI/agent environments; not sub‑500ms per project.
+
+### Cursor Rules Compliance (spot check)
+
+| Area | Assessment |
+| ---- | ---------- |
+| CLI layout / matrix / docs-rules | ✅ Capability leaves documented; command-centric **`docs/commands`** |
+| Code reuse / modules | ✅ Logic under **`lib/datasource/capability/`** |
+| Error handling / logging | ✅ Structured CLI errors; **`logger`** + chalk |
+| JSDoc / `@fileoverview` | ✅ Command module + capability runners |
+| Security | ✅ No secrets in reviewed capability paths |
+| Jest / fs | ✅ **`run-capability-copy`** isolated per **`jest.projects.js`** to avoid **`jest.mock('fs')`** worker bleed |
+
+### Implementation Completeness vs Plan Sections
+
+| Topic | Status |
+| ----- | ------ |
+| Phase 1 — copy, remove, dry-run, AJV, backup, collision/`--suffix`, profiles | ✅ Implemented |
+| Phase 1 — `create`/`add` | ⚠️ Requires **`--from`** (or equivalent) for real slices; templates/OpenAPI deferred to Phase 3 |
+| Phase 2 — **`diff`**, **`edit`** (inquirer), basic exposure helpers | ✅ Implemented (`basic-exposure.js`, tests) |
+| Phase 3 — templates dir, OpenAPI-driven create/generate | ❌ Pending (`phase3-openapi`) |
+| Phase 4 — **`relate`** metadata-only | ❌ Pending (`phase4-relate-meta`) |
+
+### Issues and Recommendations
+
+1. **`npm run build:ci`** before merge when schema sync / flag checks may be affected.
+2. Optional **`npm run test:coverage`** on **`lib/datasource/capability/**`** for ≥80% evidence.
+3. **`jest.projects.js`**: keep **`capability-run-real-fs`** (copy/diff/edit) isolated if new **`jest.mock('fs')`** suites appear in the default worker pool.
+
+### Final Validation Checklist
+
+- [x] YAML todos accurate for delivered scope (Phase 1–2 UX done; Phase 3–4 pending)
+- [x] Key files present (`datasource-capability.js`, `lib/datasource/capability/*`, `datasource.js` wiring)
+- [x] **`npm run lint:fix`** + **`npm run lint`** + **`npm test`** pass
+- [x] Docs + CLI output matrix reference capability commands
+- [ ] **Full plan roadmap** (Phase 3 OpenAPI + Phase 4 relate) — open until implemented or scope formally narrowed
