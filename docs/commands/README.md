@@ -45,13 +45,13 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix app list`](application-management.md#aifabrix-app-list) - List apps in current environment
   - [`aifabrix app rotate-secret <appKey>`](application-management.md#aifabrix-app-rotate-secret) - Rotate pipeline ClientSecret (one-time display)
   - [`aifabrix app deployment <appKey>`](deployment.md#aifabrix-app-deployment-appkey) - List recent deployments for app in current environment
-  - [`aifabrix service-user`](application-management.md#aifabrix-service-user-create) - OAuth service users on Controller (`aifabrix service-user --help`; see [permissions](permissions.md))
-  - [`aifabrix service-user create`](application-management.md#aifabrix-service-user-create) - Create service user (username, email, redirect-uris, group-names); one-time client secret
-  - [`aifabrix service-user list`](application-management.md#aifabrix-service-user-list) - List service users (pagination and search)
-  - [`aifabrix service-user rotate-secret`](application-management.md#aifabrix-service-user-rotate-secret) - Rotate client secret for a service user (one-time display)
-  - [`aifabrix service-user delete`](application-management.md#aifabrix-service-user-delete) - Deactivate a service user
-  - [`aifabrix service-user update-groups`](application-management.md#aifabrix-service-user-update-groups) - Update group assignments for a service user
-  - [`aifabrix service-user update-redirect-uris`](application-management.md#aifabrix-service-user-update-redirect-uris) - Update redirect URIs for a service user
+  - [`aifabrix integration-client`](application-management.md#aifabrix-integration-client-create) - OAuth integration clients on Controller (`aifabrix integration-client --help`; see [permissions](permissions.md))
+  - [`aifabrix integration-client create`](application-management.md#aifabrix-integration-client-create) - Create integration client (key, display-name, redirect-uris, optional group-names); one-time client secret
+  - [`aifabrix integration-client list`](application-management.md#aifabrix-integration-client-list) - List integration clients (pagination and search)
+  - [`aifabrix integration-client rotate-secret`](application-management.md#aifabrix-integration-client-rotate-secret) - Rotate client secret for an integration client (one-time display)
+  - [`aifabrix integration-client delete`](application-management.md#aifabrix-integration-client-delete) - Deactivate an integration client
+  - [`aifabrix integration-client update-groups`](application-management.md#aifabrix-integration-client-update-groups) - Update group assignments for an integration client
+  - [`aifabrix integration-client update-redirect-uris`](application-management.md#aifabrix-integration-client-update-redirect-uris) - Update redirect URIs for an integration client
 
 ### Application Development
 - [Application Development Commands](application-development.md) - Local development

@@ -13,7 +13,7 @@ The **tests/manual** directory contains tests that call **real** Controller and 
 - **api-external-test-e2e.test.js** – external-test.api (test-e2e sync, getE2ETestRun; Dataplane; Bearer/API key only)
 - **api-validation-run.test.js** – validation-run.api (unified POST/GET validation run; same stack as `aifabrix datasource test`)
 - **api-wizard.test.js** – wizard.api (platforms, credentials, Dataplane)
-- **api-service-users.test.js** – service-users.api (list; requires Controller and service-user:read for success)
+- **api-integration-clients.test.js** – integration-clients.api (list; requires Controller and integration-client:read for success)
 
 ## Important
 
@@ -51,7 +51,7 @@ npx jest --config jest.config.manual.js --runInBand tests/manual/api-auth.test.j
 
 ## Coverage vs plans (109, 110, 111)
 
-- **Plan 109 (service-user list, rotate-secret, delete, update):** Covered by **api-service-users.test.js** (list; create/rotate/update/delete are covered by unit tests in `tests/lib/api/service-users.api.test.js` and `tests/lib/commands/service-user.test.js`). Manual run confirms real Controller list endpoint.
+- **Plan 109 / integration clients:** Covered by **api-integration-clients.test.js** (list; create/rotate/update/delete are covered by unit tests in `tests/lib/api/integration-clients.api.test.js` and `tests/lib/commands/integration-client.test.js`). Manual run confirms real Controller list endpoint.
 - **Plan 110 (ABAC validation, error messages, offline validation):** No new `lib/api` module; validation is offline. Manual testing is via CLI (`aifabrix validate`, `aifabrix datasource validate`) with real config files; no additional tests/manual file required.
 - **Plan 111 (RBAC format rbac.yaml/yml/json):** No new `lib/api` module; file I/O and generator/repair. Manual testing is via CLI and existing generator/repair tests; no additional tests/manual file required.
 

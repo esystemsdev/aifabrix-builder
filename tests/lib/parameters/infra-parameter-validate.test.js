@@ -96,9 +96,11 @@ describe('infra-parameter-validate', () => {
       try {
         const result = validateWorkspaceKvRefsAgainstCatalog(catalog, pathsUtil);
         expect(result.valid).toBe(false);
-        expect(result.errors.some((e) => e.includes('this-key-does-not-exist-in-catalog-zzzzz'))).toBe(
-          true
-        );
+        expect(
+          result.errors.some(
+            (e) => e && typeof e === 'object' && e.key === 'this-key-does-not-exist-in-catalog-zzzzz'
+          )
+        ).toBe(true);
       } finally {
         process.chdir(prev);
         fs.rmSync(tmp, { recursive: true, force: true });
@@ -125,7 +127,8 @@ describe('infra-parameter-validate', () => {
       process.chdir(tmp);
       try {
         const result = validateWorkspaceKvRefsAgainstCatalog(catalog, pathsUtil);
-        expect(result).toEqual({ valid: true, errors: [] });
+        expect(result.valid).toBe(true);
+        expect(result.errors).toEqual([]);
       } finally {
         process.chdir(prev);
         fs.rmSync(tmp, { recursive: true, force: true });

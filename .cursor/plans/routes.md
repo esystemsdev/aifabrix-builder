@@ -1,6 +1,28 @@
-# Builder ↔ Dataplane trust (contributor map)
+# Builder contributor route map (trust + controller APIs)
 
-This file is **maintainer / contributor** context for plan **130-builder_cli_certification** and related work. End-user documentation lives under **`docs/commands/`** (command-centric; no HTTP tutorials there).
+This file is **maintainer / contributor** context: (1) **Dataplane certification / trust** (plan **130-builder_cli_certification**), and (2) **MISO Controller HTTP routes** the CLI’s `lib/api/*` modules must align with when talking to the controller. End-user documentation stays under **`docs/commands/`** (command-centric; no HTTP tutorials there).
+
+## MISO Controller — Integration Clients (source of truth)
+
+The controller exposes **Integration Clients** under **`/api/v1/integration-clients` only**. The legacy **`/api/v1/service-users`** surface was removed (no alias). Permissions use the **`integration-client:*`** namespace.
+
+Reference implementation and OpenAPI live in **aifabrix-miso**: `packages/miso-controller/openapi/integration-client.openapi.yaml` (included from `openapi/openapi.yaml`).
+
+| Operation | HTTP | Path | Controller permission |
+| --------- | ---- | ---- | --------------------- |
+| Create (returns one-time `clientSecret`) | `POST` | `/api/v1/integration-clients` | `integration-client:create` |
+| List (pagination / sort / filter / search) | `GET` | `/api/v1/integration-clients` | `integration-client:read` |
+| Get by id | `GET` | `/api/v1/integration-clients/{id}` | `integration-client:read` |
+| Regenerate secret | `POST` | `/api/v1/integration-clients/{id}/regenerate-secret` | `integration-client:update` |
+| Replace group memberships | `PUT` | `/api/v1/integration-clients/{id}/groups` | `integration-client:update` |
+| Replace redirect URIs | `PUT` | `/api/v1/integration-clients/{id}/redirect-uris` | `integration-client:update` |
+| Deactivate (204, empty body) | `DELETE` | `/api/v1/integration-clients/{id}` | `integration-client:delete` |
+
+**Create body (high level):** `key`, `displayName`, optional `description`, optional `keycloakClientId`, `redirectUris[]`, `groupNames[]` — see OpenAPI schemas for exact validation.
+
+### Builder alignment
+
+The Builder CLI uses **`lib/api/integration-clients.api.js`**, **`lib/commands/integration-client.js`**, and **`lib/cli/setup-integration-client.js`** (`aifabrix integration-client`) aligned with the table above and **`integration-client:*`** permissions.
 
 ## Certification block on disk
 

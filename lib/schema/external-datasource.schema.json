@@ -1765,6 +1765,15 @@
            "identity":{
               "$ref":"#/$defs/identitySpec"
            },
+           "shape":{
+              "type":"string",
+              "enum":[
+                 "create",
+                 "update",
+                 "delete"
+              ],
+              "description":"Optional semantic classification for this operation when automatic inference from fetch steps (method/path) is insufficient."
+           },
            "steps":{
               "type":"array",
               "minItems":1,

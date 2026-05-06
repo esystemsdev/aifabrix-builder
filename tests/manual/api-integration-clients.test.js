@@ -1,17 +1,15 @@
 /**
- * Manual tests: real API calls to Controller service-users API.
- * Requires valid login and Controller with service-user endpoints. Auth is validated in setup.js.
- * Requires permission service-user:read for list to succeed.
+ * Manual tests: Controller integration-clients API via Builder client.
+ * Requires valid login and a Controller that exposes integration clients. Auth is validated in setup.js.
+ * Requires permission integration-client:read for list to succeed.
  *
- * @fileoverview Manual tests for service-users API
+ * @fileoverview Manual tests for integration-clients.api
  * @author AI Fabrix Team
  * @version 2.0.0
  */
 
 const { getManualTestAuth } = require('./require-auth');
-const {
-  listServiceUsers
-} = require('../../lib/api/service-users.api');
+const { listIntegrationClients } = require('../../lib/api/integration-clients.api');
 
 function extractListArray(response) {
   const payload = response?.data;
@@ -35,7 +33,7 @@ function extractMetaObject(response) {
   return null;
 }
 
-describe('Manual API tests – service-users.api (real Controller)', () => {
+describe('Manual API tests – integration-clients.api (real Controller)', () => {
   let controllerUrl;
   let authConfig;
 
@@ -45,10 +43,10 @@ describe('Manual API tests – service-users.api (real Controller)', () => {
     authConfig = ctx.authConfig;
   });
 
-  describe('service-users.api', () => {
-    it('GET /api/v1/service-users returns list or 403', async() => {
+  describe('integration-clients.api', () => {
+    it('list integration clients returns list or 403', async() => {
       try {
-        const response = await listServiceUsers(controllerUrl, authConfig, { pageSize: 10 });
+        const response = await listIntegrationClients(controllerUrl, authConfig, { pageSize: 10 });
         expect(response).toBeDefined();
         if (response.success) {
           expect(response.data).toBeDefined();
@@ -72,10 +70,10 @@ describe('Manual API tests – service-users.api (real Controller)', () => {
 
     it('list with pagination params returns response', async() => {
       try {
-        const response = await listServiceUsers(controllerUrl, authConfig, {
+        const response = await listIntegrationClients(controllerUrl, authConfig, {
           page: 1,
           pageSize: 5,
-          sort: 'username',
+          sort: 'displayName',
           search: ''
         });
         expect(response).toBeDefined();

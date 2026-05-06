@@ -43,12 +43,12 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | `aifabrix validate <app> --cert-sync` | Dataplane | Same scopes as **`validate`** for the target, plus **`external-system:read`** when the CLI fetches the active certificate | Optional post-success step: refreshes **only** the `certification` object in the local `*-system` file. See [Certification and trust (CLI)](certification-and-trust.md). |
 | `aifabrix show` / `aifabrix app show` with **`--verify-cert`** | Dataplane | **`external-system:read`** (when verify runs) | Optional certificate verify lines for external apps; does not require publish scope. |
 | `aifabrix wizard [systemKey]` | Dataplane | `external-system:create`, `external-system:read`, `credential:read` (for credential step) | Wizard sessions and steps use Dataplane wizard API. |
-| `aifabrix service-user create` | Controller | `service-user:create` | Create service user (username, email, redirectUris, groupNames); receive one-time clientSecret (save at creation time). |
-| `aifabrix service-user list` | Controller | `service-user:read` | List service users with optional pagination and search. |
-| `aifabrix service-user rotate-secret` | Controller | `service-user:update` | Regenerate client secret for a service user; new secret shown once only. |
-| `aifabrix service-user delete` | Controller | `service-user:delete` | Deactivate a service user. |
-| `aifabrix service-user update-groups` | Controller | `service-user:update` | Update group assignments for a service user. |
-| `aifabrix service-user update-redirect-uris` | Controller | `service-user:update` | Update redirect URIs for a service user (min 1). |
+| `aifabrix integration-client create` | Controller | `integration-client:create` | Create integration client (key, displayName, redirectUris, optional groupNames); receive one-time clientSecret (save at creation time). |
+| `aifabrix integration-client list` | Controller | `integration-client:read` | List integration clients with optional pagination and search. |
+| `aifabrix integration-client rotate-secret` | Controller | `integration-client:update` | Regenerate client secret for an integration client; new secret shown once only. |
+| `aifabrix integration-client delete` | Controller | `integration-client:delete` | Deactivate an integration client. |
+| `aifabrix integration-client update-groups` | Controller | `integration-client:update` | Update group assignments for an integration client. |
+| `aifabrix integration-client update-redirect-uris` | Controller | `integration-client:update` | Update redirect URIs for an integration client (min 1). |
 
 For `aifabrix datasource test`, `datasource test-integration`, and `datasource test-e2e`, flags such as `--watch` only re-run the same command when local files change; permissions and Dataplane scopes are unchanged per invocation.
 
@@ -71,10 +71,10 @@ For `aifabrix datasource test`, `datasource test-integration`, and `datasource t
 - **controller:deploy** – Deploy environment (env deploy).
 - **auth:read** – User info, validate token, roles, permissions.
 - **dashboard:read** – Dashboard summary (if used by CLI or UI).
-- **service-user:create** – Create service users and API clients (one-time secret on create).
-- **service-user:read** – List service users.
-- **service-user:update** – Regenerate secret, update groups, update redirect URIs for service users.
-- **service-user:delete** – Deactivate service users.
+- **integration-client:create** – Create integration clients and API credentials (one-time secret on create).
+- **integration-client:read** – List integration clients.
+- **integration-client:update** – Regenerate secret, update groups, update redirect URIs for integration clients.
+- **integration-client:delete** – Deactivate integration clients.
 
 ---
 
