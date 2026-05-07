@@ -343,9 +343,9 @@ describe('External System Download Helpers Module', () => {
 
       expect(result).toContain('# HubSpot Integration');
       expect(result).toContain('HubSpot CRM integration');
-      expect(result).toContain('**System Key**: `hubspot`');
-      expect(result).toContain('**System Type**: `crm`');
-      expect(result).toContain('**Datasources**: 2');
+      expect(result).toContain('| **System key** | `hubspot` |');
+      expect(result).toContain('| **Type** | `crm` |');
+      expect(result).toContain('| **Datasources** | 2 |');
       expect(result).toContain('`hubspot-system.json`');
       expect(result).toContain('`hubspot-datasource-contact.json`');
       expect(result).toContain('`hubspot-datasource-company.json`');
@@ -386,7 +386,7 @@ describe('External System Download Helpers Module', () => {
 
       const result = generateReadme(systemKey, application, dataSources);
 
-      expect(result).toContain('**System Type**: `openapi`');
+      expect(result).toContain('| **Type** | `openapi` |');
     });
 
     it('should show correct datasource count', () => {
@@ -400,7 +400,7 @@ describe('External System Download Helpers Module', () => {
 
       const result = generateReadme(systemKey, application, dataSources);
 
-      expect(result).toContain('**Datasources**: 3');
+      expect(result).toContain('| **Datasources** | 3 |');
     });
 
     it('should list all datasource files', () => {
@@ -438,11 +438,11 @@ describe('External System Download Helpers Module', () => {
 
       const result = generateReadme(systemKey, application, dataSources);
 
-      expect(result).toContain('## Quick Start');
-      expect(result).toContain('Extend External System');
-      expect(result).toContain('Configure Authentication and Datasources');
-      expect(result).toContain('Validate configuration (local only)');
-      expect(result).toContain('Repair Deployment Manifest');
+      expect(result).toContain('## Typical workflow');
+      expect(result).toContain('aifabrix wizard');
+      expect(result).toContain('datasource capability');
+      expect(result).toContain('aifabrix validate hubspot');
+      expect(result).toContain('## Repair');
     });
 
     it('should include testing section', () => {
@@ -452,10 +452,10 @@ describe('External System Download Helpers Module', () => {
 
       const result = generateReadme(systemKey, application, dataSources);
 
-      expect(result).toContain('## Testing');
-      expect(result).toContain('Calls dataplane?');
-      expect(result).toContain('Local checks (no API)');
-      expect(result).toContain('Integration tests (dataplane API)');
+      expect(result).toContain('## Validate and test');
+      expect(result).toContain('| Command | Network |');
+      expect(result).toContain('aifabrix test hubspot');
+      expect(result).toContain('aifabrix test-integration hubspot');
     });
 
     it('should include deployment section', () => {
@@ -465,8 +465,8 @@ describe('External System Download Helpers Module', () => {
 
       const result = generateReadme(systemKey, application, dataSources);
 
-      expect(result).toContain('## Deployment');
-      expect(result).toContain('miso-controller pipeline');
+      expect(result).toContain('## Deploy');
+      expect(result).toContain('aifabrix deploy hubspot');
     });
 
     it('should handle empty datasources array', () => {
@@ -476,7 +476,7 @@ describe('External System Download Helpers Module', () => {
 
       const result = generateReadme(systemKey, application, dataSources);
 
-      expect(result).toContain('**Datasources**: 0');
+      expect(result).toContain('| **Datasources** | 0 |');
       expect(result).toContain('`salesforce-system.json`');
       expect(result).not.toContain('Datasource:');
     });

@@ -63,6 +63,8 @@ Profiles: **layout-blocks** (header/status/list/helpers); **tty-summary** (chalk
 | aifabrix datasource capability validate | layout-blocks |
 | aifabrix datasource capability diff | stdout-only |
 | aifabrix datasource capability edit | tty-summary |
+| aifabrix datasource capability relate | tty-summary |
+| aifabrix datasource capability dimension | tty-summary |
 | aifabrix datasource list | tty-summary |
 | aifabrix datasource diff | stdout-only |
 | aifabrix datasource upload | layout-blocks |
@@ -71,6 +73,12 @@ Profiles: **layout-blocks** (header/status/list/helpers); **tty-summary** (chalk
 | aifabrix datasource test-e2e | layout-blocks |
 | aifabrix datasource log-e2e | tty-summary |
 | aifabrix datasource log-integration | tty-summary |
+| aifabrix dimension create | tty-summary |
+| aifabrix dimension get | tty-summary |
+| aifabrix dimension list | tty-summary |
+| aifabrix dimension-value create | tty-summary |
+| aifabrix dimension-value list | tty-summary |
+| aifabrix dimension-value delete | tty-summary |
 | aifabrix dev show | tty-summary |
 | aifabrix dev set-id | tty-summary |
 | aifabrix dev set-scoped-resources | tty-summary |

@@ -1,12 +1,16 @@
 ## [2.44.6] - 2026-05-06
 
 ### Added
+- **`aifabrix datasource capability relate`:** Adds or replaces **`foreignKeys[]`** metadata (and optional **`metadataSchema`** property stub) with **`--relation-name`**, **`--to`**, **`--field`**. Plan 132 Phase 4.
+- **`aifabrix datasource capability dimension`:** Adds or replaces one root **`dimensions.<key>`** binding (local field or FK traversal) with **`--dimension`**, **`--type local|fk`**, **`--field`** / **`--via`**. Includes semantic validation (FK/via checks), best-effort remote target validation, and optional online dimension-catalog enforcement when authenticated. Plan 135.
+- **`aifabrix datasource capability create`:** **`--openapi-operation`** (match **`operationId`** in-file) and **`--template minimal-fetch`** (shipped template) as alternatives to **`--from`**. Plan 132 Phase 3.
 - **`aifabrix integration-client`:** Manages OAuth integration clients (create, list, rotate-secret, delete, update-groups, update-redirect-uris) via the controller integration-clients surface and **`integration-client:*`** permissions. Plan 131.
 - **`aifabrix datasource capability`:** Copy, remove, validate, and create (add) capability slices inside external datasource JSON—dry-run JSON Patch, reference rewriting, backups, and collision handling. Plan 132.
 - **`aifabrix datasource capability diff` / `edit`:** Compare capability slices between two datasource JSON files; interactive `$EDITOR` workflow for openapi/CIP/profile JSON. Plan 132 Phase 2.
 - **Controller health:** New API helper reads controller **`/api/v1/health`** for deployment metadata used when tuning deployment polling behavior.
 
 ### Changed
+- **Infra bootstrap UX (`up-infra`, `up-miso`, `up-dataplane`, `up-platform`, `down-infra`):** Default output is now a guided, product-oriented flow with a concise “Ready” footer (URLs and environment). Use **`--verbose`** on these commands to show full orchestration details (compose generation, health polling, deployment polling, container details). Guided footers resolve public URLs using existing Builder URL resolution (Traefik/frontDoorRouting/remote-server/tls) instead of assuming `localhost`.
 - **Datasource capability copy / remove:** When **`capabilities[]`** is non-empty, **`--from`** (copy) and **`--capability`** (remove) refer to names in that list (case-insensitive match); **`openapi.operations`** and **`execution.cip.operations`** entries are found by the same logical name even when their object keys use different casing (for example lowercase OpenAPI keys). **`exposed.profiles`** lookup uses the same logical name. Legacy datasources with an empty or missing **`capabilities[]`** list still match operation keys by exact or case-insensitive name.
 - **Datasource capability remove (`--dry-run`):** Planned JSON Patch ops now include **`/capabilities/<index>`**, removes under **`openapi.operations`** / **`execution.cip.operations`** using the **actual** object keys, **`/exposed/profiles/<key>`**, and **`/testPayload/scenarios/<index>`** for scenarios whose **`operation`** matches the capability (indices in descending order).
 - **Datasource capability edit:** Resolves **`openapi.operations`** / **`execution.cip.operations`** / **`exposed.profiles`** keys using the same logical-name rules as copy/remove (case-insensitive match to **`capabilities[]`**), so editing **`updateAddress`** finds **`updateaddress`** in OpenAPI/CIP when stored that way. With **`--section profile`**, when **`exposed.profiles`** has a row for the chosen capability (from **`--capability`** or the interactive capability prompt), that profile opens without a “which profile?” list; **`--profile`** overrides. If **`$VISUAL`** and **`$EDITOR`** are unset and **nano** is on PATH, nano is used; **`--editor <cmd>`** sets the editor for one run.
@@ -15,19 +19,22 @@
 - **Datasource capability remove:** Always deletes **`exposed.profiles.<capability>`** (when present) and **`testPayload.scenarios`** rows whose **`operation`** matches the removed capability; **`--profile`** and **`--prune-test-scenarios`** are removed because this cleanup is unconditional. Empty **`testPayload.scenarios`** / **`testPayload`** and empty **`exposed.profiles`** objects are omitted from the saved JSON.
 - **Datasource capability copy / create:** **`exposed.profiles`** copy uses the same keys as **`--from`** and **`--as`** (no **`--profile`** / **`--as-profile`**). **`--auto-suffix`** and **`--suffix`** removed — use a unique **`--as`** name or **`--overwrite`**. **`--basic-exposure`** / **`--basic`** removed from the CLI; **`applyCapabilityCopy` / `runCapabilityCopy`** still accept **`basicExposure`** for programmatic use (minimal profile from **`metadataSchema`**).
 - **Datasource capability:** `--suffix` on `capability copy` and `capability create` is an alias for `--auto-suffix` (collision rename), matching the plan flag name.
+- **External integration README generation:** External-system README now includes `wizard.yaml` and `rbac.*` in the Files list, uses copy/paste-ready `af ds cap …` examples with a real datasource key, and derives `aifabrix secret set …` hints from `integration/<app>/env.template` when present.
 - **Repair:** Removes the repair-time system-permissions gate; auto-normalizes RBAC operation keys; aligns datasource schema pattern handling during repair.
 - **Datasource listing:** Listing behavior and tests refined alongside validation flows.
 - **Deployment:** Repository URL and related deploy CLI/options enhanced for environment registration flows.
 - **CI:** Node.js version updates in GitHub deployment workflows.
 - **Tests:** Additional isolated Jest projects (e.g. shell-env registration, log-viewer, front-door path contracts).
 - **CLI layout:** `datasource capability` success output uses **`cli-test-layout-chalk`** (**`formatBulletSection`**, **`formatNextActions`**, canonical glyphs); **`upload`** credential push success uses **`formatSuccessLine`**.
+- **Tests (Plan 132 hardening):** Isolated real-fs capability tests in `jest.projects.js` to avoid `jest.mock('fs')` bleed (now includes copy/diff/edit/remove), and added negative-path coverage for capability create/relate (invalid inputs, not-found/ambiguous OpenAPI operationId, missing templates, overwrite guards).
 
 ### Removed
 - **`aifabrix service-user`:** Command group removed—use **`integration-client`** (no long-term alias). Plan 131.
 
 ### Technical
 - **Plan 131:** `lib/api/integration-clients.api.js`, `lib/commands/integration-client.js`, `lib/cli/setup-integration-client.js`; docs and manual tests renamed from service-user paths.
-- **Plan 132:** `lib/datasource/capability/*`, `lib/commands/datasource-capability.js`; datasource validate wiring; CLI matrix/docs updates for capability leaf commands.
+- **Plan 132:** `lib/datasource/capability/*`, `lib/commands/datasource-capability.js`; datasource validate wiring; CLI matrix/docs updates for capability leaf commands; additional negative CLI/unit tests.
+- **Infra guided UX:** `lib/cli/infra-guided.js`, `lib/utils/with-muted-logger.js`, and `lib/cli/setup-infra.js` updates for guided-mode output, compact device login output, and `--verbose` escape hatch.
 
 ---
 

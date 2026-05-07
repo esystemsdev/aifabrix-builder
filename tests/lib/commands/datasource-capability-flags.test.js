@@ -70,4 +70,34 @@ describe('datasource capability runCopyLikeAction', () => {
       })
     );
   });
+
+  it('passes openApiOperationId when --openapi-operation is set', async() => {
+    await runCopyLikeAction('f.json', {
+      as: 'newCap',
+      dryRun: true,
+      openapiOperation: 'getSomeContact'
+    });
+    expect(runCapabilityCopy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: undefined,
+        openApiOperationId: 'getSomeContact',
+        template: undefined
+      })
+    );
+  });
+
+  it('passes template when --template is set', async() => {
+    await runCopyLikeAction('f.json', {
+      as: 'newCap',
+      dryRun: true,
+      template: 'minimal-fetch'
+    });
+    expect(runCapabilityCopy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: undefined,
+        openApiOperationId: undefined,
+        template: 'minimal-fetch'
+      })
+    );
+  });
 });

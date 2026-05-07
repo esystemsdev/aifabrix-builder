@@ -61,6 +61,7 @@ Default **`${TLS_ENABLED}`** is **`false`**, so default **`${HTTP_ENABLED}`** is
 
 **Options:**
 - `-d, --developer <id>` - Set developer ID and start infrastructure with developer-specific ports. Developer ID must be a non-negative integer (0 = default infra, 1+ = developer-specific). When provided, sets the developer ID in `~/.aifabrix/config.yaml` and starts infrastructure with isolated ports.
+- `--verbose` - Show full orchestration output (compose generation, health checks, container details). Default output is a guided summary + “Infra Ready” footer.
 - `--adminPassword <password>` - Override the catalog default for the shared admin password for this run and when filling missing bootstrap secrets that use that default (Postgres admin password, pgAdmin and Redis Commander wiring, Keycloak admin password bootstrap, controller onboarding admin password, and other catalog entries tied to the same placeholder). Also written to `admin-secrets.env` in the **same directory as `config.yaml`** (often `~/.aifabrix/`, not plain `$HOME` when `aifabrix-home` points at `$HOME`) when that file is created or updated for infra admin access. Use a strong password in shared environments.
 - `--adminEmail <email>` - Override the catalog default admin email for this run (for example pgAdmin login email and controller onboarding email bootstrap where the catalog maps it).
 - `--userPassword <password>` - Override the catalog default for the Keycloak default end-user password bootstrap where the catalog maps it.
@@ -159,6 +160,7 @@ aifabrix up-miso --image keycloak=myreg/keycloak:v1 --image miso-controller=myre
 - `--registry-mode <mode>` - Override registry mode (`acr` or `external`)
 - `-i, --image <key>=<value>` - Override image (e.g. `keycloak=reg/k:v1`, `miso-controller=reg/m:v1`); can be repeated
 - `-f, --force` - Clean builder/keycloak and builder/miso-controller and re-fetch from templates
+- `--verbose` - Show full orchestration output. Default output is guided steps + “Miso Ready” footer with URLs.
 
 **Issues:**
 - **"Infrastructure is not up"** → Run `aifabrix up-infra` first
@@ -188,6 +190,7 @@ aifabrix up-platform --image keycloak=myreg/k:v1 --image miso-controller=myreg/m
 ```
 
 **Options:** Same as [up-miso](#aifabrix-up-miso) (registry, registry-mode, image), plus `-f, --force` (see below). Registry and image options are passed through to both up-miso and up-dataplane steps.
+- `--verbose` - Show full orchestration output. Default output is guided platform setup (Keycloak → Miso Controller → authenticate → Dataplane) + “Platform Ready” footer with URLs.
 
 **`-f, --force` (up-platform only):** Before re-copying templates, the CLI updates your local builder config file (the same file `aifabrix auth` uses—typically under `.aifabrix/`): it **removes all stored device and client tokens** (same effect as logging out every saved controller session and client credential), sets **`environment` to `dev`**, and sets the **default controller** to the URL that matches your stored **developer ID** (local dev: the miso-controller port is **3000 + (developer ID × 100)**, e.g. ID 6 → port 3600). Your **developer ID** is not changed. Then it **deletes** the `builder/keycloak`, `builder/miso-controller`, and `builder/dataplane` folders so they are recreated from templates on the next steps. After the platform is up, run **`aifabrix login`** again before commands that need a Bearer token.
 
@@ -223,6 +226,7 @@ aifabrix up-dataplane --image myreg/dataplane:latest
 - `--registry-mode <mode>` - Override registry mode (`acr` or `external`)
 - `-i, --image <ref>` - Override dataplane image reference
 - `-f, --force` - Clean builder/dataplane and re-fetch from templates before registering/deploying
+- `--verbose` - Show full orchestration output. Default output is guided steps + “Dataplane Ready” footer with URLs.
 
 **Issues:**
 - **"Login required"** → Run `aifabrix login` first
@@ -256,6 +260,10 @@ aifabrix down-infra myapp
 # Stop an application and remove its data volume
 aifabrix down-infra myapp --volumes
 ```
+
+**Options:**
+- `-v, --volumes` - Remove volumes (deletes all local data for infra and/or the specified app)
+- `--verbose` - Show full orchestration output. Default output is a guided shutdown summary + “Stopped” footer.
 
 **Notes:**
 - App volumes are named per developer ID:

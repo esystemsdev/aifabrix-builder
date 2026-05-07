@@ -222,7 +222,11 @@ const defaultProject = {
       '/tests/lib/datasource/run-capability-edit.test.js',
       '\\\\tests\\\\lib\\\\datasource\\\\run-capability-edit.test.js',
       'lib/datasource/run-capability-edit.test.js',
-      'run-capability-edit\\.test\\.js'
+      'run-capability-edit\\.test\\.js',
+      '/tests/lib/datasource/run-capability-remove.test.js',
+      '\\\\tests\\\\lib\\\\datasource\\\\run-capability-remove.test.js',
+      'lib/datasource/run-capability-remove.test.js',
+      'run-capability-remove\\.test\\.js'
     ];
     if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
       patterns.push('/tests/local/');
@@ -325,7 +329,8 @@ const isolatedProjects = [
   makeIsolatedProject('capability-run-real-fs', [
     '**/tests/lib/datasource/run-capability-copy.test.js',
     '**/tests/lib/datasource/run-capability-diff.test.js',
-    '**/tests/lib/datasource/run-capability-edit.test.js'
+    '**/tests/lib/datasource/run-capability-edit.test.js',
+    '**/tests/lib/datasource/run-capability-remove.test.js'
   ])
 ];
 

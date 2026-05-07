@@ -522,7 +522,7 @@ describe('Generator Split Functions', () => {
       expect(result).toContain('application.json');
       expect(result).toContain('test-hubspot-system.json');
       expect(result).toContain('rbac.json');
-      expect(result).toContain('Extend External System');
+      expect(result).toContain('Typical workflow');
       expect(result).toContain('aifabrix wizard --app test-hubspot');
       expect(result).toContain('integration/test-hubspot');
       expect(result).toContain('Datasource: Companies Data');

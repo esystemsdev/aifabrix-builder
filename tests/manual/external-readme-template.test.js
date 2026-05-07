@@ -44,7 +44,7 @@ describe('external-readme template (manual)', () => {
         displayName: 'Wizard E2E Demo',
         authType: 'apikey'
       });
-      expect(content).toContain('### Secrets');
+      expect(content).toContain('## Secrets');
       expect(content).toContain('aifabrix secret set');
       expect(content).toContain('wizard-e2e-demo/apiKey');
       expect(content).toContain('<your value>');
@@ -68,7 +68,7 @@ describe('external-readme template (manual)', () => {
         displayName: 'No Secrets',
         authType: 'none'
       });
-      expect(content).not.toMatch(/### Secrets/);
+      expect(content).not.toMatch(/## Secrets/);
       expect(content).not.toContain('aifabrix secret set');
     });
   });

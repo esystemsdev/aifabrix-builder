@@ -342,9 +342,10 @@ describe('external-readme', () => {
         appName: 'myext',
         datasources: []
       });
-      expect(out).toContain('Validate configuration (local only)');
-      expect(out).toContain('Calls dataplane?');
-      expect(out).toContain('unified validation / pipeline API');
+      expect(out).toContain('## Validate and test');
+      expect(out).toContain('| Command | Network |');
+      expect(out).toContain('Off — schemas and files only');
+      expect(out).toContain('On — needs login + dataplane');
     });
 
     it('includes test, test-integration, and test-e2e commands', () => {
@@ -358,36 +359,36 @@ describe('external-readme', () => {
       expect(out).toContain('aifabrix test-e2e ');
     });
 
-    it('includes Quick Start login first (auth config and login)', () => {
+    it('includes Typical workflow with login and auth config', () => {
       const out = generateExternalReadmeContent({
         systemKey: 'myext',
         appName: 'myext',
         datasources: []
       });
-      expect(out).toContain('Login to your controller');
+      expect(out).toContain('## Typical workflow');
       expect(out).toContain('aifabrix auth config');
       expect(out).toContain('aifabrix login');
     });
 
-    it('includes repair deployment manifest section and command', () => {
+    it('includes repair section and command', () => {
       const out = generateExternalReadmeContent({
         systemKey: 'myext',
         appName: 'myext',
         datasources: []
       });
-      expect(out).toContain('Repair Deployment Manifest');
+      expect(out).toContain('## Repair');
       expect(out).toContain('aifabrix repair ');
       expect(out).toContain('--dry-run');
       expect(out).toContain('--rbac');
     });
 
-    it('includes upload to dataplane section and command', () => {
+    it('includes upload command in workflow', () => {
       const out = generateExternalReadmeContent({
         systemKey: 'myext',
         appName: 'myext',
         datasources: []
       });
-      expect(out).toContain('Upload to dataplane');
+      expect(out).toContain('**Publish**');
       expect(out).toContain('aifabrix upload ');
     });
 
@@ -401,7 +402,7 @@ describe('external-readme', () => {
       expect(out).toContain('wizard.yaml');
     });
 
-    it('includes E2E tests per datasource with datasource key and --app', () => {
+    it('includes datasource test-e2e commands with key and --app', () => {
       const out = generateExternalReadmeContent({
         systemKey: 'hubspot-demo',
         appName: 'hubspot-demo',
@@ -410,7 +411,7 @@ describe('external-readme', () => {
           { key: 'hubspot-demo-contacts-datasource', displayName: 'HubSpot Contacts' }
         ]
       });
-      expect(out).toContain('E2E tests per datasource');
+      expect(out).toContain('Single datasource E2E');
       expect(out).toContain('aifabrix datasource test-e2e hubspot-demo-companies-datasource --app hubspot-demo');
       expect(out).toContain('aifabrix datasource test-e2e hubspot-demo-contacts-datasource --app hubspot-demo');
     });
@@ -424,7 +425,7 @@ describe('external-readme', () => {
       });
       expect(out).toContain('application.json');
       expect(out).toContain('myext-system.json');
-      expect(out).toContain('Optional: `rbac.json`');
+      expect(out).toContain('`rbac.json`');
     });
   });
 });

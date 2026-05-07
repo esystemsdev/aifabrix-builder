@@ -49,6 +49,12 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | `aifabrix integration-client delete` | Controller | `integration-client:delete` | Deactivate an integration client. |
 | `aifabrix integration-client update-groups` | Controller | `integration-client:update` | Update group assignments for an integration client. |
 | `aifabrix integration-client update-redirect-uris` | Controller | `integration-client:update` | Update redirect URIs for an integration client (min 1). |
+| `aifabrix dimension create` | Controller | `dimensions:create` (and `dimensions:read` for idempotent behavior) | Creates the dimension if missing; succeeds if it already exists. Supports `--file` for CI/CD. |
+| `aifabrix dimension get` | Controller | `dimensions:read` | Reads one dimension by id or key. |
+| `aifabrix dimension list` | Controller | `dimensions:read` | Lists dimensions with optional paging/search. |
+| `aifabrix dimension-value create` | Controller | `dimensions:create` | Creates a value for a dimension (static dimension). Value must be unique within the dimension. |
+| `aifabrix dimension-value list` | Controller | `dimensions:read` | Lists values for a dimension. |
+| `aifabrix dimension-value delete` | Controller | `dimensions:delete` | Deletes a dimension value by id. |
 
 For `aifabrix datasource test`, `datasource test-integration`, and `datasource test-e2e`, flags such as `--watch` only re-run the same command when local files change; permissions and Dataplane scopes are unchanged per invocation.
 
@@ -75,6 +81,10 @@ For `aifabrix datasource test`, `datasource test-integration`, and `datasource t
 - **integration-client:read** – List integration clients.
 - **integration-client:update** – Regenerate secret, update groups, update redirect URIs for integration clients.
 - **integration-client:delete** – Deactivate integration clients.
+- **dimensions:create** – Create dimensions (Dimension Catalog).
+- **dimensions:read** – List/get dimensions (Dimension Catalog).
+- **dimensions:update** – Update dimensions or dimension values (when used by controller).
+- **dimensions:delete** – Delete dimensions or dimension values (cascade deletes values when deleting the dimension).
 
 ---
 

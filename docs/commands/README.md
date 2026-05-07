@@ -52,11 +52,12 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix integration-client delete`](application-management.md#aifabrix-integration-client-delete) - Deactivate an integration client
   - [`aifabrix integration-client update-groups`](application-management.md#aifabrix-integration-client-update-groups) - Update group assignments for an integration client
   - [`aifabrix integration-client update-redirect-uris`](application-management.md#aifabrix-integration-client-update-redirect-uris) - Update redirect URIs for an integration client
+  - [Dimensions](dimensions.md) - Dimension catalog (create/get/list) for ABAC validation
 
 ### Application Development
 - [Application Development Commands](application-development.md) - Local development
   - [`aifabrix create <app>`](application-development.md#aifabrix-create-app) - Scaffold builder or external app (flags or `--wizard`)
-  - [`aifabrix wizard [systemKey]`](external-integration.md#aifabrix-wizard) - Guided external system setup or headless `wizard.yaml`
+  - [`aifabrix wizard [systemKey]`](external-integration/system-lifecycle.md#aifabrix-wizard) - Guided external system setup or headless `wizard.yaml`
   - [`aifabrix build <app>`](application-development.md#aifabrix-build-app) - Build Docker image (auto-detect runtime)
   - [`aifabrix run <app>`](application-development.md#aifabrix-run-app) - Run app locally or on remote Docker host (`--reload`, `--env dev|tst|pro`)
   - [`aifabrix shell <app>`](application-development.md#aifabrix-shell-app) - Interactive shell in running or ephemeral container
@@ -90,21 +91,23 @@ Complete command reference organized by concept with examples and troubleshootin
 ### External Integration
 - [Certification and trust (CLI)](certification-and-trust.md) - Local `certification` section sync, `--no-cert-sync`, `--verify-cert`, `validate --cert-sync`
 - [External Integration Commands](external-integration.md) - External system integration. See [External Integration Testing](external-integration-testing.md) for unit/integration test details and payloads.
-  - [`aifabrix wizard [systemKey] [--debug]`](external-integration.md#aifabrix-wizard) - Guided external system setup (OpenAPI, MCP, HubSpot, …) or headless `wizard.yaml`; `--debug` for debug manifests
-  - [`aifabrix download <systemKey>`](external-integration.md#aifabrix-download-system-key) - Pull external system from dataplane into `integration/<key>/`
-  - [`aifabrix upload <systemKey>`](external-integration.md#aifabrix-upload-system-key) - Validate and publish external system to dataplane; registers RBAC with controller (does not trigger controller deployment; promote via deploy)
-  - [`aifabrix delete <systemKey>`](external-integration.md#aifabrix-delete-system-key) - Remove external system and datasources from dataplane
-  - [`aifabrix test <app>`](external-integration.md#aifabrix-test-app) - Unit tests (external: local validation; builder: in-container tests with `--env dev|tst`)
-  - [`aifabrix test-integration <app>`](external-integration.md#aifabrix-test-integration-app) - Integration tests: builder in container; external via dataplane (`-e`, `-v`, `-d` / `--debug` on external path; per-datasource flags on `datasource test-integration`)
-  - [`aifabrix datasource`](external-integration.md#aifabrix-datasource) - Datasource JSON: validate, list, deploy, test, logs (`aifabrix datasource --help`)
-    - [`aifabrix datasource validate <file>`](external-integration.md#aifabrix-datasource-validate-file) - Validate datasource JSON file
-    - [`aifabrix datasource list`](external-integration.md#aifabrix-datasource-list) - List datasources for environment in config
-    - [`aifabrix datasource diff <file1> <file2>`](external-integration.md#aifabrix-datasource-diff-file1-file2) - Diff two datasource JSON files
-    - [`aifabrix datasource upload <file-or-key>`](external-integration.md#aifabrix-datasource-upload-myapp-file) - Deploy one datasource JSON to the dataplane (path or key; `systemKey` in file)
-    - [`aifabrix datasource test <datasourceKey>`](external-integration.md#aifabrix-datasource-test-datasourcekey) - Structural/policy validation run for one datasource (unified dataplane API, run type test)
-    - [`aifabrix datasource test-integration <datasourceKey>`](external-integration.md#aifabrix-datasource-test-integration-datasourcekey) - Integration validation run for one datasource (unified dataplane API)
-    - [`aifabrix datasource test-e2e <datasourceKey>`](external-integration.md#aifabrix-datasource-test-e2e-datasourcekey) - E2E validation run for one datasource (unified dataplane API)
-    - [`aifabrix datasource log-test <datasourceKey>`](external-integration.md#aifabrix-datasource-log-test-datasourcekey) - Show latest structural validation debug log (`test-*.json`)
+  - [External system lifecycle commands](external-integration/system-lifecycle.md) - Wizard, download, upload, delete, and system-level tests
+    - [`aifabrix wizard [systemKey] [--debug]`](external-integration/system-lifecycle.md#aifabrix-wizard) - Guided external system setup (OpenAPI, MCP, HubSpot, …) or headless `wizard.yaml`; `--debug` for debug manifests
+    - [`aifabrix download <systemKey>`](external-integration/system-lifecycle.md#aifabrix-download-system-key) - Pull external system from dataplane into `integration/<key>/`
+    - [`aifabrix upload <systemKey>`](external-integration/system-lifecycle.md#aifabrix-upload-system-key) - Validate and publish external system to dataplane; registers RBAC with controller (does not trigger controller deployment; promote via deploy)
+    - [`aifabrix delete <systemKey>`](external-integration/system-lifecycle.md#aifabrix-delete-system-key) - Remove external system and datasources from dataplane
+    - [`aifabrix test <app>`](external-integration/system-lifecycle.md#aifabrix-test-app) - Unit tests (external: local validation; builder: in-container tests with `--env dev|tst`)
+    - [`aifabrix test-integration <app>`](external-integration/system-lifecycle.md#aifabrix-test-integration-app) - Integration tests: builder in container; external via dataplane (`-e`, `-v`, `-d` / `--debug` on external path; per-datasource flags on `datasource test-integration`)
+  - [Datasource commands](external-integration/datasources.md) - Datasource JSON: validate, list, deploy, test, logs (`aifabrix datasource --help`)
+    - [Datasource capability commands](external-integration/datasource-capabilities.md) - Copy/create/remove/diff/edit/validate/relate one capability inside a datasource
+    - [`aifabrix datasource validate <file>`](external-integration/datasources.md#aifabrix-datasource-validate-file) - Validate datasource JSON file
+    - [`aifabrix datasource list`](external-integration/datasources.md#aifabrix-datasource-list) - List datasources for environment in config
+    - [`aifabrix datasource diff <file1> <file2>`](external-integration/datasources.md#aifabrix-datasource-diff-file1-file2) - Diff two datasource JSON files
+    - [`aifabrix datasource upload <file-or-key>`](external-integration/datasources.md#aifabrix-datasource-upload-myapp-file) - Deploy one datasource JSON to the dataplane (path or key; `systemKey` in file)
+    - [`aifabrix datasource test <datasourceKey>`](external-integration/datasources.md#aifabrix-datasource-test-datasourcekey) - Structural/policy validation run for one datasource (unified dataplane API, run type test)
+    - [`aifabrix datasource test-integration <datasourceKey>`](external-integration/datasources.md#aifabrix-datasource-test-integration-datasourcekey) - Integration validation run for one datasource (unified dataplane API)
+    - [`aifabrix datasource test-e2e <datasourceKey>`](external-integration/datasources.md#aifabrix-datasource-test-e2e-datasourcekey) - E2E validation run for one datasource (unified dataplane API)
+    - [`aifabrix datasource log-test <datasourceKey>`](external-integration/datasources.md#aifabrix-datasource-log-test-datasourcekey) - Show latest structural validation debug log (`test-*.json`)
 
 ### Utilities
 - [Utility Commands](utilities.md) - Configuration and secret management

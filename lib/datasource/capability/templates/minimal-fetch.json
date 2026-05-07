@@ -1,0 +1,18 @@
+{
+  "openapiOperation": {
+    "operationId": "minimal-fetch-placeholder",
+    "method": "GET",
+    "path": "/"
+  },
+  "cipOperation": {
+    "enabled": true,
+    "steps": [
+      {
+        "fetch": {
+          "source": "openapi",
+          "openapiRef": "__STORAGE_KEY__"
+        }
+      }
+    ]
+  }
+}
