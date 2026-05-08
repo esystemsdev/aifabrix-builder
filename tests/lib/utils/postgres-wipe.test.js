@@ -51,7 +51,8 @@ describe('lib/utils/postgres-wipe', () => {
       expect(PROTECTED_DATABASES.has('template1')).toBe(true);
     });
 
-    it('contains postgres superuser in protected roles', () => {
+    it('contains superuser roles in protected roles', () => {
+      expect(PROTECTED_ROLES.has('pgadmin')).toBe(true);
       expect(PROTECTED_ROLES.has('postgres')).toBe(true);
     });
   });

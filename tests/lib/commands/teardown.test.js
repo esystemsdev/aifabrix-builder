@@ -11,12 +11,28 @@
 jest.mock('fs');
 jest.mock('inquirer');
 jest.mock('../../../lib/infrastructure');
+jest.mock('../../../lib/core/config', () => ({
+  getDeveloperId: jest.fn().mockResolvedValue('6')
+}));
 jest.mock('../../../lib/utils/paths');
 jest.mock('../../../lib/utils/logger');
+jest.mock('../../../lib/utils/with-muted-logger', () => ({
+  withMutedLogger: async(fn) => fn()
+}));
+jest.mock('ora', () => {
+  return () => ({
+    start: () => ({
+      succeed: jest.fn(),
+      fail: jest.fn(),
+      stop: jest.fn()
+    })
+  });
+});
 
 const fs = require('fs');
 const inquirer = require('inquirer');
 const infra = require('../../../lib/infrastructure');
+const config = require('../../../lib/core/config');
 const pathsUtil = require('../../../lib/utils/paths');
 const logger = require('../../../lib/utils/logger');
 
@@ -36,6 +52,7 @@ describe('lib/commands/teardown', () => {
     fs.readdirSync = jest.fn().mockReturnValue([]);
     fs.rmSync = jest.fn();
     inquirer.prompt = jest.fn().mockResolvedValue({ ok: true });
+    config.getDeveloperId.mockResolvedValue('6');
   });
 
   describe('cleanAifabrixSystemDir', () => {

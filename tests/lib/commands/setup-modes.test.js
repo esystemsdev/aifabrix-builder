@@ -23,7 +23,26 @@ jest.mock('../../../lib/commands/up-miso');
 jest.mock('../../../lib/commands/up-dataplane');
 jest.mock('../../../lib/commands/up-common');
 jest.mock('../../../lib/commands/setup-prompts');
+jest.mock('../../../lib/commands/login', () => ({
+  handleLogin: jest.fn().mockResolvedValue(undefined)
+}));
+jest.mock('../../../lib/cli/infra-guided', () => ({
+  runGuidedUpPlatform: jest.fn(async(_options, handleUpMiso, handleUpDataplane, handleLogin) => {
+    await handleUpMiso({});
+    await handleLogin({});
+    await handleUpDataplane({});
+  })
+}));
 jest.mock('../../../lib/utils/config-format');
+jest.mock('ora', () => {
+  return () => ({
+    start: () => ({
+      succeed: jest.fn(),
+      fail: jest.fn(),
+      stop: jest.fn()
+    })
+  });
+});
 
 const fs = require('fs');
 const config = require('../../../lib/core/config');
@@ -37,6 +56,8 @@ const upMiso = require('../../../lib/commands/up-miso');
 const upDataplane = require('../../../lib/commands/up-dataplane');
 const upCommon = require('../../../lib/commands/up-common');
 const prompts = require('../../../lib/commands/setup-prompts');
+const login = require('../../../lib/commands/login');
+const infraGuided = require('../../../lib/cli/infra-guided');
 
 const modes = require('../../../lib/commands/setup-modes');
 
@@ -115,6 +136,8 @@ describe('lib/commands/setup-modes', () => {
       expect(upCommon.cleanBuilderAppDirs).not.toHaveBeenCalled();
       expect(upMiso.handleUpMiso).toHaveBeenCalled();
       expect(upDataplane.handleUpDataplane).toHaveBeenCalled();
+      expect(login.handleLogin).toHaveBeenCalled();
+      expect(infraGuided.runGuidedUpPlatform).toHaveBeenCalled();
     });
 
     it('applies force config and cleans builder dirs when force=true', async() => {
@@ -125,10 +148,15 @@ describe('lib/commands/setup-modes', () => {
         expect.any(Object)
       );
     });
+
+    it('delegates platform UX to guided up-platform helper', async() => {
+      await modes.runUpPlatform({ force: false });
+      expect(infraGuided.runGuidedUpPlatform).toHaveBeenCalled();
+    });
   });
 
   describe('runFreshInstall', () => {
-    it('prompts AI tool, then up-infra, then up-platform (no force)', async() => {
+    it('prompts AI tool, then up-infra, then up-platform --force', async() => {
       const order = [];
       prompts.promptAiTool.mockImplementation(async() => order.push('ai'));
       infra.startInfra.mockImplementation(async() => order.push('infra'));
@@ -137,8 +165,8 @@ describe('lib/commands/setup-modes', () => {
 
       await modes.runFreshInstall({ adminEmail: 'a@b', adminPassword: 'pw12345678' });
 
-      expect(order).toEqual(['ai', 'infra', 'miso', 'dataplane']);
-      expect(upCommon.applyUpPlatformForceConfig).not.toHaveBeenCalled();
+      expect(order).toEqual(['infra', 'ai', 'miso', 'dataplane']);
+      expect(upCommon.applyUpPlatformForceConfig).toHaveBeenCalled();
     });
   });
 

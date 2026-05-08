@@ -11,12 +11,14 @@
 jest.mock('inquirer');
 jest.mock('../../../lib/utils/logger');
 jest.mock('../../../lib/core/secrets');
-jest.mock('../../../lib/utils/local-secrets');
+jest.mock('../../../lib/core/secrets-ensure', () => ({
+  setSecretInStore: jest.fn().mockResolvedValue(undefined)
+}));
 
 const inquirer = require('inquirer');
 const logger = require('../../../lib/utils/logger');
 const secretsCore = require('../../../lib/core/secrets');
-const localSecrets = require('../../../lib/utils/local-secrets');
+const secretsEnsure = require('../../../lib/core/secrets-ensure');
 
 const {
   MODE,
@@ -34,7 +36,7 @@ describe('lib/commands/setup-prompts', () => {
     logger.log.mockImplementation(() => {});
     inquirer.prompt.mockReset();
     secretsCore.loadSecrets.mockResolvedValue({});
-    localSecrets.saveLocalSecret.mockResolvedValue(undefined);
+    secretsEnsure.setSecretInStore.mockResolvedValue(undefined);
   });
 
   describe('MODE / AI_KEYS', () => {
@@ -179,7 +181,7 @@ describe('lib/commands/setup-prompts', () => {
       });
       await promptAiTool();
       expect(inquirer.prompt).not.toHaveBeenCalled();
-      expect(localSecrets.saveLocalSecret).not.toHaveBeenCalled();
+      expect(secretsEnsure.setSecretInStore).not.toHaveBeenCalled();
     });
 
     it('skips silently when azure is already configured', async() => {
@@ -197,7 +199,7 @@ describe('lib/commands/setup-prompts', () => {
         .mockResolvedValueOnce({ choice: 'openai' })
         .mockResolvedValueOnce({ apiKey: 'sk-test' });
       await promptAiTool();
-      expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith(
+      expect(secretsEnsure.setSecretInStore).toHaveBeenCalledWith(
         'secrets-openaiApiKeyVault',
         'sk-test'
       );
@@ -212,11 +214,11 @@ describe('lib/commands/setup-prompts', () => {
           apiKey: 'azure-key'
         });
       await promptAiTool();
-      expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith(
+      expect(secretsEnsure.setSecretInStore).toHaveBeenCalledWith(
         'azure-openaiapi-urlKeyVault',
         'https://x.openai.azure.com'
       );
-      expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith(
+      expect(secretsEnsure.setSecretInStore).toHaveBeenCalledWith(
         'secrets-azureOpenaiApiKeyVault',
         'azure-key'
       );
@@ -226,7 +228,7 @@ describe('lib/commands/setup-prompts', () => {
       secretsCore.loadSecrets.mockResolvedValue({});
       inquirer.prompt.mockResolvedValueOnce({ choice: 'skip' });
       await promptAiTool();
-      expect(localSecrets.saveLocalSecret).not.toHaveBeenCalled();
+      expect(secretsEnsure.setSecretInStore).not.toHaveBeenCalled();
     });
 
     it('uses validators that reject empty OpenAI API key', async() => {
