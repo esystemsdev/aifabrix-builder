@@ -4,16 +4,16 @@ overview: "Audit of aifabrix-builder CLI commands against [cli-layout.mdc](works
 todos:
   - id: p1-wizard-glyphs
     content: Replace \u2713 with canonical ✔ + helpers in wizard-*.js files
-    status: pending
+    status: completed
   - id: p2-raw-green
     content: Migrate login, secure, dev-*, setup-infra TLS, infra-guided, deploy, external-system-local-test-tty to formatSuccessLine/successGlyph
-    status: pending
+    status: completed
   - id: p3-create-next-steps
     content: Refactor app/display.js Next steps to formatNextActions / section pattern
-    status: pending
+    status: completed
   - id: p4-matrix-docs
     content: Shrink cli-output-command-matrix Backlog after fixes; optional grep gate in CI/docs
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -122,3 +122,56 @@ No additional gaps were found in **[setup.js](workspace/aifabrix-builder/lib/com
 1. Re-run grep for `\u2713`, `\\u2713`, and ad hoc `chalk.green(\`✔` in `lib/commands`, `lib/cli`, `lib/app` (excluding the canonical helper module).
 2. Extend or snapshot-touch [tests/lib/utils/cli-test-layout-chalk.test.js](workspace/aifabrix-builder/tests/lib/utils/cli-test-layout-chalk.test.js) only if new helpers or behavior change.
 3. Update the **Layout compliance / Backlog** paragraph in [cli-output-command-matrix.md](workspace/aifabrix-builder/.cursor/rules/cli-output-command-matrix.md) to reflect resolved vs remaining debt.
+
+## Implementation Validation Report
+
+**Date**: 2026-05-08  
+**Plan**: `.cursor/plans/137-cli-style-gap-audit.plan.md`  
+**Status**: ✅ COMPLETE
+
+### Executive Summary
+- **Result**: All planned CLI style-gap remediations are implemented and validated.
+- **Key outcome**: Wizard and other CLI surfaces now use canonical success glyph **✔** via shared helpers; `create` output uses `formatNextActions`.
+
+### Task Completion
+- **Total tasks**: 4
+- **Completed**: 4
+- **Incomplete**: 0
+- **Completion**: 100%
+
+### File Existence / Change Coverage (plan-linked)
+- ✅ `lib/commands/wizard-core.js`
+- ✅ `lib/commands/wizard-core-helpers.js`
+- ✅ `lib/commands/wizard-headless.js`
+- ✅ `lib/commands/wizard.js`
+- ✅ `lib/commands/wizard-entity-selection.js`
+- ✅ `lib/commands/login-device.js`
+- ✅ `lib/commands/secure.js`
+- ✅ `lib/commands/dev-init.js`
+- ✅ `lib/commands/dev-down.js`
+- ✅ `lib/utils/dev-hosts-helper.js`
+- ✅ `lib/utils/dev-init-ssh-merge.js`
+- ✅ `lib/cli/setup-infra.js`
+- ✅ `lib/cli/infra-guided.js`
+- ✅ `lib/app/deploy.js`
+- ✅ `lib/utils/external-system-local-test-tty.js`
+- ✅ `lib/app/display.js`
+- ✅ `.cursor/rules/cli-output-command-matrix.md`
+
+### Test Coverage
+- ✅ Updated unit tests to reflect new `create` “Next actions” output:
+  - `tests/lib/app/app-display.test.js`
+- ✅ No helper API behavior changes required updating `tests/lib/utils/cli-test-layout-chalk.test.js` (helpers reused as-is).
+
+### Code Quality Validation (required order)
+- ✅ **Format**: `npm run lint:fix`
+- ✅ **Lint**: `npm run lint` (0 errors, 0 warnings)
+- ✅ **Tests**: `npm test` (all tests passed)
+
+### Cursor Rules / CLI Layout Compliance Notes
+- ✅ **Glyphs**: No remaining `\u2713`/✓ occurrences under `lib/**` (wizard drift removed).
+- ✅ **Shared helpers**: Success output standardized via `formatSuccessLine` / `formatSuccessParagraph` / `successGlyph` where applicable.
+- ✅ **Profiles respected**: Changes stayed within each command’s declared output profile (no new layout-block wrappers introduced for stream/delegate profiles).
+
+### Issues / Follow-ups
+- None required for this plan. Remaining optional items in Priority 4 can be addressed opportunistically when those modules are edited.
