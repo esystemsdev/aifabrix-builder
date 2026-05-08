@@ -67,7 +67,9 @@ jest.mock('chalk', () => {
   mock.gray = (s) => s;
   mock.bold = (s) => s;
   mock.cyan = (s) => s;
-  mock.white = (s) => s;
+  const white = (s) => s;
+  white.bold = (s) => s;
+  mock.white = white;
   return mock;
 });
 

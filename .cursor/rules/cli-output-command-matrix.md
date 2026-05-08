@@ -10,6 +10,8 @@ Profiles: **layout-blocks** (header/status/list/helpers); **tty-summary** (chalk
 | aifabrix logout | tty-summary |
 | aifabrix auth | tty-summary |
 | aifabrix auth status | tty-summary |
+| aifabrix setup | tty-summary + stream-logs |
+| aifabrix teardown | tty-summary + stream-logs |
 | aifabrix up-infra | tty-summary + stream-logs |
 | aifabrix up-platform | tty-summary + stream-logs |
 | aifabrix up-miso | tty-summary + stream-logs |

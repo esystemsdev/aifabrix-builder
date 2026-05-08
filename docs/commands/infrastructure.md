@@ -10,6 +10,81 @@ Commands for managing local infrastructure services (Postgres, Redis, pgAdmin, R
 
 ---
 
+<a id="aifabrix-setup"></a>
+## aifabrix setup
+
+One-shot installer that brings up the full local AI Fabrix platform (infra + miso + dataplane) in a single command.
+
+**What:** Detects the current state of local infrastructure and either runs a fresh-install wizard or shows a mode menu.
+
+- **No infrastructure running (fresh install):**
+  - Wizard prompts for the **admin email** and **admin password** (used by Postgres, pgAdmin, and Keycloak).
+  - Wizard asks for an **AI tool** (OpenAI or Azure OpenAI) only when no key is found in the merged secret view (user-local `~/.aifabrix/secrets.local.yaml` plus the shared `aifabrix-secrets` file). Provided keys are written to `~/.aifabrix/secrets.local.yaml`.
+  - Runs `aifabrix up-infra` (with the wizard answers) and then starts platform services (`up-miso` + `up-dataplane`).
+
+- **Infrastructure already running (mode menu):**
+  1. **Re-install (all services - all data will be lost)** — Stops infra and removes every Docker volume (`down-infra -v`), removes `~/.aifabrix/secrets.local.yaml`, then runs `up-infra` and `up-platform --force` (clears `builder/keycloak`, `builder/miso-controller`, `builder/dataplane` and re-fetches templates).
+  2. **Wipe data** — Drops every database and DB user in the running Postgres container (volume preserved), removes `~/.aifabrix/secrets.local.yaml`, then runs `up-infra` and `up-platform --force`.
+  3. **Clean installation files** — Removes `~/.aifabrix/secrets.local.yaml`, then runs `up-infra` and `up-platform --force`.
+  4. **Update images** — Runs `docker compose pull` against the developer-scoped infra compose file plus `docker pull` for each platform app's image, then runs `up-infra` and `up-platform` (no `--force`; secrets and data preserved).
+
+The shared `aifabrix-secrets` file is **never** modified by `aifabrix setup`. The admin password and email are persisted via the existing `up-infra` flow into `admin-secrets.env`; that file is preserved across modes 2, 3, and 4.
+
+**When:** First-time install, recovering from a broken state, refreshing platform images.
+
+**Usage:**
+```bash
+# Interactive install (fresh or mode menu)
+aifabrix setup
+
+# Skip destructive confirmation prompts (re-install, wipe data) in CI
+aifabrix setup --yes
+```
+
+**Options:**
+- `-d, --developer <id>` - Pin developer ID before fresh install (fresh path only; ignored when infra is already up).
+- `-y, --yes` - Skip the destructive confirmation prompts (re-install, wipe data). Does not change which mode runs; pick the mode interactively or set the environment yourself before running.
+
+**Issues:**
+- **"Postgres container not running" during wipe-data mode** → Run `aifabrix up-infra` first, then re-run `aifabrix setup`.
+- **AI tool prompt keeps appearing** → The merged secret view does not contain a non-placeholder value for the chosen provider's keys. Set them with `aifabrix secret set` or accept the prompt.
+- **`secrets.local.yaml` still has old keys after Mode 1/2/3** → That file is removed; if the AI tool prompt was skipped, the keys are coming from the **shared** `aifabrix-secrets` file (which `setup` never modifies).
+
+See also: [`aifabrix teardown`](#aifabrix-teardown), [`aifabrix up-infra`](#aifabrix-up-infra), [`aifabrix up-platform`](#aifabrix-up-platform), [`aifabrix down-infra`](#aifabrix-down-infra).
+
+---
+
+<a id="aifabrix-teardown"></a>
+## aifabrix teardown
+
+Symmetrical inverse of `aifabrix setup` — fully removes the local installation.
+
+**What:** Runs `down-infra -v` (stops all infra + apps and deletes every Docker volume), then removes every file and subfolder inside `~/.aifabrix/` **except** `config.yaml`. The cleaned set includes `secrets.local.yaml`, `admin-secrets.env`, auth/token files, and any `infra-dev*` directories.
+
+The directory cleaned is the resolved AI Fabrix system directory (the same directory used by `aifabrix-home` overrides), not literally `$HOME/.aifabrix` when an override is set.
+
+**When:** Reset a developer machine, hand a workstation off, or recover from a broken state where surgical fixes do not help.
+
+**Usage:**
+```bash
+# Interactive teardown (asks for confirmation)
+aifabrix teardown
+
+# Skip the confirmation prompt (CI / scripted reset)
+aifabrix teardown --yes
+```
+
+**Options:**
+- `-y, --yes` - Skip the confirmation prompt.
+
+**Issues:**
+- **"Infrastructure already down or could not be stopped cleanly"** → Logged and the file cleanup continues. Re-run if you want to retry the Docker side.
+- **`config.yaml` was removed** → It is preserved by design. If a partial cleanup left it missing, recreate it with `aifabrix configure` or restore from version control.
+
+See also: [`aifabrix setup`](#aifabrix-setup), [`aifabrix down-infra`](#aifabrix-down-infra).
+
+---
+
 <a id="aifabrix-up-infra"></a>
 ## aifabrix up-infra
 

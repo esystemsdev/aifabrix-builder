@@ -42,33 +42,25 @@ npm install -g @aifabrix/builder
 
 Get the platform running locally so you can try it.
 
-1. **Start local infrastructure** (Postgres, Redis, optional Traefik):
+**One-shot install:**
 
-   ```bash
-   aifabrix up-infra
-   ```
+```bash
+aifabrix setup
+```
 
-   First-time run creates required infra secrets automatically. Use `aifabrix up-infra --adminPassword <password>` to set a custom admin password for Postgres, pgAdmin, and Redis Commander.
+`aifabrix setup` detects your local state and either runs a fresh-install wizard (admin email/password, optional AI tool keys) or shows a mode menu (re-install, wipe data, clean files, update images). It then runs `up-infra` and `up-platform` for you. Use `aifabrix teardown` to fully remove the local installation. See [Infrastructure commands](docs/commands/infrastructure.md#aifabrix-setup) for details and CI flags.
 
-2. **Start the platform** (Keycloak, Miso Controller, Dataplane) from community images:
+If you prefer to set the AI tool key outside the wizard, use one of:
 
-   ```bash
-   aifabrix up-platform
-   ```
-
-   Or run platform apps separately: `aifabrix up-miso` then `aifabrix up-dataplane`. Infra must be up first.
-
-3. **Configure secrets** – You need either **OpenAI** or **Azure OpenAI**:
-
-   - **OpenAI:** set your API key:
-     ```bash
-     aifabrix secret set secrets-openaiApiKeyVault <your-openai-secret-key>
-     ```
-   - **Azure OpenAI:** set endpoint and API key:
-     ```bash
-     aifabrix secret set azure-openaiapi-urlKeyVault <your-azure-openai-endpoint-url>
-     aifabrix secret set secrets-azureOpenaiApiKeyVault <your-azure-openai-secret-key>
-     ```
+- **OpenAI:** set your API key:
+  ```bash
+  aifabrix secret set secrets-openaiApiKeyVault <your-openai-secret-key>
+  ```
+- **Azure OpenAI:** set endpoint and API key:
+  ```bash
+  aifabrix secret set azure-openaiapi-urlKeyVault <your-azure-openai-endpoint-url>
+  aifabrix secret set secrets-azureOpenaiApiKeyVault <your-azure-openai-secret-key>
+  ```
 
 Secrets are stored in `~/.aifabrix/secrets.local.yaml` or the file from `aifabrix-secrets` in your config (e.g. `builder/secrets.local.yaml`).
 
