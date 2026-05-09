@@ -36,6 +36,15 @@ function loggerArg0ToString(v) {
   return '';
 }
 
+/** Aligns with cli-utils stripAnsi — compare layout-colored lines in tests. */
+function stripAnsi(str) {
+  if (typeof str !== 'string') {
+    return '';
+  }
+  const ansiCsi = new RegExp(`${String.fromCharCode(27)}\\[[\\d;]*m`, 'g');
+  return str.replace(ansiCsi, '');
+}
+
 // Do not jest.mock('fs') at module scope: Jest's mock + instanceof can recurse infinitely
 // (Symbol.hasInstance stack overflow) when this file shares a worker with other suites.
 // appendWizardError tests spy on fs.promises only inside their describe block.
@@ -142,7 +151,7 @@ describe('CLI Utils Module', () => {
       expect(loggerCallArrays.error.some(a => a[0] === '   Formatted')).toBe(true);
       expect(loggerCallArrays.error.some(a => a[0] === '   Error')).toBe(true);
       expect(loggerCallArrays.error.some(a => a[0] === '   Message')).toBe(true);
-      expect(loggerCallArrays.error.some(a => loggerArg0ToString(a[0]).includes('doctor'))).toBe(true);
+      expect(loggerCallArrays.log.some(a => loggerArg0ToString(a[0]).includes('doctor'))).toBe(true);
     });
 
     it('should handle configuration not found errors', () => {
@@ -329,9 +338,21 @@ describe('CLI Utils Module', () => {
       handleCommandError(error, 'resolve');
 
       expect(loggerCallArrays.error.some(a => loggerArg0ToString(a[0]).includes('Error in resolve command'))).toBe(true);
-      expect(loggerCallArrays.error.some(a => a[0] === '   Missing secrets: DATABASE_PASSWORD, API_KEY')).toBe(true);
-      expect(loggerCallArrays.error.some(a => a[0] === '   Secrets file location: /path/to/secrets.yaml')).toBe(true);
-      expect(loggerCallArrays.error.some(a => a[0] === '   Run: aifabrix resolve myapp to generate missing secrets.')).toBe(true);
+      expect(loggerCallArrays.error.some(a => stripAnsi(loggerArg0ToString(a[0])) === '   Missing secrets:')).toBe(true);
+      expect(loggerCallArrays.error.some(a => stripAnsi(loggerArg0ToString(a[0])) === '   - DATABASE_PASSWORD')).toBe(true);
+      expect(loggerCallArrays.error.some(a => stripAnsi(loggerArg0ToString(a[0])) === '   - API_KEY')).toBe(true);
+      expect(
+        loggerCallArrays.error.some(
+          a => stripAnsi(loggerArg0ToString(a[0])) === '   Secrets file location: /path/to/secrets.yaml'
+        )
+      ).toBe(true);
+      expect(
+        loggerCallArrays.error.some(
+          a =>
+            stripAnsi(loggerArg0ToString(a[0])) ===
+            '   Run: aifabrix resolve myapp to generate missing secrets.'
+        )
+      ).toBe(true);
     });
 
     it('should handle missing secrets errors without app name', () => {
@@ -340,8 +361,18 @@ describe('CLI Utils Module', () => {
       handleCommandError(error, 'resolve');
 
       expect(loggerCallArrays.error.some(a => loggerArg0ToString(a[0]).includes('Error in resolve command'))).toBe(true);
-      expect(loggerCallArrays.error.some(a => a[0] === '   Missing secrets in secrets file.')).toBe(true);
-      expect(loggerCallArrays.error.some(a => a[0] === '   Run: aifabrix resolve <app-name> to generate missing secrets.')).toBe(true);
+      expect(
+        loggerCallArrays.error.some(
+          a => stripAnsi(loggerArg0ToString(a[0])) === '   Missing secrets in secrets file.'
+        )
+      ).toBe(true);
+      expect(
+        loggerCallArrays.error.some(
+          a =>
+            stripAnsi(loggerArg0ToString(a[0])) ===
+            '   Run: aifabrix resolve <app-name> to generate missing secrets.'
+        )
+      ).toBe(true);
     });
 
     it('should handle deployment retry errors', () => {
@@ -360,7 +391,7 @@ describe('CLI Utils Module', () => {
 
       expect(loggerCallArrays.error.some(a => loggerArg0ToString(a[0]).includes('Error in test-command command'))).toBe(true);
       expect(loggerCallArrays.error.some(a => a[0] === '   Generic error message')).toBe(true);
-      expect(loggerCallArrays.error.some(a => loggerArg0ToString(a[0]).includes('doctor'))).toBe(true);
+      expect(loggerCallArrays.log.some(a => loggerArg0ToString(a[0]).includes('doctor'))).toBe(true);
     });
 
     it('should handle errors without message', () => {
@@ -389,7 +420,7 @@ describe('CLI Utils Module', () => {
 
       handleCommandError(error, 'any-command');
 
-      expect(loggerCallArrays.error.some(a => loggerArg0ToString(a[0]).includes('doctor'))).toBe(true);
+      expect(loggerCallArrays.log.some(a => loggerArg0ToString(a[0]).includes('doctor'))).toBe(true);
     });
 
     it('should log wizardResumeMessage when present on error', () => {

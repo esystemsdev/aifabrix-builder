@@ -105,7 +105,7 @@ describe('CLI Error Handling', () => {
       for (const line of getDockerApiOverTcpHintLines()) {
         expect(console.error).toHaveBeenCalledWith(line);
       }
-      expect(console.error).toHaveBeenCalledWith('\n💡 Run "aifabrix doctor" for environment diagnostics.\n');
+      expect(console.log).toHaveBeenCalledWith('\nℹ Run "aifabrix doctor" for environment diagnostics.\n');
     });
 
     it('should handle port conflict errors', () => {
