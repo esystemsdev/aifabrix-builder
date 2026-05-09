@@ -7,6 +7,8 @@ app:
   version: '1.9.5'
 
 # Image Configuration
+# Set tag to match your build (e.g. aifabrix build miso-controller -t 1.0.0 then tag: 1.0.0)
+# Registry is required so the controller can pull the image (avoids "docker: not found" on the controller host).
 image:
   name: aifabrix/miso-controller
   tag: latest
@@ -56,6 +58,11 @@ build:
   envOutputPath: ../../packages/miso-controller/.env # Copy .env to repo root for local dev (relative to builder/) (if null, no .env file is copied) (if empty, .env file is copied to repo root)
   language: typescript # Runtime language for template selection (typescript or python)
   reloadStart: pnpm run start:reload # When running with --reload
+
+# Repository Configuration (pipeline validate: REPOSITORY_URL_MISMATCH)
+repository:
+  enabled: true
+  repositoryUrl: https://github.com/aifabrix/aifabrix-miso
 
 # =============================================================================
 # Portal Input Configuration (Deployment Wizard)

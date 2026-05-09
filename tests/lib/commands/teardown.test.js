@@ -39,7 +39,8 @@ const logger = require('../../../lib/utils/logger');
 const {
   handleTeardown,
   cleanAifabrixSystemDir,
-  PRESERVE_FILE
+  PRESERVE_FILE,
+  PRESERVE_CERTS_DIR
 } = require('../../../lib/commands/teardown');
 
 describe('lib/commands/teardown', () => {
@@ -61,9 +62,10 @@ describe('lib/commands/teardown', () => {
       expect(cleanAifabrixSystemDir()).toEqual({ removed: [], failed: [] });
     });
 
-    it('preserves config.yaml and removes everything else', () => {
+    it('preserves config.yaml and certs/ and removes everything else', () => {
       fs.readdirSync.mockReturnValue([
         { name: 'config.yaml', isDirectory: () => false },
+        { name: 'certs', isDirectory: () => true },
         { name: 'secrets.local.yaml', isDirectory: () => false },
         { name: 'admin-secrets.env', isDirectory: () => false },
         { name: 'infra-dev02', isDirectory: () => true }
@@ -76,6 +78,10 @@ describe('lib/commands/teardown', () => {
       ]);
       expect(failed).toEqual([]);
       expect(fs.rmSync).toHaveBeenCalledTimes(3);
+      expect(fs.rmSync).not.toHaveBeenCalledWith(
+        '/home/test/.aifabrix/certs',
+        expect.anything()
+      );
     });
 
     it('records partial failures and continues', () => {
@@ -95,6 +101,10 @@ describe('lib/commands/teardown', () => {
 
     it('exposes the preserved file constant', () => {
       expect(PRESERVE_FILE).toBe('config.yaml');
+    });
+
+    it('exposes the preserved certs directory constant', () => {
+      expect(PRESERVE_CERTS_DIR).toBe('certs');
     });
   });
 

@@ -80,15 +80,20 @@ describe('lib/commands/setup-modes', () => {
     upCommon.applyUpPlatformForceConfig = jest.fn().mockResolvedValue(undefined);
     upCommon.cleanBuilderAppDirs = jest.fn().mockResolvedValue(undefined);
     prompts.promptAiTool = jest.fn().mockResolvedValue(undefined);
+    prompts.promptBuilderDirConflict = jest.fn().mockResolvedValue('keep');
     pathsUtil.getPrimaryUserSecretsLocalPath = jest
       .fn()
       .mockReturnValue('/home/test/.aifabrix/secrets.local.yaml');
     pathsUtil.getAifabrixSystemDir = jest.fn().mockReturnValue('/home/test/.aifabrix');
     pathsUtil.getBuilderPath = jest.fn().mockImplementation((app) => `/work/builder/${app}`);
+    pathsUtil.getBuilderRoot = jest.fn().mockReturnValue('/work/builder');
     pathsUtil.resolveApplicationConfigPath = jest
       .fn()
       .mockImplementation((p) => `${p}/application.yaml`);
     fs.existsSync = jest.fn().mockReturnValue(false);
+    fs.statSync = jest.fn().mockReturnValue({ isDirectory: () => true });
+    fs.readdirSync = jest.fn().mockReturnValue([]);
+    fs.renameSync = jest.fn();
     fs.rmSync = jest.fn();
     dockerUtils.getComposeCommand = jest.fn().mockResolvedValue('docker compose');
     dockerExec.execWithDockerEnv = jest.fn().mockResolvedValue({ stdout: '', stderr: '' });
@@ -152,6 +157,86 @@ describe('lib/commands/setup-modes', () => {
     it('delegates platform UX to guided up-platform helper', async() => {
       await modes.runUpPlatform({ force: false });
       expect(infraGuided.runGuidedUpPlatform).toHaveBeenCalled();
+    });
+
+    it('prompts when builder root exists and is non-empty (force=true)', async() => {
+      fs.existsSync.mockImplementation((p) => String(p) === '/work/builder');
+      fs.readdirSync.mockReturnValue(['keycloak']);
+      await modes.runUpPlatform({ force: true });
+      expect(prompts.promptBuilderDirConflict).toHaveBeenCalledWith(
+        expect.objectContaining({
+          builderRoot: '/work/builder',
+          totalEntries: 1,
+          platformApps: ['keycloak', 'miso-controller', 'dataplane']
+        })
+      );
+    });
+
+    it('backs up existing platform app dirs when user chooses backup (force=true)', async() => {
+      prompts.promptBuilderDirConflict.mockResolvedValue('backup');
+      fs.existsSync.mockImplementation((p) => {
+        const s = String(p);
+        if (s === '/work/builder') return true;
+        if (s === '/work/builder/keycloak') return true;
+        if (s === '/work/builder/miso-controller') return true;
+        if (s === '/work/builder/dataplane') return false;
+        if (s.includes('.backup-')) return false;
+        return false;
+      });
+      fs.readdirSync.mockImplementation((p) => {
+        const s = String(p);
+        if (s === '/work/builder') return ['keycloak', 'miso-controller'];
+        if (s === '/work/builder/keycloak') return ['application.yaml'];
+        if (s === '/work/builder/miso-controller') return ['application.yaml'];
+        return [];
+      });
+
+      await modes.runUpPlatform({ force: true });
+
+      expect(fs.renameSync).toHaveBeenCalledTimes(2);
+      expect(fs.renameSync).toHaveBeenCalledWith(
+        '/work/builder/keycloak',
+        expect.stringMatching(/\/work\/builder\/keycloak\.backup-\d{8}-\d{6}(-\d+)?$/)
+      );
+      expect(fs.renameSync).toHaveBeenCalledWith(
+        '/work/builder/miso-controller',
+        expect.stringMatching(/\/work\/builder\/miso-controller\.backup-\d{8}-\d{6}(-\d+)?$/)
+      );
+    });
+
+    it('aborts without cleaning when user chooses abort (force=true)', async() => {
+      prompts.promptBuilderDirConflict.mockResolvedValue('abort');
+      fs.existsSync.mockImplementation((p) => String(p) === '/work/builder');
+      fs.readdirSync.mockReturnValue(['keycloak']);
+
+      await modes.runUpPlatform({ force: true });
+
+      expect(upCommon.applyUpPlatformForceConfig).not.toHaveBeenCalled();
+      expect(upCommon.cleanBuilderAppDirs).not.toHaveBeenCalled();
+      expect(infraGuided.runGuidedUpPlatform).not.toHaveBeenCalled();
+    });
+
+    it('keeps platform app folders and continues when user chooses keep-files (force=true)', async() => {
+      prompts.promptBuilderDirConflict.mockResolvedValue('keep-files');
+      fs.existsSync.mockImplementation((p) => String(p) === '/work/builder');
+      fs.readdirSync.mockReturnValue(['keycloak']);
+
+      await modes.runUpPlatform({ force: true });
+
+      expect(upCommon.applyUpPlatformForceConfig).toHaveBeenCalled();
+      expect(upCommon.cleanBuilderAppDirs).not.toHaveBeenCalled();
+      expect(infraGuided.runGuidedUpPlatform).toHaveBeenCalled();
+    });
+
+    it('does not prompt when builder root exists but is empty (force=true)', async() => {
+      fs.existsSync.mockImplementation((p) => String(p) === '/work/builder');
+      fs.readdirSync.mockReturnValue([]);
+
+      await modes.runUpPlatform({ force: true });
+
+      expect(prompts.promptBuilderDirConflict).not.toHaveBeenCalled();
+      expect(upCommon.applyUpPlatformForceConfig).toHaveBeenCalled();
+      expect(upCommon.cleanBuilderAppDirs).toHaveBeenCalled();
     });
   });
 
