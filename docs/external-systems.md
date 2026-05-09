@@ -1466,6 +1466,7 @@ status:
 → Check `BASEURL` from the selected credential or OpenAPI base URL matches external API
 → Ensure `operationId` matches OpenAPI spec
 → Verify authentication is configured correctly
+→ If MCP is enabled and datasources show **Partial** due to missing MCP contract, run `aifabrix repair <systemKey> --api` to validate/sync local OpenAPI specs (from `integration/<systemKey>/openapi/`) so MCP contracts can be generated on publish.
 
 **Datasource upload:** Controller and environment come from `config.yaml` (set via `aifabrix login` or `aifabrix auth config`). The dataplane URL is discovered from the controller. Example: `aifabrix datasource upload integration/hubspot-test/hubspot-test-datasource-company.json` (or pass a datasource key resolved under `integration/<app>/`, same as `datasource validate`).
 
