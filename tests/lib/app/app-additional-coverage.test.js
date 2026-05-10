@@ -414,7 +414,7 @@ describe('App.js Additional Coverage Tests', () => {
       expect(pushUtils.checkAzureCLIInstalled).toHaveBeenCalled();
       expect(pushUtils.checkACRAuthentication).toHaveBeenCalledWith('myacr.azurecr.io');
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Already authenticated'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Successfully pushed'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Pushed'));
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Tags: latest'));
 
       console.log.mockRestore();
@@ -438,7 +438,7 @@ describe('App.js Additional Coverage Tests', () => {
       expect(pushUtils.authenticateACR).toHaveBeenCalledWith('myacr.azurecr.io');
       expect(pushUtils.tagImage).toHaveBeenCalled();
       expect(pushUtils.pushImage).toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Successfully pushed'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Pushed'));
 
       console.log.mockRestore();
     });
@@ -460,7 +460,7 @@ describe('App.js Additional Coverage Tests', () => {
       // Should tag and push each tag
       expect(pushUtils.tagImage).toHaveBeenCalledTimes(3);
       expect(pushUtils.pushImage).toHaveBeenCalledTimes(3);
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Successfully pushed 3 tag(s)'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Pushed 3 tag(s)'));
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Tags: v1.0.0, v1.1.0, latest'));
 
       console.log.mockRestore();
@@ -481,8 +481,8 @@ describe('App.js Additional Coverage Tests', () => {
 
       await app.pushApp(appName, { tag: 'v1.0.0,latest' });
 
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Successfully pushed'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining(`Image: ${registry}/${appName}:*`));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Pushed'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining(`Image: ${registry}/${appName}`));
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Tags: v1.0.0, latest'));
 
       console.log.mockRestore();

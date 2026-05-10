@@ -31,7 +31,7 @@ jest.mock('../../../lib/utils/logger', () => ({
 jest.mock('chalk', () => {
   const createMockFn = (text) => text;
   const mockChalk = createMockFn;
-  ['blue', 'green', 'red', 'yellow', 'gray'].forEach(prop => {
+  ['blue', 'green', 'red', 'yellow', 'gray', 'white', 'bold', 'cyan'].forEach(prop => {
     mockChalk[prop] = createMockFn;
   });
   return mockChalk;

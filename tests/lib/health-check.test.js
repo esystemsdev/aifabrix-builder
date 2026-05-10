@@ -72,7 +72,8 @@ jest.mock('../../lib/utils/logger', () => ({
 jest.mock('http');
 
 jest.mock('../../lib/utils/health-check-url', () => ({
-  computeTraefikHealthCheckUrl: jest.fn()
+  computeTraefikHealthCheckUrl: jest.fn(),
+  computeTraefikPublicAppUrl: jest.fn()
 }));
 
 const { execWithDockerEnv } = require('../../lib/utils/docker-exec');

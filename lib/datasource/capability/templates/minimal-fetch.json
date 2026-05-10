@@ -2,7 +2,7 @@
   "openapiOperation": {
     "operationId": "minimal-fetch-placeholder",
     "method": "GET",
-    "path": "/"
+    "path": "/minimal-fetch"
   },
   "cipOperation": {
     "enabled": true,

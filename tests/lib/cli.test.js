@@ -2302,13 +2302,13 @@ describe('CLI Commands', () => {
 
         expect(validator.checkEnvironment).toHaveBeenCalled();
         expect(infra.checkInfraHealth).toHaveBeenCalled();
-        expect(logger.log).toHaveBeenCalledWith('Docker: ✔ Running');
-        expect(logger.log).toHaveBeenCalledWith('Ports: ✔ Available');
-        expect(logger.log).toHaveBeenCalledWith('Secrets: ✔ Configured');
-        expect(logger.log).toHaveBeenCalledWith('\n🏥 Infrastructure Health:');
-        expect(logger.log).toHaveBeenCalledWith('  ✔ postgres: healthy');
-        expect(logger.log).toHaveBeenCalledWith('  ❓ redis: unknown');
-        expect(logger.log).toHaveBeenCalledWith('  ✖ pgadmin: unhealthy');
+        expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/Docker:.*✔.*Running/));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/Ports:.*✔.*Available/));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/Secrets:.*✔.*Configured/));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Infrastructure health'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('postgres: healthy'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/redis: unknown/));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('pgadmin: unhealthy'));
       });
 
       it('should execute doctor command handler without health check when docker not ok via setupCommands', async() => {
@@ -2329,7 +2329,10 @@ describe('CLI Commands', () => {
 
         expect(validator.checkEnvironment).toHaveBeenCalled();
         expect(infra.checkInfraHealth).not.toHaveBeenCalled();
-        expect(logger.log).toHaveBeenCalledWith('Docker: ✖ Not available');
+        expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/Docker:.*✖.*Not available/));
+        expect(logger.log).toHaveBeenCalledWith(
+          expect.stringContaining('Infrastructure health skipped (Docker not available).')
+        );
       });
 
       it('should execute doctor command handler with health check error via setupCommands', async() => {
@@ -2349,7 +2352,9 @@ describe('CLI Commands', () => {
 
         await handler();
 
-        expect(logger.log).toHaveBeenCalledWith('\n🏥 Infrastructure: Not running');
+        expect(logger.log).toHaveBeenCalledWith(
+          expect.stringContaining('Infrastructure is not running or health could not be read.')
+        );
       });
 
       it('should execute doctor command handler with recommendations via setupCommands', async() => {
@@ -2371,9 +2376,9 @@ describe('CLI Commands', () => {
 
         await handler();
 
-        expect(logger.log).toHaveBeenCalledWith('\n📋 Recommendations:');
-        expect(logger.log).toHaveBeenCalledWith('  • Recommendation 1');
-        expect(logger.log).toHaveBeenCalledWith('  • Recommendation 2');
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Recommendations:'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Recommendation 1'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Recommendation 2'));
       });
     });
 

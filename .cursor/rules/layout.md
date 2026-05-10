@@ -386,7 +386,7 @@ When colors are disabled (`chalk` level 0 / `NO_COLOR`), **keep the same glyphs 
 | §14 Docs / links      | `formatDocsLine` |
 | §15 Progress          | `formatProgress` |
 | §16 Debug / traces    | `infoLine`, `metadata` (cyan value pattern) |
-| §17–18 Warn / error   | `integrationFooterLine`, `formatBlockingError`, `formatIssue`, `failureGlyph` |
+| §17–18 Warn / error   | `formatWarningLine`, `integrationFooterLine`, `formatBlockingError`, `formatIssue`, `failureGlyph` |
 | §19 Next actions      | `formatNextActions` |
 | Success (full line)   | `successGlyph`, `formatSuccessLine`, `formatSuccessParagraph` |
 

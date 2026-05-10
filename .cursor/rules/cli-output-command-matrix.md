@@ -22,8 +22,8 @@ Profiles: **layout-blocks** (header/status/list/helpers); **tty-summary** (chalk
 | aifabrix restart | tty-summary + stream-logs |
 | aifabrix create | tty-summary |
 | aifabrix wizard | delegate |
-| aifabrix run | stream-logs |
-| aifabrix build | stream-logs |
+| aifabrix run | tty-summary (header + progress + footer) + stream-logs (health/ora) |
+| aifabrix build | tty-summary (header + paths + secrets lines) + stream-logs (docker/ora) |
 | aifabrix logs | stream-logs |
 | aifabrix down-app | tty-summary + stream-logs |
 | aifabrix stop | tty-summary |
