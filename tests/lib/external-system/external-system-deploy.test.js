@@ -464,6 +464,12 @@ describe('External System Deploy Module', () => {
       );
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Docs:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('API Docs:'));
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('MCP Docs Page:')
+      );
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('http://dataplane:4000/api/v1/mcp/test-external-app/docs')
+      );
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('MCP Server:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('OpenAPI Docs Page:'));
     });
@@ -484,6 +490,7 @@ describe('External System Deploy Module', () => {
       const logCalls = logger.log.mock.calls.map(c => c[0]);
       expect(logCalls.some(s => s.includes('API Docs:'))).toBe(false);
       expect(logCalls.some(s => s.includes('OpenAPI Docs Page:'))).toBe(false);
+      expect(logCalls.some(s => s.includes('MCP Docs Page:'))).toBe(false);
     });
 
     it('should not show Docs section when no doc URLs returned', async() => {

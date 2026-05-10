@@ -19,7 +19,7 @@ Profiles: **layout-blocks** (header/status/list/helpers); **tty-summary** (chalk
 | aifabrix down-infra | tty-summary + stream-logs |
 | aifabrix doctor | tty-summary |
 | aifabrix status | tty-summary |
-| aifabrix restart | tty-summary + stream-logs |
+| aifabrix restart | tty-summary (Restart + `Infra service:` or `Application:` + optional progress + success; builder apps add `docker inspect` `/app` bind hint) |
 | aifabrix create | tty-summary |
 | aifabrix wizard | delegate |
 | aifabrix run | tty-summary (header + progress + footer) + stream-logs (health/ora) |

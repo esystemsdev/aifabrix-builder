@@ -107,5 +107,36 @@ describe('external-system-readiness-deploy-display', () => {
     expect(out).toContain('Runtime Readiness:');
     expect(out).toContain('Per datasource:');
   });
+
+  it('prints MCP Docs Page between API docs and MCP Server when MCP and OpenAPI doc URLs exist', () => {
+    logDeployReadinessSummary({
+      environment: 'dev',
+      dataplaneUrl: 'http://localhost:3611',
+      manifest: {
+        key: 'test-e2e-hubspot',
+        system: { authentication: { method: 'apikey' }, generateMcpContract: true },
+        dataSources: [{ key: 'deals', status: 'published', isActive: true }]
+      },
+      datasources: [{ key: 'deals', status: 'published', isActive: true, mcpContract: {} }],
+      systemFromDataplane: {
+        openApiDocsPageUrl: 'http://localhost:3611/api/v1/rest/test-e2e-hubspot/docs',
+        mcpServerUrl: 'http://localhost:3611/api/v1/mcp/servers/tools?filter=systemKey:eq:test-e2e-hubspot'
+      },
+      fetchError: null,
+      deploymentOk: true,
+      deploymentDetail: null,
+      probeData: null
+    });
+
+    const out = joined();
+    expect(out).toContain('MCP Docs Page:');
+    expect(out).toContain('http://localhost:3611/api/v1/mcp/test-e2e-hubspot/docs');
+    const idxOpen = out.indexOf('OpenAPI Docs Page:');
+    const idxMcpDoc = out.indexOf('MCP Docs Page:');
+    const idxMcpSrv = out.indexOf('MCP Server:');
+    expect(idxOpen).toBeGreaterThan(-1);
+    expect(idxMcpDoc).toBeGreaterThan(idxOpen);
+    expect(idxMcpSrv).toBeGreaterThan(idxMcpDoc);
+  });
 });
 
