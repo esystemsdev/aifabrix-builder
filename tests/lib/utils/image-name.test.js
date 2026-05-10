@@ -7,7 +7,7 @@
 
 'use strict';
 
-const { buildDevImageName } = require('../../../lib/utils/image-name');
+const { buildDevImageName, buildDevImageRepositoryPath } = require('../../../lib/utils/image-name');
 
 describe('image-name helper', () => {
   it('should append -dev<id> for numeric developer id', () => {
@@ -15,16 +15,21 @@ describe('image-name helper', () => {
     expect(buildDevImageName('myapp', '42')).toBe('myapp-dev42');
   });
 
-  it('should use -extra when id is 0', () => {
-    expect(buildDevImageName('myapp', 0)).toBe('myapp-extra');
-    expect(buildDevImageName('myapp', '0')).toBe('myapp-extra');
+  it('should return base name when id is 0', () => {
+    expect(buildDevImageName('myapp', 0)).toBe('myapp');
+    expect(buildDevImageName('myapp', '0')).toBe('myapp');
   });
 
-  it('should use -extra when id is missing or invalid', () => {
-    expect(buildDevImageName('myapp')).toBe('myapp-extra');
-    expect(buildDevImageName('myapp', null)).toBe('myapp-extra');
-    expect(buildDevImageName('myapp', undefined)).toBe('myapp-extra');
-    expect(buildDevImageName('myapp', 'abc')).toBe('myapp-extra');
+  it('should return base name when id is missing or invalid', () => {
+    expect(buildDevImageName('myapp')).toBe('myapp');
+    expect(buildDevImageName('myapp', null)).toBe('myapp');
+    expect(buildDevImageName('myapp', undefined)).toBe('myapp');
+    expect(buildDevImageName('myapp', 'abc')).toBe('myapp');
+  });
+
+  it('buildDevImageRepositoryPath suffixes last segment for qualified repos', () => {
+    expect(buildDevImageRepositoryPath('registry/ns/myapp', 3)).toBe('registry/ns/myapp-dev3');
+    expect(buildDevImageRepositoryPath('registry/ns/myapp', 0)).toBe('registry/ns/myapp');
   });
 
   it('should throw when base name is invalid', () => {

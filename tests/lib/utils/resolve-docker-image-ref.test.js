@@ -60,6 +60,11 @@ describe('resolve-docker-image-ref', () => {
       expect(r).toEqual({ imageName: 'aifabrix/app', imageTag: 'v2' });
     });
 
+    it('overrides tag from runOptions.tag when set', () => {
+      const r = resolveDockerImageRef('app', baseCfg, { tag: 'custom' });
+      expect(r).toEqual({ imageName: 'aifabrix/app', imageTag: 'custom' });
+    });
+
     it('treats empty manifest registry as absent', () => {
       const r = resolveDockerImageRef('app', { image: { name: 'x', tag: 't', registry: '  ' } }, {});
       expect(r).toEqual({ imageName: 'x', imageTag: 't' });

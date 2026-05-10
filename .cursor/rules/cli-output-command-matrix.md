@@ -117,6 +117,8 @@ _Certification-related flags (output profile unchanged): `validate --cert-sync`;
 
 _Generated for adoption tracking; see `.cursor/plans/Done/129-cli_layout_adoption.plan.md` and [layout.md](./layout.md)._
 
+**Docker image flags (profiles unchanged):** `build` / `run` support `--base` and single `-t, --tag`; `up-platform`, `up-miso`, and `up-dataplane` default `--base` true (use `--no-base` for dev-first local image preference when running platform apps).
+
 ## Layout compliance (helpers + audit)
 
 - **Source of truth:** [layout.md](./layout.md) and [cli-layout.mdc](./cli-layout.mdc) — glyphs **✔ ✖ ⚠ ⏭**, semantic colors, **`formatNextActions`** / **`formatBulletSection`**-style sections where applicable.
