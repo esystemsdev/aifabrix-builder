@@ -18,14 +18,9 @@ describe('load-cip-capacity-display-config', () => {
   });
 
   it('extractStandardOperationOrderFromSchema matches cipDefinition.operations.properties key order', () => {
-    const schemaPath = path.join(
-      __dirname,
-      '../../../../aifabrix-dataplane/app/schemas/json/external-datasource.schema.json'
-    );
-    if (!fs.existsSync(schemaPath)) {
-      // Monorepo sibling optional in CI
-      return;
-    }
+    // Bundled schema under lib/schema (copied in CI via ci-simulate); avoids flaky sibling ../aifabrix-dataplane path.
+    const schemaPath = path.join(__dirname, '../../../lib/schema/external-datasource.schema.json');
+    expect(fs.existsSync(schemaPath)).toBe(true);
     const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
     const keys = extractStandardOperationOrderFromSchema(schema);
     expect(keys).toEqual(['list', 'get', 'create', 'update', 'delete']);

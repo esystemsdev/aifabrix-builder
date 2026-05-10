@@ -147,10 +147,11 @@ describe('create-operations', () => {
 
   it('applyCapabilityCreate loads minimal-fetch template', () => {
     const doc = baseDoc();
-    const tplPath = path.join(
-      __dirname,
-      '../../../lib/datasource/capability/templates/minimal-fetch.json'
+    // Resolve via the same module directory as create-operations.js (not test __dirname) so CI/temp copies stay aligned.
+    const capabilityModuleDir = path.dirname(
+      require.resolve('../../../lib/datasource/capability/create-operations.js')
     );
+    const tplPath = path.join(capabilityModuleDir, 'templates', 'minimal-fetch.json');
     expect(fs.existsSync(tplPath)).toBe(true);
     const out = applyCapabilityCreate(doc, {
       to: 'fromTpl',
