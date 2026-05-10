@@ -219,7 +219,10 @@ jest.mock('../../../lib/utils/secrets-encryption', () => ({
 }));
 
 jest.mock('../../../lib/utils/logger', () => ({
-  log: jest.fn()
+  log: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  info: jest.fn()
 }));
 
 jest.mock('../../../lib/utils/app-config-resolver', () => ({

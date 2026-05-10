@@ -52,6 +52,10 @@ jest.mock('../../../lib/utils/logger', () => ({
   warn: jest.fn()
 }));
 
+jest.mock('../../../lib/core/secrets-load', () => ({
+  loadSecrets: jest.fn().mockResolvedValue({})
+}));
+
 const path = require('path');
 const fs = require('fs');
 jest.mock('fs', () => ({
@@ -67,6 +71,7 @@ const pathsUtil = require('../../../lib/utils/paths');
 const { isRemoteSecretsUrl, getRemoteDevAuth } = require('../../../lib/utils/remote-dev-auth');
 const devApi = require('../../../lib/api/dev.api');
 const secretsGenerator = require('../../../lib/utils/secrets-generator');
+const secretsLoad = require('../../../lib/core/secrets-load');
 const logger = require('../../../lib/utils/logger');
 const { clearInfraParameterCatalogCache } = require('../../../lib/parameters/infra-parameter-catalog');
 
@@ -90,6 +95,7 @@ describe('secrets-ensure', () => {
     config.getSecretsEncryptionKey.mockResolvedValue(null);
     isRemoteSecretsUrl.mockReturnValue(false);
     secretsGenerator.loadExistingSecrets.mockReturnValue({});
+    secretsLoad.loadSecrets.mockResolvedValue({});
     fs.existsSync.mockReturnValue(true);
     const realFs = jest.requireActual('fs');
     fs.readFileSync.mockImplementation((filepath, enc) => {
@@ -113,11 +119,11 @@ describe('secrets-ensure', () => {
   });
 
   describe('getInfraSecretKeysForUpInfra', () => {
-    it('includes postgres, redis, keycloak-internal, and miso-controller DB indices 0 and 1', () => {
+    it('includes postgres, redis, and miso-controller DB indices 0 and 1 (not whole-catalog upInfra union)', () => {
       const keys = getInfraSecretKeysForUpInfra();
       expect(keys).toContain('postgres-passwordKeyVault');
       expect(keys).toContain('redis-url');
-      expect(keys).toContain('keycloak-internal-server-url');
+      expect(keys).toContain('redis-passwordKeyVault');
       expect(keys).toContain('databases-miso-controller-0-urlKeyVault');
       expect(keys).toContain('databases-miso-controller-1-passwordKeyVault');
     });
@@ -221,6 +227,21 @@ describe('secrets-ensure', () => {
   });
 
   describe('ensureSecretsForKeys', () => {
+    it('does not add keys already satisfied by merged loadSecrets when useMergedSecretsForMissingKeys', async() => {
+      secretsLoad.loadSecrets.mockResolvedValueOnce({
+        'postgres-passwordKeyVault': 'from-merge'
+      });
+      config.getSecretsPath.mockResolvedValue(null);
+
+      const result = await ensureSecretsForKeys(['postgres-passwordKeyVault'], {
+        useMergedSecretsForMissingKeys: true,
+        _targetOverride: { type: 'file', filePath: '/home/.aifabrix/secrets.local.yaml' }
+      });
+
+      expect(result).toEqual([]);
+      expect(secretsGenerator.appendSecretsToFile).not.toHaveBeenCalled();
+    });
+
     it('returns empty array when keys is empty or not array', async() => {
       await expect(ensureSecretsForKeys([])).resolves.toEqual([]);
       await expect(ensureSecretsForKeys(null)).resolves.toEqual([]);
@@ -242,6 +263,7 @@ describe('secrets-ensure', () => {
 
     it('skips keys that already exist and are non-empty', async() => {
       secretsGenerator.loadExistingSecrets.mockReturnValue({ existing: 'value' });
+      secretsLoad.loadSecrets.mockResolvedValue({ existing: 'value' });
       config.getSecretsPath.mockResolvedValue(null);
 
       const result = await ensureSecretsForKeys(['existing']);
@@ -250,8 +272,20 @@ describe('secrets-ensure', () => {
       expect(secretsGenerator.appendSecretsToFile).not.toHaveBeenCalled();
     });
 
+    it('does not write keys already satisfied by merged loadSecrets (e.g. shared) to primary file', async() => {
+      secretsLoad.loadSecrets.mockResolvedValue({ BASH_NPM_TOKEN: 'from-remote-shared' });
+      config.getSecretsPath.mockResolvedValue(null);
+      const result = await ensureSecretsForKeys(['BASH_NPM_TOKEN']);
+      expect(result).toEqual([]);
+      expect(secretsGenerator.appendSecretsToFile).not.toHaveBeenCalled();
+    });
+
     it('does not backfill redis-passwordKeyVault when empty (allowed empty)', async() => {
       secretsGenerator.loadExistingSecrets.mockReturnValue({
+        'postgres-passwordKeyVault': 'admin123',
+        'redis-passwordKeyVault': ''
+      });
+      secretsLoad.loadSecrets.mockResolvedValue({
         'postgres-passwordKeyVault': 'admin123',
         'redis-passwordKeyVault': ''
       });
@@ -291,6 +325,27 @@ describe('secrets-ensure', () => {
         expect.any(Object)
       );
     });
+
+    it('never POSTs to shared API when aifabrix-secrets is remote (writes primary user file only)', async() => {
+      secretsGenerator.loadExistingSecrets.mockReturnValue({});
+      secretsGenerator.generateSecretValue.mockImplementation((k) => `gen-${k}`);
+      config.getSecretsEncryptionKey.mockResolvedValue(null);
+      config.getSecretsPath.mockResolvedValue('https://builder.example/api/dev/secrets');
+      isRemoteSecretsUrl.mockImplementation((u) => typeof u === 'string' && /^https?:\/\//i.test(String(u)));
+      getRemoteDevAuth.mockResolvedValue({
+        serverUrl: 'https://builder.example',
+        clientCertPem: 'pem',
+        serverCaPem: null
+      });
+
+      await ensureSecretsForKeys(['unique-automated-key']);
+
+      expect(devApi.addSecret).not.toHaveBeenCalled();
+      expect(secretsGenerator.appendSecretsToFile).toHaveBeenCalledWith(
+        '/home/.aifabrix/secrets.local.yaml',
+        expect.objectContaining({ 'unique-automated-key': 'gen-unique-automated-key' })
+      );
+    });
   });
 
   describe('ensureInfraSecrets', () => {
@@ -302,6 +357,25 @@ describe('secrets-ensure', () => {
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
+    });
+
+    it('writes infra keys to primary user secrets file only when aifabrix-secrets is a remote URL', async() => {
+      secretsGenerator.loadExistingSecrets.mockReturnValue({});
+      config.getSecretsPath.mockResolvedValue('https://builder.example/api/dev/secrets');
+      isRemoteSecretsUrl.mockImplementation((u) => typeof u === 'string' && /^https?:\/\//i.test(String(u)));
+      getRemoteDevAuth.mockResolvedValue({
+        serverUrl: 'https://builder.example',
+        clientCertPem: 'pem',
+        serverCaPem: null
+      });
+
+      await ensureInfraSecrets();
+
+      expect(devApi.addSecret).not.toHaveBeenCalled();
+      expect(secretsGenerator.appendSecretsToFile).toHaveBeenCalledWith(
+        '/home/.aifabrix/secrets.local.yaml',
+        expect.any(Object)
+      );
     });
 
     it('passes merged placeholderContext so adminPwd overrides {{adminPassword}}', async() => {
@@ -429,6 +503,28 @@ describe('secrets-ensure', () => {
       );
     });
 
+    it('uses loadSecrets merge for missing-key check when useMergedSecretsForMissingKeys', async() => {
+      const { loadEnvTemplate } = require('../../../lib/utils/secrets-helpers');
+      loadEnvTemplate.mockReturnValue('KV=kv://azure-client-idKeyVault');
+      secretsGenerator.findMissingSecretKeys.mockReturnValue([]);
+      secretsLoad.loadSecrets.mockResolvedValueOnce({
+        'azure-client-idKeyVault': 'from-remote-shared'
+      });
+
+      await ensureSecretsFromEnvTemplate('/any/existing/env.template', {
+        preferredFilePath: '/home/.aifabrix/secrets.local.yaml',
+        useMergedSecretsForMissingKeys: true
+      });
+
+      expect(secretsLoad.loadSecrets).toHaveBeenCalledWith(undefined);
+      expect(secretsGenerator.findMissingSecretKeys).toHaveBeenCalledWith(
+        'KV=kv://azure-client-idKeyVault',
+        expect.objectContaining({
+          'azure-client-idKeyVault': 'from-remote-shared'
+        })
+      );
+    });
+
     it('throws when path does not exist and looks like path', async() => {
       fs.existsSync.mockReturnValue(false);
       await expect(
@@ -475,7 +571,7 @@ describe('secrets-ensure', () => {
       );
     });
 
-    it('calls remote addSecret when target is remote', async() => {
+    it('writes to primary user file even when aifabrix-secrets is remote (never POST shared)', async() => {
       config.getSecretsPath.mockResolvedValue('https://dev.example.com/');
       isRemoteSecretsUrl.mockReturnValue(true);
       getRemoteDevAuth.mockResolvedValue({
@@ -483,18 +579,15 @@ describe('secrets-ensure', () => {
         clientCertPem: 'pem',
         serverCaPem: null
       });
-      devApi.addSecret.mockResolvedValue({});
+      secretsGenerator.loadExistingSecrets.mockReturnValue({});
 
       await setSecretInStore('k', 'v');
 
-      expect(devApi.addSecret).toHaveBeenCalledWith(
-        'https://dev.example.com',
-        'pem',
-        { key: 'k', value: 'v' },
-        undefined,
-        'https://dev.example.com'
+      expect(devApi.addSecret).not.toHaveBeenCalled();
+      expect(secretsGenerator.saveSecretsFile).toHaveBeenCalledWith(
+        path.join('/home/.aifabrix', 'secrets.local.yaml'),
+        expect.objectContaining({ k: 'v' })
       );
-      expect(secretsGenerator.saveSecretsFile).not.toHaveBeenCalled();
     });
 
     it('does nothing when key is empty or value is undefined', async() => {

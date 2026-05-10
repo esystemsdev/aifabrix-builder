@@ -10,7 +10,10 @@ const path = require('path');
 
 jest.mock('../../../lib/utils/paths', () => ({
   getApplicationsBaseDir: jest.fn((id) => require('path').join('/home/.aifabrix', id === 0 ? 'applications' : `applications-dev-${id}`)),
-  getBuilderPath: jest.fn((appName) => require('path').join('/tmp/builder', appName))
+  getBuilderPath: jest.fn((appName) => require('path').join('/tmp/builder', appName)),
+  getPrimaryUserSecretsLocalPath: jest.fn(() =>
+    require('path').join(require('os').homedir(), '.aifabrix', 'secrets.local.yaml')
+  )
 }));
 
 jest.mock('../../../lib/core/admin-secrets', () => ({
@@ -33,6 +36,11 @@ jest.mock('../../../lib/infrastructure/helpers', () => ({
   }))
 }));
 
+jest.mock('../../../lib/core/secrets-ensure', () => ({
+  ensureSecretsFromEnvTemplate: jest.fn().mockResolvedValue([]),
+  buildInfraPlaceholderContext: jest.fn(() => ({ adminPassword: 'x' }))
+}));
+
 jest.mock('fs', () => ({
   existsSync: jest.fn(),
   readdirSync: jest.fn(() => []),
@@ -52,6 +60,7 @@ const pathsUtil = require('../../../lib/utils/paths');
 const adminSecrets = require('../../../lib/core/admin-secrets');
 const secretsEnvWrite = require('../../../lib/core/secrets-env-write');
 const infraHelpers = require('../../../lib/infrastructure/helpers');
+const secretsEnsure = require('../../../lib/core/secrets-ensure');
 
 describe('run-env-compose', () => {
   beforeEach(() => {
@@ -124,11 +133,23 @@ describe('run-env-compose', () => {
   });
 
   describe('buildMergedRunEnvAndWrite', () => {
+    beforeEach(() => {
+      fsSync.existsSync.mockImplementation((p) => String(p || '').endsWith('env.template'));
+    });
+
     it('writes .env.run (app-only, no admin) and .env.run.admin (start-only)', async() => {
       const infra = require('../../../lib/infrastructure');
       const devDir = '/home/.aifabrix/applications';
       const result = await runEnvCompose.buildMergedRunEnvAndWrite('myapp', { port: 3000 }, devDir);
 
+      expect(secretsEnsure.ensureSecretsFromEnvTemplate).toHaveBeenCalledWith(
+        path.join('/tmp/builder', 'myapp', 'env.template'),
+        expect.objectContaining({
+          placeholderContext: expect.any(Object),
+          preferredFilePath: expect.any(String),
+          useMergedSecretsForMissingKeys: true
+        })
+      );
       expect(infra.ensureAdminSecrets).toHaveBeenCalled();
       expect(adminSecrets.readAndDecryptAdminSecrets).toHaveBeenCalled();
       expect(secretsEnvWrite.resolveAndGetEnvMap).toHaveBeenCalledWith('myapp', {

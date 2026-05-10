@@ -1055,7 +1055,8 @@ describe('Health Check Utilities', () => {
         await expect(healthCheck.waitForHealthCheck('test-app', 10, 3000, null, false, { traefikEnabled: true }))
           .resolves.not.toThrow();
 
-        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('DNS name not resolvable'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Public URL was not verified (DNS)'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Validate DNS names'));
         expect(http.request).toHaveBeenCalledWith(
           expect.objectContaining({
             hostname: 'localhost'

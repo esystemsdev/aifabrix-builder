@@ -63,4 +63,23 @@ describe('secrets-env-write resolveAndGetEnvMap', () => {
 
     expect(map.PYPI_TOKEN).toBe('pypi-secret');
   });
+
+  it('calls loadSecrets without merge-skipping options for registry token injection', async() => {
+    secrets.generateEnvContent.mockResolvedValue('NPM_TOKEN=kv://BASH_NPM_TOKEN\n');
+    secrets.loadSecrets.mockResolvedValue({ NPM_TOKEN: 'from-store' });
+
+    await resolveAndGetEnvMap('miso-controller', { environment: 'docker' });
+
+    expect(secrets.loadSecrets).toHaveBeenCalledWith(null, 'miso-controller');
+  });
+
+  it('forwards secretsPath to loadSecrets when provided', async() => {
+    secrets.generateEnvContent.mockResolvedValue('NPM_TOKEN=kv://BASH_NPM_TOKEN\n');
+    secrets.loadSecrets.mockResolvedValue({});
+    const customPath = '/tmp/custom-secrets.yaml';
+
+    await resolveAndGetEnvMap('app', { environment: 'local', secretsPath: customPath });
+
+    expect(secrets.loadSecrets).toHaveBeenCalledWith(customPath, 'app');
+  });
 });

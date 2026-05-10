@@ -280,7 +280,7 @@ parameters:
     expect(cat.getStandardUpInfraBootstrapKeys()).toEqual(fromYaml);
     expect(fromYaml.filter((k) => k.startsWith('databases-miso-controller-'))).toHaveLength(4);
     expect(fromYaml.filter((k) => k.startsWith('databases-dataplane-'))).toHaveLength(8);
-    expect(fromYaml).toHaveLength(12);
+    expect(fromYaml).toHaveLength(15);
   });
 
   it('readRelaxedUpInfraEnsureKeyList returns null for missing file', () => {

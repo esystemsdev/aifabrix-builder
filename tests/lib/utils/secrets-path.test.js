@@ -67,7 +67,8 @@ describe('Secrets Path Module', () => {
       const result = await secretsPath.getActualSecretsPath(explicitPath);
       expect(result).toEqual({
         userPath: explicitPath,
-        buildPath: null
+        buildPath: null,
+        sharedSecretsApiUrl: null
       });
     });
 
@@ -81,7 +82,8 @@ describe('Secrets Path Module', () => {
       const result = await secretsPath.getActualSecretsPath(undefined, 'app');
       expect(result).toEqual({
         userPath: userSecretsPath,
-        buildPath: canonicalPath
+        buildPath: canonicalPath,
+        sharedSecretsApiUrl: null
       });
     });
 
@@ -96,8 +98,35 @@ describe('Secrets Path Module', () => {
       const result = await secretsPath.getActualSecretsPath(undefined, 'app');
       expect(result).toEqual({
         userPath: userSecretsPath,
-        buildPath: resolvedCanonical
+        buildPath: resolvedCanonical,
+        sharedSecretsApiUrl: null
       });
+    });
+
+    it('should set sharedSecretsApiUrl and null buildPath when aifabrix-secrets is https URL', async() => {
+      const config = require('../../../lib/core/config');
+      const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const apiUrl = 'https://builder02.local/api/dev/secrets';
+      config.getAifabrixSecretsPath.mockResolvedValue(apiUrl);
+
+      const result = await secretsPath.getActualSecretsPath(undefined, 'app');
+      expect(result).toEqual({
+        userPath: userSecretsPath,
+        buildPath: null,
+        sharedSecretsApiUrl: apiUrl
+      });
+    });
+
+    it('should set sharedSecretsApiUrl for http URL without treating it as a file path', async() => {
+      const config = require('../../../lib/core/config');
+      const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      const apiUrl = 'http://builder.internal/api/dev/secrets';
+      config.getAifabrixSecretsPath.mockResolvedValue(apiUrl);
+
+      const result = await secretsPath.getActualSecretsPath(undefined, 'app');
+      expect(result.buildPath).toBeNull();
+      expect(result.sharedSecretsApiUrl).toBe(apiUrl);
+      expect(result.userPath).toBe(userSecretsPath);
     });
 
     it('should return object with user secrets path when it exists', async() => {
@@ -109,7 +138,8 @@ describe('Secrets Path Module', () => {
       const result = await secretsPath.getActualSecretsPath();
       expect(result).toEqual({
         userPath: userSecretsPath,
-        buildPath: null
+        buildPath: null,
+        sharedSecretsApiUrl: null
       });
     });
 
@@ -124,7 +154,8 @@ describe('Secrets Path Module', () => {
       const result = await secretsPath.getActualSecretsPath(undefined, appName);
       expect(result).toEqual({
         userPath: userSecretsPath,
-        buildPath: buildSecretsPath
+        buildPath: buildSecretsPath,
+        sharedSecretsApiUrl: null
       });
     });
 
@@ -138,7 +169,8 @@ describe('Secrets Path Module', () => {
       const result = await secretsPath.getActualSecretsPath(undefined, appName);
       expect(result).toEqual({
         userPath: userSecretsPath,
-        buildPath: null
+        buildPath: null,
+        sharedSecretsApiUrl: null
       });
     });
 
@@ -164,7 +196,8 @@ describe('Secrets Path Module', () => {
       // Should return userPath with null buildPath despite error
       expect(result).toEqual({
         userPath: userSecretsPath,
-        buildPath: null
+        buildPath: null,
+        sharedSecretsApiUrl: null
       });
     });
 
@@ -190,7 +223,8 @@ describe('Secrets Path Module', () => {
       // Should return userPath with null buildPath despite YAML parse error
       expect(result).toEqual({
         userPath: userSecretsPath,
-        buildPath: null
+        buildPath: null,
+        sharedSecretsApiUrl: null
       });
     });
 
@@ -205,7 +239,8 @@ describe('Secrets Path Module', () => {
       const result = await secretsPath.getActualSecretsPath();
       expect(result).toEqual({
         userPath: userSecretsPath,
-        buildPath: null
+        buildPath: null,
+        sharedSecretsApiUrl: null
       });
     });
 
@@ -217,7 +252,8 @@ describe('Secrets Path Module', () => {
       const result = await secretsPath.getActualSecretsPath();
       expect(result).toEqual({
         userPath: userSecretsPath,
-        buildPath: null
+        buildPath: null,
+        sharedSecretsApiUrl: null
       });
     });
 
@@ -232,7 +268,8 @@ describe('Secrets Path Module', () => {
       const result = await secretsPath.getActualSecretsPath();
       expect(result).toEqual({
         userPath: userSecretsPath,
-        buildPath: null
+        buildPath: null,
+        sharedSecretsApiUrl: null
       });
       expect(fs.readFileSync).not.toHaveBeenCalled();
     });

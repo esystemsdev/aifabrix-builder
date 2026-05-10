@@ -11,6 +11,10 @@ defaults:
   userPassword: user123
 # Always ensured on up-infra even when no workspace env.template references these kv:// keys (bootstrap defaults).
 standardUpInfraEnsureKeys:
+  # Docker Postgres admin + Redis — required for admin-secrets / infra compose; not guaranteed in every app env.template
+  - postgres-passwordKeyVault
+  - redis-url
+  - redis-passwordKeyVault
   - databases-miso-controller-0-urlKeyVault
   - databases-miso-controller-0-passwordKeyVault
   - databases-miso-controller-1-urlKeyVault

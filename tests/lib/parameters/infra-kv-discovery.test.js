@@ -197,7 +197,7 @@ describe('infra-kv-discovery', () => {
   });
 
   describe('getAllInfraEnsureKeys', () => {
-    it('unions catalog upInfra keys, standard miso DB keys, derived DB keys, and template hook keys', () => {
+    it('unions standard bootstrap, derived DB keys, and env.template upInfra hook keys (not every catalog upInfra parameter)', () => {
       const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ikv-all-'));
       const appDir = path.join(tmp, 'svc');
       fs.mkdirSync(appDir, { recursive: true });
