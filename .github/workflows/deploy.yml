@@ -16,10 +16,6 @@ jobs:
   deploy:
     name: Deploy to NPM Registry
     runs-on: ubuntu-latest
-    # NODE_AUTH_TOKEN must be available whenever npm talks to the registry; setup-node
-    # writes a project .npmrc that references this env var for auth.
-    env:
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     permissions:
       contents: write  # needed for creating GitHub releases
 
@@ -63,6 +59,8 @@ jobs:
 
       - name: Publish to NPM
         if: github.ref == 'refs/heads/main' && steps.version-check.outputs.already_published == 'false'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public
 
       - name: Create GitHub Release

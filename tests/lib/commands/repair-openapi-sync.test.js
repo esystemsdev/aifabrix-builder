@@ -1,5 +1,8 @@
 /**
  * @fileoverview Tests for repair-openapi-sync helper
+ *
+ * Uses real temp files for async I/O paths — avoid jest.spyOn(fs.promises.*), which can
+ * destabilize Jest workers (SIGABRT) under parallel runs / detectOpenHandles.
  */
 
 jest.mock('../../../lib/utils/controller-url', () => ({
@@ -21,12 +24,23 @@ jest.mock('../../../lib/api/external-systems.api', () => ({
 
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 const { uploadFileAs } = require('../../../lib/utils/file-upload');
 const { listOpenAPIFiles } = require('../../../lib/api/external-systems.api');
 const { maybeSyncOpenApiFilesForMcp, documentKeyToLocalOpenApiPath } = require('../../../lib/commands/repair-openapi-sync');
 
 const DEFAULT_OPENAPI_LIST = { success: true, data: { data: [] } };
+
+function rmTmpQuiet(dir) {
+  try {
+    if (dir && fs.existsSync(dir)) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  } catch {
+    // ignore
+  }
+}
 
 describe('repair-openapi-sync', () => {
   beforeEach(() => {
@@ -52,14 +66,18 @@ describe('repair-openapi-sync', () => {
   });
 
   it('uploads files with filename override based on documentKey', async() => {
-    const appPath = '/tmp/integration/sys';
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'repair-openapi-'));
+    const appPath = tmp;
     const systemKey = 'sys';
     const datasourceFiles = ['sys-datasource-contacts.json'];
 
-    const accessSpy = jest.spyOn(fs.promises, 'access').mockResolvedValue();
-    const existsSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-    const loadConfigFile = jest.spyOn(require('../../../lib/utils/config-format'), 'loadConfigFile');
-    loadConfigFile.mockReturnValue({ openapi: { documentKey: 'sys-contacts' } });
+    fs.mkdirSync(path.join(appPath, 'openapi'), { recursive: true });
+    fs.writeFileSync(path.join(appPath, 'openapi', 'contacts.json'), '{}', 'utf8');
+    fs.writeFileSync(
+      path.join(appPath, 'sys-datasource-contacts.json'),
+      JSON.stringify({ openapi: { documentKey: 'sys-contacts' } }),
+      'utf8'
+    );
 
     try {
       const lines = await maybeSyncOpenApiFilesForMcp({
@@ -85,23 +103,25 @@ describe('repair-openapi-sync', () => {
         expect.any(Object)
       );
     } finally {
-      accessSpy.mockRestore();
-      existsSpy.mockRestore();
-      loadConfigFile.mockRestore();
+      rmTmpQuiet(tmp);
     }
   });
 
   it('no-op when OpenAPI key already exists remotely', async() => {
     listOpenAPIFiles.mockResolvedValue({ success: true, data: { data: [{ key: 'sys-contacts' }] } });
 
-    const appPath = '/tmp/integration/sys';
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'repair-openapi-'));
+    const appPath = tmp;
     const systemKey = 'sys';
     const datasourceFiles = ['sys-datasource-contacts.json'];
 
-    const accessSpy = jest.spyOn(fs.promises, 'access').mockResolvedValue();
-    const existsSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-    const loadConfigFile = jest.spyOn(require('../../../lib/utils/config-format'), 'loadConfigFile');
-    loadConfigFile.mockReturnValue({ openapi: { documentKey: 'sys-contacts' } });
+    fs.mkdirSync(path.join(appPath, 'openapi'), { recursive: true });
+    fs.writeFileSync(path.join(appPath, 'openapi', 'contacts.json'), '{}', 'utf8');
+    fs.writeFileSync(
+      path.join(appPath, 'sys-datasource-contacts.json'),
+      JSON.stringify({ openapi: { documentKey: 'sys-contacts' } }),
+      'utf8'
+    );
 
     try {
       const lines = await maybeSyncOpenApiFilesForMcp({
@@ -115,10 +135,7 @@ describe('repair-openapi-sync', () => {
       expect(lines).toEqual([]);
       expect(uploadFileAs).not.toHaveBeenCalled();
     } finally {
-      accessSpy.mockRestore();
-      existsSpy.mockRestore();
-      loadConfigFile.mockRestore();
+      rmTmpQuiet(tmp);
     }
   });
 });
-
