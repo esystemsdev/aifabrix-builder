@@ -26,9 +26,19 @@ const { uploadFileAs } = require('../../../lib/utils/file-upload');
 const { listOpenAPIFiles } = require('../../../lib/api/external-systems.api');
 const { maybeSyncOpenApiFilesForMcp, documentKeyToLocalOpenApiPath } = require('../../../lib/commands/repair-openapi-sync');
 
+const DEFAULT_OPENAPI_LIST = { success: true, data: { data: [] } };
+
 describe('repair-openapi-sync', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    listOpenAPIFiles.mockResolvedValue(DEFAULT_OPENAPI_LIST);
+    uploadFileAs.mockResolvedValue({ success: true });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    listOpenAPIFiles.mockResolvedValue(DEFAULT_OPENAPI_LIST);
+    uploadFileAs.mockResolvedValue({ success: true });
   });
 
   it('maps documentKey to openapi/<suffix>.json', () => {
