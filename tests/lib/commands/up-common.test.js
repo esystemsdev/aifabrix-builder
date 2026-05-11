@@ -48,6 +48,7 @@ jest.mock('../../../lib/utils/paths', () => {
   return {
     getBuilderPath: jest.fn((appName) => pathMod.join(process.cwd(), 'builder', appName)),
     getBuilderRoot: jest.fn(() => pathMod.join(process.cwd(), 'builder')),
+    getSystemBuilderRoot: jest.fn(() => pathMod.join(process.cwd(), '.aifabrix', 'builder')),
     resolveApplicationConfigPath: jest.fn()
   };
 });
@@ -293,6 +294,7 @@ describe('up-common cleanBuilderAppDirs', () => {
     jest.spyOn(fs, 'existsSync');
     jest.spyOn(fs, 'rmSync');
     pathsUtil.getBuilderRoot.mockReturnValue(path.join(process.cwd(), 'builder'));
+    pathsUtil.getSystemBuilderRoot.mockReturnValue(path.join(process.cwd(), '.aifabrix', 'builder'));
     pathsUtil.getBuilderPath.mockImplementation((appName) => path.join(process.cwd(), 'builder', appName));
   });
 
@@ -322,10 +324,20 @@ describe('up-common cleanBuilderAppDirs', () => {
     expect(fs.rmSync).not.toHaveBeenCalled();
   });
 
-  it('throws when path is outside builder root (path traversal)', async() => {
+  it('throws when path is outside allowed builder roots (path traversal)', async() => {
     pathsUtil.getBuilderRoot.mockReturnValue(path.join(process.cwd(), 'builder'));
+    pathsUtil.getSystemBuilderRoot.mockReturnValue(path.join(process.cwd(), '.aifabrix', 'builder'));
     pathsUtil.getBuilderPath.mockReturnValue('/tmp/other/dataplane');
-    await expect(cleanBuilderAppDirs(['dataplane'])).rejects.toThrow('outside builder root');
+    await expect(cleanBuilderAppDirs(['dataplane'])).rejects.toThrow('outside allowed builder roots');
     expect(fs.rmSync).not.toHaveBeenCalled();
+  });
+
+  it('removes dir under ~/.aifabrix builder when getBuilderPath resolves there', async() => {
+    const sysPath = path.join(process.cwd(), '.aifabrix', 'builder', 'keycloak');
+    pathsUtil.getBuilderPath.mockReturnValue(sysPath);
+    fs.existsSync.mockImplementation((p) => p === sysPath);
+    fs.rmSync.mockImplementation(() => {});
+    await cleanBuilderAppDirs(['keycloak']);
+    expect(fs.rmSync).toHaveBeenCalledWith(sysPath, { recursive: true });
   });
 });

@@ -25,7 +25,7 @@ The summary lists **two** Jest runs: first block is the default project (~294 su
 Prefer **isolated Jest projects** (`jest.projects.js`: `testPathIgnorePatterns` + `makeIsolatedProject`) for suites that:
 
 - `jest.mock('fs')` with custom `mockImplementation` that must not leak to other files, or
-- need real `node:fs` / `node:fs.promises` while other suites mock `fs` or `node:fs` (e.g. `register-aifabrix-shell-env`, `log-viewer-run` run with the `log-viewer` isolated group), or
+- need real `node:fs` / `node:fs.promises` while other suites mock `fs` or `node:fs` (e.g. `register-aifabrix-shell-env`, `log-viewer-run` run with the `log-viewer` isolated group; `repair-openapi-sync` is isolated because `infra.test.js`’s `fs` mock omits `promises.access`), or
 - partially mock `paths` / other singletons, or
 - read shipped `templates/**` YAML with `jest.requireActual('js-yaml')` but still run after other suites on the same worker (e.g. `application-frontdoor-paths.contract.test.js` — isolated as `application-frontdoor-paths-contract`).
 

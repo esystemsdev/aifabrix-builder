@@ -83,6 +83,10 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\commands\\\\parameters-validate.test.js',
       'lib/commands/parameters-validate.test.js',
       'parameters-validate\\.test\\.js',
+      '/tests/lib/commands/repair-openapi-sync.test.js',
+      '\\\\tests\\\\lib\\\\commands\\\\repair-openapi-sync.test.js',
+      'lib/commands/repair-openapi-sync.test.js',
+      'repair-openapi-sync\\.test\\.js',
       '/tests/lib/utils/datasource-test-run-schema-sync.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\datasource-test-run-schema-sync.test.js',
       'lib/utils/datasource-test-run-schema-sync.test.js',
@@ -246,6 +250,7 @@ const isolatedProjects = [
   makeIsolatedProject('external-system-display', ['**/tests/lib/utils/external-system-display.test.js']),
   makeIsolatedProject('dev-hosts-helper', ['**/tests/lib/utils/dev-hosts-helper.test.js']),
   makeIsolatedProject('parameters-validate', ['**/tests/lib/commands/parameters-validate.test.js']),
+  makeIsolatedProject('repair-openapi-sync', ['**/tests/lib/commands/repair-openapi-sync.test.js']),
   makeIsolatedProject('paths-app-listing', ['**/tests/lib/utils/paths-app-listing.test.js']),
   makeIsolatedProject('datasource-validation-watch', [
     '**/tests/lib/utils/datasource-validation-watch.test.js'

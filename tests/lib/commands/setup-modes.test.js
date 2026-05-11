@@ -87,6 +87,7 @@ describe('lib/commands/setup-modes', () => {
     pathsUtil.getAifabrixSystemDir = jest.fn().mockReturnValue('/home/test/.aifabrix');
     pathsUtil.getBuilderPath = jest.fn().mockImplementation((app) => `/work/builder/${app}`);
     pathsUtil.getBuilderRoot = jest.fn().mockReturnValue('/work/builder');
+    pathsUtil.getSystemBuilderRoot = jest.fn().mockReturnValue('/home/test/.aifabrix/builder');
     pathsUtil.resolveApplicationConfigPath = jest
       .fn()
       .mockImplementation((p) => `${p}/application.yaml`);
@@ -237,6 +238,32 @@ describe('lib/commands/setup-modes', () => {
       expect(prompts.promptBuilderDirConflict).not.toHaveBeenCalled();
       expect(upCommon.applyUpPlatformForceConfig).toHaveBeenCalled();
       expect(upCommon.cleanBuilderAppDirs).toHaveBeenCalled();
+    });
+
+    it('prompts when project builder is empty but system builder has a platform app (force=true)', async() => {
+      fs.existsSync.mockImplementation((p) => {
+        const s = String(p);
+        if (s === '/work/builder') return true;
+        if (s === '/home/test/.aifabrix/builder') return true;
+        if (s === '/home/test/.aifabrix/builder/keycloak') return true;
+        return false;
+      });
+      fs.readdirSync.mockImplementation((p) => {
+        const s = String(p);
+        if (s === '/work/builder') return [];
+        if (s === '/home/test/.aifabrix/builder/keycloak') return ['application.yaml'];
+        return [];
+      });
+
+      await modes.runUpPlatform({ force: true });
+
+      expect(prompts.promptBuilderDirConflict).toHaveBeenCalledWith(
+        expect.objectContaining({
+          systemPlatformApps: ['keycloak'],
+          totalEntries: 1,
+          systemBuilderRoot: '/home/test/.aifabrix/builder'
+        })
+      );
     });
   });
 

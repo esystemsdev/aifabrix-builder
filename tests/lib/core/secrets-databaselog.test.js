@@ -65,7 +65,8 @@ describe('DATABASELOG_URL handling in resolve command', () => {
   const appName = 'miso-controller';
   const mockHomeDir = '/home/test';
   const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
-  const builderPath = path.join(process.cwd(), 'builder', appName);
+  // System platform apps resolve under ~/.aifabrix/builder/<app> when no project builder/<app> exists.
+  const builderPath = path.join(mockHomeDir, '.aifabrix', 'builder', appName);
   const envTemplatePath = path.join(builderPath, 'env.template');
   const variablesPath = path.join(builderPath, 'application.yaml');
   const envPath = path.join(builderPath, '.env');

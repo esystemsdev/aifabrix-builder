@@ -41,6 +41,7 @@ jest.mock('../../../lib/app/register');
 jest.mock('../../../lib/app/rotate-secret');
 jest.mock('../../../lib/utils/app-existence');
 jest.mock('../../../lib/app');
+jest.mock('../../../lib/infrastructure');
 jest.mock('../../../lib/commands/up-common');
 jest.mock('../../../lib/utils/paths', () => ({
   getBuilderPath: jest.fn(),
@@ -61,6 +62,7 @@ const { registerApplication } = require('../../../lib/app/register');
 const { rotateSecret } = require('../../../lib/app/rotate-secret');
 const { checkApplicationExists } = require('../../../lib/utils/app-existence');
 const app = require('../../../lib/app');
+const infra = require('../../../lib/infrastructure');
 const { ensureAppFromTemplate } = require('../../../lib/commands/up-common');
 
 describe('up-dataplane command', () => {
@@ -68,6 +70,7 @@ describe('up-dataplane command', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    infra.checkInfraHealth.mockResolvedValue({ postgres: 'healthy', redis: 'healthy' });
     resolveControllerUrl.mockResolvedValue('http://localhost:3000');
     config.resolveEnvironment.mockResolvedValue('dev');
     config.getConfig.mockResolvedValue({ environment: 'dev' });
@@ -141,6 +144,31 @@ describe('up-dataplane command', () => {
   });
 
   describe('handleUpDataplane', () => {
+    it('should throw when infra is not up', async() => {
+      infra.checkInfraHealth.mockResolvedValue({ postgres: 'unknown', redis: 'unknown' });
+
+      await expect(handleUpDataplane({})).rejects.toThrow(
+        'Infrastructure is not up. Run \'aifabrix up-infra\' first.'
+      );
+      expect(resolveControllerUrl).not.toHaveBeenCalled();
+      expect(checkApplicationExists).not.toHaveBeenCalled();
+      expect(registerApplication).not.toHaveBeenCalled();
+    });
+
+    it('should call checkInfraHealth with strict before controller', async() => {
+      await handleUpDataplane({});
+
+      expect(infra.checkInfraHealth).toHaveBeenCalledWith(undefined, { strict: true });
+    });
+
+    it('should skip infra check when skipInfraCheck is true', async() => {
+      infra.checkInfraHealth.mockClear();
+      await handleUpDataplane({ skipInfraCheck: true });
+
+      expect(infra.checkInfraHealth).not.toHaveBeenCalled();
+      expect(resolveControllerUrl).toHaveBeenCalled();
+    });
+
     it('should throw when environment is not dev', async() => {
       config.getConfig.mockResolvedValue({ environment: 'tst' });
 

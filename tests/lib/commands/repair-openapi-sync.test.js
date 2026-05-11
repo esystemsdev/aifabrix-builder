@@ -3,6 +3,10 @@
  *
  * Uses real temp files for async I/O paths — avoid jest.spyOn(fs.promises.*), which can
  * destabilize Jest workers (SIGABRT) under parallel runs / detectOpenHandles.
+ *
+ * Runs in an isolated Jest project (see jest.projects.js): `tests/lib/infrastructure/infra.test.js`
+ * replaces `fs.promises` without `access`; on the default worker that mock can leak and make
+ * `repair-openapi-sync.js` treat paths as missing, so CI fails depending on test order.
  */
 
 jest.mock('../../../lib/utils/controller-url', () => ({
