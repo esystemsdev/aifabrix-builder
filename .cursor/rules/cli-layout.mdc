@@ -50,7 +50,7 @@ Markdown headings in `layout.md` may use emoji for doc navigation; **user-facing
 
 - **Canonical helpers:** `lib/utils/cli-test-layout-chalk.js` (see symbol → helper table in [layout.md](./layout.md) § “Implementation map”).
 - **Preferred import alias:** `lib/utils/cli-layout-chalk.js` re-exports the same API when the path should not contain `test`.
-- **Prefer** `formatSuccessLine`, `formatSuccessParagraph`, `formatBlockingError`, `failureGlyph`, `successGlyph`, and other exported section helpers over ad hoc `` chalk.green(`✔ …`) `` for one-off success/error lines.
+- **Prefer** `formatSuccessLine`, `formatSuccessParagraph`, `formatWarningLine`, `formatBlockingError`, `failureGlyph`, `successGlyph`, and other exported section helpers over ad hoc `` chalk.green(`✔ …`) `` for one-off success/error lines.
 - **Composite / indented lines** (e.g. `successGlyph()` + `chalk.white(…)`, or `  ✔ …` in validate-style output) may stay raw chalk **only** when a single helper would not match the spec; keep glyphs canonical.
 - **Tests:** extend or add tests under `tests/lib/utils/cli-test-layout-chalk.test.js` (and command tests) when behavior or snapshots encode layout.
 

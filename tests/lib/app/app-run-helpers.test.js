@@ -26,6 +26,11 @@ jest.mock('../../../lib/infrastructure', () => ({
   ensureAdminSecrets: jest.fn().mockResolvedValue('/tmp/admin-secrets.env')
 }));
 
+jest.mock('../../../lib/core/secrets-ensure', () => ({
+  ensureSecretsFromEnvTemplate: jest.fn().mockResolvedValue([]),
+  buildInfraPlaceholderContext: jest.fn(() => ({}))
+}));
+
 jest.mock('../../../lib/core/config', () => ({
   getDeveloperId: jest.fn().mockResolvedValue(0),
   getConfig: jest.fn().mockResolvedValue({ useEnvironmentScopedResources: false })

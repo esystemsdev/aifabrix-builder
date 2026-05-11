@@ -51,6 +51,11 @@ npm test -- tests/local/lib/template-validator.test.js
 - `lib/utils/declarative-url-matrix-d-reload.test.js` - Plan 122 Matrix D reload parity
 - `lib/utils/datasource-test-run-display-snapshot.test.js` - Golden TTY snapshot for `formatDatasourceTestRunTTY` (chalk/CI drift)
 - `lib/utils/external-system-system-test-tty.test.js` - §17 system aggregate TTY + snapshot (chalk/CI drift)
+- `lib/datasource/run-capability-dimension.test.js` - `runCapabilityDimension` dry-run/write, FK remote validation, catalog checks (fs + mock ordering in CI temp copy)
+- `lib/datasource/create-operations.test.js` - `applyCapabilityCreate` + real `minimal-fetch` template on disk (worker `fs` mock conflicts)
+- `lib/datasource/capability-hubspot-copy.integration.test.js` - HubSpot companies fixture copy/remove golden path (optional sibling `aifabrix-dataplane` JSON)
+- `lib/utils/load-cip-capacity-display-config.test.js` - bundled schema path + operation-order extraction (CI simulation temp-dir vs repo root)
+- `lib/utils/paths-aifabrix-nested-config.test.js` - `AIFABRIX_HOME` + nested `~/.aifabrix/config.yaml`; real disk + `fs-real-sync` / worker ordering (CI simulation)
 
 ## CI Exclusion
 

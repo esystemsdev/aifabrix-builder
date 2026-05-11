@@ -56,6 +56,7 @@ describe('setup-secrets', () => {
     mockProgram = {
       command: jest.fn((name) => {
         const chain = {
+          alias: jest.fn().mockReturnThis(),
           description: jest.fn().mockReturnThis(),
           addHelpText: jest.fn().mockReturnThis(),
           option: jest.fn().mockReturnThis(),

@@ -71,7 +71,13 @@ jest.mock('../../lib/utils/logger', () => ({
 
 jest.mock('http');
 
+jest.mock('../../lib/utils/health-check-url', () => ({
+  computeTraefikHealthCheckUrl: jest.fn(),
+  computeTraefikPublicAppUrl: jest.fn()
+}));
+
 const { execWithDockerEnv } = require('../../lib/utils/docker-exec');
+const { computeTraefikHealthCheckUrl } = require('../../lib/utils/health-check-url');
 const healthCheck = require('../../lib/utils/health-check');
 
 describe('Health Check Utilities', () => {
@@ -1019,6 +1025,45 @@ describe('Health Check Utilities', () => {
         );
         expect(waitingLogs.length).toBeGreaterThan(0);
         expect(waitingLogs.length).toBeLessThan(3); // Max attempts = timeout/2 = 4/2 = 2
+      });
+    });
+
+    describe('traefik + dns fallback', () => {
+      it('falls back to localhost when traefik hostname is not resolvable', async() => {
+        // Traefik URL returned, but DNS lookup fails on this host.
+        computeTraefikHealthCheckUrl.mockResolvedValue('http://dev02.builder.local/health');
+        const dnsMod = require('dns');
+        jest.spyOn(dnsMod.promises, 'lookup').mockRejectedValue(Object.assign(new Error('ENOTFOUND'), { code: 'ENOTFOUND' }));
+
+        // Mock successful HTTP health check (localhost)
+        http.request.mockImplementation((options, callback) => {
+          const mockResponse = {
+            statusCode: 200,
+            headers: {},
+            on: jest.fn((event, handler) => {
+              if (event === 'data') {
+                handler(Buffer.from(JSON.stringify({ status: 'ok' })));
+              }
+              if (event === 'end') {
+                handler();
+              }
+            })
+          };
+          if (callback) callback(mockResponse);
+          return mockHttpRequest;
+        });
+
+        await expect(healthCheck.waitForHealthCheck('test-app', 10, 3000, null, false, { traefikEnabled: true }))
+          .resolves.not.toThrow();
+
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Public URL was not verified (DNS)'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Validate DNS names'));
+        expect(http.request).toHaveBeenCalledWith(
+          expect.objectContaining({
+            hostname: 'localhost'
+          }),
+          expect.any(Function)
+        );
       });
     });
   });

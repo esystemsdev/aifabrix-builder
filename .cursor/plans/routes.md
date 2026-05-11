@@ -24,6 +24,34 @@ Reference implementation and OpenAPI live in **aifabrix-miso**: `packages/miso-c
 
 The Builder CLI uses **`lib/api/integration-clients.api.js`**, **`lib/commands/integration-client.js`**, and **`lib/cli/setup-integration-client.js`** (`aifabrix integration-client`) aligned with the table above and **`integration-client:*`** permissions.
 
+## MISO Controller — Dimensions (source of truth)
+
+The controller exposes **Dimensions** under **`/api/v1/dimensions`**. Permissions use the **`dimensions:*`** namespace.
+
+| Operation | HTTP | Path | Controller permission |
+| --------- | ---- | ---- | --------------------- |
+| Create | `POST` | `/api/v1/dimensions` | `dimensions:create` |
+| List (pagination / sort / filter / search) | `GET` | `/api/v1/dimensions` | `dimensions:read` |
+| Get by id or key | `GET` | `/api/v1/dimensions/{dimensionIdOrKey}` | `dimensions:read` |
+
+### Builder alignment
+
+The Builder CLI uses **`lib/api/dimensions.api.js`** and **`lib/commands/dimension.js`** (`aifabrix dimension create|get|list`) aligned with the table above and **`dimensions:*`** permissions.
+
+## MISO Controller — Dimension values (static dimensions)
+
+Dimension values are managed either via nested dimension routes (by dimension id/key) or by value id. Permissions follow the dimension namespace.
+
+| Operation | HTTP | Path | Controller permission |
+| --------- | ---- | ---- | --------------------- |
+| List values (dimension) | `GET` | `/api/v1/dimensions/{dimensionIdOrKey}/values` | `dimensions:read` |
+| Create value (dimension) | `POST` | `/api/v1/dimensions/{dimensionIdOrKey}/values` | `dimensions:create` |
+| Delete value (by id) | `DELETE` | `/api/v1/dimension-values/{dimensionValueId}` | `dimensions:delete` |
+
+### Builder alignment
+
+The Builder CLI uses **`lib/api/dimension-values.api.js`** and **`lib/commands/dimension-value.js`** (`aifabrix dimension-value create|list|delete`).
+
 ## Certification block on disk
 
 - **Location:** `integration/<systemKey>/<systemKey>-system.json` or `.yaml`, top-level **`certification`** object only.

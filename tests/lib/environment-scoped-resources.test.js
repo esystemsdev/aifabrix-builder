@@ -84,6 +84,15 @@ describe('environment-scoped-resources', () => {
       const merged = mergeSecretsWithPrefixedCopies({ a: '1', 'dev-b': '2' }, 'dev');
       expect(merged['dev-a']).toBe('1');
     });
+    it('mergeSecretsWithPrefixedCopies fills empty prefixed slot from base key', () => {
+      const merged = mergeSecretsWithPrefixedCopies({ 'bar-baz': 'real', 'dev-bar-baz': '' }, 'dev');
+      expect(merged['dev-bar-baz']).toBe('real');
+    });
+    it('collectMissingSecrets falls back when prefixed key is empty string', () => {
+      const secrets = { 'bar-baz': 'secret2', 'dev-bar-baz': '' };
+      const scopedKv = { effective: true, envKey: 'dev' };
+      expect(collectMissingSecrets(template, secrets, scopedKv)).toEqual([]);
+    });
   });
 
   describe('applyRedisDbIndexToEnvContent', () => {

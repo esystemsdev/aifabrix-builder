@@ -69,4 +69,36 @@ describe('validation-run-poll', () => {
     expect(r.envelope).toBeNull();
     expect(r.lastApiResult.success).toBe(false);
   });
+
+  it('pollValidationRunUntilComplete calls onPollProgress for non-terminal envelopes', async() => {
+    const onPollProgress = jest.fn();
+    const fetchRun = jest
+      .fn()
+      .mockResolvedValueOnce({
+        success: true,
+        data: { reportCompleteness: 'partial', status: 'running' }
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        data: { reportCompleteness: 'full', status: 'ok' }
+      });
+    const r = await pollValidationRunUntilComplete({
+      dataplaneUrl: 'https://x',
+      authConfig: {},
+      testRunId: 't1',
+      budgetMs: 60000,
+      fetchRun,
+      onPollProgress
+    });
+    expect(r.envelope.reportCompleteness).toBe('full');
+    expect(onPollProgress).toHaveBeenCalledTimes(1);
+    expect(onPollProgress.mock.calls[0][0]).toMatchObject({
+      reportCompleteness: 'partial',
+      status: 'running'
+    });
+    expect(onPollProgress.mock.calls[0][1]).toBe(0);
+    expect(onPollProgress.mock.calls[0][2]).toEqual(
+      expect.objectContaining({ deadlineMs: expect.any(Number) })
+    );
+  });
 });

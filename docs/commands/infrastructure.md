@@ -10,6 +10,81 @@ Commands for managing local infrastructure services (Postgres, Redis, pgAdmin, R
 
 ---
 
+<a id="aifabrix-setup"></a>
+## aifabrix setup
+
+One-shot installer that brings up the full local AI Fabrix platform (infra + miso + dataplane) in a single command.
+
+**What:** Detects the current state of local infrastructure and either runs a fresh-install wizard or shows a mode menu.
+
+- **No infrastructure running (fresh install):**
+  - Wizard prompts for the **admin email** and **admin password** (used by Postgres, pgAdmin, and Keycloak).
+  - Wizard asks for an **AI tool** (OpenAI or Azure OpenAI) only when no key is found in the merged secret view (user-local `~/.aifabrix/secrets.local.yaml` plus the shared `aifabrix-secrets` file). Provided keys are written to `~/.aifabrix/secrets.local.yaml`.
+  - Runs `aifabrix up-infra` (with the wizard answers) and then starts platform services (`up-miso` + `up-dataplane`).
+
+- **Infrastructure already running (mode menu):**
+  1. **Re-install (all services - all data will be lost)** — Stops infra and removes every Docker volume (`down-infra -v`), removes `~/.aifabrix/secrets.local.yaml`, then runs `up-infra` and `up-platform --force` (clears `builder/keycloak`, `builder/miso-controller`, `builder/dataplane` and re-fetches templates).
+  2. **Wipe data** — Drops every database and DB user in the running Postgres container (volume preserved), removes `~/.aifabrix/secrets.local.yaml`, then runs `up-infra` and `up-platform --force`.
+  3. **Clean installation files** — Removes `~/.aifabrix/secrets.local.yaml`, then runs `up-infra` and `up-platform --force`.
+  4. **Update images** — Runs `docker compose pull` against the developer-scoped infra compose file plus `docker pull` for each platform app's image, then runs `up-infra` and `up-platform` (no `--force`; secrets and data preserved).
+
+The shared `aifabrix-secrets` file is **never** modified by `aifabrix setup`. The admin password and email are persisted via the existing `up-infra` flow into `admin-secrets.env`; that file is preserved across modes 2, 3, and 4.
+
+**When:** First-time install, recovering from a broken state, refreshing platform images.
+
+**Usage:**
+```bash
+# Interactive install (fresh or mode menu)
+aifabrix setup
+
+# Skip destructive confirmation prompts (re-install, wipe data) in CI
+aifabrix setup --yes
+```
+
+**Options:**
+- `-d, --developer <id>` - Pin developer ID before fresh install (fresh path only; ignored when infra is already up).
+- `-y, --yes` - Skip the destructive confirmation prompts (re-install, wipe data). Does not change which mode runs; pick the mode interactively or set the environment yourself before running.
+
+**Issues:**
+- **"Postgres container not running" during wipe-data mode** → Run `aifabrix up-infra` first, then re-run `aifabrix setup`.
+- **AI tool prompt keeps appearing** → The merged secret view does not contain a non-placeholder value for the chosen provider's keys. Set them with `aifabrix secret set` or accept the prompt.
+- **`secrets.local.yaml` still has old keys after Mode 1/2/3** → That file is removed; if the AI tool prompt was skipped, the keys are coming from the **shared** `aifabrix-secrets` file (which `setup` never modifies).
+
+See also: [`aifabrix teardown`](#aifabrix-teardown), [`aifabrix up-infra`](#aifabrix-up-infra), [`aifabrix up-platform`](#aifabrix-up-platform), [`aifabrix down-infra`](#aifabrix-down-infra).
+
+---
+
+<a id="aifabrix-teardown"></a>
+## aifabrix teardown
+
+Symmetrical inverse of `aifabrix setup` — fully removes the local installation.
+
+**What:** Runs `down-infra -v` (stops all infra + apps and deletes every Docker volume), then removes every file and subfolder inside `~/.aifabrix/` **except** `config.yaml`. The cleaned set includes `secrets.local.yaml`, `admin-secrets.env`, auth/token files, and any `infra-dev*` directories.
+
+The directory cleaned is the resolved AI Fabrix system directory (the same directory used by `aifabrix-home` overrides), not literally `$HOME/.aifabrix` when an override is set.
+
+**When:** Reset a developer machine, hand a workstation off, or recover from a broken state where surgical fixes do not help.
+
+**Usage:**
+```bash
+# Interactive teardown (asks for confirmation)
+aifabrix teardown
+
+# Skip the confirmation prompt (CI / scripted reset)
+aifabrix teardown --yes
+```
+
+**Options:**
+- `-y, --yes` - Skip the confirmation prompt.
+
+**Issues:**
+- **"Infrastructure already down or could not be stopped cleanly"** → Logged and the file cleanup continues. Re-run if you want to retry the Docker side.
+- **`config.yaml` was removed** → It is preserved by design. If a partial cleanup left it missing, recreate it with `aifabrix configure` or restore from version control.
+
+See also: [`aifabrix setup`](#aifabrix-setup), [`aifabrix down-infra`](#aifabrix-down-infra).
+
+---
+
 <a id="aifabrix-up-infra"></a>
 ## aifabrix up-infra
 
@@ -61,6 +136,7 @@ Default **`${TLS_ENABLED}`** is **`false`**, so default **`${HTTP_ENABLED}`** is
 
 **Options:**
 - `-d, --developer <id>` - Set developer ID and start infrastructure with developer-specific ports. Developer ID must be a non-negative integer (0 = default infra, 1+ = developer-specific). When provided, sets the developer ID in `~/.aifabrix/config.yaml` and starts infrastructure with isolated ports.
+- `--verbose` - Show full orchestration output (compose generation, health checks, container details). Default output is a guided summary + “Infra Ready” footer.
 - `--adminPassword <password>` - Override the catalog default for the shared admin password for this run and when filling missing bootstrap secrets that use that default (Postgres admin password, pgAdmin and Redis Commander wiring, Keycloak admin password bootstrap, controller onboarding admin password, and other catalog entries tied to the same placeholder). Also written to `admin-secrets.env` in the **same directory as `config.yaml`** (often `~/.aifabrix/`, not plain `$HOME` when `aifabrix-home` points at `$HOME`) when that file is created or updated for infra admin access. Use a strong password in shared environments.
 - `--adminEmail <email>` - Override the catalog default admin email for this run (for example pgAdmin login email and controller onboarding email bootstrap where the catalog maps it).
 - `--userPassword <password>` - Override the catalog default for the Keycloak default end-user password bootstrap where the catalog maps it.
@@ -158,7 +234,9 @@ aifabrix up-miso --image keycloak=myreg/keycloak:v1 --image miso-controller=myre
 - `-r, --registry <url>` - Override registry for both apps (e.g. `myacr.azurecr.io`)
 - `--registry-mode <mode>` - Override registry mode (`acr` or `external`)
 - `-i, --image <key>=<value>` - Override image (e.g. `keycloak=reg/k:v1`, `miso-controller=reg/m:v1`); can be repeated
+- `--base` - Use manifest base images when starting containers (default: on). Use **`--no-base`** to allow preferring a locally built developer-scoped image when present (same behavior as `aifabrix run` without `--base`).
 - `-f, --force` - Clean builder/keycloak and builder/miso-controller and re-fetch from templates
+- `--verbose` - Show full orchestration output. Default output is guided steps + “Miso Ready” footer with URLs.
 
 **Issues:**
 - **"Infrastructure is not up"** → Run `aifabrix up-infra` first
@@ -187,7 +265,8 @@ aifabrix up-platform --registry myacr.azurecr.io
 aifabrix up-platform --image keycloak=myreg/k:v1 --image miso-controller=myreg/m:v1 --image dataplane=myreg/d:v1
 ```
 
-**Options:** Same as [up-miso](#aifabrix-up-miso) (registry, registry-mode, image), plus `-f, --force` (see below). Registry and image options are passed through to both up-miso and up-dataplane steps.
+**Options:** Same as [up-miso](#aifabrix-up-miso) (registry, registry-mode, image, `--base` / `--no-base`), plus `-f, --force` (see below). Registry and image options are passed through to both up-miso and up-dataplane steps.
+- `--verbose` - Show full orchestration output. Default output is guided platform setup (Keycloak → Miso Controller → authenticate → Dataplane) + “Platform Ready” footer with URLs.
 
 **`-f, --force` (up-platform only):** Before re-copying templates, the CLI updates your local builder config file (the same file `aifabrix auth` uses—typically under `.aifabrix/`): it **removes all stored device and client tokens** (same effect as logging out every saved controller session and client credential), sets **`environment` to `dev`**, and sets the **default controller** to the URL that matches your stored **developer ID** (local dev: the miso-controller port is **3000 + (developer ID × 100)**, e.g. ID 6 → port 3600). Your **developer ID** is not changed. Then it **deletes** the `builder/keycloak`, `builder/miso-controller`, and `builder/dataplane` folders so they are recreated from templates on the next steps. After the platform is up, run **`aifabrix login`** again before commands that need a Bearer token.
 
@@ -222,7 +301,9 @@ aifabrix up-dataplane --image myreg/dataplane:latest
 - `-r, --registry <url>` - Override registry for dataplane image
 - `--registry-mode <mode>` - Override registry mode (`acr` or `external`)
 - `-i, --image <ref>` - Override dataplane image reference
+- `--base` - Use manifest base image when running dataplane locally (default: on). **`--no-base`** allows preferring a locally built developer-scoped image if present.
 - `-f, --force` - Clean builder/dataplane and re-fetch from templates before registering/deploying
+- `--verbose` - Show full orchestration output. Default output is guided steps + “Dataplane Ready” footer with URLs.
 
 **Issues:**
 - **"Login required"** → Run `aifabrix login` first
@@ -256,6 +337,10 @@ aifabrix down-infra myapp
 # Stop an application and remove its data volume
 aifabrix down-infra myapp --volumes
 ```
+
+**Options:**
+- `-v, --volumes` - Remove volumes (deletes all local data for infra and/or the specified app)
+- `--verbose` - Show full orchestration output. Default output is a guided shutdown summary + “Stopped” footer.
 
 **Notes:**
 - App volumes are named per developer ID:

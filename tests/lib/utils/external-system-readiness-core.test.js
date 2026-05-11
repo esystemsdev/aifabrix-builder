@@ -4,7 +4,9 @@
 
 const {
   unwrapPublicationResult,
+  classifyDatasourceTierADetail,
   classifyDatasourceTierA,
+  formatTierAPartialHint,
   summarizeDatasourceTiersA,
   aggregateVerdictFromCounts,
   classifyDatasourceTierB,
@@ -46,6 +48,29 @@ describe('external-system-readiness-core', () => {
       expect(
         classifyDatasourceTierA({ key: 'a', status: 'published', isActive: true }, true)
       ).toBe('partial');
+    });
+
+    it('detail marks mcp_missing before draft when MCP absent', () => {
+      expect(
+        classifyDatasourceTierADetail(
+          { key: 'a', status: 'draft', isActive: true },
+          true
+        ).partialReason
+      ).toBe('mcp_missing');
+    });
+
+    it('detail marks draft when MCP present but status draft', () => {
+      expect(
+        classifyDatasourceTierADetail(
+          { key: 'a', status: 'draft', isActive: true, mcpContract: { tools: [] } },
+          true
+        ).partialReason
+      ).toBe('draft');
+    });
+
+    it('formatTierAPartialHint returns text for known codes', () => {
+      expect(formatTierAPartialHint('mcp_missing')).toContain('MCP');
+      expect(formatTierAPartialHint('draft')).toContain('draft');
     });
 
     it('failed when inactive', () => {

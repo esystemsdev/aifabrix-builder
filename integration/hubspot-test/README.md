@@ -150,6 +150,8 @@ If you see **"Invalid token or insufficient permissions"** or **"Failed to creat
 
 If the dataplane is configured to accept device tokens for the wizard API, ensure you are logged in with `aifabrix login` and that the controller URL and environment match (e.g. `dev`). No client credentials are needed.
 
+When this error appears, `pnpm test:hubspot-wizard` **skips** the live wizard cases (exit code 0) so optional CI/agents are not blocked; configure client credentials or dataplane auth to run those cases for real.
+
 ## Troubleshooting
 
 - **Validation errors**: Run `aifabrix validate hubspot-test --type external` to see schema and manifest errors.

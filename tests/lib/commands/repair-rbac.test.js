@@ -16,10 +16,13 @@ jest.mock('../../../lib/utils/config-format', () => ({
 }));
 
 const { loadConfigFile, writeConfigFile } = require('../../../lib/utils/config-format');
+const appConfigResolver = require('../../../lib/utils/app-config-resolver');
 const {
   getCapabilitiesFromDatasource,
   mergeRbacFromDatasources
 } = require('../../../lib/commands/repair-rbac');
+const { migrateSystemRbacIntoRbacFile } = require('../../../lib/commands/repair-rbac-migrate');
+const { extractRbacFromSystem } = require('../../../lib/commands/repair-rbac-extract');
 
 describe('repair-rbac', () => {
   describe('getCapabilitiesFromDatasource', () => {
@@ -403,6 +406,109 @@ describe('repair-rbac', () => {
       const writtenObj = writeConfigFile.mock.calls[0][1];
       expect(writtenObj.roles.some(r => r.value === 'legacy')).toBe(true);
       expect(writtenObj.permissions.some(p => p.name === 'contact:list')).toBe(true);
+    });
+  });
+
+  describe('migrateSystemRbacIntoRbacFile', () => {
+    let resolveSpy;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      resolveSpy = jest.spyOn(appConfigResolver, 'resolveRbacPath');
+    });
+
+    afterEach(() => {
+      resolveSpy.mockRestore();
+    });
+
+    it('returns false when system has no roles or permissions', () => {
+      resolveSpy.mockReturnValue(path.join(process.cwd(), 'integration', 'x', 'rbac.json'));
+      const changes = [];
+      const systemParsed = { key: 'x' };
+      const result = migrateSystemRbacIntoRbacFile(
+        '/app',
+        '/app/system.json',
+        systemParsed,
+        { dryRun: false, changes }
+      );
+      expect(result).toBe(false);
+    });
+
+    it('returns false when no rbac file exists on disk', () => {
+      resolveSpy.mockReturnValue(null);
+      const changes = [];
+      const systemParsed = {
+        roles: [{ name: 'A', value: 'a', description: 'd', groups: [] }]
+      };
+      const result = migrateSystemRbacIntoRbacFile(
+        '/app',
+        '/app/system.json',
+        systemParsed,
+        { dryRun: false, changes }
+      );
+      expect(result).toBe(false);
+      expect(writeConfigFile).not.toHaveBeenCalled();
+    });
+
+    it('merges system RBAC into existing rbac file and removes from system', () => {
+      const rbacJsonPath = path.join('/app', 'rbac.json');
+      resolveSpy.mockReturnValue(rbacJsonPath);
+      loadConfigFile.mockImplementation((p) => {
+        if (String(p) === rbacJsonPath) {
+          return {
+            roles: [{ name: 'Admin', value: 'sys-admin', description: 'Admin', groups: [] }],
+            permissions: [{ name: 'contact:list', roles: ['sys-admin'], description: 'List' }]
+          };
+        }
+        return {};
+      });
+
+      const systemParsed = {
+        key: 'hubspot',
+        roles: [{ name: 'Extra', value: 'extra-role', description: 'Extra', groups: [] }],
+        permissions: [{ name: 'contact:get', roles: ['extra-role'], description: 'Get one' }]
+      };
+      const changes = [];
+      expect(extractRbacFromSystem(systemParsed).permissions).toHaveLength(1);
+
+      const result = migrateSystemRbacIntoRbacFile(
+        '/app',
+        '/app/hubspot-system.json',
+        systemParsed,
+        { dryRun: false, changes }
+      );
+
+      expect(result).toBe(true);
+
+      expect(systemParsed.roles).toBeUndefined();
+      expect(systemParsed.permissions).toBeUndefined();
+
+      const rbacWrite = writeConfigFile.mock.calls.find(c => String(c[0]) === rbacJsonPath);
+      expect(rbacWrite).toBeDefined();
+      expect(rbacWrite[1].roles.some(r => r.value === 'extra-role')).toBe(true);
+      expect(rbacWrite[1].permissions.some(p => p.name === 'contact:get')).toBe(true);
+
+      const systemWrite = writeConfigFile.mock.calls.find(c => String(c[0]).endsWith('hubspot-system.json'));
+      expect(systemWrite).toBeDefined();
+    });
+
+    it('dry-run does not write but records intent', () => {
+      const rbacJsonPath = path.join('/app', 'rbac.json');
+      resolveSpy.mockReturnValue(rbacJsonPath);
+      loadConfigFile.mockReturnValue({ roles: [], permissions: [] });
+      const systemParsed = {
+        roles: [{ name: 'A', value: 'a', description: 'd', groups: [] }]
+      };
+      const changes = [];
+      migrateSystemRbacIntoRbacFile(
+        '/app',
+        '/app/system.json',
+        systemParsed,
+        { dryRun: true, changes }
+      );
+      expect(writeConfigFile).not.toHaveBeenCalled();
+      expect(systemParsed.roles).toBeDefined();
+      expect(changes.some(c => c.includes('Removed roles and permissions'))).toBe(true);
     });
   });
 });

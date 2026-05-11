@@ -635,14 +635,9 @@ describe('deployer', () => {
         maxAttempts: 3
       });
 
-      // Let promises resolve and advance timers incrementally
-      for (let i = 0; i < 10; i++) {
-        await Promise.resolve();
-        jest.advanceTimersByTime(100);
-        await Promise.resolve();
-      }
-
-      await expect(resultPromise).rejects.toThrow('Deployment timeout: Maximum polling attempts reached');
+      const assertion = expect(resultPromise).rejects.toThrow('Deployment timeout: Maximum polling attempts reached');
+      await jest.runAllTimersAsync();
+      await assertion;
     });
 
     it('should handle 404 errors', async() => {

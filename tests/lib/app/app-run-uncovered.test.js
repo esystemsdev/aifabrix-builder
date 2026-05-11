@@ -827,11 +827,25 @@ describe('App-Run Uncovered Code Paths', () => {
       config.getDeveloperId.mockResolvedValue(0);
       exec.mockImplementation((cmd, opts, cb) => {
         const callback = typeof opts === 'function' ? opts : cb;
-        callback(null, '', '');
+        const c = String(cmd || '');
+        if (c.includes('docker inspect')) {
+          callback(
+            null,
+            JSON.stringify([{ Type: 'bind', Source: '/tmp/ws', Destination: '/app', RW: true }]),
+            ''
+          );
+        } else {
+          callback(null, '', '');
+        }
       });
       await expect(appRun.restartApp('myapp')).resolves.not.toThrow();
       expect(exec).toHaveBeenCalledWith(
         expect.stringContaining('docker restart'),
+        expect.objectContaining({ env: expect.any(Object) }),
+        expect.any(Function)
+      );
+      expect(exec).toHaveBeenCalledWith(
+        expect.stringContaining('docker inspect'),
         expect.objectContaining({ env: expect.any(Object) }),
         expect.any(Function)
       );

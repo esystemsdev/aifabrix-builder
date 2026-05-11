@@ -2,17 +2,17 @@
   "$schema":"https://json-schema.org/draft/2020-12/schema",
   "$id":"aifabrix://schema/external-datasource.schema.json",
   "title":"External Data Source",
-  "description":"Configuration for AI Fabrix ExternalDataSource entities. Includes metadata schema, data dimensions, transformation mappings, OpenAPI/MCP exposure, execution logic, and sync behavior.",
+  "description":"Configuration for AI Fabrix ExternalDataSource entities. Includes metadata schema, data dimensions, transformation mappings, OpenAPI/MCP exposure, execution logic, and sync behavior. Root externalSpec is the datasource-level authoritative reference for where to obtain the vendor or tooling API specification used for import and validation; external-system.schema.json openapi/mcp are system-level connectivity hints only.",
         "metadata":{
         "key":"external-datasource-schema",
         "name":"External Data Source Configuration Schema",
         "description":"JSON schema for validating ExternalDataSource configuration files",
-    "version":"2.4.6",
+    "version":"2.4.8",
         "type":"schema",
         "category":"integration",
         "author":"AI Fabrix Team",
         "createdAt":"2024-01-01T00:00:00Z",
-        "updatedAt":"2026-04-20T00:00:00Z",
+        "updatedAt":"2026-05-10T00:00:00Z",
         "compatibility":{
            "minVersion":"1.0.0",
            "maxVersion":"3.0.0",
@@ -183,6 +183,27 @@
               "Added optional fetch.httpResponseNormalization for manifest-driven GET response shaping (302 Location follow, JSON redirect envelopes, nested JSON string URL follow-up)."
            ],
            "breaking":false
+        },
+        {
+           "version":"2.4.8",
+           "date":"2026-05-10T00:00:00Z",
+           "changes":[
+              "Documented roles: root externalSpec is the datasource-level authoritative vendor/API specification provenance (fetch, import, validation); config.openapi is the runtime connector (operations, documentKey) and is the behavioral source of truth; external-system openapi/mcp remain connectivity/bootstrap only.",
+              "Clarified externalSpec and openapi property descriptions to distinguish vendor spec location from generated or persisted AI-facing OpenAPI material managed by dataplane."
+           ],
+           "breaking":false
+        },
+        {
+           "version":"2.4.7",
+           "date":"2026-05-08T00:00:00Z",
+           "changes":[
+              "externalSpec: optional root object with required type (openapi | mcp) plus documentKey, url, relativePath for vendor or tooling provenance (wizard/import).",
+              "fieldMappings.attributes.<name>: added optional writePath (provider-payload target dot-path), direction (read|write|readwrite), and passthrough (boolean) to support bidirectional mapping authoring; compiler auto-derives writePath from invertible '{{raw.<dot.path>}}' expressions.",
+              "fieldMappings.attributes.<name>: short-form sugar accepted - a string equal to a {{...}} expression is normalized to { expression: '<value>' } at compile time.",
+              "Rejected body and rawBody as aliases for writePath (engine-neutral writePath is the only write-target identifier).",
+              "validate_raw_path: replaced provider-aware traversal with one generic JSON-Schema rule (descend via properties.<seg>; accept remaining path under additionalProperties: true; otherwise emit one actionable error)."
+           ],
+           "breaking":false
         }
      ]
   },
@@ -283,67 +304,129 @@
         "properties":{
            "attributes":{
               "type":"object",
-              "description":"Key = normalized attribute name. Value = transformation configuration.",
+              "description":"Key = normalized attribute name. Value = transformation configuration. Short-form: a string equal to a {{...}} expression is normalized to { expression: '...' } by the compiler.",
               "propertyNames":{
                  "pattern":"^[a-z][a-zA-Z0-9]*$"
               },
               "additionalProperties":{
-                 "type":"object",
-                 "properties":{
-                    "expression":{
+                 "oneOf":[
+                    {
                        "type":"string",
-                       "description":"Pipe-based DSL expression. Allowed roots: raw.<path>, fk.<fk>.metadata.<field>, fk.<fk>.dimension.<dimension>[.label], dimension.<dimension>[.label]. FK traversal in DSL is one-hop only.",
+                       "description":"Short-form sugar: an expression string is normalized by the compiler to { expression: '<value>' }.",
                        "maxLength":512,
                        "pattern":"^\\s*\\{\\{(raw\\.[a-zA-Z0-9_.]+|fk\\.[a-z][a-zA-Z0-9]*\\.metadata\\.[a-z][a-zA-Z0-9]*|fk\\.[a-z][a-zA-Z0-9]*\\.dimension\\.[a-zA-Z0-9_]+(\\.label)?|dimension\\.[a-zA-Z0-9_]+(\\.label)?)\\}\\}(\\s*\\|\\s*[a-zA-Z0-9_]+(\\([^)]*\\))?)*\\s*$"
                     },
-                    "description":{
-                       "type":"string",
-                       "description":"Technical description of the normalized field."
-                    },
-                    "semantic":{
+                    {
                        "type":"object",
-                       "description":"Semantic metadata for AI agents and schema generation.",
                        "properties":{
-                          "title":{
+                          "expression":{
                              "type":"string",
-                             "description":"Human-friendly label for this field."
+                             "description":"Pipe-based DSL expression. Allowed roots: raw.<path>, fk.<fk>.metadata.<field>, fk.<fk>.dimension.<dimension>[.label], dimension.<dimension>[.label]. FK traversal in DSL is one-hop only.",
+                             "maxLength":512,
+                             "pattern":"^\\s*\\{\\{(raw\\.[a-zA-Z0-9_.]+|fk\\.[a-z][a-zA-Z0-9]*\\.metadata\\.[a-z][a-zA-Z0-9]*|fk\\.[a-z][a-zA-Z0-9]*\\.dimension\\.[a-zA-Z0-9_]+(\\.label)?|dimension\\.[a-zA-Z0-9_]+(\\.label)?)\\}\\}(\\s*\\|\\s*[a-zA-Z0-9_]+(\\([^)]*\\))?)*\\s*$"
                           },
                           "description":{
                              "type":"string",
-                             "description":"Business-level description of the field and how it is used."
+                             "description":"Technical description of the normalized field."
                           },
-                          "example":{
-                             "description":"Example value for this field.",
-                             "type":["string","number","boolean","object","array","null"]
+                          "writePath":{
+                             "type":"string",
+                             "description":"Optional. Provider-payload target path for write operations. Dot-separated identifiers (e.g. 'properties.name'). When omitted and the expression is a single, function-free '{{raw.<dot.path>}}', the compiler derives writePath from raw.<dot.path>. When the expression is non-invertible (function chain, fk., dimension., literal, multiple references), writePath is null unless explicitly set.",
+                             "pattern":"^[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*$",
+                             "maxLength":256
                           },
-                          "categories":{
-                             "type":"array",
-                             "description":"Logical categories/tags (e.g. ['sales', 'revenue']).",
-                             "items":{
-                                "type":"string"
-                             }
+                          "direction":{
+                             "type":"string",
+                             "description":"Optional. Mapping direction. 'readwrite' (default for invertible mappings, including those with explicit writePath), 'read' (default for non-invertible expressions or fields listed in exposed.readonly), 'write' (write-only).",
+                             "enum":["read","write","readwrite"]
                           },
-                          "synonyms":{
-                             "type":"array",
-                             "description":"Optional list of synonyms used in natural language (e.g. 'opportunity', 'sales-case').",
-                             "items":{
-                                "type":"string"
-                             }
+                          "passthrough":{
+                             "type":"boolean",
+                             "description":"Optional. When true, declares an explicit dynamic-keys passthrough into the provider payload. The mapper writes the exposed value verbatim at writePath. Requires writePath. There is no implicit deep-merge of unknown keys; passthrough is the only mechanism for forwarding arbitrary provider-bag keys.",
+                             "default":false
+                          },
+                          "semantic":{
+                             "type":"object",
+                             "description":"Semantic metadata for AI agents and schema generation.",
+                             "properties":{
+                                "title":{
+                                   "type":"string",
+                                   "description":"Human-friendly label for this field."
+                                },
+                                "description":{
+                                   "type":"string",
+                                   "description":"Business-level description of the field and how it is used."
+                                },
+                                "example":{
+                                   "description":"Example value for this field.",
+                                   "type":["string","number","boolean","object","array","null"]
+                                },
+                                "categories":{
+                                   "type":"array",
+                                   "description":"Logical categories/tags (e.g. ['sales', 'revenue']).",
+                                   "items":{
+                                      "type":"string"
+                                   }
+                                },
+                                "synonyms":{
+                                   "type":"array",
+                                   "description":"Optional list of synonyms used in natural language (e.g. 'opportunity', 'sales-case').",
+                                   "items":{
+                                      "type":"string"
+                                   }
+                                }
+                             },
+                             "additionalProperties":false
+                          },
+                          "lineage":{
+                             "$ref":"#/$defs/fieldMappingLineage"
                           }
                        },
+                       "required":[
+                          "expression"
+                       ],
+                       "not":{
+                          "anyOf":[
+                             {"required":["body"]},
+                             {"required":["rawBody"]}
+                          ]
+                       },
                        "additionalProperties":false
-                    },
-                    "lineage":{
-                       "$ref":"#/$defs/fieldMappingLineage"
                     }
-                 },
-                 "required":[
-                    "expression"
-                 ],
-                 "additionalProperties":false
+                 ]
               }
            }
         },
+        "additionalProperties":false
+     },
+     "externalSpec":{
+        "type":"object",
+        "description":"Optional datasource-level provenance for the authoritative vendor or tooling API specification: where to fetch or resolve the external OpenAPI document or MCP surface (type, url, relativePath, optional documentKey). Used for import paths and lightweight validation against declared operations—not system-level connectivity (see external-system openapi/mcp). The generated or materialized AI-facing OpenAPI derived from config.openapi.operations is a separate dataplane-managed artifact keyed by openapi.documentKey.",
+        "properties":{
+           "type":{
+              "type":"string",
+              "enum":[
+                 "openapi",
+                 "mcp"
+              ],
+              "description":"Whether this provenance describes an OpenAPI document (openapi) or an MCP server/tooling surface (mcp)."
+           },
+           "documentKey":{
+              "type":"string",
+              "description":"Optional key when external source aligns with openapi.documentKey."
+           },
+           "url":{
+              "type":"string",
+              "description":"Optional absolute URL of the external OpenAPI document or MCP descriptor, depending on type."
+           },
+           "relativePath":{
+              "type":"string",
+              "description":"Optional path relative to the integration bundle root for an external OpenAPI JSON file or MCP artifact, depending on type."
+           }
+        },
+        "required":[
+           "type"
+        ],
         "additionalProperties":false
      },
      "exposed":{
@@ -500,7 +583,7 @@
      },
      "openapi":{
         "type":"object",
-        "description":"OpenAPI-driven connector configuration. Only includes endpoints selected during wizard onboarding. To add more endpoints, run the wizard again.",
+        "description":"OpenAPI-driven connector configuration: authoritative runtime operation bindings and AI-facing documentKey. Operations are selected during wizard onboarding; dataplane may generate or refresh the persisted OpenAPI artifact for that documentKey from these operations when needed. Where the vendor OpenAPI file is obtained from is described by root externalSpec, not this block.",
         "properties":{
            "enabled":{
               "type":"boolean",
@@ -551,8 +634,13 @@
               "type":"boolean",
               "default":false,
               "description":"When true and no explicit operation security scopes are configured, the runtime resolves required RBAC permission as '<resourceType>:<operation>' for each operation (resourceType from the datasource config, default document), matching builder repair RBAC permission names. Explicit operation-level scopes (openapi.operations.*.security/permissions) take precedence and disable autoRbac for that operation."
+           },
+           "operationRef":{
+              "type":"string",
+              "description":"Optional OpenAPI JSON Pointer to the primary operation (e.g. list) used by wizard-generated configs for document resolution."
            }
-        }
+        },
+        "additionalProperties":false
      },
      "validation":{
         "type":"object",

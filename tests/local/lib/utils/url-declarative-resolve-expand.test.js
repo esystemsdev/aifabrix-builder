@@ -27,6 +27,9 @@ const {
   parseSimpleEnvMap,
   parseUrlToken
 } = require('../../../../lib/utils/url-declarative-resolve');
+const {
+  normalizeRuntimeBasePath
+} = require('../../../../lib/utils/url-declarative-runtime-base-path');
 
 describe('parseUrlToken', () => {
   it('parses full, host, and vdir variants (current and cross-app)', () => {
@@ -82,6 +85,22 @@ describe('expandDeclarativeUrlListValue', () => {
   it('leaves non-url segments unchanged', () => {
     const out = expandDeclarativeUrlListValue('url://public,http://localhost:*', (t) => `R:${t}`);
     expect(out).toBe('R:public,http://localhost:*');
+  });
+});
+
+describe('normalizeRuntimeBasePath', () => {
+  it.each([
+    ['/auth', '/auth'],
+    ['auth', '/auth'],
+    ['/auth/', '/auth'],
+    ['', ''],
+    ['/', '']
+  ])('normalizes runtime base path %p', (raw, expected) => {
+    expect(normalizeRuntimeBasePath(raw, { frontDoorIngressActive: true })).toBe(expected);
+  });
+
+  it('returns empty path when frontDoorRouting is inactive', () => {
+    expect(normalizeRuntimeBasePath('/auth', { frontDoorIngressActive: false })).toBe('');
   });
 });
 
@@ -355,12 +374,13 @@ H=url://host-public
     expect(out).toMatch(/^H=http:\/\/localhost:8182$/m);
   });
 
-  it('resolves url://keycloak-internal for docker to service:listen port (no path)', async() => {
+  it('resolves url://keycloak-internal for docker from enabled frontDoorRouting pattern', async() => {
     writeApp(
       'keycloak',
       `port: 8080
 frontDoorRouting:
   pattern: /auth/*
+  enabled: true
 `
     );
     writeApp('dp', 'port: 3001\n');
@@ -375,9 +395,37 @@ K=url://keycloak-internal
       useEnvironmentScopedResources: false,
       appEnvironmentScopedResources: false,
       remoteServer: null,
-      developerIdRaw: 0
+      developerIdRaw: 0,
+      traefik: true
     });
-    expect(out).toContain('K=http://keycloak:8080');
+    expect(out).toContain('K=http://keycloak:8080/auth');
+  });
+
+  it('keeps docker internal URLs pathless when frontDoorRouting is disabled', async() => {
+    writeApp(
+      'plain-service',
+      `port: 7000
+frontDoorRouting:
+  pattern: /plain/*
+  enabled: false
+`
+    );
+    writeApp('dp', 'port: 3001\n');
+    const variablesPath = path.join(fakeProject, 'builder', 'dp', 'application.yaml');
+    const content = `MISO_CLIENTID=z
+P=url://plain-service-internal
+`;
+    const out = await expandDeclarativeUrlsInEnvContent(content, {
+      profile: 'docker',
+      currentAppKey: 'dp',
+      variablesPath,
+      useEnvironmentScopedResources: false,
+      appEnvironmentScopedResources: false,
+      remoteServer: null,
+      developerIdRaw: 0,
+      traefik: true
+    });
+    expect(out).toContain('P=http://plain-service:7000');
   });
 
   it('local workstation: url://internal matches url://public (same app)', async() => {

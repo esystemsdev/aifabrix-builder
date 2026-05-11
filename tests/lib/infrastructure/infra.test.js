@@ -590,10 +590,8 @@ describe('Infrastructure Module', () => {
 
   describe('Traefik support', () => {
     it('should include traefik in valid services list for restart', () => {
-      // This test verifies that traefik is included in the valid services list
-      // The actual restart functionality is tested in restartService tests above
-      const validServices = ['postgres', 'redis', 'pgadmin', 'redis-commander', 'traefik'];
-      expect(validServices).toContain('traefik');
+      const { getRestartableInfraServiceNames } = require('../../../lib/constants/infra-compose-service-names');
+      expect(getRestartableInfraServiceNames()).toContain('traefik');
     });
 
     it('should validate that compose module exports Traefik functions', () => {

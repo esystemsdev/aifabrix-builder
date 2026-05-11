@@ -163,9 +163,10 @@ aifabrix build myapp --force-template
 **Flags:**
 - `-l, --language <lang>` - Override language detection
 - `-f, --force-template` - Force rebuild from template
-- `-t, --tag <tag>` - Image tag (default: latest)
+- `-t, --tag <tag>` - Single image tag per invocation (default: latest); comma-separated multiple tags are not supported
+- `--base` - After a developer-scoped build (developer id greater than 0), also apply the manifest base image name locally (`docker tag` from the dev-scoped image to the base repository name). Omit this flag to keep only the developer-scoped tag.
 
-**Image repository name:** Taken from `application.yaml` when `image` is set (same rules as run: optional `image.registry`, `image.name`, `image.tag`, or a string `image: repo:tag`). If `image` is omitted, blank, or an empty object, the CLI lists **local Docker images** and reuses a matching repository, stripping common dev suffixes (`-dev<N>`, `-extra`) so the next build tags the base name (for example a listed `myorg/app-dev2:latest` → build target `myorg/app`). When your developer id is set, a repository ending in `-dev<id>` is preferred if several lines match. If nothing in Docker matches, the name falls back to `app.key` or the app folder name.
+**Image repository name:** Taken from `application.yaml` when `image` is set (same rules as run: optional `image.registry`, `image.name`, `image.tag`, or a string `image: repo:tag`). If `image` is omitted, blank, or an empty object, the CLI lists **local Docker images** and reuses a matching repository, stripping common dev suffixes (`-dev<N>`, `-extra`) so the next build targets the base repository path. When your developer id is positive, local builds tag **only** the developer-scoped name unless you pass `--base`. With **developer id 0**, the build targets the manifest base name directly (no `-dev<N>` suffix). If nothing in Docker matches during discovery, the name falls back to `app.key` or the app folder name.
 
 **Creates:**
 - Docker image: `<resolved-repository>:<tag>` (default tag `latest`)
@@ -225,7 +226,8 @@ Overrides `image.tag` from application.yaml so you can run a different built ver
 - `--env <dev|tst|pro>` - Environment to run for (default: dev)
 - `-p, --port <port>` - Override port (default: from application.yaml `port`, developer offset applies)
 - `-d, --debug` - Enable debug output with detailed container information (port detection, container status, Docker commands, health check details)
-- `-t, --tag <tag>` - Image tag to run (e.g. v1.0.0); overrides application.yaml image.tag
+- `-t, --tag <tag>` - Single image tag (e.g. v1.0.0); overrides application.yaml image.tag
+- `--base` - Use only the manifest base image (repository + tag); skip preferring a locally built developer-scoped image (`…-dev<id>`) when both exist
 
 **Debug Mode:**
 When `--debug` is enabled, the command outputs detailed information including:
@@ -241,20 +243,21 @@ aifabrix run myapp --debug
 
 **Process:**
 1. Validates app configuration
-2. Checks if Docker image exists
-3. Verifies infrastructure health
-4. Stops existing container if running
-5. Checks port availability
-6. Resolves env in memory and writes to `build.envOutputPath` or temp (no `.env` in builder/)
-7. Generates Docker Compose configuration
-8. **Creates database and user** (if `requiresDatabase: true` in application.yaml)
+2. Resolves which image ref to use (unless you passed a full `--image` elsewhere): with a positive **developer id**, prefers a local **developer-scoped** image if present, otherwise the manifest base image; use **`--base`** to force the manifest base ref only. Developer id **0** uses the base ref only.
+3. Checks if Docker image exists
+4. Verifies infrastructure health
+5. Stops existing container if running
+6. Checks port availability
+7. Resolves env in memory and writes to `build.envOutputPath` or temp (no `.env` in builder/)
+8. Generates Docker Compose configuration
+9. **Creates database and user** (if `requiresDatabase: true` in application.yaml)
    - Automatically creates database named after app key
    - Creates database user with proper permissions
    - Grants all privileges and sets schema ownership
    - Idempotent: skips if database already exists
-9. Starts container with proper networking
-10. Waits for health check to pass
-11. Displays access URL
+10. Starts container with proper networking
+11. Waits for health check to pass
+12. Displays access URL
 
 **Access:** <http://localhost>:<port>
 

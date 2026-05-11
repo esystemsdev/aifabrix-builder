@@ -12,6 +12,7 @@ const {
   formatNextActions,
   formatDocsLine,
   formatProgress,
+  formatWarningLine,
   formatBulletSection,
   formatStatusKeyValue,
   aggregateStatusWord,
@@ -61,6 +62,12 @@ describe('cli-test-layout-chalk', () => {
   it('formatProgress uses hourglass', () => {
     expect(formatProgress('Running')).toContain('⏳');
     expect(formatProgress('Running')).toContain('Running');
+  });
+
+  it('formatWarningLine uses canonical warning glyph', () => {
+    const s = formatWarningLine('Low disk space');
+    expect(s).toContain('⚠');
+    expect(s).toContain('Low disk space');
   });
 
   it('formatBulletSection defaults cyan bullets', () => {

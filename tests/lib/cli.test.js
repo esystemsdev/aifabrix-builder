@@ -1817,11 +1817,11 @@ describe('CLI Commands', () => {
             option: jest.fn().mockReturnThis(),
             requiredOption: jest.fn().mockReturnThis(),
             addHelpText: jest.fn().mockReturnThis(),
+            alias: jest.fn().mockReturnThis(),
             action: function(action) {
               commandActions[cmdName] = action;
               return this;
             },
-            // Support nested commands for command groups (e.g., 'secret set')
             command: jest.fn((subCmdName) => {
               const fullCmdName = `${cmdName} ${subCmdName}`;
               const mockSubCommand = {
@@ -1829,10 +1829,25 @@ describe('CLI Commands', () => {
                 option: jest.fn().mockReturnThis(),
                 requiredOption: jest.fn().mockReturnThis(),
                 addHelpText: jest.fn().mockReturnThis(),
+                alias: jest.fn().mockReturnThis(),
                 action: function(action) {
                   commandActions[fullCmdName] = action;
                   return this;
-                }
+                },
+                command: jest.fn((deepName) => {
+                  const deepFull = `${fullCmdName} ${deepName}`;
+                  const deepCmd = {
+                    description: jest.fn().mockReturnThis(),
+                    option: jest.fn().mockReturnThis(),
+                    requiredOption: jest.fn().mockReturnThis(),
+                    addHelpText: jest.fn().mockReturnThis(),
+                    action: function(action) {
+                      commandActions[deepFull] = action;
+                      return this;
+                    }
+                  };
+                  return deepCmd;
+                })
               };
               return mockSubCommand;
             })
@@ -1858,6 +1873,7 @@ describe('CLI Commands', () => {
             option: jest.fn().mockReturnThis(),
             requiredOption: jest.fn().mockReturnThis(),
             addHelpText: jest.fn().mockReturnThis(),
+            alias: jest.fn().mockReturnThis(),
             action: function(action) {
               commandActions[cmdName] = action;
               return this;
@@ -1869,10 +1885,25 @@ describe('CLI Commands', () => {
                 option: jest.fn().mockReturnThis(),
                 requiredOption: jest.fn().mockReturnThis(),
                 addHelpText: jest.fn().mockReturnThis(),
+                alias: jest.fn().mockReturnThis(),
                 action: function(action) {
                   commandActions[fullCmdName] = action;
                   return this;
-                }
+                },
+                command: jest.fn((deepName) => {
+                  const deepFull = `${fullCmdName} ${deepName}`;
+                  const deepCmd = {
+                    description: jest.fn().mockReturnThis(),
+                    option: jest.fn().mockReturnThis(),
+                    requiredOption: jest.fn().mockReturnThis(),
+                    addHelpText: jest.fn().mockReturnThis(),
+                    action: function(action) {
+                      commandActions[deepFull] = action;
+                      return this;
+                    }
+                  };
+                  return deepCmd;
+                })
               };
               return mockSubCommand;
             })
@@ -2271,13 +2302,13 @@ describe('CLI Commands', () => {
 
         expect(validator.checkEnvironment).toHaveBeenCalled();
         expect(infra.checkInfraHealth).toHaveBeenCalled();
-        expect(logger.log).toHaveBeenCalledWith('Docker: ✔ Running');
-        expect(logger.log).toHaveBeenCalledWith('Ports: ✔ Available');
-        expect(logger.log).toHaveBeenCalledWith('Secrets: ✔ Configured');
-        expect(logger.log).toHaveBeenCalledWith('\n🏥 Infrastructure Health:');
-        expect(logger.log).toHaveBeenCalledWith('  ✔ postgres: healthy');
-        expect(logger.log).toHaveBeenCalledWith('  ❓ redis: unknown');
-        expect(logger.log).toHaveBeenCalledWith('  ✖ pgadmin: unhealthy');
+        expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/Docker:.*✔.*Running/));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/Ports:.*✔.*Available/));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/Secrets:.*✔.*Configured/));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Infrastructure health'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('postgres: healthy'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/redis: unknown/));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('pgadmin: unhealthy'));
       });
 
       it('should execute doctor command handler without health check when docker not ok via setupCommands', async() => {
@@ -2298,7 +2329,10 @@ describe('CLI Commands', () => {
 
         expect(validator.checkEnvironment).toHaveBeenCalled();
         expect(infra.checkInfraHealth).not.toHaveBeenCalled();
-        expect(logger.log).toHaveBeenCalledWith('Docker: ✖ Not available');
+        expect(logger.log).toHaveBeenCalledWith(expect.stringMatching(/Docker:.*✖.*Not available/));
+        expect(logger.log).toHaveBeenCalledWith(
+          expect.stringContaining('Infrastructure health skipped (Docker not available).')
+        );
       });
 
       it('should execute doctor command handler with health check error via setupCommands', async() => {
@@ -2318,7 +2352,9 @@ describe('CLI Commands', () => {
 
         await handler();
 
-        expect(logger.log).toHaveBeenCalledWith('\n🏥 Infrastructure: Not running');
+        expect(logger.log).toHaveBeenCalledWith(
+          expect.stringContaining('Infrastructure is not running or health could not be read.')
+        );
       });
 
       it('should execute doctor command handler with recommendations via setupCommands', async() => {
@@ -2340,9 +2376,9 @@ describe('CLI Commands', () => {
 
         await handler();
 
-        expect(logger.log).toHaveBeenCalledWith('\n📋 Recommendations:');
-        expect(logger.log).toHaveBeenCalledWith('  • Recommendation 1');
-        expect(logger.log).toHaveBeenCalledWith('  • Recommendation 2');
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Recommendations:'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Recommendation 1'));
+        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Recommendation 2'));
       });
     });
 

@@ -23,9 +23,22 @@ const {
   formatMissingSecretsFileInfo,
   applyCanonicalSecretsOverride,
   collectMissingSecrets,
+  collectUniqueKvPathStrings,
   replaceKvInContent,
   resolveBashKvFromProcessEnv
 } = require('../../../lib/utils/secrets-helpers');
+
+describe('collectUniqueKvPathStrings', () => {
+  it('returns unique path segments for kv refs', () => {
+    const content = 'A=kv://x\n# kv://ignored\nB=kv://y\nC=kv://x';
+    expect(collectUniqueKvPathStrings(content)).toEqual(['x', 'y']);
+  });
+
+  it('supports path-style refs', () => {
+    const content = 'X=kv://hubspot/clientId';
+    expect(collectUniqueKvPathStrings(content)).toEqual(['hubspot/clientId']);
+  });
+});
 
 describe('formatMissingSecretsFileInfo', () => {
   it('returns empty string for null/undefined', () => {
@@ -57,6 +70,20 @@ describe('formatMissingSecretsFileInfo', () => {
     expect(info).toContain(userPath);
     expect(info).toContain(' and ');
     expect(info).toContain(buildPath);
+  });
+
+  it('notes shared secrets API when sharedSecretsApiUrl is set', () => {
+    const userPath = '/home/user/.aifabrix/secrets.local.yaml';
+    const api = 'https://builder.example/api/dev/secrets';
+    const info = formatMissingSecretsFileInfo({
+      userPath,
+      buildPath: null,
+      sharedSecretsApiUrl: api
+    });
+    expect(info).toContain(userPath);
+    expect(info).toContain('Shared secrets API');
+    expect(info).toContain(api);
+    expect(info).toContain('secret list --shared');
   });
 });
 

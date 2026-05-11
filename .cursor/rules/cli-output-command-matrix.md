@@ -10,6 +10,8 @@ Profiles: **layout-blocks** (header/status/list/helpers); **tty-summary** (chalk
 | aifabrix logout | tty-summary |
 | aifabrix auth | tty-summary |
 | aifabrix auth status | tty-summary |
+| aifabrix setup | tty-summary + stream-logs |
+| aifabrix teardown | tty-summary + stream-logs |
 | aifabrix up-infra | tty-summary + stream-logs |
 | aifabrix up-platform | tty-summary + stream-logs |
 | aifabrix up-miso | tty-summary + stream-logs |
@@ -17,11 +19,11 @@ Profiles: **layout-blocks** (header/status/list/helpers); **tty-summary** (chalk
 | aifabrix down-infra | tty-summary + stream-logs |
 | aifabrix doctor | tty-summary |
 | aifabrix status | tty-summary |
-| aifabrix restart | tty-summary + stream-logs |
+| aifabrix restart | tty-summary (Restart + `Infra service:` or `Application:` + optional progress + success; builder apps add `docker inspect` `/app` bind hint) |
 | aifabrix create | tty-summary |
 | aifabrix wizard | delegate |
-| aifabrix run | stream-logs |
-| aifabrix build | stream-logs |
+| aifabrix run | tty-summary (header + progress + footer) + stream-logs (health/ora) |
+| aifabrix build | tty-summary (header + paths + secrets lines) + stream-logs (docker/ora) |
 | aifabrix logs | stream-logs |
 | aifabrix down-app | tty-summary + stream-logs |
 | aifabrix stop | tty-summary |
@@ -57,6 +59,14 @@ Profiles: **layout-blocks** (header/status/list/helpers); **tty-summary** (chalk
 | aifabrix integration-client update-groups | tty-summary |
 | aifabrix integration-client update-redirect-uris | tty-summary |
 | aifabrix datasource validate | layout-blocks |
+| aifabrix datasource capability copy | tty-summary |
+| aifabrix datasource capability remove | tty-summary |
+| aifabrix datasource capability create | tty-summary |
+| aifabrix datasource capability validate | layout-blocks |
+| aifabrix datasource capability diff | stdout-only |
+| aifabrix datasource capability edit | tty-summary |
+| aifabrix datasource capability relate | tty-summary |
+| aifabrix datasource capability dimension | tty-summary |
 | aifabrix datasource list | tty-summary |
 | aifabrix datasource diff | stdout-only |
 | aifabrix datasource upload | layout-blocks |
@@ -65,6 +75,12 @@ Profiles: **layout-blocks** (header/status/list/helpers); **tty-summary** (chalk
 | aifabrix datasource test-e2e | layout-blocks |
 | aifabrix datasource log-e2e | tty-summary |
 | aifabrix datasource log-integration | tty-summary |
+| aifabrix dimension create | tty-summary |
+| aifabrix dimension get | tty-summary |
+| aifabrix dimension list | tty-summary |
+| aifabrix dimension-value create | tty-summary |
+| aifabrix dimension-value list | tty-summary |
+| aifabrix dimension-value delete | tty-summary |
 | aifabrix dev show | tty-summary |
 | aifabrix dev set-id | tty-summary |
 | aifabrix dev set-scoped-resources | tty-summary |
@@ -100,3 +116,12 @@ _**validate** (human TTY): `lib/validation/validate-display.js` + `lib/utils/cli
 _Certification-related flags (output profile unchanged): `validate --cert-sync`; `show` / `app show --verify-cert`; `datasource test|test-integration|test-e2e` and `test-integration` / `test-e2e` with `--no-cert-sync`._
 
 _Generated for adoption tracking; see `.cursor/plans/Done/129-cli_layout_adoption.plan.md` and [layout.md](./layout.md)._
+
+**Docker image flags (profiles unchanged):** `build` / `run` support `--base` and single `-t, --tag`; `up-platform`, `up-miso`, and `up-dataplane` default `--base` true (use `--no-base` for dev-first local image preference when running platform apps).
+
+## Layout compliance (helpers + audit)
+
+- **Source of truth:** [layout.md](./layout.md) and [cli-layout.mdc](./cli-layout.mdc) — glyphs **✔ ✖ ⚠ ⏭**, semantic colors, **`formatNextActions`** / **`formatBulletSection`**-style sections where applicable.
+- **`datasource capability`** (`copy` | `remove` | `create` | `edit` | `validate` slice OK): success sections use **`lib/utils/cli-test-layout-chalk.js`** (`formatBulletSection`, `formatNextActions`, `formatSuccessLine`, `headerKeyValue`, `infoLine`, `metadata`); errors use **`formatBlockingError`**.
+- **`datasource capability diff`:** stdout-only structural diff from **`lib/core/diff`** (minimal chalk); unchanged.
+- **Backlog (incremental):** Remaining raw **`chalk.green`** success lines (outside `cli-test-layout-chalk`), and any future drift from canonical glyphs (**✔ ✖ ⚠ ⏭**). Wizard (`\\u2713`), `dev-*`, `secure`, guided infra TLS flag, deploy status, and local external test TTY rows have been migrated to shared helpers.

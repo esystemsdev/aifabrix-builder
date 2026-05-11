@@ -358,6 +358,333 @@ environments:
 
       expect(result).toBe('REDIS_URL=redis://redis:6379');
     });
+
+    it('notes shared secrets API URL in missing-secret message when sharedSecretsApiUrl is set', async() => {
+      const template = 'ONLY=kv://not-defined-key';
+      const err = await secrets
+        .resolveKvReferences(template, {}, 'local', {
+          userPath: '/home/test/.aifabrix/secrets.local.yaml',
+          buildPath: null,
+          sharedSecretsApiUrl: 'https://builder.example/api/dev/secrets'
+        })
+        .catch((e) => e);
+      expect(err.message).toContain('kv://not-defined-key');
+      expect(err.message).toContain('Shared secrets API');
+      expect(err.message).toContain('https://builder.example/api/dev/secrets');
+    });
+  });
+
+  describe('generateEnvContent', () => {
+    const appNameGen = 'genenv-wire';
+
+    it('merges shared secrets API with user file; user wins on overlap', async() => {
+      const configMock = require('../../../lib/core/config');
+      const remoteDevAuth = require('../../../lib/utils/remote-dev-auth');
+      const devApi = require('../../../lib/api/dev.api');
+
+      configMock.getSecretsPath.mockResolvedValue('https://dev.example.com/secrets');
+      remoteDevAuth.resolveSharedSecretsEndpoint.mockImplementation(async(p) => p);
+      remoteDevAuth.getRemoteDevAuth.mockResolvedValue({
+        serverUrl: 'https://dev.example.com',
+        clientCertPem: 'mock-pem',
+        serverCaPem: null
+      });
+      devApi.listSecrets.mockResolvedValue([
+        { name: 'postgres-passwordKeyVault', value: 'VALUE-FROM-REMOTE-API-ONLY' }
+      ]);
+
+      const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      fs.existsSync.mockImplementation((filePath) => {
+        const p = String(filePath || '');
+        return (
+          p.includes('env.template') ||
+          p.includes('application.yaml') ||
+          p === userSecretsPath
+        );
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        const fp = String(filePath || '');
+        if (fp.includes('env.template')) {
+          return 'PORT=3000\nDATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (fp.includes('application.yaml')) {
+          return 'port: 3000\n';
+        }
+        if (fp === userSecretsPath) {
+          return yaml.dump({ 'postgres-passwordKeyVault': 'FROM-USER-FILE' });
+        }
+        if (fp.includes('env-config.yaml')) {
+          return 'environments:\n  local:\n    REDIS_HOST: localhost\n';
+        }
+        return '';
+      });
+
+      const out = await secrets.generateEnvContent(appNameGen, null, 'local', false, {
+        skipMaterializeKvToLocal: true
+      });
+
+      expect(devApi.listSecrets).toHaveBeenCalled();
+      expect(out).toContain('FROM-USER-FILE');
+      expect(out).not.toContain('VALUE-FROM-REMOTE-API-ONLY');
+    });
+
+    it('resolves kv from shared API when user secrets file has no key (empty local)', async() => {
+      const configMock = require('../../../lib/core/config');
+      const remoteDevAuth = require('../../../lib/utils/remote-dev-auth');
+      const devApi = require('../../../lib/api/dev.api');
+
+      configMock.getSecretsPath.mockResolvedValue('https://dev.example.com/secrets');
+      remoteDevAuth.resolveSharedSecretsEndpoint.mockImplementation(async(p) => p);
+      remoteDevAuth.getRemoteDevAuth.mockResolvedValue({
+        serverUrl: 'https://dev.example.com',
+        clientCertPem: 'mock-pem',
+        serverCaPem: null
+      });
+      devApi.listSecrets.mockResolvedValue([
+        { name: 'postgres-passwordKeyVault', value: 'ONLY-ON-SHARED-REMOTE' }
+      ]);
+
+      fs.existsSync.mockImplementation((filePath) => {
+        const p = String(filePath || '');
+        return p.includes('env.template') || p.includes('application.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        const fp = String(filePath || '');
+        if (fp.includes('env.template')) {
+          return 'PORT=3000\nDATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (fp.includes('application.yaml')) {
+          return 'port: 3000\n';
+        }
+        if (fp.includes('env-config.yaml')) {
+          return 'environments:\n  local:\n    REDIS_HOST: localhost\n';
+        }
+        return '';
+      });
+
+      const out = await secrets.generateEnvContent(appNameGen, null, 'local', false, {
+        skipMaterializeKvToLocal: true
+      });
+
+      expect(devApi.listSecrets).toHaveBeenCalled();
+      expect(out).toContain('ONLY-ON-SHARED-REMOTE');
+    });
+
+    it('resolves remote-only kv from shared merge but does not materialize shared keys into user local', async() => {
+      const configMock = require('../../../lib/core/config');
+      const remoteDevAuth = require('../../../lib/utils/remote-dev-auth');
+      const devApi = require('../../../lib/api/dev.api');
+      const localSecrets = require('../../../lib/utils/local-secrets');
+      const saveSpy = jest.spyOn(localSecrets, 'saveLocalSecret').mockResolvedValue(undefined);
+
+      configMock.getSecretsPath.mockResolvedValue('https://dev.example.com/secrets');
+      remoteDevAuth.resolveSharedSecretsEndpoint.mockImplementation(async(p) => p);
+      remoteDevAuth.getRemoteDevAuth.mockResolvedValue({
+        serverUrl: 'https://dev.example.com',
+        clientCertPem: 'mock-pem',
+        serverCaPem: null
+      });
+      devApi.listSecrets.mockResolvedValue([
+        { name: 'postgres-passwordKeyVault', value: 'PERSIST-REMOTE-VAL' }
+      ]);
+
+      fs.existsSync.mockImplementation((filePath) => {
+        const p = String(filePath || '');
+        return p.includes('env.template') || p.includes('application.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        const fp = String(filePath || '');
+        if (fp.includes('env.template')) {
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (fp.includes('application.yaml')) {
+          return 'port: 3000\n';
+        }
+        if (fp.includes('env-config.yaml')) {
+          return 'environments:\n  local:\n    REDIS_HOST: localhost\n';
+        }
+        return '';
+      });
+
+      try {
+        const out = await secrets.generateEnvContent(appNameGen, null, 'local', false);
+        expect(out).toContain('PERSIST-REMOTE-VAL');
+        expect(saveSpy).not.toHaveBeenCalled();
+      } finally {
+        saveSpy.mockRestore();
+      }
+    });
+
+    it('does not materialize when user local file already has a non-empty value for the kv key', async() => {
+      const configMock = require('../../../lib/core/config');
+      const remoteDevAuth = require('../../../lib/utils/remote-dev-auth');
+      const devApi = require('../../../lib/api/dev.api');
+      const localSecrets = require('../../../lib/utils/local-secrets');
+      const saveSpy = jest.spyOn(localSecrets, 'saveLocalSecret').mockResolvedValue(undefined);
+
+      configMock.getSecretsPath.mockResolvedValue('https://dev.example.com/secrets');
+      remoteDevAuth.resolveSharedSecretsEndpoint.mockImplementation(async(p) => p);
+      remoteDevAuth.getRemoteDevAuth.mockResolvedValue({
+        serverUrl: 'https://dev.example.com',
+        clientCertPem: 'mock-pem',
+        serverCaPem: null
+      });
+      devApi.listSecrets.mockResolvedValue([
+        { name: 'postgres-passwordKeyVault', value: 'REMOTE-DIFFERENT' }
+      ]);
+
+      const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      fs.existsSync.mockImplementation((filePath) => {
+        const p = String(filePath || '');
+        return (
+          p.includes('env.template') ||
+          p.includes('application.yaml') ||
+          p === userSecretsPath
+        );
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        const fp = String(filePath || '');
+        if (fp.includes('env.template')) {
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (fp.includes('application.yaml')) {
+          return 'port: 3000\n';
+        }
+        if (fp === userSecretsPath) {
+          return yaml.dump({ 'postgres-passwordKeyVault': 'LOCAL-PREFERRED' });
+        }
+        if (fp.includes('env-config.yaml')) {
+          return 'environments:\n  local:\n    REDIS_HOST: localhost\n';
+        }
+        return '';
+      });
+
+      try {
+        await secrets.generateEnvContent(appNameGen, null, 'local', false);
+        expect(saveSpy).not.toHaveBeenCalled();
+      } finally {
+        saveSpy.mockRestore();
+      }
+    });
+
+    it('resolves kv from local user file only when aifabrix-secrets is not configured', async() => {
+      const configMock = require('../../../lib/core/config');
+      const devApi = require('../../../lib/api/dev.api');
+
+      configMock.getSecretsPath.mockResolvedValue(null);
+
+      const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
+      fs.existsSync.mockImplementation((filePath) => {
+        const p = String(filePath || '');
+        return (
+          p.includes('env.template') ||
+          p.includes('application.yaml') ||
+          p === userSecretsPath
+        );
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        const fp = String(filePath || '');
+        if (fp.includes('env.template')) {
+          return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (fp.includes('application.yaml')) {
+          return 'port: 3000\n';
+        }
+        if (fp === userSecretsPath) {
+          return yaml.dump({ 'postgres-passwordKeyVault': 'LOCAL-FILE-VALUE' });
+        }
+        if (fp.includes('env-config.yaml')) {
+          return 'environments:\n  local:\n    REDIS_HOST: localhost\n';
+        }
+        return '';
+      });
+
+      const out = await secrets.generateEnvContent(appNameGen, null, 'local', false, {
+        skipMaterializeKvToLocal: true
+      });
+
+      expect(devApi.listSecrets).not.toHaveBeenCalled();
+      expect(out).toContain('LOCAL-FILE-VALUE');
+    });
+
+    it('resolves kv from on-disk aifabrix-secrets YAML when URL is not used', async() => {
+      const configMock = require('../../../lib/core/config');
+      const remoteDevAuth = require('../../../lib/utils/remote-dev-auth');
+      const devApi = require('../../../lib/api/dev.api');
+
+      const sharedYaml = path.join(process.cwd(), 'builder', 'shared-from-config.yaml');
+      configMock.getSecretsPath.mockResolvedValue(sharedYaml);
+      remoteDevAuth.resolveSharedSecretsEndpoint.mockImplementation(async(p) => p);
+
+      fs.existsSync.mockImplementation((filePath) => {
+        const p = String(filePath || '');
+        return (
+          p.includes('env.template') ||
+          p.includes('application.yaml') ||
+          p === sharedYaml
+        );
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        const fp = String(filePath || '');
+        if (fp.includes('env.template')) {
+          return 'KC_ADMIN=kv://keycloak-admin-passwordKeyVault';
+        }
+        if (fp.includes('application.yaml')) {
+          return 'port: 3000\n';
+        }
+        if (fp === sharedYaml) {
+          return yaml.dump({ 'keycloak-admin-passwordKeyVault': 'from-shared-yaml-file' });
+        }
+        if (fp.includes('env-config.yaml')) {
+          return 'environments:\n  local:\n    REDIS_HOST: localhost\n';
+        }
+        return '';
+      });
+
+      const out = await secrets.generateEnvContent(appNameGen, null, 'local', false, {
+        skipMaterializeKvToLocal: true
+      });
+
+      expect(devApi.listSecrets).not.toHaveBeenCalled();
+      expect(out).toContain('from-shared-yaml-file');
+    });
+
+    it('throws when kv ref is missing from local, shared API, and on-disk sources', async() => {
+      const configMock = require('../../../lib/core/config');
+      const remoteDevAuth = require('../../../lib/utils/remote-dev-auth');
+      const devApi = require('../../../lib/api/dev.api');
+
+      configMock.getSecretsPath.mockResolvedValue('https://dev.example.com/secrets');
+      remoteDevAuth.resolveSharedSecretsEndpoint.mockImplementation(async(p) => p);
+      remoteDevAuth.getRemoteDevAuth.mockResolvedValue({
+        serverUrl: 'https://dev.example.com',
+        clientCertPem: 'mock-pem',
+        serverCaPem: null
+      });
+      devApi.listSecrets.mockResolvedValue([]);
+
+      fs.existsSync.mockImplementation((filePath) => {
+        const p = String(filePath || '');
+        return p.includes('env.template') || p.includes('application.yaml');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        const fp = String(filePath || '');
+        if (fp.includes('env.template')) {
+          return 'X=kv://totally-missing-keyvault-ref';
+        }
+        if (fp.includes('application.yaml')) {
+          return 'port: 3000\n';
+        }
+        if (fp.includes('env-config.yaml')) {
+          return 'environments:\n  local:\n    REDIS_HOST: localhost\n';
+        }
+        return '';
+      });
+
+      await expect(
+        secrets.generateEnvContent(appNameGen, null, 'local', false, { skipMaterializeKvToLocal: true })
+      ).rejects.toThrow('kv://totally-missing-keyvault-ref');
+    });
   });
 
   describe('generateEnvFile', () => {

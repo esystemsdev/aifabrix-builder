@@ -14,7 +14,9 @@ jest.mock('chalk', () => {
   mockChalk.red = jest.fn((text) => text);
   mockChalk.yellow = jest.fn((text) => text);
   mockChalk.cyan = jest.fn((text) => text);
-  mockChalk.white = jest.fn((text) => text);
+  mockChalk.white = Object.assign(jest.fn((text) => text), {
+    bold: jest.fn((text) => text)
+  });
   mockChalk.gray = jest.fn((text) => text);
   mockChalk.bold = jest.fn((text) => text);
   return mockChalk;
@@ -46,12 +48,11 @@ describe('Application Display Module', () => {
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Type: External System'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('System Key: test-system'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('1. Edit external system JSON files'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('2. Run: aifabrix validate'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('2. Run: aifabrix validate'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('3. Run: aifabrix login'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('4. Run: aifabrix deploy'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Next actions:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Edit external system JSON files'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Run: aifabrix validate'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Run: aifabrix login'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Run: aifabrix deploy'));
       expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('aifabrix build'));
     });
 
@@ -88,7 +89,7 @@ describe('Application Display Module', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Storage enabled'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Authentication enabled'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Environment converted'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Next actions:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('aifabrix up-infra'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('aifabrix build'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('aifabrix run'));

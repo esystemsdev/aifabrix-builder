@@ -1,8 +1,8 @@
 /**
  * Tests for ensureReloadSync and localhost detection in run.js
  *
- * @fileoverview When Docker endpoint, remote-server, or sync-ssh-host is localhost,
- * ensureReloadSync returns null and no Mutagen session is created.
+ * @fileoverview When Docker endpoint or sync-ssh-host is localhost,
+ * ensureReloadSync returns bind-mount summary and no Mutagen session is created.
  * @author AI Fabrix Team
  * @version 2.0.0
  */
@@ -70,43 +70,58 @@ describe('run (ensureReloadSync and localhost helpers)', () => {
   });
 
   describe('ensureReloadSync', () => {
-    it('returns null when no endpoint and no serverUrl', async() => {
+    it('returns bind-mount summary when no endpoint and no serverUrl', async() => {
       config.getDockerEndpoint.mockResolvedValue(null);
       config.getRemoteServer.mockResolvedValue(null);
       const result = await run.ensureReloadSync('myapp', '01', false, '/local/path');
-      expect(result).toBeNull();
+      expect(result).toEqual({ transport: 'bind-mount', hostPath: '/local/path' });
       expect(mutagen.ensureMutagenPath).not.toHaveBeenCalled();
     });
 
-    it('returns null when Docker endpoint is localhost (no Mutagen)', async() => {
+    it('returns bind-mount when Docker endpoint is localhost (no Mutagen)', async() => {
       config.getDockerEndpoint.mockResolvedValue('tcp://localhost:2376');
       config.getRemoteServer.mockResolvedValue('https://dev.aifabrix.dev');
       config.getSyncSshHost.mockResolvedValue('dev.aifabrix.dev');
       const result = await run.ensureReloadSync('myapp', '01', false, '/local/path');
-      expect(result).toBeNull();
+      expect(result).toEqual({ transport: 'bind-mount', hostPath: '/local/path' });
       expect(mutagen.ensureMutagenPath).not.toHaveBeenCalled();
       expect(mutagen.ensureSyncSession).not.toHaveBeenCalled();
     });
 
-    it('returns null when remote-server URL is localhost (no Mutagen)', async() => {
-      config.getDockerEndpoint.mockResolvedValue('tcp://dev.aifabrix.dev:2376');
-      config.getRemoteServer.mockResolvedValue('https://localhost:8443');
+    it('returns bind-mount when docker-endpoint unset even if remote-server is set (no Mutagen)', async() => {
+      config.getDockerEndpoint.mockResolvedValue(null);
+      config.getRemoteServer.mockResolvedValue('https://dev.aifabrix.dev');
       config.getSyncSshHost.mockResolvedValue('dev.aifabrix.dev');
       const result = await run.ensureReloadSync('myapp', '01', false, '/local/path');
-      expect(result).toBeNull();
+      expect(result).toEqual({ transport: 'bind-mount', hostPath: '/local/path' });
       expect(mutagen.ensureMutagenPath).not.toHaveBeenCalled();
     });
 
-    it('returns null when sync-ssh-host is localhost (no Mutagen)', async() => {
+    it('returns bind-mount when docker-endpoint host matches this machine (no Mutagen)', async() => {
+      const os = require('os');
+      const spy = jest.spyOn(os, 'hostname').mockReturnValue('builder02');
+      try {
+        config.getDockerEndpoint.mockResolvedValue('tcp://builder02:2376');
+        config.getRemoteServer.mockResolvedValue('https://dev.aifabrix.dev');
+        config.getSyncSshHost.mockResolvedValue('dev.aifabrix.dev');
+        const result = await run.ensureReloadSync('myapp', '01', false, '/local/path');
+        expect(result).toEqual({ transport: 'bind-mount', hostPath: '/local/path' });
+        expect(mutagen.ensureMutagenPath).not.toHaveBeenCalled();
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('returns bind-mount when sync-ssh-host is localhost (no Mutagen)', async() => {
       config.getDockerEndpoint.mockResolvedValue('tcp://dev.aifabrix.dev:2376');
       config.getRemoteServer.mockResolvedValue('https://dev.aifabrix.dev');
       config.getSyncSshHost.mockResolvedValue('localhost');
       const result = await run.ensureReloadSync('myapp', '01', false, '/local/path');
-      expect(result).toBeNull();
+      expect(result).toEqual({ transport: 'bind-mount', hostPath: '/local/path' });
       expect(mutagen.ensureMutagenPath).not.toHaveBeenCalled();
     });
 
-    it('uses Mutagen and returns remote path when all hosts are non-local', async() => {
+    it('uses Mutagen and returns summary when all hosts are non-local', async() => {
       config.getDockerEndpoint.mockResolvedValue('tcp://dev.aifabrix.dev:2376');
       config.getRemoteServer.mockResolvedValue('https://dev.aifabrix.dev');
       config.getSyncSshHost.mockResolvedValue('dev.aifabrix.dev');
@@ -119,7 +134,14 @@ describe('run (ensureReloadSync and localhost helpers)', () => {
 
       const result = await run.ensureReloadSync('myapp', '01', false, '/local/code');
 
-      expect(result).toBe('/home/dev06/dev/myapp');
+      expect(result).toEqual({
+        transport: 'mutagen',
+        remotePath: '/home/dev06/dev/myapp',
+        sessionName: 'aifabrix-01-myapp',
+        localPath: '/local/code',
+        syncSshHost: 'dev.aifabrix.dev',
+        sshUrl: 'syncuser@dev.aifabrix.dev:/home/dev06/dev/myapp'
+      });
       expect(mutagen.ensureMutagenPath).toHaveBeenCalled();
       expect(mutagen.getRemotePath).toHaveBeenCalledWith('/home/dev06', 'myapp', undefined);
       expect(mutagen.ensureSyncSession).toHaveBeenCalledWith(
@@ -172,7 +194,13 @@ describe('run (ensureReloadSync and localhost helpers)', () => {
         'aifabrix-miso/packages/miso-controller'
       );
 
-      expect(result).toBe('/home/dev06/aifabrix-miso/packages/miso-controller');
+      expect(result).toMatchObject({
+        transport: 'mutagen',
+        remotePath: '/home/dev06/aifabrix-miso/packages/miso-controller',
+        sessionName: 'aifabrix-01-miso-controller',
+        localPath: '/local/code',
+        syncSshHost: 'dev.aifabrix.dev'
+      });
       expect(mutagen.getRemotePath).toHaveBeenCalledWith(
         '/home/dev06',
         'miso-controller',

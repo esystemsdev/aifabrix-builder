@@ -28,8 +28,8 @@ describe('infra platform contract (real disk)', () => {
     clearInfraParameterCatalogCache();
   });
 
-  it('shipped catalog defines standardUpInfraEnsureKeys (miso-controller + dataplane slots)', () => {
-    expect(bootstrapKeys.length).toBeGreaterThanOrEqual(12);
+  it('shipped catalog defines standardUpInfraEnsureKeys (core infra + miso-controller + dataplane slots)', () => {
+    expect(bootstrapKeys.length).toBeGreaterThanOrEqual(15);
     expect(bootstrapKeys.filter((k) => k.startsWith('databases-miso-controller-'))).toHaveLength(4);
     expect(bootstrapKeys.filter((k) => k.startsWith('databases-dataplane-'))).toHaveLength(8);
   });
@@ -44,6 +44,7 @@ describe('infra platform contract (real disk)', () => {
   });
 
   it('generateSecretValue produces stable, usable values for every bootstrap key', () => {
+    const cat = loadInfraParameterCatalog(CATALOG_PATH);
     for (const k of bootstrapKeys) {
       const v = generateSecretValue(k);
       expect(typeof v).toBe('string');
@@ -52,7 +53,16 @@ describe('infra platform contract (real disk)', () => {
         expect(v).toContain('${DB_HOST}');
       }
       if (k.includes('-passwordKeyVault')) {
+        const entry = cat.findEntryForKey(k);
+        if (entry && entry.generator && entry.generator.type === 'emptyAllowed') {
+          expect(v).toBe('');
+          continue;
+        }
         expect(v.length).toBeGreaterThan(0);
+        if (k === 'postgres-passwordKeyVault') {
+          expect(v).toBe('admin123');
+          continue;
+        }
         expect(v).toMatch(/pass123$/);
       }
     }

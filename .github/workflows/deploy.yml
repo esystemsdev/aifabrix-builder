@@ -16,6 +16,10 @@ jobs:
   deploy:
     name: Deploy to NPM Registry
     runs-on: ubuntu-latest
+    # NODE_AUTH_TOKEN must be available whenever npm talks to the registry; setup-node
+    # writes a project .npmrc that references this env var for auth.
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     permissions:
       contents: write  # needed for creating GitHub releases
 
@@ -28,8 +32,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           registry-url: 'https://registry.npmjs.org'
+          # Required for @aifabrix/* so the generated .npmrc maps the scope to npmjs and
+          # sends the token (see GitHub: publishing Node.js packages to npm).
+          scope: '@aifabrix'
+          always-auth: true
 
       - name: Install dependencies
         run: npm ci
@@ -56,8 +64,6 @@ jobs:
       - name: Publish to NPM
         if: github.ref == 'refs/heads/main' && steps.version-check.outputs.already_published == 'false'
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main' && steps.version-check.outputs.already_published == 'false'

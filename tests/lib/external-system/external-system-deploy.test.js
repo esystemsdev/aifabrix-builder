@@ -63,6 +63,11 @@ jest.mock('../../../lib/validation/validate-display', () => ({
 jest.mock('../../../lib/generator/external-controller-manifest', () => ({
   generateControllerManifest: jest.fn()
 }));
+jest.mock('../../../lib/external-system/sync-deploy-manifest', () => ({
+  syncDeployJsonFromSources: jest.fn().mockResolvedValue(
+    `${process.cwd()}/integration/test-external-app/test-external-app-deploy.json`
+  )
+}));
 jest.mock('../../../lib/deployment/deployer', () => ({
   deployToController: jest.fn()
 }));
@@ -94,6 +99,7 @@ const { generateControllerManifest } = require('../../../lib/generator/external-
 const { deployToController } = require('../../../lib/deployment/deployer');
 const { resolveDataplaneUrl } = require('../../../lib/utils/dataplane-resolver');
 const { getExternalSystem } = require('../../../lib/api/external-systems.api');
+const { syncDeployJsonFromSources } = require('../../../lib/external-system/sync-deploy-manifest');
 
 describe('External System Deploy Module', () => {
   const appName = 'test-external-app';
@@ -155,6 +161,7 @@ describe('External System Deploy Module', () => {
       const result = await deployExternalSystem(appName);
 
       expect(validateExternalSystemComplete).toHaveBeenCalledWith(appName, expect.any(Object));
+      expect(syncDeployJsonFromSources).toHaveBeenCalledWith(appName);
       expect(generateControllerManifest).toHaveBeenCalledWith(appName, expect.any(Object));
       expect(getDeploymentAuth).toHaveBeenCalledWith(
         'http://localhost:3000',
@@ -457,6 +464,12 @@ describe('External System Deploy Module', () => {
       );
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Docs:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('API Docs:'));
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('MCP Docs Page:')
+      );
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('http://dataplane:4000/api/v1/mcp/test-external-app/docs')
+      );
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('MCP Server:'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('OpenAPI Docs Page:'));
     });
@@ -477,6 +490,7 @@ describe('External System Deploy Module', () => {
       const logCalls = logger.log.mock.calls.map(c => c[0]);
       expect(logCalls.some(s => s.includes('API Docs:'))).toBe(false);
       expect(logCalls.some(s => s.includes('OpenAPI Docs Page:'))).toBe(false);
+      expect(logCalls.some(s => s.includes('MCP Docs Page:'))).toBe(false);
     });
 
     it('should not show Docs section when no doc URLs returned', async() => {
