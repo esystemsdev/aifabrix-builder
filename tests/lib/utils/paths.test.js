@@ -281,50 +281,6 @@ describe('Path Utilities - directory helpers', () => {
     const devDir = paths.getDevDirectory('myapp', '3');
     expect(devDir).toBe(path.join(realHomeDir, '.aifabrix', 'applications-dev-3'));
   });
-
-  it('getApplicationsBaseDir uses ~/.aifabrix when AIFABRIX_HOME is that homedir and config is nested', () => {
-    // Use requireActual here: capture-real-fs may have bound mocked fs if hoisted jest.mock('fs')
-    // ran before setupFiles in this worker, which would make snapshot writeFileSync a no-op.
-    const GFS = jest.requireActual('node:fs');
-    const tmp = GFS.mkdtempSync(path.join(os.tmpdir(), 'afx-app-home-'));
-    const nest = path.join(tmp, '.aifabrix');
-    GFS.mkdirSync(nest, { recursive: true });
-    const nestedConfigPath = path.join(nest, 'config.yaml');
-    GFS.writeFileSync(nestedConfigPath, 'x: 1\n', 'utf8');
-    const directConfigPath = path.join(tmp, 'config.yaml');
-    expect(GFS.existsSync(nestedConfigPath)).toBe(true);
-    expect(GFS.existsSync(directConfigPath)).toBe(false);
-
-    const origHome = process.env.AIFABRIX_HOME;
-    const origCfg = process.env.AIFABRIX_CONFIG;
-    try {
-      process.env.AIFABRIX_HOME = tmp;
-      delete process.env.AIFABRIX_CONFIG;
-      jest.resetModules();
-      // Resolve config dir before paths so a bad fs-real-sync mock (existsSync always true) fails on directConfigPath check above, not on app paths.
-      const { getAifabrixRuntimeConfigDir } = require('../../../lib/utils/aifabrix-runtime-config-dir');
-      expect(getAifabrixRuntimeConfigDir()).toBe(nest);
-      const pathsMod = require('../../../lib/utils/paths');
-      expect(pathsMod.getApplicationsBaseDir('02')).toBe(path.join(nest, 'applications-dev-02'));
-      expect(pathsMod.getApplicationsBaseDir(0)).toBe(path.join(nest, 'applications'));
-    } finally {
-      if (origHome === undefined) {
-        delete process.env.AIFABRIX_HOME;
-      } else {
-        process.env.AIFABRIX_HOME = origHome;
-      }
-      if (origCfg === undefined) {
-        delete process.env.AIFABRIX_CONFIG;
-      } else {
-        process.env.AIFABRIX_CONFIG = origCfg;
-      }
-      try {
-        GFS.rmSync(tmp, { recursive: true, force: true });
-      } catch {
-        // ignore
-      }
-    }
-  });
 });
 
 describe('Path Utilities - listIntegrationAppNames / listBuilderAppNames', () => {

@@ -35,12 +35,6 @@ describe('repair-openapi-sync', () => {
     uploadFileAs.mockResolvedValue({ success: true });
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-    listOpenAPIFiles.mockResolvedValue(DEFAULT_OPENAPI_LIST);
-    uploadFileAs.mockResolvedValue({ success: true });
-  });
-
   it('maps documentKey to openapi/<suffix>.json', () => {
     const p = documentKeyToLocalOpenApiPath('/x/app', 'sys', 'sys-contacts');
     expect(p).toBe(path.join('/x/app', 'openapi', 'contacts.json'));
@@ -62,33 +56,39 @@ describe('repair-openapi-sync', () => {
     const systemKey = 'sys';
     const datasourceFiles = ['sys-datasource-contacts.json'];
 
-    jest.spyOn(fs.promises, 'access').mockResolvedValue();
-    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    const accessSpy = jest.spyOn(fs.promises, 'access').mockResolvedValue();
+    const existsSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
     const loadConfigFile = jest.spyOn(require('../../../lib/utils/config-format'), 'loadConfigFile');
     loadConfigFile.mockReturnValue({ openapi: { documentKey: 'sys-contacts' } });
 
-    const lines = await maybeSyncOpenApiFilesForMcp({
-      enabled: true,
-      dryRun: false,
-      appPath,
-      systemKey,
-      datasourceFiles
-    });
+    try {
+      const lines = await maybeSyncOpenApiFilesForMcp({
+        enabled: true,
+        dryRun: false,
+        appPath,
+        systemKey,
+        datasourceFiles
+      });
 
-    expect(lines.join('\n')).toContain('Uploaded 1 OpenAPI file(s) for MCP');
-    expect(listOpenAPIFiles).toHaveBeenCalledWith(
-      'http://dataplane',
-      'sys',
-      expect.any(Object),
-      expect.objectContaining({ pageSize: 100 })
-    );
-    expect(uploadFileAs).toHaveBeenCalledWith(
-      expect.stringContaining('/api/v1/specs/upload?systemIdOrKey=sys'),
-      path.join(appPath, 'openapi', 'contacts.json'),
-      'sys-contacts.json',
-      'file',
-      expect.any(Object)
-    );
+      expect(lines.join('\n')).toContain('Uploaded 1 OpenAPI file(s) for MCP');
+      expect(listOpenAPIFiles).toHaveBeenCalledWith(
+        'http://dataplane',
+        'sys',
+        expect.any(Object),
+        expect.objectContaining({ pageSize: 100 })
+      );
+      expect(uploadFileAs).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/specs/upload?systemIdOrKey=sys'),
+        path.join(appPath, 'openapi', 'contacts.json'),
+        'sys-contacts.json',
+        'file',
+        expect.any(Object)
+      );
+    } finally {
+      accessSpy.mockRestore();
+      existsSpy.mockRestore();
+      loadConfigFile.mockRestore();
+    }
   });
 
   it('no-op when OpenAPI key already exists remotely', async() => {
@@ -98,21 +98,27 @@ describe('repair-openapi-sync', () => {
     const systemKey = 'sys';
     const datasourceFiles = ['sys-datasource-contacts.json'];
 
-    jest.spyOn(fs.promises, 'access').mockResolvedValue();
-    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    const accessSpy = jest.spyOn(fs.promises, 'access').mockResolvedValue();
+    const existsSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
     const loadConfigFile = jest.spyOn(require('../../../lib/utils/config-format'), 'loadConfigFile');
     loadConfigFile.mockReturnValue({ openapi: { documentKey: 'sys-contacts' } });
 
-    const lines = await maybeSyncOpenApiFilesForMcp({
-      enabled: true,
-      dryRun: false,
-      appPath,
-      systemKey,
-      datasourceFiles
-    });
+    try {
+      const lines = await maybeSyncOpenApiFilesForMcp({
+        enabled: true,
+        dryRun: false,
+        appPath,
+        systemKey,
+        datasourceFiles
+      });
 
-    expect(lines).toEqual([]);
-    expect(uploadFileAs).not.toHaveBeenCalled();
+      expect(lines).toEqual([]);
+      expect(uploadFileAs).not.toHaveBeenCalled();
+    } finally {
+      accessSpy.mockRestore();
+      existsSpy.mockRestore();
+      loadConfigFile.mockRestore();
+    }
   });
 });
 

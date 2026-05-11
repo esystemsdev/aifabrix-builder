@@ -55,6 +55,7 @@ npm test -- tests/local/lib/template-validator.test.js
 - `lib/datasource/create-operations.test.js` - `applyCapabilityCreate` + real `minimal-fetch` template on disk (worker `fs` mock conflicts)
 - `lib/datasource/capability-hubspot-copy.integration.test.js` - HubSpot companies fixture copy/remove golden path (optional sibling `aifabrix-dataplane` JSON)
 - `lib/utils/load-cip-capacity-display-config.test.js` - bundled schema path + operation-order extraction (CI simulation temp-dir vs repo root)
+- `lib/utils/paths-aifabrix-nested-config.test.js` - `AIFABRIX_HOME` + nested `~/.aifabrix/config.yaml`; real disk + `fs-real-sync` / worker ordering (CI simulation)
 
 ## CI Exclusion
 

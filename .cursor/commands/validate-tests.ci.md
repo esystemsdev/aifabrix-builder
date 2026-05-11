@@ -41,6 +41,8 @@ Do **not** use a top-level `afterAll` that permanently sets `fs.existsSync` / `f
 
 **Datasource capability / CIP display suites** (real-disk templates, optional sibling dataplane fixture, CI temp-copy path layout): `tests/local/lib/datasource/run-capability-dimension.test.js`, `create-operations.test.js`, `capability-hubspot-copy.integration.test.js`, `tests/local/lib/utils/load-cip-capacity-display-config.test.js`.
 
+**Nested runtime config path** (`AIFABRIX_HOME` + `.aifabrix/config.yaml`): `tests/local/lib/utils/paths-aifabrix-nested-config.test.js`.
+
 ## GitHub Actions
 
 Use **Node 20+** in workflows if devDependencies declare `engines: { node: '>=20' }` (e.g. `cross-env`, `markdownlint`) to avoid `EBADENGINE` noise and align with local dev. The package test suite is validated on the repo’s supported Node version used in CI.
