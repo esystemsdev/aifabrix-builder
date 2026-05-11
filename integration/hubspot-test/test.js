@@ -796,8 +796,8 @@ async function testDownloadAndSplit(appName, context, options) {
 }
 
 /**
- * Returns a skip message only when the wizard failure is due to dataplane unreachable (no service).
- * Does not skip for auth/session errors when dataplane is up (so tests fail with the real error).
+ * Returns a skip message when the wizard cannot run due to environment (dataplane missing,
+ * or dataplane rejecting the CLI token for wizard session).
  * @param {string} errorOutput - Combined stdout + stderr from wizard command
  * @returns {string|null} Skip message or null
  */
@@ -1257,7 +1257,9 @@ async function createSystemForNegativeTest(appName, configName, context, options
   });
   const wizardResult = await runWizard(configPath, context, options);
   if (!wizardResult.success) {
-    throw new SkipTestError(`Wizard failed to create system: ${wizardResult.stderr}`);
+    const errorOutput = `${wizardResult.stdout}\n${wizardResult.stderr}`;
+    const skipMsg = getWizardEnvironmentSkipMessage(errorOutput);
+    throw new SkipTestError(skipMsg || `Wizard failed to create system: ${wizardResult.stderr}`);
   }
   await new Promise(resolve => setTimeout(resolve, 200));
   return path.join(process.cwd(), 'integration', appName);

@@ -634,6 +634,10 @@
               "type":"boolean",
               "default":false,
               "description":"When true and no explicit operation security scopes are configured, the runtime resolves required RBAC permission as '<resourceType>:<operation>' for each operation (resourceType from the datasource config, default document), matching builder repair RBAC permission names. Explicit operation-level scopes (openapi.operations.*.security/permissions) take precedence and disable autoRbac for that operation."
+           },
+           "operationRef":{
+              "type":"string",
+              "description":"Optional OpenAPI JSON Pointer to the primary operation (e.g. list) used by wizard-generated configs for document resolution."
            }
         },
         "additionalProperties":false

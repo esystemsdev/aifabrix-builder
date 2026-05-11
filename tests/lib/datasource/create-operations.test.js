@@ -6,8 +6,8 @@
 jest.unmock('fs');
 jest.unmock('node:fs');
 
-const fs = require('node:fs');
 const path = require('path');
+const fsReal = require('../../../lib/internal/fs-real-sync');
 const {
   applyCapabilityCreate,
   findOpenapiKeysByOperationId
@@ -152,7 +152,8 @@ describe('create-operations', () => {
       require.resolve('../../../lib/datasource/capability/create-operations.js')
     );
     const tplPath = path.join(capabilityModuleDir, 'templates', 'minimal-fetch.json');
-    expect(fs.existsSync(tplPath)).toBe(true);
+    // Match create-operations (fs-real-sync): another suite in the worker may still mock node:fs.
+    expect(fsReal.existsSync(tplPath)).toBe(true);
     const out = applyCapabilityCreate(doc, {
       to: 'fromTpl',
       template: 'minimal-fetch',
