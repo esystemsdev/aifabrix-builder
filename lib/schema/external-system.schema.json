@@ -2,17 +2,17 @@
   "$schema":"http://json-schema.org/draft-07/schema#",
   "$id":"aifabrix://schema/external-system.schema.json",
   "title":"AI Fabrix External System Configuration Schema",
-  "description":"Schema for configuring an external system connected to the AI Fabrix Dataplane. This defines authentication, OpenAPI/MCP bindings, field mappings defaults, metadata handling and portal inputs.",
+  "description":"Schema for configuring an external system connected to the AI Fabrix Dataplane. This defines authentication, system-level OpenAPI/MCP connectivity hints (not the datasource-grade vendor contract; see external-datasource.schema.json root externalSpec), field mappings defaults, metadata handling and portal inputs.",
      "metadata":{
      "key":"external-system-schema",
      "name":"External System Configuration Schema",
      "description":"JSON schema for validating ExternalSystem configuration files",
-     "version":"1.6.2",
+    "version":"1.6.3",
      "type":"schema",
      "category":"integration",
      "author":"AI Fabrix Team",
      "createdAt":"2024-01-01T00:00:00Z",
-     "updatedAt":"2026-04-23T00:00:00Z",
+     "updatedAt":"2026-05-10T00:00:00Z",
      "compatibility":{
         "minVersion":"1.4.0",
         "maxVersion":"2.0.0",
@@ -29,6 +29,15 @@
         
      ],
      "changelog":[
+        {
+           "version":"1.6.3",
+           "date":"2026-05-10T00:00:00Z",
+           "changes":[
+              "Documented split: system openapi/mcp objects are connectivity and bootstrap hints (specUrl, serverUrl, documentKey); datasource-level vendor/API provenance belongs in external-datasource externalSpec.",
+              "Declared optional openapi.autoDiscoverEntities (wizard/tooling); tightened openapi and mcp to additionalProperties: false."
+           ],
+           "breaking":false
+        },
         {
            "version":"1.6.2",
            "date":"2026-04-23T00:00:00Z",
@@ -154,7 +163,7 @@
            "mcp",
            "custom"
         ],
-        "description":"Integration type: OpenAPI-driven, MCP-driven, or custom Python connector."
+        "description":"Integration type: openapi and mcp indicate how the system is wired at a high level; per-datasource vendor specifications and import provenance are authored on each ExternalDataSource (external-datasource.schema.json externalSpec), not duplicated as the full contract here."
      },
      "enabled":{
         "type":"boolean",
@@ -235,23 +244,27 @@
      },
      "openapi":{
         "type":"object",
-        "description":"OpenAPI integration configuration",
+        "description":"System-level connectivity and bootstrap hints for OpenAPI-backed systems (e.g. default specUrl for discovery, documentKey alignment with shared registry entries). Not the authoritative per-datasource vendor OpenAPI contract; that is declared on the datasource via externalSpec and validated against imported material.",
         "properties":{
            "documentKey":{
               "type":"string",
-              "description":"Key of the OpenAPI document in the registry"
+              "description":"Optional registry-oriented key associated with this system's default OpenAPI document (wizard/bootstrap)."
            },
            "specUrl":{
               "type":"string",
-              "description":"URL to the OpenAPI specification",
+              "description":"Optional absolute URL to a representative OpenAPI specification for onboarding or tooling (not a substitute for datasource externalSpec).",
               "pattern":"^(http|https)://.*$"
+           },
+           "autoDiscoverEntities":{
+              "type":"boolean",
+              "description":"Optional wizard or tooling hint to discover entities from the system default spec. Not part of the per-datasource vendor contract (see external-datasource externalSpec)."
            }
         },
-        "additionalProperties":true
+        "additionalProperties":false
      },
      "mcp":{
         "type":"object",
-        "description":"Model Context Protocol integration configuration",
+        "description":"System-level MCP connectivity hints (server URL, tool prefix). Not the datasource-level MCP security or operation contract; those live on ExternalDataSource configuration.",
         "properties":{
            "serverUrl":{
               "type":"string",
@@ -264,7 +277,7 @@
               "pattern":"^[a-zA-Z0-9_-]+$"
            }
         },
-        "additionalProperties":true
+        "additionalProperties":false
      },
      "dataSources":{
         "type":"array",
