@@ -1,25 +1,27 @@
 /**
  * @fileoverview Tests for runCapabilityDimension critical paths (dry-run/write, via parsing, remote/catalog checks)
+ *
+ * Local-only: fs/mock/worker brittleness in CI simulation (see tests/local/README.md).
  */
 
-jest.mock('../../../lib/utils/controller-url', () => ({
+jest.mock('../../../../lib/utils/controller-url', () => ({
   resolveControllerUrl: jest.fn()
 }));
 
-jest.mock('../../../lib/utils/token-manager', () => ({
+jest.mock('../../../../lib/utils/token-manager', () => ({
   getOrRefreshDeviceToken: jest.fn()
 }));
 
-jest.mock('../../../lib/api/dimensions.api', () => ({
+jest.mock('../../../../lib/api/dimensions.api', () => ({
   listDimensions: jest.fn()
 }));
 
-jest.mock('../../../lib/resolvers/datasource-resolver', () => ({
+jest.mock('../../../../lib/resolvers/datasource-resolver', () => ({
   tryResolveDatasourceKeyToLocalPath: jest.fn(),
   readJsonFile: jest.fn()
 }));
 
-jest.mock('../../../lib/resolvers/manifest-resolver', () => ({
+jest.mock('../../../../lib/resolvers/manifest-resolver', () => ({
   tryFetchDatasourceConfig: jest.fn()
 }));
 
@@ -27,13 +29,13 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
-const { getOrRefreshDeviceToken } = require('../../../lib/utils/token-manager');
-const { listDimensions } = require('../../../lib/api/dimensions.api');
-const { tryResolveDatasourceKeyToLocalPath, readJsonFile } = require('../../../lib/resolvers/datasource-resolver');
-const { tryFetchDatasourceConfig } = require('../../../lib/resolvers/manifest-resolver');
+const { resolveControllerUrl } = require('../../../../lib/utils/controller-url');
+const { getOrRefreshDeviceToken } = require('../../../../lib/utils/token-manager');
+const { listDimensions } = require('../../../../lib/api/dimensions.api');
+const { tryResolveDatasourceKeyToLocalPath, readJsonFile } = require('../../../../lib/resolvers/datasource-resolver');
+const { tryFetchDatasourceConfig } = require('../../../../lib/resolvers/manifest-resolver');
 
-const { runCapabilityDimension } = require('../../../lib/datasource/capability/run-capability-dimension');
+const { runCapabilityDimension } = require('../../../../lib/datasource/capability/run-capability-dimension');
 
 function minimalValidDatasource(extra = {}) {
   return {

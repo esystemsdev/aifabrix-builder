@@ -2,18 +2,20 @@
  * Golden-path copy against HubSpot companies datasource (optional multi-repo workspace).
  *
  * @fileoverview Integration test when aifabrix-dataplane repo is checked out as a sibling
+ *
+ * Local-only: optional sibling dataplane fixture + temp-copy CI brittleness (tests/local/README.md).
  */
 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { runCapabilityCopy } = require('../../../lib/datasource/capability/run-capability-copy');
-const { runCapabilityRemove } = require('../../../lib/datasource/capability/run-capability-remove');
-const { validateDatasourceParsed } = require('../../../lib/datasource/validate');
+const { runCapabilityCopy } = require('../../../../lib/datasource/capability/run-capability-copy');
+const { runCapabilityRemove } = require('../../../../lib/datasource/capability/run-capability-remove');
+const { validateDatasourceParsed } = require('../../../../lib/datasource/validate');
 
 const HUBSPOT_DS = path.join(
   __dirname,
-  '../../../../aifabrix-dataplane/integration/test-e2e-hubspot/test-e2e-hubspot-datasource-companies.json'
+  '../../../../../aifabrix-dataplane/integration/test-e2e-hubspot/test-e2e-hubspot-datasource-companies.json'
 );
 
 const describeIfHubspot = fs.existsSync(HUBSPOT_DS) ? describe : describe.skip;

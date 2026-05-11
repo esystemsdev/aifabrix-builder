@@ -1,5 +1,7 @@
 /**
  * @fileoverview Tests for lib/utils/load-cip-capacity-display-config.js
+ *
+ * Local-only: bundled schema path vs CI temp-dir layout (see tests/local/README.md).
  */
 
 const path = require('path');
@@ -10,7 +12,7 @@ const {
   parseCapacityDetailKey,
   standardOperationRank,
   clearCipCapacityDisplayConfigCacheForTests
-} = require('../../../lib/utils/load-cip-capacity-display-config');
+} = require('../../../../lib/utils/load-cip-capacity-display-config');
 
 describe('load-cip-capacity-display-config', () => {
   afterEach(() => {
@@ -19,7 +21,7 @@ describe('load-cip-capacity-display-config', () => {
 
   it('extractStandardOperationOrderFromSchema matches cipDefinition.operations.properties key order', () => {
     // Bundled schema under lib/schema (copied in CI via ci-simulate); avoids flaky sibling ../aifabrix-dataplane path.
-    const schemaPath = path.join(__dirname, '../../../lib/schema/external-datasource.schema.json');
+    const schemaPath = path.join(__dirname, '../../../../lib/schema/external-datasource.schema.json');
     expect(fs.existsSync(schemaPath)).toBe(true);
     const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
     const keys = extractStandardOperationOrderFromSchema(schema);

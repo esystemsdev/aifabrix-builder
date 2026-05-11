@@ -1,5 +1,7 @@
 /**
  * @fileoverview applyCapabilityCreate — from / openapi-operation / template
+ *
+ * Local-only: real disk + template resolution brittle under CI temp copy (see tests/local/README.md).
  */
 
 // Other suites in the same worker may `jest.mock('fs')`; ensure real disk for template fixtures.
@@ -7,11 +9,11 @@ jest.unmock('fs');
 jest.unmock('node:fs');
 
 const path = require('path');
-const fsReal = require('../../../lib/internal/fs-real-sync');
+const fsReal = require('../../../../lib/internal/fs-real-sync');
 const {
   applyCapabilityCreate,
   findOpenapiKeysByOperationId
-} = require('../../../lib/datasource/capability/create-operations');
+} = require('../../../../lib/datasource/capability/create-operations');
 
 describe('create-operations', () => {
   function baseDoc() {
@@ -149,7 +151,7 @@ describe('create-operations', () => {
     const doc = baseDoc();
     // Resolve via the same module directory as create-operations.js (not test __dirname) so CI/temp copies stay aligned.
     const capabilityModuleDir = path.dirname(
-      require.resolve('../../../lib/datasource/capability/create-operations.js')
+      require.resolve('../../../../lib/datasource/capability/create-operations.js')
     );
     const tplPath = path.join(capabilityModuleDir, 'templates', 'minimal-fetch.json');
     // Match create-operations (fs-real-sync): another suite in the worker may still mock node:fs.
