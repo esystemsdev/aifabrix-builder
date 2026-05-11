@@ -69,7 +69,7 @@ aifabrix download hubspot --format json
 
 Upload full external system (system + all datasources + RBAC) to the dataplane for the current environment.
 
-**What:** Validates and publishes the full external system. This is optimized for fast iteration during development (it does not trigger controller-driven platform deployment).
+**What:** Validates and publishes the full external system from your current split files (`application.yaml`, system JSON, datasource JSONs). It does **not** rewrite `<systemKey>-deploy.json` on disk; run `aifabrix json <systemKey>` when you need that manifest regenerated from sources. This path is optimized for fast iteration during development (it does not trigger controller-driven platform deployment).
 
 **When:** Use during external integration development to publish config to the dataplane for validation and testing. Promote to full platform with `aifabrix deploy <app>` when ready.
 

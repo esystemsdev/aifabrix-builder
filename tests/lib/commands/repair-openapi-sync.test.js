@@ -73,7 +73,7 @@ describe('repair-openapi-sync', () => {
       expect.objectContaining({ pageSize: 100 })
     );
     expect(uploadFileAs).toHaveBeenCalledWith(
-      expect.stringContaining('/api/v1/openapi/upload?systemIdOrKey=sys'),
+      expect.stringContaining('/api/v1/specs/upload?systemIdOrKey=sys'),
       path.join(appPath, 'openapi', 'contacts.json'),
       'sys-contacts.json',
       'file',
