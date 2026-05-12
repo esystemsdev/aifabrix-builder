@@ -80,6 +80,12 @@ describe('up-common ensureAppFromTemplate', () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    delete process.env.AIFABRIX_BUILDER_DIR;
+    pathsUtil.getBuilderPath.mockImplementation((appName) => path.join(process.cwd(), 'builder', appName));
+    pathsUtil.getBuilderRoot.mockReturnValue(path.join(process.cwd(), 'builder'));
+  });
+
   it('should throw if appName is missing', async() => {
     await expect(ensureAppFromTemplate(null)).rejects.toThrow('Application name is required and must be a string');
     await expect(ensureAppFromTemplate(undefined)).rejects.toThrow('Application name is required and must be a string');
@@ -115,6 +121,40 @@ describe('up-common ensureAppFromTemplate', () => {
     expect(copyTemplateFiles).toHaveBeenCalledWith('dataplane', appPath);
     expect(ensureReadmeForAppPath).toHaveBeenCalledWith(appPath, 'dataplane');
     expect(ensureReadmeForApp).toHaveBeenCalledWith('dataplane');
+  });
+
+  it('does not copy into cwd/builder when AIFABRIX_BUILDER_DIR is unset and primary path differs', async() => {
+    const systemPath = path.join(cwd, '.aifabrix', 'builder', 'dataplane');
+    pathsUtil.getBuilderPath.mockReturnValue(systemPath);
+    pathsUtil.resolveApplicationConfigPath.mockImplementation(() => {
+      throw new Error('Application config not found');
+    });
+    copyTemplateFiles.mockResolvedValue(['application.yaml']);
+
+    const result = await ensureAppFromTemplate('dataplane');
+
+    expect(result).toBe(true);
+    expect(copyTemplateFiles).toHaveBeenCalledTimes(1);
+    expect(copyTemplateFiles).toHaveBeenCalledWith('dataplane', systemPath);
+  });
+
+  it('copies into cwd/builder when AIFABRIX_BUILDER_DIR is set and primary differs from cwd', async() => {
+    const customRoot = path.join(cwd, 'custom-builder');
+    const appPath = path.join(customRoot, 'dataplane');
+    process.env.AIFABRIX_BUILDER_DIR = customRoot;
+    pathsUtil.getBuilderPath.mockReturnValue(appPath);
+    pathsUtil.getBuilderRoot.mockReturnValue(customRoot);
+    pathsUtil.resolveApplicationConfigPath.mockImplementation(() => {
+      throw new Error('Application config not found');
+    });
+    copyTemplateFiles.mockResolvedValue(['application.yaml']);
+
+    const result = await ensureAppFromTemplate('dataplane');
+
+    expect(result).toBe(true);
+    expect(copyTemplateFiles).toHaveBeenCalledTimes(2);
+    expect(copyTemplateFiles).toHaveBeenCalledWith('dataplane', appPath);
+    expect(copyTemplateFiles).toHaveBeenCalledWith('dataplane', path.join(cwd, 'builder', 'dataplane'));
   });
 });
 
