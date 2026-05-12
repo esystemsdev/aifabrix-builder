@@ -27,6 +27,8 @@ Generate `.env` file from template.
 
 **When:** After secrets change, troubleshooting environment issues.
 
+**Important — only writer of a persistent `.env`:** `aifabrix resolve <app>` is the **only** command that materializes a persistent `<appPath>/.env` (and `build.envOutputPath` when set). `aifabrix register`, `aifabrix rotate-secret`, `aifabrix build`, and `aifabrix up-platform` / `up-miso` / `up-dataplane` resolve secrets **in memory only** (so missing `kv://` refs still surface as warnings) but never leave a `.env` on disk. `aifabrix run <app>` continues to use ephemeral `.env.run` / `.env.run.admin` files that are deleted after the container is healthy. Run `aifabrix resolve <app>` whenever a tool, IDE, or workflow needs an on-disk `.env`.
+
 **App path:** Resolve works for **builder** apps and for **external integrations** in `integration/<systemKey>/`. If `integration/<systemKey>/env.template` exists **and** no application config file is present in that folder (`application.yaml`, `application.yml`, `application.json`), that directory is used and resolve runs in **env-only** mode. If an application config file exists there (or under `builder/<appKey>/`), the CLI uses full resolve and runs post-resolve validation unless you pass `--skip-validation`.
 
 **Example:**

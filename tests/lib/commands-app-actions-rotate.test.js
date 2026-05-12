@@ -214,6 +214,52 @@ describe('Application Commands - Rotate Secret Action', () => {
       }
     });
 
+    it('plan 139: non-localhost rotate must not touch env.template or call generateEnvFile', async() => {
+      // Regression guard: when the controller is remote, neither env.template
+      // nor generateEnvFile should be touched — secrets are saved to
+      // ~/.aifabrix/secrets.local.yaml only.
+      getConfig.mockResolvedValue({
+        'developer-id': 0,
+        environment: 'dev',
+        device: {
+          'https://controller.example.com': {
+            token: 'remote-token',
+            refreshToken: 'r',
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'remote-token',
+        controller: 'https://controller.example.com'
+      });
+      authenticatedApiCall.mockResolvedValue({
+        success: true,
+        data: {
+          success: true,
+          credentials: { clientId: 'new-cid', clientSecret: 'new-csec' },
+          message: 'rotated'
+        }
+      });
+
+      localSecrets.isLocalhost.mockReturnValue(false);
+
+      if (rotateSecretAction) {
+        await rotateSecretAction('test-app', { environment: 'dev' });
+
+        // Credentials are still persisted to the user secret store.
+        expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith('test-app-client-idKeyVault', 'new-cid');
+        expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith('test-app-client-secretKeyVault', 'new-csec');
+        // But the env.template + in-memory resolve branch must be skipped entirely.
+        expect(require('../../lib/utils/env-template').updateEnvTemplate).not.toHaveBeenCalled();
+        expect(secrets.generateEnvFile).not.toHaveBeenCalled();
+        expect(logger.log).not.toHaveBeenCalledWith(
+          expect.stringContaining('Run "aifabrix resolve')
+        );
+      }
+    });
+
     it('should handle not logged in', async() => {
       getConfig.mockResolvedValue({
         'developer-id': 0,

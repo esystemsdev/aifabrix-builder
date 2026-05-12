@@ -10,6 +10,8 @@ How to run your application in Docker for local development.
 
 **Prerequisites:** Env is generated at run time: the builder resolves secrets and writes the only `.env` to `build.envOutputPath` when set, or to a temp path for run. You do not need a pre-existing `.env` file in `builder/<appKey>/`; set `build.envOutputPath` in application.yaml if you want a persisted env file for run.
 
+**No persistent `.env` from platform bring-up:** `aifabrix up-platform`, `aifabrix up-miso`, `aifabrix up-dataplane`, `aifabrix register`, `aifabrix rotate-secret`, and `aifabrix build` resolve secrets **in memory only** — they never leave a `<appPath>/.env` or `build.envOutputPath` `.env` on disk. The only commands that materialize a persistent `.env` are `aifabrix resolve <app>` (explicit user request) and `aifabrix run <app>` (which writes `.env.run` / `.env.run.admin` ephemerally and removes them once the container is healthy). To get an on-disk `.env` for an IDE or external tool, run `aifabrix resolve <app>`.
+
 ## Start Your App
 
 ```bash
