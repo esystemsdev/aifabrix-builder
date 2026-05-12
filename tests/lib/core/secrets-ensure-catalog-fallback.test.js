@@ -55,25 +55,23 @@ jest.mock('fs', () => ({
   readFileSync: jest.fn()
 }));
 
-jest.mock('../../../lib/parameters/infra-parameter-catalog', () => {
-  const actual = jest.requireActual('../../../lib/parameters/infra-parameter-catalog');
-  return {
-    ...actual,
-    getInfraParameterCatalog: jest.fn(() => {
-      throw new Error('simulated catalog load failure');
-    })
-  };
-});
-
 const fs = require('fs');
 const realFs = jest.requireActual('fs');
 const catalogModule = require('../../../lib/parameters/infra-parameter-catalog');
 const secretsEnsure = require('../../../lib/core/secrets-ensure');
 
 describe('secrets-ensure catalog failure fallback', () => {
+  /** @type {jest.SpyInstance} */
+  let getInfraParameterCatalogSpy;
+
   beforeEach(() => {
     jest.clearAllMocks();
     catalogModule.clearInfraParameterCatalogCache();
+    getInfraParameterCatalogSpy = jest.spyOn(catalogModule, 'getInfraParameterCatalog').mockImplementation(() => {
+      const err = new Error('simulated catalog load failure');
+      err.code = 'ENOENT';
+      throw err;
+    });
     fs.existsSync.mockImplementation((p) => realFs.existsSync(p));
     fs.readFileSync.mockImplementation((filepath, enc) => {
       const s = String(filepath);
@@ -82,6 +80,11 @@ describe('secrets-ensure catalog failure fallback', () => {
       }
       return '';
     });
+  });
+
+  afterEach(() => {
+    getInfraParameterCatalogSpy.mockRestore();
+    catalogModule.clearInfraParameterCatalogCache();
   });
 
   it('getInfraSecretKeysForUpInfra returns relaxed YAML key list when catalog load throws', () => {

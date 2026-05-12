@@ -260,6 +260,27 @@ describe('External System Deploy Module', () => {
       );
     });
 
+    it('should not fetch dataplane readiness when controller deployment failed', async() => {
+      deployToController.mockResolvedValue({
+        success: false,
+        deploymentId: 'dep-failed',
+        status: {
+          status: 'failed',
+          error: 'Failed to publish to dataplane: timeout of 10000ms exceeded',
+          message: 'External system - publishing to dataplane'
+        }
+      });
+
+      const { deployExternalSystem } = require('../../../lib/external-system/deploy');
+      const result = await deployExternalSystem(appName, {});
+
+      expect(result.status.status).toBe('failed');
+      expect(resolveDataplaneUrl).not.toHaveBeenCalled();
+      expect(getExternalSystem).not.toHaveBeenCalled();
+      const logCalls = logger.log.mock.calls.map((c) => c[0]);
+      expect(logCalls.some((s) => String(s).includes('System Readiness:'))).toBe(false);
+    });
+
     it('should throw error if validation fails', async() => {
       validateExternalSystemComplete.mockResolvedValue({
         valid: false,
