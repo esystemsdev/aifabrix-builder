@@ -8,6 +8,9 @@
 - **`loadSecrets` / `decryptSecretsObject`:** If an **optional** infra catalog secret (generator **`emptyString`** / **`emptyAllowed`**, e.g. **`mori-controller-api-keyKeyVault`**) is present but **`secure://`** ciphertext cannot be decrypted (wrong **`secrets-encryption`** vs store, stale shared row, or corrupted blob), the CLI now **logs a warning and treats the value as empty** instead of failing the whole merge. Required keys still fail fast. Unblocks **`aifabrix up-infra`** when only optional Mori-related material is undecryptable.
 - **`updateEnvTemplate` env.template lookup (Plan 139):** `env.template` is now resolved via `paths.getBuilderPath(<appKey>)` instead of `process.cwd() + 'builder/<appKey>'`. Fixes the `⚠ env.template not found for dataplane, skipping update` warning that appeared when the `aifabrix` binary ran from a non-builder cwd (e.g. `/workspace/aifabrix-training`); the dataplane template under the system builder root (`~/.aifabrix/builder/dataplane/env.template`) is now correctly picked up and updated with MISO_* `kv://` references.
 
+### Technical
+- **Plan 139**: `lib/utils/env-template.js` uses `paths.getBuilderPath`; `lib/core/secrets-env-content.js` adds the `noWrite` option (with `writeResolvedEnv` helper to keep `generateEnvFile` under the 20-statement limit); `lib/app/register.js`, `lib/app/rotate-secret.js`, `lib/build/index.js` switch to `{ noWrite: true }`; `lib/cli/setup-utility.js` adds resolve hint messages. New `tests/lib/build/post-build-tasks.test.js`; updated `tests/lib/utils/env-template.test.js`, `tests/lib/core/secrets.test.js`, `tests/lib/app/app-register.test.js`, `tests/lib/commands-app-actions-rotate.test.js`. Docs: `docs/commands/utilities.md`, `docs/running.md`.
+
 ## [2.44.6] - 2026-05-06
 
 ### Added
