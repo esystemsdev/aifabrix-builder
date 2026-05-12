@@ -391,9 +391,15 @@ Encrypted secrets are automatically decrypted when loaded by `aifabrix resolve`,
 
 ## aifabrix secret
 
-Manage secrets: local (project/user secrets file) and shared (file or remote API). When `aifabrix-secrets` in config is an **http(s)://** URL, shared secrets are served by the remote API (typically **Builder Server**); shared values are **never stored on disk** on the developer machine and are fetched at resolution time. When it is a file path, use the project secret file as today.
+**Scope:** The commands in this section manage **developer-cycle** secret files and shared dev APIs (`aifabrix secret list|set|remove`, **`BASH_*`**, etc.). They do **not** define where **Azure production** runtime secrets live—in production, secrets are in **Azure Key Vault** and bound through deployment configuration; see [Secrets and config – Production vs developer cycle](../configuration/secrets-and-config.md#production-azure-key-vault-vs-developer-cycle).
 
-**Shared secrets over HTTPS — `BASH_` keys:** If you store a shared secret with `aifabrix secret set <key> <value> --shared` and the **key name starts with `BASH_`**, the remote secrets service turns it into a **normal environment variable in your terminal**: the variable name is whatever comes **after** `BASH_`, and the value is your secret. Example: key **`BASH_NPM_TOKEN`** → you get **`NPM_TOKEN`** exported with that value, ready to use in the shell (build tools, package managers, and so on). If the part after `BASH_` is not a valid shell variable name, that key is skipped. The CLI only sends the key and value; making them show up in the session is handled by the remote environment together with that naming rule.
+Manage secrets: **local** (user file `~/.aifabrix/secrets.local.yaml`, optional **ancestor** `.aifabrix/secrets.local.yaml` files on the path from the app to the workspace root, and app-level files the merge loader picks up) and **shared** (the path or `http(s)://` URL in **`aifabrix-secrets`** in `config.yaml`). When `aifabrix-secrets` is an **http(s)://** URL, shared secrets are served by the remote API (typically **Builder Server**); shared values are **never stored on disk** on the developer machine and are fetched when secrets are merged. When it is a file path, that file is the shared store on disk (for example a team path on a shared drive).
+
+**`BASH_<NAME>` keys (local file, shared file, or HTTPS shared store):** Any top-level secret whose key starts with **`BASH_`** is treated as “inject **`NAME`** into subprocess environment”. Example: **`BASH_NPM_TOKEN`** → the CLI supplies **`NPM_TOKEN=<value>`** to spawned tools (same idea as `export NPM_TOKEN=…` in bash). The suffix after `BASH_` must be a valid identifier (letters, digits, underscore; same rule as for `kv://BASH_*` resolution). Invalid suffixes are skipped.
+
+The Builder does **not** rely on mutating your interactive shell on Windows or Linux: it passes these variables on the **`env`** object when it runs **`docker`**, **`az`**, install/shell helpers, and similar subprocesses, and adds matching lines to the temporary **`--env-file`** used for container **shell** and **install**. That way **cmd.exe**, **PowerShell**, and **Unix** shells all see the same behavior for those commands.
+
+**Commands that apply the merged `BASH_*` map:** **`aifabrix build`**, **`aifabrix shell`**, **`aifabrix install`**, **`aifabrix push`**, and **`aifabrix deploy <app> --local`** (the post-deploy **`run`** / dataplane **restart** uses the same Docker environment as **`aifabrix run`**). The default **`aifabrix deploy`** (without **`--local`**) is controller HTTP only. **`aifabrix resolve`** and other flows that write a resolved `.env` also merge **`BASH_*`** into the output when a variable is not already set in the template. See [Secrets and config](../configuration/secrets-and-config.md#aifabrix-secrets-remote-vs-local).
 
 <a id="aifabrix-secret-list"></a>
 ### aifabrix secret list
@@ -428,7 +434,7 @@ aifabrix secret set keycloak-web-server-url "https://mydomain.com/keycloak"
 # Set secret in general secrets file (shared across projects)
 aifabrix secret set keycloak-web-server-url "https://mydomain.com/keycloak" --shared
 
-# Shared over HTTPS: BASH_ prefix → same value available in terminal as NPM_TOKEN (exported)
+# Shared file or HTTPS: BASH_ prefix → Builder passes NAME=value to docker/az and container env (see intro above)
 aifabrix secret set BASH_NPM_TOKEN "your-token" --shared
 
 # Set secret with environment variable interpolation
@@ -439,7 +445,7 @@ aifabrix secret set keycloak-web-server-url "https://keycloak.example.com/auth/r
 ```
 
 **Options:**
-- `--shared` - Save to shared secrets: when `aifabrix-secrets` is a file path, write to that file; when it is an `http(s)://` URL, saves to the remote server (cert required; admin/secret-manager for shared when remote). With an **HTTPS** shared store, a key named **`BASH_<NAME>`** is how you request that **`NAME`** appear in your terminal as an exported variable with that value (see introduction under [aifabrix secret](#aifabrix-secret)).
+- `--shared` - Save to shared secrets: when `aifabrix-secrets` is a file path, write to that file; when it is an `http(s)://` URL, saves to the remote server (cert required; admin/secret-manager for shared when remote). A key named **`BASH_<NAME>`** in the merged store (user, shared file, or remote) is mapped to environment variable **`NAME`** for the commands listed in the introduction under [aifabrix secret](#aifabrix-secret)—not limited to HTTPS.
 
 **Secret Value Formats:**
 - **Full URLs**: Direct URL values (e.g., `https://mydomain.com/keycloak`)

@@ -259,7 +259,7 @@ describe('getResolveAppPath', () => {
   it('returns integration path and envOnly true when only env.template exists in integration', async() => {
     const appName = 'test-e2e-hubspot';
     createTempDirReal(path.join(tempDir, 'integration', appName));
-    writeFileReal(path.join(tempDir, 'integration', appName, 'env.template'), 'API_KEY=kv://api-key\n');
+    writeFileReal(path.join(tempDir, 'integration', appName, 'env.template'), 'API_KEY=kv://miso-controller-secrets-apiKeyVault\n');
     const result = getResolveAppPathInSubprocess(appName);
     expect(result).toEqual({
       appPath: path.join(tempDir, 'integration', appName),
@@ -274,7 +274,7 @@ describe('getResolveAppPath', () => {
       path.join(tempDir, 'integration', appName, 'application.yaml'),
       'app:\n  name: myapp\n  type: external\n'
     );
-    writeFileReal(path.join(tempDir, 'integration', appName, 'env.template'), 'API_KEY=kv://api-key\n');
+    writeFileReal(path.join(tempDir, 'integration', appName, 'env.template'), 'API_KEY=kv://miso-controller-secrets-apiKeyVault\n');
     const result = getResolveAppPathInSubprocess(appName);
     expect(result).toEqual({
       appPath: path.join(tempDir, 'integration', appName),
@@ -289,7 +289,7 @@ describe('getResolveAppPath', () => {
       path.join(tempDir, 'integration', appName, 'application.json'),
       JSON.stringify({ app: { name: appName, type: 'external' } }, null, 2)
     );
-    writeFileReal(path.join(tempDir, 'integration', appName, 'env.template'), 'API_KEY=kv://api-key\n');
+    writeFileReal(path.join(tempDir, 'integration', appName, 'env.template'), 'API_KEY=kv://miso-controller-secrets-apiKeyVault\n');
     const result = getResolveAppPathInSubprocess(appName);
     expect(result).toEqual({
       appPath: path.join(tempDir, 'integration', appName),

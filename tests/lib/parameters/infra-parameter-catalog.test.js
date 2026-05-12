@@ -106,9 +106,9 @@ parameters:
     expect(generateValueFromCatalogEntry('redis-url', lit, crypto)).toContain('REDIS_HOST');
     const pg = cat.findEntryForKey('postgres-passwordKeyVault');
     expect(generateValueFromCatalogEntry('postgres-passwordKeyVault', pg, crypto, vars)).toBe('admin123');
-    const apiKey = cat.findEntryForKey('api-key');
+    const apiKey = cat.findEntryForKey('keycloak-client-secretKeyVault');
     expect(apiKey).toBeTruthy();
-    const rb = generateValueFromCatalogEntry('api-key', apiKey, crypto);
+    const rb = generateValueFromCatalogEntry('keycloak-client-secretKeyVault', apiKey, crypto);
     expect(rb.length).toBe(44);
   });
 
@@ -227,7 +227,7 @@ parameters:
       'miso-controller-secrets-encryptionKeyVault',
       'miso-controller-jwt-secretKeyVault',
       'dataplane-client-secretKeyVault',
-      'api-key'
+      'keycloak-client-secretKeyVault'
     ];
     for (const key of keys) {
       const e = cat.findEntryForKey(key);

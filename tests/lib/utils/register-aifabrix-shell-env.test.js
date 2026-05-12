@@ -14,6 +14,7 @@ const path = require('path');
 
 const {
   registerAifabrixShellEnvFromConfig,
+  buildShellEnvExportsFromConfig,
   buildPosixShellEnvBody,
   buildProfileBlock,
   shSingleQuoted,
@@ -24,6 +25,16 @@ const {
 } = require('../../../lib/utils/register-aifabrix-shell-env');
 
 describe('register-aifabrix-shell-env', () => {
+  describe('buildShellEnvExportsFromConfig', () => {
+    it('matches buildPosixShellEnvBody from config', async() => {
+      const body = await buildShellEnvExportsFromConfig(async() => ({
+        'aifabrix-home': '/x/home',
+        'aifabrix-work': '/y/work'
+      }));
+      expect(body).toBe(buildPosixShellEnvBody('/x/home', '/y/work'));
+    });
+  });
+
   describe('shSingleQuoted', () => {
     it('wraps path in single quotes', () => {
       expect(shSingleQuoted('/tmp/work')).toBe('\'/tmp/work\'');

@@ -172,7 +172,7 @@ aifabrix build myapp --force-template
 - Docker image: `<resolved-repository>:<tag>` (default tag `latest`)
 - Env is resolved in memory; the only persisted `.env` is written to `build.envOutputPath` when configured (run uses the same single .env path or temp).
 
-**Environment and tokens:** Build passes `NPM_TOKEN` and `PYPI_TOKEN` as Docker build-args when they are in `env.template` (e.g. `NPM_TOKEN=kv://npm-tokenKeyVault`) or in your secrets file, so private npm/pypi registries work during `RUN npm install` / `pip install`. Add them to `env.template` as `kv://` references; see [env.template](../configuration/env-template.md#build-run-shell-and-install). The TypeScript Dockerfile uses `NODE_AUTH_TOKEN=$NPM_TOKEN` so npm install can authenticate; for Python, use a custom Dockerfile or run `aifabrix install <app>` after build if you need private PyPI during install. Note: build-args can appear in image history; for maximum security use Docker build secrets or install-after-build.
+**Environment and tokens:** Build passes `NPM_TOKEN` and `PYPI_TOKEN` as Docker build-args when they are in `env.template` (e.g. `NPM_TOKEN=kv://npm-tokenKeyVault`) or in your secrets file, so private npm/pypi registries work during `RUN npm install` / `pip install`. You can also store **`BASH_NPM_TOKEN`** (or **`BASH_PYPI_TOKEN`**) in the merged secrets store (user, shared file, or HTTPS shared secrets); the Builder maps that to **`NPM_TOKEN`** / **`PYPI_TOKEN`** on the Docker build process when those names are not already set from the template—see [Utilities: aifabrix secret](utilities.md#aifabrix-secret). Add them to `env.template` as `kv://` references when you want the key in the template; see [env.template](../configuration/env-template.md#build-run-shell-and-install). The TypeScript Dockerfile uses `NODE_AUTH_TOKEN=$NPM_TOKEN` so npm install can authenticate; for Python, use a custom Dockerfile or run `aifabrix install <app>` after build if you need private PyPI during install. Note: build-args can appear in image history; for maximum security use Docker build secrets or install-after-build.
 
 **Issues:**
 - **"Docker not running"** → Start Docker Desktop
@@ -398,7 +398,7 @@ aifabrix down-app myapp --volumes
 
 Open a shell in the running or ephemeral container (exec into the container; no SSH).
 
-**What:** Execs into the app container so you can run commands inside it. For **dev**: uses the running container if the app is up; for **tst**: starts an ephemeral container, runs the shell, then stops it.
+**What:** Execs into the app container so you can run commands inside it. For **dev**: uses the running container if the app is up; for **tst**: starts an ephemeral container, runs the shell, then stops it. The environment passed into the container includes variables derived from **`BASH_*`** keys in the merged secrets store (same pattern as [install](#aifabrix-install-app) and [build](#aifabrix-build-app)); see [Utilities: aifabrix secret](utilities.md#aifabrix-secret).
 
 **When:** Debugging, running one-off commands (e.g. migrations, scripts) inside the app environment.
 
@@ -453,7 +453,7 @@ aifabrix test mysystem -e tst -d
 
 Install dependencies inside the container for **builder** applications.
 
-**What:** Runs the app's install command (e.g. `pnpm install`, `make install`) inside the container. For **dev**: uses the running container if the app is up; for **tst**: starts an ephemeral container with the same resolved `.env` as run (so `NPM_TOKEN`/`PYPI_TOKEN` from `env.template` are available for private registries).
+**What:** Runs the app's install command (e.g. `pnpm install`, `make install`) inside the container. For **dev**: uses the running container if the app is up; for **tst**: starts an ephemeral container with the same resolved `.env` as run (so `NPM_TOKEN`/`PYPI_TOKEN` from `env.template` are available for private registries, and **`BASH_*`** keys in merged secrets become normal env vars when not already present—see [Utilities: aifabrix secret](utilities.md#aifabrix-secret)).
 
 **When:** After pulling code or when dependencies change; useful when the image was built without private registry tokens and you need to install from a private npm/pypi.
 

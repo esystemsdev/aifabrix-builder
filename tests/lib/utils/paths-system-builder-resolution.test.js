@@ -4,7 +4,7 @@
 
 'use strict';
 
-const fs = require('fs');
+const fs = jest.requireActual('node:fs');
 const os = require('os');
 const path = require('path');
 
@@ -80,13 +80,23 @@ describe('paths system builder app resolution', () => {
     expect(paths.getBuilderPath('my-service')).toBe(path.join(proj, 'builder', 'my-service'));
   });
 
-  it('getBuilderPath uses aifabrix-home when config dir is not under resolved home', () => {
-    const dataHome = path.join(tmp, 'data-home');
-    fs.mkdirSync(dataHome, { recursive: true });
-    process.env.AIFABRIX_HOME = dataHome;
-    const paths = loadPaths();
-    expect(paths.getSystemBuilderRoot()).toBe(path.join(dataHome, 'builder'));
-    expect(paths.getBuilderPath('dataplane')).toBe(path.join(dataHome, 'builder', 'dataplane'));
+  // Nested describe so inner beforeEach runs after the outer beforeEach that sets
+  // AIFABRIX_HOME=cfgDir. Global setup.js beforeEach clears Fabrix env first; hook order
+  // must not leave cfgDir as the final value before assertions.
+  describe('aifabrix-home vs config dir', () => {
+    let dataHome;
+
+    beforeEach(() => {
+      dataHome = path.join(tmp, 'data-home');
+      fs.mkdirSync(dataHome, { recursive: true });
+      process.env.AIFABRIX_HOME = dataHome;
+    });
+
+    it('getBuilderPath uses aifabrix-home when config dir is not under resolved home', () => {
+      const paths = loadPaths();
+      expect(paths.getSystemBuilderRoot()).toBe(path.join(dataHome, 'builder'));
+      expect(paths.getBuilderPath('dataplane')).toBe(path.join(dataHome, 'builder', 'dataplane'));
+    });
   });
 
   it('getBuilderPath respects AIFABRIX_BUILDER_DIR', () => {

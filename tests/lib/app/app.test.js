@@ -290,7 +290,7 @@ describe('Application Module', () => {
       expect(envContent).toContain('DATABASE_URL=kv://databases-env-conversion-app-0-urlKeyVault');
       expect(envContent).toContain('DB_USER=env_conversion_app_user');
       expect(envContent).toContain('DB_PASSWORD=kv://databases-env-conversion-app-0-passwordKeyVault');
-      expect(envContent).toContain('API_KEY=kv://api-key');
+      expect(envContent).toContain('API_KEY=kv://miso-controller-secrets-apiKeyVault');
     });
   });
 

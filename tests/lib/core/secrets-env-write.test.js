@@ -9,12 +9,23 @@ jest.mock('../../../lib/core/secrets', () => ({
   loadSecrets: jest.fn()
 }));
 
+jest.mock('../../../lib/core/secrets-load', () => ({
+  loadSecrets: jest.fn()
+}));
+
 const secrets = require('../../../lib/core/secrets');
+const secretsLoad = require('../../../lib/core/secrets-load');
 const { resolveAndGetEnvMap } = require('../../../lib/core/secrets-env-write');
 
 describe('secrets-env-write resolveAndGetEnvMap', () => {
   const originalNpm = process.env.NPM_TOKEN;
   const originalPypi = process.env.PYPI_TOKEN;
+
+  beforeEach(() => {
+    secretsLoad.loadSecrets.mockImplementation((secretsPath, appName) =>
+      secrets.loadSecrets(secretsPath, appName)
+    );
+  });
 
   afterEach(() => {
     jest.clearAllMocks();
@@ -81,5 +92,15 @@ describe('secrets-env-write resolveAndGetEnvMap', () => {
     await resolveAndGetEnvMap('app', { environment: 'local', secretsPath: customPath });
 
     expect(secrets.loadSecrets).toHaveBeenCalledWith(customPath, 'app');
+  });
+
+  it('injects NPM_TOKEN from BASH_NPM_TOKEN in merged secrets when not in template', async() => {
+    delete process.env.NPM_TOKEN;
+    secrets.generateEnvContent.mockResolvedValue('PORT=3000\n');
+    secrets.loadSecrets.mockResolvedValue({ BASH_NPM_TOKEN: 'npm-from-bash-secret' });
+
+    const map = await resolveAndGetEnvMap('myapp', { environment: 'docker' });
+
+    expect(map.NPM_TOKEN).toBe('npm-from-bash-secret');
   });
 });

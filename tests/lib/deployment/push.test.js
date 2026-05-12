@@ -211,9 +211,15 @@ describe('Push Utilities', () => {
       expect(result).toBe(true);
       // On Windows, includes shell: true option; all include timeout to avoid hang when not logged in
       if (process.platform === 'win32') {
-        expect(execAsync).toHaveBeenCalledWith('az acr show --name myacr', { shell: true, timeout: 15000 });
+        expect(execAsync).toHaveBeenCalledWith(
+          'az acr show --name myacr',
+          expect.objectContaining({ shell: true, timeout: 15000, env: expect.any(Object) })
+        );
       } else {
-        expect(execAsync).toHaveBeenCalledWith('az acr show --name myacr', { timeout: 15000 });
+        expect(execAsync).toHaveBeenCalledWith(
+          'az acr show --name myacr',
+          expect.objectContaining({ timeout: 15000, env: expect.any(Object) })
+        );
       }
     });
 
@@ -242,9 +248,15 @@ describe('Push Utilities', () => {
 
       // On Windows, includes shell: true option; all include timeout to avoid hang
       if (process.platform === 'win32') {
-        expect(execAsync).toHaveBeenCalledWith('az acr login --name myacr', { shell: true, timeout: 120000 });
+        expect(execAsync).toHaveBeenCalledWith(
+          'az acr login --name myacr',
+          expect.objectContaining({ shell: true, timeout: 120000, env: expect.any(Object) })
+        );
       } else {
-        expect(execAsync).toHaveBeenCalledWith('az acr login --name myacr', { timeout: 120000 });
+        expect(execAsync).toHaveBeenCalledWith(
+          'az acr login --name myacr',
+          expect.objectContaining({ timeout: 120000, env: expect.any(Object) })
+        );
       }
       expect(console.log).toHaveBeenCalled();
     });

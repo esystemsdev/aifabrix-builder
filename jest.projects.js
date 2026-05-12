@@ -161,6 +161,14 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\utils\\\\paths-app-listing.test.js',
       'lib/utils/paths-app-listing.test.js',
       'paths-app-listing\\.test\\.js',
+      '/tests/lib/utils/paths-system-builder-resolution.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\paths-system-builder-resolution.test.js',
+      'lib/utils/paths-system-builder-resolution.test.js',
+      'paths-system-builder-resolution\\.test\\.js',
+      '/tests/lib/utils/secrets-ancestor-paths.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\secrets-ancestor-paths.test.js',
+      'lib/utils/secrets-ancestor-paths.test.js',
+      'secrets-ancestor-paths\\.test\\.js',
       '/tests/lib/generator/generator-external-rbac.test.js',
       '\\\\tests\\\\lib\\\\generator\\\\generator-external-rbac.test.js',
       'lib/generator/generator-external-rbac.test.js',
@@ -252,6 +260,10 @@ const isolatedProjects = [
   makeIsolatedProject('parameters-validate', ['**/tests/lib/commands/parameters-validate.test.js']),
   makeIsolatedProject('repair-openapi-sync', ['**/tests/lib/commands/repair-openapi-sync.test.js']),
   makeIsolatedProject('paths-app-listing', ['**/tests/lib/utils/paths-app-listing.test.js']),
+  makeIsolatedProject('paths-system-builder-resolution', [
+    '**/tests/lib/utils/paths-system-builder-resolution.test.js'
+  ]),
+  makeIsolatedProject('secrets-ancestor-paths', ['**/tests/lib/utils/secrets-ancestor-paths.test.js']),
   makeIsolatedProject('datasource-validation-watch', [
     '**/tests/lib/utils/datasource-validation-watch.test.js'
   ]),

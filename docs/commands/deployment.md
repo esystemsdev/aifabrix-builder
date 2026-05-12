@@ -11,7 +11,7 @@ Commands for deploying applications and environments via Miso Controller. The co
 
 Push image to Azure Container Registry.
 
-**What:** Authenticates with ACR using Azure CLI, tags image, pushes to registry. Supports multiple tags with a single command.
+**What:** Authenticates with ACR using Azure CLI, tags image, pushes to registry. Supports multiple tags with a single command. The **`az`** / **`docker`** subprocesses receive the same merged environment as other Docker-facing commands, including variables derived from **`BASH_*`** secrets (e.g. **`BASH_NPM_TOKEN`** → **`NPM_TOKEN`**) when you need tokens available to those tools—see [Utilities: aifabrix secret](utilities.md#aifabrix-secret).
 
 **When:** Before Azure deployment, after building application.
 
@@ -270,7 +270,7 @@ The typical deployment workflow:
 
 Deploy application via Miso Controller. Requires Controller permission **applications:deploy** (pipeline validate + deploy). See [Online Commands and Permissions](permissions.md).
 
-**What:** Generates deployment manifest from application.yaml, env.template, and rbac.yaml, retrieves or refreshes authentication token, validates configuration, and sends to Miso Controller API. The **controller** then handles the actual deployment:
+**What:** Generates deployment manifest from application.yaml, env.template, and rbac.yaml, retrieves or refreshes authentication token, validates configuration, and sends to Miso Controller API. That main path is **HTTP to the controller** and does not inject **`BASH_*`** into your interactive shell. **`BASH_*`** still matters when **`aifabrix deploy <app> --local`** runs afterward: the CLI starts or restarts containers the same way as **`aifabrix run`**, so Docker subprocesses get the merged environment (including **`BASH_NPM_TOKEN`** → **`NPM_TOKEN`**, and so on—see [Utilities: aifabrix secret](utilities.md#aifabrix-secret)). Use **`aifabrix push`** before deploy when you push to ACR; **push** always merges **`BASH_*`** into **`az`/`docker`** subprocesses. The **controller** then handles the actual deployment:
 - **Azure deployments:** Controller deploys to Azure Container Apps (for production/cloud environments)
 - **Local Docker deployments:** Controller runs the application in Docker containers locally (for localhost/development environments)
 

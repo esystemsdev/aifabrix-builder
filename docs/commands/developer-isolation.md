@@ -265,7 +265,7 @@ aifabrix dev set-env-config /path/to/env-config.yaml
 
 Set the aifabrix-home path in `config.yaml`.
 
-**What:** Writes `aifabrix-home` to `config.yaml` (under your AI Fabrix config directory). Overrides the default AI Fabrix home directory (used for applications base path when developer ID is set). Unless you pass **`--no-register-env`**, the CLI also updates **AIFABRIX_HOME** (and refreshes the paired shell env file / user env so **AIFABRIX_WORK** stays aligned with config). Open a new terminal after registration.
+**What:** Writes `aifabrix-home` to `config.yaml` (under your AI Fabrix config directory). Overrides the default AI Fabrix home directory (used for applications base path when developer ID is set). Unless you pass **`--no-register-env`**, the CLI also updates **AIFABRIX_HOME** (and refreshes the paired shell env file / user env so **AIFABRIX_WORK** stays aligned with config). **New terminals** pick up variables via profile snippet or Windows user env. **Current terminal (bash/zsh):** run **`eval "$(aifabrix dev shell-env)"`** after set-home (or open a new shell).
 
 **Usage:**
 ```bash
@@ -274,7 +274,7 @@ aifabrix dev set-home ""            # clear override
 aifabrix dev set-home /path --no-register-env   # config only
 ```
 
-**See Also:** [aifabrix dev set-work](#aifabrix-dev-set-work), [aifabrix dev print-home](#aifabrix-dev-print-home), [aifabrix dev show](#aifabrix-dev-show).
+**See Also:** [aifabrix dev set-work](#aifabrix-dev-set-work), [aifabrix dev print-home](#aifabrix-dev-print-home), [aifabrix dev shell-env](#aifabrix-dev-shell-env), [aifabrix dev show](#aifabrix-dev-show).
 
 ---
 
@@ -283,7 +283,7 @@ aifabrix dev set-home /path --no-register-env   # config only
 
 Set the optional workspace root (`aifabrix-work`) in `config.yaml`.
 
-**What:** Stores a normalized absolute path as **`aifabrix-work`** (default clone / repo root). This is separate from **`aifabrix-home`** (secrets, infra, `~/.aifabrix`-style state stay on home unless you set them there). Clearing uses an empty path argument. Unless you pass **`--no-register-env`**, the CLI registers **AIFABRIX_WORK** for new shells (Windows user env or POSIX `aifabrix-shell-env.sh` + profile snippet). **`AIFABRIX_WORK`** in the environment overrides the YAML value when resolving the workspace.
+**What:** Stores a normalized absolute path as **`aifabrix-work`** (default clone / repo root). This is separate from **`aifabrix-home`** (secrets, infra, `~/.aifabrix`-style state stay on home unless you set them there). Clearing uses an empty path argument. Unless you pass **`--no-register-env`**, the CLI registers **AIFABRIX_WORK** for new shells (Windows user env or POSIX `aifabrix-shell-env.sh` + profile snippet). **`AIFABRIX_WORK`** in the environment overrides the YAML value when resolving the workspace. **Current terminal (bash/zsh):** run **`eval "$(aifabrix dev shell-env)"`** after set-work (or open a new shell).
 
 **Usage:**
 ```bash
@@ -291,7 +291,7 @@ aifabrix dev set-work /path/to/git-workspace
 aifabrix dev set-work "" --no-register-env
 ```
 
-**See Also:** [aifabrix dev set-home](#aifabrix-dev-set-home), [aifabrix dev print-work](#aifabrix-dev-print-work), [Secrets and config](../configuration/secrets-and-config.md).
+**See Also:** [aifabrix dev set-home](#aifabrix-dev-set-home), [aifabrix dev print-work](#aifabrix-dev-print-work), [aifabrix dev shell-env](#aifabrix-dev-shell-env), [Secrets and config](../configuration/secrets-and-config.md).
 
 ---
 
@@ -305,7 +305,24 @@ Print the resolved **AIFABRIX_HOME** path to stdout (no colors); intended for sc
 aifabrix dev print-home
 ```
 
-**See Also:** [aifabrix dev print-work](#aifabrix-dev-print-work).
+**See Also:** [aifabrix dev print-work](#aifabrix-dev-print-work), [aifabrix dev shell-env](#aifabrix-dev-shell-env).
+
+---
+
+<a id="aifabrix-dev-shell-env"></a>
+## aifabrix dev shell-env
+
+Print **`export`** lines for **AIFABRIX_HOME** and **AIFABRIX_WORK** from **`config.yaml`** to **stdout only** (no chalk), so you can load them into the **current** shell without opening a new terminal.
+
+**POSIX (bash / zsh):**
+
+```bash
+eval "$(aifabrix dev shell-env)"
+```
+
+**Windows PowerShell:** run **`aifabrix dev shell-env`** and paste the printed **`$env:...`** lines into the same session (user env from **`set-home`** / **`set-work`** still requires a new terminal).
+
+**See Also:** [aifabrix dev set-home](#aifabrix-dev-set-home), [aifabrix dev set-work](#aifabrix-dev-set-work), [aifabrix dev print-home](#aifabrix-dev-print-home).
 
 ---
 
@@ -314,7 +331,7 @@ aifabrix dev print-home
 
 Print the resolved workspace path to stdout, or a single empty line if unset (no implicit default). No colors.
 
-**See Also:** [aifabrix dev set-work](#aifabrix-dev-set-work).
+**See Also:** [aifabrix dev set-work](#aifabrix-dev-set-work), [aifabrix dev shell-env](#aifabrix-dev-shell-env).
 
 **Output (view):**
 ```yaml
