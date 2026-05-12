@@ -1,3 +1,11 @@
+## [2.44.7] - 2026-05-12
+
+### Changed
+- **`loadSecrets` (default `kv://` map):** Reads **only** the primary user file (`~/.aifabrix/secrets.local.yaml`) and **`aifabrix-secrets`** from config (shared YAML path or `https://` dev API). Removed merge of cwd-ancestor `.aifabrix/secrets.local.yaml`, `builder/secrets.local.yaml`, and `~/.aifabrix/secrets.yaml`. Optional decrypt warnings for empty-allowed catalog keys are **deduped** (once per key per process).
+
+### Fixed
+- **`loadSecrets` / `decryptSecretsObject`:** If an **optional** infra catalog secret (generator **`emptyString`** / **`emptyAllowed`**, e.g. **`mori-controller-api-keyKeyVault`**) is present but **`secure://`** ciphertext cannot be decrypted (wrong **`secrets-encryption`** vs store, stale shared row, or corrupted blob), the CLI now **logs a warning and treats the value as empty** instead of failing the whole merge. Required keys still fail fast. Unblocks **`aifabrix up-infra`** when only optional Mori-related material is undecryptable.
+
 ## [2.44.6] - 2026-05-06
 
 ### Added

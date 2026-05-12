@@ -4,6 +4,7 @@
 
 'use strict';
 
+const healthCheckUrl = require('../../../lib/utils/health-check-url');
 const { computeHealthCheckUrl } = require('../../../lib/utils/health-check');
 
 describe('computeHealthCheckUrl', () => {
@@ -11,6 +12,18 @@ describe('computeHealthCheckUrl', () => {
     healthCheck: { path: '/health/ready' },
     frontDoorRouting: { enabled: true, pattern: '/auth/*' }
   };
+
+  /** @type {jest.SpyInstance} */
+  let traefikSpy;
+
+  beforeEach(() => {
+    // Assert the localhost URL shape; public Traefik URL depends on developer env/config.
+    traefikSpy = jest.spyOn(healthCheckUrl, 'computeTraefikHealthCheckUrl').mockResolvedValue('');
+  });
+
+  afterEach(() => {
+    traefikSpy.mockRestore();
+  });
 
   it('uses bare health path on localhost when Traefik is off (matches KC_HTTP_RELATIVE_PATH=/)', async() => {
     await expect(

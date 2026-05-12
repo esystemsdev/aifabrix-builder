@@ -171,18 +171,29 @@ describe('Secrets Module', () => {
     jest.clearAllMocks();
     os.homedir.mockReturnValue(mockHomeDir);
     const pathsUtil = require('../../../lib/utils/paths');
+    const remoteDevAuth = require('../../../lib/utils/remote-dev-auth');
+    const devApi = require('../../../lib/api/dev.api');
     const defaultAifabrix = path.join(mockHomeDir, '.aifabrix');
     pathsUtil.getAifabrixHome.mockReturnValue(defaultAifabrix);
     pathsUtil.getConfigDirForPaths.mockReturnValue(defaultAifabrix);
     pathsUtil.getAifabrixSystemDir.mockReturnValue(defaultAifabrix);
+
+    // Per-test suites override these; reset so earlier tests cannot leak shared-secrets URL / remote mocks.
+    config.getSecretsPath.mockResolvedValue(null);
+    remoteDevAuth.resolveSharedSecretsEndpoint.mockImplementation(async(p) => p);
+    remoteDevAuth.getRemoteDevAuth.mockResolvedValue(null);
+    remoteDevAuth.isRemoteSecretsUrl.mockImplementation(
+      (v) => typeof v === 'string' && (v.startsWith('http://') || v.startsWith('https://'))
+    );
+    devApi.listSecrets.mockResolvedValue([]);
 
     // Default mock for env-config.yaml used by loadEnvConfig
     fs.existsSync.mockImplementation((filePath) => {
       if (filePath && filePath.includes('env-config.yaml')) {
         return true;
       }
-      // Return false for auto-detected paths (so tests use default path)
-      if (filePath && (filePath.includes('aifabrix-setup') || filePath.includes('secrets.local.yaml'))) {
+      // Return false for auto-detected paths (legacy); primary user secrets use explicit per-test mocks.
+      if (filePath && filePath.includes('aifabrix-setup')) {
         return false;
       }
       return false;
@@ -206,24 +217,27 @@ environments:
   describe('loadSecrets', () => {
     it('should load secrets from default path when no path provided', async() => {
       const mockSecrets = { 'postgres-passwordKeyVault': 'admin123' };
-      const defaultSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+      const primaryUserSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       fs.existsSync.mockImplementation((filePath) => {
-        // Return false for auto-detected paths (so it falls back to default)
-        if (filePath && (filePath.includes('aifabrix-setup') || filePath.includes('secrets.local.yaml'))) {
+        if (filePath && filePath.includes('aifabrix-setup')) {
           return false;
         }
-        // Return true for default secrets path
-        if (filePath === defaultSecretsPath || filePath.includes('.aifabrix')) {
+        if (filePath === primaryUserSecretsPath) {
           return true;
         }
         return false;
       });
-      fs.readFileSync.mockReturnValue('postgres-passwordKeyVault: "admin123"');
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === primaryUserSecretsPath) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
+        return '';
+      });
 
       const result = await secrets.loadSecrets();
 
       expect(fs.existsSync).toHaveBeenCalled();
-      expect(fs.readFileSync).toHaveBeenCalledWith(defaultSecretsPath, 'utf8');
+      expect(fs.readFileSync).toHaveBeenCalledWith(primaryUserSecretsPath, 'utf8');
       expect(result).toEqual(mockSecrets);
     });
 
@@ -248,10 +262,11 @@ environments:
     });
 
     it('should throw error if secrets file has invalid format', async() => {
+      const primaryUserSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('invalid yaml content');
 
-      await expect(secrets.loadSecrets()).rejects.toThrow('Invalid secrets file format');
+      await expect(secrets.loadSecrets(primaryUserSecretsPath)).rejects.toThrow('Invalid secrets file format');
     });
 
     it('should throw error if explicit path secrets file has invalid format', async() => {
@@ -265,17 +280,19 @@ environments:
     });
 
     it('should throw error if secrets file contains null', async() => {
+      const primaryUserSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('null');
 
-      await expect(secrets.loadSecrets()).rejects.toThrow('Invalid secrets file format');
+      await expect(secrets.loadSecrets(primaryUserSecretsPath)).rejects.toThrow('Invalid secrets file format');
     });
 
     it('should throw error if secrets file contains non-object', async() => {
+      const primaryUserSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('"just a string"');
 
-      await expect(secrets.loadSecrets()).rejects.toThrow('Invalid secrets file format');
+      await expect(secrets.loadSecrets(primaryUserSecretsPath)).rejects.toThrow('Invalid secrets file format');
     });
   });
 
@@ -695,11 +712,19 @@ environments:
 
     beforeEach(() => {
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('env.template') || filePath.includes('secrets.yaml');
+        return filePath.includes('env.template') ||
+          filePath.includes('secrets.yaml') ||
+          (typeof filePath === 'string' && filePath.includes('secrets.local.yaml'));
       });
       fs.readFileSync.mockImplementation((filePath) => {
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
         if (filePath.includes('env.template')) {
           return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -732,7 +757,8 @@ environments:
       fs.existsSync.mockImplementation((filePath) => {
         return filePath.includes('env.template') ||
                filePath.includes('application.yaml') ||
-               filePath.includes('secrets.yaml');
+               filePath.includes('secrets.yaml') ||
+               (typeof filePath === 'string' && filePath.includes('secrets.local.yaml'));
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('application.yaml')) {
@@ -748,6 +774,9 @@ port: 3000
         if (filePath.includes('.env')) {
           // Return content when reading the generated .env file
           return 'PORT=3000\nDATABASE_URL=postgres://localhost';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -811,11 +840,15 @@ environments:
       fs.existsSync.mockImplementation((filePath) => {
         return filePath === integrationPath ||
                filePath === path.join(integrationPath, 'env.template') ||
-               filePath.includes('secrets.yaml');
+               filePath.includes('secrets.yaml') ||
+               (typeof filePath === 'string' && filePath.includes('secrets.local.yaml'));
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
           return 'API_KEY=kv://postgres-passwordKeyVault';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -1516,6 +1549,9 @@ environments:
         if (filePath.includes('env.template')) {
           return 'DATABASE_URL=kv://postgres-passwordKeyVault';
         }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
         }
@@ -1545,6 +1581,9 @@ build:
         }
         if (filePath.includes('env.template')) {
           return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -1587,6 +1626,9 @@ port: 3000
         }
         if (filePath.includes('.env')) {
           return 'PORT=3000\nDATABASE_URL=postgres://localhost';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -1641,6 +1683,9 @@ port: 3000
         }
         if (filePath.includes('.env')) {
           return 'PORT=3000\nDATABASE_URL=postgres://localhost';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -1902,6 +1947,9 @@ port: 3000
         if (filePath.includes('.env')) {
           return 'PORT=3000\nDATABASE_URL=postgres://localhost';
         }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
         }
@@ -1928,6 +1976,9 @@ environments:
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
           return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -1959,6 +2010,9 @@ environments:
         }
         if (filePath.includes('env.template')) {
           return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -1998,6 +2052,9 @@ port: 3000
         if (filePath.includes('.env')) {
           return 'PORT=3000\nDATABASE_URL=postgres://localhost';
         }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
         }
@@ -2025,6 +2082,9 @@ environments:
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('env.template')) {
           return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -2689,33 +2749,39 @@ environments:
     it('should ignore canonical aifabrix-secrets when invalid or non-object', async() => {
       const configMock = require('../../../lib/core/config');
       const canonicalPath = path.join(process.cwd(), 'canonical', 'secrets.yaml');
-      const defaultSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
+      const userSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.local.yaml');
       const defaultSecrets = { 'postgres-passwordKeyVault': 'admin123' };
 
       // Case 1: invalid YAML (readYamlAtPath throws) - surface error so user can fix the file
       configMock.getSecretsPath.mockResolvedValue(canonicalPath);
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath === canonicalPath) return true;
-        if (filePath === defaultSecretsPath) return true;
+        if (filePath === userSecretsPath) return true;
         return false;
       });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath === canonicalPath) {
           return 'invalid: yaml: content: ['; // invalid
         }
-        if (filePath === defaultSecretsPath) {
+        if (filePath === userSecretsPath) {
           return yaml.dump(defaultSecrets);
         }
         return '';
       });
       await expect(secrets.loadSecrets(undefined, 'myapp')).rejects.toThrow(/Failed to load secrets file/);
 
-      // Case 2: non-object YAML (e.g., number)
+      // Case 2: non-object YAML (e.g., number) on shared path — ignored; primary user file supplies values.
+      // With aifabrix-secrets configured, ~/.aifabrix/secrets.yaml is not merged (only user local + shared).
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath === canonicalPath) return true;
+        if (filePath === userSecretsPath) return true;
+        return false;
+      });
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath === canonicalPath) {
           return '123'; // non-object
         }
-        if (filePath === defaultSecretsPath) {
+        if (filePath === userSecretsPath) {
           return yaml.dump(defaultSecrets);
         }
         return '';
@@ -2893,9 +2959,11 @@ environments:
       expect(result['myapp-client-idKeyVault']).toBe('build-client-id');
     });
 
-    it('should fallback to default secrets.yaml if no secrets found', async() => {
+    it('does not read ~/.aifabrix/secrets.yaml when aifabrix-secrets is a remote URL', async() => {
       const defaultSecretsPath = path.join(mockHomeDir, '.aifabrix', 'secrets.yaml');
       const defaultSecrets = { 'postgres-passwordKeyVault': 'admin123' };
+
+      config.getSecretsPath.mockResolvedValue('https://dev.example.com/secrets');
 
       fs.existsSync.mockImplementation((filePath) => {
         if (filePath === defaultSecretsPath) {
@@ -2912,7 +2980,7 @@ environments:
 
       const result = await secrets.loadSecrets(undefined, 'myapp');
 
-      expect(result).toEqual(defaultSecrets);
+      expect(result).toEqual({});
     });
 
     it('when no secrets files exist, bootstraps primary secrets.local.yaml and returns empty object', async() => {
@@ -3068,9 +3136,14 @@ environments:
       const templateContent = 'DATABASE_URL=kv://postgres-passwordKeyVault\nPORT=3000';
 
       fs.existsSync.mockImplementation((filePath) => {
-        return filePath.includes('env.template') || filePath.includes('secrets.yaml');
+        return filePath.includes('env.template') ||
+          filePath.includes('secrets.yaml') ||
+          (typeof filePath === 'string' && filePath.includes('secrets.local.yaml'));
       });
       fs.readFileSync.mockImplementation((filePath) => {
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
         if (filePath.includes('env.template')) {
           return templateContent;
         }
@@ -3112,6 +3185,7 @@ environments:
         }
         return filePath.includes('env.template') ||
                filePath.includes('secrets.yaml') ||
+               (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) ||
                filePath.includes('env-config.yaml');
       });
       fs.readFileSync.mockImplementation((filePath) => {
@@ -3120,6 +3194,9 @@ environments:
         }
         if (filePath.includes('env.template')) {
           return 'KEYCLOAK_URL=kv://keycloak-urlKeyVault';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth"';
@@ -3154,16 +3231,23 @@ environments:
       const keycloakVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'application.yaml');
 
       fs.existsSync.mockImplementation((filePath) => {
-        if (filePath === keycloakVariablesPath) {
+        if (filePath === userSecretsPath || filePath === keycloakVariablesPath) {
           return true;
         }
         return filePath.includes('env.template') ||
                filePath.includes('secrets.yaml') ||
+               (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) ||
                filePath.includes('env-config.yaml');
       });
       fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth"';
+        }
         if (filePath.includes('env.template')) {
           return 'KEYCLOAK_URL=kv://keycloak-urlKeyVault';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth"';
@@ -3202,6 +3286,7 @@ environments:
         }
         return filePath.includes('env.template') ||
                filePath.includes('secrets.yaml') ||
+               (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) ||
                filePath.includes('env-config.yaml');
       });
       fs.readFileSync.mockImplementation((filePath) => {
@@ -3210,6 +3295,9 @@ environments:
         }
         if (filePath.includes('env.template')) {
           return 'EXTERNAL_URL=kv://external-urlKeyVault';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'external-urlKeyVault: "https://api.example.com:443/path"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'external-urlKeyVault: "https://api.example.com:443/path"';
@@ -3238,16 +3326,23 @@ environments:
       const keycloakVariablesPath = path.join(process.cwd(), 'builder', 'keycloak', 'application.yaml');
 
       fs.existsSync.mockImplementation((filePath) => {
-        if (filePath === keycloakVariablesPath) {
+        if (filePath === userSecretsPath || filePath === keycloakVariablesPath) {
           return true;
         }
         return filePath.includes('env.template') ||
                filePath.includes('secrets.yaml') ||
+               (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) ||
                filePath.includes('env-config.yaml');
       });
       fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === userSecretsPath) {
+          return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth/realms/master?param=value"';
+        }
         if (filePath.includes('env.template')) {
           return 'KEYCLOAK_URL=kv://keycloak-urlKeyVault';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth/realms/master?param=value"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'keycloak-urlKeyVault: "http://${KEYCLOAK_HOST}:8082/auth/realms/master?param=value"';
@@ -3289,6 +3384,9 @@ environments:
     beforeEach(() => {
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockImplementation((filePath) => {
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
+        }
         if (filePath.includes('env.template')) {
           return 'PORT=3000\nDATABASE_URL=kv://postgres-passwordKeyVault';
         }
@@ -3328,6 +3426,7 @@ port: 4000
         return filePath.includes('env.template') ||
                filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml') ||
+               (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) ||
                filePath === envPath;
       });
       if (!fs.statSync) {
@@ -3353,6 +3452,7 @@ port: 4000
         return filePath.includes('env.template') ||
                filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml') ||
+               (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) ||
                filePath === envPath;
       });
       fs.readFileSync.mockImplementation((filePath) => {
@@ -3365,6 +3465,9 @@ port: 5000
         }
         if (filePath.includes('env.template')) {
           return 'PORT=3000\nDATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -3400,6 +3503,7 @@ environments:
         return filePath.includes('env.template') ||
                filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml') ||
+               (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) ||
                filePath === envPath;
       });
       fs.readFileSync.mockImplementation((filePath) => {
@@ -3412,6 +3516,9 @@ port: 3000
         }
         if (filePath.includes('env.template')) {
           return 'PORT=3000\nDATABASE_URL=kv://postgres-passwordKeyVault';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -3448,6 +3555,7 @@ environments:
         return filePath.includes('env.template') ||
                filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml') ||
+               (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) ||
                filePath === envPath;
       });
       if (!fs.statSync) {
@@ -3471,6 +3579,7 @@ environments:
         return filePath.includes('env.template') ||
                filePath.includes('application.yaml') ||
                filePath.includes('secrets.yaml') ||
+               (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) ||
                filePath === envPath;
       });
       if (!fs.statSync) {
@@ -3497,6 +3606,7 @@ environments:
         }
         return filePath.includes('env.template') ||
                filePath.includes('secrets.yaml') ||
+               (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) ||
                filePath === envPath;
       });
 
@@ -3535,6 +3645,9 @@ environments:
         }
         if (filePath.includes('env.template')) {
           return 'DATABASE_PORT=5432\nREDIS_URL=redis://localhost:6379\nREDIS_HOST=localhost:6379';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -3598,6 +3711,9 @@ environments:
         }
         if (filePath.includes('env.template')) {
           return 'DATABASE_PORT=5432\nREDIS_URL=redis://localhost:6379';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -3664,6 +3780,9 @@ environments:
         if (filePath === envTemplatePath) {
           // Template has DATABASE_URL with localhost and dev-id adjusted port
           return 'DATABASE_URL=postgresql://miso_user:miso_pass123@localhost:5532/miso\nDB_HOST=localhost\nDB_PORT=5532';
+        }
+        if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+          return 'postgres-passwordKeyVault: "admin123"';
         }
         if (filePath.includes('secrets.yaml')) {
           return 'postgres-passwordKeyVault: "admin123"';
@@ -3762,7 +3881,9 @@ environments:
         throw new Error('bad decrypt');
       });
 
-      await expect(secrets.loadSecrets(explicitPath)).rejects.toThrow('Failed to decrypt secret \'encKey\': bad decrypt');
+      await expect(secrets.loadSecrets(explicitPath)).rejects.toThrow(
+        `Failed to decrypt secret 'encKey' (encrypted value loaded from: ${explicitPath}): bad decrypt`
+      );
     });
   });
 
