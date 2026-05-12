@@ -1,6 +1,13 @@
 /**
  * @fileoverview Tests for ancestor secrets.local.yaml path collection
+ *
+ * Runs in an isolated Jest project (see jest.projects.js: `secrets-ancestor-paths`) so
+ * `jest.mock('fs')` from other suites cannot break real-disk fixtures. Default project
+ * excludes this file via testPathIgnorePatterns.
  */
+
+jest.unmock('fs');
+jest.unmock('node:fs');
 
 const path = require('path');
 const os = require('os');
