@@ -304,6 +304,14 @@ describe('collectMissingSecrets', () => {
     const content = 'REDIS_PASSWORD=kv://redis-passwordKeyVault';
     expect(collectMissingSecrets(content, {})).toEqual([]);
   });
+
+  it('does not list catalog emptyString optional AI keys as missing when absent (dataplane Azure OpenAI)', () => {
+    const content = [
+      'AZURE_OPENAI_ENDPOINT=kv://azure-openaiapi-urlKeyVault',
+      'AZURE_OPENAI_API_KEY=kv://secrets-azureOpenaiApiKeyVault'
+    ].join('\n');
+    expect(collectMissingSecrets(content, {})).toEqual([]);
+  });
 });
 
 describe('replaceKvInContent', () => {
@@ -311,6 +319,15 @@ describe('replaceKvInContent', () => {
     const content = 'REDIS_PASSWORD=kv://redis-passwordKeyVault';
     const result = replaceKvInContent(content, {}, {});
     expect(result).toBe('REDIS_PASSWORD=');
+  });
+
+  it('replaces emptyString optional AI kv refs with empty string when key absent', () => {
+    const content = [
+      'AZURE_OPENAI_ENDPOINT=kv://azure-openaiapi-urlKeyVault',
+      'AZURE_OPENAI_API_KEY=kv://secrets-azureOpenaiApiKeyVault'
+    ].join('\n');
+    const result = replaceKvInContent(content, {}, {});
+    expect(result).toBe('AZURE_OPENAI_ENDPOINT=\nAZURE_OPENAI_API_KEY=');
   });
 
   it('replaces path-style kv refs using nested secrets', () => {

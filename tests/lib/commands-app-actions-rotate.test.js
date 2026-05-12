@@ -204,7 +204,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Credentials saved to ~/.aifabrix/secrets.local.yaml'));
         // Verify that env.template is updated and .env file is generated when localhost
         expect(require('../../lib/utils/env-template').updateEnvTemplate).toHaveBeenCalled();
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local');
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local', true);
         expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ .env file updated with new credentials'));
       }
     });
@@ -551,7 +551,7 @@ describe('Application Commands - Rotate Secret Action', () => {
         });
 
         expect(require('../../lib/utils/env-template').updateEnvTemplate).toHaveBeenCalled();
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local');
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local', true);
         expect(logger.warn).toHaveBeenCalledWith(
           expect.stringContaining('⚠  Could not regenerate .env file')
         );
