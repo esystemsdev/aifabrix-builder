@@ -16,18 +16,24 @@ describe('paths app listing (real fs, broken symlinks)', () => {
   let tmp;
   let savedCwd;
   let savedProjectRoot;
+  let savedAifabrixHome;
 
   beforeEach(() => {
     savedCwd = process.cwd();
     savedProjectRoot = global.PROJECT_ROOT;
+    savedAifabrixHome = process.env.AIFABRIX_HOME;
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aifx-paths-list-'));
     fs.writeFileSync(path.join(tmp, 'package.json'), '{}');
+    fs.writeFileSync(path.join(tmp, 'config.yaml'), 'developer-id: "0"\n');
+    process.env.AIFABRIX_HOME = tmp;
     process.chdir(tmp);
     global.PROJECT_ROOT = tmp;
     jest.resetModules();
   });
 
   afterEach(() => {
+    if (savedAifabrixHome === undefined) delete process.env.AIFABRIX_HOME;
+    else process.env.AIFABRIX_HOME = savedAifabrixHome;
     process.chdir(savedCwd);
     global.PROJECT_ROOT = savedProjectRoot;
     try {

@@ -38,6 +38,9 @@ describe('infra-parameter-catalog', () => {
     expect(e0.generator.type).toBe('databaseUrl');
     expect(cat.findEntryForKey('redis-url').generator.type).toBe('literal');
     expect(cat.isKeyAllowedEmpty('redis-passwordKeyVault')).toBe(true);
+    expect(cat.isKeyAllowedEmpty('secrets-openaiApiKeyVault')).toBe(true);
+    expect(cat.isKeyAllowedEmpty('azure-openaiapi-urlKeyVault')).toBe(true);
+    expect(cat.isKeyAllowedEmpty('secrets-azureOpenaiApiKeyVault')).toBe(true);
   });
 
   it('miso-controller-admin-emailKeyVault is literal with {{adminEmail}} (not pattern *KeyVault → randomBytes32)', () => {
@@ -103,9 +106,9 @@ parameters:
     expect(generateValueFromCatalogEntry('redis-url', lit, crypto)).toContain('REDIS_HOST');
     const pg = cat.findEntryForKey('postgres-passwordKeyVault');
     expect(generateValueFromCatalogEntry('postgres-passwordKeyVault', pg, crypto, vars)).toBe('admin123');
-    const apiKey = cat.findEntryForKey('api-key');
+    const apiKey = cat.findEntryForKey('keycloak-client-secretKeyVault');
     expect(apiKey).toBeTruthy();
-    const rb = generateValueFromCatalogEntry('api-key', apiKey, crypto);
+    const rb = generateValueFromCatalogEntry('keycloak-client-secretKeyVault', apiKey, crypto);
     expect(rb.length).toBe(44);
   });
 
@@ -224,7 +227,7 @@ parameters:
       'miso-controller-secrets-encryptionKeyVault',
       'miso-controller-jwt-secretKeyVault',
       'dataplane-client-secretKeyVault',
-      'api-key'
+      'keycloak-client-secretKeyVault'
     ];
     for (const key of keys) {
       const e = cat.findEntryForKey(key);
@@ -260,6 +263,9 @@ parameters:
     const set = readRelaxedEmptyAllowedKeySet(BUNDLED_CATALOG);
     expect(set).toBeTruthy();
     expect(set.has('redis-passwordKeyVault')).toBe(true);
+    expect(set.has('azure-openaiapi-urlKeyVault')).toBe(true);
+    expect(set.has('secrets-azureOpenaiApiKeyVault')).toBe(true);
+    expect(set.has('secrets-openaiApiKeyVault')).toBe(true);
   });
 
   it('standardBootstrapKeysFromDoc reads standardUpInfraEnsureKeys', () => {

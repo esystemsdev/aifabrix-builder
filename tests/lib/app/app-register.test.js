@@ -554,7 +554,7 @@ describe('App Register Module', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Application registered successfully'));
       expect(localSecrets.saveLocalSecret).toHaveBeenCalledTimes(2);
       expect(envTemplate.updateEnvTemplate).toHaveBeenCalled();
-      expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local');
+      expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local', true);
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ .env file updated with new credentials'));
     });
 

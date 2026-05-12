@@ -13,15 +13,20 @@ jest.mock('../../../lib/core/config', () => ({
 jest.mock('../../../lib/utils/dev-cert-helper');
 jest.mock('../../../lib/utils/paths', () => ({ getConfigDirForPaths: jest.fn(() => '/config') }));
 jest.mock('fs', () => ({ existsSync: jest.fn() }));
+jest.mock('../../../lib/utils/bash-secret-env', () => ({
+  getBashPrefixedProcessEnvOverlay: jest.fn().mockResolvedValue({})
+}));
 
 const config = require('../../../lib/core/config');
 const { getCertDir } = require('../../../lib/utils/dev-cert-helper');
 const fs = require('fs');
 const { getRemoteDockerEnv, getDockerExecEnv } = require('../../../lib/utils/remote-docker-env');
+const bashSecretEnv = require('../../../lib/utils/bash-secret-env');
 
 describe('remote-docker-env', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    bashSecretEnv.getBashPrefixedProcessEnvOverlay.mockResolvedValue({});
     getCertDir.mockReturnValue('/config/certs/01');
     config.getDockerTlsSkipVerify.mockResolvedValue(false);
   });
@@ -144,5 +149,12 @@ describe('remote-docker-env', () => {
         process.env.DOCKER_CERT_PATH = prev;
       }
     }
+  });
+
+  it('getDockerExecEnv merges BASH_* overlay from secrets', async() => {
+    config.getDockerEndpoint.mockResolvedValue(null);
+    bashSecretEnv.getBashPrefixedProcessEnvOverlay.mockResolvedValue({ NPM_TOKEN: 'from-bash' });
+    const env = await getDockerExecEnv();
+    expect(env.NPM_TOKEN).toBe('from-bash');
   });
 });

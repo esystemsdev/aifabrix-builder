@@ -88,6 +88,7 @@ Profiles: **layout-blocks** (header/status/list/helpers); **tty-summary** (chalk
 | aifabrix dev set-work | tty-summary |
 | aifabrix dev print-home | stdout-only |
 | aifabrix dev print-work | stdout-only |
+| aifabrix dev shell-env | stdout-only |
 | aifabrix dev set-format | tty-summary |
 | aifabrix dev init | tty-summary + stream-logs |
 | aifabrix dev refresh | tty-summary |

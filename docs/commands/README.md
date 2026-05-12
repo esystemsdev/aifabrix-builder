@@ -33,6 +33,7 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix dev set-home <path>`](developer-isolation.md#aifabrix-dev-set-home) - Set or clear aifabrix-home; optional shell/user env registration
   - [`aifabrix dev set-work <path>`](developer-isolation.md#aifabrix-dev-set-work) - Set or clear aifabrix-work (workspace root); optional `AIFABRIX_WORK` registration
   - [`aifabrix dev print-home`](developer-isolation.md#aifabrix-dev-print-home) / [`print-work`](developer-isolation.md#aifabrix-dev-print-work) - Script-friendly resolved paths (stdout only)
+  - [`aifabrix dev shell-env`](developer-isolation.md#aifabrix-dev-shell-env) - Print `export` lines for the **current** shell (`eval "$(aifabrix dev shell-env)"` on bash/zsh)
   - [`aifabrix dev set-format <format>`](developer-isolation.md#aifabrix-dev-set-format) - Default json|yaml when `--format` is omitted (download/convert)
   - [`aifabrix dev init`](developer-isolation.md#aifabrix-dev-init) - Onboard with Builder Server (cert, settings, SSH for Mutagen)
   - [`aifabrix dev refresh`](developer-isolation.md#aifabrix-dev-refresh) - Pull server settings into config; renew cert if due or `--cert`

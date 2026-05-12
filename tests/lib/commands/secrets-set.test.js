@@ -440,7 +440,7 @@ describe('secret set command', () => {
     });
 
     describe('path resolution for user secrets file', () => {
-      it('saves to getPrimaryUserSecretsLocalPath (config dir), not aifabrix-home alone', async() => {
+      it('saves to getPrimaryUserSecretsLocalPath (caller supplies resolved path)', async() => {
         const configDir = '/custom/aifabrix';
         const userSecretsPath = path.join(configDir, 'secrets.local.yaml');
         pathsUtil.getPrimaryUserSecretsLocalPath.mockReturnValue(userSecretsPath);

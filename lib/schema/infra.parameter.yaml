@@ -342,16 +342,6 @@ parameters:
     azure:
       notes: Empty until set; user-supplied Azure OpenAI API key (not auto-generated).
 
-  # Legacy unprefixed name (scaffold / old env.template); prefer *KeyVault suffix or {appKey}-secrets-apiKeyVault (keyvault.md).
-  - key: api-key
-    scope: app
-    generator:
-      type: randomBytes32
-    ensureOn: [resolveApp]
-    azure:
-      notes: >-
-        Legacy kv://api-key; new apps should use kv://api-keyKeyVault or {appKey}-secrets-apiKeyVault.
-
   # Legacy unprefixed name; prefer kv://{appKey}-secrets-apiKeyVault in env.template (keyvault.md secrets.apiKeyVault).
   - key: miso-controller-secrets-apiKeyVault
     scope: app

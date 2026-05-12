@@ -119,7 +119,7 @@ describe('Token Manager Module', () => {
       expect(result).toBeNull();
     });
 
-    it('should read from getPrimaryUserSecretsLocalPath even when aifabrix-home differs', async() => {
+    it('should read from getPrimaryUserSecretsLocalPath (explicit mock path)', async() => {
       const configDir = '/workspace/.aifabrix';
       const secretsPath = path.join(configDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');

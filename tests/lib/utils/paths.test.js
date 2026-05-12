@@ -298,9 +298,14 @@ describe('Path Utilities - listIntegrationAppNames / listBuilderAppNames', () =>
     const fsReal = jest.requireActual('node:fs');
     const tmp = fsReal.mkdtempSync(path.join(os.tmpdir(), 'aifx-list-int-'));
     fsReal.writeFileSync(path.join(tmp, 'package.json'), '{}', 'utf8');
+    // Under Jest, cwd-based config discovery is disabled; runtime config falls back to ~/.aifabrix
+    // unless AIFABRIX_HOME points at an isolated tree. Otherwise list* merges real platform dirs.
+    fsReal.writeFileSync(path.join(tmp, 'config.yaml'), 'developer-id: "0"\n', 'utf8');
     const savedRoot = global.PROJECT_ROOT;
     const savedCwd = process.cwd();
+    const savedHome = process.env.AIFABRIX_HOME;
     try {
+      process.env.AIFABRIX_HOME = tmp;
       process.chdir(tmp);
       global.PROJECT_ROOT = tmp;
       jest.resetModules();
@@ -309,6 +314,8 @@ describe('Path Utilities - listIntegrationAppNames / listBuilderAppNames', () =>
       paths.clearProjectRootCache();
       expect(paths.listIntegrationAppNames()).toEqual([]);
     } finally {
+      if (savedHome === undefined) delete process.env.AIFABRIX_HOME;
+      else process.env.AIFABRIX_HOME = savedHome;
       process.chdir(savedCwd);
       global.PROJECT_ROOT = savedRoot;
       try {
@@ -324,9 +331,12 @@ describe('Path Utilities - listIntegrationAppNames / listBuilderAppNames', () =>
     const fsReal = jest.requireActual('node:fs');
     const tmp = fsReal.mkdtempSync(path.join(os.tmpdir(), 'aifx-list-bld-'));
     fsReal.writeFileSync(path.join(tmp, 'package.json'), '{}', 'utf8');
+    fsReal.writeFileSync(path.join(tmp, 'config.yaml'), 'developer-id: "0"\n', 'utf8');
     const savedRoot = global.PROJECT_ROOT;
     const savedCwd = process.cwd();
+    const savedHome = process.env.AIFABRIX_HOME;
     try {
+      process.env.AIFABRIX_HOME = tmp;
       process.chdir(tmp);
       global.PROJECT_ROOT = tmp;
       jest.resetModules();
@@ -335,6 +345,8 @@ describe('Path Utilities - listIntegrationAppNames / listBuilderAppNames', () =>
       paths.clearProjectRootCache();
       expect(paths.listBuilderAppNames()).toEqual([]);
     } finally {
+      if (savedHome === undefined) delete process.env.AIFABRIX_HOME;
+      else process.env.AIFABRIX_HOME = savedHome;
       process.chdir(savedCwd);
       global.PROJECT_ROOT = savedRoot;
       try {

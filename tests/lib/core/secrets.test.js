@@ -141,12 +141,13 @@ jest.mock('os');
 jest.mock('../../../lib/utils/paths', () => {
   const pathMod = require('path');
   const getConfigDirForPaths = jest.fn();
+  const getAifabrixHome = jest.fn();
   return {
-    getAifabrixHome: jest.fn(),
+    getAifabrixHome,
     getConfigDirForPaths,
     getAifabrixSystemDir: jest.fn(() => getConfigDirForPaths()),
     getPrimaryUserSecretsLocalPath: jest.fn(() =>
-      pathMod.join(getConfigDirForPaths(), 'secrets.local.yaml')
+      pathMod.join(getAifabrixHome(), 'secrets.local.yaml')
     ),
     getBuilderPath: jest.fn((appName) => pathMod.join(process.cwd(), 'builder', appName))
   };
@@ -1812,7 +1813,7 @@ environments:
 
       // Verify that the same path was used for both read and write (primary user path)
       expect(writtenPath).toBe(overrideSecretsPath);
-      expect(pathsUtil.getConfigDirForPaths).toHaveBeenCalled();
+      expect(pathsUtil.getPrimaryUserSecretsLocalPath).toHaveBeenCalled();
     });
 
     it('should use explicit path when provided', async() => {
@@ -2995,12 +2996,11 @@ environments:
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
-    it('should save under getConfigDirForPaths (primary secrets file)', async() => {
-      const configDir = '/custom/aifabrix';
-      const userSecretsPath = path.join(configDir, 'secrets.local.yaml');
+    it('should save under getPrimaryUserSecretsLocalPath (resolved aifabrix home)', async() => {
+      const homeDir = '/custom/aifabrix';
+      const userSecretsPath = path.join(homeDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
-      pathsUtil.getConfigDirForPaths.mockReturnValue(configDir);
-      pathsUtil.getAifabrixHome.mockReturnValue('/home/dev02');
+      pathsUtil.getAifabrixHome.mockReturnValue(homeDir);
 
       fs.existsSync.mockReturnValue(false);
       fs.mkdirSync.mockImplementation(() => {});
@@ -3009,7 +3009,7 @@ environments:
       await localSecrets.saveLocalSecret('myapp-client-idKeyVault', 'client-id-value');
 
       expect(pathsUtil.getPrimaryUserSecretsLocalPath).toHaveBeenCalled();
-      expect(fs.mkdirSync).toHaveBeenCalledWith(path.normalize(configDir), { recursive: true, mode: 0o700 });
+      expect(fs.mkdirSync).toHaveBeenCalledWith(path.normalize(homeDir), { recursive: true, mode: 0o700 });
       expect(fs.writeFileSync).toHaveBeenCalledWith(
         path.normalize(userSecretsPath),
         expect.stringContaining('myapp-client-idKeyVault'),
@@ -3018,10 +3018,10 @@ environments:
     });
 
     it('should use getPrimaryUserSecretsLocalPath instead of os.homedir()', async() => {
-      const configDir = '/workspace/.aifabrix';
-      const userSecretsPath = path.join(configDir, 'secrets.local.yaml');
+      const homeDir = '/workspace/.aifabrix';
+      const userSecretsPath = path.join(homeDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
-      pathsUtil.getConfigDirForPaths.mockReturnValue(configDir);
+      pathsUtil.getAifabrixHome.mockReturnValue(homeDir);
 
       fs.existsSync.mockReturnValue(false);
       fs.mkdirSync.mockImplementation(() => {});
@@ -3788,11 +3788,11 @@ environments:
   });
 
   describe('path resolution consistency between save and load', () => {
-    it('should save and load from the same path when config dir is overridden', async() => {
-      const configDir = '/workspace/.aifabrix';
-      const userSecretsPath = path.join(configDir, 'secrets.local.yaml');
+    it('should save and load from the same path when aifabrix home is overridden', async() => {
+      const homeDir = '/workspace/.aifabrix';
+      const userSecretsPath = path.join(homeDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
-      pathsUtil.getConfigDirForPaths.mockReturnValue(configDir);
+      pathsUtil.getAifabrixHome.mockReturnValue(homeDir);
 
       // Save a secret
       fs.existsSync.mockReturnValue(false);
@@ -3807,7 +3807,7 @@ environments:
 
       // Now load secrets - should read from the same path
       jest.clearAllMocks();
-      pathsUtil.getConfigDirForPaths.mockReturnValue(configDir);
+      pathsUtil.getAifabrixHome.mockReturnValue(homeDir);
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(yaml.dump({
         'test-app-client-idKeyVault': 'saved-client-id',
@@ -3824,10 +3824,10 @@ environments:
     });
 
     it('should ensure saveLocalSecret and loadUserSecrets use the same path resolution', async() => {
-      const configDir = '/custom/aifabrix';
-      const userSecretsPath = path.join(configDir, 'secrets.local.yaml');
+      const homeDir = '/custom/aifabrix';
+      const userSecretsPath = path.join(homeDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
-      pathsUtil.getConfigDirForPaths.mockReturnValue(configDir);
+      pathsUtil.getAifabrixHome.mockReturnValue(homeDir);
 
       // Save using saveLocalSecret
       fs.existsSync.mockReturnValue(false);
@@ -3842,7 +3842,7 @@ environments:
 
       // Load using loadUserSecrets
       jest.clearAllMocks();
-      pathsUtil.getConfigDirForPaths.mockReturnValue(configDir);
+      pathsUtil.getAifabrixHome.mockReturnValue(homeDir);
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(yaml.dump({
         'integration-test-key': 'integration-test-value'

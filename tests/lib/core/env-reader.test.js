@@ -175,7 +175,7 @@ DATABASE_URL="postgres://localhost:5432/test"
       expect(result.NODE_ENV).toBe('development');
       expect(result.PORT).toBe('3000');
       expect(result.DATABASE_PASSWORD).toBe('kv://database-password');
-      expect(result.API_KEY).toBe('kv://api-key');
+      expect(result.API_KEY).toBe('kv://miso-controller-secrets-apiKeyVault');
       expect(result.PUBLIC_URL).toBe('https://example.com');
       expect(result.APP_NAME).toBe('test-app');
     });
@@ -200,7 +200,7 @@ DATABASE_URL="postgres://localhost:5432/test"
       const result = envReader.generateSecretsFromEnv(envVars);
 
       expect(result['database-password']).toBe('secret123');
-      expect(result['api-key']).toBe('abc123def456');
+      expect(result['miso-controller-secrets-apiKeyVault']).toBe('abc123def456');
       expect(result['jwt-secret']).toBe('jwt-secret-value');
       expect(result['node-env']).toBeUndefined();
       expect(result['port']).toBeUndefined();
@@ -457,13 +457,13 @@ DATABASE_URL="postgres://localhost:5432/test"
       expect(result.template).toContain('NODE_ENV=${NODE_ENV}');
       expect(result.template).toContain('DB_PASSWORD=kv://databases-test-app-0-passwordKeyVault');
       expect(result.template).toContain('DB_USER=test_app_user');
-      expect(result.template).toContain('API_KEY=kv://api-key');
+      expect(result.template).toContain('API_KEY=kv://miso-controller-secrets-apiKeyVault');
       expect(result.template).toContain('PUBLIC_URL=https://example.com');
       expect(result.template).toContain('PORT=3000');
       expect(result.template).toContain('APP_NAME=test-app');
 
       expect(result.secrets['database-password']).toBe('secret123');
-      expect(result.secrets['api-key']).toBe('abc123def456');
+      expect(result.secrets['miso-controller-secrets-apiKeyVault']).toBe('abc123def456');
     });
 
     it('should handle validation warnings', async() => {

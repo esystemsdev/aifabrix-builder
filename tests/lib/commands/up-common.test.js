@@ -48,6 +48,7 @@ jest.mock('../../../lib/utils/paths', () => {
   return {
     getBuilderPath: jest.fn((appName) => pathMod.join(process.cwd(), 'builder', appName)),
     getBuilderRoot: jest.fn(() => pathMod.join(process.cwd(), 'builder')),
+    getSystemBuilderRoot: jest.fn(() => pathMod.join(process.cwd(), '.aifabrix', 'builder')),
     resolveApplicationConfigPath: jest.fn()
   };
 });
@@ -77,6 +78,12 @@ describe('up-common ensureAppFromTemplate', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    delete process.env.AIFABRIX_BUILDER_DIR;
+    pathsUtil.getBuilderPath.mockImplementation((appName) => path.join(process.cwd(), 'builder', appName));
+    pathsUtil.getBuilderRoot.mockReturnValue(path.join(process.cwd(), 'builder'));
   });
 
   it('should throw if appName is missing', async() => {
@@ -114,6 +121,40 @@ describe('up-common ensureAppFromTemplate', () => {
     expect(copyTemplateFiles).toHaveBeenCalledWith('dataplane', appPath);
     expect(ensureReadmeForAppPath).toHaveBeenCalledWith(appPath, 'dataplane');
     expect(ensureReadmeForApp).toHaveBeenCalledWith('dataplane');
+  });
+
+  it('does not copy into cwd/builder when AIFABRIX_BUILDER_DIR is unset and primary path differs', async() => {
+    const systemPath = path.join(cwd, '.aifabrix', 'builder', 'dataplane');
+    pathsUtil.getBuilderPath.mockReturnValue(systemPath);
+    pathsUtil.resolveApplicationConfigPath.mockImplementation(() => {
+      throw new Error('Application config not found');
+    });
+    copyTemplateFiles.mockResolvedValue(['application.yaml']);
+
+    const result = await ensureAppFromTemplate('dataplane');
+
+    expect(result).toBe(true);
+    expect(copyTemplateFiles).toHaveBeenCalledTimes(1);
+    expect(copyTemplateFiles).toHaveBeenCalledWith('dataplane', systemPath);
+  });
+
+  it('copies into cwd/builder when AIFABRIX_BUILDER_DIR is set and primary differs from cwd', async() => {
+    const customRoot = path.join(cwd, 'custom-builder');
+    const appPath = path.join(customRoot, 'dataplane');
+    process.env.AIFABRIX_BUILDER_DIR = customRoot;
+    pathsUtil.getBuilderPath.mockReturnValue(appPath);
+    pathsUtil.getBuilderRoot.mockReturnValue(customRoot);
+    pathsUtil.resolveApplicationConfigPath.mockImplementation(() => {
+      throw new Error('Application config not found');
+    });
+    copyTemplateFiles.mockResolvedValue(['application.yaml']);
+
+    const result = await ensureAppFromTemplate('dataplane');
+
+    expect(result).toBe(true);
+    expect(copyTemplateFiles).toHaveBeenCalledTimes(2);
+    expect(copyTemplateFiles).toHaveBeenCalledWith('dataplane', appPath);
+    expect(copyTemplateFiles).toHaveBeenCalledWith('dataplane', path.join(cwd, 'builder', 'dataplane'));
   });
 });
 
@@ -293,6 +334,7 @@ describe('up-common cleanBuilderAppDirs', () => {
     jest.spyOn(fs, 'existsSync');
     jest.spyOn(fs, 'rmSync');
     pathsUtil.getBuilderRoot.mockReturnValue(path.join(process.cwd(), 'builder'));
+    pathsUtil.getSystemBuilderRoot.mockReturnValue(path.join(process.cwd(), '.aifabrix', 'builder'));
     pathsUtil.getBuilderPath.mockImplementation((appName) => path.join(process.cwd(), 'builder', appName));
   });
 
@@ -322,10 +364,20 @@ describe('up-common cleanBuilderAppDirs', () => {
     expect(fs.rmSync).not.toHaveBeenCalled();
   });
 
-  it('throws when path is outside builder root (path traversal)', async() => {
+  it('throws when path is outside allowed builder roots (path traversal)', async() => {
     pathsUtil.getBuilderRoot.mockReturnValue(path.join(process.cwd(), 'builder'));
+    pathsUtil.getSystemBuilderRoot.mockReturnValue(path.join(process.cwd(), '.aifabrix', 'builder'));
     pathsUtil.getBuilderPath.mockReturnValue('/tmp/other/dataplane');
-    await expect(cleanBuilderAppDirs(['dataplane'])).rejects.toThrow('outside builder root');
+    await expect(cleanBuilderAppDirs(['dataplane'])).rejects.toThrow('outside allowed builder roots');
     expect(fs.rmSync).not.toHaveBeenCalled();
+  });
+
+  it('removes dir under ~/.aifabrix builder when getBuilderPath resolves there', async() => {
+    const sysPath = path.join(process.cwd(), '.aifabrix', 'builder', 'keycloak');
+    pathsUtil.getBuilderPath.mockReturnValue(sysPath);
+    fs.existsSync.mockImplementation((p) => p === sysPath);
+    fs.rmSync.mockImplementation(() => {});
+    await cleanBuilderAppDirs(['keycloak']);
+    expect(fs.rmSync).toHaveBeenCalledWith(sysPath, { recursive: true });
   });
 });

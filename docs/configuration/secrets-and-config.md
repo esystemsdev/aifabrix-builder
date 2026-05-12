@@ -2,71 +2,283 @@
 
 ← [Documentation index](../README.md) · [Configuration](README.md)
 
+How Fabrix handles **secrets** and **`config.yaml`**: Key Vault in Azure production, local files and CLI behaviour on developer machines, and how the pieces fit together.
+
+**On this page:** [At a glance](#at-a-glance) · [Why secure](#why-secure-your-secrets) · [kv:// in templates](#why-use-kv-in-templates) · [Production vs developer](#production-azure-key-vault-vs-developer-cycle) · [config.yaml](#configyaml) · [aifabrix-secrets](#aifabrix-secrets-remote-vs-local) · [Security / ISO 27001](#security-posture-and-iso-27001-aligned-practices) · [secrets.local.yaml](#secretslocalyaml-file-based-secrets) · [admin-secrets.env](#admin-secretsenv-and-run-env-iso-27k) · [Encryption](#encryption-aifabrix-secure) · [External integrations](#external-integrations)
+
+---
+
+## At a glance
+
+| Where | Secret storage |
+|--------|----------------|
+| **Azure production** | **Azure Key Vault** — runtime secrets are not read from `secrets.local.yaml` on the application host. |
+| **Developer machine / dev CI** | **`~/.aifabrix/secrets.local.yaml`**, optional **`aifabrix-secrets`** (file or `https://` API), **`BASH_*`** → subprocess `env`, temporary `.env` for compose. |
+
+Same **`kv://`** names in **`env.template`** line up with Key Vault secret names in production and with local YAML keys in development — one logical contract, two resolution backends.
+
+---
+
 ## Why secure your secrets
 
-Secrets (tokens, client credentials, controller URLs, encryption keys) must be protected for **confidentiality**, **integrity**, and **auditability**. Never commit real secrets to version control: do not commit `config.yaml` or `secrets.local.yaml` with real tokens or credentials. You may commit *structure* or *examples* (e.g. sample keys with placeholders); never real values. Keeping secrets out of Git and in a single, controlled place reduces risk and supports compliance (e.g. ISO 27k): access control, secure storage, no secrets in version control, and a clear audit trail.
+Secrets (tokens, client credentials, controller URLs, encryption keys) need **confidentiality**, **integrity**, and **auditability**.
 
-## Why use secrets and kv://
+**Do not commit real values** in Git: not `config.yaml`, not `secrets.local.yaml`, not `.env` with live tokens. Structure and placeholders in repo are fine; production values are not.
 
-In production, AI Fabrix stores secrets in **Azure Key Vault**. Using `kv://` references in `env.template` and resolving them via your local secrets file makes your integration or application **production-ready**: the same configuration works locally (resolved from `secrets.local.yaml`) and in deployed environments (resolved from Key Vault), with no config change. See [env.template](env-template.md) for `kv://` usage. After `kv://` resolution, the Builder can expand **`url://`** placeholders (public/internal URLs) using `application.yaml`, `config.yaml`, and a shared registry file — see [Declarative url://](declarative-urls.md). The Builder’s list of known infra keys, generators, and Azure naming hints lives in the shipped catalog — see [Infra parameters](infra-parameters.md) and run **`aifabrix parameters validate`** to check templates against it.
+Keeping secrets out of version control and in controlled stores supports common compliance themes (e.g. ISO 27001): access control, secure storage, and traceability.
+
+---
+
+## Why use kv:// in templates
+
+**Production (Azure)**  
+AI Fabrix stores application secrets in **Azure Key Vault**.
+
+**Templates**  
+Use **`kv://`** references in **`env.template`**. That keeps repos free of live secrets while staying aligned with how Key Vault names map in production.
+
+**Local vs Azure**
+
+- **Locally:** the Builder resolves `kv://` from **developer-only** stores (`secrets.local.yaml`, shared file, or remote dev API — see [aifabrix-secrets](#aifabrix-secrets-remote-vs-local)).
+- **In Azure production:** runtime secrets come from **Key Vault** via the deployment model — **not** from `secrets.local.yaml` or Builder shared-secret files on the app host.
+
+Process **`env`** during **`aifabrix build`**, **shell**, **install**, or **push** on a laptop is **developer-cycle only**. There is **no intended** second path that keeps production application secrets as persistent plaintext in repo or manifest if you keep manifests **reference-based**.
+
+More detail: [Production (Azure Key Vault) vs developer cycle](#production-azure-key-vault-vs-developer-cycle). **`kv://`** usage: [env.template](env-template.md).
+
+**After `kv://`** the Builder can expand **`url://`** placeholders — [Declarative url://](declarative-urls.md). Infra keys and Azure naming: [Infra parameters](infra-parameters.md), command **`aifabrix parameters validate`**.
+
+---
+
+## Production (Azure Key Vault) vs developer cycle
+
+### Azure / production
+
+- Runtime secrets live in **Azure Key Vault**.
+- Manifests use **Key Vault references**; the same `kv://` **naming** aligns with Key Vault secret names.
+- The running app does **not** use `secrets.local.yaml`, the **`aifabrix-secrets`** file or HTTPS store on the **application host**, or **`BASH_*`** merge for **production secret storage**.
+
+**Key Vault is the source of truth in production** — not the developer file layout.
+
+### Developer cycle only
+
+- **`~/.aifabrix/secrets.local.yaml`**
+- Optional **`aifabrix-secrets`**: file path or `https://` URL
+- **`BASH_*`** → subprocess **`env`**, temporary resolved **`.env`**
+- **`aifabrix secure`** for encrypted local files (`secure://`)
+
+These exist so you can **build, run, resolve, and push** without putting real values in Git. They **mirror** the `kv://` contract locally; they **do not replace** Key Vault in Azure.
+
+### Operational caveat
+
+If someone commits **literal secrets** in `application.yaml`, deployment JSON, or `env.template` (instead of references), any environment can leak them. That is **misconfiguration**, not a designed production path. Prefer references, **`aifabrix secret validate`**, and code review.
+
+---
 
 ## config.yaml
 
-Location: `~/.aifabrix/config.yaml` (or the directory pointed to by `AIFABRIX_HOME` / `AIFABRIX_CONFIG`). Manages developer-id, **aifabrix-home** (Fabrix state and config root), **aifabrix-work** (optional default git / workspace root; independent of home), aifabrix-secrets, aifabrix-env-config, traefik, controller, environment, device tokens, per-environment client tokens, and **remote development** when using a remote dev server. The CLI writes `config.yaml` with mode `600` and enforces restrictive permissions on the config directory (`700`) and file (`600`) when reading.
+### Where it lives
 
-**User environment registration:** When you run `aifabrix dev set-home` or `aifabrix dev set-work`, the CLI can register **AIFABRIX_HOME** and **AIFABRIX_WORK** in your Windows user environment (persistent for new terminals and IDEs that read user env) or, on macOS/Linux, write `aifabrix-shell-env.sh` next to `config.yaml` and add a marked block to `.zshrc` or `.bashrc` that sources it. Use **`--no-register-env`** on either command to only change `config.yaml` and skip OS/shell updates. Open a **new** terminal (or restart the IDE) after registration so variables appear. Use `aifabrix dev print-home` and `aifabrix dev print-work` for script-friendly stdout (resolved paths; `print-work` prints an empty line when unset).
+`~/.aifabrix/config.yaml`, or the directory from **`AIFABRIX_HOME`** / **`AIFABRIX_CONFIG`**.
 
-**Key fields:** `developer-id` (read by `aifabrix up-infra`), `format` (default output format: `json` or `yaml`; set via `aifabrix dev set-format`; used by download, convert, create external, wizard when `--format` is not passed), **`useEnvironmentScopedResources`** (optional boolean; default false when absent—**passivated**. When true, local resolution and `aifabrix run` can use environment-prefixed resource names for apps that set `environmentScopedResources: true` in `application.yaml`, only for **dev** and **tst**. Prefer `aifabrix dev set-scoped-resources true|false` over hand-editing.), `traefik` (set by `aifabrix up-infra --traefik`), `controller` and `environment` (set by login or `aifabrix auth --set-controller` / `--set-environment`), `device` (device flow tokens), `environments.<env>.clients.<app>` (client tokens). Tokens can be encrypted at rest when `secrets-encryption` is set.
+### What it controls
 
-**Remote development (when `remote-server` is set):** `remote-server` (SSH host for remote Docker and Mutagen), `docker-endpoint` (Docker API endpoint on the remote host). All dev APIs (settings, secrets, sync) use **certificate (mTLS) authentication**. You can refresh config from the server with `aifabrix dev init`; run `aifabrix dev show` to view config after refresh. See [Commands: Developer isolation](../commands/developer-isolation.md) for `dev init` and remote setup.
+Developer state: **developer-id**, **aifabrix-home**, **aifabrix-work**, **aifabrix-secrets**, **aifabrix-env-config**, **traefik**, **controller**, **environment**, **device** tokens, per-environment client tokens, **remote development** (`remote-server`, `docker-endpoint`), and related settings.
 
-For **declarative URLs** and **Traefik**, the Builder also parses **`remote-server`** as a URL (or URL-like value) and uses its **hostname** wherever **`${REMOTE_HOST}`** appears in **`frontDoorRouting.host`** in `application.yaml` (see [Declarative url:// placeholders](declarative-urls.md)).
+### Permissions
+
+The CLI writes `config.yaml` with mode **`600`** and enforces **`700`** on the config directory and **`600`** on the file when reading.
+
+### Registering `AIFABRIX_HOME` / `AIFABRIX_WORK`
+
+**`aifabrix dev set-home`** and **`aifabrix dev set-work`** can:
+
+- **Windows:** register variables in the user environment (new terminals / IDEs pick them up).
+- **macOS / Linux:** write `aifabrix-shell-env.sh` and a marked block in `.zshrc` / `.bashrc`.
+
+Use **`--no-register-env`** to only update `config.yaml`. **New terminals** pick up variables after profile registration. **This terminal (bash/zsh):** **`eval "$(aifabrix dev shell-env)"`**. Script-only paths: **`aifabrix dev print-home`**, **`aifabrix dev print-work`**.
+
+### Important fields (short)
+
+| Topic | Notes |
+|--------|--------|
+| **`developer-id`** | Used by **`aifabrix up-infra`**. |
+| **`format`** | Default `json` \| `yaml` — **`aifabrix dev set-format`**; used when commands omit `--format`. |
+| **`useEnvironmentScopedResources`** | Optional; default **off**. When **on**, local resolution and **`aifabrix run`** can use env-prefixed resource names for apps with **`environmentScopedResources: true`** in **`application.yaml`**, only **dev** / **tst**. Prefer **`aifabrix dev set-scoped-resources`**. |
+| **`traefik`** | Set by **`aifabrix up-infra --traefik`**. |
+| **`controller`**, **`environment`** | From login or **`aifabrix auth --set-controller`** / **`--set-environment`**. |
+| **`device`** | Device flow tokens. |
+| **`environments.<env>.clients.<app>`** | Client tokens. |
+| **`secrets-encryption`** | When set, file-based secret **values** can be stored encrypted (`secure://`). |
+
+### Remote development (`remote-server`)
+
+**`remote-server`** (SSH for remote Docker / Mutagen) and **`docker-endpoint`**. Dev APIs (settings, secrets, sync) use **certificate (mTLS)**. Refresh: **`aifabrix dev init`**; inspect: **`aifabrix dev show`**. More: [Developer isolation](../commands/developer-isolation.md).
+
+### Declarative URLs and Traefik
+
+The Builder parses **`remote-server`** as a URL and uses its **hostname** for **`${REMOTE_HOST}`** in **`frontDoorRouting.host`** in **`application.yaml`**. See [Declarative url://](declarative-urls.md).
+
+---
 
 ## aifabrix-secrets: remote vs local
 
-**When `aifabrix-secrets` is a file path:** Secrets are stored in that file (e.g. `~/.aifabrix/secrets.local.yaml` or a project path). `aifabrix resolve`, run, and build read from it. `secret list`, `secret set`, `secret remove`, and `secret remove-all` operate on that file. Missing secret keys are created automatically when you run `aifabrix up-infra`, app create, resolve with `--force`, or integration create; use `--shared` to read/write shared keys from the same file (see [Commands: Utilities](../commands/utilities.md)).
+`aifabrix-secrets` in **`config.yaml`** points at either a **file** or an **`https://`** URL. That drives where **shared** keys are read/written and how **`aifabrix secret … --shared`** behaves.
 
-**Config and encryption key on first secret use:** When you run any secret-related command (`secret list`, `secret set`, `secret remove`, `secret remove-all`, `secret validate`, `secure`) or app register/rotate, the CLI ensures `config.yaml` exists and a `secrets-encryption` key is available (creating one if missing). This allows all file-based secret writes to be encrypted by default.
+### File path
 
-**Storage order when creating missing secrets:** If `aifabrix-secrets` is a **file path**, new keys are written there (file created if missing). If it is an **http(s) URL**, the CLI tries the remote API first; on failure (e.g. 403, network), it writes to the user secrets file and logs a warning. If **no** `aifabrix-secrets` is set, new keys are written to the user file (`~/.aifabrix/secrets.local.yaml` or `aifabrix-home`).
+- Secrets live in that file (e.g. `~/.aifabrix/secrets.local.yaml` or a team path).
+- **`aifabrix resolve`**, run, and build read from the merge rules for your app.
+- **`aifabrix secret list|set|remove|remove-all`** target that file when operating on shared keys.
+- Missing keys can be auto-created on **`aifabrix up-infra`**, app create, **`aifabrix resolve --force`**, integration create; **`--shared`** reads/writes the same file. Details: [Utilities](../commands/utilities.md).
 
-**Provisioning reads from the same store:** When creating resources that need a secret (e.g. database users, Redis, init scripts), the CLI **reads** the secret value from the configured store (file or remote API) and uses it for the create/provision step. It does not generate or hardcode a password at creation time. If the secret is missing, the operation fails with a clear message (e.g. run `aifabrix up-infra` to ensure infra secrets).
+### `https://` URL
 
-**When `aifabrix-secrets` is an `http(s)://` URL:** Shared secrets are served by the remote API. `secret list --shared`, `secret set --shared`, `secret remove --shared`, and `secret remove-all --shared` call the API (cert-authenticated). Shared values are **never stored on disk**; they are fetched at resolution time when generating `.env`. Local (non-shared) secrets can still use a local file if configured. Admin or secret-manager role is required for shared set/remove when using the remote API.
+- Shared secrets are served by the **remote API** (cert-authenticated).
+- **`secret list|set|remove|remove-all --shared`** call the API.
+- Shared values are **not stored on disk** on the developer machine; they are fetched at resolution time for `.env` generation.
+- Local (non-shared) keys can still use the user / project file.
+- Shared **set/remove** typically needs **admin** or **secret-manager** on the remote service.
 
-**`BASH_` shared keys (HTTPS store):** If you set a shared secret whose key starts with **`BASH_`**, the remote service maps it so the value is available in your **terminal as an exported environment variable**: the variable name is the suffix after `BASH_` (e.g. **`BASH_NPM_TOKEN`** → **`NPM_TOKEN`**). Invalid suffixes (not valid shell identifiers) are not exposed. Use `aifabrix secret set BASH_<VAR> '<value>' --shared`. Details of how your session picks up those variables depend on your remote dev setup; the naming rule is what you use from the CLI. See [Utilities: aifabrix secret](../commands/utilities.md#aifabrix-secret).
+### Encryption key on first secret use
+
+Running **`secret list|set|remove|remove-all`**, **`secret validate`**, **`secure`**, or app register/rotate ensures **`config.yaml`** exists and a **`secrets-encryption`** key is available (created if missing), so file-based writes can default to **encrypted** values.
+
+### Where new keys are written
+
+| `aifabrix-secrets` | Behaviour |
+|--------------------|-----------|
+| **File path** | New keys go to that file (created if missing). |
+| **`http(s)` URL** | Remote API first; on failure (403, network), user file + warning. |
+| **Unset** | New keys go to the user file (`~/.aifabrix/secrets.local.yaml` or **aifabrix-home**). |
+
+### Provisioning
+
+When infra or apps need a secret (DB user, Redis, init scripts), the CLI **reads** from the configured store (file or API). It does **not** hardcode passwords at create time. If a secret is missing, the command fails with a clear error (e.g. run **`aifabrix up-infra`**).
+
+### `BASH_<NAME>` keys
+
+After the usual merge, **`BASH_<NAME>`** becomes environment variable **`NAME`** for Builder subprocesses and for resolved `.env` when **`NAME`** is not already set. Passed via **`child_process` `env`** (not interactive **`export`**). Commands and layout: [Utilities: aifabrix secret](../commands/utilities.md#aifabrix-secret).
+
+---
+
+## Security posture and ISO 27001-aligned practices
+
+ISO 27001 is implemented by your **organization** (policies, roles, risk treatment). This section maps **common Annex A–style themes** to Builder behaviour. It is **not** legal certification advice — align with your security officer and ISMS.
+
+### Production vs developer scope
+
+- **Azure production:** secrets in **Key Vault** — see [Production vs developer](#production-azure-key-vault-vs-developer-cycle).
+- **Bullets below** about local files, **`BASH_*`**, subprocess **`env`**, and temporary **`.env`** apply to **developer workstations and dev tooling**, not the intended Key Vault-backed runtime.
+
+### What the tooling already supports
+
+- **Confidentiality at rest:** optional **`aifabrix secure`** (`secure://`); encryption key material in **`config.yaml`**. See **Encryption** and **admin-secrets.env** sections below.
+- **Disk access:** **`600`** on sensitive files, **`700`** on config directory where enforced.
+- **Short-lived plaintext for compose:** temporary **`.env.run`** for Docker Compose, then deleted — see **admin-secrets.env**.
+- **Remote shared secrets:** **`https://`** + **mTLS** and server RBAC for dev APIs — [Developer isolation](../commands/developer-isolation.md).
+- **Separation in repo:** **`kv://`** in templates so Git stays free of live values; Key Vault naming under **secrets.local.yaml**.
+
+### What you must still take care of
+
+- **Classification:** treat `secrets.local.yaml`, `config.yaml`, and **`BASH_*`**-derived values as **high** sensitivity — no tickets, chat, or CI logs.
+- **Workstations:** disk modes do not help if the account is compromised — disk encryption, lock screen, separate prod vs lab accounts where required.
+- **`secrets-encryption` backup:** enterprise password manager or vault — not email or Git. Loss = cannot decrypt (see **No restore** under **secrets.local.yaml**).
+- **RBAC:** limit **`aifabrix secret set --shared`**, remote **admin/secret-manager**, and read access to team **`aifabrix-secrets`** paths — [permissions](../commands/permissions.md).
+- **CI:** forbid dumping **`env`** or resolved **`.env`**; prefer OIDC / workload identity or short-lived tokens over long-lived **`BASH_*`** where policy allows.
+- **Build-time exposure:** **`BASH_*`** and **build-args** on dev hosts / CI can appear in process listings or image history; production **runtime** stays Key Vault–backed when manifests stay reference-based. Stricter image builds: BuildKit secrets, etc.
+- **Rotation / incidents:** rotate and revoke via IdP and controller; document **`aifabrix secure`** key rotation and re-encryption.
+- **Team shares:** if **`aifabrix-secrets`** is a network path, include that storage in access reviews, backups, and DLP scope.
+
+### For auditors (one paragraph)
+
+Local Fabrix: **no live secrets in application Git**, optional **encrypted local files**, **enforced permissions**, **HTTPS + certs** for remote shared secrets, **bounded temp files** for compose, **documented operator duties** — plus [Utilities: secret](../commands/utilities.md#aifabrix-secret). **Azure production:** **Key Vault**, same **`kv://`** contract, **no reliance on developer `secrets.local.yaml` on the application host**.
+
+---
 
 ## secrets.local.yaml (file-based secrets)
 
-**Single place:** When using a file for secrets, one `secrets.local.yaml` (local or shared) holds the secrets the CLI needs. Use the path from **`aifabrix-secrets`** in `config.yaml` to set a custom location (e.g. a shared drive or team path).
+### Purpose
 
-Location: `~/.aifabrix/secrets.local.yaml` or path from `aifabrix-secrets` in config (when it is a path). Flat key-value; pattern `<app>-client-idKeyVault`, `<app>-client-secretKeyVault`, and other `*KeyVault` keys. Used by `aifabrix resolve`, `aifabrix login --method credentials`, and deploy. When **environment-scoped resources** are effective for an app (`useEnvironmentScopedResources` in `config.yaml` plus `environmentScopedResources` in `application.yaml`, and target env **dev** or **tst**), `kv://` resolution prefers keys prefixed with that env (e.g. `dev-` / `tst-`); if only the base key exists, the Builder treats the prefixed key as the same value in memory so you do not have to duplicate entries manually for local dev. The CLI creates missing keys when you run `aifabrix up-infra`, app create, `aifabrix resolve <app> --force`, or integration create; it also writes when you run `aifabrix secret set` (local), `aifabrix secure`, or app register/rotate. When `secrets-encryption` is set (which the CLI ensures on first use of any secret command), **all values** written to file-based stores (user and shared `secrets.local.yaml`, and `admin-secrets.env`) are encrypted at rest (`secure://` format). **File permissions:** The CLI writes these files with mode `600` (owner read/write only) and **enforces** that when it reads them: if an existing file has looser permissions (e.g. group or other read), the CLI restricts it to `600` automatically (ISO 27001).
+One YAML file (user default or path from **`aifabrix-secrets`**) holds **developer-cycle** secrets the CLI resolves. Optional team location via **`aifabrix-secrets`** in **`config.yaml`**.
 
-### Special key: secrets-encryptionKeyVault
+### Location and shape
 
-The key **`secrets-encryptionKeyVault`** in `secrets.local.yaml` is used only when migrating an existing encryption key into `config.yaml`. The CLI does **not** read this from an external Key Vault; it is a local key name. If this key is present in the user or project secrets file and `config.yaml` has no `secrets-encryption` yet, the CLI copies that value into `config.yaml` as `secrets-encryption`. If it is missing everywhere, the CLI generates a new 32-byte key and stores it **only in `config.yaml`** (not in `secrets.local.yaml`), so the key is not written in plaintext to the secrets file. For normal operation, decryption uses the key from `config.yaml` (`secrets-encryption`).
+- Default: **`~/.aifabrix/secrets.local.yaml`**, or the path when **`aifabrix-secrets`** is a **file**.
+- **Flat key–value**; common patterns: `<app>-client-idKeyVault`, `<app>-client-secretKeyVault`, other **`*KeyVault`** keys.
+- Used by **`aifabrix resolve`**, **`aifabrix login --method credentials`**, deploy, and related flows.
+
+### Environment-scoped resources (dev / tst)
+
+When **`useEnvironmentScopedResources`** is on in **`config.yaml`** and the app has **`environmentScopedResources: true`**, and the target env is **dev** or **tst**, **`kv://`** resolution **prefers** keys prefixed with that env (`dev-`, `tst-`). If only the base key exists, the Builder can treat the prefixed key as the same value in memory so you avoid duplicate YAML for local dev.
+
+### When keys are created or updated
+
+- **`aifabrix up-infra`**, app create, **`aifabrix resolve <app> --force`**, integration create.
+- **`aifabrix secret set`** (local), **`aifabrix secure`**, app register/rotate.
+
+### Encryption and file mode
+
+When **`secrets-encryption`** exists (CLI ensures it on first secret use), values written to user/shared **`secrets.local.yaml`** and **`admin-secrets.env`** use **`secure://`**. Files are written **`600`**; if looser permissions are detected on read, the CLI tightens to **`600`**.
+
+### Special key: `secrets-encryptionKeyVault`
+
+Local key name only — **not** read from Azure Key Vault by the CLI. If present in secrets YAML and **`config.yaml`** has no **`secrets-encryption`**, the value is copied into **`config.yaml`**. If missing everywhere, the CLI generates a 32-byte key and stores it **only in `config.yaml`**. Normal decryption uses **`secrets-encryption`** in **`config.yaml`**.
 
 ### No restore if you change or lose secrets
 
-- **There is no backup or restore.** If you delete, overwrite, or corrupt `secrets.local.yaml`, you cannot recover the previous values; the CLI does not keep history or backups.
-- **Changing or losing the encryption key breaks decryption.** If you change `secrets-encryption` in `config.yaml` or remove it, or if you had encrypted values and the key no longer matches, those values cannot be decrypted. Recovery is to re-enter secrets (e.g. run `aifabrix login` again for tokens) and re-run `aifabrix secure` if you use encryption.
-- **Keep a safe copy of the encryption key.** If you use `aifabrix secure`, store the key used for `--secrets-encryption` in a secure place (e.g. password manager). Without it, encrypted secrets in `secrets.local.yaml` cannot be decrypted and the system will not work for any command that needs those secrets.
+- **No CLI backup/restore** of deleted or corrupted `secrets.local.yaml`.
+- **Wrong or missing `secrets-encryption`** → encrypted values cannot be decrypted; re-enter secrets and re-run **`aifabrix secure`** as needed.
+- **Back up the encryption key** in a password manager; without it, encrypted local secrets are unusable.
+
+---
 
 ## admin-secrets.env and run .env (ISO 27K)
 
-**admin-secrets.env** (`~/.aifabrix/admin-secrets.env`) holds infrastructure admin credentials (Postgres, pgAdmin, Redis Commander). The CLI writes it with mode `600` and enforces that when reading (if the file has looser permissions, the CLI restricts it to `600`). Use `aifabrix up-infra --adminPassword <password>` to set or update the admin password; the same value is synced to `postgres-passwordKeyVault` in the main secrets store. When `secrets-encryption` is set, the CLI writes **encrypted** values (`secure://...`) to `admin-secrets.env`; when the key is not set, values are stored in plaintext. When starting infra, stopping infra, restarting a service, or running an app, the CLI reads and **decrypts** admin-secrets and writes a **temporary** `.env` (e.g. `.env.run`) with plaintext only for the duration of the Docker Compose command. That file is **deleted afterward** so passwords are not left on disk (ISO 27K). The pgAdmin pgpass file is also created only as a temporary file, copied into the container, then deleted.
+**File:** **`~/.aifabrix/admin-secrets.env`** — infra admin credentials (Postgres, pgAdmin, Redis Commander).
+
+**On disk:** written **`600`**; enforced on read.
+
+**Password sync:** **`aifabrix up-infra --adminPassword`** updates admin password and syncs to **`postgres-passwordKeyVault`** in the main secrets store.
+
+**Encryption:** with **`secrets-encryption`**, values in **`admin-secrets.env`** are **`secure://`**; without the key, they may be plaintext.
+
+**At compose run time:** the CLI decrypts, writes a **temporary** **`.env.run`** (plaintext) only for the Docker Compose invocation, then **deletes** it. pgAdmin **pgpass** is similarly temporary.
+
+---
 
 ## Encryption (aifabrix secure)
 
-Run `aifabrix secure --secrets-encryption <key>` to encrypt secrets in `secrets.local.yaml`. Key: 32 bytes, hex or base64. Encrypted values use `secure://` prefix. Plaintext secrets work if no encryption key is configured; the system detects encrypted values and only decrypts when needed. The key is stored in `config.yaml` as `secrets-encryption` for automatic decryption.
+```bash
+aifabrix secure --secrets-encryption <key>
+```
 
-See [Commands: Utilities](../commands/utilities.md) for `secret set`, `secret validate`, and `secure`. Run `aifabrix secret validate [path]` to validate a secrets file (YAML structure and optional `--naming` for *KeyVault convention). Secret keys in `secrets.local.yaml` follow the same naming as Key Vault secret names (e.g. `postgres-passwordKeyVault`, `redis-urlKeyVault`, `{app-key}-databases-{index}-passwordKeyVault`) for consistency with production.
+- **Key:** 32 bytes, hex or base64.
+- **Values:** **`secure://`** prefix when encrypted.
+- **Plaintext** values still work if no encryption key is configured; the CLI decrypts when it sees **`secure://`**.
+- **Key storage:** **`secrets-encryption`** in **`config.yaml`**.
 
-## External integrations: KV_* in .env and kv:// in config
+CLI reference: [Utilities](../commands/utilities.md) — **`secret set`**, **`secret validate`**, **`secure`**. Validate a file: **`aifabrix secret validate [path]`** (optional **`--naming`** for KeyVault-style names). Key names align with Key Vault secret names for production parity (e.g. **`postgres-passwordKeyVault`**, **`redis-urlKeyVault`**, **`{app-key}-databases-{index}-passwordKeyVault`**).
 
-For **external integrations** (e.g. `aifabrix upload <systemKey>`), you can supply credentials in two ways:
+---
 
-1. **`.env` in the integration folder** – In `integration/<systemKey>/.env`, use the `KV_<systemKey>_<VAR>` convention (e.g. `KV_HUBSPOT_CLIENTID`, `KV_HUBSPOT_CLIENTSECRET`) mapping to path-style `kv://` refs (e.g. `kv://hubspot/clientid`, `kv://hubspot/clientsecret`). The prefix `KV_` plus segments separated by underscores map to `kv://segment1/segment2/...` (lowercase). Values can be plain or `kv://...`; if a value is `kv://...`, the CLI resolves it from aifabrix secret systems (local file or remote) before pushing to the dataplane. Run `aifabrix repair <systemKey>` to align env.template keys and path-style values with the system file and to remove standard auth variables (including keyvault) from the system `configuration` array; they are supplied from the credential at runtime. Use `aifabrix repair <systemKey> --auth <method>` to switch the integration to a different authentication method (oauth2, aad, apikey, basic, queryParam, oidc, hmac, none); repair updates the system file and env.template to match. Repair can also align datasource config (dimensions, metadataSchema) and supports `--rbac`, `--expose`, `--sync`, and `--test` for RBAC, exposed attributes, sync section, and test payload.
-2. **`kv://` in application/datasource config** – You can reference `kv://...` in your application or datasource configuration. Even without adding `KV_*` to `.env`, upload will try to resolve those refs from aifabrix secret systems (local file or remote) and push them to the dataplane so publish can use them.
+## External integrations
 
-The CLI pushes these secrets to the dataplane secret store automatically before upload/publish. **Skip conditions:** If there is no `.env` file, no `KV_*` keys, or values are empty, the credential push step is skipped. Dataplane permission **credential:create** is required for the push; see [Online Commands and Permissions](../commands/permissions.md).
+For **`aifabrix upload <systemKey>`** (and related flows), credentials can be supplied in two ways.
+
+### `KV_*` variables in `integration/<systemKey>/.env`
+
+- Pattern: **`KV_<SYSTEMKEY>_<VAR>`** (e.g. **`KV_HUBSPOT_CLIENTID`**) mapping to path-style **`kv://`** (e.g. **`kv://hubspot/clientid`**).
+- Underscore segments map to **`kv://`** path segments (lowercase).
+- Values can be plain or **`kv://...`**; the CLI resolves before dataplane push.
+- **`aifabrix repair <systemKey>`** aligns env.template, system file, and auth; options **`--auth`**, **`--rbac`**, **`--expose`**, **`--sync`**, **`--test`** — see repair documentation.
+
+### `kv://` in application or datasource config
+
+Upload can resolve **`kv://`** from local or remote secret stores even without **`KV_*`** entries in **`.env`**.
+
+### Push behaviour
+
+- Secrets go to the dataplane credential store before upload/publish when applicable.
+- **Skipped** if there is no **`.env`**, no **`KV_*`** keys, or values are empty.
+- Requires dataplane permission **`credential:create`** — [permissions](../commands/permissions.md).

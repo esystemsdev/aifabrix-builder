@@ -13,7 +13,8 @@ jest.mock('../../../lib/utils/paths', () => ({
   getAifabrixHome: jest.fn(),
   getConfigDirForPaths: jest.fn(),
   getProjectRoot: jest.fn(),
-  getBuilderRoot: jest.fn()
+  getBuilderRoot: jest.fn(),
+  getSystemBuilderRoot: jest.fn()
 }));
 
 const pathsUtil = require('../../../lib/utils/paths');
@@ -41,6 +42,9 @@ describe('urls-local-registry', () => {
     pathsUtil.getConfigDirForPaths.mockReturnValue(fakeHome);
     pathsUtil.getProjectRoot.mockReturnValue(fakeProject);
     pathsUtil.getBuilderRoot.mockImplementation(() => path.join(fakeProject, 'builder'));
+    pathsUtil.getSystemBuilderRoot.mockImplementation(() =>
+      path.join(pathsUtil.getConfigDirForPaths(), 'builder')
+    );
   });
 
   afterEach(() => {
@@ -111,25 +115,25 @@ describe('urls-local-registry', () => {
       expect(doc.note).toBe('x');
     });
 
-    it('reads legacy file under getAifabrixHome when config-dir file is missing', () => {
+    it('reads config-dir urls.local.yaml when home path file is missing (migration)', () => {
       const cfgDir = path.join(fakeHome, 'dot-aifabrix');
       fs.mkdirSync(cfgDir, { recursive: true });
       pathsUtil.getConfigDirForPaths.mockReturnValue(cfgDir);
       pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
-      const legacyPath = path.join(fakeHome, 'urls.local.yaml');
-      fs.writeFileSync(legacyPath, 'migrated-port: 7777\n', 'utf8');
-      expect(getUrlsLocalYamlPath()).toBe(path.join(cfgDir, 'urls.local.yaml'));
+      const atConfig = path.join(cfgDir, 'urls.local.yaml');
+      fs.writeFileSync(atConfig, 'migrated-port: 7777\n', 'utf8');
+      expect(getUrlsLocalYamlPath()).toBe(path.join(fakeHome, 'urls.local.yaml'));
       expect(readUrlsLocalRegistrySync()).toEqual({ 'migrated-port': 7777 });
     });
 
-    it('prefers config-dir urls.local.yaml over legacy when both exist', () => {
+    it('prefers urls.local.yaml under getAifabrixHome over config-dir when both exist', () => {
       const cfgDir = path.join(fakeHome, 'dot-aifabrix');
       fs.mkdirSync(cfgDir, { recursive: true });
       pathsUtil.getConfigDirForPaths.mockReturnValue(cfgDir);
       pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
-      fs.writeFileSync(path.join(fakeHome, 'urls.local.yaml'), 'legacy: 1\n', 'utf8');
-      fs.writeFileSync(path.join(cfgDir, 'urls.local.yaml'), 'primary: 2\n', 'utf8');
-      expect(readUrlsLocalRegistrySync()).toEqual({ primary: 2 });
+      fs.writeFileSync(path.join(fakeHome, 'urls.local.yaml'), 'home: 1\n', 'utf8');
+      fs.writeFileSync(path.join(cfgDir, 'urls.local.yaml'), 'cfg: 2\n', 'utf8');
+      expect(readUrlsLocalRegistrySync()).toEqual({ home: 1 });
     });
   });
 
@@ -277,6 +281,23 @@ app:
           process.env.AIFABRIX_BUILDER_DIR = prev;
         }
       }
+    });
+
+    it('merges platform apps from system builder (~/.aifabrix/builder) when present', () => {
+      const sysBuilder = path.join(fakeHome, 'builder');
+      const datDir = path.join(sysBuilder, 'dataplane');
+      fs.mkdirSync(datDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(datDir, 'application.yaml'),
+        `port: 3101
+app:
+  key: dataplane
+`,
+        'utf8'
+      );
+      pathsUtil.getConfigDirForPaths.mockReturnValue(fakeHome);
+      const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+      expect(merged['dataplane-port']).toBe(3101);
     });
   });
 });
