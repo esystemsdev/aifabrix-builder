@@ -202,10 +202,15 @@ describe('Application Commands - Rotate Secret Action', () => {
         expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith('test-app-client-idKeyVault', 'new-client-id');
         expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith('test-app-client-secretKeyVault', 'new-client-secret');
         expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Credentials saved to ~/.aifabrix/secrets.local.yaml'));
-        // Verify that env.template is updated and .env file is generated when localhost
+        // Plan 139: rotate validates env resolution in memory but must never write <appPath>/.env.
         expect(require('../../lib/utils/env-template').updateEnvTemplate).toHaveBeenCalled();
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local', true);
-        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ .env file updated with new credentials'));
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local', true, { noWrite: true });
+        expect(logger.log).toHaveBeenCalledWith(
+          expect.stringContaining('Run "aifabrix resolve test-app" to materialize an on-disk .env')
+        );
+        expect(logger.log).not.toHaveBeenCalledWith(
+          expect.stringContaining('.env file updated with new credentials')
+        );
       }
     });
 
@@ -541,19 +546,20 @@ describe('Application Commands - Rotate Secret Action', () => {
         }
       });
 
-      // Set isLocalhost to true to test .env file generation
+      // Set isLocalhost to true so the in-memory env resolution branch runs
       localSecrets.isLocalhost.mockReturnValue(true);
-      secrets.generateEnvFile.mockRejectedValueOnce(new Error('Failed to generate .env'));
+      secrets.generateEnvFile.mockRejectedValueOnce(new Error('Failed to resolve env'));
 
       if (rotateSecretAction) {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
 
+        // Plan 139: failure is non-fatal; the warning text now reflects in-memory resolution.
         expect(require('../../lib/utils/env-template').updateEnvTemplate).toHaveBeenCalled();
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local', true);
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local', true, { noWrite: true });
         expect(logger.warn).toHaveBeenCalledWith(
-          expect.stringContaining('⚠  Could not regenerate .env file')
+          expect.stringContaining('⚠  Could not validate env resolution')
         );
         // Should still complete successfully
         expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Secret rotated successfully!'));

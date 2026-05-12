@@ -886,6 +886,105 @@ environments:
         secrets.generateEnvFile(appName, undefined, 'docker', false, { appPath: integrationPath, envOnly: true })
       ).rejects.toThrow('env.template not found');
     });
+
+    describe('noWrite (in-memory secrets)', () => {
+      // ISO 27001 / plan 139: register / rotate-secret / build / up-* must never persist
+      // resolved secrets to disk. Only `aifabrix resolve <app>` materializes an on-disk .env.
+
+      it('should resolve in memory and skip writing <appPath>/.env when noWrite=true', async() => {
+        const envCopy = require('../../../lib/utils/env-copy');
+        const processSpy = jest.spyOn(envCopy, 'processEnvVariables').mockResolvedValue();
+
+        const result = await secrets.generateEnvFile(appName, null, 'local', false, { noWrite: true });
+
+        expect(result).toBeNull();
+        const envWrite = fs.writeFileSync.mock.calls.find(
+          (c) => typeof c[0] === 'string' && c[0] === path.join(builderPath, '.env')
+        );
+        expect(envWrite).toBeUndefined();
+        expect(processSpy).not.toHaveBeenCalled();
+        processSpy.mockRestore();
+      });
+
+      it('should still write .env when noWrite is false (default behaviour preserved)', async() => {
+        const envCopy = require('../../../lib/utils/env-copy');
+        const processSpy = jest.spyOn(envCopy, 'processEnvVariables').mockResolvedValue();
+
+        const result = await secrets.generateEnvFile(appName);
+
+        expect(result).toBe(path.join(builderPath, '.env'));
+        const envWrite = fs.writeFileSync.mock.calls.find(
+          (c) => typeof c[0] === 'string' && c[0] === path.join(builderPath, '.env')
+        );
+        expect(envWrite).toBeDefined();
+        processSpy.mockRestore();
+      });
+
+      it('should still surface missing-secret errors when noWrite=true (in-memory resolve still runs)', async() => {
+        // env.template references a kv:// key that does NOT exist in secrets stores
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (typeof filePath === 'string' && filePath.includes('env.template')) {
+            return 'API_KEY=kv://totally-missing-keyvault';
+          }
+          if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+            return 'postgres-passwordKeyVault: "admin123"';
+          }
+          if (typeof filePath === 'string' && filePath.includes('secrets.yaml')) {
+            return 'postgres-passwordKeyVault: "admin123"';
+          }
+          if (typeof filePath === 'string' && filePath.includes('env-config.yaml')) {
+            return 'environments:\n  local:\n    REDIS_HOST: localhost\n';
+          }
+          return '';
+        });
+
+        await expect(
+          secrets.generateEnvFile(appName, null, 'local', false, { noWrite: true })
+        ).rejects.toThrow(/totally-missing-keyvault|Missing secret/);
+      });
+
+      it('should skip processEnvVariables (envOutputPath) when noWrite=true', async() => {
+        // Even when application.yaml has build.envOutputPath, noWrite must not propagate
+        // resolved values to that user-project path during register/rotate/build/up-*.
+        fs.existsSync.mockImplementation((filePath) => {
+          return filePath.includes('env.template') ||
+            filePath.includes('application.yaml') ||
+            filePath.includes('secrets.yaml') ||
+            (typeof filePath === 'string' && filePath.includes('secrets.local.yaml'));
+        });
+        fs.readFileSync.mockImplementation((filePath) => {
+          if (filePath.includes('application.yaml')) {
+            return 'build:\n  envOutputPath: ../../.env\nport: 3000\n';
+          }
+          if (filePath.includes('env.template')) {
+            return 'DATABASE_URL=kv://postgres-passwordKeyVault';
+          }
+          if (typeof filePath === 'string' && filePath.includes('secrets.local.yaml')) {
+            return 'postgres-passwordKeyVault: "admin123"';
+          }
+          if (filePath.includes('secrets.yaml')) {
+            return 'postgres-passwordKeyVault: "admin123"';
+          }
+          if (filePath.includes('env-config.yaml')) {
+            return 'environments:\n  local:\n    REDIS_HOST: localhost\n';
+          }
+          return '';
+        });
+        const envCopy = require('../../../lib/utils/env-copy');
+        const processSpy = jest.spyOn(envCopy, 'processEnvVariables').mockResolvedValue();
+
+        const result = await secrets.generateEnvFile(appName, null, 'local', false, { noWrite: true });
+
+        expect(result).toBeNull();
+        expect(processSpy).not.toHaveBeenCalled();
+        const envWrite = fs.writeFileSync.mock.calls.find(
+          (c) => typeof c[0] === 'string' && c[0] === path.join(builderPath, '.env')
+        );
+        expect(envWrite).toBeUndefined();
+
+        processSpy.mockRestore();
+      });
+    });
   });
 
   describe('generateAdminSecretsEnv', () => {
