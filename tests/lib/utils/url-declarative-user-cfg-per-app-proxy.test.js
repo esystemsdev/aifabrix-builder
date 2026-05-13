@@ -103,7 +103,7 @@ KEYCLOAK_SERVER_URL=url://keycloak-public
       infraTlsEnabled: true,
       declarativePublicUrlsUseLocalhost: true
     });
-    expect(out).toMatch(/^KEYCLOAK_SERVER_URL=https:\/\/localhost:\d+$/m);
+    expect(out).toMatch(/^KEYCLOAK_SERVER_URL=http:\/\/localhost:\d+$/m);
   });
 
   it('local profile + applications.<app>.proxy false uses localhost for url://public (resolve/run .env)', async() => {
@@ -129,7 +129,7 @@ KEYCLOAK_SERVER_URL=url://keycloak-public
       infraTlsEnabled: false,
       userCfg
     });
-    expect(out).toMatch(/^MISO_WEB_SERVER_URL=https:\/\/localhost:3200/m);
+    expect(out).toMatch(/^MISO_WEB_SERVER_URL=http:\/\/localhost:3200/m);
     expect(out).not.toContain('builder02.local');
   });
 });

@@ -58,6 +58,16 @@ describe('computePublicUrlBaseString (remote without Traefik)', () => {
       })
     ).toBe('https://builder02.local:3000');
   });
+
+  it('uses http for remote-server hostname localhost even when infra TLS on', () => {
+    expect(
+      computePublicUrlBaseString({
+        ...base,
+        remoteServer: 'https://localhost',
+        infraTlsEnabled: true
+      })
+    ).toBe('http://localhost:8282');
+  });
 });
 
 describe('computePublicUrlBaseString declarativePublicUrlsUseLocalhost (scheme)', () => {
@@ -77,6 +87,48 @@ describe('computePublicUrlBaseString declarativePublicUrlsUseLocalhost (scheme)'
         declarativeTargetAppKey: 'miso-controller',
         declarativeCurrentAppKey: 'miso-controller',
         declarativePublicUrlsUseLocalhost: true
+      })
+    ).toBe('http://localhost:3200');
+  });
+
+  it('uses http for localhost when infraTlsEnabled true (loopback never https)', () => {
+    expect(
+      computePublicUrlBaseString({
+        traefik: false,
+        pathActive: false,
+        hostTemplate: null,
+        tls: true,
+        developerIdRaw: 2,
+        remoteServer: 'https://builder02.local',
+        profile: 'local',
+        listenPort: 3000,
+        developerIdNum: 2,
+        infraTlsEnabled: true,
+        declarativeTargetAppKey: 'miso-controller',
+        declarativeCurrentAppKey: 'miso-controller',
+        declarativePublicUrlsUseLocalhost: true
+      })
+    ).toBe('http://localhost:3200');
+  });
+});
+
+describe('computePublicUrlBaseString (localhost without remote)', () => {
+  it('uses http when infraTlsEnabled true (no TLS to loopback)', () => {
+    expect(
+      computePublicUrlBaseString({
+        traefik: false,
+        pathActive: false,
+        hostTemplate: null,
+        tls: true,
+        developerIdRaw: 2,
+        remoteServer: null,
+        profile: 'docker',
+        listenPort: 3000,
+        developerIdNum: 2,
+        infraTlsEnabled: true,
+        declarativeTargetAppKey: 'app',
+        declarativeCurrentAppKey: 'app',
+        declarativePublicUrlsUseLocalhost: false
       })
     ).toBe('http://localhost:3200');
   });

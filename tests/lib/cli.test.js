@@ -1987,6 +1987,13 @@ describe('CLI Commands', () => {
     });
 
     describe('resolve command handler execution', () => {
+      beforeEach(() => {
+        if (typeof config.getRemoteServer !== 'function') {
+          config.getRemoteServer = jest.fn();
+        }
+        config.getRemoteServer.mockResolvedValue(null);
+      });
+
       it('should execute resolve command handler with force option via setupCommands', async() => {
         setupCommandsAndResetLogger();
         config.getConfig.mockResolvedValue({});
@@ -2069,6 +2076,28 @@ describe('CLI Commands', () => {
             envOnly: false,
             preferLocalEnvOutputPath: true
           })
+        );
+      });
+
+      it('should pass preferLocalEnvOutputPath false when applications.<app>.reload is true and remote-server is set', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({
+          applications: { testapp: { reload: true } }
+        });
+        config.getRemoteServer.mockResolvedValue('https://builder02.local');
+
+        const appName = 'testapp';
+        secrets.generateEnvFile.mockResolvedValue('builder/testapp/.env');
+
+        const handler = commandActions['resolve <app>'];
+        await handler(appName, {});
+
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(
+          appName,
+          undefined,
+          'docker',
+          undefined,
+          expect.objectContaining({ preferLocalEnvOutputPath: false })
         );
       });
 

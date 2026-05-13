@@ -23,7 +23,7 @@ describe('computePublicUrlBaseString declarativePublicUrlsUseLocalhost', () => {
       declarativeCurrentAppKey: 'miso-controller',
       declarativePublicUrlsUseLocalhost: true
     });
-    expect(base).toBe('https://localhost:8282');
+    expect(base).toBe('http://localhost:8282');
   });
 
   it('uses localhost + local workstation port (local profile) when flag is true', () => {
@@ -42,7 +42,7 @@ describe('computePublicUrlBaseString declarativePublicUrlsUseLocalhost', () => {
       declarativeCurrentAppKey: 'miso-controller',
       declarativePublicUrlsUseLocalhost: true
     });
-    expect(base).toBe('https://localhost:3200');
+    expect(base).toBe('http://localhost:3200');
   });
 
   it('keeps remote-server base when flag is false', () => {

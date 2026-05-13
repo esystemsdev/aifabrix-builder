@@ -1,6 +1,6 @@
 # How running URLs are resolved (`url://` in `env.template`)
 
-This guide is for anyone using the AI Fabrix Builder CLI who needs predictable URLs in generated `.env` files. It explains which files and settings drive the result, in what order, so you can validate behavior without reading the source code.
+This guide is for anyone using the AI Fabrix Builder CLI who needs predictable URLs in generated `.env` files. It explains which files and settings drive the result, in what order, so you can validate behavior without reading the source code. For the **full `url://` token list** and **`application.yaml`** fields, see [Declarative `url://` placeholders](declarative-urls.md).
 
 ---
 
@@ -53,13 +53,13 @@ Each **`url://`** token refers to an **app** (the current app, or another app fo
 
 | Setting | Effect |
 | --- | --- |
-| **`traefik: true`** (top level) **and** `applications.{target}.proxy: true` for that token’s target app | Traefik-style public URL hints can apply for that target (host template, TLS hints), when the target’s **`application.yaml`** also has front door routing configured as required. |
-| **`applications.{target}.proxy: false`** (Docker profile) | For **public** `url://` surfaces for that target, the CLI prefers **`http(s)://localhost:`** plus the published port instead of your remote host, so local runs do not depend on ingress when that app is marked no-proxy (for example after **`aifabrix run`** with **`--no-proxy`** for one app, another app such as Keycloak can still use **`proxy: true`** and keep public issuer-style URLs). |
+| **`traefik: true`** (top level) **and** `applications.{target}.proxy: true` for that token’s target app | Traefik-style public URL hints can apply for that target (host template, TLS hints), when the target’s **`application.yaml`** also has front door routing configured as required. **Exception:** if the expanded host is **loopback** (`localhost`, `127.0.0.1`, `::1`), the public scheme stays **`http://`** even when **`tlsEnabled`** is **`true`**. |
+| **`applications.{target}.proxy: false`** (Docker profile) | For **public** `url://` surfaces for that target, the CLI prefers **`http://localhost:`** plus the published port (always **`http`** on loopback, regardless of **`tlsEnabled`**) instead of your remote host, so local runs do not depend on ingress when that app is marked no-proxy (for example after **`aifabrix run`** with **`--no-proxy`** for one app, another app such as Keycloak can still use **`proxy: true`** and keep public issuer-style URLs). |
 | Missing **`applications`** entry for an app | Treated like **proxy off** for that app unless you rely on legacy **`noProxy`** (see below). Prefer setting **`proxy` explicitly** per app. |
 | Legacy **`noProxy: true`** on an app entry | Same as **`proxy: false`**. |
 | Legacy **`noProxy: false`** with no **`proxy`** | Treated like **`proxy: true`** for migration compatibility. |
 
-**`tlsEnabled`** (from **`up-infra --tls`** and stored in config) affects whether **`https`** is chosen for localhost and remote-style bases where applicable, and can force **`https`** on Traefik-style bases even when the manifest sets **`frontDoorRouting.tls: false`**.
+**`tlsEnabled`** (from **`up-infra --tls`** and stored in config) affects whether **`https`** is chosen for **non-loopback** public bases and can force **`https`** on Traefik-style bases even when the manifest sets **`frontDoorRouting.tls: false`**. **Loopback** public authorities (**`localhost`**, **`127.0.0.1`**, **`::1`**) always use **`http://`**, regardless of **`tlsEnabled`**.
 
 ---
 
@@ -70,9 +70,9 @@ This applies to tokens such as **`public`**, **`host-public`**, **`keycloak-publ
 | Priority | Situation | Typical outcome |
 | --- | --- | --- |
 | 1 | Infra Traefik is on **for that target app**, front door path is active, and a **host template** exists in the target manifest | URL uses the expanded **front-door host** and scheme rules above. |
-| 2 | Docker, and that target’s **`applications.{target}.proxy`** is **off** | **`http(s)://localhost:`** plus the published port (scheme from TLS config). |
-| 3 | **`remoteServer`** is set in config | URL uses your **remote dev host** and port rules (scheme follows TLS config). |
-| 4 | Otherwise | **`localhost`** with the published or derived port for your profile and developer id. |
+| 2 | Docker, and that target’s **`applications.{target}.proxy`** is **off** | **`http://localhost:`** plus the published port (loopback is always **`http`**, not **`https`**). |
+| 3 | **`remoteServer`** is set in config | URL uses your **remote dev host** and port rules (scheme follows TLS config, with the **loopback** exception if the host is **`localhost`** / **`127.0.0.1`** / **`::1`**). |
+| 4 | Otherwise | **`http://localhost:`** with the published or derived port for your profile and developer id (always **`http`** on loopback). |
 
 **Local workstation:** for the **current** app, published ports may apply a **+10** style offset for local iteration; for **another** app’s token, sibling services use compose-style published offsets without that workstation bump.
 
@@ -123,7 +123,7 @@ Tokens use letters, digits, **`.`**, **`_`**, **`-`**.
 
 ## Docker and `localhost`
 
-For **public** URLs with **`proxy: false`**, the CLI intentionally uses **`localhost`** and the **host-published** port so your browser talks to the mapped port on the machine. **Inside a container**, **`localhost`** refers to that container, not the host; use your platform’s host gateway or extra hosts if a container must call another service via host-published ports.
+For **public** URLs with **`proxy: false`**, the CLI intentionally uses **`localhost`** and the **host-published** port so your browser talks to the mapped port on the machine. The scheme is always **`http://`** for that loopback authority, even when **`tlsEnabled`** is **`true`** in **`config.yaml`**. **Inside a container**, **`localhost`** refers to that container, not the host; use your platform’s host gateway or extra hosts if a container must call another service via host-published ports.
 
 ---
 

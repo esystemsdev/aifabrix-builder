@@ -95,7 +95,7 @@ describe('resolveDeclarativeShowUrlsForApp', () => {
     const appPath = path.join(fakeProject, 'builder', 'miso-controller');
     const variablesPath = path.join(appPath, 'application.yaml');
     const urls = await resolveDeclarativeShowUrlsForApp('miso-controller', appPath, variablesPath, 'docker');
-    expect(urls.publicUrl).toBe('https://localhost:3200');
+    expect(urls.publicUrl).toBe('http://localhost:3200');
     expect(urls.internalUrl).toBe('http://miso-controller:3000');
   });
 

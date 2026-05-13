@@ -14,7 +14,7 @@ Optional: **`environmentScopedResources: true`** plus **`useEnvironmentScopedRes
 
 On the **Docker** profile, **`url://internal`** (full URL) starts from **`http://<service>:<listenPort>`** (service name matches the app key). When the **front door path is active** for that target (same condition as for appending the pattern to **`url://public`** — **`traefik: true`** in `config.yaml` for that target **and** **`frontDoorRouting.enabled: true`** in its manifest) **and** **`frontDoorRouting.internalDockerUseOriginOnly`** is **not** **`true`** (including overrides in **`urls.local.yaml`**), the normalized **`frontDoorRouting.pattern`** may be appended (for example **`/miso`**). When **`internalDockerUseOriginOnly: true`**, internal full URLs stay **origin-only** (no pattern path), which matches in-container routes that do not listen under the ingress prefix.
 
-For **`local`** profile with **no `remote-server`**, **`url://internal`**, **`url://<app>-internal`**, and **`host-internal` / `private`** surfaces expand to the **same** values as their **public** counterparts (browser localhost / published ports), so `aifabrix resolve` workstation `.env` files do not point at Docker service hostnames. **HTTPS vs HTTP** for public URLs follows infra TLS (`tlsEnabled` / `up-infra --tls`) and **`frontDoorRouting.tls`** when using the Traefik host template.
+For **`local`** profile with **no `remote-server`**, **`url://internal`**, **`url://<app>-internal`**, and **`host-internal` / `private`** surfaces expand to the **same** values as their **public** counterparts (browser localhost / published ports), so `aifabrix resolve` workstation `.env` files do not point at Docker service hostnames. **HTTPS vs HTTP** for public URLs follows infra TLS (`tlsEnabled` / `up-infra --tls`) and **`frontDoorRouting.tls`** when using the Traefik host template — **except** for **loopback** authorities (**`localhost`**, **`127.0.0.1`**, **`::1`**): those public bases are always **`http://`**, even when **`tlsEnabled`** is **`true`** (typical local dev does not terminate TLS on loopback).
 
 The normalized **`frontDoorRouting.pattern`** path (the same segment as **`url://vdir-*`**) is appended to **`url://public`** (full URL) **only when both** **`traefik: true`** in `config.yaml` **and** **`frontDoorRouting.enabled: true`** for the target app. For **`url://internal`** on **Docker**, that same **front door active** condition must hold before a pattern segment is considered; **`internalDockerUseOriginOnly: true`** still forces **origin-only** internal full URLs (no pattern). When the front door is **not** active, public full URLs are **origin only** (no virtual-directory path from the pattern), consistent with a passive front door.
 
@@ -53,13 +53,19 @@ For the **Docker** profile, **`url://vdir-internal`** is always **empty** (conta
 
 The effective URL also depends on **`remote-server`**, **`developer-id`**, **`traefik`**, and **`tlsEnabled`**. **`devNN.<remote-host>`** (and any **`frontDoorRouting.host`** template) is used as the public **authority** only when **`traefik: true`** **and** the target app has **`frontDoorRouting.enabled: true`**. If Traefik is on but the front door is passive (`enabled` not **`true`**), public bases use **direct** reachability (`remote-server` + published port, or localhost)—not the ingress hostname. The optional **`/dev`** / **`/tst`** segment still applies when Traefik is on **and** both scoped-resource settings are enabled; it is **not** applied when Traefik is off.
 
-When **Traefik is off**, **`tlsEnabled`** in `config.yaml` (`up-infra --tls`) chooses **`http`** vs **`https`** for the public base built from **`remote-server`**. If TLS is **off**, the scheme is **`http`** even when **`remote-server`** is written as **`https://…`** (typical for direct published ports). If TLS is **on**, the scheme is **`https`**.
+When **Traefik is off**, **`tlsEnabled`** in `config.yaml` (`up-infra --tls`) chooses **`http`** vs **`https`** for the public base built from **`remote-server`** for **non-loopback** hosts. If TLS is **off**, the scheme is **`http`** even when **`remote-server`** is written as **`https://…`** (typical for direct published ports). If TLS is **on**, the scheme is **`https`** for those hosts.
 
-When **`remote-server`** has **no port** (e.g. `https://builder02.local`), the public base uses that host with the app’s **published Docker port** (manifest **`port` + `developer-id` × 100). If **`remote-server`** already includes a port, that **host:port** is kept; the scheme still follows **`tlsEnabled`** as above.
+**Loopback:** If the public hostname is **`localhost`**, **`127.0.0.1`**, or **`::1`** (for example **`remote-server`** is `https://localhost`, per-app **`proxy: false`** yields **`http://localhost:`…** published ports, or a Traefik host template expands to one of those names), the scheme is always **`http://`**, regardless of **`tlsEnabled`**.
 
-## `aifabrix run` and `--reload`
+When **`remote-server`** has **no port** (e.g. `https://builder02.local`), the public base uses that host with the app’s **published Docker port** (manifest **`port` + `developer-id` × 100). If **`remote-server`** already includes a port, that **host:port** is kept; the scheme follows **`tlsEnabled`** as above, with the **loopback** exception.
 
-For apps with **`build.envOutputPath`**, the Builder can write a host-side `.env` next to your source tree. **Without** `--reload`, that file uses the **local** profile for URL expansion where it differs from Docker (for example different host ports). **With** `aifabrix run <app> --reload` in dev, the file written to `envOutputPath` is aligned with the **container** `.env` so `url://` values match what the running container sees.
+## `build.envOutputPath`, **`aifabrix resolve`**, and **`aifabrix run`**
+
+- **`builder/<app>/.env`** — Materialized by **`aifabrix resolve <app>`** only (not refreshed on every **`run`**). It always uses the **Docker** profile for **`url://`** expansion so values match container reachability (service hostnames, published ports).
+
+- **`build.envOutputPath`** (optional path in **`application.yaml`**) — On **`resolve`**, after writing **`builder/<app>/.env`**, the Builder may write the **host/IDE** copy. **`url://`** there uses the **local** profile only when **`applications.<appKey>.reload: true`** in **`~/.aifabrix/config.yaml`** **and** **`remote-server`** is **unset** (localhost-oriented URLs for the repo-side file). If **`reload`** is **`true`** **and** **`remote-server`** **is** set, that copy uses the same **Docker**-flavored expansion as **`builder/<app>/.env`**. When **`reload`** is not **`true`**, the copy mirrors the Docker-flavored **`builder`** `.env` by default.
+
+- **`aifabrix run`** — **Without** **`--reload`**, when **`envOutputPath`** is configured, the host file is updated using the **local** profile where that run path differs from Docker. **With** **`aifabrix run <app> --reload`** in dev, the file at **`envOutputPath`** is aligned with the **container** run env so **`url://`** values match what the running container sees.
 
 `--reload` with a non-local remote Docker setup requires Mutagen-related settings in `config.yaml`. If they are missing, the command fails with a clear message pointing at **`aifabrix dev init`** and the sync-related keys.
 
@@ -69,6 +75,7 @@ Older samples used **`build.localPort`** for a host-only port. That field is **r
 
 ## Related topics
 
+- [How running URLs are resolved](resolve-running-urls.md) — resolve/run steps, `config.yaml` per-app `proxy`, and public URL priority
 - [env.template](env-template.md) — template file and `kv://`
 - [application.yaml](application-yaml.md) — `port`, `frontDoorRouting`, scoped resources
 - [Secrets and config](secrets-and-config.md) — `config.yaml`, `developer-id`, `remote-server`
