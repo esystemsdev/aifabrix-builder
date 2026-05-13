@@ -91,6 +91,12 @@ describe('app-logs', () => {
       expect(appLogs.getLogLevel('exception: Error: Application not found')).toBe('error');
     });
 
+    it('treats validation failure lines as error (Keycloak / kc.sh)', () => {
+      expect(appLogs.getLogLevel('ERROR: Configuration validation failed:')).toBe('error');
+      expect(appLogs.getLogLevel('Configuration validation failed:')).toBe('error');
+      expect(appLogs.getLogLevel('  - Option foo is invalid')).toBeNull();
+    });
+
     it('returns null for line with no parseable level and no error word', () => {
       expect(appLogs.getLogLevel('plain text')).toBeNull();
       expect(appLogs.getLogLevel('')).toBeNull();
@@ -127,6 +133,22 @@ describe('app-logs', () => {
     it('treats null lineLevel as info when filter is set', () => {
       expect(appLogs.passesLevelFilter(null, 'info')).toBe(true);
       expect(appLogs.passesLevelFilter(null, 'error')).toBe(false);
+    });
+  });
+
+  describe('shouldShowFilteredLogLine', () => {
+    it('with -l error, keeps unclassified lines after an ERROR line until classified non-error', () => {
+      const state = { pendingAfterError: 0 };
+      expect(appLogs.shouldShowFilteredLogLine('ERROR: Configuration validation failed:', 'error', state)).toBe(true);
+      expect(state.pendingAfterError).toBeGreaterThan(0);
+      expect(appLogs.shouldShowFilteredLogLine('  - Invalid value for KC_HOSTNAME', 'error', state)).toBe(true);
+      expect(appLogs.shouldShowFilteredLogLine('INFO: server started', 'error', state)).toBe(false);
+    });
+
+    it('with -l error, validation failed without ERROR prefix is error and opens context', () => {
+      const state = { pendingAfterError: 0 };
+      expect(appLogs.shouldShowFilteredLogLine('Configuration validation failed:', 'error', state)).toBe(true);
+      expect(state.pendingAfterError).toBeGreaterThan(0);
     });
   });
 

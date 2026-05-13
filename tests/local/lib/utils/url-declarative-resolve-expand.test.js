@@ -651,6 +651,39 @@ KC=url://public
     expect(noTls).toContain('KC=http://kc.frontdoor.test/auth');
   });
 
+  it('userCfg + applications.<app>.proxy: url://public uses Traefik host without ctx.traefik', async() => {
+    writeApp(
+      'keycloak',
+      `port: 8082
+frontDoorRouting:
+  pattern: /auth/*
+  enabled: true
+  host: \${DEV_USERNAME}.\${REMOTE_HOST}
+  tls: false
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'keycloak', 'application.yaml');
+    const content = `KC=url://public
+`;
+    const out = await expandDeclarativeUrlsInEnvContent(content, {
+      profile: 'docker',
+      currentAppKey: 'keycloak',
+      variablesPath,
+      useEnvironmentScopedResources: false,
+      appEnvironmentScopedResources: false,
+      remoteServer: 'https://builder02.local',
+      developerIdRaw: '02',
+      infraTlsEnabled: true,
+      userCfg: {
+        traefik: true,
+        applications: {
+          keycloak: { proxy: true }
+        }
+      }
+    });
+    expect(out).toContain('KC=https://dev02.builder02.local/auth');
+  });
+
   it('Traefik expanded frontDoor host + Plan 117 keeps /dev and /tst path prefix', async() => {
     writeApp(
       'fdscoped',

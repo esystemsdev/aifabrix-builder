@@ -60,6 +60,28 @@ describe('computePublicUrlBaseString (remote without Traefik)', () => {
   });
 });
 
+describe('computePublicUrlBaseString declarativePublicUrlsUseLocalhost (scheme)', () => {
+  it('uses http for localhost when remote-server is not https', () => {
+    expect(
+      computePublicUrlBaseString({
+        traefik: false,
+        pathActive: false,
+        hostTemplate: null,
+        tls: true,
+        developerIdRaw: 2,
+        remoteServer: 'http://builder02.local',
+        profile: 'local',
+        listenPort: 3000,
+        developerIdNum: 2,
+        infraTlsEnabled: false,
+        declarativeTargetAppKey: 'miso-controller',
+        declarativeCurrentAppKey: 'miso-controller',
+        declarativePublicUrlsUseLocalhost: true
+      })
+    ).toBe('http://localhost:3200');
+  });
+});
+
 describe('resolveHostPortForDeclarativePublic (local +10 on current app only)', () => {
   it('applies localHostPort math when target matches current app', () => {
     expect(

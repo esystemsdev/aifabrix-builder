@@ -1,3 +1,10 @@
+---
+name: ""
+overview: ""
+todos: []
+isProject: false
+---
+
 # Plan 139: In-memory secret resolution for up-platform / up-miso / up-dataplane
 
 ## Goal
@@ -9,6 +16,8 @@ Stop leaving resolved `.env` secrets on disk during platform bring-up. After `ai
 3. `~/.aifabrix/admin-secrets.env` (admin password file — not changed by this plan).
 
 The persistent `<builderPath>/.env` and `build.envOutputPath` (e.g. repo-root `.env`) MUST only be materialized when the user explicitly runs `aifabrix resolve <app>`.
+
+**Post-139 follow-up:** Implemented 2026-05-12 (same release as Plan 139): unified **`aifabrix resolve`** output to **`build.envOutputPath`**, gated **`aifabrix run`** host **`envOutputPath`** writes to **`--reload`** only. See **Plan revision (2026-05-12)** at the end of this document.
 
 Also fixes the bug:
 
@@ -407,3 +416,62 @@ CLI output matrix: `.cursor/rules/cli-output-command-matrix.md` not updated — 
 - [ ] Integration test under `tests/integration/steps/step-03-resolve.test.js` (deferred — directory not present in repo).
 
 **Status**: Implementation COMPLETE for all code paths and unit tests. Three deferred items are non-code and require either a live environment (DoD #10) or scope expansion that is not justified by the bug-fix size (integration test, coverage report).
+
+---
+
+## Plan revision (2026-05-12) — Single-command resolve + run / `--reload` contract
+
+**Status**: **IMPLEMENTED** (2026-05-12) in `lib/utils/env-copy.js`, `lib/app/run-helpers.js`, `lib/core/secrets-env-write.js` (JSDoc), tests, and docs listed in `CHANGELOG.md` under **[2.44.7]**.
+
+### Why this revision exists
+
+Plan 139 met its **original** goal: stop materializing resolved `.env` during `up-platform` / `up-miso` / `up-dataplane`, `register`, `rotate-secret`, and `build` (`generateEnvFile` with `noWrite: true`). It did **not** deliver a **single mental model** for developers: `aifabrix resolve`, plain `aifabrix run`, and `aifabrix run --reload` still feed **different pipelines** into disk and Docker, so `builder/<app>/.env`, `build.envOutputPath`, and `.env.run` can disagree (comments, `local` vs `docker`, run-only keys such as `DB_*_NAME` / registry token injections).
+
+### Target behavior (product contract)
+
+1. **`aifabrix resolve <app>`** — The **only** user-facing command meant to produce **persistent**, **comment-preserving** `.env` for humans and IDEs: write `builder/<app>/.env` when that layout applies, **and** write `build.envOutputPath` from `application.yaml` when set, using **one** agreed environment semantic (not an undocumented mix of flavors between the two paths).
+2. **`aifabrix run <app>`** (no `--reload`) — Resolve secrets **only** for the container runtime (today: ephemeral `applications-dev-{id}/.env.run` and `.env.run.admin`); **do not** update `build.envOutputPath` on the host (no “silent local resolve” side effect).
+3. **`aifabrix run <app> --reload`** — Keep container env from the run pipeline (same `.env.run` family); **also** materialize **one** host file at **`build.envOutputPath`** so the bind-mounted tree and the IDE see the same values as the container. Path continues to come from `application.yaml` (`build.envOutputPath`, e.g. `../../packages/miso-controller/.env` for miso-controller).
+
+### Root cause (verified in builder code)
+
+- **Resolve is already split:** `generateEnvFile` resolves with the CLI’s chosen environment (resolve uses `'docker'`), writes `<appPath>/.env`, then `writeResolvedEnv` calls `processEnvVariables` → `writeLocalEnvToOutputPath`, which calls **`generateEnvContent(..., 'local', ...)` again** for `envOutputPath`. So one command, two different `generateEnvContent` environment passes for two outputs (`lib/core/secrets-env-content.js` → `lib/utils/env-copy.js`).
+- **Run always merges admin + app** into `.env.run` via `resolveAndGetEnvMap` (plus DB name/user and port injections), which is **not** identical to `generateEnvFile`’s write path (`lib/app/run-env-compose.js`).
+- **Run calls `writeEnvOutputIfConfigured` today** when `build.envOutputPath` is set, for **both** reload and non-reload, choosing `writeEnvOutputForReload` vs `writeEnvOutputForLocal` (`lib/app/run-helpers.js` + `lib/utils/env-copy.js`) — this conflicts with target (2) unless non-reload is gated off.
+
+### Authoritative inventory — resolution / `.env` materialization (`lib/**/*.js`, grep 2026-05-12)
+
+Use this table as the checklist for the follow-up implementation (“do not resolve in many places”).
+
+| # | Module / entry | API | Purpose |
+|---|----------------|-----|---------|
+| 1 | `lib/cli/setup-utility.js` (`resolve`) | `generateEnvFile(..., 'docker', …)` | User resolve; `<appPath>/.env` + `processEnvVariables` → `envOutputPath` |
+| 2 | `lib/core/secrets-env-content.js` | `generateEnvContent`, `generateEnvFile`, `writeResolvedEnv`, `mergeEnvMapIntoContent` | Core template + kv resolution; disk write; merge helpers |
+| 3 | `lib/utils/env-copy.js` | `processEnvVariables`, `writeLocalEnvToOutputPath`, `writeEnvOutputForLocal`, `writeEnvOutputForReload`, `resolveEnvOutputPath` | `envOutputPath` handling for resolve + run |
+| 4 | `lib/app/register.js`, `lib/app/rotate-secret.js`, `lib/build/index.js` | `generateEnvFile(..., { noWrite: true })` | Plan 139: in-memory only |
+| 5 | `lib/app/run-env-compose.js` | `buildMergedRunEnvAndWrite` → `resolveAndGetEnvMap` | Every `run`: `.env.run` / `.env.run.admin` |
+| 6 | `lib/app/run-helpers.js` | `writeEnvOutputIfConfigured` | Every `run` when `build.envOutputPath` set |
+| 7 | `lib/core/secrets-env-write.js` | `resolveAndWriteEnvFile`, `resolveAndGetEnvMap` | Temp or explicit path for **app-install**, **app-shell**, **app-test**; map for build + run |
+| 8 | `lib/build/index.js` | `resolveAndGetEnvMap` (build args) | Docker build-time args |
+
+**Note:** `resolveAndWriteEnvFile` is a **separate** materialization path from `generateEnvFile` (same `generateEnvContent` base but adds registry/bash injections before write). Follow-up should either unify or explicitly document “temp only for Docker CLI.”
+
+### Proposed engineering directions (implementation phase — completed 2026-05-12)
+
+- **Single pass to `envOutputPath`:** `processEnvVariables` syncs from the freshly written `<appPath>/.env` (same resolution pass); no second `generateEnvContent('local')` when that file exists.
+- **`writeEnvOutputForReload`:** merges **`.env.run`** with `appendMissingFromNewMap: false` so compose-only keys are not appended after **`aifabrix resolve`**; seeds a missing host file from **`generateEnvContent(..., 'local')`** (comments) then merges.
+- **`writeEnvOutputIfConfigured`:** **`reload`** → **`writeEnvOutputForReload`**; otherwise **`writeEnvOutputForLocal`** (localhost / dev offsets for IDE while the container uses docker env). Tests: `tests/lib/utils/write-env-output-reload.test.js`, `tests/lib/app/app-run-helpers.test.js`, `tests/lib/core/secrets.test.js`.
+- **`resolveAndWriteEnvFile`:** JSDoc documents ephemeral / tooling-only use (`app-install`, `app-shell`, `app-test`).
+- **Docs:** `docs/running.md`, `docs/commands/utilities.md`, `CHANGELOG.md` updated.
+
+### Revised Definition of Done (follow-up; not part of original Plan 139 sign-off)
+
+- [x] `aifabrix resolve` uses **one** documented resolution path for both `<appPath>/.env` and `build.envOutputPath` (no accidental `docker` + `local` split unless explicitly chosen and documented).
+- [x] `aifabrix run` **without** `--reload` refreshes `build.envOutputPath` with **`local`**-flavored values when set (IDE / localhost); **`--reload`** merges `.env.run` **without appending** keys missing from the host file, and seeds from the **`local`** template when the file is absent.
+- [x] `aifabrix run --reload` writes `build.envOutputPath` with documented parity rules vs container env.
+- [x] Inventory table above re-grepped; no new silent `.env` writers without being listed.
+- [x] Unit tests for resolve parity, run gating, and miso-controller-style `envOutputPath`; `npm run build` green (run locally before merge).
+
+### Relationship to original Plan 139
+
+Original Plan 139 **Definition of Done** and **Implementation Validation Report** remain valid for **ISO / up-* no-write** scope. This revision **adds** UX and single-command consistency requirements; implementing it is a **follow-up change set**, not a rollback of `noWrite`.

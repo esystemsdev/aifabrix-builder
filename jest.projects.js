@@ -141,6 +141,14 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\utils\\\\url-declarative-vdir-inactive-env.test.js',
       'lib/utils/url-declarative-vdir-inactive-env.test.js',
       'url-declarative-vdir-inactive-env\\.test\\.js',
+      '/tests/lib/utils/url-declarative-user-cfg-per-app-proxy.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\url-declarative-user-cfg-per-app-proxy.test.js',
+      'lib/utils/url-declarative-user-cfg-per-app-proxy.test.js',
+      'url-declarative-user-cfg-per-app-proxy\\.test\\.js',
+      '/tests/lib/commands/platform-urls-registry.validation.test.js',
+      '\\\\tests\\\\lib\\\\commands\\\\platform-urls-registry.validation.test.js',
+      'lib/commands/platform-urls-registry.validation.test.js',
+      'platform-urls-registry\\.validation\\.test\\.js',
       '/tests/lib/utils/app-service-env-from-builder.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\app-service-env-from-builder.test.js',
       'lib/utils/app-service-env-from-builder.test.js',
@@ -313,6 +321,12 @@ const isolatedProjects = [
   makeIsolatedProject('secrets-ensure', ['**/tests/lib/core/secrets-ensure.test.js']),
   makeIsolatedProject('url-declarative-vdir-inactive-env', [
     '**/tests/lib/utils/url-declarative-vdir-inactive-env.test.js'
+  ]),
+  makeIsolatedProject('url-declarative-user-cfg-per-app-proxy', [
+    '**/tests/lib/utils/url-declarative-user-cfg-per-app-proxy.test.js'
+  ]),
+  makeIsolatedProject('platform-urls-registry-validation', [
+    '**/tests/lib/commands/platform-urls-registry.validation.test.js'
   ]),
   makeIsolatedProject('app-service-env-from-builder', [
     '**/tests/lib/utils/app-service-env-from-builder.test.js'

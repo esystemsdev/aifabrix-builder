@@ -90,6 +90,7 @@ describe('lib/app/show.js', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     logger.log.mockImplementation(() => {});
+    config.getConfig.mockResolvedValue({});
   });
 
   describe('offline (default)', () => {
@@ -109,6 +110,72 @@ describe('lib/app/show.js', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('My Application'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('webapp'));
       expect(getApplication).not.toHaveBeenCalled();
+    });
+
+    it('includes runReloadDefault in offline JSON when applications reload is on', async() => {
+      const appPath = path.join(process.cwd(), 'builder', 'myapp');
+      const configPath = path.join(appPath, 'application.yaml');
+      detectAppType.mockResolvedValue({ appPath });
+      resolveApplicationConfigPath.mockReturnValue(configPath);
+      loadConfigFile.mockReturnValue(yaml.load(minimalVariablesYaml));
+      generator.buildDeploymentManifestInMemory.mockRejectedValue(new Error('use variables'));
+      config.getConfig.mockResolvedValue({
+        applications: { myapp: { reload: true } }
+      });
+
+      const logs = [];
+      logger.log.mockImplementation((m) => logs.push(m));
+
+      await showApp('myapp', { json: true });
+
+      const jsonLine = logs.find((l) => typeof l === 'string' && l.trim().startsWith('{'));
+      expect(jsonLine).toBeDefined();
+      const body = JSON.parse(jsonLine);
+      expect(body.runReloadDefault).toBe(true);
+    });
+
+    it('includes runProxyDefault in offline JSON from applications.proxy', async() => {
+      const appPath = path.join(process.cwd(), 'builder', 'myapp');
+      const configPath = path.join(appPath, 'application.yaml');
+      detectAppType.mockResolvedValue({ appPath });
+      resolveApplicationConfigPath.mockReturnValue(configPath);
+      loadConfigFile.mockReturnValue(yaml.load(minimalVariablesYaml));
+      generator.buildDeploymentManifestInMemory.mockRejectedValue(new Error('use variables'));
+      config.getConfig.mockResolvedValue({
+        applications: { myapp: { proxy: true } }
+      });
+
+      const logs = [];
+      logger.log.mockImplementation((m) => logs.push(m));
+
+      await showApp('myapp', { json: true });
+
+      const jsonLine = logs.find((l) => typeof l === 'string' && l.trim().startsWith('{'));
+      expect(jsonLine).toBeDefined();
+      const body = JSON.parse(jsonLine);
+      expect(body.runProxyDefault).toBe(true);
+    });
+
+    it('includes runProxyDefault false in offline JSON when proxy off', async() => {
+      const appPath = path.join(process.cwd(), 'builder', 'myapp');
+      const configPath = path.join(appPath, 'application.yaml');
+      detectAppType.mockResolvedValue({ appPath });
+      resolveApplicationConfigPath.mockReturnValue(configPath);
+      loadConfigFile.mockReturnValue(yaml.load(minimalVariablesYaml));
+      generator.buildDeploymentManifestInMemory.mockRejectedValue(new Error('use variables'));
+      config.getConfig.mockResolvedValue({
+        applications: { myapp: { proxy: false } }
+      });
+
+      const logs = [];
+      logger.log.mockImplementation((m) => logs.push(m));
+
+      await showApp('myapp', { json: true });
+
+      const jsonLine = logs.find((l) => typeof l === 'string' && l.trim().startsWith('{'));
+      expect(jsonLine).toBeDefined();
+      const body = JSON.parse(jsonLine);
+      expect(body.runProxyDefault).toBe(false);
     });
 
     it('should throw when application config is not found', async() => {

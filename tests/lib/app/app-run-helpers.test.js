@@ -218,7 +218,7 @@ describe('prepareEnvironment - port for run vs run --reload', () => {
     );
   });
 
-  it('writes to envOutputPath with localPort when run without --reload', async() => {
+  it('writes local env to envOutputPath when run without --reload (IDE / localhost)', async() => {
     const envCopy = require('../../../lib/utils/env-copy');
     const appConfig = { port: 3000, build: { envOutputPath: '../../packages/miso-controller/.env' } };
     await prepareEnvironment('myapp', appConfig, {});
@@ -232,7 +232,8 @@ describe('prepareEnvironment - port for run vs run --reload', () => {
     await prepareEnvironment('myapp', appConfig, { reload: true });
     expect(envCopy.writeEnvOutputForReload).toHaveBeenCalledWith(
       '/tmp/env-output/.env',
-      expect.stringContaining('.env.run')
+      expect.stringContaining('.env.run'),
+      'myapp'
     );
     expect(envCopy.writeEnvOutputForLocal).not.toHaveBeenCalled();
   });

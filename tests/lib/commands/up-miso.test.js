@@ -32,7 +32,7 @@ const { handleUpMiso, parseImageOptions } = require('../../../lib/commands/up-mi
 const config = require('../../../lib/core/config');
 const infra = require('../../../lib/infrastructure');
 const app = require('../../../lib/app');
-const { ensureAppFromTemplate, patchEnvOutputPathForDeployOnly, validateEnvOutputPathFolderOrNull } = require('../../../lib/commands/up-common');
+const { ensureAppFromTemplate, patchEnvOutputPathForDeployOnly, validateEnvOutputPathFolderOrNull, refreshUrlsLocalRegistryForCurrentProject } = require('../../../lib/commands/up-common');
 
 describe('up-miso command', () => {
   beforeEach(() => {
@@ -77,6 +77,7 @@ describe('up-miso command', () => {
       expect(infra.checkInfraHealth).toHaveBeenCalledWith(undefined, { strict: true });
       expect(ensureAppFromTemplate).toHaveBeenCalledWith('keycloak');
       expect(ensureAppFromTemplate).toHaveBeenCalledWith('miso-controller');
+      expect(refreshUrlsLocalRegistryForCurrentProject).toHaveBeenCalledTimes(1);
     });
 
     it('should validate env output path and patch for deploy-only for keycloak and miso-controller', async() => {
@@ -94,6 +95,18 @@ describe('up-miso command', () => {
       expect(app.runApp).toHaveBeenCalledTimes(2);
       expect(app.runApp).toHaveBeenNthCalledWith(1, 'keycloak', expect.objectContaining({ skipEnvOutputPath: true, skipInfraCheck: true }));
       expect(app.runApp).toHaveBeenNthCalledWith(2, 'miso-controller', expect.objectContaining({ skipEnvOutputPath: true, skipInfraCheck: true }));
+    });
+
+    it('should refresh urls registry after deploy-only patches and before runApp', async() => {
+      await handleUpMiso({});
+      expect(patchEnvOutputPathForDeployOnly).toHaveBeenCalledTimes(2);
+      expect(refreshUrlsLocalRegistryForCurrentProject).toHaveBeenCalledTimes(1);
+      expect(app.runApp).toHaveBeenCalledTimes(2);
+      const patchOrder = patchEnvOutputPathForDeployOnly.mock.invocationCallOrder[1];
+      const refreshOrder = refreshUrlsLocalRegistryForCurrentProject.mock.invocationCallOrder[0];
+      const runOrder = app.runApp.mock.invocationCallOrder[0];
+      expect(refreshOrder).toBeGreaterThan(patchOrder);
+      expect(runOrder).toBeGreaterThan(refreshOrder);
     });
 
     it('should pass image overrides from --image options to runApp', async() => {

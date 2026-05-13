@@ -19,10 +19,10 @@ Profiles: **layout-blocks** (header/status/list/helpers); **tty-summary** (chalk
 | aifabrix down-infra | tty-summary + stream-logs |
 | aifabrix doctor | tty-summary |
 | aifabrix status | tty-summary |
-| aifabrix restart | tty-summary (Restart + `Infra service:` or `Application:` + optional progress + success; builder apps add `docker inspect` `/app` bind hint) |
+| aifabrix restart | tty-summary (Restart + `Infra service:` or `Application:` + optional progress + success; builder apps add `docker inspect` `/app` bind hint, then **Reload (config)** from `applications.<app>.reload`) |
 | aifabrix create | tty-summary |
 | aifabrix wizard | delegate |
-| aifabrix run | tty-summary (header + progress + footer) + stream-logs (health/ora) |
+| aifabrix run | tty-summary (header + progress + footer; flags `--reload`, `--proxy` default on / `--no-proxy` → save `applications.<app>.proxy: false`) + stream-logs (health/ora); public URL hints only when user `traefik: true`, app `frontDoorRouting.enabled`, CLI proxy on, and `applications.<app>.proxy` is true (default false; legacy `noProxy` migrated) |
 | aifabrix build | tty-summary (header + paths + secrets lines) + stream-logs (docker/ora) |
 | aifabrix logs | stream-logs |
 | aifabrix down-app | tty-summary + stream-logs |

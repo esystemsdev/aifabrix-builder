@@ -14,7 +14,8 @@ jest.mock('../../../lib/utils/paths', () => ({
   getConfigDirForPaths: jest.fn(),
   getProjectRoot: jest.fn(),
   getBuilderRoot: jest.fn(),
-  getSystemBuilderRoot: jest.fn()
+  getSystemBuilderRoot: jest.fn(),
+  getIntegrationBuilderBaseDir: jest.fn()
 }));
 
 const pathsUtil = require('../../../lib/utils/paths');
@@ -24,7 +25,8 @@ const {
   writeUrlsLocalRegistrySync,
   refreshUrlsLocalRegistryFromBuilder,
   normalizePatternForUrl,
-  getRegistryEntryForApp
+  getRegistryEntryForApp,
+  readRegistryInternalDockerUseOriginOnly
 } = require('../../../lib/utils/urls-local-registry');
 
 describe('urls-local-registry', () => {
@@ -45,6 +47,7 @@ describe('urls-local-registry', () => {
     pathsUtil.getSystemBuilderRoot.mockImplementation(() =>
       path.join(pathsUtil.getConfigDirForPaths(), 'builder')
     );
+    pathsUtil.getIntegrationBuilderBaseDir.mockReturnValue(fakeProject);
   });
 
   afterEach(() => {
@@ -69,6 +72,20 @@ describe('urls-local-registry', () => {
       expect(normalizePatternForUrl('data')).toBe('/data');
       expect(normalizePatternForUrl('/api/**')).toBe('/api');
       expect(normalizePatternForUrl('/v1/')).toBe('/v1');
+    });
+  });
+
+  describe('readRegistryInternalDockerUseOriginOnly', () => {
+    it('returns undefined when key absent or not coercible', () => {
+      expect(readRegistryInternalDockerUseOriginOnly('kc', {})).toBeUndefined();
+      expect(readRegistryInternalDockerUseOriginOnly('kc', { 'kc-internalDockerUseOriginOnly': 'maybe' })).toBeUndefined();
+    });
+
+    it('coerces common boolean forms', () => {
+      expect(readRegistryInternalDockerUseOriginOnly('kc', { 'kc-internalDockerUseOriginOnly': true })).toBe(true);
+      expect(readRegistryInternalDockerUseOriginOnly('kc', { 'kc-internalDockerUseOriginOnly': false })).toBe(false);
+      expect(readRegistryInternalDockerUseOriginOnly('kc', { 'kc-internalDockerUseOriginOnly': 'true' })).toBe(true);
+      expect(readRegistryInternalDockerUseOriginOnly('kc', { 'kc-internalDockerUseOriginOnly': '0' })).toBe(false);
     });
   });
 
@@ -115,25 +132,25 @@ describe('urls-local-registry', () => {
       expect(doc.note).toBe('x');
     });
 
-    it('reads config-dir urls.local.yaml when home path file is missing (migration)', () => {
+    it('reads legacy urls.local.yaml under getAifabrixHome when config-dir primary is missing', () => {
       const cfgDir = path.join(fakeHome, 'dot-aifabrix');
       fs.mkdirSync(cfgDir, { recursive: true });
       pathsUtil.getConfigDirForPaths.mockReturnValue(cfgDir);
       pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
-      const atConfig = path.join(cfgDir, 'urls.local.yaml');
-      fs.writeFileSync(atConfig, 'migrated-port: 7777\n', 'utf8');
-      expect(getUrlsLocalYamlPath()).toBe(path.join(fakeHome, 'urls.local.yaml'));
+      const legacy = path.join(fakeHome, 'urls.local.yaml');
+      fs.writeFileSync(legacy, 'migrated-port: 7777\n', 'utf8');
+      expect(getUrlsLocalYamlPath()).toBe(path.join(cfgDir, 'urls.local.yaml'));
       expect(readUrlsLocalRegistrySync()).toEqual({ 'migrated-port': 7777 });
     });
 
-    it('prefers urls.local.yaml under getAifabrixHome over config-dir when both exist', () => {
+    it('prefers urls.local.yaml under config dir over legacy home when both exist', () => {
       const cfgDir = path.join(fakeHome, 'dot-aifabrix');
       fs.mkdirSync(cfgDir, { recursive: true });
       pathsUtil.getConfigDirForPaths.mockReturnValue(cfgDir);
       pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
       fs.writeFileSync(path.join(fakeHome, 'urls.local.yaml'), 'home: 1\n', 'utf8');
       fs.writeFileSync(path.join(cfgDir, 'urls.local.yaml'), 'cfg: 2\n', 'utf8');
-      expect(readUrlsLocalRegistrySync()).toEqual({ home: 1 });
+      expect(readUrlsLocalRegistrySync()).toEqual({ cfg: 2 });
     });
   });
 
@@ -160,6 +177,24 @@ frontDoorRouting:
 
       const disk = readUrlsLocalRegistrySync();
       expect(disk['alpha-app-port']).toBe(3001);
+    });
+
+    it('writes internalDockerUseOriginOnly from application.yaml when explicitly set', () => {
+      const kcDir = path.join(fakeProject, 'builder', 'kc-reg');
+      fs.mkdirSync(kcDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(kcDir, 'application.yaml'),
+        `port: 8082
+app:
+  key: keycloak
+frontDoorRouting:
+  pattern: /auth/*
+  internalDockerUseOriginOnly: true
+`,
+        'utf8'
+      );
+      const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+      expect(merged['keycloak-internalDockerUseOriginOnly']).toBe(true);
     });
 
     it('uses directory name when app.key missing', () => {
@@ -202,6 +237,22 @@ app:
       expect(merged['keycloak-containerPort']).toBeUndefined();
     });
 
+    it('merges packages/*/application.yaml for cross-repo app layouts', () => {
+      const pkgDir = path.join(fakeProject, 'packages', 'mono-svc');
+      fs.mkdirSync(pkgDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(pkgDir, 'application.yaml'),
+        `port: 9100
+app:
+  key: mono-svc
+`,
+        'utf8'
+      );
+
+      const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+      expect(merged['mono-svc-port']).toBe(9100);
+    });
+
     it('skips folders without valid port', () => {
       const badDir = path.join(fakeProject, 'builder', 'no-port');
       fs.mkdirSync(badDir, { recursive: true });
@@ -239,6 +290,7 @@ frontDoorRouting:
 
       pathsUtil.getProjectRoot.mockReturnValue(fakeNpmPackage);
       pathsUtil.getBuilderRoot.mockReturnValue(userBuilder);
+      pathsUtil.getIntegrationBuilderBaseDir.mockReturnValue(fakeNpmPackage);
 
       const merged = refreshUrlsLocalRegistryFromBuilder(fakeNpmPackage);
       expect(merged['dataplane-port']).toBe(3001);

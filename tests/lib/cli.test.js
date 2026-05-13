@@ -1989,6 +1989,7 @@ describe('CLI Commands', () => {
     describe('resolve command handler execution', () => {
       it('should execute resolve command handler with force option via setupCommands', async() => {
         setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
 
         const appName = 'testapp';
         const options = { force: true };
@@ -2001,12 +2002,23 @@ describe('CLI Commands', () => {
         await handler(appName, options);
 
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', true, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(
+          appName,
+          undefined,
+          'docker',
+          true,
+          expect.objectContaining({
+            appPath: expectedAppPath,
+            envOnly: false,
+            preferLocalEnvOutputPath: false
+          })
+        );
         expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
       });
 
       it('should execute resolve command handler without force option via setupCommands', async() => {
         setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
 
         const appName = 'testapp';
         const options = {};
@@ -2019,8 +2031,66 @@ describe('CLI Commands', () => {
         await handler(appName, options);
 
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', undefined, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(
+          appName,
+          undefined,
+          'docker',
+          undefined,
+          expect.objectContaining({
+            appPath: expectedAppPath,
+            envOnly: false,
+            preferLocalEnvOutputPath: false
+          })
+        );
         expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
+      });
+
+      it('should pass preferLocalEnvOutputPath true when applications.<app>.reload is true', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({
+          applications: { testapp: { reload: true } }
+        });
+
+        const appName = 'testapp';
+        const envPath = 'builder/testapp/.env';
+        secrets.generateEnvFile.mockResolvedValue(envPath);
+
+        const handler = commandActions['resolve <app>'];
+        await handler(appName, {});
+
+        const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(
+          appName,
+          undefined,
+          'docker',
+          undefined,
+          expect.objectContaining({
+            appPath: expectedAppPath,
+            envOnly: false,
+            preferLocalEnvOutputPath: true
+          })
+        );
+      });
+
+      it('should pass preferLocalEnvOutputPath false when applications.<app>.reload is false', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({
+          applications: { testapp: { reload: false } }
+        });
+
+        const appName = 'testapp';
+        secrets.generateEnvFile.mockResolvedValue('builder/testapp/.env');
+
+        const handler = commandActions['resolve <app>'];
+        await handler(appName, {});
+
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(
+          appName,
+          undefined,
+          'docker',
+          undefined,
+          expect.objectContaining({ preferLocalEnvOutputPath: false })
+        );
       });
 
       it('should handle resolve command handler error via setupCommands', async() => {

@@ -23,6 +23,8 @@ port: 3000
 frontDoorRouting:
   pattern: /miso/*
   enabled: true
+  # Docker url://internal full URLs: http://miso-controller:PORT only (ingress /miso is not on in-container routes).
+  internalDockerUseOriginOnly: true
   host: ${DEV_USERNAME}.${REMOTE_HOST}
   tls: ${TLS_ENABLED}
 

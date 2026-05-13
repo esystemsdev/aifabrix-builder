@@ -147,7 +147,7 @@ jest.mock('../../../lib/utils/paths', () => {
     getConfigDirForPaths,
     getAifabrixSystemDir: jest.fn(() => getConfigDirForPaths()),
     getPrimaryUserSecretsLocalPath: jest.fn(() =>
-      pathMod.join(getAifabrixHome(), 'secrets.local.yaml')
+      pathMod.join(getConfigDirForPaths(), 'secrets.local.yaml')
     ),
     getBuilderPath: jest.fn((appName) => pathMod.join(process.cwd(), 'builder', appName))
   };
@@ -827,6 +827,15 @@ environments:
         expect(result).toMatch(/^B=2$/m);
       });
 
+      it('mergeEnvMapIntoContent with appendMissingFromNewMap false updates only existing keys', () => {
+        const existing = '# doc\nPORT=3000\n';
+        const newMap = { PORT: '3001', ONLY_IN_RUN: 'x' };
+        const result = secrets.mergeEnvMapIntoContent(existing, newMap, { appendMissingFromNewMap: false });
+        expect(result).toContain('# doc');
+        expect(result).toMatch(/^PORT=3001$/m);
+        expect(result).not.toContain('ONLY_IN_RUN');
+      });
+
       it('mergeEnvMapIntoContent returns existing when newMap empty', () => {
         const existing = '# keep\nX=y\n';
         const result = secrets.mergeEnvMapIntoContent(existing, {});
@@ -871,7 +880,11 @@ environments:
         path.join(integrationPath, '.env'),
         null,
         appName,
-        undefined
+        undefined,
+        expect.objectContaining({
+          preferLocalEnvOutputPath: false,
+          appPath: integrationPath
+        })
       );
       processSpy.mockRestore();
     });
@@ -3163,11 +3176,12 @@ environments:
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
-    it('should save under getPrimaryUserSecretsLocalPath (resolved aifabrix home)', async() => {
+    it('should save under getPrimaryUserSecretsLocalPath (config directory)', async() => {
       const homeDir = '/custom/aifabrix';
       const userSecretsPath = path.join(homeDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
       pathsUtil.getAifabrixHome.mockReturnValue(homeDir);
+      pathsUtil.getConfigDirForPaths.mockReturnValue(homeDir);
 
       fs.existsSync.mockReturnValue(false);
       fs.mkdirSync.mockImplementation(() => {});
@@ -3189,6 +3203,7 @@ environments:
       const userSecretsPath = path.join(homeDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
       pathsUtil.getAifabrixHome.mockReturnValue(homeDir);
+      pathsUtil.getConfigDirForPaths.mockReturnValue(homeDir);
 
       fs.existsSync.mockReturnValue(false);
       fs.mkdirSync.mockImplementation(() => {});
@@ -3507,6 +3522,9 @@ port: 4000
 `;
         }
         if (filePath === envPath) {
+          const writes = (fs.writeFileSync.mock && fs.writeFileSync.mock.calls) || [];
+          const hit = writes.filter((c) => c[0] === envPath);
+          if (hit.length) return hit[hit.length - 1][1];
           return 'PORT=3000\nDATABASE_URL=postgres://localhost';
         }
         return '';
@@ -3579,6 +3597,9 @@ environments:
 `;
         }
         if (filePath === envPath) {
+          const writes = (fs.writeFileSync.mock && fs.writeFileSync.mock.calls) || [];
+          const hit = writes.filter((c) => c[0] === envPath);
+          if (hit.length) return hit[hit.length - 1][1];
           return 'PORT=3000\nDATABASE_URL=postgres://localhost';
         }
         return '';
@@ -3630,6 +3651,9 @@ environments:
 `;
         }
         if (filePath === envPath) {
+          const writes = (fs.writeFileSync.mock && fs.writeFileSync.mock.calls) || [];
+          const hit = writes.filter((c) => c[0] === envPath);
+          if (hit.length) return hit[hit.length - 1][1];
           return 'PORT=3000\nDATABASE_URL=postgres://localhost';
         }
         return '';
@@ -4013,6 +4037,7 @@ environments:
       const userSecretsPath = path.join(homeDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
       pathsUtil.getAifabrixHome.mockReturnValue(homeDir);
+      pathsUtil.getConfigDirForPaths.mockReturnValue(homeDir);
 
       // Save a secret
       fs.existsSync.mockReturnValue(false);
@@ -4028,6 +4053,7 @@ environments:
       // Now load secrets - should read from the same path
       jest.clearAllMocks();
       pathsUtil.getAifabrixHome.mockReturnValue(homeDir);
+      pathsUtil.getConfigDirForPaths.mockReturnValue(homeDir);
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(yaml.dump({
         'test-app-client-idKeyVault': 'saved-client-id',
@@ -4048,6 +4074,7 @@ environments:
       const userSecretsPath = path.join(homeDir, 'secrets.local.yaml');
       const pathsUtil = require('../../../lib/utils/paths');
       pathsUtil.getAifabrixHome.mockReturnValue(homeDir);
+      pathsUtil.getConfigDirForPaths.mockReturnValue(homeDir);
 
       // Save using saveLocalSecret
       fs.existsSync.mockReturnValue(false);
@@ -4063,6 +4090,7 @@ environments:
       // Load using loadUserSecrets
       jest.clearAllMocks();
       pathsUtil.getAifabrixHome.mockReturnValue(homeDir);
+      pathsUtil.getConfigDirForPaths.mockReturnValue(homeDir);
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(yaml.dump({
         'integration-test-key': 'integration-test-value'

@@ -97,6 +97,11 @@ describe('paths system builder app resolution', () => {
       expect(paths.getSystemBuilderRoot()).toBe(path.join(dataHome, 'builder'));
       expect(paths.getBuilderPath('dataplane')).toBe(path.join(dataHome, 'builder', 'dataplane'));
     });
+
+    it('getPrimaryUserSecretsLocalPath is under config dir when AIFABRIX_HOME differs from config', () => {
+      const paths = loadPaths();
+      expect(paths.getPrimaryUserSecretsLocalPath()).toBe(path.join(cfgDir, 'secrets.local.yaml'));
+    });
   });
 
   it('getBuilderPath respects AIFABRIX_BUILDER_DIR', () => {
