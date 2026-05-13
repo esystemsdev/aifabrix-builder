@@ -2547,6 +2547,7 @@ describe('CLI Commands', () => {
     describe('up command with developer option', () => {
       beforeEach(() => {
         config.getConfig.mockResolvedValue({});
+        config.saveConfig = jest.fn().mockResolvedValue(undefined);
       });
 
       it('should execute up command with developer option via setupCommands', async() => {
@@ -2615,6 +2616,13 @@ describe('CLI Commands', () => {
 
         expect(config.setDeveloperId).not.toHaveBeenCalled();
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: false }));
+        expect(config.saveConfig).toHaveBeenCalledWith(
+          expect.objectContaining({
+            traefik: false,
+            pgadmin: true,
+            redisCommander: true
+          })
+        );
       });
 
       it('should execute up with --traefik, persist to config, and start with traefik', async() => {
@@ -2690,7 +2698,13 @@ describe('CLI Commands', () => {
         const handler = commandActions['up-infra'];
         await handler({});
 
-        expect(config.saveConfig).not.toHaveBeenCalled();
+        expect(config.saveConfig).toHaveBeenCalledWith(
+          expect.objectContaining({
+            traefik: true,
+            pgadmin: true,
+            redisCommander: true
+          })
+        );
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: true }));
       });
 
@@ -2807,7 +2821,14 @@ describe('CLI Commands', () => {
         const handler = commandActions['up-infra'];
         await handler({});
 
-        expect(config.saveConfig).not.toHaveBeenCalled();
+        expect(config.saveConfig).toHaveBeenCalledWith(
+          expect.objectContaining({
+            traefik: false,
+            pgadmin: true,
+            redisCommander: true,
+            tlsEnabled: true
+          })
+        );
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ tlsEnabled: true }));
       });
 

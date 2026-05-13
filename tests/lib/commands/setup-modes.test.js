@@ -66,6 +66,7 @@ describe('lib/commands/setup-modes', () => {
     jest.clearAllMocks();
     logger.log = jest.fn();
     config.ensureSecretsEncryptionKey = jest.fn().mockResolvedValue(undefined);
+    config.saveConfig = jest.fn().mockResolvedValue(undefined);
     config.getConfig = jest.fn().mockResolvedValue({
       traefik: false,
       pgadmin: true,
@@ -129,6 +130,20 @@ describe('lib/commands/setup-modes', () => {
           redisCommander: true,
           adminPassword: 'pw12345678',
           adminEmail: 'a@b',
+          tlsEnabled: false
+        })
+      );
+      expect(config.saveConfig).not.toHaveBeenCalled();
+    });
+
+    it('persists optional infra flags when missing from config after start', async() => {
+      config.getConfig.mockResolvedValueOnce({ tlsEnabled: false });
+      await modes.startInfraFromConfig({});
+      expect(config.saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          traefik: false,
+          pgadmin: true,
+          redisCommander: true,
           tlsEnabled: false
         })
       );
