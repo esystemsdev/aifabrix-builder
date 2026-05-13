@@ -26,7 +26,7 @@ describe('computePublicUrlBaseString declarativePublicUrlsUseLocalhost', () => {
     expect(base).toBe('http://localhost:8282');
   });
 
-  it('uses localhost + local workstation port (local profile) when flag is true', () => {
+  it('uses localhost + local workstation port (+10 on current app, local profile) when flag is true', () => {
     const base = computePublicUrlBaseString({
       traefik: false,
       pathActive: false,
@@ -42,7 +42,26 @@ describe('computePublicUrlBaseString declarativePublicUrlsUseLocalhost', () => {
       declarativeCurrentAppKey: 'miso-controller',
       declarativePublicUrlsUseLocalhost: true
     });
-    expect(base).toBe('http://localhost:3200');
+    expect(base).toBe('http://localhost:3210');
+  });
+
+  it('uses localhost + published port for cross-app token when flag is true (local profile, no +10 on sibling)', () => {
+    const base = computePublicUrlBaseString({
+      traefik: false,
+      pathActive: false,
+      hostTemplate: null,
+      tls: true,
+      developerIdRaw: 2,
+      remoteServer: 'https://builder02.local',
+      profile: 'local',
+      listenPort: 8082,
+      developerIdNum: 2,
+      infraTlsEnabled: false,
+      declarativeTargetAppKey: 'keycloak',
+      declarativeCurrentAppKey: 'miso-controller',
+      declarativePublicUrlsUseLocalhost: true
+    });
+    expect(base).toBe('http://localhost:8282');
   });
 
   it('keeps remote-server base when flag is false', () => {

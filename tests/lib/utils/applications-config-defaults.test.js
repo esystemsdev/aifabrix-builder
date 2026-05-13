@@ -43,20 +43,20 @@ describe('applications-config-defaults', () => {
   });
 
   describe('isPreferLocalEnvOutputPath', () => {
-    const cfgReload = { applications: { myapp: { reload: true } } };
-
-    it('is false when reload is not true', () => {
-      expect(isPreferLocalEnvOutputPath({}, 'myapp', null)).toBe(false);
-      expect(isPreferLocalEnvOutputPath({ applications: { myapp: { reload: false } } }, 'myapp', null)).toBe(false);
+    it('is true when remote-server is unset regardless of reload', () => {
+      expect(isPreferLocalEnvOutputPath({}, 'myapp', null)).toBe(true);
+      expect(isPreferLocalEnvOutputPath({ applications: { myapp: { reload: false } } }, 'myapp', null)).toBe(true);
+      expect(isPreferLocalEnvOutputPath({ applications: { myapp: { reload: true } } }, 'myapp', '')).toBe(true);
     });
 
-    it('is true when reload is true and remote-server is unset', () => {
-      expect(isPreferLocalEnvOutputPath(cfgReload, 'myapp', null)).toBe(true);
-      expect(isPreferLocalEnvOutputPath(cfgReload, 'myapp', '')).toBe(true);
+    it('is true when remote is set but applications reload is not true', () => {
+      const cfg = { applications: { myapp: { reload: false } } };
+      expect(isPreferLocalEnvOutputPath(cfg, 'myapp', 'https://builder02.local')).toBe(true);
     });
 
-    it('is false when reload is true and remote-server is set', () => {
-      expect(isPreferLocalEnvOutputPath(cfgReload, 'myapp', 'https://builder02.local')).toBe(false);
+    it('is false only when both remote-server and applications reload are set', () => {
+      const cfg = { applications: { myapp: { reload: true } } };
+      expect(isPreferLocalEnvOutputPath(cfg, 'myapp', 'https://builder02.local')).toBe(false);
     });
   });
 
@@ -68,6 +68,12 @@ describe('applications-config-defaults', () => {
     it('delegates to isPreferLocalEnvOutputPath using getRemoteServer()', async() => {
       jest.spyOn(config, 'getRemoteServer').mockResolvedValue(null);
       const cfg = { applications: { myapp: { reload: true } } };
+      await expect(resolvePreferLocalEnvOutputPathFlag(cfg, 'myapp')).resolves.toBe(true);
+    });
+
+    it('is true when remote-server is set but reload is false', async() => {
+      jest.spyOn(config, 'getRemoteServer').mockResolvedValue('https://builder02.local');
+      const cfg = { applications: { myapp: { reload: false } } };
       await expect(resolvePreferLocalEnvOutputPathFlag(cfg, 'myapp')).resolves.toBe(true);
     });
 

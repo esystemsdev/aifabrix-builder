@@ -715,7 +715,7 @@ P=url://public
 `,
       baseCtx
     );
-    expect(devOut).toContain('P=https://dev01.builder02.local/dev/data');
+    expect(devOut).toContain('P=http://dev01.builder02.local/dev/data');
 
     const tstOut = await expandDeclarativeUrlsInEnvContent(
       `MISO_CLIENTID=miso-controller-tst-fdscoped
@@ -723,7 +723,7 @@ P=url://public
 `,
       baseCtx
     );
-    expect(tstOut).toContain('P=https://dev01.builder02.local/tst/data');
+    expect(tstOut).toContain('P=http://dev01.builder02.local/tst/data');
   });
 
   it('without Traefik, url://public keeps explicit remote port; bare host gets published docker port', async() => {
@@ -938,7 +938,7 @@ VI=url://vdir-internal
         // Plan 124: Traefik host only when pathActive (enabled === true); else direct remote base
         [true, 'omit', 'http://remote.test:5555'],
         [true, 'false', 'http://remote.test:5555'],
-        [true, 'true', 'https://ingress.test.local/api']
+        [true, 'true', 'http://ingress.test.local/api']
       ])(
         'public when traefik=%s and enabled=%s → %s',
         async(traefik, enabledMode, expectedUrl) => {
@@ -974,7 +974,7 @@ H=url://host-public
         const val = parseSimpleEnvMap(out).H;
         expect(val).not.toContain('/api');
         if (traefik && enabledMode === 'true') {
-          expect(val).toBe('https://ingress.test.local');
+          expect(val).toBe('http://ingress.test.local');
         } else {
           expect(val).toBe('http://remote.test:5555');
         }
@@ -1038,7 +1038,7 @@ R=url://svcpub-public
           traefik: true
         }
       );
-      expect(parseSimpleEnvMap(active).R).toBe('https://svcpub.test.local/svc');
+      expect(parseSimpleEnvMap(active).R).toBe('http://svcpub.test.local/svc');
 
       const passive = await expandDeclarativeUrlsInEnvContent(
         `MISO_CLIENTID=z
@@ -1131,7 +1131,7 @@ I=url://internal
           traefik: true
         }
       );
-      expect(parseSimpleEnvMap(out).I).toBe('https://ingress.test.local/api');
+      expect(parseSimpleEnvMap(out).I).toBe('http://ingress.test.local/api');
     });
 
     it('url://internal local profile uses direct remote when ingress inactive (enabled omit)', async() => {

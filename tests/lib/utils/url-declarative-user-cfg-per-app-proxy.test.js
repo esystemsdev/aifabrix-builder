@@ -129,7 +129,7 @@ KEYCLOAK_SERVER_URL=url://keycloak-public
       infraTlsEnabled: false,
       userCfg
     });
-    expect(out).toMatch(/^MISO_WEB_SERVER_URL=http:\/\/localhost:3200/m);
+    expect(out).toMatch(/^MISO_WEB_SERVER_URL=http:\/\/localhost:3210/m);
     expect(out).not.toContain('builder02.local');
   });
 });

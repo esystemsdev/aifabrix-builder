@@ -114,7 +114,7 @@ P=url://public
 
   it('scoped + traefik + pathActive + dev → /dev + pattern', async() => {
     const u = await expandPublic({ traefik: true });
-    expect(u).toBe('https://ingress124.test/dev/auth');
+    expect(u).toBe('http://ingress124.test/dev/auth');
   });
 
   it('scoped + traefik + pathActive + dev → url://vdir-public matches /dev + pattern', async() => {
@@ -153,7 +153,7 @@ VP=url://vdir-public
       { traefik: true },
       'MISO_CLIENTID=miso-controller-tst-app124'
     );
-    expect(u).toBe('https://ingress124.test/tst/auth');
+    expect(u).toBe('http://ingress124.test/tst/auth');
   });
 
   it('scoped + traefik + pathActive + pro → pattern only', async() => {
@@ -161,7 +161,7 @@ VP=url://vdir-public
       { traefik: true },
       'MISO_CLIENTID=miso-controller-pro-app124'
     );
-    expect(u).toBe('https://ingress124.test/auth');
+    expect(u).toBe('http://ingress124.test/auth');
   });
 
   it('scoped + traefik + pathActive false (enabled omit) + dev → /dev only on direct base', async() => {
@@ -199,7 +199,7 @@ P=url://public
       traefik: true,
       useEnvironmentScopedResources: false
     });
-    expect(u).toBe('https://ingress124.test/auth');
+    expect(u).toBe('http://ingress124.test/auth');
   });
 
   it('scoped config on + app environmentScopedResources false + traefik + pathActive + dev → /auth only (no /dev)', async() => {
@@ -230,7 +230,7 @@ P=url://public
         traefik: true
       }
     );
-    expect(parseSimpleEnvMap(out).P).toBe('https://ingress124.test/auth');
+    expect(parseSimpleEnvMap(out).P).toBe('http://ingress124.test/auth');
   });
 
   it('traefik off + scoped on + dev → no /dev, direct base + pattern omitted', async() => {

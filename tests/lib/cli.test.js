@@ -2017,7 +2017,7 @@ describe('CLI Commands', () => {
           expect.objectContaining({
             appPath: expectedAppPath,
             envOnly: false,
-            preferLocalEnvOutputPath: false
+            preferLocalEnvOutputPath: true
           })
         );
         expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
@@ -2046,7 +2046,7 @@ describe('CLI Commands', () => {
           expect.objectContaining({
             appPath: expectedAppPath,
             envOnly: false,
-            preferLocalEnvOutputPath: false
+            preferLocalEnvOutputPath: true
           })
         );
         expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
@@ -2101,7 +2101,7 @@ describe('CLI Commands', () => {
         );
       });
 
-      it('should pass preferLocalEnvOutputPath false when applications.<app>.reload is false', async() => {
+      it('should pass preferLocalEnvOutputPath true when applications.<app>.reload is false and no remote-server', async() => {
         setupCommandsAndResetLogger();
         config.getConfig.mockResolvedValue({
           applications: { testapp: { reload: false } }
@@ -2118,7 +2118,7 @@ describe('CLI Commands', () => {
           undefined,
           'docker',
           undefined,
-          expect.objectContaining({ preferLocalEnvOutputPath: false })
+          expect.objectContaining({ preferLocalEnvOutputPath: true })
         );
       });
 

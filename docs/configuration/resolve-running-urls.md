@@ -59,7 +59,7 @@ Each **`url://`** token refers to an **app** (the current app, or another app fo
 | Legacy **`noProxy: true`** on an app entry | Same as **`proxy: false`**. |
 | Legacy **`noProxy: false`** with no **`proxy`** | Treated like **`proxy: true`** for migration compatibility. |
 
-**`tlsEnabled`** (from **`up-infra --tls`** and stored in config) affects whether **`https`** is chosen for **non-loopback** public bases and can force **`https`** on Traefik-style bases even when the manifest sets **`frontDoorRouting.tls: false`**. **Loopback** public authorities (**`localhost`**, **`127.0.0.1`**, **`::1`**) always use **`http://`**, regardless of **`tlsEnabled`**.
+**`tlsEnabled`** (from **`up-infra --tls`** and stored in config) chooses the scheme for **Traefik** front-door hosts (expanded **`frontDoorRouting.host`**): **`https`** when **`tlsEnabled`** is **`true`** (even if **`frontDoorRouting.tls`** is **`false`** in the manifest), **`http`** when **`tlsEnabled`** is **`false`** (manifest **`frontDoorRouting.tls`** does not force **`https`** without infra TLS). For **non-Traefik** public bases, **`tlsEnabled`** also drives **`http`** vs **`https`** on **`remote-server`** hosts (see [declarative-urls.md](declarative-urls.md)). **Loopback** public authorities (**`localhost`**, **`127.0.0.1`**, **`::1`**) always use **`http://`**, regardless of **`tlsEnabled`**.
 
 ---
 
