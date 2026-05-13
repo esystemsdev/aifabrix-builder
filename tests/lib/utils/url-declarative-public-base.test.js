@@ -88,7 +88,7 @@ describe('computePublicUrlBaseString declarativePublicUrlsUseLocalhost (scheme)'
         declarativeCurrentAppKey: 'miso-controller',
         declarativePublicUrlsUseLocalhost: true
       })
-    ).toBe('http://localhost:3200');
+    ).toBe('http://localhost:3210');
   });
 
   it('uses http for localhost when infraTlsEnabled true (loopback never https)', () => {
@@ -108,7 +108,7 @@ describe('computePublicUrlBaseString declarativePublicUrlsUseLocalhost (scheme)'
         declarativeCurrentAppKey: 'miso-controller',
         declarativePublicUrlsUseLocalhost: true
       })
-    ).toBe('http://localhost:3200');
+    ).toBe('http://localhost:3210');
   });
 });
 
@@ -131,6 +131,86 @@ describe('computePublicUrlBaseString (localhost without remote)', () => {
         declarativePublicUrlsUseLocalhost: false
       })
     ).toBe('http://localhost:3200');
+  });
+});
+
+describe('computePublicUrlBaseString (Traefik front-door host authority)', () => {
+  it('uses http when tlsEnabled (infra) is false regardless of frontDoor tls hint', () => {
+    expect(
+      computePublicUrlBaseString({
+        traefik: true,
+        pathActive: true,
+        hostTemplate: 'dev06.builder02.local',
+        tls: true,
+        developerIdRaw: '06',
+        remoteServer: 'https://builder02.local',
+        profile: 'docker',
+        listenPort: 3000,
+        developerIdNum: 6,
+        infraTlsEnabled: false,
+        declarativeTargetAppKey: 'miso-controller',
+        declarativeCurrentAppKey: 'miso-controller'
+      })
+    ).toBe('http://dev06.builder02.local');
+  });
+
+  it('uses https when tlsEnabled (infra) is true even if frontDoorRouting.tls is false', () => {
+    expect(
+      computePublicUrlBaseString({
+        traefik: true,
+        pathActive: true,
+        hostTemplate: 'dev06.builder02.local',
+        tls: false,
+        developerIdRaw: '06',
+        remoteServer: 'https://builder02.local',
+        profile: 'docker',
+        listenPort: 3000,
+        developerIdNum: 6,
+        infraTlsEnabled: true,
+        declarativeTargetAppKey: 'miso-controller',
+        declarativeCurrentAppKey: 'miso-controller'
+      })
+    ).toBe('https://dev06.builder02.local');
+  });
+
+  it('skips Traefik host when host uses ${REMOTE_HOST} but remote-server is unset (localhost + docker port)', () => {
+    expect(
+      computePublicUrlBaseString({
+        traefik: true,
+        pathActive: true,
+        hostTemplate: '${DEV_USERNAME}.${REMOTE_HOST}',
+        tls: true,
+        developerIdRaw: '06',
+        remoteServer: null,
+        profile: 'docker',
+        listenPort: 3000,
+        developerIdNum: 6,
+        infraTlsEnabled: true,
+        declarativeTargetAppKey: 'miso-controller',
+        declarativeCurrentAppKey: 'miso-controller',
+        declarativePublicUrlsUseLocalhost: false
+      })
+    ).toBe('http://localhost:3600');
+  });
+
+  it('skips Traefik host when host uses ${REMOTE_HOST} but remote-server is unset (localhost + local port)', () => {
+    expect(
+      computePublicUrlBaseString({
+        traefik: true,
+        pathActive: true,
+        hostTemplate: '${DEV_USERNAME}.${REMOTE_HOST}',
+        tls: true,
+        developerIdRaw: '06',
+        remoteServer: '',
+        profile: 'local',
+        listenPort: 3000,
+        developerIdNum: 6,
+        infraTlsEnabled: true,
+        declarativeTargetAppKey: 'miso-controller',
+        declarativeCurrentAppKey: 'miso-controller',
+        declarativePublicUrlsUseLocalhost: false
+      })
+    ).toBe('http://localhost:3610');
   });
 });
 
