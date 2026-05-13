@@ -6,7 +6,7 @@
 
 jest.unmock('../../../lib/internal/fs-real-sync');
 
-const fs = require('fs');
+const fs = jest.requireActual('fs');
 const os = require('os');
 const path = require('path');
 const secrets = require('../../../lib/core/secrets');

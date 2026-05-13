@@ -4,7 +4,11 @@
 
 'use strict';
 
-const fs = require('fs');
+/**
+ * Real `fs`: other suites in the default worker use `jest.mock('fs')`; `env-copy` binds `require('fs')`
+ * at load time, so this suite runs in an isolated Jest project and uses `jest.requireActual('fs')` for fixtures/assertions.
+ */
+const fs = jest.requireActual('fs');
 const os = require('os');
 const path = require('path');
 const yaml = require('js-yaml');

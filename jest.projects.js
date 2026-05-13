@@ -149,6 +149,14 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\commands\\\\platform-urls-registry.validation.test.js',
       'lib/commands/platform-urls-registry.validation.test.js',
       'platform-urls-registry\\.validation\\.test\\.js',
+      '/tests/lib/utils/env-copy-resolve-output.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\env-copy-resolve-output.test.js',
+      'lib/utils/env-copy-resolve-output.test.js',
+      'env-copy-resolve-output\\.test\\.js',
+      '/tests/lib/utils/write-env-output-reload.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\write-env-output-reload.test.js',
+      'lib/utils/write-env-output-reload.test.js',
+      'write-env-output-reload\\.test\\.js',
       '/tests/lib/utils/app-service-env-from-builder.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\app-service-env-from-builder.test.js',
       'lib/utils/app-service-env-from-builder.test.js',
@@ -328,6 +336,8 @@ const isolatedProjects = [
   makeIsolatedProject('platform-urls-registry-validation', [
     '**/tests/lib/commands/platform-urls-registry.validation.test.js'
   ]),
+  makeIsolatedProject('env-copy-resolve-output', ['**/tests/lib/utils/env-copy-resolve-output.test.js']),
+  makeIsolatedProject('write-env-output-reload', ['**/tests/lib/utils/write-env-output-reload.test.js']),
   makeIsolatedProject('app-service-env-from-builder', [
     '**/tests/lib/utils/app-service-env-from-builder.test.js'
   ]),
