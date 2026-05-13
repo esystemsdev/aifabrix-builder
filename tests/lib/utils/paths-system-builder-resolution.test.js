@@ -80,6 +80,34 @@ describe('paths system builder app resolution', () => {
     expect(paths.getBuilderPath('my-service')).toBe(path.join(proj, 'builder', 'my-service'));
   });
 
+  it('getBuilderPath for non-system app uses config/home stable base when cwd is outside project root', () => {
+    const outside = path.join(tmp, 'outside-repo');
+    fs.mkdirSync(outside, { recursive: true });
+    process.cwd.mockReturnValue(outside);
+    const paths = loadPaths();
+    expect(paths.getBuilderPath('my-service')).toBe(path.join(cfgDir, 'builder', 'my-service'));
+  });
+
+  it('resolveIntegrationAppKeyFromCwd finds app when cwd is under an ancestor integration/ (cwd not under PROJECT_ROOT)', () => {
+    const checkout = path.join(tmp, 'training-checkout');
+    fs.mkdirSync(path.join(checkout, 'integration', 'hubspot'), { recursive: true });
+    process.cwd.mockReturnValue(path.join(checkout, 'integration', 'hubspot'));
+    global.PROJECT_ROOT = proj;
+    const paths = loadPaths();
+    expect(paths.resolveIntegrationAppKeyFromCwd()).toBe('hubspot');
+  });
+
+  it('AIFABRIX_WORK is honored when work tree has builder/ but no integration/', () => {
+    const workTree = path.join(tmp, 'work-only-builder');
+    fs.mkdirSync(path.join(workTree, 'builder', 'svc-a'), { recursive: true });
+    process.env.AIFABRIX_WORK = workTree;
+    process.cwd.mockReturnValue(path.join(tmp, 'random-cwd'));
+    global.PROJECT_ROOT = proj;
+    const paths = loadPaths();
+    expect(paths.getBuilderPath('svc-a')).toBe(path.join(workTree, 'builder', 'svc-a'));
+    delete process.env.AIFABRIX_WORK;
+  });
+
   // Nested describe so inner beforeEach runs after the outer beforeEach that sets
   // AIFABRIX_HOME=cfgDir. Global setup.js beforeEach clears Fabrix env first; hook order
   // must not leave cfgDir as the final value before assertions.
