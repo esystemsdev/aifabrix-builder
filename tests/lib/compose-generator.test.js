@@ -1325,6 +1325,33 @@ describe('Compose Generator Module', () => {
       expect(result).not.toContain('stripprefix');
     });
 
+    it('should omit Traefik labels when omitAppTraefikLabels is true despite frontDoorRouting', async() => {
+      const configModule = require('../../lib/core/config');
+      configModule.getDeveloperId.mockResolvedValue(1);
+
+      const actualDevDir = await getAndEnsureDevDir('test-app-no-tfk');
+      const envPath = path.join(actualDevDir, '.env');
+      fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+      const config = {
+        port: 3000,
+        requires: { database: true },
+        frontDoorRouting: {
+          enabled: true,
+          host: '${DEV_USERNAME}.aifabrix.dev',
+          pattern: '/api/*',
+          tls: true
+        }
+      };
+
+      const result = await composeGenerator.generateDockerCompose('test-app-no-tfk', config, {
+        omitAppTraefikLabels: true
+      });
+      expect(result).not.toContain('traefik.enable=true');
+      expect(result).not.toContain('BASE_PATH=');
+      expect(result).not.toContain('X_FORWARDED_PREFIX=');
+    });
+
     it('should healthcheck use vdir + healthCheck.path when frontDoorRouting.enabled', async() => {
       const configModule = require('../../lib/core/config');
       configModule.getDeveloperId.mockResolvedValue(1);
@@ -1493,6 +1520,30 @@ describe('Compose Generator Module', () => {
         expect(result).not.toContain('cd /app && pnpm run reloadStart');
       });
 
+      it('should add python -m uvicorn compose command when Python reloadStart is set without devMountPath', async() => {
+        const actualDevDir = await getAndEnsureDevDir('dataplane');
+        const envPath = path.join(actualDevDir, '.env');
+        fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+        const config = {
+          app: { key: 'dataplane' },
+          port: 3001,
+          requires: { database: true },
+          build: {
+            language: 'python',
+            reloadStart: 'uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001} --reload'
+          }
+        };
+        const options = {};
+
+        const result = await composeGenerator.generateDockerCompose('dataplane', config, options);
+        expect(result).toContain(
+          'command: ["sh", "-c", "cd /app && exec python -m uvicorn app.main:app --host 0.0.0.0 --port $$PORT"]'
+        );
+        expect(result).not.toContain('${PORT:-');
+        expect(result).toMatch(/PORT=3001/);
+      });
+
       it('should set PORT to containerPort in environment when reloadStart is set so reload command uses container port', async() => {
         const actualDevDir = await getAndEnsureDevDir('dataplane');
         const envPath = path.join(actualDevDir, '.env');
@@ -1507,8 +1558,54 @@ describe('Compose Generator Module', () => {
         const options = { devMountPath: '/workspace/dataplane' };
 
         const result = await composeGenerator.generateDockerCompose('dataplane', config, options);
-        expect(result).toContain('cd /app && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001} --reload');
+        expect(result).toContain(
+          'cd /app && python -m uvicorn app.main:app --host 0.0.0.0 --port $$PORT --reload'
+        );
         expect(result).toMatch(/PORT=3001/);
+      });
+
+      it('should add compose command from build.imageRun without devMountPath or reloadStart', async() => {
+        const actualDevDir = await getAndEnsureDevDir('dataplane');
+        const envPath = path.join(actualDevDir, '.env');
+        fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+        const config = {
+          port: 3000,
+          requires: { database: true },
+          build: {
+            language: 'typescript',
+            imageRun: 'node dist/main.js'
+          }
+        };
+        const options = {};
+
+        const result = await composeGenerator.generateDockerCompose('test-app', config, options);
+        expect(result).toContain('command: ["sh", "-c", "cd /app && node dist/main.js"]');
+        expect(result).toMatch(/PORT=3000/);
+      });
+
+      it('should prefer build.imageRun over python reloadStart when both set without devMountPath', async() => {
+        const actualDevDir = await getAndEnsureDevDir('dataplane');
+        const envPath = path.join(actualDevDir, '.env');
+        fsSync.writeFileSync(envPath, 'DB_PASSWORD=secret123\n');
+
+        const config = {
+          app: { key: 'dataplane' },
+          port: 3001,
+          requires: { database: true },
+          build: {
+            language: 'python',
+            reloadStart: 'uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001} --reload',
+            imageRun: 'exec gunicorn -b 0.0.0.0:${PORT:-3001} main:app'
+          }
+        };
+        const options = {};
+
+        const result = await composeGenerator.generateDockerCompose('dataplane', config, options);
+        expect(result).toContain(
+          'command: ["sh", "-c", "cd /app && exec gunicorn -b 0.0.0.0:$$PORT main:app"]'
+        );
+        expect(result).not.toContain('uvicorn');
       });
     });
   });

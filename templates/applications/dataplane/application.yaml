@@ -65,6 +65,8 @@ build:
   envOutputPath: ../../.env       # Copy to repo root for local dev
   language: python                # Runtime language for template selection (typescript or python)
   reloadStart: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001} --reload  # PORT set from port above at run time; default 3001 must match port
+  # Pulled-image local compose (no bind-mount): drives `command` in generated docker-compose. Override for non-standard images (e.g. stub ACR tags).
+  imageRun: exec python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3001}
 
 # =============================================================================
 # Portal Input Configuration (Deployment Wizard)
