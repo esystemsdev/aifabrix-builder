@@ -11,13 +11,6 @@ jest.mock('../../../lib/core/config', () => ({
   getTlsEnabled: jest.fn()
 }));
 
-jest.mock('../../../lib/utils/paths', () => ({
-  ...jest.requireActual('../../../lib/utils/paths'),
-  getAifabrixHome: jest.fn(),
-  getProjectRoot: jest.fn(),
-  getBuilderRoot: jest.fn()
-}));
-
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -29,15 +22,19 @@ describe('resolveDeclarativeShowUrlsForApp', () => {
   let tmp;
   let fakeHome;
   let fakeProject;
+  /** @type {jest.SpyInstance[]} */
+  let pathSpies;
 
   beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'show-url-'));
     fakeHome = path.join(tmp, 'home');
     fakeProject = path.join(tmp, 'proj');
     fs.mkdirSync(fakeHome, { recursive: true });
-    pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
-    pathsUtil.getProjectRoot.mockReturnValue(fakeProject);
-    pathsUtil.getBuilderRoot.mockReturnValue(path.join(fakeProject, 'builder'));
+    pathSpies = [
+      jest.spyOn(pathsUtil, 'getAifabrixHome').mockReturnValue(fakeHome),
+      jest.spyOn(pathsUtil, 'getProjectRoot').mockReturnValue(fakeProject),
+      jest.spyOn(pathsUtil, 'getBuilderRoot').mockReturnValue(path.join(fakeProject, 'builder'))
+    ];
     config.getTlsEnabled.mockResolvedValue(false);
     config.getDeveloperId.mockResolvedValue(2);
     config.getRemoteServer.mockResolvedValue('https://builder02.local');
@@ -48,6 +45,9 @@ describe('resolveDeclarativeShowUrlsForApp', () => {
       fs.rmSync(tmp, { recursive: true, force: true });
     } catch {
       /* ignore */
+    }
+    for (const s of pathSpies || []) {
+      s.mockRestore();
     }
     jest.clearAllMocks();
   });

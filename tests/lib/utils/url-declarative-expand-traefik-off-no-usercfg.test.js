@@ -13,13 +13,6 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-jest.mock('../../../lib/utils/paths', () => ({
-  ...jest.requireActual('../../../lib/utils/paths'),
-  getAifabrixHome: jest.fn(),
-  getProjectRoot: jest.fn(),
-  getBuilderRoot: jest.fn()
-}));
-
 const pathsUtil = require('../../../lib/utils/paths');
 const {
   expandDeclarativeUrlsInEnvContent,
@@ -30,15 +23,19 @@ describe('expandDeclarativeUrlsInEnvContent (traefik off, remote-server, no user
   let tmp;
   let fakeHome;
   let fakeProject;
+  /** @type {jest.SpyInstance[]} */
+  let pathSpies;
 
   beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'url-tfnu-'));
     fakeHome = path.join(tmp, 'home');
     fakeProject = path.join(tmp, 'proj');
     fs.mkdirSync(fakeHome, { recursive: true });
-    pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
-    pathsUtil.getProjectRoot.mockReturnValue(fakeProject);
-    pathsUtil.getBuilderRoot.mockReturnValue(path.join(fakeProject, 'builder'));
+    pathSpies = [
+      jest.spyOn(pathsUtil, 'getAifabrixHome').mockReturnValue(fakeHome),
+      jest.spyOn(pathsUtil, 'getProjectRoot').mockReturnValue(fakeProject),
+      jest.spyOn(pathsUtil, 'getBuilderRoot').mockReturnValue(path.join(fakeProject, 'builder'))
+    ];
   });
 
   afterEach(() => {
@@ -46,6 +43,9 @@ describe('expandDeclarativeUrlsInEnvContent (traefik off, remote-server, no user
       fs.rmSync(tmp, { recursive: true, force: true });
     } catch {
       /* ignore */
+    }
+    for (const s of pathSpies || []) {
+      s.mockRestore();
     }
     jest.clearAllMocks();
   });

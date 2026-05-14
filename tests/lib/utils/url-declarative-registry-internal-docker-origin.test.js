@@ -13,14 +13,6 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-jest.mock('../../../lib/utils/paths', () => ({
-  ...jest.requireActual('../../../lib/utils/paths'),
-  getAifabrixHome: jest.fn(),
-  getConfigDirForPaths: jest.fn(),
-  getProjectRoot: jest.fn(),
-  getBuilderRoot: jest.fn()
-}));
-
 const pathsUtil = require('../../../lib/utils/paths');
 const { writeUrlsLocalRegistrySync } = require('../../../lib/utils/urls-local-registry');
 const { expandDeclarativeUrlsInEnvContent } = require('../../../lib/utils/url-declarative-resolve');
@@ -29,6 +21,8 @@ describe('url:// internal + urls.local internalDockerUseOriginOnly', () => {
   let tmp;
   let fakeHome;
   let fakeProject;
+  /** @type {jest.SpyInstance[]} */
+  let pathSpies;
 
   beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'url-idoo-'));
@@ -36,10 +30,12 @@ describe('url:// internal + urls.local internalDockerUseOriginOnly', () => {
     fakeProject = path.join(tmp, 'proj');
     fs.mkdirSync(fakeHome, { recursive: true });
     fs.mkdirSync(path.join(fakeProject, 'builder', 'miso-controller'), { recursive: true });
-    pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
-    pathsUtil.getConfigDirForPaths.mockReturnValue(fakeHome);
-    pathsUtil.getProjectRoot.mockReturnValue(fakeProject);
-    pathsUtil.getBuilderRoot.mockImplementation(() => path.join(fakeProject, 'builder'));
+    pathSpies = [
+      jest.spyOn(pathsUtil, 'getAifabrixHome').mockReturnValue(fakeHome),
+      jest.spyOn(pathsUtil, 'getConfigDirForPaths').mockReturnValue(fakeHome),
+      jest.spyOn(pathsUtil, 'getProjectRoot').mockReturnValue(fakeProject),
+      jest.spyOn(pathsUtil, 'getBuilderRoot').mockImplementation(() => path.join(fakeProject, 'builder'))
+    ];
     fs.writeFileSync(
       path.join(fakeProject, 'builder', 'miso-controller', 'application.yaml'),
       'port: 3000\n',
@@ -58,6 +54,9 @@ describe('url:// internal + urls.local internalDockerUseOriginOnly', () => {
       fs.rmSync(tmp, { recursive: true, force: true });
     } catch {
       /* ignore */
+    }
+    for (const s of pathSpies || []) {
+      s.mockRestore();
     }
     jest.clearAllMocks();
   });

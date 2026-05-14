@@ -145,6 +145,18 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\utils\\\\url-declarative-user-cfg-per-app-proxy.test.js',
       'lib/utils/url-declarative-user-cfg-per-app-proxy.test.js',
       'url-declarative-user-cfg-per-app-proxy\\.test\\.js',
+      '/tests/lib/utils/url-declarative-expand-traefik-off-no-usercfg.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\url-declarative-expand-traefik-off-no-usercfg.test.js',
+      'lib/utils/url-declarative-expand-traefik-off-no-usercfg.test.js',
+      'url-declarative-expand-traefik-off-no-usercfg\\.test\\.js',
+      '/tests/lib/core/secrets-env-declarative-show-urls.test.js',
+      '\\\\tests\\\\lib\\\\core\\\\secrets-env-declarative-show-urls.test.js',
+      'lib/core/secrets-env-declarative-show-urls.test.js',
+      'secrets-env-declarative-show-urls\\.test\\.js',
+      '/tests/lib/utils/url-declarative-registry-internal-docker-origin.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\url-declarative-registry-internal-docker-origin.test.js',
+      'lib/utils/url-declarative-registry-internal-docker-origin.test.js',
+      'url-declarative-registry-internal-docker-origin\\.test\\.js',
       '/tests/lib/commands/platform-urls-registry.validation.test.js',
       '\\\\tests\\\\lib\\\\commands\\\\platform-urls-registry.validation.test.js',
       'lib/commands/platform-urls-registry.validation.test.js',
@@ -177,6 +189,10 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\utils\\\\paths-app-listing.test.js',
       'lib/utils/paths-app-listing.test.js',
       'paths-app-listing\\.test\\.js',
+      '/tests/lib/utils/paths-system-builder-resolution.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\paths-system-builder-resolution.test.js',
+      'lib/utils/paths-system-builder-resolution.test.js',
+      'paths-system-builder-resolution\\.test\\.js',
       '/tests/lib/utils/manifest-source-emit.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\manifest-source-emit.test.js',
       'lib/utils/manifest-source-emit.test.js',
@@ -333,6 +349,11 @@ const isolatedProjects = [
   ]),
   makeIsolatedProject('url-declarative-user-cfg-per-app-proxy', [
     '**/tests/lib/utils/url-declarative-user-cfg-per-app-proxy.test.js'
+  ]),
+  makeIsolatedProject('declarative-url-paths-spy-suites', [
+    '**/tests/lib/utils/url-declarative-expand-traefik-off-no-usercfg.test.js',
+    '**/tests/lib/core/secrets-env-declarative-show-urls.test.js',
+    '**/tests/lib/utils/url-declarative-registry-internal-docker-origin.test.js'
   ]),
   makeIsolatedProject('platform-urls-registry-validation', [
     '**/tests/lib/commands/platform-urls-registry.validation.test.js'
