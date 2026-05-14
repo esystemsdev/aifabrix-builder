@@ -2,7 +2,9 @@
 
 ## Status
 
-Draft — design agreed with product direction; implementation not started in this change set.
+**Shipped (P0–P2 + extensions):** `manifest-location.js`, gray **Manifest:** TTY lines (`manifest-source-emit.js`), setup REPLACE absolute paths, `getBuilderPath` / `getIntegrationBuilderBaseDir` Tier-1 preference when cwd is in the edited repo, `resolve --json` + **`manifestSource`** on **`validate --format json`** (single app) and **`show --json`**, and **`urls.local.yaml` registry refresh** now reads **`application.yaml` / `.yml` / `.json`** via **`resolveApplicationConfigPath`** (plan P3 registry slice).
+
+**Deferred:** Full P3 removal of multi-root mtime scan / `appendCwdProjectBuilderDirIfDistinct` pending product sign-off (track with issue ID when filed).
 
 ## Problem
 
@@ -44,9 +46,9 @@ This plan must comply with [Project Rules](.cursor/rules/project-rules.mdc) and 
 
 ## Before Development
 
-- [ ] Read **CLI layout** ([cli-layout.mdc](.cursor/rules/cli-layout.mdc)) and **matrix** ([cli-output-command-matrix.md](.cursor/rules/cli-output-command-matrix.md)) **141** / **141+** rows for commands in scope.
-- [ ] Grep call sites for `getResolveAppPath`, `refreshUrlsLocalRegistryFromBuilder`, `getSystemBuilderRoot`, `urls-local-registry` (per plan Notes).
-- [ ] Confirm open questions (Tier 1a shape, JSON field, `getSystemBuilderRoot` vs Tier 2) with product or document decisions in PR.
+- [x] Read **CLI layout** ([cli-layout.mdc](.cursor/rules/cli-layout.mdc)) and **matrix** ([cli-output-command-matrix.md](.cursor/rules/cli-output-command-matrix.md)) **141** / **141+** rows for commands in scope.
+- [x] Grep call sites for `getResolveAppPath`, `refreshUrlsLocalRegistryFromBuilder`, `getSystemBuilderRoot`, `urls-local-registry` (per plan Notes).
+- [x] Confirm open questions (Tier 1a shape, JSON field, `getSystemBuilderRoot` vs Tier 2) with product or document decisions in PR.
 
 ## Definition of Done
 
@@ -172,7 +174,7 @@ This setup path will REPLACE the platform app folders under:
 | P0b | Implement setup prompt path formatting (`setup-prompts.js` + tests) | REPLACE block lists only resolved absolute paths; manual `af setup` check |
 | P1 | Implement `manifest-location.js` + tests; wire `resolve` + `refreshUrlsLocalRegistryFromBuilder` | CI green; manual `af resolve miso-controller` from `aifabrix-miso` picks `cwd/builder/...` |
 | P2 | Wire `run`, `build`, `up-miso`, `up-dataplane`, `up-platform`, `json`, `validate`, `show` | Matrix verified; gray line in each |
-| P3 | Remove dead code paths (old multi-root mtime, `AIFABRIX_BUILDER_DIR` scan for registry if product confirms) | Grep clean; docs/migration note |
+| P3 | Narrow registry toward canonical config discovery; remove legacy multi-root scan only when product confirms | **Partial:** refresh now uses **`resolveApplicationConfigPath`** per app folder (json/yml/yaml). **Open:** drop mtime merge / `appendCwdProjectBuilderDirIfDistinct` / multi-dir ordering |
 
 ## References
 
@@ -186,7 +188,7 @@ This setup path will REPLACE the platform app folders under:
 ## Open questions
 
 1. Tier 1a: confirm **only** `integration/<systemKey>` (not `integration/<app>` for non-external).
-2. JSON output shape for `aifabrix app show` / `resolve --json` if added later.
+2. ~~JSON output shape for `aifabrix app show` / `resolve --json`~~ — **`manifestSource`**: `{ tier, tierLabel, configPath }` (`tierLabel` is human-readable, e.g. `cwd/builder`). Present on **`aifabrix resolve --json`**, **`validate <app> --format json`** (single-app), **`show --json`** / **`show --online --json`** when a local tree can be resolved.
 3. **`getSystemBuilderRoot()`** vs **`<systemPlatformParent>`:** confirm single rule when `aifabrix-home` points at `$HOME` but config lives under `~/.aifabrix/` — product intent here is **work → else home** for the **three** platform keys; edge cases currently handled by `resolveSystemBuilderParentDir` must be folded or explicitly deprecated.
 
 ## Plan Validation Report
@@ -292,22 +294,31 @@ The plan markdown still shows **Status: Draft — … implementation not started
 | Single resolver module | ✅ `manifest-location.js` with tests |
 | Setup absolute REPLACE paths | ✅ `formatBuilderPlatformReplaceLines` + tests |
 | Gray **Manifest:** TTY + matrix-facing commands | ✅ `manifest-source-emit.js`; wired via `setup-utility`, `run`, `build`, `show`, `validate`, platform `up-*` / guided infra per recent implementation |
-| **JSON `manifestSource` field** | ❌ Not implemented (plan left as optional / deferred) |
-| **P3** dead-code / registry simplification | ❌ Not done |
-| Plan **Status** / **Before Development** checkboxes | ❌ Update recommended |
+| **JSON `manifestSource` field** | ✅ `resolve --json`, `validate --format json` (single app), `show --json` |
+| **P3** dead-code / registry simplification | ⚠️ **Partial** — registry reads canonical config filenames; multi-root mtime scan retained |
+| Plan **Status** / **Before Development** checkboxes | ✅ Updated in this file |
 
 ### Issues and recommendations
 
-1. **Update plan front matter**: Change **Status** from “implementation not started” to reflect shipped slices (or link PRs).
-2. **Mark or remove Before Development checkboxes** after confirm-grep work is recorded.
+1. ~~**Update plan front matter**~~ — **Status** and shipped slices updated in this file.
+2. ~~**Mark Before Development checkboxes**~~ — Marked complete.
 3. **P3**: Schedule removal or narrowing of `urls-local-registry.js` mtime multi-root logic once product signs off (plan exit criteria).
 4. **Optional**: Add integration or CLI snapshot tests for `Manifest:` lines only if flakiness appears (TTY-dependent).
 
 ### Final validation checklist
 
-- [ ] All plan markdown tasks / checkboxes updated to reflect reality  
+- [x] All plan markdown tasks / checkboxes updated to reflect reality  
 - [x] Resolver + emit + setup path files exist and behave as specified in code  
 - [x] Targeted unit tests exist and pass  
 - [x] `npm run lint:fix` → `npm run lint` → `npm test` → **`npm run build:ci`** all green  
 - [x] Matrix + docs pass noted in plan **Documentation to update** / doc pass (2026-05-13)  
 - [ ] P3 exit criteria met or explicitly deferred with issue ID in this plan
+
+---
+
+## Implementation Validation Report (follow-up)
+
+**Date**: 2026-05-13  
+**Scope:** `getManifestSourcePayload` + **`resolve --json`**; **`manifestSource`** on **`validate --format json`** (single app) and **`show --json`**; **`urls-local-registry`** per-folder config via **`resolveApplicationConfigPath`** + **`loadConfigFile`** (including **`application.json`**); plan **Status** / **Before Development** / P3 table / open question 2 updated.
+
+Re-run from `aifabrix-builder/`: **`npm run lint:fix`**, **`npm run lint`**, **`npm test`**, **`npm run build:ci`**, and isolated **`npx jest --selectProjects urls-local-registry`** after touching registry or its tests.

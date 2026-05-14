@@ -12,6 +12,22 @@ describe('manifest-source-emit', () => {
     jest.resetModules();
   });
 
+  it('getManifestSourcePayload returns tier, tierLabel, and configPath', () => {
+    const fs = jest.requireActual('node:fs');
+    const os = require('os');
+    const path = require('path');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'afb-msp-'));
+    const appDir = path.join(tmp, 'builder', 'msp-app');
+    fs.mkdirSync(appDir, { recursive: true });
+    fs.writeFileSync(path.join(appDir, 'application.yaml'), 'port: 1\napp:\n  key: msp-app\n');
+    const { getManifestSourcePayload } = require('../../../lib/utils/manifest-source-emit');
+    const p = getManifestSourcePayload('msp-app', appDir, { cwd: tmp });
+    expect(p.configPath).toBe(path.join(appDir, 'application.yaml'));
+    expect(p.tierLabel).toBeTruthy();
+    expect(typeof p.tier).toBe('string');
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
   it('does not log when stdout is not a TTY', () => {
     Object.defineProperty(process.stdout, 'isTTY', { value: false, configurable: true });
     const { emitManifestMetadataLineIfTTY } = require('../../../lib/utils/manifest-source-emit');

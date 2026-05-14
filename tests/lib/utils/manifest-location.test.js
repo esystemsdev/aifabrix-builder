@@ -43,7 +43,11 @@ describe('manifest-location', () => {
     delete process.env.AIFABRIX_HOME;
     delete global.PROJECT_ROOT;
     process.cwd.mockRestore?.();
-    fs.rmSync(tmp, { recursive: true, force: true });
+    try {
+      fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
+    } catch {
+      /* best-effort: occasional ENOTEMPTY under parallel test load */
+    }
   });
 
   function loadManifestLocation() {

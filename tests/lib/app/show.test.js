@@ -215,6 +215,11 @@ describe('lib/app/show.js', () => {
       expect(out.source).toBe('offline');
       expect(out.appKey).toBe('myapp');
       expect(out.application).toBeDefined();
+      expect(out.manifestSource).toMatchObject({
+        tier: expect.any(String),
+        tierLabel: expect.any(String)
+      });
+      expect(typeof out.manifestSource.configPath).toBe('string');
       expect(out.application.key).toBe('myapp');
       expect(out.path).toBeDefined();
     });
@@ -539,6 +544,11 @@ externalIntegration:
       expect(out.controllerUrl).toBe('http://localhost:3000');
       expect(out.appKey).toBe('myapp');
       expect(out.application).toBeDefined();
+      expect(out.manifestSource).toMatchObject({
+        tier: expect.any(String),
+        tierLabel: expect.any(String)
+      });
+      expect(typeof out.manifestSource.configPath).toBe('string');
     });
 
     it('should output only permissions when --permissions online (human-readable)', async() => {
@@ -589,6 +599,11 @@ externalIntegration:
       expect(out.appKey).toBe('myapp');
       expect(out.permissions).toEqual([{ name: 'applications:read', roles: ['admin'] }]);
       expect(out.application).toBeUndefined();
+      expect(out.manifestSource).toMatchObject({
+        tier: expect.any(String),
+        tierLabel: expect.any(String)
+      });
+      expect(typeof out.manifestSource.configPath).toBe('string');
     });
 
     it('should throw when no auth token (online)', async() => {

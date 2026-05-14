@@ -155,6 +155,24 @@ describe('urls-local-registry', () => {
   });
 
   describe('refreshUrlsLocalRegistryFromBuilder', () => {
+    it('merges builder application.json when no yaml present', () => {
+      const jsonDir = path.join(fakeProject, 'builder', 'json-only');
+      fs.mkdirSync(jsonDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(jsonDir, 'application.json'),
+        JSON.stringify({
+          port: 7654,
+          app: { key: 'json-only-app' },
+          frontDoorRouting: { pattern: '/j/*' }
+        }),
+        'utf8'
+      );
+
+      const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+      expect(merged['json-only-app-port']).toBe(7654);
+      expect(merged['json-only-app-pattern']).toBe('/j/*');
+    });
+
     it('merges builder application.yaml entries and preserves existing keys', () => {
       writeUrlsLocalRegistrySync({ legacyKey: 1 });
 
