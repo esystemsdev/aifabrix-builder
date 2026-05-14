@@ -20,10 +20,14 @@ describe('paths system builder app resolution', () => {
   let tmp;
   let proj;
   let cfgDir;
+  /** @type {string|undefined} */
+  let savedAifabrixConfig;
 
   beforeEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
+    savedAifabrixConfig = process.env.AIFABRIX_CONFIG;
+    delete process.env.AIFABRIX_CONFIG;
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'afb-paths-sys-'));
     proj = path.join(tmp, 'project');
     cfgDir = path.join(tmp, 'aifabrix-cfg');
@@ -43,6 +47,11 @@ describe('paths system builder app resolution', () => {
 
   afterEach(() => {
     delete process.env.AIFABRIX_HOME;
+    if (savedAifabrixConfig === undefined) {
+      delete process.env.AIFABRIX_CONFIG;
+    } else {
+      process.env.AIFABRIX_CONFIG = savedAifabrixConfig;
+    }
     delete global.PROJECT_ROOT;
     process.cwd.mockRestore?.();
     fs.rmSync(tmp, { recursive: true, force: true });

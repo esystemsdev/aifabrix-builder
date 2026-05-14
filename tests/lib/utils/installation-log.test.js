@@ -8,9 +8,6 @@ const fs = require('fs').promises;
 const os = require('os');
 const path = require('path');
 
-const installationLog = require('../../../lib/utils/installation-log');
-const { buildInstallationRecordLines } = require('../../../lib/utils/installation-log-record');
-
 jest.mock('../../../lib/core/config', () => ({
   getDeveloperId: jest.fn().mockResolvedValue(2),
   getAdminEmail: jest.fn().mockResolvedValue(''),
@@ -25,13 +22,18 @@ describe('installation-log', () => {
   let tmpDir;
   /** @type {string|undefined} */
   let savedAifabrixConfig;
+  let installationLog;
+  let buildInstallationRecordLines;
 
   beforeEach(async() => {
+    jest.resetModules();
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'instlog-'));
     const configPath = path.join(tmpDir, 'config.yaml');
     await fs.writeFile(configPath, '# test fixture\n', 'utf8');
     savedAifabrixConfig = process.env.AIFABRIX_CONFIG;
     process.env.AIFABRIX_CONFIG = configPath;
+    installationLog = require('../../../lib/utils/installation-log');
+    ({ buildInstallationRecordLines } = require('../../../lib/utils/installation-log-record'));
   });
 
   afterEach(async() => {
