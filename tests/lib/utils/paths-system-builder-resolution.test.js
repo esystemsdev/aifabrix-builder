@@ -61,13 +61,21 @@ describe('paths system builder app resolution', () => {
     expect(paths.isSystemBuilderAppName('custom')).toBe(false);
   });
 
-  it('getBuilderPath prefers project builder/keycloak when that directory exists', () => {
+  it('getBuilderPath prefers project builder/keycloak when application config exists there', () => {
     const kc = path.join(proj, 'builder', 'keycloak');
     fs.mkdirSync(kc, { recursive: true });
+    fs.writeFileSync(path.join(kc, 'application.yaml'), 'app:\n  key: keycloak\n');
     const paths = loadPaths();
     expect(paths.getBuilderPath('keycloak')).toBe(kc);
     expect(paths.getProjectBuilderAppPath('keycloak')).toBe(kc);
     expect(paths.getSystemBuilderRoot()).toBe(path.join(cfgDir, 'builder'));
+  });
+
+  it('getBuilderPath uses system builder when project has only an empty keycloak directory', () => {
+    const kc = path.join(proj, 'builder', 'keycloak');
+    fs.mkdirSync(kc, { recursive: true });
+    const paths = loadPaths();
+    expect(paths.getBuilderPath('keycloak')).toBe(path.join(cfgDir, 'builder', 'keycloak'));
   });
 
   it('getBuilderPath uses config-dir builder when project keycloak is absent', () => {
@@ -132,6 +140,18 @@ describe('paths system builder app resolution', () => {
     });
   });
 
+  it('getBuilderPath prefers cwd builder manifest over AIFABRIX_BUILDER_DIR for platform apps (plan 141 Tier 1)', () => {
+    const alt = path.join(tmp, 'alt-builder');
+    fs.mkdirSync(alt, { recursive: true });
+    process.env.AIFABRIX_BUILDER_DIR = alt;
+    const kc = path.join(proj, 'builder', 'keycloak');
+    fs.mkdirSync(kc, { recursive: true });
+    fs.writeFileSync(path.join(kc, 'application.yaml'), 'app:\n  type: node\n');
+    const paths = loadPaths();
+    expect(paths.getBuilderPath('keycloak')).toBe(kc);
+    delete process.env.AIFABRIX_BUILDER_DIR;
+  });
+
   it('getBuilderPath respects AIFABRIX_BUILDER_DIR', () => {
     const alt = path.join(tmp, 'alt-builder');
     fs.mkdirSync(alt, { recursive: true });
@@ -151,6 +171,7 @@ describe('paths system builder app resolution', () => {
   it('getAppPath delegates to getBuilderPath for builder apps', () => {
     const kc = path.join(proj, 'builder', 'keycloak');
     fs.mkdirSync(kc, { recursive: true });
+    fs.writeFileSync(path.join(kc, 'application.yaml'), 'app:\n  key: keycloak\n');
     const paths = loadPaths();
     expect(paths.getAppPath('keycloak')).toBe(kc);
   });

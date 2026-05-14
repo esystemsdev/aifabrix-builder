@@ -27,7 +27,7 @@ frontDoorRouting:
   pattern: /data/*
   enabled: true
   # Docker url://internal full URLs: http://dataplane:PORT only (ingress /data is not on in-container routes).
-  internalDockerUseOriginOnly: true
+  internalDockerUseOriginOnly: false
   host: ${DEV_USERNAME}.${REMOTE_HOST}
   tls: ${TLS_ENABLED}
 

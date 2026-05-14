@@ -383,6 +383,12 @@ aifabrix auth
 # Set default controller URL (allowed when logged out; then "aifabrix login" uses this URL)
 aifabrix auth --set-controller https://controller.aifabrix.dev
 
+# Choose default controller from URLs already in config (saved device logins + current default)
+aifabrix auth --set-controller
+
+# Same as above (subcommand alias)
+aifabrix auth set-controller
+
 # Set default environment (must be logged in for current controller)
 aifabrix auth --set-environment dev
 
@@ -391,11 +397,11 @@ aifabrix auth --set-controller https://controller.aifabrix.dev --set-environment
 ```
 
 **Options:**
-- `--set-controller <url>` – Set default controller. URL is validated. You can set the controller when logged out (no stored credentials); then `aifabrix login` will use this URL. If you have credentials for another controller, the command fails with instructions to either log in to the new controller or run `aifabrix logout` first.
+- `--set-controller [url]` – Set default controller. With a URL, the value is validated and saved like before. **Without a URL**, the CLI reads controller URLs from your config: the `controller` field plus each key under `device` (where device tokens are stored per controller). If none are found, the command fails with a clear message. If exactly one is found and it already matches `config.controller`, you get a short confirmation and a reminder that you can add another controller only by passing a URL explicitly. If more than one is found, you get an interactive list to pick from. This interactive mode requires a TTY; in scripts, pass the URL explicitly.
 - `--set-environment <env>` – Set default environment. Valid values: `miso`, `dev`, `tst`, `pro`, or custom (letters, numbers, hyphens, underscores). Requires being logged in to the current controller.
 
 **Validation:**
-- **--set-controller:** URL must be valid HTTP/HTTPS. Allowed when: (1) no stored credentials, or (2) you already have a device token for that controller. If you have credentials for a different controller, run `aifabrix login` for the new URL or `aifabrix logout` first.
+- **--set-controller:** With a URL: must be valid HTTP/HTTPS. Allowed when: (1) no stored credentials, or (2) you already have a device token for that controller. If you have credentials for a different controller, run `aifabrix login` for the new URL or `aifabrix logout` first.
 - **--set-environment:** Environment format must be valid; you must be logged in to the controller in `config.controller`.
 
 **Examples:**
@@ -411,6 +417,8 @@ aifabrix deploy myapp
 
 **Issues:**
 - **"You have credentials for another controller"** → Run `aifabrix login` with the new controller URL, or run `aifabrix logout` first, then set the new controller with `aifabrix auth --set-controller <url>`.
+- **"No controllers are registered in config"** → Run `aifabrix login` once, or set a controller with `aifabrix auth --set-controller <url>`.
+- **"Cannot choose a controller without a URL in non-interactive mode"** → In CI or piped shells, pass the URL: `aifabrix auth --set-controller <url>`.
 - **"Invalid URL"** → Use a valid `http://` or `https://` URL.
 - **"Invalid environment"** → Use `miso`, `dev`, `tst`, `pro`, or a custom key (letters, numbers, hyphens, underscores).
 

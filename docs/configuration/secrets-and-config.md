@@ -102,6 +102,7 @@ Use **`--no-register-env`** to only update `config.yaml`. **New terminals** pick
 
 | Topic | Notes |
 |--------|--------|
+| **`aifabrix-work`** | Optional workspace root. When set (or **`AIFABRIX_WORK`** is set), platform **`builder/keycloak`**, **`builder/miso-controller`**, and **`builder/dataplane`** materialize under that tree; when unset, they use **aifabrix-home**. See [Developer isolation](../commands/developer-isolation.md#aifabrix-dev-set-work). |
 | **`developer-id`** | Used by **`aifabrix up-infra`**. |
 | **`format`** | Default `json` \| `yaml` — **`aifabrix dev set-format`**; used when commands omit `--format`. |
 | **`useEnvironmentScopedResources`** | Optional; default **off**. When **on**, local resolution and **`aifabrix run`** can use env-prefixed resource names for apps with **`environmentScopedResources: true`** in **`application.yaml`**, only **dev** / **tst**. Prefer **`aifabrix dev set-scoped-resources`**. |

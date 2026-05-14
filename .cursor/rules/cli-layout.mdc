@@ -12,7 +12,7 @@ When you touch **CLI surface** (`bin/aifabrix.js`, `lib/cli.js`, `lib/cli/**`, `
 | Document | Role |
 | -------- | ---- |
 | [layout.md](./layout.md) | Visual and semantic spec: colors, sections, glyphs, blocking vs warning, non-TTY/CI, helper map to `cli-test-layout-chalk.js`. |
-| [cli-output-command-matrix.md](./cli-output-command-matrix.md) | **One row per leaf command**: expected **output profile** (layout-blocks, tty-summary, stream-logs, json-opt, stdout-only, delegate). |
+| [cli-output-command-matrix.md](./cli-output-command-matrix.md) | **One row per leaf command**: expected **output profile** (layout-blocks, tty-summary, stream-logs, json-opt, stdout-only, delegate) and **Manifest roots (141)** (when to emit gray manifest path line — see plan 141). |
 
 If implementation and `layout.md` disagree, **fix implementation** or **update docs** in the same change so they stay one story.
 
@@ -27,9 +27,13 @@ Use the matrix row for your command to decide UX:
 - **stdout-only** — Stable, script-friendly stdout; minimal chalk; often used for diffs or piping.
 - **delegate** — Output comes from delegated library (wizard, etc.); still avoid forbidden glyphs and spurious decoration in anything you add.
 
-**New leaf command:** add a row to [cli-output-command-matrix.md](./cli-output-command-matrix.md) with the correct profile combination.
+**New leaf command:** add a row to [cli-output-command-matrix.md](./cli-output-command-matrix.md) with the correct profile combination and **Manifest roots (141)** code (`141`, `141+`, `int`, `cfg`, `—`).
 
-## Glyphs and semantics (terminal only)
+## Manifest path visibility (plan 141)
+
+When a command’s matrix cell is **141**, **141+**, or **int** and the implementation reads an `application.yaml` (or integration equivalent), print **one** gray metadata line for humans (e.g. `Manifest: cwd/builder — /abs/path/application.yaml`) using `metadata()` or a small helper from `cli-test-layout-chalk.js`. Do not spam per-substep. Follow [.cursor/plans/141-manifest-location.plan.md](../plans/141-manifest-location.plan.md).
+
+**`aifabrix setup`:** destructive / conflict prompts that list folders to be replaced must use **resolved absolute paths** for every directory (plan § Guided setup — not only `builder/<app>/` under an otherwise absolute builder root).
 
 From [layout.md](./layout.md) contributor appendix:
 

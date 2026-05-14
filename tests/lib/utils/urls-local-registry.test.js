@@ -335,6 +335,99 @@ app:
       }
     });
 
+    it('prefers newer application.yaml when same app exists under project builder and AIFABRIX_BUILDER_DIR', () => {
+      const materialized = path.join(tmp, 'materialized-builder');
+      const monoDir = path.join(fakeProject, 'builder', 'miso-controller');
+      const matDir = path.join(materialized, 'miso-controller');
+      fs.mkdirSync(monoDir, { recursive: true });
+      fs.mkdirSync(matDir, { recursive: true });
+      const monoYaml = path.join(monoDir, 'application.yaml');
+      const matYaml = path.join(matDir, 'application.yaml');
+      const yamlTrue = `port: 3000
+app:
+  key: miso-controller
+frontDoorRouting:
+  pattern: /miso/*
+  internalDockerUseOriginOnly: true
+`;
+      const yamlFalse = `port: 3000
+app:
+  key: miso-controller
+frontDoorRouting:
+  pattern: /miso/*
+  internalDockerUseOriginOnly: false
+`;
+      fs.writeFileSync(matYaml, yamlTrue, 'utf8');
+      const oldTime = new Date('2020-01-01');
+      fs.utimesSync(matYaml, oldTime, oldTime);
+
+      fs.writeFileSync(monoYaml, yamlFalse, 'utf8');
+      const newTime = new Date('2025-06-01');
+      fs.utimesSync(monoYaml, newTime, newTime);
+
+      pathsUtil.getBuilderRoot.mockReturnValue(materialized);
+      const prev = process.env.AIFABRIX_BUILDER_DIR;
+      process.env.AIFABRIX_BUILDER_DIR = materialized;
+      try {
+        const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+        expect(merged['miso-controller-internalDockerUseOriginOnly']).toBe(false);
+      } finally {
+        if (prev === undefined) {
+          delete process.env.AIFABRIX_BUILDER_DIR;
+        } else {
+          process.env.AIFABRIX_BUILDER_DIR = prev;
+        }
+      }
+    });
+
+    it('uses cwd checkout builder when getProjectRoot is a different package (global CLI layout)', () => {
+      const cwdRepo = path.join(tmp, 'miso-checkout');
+      fs.mkdirSync(path.join(cwdRepo, 'builder', 'miso-controller'), { recursive: true });
+      fs.writeFileSync(path.join(cwdRepo, 'package.json'), '{}\n', 'utf8');
+      const cwdYaml = path.join(cwdRepo, 'builder', 'miso-controller', 'application.yaml');
+      fs.writeFileSync(
+        cwdYaml,
+        `port: 3000
+app:
+  key: miso-controller
+frontDoorRouting:
+  pattern: /miso/*
+  internalDockerUseOriginOnly: false
+`,
+        'utf8'
+      );
+      fs.utimesSync(cwdYaml, new Date('2025-08-01'), new Date('2025-08-01'));
+
+      const cliPkg = path.join(tmp, 'aifabrix-builder-pkg');
+      fs.mkdirSync(path.join(cliPkg, 'builder', 'miso-controller'), { recursive: true });
+      const cliYaml = path.join(cliPkg, 'builder', 'miso-controller', 'application.yaml');
+      fs.writeFileSync(
+        cliYaml,
+        `port: 3000
+app:
+  key: miso-controller
+frontDoorRouting:
+  pattern: /miso/*
+  internalDockerUseOriginOnly: true
+`,
+        'utf8'
+      );
+      fs.utimesSync(cliYaml, new Date('2020-01-01'), new Date('2020-01-01'));
+
+      pathsUtil.getProjectRoot.mockReturnValue(cliPkg);
+      pathsUtil.getBuilderRoot.mockImplementation(() => path.join(cliPkg, 'builder'));
+      pathsUtil.getIntegrationBuilderBaseDir.mockReturnValue(cliPkg);
+
+      const prevCwd = process.cwd();
+      process.chdir(cwdRepo);
+      try {
+        const merged = refreshUrlsLocalRegistryFromBuilder(cliPkg);
+        expect(merged['miso-controller-internalDockerUseOriginOnly']).toBe(false);
+      } finally {
+        process.chdir(prevCwd);
+      }
+    });
+
     it('merges platform apps from system builder (~/.aifabrix/builder) when present', () => {
       const sysBuilder = path.join(fakeHome, 'builder');
       const datDir = path.join(sysBuilder, 'dataplane');

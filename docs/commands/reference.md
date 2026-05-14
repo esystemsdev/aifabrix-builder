@@ -94,8 +94,10 @@ Set these keys in `~/.aifabrix/config.yaml`:
 
 - aifabrix-home: Base directory for local files (default `~/.aifabrix`)
   - Example: `aifabrix-home: "/custom/path"`
+  - When **`aifabrix-work`** is not configured, platform apps **Keycloak**, **Miso Controller**, and **Dataplane** use **`builder/<app>/`** under this home (see [Developer isolation](developer-isolation.md)).
 - aifabrix-work: Optional default git/workspace root (no default; unset means “not configured”). Resolved after **`AIFABRIX_WORK`** env if set.
   - Example: `aifabrix-work: "/workspace/repos"`
+  - When set, those same platform **`builder/<app>/`** folders are under this workspace root instead of under **aifabrix-home**.
 - aifabrix-secrets: Default secrets file path (default `<home>/secrets.yaml`)
   - Example: `aifabrix-secrets: "/path/to/secrets.yaml"`
 - developer-id: Developer ID for port isolation (default: 0)

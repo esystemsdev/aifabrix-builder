@@ -26,12 +26,9 @@ jest.mock('../../../lib/utils/config-paths', () => ({
 }));
 
 const {
-  getConfig,
-  saveConfig,
-  clearConfig,
   setControllerUrl,
   getControllerUrl,
-  CONFIG_FILE
+  getRegisteredControllerUrls
 } = require('../../../lib/core/config');
 
 // Spy on fs.promises methods
@@ -129,6 +126,48 @@ describe('Config Controller URL Functions', () => {
       const url = await getControllerUrl();
 
       expect(url).toBeNull();
+    });
+  });
+
+  describe('getRegisteredControllerUrls', () => {
+    it('should merge controller and device keys, dedupe, and sort', async() => {
+      const mockConfig = {
+        controller: 'https://b.example.com',
+        environment: 'dev',
+        device: {
+          'https://a.example.com': { token: 'x' },
+          'https://b.example.com/': { token: 'y' }
+        }
+      };
+      fs.readFile.mockResolvedValueOnce(yaml.dump(mockConfig));
+
+      const urls = await getRegisteredControllerUrls();
+
+      expect(urls).toEqual(['https://a.example.com', 'https://b.example.com']);
+    });
+
+    it('should ignore non-http device keys', async() => {
+      const mockConfig = {
+        environment: 'dev',
+        device: {
+          'not-a-url': {},
+          'https://only.example.com': {}
+        }
+      };
+      fs.readFile.mockResolvedValueOnce(yaml.dump(mockConfig));
+
+      const urls = await getRegisteredControllerUrls();
+
+      expect(urls).toEqual(['https://only.example.com']);
+    });
+
+    it('should return empty array when no controller and no device URLs', async() => {
+      const mockConfig = { environment: 'dev', device: {} };
+      fs.readFile.mockResolvedValueOnce(yaml.dump(mockConfig));
+
+      const urls = await getRegisteredControllerUrls();
+
+      expect(urls).toEqual([]);
     });
   });
 });

@@ -57,6 +57,7 @@ describe('Application Module', () => {
   let tempDir;
   let originalCwd;
   let originalAifabrixBuilderDir;
+  let originalAifabrixWork;
 
   beforeEach(() => {
     // Create temporary directory for tests
@@ -74,6 +75,10 @@ describe('Application Module', () => {
     fsSync.mkdirSync(builderDir, { recursive: true });
     originalAifabrixBuilderDir = process.env.AIFABRIX_BUILDER_DIR;
     process.env.AIFABRIX_BUILDER_DIR = builderDir;
+    // integration/ is resolved via getIntegrationBuilderBaseDir(); under Jest, cwd is outside
+    // the repo so pin the work tree to this temp dir (builder/ exists → base = tempDir).
+    originalAifabrixWork = process.env.AIFABRIX_WORK;
+    process.env.AIFABRIX_WORK = tempDir;
 
     // Verify README template exists (it should be in the repository)
     const readmeTemplatePath = path.resolve(projectRoot, 'templates', 'applications', 'README.md.hbs');
@@ -104,6 +109,11 @@ describe('Application Module', () => {
       process.env.AIFABRIX_BUILDER_DIR = originalAifabrixBuilderDir;
     } else {
       delete process.env.AIFABRIX_BUILDER_DIR;
+    }
+    if (originalAifabrixWork !== undefined) {
+      process.env.AIFABRIX_WORK = originalAifabrixWork;
+    } else {
+      delete process.env.AIFABRIX_WORK;
     }
     process.chdir(originalCwd);
     await fs.rm(tempDir, { recursive: true, force: true });

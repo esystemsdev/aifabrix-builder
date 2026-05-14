@@ -36,6 +36,7 @@ jest.mock('../../../lib/app/readme', () => ({
   generateReadmeMd: jest.fn().mockReturnValue('# Test README\n')
 }));
 
+const { clearProjectRootCache } = require('../../../lib/utils/paths');
 const app = require('../../../lib/app');
 const inquirer = require('inquirer');
 const envReader = require('../../../lib/core/env-reader');
@@ -44,11 +45,24 @@ const githubGenerator = require('../../../lib/generator/github');
 describe('App.js Uncovered Lines Tests', () => {
   let tempDir;
   let originalCwd;
+  let originalAifabrixBuilderDir;
+  let originalAifabrixWork;
 
   beforeEach(() => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));
     originalCwd = process.cwd();
     process.chdir(tempDir);
+
+    const projectRoot = path.resolve(__dirname, '..', '..', '..');
+    global.PROJECT_ROOT = projectRoot;
+    clearProjectRootCache();
+
+    const builderDir = path.join(tempDir, 'builder');
+    fsSync.mkdirSync(builderDir, { recursive: true });
+    originalAifabrixBuilderDir = process.env.AIFABRIX_BUILDER_DIR;
+    process.env.AIFABRIX_BUILDER_DIR = builderDir;
+    originalAifabrixWork = process.env.AIFABRIX_WORK;
+    process.env.AIFABRIX_WORK = tempDir;
 
     inquirer.prompt.mockResolvedValue({
       port: '3000',
@@ -74,6 +88,18 @@ describe('App.js Uncovered Lines Tests', () => {
   });
 
   afterEach(async() => {
+    if (originalAifabrixBuilderDir !== undefined) {
+      process.env.AIFABRIX_BUILDER_DIR = originalAifabrixBuilderDir;
+    } else {
+      delete process.env.AIFABRIX_BUILDER_DIR;
+    }
+    if (originalAifabrixWork !== undefined) {
+      process.env.AIFABRIX_WORK = originalAifabrixWork;
+    } else {
+      delete process.env.AIFABRIX_WORK;
+    }
+    delete global.PROJECT_ROOT;
+    clearProjectRootCache();
     process.chdir(originalCwd);
     await fs.rm(tempDir, { recursive: true, force: true });
     jest.clearAllMocks();

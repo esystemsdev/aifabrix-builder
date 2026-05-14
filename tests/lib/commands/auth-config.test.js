@@ -10,7 +10,8 @@ const { handleAuthConfig } = require('../../../lib/commands/auth-config');
 const {
   setControllerUrl,
   setCurrentEnvironment,
-  getControllerUrl
+  getControllerUrl,
+  getRegisteredControllerUrls
 } = require('../../../lib/core/config');
 const {
   validateControllerUrl,
@@ -20,17 +21,26 @@ const {
 const { getControllerUrlFromLoggedInUser } = require('../../../lib/utils/controller-url');
 const logger = require('../../../lib/utils/logger');
 
-jest.mock('../../../lib/core/config');
+jest.mock('../../../lib/core/config', () => ({
+  setControllerUrl: jest.fn(),
+  setCurrentEnvironment: jest.fn(),
+  getControllerUrl: jest.fn(),
+  getRegisteredControllerUrls: jest.fn()
+}));
 jest.mock('../../../lib/utils/auth-config-validator');
 jest.mock('../../../lib/utils/controller-url');
 jest.mock('../../../lib/utils/logger', () => ({
   log: jest.fn(),
   error: jest.fn()
 }));
+jest.mock('inquirer', () => ({
+  prompt: jest.fn()
+}));
 
 describe('Auth Config Commands', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    getRegisteredControllerUrls.mockReset();
   });
 
   describe('handleAuthConfig --set-controller', () => {
@@ -75,6 +85,79 @@ describe('Auth Config Commands', () => {
       await expect(handleAuthConfig({ setController: 'https://controller.example.com' }))
         .rejects.toThrow('You have credentials for another controller');
       expect(setControllerUrl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleAuthConfig --set-controller pick from config', () => {
+    let prevIsTTY;
+
+    beforeEach(() => {
+      prevIsTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+    });
+
+    afterEach(() => {
+      process.stdin.isTTY = prevIsTTY;
+    });
+
+    it('should fail when no controllers are registered', async() => {
+      getRegisteredControllerUrls.mockResolvedValue([]);
+
+      await expect(handleAuthConfig({ setController: true }))
+        .rejects.toThrow('No controllers are registered');
+      expect(setControllerUrl).not.toHaveBeenCalled();
+    });
+
+    it('should fail in non-interactive mode when URL omitted', async() => {
+      getRegisteredControllerUrls.mockResolvedValue(['http://localhost:3000']);
+      const prev = process.stdin.isTTY;
+      process.stdin.isTTY = false;
+      try {
+        await expect(handleAuthConfig({ setController: true }))
+          .rejects.toThrow('non-interactive');
+      } finally {
+        process.stdin.isTTY = prev;
+      }
+      expect(setControllerUrl).not.toHaveBeenCalled();
+    });
+
+    it('should log only when single registered controller matches default', async() => {
+      getRegisteredControllerUrls.mockResolvedValue(['http://localhost:3100']);
+      getControllerUrl.mockResolvedValue('http://localhost:3100');
+
+      await handleAuthConfig({ setController: true });
+
+      expect(setControllerUrl).not.toHaveBeenCalled();
+      expect(logger.log).toHaveBeenCalled();
+    });
+
+    it('should set controller when single registered differs from default', async() => {
+      getRegisteredControllerUrls.mockResolvedValue(['http://localhost:3200']);
+      getControllerUrl.mockResolvedValue('http://localhost:3100');
+      validateControllerUrl.mockReturnValue(undefined);
+      getControllerUrlFromLoggedInUser.mockResolvedValue(null);
+      setControllerUrl.mockResolvedValue();
+
+      await handleAuthConfig({ setController: true });
+
+      expect(setControllerUrl).toHaveBeenCalledWith('http://localhost:3200');
+    });
+
+    it('should prompt and set when multiple controllers registered', async() => {
+      const inquirer = require('inquirer');
+      getRegisteredControllerUrls.mockResolvedValue([
+        'http://localhost:3000',
+        'http://localhost:3100'
+      ]);
+      inquirer.prompt.mockResolvedValue({ controllerUrl: 'http://localhost:3100' });
+      validateControllerUrl.mockReturnValue(undefined);
+      getControllerUrlFromLoggedInUser.mockResolvedValue(null);
+      setControllerUrl.mockResolvedValue();
+
+      await handleAuthConfig({ setController: true });
+
+      expect(inquirer.prompt).toHaveBeenCalled();
+      expect(setControllerUrl).toHaveBeenCalledWith('http://localhost:3100');
     });
   });
 
