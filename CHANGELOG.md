@@ -1,4 +1,4 @@
-## [2.44.7] - 2026-05-13
+## [2.45.0] - 2026-05-14
 
 ### Added
 - **Operational `installation.log` (Plan 140):** One append-only record per run of **`aifabrix setup`**, **`teardown`**, **`up-infra`**, **`up-platform`**, **`up-miso`**, and **`up-dataplane`** beside **`config.yaml`** (AI Fabrix system dir): **`recordVersion`**, **`operationId`**, **`mode`** (interactive vs automation), **`durationSec`**, CLI/platform versions, infra toggles with **config** vs **cli override** provenance, platform app image **tags** only (no digests), **`adminEmail: set|unset`**, teardown **`volumesRemoved`** / **`configPreserved`**, optional **`cleanedAppKeys`** after **`--force`**. Errors log **masked** message (+ optional code) only—no stack. Log rotates at **10 MB** (keeps **`.1`** / **`.2`**). Append I/O failures emit one **`logger.warn`** and do not fail the command.
