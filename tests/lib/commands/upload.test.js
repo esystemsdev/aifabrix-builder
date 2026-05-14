@@ -117,7 +117,7 @@ describe('upload command', () => {
   });
 
   describe('uploadExternalSystem', () => {
-    it('should validate, build payload, resolve configuration, push secrets, then pipeline upload', async() => {
+    it('should validate, build payload, resolve configuration, push secrets, pipeline upload, then openapi sync', async() => {
       const { uploadExternalSystem } = require('../../../lib/commands/upload');
       await uploadExternalSystem(systemKey);
 

@@ -34,7 +34,7 @@ Third column documents **which on-disk trees** a command is expected to use for 
 | aifabrix restart | tty-summary (Restart + `Infra service:` or `Application:` + optional progress + success; builder apps add `docker inspect` `/app` bind hint, then **Reload (config)** from `applications.<app>.reload`) | 141 |
 | aifabrix create | tty-summary | 141 |
 | aifabrix wizard | delegate | int |
-| aifabrix run | tty-summary (header + progress + footer; flags `--reload`, `--proxy` default on / `--no-proxy` → save `applications.<app>.proxy: false`) + stream-logs (health/ora); public URL hints only when user `traefik: true`, app `frontDoorRouting.enabled`, CLI proxy on, and `applications.<app>.proxy` is true (default false; legacy `noProxy` migrated) | 141+ |
+| aifabrix run | tty-summary (header + progress + footer; flags `--reload`, `--proxy` default on / `--no-proxy` → save `applications.<app>.proxy: false`) + stream-logs (health/ora); **integration / `app.type: external`:** warning + **Next actions:** `upload` / `deploy` (not `build`); public URL hints only when user `traefik: true`, app `frontDoorRouting.enabled`, CLI proxy on, and `applications.<app>.proxy` is true (default false; legacy `noProxy` migrated) | 141+ |
 | aifabrix build | tty-summary (header + paths + secrets lines) + stream-logs (docker/ora) | 141+ |
 | aifabrix logs | stream-logs | — |
 | aifabrix down-app | tty-summary + stream-logs | 141 |
