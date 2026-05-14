@@ -1,6 +1,7 @@
 /**
- * Traefik off + remote-server in config: public url:// tokens must use localhost unless
- * ctx.userCfg supplies per-app proxy (see url-declarative-user-cfg-per-app-proxy).
+ * Traefik off + remote-server in config: public url:// tokens use localhost (no userCfg).
+ * With `ctx.userCfg`, root `traefik: false` also forces localhost; see
+ * url-declarative-user-cfg-per-app-proxy.
  *
  * @fileoverview expandDeclarativeUrlsInEnvContent without userCfg (af setup / env resolve path)
  */

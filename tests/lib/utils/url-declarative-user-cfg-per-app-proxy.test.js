@@ -55,7 +55,7 @@ describe('expandDeclarativeUrlsInEnvContent userCfg per-target proxy', () => {
     fs.writeFileSync(path.join(dir, 'application.yaml'), yamlText, 'utf8');
   }
 
-  it('uses keycloak applications.proxy for url://keycloak-public, not the current app --no-proxy', async() => {
+  it('userCfg traefik false: url://keycloak-public uses localhost even when applications.keycloak.proxy true', async() => {
     writeApp('miso-controller', 'port: 3000\n');
     writeApp('keycloak', 'port: 8282\n');
     const variablesPath = path.join(fakeProject, 'builder', 'miso-controller', 'application.yaml');
@@ -81,8 +81,8 @@ KEYCLOAK_SERVER_URL=url://keycloak-public
       infraTlsEnabled: true,
       userCfg
     });
-    expect(out).toMatch(/^KEYCLOAK_SERVER_URL=https:\/\/builder02\.local:/m);
-    expect(out).not.toMatch(/^KEYCLOAK_SERVER_URL=https:\/\/localhost:8282/m);
+    expect(out).toMatch(/^KEYCLOAK_SERVER_URL=http:\/\/localhost:\d+/m);
+    expect(out).not.toContain('builder02.local');
   });
 
   it('without userCfg keeps legacy ctx.declarativePublicUrlsUseLocalhost for all tokens', async() => {
