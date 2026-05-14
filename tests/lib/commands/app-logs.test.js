@@ -152,36 +152,6 @@ describe('app-logs', () => {
     });
   });
 
-  describe('maskEnvLine', () => {
-    it('masks line when key matches secret pattern', () => {
-      expect(appLogs.maskEnvLine('PASSWORD=secret')).toBe('PASSWORD=***');
-      expect(appLogs.maskEnvLine('API_KEY=abc')).toBe('API_KEY=***');
-      expect(appLogs.maskEnvLine('CLIENT_SECRET=xyz')).toBe('CLIENT_SECRET=***');
-    });
-
-    it('masks KEYCLOAK_ only when suffix is secret (PASSWORD, SECRET, etc.)', () => {
-      expect(appLogs.maskEnvLine('KEYCLOAK_ADMIN_PASSWORD=admin')).toBe('KEYCLOAK_ADMIN_PASSWORD=***');
-      expect(appLogs.maskEnvLine('KEYCLOAK_CLIENT_SECRET=xyz')).toBe('KEYCLOAK_CLIENT_SECRET=***');
-      expect(appLogs.maskEnvLine('KEYCLOAK_SERVER_URL=http://keycloak:8080')).toBe('KEYCLOAK_SERVER_URL=http://keycloak:8080');
-      expect(appLogs.maskEnvLine('KEYCLOAK_REALM=aifabrix')).toBe('KEYCLOAK_REALM=aifabrix');
-      expect(appLogs.maskEnvLine('KEYCLOAK_EVENTS_ENABLED=true')).toBe('KEYCLOAK_EVENTS_ENABLED=true');
-    });
-
-    it('masks credentials in URL values (postgresql://, etc.)', () => {
-      expect(appLogs.maskEnvLine('DATABASE_URL=postgresql://miso_user:miso_pass123@postgres:5432/miso')).toBe(
-        'DATABASE_URL=postgresql://miso_user:***@postgres:5432/miso'
-      );
-      expect(appLogs.maskEnvLine('DATABASELOG_URL=postgresql://miso_logs_user:miso_logs_pass123@postgres:5432/miso-logs')).toBe(
-        'DATABASELOG_URL=postgresql://miso_logs_user:***@postgres:5432/miso-logs'
-      );
-    });
-
-    it('leaves line unchanged when key does not match', () => {
-      expect(appLogs.maskEnvLine('NODE_ENV=development')).toBe('NODE_ENV=development');
-      expect(appLogs.maskEnvLine('PORT=3000')).toBe('PORT=3000');
-    });
-  });
-
   describe('runAppLogs', () => {
     it('validates app name and runs docker logs with default tail', async() => {
       exec.mockImplementation((cmd) =>

@@ -10,6 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const pathsUtil = require('../../../lib/utils/paths');
 const generator = require('../../../lib/generator');
 const validator = require('../../../lib/validation/validator');
 const keyGenerator = require('../../../lib/core/key-generator');
@@ -253,7 +254,7 @@ describe('Generator Validation Module', () => {
 
     it('should generate JSON with validation', async() => {
       const appName = 'testapp';
-      const builderPath = path.join(process.cwd(), 'builder', appName);
+      const builderPath = pathsUtil.getBuilderPath(appName);
       const jsonPath = path.join(builderPath, 'testapp-deploy.json');
 
       const result = await generator.generateDeployJsonWithValidation(appName);

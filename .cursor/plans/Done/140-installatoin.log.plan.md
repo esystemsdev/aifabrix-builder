@@ -200,7 +200,7 @@ Cleanup
 5. **Platform version source**  
    - Derive from resolved image tags already chosen for keycloak/miso/dataplane, or from a single env/manifest constant if one exists; document “unknown” fallback in code.
 
-6. **Tests** (`tests/lib/log-redaction.test.js`, `tests/lib/installation-log.test.js`)  
+6. **Tests** (`tests/lib/utils/log-redaction.test.js`, `tests/lib/utils/installation-log.test.js`)  
    - Redaction: secrets in messages → masked.  
    - Installation log: temp dir, atomic append, deterministic section order, no stack in error fixture, rotation at threshold (optional separate test with small max size for speed).
 
@@ -220,11 +220,85 @@ Cleanup
 
 ## Implementation checklist
 
-- [ ] Extract **`maskSensitiveData`** → `lib/utils/log-redaction.js`; wire **`audit-logger.js`**.  
-- [ ] Add **`installation.log`** writer: `recordVersion`, `operationId`, timing, versions, deterministic sections, atomic append, optional rotation.  
-- [ ] Wire **one record** per: `setup`, `teardown`, `up-infra`, `up-platform`, `up-miso`, `up-dataplane` (no nested records during `setup`).  
-- [ ] Provenance annotations `(config)` / `(cli override)` where feasible.  
-- [ ] Teardown: **`volumesRemoved`**, **`configPreserved`** (and any other factual booleans from implementation).  
-- [ ] **`mode: interactive|automation`** heuristic.  
-- [ ] Errors: sanitized message + optional code only.  
-- [ ] Unit tests: redaction + installation log + rotation (if implemented).
+- [x] Extract **`maskSensitiveData`** → `lib/utils/log-redaction.js`; wire **`audit-logger.js`**.  
+- [x] Add **`installation.log`** writer: `recordVersion`, `operationId`, timing, versions, deterministic sections, atomic append, optional rotation.  
+- [x] Wire **one record** per: `setup`, `teardown`, `up-infra`, `up-platform`, `up-miso`, `up-dataplane` (no nested records during `setup`).  
+- [x] Provenance annotations `(config)` / `(cli override)` where feasible.  
+- [x] Teardown: **`volumesRemoved`**, **`configPreserved`** (and any other factual booleans from implementation).  
+- [x] **`mode: interactive|automation`** heuristic.  
+- [x] Errors: sanitized message + optional code only.  
+- [x] Unit tests: redaction + installation log + rotation (if implemented).
+
+## Implementation Validation Report
+
+**Date**: 2026-05-13  
+**Plan**: `.cursor/plans/140-installatoin.log.plan.md`  
+**Status**: ✅ COMPLETE (implementation + quality gates)
+
+### Executive Summary
+
+Plan 140 is implemented in the builder repo: shared redaction in `lib/utils/log-redaction.js`, append-only `installation.log` beside the system config dir, one record per scoped top-level command, rotation, masked errors, and unit tests. `npm run lint:fix`, `npm run lint`, and `npm test` all completed successfully (574 tests, 54 suites).
+
+### Task completion
+
+| Area | Status |
+|------|--------|
+| Checklist (§ Implementation checklist) | 8/8 marked complete after verification |
+| Shared masking / no duplicate redaction | ✅ `audit-logger.js` imports `maskSensitiveData` from `log-redaction.js`; installation record uses same module |
+| Installation log writer | ✅ `lib/utils/installation-log.js` (+ `installation-log-record.js`, `installation-log-core.js`) |
+| Call sites | ✅ `setup.js`, `teardown.js`, `installation-log-command.js` used by `setup-infra.js`, `setup-infra-up-platform-action.js`, `setup-infra-up-dataplane-action.js` |
+| Provenance | ✅ `buildInfraSectionLines` annotates `config` vs `cli override` (`installation-log-core.js`) |
+| Teardown cleanup fields | ✅ `pushCleanupBlock` supports `volumesRemoved`, `configPreserved` |
+| Mode | ✅ `resolveLogMode` → `interactive` / `automation` |
+| Errors | ✅ `pushErrorSection` uses `maskSensitiveData` on message (and code); no stack serialization |
+| Rotation | ✅ `rotateInstallationLogIfNeeded` + test with small `maxBytes` |
+| Nested records during `setup` | ✅ No `appendInstallationRecord` in `setup-modes.js` / nested helpers — only `setup.js` + standalone infra handlers |
+
+### File existence (plan vs repo)
+
+| Planned / implied | Path | Status |
+|-------------------|------|--------|
+| Shared redaction | `lib/utils/log-redaction.js` | ✅ (includes `maskEnvLine` / URL masking for parity with `logs <app>`) |
+| Audit wiring | `lib/core/audit-logger.js` | ✅ imports `../utils/log-redaction` |
+| Writer + record builder | `lib/utils/installation-log.js`, `installation-log-record.js`, `installation-log-core.js` | ✅ |
+| CLI hook | `lib/cli/installation-log-command.js` | ✅ |
+| Infra CLI split | `lib/cli/setup-infra-up-platform-action.js`, `setup-infra-up-dataplane-action.js` | ✅ |
+| Tests (plan named `tests/lib/...`; actual mirrors `lib/`) | `tests/lib/utils/log-redaction.test.js`, `tests/lib/utils/installation-log.test.js` | ✅ |
+| `tests/lib/core/audit-logger.test.js` | Delegation / existing coverage | ✅ present |
+
+### Test coverage
+
+- **Redaction**: `log-redaction.test.js` — keyword patterns, hex, URL credentials, `maskEnvLine` edge cases.
+- **Installation log**: atomic append, masked failure message, rotation, deterministic `Config` before `Cleanup` ordering.
+- **Full suite**: `npm test` — **574 passed**, **54** test suites, exit code **0**.
+
+### Code quality validation
+
+| Step | Result |
+|------|--------|
+| STEP 1 — `npm run lint:fix` | ✅ PASSED |
+| STEP 2 — `npm run lint` | ✅ PASSED (0 errors) |
+| STEP 3 — `npm test` | ✅ PASSED |
+
+### Cursor rules / policy (spot check)
+
+- **Code reuse**: Single redaction module; installation log reuses it — ✅  
+- **Logging**: Writer uses `logger.warn` on append failure; does not throw — ✅  
+- **Security**: No raw secrets in record builder; URLs sanitized via helpers — ✅  
+- **Module style**: CommonJS, `path.join` in writer — ✅  
+- **File size**: Large `setup-infra` handlers extracted to action modules — ✅ (aligns with project limits)
+
+### Gaps / recommendations (non-blocking)
+
+1. **Documentation (plan §7)**: No dedicated one-line mention of `installation.log` in `README.md` or `docs/commands/` yet; optional follow-up for support onboarding.  
+2. **CLI output matrix (plan § CLI layout)**: `.cursor/rules/cli-output-command-matrix.md` does not mention silent `installation.log` writes; optional note if you want matrix parity.  
+3. **Plan §6 paths**: Updated in this pass to `tests/lib/utils/log-redaction.test.js` and `tests/lib/utils/installation-log.test.js` for accuracy.
+
+### Final validation checklist
+
+- [x] All implementation checklist items completed (verified in repo)  
+- [x] All primary files exist and are wired  
+- [x] Tests exist and pass (including targeted installation + redaction suites)  
+- [x] Lint (with fix pass) clean  
+- [x] No duplicate `maskSensitiveData` in `audit-logger.js`  
+- [x] Implementation matches plan intent (operational scope, rotation, single record per command)

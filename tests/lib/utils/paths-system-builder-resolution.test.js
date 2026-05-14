@@ -67,7 +67,7 @@ describe('paths system builder app resolution', () => {
     fs.writeFileSync(path.join(kc, 'application.yaml'), 'app:\n  key: keycloak\n');
     const paths = loadPaths();
     expect(paths.getBuilderPath('keycloak')).toBe(kc);
-    expect(paths.getProjectBuilderAppPath('keycloak')).toBe(kc);
+    expect(paths.getProjectBuilderAppPath('keycloak')).toBe(path.join(cfgDir, 'builder', 'keycloak'));
     expect(paths.getSystemBuilderRoot()).toBe(path.join(cfgDir, 'builder'));
   });
 
@@ -83,9 +83,9 @@ describe('paths system builder app resolution', () => {
     expect(paths.getBuilderPath('keycloak')).toBe(path.join(cfgDir, 'builder', 'keycloak'));
   });
 
-  it('getBuilderPath for non-system app uses project builder only', () => {
+  it('getBuilderPath for non-system app uses material builder when cwd has no builder copy', () => {
     const paths = loadPaths();
-    expect(paths.getBuilderPath('my-service')).toBe(path.join(proj, 'builder', 'my-service'));
+    expect(paths.getBuilderPath('my-service')).toBe(path.join(cfgDir, 'builder', 'my-service'));
   });
 
   it('getBuilderPath for non-system app uses config/home stable base when cwd is outside project root', () => {
@@ -116,6 +116,19 @@ describe('paths system builder app resolution', () => {
     delete process.env.AIFABRIX_WORK;
   });
 
+  it('getBuilderPath for system app uses aifabrix-work builder when work tree has a manifest copy', () => {
+    const workTree = path.join(tmp, 'miso-like-work');
+    const kcWork = path.join(workTree, 'builder', 'keycloak');
+    fs.mkdirSync(kcWork, { recursive: true });
+    fs.writeFileSync(path.join(kcWork, 'application.yaml'), 'app:\n  type: node\n');
+    process.env.AIFABRIX_WORK = workTree;
+    process.cwd.mockReturnValue(path.join(tmp, 'training-sim'));
+    global.PROJECT_ROOT = proj;
+    const paths = loadPaths();
+    expect(paths.getBuilderPath('keycloak')).toBe(path.join(workTree, 'builder', 'keycloak'));
+    delete process.env.AIFABRIX_WORK;
+  });
+
   // Nested describe so inner beforeEach runs after the outer beforeEach that sets
   // AIFABRIX_HOME=cfgDir. Global setup.js beforeEach clears Fabrix env first; hook order
   // must not leave cfgDir as the final value before assertions.
@@ -140,7 +153,7 @@ describe('paths system builder app resolution', () => {
     });
   });
 
-  it('getBuilderPath prefers cwd builder manifest over AIFABRIX_BUILDER_DIR for platform apps (plan 141 Tier 1)', () => {
+  it('getBuilderPath prefers cwd builder manifest over stray AIFABRIX_BUILDER_DIR (Tier 1 wins)', () => {
     const alt = path.join(tmp, 'alt-builder');
     fs.mkdirSync(alt, { recursive: true });
     process.env.AIFABRIX_BUILDER_DIR = alt;
@@ -152,12 +165,25 @@ describe('paths system builder app resolution', () => {
     delete process.env.AIFABRIX_BUILDER_DIR;
   });
 
-  it('getBuilderPath respects AIFABRIX_BUILDER_DIR', () => {
-    const alt = path.join(tmp, 'alt-builder');
+  it('getBuilderPath ignores AIFABRIX_BUILDER_DIR; uses material builder under aifabrix-work', () => {
+    const workspaceRoot = path.join(tmp, 'mono');
+    const training = path.join(workspaceRoot, 'aifabrix-training');
+    const miso = path.join(workspaceRoot, 'aifabrix-miso');
+    fs.mkdirSync(training, { recursive: true });
+    fs.writeFileSync(path.join(training, 'package.json'), '{}\n');
+    const misoKc = path.join(miso, 'builder', 'keycloak');
+    fs.mkdirSync(misoKc, { recursive: true });
+    fs.writeFileSync(path.join(misoKc, 'application.yaml'), 'app:\n  key: keycloak\n');
+    const alt = path.join(tmp, 'env-builder-root');
     fs.mkdirSync(alt, { recursive: true });
     process.env.AIFABRIX_BUILDER_DIR = alt;
+    process.env.AIFABRIX_WORK = workspaceRoot;
+    process.cwd.mockReturnValue(training);
+    global.PROJECT_ROOT = proj;
+    process.env.AIFABRIX_HOME = cfgDir;
     const paths = loadPaths();
-    expect(paths.getBuilderPath('keycloak')).toBe(path.join(alt, 'keycloak'));
+    expect(paths.getBuilderPath('keycloak')).toBe(path.join(workspaceRoot, 'builder', 'keycloak'));
+    delete process.env.AIFABRIX_WORK;
     delete process.env.AIFABRIX_BUILDER_DIR;
   });
 

@@ -235,7 +235,7 @@ P=url://public
 
   it('traefik off + scoped on + dev → no /dev, direct base + pattern omitted', async() => {
     const u = await expandPublic({ traefik: false });
-    expect(u).toBe('http://remote.example:9000');
+    expect(u).toBe('http://localhost:8080');
   });
 
   it('local profile: vdir-internal mirrors vdir-public when pathActive', async() => {

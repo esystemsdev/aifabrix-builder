@@ -69,6 +69,7 @@ describe('url:// internal + urls.local internalDockerUseOriginOnly', () => {
       profile: 'docker',
       currentAppKey: 'miso-controller',
       variablesPath,
+      projectRoot: fakeProject,
       useEnvironmentScopedResources: false,
       appEnvironmentScopedResources: false,
       remoteServer: null,

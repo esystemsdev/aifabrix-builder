@@ -237,9 +237,9 @@ const { processEnvVariables } = require('../../../lib/utils/env-copy');
 describe('Environment Generation - Comprehensive Tests', () => {
   const mockHomeDir = '/home/test';
   const mockAppName = 'test-app';
-  const mockBuilderPath = path.join(process.cwd(), 'builder', mockAppName);
-  const mockTemplatePath = path.join(mockBuilderPath, 'env.template');
-  const mockVariablesPath = path.join(mockBuilderPath, 'application.yaml');
+  let mockBuilderPath;
+  let mockTemplatePath;
+  let mockVariablesPath;
 
   const baseEnvTemplate = `NODE_ENV=development
 PORT=3077
@@ -255,6 +255,10 @@ DB_PORT=\${DB_PORT}`;
   beforeEach(() => {
     jest.clearAllMocks();
     os.homedir.mockReturnValue(mockHomeDir);
+    const pathsUtil = require('../../../lib/utils/paths');
+    mockBuilderPath = pathsUtil.getBuilderPath(mockAppName);
+    mockTemplatePath = path.join(mockBuilderPath, 'env.template');
+    mockVariablesPath = path.join(mockBuilderPath, 'application.yaml');
     mockConfig.getDeveloperId.mockResolvedValue('0');
     mockConfig.getConfig.mockResolvedValue({});
 

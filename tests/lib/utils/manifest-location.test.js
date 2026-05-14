@@ -95,8 +95,29 @@ describe('manifest-location', () => {
     expect(r.absolutePath).toBe(path.resolve(intDir));
   });
 
-  it('returns system-builder tier for platform app under work/builder when AIFABRIX_WORK set', () => {
+  it('returns system-builder tier under aifabrix-work when work and config-dir both have builder copies', () => {
     const workRoot = path.join(tmp, 'monorepo');
+    const workDp = path.join(workRoot, 'builder', 'dataplane');
+    fs.mkdirSync(workDp, { recursive: true });
+    fs.writeFileSync(
+      path.join(workDp, 'application.yaml'),
+      'app:\n  type: node\n'
+    );
+    const cfgDp = path.join(cfgDir, 'builder', 'dataplane');
+    fs.mkdirSync(cfgDp, { recursive: true });
+    fs.writeFileSync(path.join(cfgDp, 'application.yaml'), 'app:\n  type: node\n');
+    process.env.AIFABRIX_WORK = workRoot;
+    jest.spyOn(process, 'cwd').mockReturnValue(path.join(tmp, 'unrelated-cwd'));
+    global.PROJECT_ROOT = proj;
+    const ml = loadManifestLocation();
+    const r = ml.resolveApplicationManifestPathSync({ targetKey: 'dataplane', cwd: process.cwd() });
+    expect(r.tier).toBe('system-builder');
+    expect(r.absolutePath).toBe(path.resolve(workDp));
+    delete process.env.AIFABRIX_WORK;
+  });
+
+  it('returns system-builder under aifabrix-work when only work builder has a copy', () => {
+    const workRoot = path.join(tmp, 'work-only-platform');
     const dp = path.join(workRoot, 'builder', 'dataplane');
     fs.mkdirSync(dp, { recursive: true });
     fs.writeFileSync(path.join(dp, 'application.yaml'), 'app:\n  type: node\n');
@@ -105,8 +126,11 @@ describe('manifest-location', () => {
     global.PROJECT_ROOT = proj;
     const ml = loadManifestLocation();
     const r = ml.resolveApplicationManifestPathSync({ targetKey: 'dataplane', cwd: process.cwd() });
-    expect(r.tier).toBe('system-builder');
-    expect(r.absolutePath).toBe(path.resolve(dp));
+    expect(r).toEqual({
+      absolutePath: path.resolve(dp),
+      tier: 'system-builder',
+      appKey: 'dataplane'
+    });
     delete process.env.AIFABRIX_WORK;
   });
 
@@ -133,7 +157,7 @@ describe('manifest-location', () => {
     expect(r.absolutePath).toBe(path.resolve(cwdDp));
   });
 
-  it('getSystemBuilderRoot uses work/builder when AIFABRIX_WORK is set (Tier 2 parent)', () => {
+  it('getSystemPlatformMaterializationParent follows AIFABRIX_WORK when set', () => {
     const workRoot = path.join(tmp, 'work-for-platform');
     fs.mkdirSync(workRoot, { recursive: true });
     process.env.AIFABRIX_WORK = workRoot;
@@ -144,8 +168,41 @@ describe('manifest-location', () => {
     delete process.env.AIFABRIX_WORK;
   });
 
+  it('does not resolve Tier 2 to a sibling repo under aifabrix-work (only work/builder/<key>)', () => {
+    const workspaceRoot = path.join(tmp, 'mono-sibling');
+    const training = path.join(workspaceRoot, 'aifabrix-training');
+    const miso = path.join(workspaceRoot, 'aifabrix-miso');
+    fs.mkdirSync(training, { recursive: true });
+    fs.writeFileSync(path.join(training, 'package.json'), '{}\n');
+    const misoDp = path.join(miso, 'builder', 'dataplane');
+    fs.mkdirSync(misoDp, { recursive: true });
+    fs.writeFileSync(path.join(misoDp, 'application.yaml'), 'app:\n  type: node\n');
+    process.env.AIFABRIX_WORK = workspaceRoot;
+    jest.spyOn(process, 'cwd').mockReturnValue(training);
+    global.PROJECT_ROOT = proj;
+    const ml = loadManifestLocation();
+    expect(ml.resolveApplicationManifestPathSync({ targetKey: 'dataplane', cwd: training })).toBeNull();
+    delete process.env.AIFABRIX_WORK;
+  });
+
   it('returns null when nothing matches', () => {
     const ml = loadManifestLocation();
     expect(ml.resolveApplicationManifestPathSync({ targetKey: 'missing-app-xyz', cwd: proj })).toBeNull();
+  });
+
+  it('returns system-builder tier for non-platform app under material builder', () => {
+    const appDir = path.join(cfgDir, 'builder', 'internal-svc');
+    fs.mkdirSync(appDir, { recursive: true });
+    fs.writeFileSync(path.join(appDir, 'application.yaml'), 'app:\n  type: node\n');
+    const ml = loadManifestLocation();
+    const r = ml.resolveApplicationManifestPathSync({
+      targetKey: 'internal-svc',
+      cwd: path.join(tmp, 'no-manifest-here')
+    });
+    expect(r).toEqual({
+      absolutePath: path.resolve(appDir),
+      tier: 'system-builder',
+      appKey: 'internal-svc'
+    });
   });
 });

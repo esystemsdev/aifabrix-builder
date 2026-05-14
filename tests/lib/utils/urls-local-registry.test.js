@@ -18,6 +18,7 @@ jest.mock('../../../lib/utils/paths', () => ({
   getIntegrationBuilderBaseDir: jest.fn()
 }));
 
+const pathsActual = jest.requireActual('../../../lib/utils/paths');
 const pathsUtil = require('../../../lib/utils/paths');
 const {
   getUrlsLocalYamlPath,
@@ -33,6 +34,16 @@ describe('urls-local-registry', () => {
   let tmp;
   let fakeHome;
   let fakeProject;
+  /** @type {jest.SpyInstance|undefined} */
+  let findProjectRootFromCwdSpy;
+
+  beforeAll(() => {
+    findProjectRootFromCwdSpy = jest.spyOn(pathsUtil, 'findProjectRootFromCwd').mockReturnValue(null);
+  });
+
+  afterAll(() => {
+    findProjectRootFromCwdSpy.mockRestore();
+  });
 
   beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'urls-reg-'));
@@ -48,6 +59,7 @@ describe('urls-local-registry', () => {
       path.join(pathsUtil.getConfigDirForPaths(), 'builder')
     );
     pathsUtil.getIntegrationBuilderBaseDir.mockReturnValue(fakeProject);
+    findProjectRootFromCwdSpy.mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -438,11 +450,13 @@ frontDoorRouting:
 
       const prevCwd = process.cwd();
       process.chdir(cwdRepo);
+      findProjectRootFromCwdSpy.mockImplementation(() => pathsActual.findProjectRootFromCwd());
       try {
         const merged = refreshUrlsLocalRegistryFromBuilder(cliPkg);
         expect(merged['miso-controller-internalDockerUseOriginOnly']).toBe(false);
       } finally {
         process.chdir(prevCwd);
+        findProjectRootFromCwdSpy.mockReturnValue(null);
       }
     });
 

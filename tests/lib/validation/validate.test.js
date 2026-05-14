@@ -65,6 +65,18 @@ jest.mock('../../../lib/utils/paths', () => ({
   listIntegrationAppNames: jest.fn(),
   listBuilderAppNames: jest.fn()
 }));
+jest.mock('../../../lib/utils/app-config-resolver', () => {
+  const path = require('path');
+  return {
+    resolveApplicationConfigPath: jest.fn((appPath) => {
+      if (!appPath || typeof appPath !== 'string') {
+        throw new Error('App path is required and must be a string');
+      }
+      return path.join(appPath, 'application.yaml');
+    }),
+    resolveRbacPath: jest.fn(() => null)
+  };
+});
 
 const fsSync = require('fs');
 const logger = require('../../../lib/utils/logger');

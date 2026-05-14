@@ -54,7 +54,45 @@ jest.mock('../../../lib/generator/external', () => ({
 }));
 jest.mock('../../../lib/utils/paths', () => {
   const pathMod = require('path');
+  const fsMod = require('fs');
   const actual = jest.requireActual('../../../lib/utils/paths');
+  function resolveApplicationConfigPathForTests(appPath) {
+    if (!appPath || typeof appPath !== 'string') {
+      throw new Error('App path is required and must be a string');
+    }
+    const applicationYaml = pathMod.join(appPath, 'application.yaml');
+    const applicationYml = pathMod.join(appPath, 'application.yml');
+    const applicationJson = pathMod.join(appPath, 'application.json');
+    const variablesYaml = pathMod.join(appPath, 'variables.yaml');
+    if (fsMod.existsSync(applicationYaml)) {
+      return applicationYaml;
+    }
+    if (fsMod.existsSync(applicationYml)) {
+      return applicationYml;
+    }
+    if (fsMod.existsSync(applicationJson)) {
+      return applicationJson;
+    }
+    if (fsMod.existsSync(variablesYaml)) {
+      fsMod.renameSync(variablesYaml, applicationYaml);
+      return applicationYaml;
+    }
+    throw new Error(
+      `Application config not found in ${appPath}. Expected application.yaml, application.yml, application.json, or variables.yaml.`
+    );
+  }
+  function resolveRbacPathForTests(appPath) {
+    if (!appPath || typeof appPath !== 'string') {
+      throw new Error('App path is required and must be a string');
+    }
+    for (const name of ['rbac.yaml', 'rbac.yml', 'rbac.json']) {
+      const candidate = pathMod.join(appPath, name);
+      if (fsMod.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
   return {
     ...actual,
     detectAppType: jest.fn().mockResolvedValue({
@@ -62,7 +100,9 @@ jest.mock('../../../lib/utils/paths', () => {
       appPath: pathMod.join(process.cwd(), 'builder', 'testapp'),
       appType: 'regular',
       baseDir: 'builder'
-    })
+    }),
+    resolveApplicationConfigPath: resolveApplicationConfigPathForTests,
+    resolveRbacPath: resolveRbacPathForTests
   };
 });
 jest.mock('net', () => {

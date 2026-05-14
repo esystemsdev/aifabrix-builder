@@ -177,10 +177,10 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\utils\\\\paths-app-listing.test.js',
       'lib/utils/paths-app-listing.test.js',
       'paths-app-listing\\.test\\.js',
-      '/tests/lib/utils/paths-system-builder-resolution.test.js',
-      '\\\\tests\\\\lib\\\\utils\\\\paths-system-builder-resolution.test.js',
-      'lib/utils/paths-system-builder-resolution.test.js',
-      'paths-system-builder-resolution\\.test\\.js',
+      '/tests/lib/utils/manifest-source-emit.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\manifest-source-emit.test.js',
+      'lib/utils/manifest-source-emit.test.js',
+      'manifest-source-emit\\.test\\.js',
       '/tests/lib/utils/secrets-ancestor-paths.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\secrets-ancestor-paths.test.js',
       'lib/utils/secrets-ancestor-paths.test.js',
@@ -288,6 +288,7 @@ const isolatedProjects = [
     '**/tests/lib/datasource/log-viewer-structural.test.js',
     '**/tests/lib/datasource/log-viewer-run.test.js'
   ]),
+  makeIsolatedProject('manifest-source-emit', ['**/tests/lib/utils/manifest-source-emit.test.js']),
   makeIsolatedProject('register-aifabrix-shell-env', [
     '**/tests/lib/utils/register-aifabrix-shell-env.test.js'
   ]),

@@ -9,7 +9,7 @@ const {
   resolveHostPortForDeclarativePublic
 } = require('../../../lib/utils/url-declarative-public-base');
 
-describe('computePublicUrlBaseString (remote without Traefik)', () => {
+describe('computePublicUrlBaseString (remote ignored when Traefik off by default)', () => {
   const base = {
     traefik: false,
     hostTemplate: null,
@@ -19,6 +19,78 @@ describe('computePublicUrlBaseString (remote without Traefik)', () => {
     listenPort: 8082,
     developerIdNum: 2,
     remoteServer: 'https://builder02.local'
+  };
+
+  it('uses localhost published port (not remote host) when infra TLS off', () => {
+    expect(
+      computePublicUrlBaseString({
+        ...base,
+        infraTlsEnabled: false
+      })
+    ).toBe('http://localhost:8282');
+  });
+
+  it('uses http localhost when infra TLS on (loopback)', () => {
+    expect(
+      computePublicUrlBaseString({
+        ...base,
+        infraTlsEnabled: true
+      })
+    ).toBe('http://localhost:8282');
+  });
+
+  it('ignores explicit port on remote URL (defaults to published docker port)', () => {
+    expect(
+      computePublicUrlBaseString({
+        ...base,
+        remoteServer: 'https://builder02.local:3000',
+        infraTlsEnabled: false
+      })
+    ).toBe('http://localhost:8282');
+  });
+
+  it('still ignores remote explicit port when infra TLS on', () => {
+    expect(
+      computePublicUrlBaseString({
+        ...base,
+        remoteServer: 'https://builder02.local:3000',
+        infraTlsEnabled: true
+      })
+    ).toBe('http://localhost:8282');
+  });
+
+  it('uses http for remote-server hostname localhost even when infra TLS on', () => {
+    expect(
+      computePublicUrlBaseString({
+        ...base,
+        remoteServer: 'https://localhost',
+        infraTlsEnabled: true
+      })
+    ).toBe('http://localhost:8282');
+  });
+
+  it('explicit declarativePublicUrlsUseLocalhost undefined matches omitted key (remote not used)', () => {
+    expect(
+      computePublicUrlBaseString({
+        ...base,
+        infraTlsEnabled: false,
+        declarativePublicUrlsUseLocalhost: undefined
+      })
+    ).toBe('http://localhost:8282');
+  });
+});
+
+describe('computePublicUrlBaseString (remote without Traefik when proxy opts out of localhost)', () => {
+  const base = {
+    traefik: false,
+    hostTemplate: null,
+    tls: true,
+    developerIdRaw: 0,
+    profile: 'docker',
+    listenPort: 8082,
+    developerIdNum: 2,
+    remoteServer: 'https://builder02.local',
+    declarativePublicUrlsUseLocalhost: false
   };
 
   it('uses http when infraTlsEnabled false even if remote-server is https:// (published port)', () => {
@@ -187,8 +259,7 @@ describe('computePublicUrlBaseString (Traefik front-door host authority)', () =>
         developerIdNum: 6,
         infraTlsEnabled: true,
         declarativeTargetAppKey: 'miso-controller',
-        declarativeCurrentAppKey: 'miso-controller',
-        declarativePublicUrlsUseLocalhost: false
+        declarativeCurrentAppKey: 'miso-controller'
       })
     ).toBe('http://localhost:3600');
   });
@@ -207,8 +278,7 @@ describe('computePublicUrlBaseString (Traefik front-door host authority)', () =>
         developerIdNum: 6,
         infraTlsEnabled: true,
         declarativeTargetAppKey: 'miso-controller',
-        declarativeCurrentAppKey: 'miso-controller',
-        declarativePublicUrlsUseLocalhost: false
+        declarativeCurrentAppKey: 'miso-controller'
       })
     ).toBe('http://localhost:3610');
   });

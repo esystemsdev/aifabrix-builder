@@ -174,20 +174,6 @@ jest.mock('../../../lib/utils/app-run-containers', () => ({
 jest.mock('../../../lib/utils/image-version', () => ({
   resolveVersionForApp: jest.fn().mockResolvedValue({ version: '1.0.0', fromImage: false })
 }));
-jest.mock('../../../lib/utils/paths', () => {
-  const pathMod = require('path');
-  const actual = jest.requireActual('../../../lib/utils/paths');
-  return {
-    ...actual,
-    getBuilderPath: jest.fn(),
-    detectAppType: jest.fn().mockImplementation((appName) => Promise.resolve({
-      isExternal: false,
-      appPath: pathMod.join(process.cwd(), 'builder', appName || 'test-app'),
-      appType: 'regular',
-      baseDir: 'builder'
-    }))
-  };
-});
 jest.mock('../../../lib/utils/compose-generator', () => {
   // Import the mocked config to ensure it's used
   const config = require('../../../lib/core/config');
@@ -199,6 +185,17 @@ jest.mock('../../../lib/utils/compose-generator', () => {
 
 const validator = require('../../../lib/validation/validator');
 const pathsUtil = require('../../../lib/utils/paths');
+jest.spyOn(pathsUtil, 'detectAppType').mockImplementation((appName) =>
+  Promise.resolve({
+    isExternal: false,
+    appPath: path.join(process.cwd(), 'builder', appName || 'test-app'),
+    appType: 'regular',
+    baseDir: 'builder'
+  })
+);
+jest.spyOn(pathsUtil, 'getBuilderPath').mockImplementation((appName) =>
+  path.join('/tmp/aifabrix-test-mock', 'builder', appName)
+);
 const infra = require('../../../lib/infrastructure');
 const secrets = require('../../../lib/core/secrets');
 const healthCheck = require('../../../lib/utils/health-check');

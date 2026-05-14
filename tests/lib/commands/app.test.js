@@ -10,6 +10,7 @@ const fs = require('fs').promises;
 const fsSync = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const pathsUtil = require('../../../lib/utils/paths');
 
 // Mock chalk before requiring modules that use it
 jest.mock('chalk', () => {
@@ -130,7 +131,7 @@ describe('App Commands Module', () => {
 
     it('should add MISO_CLIENTID, MISO_CLIENTSECRET, and MISO_CONTROLLER_URL to env.template when not present', async() => {
       const existingContent = '# Application Environment\nPORT=3000\n';
-      const envTemplatePath = path.join(process.cwd(), 'builder', appKey, 'env.template');
+      const envTemplatePath = path.join(pathsUtil.getBuilderPath(appKey), 'env.template');
       fsSync.existsSync.mockReturnValue(true);
       fs.readFile.mockResolvedValue(existingContent);
       fs.writeFile.mockResolvedValue();

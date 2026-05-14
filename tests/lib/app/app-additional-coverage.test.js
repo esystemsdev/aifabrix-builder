@@ -42,8 +42,6 @@ const appRun = require('../../../lib/app/run');
 describe('App.js Additional Coverage Tests', () => {
   let tempDir;
   let originalCwd;
-  /** @type {string|undefined} Preserve host env so getBuilderPath() uses temp builder, not ~/.aifabrix */
-  let previousAifabrixBuilderDir;
 
   beforeEach(() => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));
@@ -51,8 +49,9 @@ describe('App.js Additional Coverage Tests', () => {
     process.chdir(tempDir);
 
     fsSync.mkdirSync(path.join(tempDir, 'builder'), { recursive: true });
-    previousAifabrixBuilderDir = process.env.AIFABRIX_BUILDER_DIR;
-    process.env.AIFABRIX_BUILDER_DIR = path.join(tempDir, 'builder');
+
+    jest.spyOn(paths, 'getBuilderPath').mockImplementation((appName) => path.join(tempDir, 'builder', appName));
+    jest.spyOn(paths, 'getIntegrationPath').mockImplementation((appName) => path.join(tempDir, 'integration', appName));
 
     inquirer.prompt.mockResolvedValue({
       port: '3000',
@@ -74,11 +73,7 @@ describe('App.js Additional Coverage Tests', () => {
 
   afterEach(async() => {
     process.chdir(originalCwd);
-    if (previousAifabrixBuilderDir === undefined) {
-      delete process.env.AIFABRIX_BUILDER_DIR;
-    } else {
-      process.env.AIFABRIX_BUILDER_DIR = previousAifabrixBuilderDir;
-    }
+    jest.restoreAllMocks();
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
     jest.clearAllMocks();
   });

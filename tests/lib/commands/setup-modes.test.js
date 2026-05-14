@@ -136,6 +136,39 @@ describe('lib/commands/setup-modes', () => {
       expect(config.saveConfig).not.toHaveBeenCalled();
     });
 
+    it('passes adminEmail from config when overrides omit email', async() => {
+      config.getConfig.mockResolvedValue({
+        traefik: false,
+        pgadmin: true,
+        redisCommander: true,
+        tlsEnabled: false,
+        adminEmail: 'from-config@example.com'
+      });
+      await modes.startInfraFromConfig({});
+      expect(infra.startInfra).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({
+          adminEmail: 'from-config@example.com',
+          tlsEnabled: false
+        })
+      );
+    });
+
+    it('prefers overrides.adminEmail over config adminEmail', async() => {
+      config.getConfig.mockResolvedValue({
+        traefik: false,
+        pgadmin: true,
+        redisCommander: true,
+        tlsEnabled: false,
+        adminEmail: 'from-config@example.com'
+      });
+      await modes.startInfraFromConfig({ adminEmail: 'override@example.com' });
+      expect(infra.startInfra).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({ adminEmail: 'override@example.com' })
+      );
+    });
+
     it('persists optional infra flags when missing from config after start', async() => {
       config.getConfig.mockResolvedValueOnce({ tlsEnabled: false });
       await modes.startInfraFromConfig({});
