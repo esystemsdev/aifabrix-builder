@@ -8,7 +8,6 @@ const fs = require('fs').promises;
 const os = require('os');
 const path = require('path');
 
-const pathsMod = require('../../../lib/utils/paths');
 const installationLog = require('../../../lib/utils/installation-log');
 const { buildInstallationRecordLines } = require('../../../lib/utils/installation-log-record');
 
@@ -24,14 +23,24 @@ jest.mock('../../../lib/utils/controller-url', () => ({
 
 describe('installation-log', () => {
   let tmpDir;
+  /** @type {string|undefined} */
+  let savedAifabrixConfig;
 
   beforeEach(async() => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'instlog-'));
-    jest.spyOn(pathsMod, 'getAifabrixSystemDir').mockReturnValue(tmpDir);
+    const configPath = path.join(tmpDir, 'config.yaml');
+    await fs.writeFile(configPath, '# test fixture\n', 'utf8');
+    savedAifabrixConfig = process.env.AIFABRIX_CONFIG;
+    process.env.AIFABRIX_CONFIG = configPath;
   });
 
   afterEach(async() => {
     jest.restoreAllMocks();
+    if (savedAifabrixConfig === undefined) {
+      delete process.env.AIFABRIX_CONFIG;
+    } else {
+      process.env.AIFABRIX_CONFIG = savedAifabrixConfig;
+    }
     try {
       await fs.rm(tmpDir, { recursive: true, force: true });
     } catch {
