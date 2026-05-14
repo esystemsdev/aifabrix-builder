@@ -7,6 +7,18 @@ jest.mock('../../../lib/core/config', () => ({
   getSecretsEncryptionKey: jest.fn()
 }));
 
+jest.mock('../../../lib/core/secrets-ensure-infra', () => {
+  const actual = jest.requireActual('../../../lib/core/secrets-ensure-infra');
+  return {
+    ...actual,
+    isSecretKeyAllowedEmpty: (key) => {
+      if (key === 'mori-controller-api-keyKeyVault') return true;
+      if (key === 'miso-controller-jwt-secretKeyVault') return false;
+      return actual.isSecretKeyAllowedEmpty(key);
+    }
+  };
+});
+
 const config = require('../../../lib/core/config');
 const { encryptSecret } = require('../../../lib/utils/secrets-encryption');
 const { decryptSecretsObject } = require('../../../lib/core/secrets-load');

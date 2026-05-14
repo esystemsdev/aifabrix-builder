@@ -46,8 +46,7 @@ describe('expandDeclarativeUrlsIfPresent', () => {
     expect(out).toBe('PORT=3000\n');
     expect(urlsReg.refreshUrlsLocalRegistryFromBuilder).toHaveBeenCalledTimes(1);
     expect(urlsReg.refreshUrlsLocalRegistryFromBuilder).toHaveBeenCalledWith(
-      '/tmp/fake-proj-root-for-registry-refresh',
-      { excludeCwdBuilderScan: true }
+      '/tmp/fake-proj-root-for-registry-refresh'
     );
   });
 

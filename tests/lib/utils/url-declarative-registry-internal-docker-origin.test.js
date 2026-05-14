@@ -70,6 +70,7 @@ describe('url:// internal + urls.local internalDockerUseOriginOnly', () => {
       currentAppKey: 'miso-controller',
       variablesPath,
       projectRoot: fakeProject,
+      excludeCwdBuilderScan: true,
       useEnvironmentScopedResources: false,
       appEnvironmentScopedResources: false,
       remoteServer: null,
