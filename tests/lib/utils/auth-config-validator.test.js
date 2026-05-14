@@ -11,7 +11,7 @@ const {
   validateEnvironment,
   checkUserLoggedIn
 } = require('../../../lib/utils/auth-config-validator');
-const { getControllerUrlFromLoggedInUser } = require('../../../lib/utils/controller-url');
+const { hasStoredDeviceTokenForController } = require('../../../lib/utils/controller-url');
 
 jest.mock('../../../lib/utils/controller-url');
 
@@ -73,16 +73,16 @@ describe('Auth Config Validator', () => {
 
   describe('checkUserLoggedIn', () => {
     it('should return true if user is logged in to controller', async() => {
-      getControllerUrlFromLoggedInUser.mockResolvedValue('https://controller.example.com');
+      hasStoredDeviceTokenForController.mockResolvedValue(true);
 
       const result = await checkUserLoggedIn('https://controller.example.com');
 
       expect(result).toBe(true);
-      expect(getControllerUrlFromLoggedInUser).toHaveBeenCalled();
+      expect(hasStoredDeviceTokenForController).toHaveBeenCalledWith('https://controller.example.com');
     });
 
     it('should return false if user is not logged in', async() => {
-      getControllerUrlFromLoggedInUser.mockResolvedValue(null);
+      hasStoredDeviceTokenForController.mockResolvedValue(false);
 
       const result = await checkUserLoggedIn('https://controller.example.com');
 
@@ -90,19 +90,20 @@ describe('Auth Config Validator', () => {
     });
 
     it('should return false if controller URLs do not match', async() => {
-      getControllerUrlFromLoggedInUser.mockResolvedValue('https://other-controller.example.com');
+      hasStoredDeviceTokenForController.mockResolvedValue(false);
 
       const result = await checkUserLoggedIn('https://controller.example.com');
 
       expect(result).toBe(false);
     });
 
-    it('should normalize URLs for comparison', async() => {
-      getControllerUrlFromLoggedInUser.mockResolvedValue('https://controller.example.com');
+    it('should pass controller URL to token lookup', async() => {
+      hasStoredDeviceTokenForController.mockResolvedValue(true);
 
       const result = await checkUserLoggedIn('https://controller.example.com/');
 
       expect(result).toBe(true);
+      expect(hasStoredDeviceTokenForController).toHaveBeenCalledWith('https://controller.example.com/');
     });
   });
 });

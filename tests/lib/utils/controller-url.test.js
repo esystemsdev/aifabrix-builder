@@ -6,7 +6,13 @@
  * @version 2.0.0
  */
 
-const { getDefaultControllerUrl, getControllerUrlFromLoggedInUser, resolveControllerUrl, getControllerFromConfig } = require('../../../lib/utils/controller-url');
+const {
+  getDefaultControllerUrl,
+  getControllerUrlFromLoggedInUser,
+  hasStoredDeviceTokenForController,
+  resolveControllerUrl,
+  getControllerFromConfig
+} = require('../../../lib/utils/controller-url');
 const envMap = require('../../../lib/utils/env-map');
 const devConfig = require('../../../lib/utils/dev-config');
 const config = require('../../../lib/core/config');
@@ -115,6 +121,22 @@ describe('Controller URL Utility', () => {
       expect(devConfig.getDevPorts).toHaveBeenCalledWith(1);
     });
 
+    it('should fall back to default when multiple device entries and no config.controller match', async() => {
+      config.getControllerUrl = jest.fn().mockResolvedValue(null);
+      config.getConfig.mockResolvedValue({
+        device: {
+          'http://localhost:3000': { token: 'a' },
+          'http://localhost:3100': { token: 'b' }
+        }
+      });
+      envMap.getDeveloperIdNumber.mockResolvedValue(0);
+      devConfig.getDevPorts.mockReturnValue({ app: 3000 });
+
+      const url = await resolveControllerUrl();
+
+      expect(url).toBe('http://localhost:3000');
+    });
+
     it('should remove trailing slashes from config URL', async() => {
       config.getControllerUrl = jest.fn().mockResolvedValue('https://config.controller.com/');
 
@@ -173,12 +195,60 @@ describe('Controller URL Utility', () => {
       expect(url).toBe('https://logged-in.controller.com');
     });
 
+    it('should prefer device key matching config.controller when multiple tokens exist', async() => {
+      config.getConfig.mockResolvedValue({
+        controller: 'http://localhost:3610',
+        device: {
+          'http://localhost:3600': { token: 'a', expiresAt: '2099-01-01T00:00:00.000Z' },
+          'http://localhost:3610': { token: 'b', expiresAt: '2099-01-01T00:00:00.000Z' }
+        }
+      });
+
+      const url = await getControllerUrlFromLoggedInUser();
+
+      expect(url).toBe('http://localhost:3610');
+    });
+
+    it('should return null when multiple device entries and no config.controller device match', async() => {
+      config.getConfig.mockResolvedValue({
+        controller: 'http://localhost:9999',
+        device: {
+          'http://localhost:3600': { token: 'a' },
+          'http://localhost:3610': { token: 'b' }
+        }
+      });
+
+      const url = await getControllerUrlFromLoggedInUser();
+
+      expect(url).toBeNull();
+    });
+
     it('should handle config read errors gracefully', async() => {
       config.getConfig.mockRejectedValue(new Error('Config file not found'));
 
       const url = await getControllerUrlFromLoggedInUser();
 
       expect(url).toBeNull();
+    });
+  });
+
+  describe('hasStoredDeviceTokenForController', () => {
+    it('should return true when a device key matches (normalized)', async() => {
+      config.getConfig.mockResolvedValue({
+        device: {
+          'https://controller.example.com/': { token: 'x' }
+        }
+      });
+      await expect(hasStoredDeviceTokenForController('https://controller.example.com')).resolves.toBe(true);
+    });
+
+    it('should return false when no device entry matches', async() => {
+      config.getConfig.mockResolvedValue({
+        device: {
+          'https://other.example.com': { token: 'x' }
+        }
+      });
+      await expect(hasStoredDeviceTokenForController('https://controller.example.com')).resolves.toBe(false);
     });
   });
 });
