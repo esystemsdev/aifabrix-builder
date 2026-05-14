@@ -141,6 +141,34 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\utils\\\\url-declarative-vdir-inactive-env.test.js',
       'lib/utils/url-declarative-vdir-inactive-env.test.js',
       'url-declarative-vdir-inactive-env\\.test\\.js',
+      '/tests/lib/utils/url-declarative-user-cfg-per-app-proxy.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\url-declarative-user-cfg-per-app-proxy.test.js',
+      'lib/utils/url-declarative-user-cfg-per-app-proxy.test.js',
+      'url-declarative-user-cfg-per-app-proxy\\.test\\.js',
+      '/tests/lib/utils/url-declarative-expand-traefik-off-no-usercfg.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\url-declarative-expand-traefik-off-no-usercfg.test.js',
+      'lib/utils/url-declarative-expand-traefik-off-no-usercfg.test.js',
+      'url-declarative-expand-traefik-off-no-usercfg\\.test\\.js',
+      '/tests/lib/core/secrets-env-declarative-show-urls.test.js',
+      '\\\\tests\\\\lib\\\\core\\\\secrets-env-declarative-show-urls.test.js',
+      'lib/core/secrets-env-declarative-show-urls.test.js',
+      'secrets-env-declarative-show-urls\\.test\\.js',
+      '/tests/lib/utils/url-declarative-registry-internal-docker-origin.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\url-declarative-registry-internal-docker-origin.test.js',
+      'lib/utils/url-declarative-registry-internal-docker-origin.test.js',
+      'url-declarative-registry-internal-docker-origin\\.test\\.js',
+      '/tests/lib/commands/platform-urls-registry.validation.test.js',
+      '\\\\tests\\\\lib\\\\commands\\\\platform-urls-registry.validation.test.js',
+      'lib/commands/platform-urls-registry.validation.test.js',
+      'platform-urls-registry\\.validation\\.test\\.js',
+      '/tests/lib/utils/env-copy-resolve-output.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\env-copy-resolve-output.test.js',
+      'lib/utils/env-copy-resolve-output.test.js',
+      'env-copy-resolve-output\\.test\\.js',
+      '/tests/lib/utils/write-env-output-reload.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\write-env-output-reload.test.js',
+      'lib/utils/write-env-output-reload.test.js',
+      'write-env-output-reload\\.test\\.js',
       '/tests/lib/utils/app-service-env-from-builder.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\app-service-env-from-builder.test.js',
       'lib/utils/app-service-env-from-builder.test.js',
@@ -165,6 +193,18 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\utils\\\\paths-system-builder-resolution.test.js',
       'lib/utils/paths-system-builder-resolution.test.js',
       'paths-system-builder-resolution\\.test\\.js',
+      '/tests/lib/utils/manifest-location.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\manifest-location.test.js',
+      'lib/utils/manifest-location.test.js',
+      'manifest-location\\.test\\.js',
+      '/tests/lib/utils/installation-log.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\installation-log.test.js',
+      'lib/utils/installation-log.test.js',
+      'installation-log\\.test\\.js',
+      '/tests/lib/utils/manifest-source-emit.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\manifest-source-emit.test.js',
+      'lib/utils/manifest-source-emit.test.js',
+      'manifest-source-emit\\.test\\.js',
       '/tests/lib/utils/secrets-ancestor-paths.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\secrets-ancestor-paths.test.js',
       'lib/utils/secrets-ancestor-paths.test.js',
@@ -263,6 +303,8 @@ const isolatedProjects = [
   makeIsolatedProject('paths-system-builder-resolution', [
     '**/tests/lib/utils/paths-system-builder-resolution.test.js'
   ]),
+  makeIsolatedProject('manifest-location', ['**/tests/lib/utils/manifest-location.test.js']),
+  makeIsolatedProject('installation-log', ['**/tests/lib/utils/installation-log.test.js']),
   makeIsolatedProject('secrets-ancestor-paths', ['**/tests/lib/utils/secrets-ancestor-paths.test.js']),
   makeIsolatedProject('datasource-validation-watch', [
     '**/tests/lib/utils/datasource-validation-watch.test.js'
@@ -272,6 +314,7 @@ const isolatedProjects = [
     '**/tests/lib/datasource/log-viewer-structural.test.js',
     '**/tests/lib/datasource/log-viewer-run.test.js'
   ]),
+  makeIsolatedProject('manifest-source-emit', ['**/tests/lib/utils/manifest-source-emit.test.js']),
   makeIsolatedProject('register-aifabrix-shell-env', [
     '**/tests/lib/utils/register-aifabrix-shell-env.test.js'
   ]),
@@ -314,6 +357,19 @@ const isolatedProjects = [
   makeIsolatedProject('url-declarative-vdir-inactive-env', [
     '**/tests/lib/utils/url-declarative-vdir-inactive-env.test.js'
   ]),
+  makeIsolatedProject('url-declarative-user-cfg-per-app-proxy', [
+    '**/tests/lib/utils/url-declarative-user-cfg-per-app-proxy.test.js'
+  ]),
+  makeIsolatedProject('declarative-url-paths-spy-suites', [
+    '**/tests/lib/utils/url-declarative-expand-traefik-off-no-usercfg.test.js',
+    '**/tests/lib/core/secrets-env-declarative-show-urls.test.js',
+    '**/tests/lib/utils/url-declarative-registry-internal-docker-origin.test.js'
+  ]),
+  makeIsolatedProject('platform-urls-registry-validation', [
+    '**/tests/lib/commands/platform-urls-registry.validation.test.js'
+  ]),
+  makeIsolatedProject('env-copy-resolve-output', ['**/tests/lib/utils/env-copy-resolve-output.test.js']),
+  makeIsolatedProject('write-env-output-reload', ['**/tests/lib/utils/write-env-output-reload.test.js']),
   makeIsolatedProject('app-service-env-from-builder', [
     '**/tests/lib/utils/app-service-env-from-builder.test.js'
   ]),

@@ -88,14 +88,16 @@ describe('detectAppType', () => {
   }
 
   /** Run detectAppType in a subprocess so real fs is always used (avoids Jest fs mock from other tests). */
-  function detectAppTypeInSubprocess(appNameArg, optionsArg = {}) {
+  function detectAppTypeInSubprocess(appNameArg, optionsArg = {}, extraEnv = {}, projectRootOverride) {
     const runnerPath = path.resolve(__dirname, 'run-detect-app-type.js');
     const optionsJson = JSON.stringify(optionsArg);
     const nodeExe = process.execPath.includes(' ') ? `"${process.execPath}"` : process.execPath;
+    const projectRoot = projectRootOverride || tempDir;
+    const env = { ...subprocessEnv(), ...extraEnv };
     try {
       const out = execSync(
-        nodeExe + ' ' + JSON.stringify(runnerPath) + ' ' + JSON.stringify(tempDir) + ' ' + JSON.stringify(appNameArg) + ' ' + JSON.stringify(optionsJson),
-        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], shell: true, env: subprocessEnv() }
+        nodeExe + ' ' + JSON.stringify(runnerPath) + ' ' + JSON.stringify(projectRoot) + ' ' + JSON.stringify(appNameArg) + ' ' + JSON.stringify(optionsJson),
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], shell: true, env }
       ).trim();
       return JSON.parse(out);
     } catch (err) {
@@ -103,6 +105,49 @@ describe('detectAppType', () => {
       throw new Error(msg || 'detectAppType failed');
     }
   }
+
+  it('uses integration when application.json exists (no yaml)', async() => {
+    const appName = 'hubspot-json';
+    createTempDirReal(path.join(tempDir, 'integration', appName));
+    writeFileReal(
+      path.join(tempDir, 'integration', appName, 'application.json'),
+      JSON.stringify({ app: { name: appName, type: 'external' } }, null, 2)
+    );
+    const result = await detectAppTypeInSubprocess(appName, {});
+    expect(result).toEqual(
+      expect.objectContaining({
+        appPath: path.join(tempDir, 'integration', appName),
+        appType: 'external',
+        baseDir: 'integration',
+        isExternal: true
+      })
+    );
+  });
+
+  it('uses nested project integration when AIFABRIX_WORK parent has builder/ but cwd is inside the repo', async() => {
+    const monRoot = path.join(tempDir, 'mono');
+    createTempDirReal(monRoot);
+    writeFileReal(path.join(monRoot, 'package.json'), '{}');
+    createTempDirReal(path.join(monRoot, 'builder', '_workspace_marker'));
+    const dp = path.join(monRoot, 'dataplane');
+    createTempDirReal(dp);
+    writeFileReal(path.join(dp, 'package.json'), '{}');
+    const appName = 'test-hubspot';
+    createTempDirReal(path.join(dp, 'integration', appName));
+    writeFileReal(
+      path.join(dp, 'integration', appName, 'application.yaml'),
+      'app:\n  name: test-hubspot\n  type: external\n'
+    );
+    const result = await detectAppTypeInSubprocess(appName, {}, { AIFABRIX_WORK: monRoot }, dp);
+    expect(result).toEqual(
+      expect.objectContaining({
+        appPath: path.join(dp, 'integration', appName),
+        appType: 'external',
+        baseDir: 'integration',
+        isExternal: true
+      })
+    );
+  });
 
   // (1) no type, integration has config → use integration
   it('uses integration when no type and integration has config', async() => {

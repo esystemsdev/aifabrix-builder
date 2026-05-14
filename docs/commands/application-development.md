@@ -186,7 +186,7 @@ aifabrix build myapp --force-template
 
 Run application locally in Docker container with automatic infrastructure connectivity.
 
-**What:** Starts container, connects to infrastructure, maps ports, waits for health check. **Only applications in `builder/<appKey>/` can be run** (no `--type` flag; external systems in `integration/` are not run as containers—use `aifabrix build` / deploy and test via OpenAPI instead).
+**What:** Starts container, connects to infrastructure, maps ports, waits for health check. **Only applications in `builder/<appKey>/` can be run** (no `--type` flag; external systems in `integration/` are not run as containers—use `aifabrix upload` or `aifabrix deploy`, then exercise the integration from your environment).
 
 **When:** Testing, development, debugging, local demonstrations.
 
@@ -267,7 +267,7 @@ aifabrix run myapp --debug
 
 **Issues:**
 - **"Application not found in builder/"** → Only apps in `builder/<appKey>/` can be run. Create or copy the app into builder (e.g. `aifabrix create <app>` or copy from templates). External systems in `integration/` are not run as containers.
-- **"External systems don't run as Docker containers"** → The app in `builder/<appKey>/` has `app.type: external`; run only supports runnable apps. Use `aifabrix build` and deploy, then test via OpenAPI.
+- **"External systems don't run as Docker containers"** → The app has `app.type: external` (often under `integration/<systemKey>/`); `run` only starts container apps from `builder/`. Publish with `aifabrix upload` or `aifabrix deploy`, then exercise the integration from your environment.
 - **"Docker image not found"** → Run `aifabrix build <app>` first
 - **"Infrastructure not running"** → Run `aifabrix up-infra` first
 - **"Port already in use"** → Use `--port <alternative>` flag

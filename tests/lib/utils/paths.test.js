@@ -358,27 +358,29 @@ describe('Path Utilities - listIntegrationAppNames / listBuilderAppNames', () =>
     }
   });
 
-  it('getIntegrationRoot returns path under base dir', () => {
+  it('getIntegrationRoot matches material integration directory', () => {
     const paths = require('../../../lib/utils/paths');
-    const projectRoot = paths.getProjectRoot();
-    expect(paths.getIntegrationRoot()).toBe(path.join(projectRoot, 'integration'));
+    expect(paths.getIntegrationRoot()).toBe(path.join(paths.getAppsMaterializationParent(), 'integration'));
   });
 
-  it('getBuilderRoot returns path under base dir when AIFABRIX_BUILDER_DIR not set', () => {
+  it('getBuilderRoot matches getSystemBuilderRoot (ignores AIFABRIX_BUILDER_DIR)', () => {
     const paths = require('../../../lib/utils/paths');
-    const projectRoot = paths.getProjectRoot();
-    expect(paths.getBuilderRoot()).toBe(path.join(projectRoot, 'builder'));
+    expect(paths.getBuilderRoot()).toBe(paths.getSystemBuilderRoot());
   });
 
-  it('getBuilderRoot uses AIFABRIX_BUILDER_DIR when set', () => {
+  it('getBuilderRoot ignores AIFABRIX_BUILDER_DIR', () => {
     const customDir = '/custom/builder/root';
     const orig = process.env.AIFABRIX_BUILDER_DIR;
     process.env.AIFABRIX_BUILDER_DIR = customDir;
     jest.resetModules();
     fs.existsSync.mockImplementation((p) => typeof p === 'string' && p.endsWith('package.json'));
     const paths = require('../../../lib/utils/paths');
-    expect(paths.getBuilderRoot()).toBe(path.resolve(customDir));
-    process.env.AIFABRIX_BUILDER_DIR = orig;
+    expect(paths.getBuilderRoot()).toBe(paths.getSystemBuilderRoot());
+    if (orig === undefined) {
+      delete process.env.AIFABRIX_BUILDER_DIR;
+    } else {
+      process.env.AIFABRIX_BUILDER_DIR = orig;
+    }
   });
 
 });

@@ -13,7 +13,7 @@ How Fabrix handles **secrets** and **`config.yaml`**: Key Vault in Azure product
 | Where | Secret storage |
 |--------|----------------|
 | **Azure production** | **Azure Key Vault** — runtime secrets are not read from `secrets.local.yaml` on the application host. |
-| **Developer machine / dev CI** | **`~/.aifabrix/secrets.local.yaml`**, optional **`aifabrix-secrets`** (file or `https://` API), **`BASH_*`** → subprocess `env`, temporary `.env` for compose. |
+| **Developer machine / dev CI** | **`~/.aifabrix/secrets.local.yaml`** plus optional **`aifabrix-secrets`** (YAML path or `https://` API). Default **`kv://`** resolution does **not** merge cwd-ancestor `.aifabrix/secrets.local.yaml`, `builder/secrets.local.yaml`, or `~/.aifabrix/secrets.yaml`. **`BASH_*`** → subprocess `env`, temporary `.env` for compose. |
 
 Same **`kv://`** names in **`env.template`** line up with Key Vault secret names in production and with local YAML keys in development — one logical contract, two resolution backends.
 
@@ -39,7 +39,7 @@ Use **`kv://`** references in **`env.template`**. That keeps repos free of live 
 
 **Local vs Azure**
 
-- **Locally:** the Builder resolves `kv://` from **developer-only** stores (`secrets.local.yaml`, shared file, or remote dev API — see [aifabrix-secrets](#aifabrix-secrets-remote-vs-local)).
+- **Locally:** the Builder resolves `kv://` from **`~/.aifabrix/secrets.local.yaml`** (primary user store) and **`aifabrix-secrets`** (shared file or remote dev API when configured). It does **not** merge other `secrets.local.yaml` files discovered from the current working directory or `builder/secrets.local.yaml` into that default map.
 - **In Azure production:** runtime secrets come from **Key Vault** via the deployment model — **not** from `secrets.local.yaml` or Builder shared-secret files on the app host.
 
 Process **`env`** during **`aifabrix build`**, **shell**, **install**, or **push** on a laptop is **developer-cycle only**. There is **no intended** second path that keeps production application secrets as persistent plaintext in repo or manifest if you keep manifests **reference-based**.
@@ -62,8 +62,8 @@ More detail: [Production (Azure Key Vault) vs developer cycle](#production-azure
 
 ### Developer cycle only
 
-- **`~/.aifabrix/secrets.local.yaml`**
-- Optional **`aifabrix-secrets`**: file path or `https://` URL
+- **`~/.aifabrix/secrets.local.yaml`** (primary user file for `kv://`)
+- Optional **`aifabrix-secrets`**: file path or `https://` URL (merged after user; user wins on same key)
 - **`BASH_*`** → subprocess **`env`**, temporary resolved **`.env`**
 - **`aifabrix secure`** for encrypted local files (`secure://`)
 
@@ -102,6 +102,7 @@ Use **`--no-register-env`** to only update `config.yaml`. **New terminals** pick
 
 | Topic | Notes |
 |--------|--------|
+| **`aifabrix-work`** | Optional workspace root. When set (or **`AIFABRIX_WORK`** is set), platform **`builder/keycloak`**, **`builder/miso-controller`**, and **`builder/dataplane`** materialize under that tree; when unset, they use **aifabrix-home**. See [Developer isolation](../commands/developer-isolation.md#aifabrix-dev-set-work). |
 | **`developer-id`** | Used by **`aifabrix up-infra`**. |
 | **`format`** | Default `json` \| `yaml` — **`aifabrix dev set-format`**; used when commands omit `--format`. |
 | **`useEnvironmentScopedResources`** | Optional; default **off**. When **on**, local resolution and **`aifabrix run`** can use env-prefixed resource names for apps with **`environmentScopedResources: true`** in **`application.yaml`**, only **dev** / **tst**. Prefer **`aifabrix dev set-scoped-resources`**. |

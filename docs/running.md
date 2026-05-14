@@ -8,7 +8,9 @@ How to run your application in Docker for local development.
 
 **Run only uses builder:** `aifabrix run <app>` only runs applications that exist in `builder/<appKey>/`. External systems in `integration/` are not run as Docker containers. For them: run `aifabrix validate <integration-name>`, then upload or deploy via the controller (e.g. `aifabrix upload <systemKey>` or `aifabrix deploy <app>`), then test via OpenAPI endpoints.
 
-**Prerequisites:** Env is generated at run time: the builder resolves secrets and writes the only `.env` to `build.envOutputPath` when set, or to a temp path for run. You do not need a pre-existing `.env` file in `builder/<appKey>/`; set `build.envOutputPath` in application.yaml if you want a persisted env file for run.
+**Prerequisites:** At run time the builder resolves `env.template` and secrets in memory and passes them to the container via ephemeral `.env.run` / `.env.run.admin` files (removed after the container is healthy). You do not need a pre-existing `.env` under `builder/<appKey>/`. For a **persistent** host or repo `.env` (IDE, tooling), run **`aifabrix resolve <app>`**; that writes `<appPath>/.env` and, when `build.envOutputPath` is set in `application.yaml`, copies the **same** resolved content there (with `/mnt/data` rewritten next to that file). On each **`aifabrix run`** with **`build.envOutputPath`** set: **without `--reload`**, the CLI refreshes that path with **`local`**-flavored values (localhost URLs, dev port offsets) for tools outside the container; **with `--reload`**, it merges **`.env.run`** into that file **only for keys already present** as `KEY=` lines (preserves resolve comments; does not append compose-only keys). If the host file is missing under **`--reload`**, it is seeded from the **`local`** template then merged.
+
+**No persistent `.env` from platform bring-up:** `aifabrix up-platform`, `aifabrix up-miso`, `aifabrix up-dataplane`, `aifabrix register`, `aifabrix rotate-secret`, and `aifabrix build` resolve secrets **in memory only** — they never leave a `<appPath>/.env` or `build.envOutputPath` `.env` on disk. The usual way to create those files from cold state is **`aifabrix resolve <app>`**. **`aifabrix run`** also refreshes **`build.envOutputPath`** when set (see above) while using ephemeral `.env.run` / `.env.run.admin` for compose.
 
 ## Start Your App
 
@@ -19,7 +21,7 @@ aifabrix run myapp
 ### What Happens
 
 1. **Checks infrastructure** - Postgres and Redis running?
-2. **Resolves env** - Resolves `env.template` and secrets in memory and writes the only persisted `.env` to `build.envOutputPath` when set (or to a temp path for run); no `.env` under `builder/<appKey>/` or `integration/<systemKey>/`.
+2. **Resolves env** — Merges admin + app secrets into ephemeral `.env.run` / `.env.run.admin` for compose. When **`build.envOutputPath`** is set: plain **`run`** writes **`local`**-flavored values there (IDE); **`run --reload`** merges container env into that file for overlapping keys only (preserves resolve comments when you ran **`aifabrix resolve`** first).
 3. **Generates docker-compose** - Creates container configuration
 4. **Creates database** - Automatically creates database and user (if app requires database)
 5. **Starts container** - Named `aifabrix-myapp`
@@ -452,17 +454,18 @@ docker cp ./file.txt aifabrix-myapp:/mnt/data/
 
 ## Environment Variables
 
-Your app sees variables from the resolved env. The builder resolves `env.template` and secrets in memory and writes the **only** persisted `.env` to `build.envOutputPath` when set (or to a temp path for run); there is no `.env` in `builder/<appKey>/` or `integration/<systemKey>/`.
+Your app sees variables from the resolved env passed into the container. **`aifabrix resolve <app>`** materializes a long-lived `<appPath>/.env` and optional **`build.envOutputPath`** (same resolution pass for both). **`aifabrix run`** refreshes **`build.envOutputPath`** when set: **without `--reload`** it writes **`local`**-oriented values for your IDE; **with `--reload`** it merges **`.env.run`** into that file for **existing keys only** (keeps resolve comments; omits run-only keys absent from the template). If the host file is missing under **`--reload`**, it is seeded from the **`local`** template then merged.
 
-**Workflow:** Edit **only** `env.template`, then run **one command** to apply settings:
+**Workflow:** Edit **only** `env.template`, then run **`aifabrix resolve <app>`** when you need an on-disk `.env`, and **`aifabrix run myapp`** (or **`aifabrix run myapp --reload`** for live code + host `envOutputPath` sync):
 
 ```bash
+aifabrix resolve myapp
 aifabrix run myapp
 ```
 
-That resolves `env.template`, writes env to envOutputPath or temp, and (re)starts the container—no manual `.env` editing for normal use.
+That applies resolved secrets to compose via ephemeral run env files and starts the container—no manual `.env` editing under `builder/<appKey>/` for normal use.
 
-**Local .env and storage paths:** When the builder writes the local `.env` to `build.envOutputPath` (e.g. repo root), it replaces every `/mnt/data` path with a `mount` directory next to that `.env` file and creates `mount` if missing. So variables like `LOG_PATH=/mnt/data/logs` or `STORAGE_PATH=/mnt/data/storage` in the written file point to `mount/logs` and `mount/storage` under the same directory as the `.env`, and the `mount` folder exists for local development.
+**Local .env and storage paths:** When **`aifabrix resolve`** writes **`build.envOutputPath`** (e.g. a package folder), it replaces every `/mnt/data` path with a `mount` directory next to that `.env` file and creates `mount` if missing. So variables like `LOG_PATH=/mnt/data/logs` or `STORAGE_PATH=/mnt/data/storage` in the written file point to `mount/logs` and `mount/storage` under the same directory as the `.env`, and the `mount` folder exists for local development.
 
 **View environment (masked):** Use `aifabrix logs myapp` for an env summary (secrets masked) at the top of the output. If you set `build.envOutputPath`, you can also view the file at that path (e.g. `cat /path/from/envOutputPath`).
 

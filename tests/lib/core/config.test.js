@@ -27,6 +27,8 @@ const {
   loadDeveloperId,
   getCurrentEnvironment,
   getTlsEnabled,
+  getAdminEmail,
+  setAdminEmail,
   getTraefikEnabled,
   setCurrentEnvironment,
   resolveEnvironment,
@@ -895,6 +897,50 @@ describe('Config Module', () => {
       const result = await resolveEnvironment();
 
       expect(result).toBe('dev');
+    });
+  });
+
+  describe('getAdminEmail / setAdminEmail', () => {
+    it('getAdminEmail returns empty string when unset', async() => {
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(yaml.dump({ 'developer-id': '0', environment: 'dev' }));
+      await expect(getAdminEmail()).resolves.toBe('');
+    });
+
+    it('getAdminEmail returns trimmed value when set', async() => {
+      const yaml = require('js-yaml');
+      fsPromises.readFile.mockResolvedValue(
+        yaml.dump({ 'developer-id': '0', environment: 'dev', adminEmail: '  u@x.co  ' })
+      );
+      await expect(getAdminEmail()).resolves.toBe('u@x.co');
+    });
+
+    it('setAdminEmail writes trimmed email', async() => {
+      const yaml = require('js-yaml');
+      const mockConfig = {
+        environment: 'dev',
+        'developer-id': 0,
+        environments: {},
+        device: {}
+      };
+      fsPromises.readFile.mockResolvedValue(yaml.dump(mockConfig));
+      fsPromises.mkdir.mockResolvedValue(undefined);
+      fsPromises.writeFile.mockResolvedValue(undefined);
+      const mockFd = { sync: jest.fn().mockResolvedValue(), close: jest.fn().mockResolvedValue() };
+      fsPromises.open.mockResolvedValue(mockFd);
+
+      await setAdminEmail('  admin@fabrix.test  ');
+      const writtenContent = fsPromises.writeFile.mock.calls[0][1];
+      const writtenConfig = yaml.load(writtenContent);
+      expect(writtenConfig.adminEmail).toBe('admin@fabrix.test');
+    });
+
+    it('setAdminEmail rejects invalid email', async() => {
+      await expect(setAdminEmail('not-email')).rejects.toThrow(/valid email/);
+    });
+
+    it('setAdminEmail rejects empty', async() => {
+      await expect(setAdminEmail('  ')).rejects.toThrow(/non-empty/);
     });
   });
 

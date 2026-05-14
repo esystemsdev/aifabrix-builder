@@ -45,10 +45,12 @@ const configFormat = require('../../../lib/utils/config-format');
 
 jest.mock('../../../lib/utils/paths', () => {
   const pathMod = require('path');
+  const sys = ['keycloak', 'miso-controller', 'dataplane'];
   return {
     getBuilderPath: jest.fn((appName) => pathMod.join(process.cwd(), 'builder', appName)),
     getBuilderRoot: jest.fn(() => pathMod.join(process.cwd(), 'builder')),
     getSystemBuilderRoot: jest.fn(() => pathMod.join(process.cwd(), '.aifabrix', 'builder')),
+    isSystemBuilderAppName: jest.fn((appName) => sys.includes(String(appName))),
     resolveApplicationConfigPath: jest.fn()
   };
 });
@@ -138,7 +140,26 @@ describe('up-common ensureAppFromTemplate', () => {
     expect(copyTemplateFiles).toHaveBeenCalledWith('dataplane', systemPath);
   });
 
-  it('copies into cwd/builder when AIFABRIX_BUILDER_DIR is set and primary differs from cwd', async() => {
+  it('copies into cwd/builder when AIFABRIX_BUILDER_DIR is set and primary differs from cwd (non-platform app)', async() => {
+    const customRoot = path.join(cwd, 'custom-builder');
+    const appPath = path.join(customRoot, 'my-service');
+    process.env.AIFABRIX_BUILDER_DIR = customRoot;
+    pathsUtil.getBuilderPath.mockReturnValue(appPath);
+    pathsUtil.getBuilderRoot.mockReturnValue(customRoot);
+    pathsUtil.resolveApplicationConfigPath.mockImplementation(() => {
+      throw new Error('Application config not found');
+    });
+    copyTemplateFiles.mockResolvedValue(['application.yaml']);
+
+    const result = await ensureAppFromTemplate('my-service');
+
+    expect(result).toBe(true);
+    expect(copyTemplateFiles).toHaveBeenCalledTimes(2);
+    expect(copyTemplateFiles).toHaveBeenCalledWith('my-service', appPath);
+    expect(copyTemplateFiles).toHaveBeenCalledWith('my-service', path.join(cwd, 'builder', 'my-service'));
+  });
+
+  it('does not mirror platform app into cwd/builder when AIFABRIX_BUILDER_DIR differs', async() => {
     const customRoot = path.join(cwd, 'custom-builder');
     const appPath = path.join(customRoot, 'dataplane');
     process.env.AIFABRIX_BUILDER_DIR = customRoot;
@@ -152,9 +173,8 @@ describe('up-common ensureAppFromTemplate', () => {
     const result = await ensureAppFromTemplate('dataplane');
 
     expect(result).toBe(true);
-    expect(copyTemplateFiles).toHaveBeenCalledTimes(2);
+    expect(copyTemplateFiles).toHaveBeenCalledTimes(1);
     expect(copyTemplateFiles).toHaveBeenCalledWith('dataplane', appPath);
-    expect(copyTemplateFiles).toHaveBeenCalledWith('dataplane', path.join(cwd, 'builder', 'dataplane'));
   });
 });
 

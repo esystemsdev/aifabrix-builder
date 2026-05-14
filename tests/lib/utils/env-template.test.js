@@ -21,10 +21,22 @@ jest.mock('../../../lib/utils/logger', () => ({
   info: jest.fn()
 }));
 
+// Mock paths.getBuilderPath so env.template lookup is independent of process.cwd()
+// (this is the bug-fix the suite locks in: binary CLI must find env.template via
+// the system builder root, not via cwd/builder/<app>).
+jest.mock('../../../lib/utils/paths', () => {
+  const actual = jest.requireActual('../../../lib/utils/paths');
+  return {
+    ...actual,
+    getBuilderPath: jest.fn()
+  };
+});
+
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const path = require('path');
 const logger = require('../../../lib/utils/logger');
+const pathsUtil = require('../../../lib/utils/paths');
 const { updateEnvTemplate } = require('../../../lib/utils/env-template');
 
 // Mock fsSync.existsSync and fs.promises.readFile
@@ -46,14 +58,29 @@ describe('Environment Template Module', () => {
   const testClientIdKey = 'test-app-client-idKeyVault';
   const testClientSecretKey = 'test-app-client-secretKeyVault';
   const testControllerUrl = 'https://controller.example.com';
+  // Resolved by getBuilderPath; tests pin it so we do not depend on process.cwd()
+  // or the system builder root layout of the host running the suite.
+  const fakeBuilderAppDir = path.join('/fake/aifabrix-home/builder', testAppKey);
+  const envTemplatePath = path.join(fakeBuilderAppDir, 'env.template');
 
   beforeEach(() => {
     jest.clearAllMocks();
+    pathsUtil.getBuilderPath.mockReturnValue(fakeBuilderAppDir);
   });
 
   describe('updateEnvTemplate', () => {
+    it('should resolve env.template path via paths.getBuilderPath (not process.cwd)', async() => {
+      jest.spyOn(fsSync, 'existsSync').mockReturnValue(false);
+
+      await updateEnvTemplate(testAppKey, testClientIdKey, testClientSecretKey, testControllerUrl);
+
+      expect(pathsUtil.getBuilderPath).toHaveBeenCalledWith(testAppKey);
+      expect(fsSync.existsSync).toHaveBeenCalledWith(envTemplatePath);
+
+      fsSync.existsSync.mockRestore();
+    });
+
     it('should warn if env.template does not exist', async() => {
-      const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
       jest.spyOn(fsSync, 'existsSync').mockReturnValue(false);
 
       await updateEnvTemplate(testAppKey, testClientIdKey, testClientSecretKey, testControllerUrl);
@@ -66,7 +93,6 @@ describe('Environment Template Module', () => {
     });
 
     it('should add all MISO entries when none exist', async() => {
-      const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
       const initialContent = '# Database Configuration\nDATABASE_URL=postgres://localhost:5432/mydb\n';
       jest.spyOn(fsSync, 'existsSync').mockReturnValue(true);
       fs.readFile = jest.fn().mockResolvedValue(initialContent);
@@ -86,7 +112,6 @@ describe('Environment Template Module', () => {
     });
 
     it('should update existing MISO_CLIENTID and MISO_CLIENTSECRET but preserve existing MISO_CONTROLLER_URL', async() => {
-      const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
       const initialContent = `# MISO Configuration
 MISO_CLIENTID=kv://old-client-id
 MISO_CLIENTSECRET=kv://old-client-secret
@@ -111,7 +136,6 @@ MISO_CONTROLLER_URL=http://old-controller:3010
     });
 
     it('should add missing entries when some exist', async() => {
-      const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
       const initialContent = `# MISO Configuration
 MISO_CLIENTID=kv://old-client-id
 # Missing MISO_CLIENTSECRET and MISO_CONTROLLER_URL
@@ -132,7 +156,6 @@ MISO_CLIENTID=kv://old-client-id
     });
 
     it('should insert MISO section after last section marker', async() => {
-      const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
       const initialContent = `# Database Configuration
 DATABASE_URL=postgres://localhost:5432/mydb
 # ============================================
@@ -155,7 +178,6 @@ REDIS_URL=redis://localhost:6379
     });
 
     it('should append MISO section when no section markers exist', async() => {
-      const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
       const initialContent = 'DATABASE_URL=postgres://localhost:5432/mydb\n';
       fsSync.existsSync = jest.fn().mockReturnValue(true);
       fs.readFile = jest.fn().mockResolvedValue(initialContent);
@@ -173,7 +195,6 @@ REDIS_URL=redis://localhost:6379
     });
 
     it('should handle file read errors gracefully', async() => {
-      const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
       fsSync.existsSync = jest.fn().mockReturnValue(true);
       fs.readFile = jest.fn().mockRejectedValue(new Error('Permission denied'));
 
@@ -186,7 +207,6 @@ REDIS_URL=redis://localhost:6379
     });
 
     it('should handle file write errors gracefully', async() => {
-      const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
       const initialContent = '# Database Configuration\nDATABASE_URL=postgres://localhost:5432/mydb\n';
       fsSync.existsSync = jest.fn().mockReturnValue(true);
       fs.readFile = jest.fn().mockResolvedValue(initialContent);
@@ -200,7 +220,6 @@ REDIS_URL=redis://localhost:6379
     });
 
     it('should handle entries with different whitespace and preserve MISO_CONTROLLER_URL', async() => {
-      const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
       const initialContent = `MISO_CLIENTID = kv://old-id
 MISO_CLIENTSECRET=kv://old-secret
 MISO_CONTROLLER_URL = http://old:3010
@@ -222,7 +241,6 @@ MISO_CONTROLLER_URL = http://old:3010
     });
 
     it('should preserve MISO_CONTROLLER_URL when already template form', async() => {
-      const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
       const initialContent = `MISO_CLIENTID=kv://old-id
 MISO_CLIENTSECRET=kv://old-secret
 MISO_CONTROLLER_URL=http://\${MISO_HOST}:\${MISO_PORT}
@@ -243,7 +261,6 @@ MISO_CONTROLLER_URL=http://\${MISO_HOST}:\${MISO_PORT}
     });
 
     it('should ignore controllerUrl parameter and use template format when adding MISO_CONTROLLER_URL', async() => {
-      const envTemplatePath = path.join(process.cwd(), 'builder', testAppKey, 'env.template');
       const initialContent = '# Configuration\n';
       fsSync.existsSync = jest.fn().mockReturnValue(true);
       fs.readFile = jest.fn().mockResolvedValue(initialContent);
@@ -259,6 +276,30 @@ MISO_CONTROLLER_URL=http://\${MISO_HOST}:\${MISO_PORT}
 
       fsSync.existsSync.mockRestore();
     });
+
+    it('binary-mode regression: locates dataplane env.template under system builder root regardless of cwd', async() => {
+      // Simulate aifabrix binary running from a non-dataplane repo (e.g. /workspace/aifabrix-training)
+      // while the dataplane builder lives under the system builder root (~/.aifabrix/builder/dataplane).
+      const systemDataplaneDir = '/home/dev06/.aifabrix/builder/dataplane';
+      const systemDataplaneTemplate = path.join(systemDataplaneDir, 'env.template');
+      pathsUtil.getBuilderPath.mockImplementation((appKey) => {
+        if (appKey === 'dataplane') return systemDataplaneDir;
+        return path.join('/fallback/builder', appKey);
+      });
+      fsSync.existsSync = jest.fn().mockImplementation((p) => p === systemDataplaneTemplate);
+      fs.readFile = jest.fn().mockResolvedValue('# placeholder\n');
+      fs.writeFile = jest.fn().mockResolvedValue();
+
+      await updateEnvTemplate('dataplane', 'dataplane-client-idKeyVault', 'dataplane-client-secretKeyVault', 'http://localhost:3600');
+
+      expect(pathsUtil.getBuilderPath).toHaveBeenCalledWith('dataplane');
+      expect(fsSync.existsSync).toHaveBeenCalledWith(systemDataplaneTemplate);
+      expect(fs.readFile).toHaveBeenCalledWith(systemDataplaneTemplate, 'utf8');
+      expect(fs.writeFile).toHaveBeenCalled();
+      expect(fs.writeFile.mock.calls[0][0]).toBe(systemDataplaneTemplate);
+      expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('env.template not found'));
+
+      fsSync.existsSync.mockRestore();
+    });
   });
 });
-

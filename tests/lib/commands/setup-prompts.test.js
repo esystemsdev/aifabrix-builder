@@ -10,6 +10,9 @@
 
 jest.mock('inquirer');
 jest.mock('../../../lib/utils/logger');
+jest.mock('../../../lib/core/config', () => ({
+  getAdminEmail: jest.fn().mockResolvedValue('')
+}));
 jest.mock('../../../lib/core/secrets');
 jest.mock('../../../lib/core/secrets-ensure', () => ({
   setSecretInStore: jest.fn().mockResolvedValue(undefined)
@@ -17,6 +20,7 @@ jest.mock('../../../lib/core/secrets-ensure', () => ({
 
 const inquirer = require('inquirer');
 const logger = require('../../../lib/utils/logger');
+const config = require('../../../lib/core/config');
 const secretsCore = require('../../../lib/core/secrets');
 const secretsEnsure = require('../../../lib/core/secrets-ensure');
 
@@ -35,6 +39,7 @@ describe('lib/commands/setup-prompts', () => {
     jest.resetAllMocks();
     logger.log.mockImplementation(() => {});
     inquirer.prompt.mockReset();
+    config.getAdminEmail.mockResolvedValue('');
     secretsCore.loadSecrets.mockResolvedValue({});
     secretsEnsure.setSecretInStore.mockResolvedValue(undefined);
   });
@@ -95,6 +100,21 @@ describe('lib/commands/setup-prompts', () => {
         adminEmail: 'admin@example.com',
         adminPassword: 'changeme1'
       });
+    });
+
+    it('prefills admin email default from config when present', async() => {
+      config.getAdminEmail.mockResolvedValue('saved@example.com');
+      let captured;
+      inquirer.prompt.mockImplementation(async(questions) => {
+        captured = questions;
+        return {
+          adminEmail: 'saved@example.com',
+          adminPassword: 'changeme1',
+          adminPasswordConfirm: 'changeme1'
+        };
+      });
+      await promptAdminCredentials();
+      expect(captured[0].default).toBe('saved@example.com');
     });
 
     it('rejects empty / malformed email and short / mismatched password through inquirer validators', async() => {

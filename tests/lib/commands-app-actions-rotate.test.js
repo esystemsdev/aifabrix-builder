@@ -202,10 +202,61 @@ describe('Application Commands - Rotate Secret Action', () => {
         expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith('test-app-client-idKeyVault', 'new-client-id');
         expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith('test-app-client-secretKeyVault', 'new-client-secret');
         expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Credentials saved to ~/.aifabrix/secrets.local.yaml'));
-        // Verify that env.template is updated and .env file is generated when localhost
+        // Plan 139: rotate validates env resolution in memory but must never write <appPath>/.env.
         expect(require('../../lib/utils/env-template').updateEnvTemplate).toHaveBeenCalled();
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local', true);
-        expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ .env file updated with new credentials'));
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local', true, { noWrite: true });
+        expect(logger.log).toHaveBeenCalledWith(
+          expect.stringContaining('Run "aifabrix resolve test-app" to materialize an on-disk .env')
+        );
+        expect(logger.log).not.toHaveBeenCalledWith(
+          expect.stringContaining('.env file updated with new credentials')
+        );
+      }
+    });
+
+    it('plan 139: non-localhost rotate must not touch env.template or call generateEnvFile', async() => {
+      // Regression guard: when the controller is remote, neither env.template
+      // nor generateEnvFile should be touched — secrets are saved to
+      // ~/.aifabrix/secrets.local.yaml only.
+      getConfig.mockResolvedValue({
+        'developer-id': 0,
+        environment: 'dev',
+        device: {
+          'https://controller.example.com': {
+            token: 'remote-token',
+            refreshToken: 'r',
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          }
+        },
+        environments: {}
+      });
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'remote-token',
+        controller: 'https://controller.example.com'
+      });
+      authenticatedApiCall.mockResolvedValue({
+        success: true,
+        data: {
+          success: true,
+          credentials: { clientId: 'new-cid', clientSecret: 'new-csec' },
+          message: 'rotated'
+        }
+      });
+
+      localSecrets.isLocalhost.mockReturnValue(false);
+
+      if (rotateSecretAction) {
+        await rotateSecretAction('test-app', { environment: 'dev' });
+
+        // Credentials are still persisted to the user secret store.
+        expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith('test-app-client-idKeyVault', 'new-cid');
+        expect(localSecrets.saveLocalSecret).toHaveBeenCalledWith('test-app-client-secretKeyVault', 'new-csec');
+        // But the env.template + in-memory resolve branch must be skipped entirely.
+        expect(require('../../lib/utils/env-template').updateEnvTemplate).not.toHaveBeenCalled();
+        expect(secrets.generateEnvFile).not.toHaveBeenCalled();
+        expect(logger.log).not.toHaveBeenCalledWith(
+          expect.stringContaining('Run "aifabrix resolve')
+        );
       }
     });
 
@@ -541,19 +592,20 @@ describe('Application Commands - Rotate Secret Action', () => {
         }
       });
 
-      // Set isLocalhost to true to test .env file generation
+      // Set isLocalhost to true so the in-memory env resolution branch runs
       localSecrets.isLocalhost.mockReturnValue(true);
-      secrets.generateEnvFile.mockRejectedValueOnce(new Error('Failed to generate .env'));
+      secrets.generateEnvFile.mockRejectedValueOnce(new Error('Failed to resolve env'));
 
       if (rotateSecretAction) {
         await rotateSecretAction('test-app', {
           environment: 'dev'
         });
 
+        // Plan 139: failure is non-fatal; the warning text now reflects in-memory resolution.
         expect(require('../../lib/utils/env-template').updateEnvTemplate).toHaveBeenCalled();
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local', true);
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local', true, { noWrite: true });
         expect(logger.warn).toHaveBeenCalledWith(
-          expect.stringContaining('⚠  Could not regenerate .env file')
+          expect.stringContaining('⚠  Could not validate env resolution')
         );
         // Should still complete successfully
         expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Secret rotated successfully!'));

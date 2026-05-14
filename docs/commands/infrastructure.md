@@ -23,7 +23,7 @@ One-shot installer that brings up the full local AI Fabrix platform (infra + mis
   - Runs `aifabrix up-infra` (with the wizard answers) and then starts platform services (`up-miso` + `up-dataplane`).
 
 - **Infrastructure already running (mode menu):**
-  1. **Re-install (all services - all data will be lost)** — Stops infra and removes every Docker volume (`down-infra -v`), removes `~/.aifabrix/secrets.local.yaml`, then runs `up-infra` and `up-platform --force` (clears `builder/keycloak`, `builder/miso-controller`, `builder/dataplane` and re-fetches templates).
+  1. **Re-install (all services - all data will be lost)** — Stops infra and removes every Docker volume (`down-infra -v`), removes `~/.aifabrix/secrets.local.yaml`, then runs `up-infra` and `up-platform --force` (clears the platform **`builder/keycloak`**, **`builder/miso-controller`**, and **`builder/dataplane`** trees under the resolved workspace or home — **aifabrix-work** when set, else **aifabrix-home** — and re-fetches templates). See [Developer isolation](developer-isolation.md#aifabrix-dev-set-work).
   2. **Wipe data** — Drops every database and DB user in the running Postgres container (volume preserved), removes `~/.aifabrix/secrets.local.yaml`, then runs `up-infra` and `up-platform --force`.
   3. **Clean installation files** — Removes `~/.aifabrix/secrets.local.yaml`, then runs `up-infra` and `up-platform --force`.
   4. **Update images** — Runs `docker compose pull` against the developer-scoped infra compose file plus `docker pull` for each platform app's image, then runs `up-infra` and `up-platform` (no `--force`; secrets and data preserved).
@@ -235,7 +235,7 @@ aifabrix up-miso --image keycloak=myreg/keycloak:v1 --image miso-controller=myre
 - `--registry-mode <mode>` - Override registry mode (`acr` or `external`)
 - `-i, --image <key>=<value>` - Override image (e.g. `keycloak=reg/k:v1`, `miso-controller=reg/m:v1`); can be repeated
 - `--base` - Use manifest base images when starting containers (default: on). Use **`--no-base`** to allow preferring a locally built developer-scoped image when present (same behavior as `aifabrix run` without `--base`).
-- `-f, --force` - Clean builder/keycloak and builder/miso-controller and re-fetch from templates
+- `-f, --force` - Clean the platform **`builder/keycloak`** and **`builder/miso-controller`** folders (under **aifabrix-work** when set, else **aifabrix-home**) and re-fetch from templates
 - `--verbose` - Show full orchestration output. Default output is guided steps + “Miso Ready” footer with URLs.
 
 **Issues:**
@@ -268,7 +268,7 @@ aifabrix up-platform --image keycloak=myreg/k:v1 --image miso-controller=myreg/m
 **Options:** Same as [up-miso](#aifabrix-up-miso) (registry, registry-mode, image, `--base` / `--no-base`), plus `-f, --force` (see below). Registry and image options are passed through to both up-miso and up-dataplane steps.
 - `--verbose` - Show full orchestration output. Default output is guided platform setup (Keycloak → Miso Controller → authenticate → Dataplane) + “Platform Ready” footer with URLs.
 
-**`-f, --force` (up-platform only):** Before re-copying templates, the CLI updates your local builder config file (the same file `aifabrix auth` uses—typically under `.aifabrix/`): it **removes all stored device and client tokens** (same effect as logging out every saved controller session and client credential), sets **`environment` to `dev`**, and sets the **default controller** to the URL that matches your stored **developer ID** (local dev: the miso-controller port is **3000 + (developer ID × 100)**, e.g. ID 6 → port 3600). Your **developer ID** is not changed. Then it **deletes** the `builder/keycloak`, `builder/miso-controller`, and `builder/dataplane` folders so they are recreated from templates on the next steps. After the platform is up, run **`aifabrix login`** again before commands that need a Bearer token.
+**`-f, --force` (up-platform only):** Before re-copying templates, the CLI updates your local builder config file (the same file `aifabrix auth` uses—typically under `.aifabrix/`): it **removes all stored device and client tokens** (same effect as logging out every saved controller session and client credential), sets **`environment` to `dev`**, and sets the **default controller** to the URL that matches your stored **developer ID** (local dev: the miso-controller port is **3000 + (developer ID × 100)**, e.g. ID 6 → port 3600). Your **developer ID** is not changed. Then it **deletes** the **`builder/keycloak`**, **`builder/miso-controller`**, and **`builder/dataplane`** folders under the resolved platform parent (**aifabrix-work** when set, else **aifabrix-home**) so they are recreated from templates on the next steps. After the platform is up, run **`aifabrix login`** again before commands that need a Bearer token. See [Developer isolation](developer-isolation.md#aifabrix-dev-set-work).
 
 **Issues:**
 - **"Infrastructure is not up"** → Run `aifabrix up-infra` first

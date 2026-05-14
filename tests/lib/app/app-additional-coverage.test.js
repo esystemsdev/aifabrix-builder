@@ -50,6 +50,9 @@ describe('App.js Additional Coverage Tests', () => {
 
     fsSync.mkdirSync(path.join(tempDir, 'builder'), { recursive: true });
 
+    jest.spyOn(paths, 'getBuilderPath').mockImplementation((appName) => path.join(tempDir, 'builder', appName));
+    jest.spyOn(paths, 'getIntegrationPath').mockImplementation((appName) => path.join(tempDir, 'integration', appName));
+
     inquirer.prompt.mockResolvedValue({
       port: '3000',
       language: 'typescript',
@@ -70,6 +73,7 @@ describe('App.js Additional Coverage Tests', () => {
 
   afterEach(async() => {
     process.chdir(originalCwd);
+    jest.restoreAllMocks();
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
     jest.clearAllMocks();
   });

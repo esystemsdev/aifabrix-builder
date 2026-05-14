@@ -38,7 +38,7 @@ jest.mock('../../../lib/utils/paths', () => {
   const getConfigDirForPaths = jest.fn();
   const getAifabrixHome = jest.fn();
   const getPrimaryUserSecretsLocalPath = jest.fn(() =>
-    pathMod.join(getAifabrixHome(), 'secrets.local.yaml')
+    pathMod.join(getConfigDirForPaths(), 'secrets.local.yaml')
   );
   return { getAifabrixHome, getConfigDirForPaths, getPrimaryUserSecretsLocalPath };
 });
@@ -60,6 +60,9 @@ describe('Secrets Utils Module', () => {
     const defaultAifabrix = path.join(mockHomeDir, '.aifabrix');
     pathsUtil.getAifabrixHome.mockReturnValue(defaultAifabrix);
     pathsUtil.getConfigDirForPaths.mockReturnValue(defaultAifabrix);
+    pathsUtil.getPrimaryUserSecretsLocalPath.mockImplementation(() =>
+      path.join(pathsUtil.getConfigDirForPaths(), 'secrets.local.yaml')
+    );
     // Reset yaml.load to use actual implementation by default
     const actualYaml = jest.requireActual('js-yaml');
     yaml.load.mockImplementation((content) => actualYaml.load(content));
@@ -137,9 +140,10 @@ describe('Secrets Utils Module', () => {
   });
 
   describe('loadPrimaryUserSecrets', () => {
-    it('should load from getPrimaryUserSecretsLocalPath (under getAifabrixHome)', () => {
+    it('should load from getPrimaryUserSecretsLocalPath (config directory)', () => {
       const primaryDir = '/workspace/.aifabrix';
       const primarySecretsPath = path.join(primaryDir, 'secrets.local.yaml');
+      pathsUtil.getConfigDirForPaths.mockReturnValue(primaryDir);
       pathsUtil.getAifabrixHome.mockReturnValue(primaryDir);
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('dataplane-web-server-url: "http://localhost:3001"');
@@ -162,9 +166,10 @@ describe('Secrets Utils Module', () => {
       expect(fs.readFileSync).not.toHaveBeenCalled();
     });
 
-    it('should use primary home so user file is master when merging with public', () => {
+    it('should use primary file so user secrets are master when merging with public', () => {
       const primaryDir = '/workspace/.aifabrix';
       const primarySecretsPath = path.join(primaryDir, 'secrets.local.yaml');
+      pathsUtil.getConfigDirForPaths.mockReturnValue(primaryDir);
       pathsUtil.getAifabrixHome.mockReturnValue(primaryDir);
       fs.existsSync.mockReturnValue(true);
       const userSecrets = {
@@ -195,11 +200,12 @@ describe('Secrets Utils Module', () => {
       expect(fs.readFileSync).not.toHaveBeenCalled();
     });
 
-    it('should load from aifabrix-home path when it differs from config dir', () => {
+    it('should load from config-dir path when aifabrix-home differs', () => {
       const configDir = '/workspace/.aifabrix';
-      const expectedPath = path.join('/home/dev02', 'secrets.local.yaml');
+      const expectedPath = path.join(configDir, 'secrets.local.yaml');
       pathsUtil.getConfigDirForPaths.mockReturnValue(configDir);
       pathsUtil.getAifabrixHome.mockReturnValue('/home/dev02');
+      pathsUtil.getPrimaryUserSecretsLocalPath.mockReturnValue(expectedPath);
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue('test-key: "test-value"');
       yaml.load.mockReturnValue({ 'test-key': 'test-value' });
@@ -209,6 +215,23 @@ describe('Secrets Utils Module', () => {
       expect(result).toEqual({ 'test-key': 'test-value' });
       expect(fs.existsSync).toHaveBeenCalledWith(expectedPath);
       expect(fs.readFileSync).toHaveBeenCalledWith(expectedPath, 'utf8');
+    });
+
+    it('should load legacy secrets under getAifabrixHome when config-dir primary is missing', () => {
+      const configDir = '/workspace/.aifabrix';
+      const primaryPath = path.join(configDir, 'secrets.local.yaml');
+      const legacyPath = path.join('/home/dev02', 'secrets.local.yaml');
+      pathsUtil.getPrimaryUserSecretsLocalPath.mockReturnValue(primaryPath);
+      pathsUtil.getAifabrixHome.mockReturnValue('/home/dev02');
+      fs.existsSync.mockImplementation((p) => p === legacyPath);
+      fs.readFileSync.mockReturnValue('legacy-key: "legacy"');
+      yaml.load.mockReturnValue({ 'legacy-key': 'legacy' });
+
+      const result = secretsUtils.loadUserSecrets();
+
+      expect(result).toEqual({ 'legacy-key': 'legacy' });
+      expect(fs.existsSync).toHaveBeenCalledWith(primaryPath);
+      expect(fs.readFileSync).toHaveBeenCalledWith(legacyPath, 'utf8');
     });
 
     it('should use default config dir when unset', () => {

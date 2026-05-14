@@ -54,11 +54,15 @@ jest.mock('../../../lib/utils/paths', () => {
 describe('Application Deploy Module', () => {
   let tempDir;
   let originalCwd;
+  /** @type {string|undefined} */
+  let previousAifabrixBuilderDir;
 
   beforeEach(() => {
     tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-test-'));
     originalCwd = process.cwd();
     process.chdir(tempDir);
+    previousAifabrixBuilderDir = process.env.AIFABRIX_BUILDER_DIR;
+    process.env.AIFABRIX_BUILDER_DIR = path.join(tempDir, 'builder');
 
     // Setup default mocks
     const configModule = require('../../../lib/core/config');
@@ -102,6 +106,11 @@ describe('Application Deploy Module', () => {
 
   afterEach(async() => {
     process.chdir(originalCwd);
+    if (previousAifabrixBuilderDir === undefined) {
+      delete process.env.AIFABRIX_BUILDER_DIR;
+    } else {
+      process.env.AIFABRIX_BUILDER_DIR = previousAifabrixBuilderDir;
+    }
     // Retry cleanup on Windows (handles EBUSY errors)
     let retries = 3;
     while (retries > 0) {

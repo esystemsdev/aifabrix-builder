@@ -651,6 +651,39 @@ KC=url://public
     expect(noTls).toContain('KC=http://kc.frontdoor.test/auth');
   });
 
+  it('userCfg + applications.<app>.proxy: url://public uses Traefik host without ctx.traefik', async() => {
+    writeApp(
+      'keycloak',
+      `port: 8082
+frontDoorRouting:
+  pattern: /auth/*
+  enabled: true
+  host: \${DEV_USERNAME}.\${REMOTE_HOST}
+  tls: false
+`
+    );
+    const variablesPath = path.join(fakeProject, 'builder', 'keycloak', 'application.yaml');
+    const content = `KC=url://public
+`;
+    const out = await expandDeclarativeUrlsInEnvContent(content, {
+      profile: 'docker',
+      currentAppKey: 'keycloak',
+      variablesPath,
+      useEnvironmentScopedResources: false,
+      appEnvironmentScopedResources: false,
+      remoteServer: 'https://builder02.local',
+      developerIdRaw: '02',
+      infraTlsEnabled: true,
+      userCfg: {
+        traefik: true,
+        applications: {
+          keycloak: { proxy: true }
+        }
+      }
+    });
+    expect(out).toContain('KC=https://dev02.builder02.local/auth');
+  });
+
   it('Traefik expanded frontDoor host + Plan 117 keeps /dev and /tst path prefix', async() => {
     writeApp(
       'fdscoped',
@@ -682,7 +715,7 @@ P=url://public
 `,
       baseCtx
     );
-    expect(devOut).toContain('P=https://dev01.builder02.local/dev/data');
+    expect(devOut).toContain('P=http://dev01.builder02.local/dev/data');
 
     const tstOut = await expandDeclarativeUrlsInEnvContent(
       `MISO_CLIENTID=miso-controller-tst-fdscoped
@@ -690,10 +723,10 @@ P=url://public
 `,
       baseCtx
     );
-    expect(tstOut).toContain('P=https://dev01.builder02.local/tst/data');
+    expect(tstOut).toContain('P=http://dev01.builder02.local/tst/data');
   });
 
-  it('without Traefik, url://public keeps explicit remote port; bare host gets published docker port', async() => {
+  it('without Traefik, url://public uses localhost; remote-server ignored unless proxy opts out', async() => {
     writeApp(
       'keycloak',
       `port: 8082
@@ -718,7 +751,7 @@ KC=url://public
       traefik: false,
       infraTlsEnabled: true
     });
-    expect(httpsOut).toContain('KC=https://builder02.local:3000');
+    expect(httpsOut).toContain('KC=http://localhost:8282');
 
     const httpOut = await expandDeclarativeUrlsInEnvContent(content, {
       profile: 'docker',
@@ -731,7 +764,7 @@ KC=url://public
       traefik: false,
       infraTlsEnabled: false
     });
-    expect(httpOut).toContain('KC=http://builder02.local:3000');
+    expect(httpOut).toContain('KC=http://localhost:8282');
 
     const bareHttps = await expandDeclarativeUrlsInEnvContent(content, {
       profile: 'docker',
@@ -744,7 +777,7 @@ KC=url://public
       traefik: false,
       infraTlsEnabled: true
     });
-    expect(bareHttps).toContain('KC=https://builder02.local:8282');
+    expect(bareHttps).toContain('KC=http://localhost:8282');
 
     const bareNoTls = await expandDeclarativeUrlsInEnvContent(content, {
       profile: 'docker',
@@ -757,7 +790,7 @@ KC=url://public
       traefik: false,
       infraTlsEnabled: false
     });
-    expect(bareNoTls).toContain('KC=http://builder02.local:8282');
+    expect(bareNoTls).toContain('KC=http://localhost:8282');
 
     const httpsExplicitNoTls = await expandDeclarativeUrlsInEnvContent(content, {
       profile: 'docker',
@@ -770,7 +803,7 @@ KC=url://public
       traefik: false,
       infraTlsEnabled: false
     });
-    expect(httpsExplicitNoTls).toContain('KC=http://builder02.local:3000');
+    expect(httpsExplicitNoTls).toContain('KC=http://localhost:8282');
 
     const hostOnly = await expandDeclarativeUrlsInEnvContent(
       `MISO_CLIENTID=z
@@ -788,7 +821,7 @@ KC=url://host-public
         infraTlsEnabled: true
       }
     );
-    expect(hostOnly).toContain('KC=https://builder02.local:8282');
+    expect(hostOnly).toContain('KC=http://localhost:8282');
 
     const hostNoTls = await expandDeclarativeUrlsInEnvContent(
       `MISO_CLIENTID=z
@@ -806,7 +839,7 @@ KC=url://host-public
         infraTlsEnabled: false
       }
     );
-    expect(hostNoTls).toContain('KC=http://builder02.local:8282');
+    expect(hostNoTls).toContain('KC=http://localhost:8282');
   });
 
   describe('front-door ingress matrix (traefik × frontDoorRouting.enabled)', () => {
@@ -900,12 +933,12 @@ VI=url://vdir-internal
 
     describe('url://public (full URL path segment)', () => {
       it.each([
-        [false, 'omit', 'http://remote.test:5555'],
-        [false, 'true', 'http://remote.test:5555'],
-        // Plan 124: Traefik host only when pathActive (enabled === true); else direct remote base
+        [false, 'omit', 'http://localhost:8082'],
+        [false, 'true', 'http://localhost:8082'],
+        // Plan 124: Traefik host only when pathActive (enabled === true); else direct remote base when Traefik on
         [true, 'omit', 'http://remote.test:5555'],
         [true, 'false', 'http://remote.test:5555'],
-        [true, 'true', 'https://ingress.test.local/api']
+        [true, 'true', 'http://ingress.test.local/api']
       ])(
         'public when traefik=%s and enabled=%s → %s',
         async(traefik, enabledMode, expectedUrl) => {
@@ -941,9 +974,11 @@ H=url://host-public
         const val = parseSimpleEnvMap(out).H;
         expect(val).not.toContain('/api');
         if (traefik && enabledMode === 'true') {
-          expect(val).toBe('https://ingress.test.local');
-        } else {
+          expect(val).toBe('http://ingress.test.local');
+        } else if (traefik) {
           expect(val).toBe('http://remote.test:5555');
+        } else {
+          expect(val).toBe('http://localhost:8082');
         }
       });
     });
@@ -1005,7 +1040,7 @@ R=url://svcpub-public
           traefik: true
         }
       );
-      expect(parseSimpleEnvMap(active).R).toBe('https://svcpub.test.local/svc');
+      expect(parseSimpleEnvMap(active).R).toBe('http://svcpub.test.local/svc');
 
       const passive = await expandDeclarativeUrlsInEnvContent(
         `MISO_CLIENTID=z
@@ -1022,7 +1057,7 @@ R=url://svcpub-public
           traefik: false
         }
       );
-      expect(parseSimpleEnvMap(passive).R).toBe('http://remote.test:5555');
+      expect(parseSimpleEnvMap(passive).R).toBe('http://localhost:9000');
     });
 
     it('cross-app vdir empty when target has enabled true but traefik is off', async() => {
@@ -1098,7 +1133,7 @@ I=url://internal
           traefik: true
         }
       );
-      expect(parseSimpleEnvMap(out).I).toBe('https://ingress.test.local/api');
+      expect(parseSimpleEnvMap(out).I).toBe('http://ingress.test.local/api');
     });
 
     it('url://internal local profile uses direct remote when ingress inactive (enabled omit)', async() => {

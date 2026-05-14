@@ -285,6 +285,8 @@ Set the optional workspace root (`aifabrix-work`) in `config.yaml`.
 
 **What:** Stores a normalized absolute path as **`aifabrix-work`** (default clone / repo root). This is separate from **`aifabrix-home`** (secrets, infra, `~/.aifabrix`-style state stay on home unless you set them there). Clearing uses an empty path argument. Unless you pass **`--no-register-env`**, the CLI registers **AIFABRIX_WORK** for new shells (Windows user env or POSIX `aifabrix-shell-env.sh` + profile snippet). **`AIFABRIX_WORK`** in the environment overrides the YAML value when resolving the workspace. **Current terminal (bash/zsh):** run **`eval "$(aifabrix dev shell-env)"`** after set-work (or open a new shell).
 
+**Platform builder apps:** When **`aifabrix-work`** (or **`AIFABRIX_WORK`**) is set, the CLI materializes **`builder/keycloak`**, **`builder/miso-controller`**, and **`builder/dataplane`** under that workspace root. When work is unset, those folders are under **aifabrix-home** (resolved).
+
 **Usage:**
 ```bash
 aifabrix dev set-work /path/to/git-workspace

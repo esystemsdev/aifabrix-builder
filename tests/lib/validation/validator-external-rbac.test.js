@@ -21,14 +21,26 @@ jest.mock('fs', () => {
   };
   return mockFs;
 });
-
-// Mock paths module
 jest.mock('../../../lib/utils/paths', () => {
   const actualPaths = jest.requireActual('../../../lib/utils/paths');
-  const path = require('path');
+  const pathMod = require('path');
+  const fsMod = require('fs');
+  function resolveRbacPathForTests(appPath) {
+    if (!appPath || typeof appPath !== 'string') {
+      throw new Error('App path is required and must be a string');
+    }
+    for (const name of ['rbac.yaml', 'rbac.yml', 'rbac.json']) {
+      const candidate = pathMod.join(appPath, name);
+      if (fsMod.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
   return {
     ...actualPaths,
-    detectAppType: jest.fn()
+    detectAppType: jest.fn(),
+    resolveRbacPath: resolveRbacPathForTests
   };
 });
 

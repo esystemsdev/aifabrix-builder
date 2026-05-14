@@ -1987,8 +1987,16 @@ describe('CLI Commands', () => {
     });
 
     describe('resolve command handler execution', () => {
+      beforeEach(() => {
+        if (typeof config.getRemoteServer !== 'function') {
+          config.getRemoteServer = jest.fn();
+        }
+        config.getRemoteServer.mockResolvedValue(null);
+      });
+
       it('should execute resolve command handler with force option via setupCommands', async() => {
         setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
 
         const appName = 'testapp';
         const options = { force: true };
@@ -2001,12 +2009,23 @@ describe('CLI Commands', () => {
         await handler(appName, options);
 
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', true, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(
+          appName,
+          undefined,
+          'docker',
+          true,
+          expect.objectContaining({
+            appPath: expectedAppPath,
+            envOnly: false,
+            preferLocalEnvOutputPath: true
+          })
+        );
         expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
       });
 
       it('should execute resolve command handler without force option via setupCommands', async() => {
         setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({});
 
         const appName = 'testapp';
         const options = {};
@@ -2019,8 +2038,88 @@ describe('CLI Commands', () => {
         await handler(appName, options);
 
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
-        expect(secrets.generateEnvFile).toHaveBeenCalledWith(appName, undefined, 'docker', undefined, expect.objectContaining({ appPath: expectedAppPath, envOnly: false }));
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(
+          appName,
+          undefined,
+          'docker',
+          undefined,
+          expect.objectContaining({
+            appPath: expectedAppPath,
+            envOnly: false,
+            preferLocalEnvOutputPath: true
+          })
+        );
         expect(logger.log).toHaveBeenCalledWith(`✔ Generated .env file: ${envPath}`);
+      });
+
+      it('should pass preferLocalEnvOutputPath true when applications.<app>.reload is true', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({
+          applications: { testapp: { reload: true } }
+        });
+
+        const appName = 'testapp';
+        const envPath = 'builder/testapp/.env';
+        secrets.generateEnvFile.mockResolvedValue(envPath);
+
+        const handler = commandActions['resolve <app>'];
+        await handler(appName, {});
+
+        const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(
+          appName,
+          undefined,
+          'docker',
+          undefined,
+          expect.objectContaining({
+            appPath: expectedAppPath,
+            envOnly: false,
+            preferLocalEnvOutputPath: true
+          })
+        );
+      });
+
+      it('should pass preferLocalEnvOutputPath false when applications.<app>.reload is true and remote-server is set', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({
+          applications: { testapp: { reload: true } }
+        });
+        config.getRemoteServer.mockResolvedValue('https://builder02.local');
+
+        const appName = 'testapp';
+        secrets.generateEnvFile.mockResolvedValue('builder/testapp/.env');
+
+        const handler = commandActions['resolve <app>'];
+        await handler(appName, {});
+
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(
+          appName,
+          undefined,
+          'docker',
+          undefined,
+          expect.objectContaining({ preferLocalEnvOutputPath: false })
+        );
+      });
+
+      it('should pass preferLocalEnvOutputPath true when applications.<app>.reload is false and no remote-server', async() => {
+        setupCommandsAndResetLogger();
+        config.getConfig.mockResolvedValue({
+          applications: { testapp: { reload: false } }
+        });
+
+        const appName = 'testapp';
+        secrets.generateEnvFile.mockResolvedValue('builder/testapp/.env');
+
+        const handler = commandActions['resolve <app>'];
+        await handler(appName, {});
+
+        expect(secrets.generateEnvFile).toHaveBeenCalledWith(
+          appName,
+          undefined,
+          'docker',
+          undefined,
+          expect.objectContaining({ preferLocalEnvOutputPath: true })
+        );
       });
 
       it('should handle resolve command handler error via setupCommands', async() => {
@@ -2448,6 +2547,7 @@ describe('CLI Commands', () => {
     describe('up command with developer option', () => {
       beforeEach(() => {
         config.getConfig.mockResolvedValue({});
+        config.saveConfig = jest.fn().mockResolvedValue(undefined);
       });
 
       it('should execute up command with developer option via setupCommands', async() => {
@@ -2516,6 +2616,13 @@ describe('CLI Commands', () => {
 
         expect(config.setDeveloperId).not.toHaveBeenCalled();
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: false }));
+        expect(config.saveConfig).toHaveBeenCalledWith(
+          expect.objectContaining({
+            traefik: false,
+            pgadmin: true,
+            redisCommander: true
+          })
+        );
       });
 
       it('should execute up with --traefik, persist to config, and start with traefik', async() => {
@@ -2591,7 +2698,13 @@ describe('CLI Commands', () => {
         const handler = commandActions['up-infra'];
         await handler({});
 
-        expect(config.saveConfig).not.toHaveBeenCalled();
+        expect(config.saveConfig).toHaveBeenCalledWith(
+          expect.objectContaining({
+            traefik: true,
+            pgadmin: true,
+            redisCommander: true
+          })
+        );
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ traefik: true }));
       });
 
@@ -2708,7 +2821,14 @@ describe('CLI Commands', () => {
         const handler = commandActions['up-infra'];
         await handler({});
 
-        expect(config.saveConfig).not.toHaveBeenCalled();
+        expect(config.saveConfig).toHaveBeenCalledWith(
+          expect.objectContaining({
+            traefik: false,
+            pgadmin: true,
+            redisCommander: true,
+            tlsEnabled: true
+          })
+        );
         expect(infra.startInfra).toHaveBeenCalledWith(null, expect.objectContaining({ tlsEnabled: true }));
       });
 

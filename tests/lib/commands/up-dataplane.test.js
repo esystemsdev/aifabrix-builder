@@ -63,7 +63,7 @@ const { rotateSecret } = require('../../../lib/app/rotate-secret');
 const { checkApplicationExists } = require('../../../lib/utils/app-existence');
 const app = require('../../../lib/app');
 const infra = require('../../../lib/infrastructure');
-const { ensureAppFromTemplate } = require('../../../lib/commands/up-common');
+const { ensureAppFromTemplate, refreshUrlsLocalRegistryForCurrentProject } = require('../../../lib/commands/up-common');
 
 describe('up-dataplane command', () => {
   const cwd = process.cwd();
@@ -183,6 +183,16 @@ describe('up-dataplane command', () => {
       await handleUpDataplane({});
 
       expect(ensureAppFromTemplate).toHaveBeenCalledWith('dataplane');
+      expect(refreshUrlsLocalRegistryForCurrentProject).toHaveBeenCalledTimes(1);
+    });
+
+    it('should refresh urls registry before register or rotate', async() => {
+      await handleUpDataplane({});
+      const refreshOrder = refreshUrlsLocalRegistryForCurrentProject.mock.invocationCallOrder[0];
+      const registerOrder = registerApplication.mock.invocationCallOrder[0];
+      const rotateOrder = rotateSecret.mock.invocationCallOrder[0];
+      const nextController = registerOrder !== undefined ? registerOrder : rotateOrder;
+      expect(nextController).toBeGreaterThan(refreshOrder);
     });
 
     it('should call register then deploy then run locally when app not registered', async() => {

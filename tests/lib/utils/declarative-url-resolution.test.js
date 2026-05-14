@@ -78,7 +78,8 @@ describe('url-declarative-resolve helpers (matrix fixtures)', () => {
       developerIdNum: devNum,
       remoteServer: remote,
       pathPrefix: '/dev',
-      patternPath
+      patternPath,
+      declarativePublicUrlsUseLocalhost: false
     });
     expect(applyTstRemoteDeveloperHost(u, remote, devNum, 'dev')).toBe('http://builder02.local:3101/dev/data');
   });
@@ -90,7 +91,8 @@ describe('url-declarative-resolve helpers (matrix fixtures)', () => {
       developerIdNum: devNum,
       remoteServer: remote,
       pathPrefix: '/tst',
-      patternPath
+      patternPath,
+      declarativePublicUrlsUseLocalhost: false
     });
     expect(u).toBe('http://builder02.local:3101/tst/data');
     expect(applyTstRemoteDeveloperHost(u, remote, devNum, 'tst')).toBe(u);
@@ -103,7 +105,8 @@ describe('url-declarative-resolve helpers (matrix fixtures)', () => {
       developerIdNum: 0,
       remoteServer: remote,
       pathPrefix: '/tst',
-      patternPath
+      patternPath,
+      declarativePublicUrlsUseLocalhost: false
     });
     expect(u).toBe('http://builder02.local:3001/tst/data');
     expect(applyTstRemoteDeveloperHost(u, remote, 0, 'tst')).toBe(u);
@@ -133,7 +136,8 @@ describe('url-declarative-resolve helpers (matrix fixtures)', () => {
       pathPrefix: '/dev',
       patternPath,
       developerIdNum: devNum,
-      derivedEnvKey: 'dev'
+      derivedEnvKey: 'dev',
+      declarativePublicUrlsUseLocalhost: false
     });
     expect(internal).toBe('http://builder02.local:3111/dev/data');
   });
@@ -171,7 +175,8 @@ describe('url-declarative-resolve helpers (matrix fixtures)', () => {
       hostTemplate: null,
       tls: true,
       developerIdRaw: 0,
-      infraTlsEnabled: false
+      infraTlsEnabled: false,
+      declarativePublicUrlsUseLocalhost: false
     };
 
     it('omits pattern when frontDoorIngressActive is false', () => {

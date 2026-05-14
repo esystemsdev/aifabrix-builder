@@ -534,6 +534,10 @@
           "pattern": "^[a-zA-Z.$\\{\\}_-]+$",
           "default": true
         },
+        "internalDockerUseOriginOnly": {
+          "type": "boolean",
+          "description": "When true, declarative url://*-internal full URLs in Docker profile use http://service:containerPort only (omit frontDoorRouting.pattern). Use when the ingress path (e.g. /miso) is not part of in-container routes. Omit or false to keep pattern on internal URLs (e.g. Keycloak /auth)."
+        },
         "certStore": {
           "type": "string",
           "description": "Certificate store name for wildcard certificates. Optional - only needed when using a pre-configured certificate store in Traefik.",

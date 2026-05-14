@@ -554,8 +554,66 @@ describe('App Register Module', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ Application registered successfully'));
       expect(localSecrets.saveLocalSecret).toHaveBeenCalledTimes(2);
       expect(envTemplate.updateEnvTemplate).toHaveBeenCalled();
-      expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local', true);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('✔ .env file updated with new credentials'));
+      // Plan 139: register validates env resolution in memory but must never write <appPath>/.env.
+      expect(secrets.generateEnvFile).toHaveBeenCalledWith('test-app', null, 'local', true, { noWrite: true });
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('Run "aifabrix resolve test-app" to materialize an on-disk .env')
+      );
+      expect(logger.log).not.toHaveBeenCalledWith(
+        expect.stringContaining('.env file updated with new credentials')
+      );
+    });
+
+    it('should not log a resolution warning when in-memory env resolves cleanly', async() => {
+      // Regression guard for plan 139: register/up-platform must not surface
+      // "Could not validate env resolution" when secrets are present.
+      const appKey = 'test-app';
+      const appDir = path.join(tempDir, 'builder', appKey);
+      fsSync.mkdirSync(appDir, { recursive: true });
+
+      const variables = {
+        app: { key: 'test-app', name: 'Test App' },
+        build: { language: 'typescript', port: 3000 }
+      };
+      fsSync.writeFileSync(
+        path.join(appDir, 'application.yaml'),
+        yaml.dump(variables)
+      );
+
+      secrets.generateEnvFile.mockResolvedValueOnce(null);
+
+      await appRegister.registerApplication(appKey, { environment: 'dev' });
+
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('Could not validate env resolution')
+      );
+    });
+
+    it('should warn but not fail when in-memory env resolution fails', async() => {
+      // Regression guard: a missing kv:// during register must surface as a warning, not a crash.
+      const appKey = 'test-app';
+      const appDir = path.join(tempDir, 'builder', appKey);
+      fsSync.mkdirSync(appDir, { recursive: true });
+
+      const variables = {
+        app: { key: 'test-app', name: 'Test App' },
+        build: { language: 'typescript', port: 3000 }
+      };
+      fsSync.writeFileSync(
+        path.join(appDir, 'application.yaml'),
+        yaml.dump(variables)
+      );
+
+      secrets.generateEnvFile.mockRejectedValueOnce(new Error('Missing secret kv://broken'));
+
+      await appRegister.registerApplication(appKey, { environment: 'dev' });
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Could not validate env resolution')
+      );
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('✔ Application registered successfully')
+      );
     });
 
     it('should handle error when saving credentials locally', async() => {

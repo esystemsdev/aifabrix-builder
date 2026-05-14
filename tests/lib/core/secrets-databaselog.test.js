@@ -137,7 +137,7 @@ DB_PORT=5432`;
   });
 
   it('should replace DATABASELOG_URL with ${DB_HOST}:${DB_PORT} references for local environment', async() => {
-    await secrets.generateEnvFile(appName, undefined, 'local');
+    await secrets.generateEnvFile(appName, undefined, 'local', false, { appPath: builderPath });
 
     const writeCalls = fs.writeFileSync.mock.calls;
     const envCall = writeCalls.find(call => call[0] === envPath);
@@ -152,7 +152,7 @@ DB_PORT=5432`;
   });
 
   it('should replace both DATABASE_URL and DATABASELOG_URL correctly for local environment', async() => {
-    await secrets.generateEnvFile(appName, undefined, 'local');
+    await secrets.generateEnvFile(appName, undefined, 'local', false, { appPath: builderPath });
 
     const writeCalls = fs.writeFileSync.mock.calls;
     const envCall = writeCalls.find(call => call[0] === envPath);
@@ -165,7 +165,7 @@ DB_PORT=5432`;
   });
 
   it('should replace DATABASELOG_URL with postgres:5432 for docker environment', async() => {
-    await secrets.generateEnvFile(appName, undefined, 'docker');
+    await secrets.generateEnvFile(appName, undefined, 'docker', false, { appPath: builderPath });
 
     const writeCalls = fs.writeFileSync.mock.calls;
     const envCall = writeCalls.find(call => call[0] === envPath);

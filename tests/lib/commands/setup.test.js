@@ -10,7 +10,8 @@
 
 jest.mock('../../../lib/infrastructure');
 jest.mock('../../../lib/core/config', () => ({
-  setDeveloperId: jest.fn().mockResolvedValue(undefined)
+  setDeveloperId: jest.fn().mockResolvedValue(undefined),
+  setAdminEmail: jest.fn().mockResolvedValue(undefined)
 }));
 jest.mock('../../../lib/commands/setup-prompts', () => ({
   MODE: {
@@ -120,6 +121,7 @@ describe('lib/commands/setup', () => {
       await handleSetup({});
 
       expect(prompts.promptAdminCredentials).toHaveBeenCalled();
+      expect(config.setAdminEmail).toHaveBeenCalledWith('admin@example.com');
       expect(modes.runFreshInstall).toHaveBeenCalledWith({
         adminEmail: 'admin@example.com',
         adminPassword: 'changeme1'

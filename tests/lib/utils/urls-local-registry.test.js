@@ -14,9 +14,11 @@ jest.mock('../../../lib/utils/paths', () => ({
   getConfigDirForPaths: jest.fn(),
   getProjectRoot: jest.fn(),
   getBuilderRoot: jest.fn(),
-  getSystemBuilderRoot: jest.fn()
+  getSystemBuilderRoot: jest.fn(),
+  getIntegrationBuilderBaseDir: jest.fn()
 }));
 
+const pathsActual = jest.requireActual('../../../lib/utils/paths');
 const pathsUtil = require('../../../lib/utils/paths');
 const {
   getUrlsLocalYamlPath,
@@ -24,13 +26,24 @@ const {
   writeUrlsLocalRegistrySync,
   refreshUrlsLocalRegistryFromBuilder,
   normalizePatternForUrl,
-  getRegistryEntryForApp
+  getRegistryEntryForApp,
+  readRegistryInternalDockerUseOriginOnly
 } = require('../../../lib/utils/urls-local-registry');
 
 describe('urls-local-registry', () => {
   let tmp;
   let fakeHome;
   let fakeProject;
+  /** @type {jest.SpyInstance|undefined} */
+  let findProjectRootFromCwdSpy;
+
+  beforeAll(() => {
+    findProjectRootFromCwdSpy = jest.spyOn(pathsUtil, 'findProjectRootFromCwd').mockReturnValue(null);
+  });
+
+  afterAll(() => {
+    findProjectRootFromCwdSpy.mockRestore();
+  });
 
   beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'urls-reg-'));
@@ -45,6 +58,8 @@ describe('urls-local-registry', () => {
     pathsUtil.getSystemBuilderRoot.mockImplementation(() =>
       path.join(pathsUtil.getConfigDirForPaths(), 'builder')
     );
+    pathsUtil.getIntegrationBuilderBaseDir.mockReturnValue(fakeProject);
+    findProjectRootFromCwdSpy.mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -69,6 +84,20 @@ describe('urls-local-registry', () => {
       expect(normalizePatternForUrl('data')).toBe('/data');
       expect(normalizePatternForUrl('/api/**')).toBe('/api');
       expect(normalizePatternForUrl('/v1/')).toBe('/v1');
+    });
+  });
+
+  describe('readRegistryInternalDockerUseOriginOnly', () => {
+    it('returns undefined when key absent or not coercible', () => {
+      expect(readRegistryInternalDockerUseOriginOnly('kc', {})).toBeUndefined();
+      expect(readRegistryInternalDockerUseOriginOnly('kc', { 'kc-internalDockerUseOriginOnly': 'maybe' })).toBeUndefined();
+    });
+
+    it('coerces common boolean forms', () => {
+      expect(readRegistryInternalDockerUseOriginOnly('kc', { 'kc-internalDockerUseOriginOnly': true })).toBe(true);
+      expect(readRegistryInternalDockerUseOriginOnly('kc', { 'kc-internalDockerUseOriginOnly': false })).toBe(false);
+      expect(readRegistryInternalDockerUseOriginOnly('kc', { 'kc-internalDockerUseOriginOnly': 'true' })).toBe(true);
+      expect(readRegistryInternalDockerUseOriginOnly('kc', { 'kc-internalDockerUseOriginOnly': '0' })).toBe(false);
     });
   });
 
@@ -115,29 +144,47 @@ describe('urls-local-registry', () => {
       expect(doc.note).toBe('x');
     });
 
-    it('reads config-dir urls.local.yaml when home path file is missing (migration)', () => {
+    it('reads legacy urls.local.yaml under getAifabrixHome when config-dir primary is missing', () => {
       const cfgDir = path.join(fakeHome, 'dot-aifabrix');
       fs.mkdirSync(cfgDir, { recursive: true });
       pathsUtil.getConfigDirForPaths.mockReturnValue(cfgDir);
       pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
-      const atConfig = path.join(cfgDir, 'urls.local.yaml');
-      fs.writeFileSync(atConfig, 'migrated-port: 7777\n', 'utf8');
-      expect(getUrlsLocalYamlPath()).toBe(path.join(fakeHome, 'urls.local.yaml'));
+      const legacy = path.join(fakeHome, 'urls.local.yaml');
+      fs.writeFileSync(legacy, 'migrated-port: 7777\n', 'utf8');
+      expect(getUrlsLocalYamlPath()).toBe(path.join(cfgDir, 'urls.local.yaml'));
       expect(readUrlsLocalRegistrySync()).toEqual({ 'migrated-port': 7777 });
     });
 
-    it('prefers urls.local.yaml under getAifabrixHome over config-dir when both exist', () => {
+    it('prefers urls.local.yaml under config dir over legacy home when both exist', () => {
       const cfgDir = path.join(fakeHome, 'dot-aifabrix');
       fs.mkdirSync(cfgDir, { recursive: true });
       pathsUtil.getConfigDirForPaths.mockReturnValue(cfgDir);
       pathsUtil.getAifabrixHome.mockReturnValue(fakeHome);
       fs.writeFileSync(path.join(fakeHome, 'urls.local.yaml'), 'home: 1\n', 'utf8');
       fs.writeFileSync(path.join(cfgDir, 'urls.local.yaml'), 'cfg: 2\n', 'utf8');
-      expect(readUrlsLocalRegistrySync()).toEqual({ home: 1 });
+      expect(readUrlsLocalRegistrySync()).toEqual({ cfg: 2 });
     });
   });
 
   describe('refreshUrlsLocalRegistryFromBuilder', () => {
+    it('merges builder application.json when no yaml present', () => {
+      const jsonDir = path.join(fakeProject, 'builder', 'json-only');
+      fs.mkdirSync(jsonDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(jsonDir, 'application.json'),
+        JSON.stringify({
+          port: 7654,
+          app: { key: 'json-only-app' },
+          frontDoorRouting: { pattern: '/j/*' }
+        }),
+        'utf8'
+      );
+
+      const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+      expect(merged['json-only-app-port']).toBe(7654);
+      expect(merged['json-only-app-pattern']).toBe('/j/*');
+    });
+
     it('merges builder application.yaml entries and preserves existing keys', () => {
       writeUrlsLocalRegistrySync({ legacyKey: 1 });
 
@@ -160,6 +207,24 @@ frontDoorRouting:
 
       const disk = readUrlsLocalRegistrySync();
       expect(disk['alpha-app-port']).toBe(3001);
+    });
+
+    it('writes internalDockerUseOriginOnly from application.yaml when explicitly set', () => {
+      const kcDir = path.join(fakeProject, 'builder', 'kc-reg');
+      fs.mkdirSync(kcDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(kcDir, 'application.yaml'),
+        `port: 8082
+app:
+  key: keycloak
+frontDoorRouting:
+  pattern: /auth/*
+  internalDockerUseOriginOnly: true
+`,
+        'utf8'
+      );
+      const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+      expect(merged['keycloak-internalDockerUseOriginOnly']).toBe(true);
     });
 
     it('uses directory name when app.key missing', () => {
@@ -202,6 +267,22 @@ app:
       expect(merged['keycloak-containerPort']).toBeUndefined();
     });
 
+    it('merges packages/*/application.yaml for cross-repo app layouts', () => {
+      const pkgDir = path.join(fakeProject, 'packages', 'mono-svc');
+      fs.mkdirSync(pkgDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(pkgDir, 'application.yaml'),
+        `port: 9100
+app:
+  key: mono-svc
+`,
+        'utf8'
+      );
+
+      const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+      expect(merged['mono-svc-port']).toBe(9100);
+    });
+
     it('skips folders without valid port', () => {
       const badDir = path.join(fakeProject, 'builder', 'no-port');
       fs.mkdirSync(badDir, { recursive: true });
@@ -239,13 +320,14 @@ frontDoorRouting:
 
       pathsUtil.getProjectRoot.mockReturnValue(fakeNpmPackage);
       pathsUtil.getBuilderRoot.mockReturnValue(userBuilder);
+      pathsUtil.getIntegrationBuilderBaseDir.mockReturnValue(fakeNpmPackage);
 
       const merged = refreshUrlsLocalRegistryFromBuilder(fakeNpmPackage);
       expect(merged['dataplane-port']).toBe(3001);
       expect(merged['dataplane-pattern']).toBe('/data/*');
     });
 
-    it('projectRoot/builder wins when AIFABRIX_BUILDER_DIR does not match getBuilderRoot (stray CI env)', () => {
+    it('project builder wins over getBuilderRoot when both define the same app (canonical scan order)', () => {
       const altBuilder = path.join(tmp, 'alt-builder');
       const writerAlt = path.join(altBuilder, 'writer');
       fs.mkdirSync(writerAlt, { recursive: true });
@@ -269,17 +351,92 @@ app:
       );
 
       pathsUtil.getBuilderRoot.mockReturnValue(altBuilder);
-      const prev = process.env.AIFABRIX_BUILDER_DIR;
-      process.env.AIFABRIX_BUILDER_DIR = '/some/ci/default/not-the-alt-builder';
+      const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+      expect(merged['writer-port']).toBe(4000);
+    });
+
+    it('project builder wins over materialized copy for same app (scan order, not file mtime)', () => {
+      const materialized = path.join(tmp, 'materialized-builder');
+      const monoDir = path.join(fakeProject, 'builder', 'miso-controller');
+      const matDir = path.join(materialized, 'miso-controller');
+      fs.mkdirSync(monoDir, { recursive: true });
+      fs.mkdirSync(matDir, { recursive: true });
+      const monoYaml = path.join(monoDir, 'application.yaml');
+      const matYaml = path.join(matDir, 'application.yaml');
+      const yamlTrue = `port: 3000
+app:
+  key: miso-controller
+frontDoorRouting:
+  pattern: /miso/*
+  internalDockerUseOriginOnly: true
+`;
+      const yamlFalse = `port: 3000
+app:
+  key: miso-controller
+frontDoorRouting:
+  pattern: /miso/*
+  internalDockerUseOriginOnly: false
+`;
+      fs.writeFileSync(matYaml, yamlTrue, 'utf8');
+      const matNewer = new Date('2025-06-01');
+      fs.utimesSync(matYaml, matNewer, matNewer);
+
+      fs.writeFileSync(monoYaml, yamlFalse, 'utf8');
+      const monoOlder = new Date('2020-01-01');
+      fs.utimesSync(monoYaml, monoOlder, monoOlder);
+
+      pathsUtil.getBuilderRoot.mockReturnValue(materialized);
+      const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+      expect(merged['miso-controller-internalDockerUseOriginOnly']).toBe(false);
+    });
+
+    it('uses cwd checkout builder when getProjectRoot is a different package (global CLI layout)', () => {
+      const cwdRepo = path.join(tmp, 'miso-checkout');
+      fs.mkdirSync(path.join(cwdRepo, 'builder', 'miso-controller'), { recursive: true });
+      fs.writeFileSync(path.join(cwdRepo, 'package.json'), '{}\n', 'utf8');
+      const cwdYaml = path.join(cwdRepo, 'builder', 'miso-controller', 'application.yaml');
+      fs.writeFileSync(
+        cwdYaml,
+        `port: 3000
+app:
+  key: miso-controller
+frontDoorRouting:
+  pattern: /miso/*
+  internalDockerUseOriginOnly: false
+`,
+        'utf8'
+      );
+      fs.utimesSync(cwdYaml, new Date('2025-08-01'), new Date('2025-08-01'));
+
+      const cliPkg = path.join(tmp, 'aifabrix-builder-pkg');
+      fs.mkdirSync(path.join(cliPkg, 'builder', 'miso-controller'), { recursive: true });
+      const cliYaml = path.join(cliPkg, 'builder', 'miso-controller', 'application.yaml');
+      fs.writeFileSync(
+        cliYaml,
+        `port: 3000
+app:
+  key: miso-controller
+frontDoorRouting:
+  pattern: /miso/*
+  internalDockerUseOriginOnly: true
+`,
+        'utf8'
+      );
+      fs.utimesSync(cliYaml, new Date('2020-01-01'), new Date('2020-01-01'));
+
+      pathsUtil.getProjectRoot.mockReturnValue(cliPkg);
+      pathsUtil.getBuilderRoot.mockImplementation(() => path.join(cliPkg, 'builder'));
+      pathsUtil.getIntegrationBuilderBaseDir.mockReturnValue(cliPkg);
+
+      const prevCwd = process.cwd();
+      process.chdir(cwdRepo);
+      findProjectRootFromCwdSpy.mockImplementation(() => pathsActual.findProjectRootFromCwd());
       try {
-        const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
-        expect(merged['writer-port']).toBe(4000);
+        const merged = refreshUrlsLocalRegistryFromBuilder(cliPkg);
+        expect(merged['miso-controller-internalDockerUseOriginOnly']).toBe(false);
       } finally {
-        if (prev === undefined) {
-          delete process.env.AIFABRIX_BUILDER_DIR;
-        } else {
-          process.env.AIFABRIX_BUILDER_DIR = prev;
-        }
+        process.chdir(prevCwd);
+        findProjectRootFromCwdSpy.mockReturnValue(null);
       }
     });
 

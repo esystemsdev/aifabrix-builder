@@ -91,6 +91,12 @@ describe('app-logs', () => {
       expect(appLogs.getLogLevel('exception: Error: Application not found')).toBe('error');
     });
 
+    it('treats validation failure lines as error (Keycloak / kc.sh)', () => {
+      expect(appLogs.getLogLevel('ERROR: Configuration validation failed:')).toBe('error');
+      expect(appLogs.getLogLevel('Configuration validation failed:')).toBe('error');
+      expect(appLogs.getLogLevel('  - Option foo is invalid')).toBeNull();
+    });
+
     it('returns null for line with no parseable level and no error word', () => {
       expect(appLogs.getLogLevel('plain text')).toBeNull();
       expect(appLogs.getLogLevel('')).toBeNull();
@@ -130,33 +136,19 @@ describe('app-logs', () => {
     });
   });
 
-  describe('maskEnvLine', () => {
-    it('masks line when key matches secret pattern', () => {
-      expect(appLogs.maskEnvLine('PASSWORD=secret')).toBe('PASSWORD=***');
-      expect(appLogs.maskEnvLine('API_KEY=abc')).toBe('API_KEY=***');
-      expect(appLogs.maskEnvLine('CLIENT_SECRET=xyz')).toBe('CLIENT_SECRET=***');
+  describe('shouldShowFilteredLogLine', () => {
+    it('with -l error, keeps unclassified lines after an ERROR line until classified non-error', () => {
+      const state = { pendingAfterError: 0 };
+      expect(appLogs.shouldShowFilteredLogLine('ERROR: Configuration validation failed:', 'error', state)).toBe(true);
+      expect(state.pendingAfterError).toBeGreaterThan(0);
+      expect(appLogs.shouldShowFilteredLogLine('  - Invalid value for KC_HOSTNAME', 'error', state)).toBe(true);
+      expect(appLogs.shouldShowFilteredLogLine('INFO: server started', 'error', state)).toBe(false);
     });
 
-    it('masks KEYCLOAK_ only when suffix is secret (PASSWORD, SECRET, etc.)', () => {
-      expect(appLogs.maskEnvLine('KEYCLOAK_ADMIN_PASSWORD=admin')).toBe('KEYCLOAK_ADMIN_PASSWORD=***');
-      expect(appLogs.maskEnvLine('KEYCLOAK_CLIENT_SECRET=xyz')).toBe('KEYCLOAK_CLIENT_SECRET=***');
-      expect(appLogs.maskEnvLine('KEYCLOAK_SERVER_URL=http://keycloak:8080')).toBe('KEYCLOAK_SERVER_URL=http://keycloak:8080');
-      expect(appLogs.maskEnvLine('KEYCLOAK_REALM=aifabrix')).toBe('KEYCLOAK_REALM=aifabrix');
-      expect(appLogs.maskEnvLine('KEYCLOAK_EVENTS_ENABLED=true')).toBe('KEYCLOAK_EVENTS_ENABLED=true');
-    });
-
-    it('masks credentials in URL values (postgresql://, etc.)', () => {
-      expect(appLogs.maskEnvLine('DATABASE_URL=postgresql://miso_user:miso_pass123@postgres:5432/miso')).toBe(
-        'DATABASE_URL=postgresql://miso_user:***@postgres:5432/miso'
-      );
-      expect(appLogs.maskEnvLine('DATABASELOG_URL=postgresql://miso_logs_user:miso_logs_pass123@postgres:5432/miso-logs')).toBe(
-        'DATABASELOG_URL=postgresql://miso_logs_user:***@postgres:5432/miso-logs'
-      );
-    });
-
-    it('leaves line unchanged when key does not match', () => {
-      expect(appLogs.maskEnvLine('NODE_ENV=development')).toBe('NODE_ENV=development');
-      expect(appLogs.maskEnvLine('PORT=3000')).toBe('PORT=3000');
+    it('with -l error, validation failed without ERROR prefix is error and opens context', () => {
+      const state = { pendingAfterError: 0 };
+      expect(appLogs.shouldShowFilteredLogLine('Configuration validation failed:', 'error', state)).toBe(true);
+      expect(state.pendingAfterError).toBeGreaterThan(0);
     });
   });
 

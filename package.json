@@ -1,6 +1,6 @@
 {
   "name": "@aifabrix/builder",
-  "version": "2.44.6",
+  "version": "2.45.0",
   "description": "AI Fabrix Local Fabric & Deployment SDK",
   "main": "lib/index.js",
   "bin": {
@@ -36,6 +36,8 @@
     "precommit": "npm run lint:fix && npm run test",
     "install:local": "node scripts/install-local.js && which aifabrix && which af",
     "uninstall:local": "node scripts/install-local.js uninstall && which aifabrix && which af",
+    "install:global": "npm install -g . --force && which aifabrix && which af && aifabrix --version",
+    "uninstall:global": "npm uninstall -g @aifabrix/builder",
     "diagnose:cli": "node scripts/diagnose-cli.js",
     "check:schema-sync": "node scripts/check-datasource-test-run-schema-sync.js",
     "check:flags": "jest tests/lib/schema/flag-map-validation-run.test.js --runInBand --config jest.config.default.js"
