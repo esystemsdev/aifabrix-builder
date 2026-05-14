@@ -327,7 +327,7 @@ frontDoorRouting:
       expect(merged['dataplane-pattern']).toBe('/data/*');
     });
 
-    it('projectRoot/builder wins when AIFABRIX_BUILDER_DIR does not match getBuilderRoot (stray CI env)', () => {
+    it('project builder wins over getBuilderRoot when both define the same app (canonical scan order)', () => {
       const altBuilder = path.join(tmp, 'alt-builder');
       const writerAlt = path.join(altBuilder, 'writer');
       fs.mkdirSync(writerAlt, { recursive: true });
@@ -351,21 +351,11 @@ app:
       );
 
       pathsUtil.getBuilderRoot.mockReturnValue(altBuilder);
-      const prev = process.env.AIFABRIX_BUILDER_DIR;
-      process.env.AIFABRIX_BUILDER_DIR = '/some/ci/default/not-the-alt-builder';
-      try {
-        const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
-        expect(merged['writer-port']).toBe(4000);
-      } finally {
-        if (prev === undefined) {
-          delete process.env.AIFABRIX_BUILDER_DIR;
-        } else {
-          process.env.AIFABRIX_BUILDER_DIR = prev;
-        }
-      }
+      const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+      expect(merged['writer-port']).toBe(4000);
     });
 
-    it('prefers newer application.yaml when same app exists under project builder and AIFABRIX_BUILDER_DIR', () => {
+    it('project builder wins over materialized copy for same app (scan order, not file mtime)', () => {
       const materialized = path.join(tmp, 'materialized-builder');
       const monoDir = path.join(fakeProject, 'builder', 'miso-controller');
       const matDir = path.join(materialized, 'miso-controller');
@@ -388,26 +378,16 @@ frontDoorRouting:
   internalDockerUseOriginOnly: false
 `;
       fs.writeFileSync(matYaml, yamlTrue, 'utf8');
-      const oldTime = new Date('2020-01-01');
-      fs.utimesSync(matYaml, oldTime, oldTime);
+      const matNewer = new Date('2025-06-01');
+      fs.utimesSync(matYaml, matNewer, matNewer);
 
       fs.writeFileSync(monoYaml, yamlFalse, 'utf8');
-      const newTime = new Date('2025-06-01');
-      fs.utimesSync(monoYaml, newTime, newTime);
+      const monoOlder = new Date('2020-01-01');
+      fs.utimesSync(monoYaml, monoOlder, monoOlder);
 
       pathsUtil.getBuilderRoot.mockReturnValue(materialized);
-      const prev = process.env.AIFABRIX_BUILDER_DIR;
-      process.env.AIFABRIX_BUILDER_DIR = materialized;
-      try {
-        const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
-        expect(merged['miso-controller-internalDockerUseOriginOnly']).toBe(false);
-      } finally {
-        if (prev === undefined) {
-          delete process.env.AIFABRIX_BUILDER_DIR;
-        } else {
-          process.env.AIFABRIX_BUILDER_DIR = prev;
-        }
-      }
+      const merged = refreshUrlsLocalRegistryFromBuilder(fakeProject);
+      expect(merged['miso-controller-internalDockerUseOriginOnly']).toBe(false);
     });
 
     it('uses cwd checkout builder when getProjectRoot is a different package (global CLI layout)', () => {

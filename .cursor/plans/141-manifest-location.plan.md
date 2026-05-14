@@ -2,15 +2,33 @@
 
 ## Status
 
-**Shipped (P0–P2 + extensions):** `manifest-location.js`, gray **Manifest:** TTY lines (`manifest-source-emit.js`), setup REPLACE absolute paths, `getBuilderPath` / `getIntegrationBuilderBaseDir` Tier-1 preference when cwd is in the edited repo, `resolve --json` + **`manifestSource`** on **`validate --format json`** (single app) and **`show --json`**, and **`urls.local.yaml` registry refresh** now reads **`application.yaml` / `.yml` / `.json`** via **`resolveApplicationConfigPath`** (plan P3 registry slice).
+**Shipped (P0–P3 registry scan):** Resolver (`manifest-location.js`), gray **Manifest:** / `manifestSource` (`manifest-source-emit.js`), setup REPLACE absolute paths, `paths.js` / matrix wiring; **Phase P3** for `urls.local.yaml` refresh: **`urls-local-registry.js`** uses **`buildCanonicalRegistryScanDirs`** (system builder → **`getBuilderRoot()`** → `projectRoot/builder` → packages → cwd checkout `builder/`, de-duplicated). **`urls-local-registry-scan.js`** picks one config per `app.key` by **scan order** (later dir wins); **no cross-root mtime merge** and **no `AIFABRIX_BUILDER_DIR` ordering** or `appendCwdProjectBuilderDirIfDistinct`.
 
-**Deferred:** Full P3 removal of multi-root mtime scan / `appendCwdProjectBuilderDirIfDistinct` pending product sign-off (track with issue ID when filed).
+**CI / Jest:** Plan-scoped suites that touch real **`paths`** / config dirs run in **isolated Jest projects** (`jest.projects.js`, `jest.config.isolated.js`) so `jest.mock('…/paths')` from the default worker cannot leak; see **Plan tests (inventory)** below. Required for green **`npm run build:ci`** (`test:ci` → `ci-simulate.sh`).
+
+## Plan tests (inventory)
+
+| Test file | Plan phase | Isolated Jest project (`--selectProjects`) | Notes |
+| --------- | ---------- | ------------------------------------------- | ----- |
+| `tests/lib/utils/manifest-location.test.js` | P1 | `manifest-location` | Resolver tiers, `AIFABRIX_CONFIG` / `resetModules` per test |
+| `tests/lib/utils/manifest-source-emit.test.js` | P2 | `manifest-source-emit` | Gray **Manifest:** / `manifestSource` helpers |
+| `tests/lib/utils/urls-local-registry.test.js` | P3 | `urls-local-registry` | `refreshUrlsLocalRegistryFromBuilder`, canonical scan order, last-wins merge (no mtime) |
+| `tests/lib/utils/installation-log.test.js` | (CI / Plan 140) | `installation-log` | Append/mask/rotate; isolated so **`paths`** mocks from other files do not break I/O |
+| `tests/lib/commands/setup-prompts-format-paths.test.js` | P0b | *(default suite)* | `formatBuilderPlatformReplaceLines` — absolute REPLACE lines |
+
+**Configuration:** `jest.projects.js` — each isolated file is listed in `defaultProject.testPathIgnorePatterns` **and** in `isolatedProjects` via `makeIsolatedProject(...)`.
+
+**Commands (from repo root `aifabrix-builder/`):**
+
+- Full gate: **`npm run build:ci`** (lint → `check:schema-sync` → `check:flags` → `test:ci` / `tests/scripts/ci-simulate.sh`).
+- Default + isolated (same as **`npm test`**): **`node tests/scripts/test-wrapper.js`** (see `package.json` **`test`** script).
+- One isolated project: **`npx jest --config jest.config.isolated.js --selectProjects <id> --runInBand`** (examples: `manifest-location`, `manifest-source-emit`, `urls-local-registry`, `installation-log`).
 
 ## Problem
 
 Developers lose trust when:
 
-- Multiple trees (`cwd` repo, `getProjectRoot()` CLI package, `AIFABRIX_HOME` / config `builder/`, `AIFABRIX_BUILDER_DIR`, mtime tie-breaks) compete for `application.yaml` / `variablesPath`.
+- Multiple trees (`cwd` repo, `getProjectRoot()` CLI package, `AIFABRIX_HOME` / config `builder/`, `AIFABRIX_BUILDER_DIR`, ad-hoc multi-root ordering) compete for `application.yaml` / `variablesPath`.
 - `urls.local.yaml` and resolve paths drift from “the folder I am editing”.
 - There is no **one** validated rule set and no **visible** line in TTY output saying which path was used.
 
@@ -63,7 +81,7 @@ Before closing the implementation PR(s) for this plan:
 7. **JSDoc**: all new **public** functions in `lib/utils/manifest-location.js` (and any new exported helpers) documented per [Code Quality Standards](.cursor/rules/project-rules.mdc#code-quality-standards).
 8. **Security**: no secrets in logs or errors; paths resolved safely.
 9. **Docs / matrix**: user-facing docs listed under **Documentation to update** stay accurate; matrix **141** legend matches shipped Tier 2 behavior.
-10. **Phases**: P0b–P3 exit criteria in this plan satisfied or explicitly deferred with follow-up issue.
+10. **Phases**: P0b–P3 exit criteria in this plan satisfied for shipped slices; follow-up issues only for optional tests or Tier-1a / `getSystemBuilderRoot` open questions.
 
 ## Canonical search order (normative)
 
@@ -99,7 +117,7 @@ Before closing the implementation PR(s) for this plan:
 
 - **cwd** must be normalized (`path.resolve(process.cwd())`). If cwd has no `package.json`, Tier 1 may still allow `builder/<app>` / `integration/<system>` if directories exist (confirm with product; default: require existence only, not package.json).
 - **External vs builder app**: resolver API takes `targetKey` + `mode: 'integration' | 'builder' | 'auto'` (exact enum TBD) so Tier 1a vs 1b is unambiguous.
-- **Today’s code** (`lib/utils/paths.js`, `lib/utils/urls-local-registry.js`, `getResolveAppPath`, `refreshUrlsLocalRegistryFromBuilder`, mtime multi-root scan, `appendCwdProjectBuilderDirIfDistinct`, etc.) must be **replaced or thin-wrapped** by the new module to avoid drift. List all call sites in a pre-flight grep during implementation.
+- **Today’s code** (`lib/utils/paths.js`, `getResolveAppPath`, `refreshUrlsLocalRegistryFromBuilder`, etc.): prefer **thin-wrapping** the manifest resolver where possible to avoid drift. **`urls.local.yaml` refresh** (plan 141 P3) now uses canonical scan dirs + last-wins merge in `urls-local-registry.js` / `urls-local-registry-scan.js`.
 - **Regression risk**: callers that assumed Tier 2 was the Builder **package** repo must switch to **`getAifabrixWork() ?? getAifabrixHome()`** + `builder/<systemApp>`; document in `docs/` when behavior ships.
 - **Code vs plan:** `getSystemBuilderRoot()` today uses `resolveSystemBuilderParentDir(getAifabrixSystemDir(), getAifabrixHome())` and may **diverge** from **work → else home**; implementation of plan 141 must **reconcile** Tier 2 with that helper (or replace it) so manifest discovery and materialization use the same parent.
 
@@ -129,7 +147,7 @@ Keep user-facing docs aligned with Tier 2 (**work if set, else home**) when plan
 - Export `resolveApplicationManifestPath({ appKey, systemKey, mode, cwd })` (signature TBD); resolve **Tier 2** parent from **`getAifabrixWork()`** when set, else **`getAifabrixHome()`**, matching **`aifabrix-work`** / **`aifabrix-home`** in `config.yaml` (and env overrides).
 - Enforce system-app allowlist for Tier 2.
 - Optional: `assertManifestWithinCanonicalRoots(absPath)` for defense-in-depth when reading files passed from outside.
-- Unit tests: `tests/lib/utils/manifest-location.test.js` (isolated Jest project if file-count / ignore rules require it).
+- Unit tests: see **Plan tests (inventory)** (`tests/lib/utils/manifest-location.test.js`, isolated project **`manifest-location`**).
 
 **Non-goals in first slice**
 
@@ -174,7 +192,7 @@ This setup path will REPLACE the platform app folders under:
 | P0b | Implement setup prompt path formatting (`setup-prompts.js` + tests) | REPLACE block lists only resolved absolute paths; manual `af setup` check |
 | P1 | Implement `manifest-location.js` + tests; wire `resolve` + `refreshUrlsLocalRegistryFromBuilder` | CI green; manual `af resolve miso-controller` from `aifabrix-miso` picks `cwd/builder/...` |
 | P2 | Wire `run`, `build`, `up-miso`, `up-dataplane`, `up-platform`, `json`, `validate`, `show` | Matrix verified; gray line in each |
-| P3 | Narrow registry toward canonical config discovery; remove legacy multi-root scan only when product confirms | **Partial:** refresh now uses **`resolveApplicationConfigPath`** per app folder (json/yml/yaml). **Open:** drop mtime merge / `appendCwdProjectBuilderDirIfDistinct` / multi-dir ordering |
+| P3 | Registry refresh: canonical scan roots + deterministic merge (plan 141) | **`urls-local-registry.js` / `urls-local-registry-scan.js`**: fixed dir order, last-wins per `app.key`; no mtime merge; `resolveApplicationConfigPath` per folder (yaml/yml/json) |
 
 ## References
 
@@ -224,8 +242,8 @@ Unify on-disk manifest discovery and CLI transparency (gray **Manifest:** line, 
 
 ### Recommendations
 
-- Resolve **Open question 3** (`getSystemBuilderRoot` vs Tier 2) before P2 wiring to avoid double semantics on disk.
-- When implementing **P0b**, add a focused Jest test for absolute REPLACE lines (stable across OS path separators).
+- **`getSystemBuilderRoot` vs Tier 2** (`getSystemBuilderRoot` vs `<systemPlatformParent>`): confirm there is no remaining double semantics on disk; resolve in a small follow-up if grep finds drift.
+- ~~When implementing **P0b**, add a focused Jest test for absolute REPLACE lines~~ — ✅ **`tests/lib/commands/setup-prompts-format-paths.test.js`**.
 - After code ships, re-scan **Documentation to update** table and **`resolve-running-urls.md`** if registry copy mentions platform-app roots.
 
 ---
@@ -234,24 +252,22 @@ _Plan file: `.cursor/plans/141-manifest-location.plan.md` (basename 141 per plan
 
 ## Implementation Validation Report
 
-**Date**: 2026-05-14 (UTC, from validation run)  
+**Date**: 2026-05-14 (UTC, consolidated)  
 **Plan**: `.cursor/plans/141-manifest-location.plan.md`  
-**Status**: ⚠️ **INCOMPLETE (documentation / phase checklist)** — **code quality gates: PASSED**
+**Status**: ✅ **P0–P3 (registry refresh slice)** shipped in code + docs/matrix pass; optional follow-ups below.
 
 ### Executive summary
 
-Implementation for **P0b** (setup REPLACE absolute paths), **P1** (`manifest-location.js` + `getResolveAppPath` wiring), and **P2** (gray **Manifest:** metadata + per-platform-app orchestration) is present in the repo with matching unit tests. **`npm run lint:fix`**, **`npm run lint`**, **`npm test`**, and **`npm run build:ci`** all completed successfully at validation time.
-
-The plan markdown still shows **Status: Draft — … implementation not started** and **Before Development** items remain unchecked (`- [ ]`); **Phase P3** (remove legacy multi-root mtime / `appendCwdProjectBuilderDirIfDistinct` paths in `urls-local-registry.js` per product) is **not** done—`lib/utils/urls-local-registry.js` still documents mtime merge and `appendCwdProjectBuilderDirIfDistinct`. Treat the plan header / checkboxes as **stale** until updated in a doc-only pass.
+**P0b** (setup REPLACE absolute paths), **P1** (`manifest-location.js` + `getResolveAppPath` / `paths.js` wiring), **P2** (gray **Manifest:** + `manifestSource` JSON where specified), and **P3** (`urls-local-registry` canonical scan dirs + last-wins merge, no mtime / no `AIFABRIX_BUILDER_DIR` scan ordering) are implemented with unit tests. **Before Development** checkboxes in this file are **`[x]`**.
 
 ### Task completion (plan markdown)
 
 | Area | State |
 | ---- | ----- |
-| **Before Development** (L47–49) | ❌ All three checkboxes still `- [ ]` (not marked done in this file) |
-| **Phases P0–P2** (table L169–175) | ✅ Substantively implemented in code (resolver, setup paths, manifest emit + wiring) |
-| **Phase P3** | ❌ Not satisfied (`urls-local-registry.js` still uses mtime / multi-dir scan helpers) |
-| **Definition of Done** (L55–64) | ✅ Lint / default tests / `build:ci` verified this run; plan **Status** line not updated |
+| **Before Development** (§ Before Development) | ✅ All three items `[x]` in this file |
+| **Phases P0–P2** (phases table) | ✅ Implemented in code (resolver, setup paths, manifest emit + wiring) |
+| **Phase P3 (full exit)** | ✅ Registry refresh canonical scan + deterministic merge shipped (`urls-local-registry*`) |
+| **Definition of Done** (§ Definition of Done) | ✅ Lint / tests / `build:ci` green when last validated; re-run before each release PR |
 
 ### File existence validation
 
@@ -259,17 +275,23 @@ The plan markdown still shows **Status: Draft — … implementation not started
 | ---- | ------ |
 | `lib/utils/manifest-location.js` | ✅ Present (~163 lines) |
 | `lib/utils/manifest-source-emit.js` | ✅ Present (~128 lines) |
-| `tests/lib/utils/manifest-location.test.js` | ✅ Present |
-| `tests/lib/utils/manifest-source-emit.test.js` | ✅ Present |
-| `tests/lib/commands/setup-prompts-format-paths.test.js` | ✅ Present (`formatBuilderPlatformReplaceLines`) |
+| `lib/utils/urls-local-registry.js` | ✅ Present (P3 canonical scan dirs) |
+| `lib/utils/urls-local-registry-scan.js` | ✅ Present (last-wins merge per `app.key`) |
+| `tests/lib/utils/manifest-location.test.js` | ✅ Present; isolated **`manifest-location`** |
+| `tests/lib/utils/manifest-source-emit.test.js` | ✅ Present; isolated **`manifest-source-emit`** |
+| `tests/lib/utils/urls-local-registry.test.js` | ✅ Present; isolated **`urls-local-registry`** (P3) |
+| `tests/lib/utils/installation-log.test.js` | ✅ Present; isolated **`installation-log`** (Plan 140; CI stability with `paths`) |
+| `tests/lib/commands/setup-prompts-format-paths.test.js` | ✅ Present (`formatBuilderPlatformReplaceLines`; default suite) |
 | `lib/commands/setup-prompts.js` | ✅ `formatBuilderPlatformReplaceLines` uses `path.resolve(path.join(root, a))` for REPLACE list |
 | `.cursor/rules/cli-output-command-matrix.md` | ✅ Referenced in plan; third column **141** / **141+** in repo |
 | `lib/utils/paths.js` | ✅ `getResolveAppPath` integrates `manifest-location` (lazy require) |
 
 ### Test coverage
 
-- ✅ Unit tests exist for **manifest-location**, **manifest-source-emit**, and **setup REPLACE** path formatting.
-- ✅ Full **`npm test`** and **`test:ci`** (via `build:ci`) passed (6216+ default tests; isolated suites per CI script).
+See **Plan tests (inventory)** (paths isolated where required). Summary:
+
+- ✅ **`manifest-location`**, **`manifest-source-emit`**, **`urls-local-registry`**, **`installation-log`** — isolated projects; **`setup-prompts-format-paths`** — default suite.
+- ✅ **`npm test`** / **`test:ci`** via **`build:ci`** green when last validated (default + isolated aggregate).
 
 ### Code quality validation
 
@@ -295,15 +317,14 @@ The plan markdown still shows **Status: Draft — … implementation not started
 | Setup absolute REPLACE paths | ✅ `formatBuilderPlatformReplaceLines` + tests |
 | Gray **Manifest:** TTY + matrix-facing commands | ✅ `manifest-source-emit.js`; wired via `setup-utility`, `run`, `build`, `show`, `validate`, platform `up-*` / guided infra per recent implementation |
 | **JSON `manifestSource` field** | ✅ `resolve --json`, `validate --format json` (single app), `show --json` |
-| **P3** dead-code / registry simplification | ⚠️ **Partial** — registry reads canonical config filenames; multi-root mtime scan retained |
-| Plan **Status** / **Before Development** checkboxes | ✅ Updated in this file |
+| **P3** registry scan / merge | ✅ **Shipped (2026-05-14)** — canonical `buildCanonicalRegistryScanDirs` + last-wins merge in `urls-local-registry-scan.js` (no mtime, no `AIFABRIX_BUILDER_DIR` scan order) |
+| Plan **Status** / **Before Development** | ✅ Aligned with shipped work (see top of file) |
 
 ### Issues and recommendations
 
-1. ~~**Update plan front matter**~~ — **Status** and shipped slices updated in this file.
-2. ~~**Mark Before Development checkboxes**~~ — Marked complete.
-3. **P3**: Schedule removal or narrowing of `urls-local-registry.js` mtime multi-root logic once product signs off (plan exit criteria).
-4. **Optional**: Add integration or CLI snapshot tests for `Manifest:` lines only if flakiness appears (TTY-dependent).
+1. **Open questions** (§ Open questions): Tier **1a** scope and **`getSystemBuilderRoot` vs `<systemPlatformParent>`** edge cases remain for a focused PR if behavior still diverges anywhere on disk.
+2. **Goal §1 “single call graph”**: Resolver is **`resolveApplicationManifestPathSync`** wired from **`paths.js`** (`getResolveAppPath` / related); not every historical manifest read path may yet go through it — grep when tightening further.
+3. **Optional**: Integration or CLI snapshot tests for **Manifest:** lines if TTY output proves flaky in CI.
 
 ### Final validation checklist
 
@@ -312,7 +333,7 @@ The plan markdown still shows **Status: Draft — … implementation not started
 - [x] Targeted unit tests exist and pass  
 - [x] `npm run lint:fix` → `npm run lint` → `npm test` → **`npm run build:ci`** all green  
 - [x] Matrix + docs pass noted in plan **Documentation to update** / doc pass (2026-05-13)  
-- [ ] P3 exit criteria met or explicitly deferred with issue ID in this plan
+- [x] **Plan tests (inventory)** section documents Jest isolation + commands (`npm test`, `build:ci`, `--selectProjects`)
 
 ---
 
@@ -321,4 +342,4 @@ The plan markdown still shows **Status: Draft — … implementation not started
 **Date**: 2026-05-13  
 **Scope:** `getManifestSourcePayload` + **`resolve --json`**; **`manifestSource`** on **`validate --format json`** (single app) and **`show --json`**; **`urls-local-registry`** per-folder config via **`resolveApplicationConfigPath`** + **`loadConfigFile`** (including **`application.json`**); plan **Status** / **Before Development** / P3 table / open question 2 updated.
 
-Re-run from `aifabrix-builder/`: **`npm run lint:fix`**, **`npm run lint`**, **`npm test`**, **`npm run build:ci`**, and isolated **`npx jest --selectProjects urls-local-registry`** after touching registry or its tests.
+Re-run from `aifabrix-builder/`: **`npm run lint:fix`**, **`npm run lint`**, **`npm test`**, **`npm run build:ci`**, and isolated **`npx jest --config jest.config.isolated.js --selectProjects urls-local-registry`** (or **`manifest-location`**, **`manifest-source-emit`**, **`installation-log`**) after touching those modules or their tests.

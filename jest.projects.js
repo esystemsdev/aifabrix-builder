@@ -197,6 +197,10 @@ const defaultProject = {
       '\\\\tests\\\\lib\\\\utils\\\\manifest-location.test.js',
       'lib/utils/manifest-location.test.js',
       'manifest-location\\.test\\.js',
+      '/tests/lib/utils/installation-log.test.js',
+      '\\\\tests\\\\lib\\\\utils\\\\installation-log.test.js',
+      'lib/utils/installation-log.test.js',
+      'installation-log\\.test\\.js',
       '/tests/lib/utils/manifest-source-emit.test.js',
       '\\\\tests\\\\lib\\\\utils\\\\manifest-source-emit.test.js',
       'lib/utils/manifest-source-emit.test.js',
@@ -300,6 +304,7 @@ const isolatedProjects = [
     '**/tests/lib/utils/paths-system-builder-resolution.test.js'
   ]),
   makeIsolatedProject('manifest-location', ['**/tests/lib/utils/manifest-location.test.js']),
+  makeIsolatedProject('installation-log', ['**/tests/lib/utils/installation-log.test.js']),
   makeIsolatedProject('secrets-ancestor-paths', ['**/tests/lib/utils/secrets-ancestor-paths.test.js']),
   makeIsolatedProject('datasource-validation-watch', [
     '**/tests/lib/utils/datasource-validation-watch.test.js'
