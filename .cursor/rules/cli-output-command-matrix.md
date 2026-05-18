@@ -21,7 +21,7 @@ Third column documents **which on-disk trees** a command is expected to use for 
 | aifabrix login | tty-summary | cfg |
 | aifabrix logout | tty-summary | cfg |
 | aifabrix auth | tty-summary (`--set-controller [url]`: omit URL to pick from controllers stored under `device` + `controller` in config) | cfg |
-| aifabrix auth status | tty-summary | cfg |
+| aifabrix auth status | tty-summary (header + token + dataplane block; plan 142.0 adds version subsection — `Dataplane version`, `Min Builder CLI`, `This CLI`, `Compatibility: ✔ OK / Not enforced / ✖ Upgrade required` — and on mismatch the red blocking line + `Next actions:` block. `--validate` exit codes: `0` ok, `1` not authenticated, `3` CLI < dataplane min) | cfg |
 | aifabrix setup | tty-summary + stream-logs | 141+ |
 | aifabrix teardown | tty-summary + stream-logs | cfg |
 | aifabrix up-infra | tty-summary + stream-logs | cfg |

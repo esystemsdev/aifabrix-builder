@@ -17,7 +17,8 @@ const mockApiClient = jest.fn().mockImplementation((baseUrl, authConfig) => ({
 }));
 
 jest.mock('../../../lib/api/index', () => ({
-  ApiClient: mockApiClient
+  ApiClient: mockApiClient,
+  createDataplaneApiClient: mockApiClient
 }));
 
 const credentialApi = require('../../../lib/api/credential.api');

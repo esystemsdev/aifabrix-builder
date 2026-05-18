@@ -41,6 +41,14 @@ describe('help-builder', () => {
       expect(mgmtCat.commands.map(c => c.name)).toContain('integration-client');
     });
 
+    it('should list wizard first in External Systems as entrypoint', () => {
+      const extCat = CATEGORIES.find(c => c.name === 'External Systems');
+      expect(extCat).toBeDefined();
+      expect(extCat.commands[0]).toEqual({ name: 'wizard', term: 'wizard [systemKey]' });
+      const appCat = CATEGORIES.find(c => c.name === 'Applications (Create & Develop)');
+      expect(appCat.commands.map(c => c.name)).not.toContain('wizard');
+    });
+
     it('should include test-e2e and test-integration in External Systems', () => {
       const extCat = CATEGORIES.find(c => c.name === 'External Systems');
       expect(extCat).toBeDefined();
@@ -79,11 +87,11 @@ describe('help-builder', () => {
       const program = new Command();
       program.name('aifabrix').description('Test CLI');
       program.command('run <app>').description('Run application locally (or remotely on your Docker host)');
-      program.command('deploy <app>').description('Deploy to Azure or locally via Miso Controller');
+      program.command('deploy <appKey|systemKey>').description('Deploy to Azure or locally via Miso Controller');
 
       const help = buildCategorizedHelp(program);
-      expect(help).toContain('run <app>');
-      expect(help).toContain('deploy <app>');
+      expect(help).toContain('run <appKey>');
+      expect(help).toContain('deploy <appKey|systemKey>');
       expect(help).toContain('remotely on your Docker host');
       expect(help).toContain('Azure or locally');
     });
@@ -94,14 +102,14 @@ describe('help-builder', () => {
       program.command('shell <app>').description('Open interactive shell');
       program.command('logs <app>').description('Show application container logs');
       program.command('stop <app>').description('Stop and remove application container');
-      program.command('show <app>').description('Show application info');
+      program.command('show <appKey|systemKey>').description('Show application info');
       program.command('integration-client').description('Manage integration clients');
 
       const help = buildCategorizedHelp(program);
-      expect(help).toContain('shell <app>');
-      expect(help).toContain('logs <app>');
-      expect(help).toContain('stop <app>');
-      expect(help).toContain('show <app>');
+      expect(help).toContain('shell <appKey>');
+      expect(help).toContain('logs <appKey>');
+      expect(help).toContain('stop <appKey>');
+      expect(help).toContain('show <appKey|systemKey>');
       expect(help).toContain('integration-client');
     });
 
@@ -121,13 +129,13 @@ describe('help-builder', () => {
       const program = new Command();
       program.name('aifabrix').description('Test');
       program.command('upload <systemKey>').description('Upload external system to dataplane');
-      program.command('convert <app>').description('Convert config between JSON and YAML');
+      program.command('convert <appKey|systemKey>').description('Convert config between JSON and YAML');
       program.command('credential').description('Manage credentials');
       program.command('deployment').description('List deployments');
 
       const help = buildCategorizedHelp(program);
       expect(help).toContain('upload <systemKey>');
-      expect(help).toContain('convert <app>');
+      expect(help).toContain('convert <appKey|systemKey>');
       expect(help).toContain('credential');
       expect(help).toContain('deployment');
     });
