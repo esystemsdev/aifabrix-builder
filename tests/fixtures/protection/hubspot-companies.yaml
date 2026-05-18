@@ -1,0 +1,17 @@
+apiVersion: dataplane.aifabrix.ai/v1
+kind: Protection
+metadata:
+  key: hubspot-country-sales
+  displayName: HubSpot Country Sales Access
+spec:
+  enabled: true
+  datasourceKey: hubspot-companies
+  mode: replaceForSource
+  rules:
+    - key: sales-country-users
+      principal:
+        type: group
+        expression: "Sales {{fk.country.metadata.iso3}} Users"
+      grants:
+        - dimensionKey: country
+          valueExpression: "{{fk.country.metadata.iso2}}"

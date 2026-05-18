@@ -103,6 +103,9 @@ REQUIRED_LIB_SCHEMA=(
     "lib/schema/external-system.schema.json"
     "lib/datasource/capability/templates/minimal-fetch.json"
 )
+REQUIRED_TEST_FIXTURES=(
+    "tests/fixtures/protection/hubspot-companies.yaml"
+)
 SCHEMA_MISSING=()
 for rel in "${REQUIRED_LIB_SCHEMA[@]}"; do
     if [ ! -f "$TEST_PROJECT_DIR/$rel" ]; then
@@ -116,6 +119,25 @@ if [ "${#SCHEMA_MISSING[@]}" -gt 0 ]; then
     done
     echo "  Restore from git: git checkout HEAD -- lib/schema/"
     exit 1
+fi
+
+FIXTURE_MISSING=()
+for rel in "${REQUIRED_TEST_FIXTURES[@]}"; do
+    if [ ! -f "$TEST_PROJECT_DIR/$rel" ]; then
+        FIXTURE_MISSING+=("$rel")
+    fi
+done
+if [ "${#FIXTURE_MISSING[@]}" -gt 0 ]; then
+    echo -e "${YELLOW}⚠ Test fixtures missing under test copy:${NC}"
+    for rel in "${FIXTURE_MISSING[@]}"; do
+        echo "    - $rel"
+        if [ -f "$PROJECT_ROOT/$rel" ]; then
+            mkdir -p "$(dirname "$TEST_PROJECT_DIR/$rel")"
+            cp "$PROJECT_ROOT/$rel" "$TEST_PROJECT_DIR/$rel"
+            echo -e "${GREEN}  ✓ Copied $rel from project root${NC}"
+        fi
+    done
+    echo "  Protection unit tests also ship an embedded YAML fallback when fixtures are absent."
 fi
 
 echo -e "${GREEN}✓ Project copied${NC}"

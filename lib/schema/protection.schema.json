@@ -1,0 +1,374 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aifabrix://schema/protection.schema.json",
+  "title": "AI Fabrix Protection Manifest Schema",
+  "description": "Schema for Protection manifests deployed to the AI Fabrix Dataplane. A protection binds to exactly one deployed external datasource (spec.datasourceKey) and declares how synced records project principal-to-dimension-value grants during datasource sync. Distinct from datasource validation-rule 'when' in contracts/schemas/rule.schema.json: rules[].when here gates assignment and runtime using the local identity snapshot (User, Group, UserGroup) and subject dimension state only.",
+  "metadata": {
+    "key": "protection-schema",
+    "name": "Protection Manifest Schema",
+    "description": "JSON schema for validating Protection manifest documents (apiVersion/kind/metadata/spec envelope)",
+    "version": "1.0.0",
+    "type": "schema",
+    "category": "integration",
+    "author": "AI Fabrix Team",
+    "createdAt": "2026-05-18T00:00:00Z",
+    "updatedAt": "2026-05-18T00:00:00Z",
+    "compatibility": {
+      "minVersion": "1.0.0",
+      "maxVersion": "1.0.0",
+      "deprecated": false
+    },
+    "tags": [
+      "schema",
+      "protection",
+      "dataplane",
+      "integration",
+      "validation",
+      "abac",
+      "dimensions",
+      "projection"
+    ],
+    "dependencies": [
+      "external-datasource.schema.json"
+    ],
+    "changelog": [
+      {
+        "version": "1.0.0",
+        "date": "2026-05-18T00:00:00Z",
+        "changes": [
+          "Initial production schema for Protection manifests (401.1 dataplane baseline).",
+          "Envelope: apiVersion dataplane.aifabrix.ai/v1, kind Protection, metadata.key/displayName, spec.enabled/datasourceKey/mode/rules.",
+          "spec.datasourceKey scopes runtime projection to one deployed datasource; do not use legacy field name 'datasource'.",
+          "spec.mode: replaceForSource — per protection, per source record, replace prior projection outputs for that record.",
+          "rules[].principal: user (field) or group (field|expression); exactly one of field or expression per principal block.",
+          "rules[].grants: required dimensionKey and valueExpression; optional valueType only when Dimension.valueType is both (catalog resolved at validate/projection).",
+          "rules[].when: optional groups.requireAny (Group.key) and/or dimensions.requireAll (subject preconditions); additionalProperties false on when/groups/dimensions.",
+          "Expression roots (v1): metadata.*, fk.<name>.metadata.*, fk.<name>.dimension.* (one-hop FK only).",
+          "principalRef storage uses normalized User.id / Group.id after projection (401.3); not validated structurally in this schema."
+        ],
+        "breaking": false
+      }
+    ]
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "const": "dataplane.aifabrix.ai/v1",
+      "description": "API version of the Protection manifest envelope. Must be dataplane.aifabrix.ai/v1 for v1 tooling and upload APIs."
+    },
+    "kind": {
+      "type": "string",
+      "const": "Protection",
+      "description": "Resource kind discriminator. Must be Protection."
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Identity and display metadata for this protection. metadata.key is globally unique in v1 and is the protection key used in APIs, lineage tables, and builder CLI.",
+      "required": ["key", "displayName"],
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Unique protection key (globally unique in v1). Lowercase alphanumeric and hyphens; used as protectionKey in storage and APIs.",
+          "examples": ["hubspot-country-sales", "hr-persons-protection"]
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Human-readable name shown in builder and operator UIs.",
+          "examples": ["HubSpot Country Sales Access", "HR Persons Protection"]
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Protection specification. spec.enabled is the canonical enable flag; the dataplane denormalizes it to ProtectionManifest.enabled for indexed queries.",
+      "required": ["enabled", "datasourceKey", "mode", "rules"],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Canonical enable flag. When false, the protection is stored but not selected for projection during datasource sync (indexed enabled column mirrors this value on upload)."
+        },
+        "datasourceKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Deployed external datasource key this protection applies to. Runtime projection runs only during sync of this datasource. Must match ExternalDataSource.key. Do not use the field name 'datasource'.",
+          "examples": ["hubspot-companies", "hubspot-deals", "hr-persons"]
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["replaceForSource"],
+          "description": "Projection replacement mode (v1). replaceForSource: for each source record on datasourceKey, replace all dynamic values and grants previously emitted by this protection for that sourceRecordId (per protection, not global)."
+        },
+        "rules": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Projection rules. rules[].key is unique within this protection only; storage identity is (protectionKey, projectionRuleKey).",
+          "items": {
+            "$ref": "#/$defs/protectionRule"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "protectionRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One projection rule: resolve principals from synced records, optionally gate on subject when, emit dimension value grants.",
+      "required": ["key", "principal", "grants"],
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Rule key unique within this protection (projectionRuleKey in lineage).",
+          "examples": ["sales-country-users", "hr-manager-department", "europe-region-group"]
+        },
+        "when": {
+          "$ref": "#/$defs/ruleWhen",
+          "description": "Optional subject preconditions evaluated against local identity snapshot and subject dimensions. Omitted = rule always eligible (subject to principal resolution only). Not the same as datasource validation-rule when."
+        },
+        "principal": {
+          "$ref": "#/$defs/principal",
+          "description": "How to resolve the principal (user or group) from each synced record on datasourceKey."
+        },
+        "grants": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Dimension value grants to attach to the resolved principal for each qualifying record.",
+          "items": {
+            "$ref": "#/$defs/grant"
+          }
+        }
+      }
+    },
+    "ruleWhen": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "description": "Optional rule-level gate. If both groups and dimensions are present, all blocks must pass (AND). Evaluated at projection (401.3) and re-checked at runtime (401.4).",
+      "properties": {
+        "groups": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Group membership gate. For user principals: grants are not persisted unless the user is in at least one requireAny group (UserGroup). Group-target rules typically ignore when.groups unless product overrides.",
+          "required": ["requireAny"],
+          "properties": {
+            "requireAny": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "description": "Group.key values from the local identity snapshot; subject must be a member of at least one.",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "examples": [["Manager"], ["Sales", "SalesManager"]]
+            }
+          }
+        },
+        "dimensions": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Subject dimension precondition: the subject must already hold all listed dimension values before grants from this rule are applied.",
+          "required": ["requireAll"],
+          "properties": {
+            "requireAll": {
+              "type": "array",
+              "minItems": 1,
+              "description": "All entries must be satisfied (AND). Gates subject state, not record fields.",
+              "items": {
+                "$ref": "#/$defs/whenDimensionRequireAll"
+              }
+            }
+          }
+        }
+      }
+    },
+    "whenDimensionRequireAll": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dimensionKey", "values"],
+      "properties": {
+        "dimensionKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Dimension catalog key (Dimension.key).",
+          "examples": ["department", "sensitivity", "country"]
+        },
+        "values": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Required dimension value strings for the subject at evaluation time.",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "examples": [["restricted"], ["FI", "SE"]]
+        }
+      }
+    },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Principal resolution from the syncing datasource record. Exactly one of field or expression must be set. Resolved principalRef at projection must be User.id or Group.id (never display name or raw email as canonical ref).",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["user", "group"],
+          "description": "Principal kind. user: resolve via field on the record to a User row. group: resolve via field or expression to a Group row (Group.key or Group.id)."
+        },
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "Record field path (scalar or array path such as metadata.teamMembers[].email). Required for type=user. Allowed for type=group when resolving from record data.",
+          "examples": ["metadata.managerEmail", "metadata.teamMembers[].email"]
+        },
+        "expression": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "Template expression resolving to a group identifier (typically Group.key). Common for type=group. Allowed roots: metadata.*, fk.<name>.metadata.*, fk.<name>.dimension.* (one-hop FK only).",
+          "examples": [
+            "Sales {{fk.country.metadata.iso3}} Users",
+            "Sales Nordics Users"
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["field"],
+          "not": {
+            "required": ["expression"]
+          }
+        },
+        {
+          "required": ["expression"],
+          "not": {
+            "required": ["field"]
+          }
+        }
+      ]
+    },
+    "grant": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Grant of one dimension value to the resolved principal. effective valueType is resolved from Dimension.valueType in the synced catalog when Dimension.valueType is static or dynamic; grant.valueType is required only when catalog valueType is both.",
+      "required": ["dimensionKey", "valueExpression"],
+      "properties": {
+        "dimensionKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Dimension catalog key (Dimension.key). Must exist in the synced dimension catalog.",
+          "examples": ["country", "region", "department", "project"]
+        },
+        "valueExpression": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "Expression evaluated per record/FK context to produce the dimension value string. static dimensions: value must exist in DimensionValue catalog. dynamic dimensions: value may be upserted into dynamic_dimension_values at projection.",
+          "examples": [
+            "{{fk.country.metadata.iso2}}",
+            "europe",
+            "{{metadata.departmentCode}}",
+            "{{metadata.projectCode}}"
+          ]
+        },
+        "labelExpression": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "Optional human-readable label for dynamic dimension values (projection stores label when valueType resolves to dynamic)."
+        },
+        "valueType": {
+          "type": "string",
+          "enum": ["static", "dynamic"],
+          "description": "Disambiguates static vs dynamic assignment when Dimension.valueType in the catalog is both. Omit when catalog valueType is static or dynamic."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "apiVersion": "dataplane.aifabrix.ai/v1",
+      "kind": "Protection",
+      "metadata": {
+        "key": "hubspot-country-sales",
+        "displayName": "HubSpot Country Sales Access"
+      },
+      "spec": {
+        "enabled": true,
+        "datasourceKey": "hubspot-companies",
+        "mode": "replaceForSource",
+        "rules": [
+          {
+            "key": "sales-country-users",
+            "principal": {
+              "type": "group",
+              "expression": "Sales {{fk.country.metadata.iso3}} Users"
+            },
+            "grants": [
+              {
+                "dimensionKey": "country",
+                "valueExpression": "{{fk.country.metadata.iso2}}",
+                "labelExpression": "{{fk.country.metadata.name}}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "dataplane.aifabrix.ai/v1",
+      "kind": "Protection",
+      "metadata": {
+        "key": "hr-persons-protection",
+        "displayName": "HR Persons Protection"
+      },
+      "spec": {
+        "enabled": true,
+        "datasourceKey": "hr-persons",
+        "mode": "replaceForSource",
+        "rules": [
+          {
+            "key": "hr-manager-department",
+            "when": {
+              "groups": {
+                "requireAny": ["Manager"]
+              }
+            },
+            "principal": {
+              "type": "user",
+              "field": "metadata.managerEmail"
+            },
+            "grants": [
+              {
+                "dimensionKey": "department",
+                "valueExpression": "{{metadata.departmentCode}}"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -46,6 +46,7 @@ Third column documents **which on-disk trees** a command is expected to use for 
 | aifabrix test | stream-logs | 141 |
 | aifabrix install | stream-logs | 141 |
 | aifabrix test-e2e | layout-blocks | int |
+| aifabrix test-trust | layout-blocks | int |
 | aifabrix lint | stream-logs | — |
 | aifabrix download | tty-summary | int |
 | aifabrix upload | tty-summary | int |
@@ -85,11 +86,22 @@ Third column documents **which on-disk trees** a command is expected to use for 
 | aifabrix datasource test | layout-blocks | int |
 | aifabrix datasource test-integration | layout-blocks | int |
 | aifabrix datasource test-e2e | layout-blocks | int |
+| aifabrix datasource test-trust | layout-blocks | int |
 | aifabrix datasource log-e2e | tty-summary | int |
 | aifabrix datasource log-integration | tty-summary | int |
 | aifabrix dimension create | tty-summary | cfg |
 | aifabrix dimension get | tty-summary | cfg |
 | aifabrix dimension list | tty-summary | cfg |
+| aifabrix protection validate | layout-blocks + json-opt | int |
+| aifabrix protection create | tty-summary + stdout-only (--dry-run) | int |
+| aifabrix protection upload | layout-blocks + tty-summary | int |
+| aifabrix protection list | tty-summary (normal table list) + json-opt | int |
+| aifabrix protection show | tty-summary + json-opt | int |
+| aifabrix protection delete | tty-summary | int |
+| aifabrix validate .protection | layout-blocks + json-opt | int |
+| aifabrix upload .protection | layout-blocks + json-opt | int |
+| aifabrix convert .protection | tty-summary | int |
+| aifabrix deploy .protection | blocking error | int |
 | aifabrix dimension-value create | tty-summary | cfg |
 | aifabrix dimension-value list | tty-summary | cfg |
 | aifabrix dimension-value delete | tty-summary | cfg |
@@ -136,6 +148,8 @@ _Generated for adoption tracking; see `.cursor/plans/Done/129-cli_layout_adoptio
 
 - **Source of truth:** [layout.md](./layout.md) and [cli-layout.mdc](./cli-layout.mdc) — glyphs **✔ ✖ ⚠ ⏭**, semantic colors, **`formatNextActions`** / **`formatBulletSection`**-style sections where applicable.
 - **Manifest line (plan 141):** For rows tagged **141** / **141+** / **int**, when the command reads an app or integration manifest, emit one gray **Manifest:** metadata line (`metadata()` / shared helper) with absolute path + tier — see [.cursor/plans/141-manifest-location.plan.md](../plans/141-manifest-location.plan.md). **json-opt** / **stdout-only**: omit decorative line or add machine field per plan phase.
+- **`dimension` create/get/list:** TTY must show **`valueType`** when present (`Value type:` on get; **VType** column on list; create success line includes valueType).
+- **`protection`*** (plan 141): use **`lib/protection/protection-display.js`** + **`cli-test-layout-chalk`**; `--json` stdout-only; manifests under **`{work}/.protection/`** (not integration).
 - **`datasource capability`** (`copy` | `remove` | `create` | `edit` | `validate` slice OK): success sections use **`lib/utils/cli-test-layout-chalk.js`** (`formatBulletSection`, `formatNextActions`, `formatSuccessLine`, `headerKeyValue`, `infoLine`, `metadata`); errors use **`formatBlockingError`**.
 - **`datasource capability diff`:** stdout-only structural diff from **`lib/core/diff`** (minimal chalk); unchanged.
 - **Backlog (incremental):** Remaining raw **`chalk.green`** success lines (outside `cli-test-layout-chalk`), and any future drift from canonical glyphs (**✔ ✖ ⚠ ⏭**). Wizard (`\\u2713`), `dev-*`, `secure`, guided infra TLS flag, deploy status, and local external test TTY rows have been migrated to shared helpers.

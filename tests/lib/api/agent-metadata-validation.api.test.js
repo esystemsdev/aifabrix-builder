@@ -35,7 +35,7 @@ describe('Agent metadata validation API', () => {
   });
 
   describe('runAgentMetadataValidation', () => {
-    it('posts to agent-metadata-validation with body', async () => {
+    it('posts to agent-metadata-validation with body', async() => {
       const body = { forceRevalidate: true };
       await agentMetadataApi.runAgentMetadataValidation(
         dataplaneUrl,
@@ -49,10 +49,24 @@ describe('Agent metadata validation API', () => {
         { body }
       );
     });
+
+    it('forwards timeoutMs when provided', async() => {
+      await agentMetadataApi.runAgentMetadataValidation(
+        dataplaneUrl,
+        sourceKey,
+        authConfig,
+        {},
+        { timeoutMs: 120000 }
+      );
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/api/v1/external/hubspot-companies/agent-metadata-validation',
+        { body: {}, timeoutMs: 120000 }
+      );
+    });
   });
 
   describe('getLatestAgentMetadataValidation', () => {
-    it('gets latest agent-validation', async () => {
+    it('gets latest agent-validation', async() => {
       await agentMetadataApi.getLatestAgentMetadataValidation(
         dataplaneUrl,
         sourceKey,
@@ -60,13 +74,14 @@ describe('Agent metadata validation API', () => {
       );
 
       expect(mockClient.get).toHaveBeenCalledWith(
-        '/api/v1/external/hubspot-companies/agent-validation'
+        '/api/v1/external/hubspot-companies/agent-validation',
+        {}
       );
     });
   });
 
   describe('listAgentMetadataValidationHistory', () => {
-    it('gets agent-validation history', async () => {
+    it('gets agent-validation history', async() => {
       await agentMetadataApi.listAgentMetadataValidationHistory(
         dataplaneUrl,
         sourceKey,

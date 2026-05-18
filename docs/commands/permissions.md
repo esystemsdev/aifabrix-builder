@@ -49,14 +49,25 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | `aifabrix integration-client delete` | Controller | `integration-client:delete` | Deactivate an integration client. |
 | `aifabrix integration-client update-groups` | Controller | `integration-client:update` | Update group assignments for an integration client. |
 | `aifabrix integration-client update-redirect-uris` | Controller | `integration-client:update` | Update redirect URIs for an integration client (min 1). |
-| `aifabrix dimension create` | Controller | `dimensions:create` (and `dimensions:read` for idempotent behavior) | Creates the dimension if missing; succeeds if it already exists. Supports `--file` for CI/CD. |
+| `aifabrix dimension create` | Controller | `dimensions:create` (and `dimensions:read` for idempotent behavior) | Creates the dimension if missing; succeeds if it already exists. Supports `--file` and `--value-type` (`static` \| `dynamic` \| `both`) for CI/CD and protection authoring. |
 | `aifabrix dimension get` | Controller | `dimensions:read` | Reads one dimension by id or key. |
 | `aifabrix dimension list` | Controller | `dimensions:read` | Lists dimensions with optional paging/search. |
 | `aifabrix dimension-value create` | Controller | `dimensions:create` | Creates a value for a dimension (static dimension). Value must be unique within the dimension. |
 | `aifabrix dimension-value list` | Controller | `dimensions:read` | Lists values for a dimension. |
 | `aifabrix dimension-value delete` | Controller | `dimensions:delete` | Deletes a dimension value by id. |
+| `aifabrix protection validate <datasourceKey>` | Dataplane | `external-system:read` | Local schema check (offline), then dataplane validate; `--simulate` uses the same read scope. |
+| `aifabrix protection create <datasourceKey>` | Dataplane + Controller | **Dataplane** `external-system:read` (datasource GET); **Controller** `dimensions:read` (dimension GET); then **local** file write only | Probes online context, applies `--type` preset or explicit overrides, then writes `{work}/.protection/<datasourceKey>.yaml`. No dataplane upload until `protection upload`. |
+| `aifabrix protection upload <datasourceKey>` | Dataplane | `external-system:publish`; `external-system:read` (validate + preflight datasource exists) | `--dry-run` stops after validate (read only). Unless `--no-sync`, may start a datasource sync after upload (same dataplane sync scopes as other publish flows). |
+| `aifabrix protection list` | Dataplane | `external-system:read` | Lists deployed protection manifests on the dataplane (paginated). |
+| `aifabrix protection show <datasourceKey>` | Dataplane | `external-system:read` | Reads deployed manifest and status for one protection key (resolved from datasource key). |
+| `aifabrix protection delete <datasourceKey>` | Dataplane | `external-system:delete` | Removes deployed protection and lineage-generated grants/values. |
+| `aifabrix validate .protection` | Dataplane | `external-system:read` (when dataplane validate runs) | Batch local AJV for all files under `{work}/.protection/`; dataplane validate per file when authenticated. |
+| `aifabrix upload .protection` | Dataplane | `external-system:publish`; `external-system:read` | Batch upload all manifests; preflight requires each `spec.datasourceKey` to exist on the dataplane. |
+| `aifabrix convert .protection` | Local | — | Converts manifest file formats under `{work}/.protection/` only; no Controller or Dataplane call. |
+| `aifabrix test-trust <systemKey>` | Dataplane | `external-system:publish` (default upload before run); `external-data-source:update` (agent metadata validation) | External integrations only (`integration/<systemKey>/`). With `--no-sync`, publish is skipped; validation still requires `external-data-source:update`. |
+| `aifabrix datasource test-trust <datasourceKey>` | Dataplane | Same as **`test-trust`** | Single-datasource semantic trust run (404.5). Default uploads integration files first (Bearer required for pipeline upload, same as `test-e2e`). |
 
-For `aifabrix datasource test`, `datasource test-integration`, and `datasource test-e2e`, flags such as `--watch` only re-run the same command when local files change; permissions and Dataplane scopes are unchanged per invocation.
+For `aifabrix datasource test`, `datasource test-integration`, `datasource test-e2e`, and `datasource test-trust`, flags such as `--watch` only re-run the same command when local files change; permissions and Dataplane scopes are unchanged per invocation.
 
 ---
 
@@ -90,12 +101,13 @@ For `aifabrix datasource test`, `datasource test-integration`, and `datasource t
 
 ## Dataplane permissions (summary)
 
-- **external-system:read** – List/get external systems, config, OpenAPI files/endpoints, wizard deployment docs, platforms. Also covers read-only **pipeline upload** listing and retrieval and **deployment validation** on the Dataplane.
+- **external-system:read** – List/get external systems, config, OpenAPI files/endpoints, wizard deployment docs, platforms. Also covers read-only **pipeline upload** listing and retrieval, **deployment validation** on the Dataplane, and **protection** validate/simulate/list/show/status/history/explain (`aifabrix protection *` read paths, `validate .protection` dataplane step).
 - **external-system:create** – Create external system, from-template, wizard sessions and steps (parse, detect-type, generate-config, validate, etc.).
 - **external-system:update** – Update external system, publish, rollback, save-template, deployment docs POST.
-- **external-system:delete** – Delete (soft) external system.
-- **external-system:publish** – Dataplane **pipeline deployment** (mutating): full-system upload (draft or published), optional validate, and datasource-scoped publish require **OAuth2 (Bearer) only**; client id/secret are **not** accepted for those flows. **Pipeline test** (system or per-datasource) accepts Bearer, API key, or **client credentials** (x-client-id / x-client-secret) for CI/CD.
-- **external-data-source:read** – Dataplane pipeline test and datasource validation runs. Can be used for pipeline test (alternative to `external-system:publish`). Covers `aifabrix datasource test` and `test-integration` when not using `external-system:publish`, and is required for `aifabrix datasource test-e2e` (unified E2E validation run; same login or app-token style auth as `test-integration`).
+- **external-system:delete** – Delete (soft) external system. Also required for **`aifabrix protection delete`** (removes deployed protection manifest and projection lineage).
+- **external-system:publish** – Dataplane **pipeline deployment** (mutating): full-system upload (draft or published), optional validate, and datasource-scoped publish require **OAuth2 (Bearer) only**; client id/secret are **not** accepted for those flows. **Pipeline test** (system or per-datasource) accepts Bearer, API key, or **client credentials** (x-client-id / x-client-secret) for CI/CD. Also required for **protection upload** (`aifabrix protection upload`, `upload .protection`) and default pre-run upload for **`test-trust`** (same Bearer rule as other pipeline uploads).
+- **external-data-source:read** – Dataplane pipeline test and datasource validation runs. Can be used for pipeline test (alternative to `external-system:publish`). Covers `aifabrix datasource test` and `test-integration` when not using `external-system:publish`, and is required for `aifabrix datasource test-e2e` (unified E2E validation run; same login or app-token style auth as `test-integration`). Also used by agent metadata validation **GET** (latest/history) when the CLI reads cached trust results.
+- **external-data-source:update** – Mutating datasource-scoped operations. Required for **`aifabrix test-trust`** / **`datasource test-trust`** agent metadata validation runs (`POST` on the dataplane). Distinct from E2E read-only checks: trust runs may change persisted `agentValidation` state on the datasource.
 - **credential:read** – List/get credentials, wizard credentials list.
 - **credential:create** – Create credential (if used by wizard).
 - **credential:update** – Update credential.
@@ -111,5 +123,8 @@ For `aifabrix datasource test`, `datasource test-integration`, and `datasource t
 - [Application Management Commands](application-management.md) – Show, register, rotate.
 - [Deployment Commands](deployment.md) – Deploy and env deploy.
 - [External Integration Commands](external-integration.md) – Download, datasource upload, wizard.
+- [Dimensions](dimensions.md) – Dimension catalog (`valueType`) for protection authoring.
+- [Protection](protection.md) – Protection manifests in `{work}/.protection/`.
+- [External integration testing](external-integration-testing.md) – `test`, `test-integration`, `test-e2e`, and **`test-trust`** (semantic agent metadata validation).
 - Miso Controller OpenAPI: `openapi-complete.yaml` in the miso-controller repo (operationId and security.oauth2 per path).
 - Dataplane OpenAPI: `openapi.yaml` in the dataplane repo (operationId and security.oauth2 per path).

@@ -55,7 +55,8 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix integration-client delete`](application-management.md#aifabrix-integration-client-delete) - Deactivate an integration client
   - [`aifabrix integration-client update-groups`](application-management.md#aifabrix-integration-client-update-groups) - Update group assignments for an integration client
   - [`aifabrix integration-client update-redirect-uris`](application-management.md#aifabrix-integration-client-update-redirect-uris) - Update redirect URIs for an integration client
-  - [Dimensions](dimensions.md) - Dimension catalog (create/get/list) for ABAC validation
+  - [Dimensions](dimensions.md) - Dimension catalog (create/get/list, `valueType`) for ABAC and protection
+  - [Protection](protection.md) - Protection manifests in `{work}/.protection/` (validate/upload/show/delete)
 
 ### Application Development
 - [Application Development Commands](application-development.md) - Local development

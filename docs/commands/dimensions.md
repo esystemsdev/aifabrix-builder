@@ -17,7 +17,20 @@ The Controller is the **source of truth**. The dataplane becomes consistent afte
 
 ## Dimension commands (`aifabrix dimension …`)
 
-Manage dimension definitions (keys, display names, data types, required flags, and optional static values).
+Manage dimension definitions (keys, display names, data types, value assignment mode, required flags, and optional static values).
+
+## Value type (`valueType`)
+
+Each dimension has a **value type** (separate from **data type**):
+
+| valueType | Meaning | Protection grants |
+|-----------|---------|-------------------|
+| static | Values only from catalog (`dimension-value create` or baseline JSON) | Use `dimensionKey` + `valueExpression` only |
+| dynamic | Values created by protection projection from datasource sync | Same |
+| both | Catalog and projection allowed | Grant must include `valueType: static` or `dynamic` |
+
+Set on create: `--value-type static|dynamic|both` or in the `--file` JSON next to `dataType`.  
+For protection workflows, see [Protection](protection.md).
 
 ### aifabrix dimension create
 
@@ -35,6 +48,9 @@ aifabrix dimension create -h
 
 # Minimal create
 aifabrix dimension create --key customerRegion --display-name "Customer Region" --data-type string
+
+# Dynamic dimension (projection from datasource data)
+aifabrix dimension create --key department --display-name "Department" --data-type string --value-type dynamic
 
 # Mark required
 aifabrix dimension create --key dataClassification --display-name "Data Classification" --data-type string --required

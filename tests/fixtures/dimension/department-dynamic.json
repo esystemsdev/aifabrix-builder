@@ -1,0 +1,8 @@
+{
+  "key": "department",
+  "displayName": "Department",
+  "dataType": "string",
+  "valueType": "dynamic",
+  "isRequired": false,
+  "values": []
+}

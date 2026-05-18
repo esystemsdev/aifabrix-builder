@@ -13,6 +13,7 @@ Testing external integrations happens in three tiers:
 1. **Unit tests** (`aifabrix test <app>`) – Local validation with no API calls. Validates syntax, schemas, field mappings, metadata schemas, and relationships using test payloads from the datasource configuration.
 2. **Integration tests** (`aifabrix test-integration <app>`) – For an external system folder, calls the dataplane for an **app-wide** integration rollup (small CLI surface: environment, verbosity, debug). Per-datasource payloads, timeouts, and machine modes live on **`aifabrix datasource test-integration <datasourceKey>`**. Validates field mappings, metadata schemas, endpoint connectivity, and ABAC dimensions as returned by the dataplane for that flow.
 3. **End-to-end (E2E) tests** (`aifabrix datasource test-e2e <datasourceKey>`) – Full flow against real external systems: config validation, credential connectivity, sync execution, data persistence, and CIP simulation. Uses real credentials and real external APIs (e.g. HubSpot, SharePoint).
+4. **Semantic trust** (`aifabrix test-trust <systemKey>` / `aifabrix datasource test-trust <datasourceKey>`) – Dataplane review of **business metadata** for AI agents (semantic fit, warnings, publish gate). Does **not** call external APIs or run CIP; use after local `test` and before or alongside E2E when you need trust evidence separate from connectivity.
 
 **Dataplane datasource validation (single key):** `aifabrix datasource test <datasourceKey>` runs the unified validation API with run type **test** (structural/policy on the dataplane). `aifabrix datasource test-integration` uses run type **integration** (richer integration checks). Both use the same deployment auth as `datasource test-e2e`. See [External Integration Commands – datasource test](external-integration.md#aifabrix-datasource-test-datasourcekey).
 
@@ -22,6 +23,7 @@ Testing external integrations happens in three tiers:
 - **Datasource test (dataplane):** After publish, when you want a fast dataplane-side validation report for one datasource key (CI-friendly with `--json`).
 - **Integration tests:** After unit tests pass, when validating against the dataplane without calling external systems (app-level `test-integration` or per-datasource `datasource test-integration`). Requires login and dataplane access.
 - **E2E tests:** When you need to verify the full integration flow—credentials, sync, and data landing—before production. Requires the datasource to be published, credentials configured, and the same authentication style as other datasource dataplane commands (see [External Integration Commands](external-integration.md#aifabrix-datasource-test-e2e-datasourcekey)).
+- **Semantic trust:** When you need to know whether **agent-facing metadata** on the dataplane is trusted enough for agents and publish (not whether HubSpot/SharePoint APIs work). Requires login and dataplane access; publishes local integration files before the run unless you pass **`--no-sync`**.
 
 **Prerequisites for integration tests:**
 
@@ -31,6 +33,8 @@ Testing external integrations happens in three tiers:
 
 <a id="debug-output-datasource-commands"></a>
 ### Debug output (`datasource` commands)
+
+For **`aifabrix datasource test`**, **`datasource test-integration`**, **`datasource test-e2e`**, and **`datasource test-trust`**, debug logging can write JSON under **`integration/<systemKey>/logs/`** (prefixes **`test-`**, **`test-integration-`**, **`test-e2e-`**, **`test-trust-`** respectively). Structural **`datasource log-test`** only opens **`test-*.json`** files and ignores the other prefixes.
 
 For **`aifabrix datasource test`**, **`datasource test-integration`**, and **`datasource test-e2e`**, **`--debug`** accepts an optional **level**: **`summary`** (default when you pass `--debug` alone), **`full`**, or **`raw`**. The dataplane returns richer debug in the run result; the CLI prints an extra appendix after the normal human output (truncation, line caps, and basic redaction on **`raw`**). All three commands also write a timestamped JSON file under **`integration/<systemKey>/logs/`**—filename prefixes are **`test-`**, **`test-integration-`**, and **`test-e2e-`** respectively. Use **`aifabrix datasource log-test`** to open the latest structural **`test-*.json`** (see [External Integration Commands](external-integration.md#aifabrix-datasource-log-test-datasourcekey)). If you use **`--json`**, stdout is only the raw report JSON—no debug appendix.
 
@@ -276,6 +280,70 @@ E2E tests use real external systems and credentials.
 - Use **test credentials** and **test environments** (for example HubSpot dev portal, SharePoint test site).
 - Avoid production data.
 - Prefer isolated CI environments when possible.
+
+---
+
+## Semantic trust (`aifabrix test-trust`)
+
+<a id="semantic-trust-aifabrix-test-trust"></a>
+
+### What this layer checks
+
+Semantic trust answers whether **business metadata** on the dataplane is fit for **AI agents and publish**, not whether your laptop can parse JSON or whether a vendor API accepts credentials.
+
+| Layer | Command | Proves |
+| ----- | ------- | ------ |
+| Local structure | `aifabrix test` | Files and schemas on disk |
+| Dataplane integration | `test-integration` | Dataplane accepts config; integration checks |
+| Live external proof | `datasource test-e2e` | Credentials, sync, records, CIP |
+| **Semantic trust** | **`test-trust`** | Agent metadata validation and trust decision on the dataplane |
+
+**Default publish gate (informative):** `notTrusted` blocks publish; `usableWithWarnings` is allowed with warnings; use **`--strict`** on the CLI to require `trusted` for exit code 0.
+
+### Commands
+
+```bash
+# All datasources under integration/<systemKey>/ (declaration order, same as test-e2e)
+aifabrix test-trust hubspot
+aifabrix test-trust hubspot -v --revalidate
+aifabrix test-trust hubspot --no-sync
+
+# Single datasource
+aifabrix datasource test-trust hubspot-companies --app hubspot -v
+```
+
+### Options (aligned with other test commands)
+
+Shared with **`test-e2e`** where applicable: **`-a, --app`**, **`-e, --env`**, **`-v, --verbose`**, **`-d, --debug`**, **`--no-sync`**, **`--json`**, **`--summary`**.
+
+Trust-specific:
+
+- **`--revalidate`** – Force a fresh validation run on the dataplane (do not rely only on cached latest).
+- **`--strict`** – Exit with status **1** unless trust decision is **`trusted`** (default allows `usableWithWarnings`).
+- **`--warnings-as-errors`** – Treat `usableWithWarnings` like a failure for exit code purposes.
+- **`--timeout <ms>`** – HTTP timeout for validate/latest requests (default **120000** on both top-level and datasource commands).
+- **`--summary`** – Compact output; when **`--revalidate`** is omitted, the CLI reads the latest stored validation from the dataplane first (falls back to a new run if none exists).
+
+### Prerequisites
+
+- Logged in: `aifabrix login`
+- Dataplane reachable (URL from controller, same as other datasource commands)
+- Integration folder under **`integration/<systemKey>/`** with datasources declared like **`test-e2e`**
+
+Unless **`--no-sync`** is set, the CLI **uploads local integration files** before each trust run so the dataplane evaluates what is on disk.
+
+### Recommended order
+
+1. `aifabrix test <systemKey>` — fix local structure.
+2. `aifabrix test-trust <systemKey>` — fix semantic metadata gaps cheaply.
+3. `aifabrix datasource test-e2e <datasourceKey>` — prove live external behavior.
+
+### Troubleshooting
+
+- **External system only** — `test-trust` applies to **`integration/<systemKey>/`** external apps, not generic builder apps.
+- **Confused with E2E green** — E2E success does not imply semantic trust; run **`test-trust`** when agent metadata matters.
+- **Stale dataplane config** — Omit **`--no-sync`** so local files upload first, or publish manually then use **`--no-sync`**.
+- **Strict CI failure** — Drop **`--strict`** for warning-only gates, or fix findings until decision is **`trusted`**.
 
 ---
 
