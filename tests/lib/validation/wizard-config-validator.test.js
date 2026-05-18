@@ -7,6 +7,9 @@
  */
 
 const fs = require('fs');
+const fsp = require('node:fs/promises');
+const path = require('path');
+const os = require('os');
 const yaml = require('js-yaml');
 
 // Mock fs
@@ -29,6 +32,7 @@ const {
   loadWizardConfig,
   validateWizardConfig,
   validateWizardConfigSchema,
+  resolveWizardOpenApiFilePath,
   resolveEnvVar,
   resolveEnvVarsInObject,
   formatValidationErrors,
@@ -519,6 +523,27 @@ describe('Wizard Config Validator', () => {
 
       expect(result.valid).toBe(false);
       expect(result.errors[0]).toContain('not found');
+    });
+
+  });
+
+  describe('resolveWizardOpenApiFilePath', () => {
+    it('prefers cwd over config directory for relative paths', async() => {
+      const tmpRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'wizard-resolve-'));
+      const configDir = path.join(tmpRoot, 'cfg');
+      await fsp.mkdir(configDir, { recursive: true });
+      const onlyInCwd = path.join(tmpRoot, 'only-here.json');
+      await fsp.writeFile(onlyInCwd, '{}', 'utf8');
+      const configPath = path.join(configDir, 'wizard.yaml');
+      const previousCwd = process.cwd();
+      try {
+        process.chdir(tmpRoot);
+        const resolved = await resolveWizardOpenApiFilePath('./only-here.json', configPath);
+        expect(resolved).toBe(onlyInCwd);
+      } finally {
+        process.chdir(previousCwd);
+        await fsp.rm(tmpRoot, { recursive: true, force: true });
+      }
     });
   });
 

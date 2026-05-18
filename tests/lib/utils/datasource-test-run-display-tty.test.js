@@ -37,7 +37,7 @@ describe('formatDatasourceTestRunTTY', () => {
     expect(s).toContain('No capabilities reported');
   });
 
-  it('does not print no-capabilities line when --capability drill-down is active', () => {
+  it('does not print no-capabilities line when capability drill-down is active', () => {
     const raw = formatDatasourceTestRunTTY(
       {
         datasourceKey: 'x.ds',

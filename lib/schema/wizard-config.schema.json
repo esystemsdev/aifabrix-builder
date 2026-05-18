@@ -43,7 +43,7 @@
         },
         "filePath": {
           "type": "string",
-          "description": "Path to OpenAPI file (for openapi-file type)",
+          "description": "Path to OpenAPI file (for openapi-file type). Relative paths resolve from the current working directory first, then from the wizard.yaml directory.",
           "minLength": 1
         },
         "url": {

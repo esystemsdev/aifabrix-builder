@@ -2,7 +2,7 @@ appName: wizard-e2e-e2e
 mode: create-system
 source:
   type: openapi-file
-  filePath: /workspace/aifabrix-builder/integration/hubspot-test/companies.json
+  filePath: ./integration/hubspot-test/companies.json
 credential:
   action: skip
 preferences:

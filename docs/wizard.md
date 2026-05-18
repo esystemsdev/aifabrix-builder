@@ -245,7 +245,7 @@ mode: create-system  # 'create-system' | 'add-datasource'
 source:
   type: openapi-file  # 'openapi-file' | 'openapi-url' | 'mcp-server' | 'known-platform'
   
-  # For openapi-file:
+  # For openapi-file (relative to cwd, then wizard.yaml directory):
   filePath: ./path/to/openapi.yaml
   
   # For openapi-url:
@@ -300,6 +300,14 @@ source:
 ```
 
 Environment variables are resolved at runtime. Missing variables will cause validation to fail.
+
+### OpenAPI file paths (`source.filePath`)
+
+For `source.type: openapi-file`, `filePath` may be absolute or relative:
+
+- **Relative paths** are resolved from your **current working directory** first (where you run `aifabrix wizard`), then from the directory that contains the wizard config file (for example `integration/<systemKey>/` or the folder of `--config <file>`).
+- The first path that exists on disk is used and normalized to an absolute path before upload.
+- Run the wizard from the repository or integration root when using paths like `./integration/hubspot-test/companies.json`.
 
 ### Headless Mode Examples
 

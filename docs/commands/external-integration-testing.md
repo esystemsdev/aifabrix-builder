@@ -238,7 +238,7 @@ The same unified flow is used for **`datasource test`** and **`datasource test-i
 aifabrix datasource test-e2e <datasourceKey> [capabilityKey] [options]
 ```
 
-**Options:** `-a, --app <app>`, `-e, --env <env>`, `-v, --verbose`, `-d, --debug [level]`, `--no-run-scenarios`, `--no-cleanup`, `--primary-key-value <value|@path>`, `--no-async`, `--timeout <ms>`, positional **`[capabilityKey]`** (preferred) or deprecated **`--capability <key>`**, `--strict-capability-scope`, `--json`, `--summary`, `--warnings-as-errors`, `--require-cert`.
+**Options:** `-a, --app <app>`, `-e, --env <env>`, `-v, --verbose`, `-d, --debug [level]`, `--no-run-scenarios`, `--no-cleanup`, `--primary-key-value <value|@path>`, `--no-async`, `--timeout <ms>`, positional **`[capabilityKey]`**, `--strict-capability-scope`, `--json`, `--summary`, `--warnings-as-errors`, `--require-cert`.
 
 **Option details:**
 - **Capacity / CRUD** – The dataplane merges request options with each datasource’s `testPayload` (`payloadTemplate`, `primaryKey`, `scenarios`). When capabilities and fixtures align, the capacity step runs list/get/create/update/delete without extra flags. Use **`--no-run-scenarios`** to skip expanding `testPayload.scenarios` and use the default capacity path only.
@@ -247,7 +247,6 @@ aifabrix datasource test-e2e <datasourceKey> [capabilityKey] [options]
 - **`--debug [level]`** – Richer debug from the dataplane, optional appendix on the terminal, and (for this command) a log file under **`integration/<systemKey>/logs/`**. Levels: **`summary`** (default), **`full`**, **`raw`** (see [Debug output](#debug-output-datasource-commands)). Omit the appendix with **`--json`**.
 - **`--timeout <ms>`** – Aggregate time budget for the POST and any polling (default fifteen minutes in the CLI).
 - **`[capabilityKey]`** (positional) – Ask the dataplane to focus the run on one capability when that contract is supported. Human output (default TTY and **`--summary`**) highlights **that** capability’s status and any per-capability E2E steps when the report includes them. If the report still lists **more than one** capability row, the CLI prints a **warning** to stderr; use **`--strict-capability-scope`** to exit with status **1** in that case (plan section 2.3).
-- **`--capability <key>`** – Deprecated alias for the positional **`[capabilityKey]`**; if both are provided and differ, the positional value wins and the CLI warns.
 - **`--strict-capability-scope`** – When a capability drill-down is requested, fail the process when the envelope lists multiple capability rows (client contract check).
 - **`--json` / `--summary` / `--warnings-as-errors` / `--require-cert`** – Machine-oriented output and stricter exit codes; see `aifabrix datasource test-e2e --help`.
 
