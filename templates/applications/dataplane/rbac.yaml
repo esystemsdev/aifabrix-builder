@@ -232,19 +232,19 @@ permissions:
     roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-compliance-admin", "aifabrix-observer"]
     description: "Read group information"
   
-  # OpenAPI / MCP spec bundle (mounted specs under /api/v1/specs)
-  - name: "spec:read"
+  # OpenAPI file management
+  - name: "openapi-file:read"
     roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
-    description: "Read OpenAPI/MCP spec bundles"
-
-  - name: "spec:update"
+    description: "Read OpenAPI files"
+  
+  - name: "openapi-file:update"
     roles: ["aifabrix-platform-admin", "aifabrix-developer"]
-    description: "Update OpenAPI/MCP spec bundles (uploaded or user-owned)"
-
-  - name: "spec:delete"
+    description: "Update OpenAPI files"
+  
+  - name: "openapi-file:delete"
     roles: ["aifabrix-platform-admin", "aifabrix-developer"]
-    description: "Delete OpenAPI/MCP spec bundles (user-owned only; internal specs are not deletable via API)"
-
+    description: "Delete OpenAPI files"
+  
   # External data source write operations
   - name: "external-data-source:write"
     roles: ["aifabrix-platform-admin", "aifabrix-developer"]
