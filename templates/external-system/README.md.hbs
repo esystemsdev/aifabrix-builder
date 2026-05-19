@@ -32,9 +32,41 @@
 3. **Adjust operations** — use `aifabrix datasource capability …` to copy, add, or remove **capabilities** (see below).
 4. **Check locally** — `aifabrix validate {{appName}}` and `aifabrix datasource validate` on files you touched.
 5. **Align manifest** — `aifabrix repair {{appName}}` after bigger edits.
-6. **Publish** — `aifabrix upload {{appName}}` or `aifabrix deploy {{appName}}`.
+6. **Publish** — see [Publish and credentials](#publish-and-credentials) (`upload`, `deploy`, or `credential push`).
+7. **Protection** (optional) — dimension grants in `integration/.protection/` — see [Protection manifests](#protection-manifests).
 
 Rollback an experiment: `datasource capability remove …` → validate → upload/deploy again.
+
+## Publish and credentials
+
+| Command | What it does |
+| --- | --- |
+| `aifabrix upload {{appName}}` | Publishes local integration files to the dataplane and pushes credential secrets from `integration/{{appName}}/.env` (when present). |
+| `aifabrix deploy {{appName}}` | Deploys via the controller pipeline. Does **not** replace a full upload for credential secrets — run `upload` or `credential push` when `.env` changed. |
+| `aifabrix credential push {{appName}}` | Pushes `KV_*` values from `.env` only (no manifest publish). |
+
+```bash
+aifabrix upload {{appName}}
+# or secrets only:
+aifabrix credential push {{appName}}
+```
+
+## Protection manifests
+
+Protection rules live in **`integration/.protection/`** at the **repository root** (sibling to `integration/{{appName}}/`, not inside this app folder). One manifest per **datasource key** (`spec.datasourceKey`). Use YAML or JSON; store expressions only — no secrets in Git.
+
+```bash
+# From repo root (where integration/ lives)
+aifabrix protection create {{#if hasDatasources}}{{datasources.[0].datasourceKey}}{{else}}<datasource-key>{{/if}} --type country-sales
+aifabrix protection validate {{#if hasDatasources}}{{datasources.[0].datasourceKey}}{{else}}<datasource-key>{{/if}}
+aifabrix protection upload {{#if hasDatasources}}{{datasources.[0].datasourceKey}}{{else}}<datasource-key>{{/if}}
+
+# Batch (entire folder)
+aifabrix validate .protection
+aifabrix upload .protection
+```
+
+See `aifabrix protection --help` for flags (`--no-sync` on upload skips datasource sync after upload only).
 
 ## Capabilities (per datasource)
 
@@ -107,12 +139,21 @@ Useful flags: `--dry-run`, `--auth <method>`, `--rbac`, `--expose`, `--sync`, `-
 
 ## Validate and test
 
-| Command | Network |
-| --- | --- |
-| `aifabrix validate {{appName}}` | Off — schemas and files only |
-| `aifabrix test {{appName}}` | Off — local checks |
-| `aifabrix test-integration {{appName}}` | On — needs login + dataplane |
-| `aifabrix test-e2e {{appName}}` | On — full pipeline per datasource |
+| Command | Network | Notes |
+| --- | --- | --- |
+| `aifabrix validate {{appName}}` | Off | Schemas and files only |
+| `aifabrix test {{appName}}` | Off | Local checks |
+| `aifabrix test-integration {{appName}}` | On | Needs login + dataplane |
+| `aifabrix test-e2e {{appName}}` | On | E2E for every datasource; uploads local files first unless `--no-sync` |
+| `aifabrix test-trust {{appName}}` | On | Semantic agent metadata trust (not live API E2E); uploads first unless `--no-sync` |
+
+System-level tests publish local integration files before the run (same path as `upload`). Use **`--no-sync`** to validate against config already on the dataplane.
+
+```bash
+aifabrix test-trust {{appName}}
+aifabrix test-trust {{appName}} --no-sync
+aifabrix test-e2e {{appName}} --no-sync
+```
 
 Single datasource E2E:
 
@@ -130,7 +171,14 @@ aifabrix datasource test-e2e <datasource-key> --app {{appName}}
 ```
 {{/if}}
 
-Common E2E flags: `-v` / `--verbose`, `-d` / `--debug`, `--no-async`.
+Common flags: `-v` / `--verbose`, `-d` / `--debug`, `--no-async` (datasource E2E only), `--no-sync` (skip pre-run upload on system `test-e2e` / `test-trust`).
+
+Datasource trust (one key; uploads before run unless `--no-sync`):
+
+```bash
+aifabrix datasource test-trust {{#if hasDatasources}}{{datasources.[0].datasourceKey}}{{else}}<datasource-key>{{/if}} --app {{appName}}
+aifabrix datasource test-trust {{#if hasDatasources}}{{datasources.[0].datasourceKey}}{{else}}<datasource-key>{{/if}} --app {{appName}} --no-sync --revalidate
+```
 
 ## Deploy
 

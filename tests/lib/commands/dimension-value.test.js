@@ -95,6 +95,28 @@ describe('dimension-value command', () => {
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Dimension value deleted'));
   });
 
+  it('create exits when API returns success false (e.g. DIM-VALUE-001)', async() => {
+    api.createDimensionValue.mockResolvedValue({
+      success: false,
+      error: '[DIM-VALUE-001] Cannot add catalog values',
+      formattedError: '[DIM-VALUE-001] Cannot add catalog values',
+      status: 400
+    });
+    const program = makeProgram();
+    await expect(
+      program.parseAsync([
+        'node',
+        'aifabrix',
+        'dimension-value',
+        'create',
+        'dept',
+        '--value',
+        'x'
+      ])
+    ).rejects.toThrow(/process\.exit\(1\)/);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('DIM-VALUE-001'));
+  });
+
   it('fails when not authenticated', async() => {
     getOrRefreshDeviceToken.mockResolvedValue(null);
     const program = makeProgram();

@@ -34,7 +34,7 @@ Testing external integrations happens in three tiers:
 <a id="debug-output-datasource-commands"></a>
 ### Debug output (`datasource` commands)
 
-For **`aifabrix datasource test`**, **`datasource test-integration`**, **`datasource test-e2e`**, and **`datasource test-trust`**, debug logging can write JSON under **`integration/<systemKey>/logs/`** (prefixes **`test-`**, **`test-integration-`**, **`test-e2e-`**, **`test-trust-`** respectively). Structural **`datasource log-test`** only opens **`test-*.json`** files and ignores the other prefixes.
+For **`aifabrix datasource test`**, **`datasource test-integration`**, **`datasource test-e2e`**, and **`datasource test-trust`**, debug logging can write JSON under **`integration/<systemKey>/logs/`** (prefixes **`test-`**, **`test-integration-`**, **`test-e2e-`**, **`test-trust-`** respectively). Use **`datasource log-test`**, **`log-integration`**, **`log-e2e`**, or **`log-trust`** to print the latest matching log (each command only opens its own prefix; structural **`log-test`** ignores `test-e2e-`, `test-integration-`, and `test-trust-` files). Use **`aifabrix datasource clean-logs`** (`--app` or `--all`, optional `--type`, `--dry-run`) to remove saved debug files locally.
 
 For **`aifabrix datasource test`**, **`datasource test-integration`**, and **`datasource test-e2e`**, **`--debug`** accepts an optional **level**: **`summary`** (default when you pass `--debug` alone), **`full`**, or **`raw`**. The dataplane returns richer debug in the run result; the CLI prints an extra appendix after the normal human output (truncation, line caps, and basic redaction on **`raw`**). All three commands also write a timestamped JSON file under **`integration/<systemKey>/logs/`**—filename prefixes are **`test-`**, **`test-integration-`**, and **`test-e2e-`** respectively. Use **`aifabrix datasource log-test`** to open the latest structural **`test-*.json`** (see [External Integration Commands](external-integration.md#aifabrix-datasource-log-test-datasourcekey)). If you use **`--json`**, stdout is only the raw report JSON—no debug appendix.
 
@@ -279,6 +279,10 @@ E2E tests use real external systems and credentials.
 - Use **test credentials** and **test environments** (for example HubSpot dev portal, SharePoint test site).
 - Avoid production data.
 - Prefer isolated CI environments when possible.
+
+### Fixture round-trips (load / export)
+
+After E2E or manual seeding, use **`aifabrix datasource load`** and **`aifabrix datasource export`** to import or export local JSON/NDJSON fixtures under `integration/.data/`. See [Datasource commands – load and export](external-integration/datasources.md#aifabrix-datasource-load-datasourcekey).
 
 ---
 

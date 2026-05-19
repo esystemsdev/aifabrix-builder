@@ -86,6 +86,8 @@ Dataplane is the source of truth for deployment and runtime/projection state.
 
 - **Six** subcommands (five shipped, one planned): `aifabrix protection validate|upload|show|delete <datasourceKey>`, **`aifabrix protection list`**, and **`aifabrix protection create <datasourceKey>`** (scaffold YAML under `{work}/.protection/` from built-in templates + simple variables — same author ergonomics as `dimension create --file` and `datasource capability create --template`)
 - **Shared folder** `{aifabrix-work}/.protection/` — **not** under `integration/hubspot|sharepoint|salesforce/`; one manifest **per external datasource key**
+
+> **Amendment (plan 145, 2026-05-19):** Canonical storage is **`integration/.protection/`** per git repo (sibling to `integration/<systemKey>/`), versioned with integration code. Legacy `{work}/.protection/` remains available via `AIFABRIX_PROTECTION_LEGACY=1` or when repo folder is empty but legacy has manifests. Override with `AIFABRIX_PROTECTION_ROOT`.
 - **Batch (scope `.protection`):** `validate .protection`, `upload .protection`, `convert .protection` (all files in folder)
 - **`deploy .protection`:** explicit **not implemented** in v1 (controller pipeline does not understand `.protection`; use `upload .protection`)
 - **`delete .protection`:** **not supported** (no batch delete)

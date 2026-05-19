@@ -25,9 +25,13 @@ Manage external data sources.
 - `test` - Run structural/policy validation for one datasource key on the dataplane
 - `test-integration` - Run integration validation for one datasource key on the dataplane
 - `test-e2e` - Run E2E validation for one datasource key on the dataplane
+- `load` - Import local JSON/NDJSON fixture files via dataplane bulk record sync
+- `export` - Export governed records to local JSON/NDJSON via records search
 - `log-test` - Display latest or specified structural validation log
 - `log-integration` - Display latest or specified integration test log
 - `log-e2e` - Display latest or specified E2E test log
+- `log-trust` - Display latest or specified agent trust log (`test-trust --debug`)
+- `clean-logs` - Remove saved debug JSON under `integration/<systemKey>/logs/`
 
 ---
 
@@ -182,6 +186,55 @@ aifabrix datasource test-e2e hubspot-contacts --app hubspot
 
 ---
 
+<a id="aifabrix-datasource-load-datasourcekey"></a>
+### aifabrix datasource load <datasourceKey>
+
+Import local fixture records into dataplane storage for one datasource key.
+
+**What:** Reads a JSON array or NDJSON file and uploads records through the dataplane bulk record sync path. Use this to seed dev fixtures, demos, or regression datasets without one-off scripts.
+
+**When:** After the datasource is published on the dataplane (`datasource upload` or `upload <systemKey>`). For live vendor proof, use `test-e2e` instead.
+
+**Local files:** By default, files live under `integration/.data/` using the naming pattern `{systemKey}-data-{entitySuffix}.json` or `.ndjson`, where `entitySuffix` is derived from the datasource key (for example `hubspot-test-company` → `hubspot-test-data-company.json`).
+
+**Usage:**
+```bash
+aifabrix datasource load hubspot-test-company --app hubspot-test
+aifabrix datasource load hubspot-test-company --file ./fixtures/rows.ndjson -v
+aifabrix datasource load hubspot-test-company --dry-run
+af ds load hubspot-test-company --batch-size 50 --sync-type incremental
+```
+
+**Options (high level):** `--app`, `--env`, `--file`, `--format`, `--batch-size` (default 100), `--sync-type` (default `incremental`), `--dry-run`, `--verbose`, `--json`.
+
+**Notes:**
+- External integration folders only (`integration/<systemKey>/`).
+- Record objects may be canonical bulk rows (`key`, `displayName`, `recordType`, `metadata`) or plain payloads mapped using the datasource manifest (`primaryKey`, `labelKey`, `resourceType`).
+- Never commit production exports or fixtures that contain live credentials or PII unless your team policy allows it.
+
+---
+
+<a id="aifabrix-datasource-export-datasourcekey"></a>
+### aifabrix datasource export <datasourceKey>
+
+Export governed records for one datasource key to a local JSON or NDJSON file.
+
+**What:** Runs a governed records search scoped to the datasource and writes results to disk. This is **search output with ABAC applied**, not a raw database dump.
+
+**When:** To diff, back up, or inspect records that the platform would return through Records Search. Large exports are capped at 10,000 rows per run (dataplane limit).
+
+**Usage:**
+```bash
+aifabrix datasource export hubspot-test-company --app hubspot-test
+aifabrix datasource export hubspot-test-company --format ndjson --limit 500 -v
+aifabrix datasource export hubspot-test-company --filter '{"status":{"eq":"active"}}'
+af ds export hubspot-test-company --fields email,name --strict
+```
+
+**Options (high level):** `--app`, `--env`, `--file`, `--format`, `--filter` (JSON object), `--fields` (comma-separated metadata keys), `--limit` (default 1000, max 10000), `--intent` (default `validation`), `--strict`, `--verbose`, `--json`.
+
+---
+
 <a id="aifabrix-datasource-log-test-datasourcekey"></a>
 ### aifabrix datasource log-test <datasourceKey>
 
@@ -206,4 +259,54 @@ Show the latest integration test log produced by `datasource test-integration --
 Show the latest E2E test log produced by `datasource test-e2e --debug`.
 
 **What:** Prints a readable view of the latest `test-e2e-*.json` log in `integration/<systemKey>/logs/`.
+
+---
+
+<a id="aifabrix-datasource-log-trust-datasourcekey"></a>
+### aifabrix datasource log-trust <datasourceKey>
+
+Show the latest agent trust log produced by `datasource test-trust --debug`.
+
+**What:** Prints a readable view of the latest `test-trust-*.json` log in `integration/<systemKey>/logs/` (trust decision, confidence, warnings, and findings summary).
+
+**Usage:**
+
+```bash
+aifabrix datasource log-trust hubspot-companies
+aifabrix datasource log-trust hubspot-companies --app test-e2e-hubspot
+aifabrix datasource log-trust hubspot-companies --file integration/test-e2e-hubspot/logs/test-trust-hubspot-companies-2026-05-19T12-00-00-000Z.json
+```
+
+**Options:** `-a, --app <app>`, `-f, --file <path>` (same as other `log-*` commands).
+
+---
+
+<a id="aifabrix-datasource-clean-logs"></a>
+### aifabrix datasource clean-logs
+
+Remove local debug JSON written by `datasource test*` commands with `--debug` (or `-d` on app-level integration/E2E rollups).
+
+**What:** Deletes files under `integration/<systemKey>/logs/` matching the chosen log kind. Does not call the Controller or Dataplane. Does not remove `error.log` or integration config.
+
+**When:** After iterative testing when log folders grow large, or before sharing an integration folder.
+
+**Usage:**
+
+```bash
+aifabrix datasource clean-logs --app test-e2e-hubspot
+aifabrix datasource clean-logs --all
+aifabrix datasource clean-logs --app test-e2e-hubspot --type e2e
+aifabrix datasource clean-logs --dry-run
+aifabrix datasource clean-logs --all --type integration --json
+```
+
+**Options:**
+
+- `-a, --app <app>` — One integration folder (system key). Required unless `--all` is set.
+- `--all` — Every `integration/<app>/logs/` directory discovered under the cwd integration root and the materialized integration root (dot-prefixed folders such as `.protection` are skipped).
+- `-t, --type <type>` — `test` (structural `test-*.json` only), `integration`, `e2e`, `trust`, or `all` (default).
+- `--dry-run` — Print paths that would be removed; do not delete.
+- `--json` — Emit a single JSON summary (no TTY file list).
+
+**Note:** `aifabrix logs <app>` shows Docker container logs for builder apps; use `clean-logs` only for integration debug JSON.
 

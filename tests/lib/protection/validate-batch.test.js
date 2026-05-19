@@ -13,11 +13,17 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-jest.mock('../../../lib/utils/paths', () => ({
-  getAppsMaterializationParent: jest.fn()
+jest.mock('../../../lib/protection/paths', () => ({
+  getProtectionRoot: jest.fn(),
+  describeProtectionRoot: jest.fn(() => ({
+    root: '',
+    label: 'integration/.protection',
+    usingLegacy: false,
+    migrationHint: null
+  }))
 }));
 
-const { getAppsMaterializationParent } = require('../../../lib/utils/paths');
+const { getProtectionRoot } = require('../../../lib/protection/paths');
 const { validateProtection, simulateProtection } = require('../../../lib/api/protection.api');
 const { resolveProtectionDataplaneContext } = require('../../../lib/protection/auth-context');
 const {
@@ -32,9 +38,9 @@ describe('protection validate-batch', () => {
 
   beforeEach(() => {
     tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'prot-val-batch-'));
-    getAppsMaterializationParent.mockReset();
-    getAppsMaterializationParent.mockReturnValue(tmpRoot);
-    const dir = path.join(tmpRoot, '.protection');
+    getProtectionRoot.mockReset();
+    const dir = path.join(tmpRoot, 'prot');
+    getProtectionRoot.mockReturnValue(dir);
     manifestPath = writeHubspotCompaniesManifest(dir);
     resolveProtectionDataplaneContext.mockResolvedValue({
       environment: 'dev',
@@ -81,6 +87,24 @@ describe('protection validate-batch', () => {
     expect(batch.valid).toBe(true);
     expect(batch.exitCode).toBe(0);
     expect(validateProtection).toHaveBeenCalledTimes(1);
+  });
+
+  it('runValidateProtectionBatch includes .json manifests', async() => {
+    const yaml = require('js-yaml');
+    const base = yaml.load(fs.readFileSync(manifestPath, 'utf8'));
+    const dealsManifest = {
+      ...base,
+      metadata: { ...base.metadata, key: 'hubspot-deals-prot' },
+      spec: { ...base.spec, datasourceKey: 'hubspot-deals' }
+    };
+    const jsonPath = path.join(path.dirname(manifestPath), 'hubspot-deals.json');
+    fs.writeFileSync(jsonPath, JSON.stringify(dealsManifest, null, 2), 'utf8');
+
+    const batch = await runValidateProtectionBatch({});
+    expect(batch.results.length).toBe(2);
+    expect(batch.results.every((r) => r.ok)).toBe(true);
+    expect(batch.valid).toBe(true);
+    expect(validateProtection).toHaveBeenCalledTimes(2);
   });
 
   it('runValidateProtectionBatch returns exitCode 1 when dataplane fails', async() => {

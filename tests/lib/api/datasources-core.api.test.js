@@ -231,9 +231,10 @@ describe('Datasources Core API', () => {
       const bulkData = { operation: 'update', items: [] };
       await datasourcesCoreApi.bulkOperation(dataplaneUrl, 'test-source', authConfig, bulkData);
 
-      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/external/test-source/bulk', {
-        body: bulkData
-      });
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/api/v1/data-storage/test-source/records/bulk',
+        { body: bulkData }
+      );
     });
   });
 

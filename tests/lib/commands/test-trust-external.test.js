@@ -14,6 +14,12 @@ jest.mock('../../../lib/datasource/agent-trust-run', () => ({
 jest.mock('../../../lib/commands/test-e2e-external', () => ({
   resolveExternalIntegrationContext: jest.fn()
 }));
+jest.mock('../../../lib/external-system/test-auth', () => ({
+  setupIntegrationTestAuth: jest.fn().mockResolvedValue({
+    authConfig: { type: 'bearer', token: 't' },
+    dataplaneUrl: 'http://localhost:3201'
+  })
+}));
 
 const logger = require('../../../lib/utils/logger');
 const { uploadExternalSystem } = require('../../../lib/commands/upload');
@@ -49,14 +55,24 @@ describe('test-trust-external', () => {
     expect(runDatasourceAgentTrust).toHaveBeenCalledTimes(2);
     expect(runDatasourceAgentTrust).toHaveBeenCalledWith(
       'hubspot-demo-companies',
-      expect.objectContaining({ app: 'hubspot-demo', noSync: true })
+      expect.objectContaining({
+        app: 'hubspot-demo',
+        noSync: true,
+        authConfig: expect.any(Object),
+        dataplaneUrl: 'http://localhost:3201'
+      })
     );
     expect(result.success).toBe(true);
     expect(result.results).toHaveLength(2);
   });
 
-  it('skips upload when --no-sync', async() => {
+  it('skips upload when noSync is true', async() => {
     await runTestTrustForExternalSystem('hubspot-demo', { noSync: true });
+    expect(uploadExternalSystem).not.toHaveBeenCalled();
+  });
+
+  it('skips upload when Commander sets sync: false', async() => {
+    await runTestTrustForExternalSystem('hubspot-demo', { sync: false });
     expect(uploadExternalSystem).not.toHaveBeenCalled();
   });
 

@@ -20,12 +20,28 @@ jest.mock('../../../lib/protection/sync-after-upload', () => ({
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const yaml = require('js-yaml');
 
-jest.mock('../../../lib/utils/paths', () => ({
-  getAppsMaterializationParent: jest.fn()
+jest.mock('../../../lib/protection/paths', () => ({
+  getProtectionRoot: jest.fn(),
+  describeProtectionRoot: jest.fn(() => ({
+    root: '',
+    label: 'integration/.protection',
+    usingLegacy: false,
+    migrationHint: null
+  }))
 }));
 
-const { getAppsMaterializationParent } = require('../../../lib/utils/paths');
+jest.mock('../../../lib/protection/resolve', () => {
+  const actual = jest.requireActual('../../../lib/protection/resolve');
+  return {
+    ...actual,
+    listProtectionManifestPaths: jest.fn()
+  };
+});
+
+const { getProtectionRoot } = require('../../../lib/protection/paths');
+const { listProtectionManifestPaths } = require('../../../lib/protection/resolve');
 const { validateProtection, uploadProtection } = require('../../../lib/api/protection.api');
 const { resolveProtectionDataplaneContext } = require('../../../lib/protection/auth-context');
 const { runUploadProtectionBatch } = require('../../../lib/protection/upload-batch');
@@ -34,28 +50,42 @@ const { writeHubspotCompaniesManifest } = require('../protection/protection-test
 
 describe('upload .protection batch', () => {
   let tmpRoot;
+  let protectionDir;
+  let manifestPaths;
 
   beforeEach(() => {
     tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'prot-batch-'));
-    getAppsMaterializationParent.mockReset();
-    getAppsMaterializationParent.mockReturnValue(tmpRoot);
-    const dir = path.join(tmpRoot, '.protection');
-    writeHubspotCompaniesManifest(dir);
+    protectionDir = path.join(tmpRoot, 'prot');
+    getProtectionRoot.mockReturnValue(protectionDir);
+
+    const companiesPath = writeHubspotCompaniesManifest(protectionDir, 'aaa-hubspot-companies.yaml');
+    const base = yaml.load(fs.readFileSync(companiesPath, 'utf8'));
+    const dealsManifest = {
+      ...base,
+      metadata: { ...base.metadata, key: 'hubspot-deals-prot' },
+      spec: { ...base.spec, datasourceKey: 'hubspot-deals' }
+    };
+    const dealsPath = path.join(protectionDir, 'zzz-hubspot-deals.yaml');
+    fs.writeFileSync(dealsPath, yaml.dump(dealsManifest), 'utf8');
+
+    manifestPaths = [companiesPath, dealsPath].sort((a, b) => a.localeCompare(b));
+    listProtectionManifestPaths.mockReturnValue(manifestPaths);
+
     resolveProtectionDataplaneContext.mockResolvedValue({
       environment: 'dev',
       dataplaneUrl: 'http://dp',
       authConfig: { type: 'bearer', token: 't' }
     });
     preflightDatasourceReady.mockResolvedValue(undefined);
-    validateProtection.mockResolvedValue({ summary: { fail: 0, warn: 0 }, results: [] });
+    validateProtection.mockResolvedValue({
+      summary: { fail: 0, warn: 0, pass: 1 },
+      results: [{ status: 'PASS', taskId: 't1' }]
+    });
     uploadProtection.mockResolvedValue({ deploymentId: 'd1', revision: 1 });
   });
 
   afterEach(() => {
-    validateProtection.mockClear();
-    uploadProtection.mockClear();
-    resolveProtectionDataplaneContext.mockClear();
-    preflightDatasourceReady.mockClear();
+    jest.clearAllMocks();
     if (tmpRoot && fs.existsSync(tmpRoot)) {
       try {
         fs.rmSync(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
@@ -67,12 +97,22 @@ describe('upload .protection batch', () => {
 
   it('uploads manifests in lexical order', async() => {
     const batch = await runUploadProtectionBatch({});
+
+    expect(batch.results).toHaveLength(2);
     expect(batch.ok).toBe(true);
-    expect(uploadProtection).toHaveBeenCalledTimes(1);
+    expect(uploadProtection).toHaveBeenCalledTimes(2);
+    expect(uploadProtection.mock.calls[0][2].spec.datasourceKey).toBe('hubspot-companies');
+    expect(uploadProtection.mock.calls[1][2].spec.datasourceKey).toBe('hubspot-deals');
+    expect(listProtectionManifestPaths).toHaveBeenCalledWith(protectionDir);
   });
 
   it('dry-run skips upload', async() => {
+    listProtectionManifestPaths.mockReturnValue([manifestPaths[0]]);
+
     const batch = await runUploadProtectionBatch({ dryRun: true });
+
+    expect(batch.results).toHaveLength(1);
+    expect(batch.ok).toBe(true);
     expect(batch.results[0].dryRun).toBe(true);
     expect(uploadProtection).not.toHaveBeenCalled();
   });

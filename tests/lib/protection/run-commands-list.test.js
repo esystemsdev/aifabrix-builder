@@ -86,7 +86,7 @@ describe('runProtectionList', () => {
     expect(logger.log).not.toHaveBeenCalled();
   });
 
-  it('logs TTY table via formatProtectionListTTY when not json', async() => {
+  it('logs TTY card list via formatProtectionListTTY when not json', async() => {
     listProtectionManifests.mockResolvedValue({
       items: [
         {

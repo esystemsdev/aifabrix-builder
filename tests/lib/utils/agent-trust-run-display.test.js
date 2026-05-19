@@ -7,8 +7,14 @@ jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn() }));
 const logger = require('../../../lib/utils/logger');
 const {
   displayAgentTrustRunTTY,
-  displaySystemTrustRollupTTY
+  displaySystemTrustRollupTTY,
+  formatTrustTableRow
 } = require('../../../lib/utils/agent-trust-run-display');
+
+function stripAnsi(s) {
+  const esc = String.fromCharCode(27);
+  return String(s).replace(new RegExp(`${esc}\\[[0-9;]*m`, 'g'), '');
+}
 
 describe('agent-trust-run-display', () => {
   beforeEach(() => {
@@ -82,5 +88,26 @@ describe('agent-trust-run-display', () => {
     const text = logger.log.mock.calls.map(c => c[0]).join('\n');
     expect(text).toContain('hubspot-companies');
     expect(text).toContain('worst-of rollup');
+  });
+
+  it('aligns trust table columns for mixed decision lengths', () => {
+    const rows = [
+      {
+        key: 'test-e2e-hubspot-companies',
+        trustRun: { trustDecision: 'trusted', validationStatus: 'passed', confidence: 0.94 }
+      },
+      {
+        key: 'test-e2e-hubspot-contacts',
+        trustRun: {
+          trustDecision: 'usableWithWarnings',
+          validationStatus: 'warning',
+          confidence: 0.8
+        }
+      }
+    ];
+    const plain = rows.map(r => stripAnsi(formatTrustTableRow(r, false)));
+    expect(new Set(plain.map(l => l.length)).size).toBe(1);
+    expect(plain[0]).toMatch(/trusted\s+94%/);
+    expect(plain[1]).toMatch(/usableWithWarnings\s+80%/);
   });
 });

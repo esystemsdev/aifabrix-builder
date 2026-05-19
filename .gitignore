@@ -50,6 +50,8 @@ apps/
 *.tgz
 
 # Integration files
+# Local record fixtures (plan 144); commit synthetic fixtures only if team policy allows
+integration/.data/
 integration/my-hubspot/
 integration/wizard-e2e-*/
 integration/test-*/

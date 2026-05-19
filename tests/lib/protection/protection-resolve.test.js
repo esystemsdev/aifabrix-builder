@@ -4,11 +4,17 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-jest.mock('../../../lib/utils/paths', () => ({
-  getAppsMaterializationParent: jest.fn()
+jest.mock('../../../lib/protection/paths', () => ({
+  getProtectionRoot: jest.fn(),
+  describeProtectionRoot: jest.fn(() => ({
+    root: '',
+    label: 'integration/.protection',
+    usingLegacy: false,
+    migrationHint: null
+  }))
 }));
 
-const { getAppsMaterializationParent } = require('../../../lib/utils/paths');
+const { getProtectionRoot } = require('../../../lib/protection/paths');
 const {
   resolveProtectionManifest,
   datasourceKeyFromProtectionFilename
@@ -20,9 +26,9 @@ describe('protection resolve', () => {
 
   beforeEach(() => {
     tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'protection-'));
-    getAppsMaterializationParent.mockReset();
-    getAppsMaterializationParent.mockReturnValue(tmpRoot);
-    const protectionDir = path.join(tmpRoot, '.protection');
+    getProtectionRoot.mockReset();
+    const protectionDir = path.join(tmpRoot, 'integration', '.protection');
+    getProtectionRoot.mockReturnValue(protectionDir);
     writeHubspotCompaniesManifest(protectionDir);
     const altFixture = `apiVersion: dataplane.aifabrix.ai/v1
 kind: Protection
@@ -66,7 +72,7 @@ spec:
   });
 
   it('fails on duplicate spec.datasourceKey in folder', () => {
-    const protectionDir = path.join(tmpRoot, '.protection');
+    const protectionDir = path.join(tmpRoot, 'integration', '.protection');
     fs.copyFileSync(
       path.join(protectionDir, 'hubspot-companies.yaml'),
       path.join(protectionDir, 'dup-hubspot-companies.yaml')
@@ -74,8 +80,9 @@ spec:
     expect(() => resolveProtectionManifest('hubspot-companies')).toThrow(/Duplicate spec\.datasourceKey/);
   });
 
-  it('rejects .json extension on load via resolve with explicit path', () => {
-    const protectionDir = path.join(tmpRoot, '.protection');
+  it('loads .json manifest via resolve with explicit path', () => {
+    const protectionDir = path.join(tmpRoot, 'integration', '.protection');
+    fs.unlinkSync(path.join(protectionDir, 'hubspot-companies.yaml'));
     const jsonPath = path.join(protectionDir, 'hubspot-companies.json');
     fs.writeFileSync(
       jsonPath,
@@ -97,6 +104,8 @@ spec:
         }
       })
     );
-    expect(() => resolveProtectionManifest('hubspot-companies', jsonPath)).toThrow(/\.yaml only/);
+    const resolved = resolveProtectionManifest('hubspot-companies', jsonPath);
+    expect(resolved.manifestPath).toBe(jsonPath);
+    expect(resolved.manifest.spec.datasourceKey).toBe('hubspot-companies');
   });
 });
