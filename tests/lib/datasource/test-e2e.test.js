@@ -21,6 +21,7 @@ jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn(), warn: jest.fn(),
 jest.mock('fs', () => ({ promises: { readFile: jest.fn() } }));
 
 const fs = require('fs');
+const logger = require('../../../lib/utils/logger');
 const { runDatasourceTestE2E } = require('../../../lib/datasource/test-e2e');
 const { resolveAppKeyForDatasource } = require('../../../lib/datasource/resolve-app');
 const { runUnifiedDatasourceValidation } = require('../../../lib/datasource/unified-validation-run');
@@ -106,6 +107,38 @@ describe('Datasource Test E2E', () => {
           runScenarios: false,
           primaryKeyValue: 'pk-val',
           capabilityKey: 'read'
+        })
+      );
+    });
+
+    it('logs compact progress and validated lines when not verbose', async() => {
+      await runDatasourceTestE2E('hubspot-contacts', { app: 'myapp' });
+
+      const lines = logger.log.mock.calls.map(c => String(c[0] ?? ''));
+      expect(lines.some(l => l.includes('Running E2E validation for hubspot-contacts'))).toBe(true);
+      expect(lines.some(l => l.includes('hubspot-contacts validated'))).toBe(true);
+    });
+
+    it('does not log compact progress lines when verbose', async() => {
+      await runDatasourceTestE2E('hubspot-contacts', { app: 'myapp', verbose: true });
+
+      const lines = logger.log.mock.calls.map(c => String(c[0] ?? ''));
+      expect(lines.some(l => l.includes('Running E2E validation for hubspot-contacts'))).toBe(false);
+      expect(lines.some(l => l.includes('hubspot-contacts validated'))).toBe(false);
+    });
+
+    it('should forward cached authConfig and dataplaneUrl to unified run', async() => {
+      await runDatasourceTestE2E('hubspot-contacts', {
+        app: 'myapp',
+        authConfig: { token: 'cached' },
+        dataplaneUrl: 'http://cached-dp'
+      });
+
+      expect(runUnifiedDatasourceValidation).toHaveBeenCalledWith(
+        'hubspot-contacts',
+        expect.objectContaining({
+          authConfig: { token: 'cached' },
+          dataplaneUrl: 'http://cached-dp'
         })
       );
     });

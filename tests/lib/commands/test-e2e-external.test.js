@@ -21,7 +21,11 @@ jest.mock('../../../lib/utils/config-format', () => ({
 }));
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn() }));
 jest.mock('../../../lib/commands/upload', () => ({
-  uploadExternalSystem: jest.fn().mockResolvedValue(undefined)
+  uploadExternalSystem: jest.fn().mockResolvedValue({
+    authConfig: { token: 't' },
+    dataplaneUrl: 'http://dp',
+    environment: 'dev'
+  })
 }));
 
 const fs = require('fs');
@@ -139,6 +143,7 @@ describe('test-e2e-external', () => {
       await runTestE2EForExternalSystem('hubspot-demo', { noSync: true });
 
       expect(upload.uploadExternalSystem).not.toHaveBeenCalled();
+      expect(setupIntegrationTestAuth).toHaveBeenCalledTimes(1);
     });
 
     it('does not call upload when sync is false (Commander --no-sync)', async() => {
@@ -164,7 +169,7 @@ describe('test-e2e-external', () => {
       expect(runDatasourceTestE2E).not.toHaveBeenCalled();
     });
 
-    it('resolves auth once and passes it to each datasource E2E run', async() => {
+    it('reuses upload dataplane context and passes it to each datasource E2E run', async() => {
       discoverIntegrationFiles.mockReturnValue({
         systemFiles: ['hubspot-demo-system.json'],
         datasourceFiles: ['hubspot-demo-datasource-companies.json', 'hubspot-demo-datasource-contacts.json']
@@ -189,12 +194,8 @@ describe('test-e2e-external', () => {
 
       await runTestE2EForExternalSystem('hubspot-demo', { env: 'tst' });
 
-      expect(setupIntegrationTestAuth).toHaveBeenCalledTimes(1);
-      expect(setupIntegrationTestAuth).toHaveBeenCalledWith(
-        'hubspot-demo',
-        { environment: 'tst' },
-        expect.any(Object)
-      );
+      expect(upload.uploadExternalSystem).toHaveBeenCalledTimes(1);
+      expect(setupIntegrationTestAuth).not.toHaveBeenCalled();
       expect(runDatasourceTestE2E).toHaveBeenCalledTimes(2);
       for (const call of runDatasourceTestE2E.mock.calls) {
         expect(call[1]).toEqual(

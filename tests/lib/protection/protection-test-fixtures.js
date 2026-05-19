@@ -31,19 +31,15 @@ spec:
 
 const FIXTURE_REL = '../../fixtures/protection/hubspot-companies.yaml';
 
-let cachedFallbackPath = null;
-
 /**
- * @returns {string} Absolute path to a temp copy of hubspot-companies.yaml
+ * Materialize embedded YAML to a fresh temp file (no cross-test cache; safe when /tmp is cleaned mid-suite).
+ * @returns {string} Absolute path to hubspot-companies.yaml
  */
-function ensureCachedFallbackPath() {
-  if (cachedFallbackPath && fs.existsSync(cachedFallbackPath)) {
-    return cachedFallbackPath;
-  }
+function materializeHubspotCompaniesFixture() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-hubspot-fixture-'));
-  cachedFallbackPath = path.join(dir, 'hubspot-companies.yaml');
-  fs.writeFileSync(cachedFallbackPath, HUBSPOT_COMPANIES_YAML, 'utf8');
-  return cachedFallbackPath;
+  const dest = path.join(dir, 'hubspot-companies.yaml');
+  fs.writeFileSync(dest, HUBSPOT_COMPANIES_YAML, 'utf8');
+  return dest;
 }
 
 /**
@@ -55,7 +51,7 @@ function hubspotCompaniesFixturePath(fromDir = __dirname) {
   if (fs.existsSync(onDisk)) {
     return onDisk;
   }
-  return ensureCachedFallbackPath();
+  return materializeHubspotCompaniesFixture();
 }
 
 /**

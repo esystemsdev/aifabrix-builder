@@ -12,7 +12,17 @@ const fs = require('node:fs');
 const path = require('path');
 const os = require('os');
 
+jest.mock('../../../lib/utils/paths', () => {
+  const actual = jest.requireActual('../../../lib/utils/paths');
+  return {
+    ...actual,
+    getIntegrationPath: jest.fn(),
+    listIntegrationAppNames: jest.fn()
+  };
+});
+
 const logger = require('../../../lib/utils/logger');
+const { getIntegrationPath, listIntegrationAppNames } = require('../../../lib/utils/paths');
 const {
   matchesLogCleanType,
   normalizeLogCleanType,
@@ -52,13 +62,14 @@ describe('log-cleaner', () => {
 
   describe('runCleanLogs', () => {
     let tmpRoot;
-    let prevCwd;
 
     beforeEach(() => {
       jest.clearAllMocks();
       tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'log-clean-'));
-      prevCwd = process.cwd();
-      process.chdir(tmpRoot);
+      getIntegrationPath.mockImplementation((appKey) =>
+        path.join(tmpRoot, 'integration', appKey)
+      );
+      listIntegrationAppNames.mockReturnValue(['app-a', 'app-b']);
       fs.mkdirSync(path.join(tmpRoot, 'integration', 'app-a', 'logs'), { recursive: true });
       fs.mkdirSync(path.join(tmpRoot, 'integration', 'app-b', 'logs'), { recursive: true });
       fs.writeFileSync(
@@ -79,7 +90,6 @@ describe('log-cleaner', () => {
     });
 
     afterEach(() => {
-      process.chdir(prevCwd);
       fs.rmSync(tmpRoot, { recursive: true, force: true });
     });
 
