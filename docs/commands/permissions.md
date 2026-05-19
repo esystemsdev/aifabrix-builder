@@ -38,6 +38,8 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | `aifabrix datasource test` | Dataplane | `external-system:publish` or `external-data-source:read` | Unified validation run (test run type) on the dataplane; same deployment auth as `test-integration`. |
 | `aifabrix datasource test-integration` | Dataplane | `external-system:publish` or `external-data-source:read` | Unified validation run (integration) on the dataplane; supports deployment auth including **client credentials** exchanged for an app token (CI/CD). |
 | `aifabrix datasource test-e2e` | Dataplane | `external-data-source:read` | Unified validation run (E2E) on the dataplane; uses the **same deployment auth** as `test-integration` (e.g. `aifabrix login` or app credentials). |
+| `aifabrix datasource load <datasourceKey>` | Dataplane | `external-data-source:sync` | Bulk record sync (`POST` data-storage records bulk). External integration only. **`--dry-run`** parses locally only (no dataplane write). Deployment auth: Bearer/API key or **x-client-token**. |
+| `aifabrix datasource export <datasourceKey>` | Dataplane | `record:search` | Governed records search export (not direct DB). External integration only. Max **10000** rows per run. Same deployment auth as other datasource dataplane commands. |
 | `aifabrix datasource log-test` | Local | — | Reads a previously saved JSON log from `integration/<systemKey>/logs/`; **no** Controller or Dataplane request. |
 | `aifabrix datasource log-integration` / `log-e2e` | Local | — | Same as `log-test` for `test-integration-*.json` or `test-e2e-*.json`; **no** online API call. |
 | `aifabrix datasource log-trust` | Local | — | Reads the latest `test-trust-*.json` from `integration/<systemKey>/logs/` (from `test-trust --debug`); **no** online API call. |
@@ -70,7 +72,7 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | `aifabrix test-trust <systemKey>` | Dataplane | `external-system:publish` (default upload before run); `external-data-source:update` (agent metadata validation) | External integrations only (`integration/<systemKey>/`). With `--no-sync`, publish is skipped; validation still requires `external-data-source:update`. |
 | `aifabrix datasource test-trust <datasourceKey>` | Dataplane | Same as **`test-trust`** | Single-datasource semantic trust run (404.5). Default uploads integration files first (deployment auth: Bearer/API key or **x-client-token**, same as `test-e2e`). |
 
-For `aifabrix datasource test`, `datasource test-integration`, `datasource test-e2e`, and `datasource test-trust`, flags such as `--watch` only re-run the same command when local files change; permissions and Dataplane scopes are unchanged per invocation.
+For `aifabrix datasource test`, `datasource test-integration`, `datasource test-e2e`, `datasource test-trust`, `datasource load`, and `datasource export`, flags such as `--watch` (where supported) only re-run the same command when local files change; permissions and Dataplane scopes are unchanged per invocation.
 
 ---
 
@@ -111,6 +113,8 @@ For `aifabrix datasource test`, `datasource test-integration`, `datasource test-
 - **external-system:publish** – Dataplane **pipeline deployment** (mutating): full-system upload, datasource-scoped publish, **protection upload** (`aifabrix protection upload`, `upload .protection`), and default pre-run upload for **`test-trust`**. Accepts **Bearer/API key** or **x-client-token** (application token from client credentials exchange; the CLI does not send raw client id/secret to these endpoints). **Pipeline test** (system or per-datasource) uses the same deployment auth options for CI/CD.
 - **external-data-source:read** – Dataplane pipeline test and datasource validation runs. Can be used for pipeline test (alternative to `external-system:publish`). Covers `aifabrix datasource test` and `test-integration` when not using `external-system:publish`, and is required for `aifabrix datasource test-e2e` (unified E2E validation run; same login or app-token style auth as `test-integration`). Also used by agent metadata validation **GET** (latest/history) when the CLI reads cached trust results.
 - **external-data-source:update** – Mutating datasource-scoped operations. Required for **`aifabrix test-trust`** / **`datasource test-trust`** agent metadata validation runs (`POST` on the dataplane). Distinct from E2E read-only checks: trust runs may change persisted `agentValidation` state on the datasource.
+- **external-data-source:sync** – Bulk record sync for **`aifabrix datasource load`** (import local JSON/NDJSON fixtures into dataplane storage).
+- **record:search** – Cross-datasource records search for **`aifabrix datasource export`** (governed read path with ABAC).
 - **credential:read** – List/get credentials, wizard credentials list.
 - **credential:create** – Create credential (if used by wizard).
 - **credential:update** – Update credential.
