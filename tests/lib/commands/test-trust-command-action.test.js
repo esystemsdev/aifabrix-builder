@@ -9,12 +9,18 @@ jest.mock('../../../lib/commands/test-trust-external', () => ({
   runTestTrustForExternalSystem: jest.fn()
 }));
 jest.mock('../../../lib/utils/agent-trust-run-display', () => ({
-  displaySystemTrustRollupTTY: jest.fn()
+  displaySystemTrustRollupTTY: jest.fn(),
+  displayAgentTrustRunTTY: jest.fn()
+}));
+jest.mock('../../../lib/datasource/agent-trust-debug-log', () => ({
+  writeTrustDebugLogAndPrint: jest.fn()
 }));
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn() }));
 
 const { detectAppType } = require('../../../lib/utils/paths');
 const { runTestTrustForExternalSystem } = require('../../../lib/commands/test-trust-external');
+const { displayAgentTrustRunTTY } = require('../../../lib/utils/agent-trust-run-display');
+const { writeTrustDebugLogAndPrint } = require('../../../lib/datasource/agent-trust-debug-log');
 const { runTestTrustCommandAction } = require('../../../lib/commands/test-trust-command-action');
 
 describe('test-trust-command-action', () => {
@@ -56,5 +62,19 @@ describe('test-trust-command-action', () => {
       'hubspot',
       expect.objectContaining({ summary: true, timeout: '90000' })
     );
+  });
+
+  it('passes revalidate and writes debug logs when -d --revalidate', async() => {
+    await runTestTrustCommandAction(
+      'hubspot',
+      { env: 'dev' },
+      { rawArgs: ['node', 'aifabrix', 'test-trust', 'hubspot', '-d', '--revalidate', '-v'] }
+    );
+    expect(runTestTrustForExternalSystem).toHaveBeenCalledWith(
+      'hubspot',
+      expect.objectContaining({ revalidate: true, debug: true, verbose: true })
+    );
+    expect(writeTrustDebugLogAndPrint).toHaveBeenCalled();
+    expect(displayAgentTrustRunTTY).toHaveBeenCalled();
   });
 });

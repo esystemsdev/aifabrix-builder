@@ -40,6 +40,33 @@ describe('agent-trust-run-display', () => {
     expect(logger.log).not.toHaveBeenCalled();
   });
 
+  it('verbose shows findings only once (not duplicated in high-level warnings)', () => {
+    const finding = {
+      severity: 'warning',
+      code: '4041-OP-SEMANTICS-UNKNOWN',
+      message: 'Operation updateAddress needs shape (R7).'
+    };
+    displayAgentTrustRunTTY(
+      {
+        datasourceKey: 'hubspot-companies',
+        systemKey: 'hubspot',
+        trustDecision: 'usableWithWarnings',
+        validationStatus: 'passed',
+        confidence: 0.89,
+        summary: 'Review semantics',
+        highLevelWarnings: ['4041-OP-SEMANTICS-UNKNOWN — Operation updateAddress needs shape (R7).'],
+        findings: [finding]
+      },
+      { environment: 'dev', verbose: true }
+    );
+    const text = logger.log.mock.calls.map(c => c[0]).join('\n');
+    expect(text).not.toContain('Warnings (high level)');
+    expect(text).toContain('Findings (verbose, max 10)');
+    expect(text).toContain('4041-OP-SEMANTICS-UNKNOWN');
+    expect((text.match(/4041-OP-SEMANTICS-UNKNOWN/g) || []).length).toBe(1);
+    expect(text).not.toContain('undefined');
+  });
+
   it('prints system rollup table', () => {
     displaySystemTrustRollupTTY('hubspot', [
       {

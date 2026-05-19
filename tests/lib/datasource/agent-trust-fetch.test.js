@@ -7,7 +7,13 @@ jest.mock('../../../lib/api/agent-metadata-validation.api', () => ({
   getLatestAgentMetadataValidation: jest.fn()
 }));
 
+jest.mock('../../../lib/utils/agent-trust-wait-ui', () => ({
+  runWithAgentTrustWaitSpinner: jest.fn(work => work()),
+  logAgentTrustWaitHintOnce: jest.fn()
+}));
+
 const api = require('../../../lib/api/agent-metadata-validation.api');
+const waitUi = require('../../../lib/utils/agent-trust-wait-ui');
 const {
   shouldPreferLatestRead,
   fetchTrustRunFromDataplane,
@@ -53,21 +59,25 @@ describe('agent-trust-fetch', () => {
     const run = await fetchTrustRunFromDataplane(base);
     expect(api.runAgentMetadataValidation).toHaveBeenCalled();
     expect(api.getLatestAgentMetadataValidation).not.toHaveBeenCalled();
+    expect(waitUi.runWithAgentTrustWaitSpinner).toHaveBeenCalled();
     expect(run.trustDecision).toBe('trusted');
   });
 
   it('reads latest on summary fast path', async() => {
+    waitUi.runWithAgentTrustWaitSpinner.mockClear();
     const run = await fetchTrustRunFromDataplane({
       ...base,
       options: { summary: true }
     });
     expect(api.getLatestAgentMetadataValidation).toHaveBeenCalled();
     expect(api.runAgentMetadataValidation).not.toHaveBeenCalled();
+    expect(waitUi.runWithAgentTrustWaitSpinner).not.toHaveBeenCalled();
     expect(run.readLatest).toBe(true);
     expect(run.cacheHit).toBe(true);
   });
 
   it('falls back to POST when latest is 404', async() => {
+    waitUi.runWithAgentTrustWaitSpinner.mockClear();
     api.getLatestAgentMetadataValidation.mockRejectedValue({
       statusCode: 404,
       message: 'No agent metadata validation found'
@@ -75,6 +85,7 @@ describe('agent-trust-fetch', () => {
     await fetchTrustRunFromDataplane({ ...base, options: { summary: true } });
     expect(api.getLatestAgentMetadataValidation).toHaveBeenCalled();
     expect(api.runAgentMetadataValidation).toHaveBeenCalled();
+    expect(waitUi.runWithAgentTrustWaitSpinner).toHaveBeenCalled();
   });
 
   it('detects latest-not-found errors', () => {
