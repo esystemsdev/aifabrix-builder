@@ -47,6 +47,7 @@ Third column documents **which on-disk trees** a command is expected to use for 
 | aifabrix install | stream-logs | 141 |
 | aifabrix test-e2e | layout-blocks | int |
 | aifabrix test-trust | layout-blocks | int |
+| aifabrix test-governance | layout-blocks | int |
 | aifabrix lint | stream-logs | — |
 | aifabrix download | tty-summary | int |
 | aifabrix upload | tty-summary | int |

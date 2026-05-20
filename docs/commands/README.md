@@ -68,6 +68,7 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix test <app> [--env dev|tst]`](application-development.md#aifabrix-test-app) - Tests: builder in container; external = local validation
   - [`aifabrix install <app> [--env dev|tst]`](application-development.md#aifabrix-install-app) - Install deps in container (builder apps only)
   - [`aifabrix test-e2e <app> [--env dev|tst]`](application-development.md#aifabrix-test-e2e-app) - E2E: builder in container; external = all datasources via dataplane
+  - [`aifabrix test-governance <systemKey>`](governance-testing.md) - Governance scenario acceptance: ABAC visibility (key sets only; not test-e2e)
   - [`aifabrix test-integration <app> [--env dev|tst]`](application-development.md#aifabrix-test-integration-app) - Integration tests: builder in container; external via dataplane
   - [`aifabrix lint <app> [--env dev|tst]`](application-development.md#aifabrix-lint-app) - Lint in container (builder apps only)
   - [`aifabrix restart <app>`](application-development.md#aifabrix-restart-app) - Restart a running Docker application (`builder/<appKey>`)

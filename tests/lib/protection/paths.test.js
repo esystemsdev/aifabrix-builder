@@ -10,16 +10,18 @@ jest.mock('../../../lib/utils/paths', () => ({
 }));
 
 const pathsUtil = require('../../../lib/utils/paths');
+const pathsModule = require('../../../lib/protection/paths');
 const {
   getProtectionRoot,
   getRepoProtectionRoot,
   describeProtectionRoot
-} = require('../../../lib/protection/paths');
+} = pathsModule;
 
 describe('protection paths', () => {
   let tmpWork;
   let originalCwd;
   let originalEnv;
+  let findNearestSpy;
 
   beforeEach(() => {
     tmpWork = fs.mkdtempSync(path.join(os.tmpdir(), 'prot-paths-'));
@@ -33,9 +35,13 @@ describe('protection paths', () => {
     delete process.env.AIFABRIX_PROTECTION_LEGACY;
     pathsUtil.getAppsMaterializationParent.mockReturnValue(tmpWork);
     pathsUtil.getCwdIntegrationRoot.mockReturnValue(null);
+    findNearestSpy = jest
+      .spyOn(pathsModule, 'findNearestIntegrationRootFromCwd')
+      .mockReturnValue(null);
   });
 
   afterEach(() => {
+    findNearestSpy.mockRestore();
     process.chdir(originalCwd);
     process.env.AIFABRIX_PROTECTION_ROOT = originalEnv.root;
     process.env.AIFABRIX_PROTECTION_LEGACY = originalEnv.legacy;
