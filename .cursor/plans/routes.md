@@ -50,7 +50,7 @@ Dimension values are managed either via nested dimension routes (by dimension id
 
 ### Builder alignment
 
-The Builder CLI uses **`lib/api/dimension-values.api.js`** and **`lib/commands/dimension-value.js`** (`aifabrix dimension-value create|list|delete`).
+The Builder CLI uses **`lib/api/dimension-values.api.js`** and **`lib/commands/dimension-value.js`** (`aifabrix dimension value create|list|delete`).
 
 ## Certification block on disk
 

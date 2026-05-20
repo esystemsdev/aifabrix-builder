@@ -125,9 +125,9 @@ Third column documents **which on-disk trees** a command is expected to use for 
 | aifabrix upload .protection | layout-blocks + json-opt | int |
 | aifabrix convert .protection | tty-summary | int |
 | aifabrix deploy .protection | blocking error | int |
-| aifabrix dimension-value create | tty-summary | cfg |
-| aifabrix dimension-value list | tty-summary | cfg |
-| aifabrix dimension-value delete | tty-summary | cfg |
+| aifabrix dimension value create | tty-summary | cfg |
+| aifabrix dimension value list | tty-summary | cfg |
+| aifabrix dimension value delete | tty-summary | cfg |
 | aifabrix dev show | tty-summary | cfg |
 | aifabrix dev set-id | tty-summary | cfg |
 | aifabrix dev set-scoped-resources | tty-summary | cfg |

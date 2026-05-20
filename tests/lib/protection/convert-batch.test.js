@@ -1,8 +1,17 @@
 'use strict';
 
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
+
+/** Project-local workspace (not os.tmpdir) to avoid CI /tmp races between parallel Jest workers. */
+function createProtectionTestWorkspace() {
+  const root = path.join(__dirname, '../../../.temp/jest-protection-convert');
+  fs.mkdirSync(root, { recursive: true });
+  const tmpRoot = fs.mkdtempSync(path.join(root, 'run-'));
+  const protectionDir = path.join(tmpRoot, '.protection');
+  fs.mkdirSync(protectionDir, { recursive: true });
+  return { tmpRoot, protectionDir };
+}
 
 jest.mock('../../../lib/commands/convert', () => ({
   promptConfirm: jest.fn().mockResolvedValue(true),
@@ -21,9 +30,7 @@ describe('protection convert-batch', () => {
   let protectionDir;
 
   beforeEach(() => {
-    tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'prot-convert-'));
-    protectionDir = path.join(tmpRoot, '.protection');
-    fs.mkdirSync(protectionDir, { recursive: true });
+    ({ tmpRoot, protectionDir } = createProtectionTestWorkspace());
   });
 
   afterEach(() => {

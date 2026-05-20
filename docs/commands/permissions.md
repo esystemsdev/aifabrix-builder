@@ -58,9 +58,9 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | `aifabrix dimension create` | Controller | `dimensions:create` (and `dimensions:read` for idempotent behavior) | Creates the dimension if missing; succeeds if it already exists. Supports `--file` and `--value-type` (`static` \| `dynamic` \| `both`) for CI/CD and protection authoring. |
 | `aifabrix dimension get` | Controller | `dimensions:read` | Reads one dimension by id or key. |
 | `aifabrix dimension list` | Controller | `dimensions:read` | Lists dimensions with optional paging/search. |
-| `aifabrix dimension-value create` | Controller | `dimensions:create` | Creates a value for a dimension (static dimension). Value must be unique within the dimension. |
-| `aifabrix dimension-value list` | Controller | `dimensions:read` | Lists values for a dimension. |
-| `aifabrix dimension-value delete` | Controller | `dimensions:delete` | Deletes a dimension value by id. |
+| `aifabrix dimension value create` | Controller | `dimensions:create` | Creates a value for a dimension (static dimension). Value must be unique within the dimension. |
+| `aifabrix dimension value list` | Controller | `dimensions:read` | Lists values for a dimension. |
+| `aifabrix dimension value delete` | Controller | `dimensions:delete` | Deletes a dimension value by id. |
 | `aifabrix identity user create` | Controller | `users:create` or `admin:write` | Creates a user on the controller. |
 | `aifabrix identity user list` / `get` / `groups` | Controller | `users:read` or `admin:read` | List/get users or list a user's groups. |
 | `aifabrix identity group create` | Controller | `groups:create` or `admin:write` | Creates a group (`name` + `displayName`). |

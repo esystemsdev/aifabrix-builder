@@ -82,6 +82,8 @@ function isProtectedPath(normalizedPath) {
                      normalizedPath.startsWith('/var/folders/') ||
                      normalizedPath.includes('aifabrix-test-') ||
                      normalizedPath.includes('aifabrix-') ||
+                     normalizedPath.includes(`${path.sep}.temp${path.sep}`) ||
+                     normalizedPath.includes(`${path.sep}jest-protection`) ||
                      process.cwd().includes('/tmp/');
 
   if (isTempPath) {

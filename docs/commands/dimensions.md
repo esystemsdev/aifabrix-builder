@@ -19,13 +19,15 @@ The Controller is the **source of truth**. The dataplane becomes consistent afte
 
 Manage dimension definitions (keys, display names, data types, value assignment mode, required flags, and optional static values).
 
+Parent help (`aifabrix dimension -h`) lists subcommands and common examples. Per-leaf help: `aifabrix dimension <command> -h` or `aifabrix dimension value <command> -h`.
+
 ## Value type (`valueType`)
 
 Each dimension has a **value type** (separate from **data type**):
 
 | valueType | Meaning | Protection grants |
-|-----------|---------|-------------------|
-| static | Values only from catalog (`dimension-value create` or baseline JSON) | Use `dimensionKey` + `valueExpression` only |
+| --------- | ------- | ----------------- |
+| static | Values only from catalog (`dimension value create` or baseline JSON) | Use `dimensionKey` + `valueExpression` only |
 | dynamic | Values created by protection projection from datasource sync | Same |
 | both | Catalog and projection allowed | Grant must include `valueType: static` or `dynamic` |
 
@@ -132,11 +134,13 @@ af dimension list
 
 ---
 
-## Dimension value commands (`aifabrix dimension-value …`)
+## Dimension value commands (`aifabrix dimension value …`)
 
 Dimension values are used for **static** dimensions (enumerations). For **dynamic** dimensions, values come from the source system and are not managed in the catalog.
 
-### aifabrix dimension-value create <dimensionKey> --value <value>
+Parent help: `aifabrix dimension value -h`.
+
+### aifabrix dimension value create <dimensionKey> --value <value>
 
 Create a value for a static dimension.
 
@@ -147,13 +151,13 @@ Create a value for a static dimension.
 **Usage:**
 
 ```bash
-aifabrix dimension-value create -h
-aifabrix dimension-value create dataClassification --value confidential --display-name "Confidential" --description "Confidential data with access controls"
+aifabrix dimension value create -h
+aifabrix dimension value create dataClassification --value confidential --display-name "Confidential" --description "Confidential data with access controls"
 ```
 
 ---
 
-### aifabrix dimension-value list <dimensionKey>
+### aifabrix dimension value list <dimensionKey>
 
 List values for a static dimension (paged).
 
@@ -164,16 +168,16 @@ List values for a static dimension (paged).
 **Usage:**
 
 ```bash
-aifabrix dimension-value list -h
-aifabrix dimension-value list dataClassification
+aifabrix dimension value list -h
+aifabrix dimension value list dataClassification
 
 # With paging and search
-aifabrix dimension-value list dataClassification --page 1 --page-size 50 --search conf
+aifabrix dimension value list dataClassification --page 1 --page-size 50 --search conf
 ```
 
 ---
 
-### aifabrix dimension-value delete <dimensionValueId>
+### aifabrix dimension value delete <dimensionValueId>
 
 Delete one dimension value by id.
 
@@ -182,12 +186,11 @@ Delete requires the **dimensionValue id**.
 **Usage:**
 
 ```bash
-aifabrix dimension-value delete -h
-aifabrix dimension-value delete clx0987654321fedcba
+aifabrix dimension value delete -h
+aifabrix dimension value delete clx0987654321fedcba
 ```
 
 ## Troubleshooting
 
 - If dataplane-side validation still warns that a dimension key is unknown right after creation, wait for sync to complete and retry the deploy/validation flow.
 - If a value create fails with a conflict, the value likely already exists for that dimension.
-

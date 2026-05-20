@@ -7,7 +7,6 @@
  */
 
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 
 const HUBSPOT_COMPANIES_YAML = `apiVersion: dataplane.aifabrix.ai/v1
@@ -31,14 +30,28 @@ spec:
 
 const FIXTURE_REL = '../../fixtures/protection/hubspot-companies.yaml';
 
+/** @type {string|null} Reused across tests in one worker when on-disk fixture is absent. */
+let materializedFixturePath = null;
+
 /**
- * Materialize embedded YAML to a fresh temp file (no cross-test cache; safe when /tmp is cleaned mid-suite).
+ * Project-local temp root (avoids OS /tmp cleaners racing parallel Jest workers).
+ * @returns {string}
+ */
+function protectionFixtureTempRoot() {
+  return path.join(__dirname, '../../../.temp/jest-protection-fixtures');
+}
+
+/**
+ * Materialize embedded YAML once per worker under tests/.temp (not os.tmpdir).
  * @returns {string} Absolute path to hubspot-companies.yaml
  */
 function materializeHubspotCompaniesFixture() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aifabrix-hubspot-fixture-'));
+  const root = protectionFixtureTempRoot();
+  fs.mkdirSync(root, { recursive: true });
+  const dir = fs.mkdtempSync(path.join(root, 'hubspot-'));
   const dest = path.join(dir, 'hubspot-companies.yaml');
   fs.writeFileSync(dest, HUBSPOT_COMPANIES_YAML, 'utf8');
+  materializedFixturePath = dest;
   return dest;
 }
 
@@ -50,6 +63,9 @@ function hubspotCompaniesFixturePath(fromDir = __dirname) {
   const onDisk = path.resolve(fromDir, FIXTURE_REL);
   if (fs.existsSync(onDisk)) {
     return onDisk;
+  }
+  if (materializedFixturePath && fs.existsSync(materializedFixturePath)) {
+    return materializedFixturePath;
   }
   return materializeHubspotCompaniesFixture();
 }
