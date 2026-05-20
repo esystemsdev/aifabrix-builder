@@ -37,7 +37,7 @@ Dataplane is **installed per environment** (e.g. dev, tst, pro). You must set pe
 | `aifabrix datasource upload` | Dataplane | `external-system:publish` | **Datasource-scoped publish** on the Dataplane. The CLI displays a **Dataplane pipeline warning** before sending configuration. |
 | `aifabrix datasource test` | Dataplane | `external-system:publish` or `external-data-source:read` | Unified validation run (test run type) on the dataplane; same deployment auth as `test-integration`. |
 | `aifabrix datasource test-integration` | Dataplane | `external-system:publish` or `external-data-source:read` | Unified validation run (integration) on the dataplane; supports deployment auth including **client credentials** exchanged for an app token (CI/CD). |
-| `aifabrix datasource test-e2e` | Dataplane | `external-data-source:read` | Unified validation run (E2E) on the dataplane; uses the **same deployment auth** as `test-integration` (e.g. `aifabrix login` or app credentials). With **`--verify-audit`**, also requires **`audit:read`** to validate the audit evidence matrix after a successful run. |
+| `aifabrix datasource test-e2e` | Dataplane | **Logged in:** `external-system:read` **and** `external-data-source:sync` **and** `external-data-source:update` (all required). **CI:** validated app token (`x-client-token`). See [E2E validation and permissions](#e2e-validation-and-permissions). With **`--verify-audit`**, also **`audit:read`**. |
 | `aifabrix datasource verify-audit` | Dataplane | `audit:read` | Re-runs the nine-row audit evidence matrix from the latest `test-e2e` debug log or explicit correlation/execution ids (no E2E re-run). |
 | `aifabrix datasource load <datasourceKey>` | Dataplane | `external-data-source:sync` | Bulk record sync into dataplane storage. External integration only. **`--dry-run`** parses locally only (no dataplane write). Deployment auth: Bearer/API key or **x-client-token**. |
 | `aifabrix datasource export <datasourceKey>` | Dataplane | `record:search` | Governed records search export (not direct DB). External integration only. Max **10000** rows per run. Same deployment auth as other datasource dataplane commands. |
@@ -88,6 +88,67 @@ For `aifabrix datasource test`, `datasource test-integration`, `datasource test-
 
 ---
 
+## E2E validation and permissions
+
+<a id="e2e-validation-and-permissions"></a>
+
+**`aifabrix datasource test-e2e`** (and app-level **`aifabrix test-e2e`**) call the dataplane **unified validation** flow with run type **e2e**. Auth and permissions depend on **how** you authenticate.
+
+### Logged-in users (`aifabrix login` → Bearer token)
+
+When you use a **user** token from `aifabrix login`, the dataplane **validates RBAC** on the controller for **every** scope below. **All three are required** to start E2E; missing any scope returns **access denied**.
+
+| Permission | Why E2E needs it |
+|------------|------------------|
+| **`external-system:read`** | Read integration/system context and start the unified validation run. |
+| **`external-data-source:sync`** | Run **sync jobs** during E2E (data ingestion into dataplane storage). |
+| **`external-data-source:update`** | Run **capacity / CIP** steps that may **create, update, or delete** records on the external system. |
+
+**Typical roles** that include all three: **aifabrix-developer**, **aifabrix-platform-admin** (assign via the controller UI for the target environment).
+
+**Cannot run full E2E** with read-only roles alone—for example **aifabrix-observer** or **aifabrix-compliance-admin** (`external-system:read` and/or `external-data-source:read` without **sync** and **update**). Use **`datasource test`** or **`datasource test-integration`** for non–side-effecting checks instead.
+
+Permissions are **environment-scoped**. Set them on the dataplane role for the environment you target (dev, tst, pro).
+
+### CI / automation (application token)
+
+For **CI/CD** or scripted runs without an interactive user, use the same **deployment auth** as [upload](deployment.md) and `test-integration`: a validated **application token** (`x-client-token` from client credentials exchange). That path is for **machine** callers, not a substitute for granting observer read access to humans.
+
+Do **not** give integrators only **`external-system:read`** and expect them to run full E2E interactively—they need the **sync** and **update** scopes above.
+
+### What E2E does (side effects are intentional)
+
+By default, E2E is a **full integration test**, not a read-only API check. The dataplane may, in order:
+
+- Validate config and test credentials against the **real** external API.
+- **Start and wait for sync jobs**.
+- **Verify persisted data** (records/documents/vectors where configured).
+- Run **capacity / CIP** with external **create/update/delete** when fixtures and scenarios allow.
+
+See [External integration testing – E2E](external-integration-testing.md#datasource-e2e-tests) and **Data safety** in that guide. Use **test credentials** and **non-production** environments.
+
+### Additional scopes (optional)
+
+| Add-on | Scope |
+|--------|--------|
+| Audit evidence matrix after a green E2E (`--verify-audit`) | **`audit:read`** |
+| Pre-run publish of local files (`--sync` on CLI) | **`external-system:publish`** |
+
+### Other commands (comparison)
+
+| Goal | Command | Typical scopes (logged in) |
+|------|---------|----------------------------|
+| Structural/policy validation, no E2E side effects | `datasource test` | `external-system:read` or `external-system:publish` |
+| Integration validation without full E2E CRUD | `datasource test-integration` | `external-system:publish` or `external-data-source:read` |
+| Bulk fixture import | `datasource load` | **`external-data-source:sync`** only |
+| Semantic trust / agent metadata | `datasource test-trust` | **`external-data-source:update`** (+ often publish for `--sync`) |
+
+### Narrowing E2E side effects (CLI options)
+
+Optional flags on **`aifabrix datasource test-e2e --help`** (for example **`--no-run-scenarios`**, **`--no-cleanup`**, capability-focused runs) reduce what the run does; they **do not** remove the need for **sync** and **update** permissions on the logged-in path unless the dataplane adds a dedicated read-only E2E mode later.
+
+---
+
 ## Controller permissions (summary)
 
 - **applications:read** – List/get template applications and (with env) environment applications.
@@ -125,16 +186,16 @@ For `aifabrix datasource test`, `datasource test-integration`, `datasource test-
 
 ## Dataplane permissions (summary)
 
-- **external-system:read** – List/get external systems, config, OpenAPI files/endpoints, wizard deployment docs, platforms. Also covers read-only **pipeline upload** listing and retrieval, **deployment validation** on the Dataplane, and **protection** validate/simulate/list/show/status/history/explain (`aifabrix protection *` read paths, `validate .protection` dataplane step). Those dataplane read paths accept **Bearer/API key** or **x-client-token**, same as pipeline upload.
+- **external-system:read** – List/get external systems, config, OpenAPI, wizard docs, platforms; protection read paths; **`datasource test`** / structural validation. **Required for E2E** but **not sufficient alone** for logged-in users—see [E2E validation and permissions](#e2e-validation-and-permissions).
 - **external-system:create** – Create external system, from-template, wizard sessions and steps (parse, detect-type, generate-config, validate, etc.).
 - **external-system:update** – Update external system, publish, rollback, save-template, deployment documentation uploads.
 - **external-system:delete** – Delete (soft) external system. Also required for **`aifabrix protection delete`** (removes deployed protection manifest and projection lineage).
 - **external-system:publish** – Dataplane **pipeline deployment** (mutating): full-system upload, datasource-scoped publish, **protection upload** (`aifabrix protection upload`, `upload .protection`), and default pre-run upload for **`test-trust`**. Accepts **Bearer/API key** or **x-client-token** (application token from client credentials exchange; the CLI does not send raw client id/secret to these endpoints). **Pipeline test** (system or per-datasource) uses the same deployment auth options for CI/CD.
-- **external-data-source:read** – Dataplane pipeline test and datasource validation runs. Can be used for pipeline test (alternative to `external-system:publish`). Covers `aifabrix datasource test` and `test-integration` when not using `external-system:publish`, and is required for `aifabrix datasource test-e2e` (unified E2E validation run; same login or app-token style auth as `test-integration`). Also used when the CLI reads cached trust results (latest/history).
+- **external-data-source:read** – Pipeline test and **`datasource test`** / **`test-integration`** when not using `external-system:publish`; cached trust reads. **Does not replace** **`external-data-source:sync`** or **`update`** for logged-in **E2E** (see [E2E validation and permissions](#e2e-validation-and-permissions)).
 - **audit:read** – Read execution logs and RBAC/ABAC audit traces on the dataplane. Required for **`aifabrix datasource verify-audit`** and for **`aifabrix datasource test-e2e --verify-audit`**, which validate the CLI **nine-row audit evidence matrix** after a successful E2E run.
 - **governance:evaluate** – Run governance scenario acceptance (`aifabrix test-governance`). Evaluates per-subject ABAC visibility via governed search; operator token only (subjects are named in the scenario pack). Does not grant `record:search` impersonation on the public records API.
-- **external-data-source:update** – Mutating datasource-scoped operations. Required for **`aifabrix test-trust`** / **`datasource test-trust`** agent metadata validation runs on the dataplane. Distinct from E2E read-only checks: trust runs may change persisted `agentValidation` state on the datasource.
-- **external-data-source:sync** – Bulk record sync for **`aifabrix datasource load`** (import local JSON/NDJSON fixtures into dataplane storage).
+- **external-data-source:sync** – Sync jobs, **`datasource load`** (fixture import), and E2E sync steps. **Required for logged-in `datasource test-e2e`** together with **`external-system:read`** and **`external-data-source:update`**.
+- **external-data-source:update** – Datasource mutations; **`test-trust`** / agent metadata validation. **Required for logged-in `datasource test-e2e`** (capacity / external CRUD steps) together with **read** and **sync**.
 - **record:search** – Cross-datasource records search for **`aifabrix datasource export`** (governed read path with ABAC).
 - **credential:read** – List/get credentials, wizard credentials list.
 - **credential:create** – Create credential (if used by wizard).
