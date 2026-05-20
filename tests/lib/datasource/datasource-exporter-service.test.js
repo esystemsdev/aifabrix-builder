@@ -44,7 +44,13 @@ describe('datasource-exporter-service', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    if (tmpDir && fs.existsSync(tmpDir)) {
+      try {
+        fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
+      } catch {
+        /* best-effort */
+      }
+    }
   });
 
   it('projectExportRows filters metadata keys', () => {

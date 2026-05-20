@@ -26,9 +26,8 @@ describe('protection resolve', () => {
 
   beforeEach(() => {
     tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'protection-'));
-    getProtectionRoot.mockReset();
     const protectionDir = path.join(tmpRoot, 'integration', '.protection');
-    getProtectionRoot.mockReturnValue(protectionDir);
+    getProtectionRoot.mockImplementation(() => protectionDir);
     writeHubspotCompaniesManifest(protectionDir);
     const altFixture = `apiVersion: dataplane.aifabrix.ai/v1
 kind: Protection
@@ -56,7 +55,13 @@ spec:
   });
 
   afterEach(() => {
-    fs.rmSync(tmpRoot, { recursive: true, force: true });
+    if (tmpRoot && fs.existsSync(tmpRoot)) {
+      try {
+        fs.rmSync(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
+      } catch {
+        /* best-effort */
+      }
+    }
   });
 
   it('resolves preferred datasourceKey.yaml', () => {

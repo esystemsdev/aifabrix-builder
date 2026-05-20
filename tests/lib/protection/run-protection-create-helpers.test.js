@@ -26,13 +26,19 @@ describe('run-protection-create-helpers', () => {
   let tmpRoot;
 
   beforeEach(() => {
-    tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'prot-create-helpers-'));
-    getProtectionRoot.mockReturnValue(tmpRoot);
     jest.clearAllMocks();
+    tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'prot-create-helpers-'));
+    getProtectionRoot.mockImplementation(() => tmpRoot);
   });
 
   afterEach(() => {
-    fs.rmSync(tmpRoot, { recursive: true, force: true });
+    if (tmpRoot && fs.existsSync(tmpRoot)) {
+      try {
+        fs.rmSync(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
+      } catch {
+        /* best-effort */
+      }
+    }
   });
 
   it('resolveProtectionOutputFormat returns json when config.format is json', async() => {

@@ -90,7 +90,13 @@ describe('log-cleaner', () => {
     });
 
     afterEach(() => {
-      fs.rmSync(tmpRoot, { recursive: true, force: true });
+      if (tmpRoot && fs.existsSync(tmpRoot)) {
+        try {
+          fs.rmSync(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
+        } catch {
+          /* best-effort */
+        }
+      }
     });
 
     it('dry-run lists files without deleting', async() => {

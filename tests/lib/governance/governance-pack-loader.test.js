@@ -30,16 +30,29 @@ describe('governance-pack-loader', () => {
       metadata: { key: 't', displayName: 'T' },
       spec: { systemKey: 'sys', scenarios: [] }
     };
-    fs.writeFileSync(packPath, yaml.dump(doc), 'utf8');
+    const body = yaml.dump(doc);
+    fs.writeFileSync(packPath, body, 'utf8');
+    expect(fs.readFileSync(packPath, 'utf8').length).toBeGreaterThan(0);
     expect(loadGovernancePackYaml(packPath)).toMatchObject({ kind: 'GovernanceScenarioPack' });
   });
 
   it('resolves default pack path under integration', () => {
     const scenariosDir = path.join(tmpDir, 'scenarios');
     fs.mkdirSync(scenariosDir, { recursive: true });
-    fs.writeFileSync(path.join(scenariosDir, 'my-sys-v1.yaml'), 'kind: GovernanceScenarioPack\n', 'utf8');
+    const packFile = path.join(scenariosDir, 'my-sys-v1.yaml');
+    fs.writeFileSync(
+      packFile,
+      yaml.dump({
+        apiVersion: 'dataplane.aifabrix.ai/v1',
+        kind: 'GovernanceScenarioPack',
+        metadata: { key: 'my-sys-v1', displayName: 'My Sys' },
+        spec: { systemKey: 'my-sys', scenarios: [] }
+      }),
+      'utf8'
+    );
+    expect(fs.existsSync(packFile)).toBe(true);
     const resolved = resolveGovernancePackPath('my-sys', { app: tmpDir });
-    expect(resolved).toContain('my-sys-v1.yaml');
+    expect(resolved).toBe(packFile);
   });
 
   it('throws when pack file missing', () => {

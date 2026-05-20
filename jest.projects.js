@@ -278,7 +278,35 @@ const defaultProject = {
       '/tests/lib/datasource/run-capability-remove.test.js',
       '\\\\tests\\\\lib\\\\datasource\\\\run-capability-remove.test.js',
       'lib/datasource/run-capability-remove.test.js',
-      'run-capability-remove\\.test\\.js'
+      'run-capability-remove\\.test\\.js',
+      '/tests/lib/datasource/log-cleaner.test.js',
+      '\\\\tests\\\\lib\\\\datasource\\\\log-cleaner.test.js',
+      'lib/datasource/log-cleaner.test.js',
+      'log-cleaner\\.test\\.js',
+      '/tests/lib/datasource/datasource-exporter-service.test.js',
+      '\\\\tests\\\\lib\\\\datasource\\\\datasource-exporter-service.test.js',
+      'lib/datasource/datasource-exporter-service.test.js',
+      'datasource-exporter-service\\.test\\.js',
+      '/tests/lib/protection/paths.test.js',
+      '\\\\tests\\\\lib\\\\protection\\\\paths.test.js',
+      'lib/protection/paths.test.js',
+      'protection/paths\\.test\\.js',
+      '/tests/lib/protection/protection-resolve.test.js',
+      '\\\\tests\\\\lib\\\\protection\\\\protection-resolve.test.js',
+      'lib/protection/protection-resolve.test.js',
+      'protection-resolve\\.test\\.js',
+      '/tests/lib/protection/run-protection-create-helpers.test.js',
+      '\\\\tests\\\\lib\\\\protection\\\\run-protection-create-helpers.test.js',
+      'lib/protection/run-protection-create-helpers.test.js',
+      'run-protection-create-helpers\\.test\\.js',
+      '/tests/lib/governance/governance-pack-loader.test.js',
+      '\\\\tests\\\\lib\\\\governance\\\\governance-pack-loader.test.js',
+      'lib/governance/governance-pack-loader.test.js',
+      'governance-pack-loader\\.test\\.js',
+      '/tests/lib/protection/validate-batch.test.js',
+      '\\\\tests\\\\lib\\\\protection\\\\validate-batch.test.js',
+      'lib/protection/validate-batch.test.js',
+      'validate-batch\\.test\\.js'
     ];
     if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
       patterns.push('/tests/local/');
@@ -404,6 +432,21 @@ const isolatedProjects = [
     '**/tests/lib/datasource/run-capability-diff.test.js',
     '**/tests/lib/datasource/run-capability-edit.test.js',
     '**/tests/lib/datasource/run-capability-remove.test.js'
+  ]),
+  makeIsolatedProject('log-cleaner', ['**/tests/lib/datasource/log-cleaner.test.js']),
+  makeIsolatedProject('datasource-exporter-service', [
+    '**/tests/lib/datasource/datasource-exporter-service.test.js'
+  ]),
+  makeIsolatedProject('protection-paths', ['**/tests/lib/protection/paths.test.js']),
+  makeIsolatedProject('protection-resolve', ['**/tests/lib/protection/protection-resolve.test.js']),
+  makeIsolatedProject('protection-create-helpers', [
+    '**/tests/lib/protection/run-protection-create-helpers.test.js'
+  ]),
+  makeIsolatedProject('governance-pack-loader', [
+    '**/tests/lib/governance/governance-pack-loader.test.js'
+  ]),
+  makeIsolatedProject('protection-validate-batch', [
+    '**/tests/lib/protection/validate-batch.test.js'
   ])
 ];
 

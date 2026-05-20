@@ -38,10 +38,10 @@ describe('protection validate-batch', () => {
 
   beforeEach(() => {
     tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'prot-val-batch-'));
-    getProtectionRoot.mockReset();
     const dir = path.join(tmpRoot, 'prot');
-    getProtectionRoot.mockReturnValue(dir);
+    getProtectionRoot.mockImplementation(() => dir);
     manifestPath = writeHubspotCompaniesManifest(dir);
+    expect(fs.existsSync(manifestPath)).toBe(true);
     resolveProtectionDataplaneContext.mockResolvedValue({
       environment: 'dev',
       dataplaneUrl: 'http://dp',
