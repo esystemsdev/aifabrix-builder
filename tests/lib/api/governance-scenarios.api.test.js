@@ -23,7 +23,7 @@ describe('governance-scenarios.api', () => {
     const mockPost = jest.fn().mockResolvedValue({ success: true, data: payload });
     createDataplaneApiClient.mockReturnValue({ post: mockPost });
 
-    const body = { systemKey: 'protection-test', pack: { kind: 'GovernanceScenarioPack' } };
+    const body = { systemKey: 'test-protection', pack: { kind: 'GovernanceScenarioPack' } };
     const result = await runGovernanceScenarios('http://localhost:3001', { token: 't', type: 'bearer' }, body);
 
     expect(createDataplaneApiClient).toHaveBeenCalledWith('http://localhost:3001', {

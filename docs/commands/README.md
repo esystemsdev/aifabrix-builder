@@ -56,6 +56,7 @@ Complete command reference organized by concept with examples and troubleshootin
   - [`aifabrix integration-client update-groups`](application-management.md#aifabrix-integration-client-update-groups) - Update group assignments for an integration client
   - [`aifabrix integration-client update-redirect-uris`](application-management.md#aifabrix-integration-client-update-redirect-uris) - Update redirect URIs for an integration client
   - [Dimensions](dimensions.md) - Dimension catalog (create/get/list, `valueType`) for ABAC and protection
+  - [Identity management](identity-management.md) - Users, groups, memberships, role mappings, cache purge, dataplane identity sync
   - [Protection](protection.md) - Protection manifests in `integration/.protection/` (validate/upload/show/delete)
 
 ### Application Development
@@ -112,6 +113,7 @@ Complete command reference organized by concept with examples and troubleshootin
     - [`aifabrix datasource test <datasourceKey>`](external-integration/datasources.md#aifabrix-datasource-test-datasourcekey) - Structural/policy validation run for one datasource (unified dataplane API, run type test)
     - [`aifabrix datasource test-integration <datasourceKey>`](external-integration/datasources.md#aifabrix-datasource-test-integration-datasourcekey) - Integration validation run for one datasource (unified dataplane API)
     - [`aifabrix datasource test-e2e <datasourceKey>`](external-integration/datasources.md#aifabrix-datasource-test-e2e-datasourcekey) - E2E validation run for one datasource (unified dataplane API)
+    - [`aifabrix datasource verify-audit <datasourceKey>`](external-integration-testing.md#audit-evidence-verification-aifabrix-datasource-verify-audit) - Re-check audit evidence matrix from latest E2E log
     - [`aifabrix datasource log-test <datasourceKey>`](external-integration/datasources.md#aifabrix-datasource-log-test-datasourcekey) - Show latest structural validation debug log (`test-*.json`)
     - [`aifabrix datasource log-trust <datasourceKey>`](external-integration/datasources.md#aifabrix-datasource-log-trust-datasourcekey) - Show latest agent trust debug log (`test-trust-*.json`)
     - [`aifabrix datasource clean-logs`](external-integration/datasources.md#aifabrix-datasource-clean-logs) - Remove saved debug JSON under `integration/<systemKey>/logs/`

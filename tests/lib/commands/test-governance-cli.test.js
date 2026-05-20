@@ -20,7 +20,7 @@ const logger = require('../../../lib/utils/logger');
 const { runTestGovernanceCommandAction } = require('../../../lib/commands/test-governance-command-action');
 
 const SAMPLE_RESULT = {
-  packKey: 'protection-test-v1',
+  packKey: 'test-protection-v1',
   summary: { total: 1, passed: 1, failed: 0 },
   scenarios: [
     {
@@ -47,7 +47,7 @@ describe('test-governance-cli', () => {
     runTestGovernanceForExternalSystem.mockResolvedValue({
       result: SAMPLE_RESULT,
       packPath: '/tmp/pack.yaml',
-      systemKey: 'protection-test'
+      systemKey: 'test-protection'
     });
     jest.spyOn(process, 'exit').mockImplementation(() => {});
   });
@@ -57,7 +57,7 @@ describe('test-governance-cli', () => {
   });
 
   it('prints TTY verdict lines when verbose', async() => {
-    await runTestGovernanceCommandAction('protection-test', { verbose: true });
+    await runTestGovernanceCommandAction('test-protection', { verbose: true });
     const output = logger.log.mock.calls.map(c => c[0]).join('\n');
     expect(output).toContain('PASS: ok');
     expect(output).not.toContain('metadata');
@@ -65,7 +65,7 @@ describe('test-governance-cli', () => {
   });
 
   it('prints redacted json with --json', async() => {
-    await runTestGovernanceCommandAction('protection-test', { json: true });
+    await runTestGovernanceCommandAction('test-protection', { json: true });
     const jsonLine = logger.log.mock.calls.find(c => typeof c[0] === 'string' && c[0].startsWith('{'));
     expect(jsonLine).toBeTruthy();
     const parsed = JSON.parse(jsonLine[0]);
@@ -81,16 +81,16 @@ describe('test-governance-cli', () => {
         scenarios: [{ ...SAMPLE_RESULT.scenarios[0], status: 'fail' }]
       },
       packPath: '/tmp/pack.yaml',
-      systemKey: 'protection-test'
+      systemKey: 'test-protection'
     });
-    await runTestGovernanceCommandAction('protection-test', {});
+    await runTestGovernanceCommandAction('test-protection', {});
     expect(process.exit).toHaveBeenCalledWith(1);
   });
 
   it('handler exits 3 on missing pack', async() => {
     const { testGovernanceCommandHandler } = require('../../../lib/commands/test-governance-command-action');
     runTestGovernanceForExternalSystem.mockRejectedValue(new Error('No scenario pack found'));
-    await testGovernanceCommandHandler('protection-test', {});
+    await testGovernanceCommandHandler('test-protection', {});
     expect(process.exit).toHaveBeenCalledWith(3);
   });
 });

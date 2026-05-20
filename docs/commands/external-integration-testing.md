@@ -8,13 +8,13 @@ Single source of truth for testing external integrations: unit tests (`aifabrix 
 
 ## Overview
 
-Testing external integrations happens in three tiers:
+Testing external integrations happens in several layers:
 
 1. **Unit tests** (`aifabrix test <app>`) – Local validation with no API calls. Validates syntax, schemas, field mappings, metadata schemas, and relationships using test payloads from the datasource configuration.
 2. **Integration tests** (`aifabrix test-integration <app>`) – For an external system folder, calls the dataplane for an **app-wide** integration rollup (small CLI surface: environment, verbosity, debug). Per-datasource payloads, timeouts, and machine modes live on **`aifabrix datasource test-integration <datasourceKey>`**. Validates field mappings, metadata schemas, endpoint connectivity, and ABAC dimensions as returned by the dataplane for that flow.
 3. **End-to-end (E2E) tests** (`aifabrix datasource test-e2e <datasourceKey>`) – Full flow against real external systems: config validation, credential connectivity, sync execution, data persistence, and CIP simulation. Uses real credentials and real external APIs (e.g. HubSpot, SharePoint).
 4. **Semantic trust** (`aifabrix test-trust <systemKey>` / `aifabrix datasource test-trust <datasourceKey>`) – Dataplane review of **business metadata** for AI agents (semantic fit, warnings, publish gate). Does **not** call external APIs or run CIP; use after local `test` and before or alongside E2E when you need trust evidence separate from connectivity.
-5. **Governance acceptance** ([`aifabrix test-governance <systemKey>`](governance-testing.md)) – Prove **ABAC visibility** per subject user (sync record keys only). Does **not** call vendor APIs and is **not** `test-e2e`. Requires baseline fixture load and `governance:evaluate`.
+5. **Governance acceptance** ([`aifabrix test-governance <systemKey>`](governance-testing.md)) – Prove **ABAC visibility** per subject user (sync record keys only). Does **not** call vendor APIs and is **not** `test-e2e`. Requires baseline fixture load, identity sync, and `governance:evaluate` (see [Governance testing](governance-testing.md) and [Identity management](identity-management.md)).
 
 **Dataplane datasource validation (single key):** `aifabrix datasource test <datasourceKey>` runs the unified validation API with run type **test** (structural/policy on the dataplane). `aifabrix datasource test-integration` uses run type **integration** (richer integration checks). Both use the same deployment auth as `datasource test-e2e`. See [External Integration Commands – datasource test](external-integration.md#aifabrix-datasource-test-datasourcekey).
 
@@ -110,7 +110,7 @@ The command prints a structured summary (files checked, per-datasource results, 
 
 ### What is validated
 
-- **Pipeline test API** – Dataplane endpoint receives the payload and runs the pipeline test flow
+- **Dataplane integration run** – The dataplane receives the payload and runs the integration validation flow
 - **Field mappings** – Applied against the supplied payload; results reported (e.g. mapped field count)
 - **Metadata schema** – Validated against the payload
 - **Endpoint connectivity** – Whether the configured endpoint is reachable
@@ -246,10 +246,11 @@ aifabrix datasource test-e2e <datasourceKey> [capabilityKey] [options]
 - **`--no-cleanup`** – Do not delete the created/test record at the end; leave it for inspection.
 - **`--primary-key-value <value|@path>`** – Primary key of an existing record. When set, the dataplane can fetch that record and use it as the payload template for create (no separate payload template needed). For composite keys, use a JSON file path (e.g. `@pk.json`).
 - **`--debug [level]`** – Richer debug from the dataplane, optional appendix on the terminal, and (for this command) a log file under **`integration/<systemKey>/logs/`**. Levels: **`summary`** (default), **`full`**, **`raw`** (see [Debug output](#debug-output-datasource-commands)). Omit the appendix with **`--json`**.
-- **`--timeout <ms>`** – Aggregate time budget for the POST and any polling (default fifteen minutes in the CLI).
-- **`[capabilityKey]`** (positional) – Ask the dataplane to focus the run on one capability when that contract is supported. Human output (default TTY and **`--summary`**) highlights **that** capability’s status and any per-capability E2E steps when the report includes them. If the report still lists **more than one** capability row, the CLI prints a **warning** to stderr; use **`--strict-capability-scope`** to exit with status **1** in that case (plan section 2.3).
+- **`--timeout <ms>`** – Aggregate time budget for the run request and any polling (default fifteen minutes in the CLI).
+- **`[capabilityKey]`** (positional) – Ask the dataplane to focus the run on one capability when that contract is supported. Human output (default TTY and **`--summary`**) highlights **that** capability’s status and any per-capability E2E steps when the report includes them. If the report still lists **more than one** capability row, the CLI prints a **warning** to stderr; use **`--strict-capability-scope`** to exit with status **1** in that case.
 - **`--strict-capability-scope`** – When a capability drill-down is requested, fail the process when the envelope lists multiple capability rows (client contract check).
 - **`--json` / `--summary` / `--warnings-as-errors` / `--require-cert`** – Machine-oriented output and stricter exit codes; see `aifabrix datasource test-e2e --help`.
+- **`--verify-audit`** – After a **successful** E2E, validate the nine-row **audit evidence matrix** on the dataplane (RBAC/ABAC capture for the run). Requires **`audit:read`** on your role in addition to the usual E2E scopes. Use **`--no-verify-audit`** to skip. Optional **`--audit-poll-ms`** / **`--audit-poll-interval-ms`** control how long the CLI waits for audit rows to appear after the run finishes.
 
 **Datasource config – primaryKey:** The datasource configuration must include `primaryKey` (required by the schema). It is an array of normalized attribute names (e.g. `["id"]` or `["externalId"]`) used for CRUD operations and table indexing. Validation fails if `primaryKey` is missing.
 
@@ -263,7 +264,38 @@ aifabrix datasource test-e2e hubspot-contacts --app hubspot --no-async
 
 # Optional single-capability scope (positional)
 aifabrix datasource test-e2e hubspot-contacts --app hubspot read
+
+# E2E plus audit evidence proof (opt-in; requires audit:read)
+aifabrix datasource test-e2e hubspot-contacts --app hubspot --sync --verify-audit -v
 ```
+
+## Audit evidence verification (`aifabrix datasource verify-audit`)
+
+After a green E2E, integrators often need proof that **governance audit rows** exist on the dataplane (RBAC/ABAC capture, per-execution traces)—not only that the external API call succeeded. **`--verify-audit`** on `datasource test-e2e` runs this check in the same process. **`datasource verify-audit`** re-runs the same matrix **without** calling the external vendor again.
+
+**When to use:**
+
+- CI gates after E2E: connectivity plus audit evidence in one exit code.
+- Re-check audit rows after a dataplane upgrade using the latest `test-e2e` debug log.
+- Debug “E2E passed but Logs tab is empty” by failing fast with row-level reasons.
+
+**Prerequisites:**
+
+- Logged in with a role that includes **`audit:read`** (see [Permissions](permissions.md)).
+- Dataplane environment with audit evidence capture enabled for validation runs.
+- For log-based runs: a prior **`datasource test-e2e --debug`** (or pass **`--correlation-id`** / **`--execution-id`** explicitly).
+
+**Command:**
+
+```bash
+aifabrix datasource verify-audit <datasourceKey> [options]
+```
+
+**Options:** `-a, --app`, `-e, --env`, `-v, --verbose`, `--json`, `-f, --file <path>`, `--correlation-id`, `--execution-id`, `--audit-poll-ms`, `--audit-poll-interval-ms`.
+
+**Exit codes:** `0` matrix passed; `1` matrix or missing ids failed; `3` auth/unreachable/invalid inputs.
+
+**Matrix (nine rows):** executions list (captured RBAC/ABAC), global rbac-decisions and abac-traces lists, per-execution rbac/abac/errors/steps, correlation grouping, distinct traces per execution. Skipped governance capture counts as **pass** (not enforcement deny).
 
 ### Troubleshooting E2E
 
@@ -364,35 +396,51 @@ Test payloads are configured in the **datasource** (YAML or JSON) with a `testPa
 
 ### Inline example (YAML)
 
+Trimmed `recordStorage` datasource showing `testPayload` only; a full file also needs `metadataSchema`, `primaryKey`, `labelKey`, `dimensions`, and `execution` per `external-datasource.schema.json`.
+
 ```yaml
 key: hubspot-company
+displayName: HubSpot Company
 systemKey: hubspot
 entityType: recordStorage
+resourceType: company
+primaryKey: [externalId]
+labelKey: [name]
+metadataSchema:
+  type: object
+  properties:
+    externalId: { type: string, index: true }
+    name: { type: string, index: true }
+    country: { type: string, index: true }
+dimensions:
+  country:
+    type: local
+    field: country
+    actor: userId
+    operator: eq
 fieldMappings:
-  dimensions:
-    country: metadata.country
   attributes:
+    externalId:
+      expression: "{{raw.id}}"
     name:
-      expression: "{{properties.name.value}} | trim"
-      type: string
-      indexed: false
+      expression: "{{raw.properties.name.value}} | trim"
     country:
-      expression: "{{properties.country.value}} | toUpper | trim"
-      type: string
-      indexed: false
+      expression: "{{raw.properties.country.value}} | toUpper | trim"
 testPayload:
   payloadTemplate:
+    id: "1"
     properties:
       name:
         value: Acme Corp
       country:
         value: us
   expectedResult:
+    externalId: "1"
     name: Acme Corp
     country: US
 ```
 
-The payload must match the API response shape your field mappings expect (paths in expressions must resolve against `payloadTemplate`).
+The payload must match the API response shape your field mappings expect (use `raw.*` roots in expressions; paths must resolve against `payloadTemplate`).
 
 ### Custom file (integration tests only)
 
@@ -428,4 +476,8 @@ Datasources declare **capabilities** (e.g. list, get, create, update, delete). T
 
 - [External Integration Commands](external-integration.md) – Command reference for `aifabrix test`, `aifabrix test-integration`, `aifabrix datasource test-integration`, `aifabrix datasource test-e2e`, and related commands
 - [Validation Commands](validation.md) – General validation, schemas, and `aifabrix validate`
-- [External Systems Guide](../external-systems.md) – External system configuration and test payload overview (including [Test Payloads](../external-systems.md#test-payloads))
+- [Governance testing](governance-testing.md) – `test-governance` and scenario packs
+- [Identity management](identity-management.md) – Users, groups, and dataplane identity sync before governance runs
+- [Protection](protection.md) – Protection manifests and upload before governed fixture load
+- [Permissions](permissions.md) – Scopes for test, E2E, trust, governance, and audit verification
+- [External Systems Guide](../external-systems.md) – External system configuration overview (test payload detail is in this document only)
