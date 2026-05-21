@@ -421,6 +421,18 @@ describe('Pipeline API', () => {
       );
     });
 
+    it('should pass force in body when provided', async() => {
+      await pipelineApi.uploadApplicationViaPipeline(dataplaneUrl, authConfig, {
+        ...payload,
+        force: true
+      });
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/api/v1/pipeline/upload',
+        { body: { ...payload, status: 'draft', force: true } }
+      );
+    });
+
     it('should use dataplane URL as base URL', async() => {
       await pipelineApi.uploadApplicationViaPipeline(dataplaneUrl, authConfig, payload);
 

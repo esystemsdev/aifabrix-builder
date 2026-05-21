@@ -27,6 +27,15 @@ describe('secrets-missing-error', () => {
     expect(findActiveEnvLineForKvRef(template, 'kv://hubspot-demo/clientId')).toBeNull();
   });
 
+  it('buildMissingSecretsErrorMessage includes stale OAuth hint for oauth paths', () => {
+    const msg = buildMissingSecretsErrorMessage({
+      missing: ['kv://hubspot-demo/clientSecret'],
+      appName: 'hubspot-demo',
+      envTemplate: 'KV_HUBSPOT_DEMO_CLIENTSECRET=kv://hubspot-demo/clientSecret\n'
+    });
+    expect(msg).toContain('Stale-template-hint: oauth-leftover | repair hubspot-demo');
+  });
+
   it('buildMissingSecretsErrorMessage includes remediation marker', () => {
     const msg = buildMissingSecretsErrorMessage({
       missing: ['kv://hubspot-demo/clientSecret'],

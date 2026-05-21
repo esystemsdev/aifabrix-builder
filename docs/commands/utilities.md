@@ -62,10 +62,19 @@ This will generate the .env file without running validation checks afterward.
 
 **Env-only mode:** When resolving in **env-only** mode (integration + `env.template` and no application config file), post-resolve validation is skipped because there is nothing to validate as application config. Run `aifabrix validate <app>` separately when you add full config later.
 
+**Local vs Docker:** For paths under `integration/<systemKey>/`, resolve uses **local** host/port rules (no Docker rewrite). Platform builder apps (`keycloak`, `miso-controller`, `dataplane`) and other `builder/<appKey>/` apps use **docker** transforms when generating `.env`.
+
+**Missing `kv://` secrets:** The CLI lists each missing reference and suggests:
+
+1. **Comment or delete** the matching line in `env.template` when the key is not required by your system file (common after switching from OAuth to apikey — run `aifabrix repair <systemKey>` to comment stale OAuth lines).
+2. **Store the value:** `aifabrix secret set <systemKey>/<name> "<your-value>"` (for example `aifabrix secret set hubspot-demo/apiKey "<token>"`).
+
+Use `--force` only when you intend to auto-generate placeholder keys in the secrets file (catalog-driven apps).
+
 **Issues:**
-- **"Secrets file not found"** → Create `~/.aifabrix/secrets.yaml`
-- **"Missing kv:// reference"** → Add secret to secrets file or use `--force` to auto-generate
-- **"Permission denied"** → Check file permissions on secrets.yaml
+- **"Secrets file not found"** → Create `~/.aifabrix/secrets.local.yaml` or run `aifabrix secret set …`
+- **"Missing secrets: kv://…"** → Comment the line in `env.template`, run `aifabrix repair <systemKey>`, or `aifabrix secret set <path> "<value>"`
+- **"Permission denied"** → Check file permissions on the secrets file
 - **"env.template not found"** → Ensure `env.template` exists in the app directory (integration or builder)
 
 ---

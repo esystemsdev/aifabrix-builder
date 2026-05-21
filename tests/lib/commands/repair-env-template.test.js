@@ -312,6 +312,34 @@ describe('repair-env-template', () => {
       expect(writeFileSyncSpy).not.toHaveBeenCalled();
     });
 
+    it('comments stale OAuth KV lines when system auth is apikey only', () => {
+      const envPath = path.join(appPath, 'env.template');
+      const existingContent = [
+        '# KV_HUBSPOT_DEMO_CLIENTID=kv://hubspot-demo/clientId',
+        'KV_HUBSPOT_DEMO_CLIENTSECRET=kv://hubspot-demo/clientSecret',
+        'KV_HUBSPOT_DEMO_APIKEY=kv://hubspot-demo/apiKey',
+        ''
+      ].join('\n');
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockImplementation(p => (p === envPath ? existingContent : ''));
+      const systemParsed = {
+        key: 'hubspot-demo',
+        authentication: {
+          method: 'apikey',
+          security: { apiKey: 'kv://hubspot-demo/apiKey' }
+        },
+        configuration: []
+      };
+      const changes = [];
+      const result = repairEnvTemplate(appPath, systemParsed, 'hubspot-demo', false, changes);
+      expect(result).toBe(true);
+      expect(changes.some(c => c.includes('Commented stale env.template'))).toBe(true);
+      const written = writeFileSyncSpy.mock.calls.find(c => c[0] === envPath);
+      expect(written).toBeDefined();
+      expect(written[1]).toContain('# KV_HUBSPOT_DEMO_CLIENTSECRET=kv://hubspot-demo/clientSecret');
+      expect(written[1]).toMatch(/^KV_HUBSPOT_DEMO_APIKEY=/m);
+    });
+
     it('does not add expected keys when they appear only in commented lines', () => {
       const envPath = path.join(appPath, 'env.template');
       const existingContent = [

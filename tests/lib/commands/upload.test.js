@@ -147,6 +147,25 @@ describe('upload command', () => {
       expect(logDataplanePipelineWarning).toHaveBeenCalledTimes(1);
     });
 
+    it('should include force in payload and warn when --force is set', async() => {
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await uploadExternalSystem(systemKey, { force: true });
+      expect(uploadApplicationViaPipeline).toHaveBeenCalledWith(
+        'http://dataplane:4000',
+        { type: 'bearer', token: 'token' },
+        expect.objectContaining({ force: true })
+      );
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('Plan 331')
+      );
+    });
+
+    it('dry-run should not call API when --force is set', async() => {
+      const { uploadExternalSystem } = require('../../../lib/commands/upload');
+      await uploadExternalSystem(systemKey, { dryRun: true, force: true });
+      expect(uploadApplicationViaPipeline).not.toHaveBeenCalled();
+    });
+
     it('should call validation/run without payloadTemplate for --probe (full engine path)', async() => {
       const { uploadExternalSystem } = require('../../../lib/commands/upload');
       const { testSystemViaPipeline } = require('../../../lib/api/pipeline.api');

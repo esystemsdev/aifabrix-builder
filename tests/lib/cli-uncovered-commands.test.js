@@ -832,6 +832,38 @@ describe('CLI Uncovered Command Handlers', () => {
       await actions['download <systemKey>']('hubspot', {});
       expect(download.downloadExternalSystem).toHaveBeenCalledWith('hubspot', expect.objectContaining({ format: 'json' }));
     });
+
+    it('should attach help examples to upload and download commands', () => {
+      const { setupExternalSystemCommands } = require('../../lib/cli/setup-external-system');
+      const { UPLOAD_HELP_AFTER, DOWNLOAD_HELP_AFTER } = require('../../lib/cli/setup-external-system-help');
+      const helpAfter = [];
+      const prog = {
+        command: jest.fn((name) => {
+          const chain = {
+            description: jest.fn().mockReturnThis(),
+            option: jest.fn().mockReturnThis(),
+            action: jest.fn().mockReturnThis(),
+            addHelpText: jest.fn((when, text) => {
+              if (when === 'after') helpAfter.push({ name, text });
+              return chain;
+            })
+          };
+          chain.description.mockReturnValue(chain);
+          chain.option.mockReturnValue(chain);
+          chain.action.mockReturnValue(chain);
+          return chain;
+        })
+      };
+      setupExternalSystemCommands(prog);
+
+      const uploadHelp = helpAfter.find((h) => h.name === 'upload <systemKey>');
+      const downloadHelp = helpAfter.find((h) => h.name === 'download <systemKey>');
+      expect(uploadHelp).toBeDefined();
+      expect(uploadHelp.text).toBe(UPLOAD_HELP_AFTER);
+      expect(uploadHelp.text).toMatch(/aifabrix upload hubspot-demo --probe/);
+      expect(downloadHelp).toBeDefined();
+      expect(downloadHelp.text).toBe(DOWNLOAD_HELP_AFTER);
+    });
   });
 
   describe('convert command handler', () => {

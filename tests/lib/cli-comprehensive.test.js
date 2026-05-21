@@ -223,6 +223,18 @@ describe('CLI Comprehensive Tests', () => {
       expect(deployCmdIndex).toBeGreaterThanOrEqual(0);
       const deployCmdMock = mockProgram.command.mock.results[deployCmdIndex].value;
       expect(deployCmdMock.option).toHaveBeenCalledWith('--local', expect.any(String));
+      expect(deployCmdMock.addHelpText).toHaveBeenCalledWith(
+        'after',
+        expect.stringMatching(/CI\/CD/)
+      );
+      expect(deployCmdMock.addHelpText).toHaveBeenCalledWith(
+        'after',
+        expect.stringContaining('DEV_MISO_CLIENTID')
+      );
+      expect(deployCmdMock.addHelpText).toHaveBeenCalledWith(
+        'after',
+        expect.stringContaining('aifabrix deploy hubspot-demo --probe')
+      );
       expect(mockProgram.command).toHaveBeenCalledWith('doctor');
       expect(mockProgram.command).toHaveBeenCalledWith('status');
       expect(mockProgram.command).toHaveBeenCalledWith('restart <service|app>');

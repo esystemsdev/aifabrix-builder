@@ -79,6 +79,7 @@ aifabrix upload my-hubspot
 aifabrix upload my-hubspot --dry-run
 aifabrix upload my-hubspot --verbose
 aifabrix upload my-hubspot --probe
+aifabrix upload my-hubspot --force
 ```
 
 > **Warning:** Before publishing, the CLI displays a warning that configuration will be sent to the dataplane. Confirm you are targeting the correct environment.
@@ -89,6 +90,7 @@ aifabrix upload my-hubspot --probe
 - `--probe` – After publish, run runtime checks for all datasources
 - `--probe-timeout <ms>` – Timeout for `--probe`
 - `--minimal` – Print a short readiness summary only
+- `--force` – Bypass schema replacement guards on **active** datasources (shows an extra warning; prefer archive + re-upload when replacing dimension keys on an inactive system)
 
 ---
 
