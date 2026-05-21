@@ -1,3 +1,9 @@
+/**
+ * Local-only: real disk I/O via fs-real-sync; flakes when other suites mock `fs` on the same worker.
+ *
+ * @fileoverview dimension-file valueType parsing
+ */
+
 'use strict';
 
 const path = require('path');
@@ -7,18 +13,18 @@ const {
   mkdirSync,
   mkdtempSync,
   rmSync
-} = require('../../../lib/internal/fs-real-sync');
+} = require('../../../../lib/internal/fs-real-sync');
 const {
   readDimensionCreateFile,
   normalizeValueType
-} = require('../../../lib/resolvers/dimension-file');
+} = require('../../../../lib/resolvers/dimension-file');
 
-describe('dimension-file valueType', () => {
+describe('dimension-file valueType (local)', () => {
   let tmpDir;
   let tmpFile;
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(path.join(__dirname, '../../../.temp/dim-file-'));
+    tmpDir = mkdtempSync(path.join(__dirname, '../../../../.temp/dim-file-'));
     tmpFile = path.join(tmpDir, 'dim.json');
   });
 
@@ -46,7 +52,7 @@ describe('dimension-file valueType', () => {
   });
 
   it('reads dynamic valueType from file', () => {
-    const fixture = path.join(__dirname, '../../fixtures/dimension/department-dynamic.json');
+    const fixture = path.join(__dirname, '../../../fixtures/dimension/department-dynamic.json');
     const parsed = readDimensionCreateFile(fixture);
     expect(parsed.valueType).toBe('dynamic');
   });

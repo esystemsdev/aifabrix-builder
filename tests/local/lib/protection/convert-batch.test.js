@@ -1,3 +1,9 @@
+/**
+ * Local-only: temp `.protection` workspace + real convert I/O; isolated from CI default worker.
+ *
+ * @fileoverview protection convert-batch
+ */
+
 'use strict';
 
 const path = require('path');
@@ -7,11 +13,11 @@ const {
   mkdirSync,
   mkdtempSync,
   rmSync
-} = require('../../../lib/internal/fs-real-sync');
+} = require('../../../../lib/internal/fs-real-sync');
 
 /** Project-local workspace (not os.tmpdir) to avoid CI /tmp races between parallel Jest workers. */
 function createProtectionTestWorkspace() {
-  const root = path.join(__dirname, '../../../.temp/jest-protection-convert');
+  const root = path.join(__dirname, '../../../../.temp/jest-protection-convert');
   mkdirSync(root, { recursive: true });
   const tmpRoot = mkdtempSync(path.join(root, 'run-'));
   const protectionDir = path.join(tmpRoot, '.protection');
@@ -19,19 +25,19 @@ function createProtectionTestWorkspace() {
   return { tmpRoot, protectionDir };
 }
 
-jest.mock('../../../lib/commands/convert', () => ({
+jest.mock('../../../../lib/commands/convert', () => ({
   promptConfirm: jest.fn().mockResolvedValue(true),
-  targetFileName: jest.requireActual('../../../lib/commands/convert').targetFileName,
-  convertOneFile: jest.requireActual('../../../lib/commands/convert').convertOneFile
+  targetFileName: jest.requireActual('../../../../lib/commands/convert').targetFileName,
+  convertOneFile: jest.requireActual('../../../../lib/commands/convert').convertOneFile
 }));
 
 const {
   listFilesNeedingConvert,
   runConvertProtectionBatch
-} = require('../../../lib/protection/convert-batch');
-const { readHubspotCompaniesYaml } = require('./protection-test-fixtures');
+} = require('../../../../lib/protection/convert-batch');
+const { readHubspotCompaniesYaml } = require('../../../lib/protection/protection-test-fixtures');
 
-describe('protection convert-batch', () => {
+describe('protection convert-batch (local)', () => {
   let tmpRoot;
   let protectionDir;
 
@@ -58,7 +64,7 @@ describe('protection convert-batch', () => {
 
   it('runConvertProtectionBatch converts json to yaml with --force', async() => {
     const jsonPath = path.join(protectionDir, 'hubspot-companies.json');
-    const asJson = JSON.stringify(require('js-yaml').load(readHubspotCompaniesYaml(__dirname)));
+    const asJson = JSON.stringify(require('js-yaml').load(readHubspotCompaniesYaml()));
     writeFileSync(jsonPath, asJson);
     const { converted, deleted } = await runConvertProtectionBatch('yaml', {
       force: true,
@@ -74,7 +80,7 @@ describe('protection convert-batch', () => {
   it('returns empty when all files already match format', async() => {
     writeFileSync(
       path.join(protectionDir, 'hubspot-companies.yaml'),
-      readHubspotCompaniesYaml(__dirname)
+      readHubspotCompaniesYaml()
     );
     const result = await runConvertProtectionBatch('yaml', { force: true, root: protectionDir });
     expect(result.converted).toEqual([]);

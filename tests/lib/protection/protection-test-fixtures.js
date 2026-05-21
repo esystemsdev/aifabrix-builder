@@ -32,7 +32,8 @@ spec:
           valueExpression: "{{fk.country.metadata.iso2}}"
 `;
 
-const FIXTURE_REL = '../../fixtures/protection/hubspot-companies.yaml';
+/** Shipped fixture path (anchored to this module, not caller `__dirname`). */
+const FIXTURE_ON_DISK = path.join(__dirname, '../../fixtures/protection/hubspot-companies.yaml');
 
 /**
  * Project-local temp root (avoids OS /tmp cleaners racing parallel Jest workers).
@@ -64,26 +65,22 @@ function ensureMaterializedHubspotCompaniesFixture() {
 }
 
 /**
- * @param {string} [fromDir] - Directory of the calling test file (__dirname)
  * @returns {string} Absolute path to hubspot-companies.yaml (on disk or materialized temp copy)
  */
-function hubspotCompaniesFixturePath(fromDir = __dirname) {
-  const onDisk = path.resolve(fromDir, FIXTURE_REL);
-  if (existsSync(onDisk)) {
-    return onDisk;
+function hubspotCompaniesFixturePath() {
+  if (existsSync(FIXTURE_ON_DISK)) {
+    return FIXTURE_ON_DISK;
   }
   return ensureMaterializedHubspotCompaniesFixture();
 }
 
 /**
- * @param {string} [fromDir] - Directory of the calling test file (__dirname)
  * @returns {string} YAML manifest content
  */
-function readHubspotCompaniesYaml(fromDir = __dirname) {
-  const onDisk = path.resolve(fromDir, FIXTURE_REL);
-  if (existsSync(onDisk)) {
+function readHubspotCompaniesYaml() {
+  if (existsSync(FIXTURE_ON_DISK)) {
     const { readFileSync } = require('../../../lib/internal/fs-real-sync');
-    return readFileSync(onDisk, 'utf8');
+    return readFileSync(FIXTURE_ON_DISK, 'utf8');
   }
   return HUBSPOT_COMPANIES_YAML;
 }
@@ -96,7 +93,7 @@ function readHubspotCompaniesYaml(fromDir = __dirname) {
 function writeHubspotCompaniesManifest(targetDir, fileName = 'hubspot-companies.yaml') {
   mkdirSync(targetDir, { recursive: true });
   const dest = path.join(targetDir, fileName);
-  writeFileSync(dest, readHubspotCompaniesYaml(__dirname), 'utf8');
+  writeFileSync(dest, readHubspotCompaniesYaml(), 'utf8');
   return dest;
 }
 

@@ -69,7 +69,7 @@ describe('run-protection-create-helpers', () => {
 
   it('writeProtectionManifest writes parseable JSON when format is json', () => {
     const yaml = require('js-yaml');
-    const manifest = yaml.load(readHubspotCompaniesYaml(__dirname));
+    const manifest = yaml.load(readHubspotCompaniesYaml());
     const outputPath = path.join(tmpRoot, 'hubspot-companies.json');
     writeProtectionManifest(outputPath, manifest, 'json');
     expect(fs.existsSync(outputPath)).toBe(true);
