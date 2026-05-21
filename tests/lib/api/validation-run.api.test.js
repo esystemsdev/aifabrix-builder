@@ -7,11 +7,14 @@ const mockClient = {
   get: jest.fn()
 };
 
+const mockApiClientFactory = jest.fn().mockImplementation(() => ({
+  post: mockClient.post,
+  get: mockClient.get
+}));
+
 jest.mock('../../../lib/api/index', () => ({
-  ApiClient: jest.fn().mockImplementation(() => ({
-    post: mockClient.post,
-    get: mockClient.get
-  }))
+  ApiClient: mockApiClientFactory,
+  createDataplaneApiClient: mockApiClientFactory
 }));
 
 const validationRunApi = require('../../../lib/api/validation-run.api');

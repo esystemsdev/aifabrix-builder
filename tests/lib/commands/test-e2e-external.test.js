@@ -21,7 +21,11 @@ jest.mock('../../../lib/utils/config-format', () => ({
 }));
 jest.mock('../../../lib/utils/logger', () => ({ log: jest.fn() }));
 jest.mock('../../../lib/commands/upload', () => ({
-  uploadExternalSystem: jest.fn().mockResolvedValue(undefined)
+  uploadExternalSystem: jest.fn().mockResolvedValue({
+    authConfig: { token: 't' },
+    dataplaneUrl: 'http://dp',
+    environment: 'dev'
+  })
 }));
 
 const fs = require('fs');
@@ -37,9 +41,16 @@ jest.mock('../../../lib/commands/repair-internal', () => ({
 jest.mock('../../../lib/datasource/test-e2e', () => ({
   runDatasourceTestE2E: jest.fn()
 }));
+jest.mock('../../../lib/core/config', () => ({
+  getConfig: jest.fn().mockResolvedValue({})
+}));
+jest.mock('../../../lib/external-system/test-auth', () => ({
+  setupIntegrationTestAuth: jest.fn()
+}));
 
 const { discoverIntegrationFiles, buildEffectiveDatasourceFiles } = require('../../../lib/commands/repair-internal');
 const { runDatasourceTestE2E } = require('../../../lib/datasource/test-e2e');
+const { setupIntegrationTestAuth } = require('../../../lib/external-system/test-auth');
 const upload = require('../../../lib/commands/upload');
 
 describe('test-e2e-external', () => {
@@ -73,6 +84,10 @@ describe('test-e2e-external', () => {
       return {};
     });
     runDatasourceTestE2E.mockResolvedValue({ success: true, steps: [{ success: true }] });
+    setupIntegrationTestAuth.mockResolvedValue({
+      authConfig: { token: 't' },
+      dataplaneUrl: 'http://dp'
+    });
   });
 
   afterEach(() => {
@@ -128,6 +143,13 @@ describe('test-e2e-external', () => {
       await runTestE2EForExternalSystem('hubspot-demo', { noSync: true });
 
       expect(upload.uploadExternalSystem).not.toHaveBeenCalled();
+      expect(setupIntegrationTestAuth).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not call upload when sync is false (Commander --no-sync)', async() => {
+      await runTestE2EForExternalSystem('hubspot-demo', { sync: false });
+
+      expect(upload.uploadExternalSystem).not.toHaveBeenCalled();
     });
 
     it('returns success true and empty results when no datasources', async() => {
@@ -145,6 +167,44 @@ describe('test-e2e-external', () => {
       expect(result.success).toBe(true);
       expect(result.results).toEqual([]);
       expect(runDatasourceTestE2E).not.toHaveBeenCalled();
+    });
+
+    it('reuses upload dataplane context and passes it to each datasource E2E run', async() => {
+      discoverIntegrationFiles.mockReturnValue({
+        systemFiles: ['hubspot-demo-system.json'],
+        datasourceFiles: ['hubspot-demo-datasource-companies.json', 'hubspot-demo-datasource-contacts.json']
+      });
+      buildEffectiveDatasourceFiles.mockReturnValue([
+        'hubspot-demo-datasource-companies.json',
+        'hubspot-demo-datasource-contacts.json'
+      ]);
+      loadConfigFile.mockImplementation((p) => {
+        const s = String(p);
+        if (s.endsWith('hubspot-demo-system.json')) {
+          return { key: 'hubspot-demo', dataSources: ['hubspot-demo-companies', 'hubspot-demo-contacts'] };
+        }
+        if (s.endsWith('companies.json')) {
+          return { key: 'hubspot-demo-companies', systemKey: 'hubspot-demo' };
+        }
+        if (s.endsWith('contacts.json')) {
+          return { key: 'hubspot-demo-contacts', systemKey: 'hubspot-demo' };
+        }
+        return s.endsWith('application.yaml') ? { externalIntegration: { dataSources: [] } } : {};
+      });
+
+      await runTestE2EForExternalSystem('hubspot-demo', { env: 'tst' });
+
+      expect(upload.uploadExternalSystem).toHaveBeenCalledTimes(1);
+      expect(setupIntegrationTestAuth).not.toHaveBeenCalled();
+      expect(runDatasourceTestE2E).toHaveBeenCalledTimes(2);
+      for (const call of runDatasourceTestE2E.mock.calls) {
+        expect(call[1]).toEqual(
+          expect.objectContaining({
+            authConfig: { token: 't' },
+            dataplaneUrl: 'http://dp'
+          })
+        );
+      }
     });
 
     it('aggregates failures and returns success false', async() => {

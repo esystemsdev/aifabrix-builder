@@ -293,7 +293,84 @@ Dataplane: http://localhost:3001
   Open API docs: http://localhost:3001/api/docs
 
   Status: ✓ Connected
+  Dataplane version: 1.9.5
+  Min Builder CLI: 2.45.0
+  This CLI: 2.45.0
+  Compatibility: ✔ OK
 ```
+
+### Dataplane / Builder CLI compatibility
+
+When `aifabrix auth status` reaches the dataplane it reads the public
+`GET /api/v1/health` endpoint and persists the following keys under
+`device.<controllerUrl>` in `~/.aifabrix/config.yaml` (plan 142.0):
+
+- `dataplane-version` — the dataplane semver from health
+- `dataplane-min-cli-version` — the minimum supported Builder CLI semver
+  (only written when the dataplane sets `MIN_BUILDER_CLI_VERSION`)
+- `dataplane-checked-at` — ISO timestamp for cache TTL (default 5 minutes)
+
+The same values are then compared against the installed Builder CLI version
+(`@aifabrix/builder` `package.json`). The display shows one of three states:
+
+- **`Compatibility: ✔ OK`** — Builder CLI ≥ dataplane minimum (or no minimum set)
+- **`Compatibility: Not enforced`** — dataplane omitted `minBuilderCliVersion`
+- **`Compatibility: ✖ Upgrade required`** — Builder CLI is older than the
+  dataplane minimum; the command also prints a red blocking line and a
+  `Next actions:` block with the exact `npm install -g @aifabrix/builder@<ver>`
+  command and the `aifabrix auth status` verification step.
+
+**Output (Builder CLI older than dataplane minimum):**
+```yaml
+🔐 Authentication Status
+
+Controller: http://localhost:3100
+  Environment: dev
+  Status: ✔ Authenticated
+  Token Type: Device Token
+
+Dataplane: http://localhost:3201
+  Status: ✔ Connected
+  Dataplane version: 1.9.5
+  Min Builder CLI: 2.45.0
+  This CLI: 2.44.0
+  Compatibility: ✖ Upgrade required
+
+✖ Builder CLI 2.44.0 is below the dataplane minimum (2.45.0). Upgrade before running dataplane commands.
+
+Next actions:
+  - Upgrade Builder CLI: npm install -g @aifabrix/builder@2.45.0 (or @latest)
+  - Confirm after upgrade: aifabrix auth status
+  - CI / scripts: aifabrix auth status --validate (exit 3 until upgraded)
+  - Local work (validate, run, up-infra) still works on 2.44.0
+```
+
+The same blocking block is raised — with the same chalk formatting — from
+dataplane API entrypoints (today: `aifabrix upload`, `aifabrix wizard`; other
+dataplane commands adopt the gate incrementally) so the warning is not
+silently bypassed by skipping `auth status`.
+
+**What is blocked when CLI is too old:**
+
+- Dataplane commands that mutate dataplane state: `aifabrix upload`,
+  `aifabrix wizard`, `aifabrix datasource upload`, `aifabrix deploy` (when
+  publishing to dataplane), and other commands as the gate is rolled out.
+
+**What still works:**
+
+- Local commands: `aifabrix validate`, `aifabrix run`, `aifabrix up-infra`,
+  file generation, and any command that does not call the dataplane API.
+
+**`--validate` exit codes** (for CI / scripts):
+
+| Code | Meaning                                                           |
+| ---- | ----------------------------------------------------------------- |
+| 0    | Authenticated and Builder CLI meets dataplane minimum (or none)   |
+| 1    | Not authenticated — run `aifabrix login`                          |
+| 3    | Authenticated but Builder CLI is older than the dataplane minimum |
+
+Pin `@aifabrix/builder` in CI to ≥ the value of `dataplane-min-cli-version`
+to avoid surprise exit 3 after dataplane upgrades.
 
 **Output (Authenticated with Client Token):**
 ```yaml

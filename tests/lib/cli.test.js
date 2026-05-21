@@ -1956,7 +1956,7 @@ describe('CLI Commands', () => {
         chalk.green.mockImplementation((text) => text);
         chalk.gray.mockImplementation((text) => text);
 
-        const handler = commandActions['dockerfile <app>'];
+        const handler = commandActions['dockerfile <appKey>'];
         expect(handler).toBeDefined();
 
         await handler(appName, options);
@@ -1976,7 +1976,7 @@ describe('CLI Commands', () => {
         cliUtils.handleCommandError.mockImplementation(() => {});
         process.exit.mockImplementation(() => {});
 
-        const handler = commandActions['dockerfile <app>'];
+        const handler = commandActions['dockerfile <appKey>'];
         expect(handler).toBeDefined();
 
         await handler(appName, options);
@@ -2003,7 +2003,7 @@ describe('CLI Commands', () => {
         const envPath = 'builder/testapp/.env';
         secrets.generateEnvFile.mockResolvedValue(envPath);
 
-        const handler = commandActions['resolve <app>'];
+        const handler = commandActions['resolve <appKey|systemKey>'];
         expect(handler).toBeDefined();
 
         await handler(appName, options);
@@ -2032,7 +2032,7 @@ describe('CLI Commands', () => {
         const envPath = 'builder/testapp/.env';
         secrets.generateEnvFile.mockResolvedValue(envPath);
 
-        const handler = commandActions['resolve <app>'];
+        const handler = commandActions['resolve <appKey|systemKey>'];
         expect(handler).toBeDefined();
 
         await handler(appName, options);
@@ -2062,7 +2062,7 @@ describe('CLI Commands', () => {
         const envPath = 'builder/testapp/.env';
         secrets.generateEnvFile.mockResolvedValue(envPath);
 
-        const handler = commandActions['resolve <app>'];
+        const handler = commandActions['resolve <appKey|systemKey>'];
         await handler(appName, {});
 
         const expectedAppPath = path.join(process.cwd(), 'builder', 'testapp');
@@ -2089,7 +2089,7 @@ describe('CLI Commands', () => {
         const appName = 'testapp';
         secrets.generateEnvFile.mockResolvedValue('builder/testapp/.env');
 
-        const handler = commandActions['resolve <app>'];
+        const handler = commandActions['resolve <appKey|systemKey>'];
         await handler(appName, {});
 
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(
@@ -2110,7 +2110,7 @@ describe('CLI Commands', () => {
         const appName = 'testapp';
         secrets.generateEnvFile.mockResolvedValue('builder/testapp/.env');
 
-        const handler = commandActions['resolve <app>'];
+        const handler = commandActions['resolve <appKey|systemKey>'];
         await handler(appName, {});
 
         expect(secrets.generateEnvFile).toHaveBeenCalledWith(
@@ -2132,7 +2132,7 @@ describe('CLI Commands', () => {
         cliUtils.handleCommandError.mockImplementation(() => {});
         process.exit.mockImplementation(() => {});
 
-        const handler = commandActions['resolve <app>'];
+        const handler = commandActions['resolve <appKey|systemKey>'];
         expect(handler).toBeDefined();
 
         await handler(appName, options);
@@ -2159,7 +2159,7 @@ describe('CLI Commands', () => {
         };
         generator.generateDeployJsonWithValidation.mockResolvedValue(mockResult);
 
-        const handler = commandActions['json <app>'];
+        const handler = commandActions['json <appKey|systemKey>'];
         expect(handler).toBeDefined();
 
         await handler(appName);
@@ -2187,7 +2187,7 @@ describe('CLI Commands', () => {
         generator.generateDeployJsonWithValidation.mockResolvedValue(mockResult);
         process.exit.mockImplementation(() => {});
 
-        const handler = commandActions['json <app>'];
+        const handler = commandActions['json <appKey|systemKey>'];
         expect(handler).toBeDefined();
 
         await handler(appName);
@@ -2208,7 +2208,7 @@ describe('CLI Commands', () => {
         cliUtils.handleCommandError.mockImplementation(() => {});
         process.exit.mockImplementation(() => {});
 
-        const handler = commandActions['json <app>'];
+        const handler = commandActions['json <appKey|systemKey>'];
         expect(handler).toBeDefined();
 
         await handler(appName);
@@ -2233,7 +2233,7 @@ describe('CLI Commands', () => {
         generator.generateDeployJsonWithValidation.mockResolvedValue(mockResult);
         process.exit.mockImplementation(() => {});
 
-        const handler = commandActions['json <app>'];
+        const handler = commandActions['json <appKey|systemKey>'];
         expect(handler).toBeDefined();
 
         await handler(appName);
@@ -2259,7 +2259,7 @@ describe('CLI Commands', () => {
         };
         generator.generateDeployJsonWithValidation.mockResolvedValue(mockResult);
 
-        const handler = commandActions['json <app>'];
+        const handler = commandActions['json <appKey|systemKey>'];
         expect(handler).toBeDefined();
 
         await handler(appName, {});

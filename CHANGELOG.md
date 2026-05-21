@@ -1,3 +1,33 @@
+## [2.45.5] - 2026-05-21
+
+### Added
+- **`aifabrix protection` (Plan 141):** `validate`, `upload`, `show`, `delete`, `list`, and **`create`** for ABAC protection manifests (local AJV + dataplane validate/simulate/upload). Batch scopes **`.protection`** for validate/upload/convert; **`deploy .protection`** remains not implemented. Preset templates and online datasource/dimension probes for **`protection create`**.
+- **Dimension `valueType` (Plan 141 / Controller 183):** **`aifabrix dimension create`**, **get**, and **list** accept/display **`static`**, **`dynamic`**, or **`both`** (catalog alignment for protection authoring).
+- **Dataplane / Builder CLI version compatibility (Plan 142):** Caches **`dataplane-version`** and **`dataplane-min-cli-version`** on **`device.<controllerUrl>`** after health fetch; **`aifabrix auth status`** shows version block and upgrade guidance; **`auth status --validate`** exits **3** when CLI is below minimum; global gate on dataplane API entrypoints via **`assertDataplaneCliVersionCompatible`**.
+- **`aifabrix test-trust` / `datasource test-trust` (Plan 143):** Semantic / agent metadata validation against dataplane **404.5** (validate POST + latest GET), with flag parity to **`test-e2e`** / **`test-integration`** and TTY layers that separate structural, integration, E2E, and trust evidence.
+- **`aifabrix datasource load` / `datasource export` (Plan 144):** Local JSON/NDJSON import via **`POST /api/v1/data-storage/{key}/records/bulk`** and governed export via **Records Search** only (no direct DB). Files under **`integration/.data/`** with predictable naming; **`--dry-run`**, chunking, and verbose aggregate errors on load.
+- **`aifabrix identity`:** User, group, membership, per-environment role↔group mapping, controller cache clear, and **`identity sync`** to push identity into the dataplane for protection/governance workflows. See **`docs/commands/identity-management.md`**.
+- **`aifabrix test-governance`:** Runs governance scenario packs (ABAC visibility acceptance) without logging in as each subject; **`--pack`**, **`--scenario`**, **`--no-sync`**, **`--json`**. See **`docs/commands/governance-testing.md`**.
+- **`aifabrix datasource verify-audit`:** Re-runs the nine-row audit evidence matrix from the latest **`test-e2e`** debug log or explicit correlation/execution ids (requires **`audit:read`**). **`datasource test-e2e --verify-audit`** runs the matrix after a green E2E.
+
+### Changed
+- **Protection manifest location (Plan 145):** Canonical root is **`integration/.protection/`** in the git repo (versioned beside **`integration/<systemKey>/`**). Resolution walks cwd/monorepo integration trees; legacy **`{work}/.protection/`** via **`AIFABRIX_PROTECTION_LEGACY=1`** or **`AIFABRIX_PROTECTION_ROOT`** with migration hints. Batch TTY shows repo path, not misleading **`Folder: work`** labels.
+- **Protection YAML | JSON (Plan 145):** **`protection validate|upload|show|delete`** and **`create`** accept **`.yaml`**, **`.yml`**, and **`.json`**; scaffold extension follows **`config.yaml`** format preference (same as wizard / **`dev set-format`**).
+- **`--no-sync` on `test-trust` / `test-e2e` (Plan 145):** **`cliOptsSkipSync`** treats Commander **`sync: false`**, **`noSync: true`**, and **`--no-sync`** in **`rawArgs`** — skips the full pre-run **`uploadExternalSystem`** (manifest + credential push). Distinct from **`protection upload --no-sync`** (datasource sync after upload only).
+- **Credential push UX (Plan 145):** **`ora`** spinner during credential push on **`upload`** and **`credential-push`** (skipped for non-TTY / **`--json`**).
+- **`test-trust` performance (Plan 145):** Resolves dataplane URL/auth once per system run and passes context into per-datasource trust calls (avoids repeated “Getting dataplane URL…” lines).
+- **OpenAPI / MCP spec handling:** Improved file path resolution and CLI options for spec bundles; RBAC permission docs updated for E2E validation flows.
+- **Validation and upload context:** Refactored validation runner and upload paths for clearer integration-folder context and display.
+- **Dimension value commands:** Refactored **`dimension value`** CLI structure and help for consistency with the dimension command group.
+
+### Fixed
+- **`--no-sync` still published config:** **`test-trust`** / **`test-e2e`** no longer run **`uploadExternalSystem`** when **`--no-sync`** is passed (previously only **`options.noSync === true`** was checked while Commander set **`sync: false`**).
+- **Protection batch validate counted zero manifests:** JSON manifests and repo **`integration/.protection/`** root now align with **`listProtectionManifestPaths`** and **`loadProtectionManifest`** rules.
+
+### Technical
+- **Plans 141–145:** Protection (`lib/protection/*`, `lib/api/protection.api.js`), dataplane health gate (`lib/api/dataplane-health.api.js`, `lib/utils/cli-exit-codes.js`, `lib/commands/auth-status-*`), agent trust (`lib/datasource/agent-trust-run.js`, `lib/api/agent-metadata-validation.api.js`), load/export (`lib/datasource/bulk-loader-service.js`, `lib/datasource/datasource-exporter-service.js`, `lib/api/records-bulk.api.js`, `lib/api/records-search.api.js`), sync helper (`lib/utils/cli-sync-options.js`, `lib/utils/credential-push-ui.js`). User docs: **`docs/commands/protection.md`**, **`authentication.md`**, **`external-integration-testing.md`**, **`external-integration/datasources.md`**, **`governance-testing.md`**, **`identity-management.md`**; CLI matrix and permissions updated.
+- **API modules:** Audit, governance scenarios, users/groups, auth-cache, dataplane-sync, and related **`lib/api/types/*`**; Jest projects and command/display tests expanded (635 tests passing).
+
 ## [2.45.0] - 2026-05-14
 
 ### Added

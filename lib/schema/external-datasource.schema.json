@@ -2,12 +2,12 @@
   "$schema":"https://json-schema.org/draft/2020-12/schema",
   "$id":"aifabrix://schema/external-datasource.schema.json",
   "title":"External Data Source",
-  "description":"Configuration for AI Fabrix ExternalDataSource entities. Includes metadata schema, data dimensions, transformation mappings, OpenAPI/MCP exposure, execution logic, and sync behavior. Root externalSpec is the datasource-level authoritative reference for where to obtain the vendor or tooling API specification used for import and validation; external-system.schema.json openapi/mcp are system-level connectivity hints only.",
+  "description":"Configuration for AI Fabrix ExternalDataSource entities. Includes metadata schema, data dimensions, transformation mappings, OpenAPI/MCP exposure, execution logic, and sync behavior. Root externalSpec is the datasource-level authoritative reference for where to obtain the vendor or tooling API specification used for import and validation; external-system.schema.json openapi/mcp are system-level connectivity hints only. Agent-facing business metadata (epic 404): most hints are existing properties below; optional businessOrder orders datasources within a system; trust/confidence from agentValidation (404.5) is persisted separately—not in this config document.",
         "metadata":{
         "key":"external-datasource-schema",
         "name":"External Data Source Configuration Schema",
         "description":"JSON schema for validating ExternalDataSource configuration files",
-    "version":"2.4.8",
+    "version":"2.4.10",
         "type":"schema",
         "category":"integration",
         "author":"AI Fabrix Team",
@@ -185,7 +185,24 @@
            "breaking":false
         },
         {
-           "version":"2.4.8",
+           "version":"2.4.10",
+           "date":"2026-05-18T00:00:00Z",
+           "changes":[
+              "Added optional agentExposure.runtimeMeta (boolean, default false) to opt in to meta.business, meta.cip.steps, and meta.agentValidation safe subset on REST runtime responses (plan 404.2)."
+           ],
+           "breaking":false
+        },
+        {
+           "version":"2.4.9",
+           "date":"2026-05-18T00:00:00Z",
+           "changes":[
+              "Added optional root businessOrder (integer >= 1) for cross-datasource ordering within one external system (agent/integrator workflows; does not change CIP execution order).",
+              "Improved descriptions on context, exposed.filterable, fieldMappings.attributes.*.semantic, capabilities, and execution.cip.operations shape/safe documenting what integrators and agents receive on manifest vs published OpenAPI vs runtime meta vs agentValidation evidence (plan 404.0)."
+           ],
+           "breaking":false
+        },
+        {
+           "version":"2.4.9",
            "date":"2026-05-10T00:00:00Z",
            "changes":[
               "Documented roles: root externalSpec is the datasource-level authoritative vendor/API specification provenance (fetch, import, validation); config.openapi is the runtime connector (operations, documentKey) and is the behavioral source of truth; external-system openapi/mcp remain connectivity/bootstrap only.",
@@ -253,6 +270,23 @@
         "type":"string",
         "pattern":"^[0-9]+\\.[0-9]+\\.[0-9]+$",
         "default":"1.0.0"
+     },
+     "businessOrder":{
+        "type":"integer",
+        "minimum":1,
+        "description":"Optional sort order of this datasource within its external system (1 = first) for agent and integrator workflows when multiple record-storage datasources exist. Does not control CIP step execution order. Published to OpenAPI governance / optional runtime meta.business.businessOrder when epic 404.2 is enabled. foreignKeys alone do not define this order."
+     },
+     "agentExposure":{
+        "type":"object",
+        "description":"Opt-in surfaces for AI agent metadata on published OpenAPI and runtime REST envelopes (plans 404.2–404.3). Does not change CIP execution.",
+        "additionalProperties":false,
+        "properties":{
+           "runtimeMeta":{
+              "type":"boolean",
+              "default":false,
+              "description":"When true, REST runtime responses include meta.business (filterable echo, derived dangerousOperations, exposed semantic fields), meta.cip.steps from execution logs, and meta.agentValidation safe subset from persisted 404.5 validation."
+           }
+        }
      },
      "metadataSchema":{
         "$ref":"#/$defs/metadataSchemaNode"
@@ -347,15 +381,15 @@
                           },
                           "semantic":{
                              "type":"object",
-                             "description":"Semantic metadata for AI agents and schema generation.",
+                             "description":"Per-field business semantics for agents (manifest + OpenAPI component descriptions). Not copied to runtime REST meta by default; use published OpenAPI or manifest fetch for discovery. Validated by deterministic rules (346/370) and optional agentValidation (404.5) which may flag missing descriptions in findings—not auto-written to config.",
                              "properties":{
                                 "title":{
                                    "type":"string",
-                                   "description":"Human-friendly label for this field."
+                                   "description":"Human-friendly label for this normalized attribute (UI and OpenAPI property titles)."
                                 },
                                 "description":{
                                    "type":"string",
-                                   "description":"Business-level description of the field and how it is used."
+                                   "description":"Business meaning of the field and how agents should use it in filters or answers. Primary authoring surface for field-level agent hints (use this, not a separate 'meaning' property)."
                                 },
                                 "example":{
                                    "description":"Example value for this field.",
@@ -452,7 +486,7 @@
            },
            "filterable":{
               "type":"array",
-              "description":"Fields that may be used as deterministic filters in exposed APIs. Must reference materialized fields (`index=true` or `filter=true`).",
+              "description":"Canonical list of normalized attribute names agents and integrators may use as deterministic API filters. Must reference materialized fields (metadataSchema index=true or filter=true). Validated by exposed_exposure_lists_validate.py. Emitted on published OpenAPI when epic 404.3 is enabled; optional runtime echo as meta.business.recommendedFilters. agentValidation (404.5) may suggest additions in observedBusinessModel only—they are not a second config field.",
               "items":{
                  "type":"string",
                  "pattern":"^[a-z][a-zA-Z0-9]*$"
@@ -735,11 +769,11 @@
      },
      "context":{
         "type":"object",
-        "description":"Natural-language and semantic hints for AI agents.",
+        "description":"Datasource-level discovery hints for agents. Copied to COM semantic_tags and OpenAPI tags when COM build runs; not included in runtime REST meta by default. Prefer structured semanticTags and fieldMappings.*.semantic.description over naturalLanguageHints (legacy prose; do not expand in new integrations).",
         "properties":{
            "semanticTags":{
               "type":"array",
-              "description":"High-level tags describing this datasource (e.g. ['crm', 'customer-data', 'deal']).",
+              "description":"Structured tags for classification and OpenAPI tag emission (e.g. ['crm', 'sales', 'deals']).",
               "items":{
                  "type":"string"
               }
@@ -753,7 +787,7 @@
            },
            "naturalLanguageHints":{
               "type":"array",
-              "description":"Free-form hints for LLMs on how to interpret or use this datasource.",
+              "description":"Legacy free-form strings (wizard may still emit). Not structured agent contract metadata; avoid for new authoring (plan 404.1). Not exposed on public OpenAPI or runtime meta.",
               "items":{
                  "type":"string"
               }
@@ -855,7 +889,7 @@
         "additionalProperties":false
      },
    "capabilities":{
-      "description":"Supported operations list.",
+      "description":"Declared operation keys (e.g. list, get, create, update, delete, or custom names matching execution.cip.operations and openapi.operations). Dataplane derives per-operation agent semantics at publish time: core delete and custom ops with CIP shape delete map to x-ai-intent delete and high riskLevel on published OpenAPI—not a separate dangerousOperations list in config.",
       "type":"array",
       "items":{
          "type":"string",
@@ -1868,7 +1902,7 @@
            },
            "safe":{
               "type":"boolean",
-              "description":"Optional safety hint for operation execution."
+              "description":"Optional override when automatic shape/fetch inference misclassifies mutating risk. When wired (plan 404.3), influences COM destructive flags and x-ai-safeToRetry on published OpenAPI. Prefer shape for create/update/delete classification."
            },
            "lineage":{
               "$ref":"#/$defs/cipLineage"
@@ -1883,7 +1917,7 @@
                  "update",
                  "delete"
               ],
-              "description":"Optional semantic classification for this operation when automatic inference from fetch steps (method/path) is insufficient."
+              "description":"Manifest classification for custom operations when fetch step inference is insufficient. Resolved by resolve_cip_write_shape (precedence over fetch inference) and drives x-ai-intent, x-ai-sideEffects, and x-ai-contract.riskLevel on published OpenAPI. shape delete marks the operation as dangerous for agent policy (with core capability delete)."
            },
            "steps":{
               "type":"array",

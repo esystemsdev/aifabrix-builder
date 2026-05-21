@@ -828,35 +828,7 @@ The `record_ref:` prefix must be followed by a valid entity type (pattern: `^[a-
 
 ### Test Payloads
 
-Test payloads allow you to test field mappings and metadata schemas locally and via integration tests. Add a `testPayload` property to your datasource configuration. For full detail on test payload format, unit vs integration tests, and troubleshooting, see [External Integration Testing](commands/external-integration-testing.md).
-
-```yaml
-key: hubspot-test-company
-systemKey: hubspot
-entityType: recordStorage
-fieldMappings:
-  dimensions:
-    country: metadata.country
-  attributes:
-    name:
-      expression: "{{properties.name.value}} | trim"
-      type: string
-      indexed: false
-    country:
-      expression: "{{properties.country.value}} | toUpper | trim"
-      type: string
-      indexed: false
-testPayload:
-  payloadTemplate:
-    properties:
-      name:
-        value: Acme Corp
-      country:
-        value: us
-  expectedResult:
-    name: Acme Corp
-    country: US
-```
+Test payloads allow you to test field mappings and metadata schemas locally and via integration tests. Add a `testPayload` property to your datasource configuration. For format, a schema-valid YAML example, unit vs integration vs E2E flows, and troubleshooting, see [External Integration Testing](commands/external-integration-testing.md#test-payload-configuration) (single source of truth—do not duplicate examples here).
 
 **Test Payload Properties:**
 - `payloadTemplate` - Sample payload matching the expected API response structure. Used for testing field mappings and metadata schema validation.

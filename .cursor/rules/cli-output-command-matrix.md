@@ -21,7 +21,7 @@ Third column documents **which on-disk trees** a command is expected to use for 
 | aifabrix login | tty-summary | cfg |
 | aifabrix logout | tty-summary | cfg |
 | aifabrix auth | tty-summary (`--set-controller [url]`: omit URL to pick from controllers stored under `device` + `controller` in config) | cfg |
-| aifabrix auth status | tty-summary | cfg |
+| aifabrix auth status | tty-summary (header + token + dataplane block; plan 142.0 adds version subsection — `Dataplane version`, `Min Builder CLI`, `This CLI`, `Compatibility: ✔ OK / Not enforced / ✖ Upgrade required` — and on mismatch the red blocking line + `Next actions:` block. `--validate` exit codes: `0` ok, `1` not authenticated, `3` CLI < dataplane min) | cfg |
 | aifabrix setup | tty-summary + stream-logs | 141+ |
 | aifabrix teardown | tty-summary + stream-logs | cfg |
 | aifabrix up-infra | tty-summary + stream-logs | cfg |
@@ -46,6 +46,8 @@ Third column documents **which on-disk trees** a command is expected to use for 
 | aifabrix test | stream-logs | 141 |
 | aifabrix install | stream-logs | 141 |
 | aifabrix test-e2e | layout-blocks | int |
+| aifabrix test-trust | layout-blocks | int |
+| aifabrix test-governance | layout-blocks | int |
 | aifabrix lint | stream-logs | — |
 | aifabrix download | tty-summary | int |
 | aifabrix upload | tty-summary | int |
@@ -85,14 +87,47 @@ Third column documents **which on-disk trees** a command is expected to use for 
 | aifabrix datasource test | layout-blocks | int |
 | aifabrix datasource test-integration | layout-blocks | int |
 | aifabrix datasource test-e2e | layout-blocks | int |
-| aifabrix datasource log-e2e | tty-summary | int |
+| aifabrix datasource verify-audit | layout-blocks | int |
+| aifabrix datasource test-trust | layout-blocks | int |
+| aifabrix datasource load | layout-blocks + json-opt | int |
+| aifabrix datasource export | layout-blocks + json-opt | int |
+| aifabrix datasource log-test | tty-summary | int |
 | aifabrix datasource log-integration | tty-summary | int |
+| aifabrix datasource log-e2e | tty-summary | int |
+| aifabrix datasource log-trust | tty-summary | int |
+| aifabrix datasource clean-logs | tty-summary + json-opt | int |
 | aifabrix dimension create | tty-summary | cfg |
 | aifabrix dimension get | tty-summary | cfg |
 | aifabrix dimension list | tty-summary | cfg |
-| aifabrix dimension-value create | tty-summary | cfg |
-| aifabrix dimension-value list | tty-summary | cfg |
-| aifabrix dimension-value delete | tty-summary | cfg |
+| aifabrix identity user create | tty-summary | cfg |
+| aifabrix identity user list | tty-summary | cfg |
+| aifabrix identity user get | tty-summary | cfg |
+| aifabrix identity user groups | tty-summary | cfg |
+| aifabrix identity group create | tty-summary | cfg |
+| aifabrix identity group list | tty-summary | cfg |
+| aifabrix identity group get | tty-summary | cfg |
+| aifabrix identity group members | tty-summary | cfg |
+| aifabrix identity membership add | tty-summary | cfg |
+| aifabrix identity membership remove | tty-summary | cfg |
+| aifabrix identity role list | tty-summary | cfg |
+| aifabrix identity role set-groups | tty-summary | cfg |
+| aifabrix identity cache clear | tty-summary | cfg |
+| aifabrix identity cache invalidate | tty-summary | cfg |
+| aifabrix identity apply | tty-summary + stdout-only (--dry-run) | cfg |
+| aifabrix identity sync | tty-summary | cfg |
+| aifabrix protection validate | layout-blocks + json-opt | int |
+| aifabrix protection create | tty-summary + stdout-only (--dry-run) | int |
+| aifabrix protection upload | layout-blocks + tty-summary | int |
+| aifabrix protection list | tty-summary (card list per manifest) + json-opt | int |
+| aifabrix protection show | tty-summary + json-opt | int |
+| aifabrix protection delete | tty-summary | int |
+| aifabrix validate .protection | layout-blocks + json-opt | int |
+| aifabrix upload .protection | layout-blocks + json-opt | int |
+| aifabrix convert .protection | tty-summary | int |
+| aifabrix deploy .protection | blocking error | int |
+| aifabrix dimension value create | tty-summary | cfg |
+| aifabrix dimension value list | tty-summary | cfg |
+| aifabrix dimension value delete | tty-summary | cfg |
 | aifabrix dev show | tty-summary | cfg |
 | aifabrix dev set-id | tty-summary | cfg |
 | aifabrix dev set-scoped-resources | tty-summary | cfg |
@@ -128,6 +163,8 @@ _**validate** (human TTY): `lib/validation/validate-display.js` + `lib/utils/cli
 
 _Certification-related flags (output profile unchanged): `validate --cert-sync`; `show` / `app show --verify-cert`; `datasource test|test-integration|test-e2e` and `test-integration` / `test-e2e` with `--no-cert-sync`._
 
+_**Datasource log-\*** (local, no dataplane): `log-test` → `test-*.json`; `log-integration` → `test-integration-*.json`; `log-e2e` → `test-e2e-*.json`; `log-trust` → `test-trust-*.json` (from matching `test-*` command with `--debug`). **`clean-logs`** deletes those files (`--type` filter, `--dry-run`, `--all`)._
+
 _Generated for adoption tracking; see `.cursor/plans/Done/129-cli_layout_adoption.plan.md` and [layout.md](./layout.md)._
 
 **Docker image flags (profiles unchanged):** `build` / `run` support `--base` and single `-t, --tag`; `up-platform`, `up-miso`, and `up-dataplane` default `--base` true (use `--no-base` for dev-first local image preference when running platform apps).
@@ -136,6 +173,9 @@ _Generated for adoption tracking; see `.cursor/plans/Done/129-cli_layout_adoptio
 
 - **Source of truth:** [layout.md](./layout.md) and [cli-layout.mdc](./cli-layout.mdc) — glyphs **✔ ✖ ⚠ ⏭**, semantic colors, **`formatNextActions`** / **`formatBulletSection`**-style sections where applicable.
 - **Manifest line (plan 141):** For rows tagged **141** / **141+** / **int**, when the command reads an app or integration manifest, emit one gray **Manifest:** metadata line (`metadata()` / shared helper) with absolute path + tier — see [.cursor/plans/141-manifest-location.plan.md](../plans/141-manifest-location.plan.md). **json-opt** / **stdout-only**: omit decorative line or add machine field per plan phase.
+- **`dimension` create/get/list:** TTY must show **`valueType`** when present (`Value type:` on get; **VType** column on list; create success line includes valueType).
+- **`identity`*** (405.1): Controller-only (`cfg`); **`apply`** prints phase summary (groups/users/memberships) + optional sync/cache lines; **`--dry-run`** stdout-only plan (no HTTP); **`--purge-cache`** on apply/sync runs cache clear before sync when set.
+- **`protection`*** (plan 141 + 145): use **`lib/protection/protection-display.js`** + **`cli-test-layout-chalk`**; `--json` stdout-only; manifests under **`integration/.protection/`** at repo root (legacy `{work}/.protection/` when `AIFABRIX_PROTECTION_LEGACY=1` or empty repo folder).
 - **`datasource capability`** (`copy` | `remove` | `create` | `edit` | `validate` slice OK): success sections use **`lib/utils/cli-test-layout-chalk.js`** (`formatBulletSection`, `formatNextActions`, `formatSuccessLine`, `headerKeyValue`, `infoLine`, `metadata`); errors use **`formatBlockingError`**.
 - **`datasource capability diff`:** stdout-only structural diff from **`lib/core/diff`** (minimal chalk); unchanged.
 - **Backlog (incremental):** Remaining raw **`chalk.green`** success lines (outside `cli-test-layout-chalk`), and any future drift from canonical glyphs (**✔ ✖ ⚠ ⏭**). Wizard (`\\u2713`), `dev-*`, `secure`, guided infra TLS flag, deploy status, and local external test TTY rows have been migrated to shared helpers.

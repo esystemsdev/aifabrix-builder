@@ -5,10 +5,12 @@ alwaysApply: true
 
 ## Audience
 
-Documents under **docs/** (including **docs/commands/**) are **CLI developer / user documentation**. The audience is people who use the AI Fabrix Builder CLI or integrate it into workflows. They do not need to know how the CLI talks to the Controller or Dataplane over HTTP.
+Documents under **docs/** (including **docs/commands/**) are **public CLI user documentation**. The audience is people who use the AI Fabrix Builder CLI or integrate it into workflows—they may **not** have access to private monorepos (dataplane, miso-controller, internal plans). They do not need to know how the CLI talks to the Controller or Dataplane over HTTP.
 
 ## Do Not Include in CLI User Docs
 
+- **Links or paths into other product repos (FORBIDDEN)** – No markdown links, examples, or prerequisites that point at private/sibling repositories or their trees: `../../../aifabrix-dataplane/...`, `../../aifabrix-miso/...`, `packages/miso-controller/...`, `integration/<fixture>/README.md` in another repo, `.cursor/plans/` anywhere, `/workspace/...` monorepo layouts, or “see the dataplane/miso-controller repo”. **Only** cross-link within **`docs/`** and use on-disk paths the user owns (`integration/<systemKey>/...`, `builder/<appKey>/...`, `~/.aifabrix/...`).
+- **Internal plan or ticket IDs** – No “Plan 407.1”, “plan section 2.3”, or similar; describe behavior in user terms.
 - **REST API details** – No HTTP methods, URL paths, or endpoint names (e.g. `GET /api/v1/...`, `POST .../pipeline/upload`).
 - **Request/response shapes** – No payload structures, status codes, or field names from backend APIs.
 - **Backend implementation terms** – Avoid referring to “pipeline config endpoint”, “upload endpoint”, or similar; describe what the **command** does from the user’s perspective.

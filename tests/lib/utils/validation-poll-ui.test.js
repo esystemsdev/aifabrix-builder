@@ -21,6 +21,12 @@ describe('validation-poll-ui', () => {
     expect(t).toContain('budget');
   });
 
+  it('buildValidationPollSpinnerText uses subject when provided', () => {
+    const deadlineMs = Date.now() + 60000;
+    const t = buildValidationPollSpinnerText(null, 0, deadlineMs, 'hubspot-contacts');
+    expect(t).toContain('Waiting for hubspot-contacts');
+  });
+
   it('buildValidationPollSpinnerText includes completeness, status, poll index', () => {
     const deadlineMs = Date.now() + 60000;
     const t = buildValidationPollSpinnerText(

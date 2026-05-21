@@ -17,8 +17,14 @@ const tokenManager = require('../../lib/utils/token-manager');
 const logger = require('../../lib/utils/logger');
 const devConfig = require('../../lib/utils/dev-config');
 const envMap = require('../../lib/utils/env-map');
+const {
+  tryRefreshDataplaneVersionAfterLogin
+} = require('../../lib/commands/auth-status-dataplane-version');
 
 // Mock modules
+jest.mock('../../lib/commands/auth-status-dataplane-version', () => ({
+  tryRefreshDataplaneVersionAfterLogin: jest.fn().mockResolvedValue(undefined)
+}));
 jest.mock('inquirer');
 jest.mock('ora');
 jest.mock('../../lib/core/config');
@@ -1402,6 +1408,41 @@ describe('Login Command Module', () => {
         'refresh-token-456',
         expect.any(String)
       );
+      expect(tryRefreshDataplaneVersionAfterLogin).toHaveBeenCalled();
+    });
+
+    it('should skip dataplane version refresh when skipDataplaneVersionRefresh is set', async() => {
+      const options = {
+        controller: 'http://localhost:3000',
+        method: 'device',
+        environment: 'dev',
+        skipDataplaneVersionRefresh: true
+      };
+
+      initiateDeviceCodeFlow.mockResolvedValue({
+        success: true,
+        data: {
+          data: {
+            deviceCode: 'device-code-123',
+            userCode: 'ABCD-EFGH',
+            verificationUri: 'https://example.com/verify',
+            interval: 5,
+            expiresIn: 600
+          }
+        }
+      });
+
+      pollDeviceCodeToken.mockResolvedValue({
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-456',
+        expires_in: 3600
+      });
+
+      tryRefreshDataplaneVersionAfterLogin.mockClear();
+
+      await handleLogin(options);
+
+      expect(tryRefreshDataplaneVersionAfterLogin).not.toHaveBeenCalled();
     });
 
     it('should save client token for credentials flow', async() => {

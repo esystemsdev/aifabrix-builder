@@ -28,9 +28,13 @@ jest.mock('../../../lib/core/config', () => ({
   resolveEnvironment: jest.fn().mockResolvedValue('dev')
 }));
 
-jest.mock('../../../lib/resolvers/dimension-file', () => ({
-  readDimensionCreateFile: jest.fn()
-}));
+jest.mock('../../../lib/resolvers/dimension-file', () => {
+  const actual = jest.requireActual('../../../lib/resolvers/dimension-file');
+  return {
+    ...actual,
+    readDimensionCreateFile: jest.fn()
+  };
+});
 
 jest.mock('../../../lib/api/dimensions.api', () => ({
   listDimensions: jest.fn(),
@@ -89,6 +93,33 @@ describe('dimension command', () => {
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Dimension exists'));
   });
 
+  it('create sends valueType with --value-type dynamic', async() => {
+    dimensionsApi.createDimensionIdempotent.mockResolvedValue({
+      created: true,
+      response: { data: { data: { key: 'department', valueType: 'dynamic' } } }
+    });
+    const program = makeProgram();
+    await program.parseAsync([
+      'node',
+      'aifabrix',
+      'dimension',
+      'create',
+      '--key',
+      'department',
+      '--display-name',
+      'Department',
+      '--data-type',
+      'string',
+      '--value-type',
+      'dynamic'
+    ]);
+    expect(dimensionsApi.createDimensionIdempotent).toHaveBeenCalledWith(
+      'http://controller',
+      expect.any(Object),
+      expect.objectContaining({ valueType: 'dynamic' })
+    );
+  });
+
   it('create supports --file input', async() => {
     readDimensionCreateFile.mockReturnValue({
       key: 'customerRegion',
@@ -121,19 +152,42 @@ describe('dimension command', () => {
     expect(logger.error).toHaveBeenCalled();
   });
 
-  it('list prints a table header row', async() => {
+  it('list prints VType column', async() => {
     dimensionsApi.listDimensions.mockResolvedValue({
       data: {
         data: [
-          { key: 'customerRegion', displayName: 'Customer Region', dataType: 'string', isRequired: false }
+          {
+            key: 'customerRegion',
+            displayName: 'Customer Region',
+            dataType: 'string',
+            valueType: 'dynamic',
+            isRequired: false
+          }
         ]
       }
     });
     const program = makeProgram();
     await program.parseAsync(['node', 'aifabrix', 'dimension', 'list']);
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Dimensions in dev environment (http://controller)'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Key'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Display'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('VType'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('dynamic'));
+  });
+
+  it('get prints valueType when present', async() => {
+    dimensionsApi.getDimension.mockResolvedValue({
+      data: {
+        data: {
+          key: 'department',
+          displayName: 'Department',
+          dataType: 'string',
+          valueType: 'dynamic',
+          isRequired: false
+        }
+      }
+    });
+    const program = makeProgram();
+    await program.parseAsync(['node', 'aifabrix', 'dimension', 'get', 'department']);
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Value type:'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('dynamic'));
   });
 
   it('get prints header block', async() => {

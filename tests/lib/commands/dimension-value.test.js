@@ -38,7 +38,7 @@ const logger = require('../../../lib/utils/logger');
 const { resolveControllerUrl } = require('../../../lib/utils/controller-url');
 const { getOrRefreshDeviceToken } = require('../../../lib/utils/token-manager');
 const api = require('../../../lib/api/dimension-values.api');
-const { setupDimensionValueCommands } = require('../../../lib/commands/dimension-value');
+const { setupDimensionCommands } = require('../../../lib/commands/dimension');
 
 let exitSpy;
 beforeAll(() => {
@@ -53,11 +53,11 @@ afterAll(() => {
 function makeProgram() {
   const program = new Command();
   program.exitOverride();
-  setupDimensionValueCommands(program);
+  setupDimensionCommands(program);
   return program;
 }
 
-describe('dimension-value command', () => {
+describe('dimension value command', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resolveControllerUrl.mockResolvedValue('http://controller');
@@ -70,7 +70,8 @@ describe('dimension-value command', () => {
     await program.parseAsync([
       'node',
       'aifabrix',
-      'dimension-value',
+      'dimension',
+      'value',
       'create',
       'dataClassification',
       '--value',
@@ -83,23 +84,46 @@ describe('dimension-value command', () => {
   it('list prints dimension header', async() => {
     api.listDimensionValues.mockResolvedValue({ data: { data: [] } });
     const program = makeProgram();
-    await program.parseAsync(['node', 'aifabrix', 'dimension-value', 'list', 'dataClassification']);
+    await program.parseAsync(['node', 'aifabrix', 'dimension', 'value', 'list', 'dataClassification']);
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Dimension:'));
   });
 
   it('delete calls API and prints success', async() => {
     api.deleteDimensionValue.mockResolvedValue({ success: true });
     const program = makeProgram();
-    await program.parseAsync(['node', 'aifabrix', 'dimension-value', 'delete', 'clx1']);
+    await program.parseAsync(['node', 'aifabrix', 'dimension', 'value', 'delete', 'clx1']);
     expect(api.deleteDimensionValue).toHaveBeenCalledWith('http://controller', expect.any(Object), 'clx1');
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Dimension value deleted'));
+  });
+
+  it('create exits when API returns success false (e.g. DIM-VALUE-001)', async() => {
+    api.createDimensionValue.mockResolvedValue({
+      success: false,
+      error: '[DIM-VALUE-001] Cannot add catalog values',
+      formattedError: '[DIM-VALUE-001] Cannot add catalog values',
+      status: 400
+    });
+    const program = makeProgram();
+    await expect(
+      program.parseAsync([
+        'node',
+        'aifabrix',
+        'dimension',
+        'value',
+        'create',
+        'dept',
+        '--value',
+        'x'
+      ])
+    ).rejects.toThrow(/process\.exit\(1\)/);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('DIM-VALUE-001'));
   });
 
   it('fails when not authenticated', async() => {
     getOrRefreshDeviceToken.mockResolvedValue(null);
     const program = makeProgram();
     await expect(
-      program.parseAsync(['node', 'aifabrix', 'dimension-value', 'list', 'dataClassification'])
+      program.parseAsync(['node', 'aifabrix', 'dimension', 'value', 'list', 'dataClassification'])
     ).rejects.toThrow(/process\.exit\(1\)/);
     expect(logger.error).toHaveBeenCalled();
   });

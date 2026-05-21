@@ -25,7 +25,8 @@ const mockApiClient = jest.fn().mockImplementation((baseUrl, authConfig) => {
 });
 
 jest.mock('../../../lib/api/index', () => ({
-  ApiClient: mockApiClient
+  ApiClient: mockApiClient,
+  createDataplaneApiClient: mockApiClient
 }));
 
 const datasourcesCoreApi = require('../../../lib/api/datasources-core.api');
@@ -230,9 +231,10 @@ describe('Datasources Core API', () => {
       const bulkData = { operation: 'update', items: [] };
       await datasourcesCoreApi.bulkOperation(dataplaneUrl, 'test-source', authConfig, bulkData);
 
-      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/external/test-source/bulk', {
-        body: bulkData
-      });
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/api/v1/data-storage/test-source/records/bulk',
+        { body: bulkData }
+      );
     });
   });
 

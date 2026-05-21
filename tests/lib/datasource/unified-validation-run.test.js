@@ -99,6 +99,24 @@ describe('unified-validation-run', () => {
     expect(postValidationRunAndOptionalPoll).toHaveBeenCalled();
   });
 
+  it('reuses authConfig and dataplaneUrl without calling setupIntegrationTestAuth', async() => {
+    const authConfig = { token: 'cached' };
+    const dataplaneUrl = 'http://cached-dp';
+
+    await runUnifiedDatasourceValidation('ds-one', {
+      app: 'app-one',
+      runType: 'test',
+      authConfig,
+      dataplaneUrl
+    });
+
+    expect(setupIntegrationTestAuth).not.toHaveBeenCalled();
+    expect(getConfig).not.toHaveBeenCalled();
+    expect(postValidationRunAndOptionalPoll).toHaveBeenCalledWith(
+      expect.objectContaining({ authConfig, dataplaneUrl })
+    );
+  });
+
   it('throws when uploadExternalSystem throws', async() => {
     uploadExternalSystem.mockRejectedValue(new Error('no access'));
 

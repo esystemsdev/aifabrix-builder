@@ -280,6 +280,10 @@ permissions:
   - name: "record:search"
     roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-deployment-admin", "aifabrix-compliance-admin", "aifabrix-developer", "aifabrix-observer"]
     description: "Search records"
+
+  - name: "governance:evaluate"
+    roles: ["aifabrix-platform-admin", "aifabrix-security-admin", "aifabrix-developer"]
+    description: "Run governance scenario acceptance (subject impersonation for ABAC proof)"
   
   # IDE simulation operations
   - name: "dataplane:abac-simulate"

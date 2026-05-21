@@ -854,7 +854,7 @@ describe('CLI Uncovered Command Handlers', () => {
       };
       setupUtilityCommands(prog);
 
-      const act = actions['convert <app>'];
+      const act = actions['convert <appKey|systemKey>'];
       expect(act).toBeDefined();
       await act('hubspot', { format: 'json', force: true });
       expect(convert.runConvert).toHaveBeenCalledWith('hubspot', { format: 'json', force: true });
@@ -879,7 +879,7 @@ describe('CLI Uncovered Command Handlers', () => {
       };
       setupUtilityCommands(prog);
 
-      await actions['convert <app>']('hubspot', { force: true });
+      await actions['convert <appKey|systemKey>']('hubspot', { force: true });
       expect(convert.runConvert).toHaveBeenCalledWith('hubspot', { format: 'yaml', force: true });
     });
 
@@ -901,7 +901,7 @@ describe('CLI Uncovered Command Handlers', () => {
       };
       setupUtilityCommands(prog);
 
-      await actions['convert <app>']('hubspot', {});
+      await actions['convert <appKey|systemKey>']('hubspot', {});
       expect(cliUtils.handleCommandError).toHaveBeenCalledWith(
         expect.objectContaining({
           message: expect.stringMatching(/Option --format is required.*or set default with aifabrix dev set-format/)

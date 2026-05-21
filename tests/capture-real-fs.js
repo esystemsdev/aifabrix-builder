@@ -19,6 +19,7 @@ const realReaddirSync = fs.readdirSync;
 const realStatSync = fs.statSync;
 const realMkdtempSync = fs.mkdtempSync;
 const realRmSync = fs.rmSync;
+const realUnlinkSync = fs.unlinkSync;
 const realRenameSync = fs.renameSync;
 
 // Sync helpers only: tests spy on fs.promises.* and expect those spies to intercept production code.
@@ -31,5 +32,6 @@ global.__AIFABRIX_NODE_FS_UNMOCKED__ = {
   statSync: (...args) => realStatSync(...args),
   mkdtempSync: (...args) => realMkdtempSync(...args),
   rmSync: (...args) => realRmSync(...args),
+  unlinkSync: (...args) => realUnlinkSync(...args),
   renameSync: (...args) => realRenameSync(...args)
 };

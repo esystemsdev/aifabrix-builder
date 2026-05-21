@@ -16,6 +16,8 @@ const logger = require('../../../lib/utils/logger');
 const wizardDataplane = require('../../../lib/commands/wizard-dataplane');
 const datasourceDeploy = require('../../../lib/datasource/deploy');
 const dataplaneHealth = require('../../../lib/utils/dataplane-health');
+const authStatusDataplaneVersion = require('../../../lib/commands/auth-status-dataplane-version');
+const { EXIT_CLI_VERSION_INCOMPATIBLE, EXIT_NOT_AUTHENTICATED } = require('../../../lib/utils/cli-exit-codes');
 
 // Mock modules
 jest.mock('../../../lib/core/config');
@@ -26,6 +28,7 @@ jest.mock('../../../lib/utils/logger');
 jest.mock('../../../lib/commands/wizard-dataplane');
 jest.mock('../../../lib/datasource/deploy');
 jest.mock('../../../lib/utils/dataplane-health');
+jest.mock('../../../lib/commands/auth-status-dataplane-version');
 
 describe('Auth Status Command Module', () => {
   beforeEach(() => {
@@ -39,6 +42,18 @@ describe('Auth Status Command Module', () => {
     wizardDataplane.findDataplaneServiceAppKey.mockResolvedValue('dataplane');
     datasourceDeploy.getDataplaneUrl.mockResolvedValue('http://localhost:3611');
     dataplaneHealth.checkDataplaneHealth.mockResolvedValue(true);
+    authStatusDataplaneVersion.refreshDataplaneVersionInfo.mockResolvedValue({
+      dataplaneVersion: '1.9.5',
+      minBuilderCliVersion: '2.45.0',
+      cliVersion: '2.45.0',
+      compatible: true
+    });
+    authStatusDataplaneVersion.loadCachedVersionInfo.mockResolvedValue({
+      dataplaneVersion: '1.9.5',
+      minBuilderCliVersion: '2.45.0',
+      cliVersion: '2.45.0',
+      compatible: true
+    });
   });
 
   describe('handleAuthStatus', () => {
@@ -254,6 +269,43 @@ describe('Auth Status Command Module', () => {
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('http://localhost:3000/api/docs'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('http://localhost:3611/api/docs'));
+    });
+
+    it('exits with code 3 on --validate when CLI is below dataplane minimum', async() => {
+      const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue({
+        token: 'device-token-123',
+        controller: 'http://localhost:3000'
+      });
+      authApi.getAuthUser.mockResolvedValue({
+        success: true,
+        data: { authenticated: true, user: { email: 'u@e.com' } }
+      });
+      dataplaneHealth.checkDataplaneHealth.mockResolvedValue(true);
+      authStatusDataplaneVersion.refreshDataplaneVersionInfo.mockResolvedValue({
+        dataplaneVersion: '1.9.5',
+        minBuilderCliVersion: '99.0.0',
+        cliVersion: '2.45.0',
+        compatible: false
+      });
+
+      await handleAuthStatus({ validate: true });
+
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CLI_VERSION_INCOMPATIBLE);
+      exitSpy.mockRestore();
+    });
+
+    it('exits with code 1 on --validate when not authenticated', async() => {
+      const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+
+      tokenManager.getOrRefreshDeviceToken.mockResolvedValue(null);
+      config.getConfig.mockResolvedValue({ environments: {} });
+
+      await handleAuthStatus({ validate: true });
+
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_NOT_AUTHENTICATED);
+      exitSpy.mockRestore();
     });
   });
 });

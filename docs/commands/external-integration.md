@@ -107,3 +107,13 @@ See [Datasource commands](external-integration/datasources.md#aifabrix-datasourc
 
 See [Datasource commands](external-integration/datasources.md#aifabrix-datasource-log-e2e-datasourcekey).
 
+<a id="aifabrix-datasource-log-trust-datasourcekey"></a>
+### aifabrix datasource log-trust <datasourceKey>
+
+See [Datasource commands](external-integration/datasources.md#aifabrix-datasource-log-trust-datasourcekey).
+
+<a id="aifabrix-datasource-clean-logs"></a>
+### aifabrix datasource clean-logs
+
+See [Datasource commands](external-integration/datasources.md#aifabrix-datasource-clean-logs).
+

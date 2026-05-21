@@ -1,0 +1,21 @@
+# UC19 flagship fixture (401.5) — SharePoint HR documents + runtime ABAC on sensitivity/department.
+apiVersion: dataplane.aifabrix.ai/v1
+kind: Protection
+metadata:
+  key: sharepoint-hr-documents-protection
+  displayName: SharePoint HR Documents Protection
+spec:
+  enabled: true
+  datasourceKey: sharepoint-hr-documents
+  mode: replaceForSource
+  rules:
+    - key: hr-doc-department-managers
+      when:
+        groups:
+          requireAny: ["Manager"]
+      principal:
+        type: user
+        field: metadata.ownerEmail
+      grants:
+        - dimensionKey: department
+          valueExpression: "{{metadata.department}}"

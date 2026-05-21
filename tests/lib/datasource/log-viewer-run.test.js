@@ -59,4 +59,31 @@ describe('runLogViewer (structural / test)', () => {
       runLogViewer('k', { file: tmpFile, logType: 'test' })
     ).rejects.toThrow(/invalid json/i);
   });
+
+  it('formats agent trust log when logType is test-trust', async() => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'logv-trust-'));
+    const trustFile = path.join(dir, 'test-trust-hubspot-users-2026.json');
+    fs.writeFileSync(
+      trustFile,
+      JSON.stringify({
+        request: { datasourceKey: 'hubspot-users', revalidate: true },
+        response: {
+          datasourceKey: 'hubspot-users',
+          systemKey: 'hubspot',
+          trustDecision: 'trusted',
+          validationStatus: 'passed',
+          confidence: 0.92,
+          summary: 'Metadata aligns with catalog.',
+          highLevelWarnings: ['Minor field gap']
+        }
+      }),
+      'utf8'
+    );
+    await runLogViewer('ignored', { file: trustFile, logType: 'test-trust' });
+    const joined = logger.log.mock.calls.map(c => String(c[0] ?? '')).join('\n');
+    expect(joined).toContain('Agent trust log');
+    expect(joined).toContain('hubspot-users');
+    expect(joined).toContain('trusted');
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
 });

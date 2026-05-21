@@ -214,21 +214,21 @@ describe('CLI Comprehensive Tests', () => {
       expect(mockProgram.command).toHaveBeenCalledWith('login');
       expect(mockProgram.command).toHaveBeenCalledWith('up-infra');
       expect(mockProgram.command).toHaveBeenCalledWith('down-infra [service|app]');
-      expect(mockProgram.command).toHaveBeenCalledWith('create <app>');
-      expect(mockProgram.command).toHaveBeenCalledWith('build <app>');
-      expect(mockProgram.command).toHaveBeenCalledWith('run <app>');
-      expect(mockProgram.command).toHaveBeenCalledWith('push <app>');
-      expect(mockProgram.command).toHaveBeenCalledWith('deploy <app>');
-      const deployCmdIndex = mockProgram.command.mock.calls.findIndex(c => c[0] === 'deploy <app>');
+      expect(mockProgram.command).toHaveBeenCalledWith('create <appKey|systemKey>');
+      expect(mockProgram.command).toHaveBeenCalledWith('build <appKey>');
+      expect(mockProgram.command).toHaveBeenCalledWith('run <appKey>');
+      expect(mockProgram.command).toHaveBeenCalledWith('push <appKey>');
+      expect(mockProgram.command).toHaveBeenCalledWith('deploy <appKey|systemKey>');
+      const deployCmdIndex = mockProgram.command.mock.calls.findIndex(c => c[0] === 'deploy <appKey|systemKey>');
       expect(deployCmdIndex).toBeGreaterThanOrEqual(0);
       const deployCmdMock = mockProgram.command.mock.results[deployCmdIndex].value;
       expect(deployCmdMock.option).toHaveBeenCalledWith('--local', expect.any(String));
       expect(mockProgram.command).toHaveBeenCalledWith('doctor');
       expect(mockProgram.command).toHaveBeenCalledWith('status');
       expect(mockProgram.command).toHaveBeenCalledWith('restart <service|app>');
-      expect(mockProgram.command).toHaveBeenCalledWith('resolve <app>');
-      expect(mockProgram.command).toHaveBeenCalledWith('json <app>');
-      expect(mockProgram.command).toHaveBeenCalledWith('dockerfile <app>');
+      expect(mockProgram.command).toHaveBeenCalledWith('resolve <appKey|systemKey>');
+      expect(mockProgram.command).toHaveBeenCalledWith('json <appKey|systemKey>');
+      expect(mockProgram.command).toHaveBeenCalledWith('dockerfile <appKey>');
     });
   });
 
@@ -623,7 +623,7 @@ describe('CLI Comprehensive Tests', () => {
       app.runApp.mockResolvedValue();
       app.restartApp.mockResolvedValue();
 
-      const deployAction = commandActions['deploy <app>'];
+      const deployAction = commandActions['deploy <appKey|systemKey>'];
       expect(deployAction).toBeDefined();
 
       await deployAction('test-app', {});
@@ -639,7 +639,7 @@ describe('CLI Comprehensive Tests', () => {
       app.runApp.mockResolvedValue();
       app.restartApp.mockResolvedValue();
 
-      const deployAction = commandActions['deploy <app>'];
+      const deployAction = commandActions['deploy <appKey|systemKey>'];
       expect(deployAction).toBeDefined();
 
       await deployAction('test-app', { local: true });
@@ -656,7 +656,7 @@ describe('CLI Comprehensive Tests', () => {
       app.runApp.mockResolvedValue();
       app.restartApp.mockResolvedValue();
 
-      const deployAction = commandActions['deploy <app>'];
+      const deployAction = commandActions['deploy <appKey|systemKey>'];
       expect(deployAction).toBeDefined();
 
       await deployAction('my-external', { local: true });

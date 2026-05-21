@@ -39,6 +39,9 @@ jest.mock('../../../lib/datasource/deploy', () => ({
 jest.mock('../../../lib/datasource/log-viewer', () => ({
   runLogViewer: jest.fn().mockResolvedValue(undefined)
 }));
+jest.mock('../../../lib/datasource/log-cleaner', () => ({
+  runCleanLogs: jest.fn().mockResolvedValue({ removedCount: 0, paths: [] })
+}));
 
 const logger = require('../../../lib/utils/logger');
 const { validateDatasourceFile } = require('../../../lib/datasource/validate');
@@ -46,6 +49,7 @@ const { listDatasources } = require('../../../lib/datasource/list');
 const { compareDatasources } = require('../../../lib/datasource/diff');
 const { deployDatasource } = require('../../../lib/datasource/deploy');
 const { runLogViewer } = require('../../../lib/datasource/log-viewer');
+const { runCleanLogs } = require('../../../lib/datasource/log-cleaner');
 
 describe('Datasource Commands Module', () => {
   let program;
@@ -280,6 +284,67 @@ describe('Datasource Commands Module', () => {
           app: 'hubspot',
           file: '/tmp/log.json',
           logType: 'test'
+        })
+      );
+    });
+
+    it('should register log-trust command', () => {
+      setupDatasourceCommands(program);
+      const datasourceGroup = program._datasourceGroup;
+      expect(datasourceGroup.command).toHaveBeenCalledWith('log-trust <datasourceKey>');
+      const logTrust = datasourceGroup._subCommands?.find(c => c.name === 'log-trust <datasourceKey>');
+      expect(logTrust).toBeDefined();
+      expect(logTrust.command.option).toHaveBeenCalledWith('-a, --app <app>', expect.any(String));
+      expect(logTrust.command.option).toHaveBeenCalledWith('-f, --file <path>', expect.any(String));
+    });
+
+    it('log-trust action calls runLogViewer with logType test-trust', async() => {
+      setupDatasourceCommands(program);
+      const datasourceGroup = program._datasourceGroup;
+      const logTrust = datasourceGroup._subCommands?.find(c => c.name === 'log-trust <datasourceKey>');
+      const actionFn = logTrust.command.action.mock.calls[0][0];
+      await actionFn('hubspot-users', { app: 'hubspot', file: '/tmp/trust-log.json' });
+      expect(runLogViewer).toHaveBeenCalledWith(
+        'hubspot-users',
+        expect.objectContaining({
+          app: 'hubspot',
+          file: '/tmp/trust-log.json',
+          logType: 'test-trust'
+        })
+      );
+    });
+
+    it('should register clean-logs command', () => {
+      setupDatasourceCommands(program);
+      const datasourceGroup = program._datasourceGroup;
+      expect(datasourceGroup.command).toHaveBeenCalledWith('clean-logs');
+      const cleanLogs = datasourceGroup._subCommands?.find(c => c.name === 'clean-logs');
+      expect(cleanLogs).toBeDefined();
+      expect(cleanLogs.command.option).toHaveBeenCalledWith('-a, --app <app>', expect.any(String));
+      expect(cleanLogs.command.option).toHaveBeenCalledWith('--all', expect.any(String));
+      expect(cleanLogs.command.option).toHaveBeenCalledWith('-t, --type <type>', expect.any(String), 'all');
+      expect(cleanLogs.command.option).toHaveBeenCalledWith('--dry-run', expect.any(String));
+    });
+
+    it('clean-logs action calls runCleanLogs', async() => {
+      setupDatasourceCommands(program);
+      const datasourceGroup = program._datasourceGroup;
+      const cleanLogs = datasourceGroup._subCommands?.find(c => c.name === 'clean-logs');
+      const actionFn = cleanLogs.command.action.mock.calls[0][0];
+      await actionFn({
+        app: 'test-e2e-hubspot',
+        all: false,
+        type: 'e2e',
+        dryRun: true,
+        json: false
+      });
+      expect(runCleanLogs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          app: 'test-e2e-hubspot',
+          all: false,
+          type: 'e2e',
+          dryRun: true,
+          json: false
         })
       );
     });

@@ -32,7 +32,7 @@ describe('datasource-test-run-capability-scope', () => {
     );
     expect(r.violated).toBe(true);
     expect(r.count).toBe(2);
-    expect(r.message).toContain('--capability "read"');
+    expect(r.message).toContain('capabilityKey "read"');
     expect(r.message).toContain('read, write');
     expect(r.message).toContain('server returned 2');
   });

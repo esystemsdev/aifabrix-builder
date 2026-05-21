@@ -56,6 +56,11 @@ npm test -- tests/local/lib/template-validator.test.js
 - `lib/datasource/capability-hubspot-copy.integration.test.js` - HubSpot companies fixture copy/remove golden path (optional sibling `aifabrix-dataplane` JSON)
 - `lib/utils/load-cip-capacity-display-config.test.js` - bundled schema path + operation-order extraction (CI simulation temp-dir vs repo root)
 - `lib/utils/paths-aifabrix-nested-config.test.js` - `AIFABRIX_HOME` + nested `~/.aifabrix/config.yaml`; real disk + `fs-real-sync` / worker ordering (CI simulation)
+- `lib/resolvers/dimension-file.test.js` - dimension `--file` valueType parsing (temp JSON + fixtures)
+- `lib/protection/protection-validate-local.test.js` - protection AJV local validation (fixture load)
+- `lib/protection/convert-batch.test.js` - `.protection` JSON/YAML convert batch (temp workspace)
+- `lib/commands/protection-upload-batch.test.js` - batch upload lexical order / dry-run (temp manifests on disk)
+- `lib/identity/identity-csv-parser.test.js` - `parseUsersCsvFile` prefix filter (temp CSV); pure tests stay in `tests/lib/identity/identity-csv-parser.test.js`
 
 ## CI Exclusion
 
