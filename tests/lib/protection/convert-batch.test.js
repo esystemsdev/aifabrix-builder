@@ -1,15 +1,21 @@
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
+const {
+  existsSync,
+  writeFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync
+} = require('../../../lib/internal/fs-real-sync');
 
 /** Project-local workspace (not os.tmpdir) to avoid CI /tmp races between parallel Jest workers. */
 function createProtectionTestWorkspace() {
   const root = path.join(__dirname, '../../../.temp/jest-protection-convert');
-  fs.mkdirSync(root, { recursive: true });
-  const tmpRoot = fs.mkdtempSync(path.join(root, 'run-'));
+  mkdirSync(root, { recursive: true });
+  const tmpRoot = mkdtempSync(path.join(root, 'run-'));
   const protectionDir = path.join(tmpRoot, '.protection');
-  fs.mkdirSync(protectionDir, { recursive: true });
+  mkdirSync(protectionDir, { recursive: true });
   return { tmpRoot, protectionDir };
 }
 
@@ -34,9 +40,9 @@ describe('protection convert-batch', () => {
   });
 
   afterEach(() => {
-    if (tmpRoot && fs.existsSync(tmpRoot)) {
+    if (tmpRoot && existsSync(tmpRoot)) {
       try {
-        fs.rmSync(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
+        rmSync(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
       } catch {
         /* best-effort */
       }
@@ -45,7 +51,7 @@ describe('protection convert-batch', () => {
 
   it('listFilesNeedingConvert finds json when target is yaml', () => {
     const jsonPath = path.join(protectionDir, 'hubspot-companies.json');
-    fs.writeFileSync(jsonPath, '{"kind":"Protection"}');
+    writeFileSync(jsonPath, '{"kind":"Protection"}');
     const files = listFilesNeedingConvert(protectionDir, 'yaml');
     expect(files).toEqual([jsonPath]);
   });
@@ -53,20 +59,20 @@ describe('protection convert-batch', () => {
   it('runConvertProtectionBatch converts json to yaml with --force', async() => {
     const jsonPath = path.join(protectionDir, 'hubspot-companies.json');
     const asJson = JSON.stringify(require('js-yaml').load(readHubspotCompaniesYaml(__dirname)));
-    fs.writeFileSync(jsonPath, asJson);
+    writeFileSync(jsonPath, asJson);
     const { converted, deleted } = await runConvertProtectionBatch('yaml', {
       force: true,
       root: protectionDir
     });
     expect(converted.length).toBe(1);
     expect(converted[0]).toMatch(/hubspot-companies\.yaml$/);
-    expect(fs.existsSync(converted[0])).toBe(true);
+    expect(existsSync(converted[0])).toBe(true);
     expect(deleted).toContain(jsonPath);
-    expect(fs.existsSync(jsonPath)).toBe(false);
+    expect(existsSync(jsonPath)).toBe(false);
   });
 
   it('returns empty when all files already match format', async() => {
-    fs.writeFileSync(
+    writeFileSync(
       path.join(protectionDir, 'hubspot-companies.yaml'),
       readHubspotCompaniesYaml(__dirname)
     );

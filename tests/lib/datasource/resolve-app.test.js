@@ -18,13 +18,17 @@ jest.mock('../../../lib/utils/config-format', () => ({
 }));
 
 const fs = require('fs');
-jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+const existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
 
 const { resolveAppKeyForDatasource, appHasDatasourceKey } = require('../../../lib/datasource/resolve-app');
 const paths = require('../../../lib/utils/paths');
 const configFormat = require('../../../lib/utils/config-format');
 
 describe('resolve-app', () => {
+  afterAll(() => {
+    existsSyncSpy.mockRestore();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     fs.existsSync.mockReturnValue(true);
@@ -120,6 +124,26 @@ describe('resolve-app', () => {
       await expect(resolveAppKeyForDatasource('unknown-key', null)).rejects.toThrow(
         'Could not determine app context'
       );
+    });
+
+    it('should resolve app from datasource JSON filename stem', async() => {
+      configFormat.loadConfigFile.mockImplementation(filePath => {
+        if (filePath.includes('test-e2e-hubspot') && filePath.includes('application')) {
+          return {
+            externalIntegration: {
+              dataSources: ['test-e2e-hubspot-datasource-companies.json'],
+              schemaBasePath: './'
+            }
+          };
+        }
+        if (filePath.includes('datasource-companies')) {
+          return { key: 'test-e2e-hubspot-companies' };
+        }
+        return { externalIntegration: { dataSources: [], schemaBasePath: './' } };
+      });
+      paths.listIntegrationAppNames.mockReturnValue(['test-e2e-hubspot']);
+      const result = await resolveAppKeyForDatasource('test-e2e-hubspot-datasource-companies', null);
+      expect(result).toEqual({ appKey: 'test-e2e-hubspot' });
     });
   });
 

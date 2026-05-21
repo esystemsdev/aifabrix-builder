@@ -38,6 +38,7 @@ describe('datasource-exporter-service', () => {
       authConfig: { token: 't' }
     });
     searchRecords.mockResolvedValue({
+      success: true,
       data: [{ metadata: { email: 'a@x.com', name: 'A' } }],
       meta: { excluded: { abac: 1 }, auditRef: 'rss-1' }
     });

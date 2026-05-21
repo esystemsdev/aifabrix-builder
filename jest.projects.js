@@ -306,7 +306,11 @@ const defaultProject = {
       '/tests/lib/protection/validate-batch.test.js',
       '\\\\tests\\\\lib\\\\protection\\\\validate-batch.test.js',
       'lib/protection/validate-batch.test.js',
-      'validate-batch\\.test\\.js'
+      'validate-batch\\.test\\.js',
+      '/tests/lib/protection/convert-batch.test.js',
+      '\\\\tests\\\\lib\\\\protection\\\\convert-batch.test.js',
+      'lib/protection/convert-batch.test.js',
+      'convert-batch\\.test\\.js'
     ];
     if (process.env.INCLUDE_LOCAL_TESTS !== 'true') {
       patterns.push('/tests/local/');
@@ -447,6 +451,9 @@ const isolatedProjects = [
   ]),
   makeIsolatedProject('protection-validate-batch', [
     '**/tests/lib/protection/validate-batch.test.js'
+  ]),
+  makeIsolatedProject('protection-convert-batch', [
+    '**/tests/lib/protection/convert-batch.test.js'
   ])
 ];
 

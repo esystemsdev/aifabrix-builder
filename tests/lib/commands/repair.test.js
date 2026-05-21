@@ -1019,7 +1019,11 @@ describe('repair', () => {
       beforeEach(() => {
         buildAuthenticationFromMethod.mockImplementation((systemKey, method) => {
           if (method === 'apikey') {
-            return { method: 'apikey', variables: { baseUrl: 'https://api.example.com' }, security: { apiKey: `kv://${systemKey}/apiKey` } };
+            return {
+              method: 'apikey',
+              variables: { baseUrl: 'https://api.example.com', headerName: 'X-API-Key' },
+              security: { apiKey: `kv://${systemKey}/apiKey` }
+            };
           }
           if (method === 'oauth2') {
             return {
@@ -1125,7 +1129,7 @@ describe('repair', () => {
         writeFileSyncSpy.mockRestore();
       });
 
-      it('preserves existing authentication.variables when switching auth method', async() => {
+      it('preserves baseUrl (and testEndpoint) but drops OAuth variables when switching auth method', async() => {
         const envTemplatePath = path.join(appPath, 'env.template');
         existsSyncSpy.mockImplementation((p) => {
           const s = String(p);
@@ -1174,8 +1178,8 @@ describe('repair', () => {
         expect(writtenAuth.method).toBe('apikey');
         expect(writtenAuth.variables).toBeDefined();
         expect(writtenAuth.variables.baseUrl).toBe(existingVariables.baseUrl);
-        expect(writtenAuth.variables.tokenUrl).toBe(existingVariables.tokenUrl);
-        expect(writtenAuth.variables.authorizationUrl).toBe(existingVariables.authorizationUrl);
+        expect(writtenAuth.variables.tokenUrl).toBeUndefined();
+        expect(writtenAuth.variables.authorizationUrl).toBeUndefined();
         writeFileSyncSpy.mockRestore();
       });
 

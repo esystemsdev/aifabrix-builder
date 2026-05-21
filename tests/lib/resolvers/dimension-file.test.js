@@ -1,23 +1,39 @@
 'use strict';
 
-const fs = require('fs');
-const os = require('os');
 const path = require('path');
+const {
+  existsSync,
+  writeFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync
+} = require('../../../lib/internal/fs-real-sync');
 const {
   readDimensionCreateFile,
   normalizeValueType
 } = require('../../../lib/resolvers/dimension-file');
 
 describe('dimension-file valueType', () => {
+  let tmpDir;
   let tmpFile;
 
   beforeEach(() => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dim-file-'));
-    tmpFile = path.join(dir, 'dim.json');
+    tmpDir = mkdtempSync(path.join(__dirname, '../../../.temp/dim-file-'));
+    tmpFile = path.join(tmpDir, 'dim.json');
+  });
+
+  afterEach(() => {
+    if (tmpDir && existsSync(tmpDir)) {
+      try {
+        rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
+      } catch {
+        /* best-effort */
+      }
+    }
   });
 
   it('defaults valueType to static when omitted', () => {
-    fs.writeFileSync(
+    writeFileSync(
       tmpFile,
       JSON.stringify({
         key: 'region',
