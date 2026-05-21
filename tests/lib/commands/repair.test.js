@@ -1195,8 +1195,130 @@ describe('repair', () => {
         });
 
         await expect(repairExternalIntegration('test-hubspot', { auth: 'invalid' }))
-          .rejects.toThrow(/Invalid --auth "invalid". Allowed methods: oauth2, aad, apikey/);
+          .rejects.toThrow(/Invalid --auth "invalid". Allowed methods: oauth2, aad, apikey, bearerKey/);
         expect(buildAuthenticationFromMethod).not.toHaveBeenCalled();
+      });
+
+      it('warns when --auth apikey leaves testEndpoint missing', async() => {
+        existsSyncSpy.mockImplementation((p) => {
+          const s = String(p);
+          return s === configPath || s === appPath || s.endsWith('hubspot-system.yaml') || s.includes('rbac');
+        });
+        readdirSyncSpy.mockReturnValue(['hubspot-system.yaml', 'application.yaml']);
+        loadConfigFile.mockImplementation((p) => {
+          const s = String(p);
+          if (s.endsWith('application.yaml') || s.endsWith('application.json')) {
+            return {
+              app: { key: 'hubspot-test', type: 'external' },
+              externalIntegration: { schemaBasePath: './', systems: ['hubspot-system.yaml'], dataSources: [] }
+            };
+          }
+          if (s.endsWith('hubspot-system.yaml')) {
+            return {
+              key: 'hubspot-test',
+              authentication: { method: 'oauth2', security: { clientId: 'kv://x', clientSecret: 'kv://y' } },
+              configuration: []
+            };
+          }
+          return {};
+        });
+        buildAuthenticationFromMethod.mockImplementation((systemKey, method) => ({
+          method,
+          variables: { baseUrl: 'https://api.example.com', headerName: 'X-API-Key' },
+          security: { apiKey: `kv://${systemKey}/apiKey` }
+        }));
+        generator.generateDeployJson.mockResolvedValue(path.join(appPath, 'hubspot-deploy.json'));
+
+        const result = await repairExternalIntegration('test-hubspot', { auth: 'apikey' });
+
+        expect(result.warnings.some((w) => w.includes('testEndpoint is missing for apikey'))).toBe(true);
+      });
+
+      it('warns on plain repair when system file is apikey without testEndpoint', async() => {
+        existsSyncSpy.mockImplementation((p) => {
+          const s = String(p);
+          return s === configPath || s === appPath || s.endsWith('hubspot-system.yaml') || s.includes('rbac');
+        });
+        readdirSyncSpy.mockReturnValue(['hubspot-system.yaml', 'application.yaml']);
+        loadConfigFile.mockImplementation((p) => {
+          const s = String(p);
+          if (s.endsWith('application.yaml') || s.endsWith('application.json')) {
+            return {
+              app: { key: 'hubspot-test', type: 'external' },
+              externalIntegration: { schemaBasePath: './', systems: ['hubspot-system.yaml'], dataSources: [] }
+            };
+          }
+          if (s.endsWith('hubspot-system.yaml')) {
+            return {
+              key: 'hubspot-test',
+              authentication: {
+                method: 'apikey',
+                variables: { baseUrl: 'https://api.hubapi.com', headerName: 'Authorization', prefix: 'Bearer' },
+                security: { apiKey: 'kv://hubspot-test/apiKey' }
+              },
+              configuration: []
+            };
+          }
+          return {};
+        });
+
+        const result = await repairExternalIntegration('test-hubspot');
+
+        expect(result.warnings.some((w) => w.includes('testEndpoint is missing for apikey'))).toBe(true);
+      });
+
+      it('sets bearerKey preset (apikey + Authorization Bearer) and warns when testEndpoint missing', async() => {
+        const envTemplatePath = path.join(appPath, 'env.template');
+        existsSyncSpy.mockImplementation((p) => {
+          const s = String(p);
+          if (s === envTemplatePath) return false;
+          if (s === configPath || s === appPath) return true;
+          if (s.endsWith('hubspot-system.yaml')) return true;
+          if (s.includes('rbac')) return false;
+          return false;
+        });
+        const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+        readdirSyncSpy.mockReturnValue(['hubspot-system.yaml', 'application.yaml']);
+        loadConfigFile.mockImplementation((p) => {
+          const s = String(p);
+          if (s.endsWith('application.yaml') || s.endsWith('application.json')) {
+            return {
+              app: { key: 'hubspot-test', type: 'external' },
+              externalIntegration: { schemaBasePath: './', systems: ['hubspot-system.yaml'], dataSources: [] }
+            };
+          }
+          if (s.endsWith('hubspot-system.yaml')) {
+            return {
+              key: 'hubspot-test',
+              authentication: {
+                method: 'oauth2',
+                variables: { baseUrl: 'https://api.hubapi.com' },
+                security: { clientId: 'kv://hubspot/clientid', clientSecret: 'kv://hubspot/clientsecret' }
+              },
+              configuration: []
+            };
+          }
+          return {};
+        });
+        buildAuthenticationFromMethod.mockImplementation((systemKey, method) => ({
+          method,
+          variables: { baseUrl: 'https://api.example.com', headerName: 'X-API-Key' },
+          security: { apiKey: `kv://${systemKey}/apiKey` }
+        }));
+        generator.generateDeployJson.mockResolvedValue(path.join(appPath, 'hubspot-deploy.json'));
+
+        const result = await repairExternalIntegration('test-hubspot', { auth: 'bearerKey' });
+
+        expect(result.updated).toBe(true);
+        expect(result.changes.some((c) => c.includes('bearerKey'))).toBe(true);
+        expect(result.warnings.some((w) => w.includes('testEndpoint is missing for apikey'))).toBe(true);
+        expect(Array.isArray(result.changedFiles) && result.changedFiles.length > 0).toBe(true);
+        const systemWrite = writeConfigFile.mock.calls.find((c) => c[0].endsWith('hubspot-system.yaml'));
+        expect(systemWrite[1].authentication.method).toBe('apikey');
+        expect(systemWrite[1].authentication.variables.headerName).toBe('Authorization');
+        expect(systemWrite[1].authentication.variables.prefix).toBe('Bearer');
+        expect(systemWrite[1].authentication.variables.baseUrl).toBe('https://api.hubapi.com');
+        writeFileSyncSpy.mockRestore();
       });
 
       it('dry-run with --auth reports change but does not write files', async() => {

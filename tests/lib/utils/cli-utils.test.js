@@ -332,30 +332,38 @@ describe('CLI Utils Module', () => {
       expect(loggerCallArrays.error.some(a => a[0] === '   Provide via --registry flag or configure in application.yaml under image.registry')).toBe(true);
     });
 
-    it('should handle missing secrets errors with app name', () => {
-      const error = new Error('Missing secrets: DATABASE_PASSWORD, API_KEY\nSecrets file location: /path/to/secrets.yaml\nRun "aifabrix resolve myapp"');
+    it('should handle missing secrets errors with remediation hints (no doctor footer)', () => {
+      const error = new Error(
+        'Missing secrets: kv://myapp/apiKey\n' +
+          'Secrets file location: /path/to/secrets.yaml\n' +
+          'Env-template-path: /workspace/integration/myapp/env.template\n' +
+          'Env-template-line: kv://myapp/apiKey|KV_MYAPP_APIKEY=kv://myapp/apiKey\n' +
+          'App-name: myapp\n' +
+          'Remediation-hint: comment-or-delete-template-line | secret-set\n'
+      );
 
       handleCommandError(error, 'resolve');
 
       expect(loggerCallArrays.error.some(a => loggerArg0ToString(a[0]).includes('Error in resolve command'))).toBe(true);
-      expect(loggerCallArrays.error.some(a => stripAnsi(loggerArg0ToString(a[0])) === '   Missing secrets:')).toBe(true);
-      expect(loggerCallArrays.error.some(a => stripAnsi(loggerArg0ToString(a[0])) === '   - DATABASE_PASSWORD')).toBe(true);
-      expect(loggerCallArrays.error.some(a => stripAnsi(loggerArg0ToString(a[0])) === '   - API_KEY')).toBe(true);
       expect(
         loggerCallArrays.error.some(
-          a => stripAnsi(loggerArg0ToString(a[0])) === '   Secrets file location: /path/to/secrets.yaml'
+          a => stripAnsi(loggerArg0ToString(a[0])) === '   You can fix this two ways:'
         )
       ).toBe(true);
       expect(
-        loggerCallArrays.error.some(
-          a =>
-            stripAnsi(loggerArg0ToString(a[0])) ===
-            '   Run: aifabrix resolve myapp to generate missing secrets.'
+        loggerCallArrays.error.some(a =>
+          stripAnsi(loggerArg0ToString(a[0])).includes('aifabrix secret set myapp/apiKey')
         )
       ).toBe(true);
+      expect(
+        loggerCallArrays.error.some(a =>
+          stripAnsi(loggerArg0ToString(a[0])).includes('KV_MYAPP_APIKEY=kv://myapp/apiKey')
+        )
+      ).toBe(true);
+      expect(loggerCallArrays.log.some(a => a[0] && a[0].includes('aifabrix doctor'))).toBe(false);
     });
 
-    it('should handle missing secrets errors without app name', () => {
+    it('should handle missing secrets errors without structured hints', () => {
       const error = new Error('Missing secrets in secrets file');
 
       handleCommandError(error, 'resolve');
@@ -366,13 +374,7 @@ describe('CLI Utils Module', () => {
           a => stripAnsi(loggerArg0ToString(a[0])) === '   Missing secrets in secrets file.'
         )
       ).toBe(true);
-      expect(
-        loggerCallArrays.error.some(
-          a =>
-            stripAnsi(loggerArg0ToString(a[0])) ===
-            '   Run: aifabrix resolve <app-name> to generate missing secrets.'
-        )
-      ).toBe(true);
+      expect(loggerCallArrays.log.some(a => a[0] && a[0].includes('aifabrix doctor'))).toBe(false);
     });
 
     it('should handle deployment retry errors', () => {

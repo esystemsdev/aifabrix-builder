@@ -18,7 +18,7 @@ describe('audit-evidence-extract', () => {
     audit: { executionIds: ['exec-a', 'exec-b'] },
     debug: { executionIds: ['exec-b', 'exec-c'] },
     capabilities: [
-      { key: 'insert', status: 'ok' },
+      { key: 'create', status: 'ok' },
       { key: 'list', status: 'skipped' },
       { key: 'get', status: 'ok' }
     ],
@@ -30,7 +30,7 @@ describe('audit-evidence-extract', () => {
     expect(ctx.datasourceKey).toBe('test-e2e-hubspot-companies');
     expect(ctx.correlationId).toBe('run-corr-abc');
     expect(ctx.executionIds).toEqual(['exec-a', 'exec-b', 'exec-c']);
-    expect(ctx.expectedOperations).toEqual(expect.arrayContaining(['insert', 'get', 'list']));
+    expect(ctx.expectedOperations).toEqual(expect.arrayContaining(['create', 'get', 'list']));
   });
 
   it('executionIdsFromEnvelope dedupes audit and debug', () => {
@@ -59,14 +59,41 @@ describe('audit-evidence-extract', () => {
     expect(ctx.executionIds).toEqual([]);
   });
 
-  it('expectedOperationsFromEnvelope includes CRUD capability keys only', () => {
+  it('expectedOperationsFromEnvelope includes schema standard operations only', () => {
     const ops = expectedOperationsFromEnvelope({
       capabilities: [
         { key: 'mapping', status: 'ok' },
-        { key: 'insert', status: 'ok' },
+        { key: 'create', status: 'ok' },
         { key: 'list', status: 'skipped' }
       ]
     });
-    expect(ops).toEqual(['insert']);
+    expect(ops).toEqual(['create']);
+  });
+
+  it('cipOperationsFromDebugEnvelope parses capacity keys without product aliases', () => {
+    const { cipOperationsFromDebugEnvelope } = require('../../../lib/datasource/audit-evidence-extract-debug');
+    const ops = cipOperationsFromDebugEnvelope({
+      debug: {
+        e2eAsyncDebug: {
+          stepDebug: [
+            {
+              name: 'capacity',
+              evidence: {
+                datasources: [
+                  {
+                    capabilityDetails: [
+                      { key: 'capacity:create#0', success: true },
+                      { key: 'capacity:updateBasic#1', success: true }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    });
+    expect(ops).toEqual(expect.arrayContaining(['create', 'updatebasic']));
+    expect(ops).not.toContain('insert');
   });
 });
