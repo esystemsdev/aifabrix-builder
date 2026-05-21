@@ -43,7 +43,9 @@ Do **not** use a top-level `afterAll` that permanently sets `fs.existsSync` / `f
 
 **Nested runtime config path** (`AIFABRIX_HOME` + `.aifabrix/config.yaml`): `tests/local/lib/utils/paths-aifabrix-nested-config.test.js`.
 
-**Protection / dimension real-disk I/O** (`fs-real-sync`, temp `.protection` dirs, shipped fixtures; flaky when `jest.mock('fs')` leaks on the default worker): `tests/local/lib/resolvers/dimension-file.test.js`, `tests/local/lib/protection/protection-validate-local.test.js`, `tests/local/lib/protection/convert-batch.test.js`.
+**Protection / dimension real-disk I/O** (`fs-real-sync`, temp `.protection` dirs, shipped fixtures; flaky when `jest.mock('fs')` leaks on the default worker): `tests/local/lib/resolvers/dimension-file.test.js`, `tests/local/lib/protection/protection-validate-local.test.js`, `tests/local/lib/protection/convert-batch.test.js`, `tests/local/lib/commands/protection-upload-batch.test.js`.
+
+**Identity CSV file I/O** (temp CSV on disk; `parseUsersCsvFile` via `fs-real-sync`): `tests/local/lib/identity/identity-csv-parser.test.js` (pure parser tests without disk remain under `tests/lib/identity/identity-csv-parser.test.js`).
 
 Run locally: `INCLUDE_LOCAL_TESTS=true npm test` (or `npm test -- tests/local/...`).
 

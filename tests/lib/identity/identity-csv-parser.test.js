@@ -1,34 +1,17 @@
 /**
- * @fileoverview Tests for identity CSV parser
+ * @fileoverview Pure unit tests for identity CSV parser (no disk I/O — file I/O in tests/local).
  */
 
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
+'use strict';
+
 const {
   parseCsvLine,
-  parseUsersCsvFile,
   buildApplyPlanFromRows
 } = require('../../../lib/identity/identity-csv-parser');
 
 describe('identity-csv-parser', () => {
   it('parseCsvLine handles quoted commas', () => {
     expect(parseCsvLine('"a,b",c')).toEqual(['a,b', 'c']);
-  });
-
-  it('parseUsersCsvFile filters by prefix', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'id-csv-'));
-    const file = path.join(dir, 'users.csv');
-    fs.writeFileSync(
-      file,
-      'Id,Email,GroupId,GroupName\n' +
-        'test-protection-u1,a@x.local,g1,G1\n' +
-        'other-u2,b@x.local,g2,G2\n',
-      'utf8'
-    );
-    const { rows } = parseUsersCsvFile(file, 'test-protection');
-    expect(rows).toHaveLength(1);
-    expect(rows[0].Id).toBe('test-protection-u1');
   });
 
   it('buildApplyPlanFromRows dedupes users and collects memberships', () => {

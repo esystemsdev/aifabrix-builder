@@ -1,28 +1,40 @@
+/**
+ * Local-only: temp `.protection` batch workspace + manifest files on disk; flaky when `fs` is mocked on the default worker.
+ *
+ * @fileoverview upload .protection batch
+ */
+
 'use strict';
 
-jest.mock('../../../lib/protection/auth-context', () => ({
+jest.mock('../../../../lib/protection/auth-context', () => ({
   resolveProtectionDataplaneContext: jest.fn()
 }));
 
-jest.mock('../../../lib/protection/preflight-datasource-ready', () => ({
+jest.mock('../../../../lib/protection/preflight-datasource-ready', () => ({
   preflightDatasourceReady: jest.fn()
 }));
 
-jest.mock('../../../lib/api/protection.api', () => ({
+jest.mock('../../../../lib/api/protection.api', () => ({
   validateProtection: jest.fn(),
   uploadProtection: jest.fn()
 }));
 
-jest.mock('../../../lib/protection/sync-after-upload', () => ({
+jest.mock('../../../../lib/protection/sync-after-upload', () => ({
   syncUniqueDatasourcesAfterUpload: jest.fn().mockResolvedValue([])
 }));
 
-const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const yaml = require('js-yaml');
+const {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync
+} = require('../../../../lib/internal/fs-real-sync');
 
-jest.mock('../../../lib/protection/paths', () => ({
+jest.mock('../../../../lib/protection/paths', () => ({
   getProtectionRoot: jest.fn(),
   describeProtectionRoot: jest.fn(() => ({
     root: '',
@@ -32,15 +44,15 @@ jest.mock('../../../lib/protection/paths', () => ({
   }))
 }));
 
-const { getProtectionRoot } = require('../../../lib/protection/paths');
-const protectionResolve = require('../../../lib/protection/resolve');
-const { validateProtection, uploadProtection } = require('../../../lib/api/protection.api');
-const { resolveProtectionDataplaneContext } = require('../../../lib/protection/auth-context');
-const { runUploadProtectionBatch } = require('../../../lib/protection/upload-batch');
-const { preflightDatasourceReady } = require('../../../lib/protection/preflight-datasource-ready');
-const { writeHubspotCompaniesManifest } = require('../protection/protection-test-fixtures');
+const { getProtectionRoot } = require('../../../../lib/protection/paths');
+const protectionResolve = require('../../../../lib/protection/resolve');
+const { validateProtection, uploadProtection } = require('../../../../lib/api/protection.api');
+const { resolveProtectionDataplaneContext } = require('../../../../lib/protection/auth-context');
+const { runUploadProtectionBatch } = require('../../../../lib/protection/upload-batch');
+const { preflightDatasourceReady } = require('../../../../lib/protection/preflight-datasource-ready');
+const { writeHubspotCompaniesManifest } = require('../../../lib/protection/protection-test-fixtures');
 
-describe('upload .protection batch', () => {
+describe('upload .protection batch (local)', () => {
   let tmpRoot;
   let protectionDir;
   let manifestPaths;
@@ -48,19 +60,22 @@ describe('upload .protection batch', () => {
   let listManifestPathsSpy;
 
   beforeEach(() => {
-    tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'prot-batch-'));
+    const root = path.join(__dirname, '../../../../.temp/jest-protection-upload');
+    mkdirSync(root, { recursive: true });
+    tmpRoot = mkdtempSync(path.join(root, 'run-'));
     protectionDir = path.join(tmpRoot, 'prot');
+    mkdirSync(protectionDir, { recursive: true });
     getProtectionRoot.mockReturnValue(protectionDir);
 
     const companiesPath = writeHubspotCompaniesManifest(protectionDir, 'aaa-hubspot-companies.yaml');
-    const base = yaml.load(fs.readFileSync(companiesPath, 'utf8'));
+    const base = yaml.load(readFileSync(companiesPath, 'utf8'));
     const dealsManifest = {
       ...base,
       metadata: { ...base.metadata, key: 'hubspot-deals-prot' },
       spec: { ...base.spec, datasourceKey: 'hubspot-deals' }
     };
     const dealsPath = path.join(protectionDir, 'zzz-hubspot-deals.yaml');
-    fs.writeFileSync(dealsPath, yaml.dump(dealsManifest), 'utf8');
+    writeFileSync(dealsPath, yaml.dump(dealsManifest), 'utf8');
 
     manifestPaths = [companiesPath, dealsPath].sort((a, b) => a.localeCompare(b));
     listManifestPathsSpy = jest
@@ -88,9 +103,9 @@ describe('upload .protection batch', () => {
     if (listManifestPathsSpy) {
       listManifestPathsSpy.mockRestore();
     }
-    if (tmpRoot && fs.existsSync(tmpRoot)) {
+    if (tmpRoot && existsSync(tmpRoot)) {
       try {
-        fs.rmSync(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
+        rmSync(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
       } catch {
         /* best-effort temp cleanup */
       }
